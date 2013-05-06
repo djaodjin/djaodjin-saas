@@ -1,0 +1,31 @@
+{% extends "saas/base.html" %}
+{% load i18n %}
+{% load payment_extras %}
+
+{% block content %}
+<div class="container-fluid">
+  <section id="info">
+    <div class="page-header">
+      <div class="helptext">
+        <h1>Payment Receipt</h1>
+      </div>
+    </div>
+    <dl class="dl-horizontal">
+      <dt>card</dt>
+      <dd>{{last4}}</dd>
+    </dl>
+    <dl class="dl-horizontal">
+      <dt>expires</dt>
+      <dd>{{exp_date}}</dd>
+    </dl>
+    <p>
+      Your credit card has been charged for an amount
+      of {{amount|as_dollar_value}}. For your records,
+      the charge number is {{ charge_id }}.
+    </p>
+    <p>
+      Thank you for your continuous business. Any questions
+      or comments, email us at <a href="mailto:{{organization.email}}">{{organization.email}}</a>.
+    </p>
+  </section>
+{% endblock %}

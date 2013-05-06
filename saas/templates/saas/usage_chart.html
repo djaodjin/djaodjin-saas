@@ -1,0 +1,47 @@
+{% block localheader %}
+<link href="/static/css/nv.d3.css" rel="stylesheet" />
+{% endblock %}
+
+{% block content %}
+<pre id="chart">
+  <svg>
+  </svg>
+</pre>
+<script src="/static/js/jquery-1.9.1.js"></script>
+<script src="/static/js/d3.v3.js"></script>
+<script src="/static/js/nv.d3.js"></script>
+<script type="text/javascript">
+
+function update_chart(data) {
+nv.addGraph(function() {
+    var chart = nv.models.lineChart()
+        .x(function(d) { return d3.time.format('%x')(new Date(d.x)) })
+        .y(function(d) { return d.y });
+
+    chart.xAxis
+        .axisLabel('Date')
+        .tickFormat(function(d) {
+            var dx = data[0].values[d] && data[0].values[d].x || 0;
+            return d3.time.format('%x')(new Date(dx))
+         });
+
+    chart.yAxis
+        .axisLabel('Amount')
+       .tickFormat(d3.format(',.02f'));
+
+   d3.select('#chart svg')
+       .datum(data)
+     .transition().duration(500)
+       .call(chart);
+
+   nv.utils.windowResize(function() { d3.select('#chart svg').call(chart) });
+
+   return chart;
+ });
+}
+
+(function() {
+    update_chart({{data|safe}})
+})();
+</script>
+{% endblock %}

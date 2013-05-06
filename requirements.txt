@@ -1,0 +1,2 @@
+# We need Python Markdown for django.contrib.markup. markdown2 is not enough.
+Markdown

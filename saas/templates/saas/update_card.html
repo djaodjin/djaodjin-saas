@@ -1,0 +1,104 @@
+{% extends "saas/base.html" %}
+{% load i18n %}
+
+{% block localheader %}
+<script type="text/javascript" src="https://js.stripe.com/v1/"></script>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+  <section id="refill">
+    <div class="page-header">
+      <h1>Update to {{ organization.name }}</h1>
+    </div>
+    <p id="alert alert-error">
+      {{ err_msg }}
+    </p>
+    <form method="post" id="payment-form" class="form-horizontal"
+          action="{% url 'saas_update_card' organization.name %}">
+      <fieldset>
+        <legend>Credit Card Information</legend>
+        <!-- BE CAREFULL: Do not add name="" to these <input> nodes, else
+             values will hit the server and break PCI compliance. -->
+        <div id="row-number" class="control-group">
+          <label class="control-label" for="card-number">Card Number</label>
+          <div class="controls">
+            <input id="card-number" type="text" size="16" autocomplete="off" />
+            <img src="/static/img/cards_visa.png" >
+            <img src="/static/img/cards_master.png" >
+          </div>
+        </div>
+        <div id="row-exp" class="control-group">
+          <label class="control-label">Expiration (MM/YYYY)</label>
+          <div class="controls">
+            <input id="card-exp-month" type="text" size="2" /> /
+            <input id="card-exp-year" type="text" size="4" />
+          </div>
+        </div>
+        <div id="row-cvc" class="control-group">
+          <label class="control-label">Card Security Code</label>
+          <div class="controls">
+            <input id="card-cvc" type="text" size="3" autocomplete="off" />
+          </div>
+        </div>
+      </fieldset>
+      <fieldset>
+        <legend>Billing Address</legend>
+        <div id="row-name" class="control-group">
+          <label class="control-label" for="name">Card Holder</label>
+          <div class="controls">
+            <input id="name" type="text" name="card-name" />
+          </div>
+        </div>
+        <div id="row-address-line1" class="control-group">
+          <label class="control-label" for="address_line_1">Street</label>
+          <div class="controls">
+            <input id="address_line_1" type="text" name="card-address-line1" />
+          </div>
+        </div>
+        <div id="row-city" class="control-group">
+          <label class="control-label" for="address_line_2">City</label>
+          <div class="controls">
+            <input id="address_line_2" type="text" name="card-city" />
+          </div>
+        </div>
+        <div id="row-address-state" class="control-group">
+          <label class="control-label" for="state_id">State</label>
+          <div class="controls">
+            <input id="state_id" type="text" name="card-address-state" />
+          </div>
+        </div>
+        <div id="row-address-zip" class="control-group">
+          <label class="control-label" for="zip_code">Zip</label>
+          <div class="controls">
+            <input id="zip_code" type="text" name="card-address-zip" />
+          </div>
+        </div>
+        <div id="row-address-country" class="control-group">
+          <label class="control-label" for="country_id">Country</label>
+          <div class="controls">
+            <input id="country_id" type="text" name="card-address-country" />
+          </div>
+        </div>
+      </fieldset>
+      <div class="control-group">
+        <div class="controls">
+          <button type="submit" class="btn btn-primary payment-submit">{% trans 'Update' %}</button>
+      </div>
+      </div>
+      {% csrf_token %}
+    </form>
+  </section>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script type="text/javascript" src="/static/js/payproc.js"></script>
+<script type="text/javascript">
+  // this identifies your website in the createToken call below
+  Stripe.setPublishableKey('{{STRIPE_PUB_KEY}}');
+  $(document).ready(function() {
+  $("#payment-form").submit(stripeCreateToken);
+  });
+</script>
+{% endblock %}

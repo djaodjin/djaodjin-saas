@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% load markup %}
+
+{% block content %}
+<div class="container-fluid">
+  <p class="errorlist">
+    {{ errmsg }}
+  </p>
+  <p>
+    Please sign:
+  </p>
+  {{page|markdown}}
+
+  <form class="form-inline" method="post" action="sign?next={{ next }}">
+    {{ form.as_ul }}
+    {% csrf_token %}
+    <input type="submit" class="btn btn-primary" value="I Agree" />
+  </form>
+</div>
+{% endblock %}

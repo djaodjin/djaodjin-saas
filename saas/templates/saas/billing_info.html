@@ -1,0 +1,59 @@
+{% extends "saas/base.html" %}
+{% load i18n %}
+{% load currency %}
+
+{% block localheader %}
+<script type="text/javascript" src="https://js.stripe.com/v1/"></script>
+{% endblock %}
+
+{% block content %}
+<section id="info">
+  <h1>Credit Card</h1>
+  <a class="btn" href="{% url 'saas_update_card' organization.name %}">Update</a>
+  <dl class="dl-horizontal">
+    <dt>card</dt>
+    <dd>{{last4}}</dd>
+  </dl>
+  <dl class="dl-horizontal">
+    <dt>expires</dt>
+    <dd>{{exp_date}}</dd>
+  </dl>
+</section>
+<section id="balance">
+  <h1>Balance</h1>
+  <dl class="dl-horizontal">
+    {% if balance_credits %}
+    <dt>{{balance_credits|usd}}</dt>
+    <dd>Balance Credits</dd>
+        {% else %}
+    <dt>{{balance_dues|usd}}</dt>
+    <dd>Balance due (<a href="{% url 'saas_pay_now' organization.name %}">pay now</a>)</dd>
+    {% endif %}
+  </dl>
+</section>
+<section id="transactions">
+  <h1>Transactions</h1>
+  {% if transactions %}
+  <table class="table table-striped">
+    <thead>
+      <tr>
+        <th>Date</th>
+        <th>Description</th>
+        <th>Amount</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for entry in transactions %}
+      <tr>
+        <td>{{entry.created_at|date:"d M Y"}}</td>
+        <td>{{entry.descr}}</td>
+        <td>{{entry.amount|usd}}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <em>No Transactions</em>
+  {% endif %}
+</section>
+{% endblock %}

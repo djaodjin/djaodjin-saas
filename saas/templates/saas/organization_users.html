@@ -1,0 +1,43 @@
+<section id="{{title}}">
+  <h1>{{title}}</h1>
+  <form method="post"
+        action="{% url 'saas_add_'|add:title organization.name %}">
+    <input name="username" type="text" size="32" />
+    <input type="submit" class="btn" value="Add" />
+    {% csrf_token %}
+  </form>
+  {% if users %}
+  <table class="table table-striped">
+    <thead>
+      <tr>
+        <th></th>
+        <th>Username</th>
+        <th>Email</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for user in users %}
+      <tr>
+        <td>
+          <form method="post"
+                action="{% url 'saas_remove_'|add:title organization.name %}">
+            <input name="username" type="hidden" value="{{user.username}}" />
+            <input type="submit" class="btn btn-danger"
+                   value="Remove" />
+            {% csrf_token %}
+          </form>
+        </td>
+        <td>
+          {{user.username}}
+        </td>
+        <td>
+          {{user.email}}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <em>This organization has no {{title}}.</em>
+  {% endif %}
+</section>

@@ -1,0 +1,89 @@
+[
+  {
+    "fields": {
+      "name": "ABC",
+      "email": "abc@example.com",
+      "phone": "555-555-5555",
+      "street_address": "1 ABC loop",
+      "locality":  "San Francisco",
+      "region": "CA",
+      "postal_code": "94102",
+      "country_name": "USA",
+      "is_active": 1
+    },
+    "model": "saas.Organization",
+    "pk": 1
+  },
+  {
+    "fields": {
+      "name": "XYZ",
+      "email": "xyz@example.com",
+      "phone": "555-555-5555",
+      "street_address": "1 XYZ loop",
+      "locality":  "San Francisco",
+      "region": "CA",
+      "postal_code": "94102",
+      "country_name": "USA",
+      "is_active": 1
+    },
+    "model": "saas.Organization",
+    "pk": 2
+  },
+ {
+    "fields": {
+        "creation_time": "2013-04-18",
+        "amount": 2800,
+        "source": "Invoiced",
+        "dest": "Balance",
+        "customer": "ABC"
+    },
+    "model": "saas.Transaction",
+    "pk": 1
+  },
+ {
+    "fields": {
+        "creation_time": "2013-04-18",
+        "amount": 1600,
+        "source": "Balance",
+        "dest": "Assets",
+        "customer": "ABC"
+    },
+    "model": "saas.Transaction",
+    "pk": 2
+  },
+ {
+    "fields": {
+        "creation_time": "2013-04-18",
+        "amount": 1100,
+        "source": "Invoiced",
+        "dest": "Balance",
+        "customer": "XYZ"
+    },
+    "model": "saas.Transaction",
+    "pk": 3
+  },
+ {
+    "fields": {
+        "creation_time": "2013-04-18",
+        "amount": 700,
+        "state": 1,
+        "customer": "ABC",
+        "processor": "stripe",
+        "processor_id": "charge_1"
+    },
+    "model": "saas.Charge",
+    "pk": 1
+  },
+ {
+    "fields": {
+        "creation_time": "2013-04-18",
+        "amount": 800,
+        "state": 0,
+        "customer": "XYZ",
+        "processor": "stripe",
+        "processor_id": "charge_2"
+    },
+    "model": "saas.Charge",
+    "pk": 2
+  }
+]

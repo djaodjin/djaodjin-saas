@@ -1,0 +1,9 @@
+{% extends "saas/base.html" %}
+
+{% block content %}
+  <form method="post" action="{{call}}">
+    {{form.as_ul}}
+    <input type="submit" class="btn" value="Submit" />
+    {% csrf_token %}
+  </form>
+{% endblock %}

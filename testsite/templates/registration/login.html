@@ -1,0 +1,6 @@
+  <form method="post" action="./?next={{ next }}">
+    {{ form.as_ul }}
+    <input type="submit" class="btn btn-primary" value="Login" />
+    {% csrf_token %}
+  </form>
+

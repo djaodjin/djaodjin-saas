@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+
+{% block menubar %}
+<a href="{% url 'saas_billing_info' organization.name %}">billing</a>
+<a href="{% url 'saas_organization_profile' organization.name %}">profile</a>
+{% endblock %}
+
+{% block footer %}
+<footer>
+This is our <a href="{% url 'legal_agreement' 'security' %}">security policy</a>.
+For any questions, please e-mail us at <a href="mailto:{{organization.email}}">{{organization.email}}</a>.
+</footer>
+{% endblock %}
+

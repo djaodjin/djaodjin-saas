@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block content %}
+<div class="container">
+  <section id="legal">
+    <div class="page-header">
+      <h1>Terms and Policies</h1>
+    </div>
+    <p>
+      You will find here all the legal documents that keeps us out of trouble
+      while providing you the best possible service.
+    </p>
+    {% if agreement_list %}
+    <ul>
+      {% for agreement in agreement_list %}
+      <li><a href="{% url 'legal_agreement' agreement.slug %}">{{agreement.title}}</a>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <em>No Terms nor policies yet</em>
+    {% endif %}
+  </section>
+  <section id="contacts">
+    <div class="page-header">
+      <h1 class="underlined-title">Contact us</h1>
+    </div>
+    <span class="vcard">
+      {% if organization.email %}
+      <h3>By e-mail</h3>
+      <p><span class="email">{{organization.email}}</span></p>
+      {% endif %}
+
+      {% if organization.phone %}
+      <h3>By phone</h3>
+      <p><span class="tel">{{organization.phone}}</span></p>
+      {% endif %}
+
+      {% if organization.street_address %}
+      <h3>By physical mail</h3>
+      <p><span class="adr">
+          <span class="street-address">{{organization.street_address}}</span><br />
+          <span class="locality">{{organization.locality}}</span><br />
+          <abbr class="region" title="California">{{organization.region}}</abbr>
+          <span class="postal-code">{{organization.postal_code}}</span><br />
+          <span class="country-name">{{organization.country_name}}</span>
+      </span></p>
+      {% endif %}
+    </span>
+  </section>
+</div>
+{% endblock %}
+
