@@ -1,35 +1,25 @@
 {% extends "saas/base.html" %}
-{% load crispy_forms_tags %}
-{% load payment_extras %}
-{% load i18n %}
+{% load currency %}
 
 {% block content %}
-<div class="container-fluid">
-  <section id="paynow">
-    <div class="page-header">
-      <h1>Pay Balance for {{ organization.name }}</h1>
-    </div>
-    <p id="alert alert-block alert-error">
-      {{ err_msg }}
-    </p>
-    <p>
-      {% if balance_credits %}
-      You already have a credit of {{balance_credits|as_dollar_value}}
-      in your account. Are you sure you want to pay more now?
-      {% else %}
-      Your balance due is {{balance_dues|as_dollar_value}}.
-      {% endif %}
-    </p>
-    <form method="post" id="payment-form" class="form-horizontal"
-          action="{% url 'saas_pay_now' organization.name %}">
-      {{ form|crispy }}
-      <div class="control-group">
-        <div class="controls">
-          <button type="submit" class="btn btn-primary payment-submit">{% trans 'Pay Now' %}</button>
-      </div>
-      </div>
-      {% csrf_token %}
-    </form>
-  </section>
-</div>
+<section id="paynow">
+  <h1>Pay Balance for {{ organization.name }}</h1>
+  <p id="alert alert-block alert-error">
+    {{ err_msg }}
+  </p>
+  <p>
+    {% if balance_credits %}
+    You already have a credit of {{balance_credits|usd}}
+    in your account. Are you sure you want to pay more now?
+    {% else %}
+    Your balance due is {{balance_dues|usd}}.
+    {% endif %}
+  </p>
+  <form method="post" id="payment-form" class="form-horizontal"
+        action="{% url 'saas_pay_now' organization.name %}">
+    {{ form.as_ul }}
+    <button type="submit" class="btn btn-primary payment-submit">Pay Now</button>
+    {% csrf_token %}
+  </form>
+</section>
 {% endblock %}
