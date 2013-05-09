@@ -7,23 +7,34 @@
   <svg>
   </svg>
 </pre>
-<script src="/static/js/jquery-1.9.1.js"></script>
-<script src="/static/js/d3.v3.js"></script>
-<script src="/static/js/nv.d3.js"></script>
+<script src="/static/js/vendor/jquery-1.9.1.js"></script>
+<script src="/static/js/vendor/d3.v3.js"></script>
+<script src="/static/js/vendor/nv.d3.js"></script>
 <script type="text/javascript">
 
 function update_chart(data) {
+var col = 0;
 nv.addGraph(function() {
+
+    var w = 450;
+    var values = data[0].values
+    for( i = 0; i < values.length; ++i ) {
+        values[i].x = new Date(values[i].x)
+    }
+
+    // get max and min dates - this assumes data is sorted
+    var maxDate = values[0].x,
+        minDate = values[values.length-1].x;
+
+    var x = d3.time.scale().domain([minDate, maxDate]).range([0, w]);
+
     var chart = nv.models.lineChart()
-        .x(function(d) { return d3.time.format('%x')(new Date(d.x)) })
+        .x(function(d) { return d.x })
         .y(function(d) { return d.y });
 
     chart.xAxis
-        .axisLabel('Date')
-        .tickFormat(function(d) {
-            var dx = data[0].values[d] && data[0].values[d].x || 0;
-            return d3.time.format('%x')(new Date(dx))
-         });
+      .axisLabel('Date')
+      .tickFormat(function(d) { return d3.time.format('%b %d')(new Date(d)); });
 
     chart.yAxis
         .axisLabel('Amount')
@@ -34,7 +45,7 @@ nv.addGraph(function() {
      .transition().duration(500)
        .call(chart);
 
-   nv.utils.windowResize(function() { d3.select('#chart svg').call(chart) });
+   nv.utils.windowResize(chart.update);
 
    return chart;
  });
