@@ -31,35 +31,39 @@ from django.utils.timezone import utc
 from saas.decorators import requires_agreement
 from saas.views.auth import valid_manager_for_organization
 from saas.models import Organization, Transaction
+from saas.views.chart import organization_usage
 
 @require_GET
 @requires_agreement('terms_of_use')
-def organization_usage(request, organization_id):
-    organization = valid_manager_for_organization(request.user, organization_id)
+def organization_overall(request):
     
-    # Note: There is a way to get the result in a single SQL statement
-    # but that requires to deal with differences in database backends
-    # (MySQL: date_format, SQLite: strftime) and get around the
-    # "Raw query must include the primary key" constraint.
-    values = []
-    today = datetime.date.today()
-    end = datetime.datetime(day=today.day, month=today.month, year=today.year,
-                            tzinfo=utc)
-   
-    for month in range(0, 12):
-        first = datetime.datetime(day=1, month=end.month, year=end.year,
-                                  tzinfo=utc)
-        usages = Transaction.objects.filter(
-                                            orig_organization=organization, orig_account='Usage',
-                                            created_at__lt=first).aggregate(Sum('amount'))
-        amount = usages.get('amount__sum',0)
-        if not amount:
-            # The key could be associated with a "None".
-            amount = 0
-        values += [{ "x": datetime.date.strftime(first, "%Y/%m/%d"),
-                   "y": amount }]
-        end = first - datetime.timedelta(days=1)
-    context = {
-        'data': [{ "key": "Usage",
-                 "values": values }],"organization_id":organization_id}
-    return render_to_response("saas/usage_chart.html", context)
+    organizations = Organization.objects.all()
+    all_values =[]
+    
+    for organization_all in organizations:
+        organization = valid_manager_for_organization(request.user, organization_all)
+        values = []
+        today = datetime.date.today()
+        end = datetime.datetime(day=today.day, month=today.month, year=today.year,
+                                tzinfo=utc)
+        
+        for month in range(0, 12):
+            first = datetime.datetime(day=1, month=end.month, year=end.year,
+                                      tzinfo=utc)
+            usages = Transaction.objects.filter(
+                                                orig_organization=organization, orig_account='Usage',
+                                                created_at__lt=first).aggregate(Sum('amount'))
+            amount = usages.get('amount__sum',0)
+            if not amount:
+                # The key could be associated with a "None".
+                amount = 0
+            values += [{ "x": datetime.date.strftime(first, "%Y/%m/%d"),
+                       "y": amount }]
+            end = first - datetime.timedelta(days=1)
+        all_values += [{"key":str(organization_all.name),"values":values}]
+
+    context ={'data' : all_values}
+    
+    
+    
+    return render_to_response("saas/general_chart.html", context)

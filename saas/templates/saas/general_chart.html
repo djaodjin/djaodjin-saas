@@ -1,0 +1,73 @@
+{% block localheader %}
+<link href="/static/css/nv.d3.css" rel="stylesheet" />
+{% endblock %}
+
+{% block content %}
+<h1> Organization : Top 3 Organizations</h1>
+<pre id="chart">
+    <svg>
+    </svg>
+</pre>
+<script src="/static/js/vendor/jquery-1.9.1.js"></script>
+<script src="/static/js/vendor/d3.v3.js"></script>
+<script src="/static/js/vendor/nv.d3.js"></script>
+<script type="text/javascript">
+    
+    function update_chart(data) {
+        var col = 0;
+        nv.addGraph(function() {
+                    var width = 1000, height = 400;//Chart size////
+                    var w = 450;
+                    
+                    var values = data[0].values
+                    
+                    for( j=0 ; j < data.length ; ++j ){
+                    
+                        for( i = 0; i < values.length; ++i ) {
+                            values = data[j].values;
+                            values[i].x = new Date(values[i].x);
+                        }
+                    }
+                    
+                    // get max and min dates - this assumes data is sorted
+                    var maxDate = values[0].x,
+                    minDate = values[values.length-1].x;
+                    
+                    var x = d3.time.scale().domain([minDate, maxDate]).range([0, w]);
+                    
+                    var chart = nv.models.lineChart()
+                    .x(function(d) { return d.x })
+                    .y(function(d) { return d.y })
+                    .width(width).height(height)//Change chart size////
+                    
+                    chart.margin({left: 75});//Margin to see 'Amount'////
+                    
+                    chart.xAxis
+                    .showMaxMin(false)  //remove max and min in x axe
+                    .axisLabel('Date')
+                    .tickFormat(function(d) { return d3.time.format('%x')(new Date(d)); });
+                    
+                    chart.yAxis
+                    .showMaxMin(false)
+                    .axisLabel('Amount ($)')
+                    .tickFormat(d3.format(',.02f'));
+                   
+                    d3.select('#chart svg')
+                    .datum(data)
+                    .transition().duration(500)
+                    
+                    .call(chart);
+                    
+                    nv.utils.windowResize(chart.update);
+                    
+                    return chart;
+                    });
+        
+    }
+    
+    (function() {
+     update_chart({{data|safe}})
+     })();
+    </script>
+
+{% endblock %}
