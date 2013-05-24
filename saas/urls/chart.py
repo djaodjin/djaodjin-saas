@@ -29,7 +29,9 @@ from django.conf.urls import patterns, url
 from saas.settings import ACCT_REGEX
 
 urlpatterns = patterns(
-    'saas.views.chart',
+    'saas.views',
+    url(r'^general', 'general_chart.organization_overall'),
+    #XXX in development: url(r'^top3', include('saas.urls.top3')),
     url(r'^usage/(?P<organization_id>%s)' % ACCT_REGEX,
-        'organization_usage', name='saas_organization_usage'),
+        'chart.organization_usage', name='saas_organization_usage'),
 )

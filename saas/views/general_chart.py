@@ -24,7 +24,7 @@
 import datetime
 
 from django.db.models import Sum
-from django.shortcuts import render_to_response
+from django.shortcuts import render
 from django.views.decorators.http import require_GET
 from django.utils.timezone import utc
 
@@ -66,4 +66,4 @@ def organization_overall(request):
     
     
     
-    return render_to_response("saas/general_chart.html", context)
+    return render(request, "saas/general_chart.html", context)

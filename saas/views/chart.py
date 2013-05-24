@@ -24,7 +24,7 @@
 import datetime
 
 from django.db.models import Sum
-from django.shortcuts import render_to_response
+from django.shortcuts import render
 from django.views.decorators.http import require_GET
 from django.utils.timezone import utc
 
@@ -36,7 +36,7 @@ from saas.models import Organization, Transaction
 @requires_agreement('terms_of_use')
 def organization_usage(request, organization_id):
     organization = valid_manager_for_organization(request.user, organization_id)
-    
+
     # Note: There is a way to get the result in a single SQL statement
     # but that requires to deal with differences in database backends
     # (MySQL: date_format, SQLite: strftime) and get around the
@@ -45,13 +45,13 @@ def organization_usage(request, organization_id):
     today = datetime.date.today()
     end = datetime.datetime(day=today.day, month=today.month, year=today.year,
                             tzinfo=utc)
-   
+
     for month in range(0, 12):
         first = datetime.datetime(day=1, month=end.month, year=end.year,
                                   tzinfo=utc)
         usages = Transaction.objects.filter(
-                                            orig_organization=organization, orig_account='Usage',
-                                            created_at__lt=first).aggregate(Sum('amount'))
+            orig_organization=organization, orig_account='Usage',
+            created_at__lt=first).aggregate(Sum('amount'))
         amount = usages.get('amount__sum',0)
         if not amount:
             # The key could be associated with a "None".
@@ -62,4 +62,4 @@ def organization_usage(request, organization_id):
     context = {
         'data': [{ "key": "Usage",
                  "values": values }],"organization_id":organization_id}
-    return render_to_response("saas/usage_chart.html", context)
+    return render(request, "saas/usage_chart.html", context)

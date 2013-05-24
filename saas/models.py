@@ -40,10 +40,10 @@ class Organization(models.Model):
     have one of two relationships with an Organization. They can
     either be managers (all permissions) or contributors (use permissions).
     '''
-    
-    """objects = OrganizationManager()"""
+
+    objects = OrganizationManager()
     name = models.SlugField(unique=True)
-    
+
     created_at = models.DateTimeField(auto_now_add=True)
     is_active = models.BooleanField(default=True)
     # contact by e-mail
@@ -77,7 +77,6 @@ class Organization(models.Model):
     processor = models.CharField(null=True, max_length=20)
     processor_id = models.CharField(null=True,
         blank=True, max_length=20)
-    
 
 
 class Agreement(models.Model):
@@ -109,7 +108,7 @@ class Transaction(models.Model):
     '''
 
     objects = TransactionManager()
-    
+
     created_at = models.DateTimeField(auto_now_add=True)
     # Amount in cents
     amount = models.IntegerField(default=0)

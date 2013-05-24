@@ -34,7 +34,7 @@ from django.forms.widgets import CheckboxInput
 from django.core.context_processors import csrf
 from django.contrib.auth import REDIRECT_FIELD_NAME
 from django.contrib.auth.decorators import login_required
-from django.shortcuts import render_to_response
+from django.shortcuts import render
 from django.http import HttpResponseRedirect
 from django.views.generic.list import ListView
 from django.views.generic.detail import DetailView
@@ -106,5 +106,5 @@ def sign_agreement(request, slug,
             redirect_field_name: request.REQUEST.get(redirect_field_name,
                                      settings.LOGIN_REDIRECT_URL)})
     context.update({'page': _read_agreement_file(slug), 'form': form})
-    return render_to_response("saas/agreement_sign.html", context)
+    return render(request, "saas/agreement_sign.html", context)
 

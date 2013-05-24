@@ -55,6 +55,23 @@ class OrganizationManager(models.Manager):
         credit = Transaction.objects.create_credit(customer, CREDIT_ON_CREATE)
         return customer
 
+    def associate_processor(self, customer, card=None):
+        import saas.backends as backend # avoid import loop
+        from saas.models import Organization
+        if not isinstance(customer, Organization):
+            if isinstance(customer, basestring):
+                customer = self.get(name=customer)
+            else:
+                customer = self.get(pk=customer)
+        if not customer.processor_id:
+            # We don't have a processor_id yet for this customer,
+            # so let's create one.
+            customer.processor_id = backend.create_customer(
+                customer.name, card)
+            customer.save()
+        else:
+            backend.update_card(customer, card)
+
     def get_site_owner(self):
         return self.get(pk=SITE_ID)
 
@@ -125,8 +142,11 @@ class ChargeManager(models.Manager):
 
     def charge_card(self, customer, amount, user=None):
         """Create a charge on a customer card."""
+        # Be careful, stripe will not processed charges less than 50 cents.
         import saas.backends as backend # Avoid import loop
-        descr = '%s for %s' % (user.username, customer.name)
+        descr = 'fortylines usage for %s' % customer.name
+        if user:
+            descr += ' (%s)' % user.username
         processor_charge_id, created_at = backend.create_charge(
             customer, amount, descr)
         # Create record of the charge in our database

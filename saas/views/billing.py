@@ -27,14 +27,16 @@
 import datetime, logging
 
 from django.db.models import Q
+from django.contrib import messages
 from django.core.urlresolvers import reverse
 from django.core.context_processors import csrf
-from django.shortcuts import render_to_response, redirect
+from django.shortcuts import render, redirect
 from django.views.decorators.http import require_GET
 
 import saas.settings as settings
 from saas.ledger import balance
 from saas.forms import CreditCardForm, PayNowForm
+from saas.models import Organization
 from saas.models import Transaction, Charge
 from saas.views.auth import valid_manager_for_organization
 import saas.backends as backend
@@ -62,7 +64,7 @@ def billing_info(request, organization_id):
             'exp_date': exp_date,
             'transactions': transactions,
             })
-    return render_to_response("saas/billing_info.html", context)
+    return render(request, "saas/billing_info.html", context)
 
 
 @requires_agreement('terms_of_use')
@@ -93,18 +95,19 @@ def pay_now(request, organization_id):
                     'amount': amount,
                     'last4': last4,
                     'exp_date': exp_date})
-                return render_to_response("saas/payment_receipt.html",
+                return render(request, "saas/payment_receipt.html",
                                           context)
             else:
-                context.update({'err_msg':
-                    'We do not create charges for less than 50 cents' })
+                messages.error(request,
+                    'We do not create charges for less than 50 cents')
         else:
-            context.update({'err_msg': 'Unable to create charge' })
-    form = PayNowForm()
+            messages.error(request,'Unable to create charge')
+    else:
+        form = PayNowForm()
     context.update({'balance_credits': balance_credits,
                     'balance_dues': balance_dues,
                     'form': form})
-    return render_to_response("saas/pay_now.html", context)
+    return render(request, "saas/pay_now.html", context)
 
 
 @requires_agreement('terms_of_use')
@@ -120,19 +123,17 @@ def update_card(request, organization_id):
             stripe_token = form.cleaned_data['stripeToken']
             # With Stripe, we don't need to wait on an IPN. We get
             # a card token here.
-            if not customer.processor_id:
-                # We don't have a processor_id yet for this customer,
-                # so let's create one.
-                email = None
-                if customer.managers.count() > 0:
-                    email = customer.managers.all()[0].email
-                customer.processor_id = backend.create_customer(
-                    customer.name, stripe_token)
-                customer.save()
-            else:
-                backend.update_card(customer, stripe_token)
+            Organization.objects.associate_processor(customer, stripe_token)
+            email = None
+            if customer.managers.count() > 0:
+                email = customer.managers.all()[0].email
+            messages.success(request,
+                "Your credit card on file was sucessfully updated")
             return redirect(reverse('saas_billing_info', args=(customer.name,)))
-    form = CreditCardForm()
+        else:
+            messages.error(request, "The form did not validates")
+    else:
+        form = CreditCardForm()
     context.update({'form': form})
     context.update({ 'STRIPE_PUB_KEY': settings.STRIPE_PUB_KEY })
-    return render_to_response("saas/update_card.html", context)
+    return render(request, "saas/update_card.html", context)

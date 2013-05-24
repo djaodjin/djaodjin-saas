@@ -36,11 +36,11 @@ class CreditCardForm(forms.Form):
         #call our superclasse's initializer
         super(forms.Form, self).__init__(*args, **kwargs)
         #define other fields dinamically:
-        self.fields['card-name'] = forms.CharField()
-        self.fields['card-city'] = forms.CharField()
-        self.fields['card-address-line1'] = forms.CharField()
-        self.fields['card-address-country'] = forms.CharField()
-        self.fields['card-address-state'] = forms.CharField()
+        self.fields['card_name'] = forms.CharField()
+        self.fields['card_city'] = forms.CharField()
+        self.fields['card_address_line1'] = forms.CharField()
+        self.fields['card_address_country'] = forms.CharField()
+        self.fields['card_address_state'] = forms.CharField()
 
 
 class PayNowForm(forms.Form):

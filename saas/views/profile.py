@@ -30,7 +30,7 @@ from django.db.models import Q
 from django.contrib.auth.models import User
 from django.core.urlresolvers import reverse
 from django.core.context_processors import csrf
-from django.shortcuts import render_to_response, redirect
+from django.shortcuts import render, redirect
 from django.views.decorators.http import require_GET, require_POST
 
 import saas.settings as settings
@@ -62,7 +62,7 @@ def organization_profile(request, organization_id):
                     'balance_due': balance_dues,
                     'balance_credits': balance_credits,
                     })
-    return render_to_response("saas/organization_profile.html", context)
+    return render(request, "saas/organization_profile.html", context)
 
 
 @require_POST
@@ -86,7 +86,7 @@ def organization_add_managers(request, organization_id):
                     'saas_add_managers', args=(organization_id,)),
                  }
     context.update(csrf(request))
-    return render_to_response("saas/organization_user_relation.html", context)
+    return render(request, "saas/organization_user_relation.html", context)
 
 
 @require_POST
@@ -110,7 +110,7 @@ def organization_remove_managers(request, organization_id):
                     'saas_remove_managers', args=(organization_id,)),
                 }
     context.update(csrf(request))
-    return render_to_response("saas/organization_user_relation.html", context)
+    return render(request, "saas/organization_user_relation.html", context)
 
 
 @require_POST
@@ -134,7 +134,7 @@ def organization_add_contributors(request, organization_id):
                     'saas_add_contributors', args=(organization_id,)),
                 }
     context.update(csrf(request))
-    return render_to_response("saas/organization_user_relation.html", context)
+    return render(request, "saas/organization_user_relation.html", context)
 
 
 @require_POST
@@ -158,7 +158,7 @@ def organization_remove_contributors(request, organization_id):
                     'saas_remove_contributors', args=(organization_id,)),
                 }
     context.update(csrf(request))
-    return render_to_response("saas/organization_user_relation.html", context)
+    return render(request, "saas/organization_user_relation.html", context)
 
 
 

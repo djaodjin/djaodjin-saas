@@ -23,6 +23,7 @@
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import datetime, time, urlparse
+from unittest import skip
 
 from django.test import TestCase
 from django.test.client import Client
@@ -30,7 +31,7 @@ from django.contrib.auth.models import User
 from django.core.urlresolvers import reverse
 
 from saas.models import Organization, Transaction, Charge
-from saas.ledger import balance
+from saas.ledger import balance, read_balances
 from saas.charge import (
     charge_succeeded,
     charge_failed,
@@ -42,31 +43,50 @@ from saas.charge import (
     create_charges)
 
 
+#@skip("debugging")
 class LedgerTests(TestCase):
     '''Tests ledger functionality.'''
     fixtures = ['test_data']
 
     @classmethod
     def setUpClass(cls):
-        pass
+        cls.firstTime = True
 
     def setUp(self):
-        pass
+        if LedgerTests.firstTime:
+            # Implementation Node:
+            # It seems the fixture is only loaded after setUpClass was called.
+            for customer_id, amount in read_balances():
+                # Make sure all organizations have a valid procesor_id
+                # and associated credit card.
+                #print "XXX %s balance of %dc" %(customer_id, amount)
+                Organization.objects.associate_processor(
+                    customer_id, card={'number': '4242424242424242',
+                                    'exp_month': '12',
+                                    'exp_year': '2014'})
+            LedgerTests.firstTime = False
+
+    def _create_charge(self, customer_name, amount):
+        customer = Organization.objects.get(name=customer_name)
+        charge = Charge.objects.charge_card(
+            customer, amount=1000)
+        return customer, charge.processor_id
 
     def _create_charge_for_balance(self, customer_name):
-        customer = Organization.objects.get(customer_name)
+        customer = Organization.objects.get(name=customer_name)
         prev_balance = balance(customer)
         charge = Charge.objects.charge_card(
             customer, amount=prev_balance)
         return customer, charge.processor_id
 
     def test_create_usage(self):
-        assert True
+        customer, processor_id = self._create_charge('ABC', 1000)
+        assert len(processor_id) > 0
 
     def test_pay_now(self):
         """Pay the balance of account.
         No Issue."""
-        customer, charge_id = self._create_charge_for_balance('good')
+        customer, charge_id = self._create_charge_for_balance('ABC')
         charge_succeeded(charge_id)
         next_balance = balance(customer)
         assert(next_balance == 0)
@@ -74,7 +94,7 @@ class LedgerTests(TestCase):
     def test_pay_now_two_success(self):
         """Pay the balance of account.
         Receive two 'charge.succeeded' events."""
-        customer, charge_id = self._create_charge_for_balance('good')
+        customer, charge_id = self._create_charge_for_balance('ABC')
         charge_succeeded(charge_id)
         charge_succeeded(charge_id)
         next_balance = balance(customer)

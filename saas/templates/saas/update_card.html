@@ -11,11 +11,9 @@
     <div class="page-header">
       <h1>Update to {{ organization.name }}</h1>
     </div>
-    <p id="alert alert-error">
-      {{ err_msg }}
-    </p>
     <form method="post" id="payment-form" class="form-horizontal"
           action="{% url 'saas_update_card' organization.name %}">
+      {{ form.non_field_errors }}
       <fieldset>
         <legend>Credit Card Information</legend>
         <!-- BE CAREFULL: Do not add name="" to these <input> nodes, else
@@ -24,8 +22,6 @@
           <label class="control-label" for="card-number">Card Number</label>
           <div class="controls">
             <input id="card-number" type="text" size="16" autocomplete="off" />
-            <img src="/static/img/cards_visa.png" >
-            <img src="/static/img/cards_master.png" >
           </div>
         </div>
         <div id="row-exp" class="control-group">
@@ -47,37 +43,43 @@
         <div id="row-name" class="control-group">
           <label class="control-label" for="name">Card Holder</label>
           <div class="controls">
-            <input id="name" type="text" name="card-name" />
+            {{ form.card_name.errors }}
+            <input id="name" type="text" name="card_name" />
           </div>
         </div>
         <div id="row-address-line1" class="control-group">
           <label class="control-label" for="address_line_1">Street</label>
           <div class="controls">
-            <input id="address_line_1" type="text" name="card-address-line1" />
+            {{ form.card_address_line1.errors }}
+            <input id="address_line_1" type="text" name="card_address_line1" />
           </div>
         </div>
         <div id="row-city" class="control-group">
           <label class="control-label" for="address_line_2">City</label>
           <div class="controls">
-            <input id="address_line_2" type="text" name="card-city" />
+            {{ form.card_city.errors }}
+            <input id="address_line_2" type="text" name="card_city" />
           </div>
         </div>
         <div id="row-address-state" class="control-group">
           <label class="control-label" for="state_id">State</label>
           <div class="controls">
-            <input id="state_id" type="text" name="card-address-state" />
+            {{ form.card_address_state.errors }}
+            <input id="state_id" type="text" name="card_address_state" />
           </div>
         </div>
         <div id="row-address-zip" class="control-group">
           <label class="control-label" for="zip_code">Zip</label>
           <div class="controls">
-            <input id="zip_code" type="text" name="card-address-zip" />
+            {{ form.card_address_zip.errors }}
+            <input id="zip_code" type="text" name="card_address_zip" />
           </div>
         </div>
         <div id="row-address-country" class="control-group">
           <label class="control-label" for="country_id">Country</label>
           <div class="controls">
-            <input id="country_id" type="text" name="card-address-country" />
+            {{ form.card_address_country.errors }}
+            <input id="country_id" type="text" name="card_address_country" />
           </div>
         </div>
       </fieldset>
@@ -90,15 +92,118 @@
     </form>
   </section>
 </div>
-{% endblock %}
 
-{% block scripts %}
-<script type="text/javascript" src="/static/js/payproc.js"></script>
+<script src="/static/js/vendor/jquery-1.9.1.js"></script>
 <script type="text/javascript">
-  // this identifies your website in the createToken call below
-  Stripe.setPublishableKey('{{STRIPE_PUB_KEY}}');
-  $(document).ready(function() {
-  $("#payment-form").submit(stripeCreateToken);
-  });
+// this identifies your website in the createToken call below
+Stripe.setPublishableKey('{{STRIPE_PUB_KEY}}');
+
+// This are the function to interact with the Stripe payment processor.
+
+function stripeResponseHandler(status, response) {
+	if (response.error) {
+		// show the errors on the form
+		$("#messages").text("<li class='alert alert-error'>" + response.error.message + "</li>");
+		$(".payment-submit").removeAttr("disabled");
+	} else {
+		var form$ = $("#payment-form");
+		// token contains id, last4, and card type
+		var token = response['id'];
+		// insert the token into the form so it gets submitted to the server
+		form$.append("<input type='hidden' name='stripeToken' value='" + token + "'/>");
+		// and submit
+		form$.get(0).submit();
+	}
+}
+
+function stripeCreateToken(event) {
+	// disable the submit button to prevent repeated clicks
+	$(".payment-submit").attr("disabled", "disabled");
+	var valid = true
+	var error_messages = ""
+
+	/* BE CAREFULL: Do not add name="" to these <input> nodes, else they will
+	   hit our server and break PCI compliance. */
+	var number = $("#card-number").val()
+	if( number == "" ) {
+		error_messages = 'The following fields cannot be empty.';
+		$("#row-number").addClass('error-input');
+		valid = false
+	}
+	var cvc = $("#card-cvc").val()
+	if( cvc == "" ) {
+		error_messages = 'The following fields cannot be empty.';
+		$("#row-cvc").addClass('error-input');
+		valid = false
+	}
+	var exp_month = $("#card-exp-month").val()
+	var exp_year = $("#card-exp-year").val()
+	if( exp_month == "" || exp_year == "" ) {
+		error_messages = 'The following fields cannot be empty.';
+		$("#row-exp").addClass('error-input');
+		valid = false
+	}
+
+	/* These are OK to forward to our server. */
+	var name = $("#payment-form [name='card_name']").val()
+	if( name == "" ) {
+		error_messages = 'The following fields cannot be empty.';
+		$("#payment-form #row-name").addClass('error-input');
+		valid = false
+	}
+	var address_line1 = $("#payment-form [name='card_address_line1']").val()
+	if( address_line1 == "" ) {
+		error_messages = 'The following fields cannot be empty.';
+		$("#payment-form #row-address-line1").addClass('error-input');
+		valid = false
+	}
+	var address_city = $("#payment-form [name='card_city']").val()
+	if( address_city == "" ) {
+		error_messages = 'The following fields cannot be empty.';
+		$("#payment-form #row-city").addClass('error-input');
+		valid = false
+	}
+	var address_country = $("#payment-form [name='card_address_country']").val()
+	if( address_country == "" ) {
+		error_messages = 'The following fields cannot be empty.';
+		$("#payment-form #row-address-country").addClass('error-input');
+		valid = false
+	}
+	var address_state = $("#payment-form [name='card_address_state']").val()
+	if( address_state == "" ) {
+		error_messages = 'The following fields cannot be empty.';
+		$("#payment-form #row-address-state").addClass('error-input');
+		valid = false
+	}
+	var address_zip = $("#payment-form [name='card_address_zip']").val()
+	if( address_zip == "" ) {
+		error_messages = 'The following fields cannot be empty.';
+		$("#payment-form #row-address-zip").addClass('error-input');
+		valid = false
+	}
+	if( valid ) {
+		Stripe.createToken({
+			number: $("#card-number").val(),
+			cvc: $("#card-cvc").val(),
+			exp_month: $("#card-exp-month").val(),
+			exp_year: $("#card-exp-year").val(),
+			name: name,
+			address_line1: address_line1,
+			address_city: address_city,
+			address_state: address_state,
+			address_zip: address_zip,
+			address_country: address_country
+		}, stripeResponseHandler);
+	} else {
+		$("#messages").text("<li class='alert alert-error'>" + response.error.message + "</li>");
+		$(".payment-submit").removeAttr("disabled");
+	}
+	// prevent the form from submitting with the default action
+	return false;
+}
+
+$(document).ready(function() {
+    $("#payment-form").submit(stripeCreateToken);
+});
 </script>
 {% endblock %}

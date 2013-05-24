@@ -47,10 +47,11 @@ def read_balances(until=datetime.datetime.now()):
     We are executing the following SQL to find the balance
     of each customer.
 
-    The query returns a list of tuples we use to create the invoices.
+    The query returns a list of tuples (organization_id, amount in cents)
+    we use to create the invoices.
     example:
-        (u'ABC', 1200)
-        (u'XYZ', 1100)
+        (2, 1200)
+        (3, 1100)
 
     """
     account = 'Balance'

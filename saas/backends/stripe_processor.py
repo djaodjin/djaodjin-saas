@@ -48,7 +48,7 @@ def create_charge(customer, amount, descr=None):
         currency="usd",
         customer=customer.processor_id,
         description=descr)
-    return processor_charge.id, processor_charge.creation_time
+    return processor_charge.id, processor_charge.created
 
 def create_customer(name, card):
     processor_customer = stripe.Customer.create(description=name, card=card)

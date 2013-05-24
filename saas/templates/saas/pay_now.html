@@ -4,9 +4,6 @@
 {% block content %}
 <section id="paynow">
   <h1>Pay Balance for {{ organization.name }}</h1>
-  <p id="alert alert-block alert-error">
-    {{ err_msg }}
-  </p>
   <p>
     {% if balance_credits %}
     You already have a credit of {{balance_credits|usd}}

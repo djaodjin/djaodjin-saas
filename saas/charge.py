@@ -24,19 +24,20 @@
 
 """Dealing with charges"""
 
-import datetime
+import datetime, logging
 
 from django.db.models import Sum
 
 from saas.models import Organization, Charge, Transaction
 from saas.ledger import read_balances
 
+LOGGER = logging.getLogger(__name__)
 
 def create_charges(until=datetime.datetime.now()):
     """Create a set of charges based on the transaction table."""
 
     for customer_id, balance in read_balances(until):
-        customer = Organization.get(customer_id)
+        customer = Organization.objects.get(pk=customer_id)
         charges = Charge.objects.filter(customer=customer).exclude(
             state=Charge.DONE).aggregate(Sum('amount'))
         inflight_charges = charges['amount__sum']
@@ -44,11 +45,20 @@ def create_charges(until=datetime.datetime.now()):
         # already in flight for this customer.
         if not inflight_charges:
             inflight_charges = 0 # Such that subsequent logic works regardless
-            try:
-                charge = Charge.objects.charge_card(
-                    customer, amount=balance - inflight_charges)
-            except:
-                raise
+            amount = balance - inflight_charges
+            if amount > 50:
+                LOGGER.info('CHARGE %dc to %s', amount, customer.name)
+                # Stripe will not processed charges less than 50 cents.
+                try:
+                    charge = Charge.objects.charge_card(customer, amount=amount)
+                except:
+                    raise
+            else:
+                LOGGER.info('SKIP   %s (less than 50c)',
+                            customer.name)
+        else:
+            LOGGER.info('SKIP   %s (one charge already in flight)',
+                            customer.name)
 
 
 def charge_succeeded(charge_id):
