@@ -103,7 +103,7 @@ Stripe.setPublishableKey('{{STRIPE_PUB_KEY}}');
 function stripeResponseHandler(status, response) {
 	if (response.error) {
 		// show the errors on the form
-		$("#messages").text("<li class='alert alert-error'>" + response.error.message + "</li>");
+		$("#messages").append("<li class='alert alert-error'>" + response.error.message + "</li>");
 		$(".payment-submit").removeAttr("disabled");
 	} else {
 		var form$ = $("#payment-form");
@@ -195,7 +195,7 @@ function stripeCreateToken(event) {
 			address_country: address_country
 		}, stripeResponseHandler);
 	} else {
-		$("#messages").text("<li class='alert alert-error'>" + response.error.message + "</li>");
+		$("#messages").append("<li class='alert alert-error'>" + error_messages + "</li>");
 		$(".payment-submit").removeAttr("disabled");
 	}
 	// prevent the form from submitting with the default action

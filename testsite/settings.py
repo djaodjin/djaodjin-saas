@@ -2,6 +2,41 @@
 
 import os.path
 
+APP_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+def load_config(confpath):
+    '''
+    Given a path to a file, parse its lines in ini-like format, and then
+    set them in the current namespace.
+    '''
+    # todo: consider using something like ConfigObj for this:
+    # http://www.voidspace.org.uk/python/configobj.html
+    import re, sys
+    if os.path.isfile(confpath):
+        sys.stderr.write('config loaded from %s\n' % confpath)
+    else:
+        sys.stderr.write('error: config file %s does not exist.\n' % confpath)
+    with open(confpath) as conffile:
+        line = conffile.readline()
+        while line != '':
+            if not line.startswith('#'):
+                look = re.match('(\w+)\s*=\s*(.*)', line)
+                if look:
+                    value = look.group(2) \
+                        % { 'LOCALSTATEDIR': APP_ROOT + '/var' }
+                    try:
+                        # Once Django 1.5 introduced ALLOWED_HOSTS (a tuple
+                        # definitely in the site.conf set), we had no choice
+                        # other than using eval. The {} are here to restrict
+                        # the globals and locals context eval has access to.
+                        setattr(sys.modules[__name__],
+                                look.group(1).upper(), eval(value, {}, {}))
+                    except StandardError:
+                        raise
+            line = conffile.readline()
+
+load_config(os.path.join(APP_ROOT, 'credentials'))
+
 DEBUG = True
 TEMPLATE_DEBUG = DEBUG
 
@@ -14,7 +49,7 @@ MANAGERS = ADMINS
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3', # Add 'postgresql_psycopg2', 'mysql', 'sqlite3' or 'oracle'.
-        'NAME': os.path.join(os.path.dirname(__file__), 'saas_testsite.sqlite'),                      # Or path to database file if using sqlite3.
+        'NAME': os.path.join(APP_ROOT, 'saas_testsite.sqlite'),                      # Or path to database file if using sqlite3.
         'USER': '',                      # Not used with sqlite3.
         'PASSWORD': '',                  # Not used with sqlite3.
         'HOST': '',                      # Set to empty string for localhost. Not used with sqlite3.
