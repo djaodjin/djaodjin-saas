@@ -31,6 +31,7 @@ urlpatterns = patterns(
     url(r'^billing/', include('saas.urls.billing')),
     url(r'^legal/', include('saas.urls.legal')),
     url(r'^chart/', include('saas.urls.chart')),
+    url(r'^statistic', include('saas.urls.statistic')),
     url(r'^', include('saas.urls.profile')),
 )
 

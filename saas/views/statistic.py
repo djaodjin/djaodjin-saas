@@ -22,43 +22,66 @@
 # THE POSSIBILITY OF SUCH DAMAGE.
 
 import datetime
+import time
+from time import mktime
+from datetime import datetime, date, timedelta
 
 from django.db.models import Sum
-from django.shortcuts import render
+from django.shortcuts import render_to_response
 from django.views.decorators.http import require_GET
 from django.utils.timezone import utc
+from django.db.models import Max
+from django.db.models import Count, Min, Sum, Avg
 
 from saas.decorators import requires_agreement
 from saas.views.auth import valid_manager_for_organization
-from saas.models import Organization, Transaction
+from saas.models import Organization, Transaction, NewVisitors
+from saas.views.chart import organization_usage
 
 @require_GET
 @requires_agreement('terms_of_use')
-def organization_usage(request, organization_id):
-    organization = valid_manager_for_organization(request.user, organization_id)
+def statistic(request):
+    
+    newvisitor = NewVisitors.objects.all()
+    
+    if not newvisitor:
+        return render_to_response("saas/stat.html")
+    
+    Min_date = NewVisitors.objects.all().aggregate(Min('date'))
+    Max_date = NewVisitors.objects.all().aggregate(Max('date'))
+    
+    Min_date = Min_date.get('date__min',0)
+    Max_date = Max_date.get('date__max',0)
+    
+    date_tabl = []
+    n={}
+    
+    for new in newvisitor:
+        date_tabl +=[{"x":new.date,"y":new.visitors_number}]
+    
+    new_visitor=[]
+    d = Min_date
+    delta = timedelta(days=1)
+    while d <= Max_date:
+        new_visitor += [{"x":d,"y":0}]
+        d += delta
 
-    # Note: There is a way to get the result in a single SQL statement
-    # but that requires to deal with differences in database backends
-    # (MySQL: date_format, SQLite: strftime) and get around the
-    # "Raw query must include the primary key" constraint.
-    values = []
-    today = datetime.date.today()
-    end = datetime.datetime(day=today.day, month=today.month, year=today.year,
-                            tzinfo=utc)
-    for month in range(0, 12):
-        first = datetime.datetime(day=1, month=end.month, year=end.year,
-                                  tzinfo=utc)
-        usages = Transaction.objects.filter(
-            orig_organization=organization, orig_account='Usage',
-            created_at__lt=first).aggregate(Sum('amount'))
-        amount = usages.get('amount__sum',0)
-        if not amount:
-            # The key could be associated with a "None".
-            amount = 0
-        values += [{ "x": datetime.date.strftime(first, "%Y/%m/%d"),
-                   "y": amount }]
-        end = first - datetime.timedelta(days=1)
-    context = {
-        'data': [{ "key": "Usage",
-                 "values": values }],"organization_id":organization_id}
-    return render(request, "saas/usage_chart.html", context)
+    diff = len(new_visitor) - len(date_tabl)
+
+    for i in range(diff):
+        date_tabl+=[{"x":date(day=1, month=1, year=1900),"y":0}]
+
+    for i in range(len(new_visitor)):
+        for j in range(len(date_tabl)):
+            if new_visitor[i]["x"] == date_tabl[j]["x"]:
+                new_visitor[i]["y"]=date_tabl[j]["y"]
+            if date_tabl[j] == 0 :
+                new_visitor[i]["x"] = date_tabl[j]["x"]
+
+
+    for t in new_visitor:
+        t["x"] = datetime.strftime(t["x"],"%Y/%m/%d")
+    
+    context = {'data' : [{"key":"new visitor","values": new_visitor}]}
+
+    return render_to_response("saas/stat.html", context)
