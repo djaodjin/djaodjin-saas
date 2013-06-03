@@ -72,11 +72,9 @@ class Command(BaseCommand):
             date = log3[1].split("]")
             datee =(date[0].split(":"))[0]
         
-            datee = datee.split("/")
             IP = log3[0].split(" -")[0]
         
-            datee = ''.join(datee)
-            c = time.strptime(datee,"%d%B%Y")
+            c = time.strptime(datee,"%d/%b/%Y")
             dt = datetime.strftime(datetime.fromtimestamp(mktime(c)),"%Y/%m/%d")
             browser += [{"IP": IP, "browser" : browser_name,
                     "date": dt }]
