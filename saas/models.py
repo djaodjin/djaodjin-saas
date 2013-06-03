@@ -149,3 +149,9 @@ class Charge(models.Model):
     state = models.SmallIntegerField(choices=CHARGE_STATES, default=CREATED)
 
 
+#class de statistique
+# New visitors
+
+class NewVisitors(models.Model):
+    date = models.DateField(unique=True)
+    visitors_number = models.IntegerField(default = 0)

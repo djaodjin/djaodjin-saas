@@ -140,8 +140,8 @@
  "amount": 9600,
  "orig_account": "Usage",
  "dest_account": "Balance",
- "dest_organization": 3,
- "orig_organization": 3
+ "dest_organization": 10,
+ "orig_organization": 10
  },
  "model": "saas.Transaction",
  "pk": 7
@@ -176,8 +176,8 @@
  "amount": 10000,
  "orig_account": "Usage",
  "dest_account": "Balance",
- "dest_organization": 2,
- "orig_organization": 2
+ "dest_organization": 10,
+ "orig_organization": 10
  },
  "model": "saas.Transaction",
  "pk": 9
