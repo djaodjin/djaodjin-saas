@@ -40,7 +40,6 @@ from saas.views.chart import organization_usage
 
 @require_GET
 @requires_agreement('terms_of_use')
-
 def statistic(request):
     
     newvisitor = NewVisitors.objects.all()
@@ -71,8 +70,6 @@ def statistic(request):
 
     for i in range(diff):
         date_tabl+=[{"x":date(day=1, month=1, year=1900),"y":0}]
-
-    print(date_tabl)
 
     for i in range(len(new_visitor)):
         for j in range(len(date_tabl)):

@@ -45,7 +45,7 @@ def organization_usage(request, organization_id):
     today = datetime.date.today()
     end = datetime.datetime(day=today.day, month=today.month, year=today.year,
                             tzinfo=utc)
-    print(end)
+    
     for month in range(0, 12):
         first = datetime.datetime(day=1, month=end.month, year=end.year,
                                   tzinfo=utc)

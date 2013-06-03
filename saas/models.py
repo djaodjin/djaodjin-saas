@@ -149,7 +149,7 @@ class Charge(models.Model):
     state = models.SmallIntegerField(choices=CHARGE_STATES, default=CREATED)
 
 
-#class de statistique
+# Statistic class
 # New visitors
 
 class NewVisitors(models.Model):

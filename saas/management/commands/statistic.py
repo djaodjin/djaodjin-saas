@@ -30,26 +30,25 @@ import time
 from time import mktime
 from datetime import datetime
 
-from django.core.management.base import NoArgsCommand
+from django.core.management.base import BaseCommand
 from django.contrib.auth.models import User
 from saas.models import Organization, Transaction, NewVisitors
 
 from saas.models import Organization
 
-class Command(NoArgsCommand):
+class Command(BaseCommand):
     
-    help = 'save into the database new visitors'
     
-    def handle_noargs(self, **options):
+    help = 'Save new vistor datas into the database. This command needs the path of the log file to analyse.'
     
+    def handle(self, args, **options):
     
         visitors = []
         values=[]
         log3 = []
         browser = []
         date = []
-        log = open('/Users/stephanerobino/Desktop/webfaction/saas_framework/saas/log/fortylines.com-access.log')
-    #log = log.readlines()
+        log = open(args)
     
         #delete all bot
         rob  = "bot"
@@ -82,7 +81,7 @@ class Command(NoArgsCommand):
             browser += [{"IP": IP, "browser" : browser_name,
                     "date": dt }]
 
-            # all date per visitors
+            # all dates per visitors
         dates_per_unique_visitor = {}
         for datas in browser:
             key  = (datas["IP"], datas["browser"])
@@ -90,13 +89,12 @@ class Command(NoArgsCommand):
                 dates_per_unique_visitor[key] = []
             dates_per_unique_visitor[key]+= [datas["date"]]
 
-    #
         final_list ={}
         for it in dates_per_unique_visitor:
             key = dates_per_unique_visitor[it][0]
             if not key in final_list:
                 final_list[key] = []
-        #print(key)
+       
             final_list[key]+=[it]
 
         table=[]
@@ -109,15 +107,14 @@ class Command(NoArgsCommand):
             total += [len(final_list2[it][1])]
             total2 += len(final_list2[it][1])
             c = time.strptime(final_list2[it][0],"%Y/%m/%d")
-            #print(c)
+            
             dt = datetime.strftime(datetime.fromtimestamp(mktime(c)),"%Y-%m-%d")
-            #print(dt)
-            #print(type(len(final_list2[it][1])))
+            
             new = NewVisitors()
             new.date =dt
             new.visitors_number = len(final_list2[it][1])
         
-        # check in database if the date exists and if not save into the database
+            # check in database if the date exists and if not save into the database
             newvisitor = NewVisitors.objects.filter(date=dt)
             if not newvisitor:
                 new.save()
