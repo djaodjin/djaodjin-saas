@@ -14,26 +14,26 @@ def load_config(confpath):
     import re, sys
     if os.path.isfile(confpath):
         sys.stderr.write('config loaded from %s\n' % confpath)
-    else:
-        sys.stderr.write('error: config file %s does not exist.\n' % confpath)
-    with open(confpath) as conffile:
-        line = conffile.readline()
-        while line != '':
-            if not line.startswith('#'):
-                look = re.match('(\w+)\s*=\s*(.*)', line)
-                if look:
-                    value = look.group(2) \
-                        % { 'LOCALSTATEDIR': APP_ROOT + '/var' }
-                    try:
-                        # Once Django 1.5 introduced ALLOWED_HOSTS (a tuple
-                        # definitely in the site.conf set), we had no choice
-                        # other than using eval. The {} are here to restrict
-                        # the globals and locals context eval has access to.
-                        setattr(sys.modules[__name__],
-                                look.group(1).upper(), eval(value, {}, {}))
-                    except StandardError:
-                        raise
+        with open(confpath) as conffile:
             line = conffile.readline()
+            while line != '':
+                if not line.startswith('#'):
+                    look = re.match('(\w+)\s*=\s*(.*)', line)
+                    if look:
+                        value = look.group(2) \
+                            % { 'LOCALSTATEDIR': APP_ROOT + '/var' }
+                        try:
+                            # Once Django 1.5 introduced ALLOWED_HOSTS (a tuple
+                            # definitely in the site.conf set), we had no choice
+                            # other than using eval. The {} are here to restrict
+                            # the globals and locals context eval has access to.
+                            setattr(sys.modules[__name__],
+                                    look.group(1).upper(), eval(value, {}, {}))
+                        except StandardError:
+                            raise
+                line = conffile.readline()
+    else:
+        sys.stderr.write('warning: config file %s does not exist.\n' % confpath)
 
 load_config(os.path.join(APP_ROOT, 'credentials'))
 
