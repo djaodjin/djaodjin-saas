@@ -37,11 +37,12 @@ from saas.decorators import requires_agreement
 from saas.views.auth import valid_manager_for_organization
 from saas.models import Organization, Transaction, NewVisitors
 from saas.views.chart import organization_usage
+from django.contrib.auth.models import User
 
 @require_GET
 @requires_agreement('terms_of_use')
 def statistic(request):
-    
+    # New vistor analyse
     newvisitor = NewVisitors.objects.all()
     
     if not newvisitor:
@@ -58,30 +59,73 @@ def statistic(request):
     
     for new in newvisitor:
         date_tabl +=[{"x":new.date,"y":new.visitors_number}]
-    
-    new_visitor=[]
+
+    for t in date_tabl:
+        t["x"] = datetime.strftime(t["x"],"%Y/%m/%d")
+        t["y"] = t["y"]/5
+
     d = Min_date
     delta = timedelta(days=1)
     while d <= Max_date:
-        new_visitor += [{"x":d,"y":0}]
-        d += delta
+        j=len(date_tabl)
+        t=[]
+        for i in range(j):
+            if date_tabl[i]["x"] == datetime.strftime(d,"%Y/%m/%d"):
+                t +=[i]
+        if len(t) == 0 :
+            date_tabl += [{"x":datetime.strftime(d,"%Y/%m/%d"),"y":0}]
+            d+=delta
+        else :
+            d+=delta
 
-    diff = len(new_visitor) - len(date_tabl)
+    date_tabl.sort()
 
-    for i in range(diff):
-        date_tabl+=[{"x":date(day=1, month=1, year=1900),"y":0}]
+    ########################################################
+    # Conversion visitors to trial
+    user = User.objects.all()
+    date_joined_username =[]
+    for us in user:
+        if datetime.strftime(us.date_joined,"%Y/%m/%d")> datetime.strftime(Min_date,"%Y/%m/%d") and  datetime.strftime(us.date_joined,"%Y/%m/%d")< datetime.strftime(Max_date,"%Y/%m/%d"):
+            date_joined_username += [{"date" : us.date_joined, "user":str(us.username)}]
 
-    for i in range(len(new_visitor)):
-        for j in range(len(date_tabl)):
-            if new_visitor[i]["x"] == date_tabl[j]["x"]:
-                new_visitor[i]["y"]=date_tabl[j]["y"]
-            if date_tabl[j] == 0 :
-                new_visitor[i]["x"] = date_tabl[j]["x"]
+    #print(rien)
 
+    user_per_joined_date = {}
+    for datas in date_joined_username:
+        key  = datas["date"]
+        if not key in user_per_joined_date:
+            user_per_joined_date[key] = []
+        user_per_joined_date[key]+= [datas["user"]]
 
-    for t in new_visitor:
-        t["x"] = datetime.strftime(t["x"],"%Y/%m/%d")
     
-    context = {'data' : [{"key":"new visitor","values": new_visitor}]}
+    trial=[]
+    for t in user_per_joined_date.keys():
+        trial +=[{"x":t, "y":len(user_per_joined_date[t])}]
 
+    Min_date_trial = User.objects.all().aggregate(Min('date_joined'))
+    Max_date_trial = User.objects.all().aggregate(Max('date_joined'))
+
+    Min_date_trial = Min_date_trial.get('date_joined__min',0)
+    Max_date_trial = Max_date_trial.get('date_joined__max',0)
+    
+    for t in trial:
+        t["x"] = datetime.strftime(t["x"],"%Y/%m/%d")
+    d=Min_date
+    delta = timedelta(days=1)
+    while d <= Max_date:
+        j=len(trial)
+        t=[]
+        for i in range(j):
+            if trial[i]["x"] == datetime.strftime(d,"%Y/%m/%d"):
+                t +=[i]
+        if len(t) == 0 :
+            trial += [{"x":datetime.strftime(d,"%Y/%m/%d"),"y":0}]
+            d+=delta
+        else :
+            d+=delta
+    
+    trial.sort()
+    
+    context = {'data' : [{"key":"Signup number" , "color":"#d62728" , "values":trial},{"key":"New visitor number","values": date_tabl}]}
+    
     return render_to_response("saas/stat.html", context)
