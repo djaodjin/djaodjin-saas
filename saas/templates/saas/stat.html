@@ -18,51 +18,42 @@
     function update_chart(data) {
         var col = 0;
         nv.addGraph(function() {
-                    var width = 1000, height = 400;//Chart size////
+                    var width = 1000, height = 600;//Chart size////
                     var w = 450;
                     
                     var values = data[0].values
                     
                     for( j=0 ; j < data.length ; ++j ){
-                    
-                    for( i = 0; i < values.length; ++i ) {
-                    values = data[j].values;
-                    values[i].x = new Date(values[i].x);
-                    }
+                        for( i = 0; i < values.length; ++i ) {
+                            values = data[j].values;
+                            values[i].x = new Date(values[i].x);
+                        }
                     }
                     
                     // get max and min dates - this assumes data is sorted
                     var maxDate = values[0].x,
-                    minDate = values[values.length-1].x;
+                    minDate = values[values.length-2].x;
                     
                     var x = d3.time.scale().domain([minDate, maxDate]).range([0, w]);
                     
-                    var chart = nv.models.lineWithFocusChart()
+                    var chart = nv.models.multiBarChart()
                     .x(function(d) { return d.x })
                     .y(function(d) { return d.y })
                     .width(width).height(height)//Change chart size////
                     
+                    
+                    .stacked('true')
                     chart.margin({left: 75});//Margin left
                     chart.margin({bottom: 75});
                     chart.margin({top: 75});
                     
                     chart.xAxis
-                    //.showMaxMin(false)  //remove max and min in x axe
-                    //.axisLabel('Date')
-                    .tickFormat(function(d) { return d3.time.format('%x')(new Date(d)); });
-                    
-                    chart.x2Axis
-                    //.showMaxMin(false)  //remove max and min in x axe
                     .axisLabel('Date')
                     .tickFormat(function(d) { return d3.time.format('%x')(new Date(d)); });
                     
                     chart.yAxis
-                    //.showMaxMin(false)
-                    .tickFormat(d3.format('f'));
-                    
-                    chart.y2Axis
                     .showMaxMin(false)
-                    .tickFormat(d3.format(',f'));
+                    .tickFormat(d3.format('f'));
                     
                     d3.select('#chart svg')
                     .datum(data)
@@ -75,7 +66,8 @@
                     return chart;
                     });
         
-    
+        
+        
     }
     
     (function() {
