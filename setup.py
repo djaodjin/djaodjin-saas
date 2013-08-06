@@ -1,7 +1,7 @@
 from distutils.core import setup
 
 setup(
-    name='TowelStuff',
+    name='saas_framework',
     version='0.1',
     author='Fortylines LLC',
     author_email='support@fortylines.com',
