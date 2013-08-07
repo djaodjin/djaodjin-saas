@@ -100,11 +100,12 @@ class RegistrationView(BaseRegistrationView):
         username = email
         try:
             new_user = User.objects.get(email=email)
-        except User.DoesNotExists:
+        except User.DoesNotExist:
             new_user = User.objects.create_user(
                 username, email, first_name=first_name, last_name=last_name)
 
-        #new_user = authenticate(username=username, password=password)
+        # Bypassing authentication here, we are doing frictionless registration.
+        new_user.backend = 'django.contrib.auth.backends.ModelBackend'
         login(request, new_user)
         signals.user_registered.send(sender=self.__class__,
                                      user=new_user,
