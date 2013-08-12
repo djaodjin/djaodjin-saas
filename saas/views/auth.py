@@ -39,15 +39,56 @@ LOGGER = logging.getLogger(__name__)
 def valid_manager_for_organization(user, organization):
     '''This will return a Organization object or raise different exceptions
     that can be forwarded as html feedback to the user.'''
+    if not user:
+        raise PermissionDenied
+
     if isinstance(organization, basestring):
         try:
             organization = Organization.objects.get(name=organization)
         except Organization.DoesNotExist:
             raise Http404
-    if not (user and organization.managers.filter(pk=user.id).exists()):
-        if SKIP_PERMISSION_CHECK:
-            LOGGER.warning("Skip permission denied for %s on organization %s",
-                           user.username, organization.name)
-        else:
-            raise PermissionDenied
-    return organization
+
+    if SKIP_PERMISSION_CHECK:
+        LOGGER.warning("Skip permission denied for %s on organization %s",
+                       user.username, organization.name)
+        return organization
+
+    # Walk-up the organization tree until we hit a valid manager
+    # relationship or we found the root of the organization tree.
+    org_node = organization
+    while org_node and not org_node.managers.filter(pk=user.id).exists():
+        org_node = org_node.parent
+    if org_node and org_node.managers.filter(pk=user.id).exists():
+        return organization
+    raise PermissionDenied
+
+
+def valid_contributor_to_organization(user, organization):
+    '''This will return a Organization object or raise different exceptions
+    that can be forwarded as html feedback to the user.'''
+    if not user:
+        raise PermissionDenied
+
+    if isinstance(organization, basestring):
+        try:
+            organization = Organization.objects.get(name=organization)
+        except Organization.DoesNotExist:
+            raise Http404
+
+    if SKIP_PERMISSION_CHECK:
+        LOGGER.warning("Skip permission denied for %s on organization %s",
+                       user.username, organization.name)
+        return organization, True
+
+    # Walk-up the organization tree until we hit a valid contributor
+    # relationship or we found the root of the organization tree.
+    org_node = organization
+    while (org_node
+           and not org_node.contributors.filter(pk=user.id).exists()
+           and not org_node.managers.filter(pk=user.id).exists()):
+        org_node = org_node.parent
+    if org_node and org_node.managers.filter(pk=user.id).exists():
+        return organization, True
+    if org_node and org_node.contributors.filter(pk=user.id).exists():
+        return organization, False
+    raise PermissionDenied
