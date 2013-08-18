@@ -1,0 +1,27 @@
+{% extends "saas/base.html" %}
+
+{% block content %}
+<section id="transactions">
+  <h1>Churn Metrics</h1>
+  <table class="table table-striped">
+    <thead>
+      <tr>
+        <th></th>
+        {% for entry in table.0.values %}
+        <th>{{entry.0}}</th>
+        {% endfor %}
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in table %}
+      <tr>
+        <th>{{row.key}}</th>
+          {% for values in row.values %}
+          <td>{{values.1}}</td>
+          {% endfor %}
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endblock %}

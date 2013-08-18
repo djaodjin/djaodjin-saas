@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block content %}
+<section id="organizations">
+  <h1>Organizations</h1>
+  {% if organization_list %}
+  <table class="table table-striped">
+    <thead>
+      <tr>
+        <th>Name</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for entry in organization_list %}
+      <tr>
+        <td><a href="{% url 'saas_organization_profile' entry.name %}">{{entry.name}}</a></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% include "paginator.html" %}
+  {% else %}
+  <em>No Organizations</em>
+  {% endif %}
+</section>
+{% endblock %}

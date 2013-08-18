@@ -9,6 +9,11 @@ Welcome to django_saas's documentation!
 Contents:
 
 .. toctree::
+   :maxdepth: 1
+
+   models
+
+.. toctree::
    :maxdepth: 2
 
 .. automodule:: django_saas

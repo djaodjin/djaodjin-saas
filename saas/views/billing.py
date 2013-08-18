@@ -32,6 +32,8 @@ from django.core.urlresolvers import reverse
 from django.core.context_processors import csrf
 from django.shortcuts import render, redirect
 from django.views.decorators.http import require_GET
+from django.views.generic.list import ListView
+from django.utils.decorators import method_decorator
 
 import saas.settings as settings
 from saas.ledger import balance
@@ -45,26 +47,37 @@ from saas.decorators import requires_agreement
 LOGGER = logging.getLogger(__name__)
 
 
-@require_GET
-@requires_agreement('terms_of_use')
-def billing_info(request, organization_id):
-    context = { 'user': request.user }
-    context.update(csrf(request))
-    customer = valid_manager_for_organization(request.user, organization_id)
-    context.update({'organization': customer })
-    # Retrieve customer information from the backend
-    last4, exp_date = backend.retrieve_card(customer)
-    # Retrieve latest transactions
-    period_end = datetime.datetime.now() - datetime.timedelta(days=31)
-    transactions = Transaction.objects.filter(
-        Q(orig_organization=customer) | Q(dest_organization=customer)
-        ).order_by('created_at')[:25]
-    context.update({
+class TransactionListView(ListView):
+
+    paginate_by = 10
+    template_name = 'saas/billing_info.html'
+
+    def get_queryset(self):
+        """
+        Get the list of transactions for this organization.
+        """
+        queryset = Transaction.objects.filter(
+            Q(orig_organization=self.customer)
+            | Q(dest_organization=self.customer)
+        ).order_by('created_at')
+        return queryset
+
+    @method_decorator(requires_agreement('terms_of_use'))
+    def dispatch(self, *args, **kwargs):
+        self.customer = valid_manager_for_organization(
+            request.user, self.kwargs.get('organization_id'))
+        return super(TransactionListView, self).dispatch(*args, **kwargs)
+
+    def get_context_data(self, **kwargs):
+        context = super(TransactionListView, self).get_context_data(**kwargs)
+        # Retrieve customer information from the backend
+        last4, exp_date = backend.retrieve_card(self.customer)
+        context.update({
             'last4': last4,
             'exp_date': exp_date,
-            'transactions': transactions,
+            'organization': self.customer
             })
-    return render(request, "saas/billing_info.html", context)
+        return context
 
 
 @requires_agreement('terms_of_use')

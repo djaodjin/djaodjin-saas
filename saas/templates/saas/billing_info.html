@@ -33,7 +33,7 @@
 </section>
 <section id="transactions">
   <h1>Transactions</h1>
-  {% if transactions %}
+  {% if transaction_list %}
   <table class="table table-striped">
     <thead>
       <tr>
@@ -43,7 +43,7 @@
       </tr>
     </thead>
     <tbody>
-      {% for entry in transactions %}
+      {% for entry in transaction_list %}
       <tr>
         <td>{{entry.created_at|date:"d M Y"}}</td>
         <td>{{entry.descr}}</td>
@@ -52,6 +52,7 @@
       {% endfor %}
     </tbody>
   </table>
+  {% include "paginator.html" %}
   {% else %}
   <em>No Transactions</em>
   {% endif %}

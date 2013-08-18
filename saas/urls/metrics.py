@@ -22,16 +22,21 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-'''Chart Urls'''
+'''Urls to metrics'''
 
 from django.conf.urls import patterns, url
 
 from saas.settings import ACCT_REGEX
 
 urlpatterns = patterns(
-    'saas.views',
-    url(r'^general', 'general_chart.organization_overall'),
-    #XXX in development: url(r'^top3', include('saas.urls.top3')),
+    'saas.views.metrics',
+    url(r'^general', 'organization_overall',
+        name='saas_metrics_overall'),
+    url(r'^stats', 'statistic',
+        name='saas_metrics_stats'),
     url(r'^usage/(?P<organization_id>%s)' % ACCT_REGEX,
-        'chart.organization_usage', name='saas_organization_usage'),
+        'organization_usage',
+        name='saas_organization_usage'),
+    url(r'^(?P<organization_id>%s)' % ACCT_REGEX,
+        'organization_engagement', name='saas_metrics_summary'),
 )

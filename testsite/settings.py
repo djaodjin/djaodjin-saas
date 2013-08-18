@@ -49,7 +49,7 @@ MANAGERS = ADMINS
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3', # Add 'postgresql_psycopg2', 'mysql', 'sqlite3' or 'oracle'.
-        'NAME': os.path.join(APP_ROOT, 'saas_testsite.sqlite'),                      # Or path to database file if using sqlite3.
+        'NAME': os.path.join(os.getcwd(), 'saas_testsite.sqlite'),                      # Or path to database file if using sqlite3.
         'USER': '',                      # Not used with sqlite3.
         'PASSWORD': '',                  # Not used with sqlite3.
         'HOST': '',                      # Set to empty string for localhost. Not used with sqlite3.
@@ -152,7 +152,11 @@ TEMPLATE_DIRS = (
     # Don't forget to use absolute paths, not relative paths.
 )
 
+# django-app-metrics (not installing celery)
+CELERY_ALWAYS_EAGER = True
+
 INSTALLED_APPS = (
+    'gunicorn',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
@@ -164,7 +168,7 @@ INSTALLED_APPS = (
     # Uncomment the next line to enable admin documentation:
     # 'django.contrib.admindocs',
     'django.contrib.markup',
-    'casper',
+    'app_metrics',
     'saas',
     'testsite'
 )
@@ -183,6 +187,10 @@ LOGGING = {
         }
     },
     'handlers': {
+        'logfile':{
+            'level':'DEBUG',
+            'class':'logging.StreamHandler',
+        },
         'mail_admins': {
             'level': 'ERROR',
             'filters': ['require_debug_false'],
@@ -195,5 +203,10 @@ LOGGING = {
             'level': 'ERROR',
             'propagate': True,
         },
+#        'django.db.backends': {
+#             'handlers': ['logfile'],
+#             'level': 'DEBUG',
+#             'propagate': True,
+#        },
     }
 }

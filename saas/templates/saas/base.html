@@ -1,8 +1,16 @@
 {% extends "base.html" %}
 
 {% block menubar %}
-<a href="{% url 'saas_billing_info' organization.name %}">billing</a>
+{% if organization %}
 <a href="{% url 'saas_organization_profile' organization.name %}">profile</a>
+<a href="{% url 'saas_billing_info' organization.name %}">billing</a>
+<a href="{% url 'saas_metrics_summary' organization.name %}">summary</a>
+<a href="{% url 'saas_organization_usage' organization.name %}">usage</a>
+{% endif %}
+{% if user.is_staff %}
+<a href="{% url 'saas_metrics_overall' %}">overall</a>
+<a href="{% url 'saas_metrics_stats' %}">stats</a>
+{% endif %}
 {% endblock %}
 
 {% block footer %}

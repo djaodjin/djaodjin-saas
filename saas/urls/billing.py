@@ -27,7 +27,8 @@
 from django.conf.urls import patterns, include, url
 
 from saas.backends import processor_hook
-from saas.views.billing import (billing_info, update_card, pay_now)
+from saas.views.billing import (
+    TransactionListView, update_card, pay_now)
 from saas.settings import ACCT_REGEX, PROCESSOR_HOOK_URL
 
 urlpatterns = patterns(
@@ -39,7 +40,7 @@ urlpatterns = patterns(
     url(r'^(?P<organization_id>%s)/pay' % ACCT_REGEX,
         pay_now, name='saas_pay_now'),
     url(r'^(?P<organization_id>%s)' % ACCT_REGEX,
-        billing_info, name='saas_billing_info'),
+        TransactionListView.as_view(), name='saas_billing_info'),
 )
 
 

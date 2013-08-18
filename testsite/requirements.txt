@@ -1,0 +1,4 @@
+django-registration>=1.0
+gunicorn
+# YAML fixtures (port install py27-yaml)
+pyyaml

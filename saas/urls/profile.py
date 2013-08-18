@@ -26,7 +26,7 @@
 
 from django.conf.urls import patterns, include, url
 
-from saas.views.profile import organization_profile
+from saas.views.profile import OrganizationListView, organization_profile
 from saas.settings import ACCT_REGEX
 
 urlpatterns = patterns(
@@ -41,5 +41,7 @@ urlpatterns = patterns(
         'organization_add_contributors', name='saas_add_contributors'),
     url(r'^(?P<organization_id>%s)' % ACCT_REGEX,
         'organization_profile', name='saas_organization_profile'),
+    url(r'^$',
+        OrganizationListView.as_view(), name='saas_organization_list'),
 )
 

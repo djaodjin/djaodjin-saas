@@ -13,7 +13,8 @@ run the testsite webapp.
     $ pip install -r requirements.txt
     $ python manage.py syncdb
     $ python manage.py loaddata testsite/fixtures/initial_data.json
+    $ python manage.py loaddata testsite/fixtures/test_data.json
     $ python manage.py runserver
 
-    # Browse http://localhost:8000/saas/root
+    # Browse http://localhost:8000/saas/
     # Login with username: demo and password: yoyo

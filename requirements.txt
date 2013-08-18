@@ -2,7 +2,7 @@ Django>=1.5.1
 djangorestframework>=2.0
 # We need Python Markdown for django.contrib.markup. markdown2 is not enough.
 Markdown
-django-registration>=0.8
 --extra-index-url https://code.stripe.com
 stripe
-django-casper
+django-app-metrics
+

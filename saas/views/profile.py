@@ -31,17 +31,45 @@ from django.contrib.auth.models import User
 from django.core.urlresolvers import reverse
 from django.core.context_processors import csrf
 from django.shortcuts import render, redirect
+from django.views.generic.list import ListView
 from django.views.decorators.http import require_GET, require_POST
+from django.utils.decorators import method_decorator
 
 import saas.settings as settings
 from saas.ledger import balance
 from saas.forms import UserRelationForm
-from saas.models import Transaction, Charge
+from saas.models import Organization
 from saas.views.auth import valid_manager_for_organization
 import saas.backends as backend
 from saas.decorators import requires_agreement
 
 LOGGER = logging.getLogger(__name__)
+
+
+class OrganizationListView(ListView):
+    """List of organizations the request.user is a manager for."""
+
+    paginate_by = 10
+    template_name = 'saas/organization_list.html'
+
+    def get_queryset(self):
+        queryset = []
+        for org in Organization.objects.all().order_by('name'):
+            try:
+                queryset += [
+                    valid_manager_for_organization(self.request.user, org)]
+            except PermissionDenied:
+                pass
+        return queryset
+
+    @method_decorator(requires_agreement('terms_of_use'))
+    def dispatch(self, *args, **kwargs):
+        return super(OrganizationListView, self).dispatch(*args, **kwargs)
+
+    def get_context_data(self, **kwargs):
+        context = super(OrganizationListView, self).get_context_data(**kwargs)
+        context.update({'organization_list': context['object_list']})
+        return context
 
 
 @require_GET
