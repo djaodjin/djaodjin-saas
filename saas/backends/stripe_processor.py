@@ -65,11 +65,11 @@ def retrieve_card(customer):
     last4 = "N/A"
     exp_date = "N/A"
     if customer.processor_id:
-        processor_customer = stripe.Customer.retrieve(customer.processor_id)
-        if processor_customer.active_card:
-            last4 = 'XXX-%s' % str(processor_customer.active_card.last4)
-            exp_date = "%02d/%04d" % (processor_customer.active_card.exp_month,
-                                      processor_customer.active_card.exp_year)
+        processor_customer = stripe.Customer.retrieve(customer.processor_id, expand=['default_card'])
+        if processor_customer.default_card:
+            last4 = 'XXX-%s' % str(processor_customer.default_card.last4)
+            exp_date = "%02d/%04d" % (processor_customer.default_card.exp_month,
+                                      processor_customer.default_card.exp_year)
     return last4, exp_date
 
 
