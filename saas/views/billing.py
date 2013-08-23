@@ -65,7 +65,7 @@ class TransactionListView(ListView):
     @method_decorator(requires_agreement('terms_of_use'))
     def dispatch(self, *args, **kwargs):
         self.customer = valid_manager_for_organization(
-            request.user, self.kwargs.get('organization_id'))
+            self.request.user, self.kwargs.get('organization_id'))
         return super(TransactionListView, self).dispatch(*args, **kwargs)
 
     def get_context_data(self, **kwargs):
