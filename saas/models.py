@@ -154,3 +154,14 @@ class Charge(models.Model):
 class NewVisitors(models.Model):
     date = models.DateField(unique=True)
     visitors_number = models.IntegerField(default = 0)
+
+class Plan(models.Model):
+    name = models.CharField(max_length=30)
+    amount = models.IntegerField()
+    amount_per_month = models.IntegerField()
+    description = models.TextField()
+    customer = models.ForeignKey(Organization)
+
+
+
+

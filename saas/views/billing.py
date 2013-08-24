@@ -34,17 +34,31 @@ from django.shortcuts import render, redirect
 from django.views.decorators.http import require_GET
 from django.views.generic.list import ListView
 from django.utils.decorators import method_decorator
+from django.shortcuts import get_object_or_404
 
+from django.forms import ModelForm
 import saas.settings as settings
 from saas.ledger import balance
 from saas.forms import CreditCardForm, PayNowForm
 from saas.models import Organization
-from saas.models import Transaction, Charge
+from saas.models import Transaction, Charge , Plan
 from saas.views.auth import valid_manager_for_organization
 import saas.backends as backend
 from saas.decorators import requires_agreement
 
 LOGGER = logging.getLogger(__name__)
+
+class PlanForm(ModelForm):
+    class Meta:
+        model = Plan
+        exclude = ("customer", )
+
+        def __init__(self, *args, **kwargs):
+            super(forms.Form, self).__init__(*args, **kwargs)
+            self.helper = FormHelper()
+            self.helper.form_method = 'post'
+            self.helper.form_action = '.'
+            self.helper.add_input(Submit('Send', "Send"))
 
 
 class TransactionListView(ListView):
@@ -150,3 +164,36 @@ def update_card(request, organization_id):
     context.update({'form': form})
     context.update({ 'STRIPE_PUB_KEY': settings.STRIPE_PUB_KEY })
     return render(request, "saas/update_card.html", context)
+
+
+def display_plan(request,organization_id):
+    context = { 'user': request.user }
+    customer = valid_manager_for_organization(request.user, organization_id)
+    context.update({ 'organization': customer })
+    plan = Plan.objects.filter(customer=customer)
+    context.update({'plan': plan})
+    return render(request, "saas/plan.html", context)
+
+def edit_plan(request, organization_id, plan_id):
+    context = { 'user': request.user }
+    customer = valid_manager_for_organization(request.user, organization_id)
+    context.update({ 'organization': customer })
+    context.update(csrf(request))
+    instance = get_object_or_404(Plan, id =plan_id)
+    amount = instance.amount/100
+    amount_per_month =instance.amount_per_month/100
+    plan =Plan.objects.get(id=plan_id)
+    context.update({'plan':plan})
+    if request.method == 'POST':
+        form = PlanForm(request.POST,instance=instance)
+        if form.is_valid():
+            plan.name=form.cleaned_data['name']
+            plan.amount = form.cleaned_data['amount']*100
+            plan.amount_per_month = form.cleaned_data['amount_per_month']*100
+            plan.description = form.cleaned_data['description']
+            plan.save()
+            return redirect(reverse('saas_plan', args=(customer.name,)))
+    else:
+        form = PlanForm({'name':instance.name,'amount':amount,'amount_per_month':amount_per_month,'description':instance.description})
+    context.update({ 'form': form })
+    return render(request, "saas/edit_plan.html", context)
