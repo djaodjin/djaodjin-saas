@@ -1,0 +1,15 @@
+{% extends "saas/base.html" %}
+
+
+{% block content %}
+<section id="pay_now">
+    <form method="post" id="payment-form" class="form-horizontal"
+          action="{% url 'saas_edit_plan' organization.name plan.id %}">
+      {{ form.as_ul }}
+      <button type="submit" class="btn btn-primary payment-submit">Pay Now</button>
+      {% csrf_token %}
+    </form>
+</br></br>
+
+</section>
+{% endblock %}
