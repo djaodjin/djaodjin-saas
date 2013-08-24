@@ -51,5 +51,49 @@
     },
     "model": "auth.User",
     "pk": 3
-  }
+  },
+{
+	"fields":{
+		"name":"Saas website",
+		"amount":3000,
+		"amount_per_month":0,
+		"description":"You're only interested in a custom repo. We can provide you a custom archive of a SaaS website.",
+		"customer" : 1
+	},
+	"model" : "saas.Plan",
+	"pk":4
+},
+{
+	"fields":{
+		"name":"Saas website without domain name",
+		"amount":5000,
+		"amount_per_month":2000,
+		"description":"You're only interested in a custom repo. We can provide you a custom archive of a SaaS website.",
+		"customer" : 1
+	},
+	"model" : "saas.Plan",
+	"pk":5
+},
+{
+	"fields":{
+		"name":"Saas website with domain name",
+		"amount":5000,
+		"amount_per_month":2000,
+		"description":"You're only interested in a custom repo. We can provide you a custom archive of a SaaS website.",
+		"customer" : 1
+	},
+	"model" : "saas.Plan",
+	"pk":6
+},
+{
+	"fields":{
+		"name":"Saas website",
+		"amount":6000,
+		"amount_per_month":2000,
+		"description":"You're only interested in a custom repo. We can provide you a custom archive of a SaaS website.",
+		"customer" : 1
+	},
+	"model" : "saas.Plan",
+	"pk":7
+}
 ]
