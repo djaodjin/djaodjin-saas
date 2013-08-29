@@ -22,7 +22,7 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-import json, logging
+import json, logging, re
 
 import stripe
 from django.http import Http404
@@ -37,9 +37,33 @@ from saas.charge import (
     charge_dispute_created,
     charge_dispute_updated,
     charge_dispute_closed)
+from saas.settings import STRIPE_PRIV_KEY
 
 
 LOGGER = logging.getLogger(__name__)
+
+stripe.api_key = STRIPE_PRIV_KEY
+
+
+def list_customers(org_pat=r'.*'):
+    """
+    Returns a list of Stripe.Customer objects whose description field
+    matches *org_pat*.
+    """
+    customers = []
+    nb_customers_listed = 0
+    response = stripe.Customer.all()
+    all_custs = response['data']
+    while len(all_custs) > 0:
+        for cust in all_custs:
+            # We use the description field to store extra information
+            # that connects the Stripe customer back to our database.
+            if re.match(org_pat, cust.description):
+                customers.append(cust)
+        nb_customers_listed = nb_customers_listed + len(all_custs)
+        response = stripe.Customer.all(offset=nb_customers_listed)
+        all_custs = response['data']
+    return customers
 
 
 def create_charge(customer, amount, descr=None):

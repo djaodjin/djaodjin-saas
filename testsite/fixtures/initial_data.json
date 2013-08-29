@@ -1,6 +1,14 @@
 [
   {
     "fields": {
+      "domain": "localhost:5000",
+      "name": "dev"
+    },
+    "model": "sites.site",
+    "pk": 1
+  },
+  {
+    "fields": {
       "name": "root",
       "created_at": "2012-08-14T14:16:55-09:00",
       "email": "support@example.com",

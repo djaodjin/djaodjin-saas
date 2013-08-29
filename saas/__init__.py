@@ -22,11 +22,20 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-import stripe
+def get_version():
+    """
+    Returns a PEP 386-compliant version number.
 
-from saas.settings import STRIPE_PRIV_KEY
-
-stripe.api_key = STRIPE_PRIV_KEY
-
-VERSION = (0, 1, 0, 'alpha', 0)
+    expr = r'''^
+    (?P<version>\d+\.\d+)         # minimum 'N.N'
+    (?P<extraversion>(?:\.\d+)*)  # any number of extra '.N' segments
+    (?:
+    (?P<prerel>[abc]|rc)         # 'a' = alpha, 'b' = beta
+                                 # 'c' or 'rc' = release candidate
+    (?P<prerelversion>\d+(?:\.\d+)*)
+    )?
+    (?P<postdev>(\.post(?P<post>\d+))?(\.dev(?P<dev>\d+))?)?
+    $'''
+    """
+    return '0.1dev0'
 
