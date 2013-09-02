@@ -4,10 +4,11 @@
 {% block content %}
 <section id="pay_now">
 	{% for p in plan %}
-	{{p.name}}
+	{{p.slug}}
 </br>
-{{p.amount|usd}} {% if p.amount_per_month %}
-+ {{p.amount_per_month|usd}}/month
+Setup amount: {{p.setup_amount}} 
+{% if p.amount %}
++ {{p.amount}}/{{p.interval}}
 {%endif%}
 </br>
 {{p.description}}

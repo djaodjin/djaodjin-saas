@@ -6,7 +6,7 @@
     <form method="post" id="payment-form" class="form-horizontal"
           action="{% url 'saas_edit_plan' organization.name plan.id %}">
       {{ form.as_ul }}
-      <button type="submit" class="btn btn-primary payment-submit">Pay Now</button>
+      <button type="submit" class="btn btn-primary payment-submit">Save plan</button>
       {% csrf_token %}
     </form>
 </br></br>

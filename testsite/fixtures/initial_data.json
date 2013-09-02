@@ -54,9 +54,10 @@
   },
 {
 	"fields":{
-		"name":"Saas website",
-		"amount":3000,
-		"amount_per_month":0,
+		"slug":"Saas website",
+		"created_at":"2013-08-30T14:16:55-09:00",
+		"setup_amount":3000,
+		"amount":2000,
 		"description":"You're only interested in a custom repo. We can provide you a custom archive of a SaaS website.",
 		"customer" : 1
 	},
@@ -65,9 +66,10 @@
 },
 {
 	"fields":{
-		"name":"Saas website without domain name",
-		"amount":5000,
-		"amount_per_month":2000,
+		"slug":"Saas website without domain name",
+		"created_at":"2013-08-30T14:16:55-09:00",
+		"setup_amount":5000,
+		"amount":2000,
 		"description":"You're only interested in a custom repo. We can provide you a custom archive of a SaaS website.",
 		"customer" : 1
 	},
@@ -76,9 +78,10 @@
 },
 {
 	"fields":{
-		"name":"Saas website with domain name",
-		"amount":5000,
-		"amount_per_month":2000,
+		"slug":"Saas website with domain name",
+		"created_at":"2013-08-30T14:16:55-09:00",
+		"setup_amount":5000,
+		"amount":2000,
 		"description":"You're only interested in a custom repo. We can provide you a custom archive of a SaaS website.",
 		"customer" : 1
 	},
@@ -87,9 +90,10 @@
 },
 {
 	"fields":{
-		"name":"Saas website",
-		"amount":6000,
-		"amount_per_month":2000,
+		"slug":"Saas website",
+		"created_at":"2013-08-30T14:16:55-09:00",
+		"setup_amount":6000,
+		"amount":2000,
 		"description":"You're only interested in a custom repo. We can provide you a custom archive of a SaaS website.",
 		"customer" : 1
 	},
