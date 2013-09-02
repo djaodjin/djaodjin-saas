@@ -26,6 +26,8 @@
 
 import datetime, logging
 
+from decimal import *
+
 from django.db.models import Q
 from django.contrib import messages
 from django.core.urlresolvers import reverse
@@ -36,7 +38,7 @@ from django.views.generic.list import ListView
 from django.utils.decorators import method_decorator
 from django.shortcuts import get_object_or_404
 
-from django.forms import ModelForm
+from django.forms import ModelForm,DecimalField,FloatField, CharField
 import saas.settings as settings
 from saas.ledger import balance
 from saas.forms import CreditCardForm, PayNowForm
@@ -46,15 +48,23 @@ from saas.views.auth import valid_manager_for_organization
 import saas.backends as backend
 from saas.decorators import requires_agreement
 
+from durationfield.forms import DurationField as FDurationField
+
 LOGGER = logging.getLogger(__name__)
 
-class PlanForm(ModelForm):
+from django import forms
+
+class PlanForm(forms.ModelForm):
     class Meta:
         model = Plan
+        interval = FDurationField()
+        amount = forms.CharField()
         exclude = ("customer", )
+        
 
         def __init__(self, *args, **kwargs):
-            super(forms.Form, self).__init__(*args, **kwargs)
+            self.fields['amount']=forms.DecimalField()
+            super(PlanForm, self).__init__(*args, **kwargs)
             self.helper = FormHelper()
             self.helper.form_method = 'post'
             self.helper.form_action = '.'
@@ -171,6 +181,8 @@ def display_plan(request,organization_id):
     customer = valid_manager_for_organization(request.user, organization_id)
     context.update({ 'organization': customer })
     plan = Plan.objects.filter(customer=customer)
+    for p in plan :
+        print p.setup_amount
     context.update({'plan': plan})
     return render(request, "saas/plan.html", context)
 
@@ -180,20 +192,24 @@ def edit_plan(request, organization_id, plan_id):
     context.update({ 'organization': customer })
     context.update(csrf(request))
     instance = get_object_or_404(Plan, id =plan_id)
-    amount = instance.amount/100
-    amount_per_month =instance.amount_per_month/100
+    interval = instance.interval
+    getcontext().prec = 4
+    print instance.setup_amount/100
+    instance.setup_amount= Decimal(instance.setup_amount)/100
+    instance.amount= Decimal(instance.amount)/100
     plan =Plan.objects.get(id=plan_id)
     context.update({'plan':plan})
     if request.method == 'POST':
         form = PlanForm(request.POST,instance=instance)
         if form.is_valid():
-            plan.name=form.cleaned_data['name']
+            plan.slug=form.cleaned_data['slug']
+            plan.setup_amount = form.cleaned_data['setup_amount']*100
             plan.amount = form.cleaned_data['amount']*100
-            plan.amount_per_month = form.cleaned_data['amount_per_month']*100
+            plan.interval = form.cleaned_data['interval']
             plan.description = form.cleaned_data['description']
             plan.save()
             return redirect(reverse('saas_plan', args=(customer.name,)))
     else:
-        form = PlanForm({'name':instance.name,'amount':amount,'amount_per_month':amount_per_month,'description':instance.description})
+        form = PlanForm(instance=instance)
     context.update({ 'form': form })
     return render(request, "saas/edit_plan.html", context)

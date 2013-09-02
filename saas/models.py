@@ -77,13 +77,15 @@ class Organization(models.Model):
     processor = models.CharField(null=True, max_length=20)
     processor_id = models.CharField(null=True,
         blank=True, max_length=20)
-
+    def __unicode__(self):
+        return unicode(self.name)
 
 class Agreement(models.Model):
     slug = models.SlugField()
     title =  models.CharField(max_length=150, unique=True)
     modified = models.DateTimeField(auto_now_add=True)
-
+    def __unicode__(self):
+        return unicode(self.slug)
 
 class Signature(models.Model):
     objects = SignatureManager()
@@ -94,7 +96,7 @@ class Signature(models.Model):
     class Meta:
         unique_together = ('agreement', 'user')
 
-
+    
 class Transaction(models.Model):
     '''The Transaction table stores entries in the double-entry bookkeeping
     ledger.
@@ -155,13 +157,65 @@ class NewVisitors(models.Model):
     date = models.DateField(unique=True)
     visitors_number = models.IntegerField(default = 0)
 
+#Custom timedeltafield for django
+import datetime
+import pickle
+from django.db import models
+
+
+
+class TimeDeltaField(models.Field):
+    """Custom model field to store python native datetime.timedelta
+    object in database, in serialized form.
+    """
+    __metaclass__ = models.SubfieldBase
+
+    def __init__(self, *args, **kwargs):
+        # Set the max_length to something long enough to store the data
+        # in string format.
+        kwargs['max_length'] = 200
+
+        # Make sure the default specified is also serialized, else the
+        # objects own string representation would be used.
+        if 'default' in kwargs:
+            kwargs['default'] = pickle.dumps(kwargs['default'])
+
+        super(TimeDeltaField, self).__init__(*args, **kwargs)
+
+    def get_internal_type(self):
+        # Store the serialized data as the default 'CharField' type in
+        # the database.
+        return 'CharField'
+
+    def to_python(self, value):
+        if isinstance(value, basestring):
+            # De-Serialize into timedelta.
+            return pickle.loads(str(value))
+        return value
+
+    def get_prep_value(self, value):
+        # Serialize the object.
+        return pickle.dumps(value)
+        
+from durationfield.db.models.fields.duration import DurationField
+
 class Plan(models.Model):
-    name = models.CharField(max_length=30)
-    amount = models.IntegerField()
-    amount_per_month = models.IntegerField()
+    slug = models.SlugField()
     description = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True) # we use created_at by convention in other models.
+    discontinued_at = models.DateTimeField(null=True,blank=True)
     customer = models.ForeignKey(Organization)
+    # initial
+    setup_amount = models.IntegerField()
+    # recurring
+    amount = models.IntegerField()
+    #Timedeltafield defined at the top (found on google)
+    interval = DurationField(null=True)  # if possible
+    # end game
+    length = models.IntegerField(null=True,blank=True) # in intervals/periods
+    # Pb with next : maybe create an other model for it
+    next_plan = models.ForeignKey("Plan",null=True)
 
-
-
+    def __unicode__(self):
+            return unicode(self.slug)
 
