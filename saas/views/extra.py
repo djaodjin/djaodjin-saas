@@ -1,4 +1,4 @@
-# Copyright (c) 2013, Fortylines LLC
+# Copyright (c) 2013, The DjaoDjin Team
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -32,17 +32,25 @@ from django.core.context_processors import csrf
 from django.utils.safestring import mark_safe
 from django.template import RequestContext
 from django.contrib.auth.models import User
-from django.contrib.auth import login
+from django.contrib.auth import login as auth_login
 from django.contrib import messages
+from django.contrib.sites.models import RequestSite, Site
 import django.contrib.auth.forms
+from django.contrib.auth.tokens import default_token_generator
+from django.views.decorators.debug import sensitive_post_parameters
+from django.views.decorators.cache import never_cache
+from django.contrib.auth.forms import SetPasswordForm
+from django.contrib.auth import authenticate
 from registration import signals
+from registration.models import RegistrationProfile, SHA1_RE
+from registration.views import ActivationView as BaseActivationView
 from registration.backends.simple.views import RegistrationView \
     as BaseRegistrationView
 
 
 class RegistrationForm(forms.Form):
     """
-    Form for warming up registration of a new account. Just supply
+    Form for frictionless registration of a new account. Just supply
     a full name and an email and you are in. We will ask for username
     and password later.
     """
@@ -57,30 +65,18 @@ class RegistrationForm(forms.Form):
                                       'maxlength': 75}),
         label=_("E-mail"))
 
-    def clean_email(self):
-        """
-        Check the supplied email address is unique.
-        """
-        user = User.objects.filter(email=self.cleaned_data['email'])
-        if user.exists():
-            raise forms.ValidationError(_("Account already registered!"))
-        return self.cleaned_data['email']
-
 
 class RegistrationView(BaseRegistrationView):
     """
-    A registration backend which implements the simplest possible
-    workflow: a user supplies a full name (first name and last name)
-    and email address. The user is then immediately signed up and logged in).
+    A frictionless registration backend With a full name and email
+    address, the user is immediately signed up and logged in.
     """
     def get(self, request, *args, **kwargs):
         return redirect(reverse('registration_register'))
 
     def form_invalid(self, form):
-        messages.info(self.request, mark_safe(_("Coming back?"
-                ' Please concider to <a href="%s">Sign up</a> or <a href="%s">Sign in</a>.' % (reverse('registration_register'), reverse('auth_login')))))
-        #return redirect(reverse('registration_register'))
-        return render(self.request, "registration/registration_form.html")
+        return render(
+            self.request, "registration/registration_form.html", {"form":form})
 
     def get_form_class(self, request):
         """
@@ -98,16 +94,137 @@ class RegistrationView(BaseRegistrationView):
             first_name = full_name
             last_name = ''
         username = email
-        try:
-            new_user = User.objects.get(email=email)
-        except User.DoesNotExist:
-            new_user = User.objects.create_user(
-                username, email, first_name=first_name, last_name=last_name)
 
-        # Bypassing authentication here, we are doing frictionless registration.
+        if Site._meta.installed:
+            site = Site.objects.get_current()
+        else:
+            site = RequestSite(request)
+
+        users = User.objects.filter(email=email)
+        if users.exists():
+            user = users[0]
+            if not user.is_active:
+                # Let's send e-mail again.
+                try:
+                    registration_profile = RegistrationProfile.objects.get(user=user)
+                except RegistrationProfile.DoesNotExist:
+                    # We might have corrupted the db by removing profiles
+                    # for inactive users. Let's just fix that here.
+                    registration_profile = RegistrationProfile.objects.create_profile(user)
+                if (registration_profile.activation_key
+                    != RegistrationProfile.ACTIVATED):
+                    registration_profile.send_activation_email(site)
+                    messages.info(
+                        self.request, _("Welcome back! A email has been sent "\
+                        " to you with the steps to secure your account."))
+                    return None
+            messages.info(self.request, mark_safe(_(
+                'An account with this email has already been registered! '\
+                'Please <a href="%s">login</a>' % reverse('auth_login'))))
+            return None
+
+        new_user = RegistrationProfile.objects.create_inactive_user(
+            username, email, password=None, site=site)
+        signals.user_registered.send(
+            sender=self.__class__, user=new_user, request=request)
+
+        # Bypassing authentication here, we are doing frictionless registration
+        # the first time around.
         new_user.backend = 'django.contrib.auth.backends.ModelBackend'
-        login(request, new_user)
-        signals.user_registered.send(sender=self.__class__,
-                                     user=new_user,
-                                     request=request)
+        auth_login(request, new_user)
         return new_user
+
+
+class ActivationView(BaseActivationView):
+    """
+    The user is now on the activation url that was sent in an email.
+    It is time to activate the account.
+    """
+
+    token_generator = default_token_generator
+
+    def activate(self, request, activation_key):
+        self.activation_key = activation_key
+        if SHA1_RE.search(activation_key):
+            try:
+                profile = RegistrationProfile.objects.get(activation_key=activation_key)
+                if not profile.activation_key_expired():
+                    user = profile.user
+                    if user.password == '!':
+                        messages.info(self.request,
+                            _("Please set a password to protect your account."))
+                    else:
+                        activated = RegistrationProfile.objects.activate_user(
+                            activation_key)
+                        if activated:
+                            signals.user_activated.send(
+                                sender=profile, user=activated, request=request)
+                        messages.info(self.request,
+                            _("Thank you. Your account is now activate." \
+                                  " You can sign in at your convienience."))
+                    return user
+            except RegistrationProfile.DoesNotExist:
+                return False
+        return False
+
+    def get_success_url(self, request, user):
+        if user.password == '!':
+            return ('registration_password_confirm',
+                    (self.activation_key, self.token_generator.make_token(user)), {})
+        return ('auth_login', (), {})
+
+
+@sensitive_post_parameters()
+@never_cache
+def registration_password_confirm(request, activation_key, token=None,
+                           template_name='registration/password_reset_confirm.html',
+                           token_generator=default_token_generator,
+                           set_password_form=SetPasswordForm,
+                           post_reset_redirect=None,
+                           extra_context=None):
+    """
+    View that checks the hash in a password activation link and presents a
+    form for entering a new password. We can activate the account for real
+    once we know the email is valid and a password has been set.
+    """
+    user = None
+    profile = None
+    if SHA1_RE.search(activation_key):
+        profile = RegistrationProfile.objects.get(activation_key=activation_key)
+        if not profile.activation_key_expired():
+            user = profile.user
+
+    if user is not None and token_generator.check_token(user, token):
+        validlink = True
+        if request.method == 'POST':
+            form = set_password_form(user, request.POST)
+            if form.is_valid():
+                form.save()
+                activated = RegistrationProfile.objects.activate_user(activation_key)
+                if activated:
+                    signals.user_activated.send(
+                        sender=profile, user=activated, request=request)
+
+                # Okay, security check complete. Log the user in.
+                user_with_backend = authenticate(
+                    username=user.username, password=form.cleaned_data.get('new_password1'))
+                auth_login(request, user_with_backend)
+                if request.session.test_cookie_worked():
+                    request.session.delete_test_cookie()
+
+                if not post_reset_redirect:
+                    post_reset_redirect = reverse('registration_activation_complete')
+                return redirect(post_reset_redirect)
+        else:
+            form = set_password_form(None)
+    else:
+        validlink = False
+        form = None
+    context = {
+        'form': form,
+        'validlink': validlink,
+    }
+    if extra_context is not None:
+        context.update(extra_context)
+    return render(request, template_name, context)
+
