@@ -118,7 +118,7 @@ class TransactionManager(models.Manager):
         return credit
 
     def invoice(self, customer, amount, description=None, event_id=None):
-        usage = Transaction.objects.create(
+        usage = self.create(
             orig_organization=customer, dest_organization=customer,
             orig_account="Usage", dest_account="Balance",
             amount=amount,
@@ -127,6 +127,7 @@ class TransactionManager(models.Manager):
 
 
     def pay_balance(self, customer, amount, description=None, event_id=None):
+        from saas.models import Organization # avoid import loop
         payment = self.create(
             orig_organization=customer,
             dest_organization=Organization.objects.get_site_owner(),

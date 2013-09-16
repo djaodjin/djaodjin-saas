@@ -55,6 +55,57 @@ def _insert_url(request, redirect_field_name=REDIRECT_FIELD_NAME,
     return redirect_to_login(path, inserted_url, redirect_field_name)
 
 
+# The user we are looking to activate might be different from
+# the request.user (which can be Anonymous)
+def check_user_active(request, user,
+                      redirect_field_name=REDIRECT_FIELD_NAME,
+                      login_url=None):
+    """
+    Checks that the user is active. We won't activate the account of
+    a user until we checked the email address is valid.
+    """
+    if not user.is_active:
+        # Let's send e-mail again.
+        try:
+            registration_profile = RegistrationProfile.objects.get(
+                user=user)
+        except RegistrationProfile.DoesNotExist:
+            # We might have corrupted the db by removing profiles
+            # for inactive users. Let's just fix that here.
+            registration_profile = \
+                RegistrationProfile.objects.create_profile(user)
+        if (registration_profile.activation_key
+            != RegistrationProfile.ACTIVATED):
+            if Site._meta.installed:
+                site = Site.objects.get_current()
+            else:
+                site = RequestSite(request)
+            registration_profile.send_activation_email(site)
+            messages.info(
+                request, _("A email has been sent to you with the "\
+                           "steps to secure and activate your account."))
+            return False
+    return True
+
+
+def active_required(redirect_field_name=REDIRECT_FIELD_NAME, login_url=None):
+    """
+    Decorator for views that checks that the user is active. We won't
+    activate the account of a user until we checked the email address
+    is valid.
+    """
+    def decorator(view_func):
+        @wraps(view_func, assigned=available_attrs(view_func))
+        def _wrapped_view(request, *args, **kwargs):
+            if request.is_authenticated():
+                if check_user_active(request, request.user):
+                    return view_func(request, *args, **kwargs)
+            return _insert_url(request, redirect_field_name,
+                               login_url or settings.LOGIN_URL)
+        return _wrapped_view
+    return decorator
+
+
 def requires_agreement(agreement, redirect_field_name=REDIRECT_FIELD_NAME,
                        login_url=None):
     """
@@ -66,13 +117,14 @@ def requires_agreement(agreement, redirect_field_name=REDIRECT_FIELD_NAME,
         @wraps(view_func, assigned=available_attrs(view_func))
         def _wrapped_view(request, *args, **kwargs):
             if request.user.is_authenticated():
-                # Check signature of the legal agreement
-                if Signature.objects.has_been_accepted(
-                    agreement=agreement, user=request.user):
-                    return view_func(request, *args, **kwargs)
-                return _insert_url(request, redirect_field_name,
-                    reverse('legal_sign_agreement',
-                            kwargs={'slug': agreement}))
+                if check_user_active(request, request.user):
+                    # Check signature of the legal agreement
+                    if Signature.objects.has_been_accepted(
+                        agreement=agreement, user=request.user):
+                        return view_func(request, *args, **kwargs)
+                    return _insert_url(request, redirect_field_name,
+                        reverse('legal_sign_agreement',
+                                kwargs={'slug': agreement}))
             return _insert_url(request, redirect_field_name,
                 login_url or settings.LOGIN_URL)
         return _wrapped_view

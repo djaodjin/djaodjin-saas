@@ -1,4 +1,4 @@
-# Copyright (c) 2013, Fortylines LLC
+# Copyright (c) 2013, The DjaoDjin Team
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -25,6 +25,7 @@
 from django.db import models
 from django.contrib.auth.models import User
 from django.utils.translation import ugettext_lazy as _
+from durationfield.db.models.fields.duration import DurationField
 
 from saas.settings import MANAGER_RELATION, CONTRIBUTOR_RELATION
 from saas.managers import (
@@ -35,11 +36,12 @@ from saas.managers import (
 
 
 class Organization(models.Model):
-    '''The Organization table stores information about who gets
+    """
+    The Organization table stores information about who gets
     charged (and who gets paid) for using the service. Users can
     have one of two relationships with an Organization. They can
     either be managers (all permissions) or contributors (use permissions).
-    '''
+    """
 
     objects = OrganizationManager()
     name = models.SlugField(unique=True)
@@ -57,6 +59,7 @@ class Organization(models.Model):
     postal_code = models.CharField(max_length=50)
     country_name = models.CharField(max_length=75)
 
+    belongs = models.ForeignKey('Organization', null=True)
     if MANAGER_RELATION:
         managers = models.ManyToManyField(User, related_name='manages',
                                           through=MANAGER_RELATION)
@@ -77,8 +80,10 @@ class Organization(models.Model):
     processor = models.CharField(null=True, max_length=20)
     processor_id = models.CharField(null=True,
         blank=True, max_length=20)
+
     def __unicode__(self):
         return unicode(self.name)
+
 
 class Agreement(models.Model):
     slug = models.SlugField()
@@ -86,6 +91,7 @@ class Agreement(models.Model):
     modified = models.DateTimeField(auto_now_add=True)
     def __unicode__(self):
         return unicode(self.slug)
+
 
 class Signature(models.Model):
     objects = SignatureManager()
@@ -96,7 +102,7 @@ class Signature(models.Model):
     class Meta:
         unique_together = ('agreement', 'user')
 
-    
+
 class Transaction(models.Model):
     '''The Transaction table stores entries in the double-entry bookkeeping
     ledger.
@@ -150,56 +156,18 @@ class Charge(models.Model):
     state = models.SmallIntegerField(choices=CHARGE_STATES, default=CREATED)
 
 
-# Statistic class
-# New visitors
-
 class NewVisitors(models.Model):
+    """
+    New Visitors metrics populated by reading the web server logs.
+    """
     date = models.DateField(unique=True)
     visitors_number = models.IntegerField(default = 0)
 
-#Custom timedeltafield for django
-import datetime
-import pickle
-from django.db import models
-
-
-
-class TimeDeltaField(models.Field):
-    """Custom model field to store python native datetime.timedelta
-    object in database, in serialized form.
-    """
-    __metaclass__ = models.SubfieldBase
-
-    def __init__(self, *args, **kwargs):
-        # Set the max_length to something long enough to store the data
-        # in string format.
-        kwargs['max_length'] = 200
-
-        # Make sure the default specified is also serialized, else the
-        # objects own string representation would be used.
-        if 'default' in kwargs:
-            kwargs['default'] = pickle.dumps(kwargs['default'])
-
-        super(TimeDeltaField, self).__init__(*args, **kwargs)
-
-    def get_internal_type(self):
-        # Store the serialized data as the default 'CharField' type in
-        # the database.
-        return 'CharField'
-
-    def to_python(self, value):
-        if isinstance(value, basestring):
-            # De-Serialize into timedelta.
-            return pickle.loads(str(value))
-        return value
-
-    def get_prep_value(self, value):
-        # Serialize the object.
-        return pickle.dumps(value)
-        
-from durationfield.db.models.fields.duration import DurationField
 
 class Plan(models.Model):
+    """
+    Recurring billing plan
+    """
     slug = models.SlugField()
     description = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True) # we use created_at by convention in other models.
@@ -209,13 +177,12 @@ class Plan(models.Model):
     setup_amount = models.IntegerField()
     # recurring
     amount = models.IntegerField()
-    #Timedeltafield defined at the top (found on google)
     interval = DurationField(null=True)  # if possible
     # end game
     length = models.IntegerField(null=True,blank=True) # in intervals/periods
     # Pb with next : maybe create an other model for it
-    next_plan = models.ForeignKey("Plan",null=True)
+    next_plan = models.ForeignKey("Plan", null=True)
 
     def __unicode__(self):
-            return unicode(self.slug)
+        return unicode(self.slug)
 

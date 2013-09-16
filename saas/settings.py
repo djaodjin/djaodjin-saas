@@ -38,6 +38,10 @@ MANAGER_RELATION = getattr(settings, 'SAAS_MANAGER_RELATION', None)
 
 PROCESSOR_HOOK_URL = getattr(settings, 'SAAS_PROCESSOR_HOOK_URL', "postevent")
 
+# BE EXTRA CAREFUL! This variable is used to bypass PermissionDenied
+# exceptions. It is solely intended as a debug flexibility nob.
+SKIP_PERMISSION_CHECK = getattr(settings, 'SAAS_SKIP_PERMISSION_CHECK', False)
+
 STRIPE_PRIV_KEY = getattr(settings, 'STRIPE_PRIV_KEY', "Undefined")
 STRIPE_PUB_KEY = getattr(settings, 'STRIPE_PUB_KEY', "Undefined")
 
