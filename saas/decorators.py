@@ -32,6 +32,10 @@ from django.conf import settings
 from django.core.urlresolvers import reverse
 from django.contrib.auth import REDIRECT_FIELD_NAME
 from django.utils.decorators import available_attrs
+from django.contrib import messages
+from django.utils.translation import ugettext_lazy as _
+from django.contrib.sites.models import RequestSite, Site
+from registration.models import RegistrationProfile
 
 from saas.models import Signature
 

@@ -47,6 +47,7 @@ from registration.views import ActivationView as BaseActivationView
 from registration.backends.simple.views import RegistrationView \
     as BaseRegistrationView
 
+from saas.decorators import check_user_active
 
 class RegistrationForm(forms.Form):
     """
@@ -75,14 +76,19 @@ class RegistrationView(BaseRegistrationView):
         return redirect(reverse('registration_register'))
 
     def form_invalid(self, form):
-        return render(
-            self.request, "registration/registration_form.html", {"form":form})
+        messages.error(
+            self.request, _("Please enter a valid name and email address."))
+        return redirect(reverse('registration_register'))
 
     def get_form_class(self, request):
         """
         Returns our custom registration form.
         """
         return RegistrationForm
+
+    def get_success_url(self, request, user):
+        # Because the user returned by register() might be None
+        return ('accounts_profile', (), {})
 
     def register(self, request, **cleaned_data):
         full_name, email = cleaned_data['full_name'], cleaned_data['email']
@@ -93,38 +99,27 @@ class RegistrationView(BaseRegistrationView):
         else:
             first_name = full_name
             last_name = ''
+        # XXX create a random username
         username = email
+
+        users = User.objects.filter(email=email)
+        if users.exists():
+            user = users[0]
+            if check_user_active(request, user):
+                messages.info(request, mark_safe(_(
+                    'An account with this email has already been registered! '\
+                    'Please <a href="%s">login</a>' % reverse('auth_login'))))
+            return None
 
         if Site._meta.installed:
             site = Site.objects.get_current()
         else:
             site = RequestSite(request)
-
-        users = User.objects.filter(email=email)
-        if users.exists():
-            user = users[0]
-            if not user.is_active:
-                # Let's send e-mail again.
-                try:
-                    registration_profile = RegistrationProfile.objects.get(user=user)
-                except RegistrationProfile.DoesNotExist:
-                    # We might have corrupted the db by removing profiles
-                    # for inactive users. Let's just fix that here.
-                    registration_profile = RegistrationProfile.objects.create_profile(user)
-                if (registration_profile.activation_key
-                    != RegistrationProfile.ACTIVATED):
-                    registration_profile.send_activation_email(site)
-                    messages.info(
-                        self.request, _("Welcome back! A email has been sent "\
-                        " to you with the steps to secure your account."))
-                    return None
-            messages.info(self.request, mark_safe(_(
-                'An account with this email has already been registered! '\
-                'Please <a href="%s">login</a>' % reverse('auth_login'))))
-            return None
-
         new_user = RegistrationProfile.objects.create_inactive_user(
             username, email, password=None, site=site)
+        new_user.first_name = first_name
+        new_user.last_name = last_name
+        new_user.save()
         signals.user_registered.send(
             sender=self.__class__, user=new_user, request=request)
 
