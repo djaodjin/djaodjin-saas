@@ -1,8 +1,8 @@
 # -*- Makefile -*-
 
-srcDir        := .
+srcDir      ?= .
+buildTop    ?= .
 
-#-include $(shell dws context)
 -include $(buildTop)/share/dws/prefix.mk
 
 install::
