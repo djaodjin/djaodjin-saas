@@ -10,5 +10,5 @@ register = template.Library()
 def usd(value):
     if not value:
         return '$0.00'
-    return '$%.2f' % (value / 100)
+    return '$%.2f' % (float(value) / 100)
     # XXX return locale.currency(value, grouping=True)
