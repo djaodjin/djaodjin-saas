@@ -76,6 +76,7 @@ class Organization(models.Model):
     # We could support multiple payment processors at the same time by
     # by having a relation to a separate table. For simplicity we only
     # allow on processor per organization at a time.
+    subscriptions = models.ManyToManyField('Plan', related_name='subscribes')
     billing_start = models.DateField(null=True, auto_now_add=True)
     processor = models.CharField(null=True, max_length=20)
     processor_id = models.CharField(null=True,
