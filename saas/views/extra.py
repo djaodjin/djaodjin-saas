@@ -142,7 +142,8 @@ class ActivationView(BaseActivationView):
         self.activation_key = activation_key
         if SHA1_RE.search(activation_key):
             try:
-                profile = RegistrationProfile.objects.get(activation_key=activation_key)
+                profile = RegistrationProfile.objects.get(
+                    activation_key=activation_key)
                 if not profile.activation_key_expired():
                     user = profile.user
                     if user.password == '!':
