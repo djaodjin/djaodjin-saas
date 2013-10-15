@@ -161,7 +161,7 @@ def requires_agreement(agreement, redirect_field_name=REDIRECT_FIELD_NAME,
                                 kwargs={'slug': agreement}))
                 else:
                     # User is logged in but her email has not been verified yet.
-                    auth_logout()
+                    auth_logout(request)
             return _insert_url(request, redirect_field_name,
                 login_url or settings.LOGIN_URL)
         return _wrapped_view
