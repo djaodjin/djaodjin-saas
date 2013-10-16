@@ -40,6 +40,7 @@ from django.contrib.auth.tokens import default_token_generator
 from django.views.decorators.debug import sensitive_post_parameters
 from django.views.decorators.cache import never_cache
 from django.contrib.auth.forms import SetPasswordForm
+from django.contrib.auth import REDIRECT_FIELD_NAME
 from django.contrib.auth import authenticate
 from registration import signals
 from registration.models import RegistrationProfile, SHA1_RE
@@ -165,19 +166,26 @@ class ActivationView(BaseActivationView):
 
     def get_success_url(self, request, user):
         if user.password == '!':
-            return ('registration_password_confirm',
-                    (self.activation_key, self.token_generator.make_token(user)), {})
-        return ('auth_login', (), {})
+            url = reverse('registration_password_confirm',
+                          args=(self.activation_key,
+                                self.token_generator.make_token(user)))
+        else:
+            url = reverse('auth_login')
+        next_url = request.GET.get(REDIRECT_FIELD_NAME, None)
+        if next_url:
+            return "%s?%s=%s" % (url, REDIRECT_FIELD_NAME, next_url)
+        return url
 
 
 @sensitive_post_parameters()
 @never_cache
 def registration_password_confirm(request, activation_key, token=None,
-                           template_name='registration/password_reset_confirm.html',
-                           token_generator=default_token_generator,
-                           set_password_form=SetPasswordForm,
-                           post_reset_redirect=None,
-                           extra_context=None):
+        template_name='registration/password_reset_confirm.html',
+        token_generator=default_token_generator,
+        set_password_form=SetPasswordForm,
+        post_reset_redirect=None,
+        extra_context=None,
+        redirect_field_name=REDIRECT_FIELD_NAME):
     """
     View that checks the hash in a password activation link and presents a
     form for entering a new password. We can activate the account for real
@@ -185,6 +193,7 @@ def registration_password_confirm(request, activation_key, token=None,
     """
     user = None
     profile = None
+    redirect_to = request.REQUEST.get(redirect_field_name, None)
     if SHA1_RE.search(activation_key):
         profile = RegistrationProfile.objects.get(activation_key=activation_key)
         if not profile.activation_key_expired():
@@ -203,14 +212,15 @@ def registration_password_confirm(request, activation_key, token=None,
 
                 # Okay, security check complete. Log the user in.
                 user_with_backend = authenticate(
-                    username=user.username, password=form.cleaned_data.get('new_password1'))
+                    username=user.username,
+                    password=form.cleaned_data.get('new_password1'))
                 auth_login(request, user_with_backend)
                 if request.session.test_cookie_worked():
                     request.session.delete_test_cookie()
 
-                if not post_reset_redirect:
-                    post_reset_redirect = reverse('registration_activation_complete')
-                return redirect(post_reset_redirect)
+                if redirect_to is None:
+                    redirect_to = reverse('accounts_profile')
+                return redirect(redirect_to)
         else:
             form = set_password_form(None)
     else:
@@ -220,6 +230,8 @@ def registration_password_confirm(request, activation_key, token=None,
         'form': form,
         'validlink': validlink,
     }
+    if redirect_to:
+        context.update({redirect_field_name: redirect_to})
     if extra_context is not None:
         context.update(extra_context)
     return render(request, template_name, context)
