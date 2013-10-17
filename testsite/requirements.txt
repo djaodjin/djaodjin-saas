@@ -1,4 +1,5 @@
 django-registration>=1.0
 gunicorn
+South>=0.7.6
 # YAML fixtures (port install py27-yaml)
 pyyaml
