@@ -1,6 +1,6 @@
 {% extends "saas/base.html" %}
 {% load i18n %}
-{% load payment_extras %}
+{% load currency %}
 
 {% block content %}
 <div class="container-fluid">
@@ -20,7 +20,7 @@
     </dl>
     <p>
       Your credit card has been charged for an amount
-      of {{amount|as_dollar_value}}. For your records,
+      of {{amount|usd}}. For your records,
       the charge number is {{ charge_id }}.
     </p>
     <p>

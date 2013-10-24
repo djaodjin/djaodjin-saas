@@ -1,4 +1,4 @@
-# Copyright (c) 2013, Fortylines LLC
+# Copyright (c) 2013, The DjaoDjin Team
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -22,10 +22,11 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-import json, logging, re
+import datetime, json, logging, re
 
 import stripe
 from django.http import Http404
+from django.conf import settings
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
@@ -67,12 +68,31 @@ def list_customers(org_pat=r'.*'):
 
 
 def create_charge(customer, amount, descr=None):
+    """
+    Create a charge on the default card associated to the customer.
+    """
     processor_charge = stripe.Charge.create(
-        amount=amount,
-        currency="usd",
+        amount=amount, currency="usd",
         customer=customer.processor_id,
         description=descr)
-    return processor_charge.id, processor_charge.created
+    return (processor_charge.id, processor_charge.created,
+            processor_charge.card.last4,
+            datetime.date(processor_charge.card.exp_year,
+                          processor_charge.card.exp_month, 1))
+
+
+def create_charge_on_card(card, amount, descr=None):
+    """
+    Create a charge on a specified card.
+    """
+    processor_charge = stripe.Charge.create(
+        amount=amount, currency="usd",
+        card=card, description=descr)
+    return (processor_charge.id, processor_charge.created,
+            processor_charge.card.last4,
+            datetime.date(processor_charge.card.exp_year,
+                          processor_charge.card.exp_month, 1))
+
 
 def create_customer(name, card):
     processor_customer = stripe.Customer.create(description=name, card=card)
@@ -91,7 +111,7 @@ def retrieve_card(customer):
     if customer.processor_id:
         processor_customer = stripe.Customer.retrieve(customer.processor_id, expand=['default_card'])
         if processor_customer.default_card:
-            last4 = 'XXX-%s' % str(processor_customer.default_card.last4)
+            last4 = '***-%s' % str(processor_customer.default_card.last4)
             exp_date = "%02d/%04d" % (processor_customer.default_card.exp_month,
                                       processor_customer.default_card.exp_year)
     return last4, exp_date
@@ -99,21 +119,15 @@ def retrieve_card(customer):
 
 @api_view(['POST'])
 def processor_hook(request):
-    if not event in ['charge.succeeded',
-                     'charge.failed',
-                     'charge.refunded',
-                     'charge.captured',
-                     'charge.dispute.created',
-                     'charge.dispute.updated',
-                     'charge.dispute.closed' ]:
-        return Response("OK")
-
     # Attempt to validate the event by posting it back to Stripe.
-    event = stripe.Event.retrieve(request.DATA['id'])
+    if settings.DEBUG:
+        event = stripe.Event.construct_from(request.DATA, STRIPE_PRIV_KEY)
+    else:
+        event = stripe.Event.retrieve(request.DATA['id'])
     if not event:
-        LOGGER.error("Posted stripe event %s FAILED", request.DATA['id'])
+        LOGGER.error("Posted stripe event %s FAIL", request.DATA['id'])
         raise Http404
-    LOGGER.info("Posted stripe event %s OK", event.id)
+    LOGGER.info("Posted stripe event %s PASS", event.id)
 
     if event.type == 'charge.succeeded':
         charge_succeeded(event.data.object.id)

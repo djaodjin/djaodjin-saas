@@ -1,4 +1,4 @@
-# Copyright (c) 2013, Fortylines LLC
+# Copyright (c) 2013, The DjaoDjin Team
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -27,6 +27,7 @@
 import datetime, logging
 
 from django.db.models import Sum
+from django.shortcuts import get_object_or_404
 
 from saas.models import Organization, Charge, Transaction
 from saas.ledger import read_balances
@@ -63,7 +64,7 @@ def create_charges(until=datetime.datetime.now()):
 
 def charge_succeeded(charge_id):
     """Invoked by the processor callback when a charge has succeeded."""
-    charge = Charge.objects.get(charge_id)
+    charge = get_object_or_404(Charge, processor_id=charge_id)
     if charge.state != charge.DONE:
         charge.state = charge.DONE
         charge.save()
@@ -74,32 +75,32 @@ def charge_succeeded(charge_id):
 
 def charge_failed(charge_id):
     """Invoked by the processor callback when a charge has failed."""
-    charge = Charge.objects.get(charge_id)
+    charge = get_object_or_404(Charge, processor_id=charge_id)
     charge.state = charge.FAILED
     charge.save()
 
 def charge_refunded(charge_id):
     """Invoked by the processor callback when a charge has been refunded."""
-    charge = Charge.objects.get(charge_id)
+    charge = get_object_or_404(Charge, processor_id=charge_id)
 
 def charge_captured(charge_id):
-    charge = Charge.objects.get(charge_id)
+    charge = get_object_or_404(Charge, processor_id=charge_id)
 
 def charge_dispute_created(charge_id):
     """Invoked by the processor callback when a charge has been disputed."""
-    charge = Charge.objects.get(charge_id)
+    charge = get_object_or_404(Charge, processor_id=charge_id)
     charge.state = charge.DISPUTED
     charge.save()
 
 def charge_dispute_updated(charge_id):
     """Invoked by the processor callback when a disputed charge has been
     updated."""
-    charge = Charge.objects.get(charge_id)
+    charge = get_object_or_404(Charge, processor_id=charge_id)
 
 def charge_dispute_closed(charge_id):
     """Invoked by the processor callback when a disputed charge has been
     closed."""
-    charge = Charge.objects.get(charge_id)
+    charge = get_object_or_404(Charge, processor_id=charge_id)
     charge.state = charge.DONE
     charge.save()
 

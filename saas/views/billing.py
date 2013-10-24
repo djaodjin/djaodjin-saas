@@ -1,4 +1,4 @@
-# Copyright (c) 2013, Fortylines LLC
+# Copyright (c) 2013, The DjaoDjin Team
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -26,49 +26,30 @@
 
 import datetime, logging
 
-from decimal import *
-
-from django.db.models import Q
+from django import forms
+from django.db.models import Q, Sum
 from django.contrib import messages
+from django.utils.translation import ugettext_lazy as _
 from django.core.urlresolvers import reverse
 from django.core.context_processors import csrf
-from django.shortcuts import render, redirect
+from django.core.exceptions import PermissionDenied
 from django.views.decorators.http import require_GET
 from django.views.generic.list import ListView
+from django.views.generic.detail import DetailView
+from django.views.generic.edit import BaseFormView
 from django.utils.decorators import method_decorator
-from django.shortcuts import get_object_or_404
+from django.shortcuts import render, redirect, get_object_or_404
 
-from django.forms import ModelForm,DecimalField,FloatField, CharField
+import saas.backends as backend
 import saas.settings as settings
 from saas.ledger import balance
-from saas.forms import CreditCardForm, PayNowForm
-from saas.models import Organization
-from saas.models import Transaction, Charge , Plan
-from saas.views.auth import valid_manager_for_organization
-import saas.backends as backend
 from saas.decorators import requires_agreement
+from saas.forms import CreditCardForm, PayNowForm
+from saas.views.auth import valid_manager_for_organization
+from saas.models import Organization, Transaction, Charge, CartItem, Coupon
 
-from durationfield.forms import DurationField as FDurationField
 
 LOGGER = logging.getLogger(__name__)
-
-from django import forms
-
-class PlanForm(forms.ModelForm):
-    class Meta:
-        model = Plan
-        interval = FDurationField()
-        amount = forms.CharField()
-        exclude = ("customer", )
-        
-
-        def __init__(self, *args, **kwargs):
-            self.fields['amount']=forms.DecimalField()
-            super(PlanForm, self).__init__(*args, **kwargs)
-            self.helper = FormHelper()
-            self.helper.form_method = 'post'
-            self.helper.form_action = '.'
-            self.helper.add_input(Submit('Send', "Send"))
 
 
 class TransactionListView(ListView):
@@ -95,12 +76,148 @@ class TransactionListView(ListView):
     def get_context_data(self, **kwargs):
         context = super(TransactionListView, self).get_context_data(**kwargs)
         # Retrieve customer information from the backend
+        context.update({'organization': self.customer})
         last4, exp_date = backend.retrieve_card(self.customer)
         context.update({
             'last4': last4,
             'exp_date': exp_date,
             'organization': self.customer
             })
+        return context
+
+
+class PlaceOrderView(BaseFormView, ListView):
+    """
+    Where a user enters his payment information and submit her order.
+    """
+    template_name = 'saas/place_order.html'
+    form_class = CreditCardForm
+
+    # Implementation Node:
+    #     All fields in CreditCardForm are optional to insure the form
+    #     is never invalid and thus allow the same code to place an order
+    #     with a total amount of zero.
+
+    def form_valid(self, form):
+        """
+        If the form is valid, a Charge was created on Stripe,
+        we just have to add one Transaction per new subscription
+        as well as associate that subscription to the appropriate
+        organization.
+        """
+        cart = CartItem.objects.get_cart(
+            customer=self.customer, user=self.request.user)
+        coupons = Coupon.objects.filter(
+            user=self.request.user, customer=self.customer, redeemed=False)
+        total_amount, discount_amount = self.amounts(
+            self.get_invoicables(), coupons)
+        if total_amount:
+            self.charge = Charge.objects.charge_card(
+                self.customer, total_amount, self.request.user,
+                token=form.cleaned_data['stripeToken'],
+                remember_card=form.cleaned_data['remember_card'])
+        # We commit in the db AFTER the charge goes through. In case anything
+        # goes wrong with the charge the cart is still in a consistent state.
+        Transaction.objects.subscribe_to(cart)
+        if len(coupons) > 0:
+            Transaction.objects.redeem_coupon(discount_amount, coupons[0])
+        return super(PlaceOrderView, self).form_valid(form)
+
+    def get_success_url(self):
+        if hasattr(self, 'charge'):
+            return reverse('saas_charge_receipt',
+                           args=(self.customer, self.charge.processor_id))
+        messages.info(self.request,
+                      _("Your order has been processed. Thank you!"))
+        return reverse('saas_organization_profile', args=(self.customer,))
+
+
+    def amounts(self, cart, coupons):
+        discount_amount = 0
+        total_amount = 0
+        for item in cart:
+            total_amount = total_amount + item["amount"]
+        # Reduce price by as much  Coupon.
+        if len(coupons) > 0:
+            discount_amount = total_amount
+        return total_amount - discount_amount, discount_amount
+
+    def get_invoicables(self):
+        """
+        Get the cart for this customer.
+        """
+        return CartItem.objects.get_invoicables(
+            customer=self.customer, user=self.request.user)
+
+    def get_queryset(self):
+        """
+        Get the cart for this customer.
+        """
+        queryset = self.get_invoicables()
+        return queryset
+
+    @method_decorator(requires_agreement('terms_of_use'))
+    def dispatch(self, *args, **kwargs):
+        self.customer = valid_manager_for_organization(
+            self.request.user, self.kwargs.get('organization_id'))
+        return super(PlaceOrderView, self).dispatch(*args, **kwargs)
+
+    def get_context_data(self, **kwargs):
+        if not 'object_list' in kwargs:
+            cart = self.get_queryset()
+            kwargs.update({'object_list': cart})
+        context = super(PlaceOrderView, self).get_context_data(**kwargs)
+        # Reduce price by as much  Coupon.
+        coupons = Coupon.objects.filter(
+            user=self.request.user, customer=self.customer, redeemed=False)
+        total_amount, discount_amount = self.amounts(self.object_list, coupons)
+        context.update({'coupons': coupons,
+                        'discount_amount': discount_amount,
+                        'coupon_form': RedeemCouponForm(),
+                        'total_amount': total_amount,
+                        'organization': self.customer})
+        if total_amount:
+            context.update({'STRIPE_PUB_KEY': settings.STRIPE_PUB_KEY})
+            # Retrieve customer information from the backend
+            last4, exp_date = backend.retrieve_card(self.customer)
+            if last4 != "N/A":
+                context.update({'last4': last4, 'exp_date': exp_date})
+        return context
+
+
+class ChargeReceiptView(DetailView):
+    """
+    Display a receipt for a created charge.
+    """
+    model = Charge
+    slug_field = 'processor_id'
+    slug_url_kwarg = 'charge'
+    template_name = 'saas/payment_receipt.html'
+
+    def get_queryset(self):
+        """
+        Get the cart for this customer.
+        """
+        queryset = Charge.objects.filter(
+            processor_id=self.kwargs.get(self.slug_url_kwarg))
+        if queryset.exists():
+            self.customer = valid_manager_for_organization(
+                self.request.user, queryset.get().customer)
+        else:
+            raise PermissionDenied
+        return queryset
+
+    @method_decorator(requires_agreement('terms_of_use'))
+    def dispatch(self, *args, **kwargs):
+        return super(ChargeReceiptView, self).dispatch(*args, **kwargs)
+
+    def get_context_data(self, **kwargs):
+        context = super(ChargeReceiptView, self).get_context_data(**kwargs)
+        context.update({'last4': self.object.last4,
+                        'exp_date': self.object.exp_date,
+                        'charge_id': self.object.processor_id,
+                        'amount': self.object.amount,
+                        'organization': Organization.objects.get_site_owner()})
         return context
 
 
@@ -147,6 +264,30 @@ def pay_now(request, organization_id):
     return render(request, "saas/pay_now.html", context)
 
 
+class RedeemCouponForm(forms.Form):
+    """Form used to redeem a coupon."""
+    code = forms.CharField()
+
+@requires_agreement('terms_of_use')
+def redeem_coupon(request, organization_id):
+    """Adds a coupon to the user cart."""
+    context = { 'user': request.user }
+    context.update(csrf(request))
+    customer = valid_manager_for_organization(request.user, organization_id)
+    context.update({ 'organization': customer })
+    if request.method == 'POST':
+        form = RedeemCouponForm(request.POST)
+        if form.is_valid():
+            coupon = get_object_or_404(Coupon, code=form.cleaned_data['code'])
+            coupon.user = request.user
+            coupon.customer = customer
+            coupon.save()
+        else:
+            # XXX on error find a way to get a message back to User.
+            pass
+    return redirect(reverse('saas_pay_cart', args=(customer.name,)))
+
+
 @requires_agreement('terms_of_use')
 def update_card(request, organization_id):
     context = { 'user': request.user }
@@ -173,43 +314,4 @@ def update_card(request, organization_id):
         form = CreditCardForm()
     context.update({'form': form})
     context.update({ 'STRIPE_PUB_KEY': settings.STRIPE_PUB_KEY })
-    return render(request, "saas/update_card.html", context)
-
-
-def display_plan(request,organization_id):
-    context = { 'user': request.user }
-    customer = valid_manager_for_organization(request.user, organization_id)
-    context.update({ 'organization': customer })
-    plan = Plan.objects.filter(customer=customer)
-    for p in plan :
-        print p.setup_amount
-    context.update({'plan': plan})
-    return render(request, "saas/plan.html", context)
-
-def edit_plan(request, organization_id, plan_id):
-    context = { 'user': request.user }
-    customer = valid_manager_for_organization(request.user, organization_id)
-    context.update({ 'organization': customer })
-    context.update(csrf(request))
-    instance = get_object_or_404(Plan, id =plan_id)
-    interval = instance.interval
-    getcontext().prec = 4
-    print instance.setup_amount/100
-    instance.setup_amount= Decimal(instance.setup_amount)/100
-    instance.amount= Decimal(instance.amount)/100
-    plan =Plan.objects.get(id=plan_id)
-    context.update({'plan':plan})
-    if request.method == 'POST':
-        form = PlanForm(request.POST,instance=instance)
-        if form.is_valid():
-            plan.slug=form.cleaned_data['slug']
-            plan.setup_amount = form.cleaned_data['setup_amount']*100
-            plan.amount = form.cleaned_data['amount']*100
-            plan.interval = form.cleaned_data['interval']
-            plan.description = form.cleaned_data['description']
-            plan.save()
-            return redirect(reverse('saas_plan', args=(customer.name,)))
-    else:
-        form = PlanForm(instance=instance)
-    context.update({ 'form': form })
-    return render(request, "saas/edit_plan.html", context)
+    return render(request, "saas/card_update.html", context)

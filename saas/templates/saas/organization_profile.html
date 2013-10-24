@@ -1,7 +1,6 @@
 {% extends "saas/base.html" %}
 
 {% block content %}
-<a class="btn" href="{% url 'saas_plan' organization.name %}">plan</a>
 {% include "saas/organization_users.html" with title="managers" users=managers %}
 {% include "saas/organization_users.html" with title="contributors" users=contributors %}
 {% endblock %}

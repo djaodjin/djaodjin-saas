@@ -1,0 +1,70 @@
+      {{ form.non_field_errors }}
+      <fieldset>
+        <legend>Credit Card Information</legend>
+        <!-- BE CAREFULL: Do not add name="" to these <input> nodes, else
+             values will hit the server and break PCI compliance. -->
+        <div id="row-number" class="control-group">
+          <label class="control-label" for="card-number">Card Number</label>
+          <div class="controls">
+            <input id="card-number" type="text" size="16" autocomplete="off" />
+          </div>
+        </div>
+        <div id="row-exp" class="control-group">
+          <label class="control-label">Expiration (MM/YYYY)</label>
+          <div class="controls">
+            <input id="card-exp-month" type="text" size="2" /> /
+            <input id="card-exp-year" type="text" size="4" />
+          </div>
+        </div>
+        <div id="row-cvc" class="control-group">
+          <label class="control-label">Card Security Code</label>
+          <div class="controls">
+            <input id="card-cvc" type="text" size="3" autocomplete="off" />
+          </div>
+        </div>
+      </fieldset>
+      <fieldset>
+        <legend>Billing Address</legend>
+        <div id="row-name" class="control-group">
+          <label class="control-label" for="name">Card Holder</label>
+          <div class="controls">
+            {{ form.card_name.errors }}
+            <input id="name" type="text" name="card_name" />
+          </div>
+        </div>
+        <div id="row-address-line1" class="control-group">
+          <label class="control-label" for="address_line_1">Street</label>
+          <div class="controls">
+            {{ form.card_address_line1.errors }}
+            <input id="address_line_1" type="text" name="card_address_line1" />
+          </div>
+        </div>
+        <div id="row-city" class="control-group">
+          <label class="control-label" for="address_line_2">City</label>
+          <div class="controls">
+            {{ form.card_city.errors }}
+            <input id="address_line_2" type="text" name="card_city" />
+          </div>
+        </div>
+        <div id="row-address-state" class="control-group">
+          <label class="control-label" for="state_id">State</label>
+          <div class="controls">
+            {{ form.card_address_state.errors }}
+            <input id="state_id" type="text" name="card_address_state" />
+          </div>
+        </div>
+        <div id="row-address-zip" class="control-group">
+          <label class="control-label" for="zip_code">Zip</label>
+          <div class="controls">
+            {{ form.card_address_zip.errors }}
+            <input id="zip_code" type="text" name="card_address_zip" />
+          </div>
+        </div>
+        <div id="row-address-country" class="control-group">
+          <label class="control-label" for="country_id">Country</label>
+          <div class="controls">
+            {{ form.card_address_country.errors }}
+            <input id="country_id" type="text" name="card_address_country" />
+          </div>
+        </div>
+      </fieldset>

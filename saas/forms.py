@@ -1,4 +1,4 @@
-# Copyright (c) 2013, Fortylines LLC
+# Copyright (c) 2013, The DjaoDjin Team
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -30,17 +30,18 @@ from django import forms
 
 class CreditCardForm(forms.Form):
     '''Update Card Information.'''
-    stripeToken = forms.CharField()
+    stripeToken = forms.CharField(required=False)
+    remember_card = forms.BooleanField(required=False)
 
     def __init__(self, *args, **kwargs):
         #call our superclasse's initializer
         super(forms.Form, self).__init__(*args, **kwargs)
         #define other fields dinamically:
-        self.fields['card_name'] = forms.CharField()
-        self.fields['card_city'] = forms.CharField()
-        self.fields['card_address_line1'] = forms.CharField()
-        self.fields['card_address_country'] = forms.CharField()
-        self.fields['card_address_state'] = forms.CharField()
+        self.fields['card_name'] = forms.CharField(required=False)
+        self.fields['card_city'] = forms.CharField(required=False)
+        self.fields['card_address_line1'] = forms.CharField(required=False)
+        self.fields['card_address_country'] = forms.CharField(required=False)
+        self.fields['card_address_state'] = forms.CharField(required=False)
 
 
 class PayNowForm(forms.Form):

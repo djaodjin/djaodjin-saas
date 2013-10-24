@@ -168,7 +168,7 @@ INSTALLED_APPS = (
     # Uncomment the next line to enable admin documentation:
     # 'django.contrib.admindocs',
     'django.contrib.markup',
-    'south',
+#    'south',
     'app_metrics',
     'saas',
     'testsite'
@@ -202,6 +202,11 @@ LOGGING = {
         }
     },
     'loggers': {
+        'saas': {
+            'handlers': ['logfile'],
+            'level': 'INFO',
+            'propagate': False,
+        },
         'django.request': {
             'handlers': ['mail_admins'],
             'level': 'ERROR',

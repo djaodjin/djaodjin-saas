@@ -1,0 +1,21 @@
+{% extends "saas/card_base.html" %}
+
+{% block content %}
+<div class="container-fluid">
+  <section id="refill">
+    <div class="page-header">
+      <h1>Update to {{ organization.name }}</h1>
+    </div>
+    <form method="post" id="payment-form" class="form-horizontal"
+          action="{% url 'saas_update_card' organization.name %}">
+      {% include "saas/card_form_fields.html" %}
+      <div class="control-group">
+        <div class="controls">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-primary payment-submit">{% trans 'Update' %}</button>
+        </div>
+      </div>
+    </form>
+  </section>
+</div>
+{% endblock %}
