@@ -75,6 +75,7 @@ class OrganizationManager(models.Manager):
             customer.processor_id = backend.create_customer(
                 customer.name, card)
             customer.save()
+            LOGGER.info('Created processor_id #%s', customer.processor_id)
         else:
             backend.update_card(customer, card)
 
@@ -235,9 +236,12 @@ class CartItem(models.Model):
         If no billing cycle exists for this customer, one is created.
         """
         if self.customer.billing_start:
-            return (self.subscription.interval - (
-                    start_date - self.customer.billing_start)
-                    % self.subscription.interval) * self.subscription.amount
+            since_billing_start = (start_date.date()
+                - self.customer.billing_start).total_seconds()
+            interval_length = self.subscription.interval.total_seconds()
+            return int(self.subscription.amount
+                       * (since_billing_start % interval_length)
+                       / interval_length)
         else:
             return self.subscription.amount
 
@@ -329,12 +333,12 @@ class Plan(models.Model):
     description = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True) # we use created_at by convention in other models.
     discontinued_at = models.DateTimeField(null=True,blank=True)
-    customer = models.ForeignKey(Organization)
+    organization = models.ForeignKey(Organization)
     # initial
     setup_amount = models.IntegerField()
     # recurring
     amount = models.IntegerField()
-    interval = DurationField(null=True)  # if possible
+    interval = DurationField(default=datetime.timedelta(days=30))
     # end game
     length = models.IntegerField(null=True,blank=True) # in intervals/periods
     # Pb with next : maybe create an other model for it

@@ -73,6 +73,7 @@
     {% endif %}
     {% endif %}
     <fieldset>
+      {% if not last4 %}
       {% if total_amount %}
       <div id="remember_card" class="control-group">
         <label class="control-label">Remember this card</label>
@@ -80,6 +81,7 @@
           <input id="remember_card" name="remember_card" type="checkbox" />
         </div>
       </div>
+      {% endif %}
       {% endif %}
       {% csrf_token %}
       <button type="submit" class="btn btn-primary payment-submit">Place Order</button>
