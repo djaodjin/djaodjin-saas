@@ -5,7 +5,7 @@ Maintaining an evolving service secure requires a constant re-evaluation
 of risks and actions to mitigate them.
 
 {{organization.name}} does a reasonable attempt at keeping your information secure
-using time tested [guidelines](/reps/whitepapers/doc/access.book.html).
+using time tested [guidelines](http://en.wikipedia.org/wiki/Web_application_security).
 
 If you need to report a security vulnerability or have any questions
 regarding our security policy, please [e-mail our security chief](mailto:{{organization.email}})

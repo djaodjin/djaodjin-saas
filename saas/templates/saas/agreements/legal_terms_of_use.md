@@ -19,7 +19,7 @@ your Account. You agree to use the Service at your own risk.
     productive use of the Service.
 
 1.2 You are responsible for maintaining the security of your username
-    and password. {{organization.name}} LLC cannot and will not be liable
+    and password. {{organization.name}} cannot and will not be liable
     for any loss or damage from your failure to comply with this security
     obligation.
 

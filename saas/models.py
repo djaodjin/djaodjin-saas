@@ -31,6 +31,7 @@ import datetime, logging
 from django.db import models
 from django.utils.timezone import utc
 from django.contrib.auth.models import User
+from django.contrib.sites.models import Site
 from django.utils.translation import ugettext_lazy as _
 from durationfield.db.models.fields.duration import DurationField
 
@@ -78,6 +79,9 @@ class OrganizationManager(models.Manager):
             LOGGER.info('Created processor_id #%s', customer.processor_id)
         else:
             backend.update_card(customer, card)
+
+    def get_site(self):
+        return Site.objects.get(pk=SITE_ID)
 
     def get_site_owner(self):
         return self.get(pk=SITE_ID)
