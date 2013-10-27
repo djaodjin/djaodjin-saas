@@ -266,7 +266,7 @@ def pay_now(request, organization_id):
 
 class RedeemCouponForm(forms.Form):
     """Form used to redeem a coupon."""
-    code = forms.CharField()
+    code = forms.CharField(widget=forms.TextInput(attrs={'class':'form-control'}))
 
 @requires_agreement('terms_of_use')
 def redeem_coupon(request, organization_id):
