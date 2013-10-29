@@ -31,7 +31,7 @@
       "setup_amount": 3000,
       "amount": 2000,
       "description": "Basic Plan",
-      "customer" : 1
+      "organization" : 1
    },
    "model" : "saas.Plan",
    "pk": 1
@@ -43,7 +43,7 @@
     "setup_amount": 2000,
     "amount": 3000,
     "description": "Medium Plan",
-    "customer" : 1
+    "organization" : 1
   },
   "model" : "saas.Plan",
   "pk": 2
@@ -55,7 +55,7 @@
     "setup_amount": 1000,
     "amount": 4000,
     "description": "Premium Plan",
-    "customer" : 1
+    "organization" : 1
   },
   "model" : "saas.Plan",
   "pk": 3

@@ -67,12 +67,12 @@ def aggregate_monthly(organization, query_function):
     new_values = []
     churn_values = []
     queryset = None
-    today = datetime.date.today()
+    today = date.today()
     # We want to be able to compare *last* to *today* and not get django
     # warnings because timezones are not specified.
-    today = datetime.datetime(
+    today = datetime(
         day=today.day, month=today.month, year=today.year, tzinfo=utc)
-    first = datetime.datetime(
+    first = datetime(
             day=1, month=today.month, year=today.year - 1, tzinfo=utc)
     for index in range(0, 12):
         year = first.year
@@ -80,7 +80,7 @@ def aggregate_monthly(organization, query_function):
         if month > 12:
             year = first.year + month / 12
             month = month % 12 + 1
-        last = datetime.datetime(day=1, month=month, year=year, tzinfo=utc)
+        last =datetime(day=1, month=month, year=year, tzinfo=utc)
         if last > today:
             last = today
         churn_queryset, queryset, new_queryset = query_function(
@@ -143,11 +143,11 @@ def organization_usage(request, organization_id):
     # (MySQL: date_format, SQLite: strftime) and get around the
     # "Raw query must include the primary key" constraint.
     values = []
-    today = datetime.date.today()
-    end = datetime.datetime(day=today.day, month=today.month, year=today.year,
+    today = date.today()
+    end = datetime(day=today.day, month=today.month, year=today.year,
                             tzinfo=utc)
     for month in range(0, 12):
-        first = datetime.datetime(day=1, month=end.month, year=end.year,
+        first = datetime(day=1, month=end.month, year=end.year,
                                   tzinfo=utc)
         usages = Transaction.objects.filter(
             orig_organization=organization, orig_account='Usage',
@@ -156,9 +156,9 @@ def organization_usage(request, organization_id):
         if not amount:
             # The key could be associated with a "None".
             amount = 0
-        values += [{ "x": datetime.date.strftime(first, "%Y/%m/%d"),
+        values += [{ "x": date.strftime(first, "%Y/%m/%d"),
                    "y": amount }]
-        end = first - datetime.timedelta(days=1)
+        end = first - timedelta(days=1)
     context = {
         'data': [{ "key": "Usage",
                  "values": values }],"organization_id":organization_id}
@@ -175,12 +175,12 @@ def organization_overall(request):
     for organization_all in organizations:
         organization = valid_manager_for_organization(request.user, organization_all)
         values = []
-        today = datetime.date.today()
-        end = datetime.datetime(day=today.day, month=today.month, year=today.year,
+        today = date.today()
+        end = datetime(day=today.day, month=today.month, year=today.year,
                                 tzinfo=utc)
         
         for month in range(0, 12):
-            first = datetime.datetime(day=1, month=end.month, year=end.year,
+            first = datetime(day=1, month=end.month, year=end.year,
                                       tzinfo=utc)
             usages = Transaction.objects.filter(
                                                 orig_organization=organization, orig_account='Usage',
@@ -189,9 +189,9 @@ def organization_overall(request):
             if not amount:
                 # The key could be associated with a "None".
                 amount = 0
-            values += [{ "x": datetime.date.strftime(first, "%Y/%m/%d"),
+            values += [{ "x": date.strftime(first, "%Y/%m/%d"),
                        "y": amount }]
-            end = first - datetime.timedelta(days=1)
+            end = first - timedelta(days=1)
         all_values += [{"key":str(organization_all.name),"values":values}]
 
     context ={'data' : all_values}
