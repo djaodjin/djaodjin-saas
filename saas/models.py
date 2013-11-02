@@ -80,6 +80,18 @@ class OrganizationManager(models.Manager):
         else:
             backend.update_card(customer, card)
 
+    def get_organization(self, organization):
+        """Returns an ``Organization`` instance from the organization
+        parameter which could either be an id or a slug.
+
+        In case organization is None, this method returns the site owner.
+        """
+        if organization is None:
+            return self.get_site_owner()
+        if not isinstance(organization, Organization):
+            return self.get(name=organization)
+        return organization
+
     def get_site(self):
         return Site.objects.get(pk=SITE_ID)
 
@@ -239,15 +251,18 @@ class CartItem(models.Model):
         """Subscriptions are pro-rated based on the billing cycle.
         If no billing cycle exists for this customer, one is created.
         """
+        since_billing_start = 0
         if self.customer.billing_start:
             since_billing_start = (start_date.date()
                 - self.customer.billing_start).total_seconds()
+        if since_billing_start == 0:
+            # happens to be on the recurring billing day.
+            return self.subscription.amount
+        else:
             interval_length = self.subscription.interval.total_seconds()
             return int(self.subscription.amount
                        * (since_billing_start % interval_length)
                        / interval_length)
-        else:
-            return self.subscription.amount
 
 
 class ChargeManager(models.Manager):
