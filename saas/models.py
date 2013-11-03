@@ -325,7 +325,7 @@ class Charge(models.Model):
     # Amount in cents
     amount = models.IntegerField(default=0)
     customer = models.ForeignKey(Organization)
-    description = models.TextField()
+    description = models.TextField(null=True)
     last4 = models.IntegerField()
     exp_date = models.DateField()
     processor = models.SlugField()
