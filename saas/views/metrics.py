@@ -21,8 +21,7 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 # THE POSSIBILITY OF SUCH DAMAGE.
 
-import datetime
-import time
+import datetime, json, time
 from time import mktime
 from datetime import datetime, date, timedelta
 
@@ -85,9 +84,10 @@ def aggregate_monthly(organization, query_function):
             last = today
         churn_queryset, queryset, new_queryset = query_function(
             organization, first, last, queryset)
-        churn_values += [ (last, churn_queryset.distinct().count()) ]
-        values += [ (last, queryset.distinct().count()) ]
-        new_values += [ (last, new_queryset.distinct().count()) ]
+        period = datetime.strftime(last, '%Y/%m/%d')
+        churn_values += [ (period, churn_queryset.distinct().count()) ]
+        values += [ (period, queryset.distinct().count()) ]
+        new_values += [ (period, new_queryset.distinct().count()) ]
         first = last
     return churn_values, values, new_values
 
@@ -112,10 +112,7 @@ def organization_engagement(request, organization_id):
         else:
             cust_churn_percent += [ (period, 0) ]
         last_nb_total_custs = nb_total_custs
-    context = {
-        "organization": organization,
-        "table": [
-            { "key": "Total # of Customers",
+    table = [{ "key": "Total # of Customers",
               "values": total_custs
               },
             { "key": "# of new Customers",
@@ -130,7 +127,9 @@ def organization_engagement(request, organization_id):
             { "key": "% Customer Churn",
               "values": cust_churn_percent
               },
-            ] }
+            ]
+    context = { "organization": organization, "table": table,
+                "table_json": json.dumps(table)}
     return render(request, "saas/engagement.html", context)
 
 @require_GET

@@ -329,8 +329,9 @@ class Charge(models.Model):
     last4 = models.IntegerField()
     exp_date = models.DateField()
     processor = models.SlugField()
-    processor_id = models.SlugField(db_index=True)
+    processor_id = models.SlugField(unique=True, db_index=True)
     state = models.SmallIntegerField(choices=CHARGE_STATES, default=CREATED)
+
 
 
 class Coupon(models.Model):
