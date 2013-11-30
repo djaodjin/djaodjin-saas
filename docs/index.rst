@@ -1,10 +1,15 @@
-.. django_saas documentation master file, created by
+.. saas documentation master file, created by
    sphinx-quickstart on Sun May  5 11:18:54 2013.
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Welcome to django_saas's documentation!
-=======================================
+Welcome to Djaodjin saas's documentation!
+=========================================
+
+Djaodjin's saas is a Django application that implements logic to support
+subscription-based Sofware-as-a-Service businesses. It includes a generic
+organization hierarchy with admin/contributor security model, a double
+entry book keeping ledger and charts to visualize a saas business performace.
 
 Contents:
 
@@ -12,12 +17,8 @@ Contents:
    :maxdepth: 1
 
    models
-
-.. toctree::
-   :maxdepth: 2
-
-.. automodule:: django_saas
-.. autoclass:: django_saas.models.Transaction
+   ledger
+   metrics
 
 
 Indices and tables

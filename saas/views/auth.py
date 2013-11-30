@@ -35,8 +35,15 @@ from saas.settings import SKIP_PERMISSION_CHECK
 LOGGER = logging.getLogger(__name__)
 
 def valid_manager_for_organization(user, organization):
-    '''This will return a Organization object or raise different exceptions
-    that can be forwarded as html feedback to the user.'''
+    """
+    Returns *organization* as an Organization instance if *user*
+    is a manager of *organization* and raises a ``PermissionDenied``
+    exception otherwise.
+
+    To simplify logic that checks permissions, the function will accept
+    *organization* to either be an Organization instance or a ``string``
+    that represents the name of an organization.
+    """
     if not isinstance(organization, Organization):
         organization = Organization.objects.get(name=organization)
 
@@ -61,8 +68,18 @@ def valid_manager_for_organization(user, organization):
 
 
 def valid_contributor_to_organization(user, organization):
-    '''This will return a Organization object or raise different exceptions
-    that can be forwarded as html feedback to the user.'''
+    """
+    Returns a tuple (*organization*, *is_manager*) where *organization*
+    is an Organization instance and *is_manager* is ``True`` when the
+    user is also a manager for the *organization*.
+
+    This function will raise a ``PermissionDenied`` exception when the
+    *user* is neither a contributor nor a manager to the *organization*.
+
+    To simplify logic that checks permissions, the function will accept
+    *organization* to either be an Organization instance or a ``string``
+    that represents the name of an organization.
+    """
     if not isinstance(organization, Organization):
         organization = Organization.objects.get(name=organization)
 
@@ -73,7 +90,7 @@ def valid_contributor_to_organization(user, organization):
             username = '(none)'
         LOGGER.warning("Skip permission check for %s on organization %s",
                        username, organization.name)
-        return organization
+        return organization, True
 
     try:
         _ = valid_manager_for_organization(user, organization)

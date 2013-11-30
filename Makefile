@@ -16,3 +16,6 @@ initdb:
 	cd $(srcDir) && $(PYTHON) ./manage.py syncdb --noinput
 	cd $(srcDir) && $(PYTHON) ./manage.py loaddata \
 						testsite/fixtures/test_data.json
+
+doc:
+	cd $(srcDir) && sphinx-build -b html ./docs $(PWD)/docs
