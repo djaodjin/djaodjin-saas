@@ -48,11 +48,7 @@ class AgreementDetailView(DetailView):
     def get_context_data(self, **kwargs):
         context = super(AgreementDetailView, self).get_context_data(**kwargs)
         context.update({
-                'page': _read_agreement_file(
-                    context['agreement'].slug,
-                    context={
-                     'site': Organization.objects.get_site(),
-                     'organization': Organization.objects.get_site_owner()})})
+                'page': _read_agreement_file(context['agreement'].slug)})
         return context
 
 
@@ -77,9 +73,14 @@ class SignatureForm(forms.Form):
         forms.Form.__init__(self, data=data, label_suffix='')
 
 
-def _read_agreement_file(slug, context={}):
+def _read_agreement_file(slug, context=None):
+    import markdown
+    if not context:
+        context = {
+            'site': Organization.objects.get_site(),
+            'organization': Organization.objects.get_site_owner()}
     source, name = loader.find_template('saas/agreements/legal_%s.md' % slug)
-    return source.render(Context(context))
+    return markdown.markdown(source.render(Context(context)))
 
 @login_required
 def sign_agreement(request, slug,

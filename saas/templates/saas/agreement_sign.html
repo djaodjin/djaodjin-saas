@@ -1,5 +1,4 @@
 {% extends "base.html" %}
-{% load markup %}
 
 {% block content %}
 <div class="container-fluid">
@@ -9,7 +8,9 @@
   <p>
     Please sign:
   </p>
-  {{page|markdown}}
+  {{page|safe}}{% comment %}
+                  It is ok to use a safe here. We load the .md file from disk.
+               {% endcomment %}
 
   <form class="form-inline" method="post" action="sign?next={{ next }}">
     {{ form.as_ul }}

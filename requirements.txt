@@ -1,4 +1,4 @@
-Django>=1.5.1
+Django>=1.6
 django-durationfield
 djangorestframework>=2.0
 # We need Python Markdown for django.contrib.markup. markdown2 is not enough.
