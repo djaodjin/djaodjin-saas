@@ -147,7 +147,7 @@ class ActivationView(BaseActivationView):
                     activation_key=activation_key)
                 if not profile.activation_key_expired():
                     user = profile.user
-                    if user.password == '!':
+                    if user.password.startswith('!'):
                         messages.info(self.request,
                             _("Please set a password to protect your account."))
                     else:
@@ -165,7 +165,7 @@ class ActivationView(BaseActivationView):
         return False
 
     def get_success_url(self, request, user):
-        if user.password == '!':
+        if user.password.startswith('!'):
             url = reverse('registration_password_confirm',
                           args=(self.activation_key,
                                 self.token_generator.make_token(user)))
