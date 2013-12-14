@@ -17,6 +17,8 @@ setup(
               'saas.urls',
               'saas.views',
               ],
+    package_data={'saas': ['templates/saas/*.html',
+                           'templates/saas/agreements/*']},
     url='https://github.com/djaodjin/saas_framework/',
     license='BSD',
     description='DjaoDjin SaaS implementation',
