@@ -349,6 +349,7 @@ class Plan(models.Model):
     """
     Recurring billing plan
     """
+    name = models.CharField(max_length=50)
     slug = models.SlugField()
     description = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True) # we use created_at by convention in other models.
