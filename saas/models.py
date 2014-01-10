@@ -76,7 +76,8 @@ class OrganizationManager(models.Manager):
             customer.processor_id = backend.create_customer(
                 customer.name, card)
             customer.save()
-            LOGGER.info('Created processor_id #%s', customer.processor_id)
+            LOGGER.info('Created processor_id #%s for %s',
+                        customer.processor_id, customer.name)
         else:
             backend.update_card(customer, card)
 
@@ -298,7 +299,8 @@ class ChargeManager(models.Manager):
                              created_at=created_at, customer=customer,
                              description=descr, last4=last4, exp_date=exp_date)
         if charge:
-            LOGGER.info('Created charge #%s', charge.id)
+            LOGGER.info('Created charge #%s of %d cents to %s',
+                        charge.id, charge.amount, customer.name)
         return charge
 
 

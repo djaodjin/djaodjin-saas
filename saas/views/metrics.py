@@ -25,79 +25,140 @@ import datetime, json, time
 from time import mktime
 from datetime import datetime, date, timedelta
 
-from django.db.models import Sum,Count, Min, Sum, Avg,Max
+from django.db.models.sql.query import RawQuery
+from django.db.models import Count, Min, Sum, Avg, Max
 from django.shortcuts import render_to_response
 from django.views.decorators.http import require_GET
 from django.utils.timezone import utc
-
 from django.contrib.auth.models import User
-
-from django.db.models import Sum,Min,Max
 from django.shortcuts import render, render_to_response
 from django.views.decorators.http import require_GET
-from django.utils.timezone import utc
+from django.core.serializers.json import DjangoJSONEncoder
 
 from saas.decorators import requires_agreement
 from saas.views.auth import valid_manager_for_organization
 from saas.models import Organization, Transaction, NewVisitors
 
 
-def customers_aggregate(organization, first, last, prev_queryset=None):
-    """Returns the number of unique customers between [first, last[ dates
-    from transaction table."""
-    queryset = Transaction.objects.filter(
-        dest_organization=organization,
-        created_at__gt=first, created_at__lt=last).values(
-        'orig_organization')
+def month_periods(nb_months=12, from_date=None):
+    """constructs a list of (nb_months + 1) dates in the past that fall
+    on the first of each month until *from_date* which is the last entry
+    of the list returned."""
+    dates = []
+    if not from_date:
+        from_date = date.today()
+    if isinstance(from_date, basestring):
+        from_date = datetime.strptime(from_date, '%Y-%m')
+    from_date = datetime(day=from_date.day, month=from_date.month,
+                             year=from_date.year, tzinfo=utc)
+    last = from_date
+    dates.append(last)
+    if last.day != 1:
+        last = datetime(day=1, month=last.month, year=last.year, tzinfo=utc)
+        dates.append(last)
+        nb_months = nb_months - 1
+    for index in range(0, nb_months):
+        year = last.year
+        month = last.month - 1
+        if month < 1:
+            year = last.year - month / 12 - 1
+            month = 12 - (month % 12)
+        last = datetime(day=1, month=month, year=year, tzinfo=utc)
+        dates.append(last)
+    dates.reverse()
+    return dates
 
-    if prev_queryset:
-        new_queryset = queryset.exclude(orig_organization=prev_queryset)
-        churn_queryset = prev_queryset.exclude(orig_organization=queryset)
-    else:
-        new_queryset = queryset
-        churn_queryset = Transaction.objects.none()
 
-    return churn_queryset, queryset, new_queryset
-
-
-def aggregate_monthly(organization, query_function):
-    """Returns a table of records over a period of 12 months."""
-    values = []
-    new_values = []
-    churn_values = []
+def aggregate_monthly(organization, account, from_date=None):
+    """Returns a table of records over a period of 12 months *from_date*."""
+    customers = []
+    receivables = []
+    new_customers = []
+    new_receivables = []
+    churn_customers = []
+    churn_receivables = []
     queryset = None
-    today = date.today()
-    # We want to be able to compare *last* to *today* and not get django
+    # We want to be able to compare *last* to *from_date* and not get django
     # warnings because timezones are not specified.
-    today = datetime(
-        day=today.day, month=today.month, year=today.year, tzinfo=utc)
-    first = datetime(
-            day=1, month=today.month, year=today.year - 1, tzinfo=utc)
-    for index in range(0, 12):
-        year = first.year
-        month = first.month + 1
-        if month > 12:
-            year = first.year + month / 12
-            month = month % 12 + 1
-        last =datetime(day=1, month=month, year=year, tzinfo=utc)
-        if last > today:
-            last = today
-        churn_queryset, queryset, new_queryset = query_function(
-            organization, first, last, queryset)
-        period = datetime.strftime(last, '%Y/%m/%d')
-        churn_values += [ (period, churn_queryset.distinct().count()) ]
-        values += [ (period, queryset.distinct().count()) ]
-        new_values += [ (period, new_queryset.distinct().count()) ]
-        first = last
-    return churn_values, values, new_values
+    dates = month_periods(13, from_date)
+    first_date = dates[0]
+    seam_date = dates[1]
+    for last_date in dates[2:]:
+        churn_query = RawQuery(
+"""SELECT COUNT(DISTINCT(prev.dest_organization_id)), SUM(prev.amount)
+       FROM saas_transaction prev
+       LEFT OUTER JOIN (
+         SELECT distinct(dest_organization_id)
+           FROM saas_transaction
+           WHERE created_at >= '%(seam_date)s'
+         AND created_at < '%(last_date)s'
+         AND orig_organization_id = '%(organization_id)s'
+         AND orig_account = '%(account)s') curr
+         ON prev.dest_organization_id = curr.dest_organization_id
+       WHERE prev.created_at >= '%(first_date)s'
+         AND prev.created_at < '%(seam_date)s'
+         AND prev.orig_organization_id = '%(organization_id)s'
+         AND prev.orig_account = '%(account)s'
+         AND curr.dest_organization_id IS NULL""" % {
+                "first_date": first_date,
+                "seam_date": seam_date,
+                "last_date": last_date,
+                "organization_id": organization.id,
+                "account": account }, 'default')
+        churn_customer, churn_receivable = iter(churn_query).next()
+        query_result = Transaction.objects.filter(
+            orig_organization=organization,
+            orig_account=account,
+            created_at__gte=seam_date,
+            created_at__lt=last_date).aggregate(
+            Count('dest_organization', distinct=True),
+            Sum('amount'))
+        customer = query_result['dest_organization__count']
+        receivable = query_result['amount__sum']
+        new_query = RawQuery(
+"""SELECT count(distinct(curr.dest_organization_id)), SUM(curr.amount)
+   FROM saas_transaction curr
+       LEFT OUTER JOIN (
+         SELECT distinct(dest_organization_id)
+           FROM saas_transaction
+           WHERE created_at >= '%(first_date)s'
+         AND created_at < '%(seam_date)s'
+         AND orig_organization_id = '%(organization_id)s'
+         AND orig_account = '%(account)s') prev
+         ON curr.dest_organization_id = prev.dest_organization_id
+       WHERE curr.created_at >= '%(seam_date)s'
+         AND curr.created_at < '%(last_date)s'
+         AND curr.orig_organization_id = '%(organization_id)s'
+         AND curr.orig_account = '%(account)s'
+         AND prev.dest_organization_id IS NULL""" % {
+                "first_date": first_date,
+                "seam_date": seam_date,
+                "last_date": last_date,
+                "organization_id": organization.id,
+                "account": account }, 'default')
+        new_customer, new_receivable = iter(new_query).next()
+        period = last_date
+        churn_customers += [ (period, churn_customer) ]
+        churn_receivables += [ (period, - int(churn_receivable or 0)) ]
+        customers += [ (period, customer) ]
+        receivables += [ (period, int(receivable or 0)) ]
+        new_customers += [ (period, new_customer) ]
+        new_receivables += [ (period, int(new_receivable or 0)) ]
+        first_date = seam_date
+        seam_date = last_date
+    return ((churn_customers, customers, new_customers),
+            (churn_receivables, receivables, new_receivables))
 
 
-@require_GET
-@requires_agreement('terms_of_use')
-def organization_engagement(request, organization_id):
-    organization = valid_manager_for_organization(request.user, organization_id)
-    churned_custs, total_custs, new_custs = aggregate_monthly(
-        organization, customers_aggregate)
+def organization_monthly_revenue_customers(organization, from_date=None):
+    """
+    12 months of total/new/churn income and customers
+    extracted from Transactions.
+    """
+    account = 'Income'
+    customers, incomes = aggregate_monthly(organization, account, from_date)
+    churned_custs, total_custs, new_custs = customers
+    churned_income, total_income, new_income = incomes
     net_new_custs = []
     cust_churn_percent = []
     last_nb_total_custs = 0
@@ -108,28 +169,45 @@ def organization_engagement(request, organization_id):
         net_new_custs += [ (period, nb_new_custs - nb_churned_custs) ]
         if last_nb_total_custs:
             cust_churn_percent += [ (
-                    period, nb_churned_custs * 100 / last_nb_total_custs) ]
+                    period, nb_churned_custs * 100.0 / last_nb_total_custs) ]
         else:
             cust_churn_percent += [ (period, 0) ]
         last_nb_total_custs = nb_total_custs
-    table = [{ "key": "Total # of Customers",
-              "values": total_custs
-              },
-            { "key": "# of new Customers",
-              "values": new_custs
-              },
-            { "key": "# of churned Customers",
-              "values": churned_custs
-              },
-            { "key": "Net New Customers",
-              "values": net_new_custs
-              },
-            { "key": "% Customer Churn",
-              "values": cust_churn_percent
-              },
-            ]
+    table = [ { "key": "Total %s" % account,
+                "values": total_income
+                },
+              { "key": "%s from new Customers" % account,
+                "values": new_income
+                },
+              { "key": "%s from churned Customers" % account,
+                "values": churned_income
+                },
+              { "key": "Total # of Customers",
+                "values": total_custs
+                },
+              { "key": "# of new Customers",
+                "values": new_custs
+                },
+              { "key": "# of churned Customers",
+                "values": churned_custs
+                },
+              { "key": "Net New Customers",
+                "values": net_new_custs
+                },
+              { "key": "% Customer Churn",
+                "values": cust_churn_percent
+                },
+              ]
+    return table
+
+
+@require_GET
+@requires_agreement('terms_of_use')
+def organization_engagement(request, organization_id, from_date=None):
+    organization = valid_manager_for_organization(request.user, organization_id)
+    table = organization_monthly_revenue_customers(organization, from_date)
     context = { "organization": organization, "table": table,
-                "table_json": json.dumps(table)}
+                "table_json": json.dumps(table, cls=DjangoJSONEncoder) }
     return render(request, "saas/engagement.html", context)
 
 @require_GET

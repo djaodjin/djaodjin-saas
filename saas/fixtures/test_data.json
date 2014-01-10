@@ -1,91 +1,6 @@
 [
     {
         "fields": {
-            "name": "saas",
-            "created_at": "2011-08-14T14:18:55-09:00",
-            "email": "saas@site.com",
-            "phone": "555-555-5555",
-            "street_address": "Root organization running the site",
-            "locality":  "San Francisco",
-            "region": "CA",
-            "postal_code": "94102",
-            "country_name": "USA",
-            "is_active": 1,
-            "managers": [ 2 ]
-        },
-        "model": "saas.Organization",
-        "pk": 1
-    },
-    {
-        "fields": {
-            "name": "ABC",
-            "created_at": "2012-08-14T14:18:55-09:00",
-            "email": "abc@example.com",
-            "phone": "555-555-5555",
-            "street_address": "1 ABC loop",
-            "locality":  "San Francisco",
-            "region": "CA",
-            "postal_code": "94102",
-            "country_name": "USA",
-            "is_active": 1,
-            "managers": [ 2 ]
-        },
-        "model": "saas.Organization",
-        "pk": 2
-    },
-    {
-        "fields": {
-            "name": "XYZ",
-            "created_at": "2012-08-14T14:20:55-09:00",
-            "email": "xyz@example.com",
-            "phone": "555-555-5555",
-            "street_address": "1 XYZ loop",
-            "locality":  "San Francisco",
-            "region": "CA",
-            "postal_code": "94102",
-            "country_name": "USA",
-            "is_active": 1,
-            "managers": [ 2 ]
-        },
-        "model": "saas.Organization",
-        "pk": 3
-    },
-    {
-        "fields": {
-            "name": "GHK",
-            "created_at": "2012-08-14T14:18:55-09:00",
-            "email": "dhk@example.com",
-            "phone": "555-555-5555",
-            "street_address": "1 GHK loop",
-            "locality":  "San Francisco",
-            "region": "CA",
-            "postal_code": "94102",
-            "country_name": "USA",
-            "is_active": 1,
-            "managers": [ 2 ]
-        },
-        "model": "saas.Organization",
-        "pk": 4
-    },
-    {
-        "fields": {
-            "name": "EFJ",
-            "created_at": "2012-08-14T14:18:55-09:00",
-            "email": "abc@example.com",
-            "phone": "555-555-5555",
-            "street_address": "1 ABC loop",
-            "locality":  "San Francisco",
-            "region": "CA",
-            "postal_code": "94102",
-            "country_name": "USA",
-            "is_active": 1,
-            "managers": [ 2 ]
-        },
-        "model": "saas.Organization",
-        "pk": 10
-    },
-    {
-        "fields": {
             "created_at": "2012-05-18T00:00:00-09:00",
             "amount": 2800,
             "orig_account": "Usage",
@@ -126,6 +41,8 @@
             "amount": 700,
             "state": 1,
             "customer": 4,
+            "last4": 4242,
+            "exp_date": "2013-05-01",
             "processor": "stripe",
             "processor_id": "charge_1"
         },

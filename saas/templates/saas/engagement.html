@@ -1,4 +1,5 @@
 {% extends "saas/base.html" %}
+{% load metrics %}
 
 {% block content %}
 <section id="transactions">
@@ -8,7 +9,7 @@
       <tr>
         <th></th>
         {% for entry in table.0.values %}
-        <th>{{entry.0}}</th>
+        <th {% if entry.0|is_incomplete_month %}title="ends {{entry.0}}"{% endif %}>{{entry.0|monthly_caption}}</th>
         {% endfor %}
       </tr>
     </thead>
@@ -17,7 +18,7 @@
       <tr>
         <th>{{row.key}}</th>
           {% for values in row.values %}
-          <td>{{values.1}}</td>
+          <td align="right">{{values.1}}</td>
           {% endfor %}
       </tr>
       {% endfor %}

@@ -37,6 +37,6 @@ urlpatterns = patterns(
     url(r'^usage/(?P<organization_id>%s)' % ACCT_REGEX,
         'organization_usage',
         name='saas_organization_usage'),
-    url(r'^(?P<organization_id>%s)' % ACCT_REGEX,
+    url(r'^(?P<organization_id>%s)(/(?P<from_date>\d\d\d\d-\d\d))?' % ACCT_REGEX,
         'organization_engagement', name='saas_metrics_summary'),
 )
