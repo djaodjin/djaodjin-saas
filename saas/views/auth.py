@@ -34,6 +34,20 @@ from saas.settings import SKIP_PERMISSION_CHECK
 
 LOGGER = logging.getLogger(__name__)
 
+def managed_organizations(user):
+    """
+    List of organization this user is a manager for.
+    """
+    queryset = []
+    for org in Organization.objects.all().order_by('name'):
+        try:
+            queryset += [
+                valid_manager_for_organization(user, org)]
+        except PermissionDenied:
+            pass
+    return queryset
+
+
 def valid_manager_for_organization(user, organization):
     """
     Returns *organization* as an Organization instance if *user*

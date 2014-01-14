@@ -46,6 +46,7 @@ from saas.ledger import balance
 from saas.decorators import requires_agreement
 from saas.forms import CreditCardForm, PayNowForm
 from saas.views.auth import valid_manager_for_organization
+from saas.views.auth import managed_organizations
 from saas.models import Organization, Transaction, Charge, CartItem, Coupon
 
 
@@ -158,8 +159,13 @@ class PlaceOrderView(BaseFormView, ListView):
 
     @method_decorator(requires_agreement('terms_of_use'))
     def dispatch(self, *args, **kwargs):
+        organization = self.kwargs.get('organization')
+        if not organization:
+            organizations = managed_organizations(self.request.user)
+            if len(organizations) == 1:
+                organization = organizations[0]
         self.customer = valid_manager_for_organization(
-            self.request.user, self.kwargs.get('organization_id'))
+            self.request.user, organization)
         return super(PlaceOrderView, self).dispatch(*args, **kwargs)
 
     def get_context_data(self, **kwargs):

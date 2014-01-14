@@ -40,6 +40,7 @@ from saas.ledger import balance
 from saas.forms import UserRelationForm
 from saas.models import Organization
 from saas.views.auth import valid_manager_for_organization
+from saas.views.auth import managed_organizations
 import saas.backends as backend
 from saas.decorators import requires_agreement
 
@@ -53,14 +54,7 @@ class OrganizationListView(ListView):
     template_name = 'saas/organization_list.html'
 
     def get_queryset(self):
-        queryset = []
-        for org in Organization.objects.all().order_by('name'):
-            try:
-                queryset += [
-                    valid_manager_for_organization(self.request.user, org)]
-            except PermissionDenied:
-                pass
-        return queryset
+        return managed_organization(self.request.user)
 
     @method_decorator(requires_agreement('terms_of_use'))
     def dispatch(self, *args, **kwargs):

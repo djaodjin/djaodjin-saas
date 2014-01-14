@@ -1,4 +1,4 @@
-# Copyright (c) 2013, Fortylines LLC
+# Copyright (c) 2014, Fortylines LLC
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -35,13 +35,17 @@ urlpatterns = patterns(
         'organization_remove_managers', name='saas_remove_managers'),
     url(r'^managers/(?P<organization_id>%s)/add' % ACCT_REGEX,
         'organization_add_managers', name='saas_add_managers'),
+#    url(r'^managers/(?P<organization_id>%s)/$' % ACCT_REGEX,
+#        'organization_list_managers', name='saas_list_managers'),
     url(r'^contributors/(?P<organization_id>%s)/remove' % ACCT_REGEX,
         'organization_remove_contributors', name='saas_remove_contributors'),
     url(r'^contributors/(?P<organization_id>%s)/add' % ACCT_REGEX,
         'organization_add_contributors', name='saas_add_contributors'),
-    url(r'^(?P<organization_id>%s)' % ACCT_REGEX,
-        'organization_profile', name='saas_organization_profile'),
-    url(r'^$',
-        OrganizationListView.as_view(), name='saas_organization_list'),
+#    url(r'^contributors/(?P<organization_id>%s)/$' % ACCT_REGEX,
+#        'organization_list_contributors', name='saas_list_contributors'),
+     url(r'^(?P<organization_id>%s)' % ACCT_REGEX,
+         'organization_profile', name='saas_organization_profile'),
+     url(r'^$',
+         OrganizationListView.as_view(), name='saas_organization_list'),
 )
 
