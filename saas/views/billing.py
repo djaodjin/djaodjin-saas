@@ -159,7 +159,7 @@ class PlaceOrderView(BaseFormView, ListView):
 
     @method_decorator(requires_agreement('terms_of_use'))
     def dispatch(self, *args, **kwargs):
-        organization = self.kwargs.get('organization')
+        organization = self.kwargs.get('organization_id')
         if not organization:
             organizations = managed_organizations(self.request.user)
             if len(organizations) == 1:

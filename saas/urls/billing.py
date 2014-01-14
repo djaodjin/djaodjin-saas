@@ -37,7 +37,7 @@ urlpatterns = patterns(
         update_card, name='saas_update_card'),
     url(r'^(?P<organization_id>%s)/balance/pay/' % ACCT_REGEX,
         pay_now, name='saas_pay_now'),
-    url(r'^cart/(?P<organization>%s)?' % ACCT_REGEX,
+    url(r'^cart/(?P<organization_id>%s)?' % ACCT_REGEX,
         PlaceOrderView.as_view(), name='saas_pay_cart'),
     url(r'^(?P<organization_id>%s)/coupon/redeem/' % ACCT_REGEX,
         redeem_coupon, name='saas_redeem_coupon'),
