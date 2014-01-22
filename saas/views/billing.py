@@ -43,10 +43,8 @@ from django.shortcuts import render, redirect, get_object_or_404
 import saas.backends as backend
 import saas.settings as settings
 from saas.ledger import balance
-from saas.decorators import requires_agreement
 from saas.forms import CreditCardForm, PayNowForm
-from saas.views.auth import valid_manager_for_organization
-from saas.views.auth import managed_organizations
+from saas.views.auth import managed_organizations, valid_manager_for_organization
 from saas.models import Organization, Transaction, Charge, CartItem, Coupon
 
 
@@ -68,10 +66,8 @@ class TransactionListView(ListView):
         ).order_by('created_at')
         return queryset
 
-    @method_decorator(requires_agreement('terms_of_use'))
     def dispatch(self, *args, **kwargs):
-        self.customer = valid_manager_for_organization(
-            self.request.user, self.kwargs.get('organization_id'))
+        self.customer = kwargs.get('organization')
         return super(TransactionListView, self).dispatch(*args, **kwargs)
 
     def get_context_data(self, **kwargs):
@@ -132,7 +128,6 @@ class PlaceOrderView(BaseFormView, ListView):
                       _("Your order has been processed. Thank you!"))
         return reverse('saas_organization_profile', args=(self.customer,))
 
-
     def amounts(self, cart, coupons):
         discount_amount = 0
         total_amount = 0
@@ -157,9 +152,8 @@ class PlaceOrderView(BaseFormView, ListView):
         queryset = self.get_invoicables()
         return queryset
 
-    @method_decorator(requires_agreement('terms_of_use'))
     def dispatch(self, *args, **kwargs):
-        organization = self.kwargs.get('organization_id')
+        organization = kwargs.get('organization')
         if not organization:
             organizations = managed_organizations(self.request.user)
             if len(organizations) == 1:
@@ -213,10 +207,6 @@ class ChargeReceiptView(DetailView):
             raise PermissionDenied
         return queryset
 
-    @method_decorator(requires_agreement('terms_of_use'))
-    def dispatch(self, *args, **kwargs):
-        return super(ChargeReceiptView, self).dispatch(*args, **kwargs)
-
     def get_context_data(self, **kwargs):
         context = super(ChargeReceiptView, self).get_context_data(**kwargs)
         context.update({'last4': self.object.last4,
@@ -227,12 +217,10 @@ class ChargeReceiptView(DetailView):
         return context
 
 
-@requires_agreement('terms_of_use')
-def pay_now(request, organization_id):
-    context = { 'user': request.user }
+def pay_now(request, organization):
+    context = { 'user': request.user,
+                'organization': organization }
     context.update(csrf(request))
-    customer = valid_manager_for_organization(request.user, organization_id)
-    context.update({'organization': customer })
     balance_dues = balance(customer)
     if balance_dues < 0:
         balance_credits = - balance_dues
@@ -274,32 +262,28 @@ class RedeemCouponForm(forms.Form):
     """Form used to redeem a coupon."""
     code = forms.CharField(widget=forms.TextInput(attrs={'class':'form-control'}))
 
-@requires_agreement('terms_of_use')
-def redeem_coupon(request, organization_id):
+def redeem_coupon(request, organization):
     """Adds a coupon to the user cart."""
-    context = { 'user': request.user }
+    context = { 'user': request.user,
+                'organization': organization }
     context.update(csrf(request))
-    customer = valid_manager_for_organization(request.user, organization_id)
-    context.update({ 'organization': customer })
     if request.method == 'POST':
         form = RedeemCouponForm(request.POST)
         if form.is_valid():
             coupon = get_object_or_404(Coupon, code=form.cleaned_data['code'])
             coupon.user = request.user
-            coupon.customer = customer
+            coupon.customer = organization
             coupon.save()
         else:
             # XXX on error find a way to get a message back to User.
             pass
-    return redirect(reverse('saas_pay_cart', args=(customer.name,)))
+    return redirect(reverse('saas_pay_cart', args=(organization.name,)))
 
 
-@requires_agreement('terms_of_use')
-def update_card(request, organization_id):
-    context = { 'user': request.user }
+def update_card(request, organization):
+    context = { 'user': request.user,
+                'organization': organization }
     context.update(csrf(request))
-    customer = valid_manager_for_organization(request.user, organization_id)
-    context.update({ 'organization': customer })
     if request.method == 'POST':
         form = CreditCardForm(request.POST)
         if form.is_valid():
@@ -307,13 +291,14 @@ def update_card(request, organization_id):
             stripe_token = form.cleaned_data['stripeToken']
             # With Stripe, we don't need to wait on an IPN. We get
             # a card token here.
-            Organization.objects.associate_processor(customer, stripe_token)
+            Organization.objects.associate_processor(organization, stripe_token)
             email = None
-            if customer.managers.count() > 0:
-                email = customer.managers.all()[0].email
+            if organization.managers.count() > 0:
+                email = organization.managers.all()[0].email
             messages.success(request,
                 "Your credit card on file was sucessfully updated")
-            return redirect(reverse('saas_billing_info', args=(customer.name,)))
+            return redirect(reverse('saas_billing_info',
+                                    args=(organization.name,)))
         else:
             messages.error(request, "The form did not validates")
     else:

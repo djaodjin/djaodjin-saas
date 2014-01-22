@@ -30,7 +30,7 @@ import datetime, logging
 
 from django.db import models
 from django.utils.timezone import utc
-from django.contrib.auth.models import User
+from django.contrib.auth import get_user_model
 from django.contrib.sites.models import Site
 from django.utils.translation import ugettext_lazy as _
 from durationfield.db.models.fields.duration import DurationField
@@ -39,6 +39,8 @@ from saas.settings import (MANAGER_RELATION, CONTRIBUTOR_RELATION,
                            SITE_ID, CREDIT_ON_CREATE)
 
 LOGGER = logging.getLogger(__name__)
+
+UserModel = get_user_model()
 
 class OrganizationManager(models.Manager):
 
@@ -99,6 +101,18 @@ class OrganizationManager(models.Manager):
     def get_site_owner(self):
         return self.get(pk=SITE_ID)
 
+    def find_contributed(self, user):
+        """
+        Returns a QuerySet of Organziation for which the user is a contributor.
+        """
+        return self.filter(contributors=user)
+
+    def find_managed(self, user):
+        """
+        Returns a QuerySet of Organziation for which the user is a manager.
+        """
+        return self.filter(managers=user)
+
 
 class Organization(models.Model):
     """
@@ -126,16 +140,16 @@ class Organization(models.Model):
 
     belongs = models.ForeignKey('Organization', null=True)
     if MANAGER_RELATION:
-        managers = models.ManyToManyField(User, related_name='manages',
+        managers = models.ManyToManyField(UserModel, related_name='manages',
                                           through=MANAGER_RELATION)
     else:
-        managers = models.ManyToManyField(User, related_name='manages')
+        managers = models.ManyToManyField(UserModel, related_name='manages')
 
     if CONTRIBUTOR_RELATION:
-        contributors = models.ManyToManyField(User, related_name='contributes',
+        contributors = models.ManyToManyField(UserModel, related_name='contributes',
                                               through=CONTRIBUTOR_RELATION)
     else:
-        contributors = models.ManyToManyField(User, related_name='contributes')
+        contributors = models.ManyToManyField(UserModel, related_name='contributes')
 
     # Payment Processing
     # We could support multiple payment processors at the same time by
@@ -190,7 +204,7 @@ class Signature(models.Model):
 
     last_signed = models.DateTimeField(auto_now_add=True)
     agreement = models.ForeignKey(Agreement)
-    user = models.ForeignKey(User)
+    user = models.ForeignKey(UserModel)
     class Meta:
         unique_together = ('agreement', 'user')
 
@@ -239,7 +253,7 @@ class CartItem(models.Model):
     """
     objects = CartItemManager()
 
-    user = models.ForeignKey(User)
+    user = models.ForeignKey(UserModel)
     customer = models.ForeignKey(Organization)
     created_at = models.DateTimeField(auto_now_add=True)
     subscription = models.ForeignKey('Plan')
@@ -335,12 +349,11 @@ class Charge(models.Model):
     state = models.SmallIntegerField(choices=CHARGE_STATES, default=CREATED)
 
 
-
 class Coupon(models.Model):
     """
     Coupons are used on invoiced to give a rebate to a customer.
     """
-    user = models.ForeignKey(User, null=True)
+    user = models.ForeignKey(UserModel, null=True)
     customer = models.ForeignKey(Organization, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     code = models.SlugField(primary_key=True, db_index=True)
@@ -357,10 +370,10 @@ class Plan(models.Model):
     created_at = models.DateTimeField(auto_now_add=True) # we use created_at by convention in other models.
     discontinued_at = models.DateTimeField(null=True,blank=True)
     organization = models.ForeignKey(Organization)
-    # initial
-    setup_amount = models.IntegerField()
-    # recurring
-    amount = models.IntegerField()
+    setup_amount = models.IntegerField(default=0,
+        help_text=_('One-time charge amount in cents.'))
+    amount = models.IntegerField(default=0,
+        help_text=_('Recurring amount in cents.'))
     interval = DurationField(default=datetime.timedelta(days=30))
     # end game
     length = models.IntegerField(null=True,blank=True) # in intervals/periods

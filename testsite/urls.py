@@ -22,8 +22,10 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from django.conf.urls import patterns, include, url
+from urldecorators import patterns, include, url
 from django.views.generic import TemplateView
+
+from saas.views.profile import OrganizationListView
 
 # Uncomment the next two lines to enable the admin:
 from django.contrib import admin
@@ -35,6 +37,16 @@ urlpatterns = patterns('',
     url(r'^admin/', include(admin.site.urls)),
 
     url(r'^accounts/', include('django.contrib.auth.urls')),
-    url(r'^saas/', include('saas.urls')),
+    url(r'^saas/$',
+        OrganizationListView.as_view(), name='saas_organization_list',
+        decorators = ['django.contrib.auth.decorators.login_required']),
+    url(r'^saas/metrics/general/', 'saas.views.metrics.organization_overall',
+        name='saas_metrics_overall'),
+    url(r'^saas/metrics/stats/', 'saas.views.metrics.statistic',
+        name='saas_metrics_stats'),
+    url(r'^legal/', include('saas.urls.legal')),
+    url(r'^processor/', include('saas.backends.urls')),
+    url(r'^saas/', include('saas.urls'),
+        decorators = ['saas.decorators.requires_manager']),
     url(r'^$',TemplateView.as_view(template_name='index.html'), name='home'),
 )

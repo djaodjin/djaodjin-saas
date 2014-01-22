@@ -26,11 +26,19 @@
 
 from django.conf.urls import patterns, include, url
 
+from saas.views.billing import PlaceOrderView
+from saas.settings import ACCT_REGEX
+
 urlpatterns = patterns(
     'saas.views',
-    url(r'^billing/', include('saas.urls.billing')),
-    url(r'^legal/', include('saas.urls.legal')),
-    url(r'^metrics/', include('saas.urls.metrics')),
-    url(r'^', include('saas.urls.profile')),
+# XXX Allow carts before sign-in
+#    url(r'^billing/cart/',
+#        PlaceOrderView.as_view(), name='saas_pay_cart'),
+    url(r'^billing/(?P<organization>%s)/' % ACCT_REGEX,
+        include('saas.urls.billing')),
+    url(r'^metrics/(?P<organization>%s)/' % ACCT_REGEX,
+        include('saas.urls.metrics')),
+    url(r'^(?P<organization>%s)/' % ACCT_REGEX,
+        include('saas.urls.profile')),
 )
 

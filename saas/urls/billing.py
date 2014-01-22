@@ -28,24 +28,16 @@ from django.conf.urls import patterns, include, url
 
 from saas.views.billing import (PlaceOrderView, ChargeReceiptView,
     TransactionListView, redeem_coupon, update_card, pay_now)
-from saas.settings import ACCT_REGEX
 
 urlpatterns = patterns(
     'saas.views.billing',
-    url(r'^processor/', include('saas.backends.urls')),
-    url(r'^(?P<organization_id>%s)/card' % ACCT_REGEX,
-        update_card, name='saas_update_card'),
-    url(r'^(?P<organization_id>%s)/balance/pay/' % ACCT_REGEX,
-        pay_now, name='saas_pay_now'),
-    url(r'^cart/(?P<organization_id>%s)?' % ACCT_REGEX,
-        PlaceOrderView.as_view(), name='saas_pay_cart'),
-    url(r'^(?P<organization_id>%s)/coupon/redeem/' % ACCT_REGEX,
-        redeem_coupon, name='saas_redeem_coupon'),
-    url(r'^(?P<organization_id>%s)/receipt/(?P<charge>[a-zA-Z0-9_]+)'
-        % ACCT_REGEX,
+    url(r'^card', update_card, name='saas_update_card'),
+    url(r'^balance/pay/', pay_now, name='saas_pay_now'),
+    url(r'^cart/', PlaceOrderView.as_view(), name='saas_organization_cart'),
+    url(r'^coupon/redeem/', redeem_coupon, name='saas_redeem_coupon'),
+    url(r'^receipt/(?P<charge>[a-zA-Z0-9_]+)',
         ChargeReceiptView.as_view(), name='saas_charge_receipt'),
-    url(r'^(?P<organization_id>%s)' % ACCT_REGEX,
-        TransactionListView.as_view(), name='saas_billing_info'),
+    url(r'^$', TransactionListView.as_view(), name='saas_billing_info'),
 )
 
 

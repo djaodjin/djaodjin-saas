@@ -30,14 +30,12 @@ from django.db.models import Count, Min, Sum, Avg, Max
 from django.shortcuts import render_to_response
 from django.views.decorators.http import require_GET
 from django.utils.timezone import utc
-from django.contrib.auth.models import User
 from django.shortcuts import render, render_to_response
 from django.views.decorators.http import require_GET
 from django.core.serializers.json import DjangoJSONEncoder
 
-from saas.decorators import requires_agreement
 from saas.views.auth import valid_manager_for_organization
-from saas.models import Organization, Transaction, NewVisitors
+from saas.models import Organization, Transaction, NewVisitors, UserModel
 
 
 def month_periods(nb_months=12, from_date=None):
@@ -202,7 +200,6 @@ def organization_monthly_revenue_customers(organization, from_date=None):
 
 
 @require_GET
-@requires_agreement('terms_of_use')
 def organization_engagement(request, organization_id, from_date=None):
     organization = valid_manager_for_organization(request.user, organization_id)
     table = organization_monthly_revenue_customers(organization, from_date)
@@ -211,7 +208,6 @@ def organization_engagement(request, organization_id, from_date=None):
     return render(request, "saas/engagement.html", context)
 
 @require_GET
-@requires_agreement('terms_of_use')
 def organization_usage(request, organization_id):
     organization = valid_manager_for_organization(request.user, organization_id)
 
@@ -243,7 +239,6 @@ def organization_usage(request, organization_id):
 
 
 @require_GET
-@requires_agreement('terms_of_use')
 def organization_overall(request):
     
     organizations = Organization.objects.all()
@@ -277,7 +272,6 @@ def organization_overall(request):
 
 
 @require_GET
-@requires_agreement('terms_of_use')
 def statistic(request):
     # New vistor analyse
     newvisitor = NewVisitors.objects.all()
@@ -319,7 +313,7 @@ def statistic(request):
 
     ########################################################
     # Conversion visitors to trial
-    user = User.objects.all()
+    user = UserModel.objects.all()
     date_joined_username =[]
     for us in user:
         if datetime.strftime(us.date_joined,"%Y/%m/%d")> datetime.strftime(Min_date,"%Y/%m/%d") and  datetime.strftime(us.date_joined,"%Y/%m/%d")< datetime.strftime(Max_date,"%Y/%m/%d"):
@@ -339,8 +333,8 @@ def statistic(request):
     for t in user_per_joined_date.keys():
         trial +=[{"x":t, "y":len(user_per_joined_date[t])}]
 
-    Min_date_trial = User.objects.all().aggregate(Min('date_joined'))
-    Max_date_trial = User.objects.all().aggregate(Max('date_joined'))
+    Min_date_trial = UserModel.objects.all().aggregate(Min('date_joined'))
+    Max_date_trial = UserModel.objects.all().aggregate(Max('date_joined'))
 
     Min_date_trial = Min_date_trial.get('date_joined__min',0)
     Max_date_trial = Max_date_trial.get('date_joined__max',0)

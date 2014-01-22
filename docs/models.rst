@@ -27,6 +27,9 @@ with the explicit permissions to:
 Implementation Pointers
 -----------------------
 
+.. automodule:: saas.decorators
+   :members:
+
 The function that check User/Organization permissions are implemented
 in views/auth.py. They include:
 

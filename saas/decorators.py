@@ -22,8 +22,14 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-"""Description of decorators that check a User a accepted specific
-agreements."""
+"""
+We used to decorate the saas views with the "appropriate" decorators
+except in many projects appropriate had a different meaning.
+
+It turns out that the access control logic is better left to be configured
+in the site URLConf through extensions like https://github.com/mila/django-urldecorators.
+This is not only more flexible but also make security audits a lot easier.
+"""
 
 import logging, urlparse
 
@@ -37,9 +43,10 @@ from django.utils.translation import ugettext_lazy as _
 from django.contrib.sites.models import RequestSite, Site
 from django.contrib.auth import REDIRECT_FIELD_NAME
 from django.template.loader import render_to_string
-from registration.models import RegistrationProfile
+from django.core.exceptions import PermissionDenied
 
 from saas.models import Signature
+from saas.views.auth import valid_manager_for_organization
 
 LOGGER = logging.getLogger(__name__)
 
@@ -61,86 +68,9 @@ def _insert_url(request, redirect_field_name=REDIRECT_FIELD_NAME,
     return redirect_to_login(path, inserted_url, redirect_field_name)
 
 
-def _send_activation_email(registration_profile, site,
-                           next_url=None,
-                           redirect_field_name=REDIRECT_FIELD_NAME):
-    """
-    Send an activation email to the user associated
-    with a ``RegistrationProfile``.
-
-    The activation email embed a link to the activation url
-    and a redirect to the page the activation email was sent
-    from so that the user stays on her workflow once activation
-    is completed.
-    """
-    context = {'activation_key': registration_profile.activation_key,
-               'expiration_days': settings.ACCOUNT_ACTIVATION_DAYS,
-               'site': site,
-               REDIRECT_FIELD_NAME: next_url }
-    subject = render_to_string(
-        'registration/activation_email_subject.txt', context)
-    # Email subject *must not* contain newlines
-    subject = ''.join(subject.splitlines())
-    message = render_to_string('registration/activation_email.txt', context)
-    registration_profile.user.email_user(
-        subject, message, settings.DEFAULT_FROM_EMAIL)
-
-
-# The user we are looking to activate might be different from
-# the request.user (which can be Anonymous)
-def check_user_active(request, user,
-                      redirect_field_name=REDIRECT_FIELD_NAME,
-                      login_url=None):
-    """
-    Checks that the user is active. We won't activate the account of
-    a user until we checked the email address is valid.
-    """
-    if not user.is_active:
-        # Let's send e-mail again.
-        try:
-            registration_profile = RegistrationProfile.objects.get(
-                user=user)
-        except RegistrationProfile.DoesNotExist:
-            # We might have corrupted the db by removing profiles
-            # for inactive users. Let's just fix that here.
-            registration_profile = \
-                RegistrationProfile.objects.create_profile(user)
-        if (registration_profile.activation_key
-            != RegistrationProfile.ACTIVATED):
-            if Site._meta.installed:
-                site = Site.objects.get_current()
-            else:
-                site = RequestSite(request)
-            _send_activation_email(
-                registration_profile, site,
-                next_url=request.META['PATH_INFO'],
-                redirect_field_name=REDIRECT_FIELD_NAME)
-            messages.info(
-                request, _("A email has been sent to you with the "\
-                           "steps to secure and activate your account."))
-            return False
-    return True
-
-
-def active_required(redirect_field_name=REDIRECT_FIELD_NAME, login_url=None):
-    """
-    Decorator for views that checks that the user is active. We won't
-    activate the account of a user until we checked the email address
-    is valid.
-    """
-    def decorator(view_func):
-        @wraps(view_func, assigned=available_attrs(view_func))
-        def _wrapped_view(request, *args, **kwargs):
-            if request.is_authenticated():
-                if check_user_active(request, request.user):
-                    return view_func(request, *args, **kwargs)
-            return _insert_url(request, redirect_field_name,
-                               login_url or settings.LOGIN_URL)
-        return _wrapped_view
-    return decorator
-
-
-def requires_agreement(agreement, redirect_field_name=REDIRECT_FIELD_NAME,
+def requires_agreement(function=None,
+                       agreement='terms_of_use',
+                       redirect_field_name=REDIRECT_FIELD_NAME,
                        login_url=None):
     """
     Decorator for views that checks that the user has signed a particular
@@ -151,18 +81,38 @@ def requires_agreement(agreement, redirect_field_name=REDIRECT_FIELD_NAME,
         @wraps(view_func, assigned=available_attrs(view_func))
         def _wrapped_view(request, *args, **kwargs):
             if request.user.is_authenticated():
-                if check_user_active(request, request.user):
-                    # Check signature of the legal agreement
-                    if Signature.objects.has_been_accepted(
-                        agreement=agreement, user=request.user):
-                        return view_func(request, *args, **kwargs)
-                    return _insert_url(request, redirect_field_name,
-                        reverse('legal_sign_agreement',
-                                kwargs={'slug': agreement}))
-                else:
-                    # User is logged in but her email has not been verified yet.
-                    auth_logout(request)
+                # Check signature of the legal agreement
+                if Signature.objects.has_been_accepted(
+                    agreement=agreement, user=request.user):
+                    return view_func(request, *args, **kwargs)
+                return _insert_url(request, redirect_field_name,
+                                   reverse('legal_sign_agreement',
+                                           kwargs={'slug': agreement}))
             return _insert_url(request, redirect_field_name,
                 login_url or settings.LOGIN_URL)
         return _wrapped_view
+
+    if function:
+        return decorator(function)
+    return decorator
+
+
+def requires_manager(function=None):
+    """
+    Decorator for views that checks that the user is a manager
+    for the organization.
+    """
+    def decorator(view_func):
+        @wraps(view_func, assigned=available_attrs(view_func))
+        def _wrapped_view(request, organization, *args, **kwargs):
+            organization = valid_manager_for_organization(
+                request.user, organization)
+            if organization:
+                return view_func(
+                    request, organization=organization, *args, **kwargs)
+            raise PermissionDenied
+        return _wrapped_view
+
+    if function:
+        return decorator(function)
     return decorator

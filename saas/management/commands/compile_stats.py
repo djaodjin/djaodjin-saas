@@ -27,9 +27,8 @@
 import datetime, sys
 
 from django.core.management.base import NoArgsCommand
-from django.contrib.auth.models import User
 
-from saas.models import Organization
+from saas.models import Organization, UserModel
 
 class Command(NoArgsCommand):
     """Daily usage for the service"""
@@ -39,7 +38,8 @@ class Command(NoArgsCommand):
         end_period = datetime.datetime.now()
         start_period = end_period - datetime.timedelta(days=30)
         sys.stdout.write('from %s to %s\n' % (start_period, end_period))
-        for user in User.objects.filter(date_joined__gt=start_period):
+        for user in UserModel.objects.filter(
+            date_joined__gt=start_period):
             sys.stdout.write('%s %s %s\n' % (str(user.date_joined),
                 user.username, user.email))
 

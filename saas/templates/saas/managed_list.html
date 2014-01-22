@@ -1,0 +1,5 @@
+{% extends "saas/base.html" %}
+
+{% block content %}
+{% include "saas/organization_list.html" with title="managed" organizations=organizations %}
+{% endblock %}

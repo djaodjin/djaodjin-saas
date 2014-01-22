@@ -26,26 +26,26 @@
 
 from django.conf.urls import patterns, include, url
 
-from saas.views.profile import OrganizationListView, organization_profile
-from saas.settings import ACCT_REGEX
+from saas.views.profile import (
+    ContributorListView, ManagerListView, SubscriberListView)
 
 urlpatterns = patterns(
     'saas.views.profile',
-    url(r'^managers/(?P<organization_id>%s)/remove' % ACCT_REGEX,
-        'organization_remove_managers', name='saas_remove_managers'),
-    url(r'^managers/(?P<organization_id>%s)/add' % ACCT_REGEX,
-        'organization_add_managers', name='saas_add_managers'),
-#    url(r'^managers/(?P<organization_id>%s)/$' % ACCT_REGEX,
-#        'organization_list_managers', name='saas_list_managers'),
-    url(r'^contributors/(?P<organization_id>%s)/remove' % ACCT_REGEX,
-        'organization_remove_contributors', name='saas_remove_contributors'),
-    url(r'^contributors/(?P<organization_id>%s)/add' % ACCT_REGEX,
+    url(r'^contributors/add',
         'organization_add_contributors', name='saas_add_contributors'),
-#    url(r'^contributors/(?P<organization_id>%s)/$' % ACCT_REGEX,
-#        'organization_list_contributors', name='saas_list_contributors'),
-     url(r'^(?P<organization_id>%s)' % ACCT_REGEX,
-         'organization_profile', name='saas_organization_profile'),
-     url(r'^$',
-         OrganizationListView.as_view(), name='saas_organization_list'),
+    url(r'^contributors/remove',
+        'organization_remove_contributors', name='saas_remove_contributors'),
+    url(r'^contributors/',
+        ContributorListView.as_view(), name='saas_contributor_list'),
+    url(r'^managers/add',
+        'organization_add_managers', name='saas_add_managers'),
+    url(r'^managers/remove',
+        'organization_remove_managers', name='saas_remove_managers'),
+    url(r'^managers/',
+        ManagerListView.as_view(), name='saas_manager_list'),
+    url(r'^subscribers/',
+        SubscriberListView.as_view(), name='saas_subscriber_list'),
+    url(r'^$',
+        'organization_profile', name='saas_organization_profile'),
 )
 
