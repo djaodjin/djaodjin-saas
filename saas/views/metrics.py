@@ -200,16 +200,15 @@ def organization_monthly_revenue_customers(organization, from_date=None):
 
 
 @require_GET
-def organization_engagement(request, organization_id, from_date=None):
-    organization = valid_manager_for_organization(request.user, organization_id)
+def organization_engagement(request, organization, from_date=None):
     table = organization_monthly_revenue_customers(organization, from_date)
     context = { "organization": organization, "table": table,
                 "table_json": json.dumps(table, cls=DjangoJSONEncoder) }
     return render(request, "saas/engagement.html", context)
 
 @require_GET
-def organization_usage(request, organization_id):
-    organization = valid_manager_for_organization(request.user, organization_id)
+def organization_usage(request, organization):
+    organization = valid_manager_for_organization(request.user, organization)
 
     # Note: There is a way to get the result in a single SQL statement
     # but that requires to deal with differences in database backends
@@ -234,7 +233,7 @@ def organization_usage(request, organization_id):
         end = first - timedelta(days=1)
     context = {
         'data': [{ "key": "Usage",
-                 "values": values }],"organization_id":organization_id}
+                 "values": values }],"organization_id":organization.name}
     return render(request, "saas/usage_chart.html", context)
 
 

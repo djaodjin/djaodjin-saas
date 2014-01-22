@@ -76,7 +76,8 @@ class ContributorListView(ListView):
 
     def get_context_data(self, **kwargs):
         context = super(ContributorListView, self).get_context_data(**kwargs)
-        context.update({'contributors': context['object_list']})
+        context.update({'organization': self.organization,
+                        'contributors': context['object_list']})
         return context
 
 
@@ -87,7 +88,7 @@ class ManagerListView(ListView):
     template_name = 'saas/manager_list.html'
 
     def get_queryset(self):
-        return self.organization.managers
+        return self.organization.managers.all()
 
     def dispatch(self, *args, **kwargs):
         self.organization = kwargs.get('organization')
@@ -95,7 +96,8 @@ class ManagerListView(ListView):
 
     def get_context_data(self, **kwargs):
         context = super(ManagerListView, self).get_context_data(**kwargs)
-        context.update({'managers': context['object_list']})
+        context.update({'organization': self.organization,
+                        'managers': context['object_list']})
         return context
 
 
@@ -117,7 +119,8 @@ class SubscriberListView(ListView):
 
     def get_context_data(self, **kwargs):
         context = super(SubscriberListView, self).get_context_data(**kwargs)
-        context.update({'subscribers': context['object_list']})
+        context.update({'organization': self.organization,
+                        'subscribers': context['object_list']})
         return context
 
 
