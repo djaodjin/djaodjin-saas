@@ -114,6 +114,29 @@ class OrganizationManager(models.Manager):
         return self.filter(managers=user)
 
 
+class Organization_Managers(models.Model):
+    organization = models.ForeignKey('Organization')
+    user = models.ForeignKey(UserModel, db_column='user_id')
+
+    class Meta:
+        unique_together = ('organization', 'user')
+
+
+if not MANAGER_RELATION:
+    MANAGER_RELATION = Organization_Managers
+
+class Organization_Contributors(models.Model):
+    organization = models.ForeignKey('Organization')
+    user = models.ForeignKey(UserModel, db_column='user_id')
+
+    class Meta:
+        unique_together = ('organization', 'user')
+
+
+if not CONTRIBUTOR_RELATION:
+    CONTRIBUTOR_RELATION = Organization_Contributors
+
+
 class Organization(models.Model):
     """
     The Organization table stores information about who gets
@@ -139,17 +162,11 @@ class Organization(models.Model):
     country_name = models.CharField(max_length=75)
 
     belongs = models.ForeignKey('Organization', null=True)
-    if MANAGER_RELATION:
-        managers = models.ManyToManyField(UserModel, related_name='manages',
-                                          through=MANAGER_RELATION)
-    else:
-        managers = models.ManyToManyField(UserModel, related_name='manages')
+    managers = models.ManyToManyField(UserModel,
+        related_name='manages', through=MANAGER_RELATION)
 
-    if CONTRIBUTOR_RELATION:
-        contributors = models.ManyToManyField(UserModel, related_name='contributes',
-                                              through=CONTRIBUTOR_RELATION)
-    else:
-        contributors = models.ManyToManyField(UserModel, related_name='contributes')
+    contributors = models.ManyToManyField(UserModel,
+        related_name='contributes', through=CONTRIBUTOR_RELATION)
 
     # Payment Processing
     # We could support multiple payment processors at the same time by
@@ -204,7 +221,7 @@ class Signature(models.Model):
 
     last_signed = models.DateTimeField(auto_now_add=True)
     agreement = models.ForeignKey(Agreement)
-    user = models.ForeignKey(UserModel)
+    user = models.ForeignKey(UserModel, db_column='user_id')
     class Meta:
         unique_together = ('agreement', 'user')
 
@@ -253,7 +270,7 @@ class CartItem(models.Model):
     """
     objects = CartItemManager()
 
-    user = models.ForeignKey(UserModel)
+    user = models.ForeignKey(UserModel, db_column='user_id')
     customer = models.ForeignKey(Organization)
     created_at = models.DateTimeField(auto_now_add=True)
     subscription = models.ForeignKey('Plan')
@@ -353,7 +370,7 @@ class Coupon(models.Model):
     """
     Coupons are used on invoiced to give a rebate to a customer.
     """
-    user = models.ForeignKey(UserModel, null=True)
+    user = models.ForeignKey(UserModel, db_column='user_id', null=True)
     customer = models.ForeignKey(Organization, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     code = models.SlugField(primary_key=True, db_index=True)
