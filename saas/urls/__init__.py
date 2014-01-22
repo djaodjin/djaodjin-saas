@@ -38,7 +38,7 @@ urlpatterns = patterns(
         include('saas.urls.billing')),
     url(r'^metrics/(?P<organization>%s)/' % ACCT_REGEX,
         include('saas.urls.metrics')),
-    url(r'^(?P<organization>%s)/' % ACCT_REGEX,
+    url(r'^profile/(?P<organization>%s)/' % ACCT_REGEX,
         include('saas.urls.profile')),
 )
 
