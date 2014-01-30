@@ -1,4 +1,4 @@
-# Copyright (c) 2013, The DjaoDjin Team
+# Copyright (c) 2014, The DjaoDjin Team
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -30,17 +30,16 @@ import datetime, logging
 
 from django.db import models
 from django.utils.timezone import utc
-from django.contrib.auth import get_user_model
 from django.contrib.sites.models import Site
 from django.utils.translation import ugettext_lazy as _
 from durationfield.db.models.fields.duration import DurationField
+from django.conf import settings
 
 from saas.settings import (MANAGER_RELATION, CONTRIBUTOR_RELATION,
                            SITE_ID, CREDIT_ON_CREATE)
 
 LOGGER = logging.getLogger(__name__)
 
-UserModel = get_user_model()
 
 class OrganizationManager(models.Manager):
 
@@ -116,7 +115,7 @@ class OrganizationManager(models.Manager):
 
 class Organization_Managers(models.Model):
     organization = models.ForeignKey('Organization')
-    user = models.ForeignKey(UserModel, db_column='user_id')
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, db_column='user_id')
 
     class Meta:
         unique_together = ('organization', 'user')
@@ -127,7 +126,7 @@ if not MANAGER_RELATION:
 
 class Organization_Contributors(models.Model):
     organization = models.ForeignKey('Organization')
-    user = models.ForeignKey(UserModel, db_column='user_id')
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, db_column='user_id')
 
     class Meta:
         unique_together = ('organization', 'user')
@@ -162,10 +161,10 @@ class Organization(models.Model):
     country_name = models.CharField(max_length=75)
 
     belongs = models.ForeignKey('Organization', null=True)
-    managers = models.ManyToManyField(UserModel,
+    managers = models.ManyToManyField(settings.AUTH_USER_MODEL,
         related_name='manages', through=MANAGER_RELATION)
 
-    contributors = models.ManyToManyField(UserModel,
+    contributors = models.ManyToManyField(settings.AUTH_USER_MODEL,
         related_name='contributes', through=CONTRIBUTOR_RELATION)
 
     # Payment Processing
@@ -221,7 +220,7 @@ class Signature(models.Model):
 
     last_signed = models.DateTimeField(auto_now_add=True)
     agreement = models.ForeignKey(Agreement)
-    user = models.ForeignKey(UserModel, db_column='user_id')
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, db_column='user_id')
     class Meta:
         unique_together = ('agreement', 'user')
 
@@ -270,7 +269,7 @@ class CartItem(models.Model):
     """
     objects = CartItemManager()
 
-    user = models.ForeignKey(UserModel, db_column='user_id')
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, db_column='user_id')
     customer = models.ForeignKey(Organization)
     created_at = models.DateTimeField(auto_now_add=True)
     subscription = models.ForeignKey('Plan')
@@ -370,7 +369,8 @@ class Coupon(models.Model):
     """
     Coupons are used on invoiced to give a rebate to a customer.
     """
-    user = models.ForeignKey(UserModel, db_column='user_id', null=True)
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, db_column='user_id', null=True)
     customer = models.ForeignKey(Organization, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     code = models.SlugField(primary_key=True, db_index=True)

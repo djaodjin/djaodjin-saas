@@ -1,4 +1,4 @@
-# Copyright (c) 2013, Fortylines LLC
+# Copyright (c) 2014, Fortylines LLC
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -27,7 +27,6 @@
 import datetime, logging
 
 from django.db.models import Q
-from django.contrib.auth.models import User
 from django.core.urlresolvers import reverse
 from django.core.context_processors import csrf
 from django.shortcuts import render, redirect
@@ -38,10 +37,12 @@ from django.utils.decorators import method_decorator
 import saas.settings as settings
 from saas.ledger import balance
 from saas.forms import UserRelationForm
-from saas.models import Organization, UserModel
+from saas.models import Organization
 from saas.views.auth import valid_manager_for_organization
 from saas.views.auth import managed_organizations
 import saas.backends as backend
+from saas.compat import User
+
 
 LOGGER = logging.getLogger(__name__)
 
@@ -150,7 +151,7 @@ def organization_add_managers(request, organization):
         if form.is_valid():
             username = form.cleaned_data['username']
             organization.managers.add(
-                UserModel.objects.get(username=username))
+                User.objects.get(username=username))
             return redirect(reverse(
                     'saas_organization_profile', args=(organization,)))
     else:
@@ -172,7 +173,7 @@ def organization_remove_managers(request, organization):
         if form.is_valid():
             username = form.cleaned_data['username']
             organization.managers.remove(
-                UserModel.objects.get(username=username))
+                User.objects.get(username=username))
             return redirect(reverse(
                     'saas_organization_profile', args=(organization,)))
     else:
@@ -194,7 +195,7 @@ def organization_add_contributors(request, organization):
         if form.is_valid():
             username = form.cleaned_data['username']
             organization.contributors.add(
-                UserModel.objects.get(username=username))
+                User.objects.get(username=username))
             return redirect(reverse(
                     'saas_organization_profile', args=(organization,)))
     else:
@@ -216,7 +217,7 @@ def organization_remove_contributors(request, organization):
         if form.is_valid():
             username = form.cleaned_data['username']
             organization.contributors.remove(
-                UserModel.objects.get(username=username))
+                User.objects.get(username=username))
             return redirect(reverse(
                     'saas_organization_profile', args=(organization,)))
     else:

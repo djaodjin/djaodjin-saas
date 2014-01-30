@@ -1,4 +1,4 @@
-# Copyright (c) 2013, Fortylines LLC
+# Copyright (c) 2014, Fortylines LLC
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -29,11 +29,11 @@ from unittest import skip
 from django.test import TestCase
 from django.utils.timezone import utc
 from django.test.client import Client
-from django.contrib.auth.models import User
 from django.core.urlresolvers import reverse
 from django.core.management import call_command
 from django.db import transaction
 
+from saas.compat import User
 from saas.views.metrics import (month_periods,
                                 organization_monthly_revenue_customers)
 from saas.models import Organization, Transaction, Charge

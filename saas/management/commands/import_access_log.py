@@ -31,10 +31,10 @@ from time import mktime
 from datetime import datetime
 
 from django.core.management.base import BaseCommand
-from django.contrib.auth.models import User
-from saas.models import Organization, Transaction, NewVisitors
 
+from saas.models import Organization, Transaction, NewVisitors
 from saas.models import Organization
+from saas.compat import User
 
 class Command(BaseCommand):
     
