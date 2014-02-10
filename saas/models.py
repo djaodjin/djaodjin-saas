@@ -33,10 +33,8 @@ from django.utils.timezone import utc
 from django.contrib.sites.models import Site
 from django.utils.translation import ugettext_lazy as _
 from durationfield.db.models.fields.duration import DurationField
-from django.conf import settings
 
-from saas.settings import (MANAGER_RELATION, CONTRIBUTOR_RELATION,
-                           SITE_ID, CREDIT_ON_CREATE)
+from saas import settings
 
 LOGGER = logging.getLogger(__name__)
 
@@ -61,7 +59,8 @@ class OrganizationManager(models.Manager):
         # XXX We give each customer a certain amount of free time
         # to play with it.
         # Amount is in cents.
-        credit = Transaction.objects.create_credit(customer, CREDIT_ON_CREATE)
+        credit = Transaction.objects.create_credit(
+            customer, settings.CREDIT_ON_CREATE)
         return customer
 
     def associate_processor(self, customer, card=None):
@@ -95,10 +94,10 @@ class OrganizationManager(models.Manager):
         return organization
 
     def get_site(self):
-        return Site.objects.get(pk=SITE_ID)
+        return Site.objects.get(pk=settings.SITE_ID)
 
     def get_site_owner(self):
-        return self.get(pk=SITE_ID)
+        return self.get(pk=settings.SITE_ID)
 
     def find_contributed(self, user):
         """
@@ -121,19 +120,12 @@ class Organization_Managers(models.Model):
         unique_together = ('organization', 'user')
 
 
-if not MANAGER_RELATION:
-    MANAGER_RELATION = Organization_Managers
-
 class Organization_Contributors(models.Model):
     organization = models.ForeignKey('Organization')
     user = models.ForeignKey(settings.AUTH_USER_MODEL, db_column='user_id')
 
     class Meta:
         unique_together = ('organization', 'user')
-
-
-if not CONTRIBUTOR_RELATION:
-    CONTRIBUTOR_RELATION = Organization_Contributors
 
 
 class Organization(models.Model):
@@ -162,10 +154,10 @@ class Organization(models.Model):
 
     belongs = models.ForeignKey('Organization', null=True)
     managers = models.ManyToManyField(settings.AUTH_USER_MODEL,
-        related_name='manages', through=MANAGER_RELATION)
+        related_name='manages', through=settings.MANAGER_RELATION)
 
     contributors = models.ManyToManyField(settings.AUTH_USER_MODEL,
-        related_name='contributes', through=CONTRIBUTOR_RELATION)
+        related_name='contributes', through=settings.CONTRIBUTOR_RELATION)
 
     # Payment Processing
     # We could support multiple payment processors at the same time by

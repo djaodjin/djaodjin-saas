@@ -1,10 +1,10 @@
 from distutils.core import setup
 
-from saas import get_version
+import saas
 
 setup(
     name='saas',
-    version=get_version(),
+    version=saas.__version__,
     author='The DjaoDjin Team',
     author_email='support@djaodjin.com',
     packages=['saas',

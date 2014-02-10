@@ -29,14 +29,22 @@ the appropriate settings.
 """
 from django.conf import settings
 
-SITE_ID = getattr(settings, 'SAAS_SITE_ID', getattr(settings, 'SITE_ID', 1))
+ACCT_REGEX   = r'[a-zA-Z0-9_\-]+'
+
+AUTH_USER_MODEL = getattr(settings, 'AUTH_USER_MODEL',
+                          'django.contrib.auth.models.User')
 
 CREDIT_ON_CREATE = getattr(settings, 'SAAS_CREDIT_ON_CREATE', 1000)
 
-CONTRIBUTOR_RELATION = getattr(settings, 'SAAS_CONTRIBUTOR_RELATION', None)
-MANAGER_RELATION = getattr(settings, 'SAAS_MANAGER_RELATION', None)
+CONTRIBUTOR_RELATION = getattr(settings, 'SAAS_CONTRIBUTOR_RELATION',
+                               'saas.Organization_Contributors')
+
+MANAGER_RELATION = getattr(settings, 'SAAS_MANAGER_RELATION',
+                           'saas.Organization_Managers')
 
 PROCESSOR_HOOK_URL = getattr(settings, 'SAAS_PROCESSOR_HOOK_URL', "postevent")
+
+SITE_ID = getattr(settings, 'SAAS_SITE_ID', getattr(settings, 'SITE_ID', 1))
 
 # BE EXTRA CAREFUL! This variable is used to bypass PermissionDenied
 # exceptions. It is solely intended as a debug flexibility nob.
@@ -44,6 +52,4 @@ SKIP_PERMISSION_CHECK = getattr(settings, 'SAAS_SKIP_PERMISSION_CHECK', False)
 
 STRIPE_PRIV_KEY = getattr(settings, 'STRIPE_PRIV_KEY', "Undefined")
 STRIPE_PUB_KEY = getattr(settings, 'STRIPE_PUB_KEY', "Undefined")
-
-ACCT_REGEX   = r'[a-zA-Z0-9_\-]+'
 

@@ -22,20 +22,47 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-def get_version():
-    """
-    Returns a PEP 386-compliant version number.
+"""
+PEP 386-compliant version number for the saas django app.
+"""
 
-    expr = r'''^
-    (?P<version>\d+\.\d+)         # minimum 'N.N'
-    (?P<extraversion>(?:\.\d+)*)  # any number of extra '.N' segments
-    (?:
-    (?P<prerel>[abc]|rc)         # 'a' = alpha, 'b' = beta
-                                 # 'c' or 'rc' = release candidate
-    (?P<prerelversion>\d+(?:\.\d+)*)
-    )?
-    (?P<postdev>(\.post(?P<post>\d+))?(\.dev(?P<dev>\d+))?)?
-    $'''
-    """
-    return '0.1dev0'
+from django.core.exceptions import ImproperlyConfigured
 
+__version__ = '0.1dev'
+
+
+def _get_model_class(full_name, settings_meta):
+    """
+    Returns a model class loaded from *full_name*. *settings_meta* is the name
+    of the corresponding settings variable (used for error messages).
+    """
+    from django.db.models import get_model
+
+    try:
+        app_label, model_name = full_name.split('.')
+    except ValueError:
+        raise ImproperlyConfigured(
+            "%s must be of the form 'app_label.model_name'" % settings_meta)
+    model_class = get_model(app_label, model_name)
+    if model_class is None:
+        raise ImproperlyConfigured(
+            "%s refers to model '%s' that has not been installed"
+            % (settings_meta, full_name))
+    return model_class
+
+
+def get_manager_relation_model():
+    """
+    Returns the manager relation model that is active in this project.
+    """
+    from saas import settings
+    return _get_model_class(settings.MANAGER_RELATION, 'MANAGER_RELATION')
+
+
+def get_contributor_relation_model():
+    """
+    Returns the contributor relation model that is active in this project.
+    """
+    from saas import settings
+    return _get_model_class(
+        settings.CONTRIBUTOR_RELATION, 'CONTRIBUTOR_RELATION')
