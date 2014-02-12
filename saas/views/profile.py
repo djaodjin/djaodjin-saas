@@ -35,6 +35,7 @@ from django.views.decorators.http import require_GET, require_POST
 from django.utils.decorators import method_decorator
 
 import saas.settings as settings
+from saas import get_manager_relation_model, get_contributor_relation_model
 from saas.ledger import balance
 from saas.forms import UserRelationForm
 from saas.models import Organization
@@ -150,8 +151,10 @@ def organization_add_managers(request, organization):
         form = UserRelationForm(request.POST)
         if form.is_valid():
             username = form.cleaned_data['username']
-            organization.managers.add(
-                User.objects.get(username=username))
+            relation = get_manager_relation_model()(
+                organization=organization,
+                user=User.objects.get(username=username))
+            relation.save()
             return redirect(reverse(
                     'saas_organization_profile', args=(organization,)))
     else:
@@ -194,8 +197,10 @@ def organization_add_contributors(request, organization):
         form = UserRelationForm(request.POST)
         if form.is_valid():
             username = form.cleaned_data['username']
-            organization.contributors.add(
-                User.objects.get(username=username))
+            relation = get_contributor_relation_model()(
+                organization=organization,
+                user=User.objects.get(username=username))
+            relation.save()
             return redirect(reverse(
                     'saas_organization_profile', args=(organization,)))
     else:
