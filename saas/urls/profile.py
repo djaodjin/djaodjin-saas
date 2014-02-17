@@ -27,7 +27,8 @@
 from django.conf.urls import patterns, include, url
 
 from saas.views.profile import (
-    ContributorListView, ManagerListView, SubscriberListView)
+    ContributorListView, ManagerListView,
+    OrganizationProfileView, SubscriberListView, SubscriptionListView)
 
 urlpatterns = patterns(
     'saas.views.profile',
@@ -45,7 +46,9 @@ urlpatterns = patterns(
         ManagerListView.as_view(), name='saas_manager_list'),
     url(r'^subscribers/',
         SubscriberListView.as_view(), name='saas_subscriber_list'),
+    url(r'^subscriptions/',
+        SubscriptionListView.as_view(), name='saas_subscription_list'),
     url(r'^$',
-        'organization_profile', name='saas_organization_profile'),
+        OrganizationProfileView.as_view(), name='saas_organization_profile'),
 )
 

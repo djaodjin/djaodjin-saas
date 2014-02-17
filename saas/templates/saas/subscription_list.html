@@ -1,0 +1,24 @@
+{% extends "saas/base.html" %}
+
+{% block content %}
+  {% if object_list %}
+  <table class="table table-striped">
+    <thead>
+      <tr>
+        <th>Plan</th>
+        <th>Provided by</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for plan in object_list %}
+      <tr>
+        <td>{{plan.slug}}</td>
+        <td><a href="{% url 'saas_organization_profile' plan.organization %}">{{plan.organization}}</a></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <em>No Subscriptions</em>
+  {% endif %}
+{% endblock %}

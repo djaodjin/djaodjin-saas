@@ -26,11 +26,14 @@
 
 import datetime, logging
 
+from django import forms
 from django.db.models import Q
+from django.contrib import messages
 from django.core.urlresolvers import reverse
 from django.core.context_processors import csrf
 from django.shortcuts import render, redirect
 from django.views.generic.list import ListView
+from django.views.generic.edit import UpdateView
 from django.views.decorators.http import require_GET, require_POST
 from django.utils.decorators import method_decorator
 
@@ -38,7 +41,7 @@ import saas.settings as settings
 from saas import get_manager_relation_model, get_contributor_relation_model
 from saas.ledger import balance
 from saas.forms import UserRelationForm
-from saas.models import Organization
+from saas.models import Organization, Plan
 from saas.views.auth import valid_manager_for_organization
 from saas.views.auth import managed_organizations
 import saas.backends as backend
@@ -70,7 +73,7 @@ class ContributorListView(ListView):
     template_name = 'saas/contributor_list.html'
 
     def get_queryset(self):
-        return self.organization.contributors
+        return self.organization.contributors.all()
 
     def dispatch(self, *args, **kwargs):
         self.organization = kwargs.get('organization')
@@ -126,23 +129,46 @@ class SubscriberListView(ListView):
         return context
 
 
-@require_GET
-def organization_profile(request, organization):
-    context = { 'user': request.user }
-    context.update(csrf(request))
-    balance_dues = balance(organization)
-    if balance_dues < 0:
-        balance_credits = - balance_dues
-        balance_dues = 0
-    else:
-        balance_credits = None
-    context.update({'organization': organization,
-                    'managers': organization.managers.all(),
-                    'contributors': organization.contributors.all(),
-                    'balance_due': balance_dues,
-                    'balance_credits': balance_credits,
-                    })
-    return render(request, "saas/organization_profile.html", context)
+class SubscriptionListView(ListView):
+    """
+    List of Plans this organization is subscribed to.
+    """
+
+    model = Plan
+    paginate_by = 10
+    template_name = 'saas/subscription_list.html'
+
+    def get_queryset(self):
+        self.organization = Organization.objects.get(
+            name=self.kwargs.get('organization'))
+        return self.organization.subscriptions.all()
+
+    def get_context_data(self, **kwargs):
+        context = super(SubscriptionListView, self).get_context_data(**kwargs)
+        context.update({'organization': self.organization,
+                        'subscriptions': context['object_list']})
+        return context
+
+
+class OrganizationProfileForm(forms.ModelForm):
+    class Meta:
+        model = Organization
+        fields = ['name', 'email', 'phone', 'street_address',
+                  'locality', 'region', 'postal_code',
+                  'country_name' ]
+
+
+class OrganizationProfileView(UpdateView):
+
+    model = Organization
+    form_class = OrganizationProfileForm
+    slug_field = 'name'
+    slug_url_kwarg = 'organization'
+    template_name = "saas/organization_profile.html";
+
+    def get_success_url(self):
+        messages.info(self.request, 'Profile Updated.')
+        return reverse('saas_organization_profile', args=(self.object,))
 
 
 @require_POST

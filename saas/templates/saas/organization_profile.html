@@ -1,9 +1,11 @@
 {% extends "saas/base.html" %}
 
 {% block content %}
-<div>
-<a href="{% url 'saas_subscriber_list' organization %}">subscribers</a>
-</div>
-{% include "saas/organization_users.html" with title="managers" users=managers %}
-{% include "saas/organization_users.html" with title="contributors" users=contributors %}
+<form method="post" action=".">
+    {% csrf_token %}
+    {{ form }}
+    <div>
+        <input type="submit" name="submit" value="Update Profile">
+    </div>
+</form>
 {% endblock %}
