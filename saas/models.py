@@ -137,14 +137,17 @@ class Organization(models.Model):
     """
 
     objects = OrganizationManager()
-    name = models.SlugField(unique=True)
+    name = models.SlugField(unique=True,
+        help_text=_("Name of the organization as shown in the url bar."))
 
     created_at = models.DateTimeField(auto_now_add=True)
     is_active = models.BooleanField(default=True)
     # contact by e-mail
-    email = models.EmailField()
+    email = models.EmailField(
+        help_text=_("Contact email for support related to the organization."))
     # contact by phone
-    phone = models.CharField(max_length=50)
+    phone = models.CharField(max_length=50,
+        help_text=_("Contact phone for support related to the organization."))
     # contact by physical mail
     street_address = models.CharField(max_length=150)
     locality = models.CharField(max_length=50)
@@ -380,9 +383,11 @@ class Plan(models.Model):
     discontinued_at = models.DateTimeField(null=True,blank=True)
     organization = models.ForeignKey(Organization)
     setup_amount = models.IntegerField(default=0,
-        help_text=_('One-time charge amount in cents.'))
+        help_text=_('One-time charge amount (in cents).'))
     amount = models.IntegerField(default=0,
-        help_text=_('Recurring amount in cents.'))
+        help_text=_('Recurring amount per period (in cents).'))
+#XXX    transaction_amount = models.IntegerField(default=0,
+#        help_text=_('Amount per transaction (in cents).'))
     interval = DurationField(default=datetime.timedelta(days=30))
     # end game
     length = models.IntegerField(null=True,blank=True) # in intervals/periods
@@ -391,6 +396,14 @@ class Plan(models.Model):
 
     def __unicode__(self):
         return unicode(self.slug)
+
+    def get_title(self):
+        """
+        Returns a printable human-readable title for the plan.
+        """
+        if self.name:
+            return self.name
+        return self.slug
 
 
 class TransactionManager(models.Manager):

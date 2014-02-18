@@ -5,6 +5,7 @@
 <a href="{% url 'saas_organization_profile' organization.name %}">profile</a>
 <a href="{% url 'saas_billing_info' organization.name %}">billing</a>
 <a href="{% url 'saas_metrics_summary' organization.name %}">summary</a>
+<a href="{% url 'saas_metrics_plans' organization.name %}">plans</a>
 <a href="{% url 'saas_organization_usage' organization.name %}">usage</a>
 {% endif %}
 {% if user.is_staff %}

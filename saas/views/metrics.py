@@ -32,10 +32,11 @@ from django.views.decorators.http import require_GET
 from django.utils.timezone import utc
 from django.shortcuts import render, render_to_response
 from django.views.decorators.http import require_GET
+from django.views.generic.base import TemplateView
 from django.core.serializers.json import DjangoJSONEncoder
 
 from saas.views.auth import valid_manager_for_organization
-from saas.models import Organization, Transaction, NewVisitors
+from saas.models import Organization, Plan, Transaction, NewVisitors
 from saas.compat import User
 
 
@@ -200,12 +201,37 @@ def organization_monthly_revenue_customers(organization, from_date=None):
     return table
 
 
+class PlansMetricsView(TemplateView):
+    """
+    Performance of Plans for a time period
+    (as a count of subscribers per plan per month)
+    """
+
+    template_name = 'saas/metrics_table.html'
+
+    def get_context_data(self, **kwargs):
+        context = super(PlansMetricsView, self).get_context_data(**kwargs)
+        self.organization = self.kwargs.get('organization')
+        table = []
+        for plan in Plan.objects.filter(organization=self.organization):
+            values = []
+            for date in month_periods(from_date=self.kwargs.get('from_date')):
+                # XXX IMPLEMENT CODE to filter subscriptions model by date!
+                values.append([date, plan.subscribes.count()])
+            table.append({ "key": plan.get_title(), "values": values })
+        context.update({'title': "Plan Metrics",
+                        'organization': self.organization, 'table': table,
+                        "table_json": json.dumps(table, cls=DjangoJSONEncoder)})
+        return context
+
+
 @require_GET
 def organization_engagement(request, organization, from_date=None):
     table = organization_monthly_revenue_customers(organization, from_date)
-    context = { "organization": organization, "table": table,
+    context = { "title": "Revenue Metrics",
+                "organization": organization, "table": table,
                 "table_json": json.dumps(table, cls=DjangoJSONEncoder) }
-    return render(request, "saas/engagement.html", context)
+    return render(request, "saas/metrics_table.html", context)
 
 @require_GET
 def organization_usage(request, organization):

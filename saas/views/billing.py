@@ -218,6 +218,8 @@ class ChargeReceiptView(DetailView):
 
 
 def pay_now(request, organization):
+    organization = get_object_or_404(Organization, name=organization)
+    customer = organization
     context = { 'user': request.user,
                 'organization': organization }
     context.update(csrf(request))

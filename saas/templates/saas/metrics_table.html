@@ -2,9 +2,9 @@
 {% load metrics %}
 
 {% block content %}
-<section id="transactions">
-  <h1>Churn Metrics</h1>
-  <table class="table table-striped">
+<section id="metrics_table">
+  <h1>{{title}} for {{organization}}</h1>
+  <table>
     <thead>
       <tr>
         <th></th>
@@ -26,3 +26,4 @@
   </table>
 </section>
 {% endblock %}
+
