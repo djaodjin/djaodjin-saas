@@ -166,7 +166,8 @@ class Organization(models.Model):
     # We could support multiple payment processors at the same time by
     # by having a relation to a separate table. For simplicity we only
     # allow on processor per organization at a time.
-    subscriptions = models.ManyToManyField('Plan', related_name='subscribes')
+    subscriptions = models.ManyToManyField('Plan',
+        related_name='subscribes', through='Subscription')
     billing_start = models.DateField(null=True, auto_now_add=True)
     processor = models.CharField(null=True, max_length=20)
     processor_id = models.CharField(null=True,
@@ -222,29 +223,33 @@ class Signature(models.Model):
 
 class CartItemManager(models.Manager):
 
-    def get_cart(self, customer, user):
-        return self.filter(user=user, customer=customer, recorded=False)
+    def get_cart(self, user):
+        return self.filter(user=user, recorded=False)
 
-    def get_invoicables_for(self, item, start_date=None):
+    def get_invoicables_for(self, item, start_time=None, prorate_to=None):
         invoicables = []
-        if not start_date:
-            start_date = datetime.datetime.utcnow().replace(tzinfo=utc)
-        prorated_amount = item.prorated_first_month(start_date)
-        if item.subscription.setup_amount:
+        if not start_time:
+            start_time = datetime.datetime.utcnow().replace(tzinfo=utc)
+        if item.plan.setup_amount:
             # One time setup fee always charged in full.
+            if item.plan.period_amount:
+                descr = "%s (one-time setup)" % item.plan.get_title()
+            else:
+                descr = item.plan.get_title()
             invoicables += [{
-                    "amount": item.subscription.setup_amount,
-                    "description": ("one-time setup for %s"
-                                    % item.subscription.slug)}]
-        if prorated_amount:
-            invoicables += [{
-                    "amount": prorated_amount,
-                    "description": ("pro-rated first month for %s"
-                                    % item.subscription.slug)}]
+                "amount": item.plan.setup_amount, "description": descr}]
+        if prorate_to:
+            prorated_amount = item.plan.prorate_period(start_time, prorate_to)
+            # The prorated amount might still be zero in which case we don't
+            # want to add it to the invoice.
+            if prorated_amount:
+                invoicables += [{"amount": prorated_amount,
+                    "description": ("%s (pro-rated first period)"
+                                    % item.plan.get_title())}]
         return invoicables
 
-
-    def get_invoicables(self, customer, user, start_date=None):
+    def get_invoicables(self, customer, user, start_date=None,
+        prorate_to_billing=False):
         """
         Returns a list of invoicable items (amount, description)
         from the items in a user/customer cart.
@@ -252,43 +257,59 @@ class CartItemManager(models.Manager):
         invoicables = []
         if not start_date:
             start_date = datetime.datetime.utcnow().replace(tzinfo=utc)
-        items = self.get_cart(customer=customer, user=user)
-        for item in items:
-            invoicables += self.get_invoicables_for(item, start_date)
+        prorate_to = None
+        if prorate_to_billing:
+            # XXX First we add enough periods to get the next billing date later
+            # than start_date but no more than one period in the future.
+            prorate_to = customer.billing_start
+        for item in self.get_cart(user=user):
+            invoicables += self.get_invoicables_for(
+                item, start_date, prorate_to)
         return invoicables
+
+    def checkout(self, customer, user, start_date=None):
+        """
+        Creates transactions based on a set of items in a cart.
+        """
+        if not start_date:
+            start_date = datetime.datetime.utcnow().replace(tzinfo=utc)
+        for invoicable in get_invoicables(customer, user, start_date):
+            Transaction.objects.invoice(
+                customer, invoicable["amount"],
+                description=invoicable["description"],
+                created_at=start_date)
+        for item in self.get_cart(user):
+            customer.subscriptions.add(item.plan)
+            item.recorded = True
+            item.save()
 
 
 class CartItem(models.Model):
     """
-    Items which are been ordered. These represent an active cart.
+    A user (authenticated or anonymous) shops for plans by adding them
+    to her cart. At checkout, the user is presented with the billing
+    account (``Organization``) those items apply to.
+
+    Historical Note: The billing account was previously required at the time
+    the item is added to the cart. The ``cart_items`` is the only extra state
+    kept in the session, and kept solely for anonymous users. We do not store
+    the billing account in the session. It is retrieved from the url. As a
+    result the billing account is set at checkout, not when the item is added
+    to the cart.
     """
     objects = CartItemManager()
 
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, db_column='user_id')
-    customer = models.ForeignKey(Organization)
-    created_at = models.DateTimeField(auto_now_add=True)
-    subscription = models.ForeignKey('Plan')
-    recorded = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True,
+        help_text=_("date/time at which the item was added to the cart."))
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, db_column='user_id',
+        help_text=_("user who added the item to the cart."))
+    plan = models.ForeignKey('Plan',
+        help_text=_("item added to the cart."))
+    recorded = models.BooleanField(default=False,
+        help_text=_("whever the item has been checked out or not."))
 
     class Meta:
-        unique_together = ('user', 'customer')
-
-    def prorated_first_month(self, start_date):
-        """Subscriptions are pro-rated based on the billing cycle.
-        If no billing cycle exists for this customer, one is created.
-        """
-        since_billing_start = 0
-        if self.customer.billing_start:
-            since_billing_start = (start_date.date()
-                - self.customer.billing_start).total_seconds()
-        if since_billing_start == 0:
-            # happens to be on the recurring billing day.
-            return self.subscription.amount
-        else:
-            interval_length = self.subscription.interval.total_seconds()
-            return int(self.subscription.amount
-                       * (since_billing_start % interval_length)
-                       / interval_length)
+        unique_together = ('user', 'plan')
 
 
 class ChargeManager(models.Manager):
@@ -376,21 +397,32 @@ class Plan(models.Model):
     """
     Recurring billing plan
     """
-    name = models.CharField(max_length=50)
+    INTERVAL_CHOICES = [
+        (0, "UNSPECIFIED"),
+        (1, "HOURLY"),
+        (2, "DAILY"),
+        (3, "WEEKLY"),
+        (4, "MONTHLY"),
+        (5, "QUATERLY"),
+        (7, "YEARLY"),
+        ]
+
     slug = models.SlugField()
+    title = models.CharField(max_length=50)
     description = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True) # we use created_at by convention in other models.
     discontinued_at = models.DateTimeField(null=True,blank=True)
     organization = models.ForeignKey(Organization)
     setup_amount = models.IntegerField(default=0,
         help_text=_('One-time charge amount (in cents).'))
-    amount = models.IntegerField(default=0,
+    period_amount = models.IntegerField(default=0,
         help_text=_('Recurring amount per period (in cents).'))
-#XXX    transaction_amount = models.IntegerField(default=0,
-#        help_text=_('Amount per transaction (in cents).'))
-    interval = DurationField(default=datetime.timedelta(days=30))
+    transaction_fee = models.IntegerField(default=0,
+        help_text=_('Fee per transaction (in per 10000).'))
+    interval = models.IntegerField(choices=INTERVAL_CHOICES)
     # end game
-    length = models.IntegerField(null=True,blank=True) # in intervals/periods
+    length = models.IntegerField(null=True, blank=True,
+        help_text=_('Number of intervals the plan before the plan ends.'))
     # Pb with next : maybe create an other model for it
     next_plan = models.ForeignKey("Plan", null=True)
 
@@ -401,9 +433,65 @@ class Plan(models.Model):
         """
         Returns a printable human-readable title for the plan.
         """
-        if self.name:
-            return self.name
+        if self.title:
+            return self.title
         return self.slug
+
+    def prorate_transaction(self, amount):
+        """
+        Return the fee associated to a transaction.
+        """
+        return amount * self.transaction_fee / 10000
+
+    def prorate_period(self, start_time, end_time):
+        """
+        Return the pro-rate recurring amount for a period
+        [start_time, end_time[.
+
+        If end_time - start_time >= interval period, the value
+        returned is undefined.
+        """
+        if self.interval == 1:
+            # Hourly: fractional period is in minutes.
+            fraction = (end_time - start_time).seconds / 3600
+        elif self.interval == 2:
+            # Daily: fractional period is in hours.
+            fraction = ((end_time - start_time).seconds
+                        / (3600 * 24))
+        elif self.interval == 3:
+            # Weekly, fractional period is in days.
+            fraction = (end_time.date() - start_time.date()).days / 7
+        elif self.interval in [4, 5]:
+            # Monthly and Quaterly: fractional period is in days.
+            # We divide by the maximum number of days in a month to
+            # the advantage of a customer.
+            fraction = (end_time.date() - start_time.date()).days / 31
+        elif self.interval == 7:
+            # Yearly: fractional period is in days.
+            # We divide by the maximum number of days in a year to
+            # the advantage of a customer.
+            fraction = (end_time.date() - start_time.date()).days / 366
+        # Round down to the advantage of a customer.
+        return int(self.period_amount * fraction)
+
+
+class Subscription(models.Model):
+    """
+    Subscriptions of an Organization to a Plan
+    """
+    created_at = models.DateTimeField(auto_now_add=True)
+    organization = models.ForeignKey('Organization')
+    plan = models.ForeignKey('Plan')
+    last_invoice = models.ForeignKey('Transaction', null=True,
+        related_name='invoice_for',
+        help_text=_("Transaction which indicates the last invoice "
+                    "for the recurring portion of a Plan"))
+    last_payment = models.ForeignKey('Transaction', null=True,
+        related_name='payment_for',
+        help_text=_("Marks the last payment related to the subscription."))
+
+    class Meta:
+        unique_together = ('organization', 'plan')
 
 
 class TransactionManager(models.Manager):
@@ -469,22 +557,6 @@ class TransactionManager(models.Manager):
             event_id=event_id)
         payment.save()
         return payment
-
-    def subscribe_to(self, cart, start_date=None):
-        """
-        Creates transactions based on a set of items in a cart.
-        """
-        if not start_date:
-            start_date = datetime.datetime.utcnow().replace(tzinfo=utc)
-        for item in cart:
-            invoicables = CartItem.objects.get_invoicables_for(item, start_date)
-            for invoicable in invoicables:
-                self.invoice(item.customer, invoicable["amount"],
-                    description=invoicable["description"],
-                    created_at=start_date)
-            item.customer.subscriptions.add(item.subscription)
-            item.recorded = True
-            item.save()
 
 
 class Transaction(models.Model):

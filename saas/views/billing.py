@@ -39,16 +39,28 @@ from django.views.generic.detail import DetailView
 from django.views.generic.edit import BaseFormView
 from django.utils.decorators import method_decorator
 from django.shortcuts import render, redirect, get_object_or_404
+from django.contrib.auth.decorators import login_required
 
 import saas.backends as backend
 import saas.settings as settings
 from saas.ledger import balance
 from saas.forms import CreditCardForm, PayNowForm
 from saas.views.auth import managed_organizations, valid_manager_for_organization
-from saas.models import Organization, Transaction, Charge, CartItem, Coupon
+from saas.models import CartItem, Charge, Coupon, Organization, Plan, Transaction
 
 
 LOGGER = logging.getLogger(__name__)
+
+def _session_cart_to_database(request):
+    """
+    Transfer all the items in the cart stored in the session into proper
+    records in the database.
+    """
+    if request.session.has_key('cart_items'):
+        for item in request.session['cart_items']:
+            plan = Plan.objects.get(slug=item['plan'])
+            CartItem.objects.create(user=request.user, plan=plan)
+        del request.session['cart_items']
 
 
 class TransactionListView(ListView):
@@ -102,8 +114,7 @@ class PlaceOrderView(BaseFormView, ListView):
         as well as associate that subscription to the appropriate
         organization.
         """
-        cart = CartItem.objects.get_cart(
-            customer=self.customer, user=self.request.user)
+        cart = CartItem.objects.get_cart(user=self.request.user)
         coupons = Coupon.objects.filter(
             user=self.request.user, customer=self.customer, redeemed=False)
         total_amount, discount_amount = self.amounts(
@@ -115,7 +126,7 @@ class PlaceOrderView(BaseFormView, ListView):
                 remember_card=form.cleaned_data['remember_card'])
         # We commit in the db AFTER the charge goes through. In case anything
         # goes wrong with the charge the cart is still in a consistent state.
-        Transaction.objects.subscribe_to(cart)
+        CartItem.objects.checkout(self.customer, self.request.user)
         if len(coupons) > 0:
             Transaction.objects.redeem_coupon(discount_amount, coupons[0])
         return super(PlaceOrderView, self).form_valid(form)
@@ -153,13 +164,11 @@ class PlaceOrderView(BaseFormView, ListView):
         return queryset
 
     def dispatch(self, *args, **kwargs):
-        organization = kwargs.get('organization')
-        if not organization:
-            organizations = managed_organizations(self.request.user)
-            if len(organizations) == 1:
-                organization = organizations[0]
-        self.customer = valid_manager_for_organization(
-            self.request.user, organization)
+        self.customer = get_object_or_404(
+            Organization, name=kwargs.get('organization'))
+        # We are not getting here without an authenticated user. It is time
+        # to store the cart into the database.
+        _session_cart_to_database(self.request)
         return super(PlaceOrderView, self).dispatch(*args, **kwargs)
 
     def get_context_data(self, **kwargs):
@@ -279,7 +288,7 @@ def redeem_coupon(request, organization):
         else:
             # XXX on error find a way to get a message back to User.
             pass
-    return redirect(reverse('saas_pay_cart', args=(organization.name,)))
+    return redirect(reverse('saas_pay_cart', args=(organization,)))
 
 
 def update_card(request, organization):
@@ -300,7 +309,7 @@ def update_card(request, organization):
             messages.success(request,
                 "Your credit card on file was sucessfully updated")
             return redirect(reverse('saas_billing_info',
-                                    args=(organization.name,)))
+                                    args=(organization,)))
         else:
             messages.error(request, "The form did not validates")
     else:

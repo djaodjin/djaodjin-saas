@@ -1,4 +1,4 @@
-# Copyright (c) 2013, Fortylines LLC
+# Copyright (c) 2014, The DjaoDjin Team
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -22,25 +22,16 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-'''SaaS urls'''
+"""
+URLs for the API of djaodjin saas.
+"""
 
 from django.conf.urls import patterns, include, url
 
-from saas.views import OrganizationRedirectView
-from saas.settings import ACCT_REGEX
+from saas.api.billing import CartItemAPIView, CartItemDestroyAPIView
 
-urlpatterns = patterns(
-    'saas.views',
-    url(r'^api/',
-        include('saas.urls.api')),
-    url(r'^billing/cart/',
-        OrganizationRedirectView.as_view(pattern_name='saas_organization_cart'),
-        name='saas_cart'),
-    url(r'^billing/(?P<organization>%s)/' % ACCT_REGEX,
-        include('saas.urls.billing')),
-    url(r'^metrics/(?P<organization>%s)/' % ACCT_REGEX,
-        include('saas.urls.metrics')),
-    url(r'^profile/(?P<organization>%s)/' % ACCT_REGEX,
-        include('saas.urls.profile')),
+
+urlpatterns = patterns('saas.api',
+    url(r'^cart/(?P<plan>\S+)/', CartItemDestroyAPIView.as_view(), name='saas_api_cart_delete'),
+    url(r'^cart/', CartItemAPIView.as_view(), name='saas_api_cart'),
 )
-

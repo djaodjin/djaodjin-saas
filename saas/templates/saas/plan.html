@@ -2,14 +2,12 @@
 {% load currency %}
 
 {% block content %}
-<section id="pay_now">
-	{% for p in plan %}
-	{{p.slug}}
-</br>
-Setup amount: {{p.setup_amount}} 
-{% if p.amount %}
-+ {{p.amount}}/{{p.interval}}
-{%endif%}
+<section id="plan">
+{% for p in plan %}
+	{{p.title}}</br>
+Setup amount: {{p.setup_amount}}
+Period amount: {{p.period_amount}}/{{p.interval}}
+Transaction fee: {{p.transaction_fee}}/transaction
 </br>
 {{p.description}}
 		</br></br>
