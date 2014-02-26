@@ -16,6 +16,7 @@ setup(
               'saas.templates',
               'saas.urls',
               'saas.views',
+              'saas.api',
               ],
     package_data={'saas': ['fixtures/*',
                            'templates/saas/*.html',
