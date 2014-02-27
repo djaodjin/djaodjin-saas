@@ -41,6 +41,14 @@ LOGGER = logging.getLogger(__name__)
 
 class OrganizationManager(models.Manager):
 
+    def add_manager(self, organization, user):
+        """
+        Add user as a manager to organization.
+        """
+        relation = get_manager_relation_model()(
+            organization=organization, user=user)
+        relation.save()
+
     def create_organization(self, name, creation_time):
         creation_time = datetime.datetime.fromtimestamp(creation_time)
         billing_start = creation_time
