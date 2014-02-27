@@ -1,4 +1,4 @@
-# Copyright (c) 2014, Fortylines LLC
+# Copyright (c) 2014, The DjaoDjin Team
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -22,36 +22,10 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-'''Urls'''
+from django.views.generic.edit import CreateView
 
-from django.conf.urls import patterns, include, url
+from saas.models import Plan
 
-from saas.views.profile import (
-    ContributorListView, ManagerListView,
-    OrganizationProfileView, SubscriberListView, SubscriptionListView)
-from saas.views.plans import PlanCreateView
+class PlanCreateView(CreateView):
 
-urlpatterns = patterns(
-    'saas.views.profile',
-    url(r'^contributors/add',
-        'organization_add_contributors', name='saas_add_contributors'),
-    url(r'^contributors/remove',
-        'organization_remove_contributors', name='saas_remove_contributors'),
-    url(r'^contributors/',
-        ContributorListView.as_view(), name='saas_contributor_list'),
-    url(r'^managers/add',
-        'organization_add_managers', name='saas_add_managers'),
-    url(r'^managers/remove',
-        'organization_remove_managers', name='saas_remove_managers'),
-    url(r'^managers/',
-        ManagerListView.as_view(), name='saas_manager_list'),
-    url(r'^subscribers/',
-        SubscriberListView.as_view(), name='saas_subscriber_list'),
-    url(r'^subscriptions/',
-        SubscriptionListView.as_view(), name='saas_subscription_list'),
-    url(r'^plans/new/',
-        PlanCreateView.as_view(), name='saas_plan_new'),
-    url(r'^$',
-        OrganizationProfileView.as_view(), name='saas_organization_profile'),
-)
-
+    model = Plan
