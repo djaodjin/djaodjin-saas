@@ -35,11 +35,20 @@ from django.utils.translation import ugettext_lazy as _
 from durationfield.db.models.fields.duration import DurationField
 
 from saas import settings
+from saas import get_manager_relation_model, get_contributor_relation_model
 
 LOGGER = logging.getLogger(__name__)
 
 
 class OrganizationManager(models.Manager):
+
+    def add_contributor(self, organization, user):
+        """
+        Add user as a contributor to organization.
+        """
+        relation = get_contributor_relation_model()(
+            organization=organization, user=user)
+        relation.save()
 
     def add_manager(self, organization, user):
         """
