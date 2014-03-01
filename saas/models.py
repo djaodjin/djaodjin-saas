@@ -120,13 +120,13 @@ class OrganizationManager(models.Manager):
         """
         Returns a QuerySet of Organziation for which the user is a contributor.
         """
-        return self.filter(contributors=user)
+        return self.filter(contributors__id=user.id)
 
     def find_managed(self, user):
         """
         Returns a QuerySet of Organziation for which the user is a manager.
         """
-        return self.filter(managers=user)
+        return self.filter(managers__id=user.id)
 
 
 class Organization_Managers(models.Model):
@@ -290,13 +290,14 @@ class CartItemManager(models.Manager):
         """
         if not start_date:
             start_date = datetime.datetime.utcnow().replace(tzinfo=utc)
-        for invoicable in get_invoicables(customer, user, start_date):
+        for invoicable in self.get_invoicables(customer, user, start_date):
             Transaction.objects.invoice(
                 customer, invoicable["amount"],
                 description=invoicable["description"],
                 created_at=start_date)
         for item in self.get_cart(user):
-            customer.subscriptions.add(item.plan)
+            Subscription.objects.create(
+               organization=customer, plan=item.plan)
             item.recorded = True
             item.save()
 

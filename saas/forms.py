@@ -36,12 +36,19 @@ class CreditCardForm(forms.Form):
     def __init__(self, *args, **kwargs):
         #call our superclasse's initializer
         super(forms.Form, self).__init__(*args, **kwargs)
-        #define other fields dinamically:
-        self.fields['card_name'] = forms.CharField(required=False)
-        self.fields['card_city'] = forms.CharField(required=False)
-        self.fields['card_address_line1'] = forms.CharField(required=False)
-        self.fields['card_address_country'] = forms.CharField(required=False)
-        self.fields['card_address_state'] = forms.CharField(required=False)
+        #define other fields dynamically:
+        self.fields['card_name'] = forms.CharField(
+            label='Card Holder', required=False)
+        self.fields['card_city'] = forms.CharField(
+            label='City', required=False)
+        self.fields['card_address_line1'] = forms.CharField(
+            label='Street', required=False)
+        self.fields['card_address_zip'] = forms.CharField(
+            label='Zip', required=False)
+        self.fields['card_address_country'] = forms.CharField(
+            label='Country', required=False)
+        self.fields['card_address_state'] = forms.CharField(
+            label='State', required=False)
 
 
 class PayNowForm(forms.Form):

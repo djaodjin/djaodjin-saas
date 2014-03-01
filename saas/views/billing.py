@@ -34,7 +34,7 @@ from django.core.urlresolvers import reverse
 from django.core.context_processors import csrf
 from django.core.exceptions import PermissionDenied
 from django.views.decorators.http import require_GET
-from django.views.generic.list import ListView
+from django.views.generic.list import ListView, MultipleObjectTemplateResponseMixin
 from django.views.generic.detail import DetailView
 from django.views.generic.edit import BaseFormView
 from django.utils.decorators import method_decorator
@@ -95,7 +95,7 @@ class TransactionListView(ListView):
         return context
 
 
-class PlaceOrderView(BaseFormView, ListView):
+class PlaceOrderView(MultipleObjectTemplateResponseMixin, BaseFormView):
     """
     Where a user enters his payment information and submit her order.
     """
@@ -130,6 +130,20 @@ class PlaceOrderView(BaseFormView, ListView):
         if len(coupons) > 0:
             Transaction.objects.redeem_coupon(discount_amount, coupons[0])
         return super(PlaceOrderView, self).form_valid(form)
+
+    def get_initial(self):
+        """
+        Populates place order forms with the organization address
+        whenever possible.
+        """
+        kwargs = super(PlaceOrderView, self).get_initial()
+        kwargs.update({'card_name': self.customer.name,
+                       'card_city': self.customer.locality,
+                       'card_address_line1': self.customer.street_address,
+                       'card_address_country': self.customer.country_name,
+                       'card_address_state': self.customer.region,
+                       'card_address_zip': self.customer.postal_code})
+        return kwargs
 
     def get_success_url(self):
         if hasattr(self, 'charge'):
@@ -172,9 +186,8 @@ class PlaceOrderView(BaseFormView, ListView):
         return super(PlaceOrderView, self).dispatch(*args, **kwargs)
 
     def get_context_data(self, **kwargs):
-        if not 'object_list' in kwargs:
-            cart = self.get_queryset()
-            kwargs.update({'object_list': cart})
+        self.object_list = self.get_queryset()
+        kwargs.update({'object_list': self.object_list})
         context = super(PlaceOrderView, self).get_context_data(**kwargs)
         # Reduce price by as much  Coupon.
         coupons = Coupon.objects.filter(
