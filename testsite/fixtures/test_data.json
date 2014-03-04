@@ -10,8 +10,7 @@
       "region": "CA",
       "postal_code": "94102",
       "country_name": "USA",
-      "is_active": 1,
-      "managers": [ 2 ]
+      "is_active": 1
     },
     "model": "saas.Organization",
     "pk": 2
@@ -19,19 +18,33 @@
   {
     "fields": {
       "date_joined": "2012-09-14T14:16:55-09:00",
-      "email": "john@localhost.localdomain",
-      "first_name": "John",
-      "groups": [],
+      "email": "donny@localhost.localdomain",
+      "first_name": "Donny",
       "is_active": true,
       "is_staff": true,
       "is_superuser": true,
       "last_login": "2012-09-14T14:57:48-09:00",
       "last_name": "Doe",
       "password": "pbkdf2_sha256$10000$z0MBiWn0Rlem$iZdC6uHomlE07qGK/TqfcfxNzKJtFp03c0JILF1frRc=", 
-      "user_permissions": [],
-      "username": "john"
+      "username": "donny"
     },
     "model": "auth.User",
+    "pk": 2
+  },
+  {
+    "fields":{
+      "organization": 1,
+      "user": 2
+    },
+    "model": "saas.organization_managers",
+    "pk": 1
+  },
+  {
+    "fields":{
+      "organization": 2,
+      "user": 2
+    },
+    "model": "saas.organization_managers",
     "pk": 2
   },
   {
@@ -54,10 +67,9 @@
   },
   {
     "fields": {
-      "user": 2,
-      "customer": 2,
       "created_at": "2012-08-14T14:16:55-09:00",
-      "subscription": 1
+      "plan": 1,
+      "user": 2
     },
     "model": "saas.CartItem",
     "pk": 1
@@ -71,4 +83,3 @@
     "pk": 1
   }
 ]
-

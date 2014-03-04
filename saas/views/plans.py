@@ -22,10 +22,44 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from django.views.generic.edit import CreateView
+from django.shortcuts import get_object_or_404
+from django.views.generic.edit import CreateView, UpdateView
+from django.views.generic.detail import SingleObjectMixin
 
-from saas.models import Plan
+from saas.models import Plan, Organization
+from saas.forms import PlanForm
 
-class PlanCreateView(CreateView):
+class PlanFormMixin(SingleObjectMixin):
 
     model = Plan
+    form_class = PlanForm
+
+    def get_initial(self):
+        """
+        Returns the initial data to use for forms on this view.
+        """
+        kwargs = super(PlanFormMixin, self).get_initial()
+        self.organization = get_object_or_404(Organization,
+            name=self.kwargs.get('organization'))
+        kwargs.update({'organization': self.organization})
+        return kwargs
+
+    def get_context_data(self, **kwargs):
+        context = super(PlanFormMixin, self).get_context_data(**kwargs)
+        context.update({'organization': self.organization })
+        return context
+
+
+class PlanCreateView(PlanFormMixin, CreateView):
+    """
+    Create a new ``Plan`` for an ``Organization``.
+    """
+    pass
+
+
+class PlanUpdateView(PlanFormMixin, UpdateView):
+    """
+    Update a new ``Plan``.
+    """
+    slug_url_kwarg = 'plan'
+

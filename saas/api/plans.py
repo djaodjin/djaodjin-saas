@@ -22,20 +22,21 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-"""
-URLs for the API of djaodjin saas.
-"""
+from rest_framework.generics import UpdateAPIView
+from rest_framework import serializers
 
-from django.conf.urls import patterns, include, url
+from saas.models import Plan
 
-from saas.api.plans import PlanActivateAPIView
-from saas.api.billing import CartItemAPIView, CartItemDestroyAPIView
-from saas.settings import ACCT_REGEX
 
-urlpatterns = patterns('saas.api',
-    url(r'^plans/(?P<plan>%s)/activate/' % ACCT_REGEX,
-        PlanActivateAPIView.as_view(), name='saas_api_plan_activate'),
-    url(r'^cart/(?P<plan>%s)/' % ACCT_REGEX,
-        CartItemDestroyAPIView.as_view(), name='saas_api_cart_delete'),
-    url(r'^cart/', CartItemAPIView.as_view(), name='saas_api_cart'),
-)
+class PlanActivateSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = Plan
+        fields = ('is_active',)
+
+
+class PlanActivateAPIView(UpdateAPIView):
+
+    model = Plan
+    slug_url_kwarg = 'plan'
+    serializer_class = PlanActivateSerializer

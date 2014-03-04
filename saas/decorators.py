@@ -35,17 +35,18 @@ import logging, urlparse
 
 from functools import wraps
 from django.conf import settings
+from django.core.exceptions import PermissionDenied
 from django.core.urlresolvers import reverse
-from django.contrib.auth import REDIRECT_FIELD_NAME, logout as auth_logout
-from django.utils.decorators import available_attrs
 from django.contrib import messages
-from django.utils.translation import ugettext_lazy as _
 from django.contrib.sites.models import RequestSite, Site
 from django.contrib.auth import REDIRECT_FIELD_NAME
+from django.contrib.auth import REDIRECT_FIELD_NAME, logout as auth_logout
+from django.shortcuts import get_object_or_404
+from django.utils.decorators import available_attrs
+from django.utils.translation import ugettext_lazy as _
 from django.template.loader import render_to_string
-from django.core.exceptions import PermissionDenied
 
-from saas.models import Signature
+from saas.models import Plan, Signature
 from saas.views.auth import valid_manager_for_organization
 
 LOGGER = logging.getLogger(__name__)
@@ -104,12 +105,16 @@ def requires_manager(function=None):
     """
     def decorator(view_func):
         @wraps(view_func, assigned=available_attrs(view_func))
-        def _wrapped_view(request, organization, *args, **kwargs):
+        def _wrapped_view(request, *args, **kwargs):
+            if kwargs.has_key('plan'):
+                plan = get_object_or_404(Plan, slug=kwargs.get('plan'))
+                organization = plan.organization
+            elif kwargs.has_key('organization'):
+                organization = kwargs.get('organization')
             organization = valid_manager_for_organization(
                 request.user, organization)
             if organization:
-                return view_func(
-                    request, organization=organization, *args, **kwargs)
+                return view_func(request, *args, **kwargs)
             raise PermissionDenied
         return _wrapped_view
 

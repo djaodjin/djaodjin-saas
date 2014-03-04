@@ -30,13 +30,12 @@ from django.db.models import Count, Min, Sum, Avg, Max
 from django.shortcuts import render_to_response
 from django.views.decorators.http import require_GET
 from django.utils.timezone import utc
-from django.shortcuts import render, render_to_response
-from django.views.decorators.http import require_GET
+from django.shortcuts import render, render_to_response, get_object_or_404
 from django.views.generic.base import TemplateView
 from django.core.serializers.json import DjangoJSONEncoder
 
 from saas.views.auth import valid_manager_for_organization
-from saas.models import Organization, Plan, Transaction, NewVisitors
+from saas.models import Organization, Plan, Subscription, Transaction, NewVisitors
 from saas.compat import User
 
 
@@ -207,31 +206,45 @@ class PlansMetricsView(TemplateView):
     (as a count of subscribers per plan per month)
     """
 
-    template_name = 'saas/metrics_table.html'
+    template_name = 'saas/plan_metrics.html'
 
     def get_context_data(self, **kwargs):
         context = super(PlansMetricsView, self).get_context_data(**kwargs)
-        self.organization = self.kwargs.get('organization')
+        organization = get_object_or_404(
+            Organization, name=kwargs.get('organization'))
         table = []
-        for plan in Plan.objects.filter(organization=self.organization):
+        for plan in Plan.objects.filter(organization=organization):
             values = []
             for date in month_periods(from_date=self.kwargs.get('from_date')):
-                # XXX IMPLEMENT CODE to filter subscriptions model by date!
-                values.append([date, plan.subscribes.count()])
-            table.append({ "key": plan.get_title(), "values": values })
-        context.update({'title': "Plan Metrics",
-                        'organization': self.organization, 'table': table,
+                # XXX IMPLEMENT CODE take into account when subscription ends.
+                values.append([date, Subscription.objects.filter(
+                    plan=plan, created_at__lt=date).count()])
+            # XXX The template relies on "key" being plan.slug
+            table.append({ "key": plan.slug, "values": values })
+        context.update({'title': "Active Subscribers",
+                        'organization': organization, 'table': table,
                         "table_json": json.dumps(table, cls=DjangoJSONEncoder)})
         return context
 
 
-@require_GET
-def organization_engagement(request, organization, from_date=None):
-    table = organization_monthly_revenue_customers(organization, from_date)
-    context = { "title": "Revenue Metrics",
-                "organization": organization, "table": table,
-                "table_json": json.dumps(table, cls=DjangoJSONEncoder) }
-    return render(request, "saas/metrics_table.html", context)
+class RevenueMetricsView(TemplateView):
+    """
+    Generate a table of revenue (rows) per months (columns).
+    """
+
+    template_name = 'saas/metrics_base.html'
+
+    def get_context_data(self, **kwargs):
+        context = super(RevenueMetricsView, self).get_context_data(**kwargs)
+        organization = get_object_or_404(
+            Organization, name=kwargs.get('organization'))
+        from_date = kwargs.get('from_date', None)
+        table = organization_monthly_revenue_customers(organization, from_date)
+        context = { "title": "Revenue Metrics",
+                    "organization": organization, "table": table,
+                    "table_json": json.dumps(table, cls=DjangoJSONEncoder) }
+        return context
+
 
 @require_GET
 def organization_usage(request, organization):

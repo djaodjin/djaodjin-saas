@@ -16,4 +16,4 @@ run the testsite webapp.
     $ python manage.py runserver
 
     # Browse http://localhost:8000/
-    # Login with username: john and password: yoyo
+    # Login with username: donny and password: yoyo

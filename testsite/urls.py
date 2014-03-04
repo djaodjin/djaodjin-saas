@@ -23,7 +23,8 @@
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 from urldecorators import patterns, include, url
-from django.views.generic import TemplateView
+from django.core.urlresolvers import reverse_lazy
+from django.views.generic import RedirectView, TemplateView
 
 from saas.views.profile import OrganizationListView
 
@@ -36,6 +37,8 @@ urlpatterns = patterns('',
     url(r'^admin/doc/', include('django.contrib.admindocs.urls')),
     url(r'^admin/', include(admin.site.urls)),
 
+    url(r'^accounts/profile/',
+        RedirectView.as_view(url=reverse_lazy('home'))),
     url(r'^accounts/', include('django.contrib.auth.urls')),
     url(r'^saas/$',
         OrganizationListView.as_view(), name='saas_organization_list',
@@ -46,7 +49,7 @@ urlpatterns = patterns('',
         name='saas_metrics_stats'),
     url(r'^legal/', include('saas.urls.legal')),
     url(r'^processor/', include('saas.backends.urls')),
-    url(r'^saas/', include('saas.urls'),
-        decorators = ['saas.decorators.requires_manager']),
     url(r'^$',TemplateView.as_view(template_name='index.html'), name='home'),
+    url(r'^', include('saas.urls'),
+        decorators = ['saas.decorators.requires_manager']),
 )

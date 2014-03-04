@@ -29,7 +29,8 @@ from django.conf.urls import patterns, include, url
 from saas.views.profile import (
     ContributorListView, ManagerListView,
     OrganizationProfileView, SubscriberListView, SubscriptionListView)
-from saas.views.plans import PlanCreateView
+from saas.views.plans import PlanCreateView, PlanUpdateView
+from saas.settings import ACCT_REGEX
 
 urlpatterns = patterns(
     'saas.views.profile',
@@ -51,6 +52,8 @@ urlpatterns = patterns(
         SubscriptionListView.as_view(), name='saas_subscription_list'),
     url(r'^plans/new/',
         PlanCreateView.as_view(), name='saas_plan_new'),
+    url(r'^plans/(?P<plan>%s)/' % ACCT_REGEX,
+        PlanUpdateView.as_view(), name='saas_plan_edit'),
     url(r'^$',
         OrganizationProfileView.as_view(), name='saas_organization_profile'),
 )

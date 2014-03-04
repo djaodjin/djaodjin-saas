@@ -72,15 +72,13 @@ class TransactionListView(ListView):
         """
         Get the list of transactions for this organization.
         """
+        self.customer = get_object_or_404(
+            Organization, name=self.kwargs.get('organization'))
         queryset = Transaction.objects.filter(
             Q(orig_organization=self.customer)
             | Q(dest_organization=self.customer)
         ).order_by('created_at')
         return queryset
-
-    def dispatch(self, *args, **kwargs):
-        self.customer = kwargs.get('organization')
-        return super(TransactionListView, self).dispatch(*args, **kwargs)
 
     def get_context_data(self, **kwargs):
         context = super(TransactionListView, self).get_context_data(**kwargs)

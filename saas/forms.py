@@ -28,6 +28,9 @@ Forms shown by the saas application
 
 from django import forms
 
+from saas.models import Plan
+
+
 class CreditCardForm(forms.Form):
     '''Update Card Information.'''
     stripeToken = forms.CharField(required=False)
@@ -55,6 +58,22 @@ class PayNowForm(forms.Form):
     '''Pay amount on card'''
     amount = forms.FloatField(required=False)
     full_amount = forms.BooleanField(required=False)
+
+
+class PlanForm(forms.ModelForm):
+    """
+    Form to create or update a ``Plan``.
+    """
+    class Meta:
+        model = Plan
+        exclude = [ 'discontinued_at', 'length', 'next_plan', 'organization',
+            'slug' ]
+
+    def save(self, commit=True):
+        if self.initial.has_key('organization'):
+            self.instance.organization = self.initial['organization']
+        self.instance.slug = slugify(self.cleaned_data['title'])
+        return super(PlanForm, self).save(commit)
 
 
 class UserRelationForm(forms.Form):

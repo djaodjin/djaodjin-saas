@@ -31,7 +31,7 @@ from django.db.models import Q
 from django.contrib import messages
 from django.core.urlresolvers import reverse
 from django.core.context_processors import csrf
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, get_object_or_404
 from django.views.generic.list import ListView
 from django.views.generic.edit import UpdateView
 from django.views.decorators.http import require_GET, require_POST
@@ -73,11 +73,9 @@ class ContributorListView(ListView):
     template_name = 'saas/contributor_list.html'
 
     def get_queryset(self):
+        self.organization = get_object_or_404(
+            Organization, name=self.kwargs.get('organization'))
         return self.organization.contributors.all()
-
-    def dispatch(self, *args, **kwargs):
-        self.organization = kwargs.get('organization')
-        return super(ContributorListView, self).dispatch(*args, **kwargs)
 
     def get_context_data(self, **kwargs):
         context = super(ContributorListView, self).get_context_data(**kwargs)
@@ -93,11 +91,9 @@ class ManagerListView(ListView):
     template_name = 'saas/manager_list.html'
 
     def get_queryset(self):
+        self.organization = get_object_or_404(
+            Organization, name=self.kwargs.get('organization'))
         return self.organization.managers.all()
-
-    def dispatch(self, *args, **kwargs):
-        self.organization = kwargs.get('organization')
-        return super(ManagerListView, self).dispatch(*args, **kwargs)
 
     def get_context_data(self, **kwargs):
         context = super(ManagerListView, self).get_context_data(**kwargs)
@@ -115,12 +111,10 @@ class SubscriberListView(ListView):
     template_name = 'saas/subscriber_list.html'
 
     def get_queryset(self):
+        self.organization = get_object_or_404(
+            Organization, name=self.kwargs.get('organization'))
         return Organization.objects.filter(
             subscriptions__organization=self.organization)
-
-    def dispatch(self, *args, **kwargs):
-        self.organization = kwargs.get('organization')
-        return super(SubscriberListView, self).dispatch(*args, **kwargs)
 
     def get_context_data(self, **kwargs):
         context = super(SubscriberListView, self).get_context_data(**kwargs)

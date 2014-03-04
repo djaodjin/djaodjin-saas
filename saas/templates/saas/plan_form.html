@@ -1,9 +1,25 @@
-{% extends "base.html" %}
+{% extends "saas/base.html" %}
 
-{% block content %}
-    <form method="post" action="./?next={{ next }}">
-        {% csrf_token %}
-        {{ form }}
-        <input type="submit" name="submit" value="Submit">
-    </form>
+{% block saas_content %}
+{% if form.instance %}
+<div>
+    <div>
+        <button class="activate {% if form.instance.is_active %}activated{% endif %}">{% if form.instance.is_active %}Deactivate{% else %}Activate{% endif %}</button>
+    </div>
+</div>
+{% endif %}
+<form method="post" action=".">
+    {% csrf_token %}
+    {{ form }}
+    <input type="submit" name="submit" value="Submit">
+</form>
+{% endblock %}
+
+{% block bodyscripts %}
+<script type="text/javascript">
+$(document).ready(function(){
+    initAjaxCSRFHook("{{csrf_token}}");
+    $(".activate").click(toggleActivatePlan);
+});
+</script>
 {% endblock %}

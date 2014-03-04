@@ -26,7 +26,7 @@
 
 from django.conf.urls import patterns, url
 
-from saas.views.metrics import PlansMetricsView
+from saas.views.metrics import PlansMetricsView, RevenueMetricsView
 
 urlpatterns = patterns(
     'saas.views.metrics',
@@ -34,5 +34,5 @@ urlpatterns = patterns(
     url(r'^plans/((?P<from_date>\d\d\d\d-\d\d)/)?',
         PlansMetricsView.as_view(), name='saas_metrics_plans'),
     url(r'^((?P<from_date>\d\d\d\d-\d\d))?',
-        'organization_engagement', name='saas_metrics_summary'),
+        RevenueMetricsView.as_view(), name='saas_metrics_summary'),
 )

@@ -1,0 +1,22 @@
+{% extends "saas/metrics_base.html" %}
+
+{% block metrics_table %}
+{% for row in table %}
+<tr>
+    <th>
+{% comment %}
+XXX works as long as row.key is plan.slug
+{% endcomment %}
+<a href="{% url 'saas_plan_edit' organization row.key %}" title="Edit plan"><i class="fa fa-pencil-square-o"></i> {{row.key}}</a>
+    </th>
+    {% for values in row.values %}
+    <td>{{values.1}}</td>
+    {% endfor %}
+</tr>
+{% endfor %}
+<tr>
+    <th colspan="14">
+<a href="{% url 'saas_plan_new' organization %}" title="Create plan">Add Plan ...</a>
+    </th>
+</tr>
+{% endblock %}

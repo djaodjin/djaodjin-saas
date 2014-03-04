@@ -29,6 +29,33 @@ function toggleCartItem(event) {
   }
 }
 
+
+function toggleActivatePlan(event) {
+  var self = $(this);
+  event.preventDefault();
+  pathname_parts = document.location.pathname.split('/')
+  organization = pathname_parts[2]
+  plan = pathname_parts[4]
+  is_active = !self.hasClass('activated');
+  $.ajax({ type: "PATCH",
+           url: '/api/plans/' + plan + '/activate/',
+           data: JSON.stringify({ "is_active": is_active }),
+          datatype: "json",
+          contentType: "application/json; charset=utf-8",
+      success: function(data) {
+         console.log("XXX ", data)
+         if( data['is_active'] ) {
+             self.addClass('activated');
+             self.text('Deactivate')
+         } else {
+             self.removeClass('activated');
+             self.text('Activate')
+         }
+      }
+  });
+}
+
+
 function initAjaxCSRFHook(csrf_token) {
     /** Include the csrf_token into the headers to authenticate with the server
         on ajax requests. */

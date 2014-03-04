@@ -428,6 +428,7 @@ class Plan(models.Model):
     slug = models.SlugField()
     title = models.CharField(max_length=50)
     description = models.TextField()
+    is_active = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True) # we use created_at by convention in other models.
     discontinued_at = models.DateTimeField(null=True,blank=True)
     organization = models.ForeignKey(Organization)

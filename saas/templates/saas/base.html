@@ -2,11 +2,14 @@
 
 {% block menubar %}
 {% if organization %}
-<a href="{% url 'saas_organization_profile' organization.name %}">profile</a>
-<a href="{% url 'saas_billing_info' organization.name %}">billing</a>
-<a href="{% url 'saas_metrics_summary' organization.name %}">summary</a>
-<a href="{% url 'saas_metrics_plans' organization.name %}">plans</a>
-<a href="{% url 'saas_organization_usage' organization.name %}">usage</a>
+<a id="saas_organization_profile" href="{% url 'saas_organization_profile' organization %}">profile</a>
+<a id="saas_billing_info" href="{% url 'saas_billing_info' organization %}">billing</a>
+<a id="saas_manager_list" href="{% url 'saas_manager_list' organization %}">managers</a>
+<a id="saas_contributor_list" href="{% url 'saas_contributor_list' organization %}">contributors</a>
+<a id="saas_subscriber_list" href="{% url 'saas_subscriber_list' organization %}">subscribers</a>
+<!-- metrics -->
+<a id="saas_metrics_summary" href="{% url 'saas_metrics_summary' organization.name %}">revenue</a>
+<a id="saas_metrics_plans" href="{% url 'saas_metrics_plans' organization.name %}">plans</a>
 {% endif %}
 {% if user.is_staff %}
 <a href="{% url 'saas_metrics_overall' %}">overall</a>
@@ -14,10 +17,20 @@
 {% endif %}
 {% endblock %}
 
-{% block footer %}
-<footer>
-This is our <a href="{% url 'legal_agreement' 'security' %}">security policy</a>.
-For any questions, please e-mail us at <a href="mailto:{{organization.email}}">{{organization.email}}</a>.
-</footer>
+{% block content %}
+
+{% block saas_content %}
 {% endblock %}
 
+{% endblock %}
+
+{% block footer %}
+{% if organization %}
+<footer>
+This is our
+<a href="{% url 'legal_agreement' 'security' %}">security policy</a>.
+For any questions, please e-mail us at
+<a href="mailto:{{organization.email}}">{{organization.email}}</a>.
+</footer>
+{% endif %}
+{% endblock %}
