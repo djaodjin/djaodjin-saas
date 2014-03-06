@@ -74,7 +74,7 @@ class ContributorListView(ListView):
 
     def get_queryset(self):
         self.organization = get_object_or_404(
-            Organization, name=self.kwargs.get('organization'))
+            Organization, slug=self.kwargs.get('organization'))
         return self.organization.contributors.all()
 
     def get_context_data(self, **kwargs):
@@ -92,7 +92,7 @@ class ManagerListView(ListView):
 
     def get_queryset(self):
         self.organization = get_object_or_404(
-            Organization, name=self.kwargs.get('organization'))
+            Organization, slug=self.kwargs.get('organization'))
         return self.organization.managers.all()
 
     def get_context_data(self, **kwargs):
@@ -112,7 +112,7 @@ class SubscriberListView(ListView):
 
     def get_queryset(self):
         self.organization = get_object_or_404(
-            Organization, name=self.kwargs.get('organization'))
+            Organization, slug=self.kwargs.get('organization'))
         return Organization.objects.filter(
             subscriptions__organization=self.organization)
 
@@ -134,7 +134,7 @@ class SubscriptionListView(ListView):
 
     def get_queryset(self):
         self.organization = Organization.objects.get(
-            name=self.kwargs.get('organization'))
+            slug=self.kwargs.get('organization'))
         return self.organization.subscriptions.all()
 
     def get_context_data(self, **kwargs):
@@ -147,7 +147,7 @@ class SubscriptionListView(ListView):
 class OrganizationProfileForm(forms.ModelForm):
     class Meta:
         model = Organization
-        fields = ['name', 'email', 'phone', 'street_address',
+        fields = ['full_name', 'email', 'phone', 'street_address',
                   'locality', 'region', 'postal_code',
                   'country_name' ]
 
@@ -156,7 +156,6 @@ class OrganizationProfileView(UpdateView):
 
     model = Organization
     form_class = OrganizationProfileForm
-    slug_field = 'name'
     slug_url_kwarg = 'organization'
     template_name = "saas/organization_profile.html";
 

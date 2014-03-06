@@ -1,4 +1,4 @@
-# Copyright (c) 2013, Fortylines LLC
+# Copyright (c) 2014, Fortylines LLC
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -59,7 +59,7 @@ def valid_manager_for_organization(user, organization):
     that represents the name of an organization.
     """
     if not isinstance(organization, Organization):
-        organization = get_object_or_404(Organization, name=organization)
+        organization = get_object_or_404(Organization, slug=organization)
 
     if SKIP_PERMISSION_CHECK:
         if user:
@@ -67,7 +67,7 @@ def valid_manager_for_organization(user, organization):
         else:
             username = '(none)'
         LOGGER.warning("Skip permission check for %s on organization %s",
-                       username, organization.name)
+                       username, organization)
         return organization
 
     if user and user.is_authenticated():
@@ -95,7 +95,7 @@ def valid_contributor_to_organization(user, organization):
     that represents the name of an organization.
     """
     if not isinstance(organization, Organization):
-        organization = Organization.objects.get(name=organization)
+        organization = Organization.objects.get(slug=organization)
 
     if SKIP_PERMISSION_CHECK:
         if user:
@@ -103,7 +103,7 @@ def valid_contributor_to_organization(user, organization):
         else:
             username = '(none)'
         LOGGER.warning("Skip permission check for %s on organization %s",
-                       username, organization.name)
+                       username, organization)
         return organization, True
 
     try:

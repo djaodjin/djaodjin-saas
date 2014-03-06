@@ -1,4 +1,4 @@
-# Copyright (c) 2013, The DjaoDjin Team
+# Copyright (c) 2014, The DjaoDjin Team
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -48,18 +48,16 @@ def create_charges(until=datetime.datetime.now()):
             inflight_charges = 0 # Such that subsequent logic works regardless
             amount = balance - inflight_charges
             if amount > 50:
-                LOGGER.info('CHARGE %dc to %s', amount, customer.name)
+                LOGGER.info('CHARGE %dc to %s', amount, customer)
                 # Stripe will not processed charges less than 50 cents.
                 try:
                     charge = Charge.objects.charge_card(customer, amount=amount)
                 except:
                     raise
             else:
-                LOGGER.info('SKIP   %s (less than 50c)',
-                            customer.name)
+                LOGGER.info('SKIP   %s (less than 50c)', customer)
         else:
-            LOGGER.info('SKIP   %s (one charge already in flight)',
-                            customer.name)
+            LOGGER.info('SKIP   %s (one charge already in flight)', customer)
 
 
 def charge_succeeded(charge_id):

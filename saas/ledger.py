@@ -1,4 +1,4 @@
-# Copyright (c) 2013, Fortylines LLC
+# Copyright (c) 2014, Fortylines LLC
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -32,12 +32,12 @@ def balance(organization):
     """returns balance due for an organization"""
     if isinstance(organization, basestring):
         try:
-            organization = Organization.objects.get(name=organization)
+            organization = Organization.objects.get(slug=organization)
         except Organization.DoesNotExist:
             raise
     balances = read_balances()
-    if organization.name in balances:
-        return balances[organization.name]
+    if organization.slug in balances:
+        return balances[organization.slug]
     return 0
 
 

@@ -71,7 +71,7 @@ class OrganizationManager(models.Manager):
                 billing_start = datetime.datetime(billing_start.year,
                     billing_start.month + 1, 1)
         customer = self.create(created_at=creation_time,
-                               name=name,
+                               slug=name,
                                billing_start=billing_start)
         # XXX We give each customer a certain amount of free time
         # to play with it.
@@ -84,17 +84,17 @@ class OrganizationManager(models.Manager):
         import saas.backends as backend # avoid import loop
         if not isinstance(customer, Organization):
             if isinstance(customer, basestring):
-                customer = self.get(name=customer)
+                customer = self.get(slug=customer)
             else:
                 customer = self.get(pk=customer)
         if not customer.processor_id:
             # We don't have a processor_id yet for this customer,
             # so let's create one.
             customer.processor_id = backend.create_customer(
-                customer.name, card)
+                customer.slug, card)
             customer.save()
             LOGGER.info('Created processor_id #%s for %s',
-                        customer.processor_id, customer.name)
+                        customer.processor_id, customer)
         else:
             backend.update_card(customer, card)
 
@@ -107,7 +107,7 @@ class OrganizationManager(models.Manager):
         if organization is None:
             return self.get_site_owner()
         if not isinstance(organization, Organization):
-            return self.get(name=organization)
+            return self.get(slug=organization)
         return organization
 
     def get_site(self):
@@ -154,11 +154,12 @@ class Organization(models.Model):
     """
 
     objects = OrganizationManager()
-    name = models.SlugField(unique=True,
+    slug = models.SlugField(unique=True,
         help_text=_("Name of the organization as shown in the url bar."))
 
     created_at = models.DateTimeField(auto_now_add=True)
     is_active = models.BooleanField(default=True)
+    full_name = models.CharField(_('full name'), max_length=60, blank=True)
     # contact by e-mail
     email = models.EmailField(
         help_text=_("Contact email for support related to the organization."))
@@ -191,7 +192,7 @@ class Organization(models.Model):
         blank=True, max_length=20)
 
     def __unicode__(self):
-        return unicode(self.name)
+        return unicode(self.slug)
 
 
 class Agreement(models.Model):
@@ -340,8 +341,8 @@ class ChargeManager(models.Manager):
         # Be careful, stripe will not processed charges less than 50 cents.
         import saas.backends as backend # Avoid import loop
         descr = '%s subscription to %s' % (
-            customer.name,
-            Organization.objects.get_site_owner().name)
+            customer.full_name,
+            Organization.objects.get_site_owner().full_name)
         if user:
             descr += ' (%s)' % user.username
         if token:
@@ -364,7 +365,7 @@ class ChargeManager(models.Manager):
                              description=descr, last4=last4, exp_date=exp_date)
         if charge:
             LOGGER.info('Created charge #%s of %d cents to %s',
-                        charge.id, charge.amount, customer.name)
+                        charge.id, charge.amount, customer)
         return charge
 
 
@@ -415,6 +416,8 @@ class Plan(models.Model):
     """
     Recurring billing plan
     """
+    MONTHLY = 4
+
     INTERVAL_CHOICES = [
         (0, "UNSPECIFIED"), # XXX Appears in drop down boxes
         (1, "HOURLY"),

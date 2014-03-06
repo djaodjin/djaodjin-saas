@@ -78,14 +78,14 @@ class LedgerTests(TestCase):
         transaction.leave_transaction_management(using='default')
 
     def _create_charge(self, customer_name, amount):
-        customer = Organization.objects.get(name=customer_name)
-        customer = Organization.objects.get(name=customer_name)
+        customer = Organization.objects.get(slug=customer_name)
+        customer = Organization.objects.get(slug=customer_name)
         charge = Charge.objects.charge_card(
             customer, amount=amount)
         return customer, charge.processor_id
 
     def _create_charge_for_balance(self, customer_name):
-        customer = Organization.objects.get(name=customer_name)
+        customer = Organization.objects.get(slug=customer_name)
         prev_balance = balance(customer)
         charge = Charge.objects.charge_card(
             customer, amount=prev_balance)

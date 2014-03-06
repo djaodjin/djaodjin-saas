@@ -8,8 +8,8 @@
 <a id="saas_contributor_list" href="{% url 'saas_contributor_list' organization %}">contributors</a>
 <a id="saas_subscriber_list" href="{% url 'saas_subscriber_list' organization %}">subscribers</a>
 <!-- metrics -->
-<a id="saas_metrics_summary" href="{% url 'saas_metrics_summary' organization.name %}">revenue</a>
-<a id="saas_metrics_plans" href="{% url 'saas_metrics_plans' organization.name %}">plans</a>
+<a id="saas_metrics_summary" href="{% url 'saas_metrics_summary' organization %}">revenue</a>
+<a id="saas_metrics_plans" href="{% url 'saas_metrics_plans' organization %}">plans</a>
 {% endif %}
 {% if user.is_staff %}
 <a href="{% url 'saas_metrics_overall' %}">overall</a>

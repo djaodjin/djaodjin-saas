@@ -41,7 +41,7 @@ class PlanFormMixin(SingleObjectMixin):
         """
         kwargs = super(PlanFormMixin, self).get_initial()
         self.organization = get_object_or_404(Organization,
-            name=self.kwargs.get('organization'))
+            slug=self.kwargs.get('organization'))
         kwargs.update({'organization': self.organization})
         return kwargs
 

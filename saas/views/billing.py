@@ -69,7 +69,7 @@ class CardFormMixin(FormMixin):
 
     def get_object(self, queryset=None):
         return get_object_or_404(
-            Organization, name=self.kwargs.get(self.slug_url_kwarg))
+            Organization, slug=self.kwargs.get(self.slug_url_kwarg))
 
     def get_initial(self):
         """
@@ -78,7 +78,7 @@ class CardFormMixin(FormMixin):
         """
         self.customer = self.get_object()
         kwargs = super(CardFormMixin, self).get_initial()
-        kwargs.update({'card_name': self.customer.name,
+        kwargs.update({'card_name': self.customer.full_name,
                        'card_city': self.customer.locality,
                        'card_address_line1': self.customer.street_address,
                        'card_address_country': self.customer.country_name,
@@ -125,7 +125,7 @@ class TransactionListView(ListView):
         Get the list of transactions for this organization.
         """
         self.customer = get_object_or_404(
-            Organization, name=self.kwargs.get('organization'))
+            Organization, slug=self.kwargs.get('organization'))
         queryset = Transaction.objects.filter(
             Q(orig_organization=self.customer)
             | Q(dest_organization=self.customer)
@@ -277,7 +277,7 @@ class ChargeReceiptView(DetailView):
 
 
 def pay_now(request, organization):
-    organization = get_object_or_404(Organization, name=organization)
+    organization = get_object_or_404(Organization, slug=organization)
     customer = organization
     context = { 'user': request.user,
                 'organization': organization }

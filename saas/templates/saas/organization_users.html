@@ -1,7 +1,7 @@
 <section id="{{title}}">
   <h1>{{title}}</h1>
   <form method="post"
-        action="{% url 'saas_add_'|add:title organization.name %}">
+        action="{% url 'saas_add_'|add:title organization %}">
     <input name="username" type="text" size="32" />
     <input type="submit" class="btn" value="Add" />
     {% csrf_token %}
@@ -20,7 +20,7 @@
       <tr>
         <td>
           <form method="post"
-                action="{% url 'saas_remove_'|add:title organization.name %}">
+                action="{% url 'saas_remove_'|add:title organization %}">
             <input name="username" type="hidden" value="{{user.username}}" />
             <input type="submit" class="btn btn-danger"
                    value="Remove" />

@@ -9,7 +9,7 @@
 {% block saas_content %}
 <section id="info">
   <h1>Credit Card</h1>
-  <a class="btn" href="{% url 'saas_update_card' organization.name %}">Update</a>
+  <a class="btn" href="{% url 'saas_update_card' organization %}">Update</a>
   <dl class="dl-horizontal">
     <dt>card</dt>
     <dd>{{last4}}</dd>
@@ -27,7 +27,7 @@
     <dd>Balance Credits</dd>
         {% else %}
     <dt>{{balance_dues|usd}}</dt>
-    <dd>Balance due (<a href="{% url 'saas_pay_now' organization.name %}">pay now</a>)</dd>
+    <dd>Balance due (<a href="{% url 'saas_pay_now' organization %}">pay now</a>)</dd>
     {% endif %}
   </dl>
 </section>

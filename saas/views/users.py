@@ -47,7 +47,7 @@ class UserProfileView(UpdateView):
         username = self.kwargs.get(self.slug_url_kwarg)
         try:
             context.update({
-                'organization': Organization.objects.get(name=username)})
+                'organization': Organization.objects.get(slug=username)})
         except Organization.DoesNotExist:
             pass
         return context

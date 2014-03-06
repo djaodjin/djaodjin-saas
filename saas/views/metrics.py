@@ -211,7 +211,7 @@ class PlansMetricsView(TemplateView):
     def get_context_data(self, **kwargs):
         context = super(PlansMetricsView, self).get_context_data(**kwargs)
         organization = get_object_or_404(
-            Organization, name=kwargs.get('organization'))
+            Organization, slug=kwargs.get('organization'))
         table = []
         for plan in Plan.objects.filter(organization=organization):
             values = []
@@ -237,7 +237,7 @@ class RevenueMetricsView(TemplateView):
     def get_context_data(self, **kwargs):
         context = super(RevenueMetricsView, self).get_context_data(**kwargs)
         organization = get_object_or_404(
-            Organization, name=kwargs.get('organization'))
+            Organization, slug=kwargs.get('organization'))
         from_date = kwargs.get('from_date', None)
         table = organization_monthly_revenue_customers(organization, from_date)
         context = { "title": "Revenue Metrics",
@@ -273,7 +273,7 @@ def organization_usage(request, organization):
         end = first - timedelta(days=1)
     context = {
         'data': [{ "key": "Usage",
-                 "values": values }],"organization_id":organization.name}
+                 "values": values }],"organization_id":organization.slug}
     return render(request, "saas/usage_chart.html", context)
 
 
@@ -303,7 +303,7 @@ def organization_overall(request):
             values += [{ "x": date.strftime(first, "%Y/%m/%d"),
                        "y": amount }]
             end = first - timedelta(days=1)
-        all_values += [{"key":str(organization_all.name),"values":values}]
+        all_values += [{"key":str(organization_all.slug),"values":values}]
 
     context ={'data' : all_values}
 

@@ -11,7 +11,7 @@ Transaction fee: {{p.transaction_fee}}/transaction
 </br>
 {{p.description}}
 		</br></br>
-		<a class="btn" href="{% url 'saas_edit_plan' organization.name p.id %}">Edit Plan</a>
+		<a class="btn" href="{% url 'saas_edit_plan' organization p.id %}">Edit Plan</a>
 		</br></br>
 		<hr>
 	{% endfor %}

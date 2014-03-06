@@ -45,7 +45,7 @@
 <section id="coupon">
   <h1>Coupon</h1>
   <form method="post" id="redeem-form" class="form-horizontal"
-        action="{% url 'saas_redeem_coupon' organization.name %}">
+        action="{% url 'saas_redeem_coupon' organization %}">
     {{ form.non_field_errors }}
     {% csrf_token %}
     {{coupon_form.as_table}}
@@ -59,7 +59,7 @@
   <form method="post" id="payment-form" class="form-horizontal" action=".">
     {% if total_amount %}
     {% if last4 %}
-    <a class="btn" href="{% url 'saas_update_card' organization.name %}">Update</a>
+    <a class="btn" href="{% url 'saas_update_card' organization %}">Update</a>
     <dl class="dl-horizontal">
       <dt>card</dt>
       <dd>{{last4}}</dd>

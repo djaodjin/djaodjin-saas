@@ -48,4 +48,4 @@ class Command(NoArgsCommand):
         for organization in Organization.objects.filter(
             created_at__gt=start_period):
             sys.stdout.write('%s %s\n'
-                             % (organization.created_at, organization.name))
+                % (organization.created_at, organization))
