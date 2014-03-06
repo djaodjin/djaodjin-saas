@@ -7,116 +7,11 @@
 
 {% block bodyscripts %}
 <script src="/static/js/vendor/jquery-1.9.1.js"></script>
+<script src="/static/js/djaodjin-card.js"></script>
 <script type="text/javascript">
-// This are the function to interact with the Stripe payment processor.
-
-function stripeResponseHandler(status, response) {
-	if (response.error) {
-		// show the errors on the form
-		$("#messages").append("<li class='alert alert-error'>" + response.error.message + "</li>");
-		$(".payment-submit").removeAttr("disabled");
-	} else {
-		var form$ = $("#payment-form");
-		// token contains id, last4, and card type
-		var token = response['id'];
-		// insert the token into the form so it gets submitted to the server
-		form$.append("<input type='hidden' name='stripeToken' value='" + token + "'/>");
-		// and submit
-		form$.get(0).submit();
-	}
-}
-
-function stripeCreateToken(event) {
-	// disable the submit button to prevent repeated clicks
-	$(".payment-submit").attr("disabled", "disabled");
-	var valid = true
-	var error_messages = ""
-
-	/* BE CAREFULL: Do not add name="" to these <input> nodes, else they will
-	   hit our server and break PCI compliance. */
-	var number = $("#card-number").val()
-	if( number == "" ) {
-		error_messages = 'The following fields cannot be empty.';
-		$("#row-number").addClass('error-input');
-		valid = false
-	}
-	var cvc = $("#card-cvc").val()
-	if( cvc == "" ) {
-		error_messages = 'The following fields cannot be empty.';
-		$("#row-cvc").addClass('error-input');
-		valid = false
-	}
-	var exp_month = $("#card-exp-month").val()
-	var exp_year = $("#card-exp-year").val()
-	if( exp_month == "" || exp_year == "" ) {
-		error_messages = 'The following fields cannot be empty.';
-		$("#row-exp").addClass('error-input');
-		valid = false
-	}
-
-	/* These are OK to forward to our server. */
-	var name = $("#payment-form [name='card_name']").val()
-	if( name == "" ) {
-		error_messages = 'The following fields cannot be empty.';
-		$("#payment-form #row-name").addClass('error-input');
-		valid = false
-	}
-	var address_line1 = $("#payment-form [name='card_address_line1']").val()
-	if( address_line1 == "" ) {
-		error_messages = 'The following fields cannot be empty.';
-		$("#payment-form #row-address-line1").addClass('error-input');
-		valid = false
-	}
-	var address_city = $("#payment-form [name='card_city']").val()
-	if( address_city == "" ) {
-		error_messages = 'The following fields cannot be empty.';
-		$("#payment-form #row-city").addClass('error-input');
-		valid = false
-	}
-	var address_country = $("#payment-form [name='card_address_country']").val()
-	if( address_country == "" ) {
-		error_messages = 'The following fields cannot be empty.';
-		$("#payment-form #row-address-country").addClass('error-input');
-		valid = false
-	}
-	var address_state = $("#payment-form [name='card_address_state']").val()
-	if( address_state == "" ) {
-		error_messages = 'The following fields cannot be empty.';
-		$("#payment-form #row-address-state").addClass('error-input');
-		valid = false
-	}
-	var address_zip = $("#payment-form [name='card_address_zip']").val()
-	if( address_zip == "" ) {
-		error_messages = 'The following fields cannot be empty.';
-		$("#payment-form #row-address-zip").addClass('error-input');
-		valid = false
-	}
-	if( valid ) {
-		// this identifies your website in the createToken call below
-		Stripe.setPublishableKey('{{STRIPE_PUB_KEY}}');
-		Stripe.createToken({
-			number: $("#card-number").val(),
-			cvc: $("#card-cvc").val(),
-			exp_month: $("#card-exp-month").val(),
-			exp_year: $("#card-exp-year").val(),
-			name: name,
-			address_line1: address_line1,
-			address_city: address_city,
-			address_state: address_state,
-			address_zip: address_zip,
-			address_country: address_country
-		}, stripeResponseHandler);
-	} else {
-		$("#messages").append("<li class='alert alert-error'>" + error_messages + "</li>");
-		$(".payment-submit").removeAttr("disabled");
-	}
-	// prevent the form from submitting with the default action
-	return false;
-}
-
 {% if STRIPE_PUB_KEY %}
 $(document).ready(function() {
-    $("#payment-form").submit(stripeCreateToken);
+    initCardProcessor("{{STRIPE_PUB_KEY}}");
 });
 {% endif %}
 </script>

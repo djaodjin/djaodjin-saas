@@ -416,7 +416,7 @@ class Plan(models.Model):
     Recurring billing plan
     """
     INTERVAL_CHOICES = [
-        (0, "UNSPECIFIED"),
+        (0, "UNSPECIFIED"), # XXX Appears in drop down boxes
         (1, "HOURLY"),
         (2, "DAILY"),
         (3, "WEEKLY"),
@@ -444,6 +444,9 @@ class Plan(models.Model):
         help_text=_('Number of intervals the plan before the plan ends.'))
     # Pb with next : maybe create an other model for it
     next_plan = models.ForeignKey("Plan", null=True)
+
+    class Meta:
+        unique_together = ('slug', 'organization')
 
     def __unicode__(self):
         return unicode(self.slug)

@@ -30,6 +30,9 @@ function toggleCartItem(event) {
 }
 
 
+/** Toggle a ``Plan`` from active to inactive and vise-versa
+    by executing an AJAX request on the backend.
+ */
 function toggleActivatePlan(event) {
   var self = $(this);
   event.preventDefault();
@@ -43,7 +46,6 @@ function toggleActivatePlan(event) {
           datatype: "json",
           contentType: "application/json; charset=utf-8",
       success: function(data) {
-         console.log("XXX ", data)
          if( data['is_active'] ) {
              self.addClass('activated');
              self.text('Deactivate')

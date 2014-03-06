@@ -23,43 +23,16 @@
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 """
-Helpers to redirect based on session.
+URLs for the resources API of djaodjin saas.
 """
 
-from django.http import Http404
-from django.views.generic import RedirectView
+from django.conf.urls import patterns, include, url
 
-from saas.models import Organization
+from saas.api.plans import PlanActivateAPIView
+from saas.settings import ACCT_REGEX
 
+urlpatterns = patterns('saas.api',
+    url(r'^plans/(?P<plan>%s)/activate/' % ACCT_REGEX,
+        PlanActivateAPIView.as_view(), name='saas_api_plan_activate'),
+)
 
-class OrganizationRedirectView(RedirectView):
-
-    slug_url_kwarg = 'organization'
-
-    def get_redirect_url(self, *args, **kwargs):
-        """
-        Find the ``Organization`` associated with the request user
-        and return the URL that contains the organization slug
-        to redirect to.
-        """
-        managed = Organization.objects.find_managed(
-            self.request.user)
-        if managed.count() == 1:
-            kwargs.update({ self.slug_url_kwarg: managed.get()})
-            return super(OrganizationRedirectView, self).get_redirect_url(
-                *args, **kwargs)
-        raise Http404("Cannot find your billing profile!")
-
-
-class UserRedirectView(RedirectView):
-
-    slug_url_kwarg = 'user'
-    pattern_name='users_profile'
-
-    def get_redirect_url(self, *args, **kwargs):
-        """
-        Find the ``User`` associated with the request user
-        and return the URL that contains the username to redirect to.
-        """
-        kwargs.update({ self.slug_url_kwarg: self.request.user.username })
-        return super(UserRedirectView, self).get_redirect_url(*args, **kwargs)

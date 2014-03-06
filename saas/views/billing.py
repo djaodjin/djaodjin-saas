@@ -34,12 +34,10 @@ from django.core.urlresolvers import reverse
 from django.core.context_processors import csrf
 from django.core.exceptions import PermissionDenied
 from django.views.decorators.http import require_GET
-from django.views.generic.list import ListView, MultipleObjectTemplateResponseMixin
-from django.views.generic.detail import DetailView
-from django.views.generic.edit import BaseFormView
-from django.utils.decorators import method_decorator
+from django.views.generic import DetailView, ListView, FormView
+from django.views.generic.list import MultipleObjectTemplateResponseMixin
+from django.views.generic.edit import BaseFormView, FormMixin
 from django.shortcuts import render, redirect, get_object_or_404
-from django.contrib.auth.decorators import login_required
 
 import saas.backends as backend
 import saas.settings as settings
@@ -61,6 +59,60 @@ def _session_cart_to_database(request):
             plan = Plan.objects.get(slug=item['plan'])
             CartItem.objects.create(user=request.user, plan=plan)
         del request.session['cart_items']
+
+
+class CardFormMixin(FormMixin):
+
+    form_class = CreditCardForm
+    slug_field = 'name'
+    slug_url_kwarg = 'organization'
+
+    def get_object(self, queryset=None):
+        return get_object_or_404(
+            Organization, name=self.kwargs.get(self.slug_url_kwarg))
+
+    def get_initial(self):
+        """
+        Populates place order forms with the organization address
+        whenever possible.
+        """
+        self.customer = self.get_object()
+        kwargs = super(CardFormMixin, self).get_initial()
+        kwargs.update({'card_name': self.customer.name,
+                       'card_city': self.customer.locality,
+                       'card_address_line1': self.customer.street_address,
+                       'card_address_country': self.customer.country_name,
+                       'card_address_state': self.customer.region,
+                       'card_address_zip': self.customer.postal_code})
+        return kwargs
+
+
+class CardUpdateView(CardFormMixin, FormView):
+
+    template_name = 'saas/card_update.html'
+
+    def form_valid(self, form):
+        now = datetime.datetime.now()
+        stripe_token = form.cleaned_data['stripeToken']
+        # With Stripe, we don't need to wait on an IPN. We get
+        # a card token here.
+        Organization.objects.associate_processor(self.customer, stripe_token)
+        email = None
+        if self.customer.managers.count() > 0:
+            email = self.customer.managers.all()[0].email
+            # XXX email all managers that the card was updated.
+        messages.success(self.request,
+            "Your credit card on file was sucessfully updated")
+        return super(CardUpdateView, self).form_valid(form)
+
+    def get_context_data(self, **kwargs):
+        context = super(CardUpdateView, self).get_context_data(**kwargs)
+        context.update({'organization': self.customer,
+                        'STRIPE_PUB_KEY': settings.STRIPE_PUB_KEY})
+        return context
+
+    def get_success_url(self):
+        return reverse('saas_billing_info', args=(self.customer,))
 
 
 class TransactionListView(ListView):
@@ -93,12 +145,12 @@ class TransactionListView(ListView):
         return context
 
 
-class PlaceOrderView(MultipleObjectTemplateResponseMixin, BaseFormView):
+class PlaceOrderView(CardFormMixin, MultipleObjectTemplateResponseMixin,
+                     BaseFormView):
     """
     Where a user enters his payment information and submit her order.
     """
     template_name = 'saas/place_order.html'
-    form_class = CreditCardForm
 
     # Implementation Node:
     #     All fields in CreditCardForm are optional to insure the form
@@ -118,30 +170,19 @@ class PlaceOrderView(MultipleObjectTemplateResponseMixin, BaseFormView):
         total_amount, discount_amount = self.amounts(
             self.get_invoicables(), coupons)
         if total_amount:
+            # XXX We always remember the card instead of taking input
+            # from the form.cleaned_data['remember_card'] field.
+            remember_card = True
             self.charge = Charge.objects.charge_card(
                 self.customer, total_amount, self.request.user,
                 token=form.cleaned_data['stripeToken'],
-                remember_card=form.cleaned_data['remember_card'])
+                remember_card=remember_card)
         # We commit in the db AFTER the charge goes through. In case anything
         # goes wrong with the charge the cart is still in a consistent state.
         CartItem.objects.checkout(self.customer, self.request.user)
         if len(coupons) > 0:
             Transaction.objects.redeem_coupon(discount_amount, coupons[0])
         return super(PlaceOrderView, self).form_valid(form)
-
-    def get_initial(self):
-        """
-        Populates place order forms with the organization address
-        whenever possible.
-        """
-        kwargs = super(PlaceOrderView, self).get_initial()
-        kwargs.update({'card_name': self.customer.name,
-                       'card_city': self.customer.locality,
-                       'card_address_line1': self.customer.street_address,
-                       'card_address_country': self.customer.country_name,
-                       'card_address_state': self.customer.region,
-                       'card_address_zip': self.customer.postal_code})
-        return kwargs
 
     def get_success_url(self):
         if hasattr(self, 'charge'):
@@ -176,8 +217,6 @@ class PlaceOrderView(MultipleObjectTemplateResponseMixin, BaseFormView):
         return queryset
 
     def dispatch(self, *args, **kwargs):
-        self.customer = get_object_or_404(
-            Organization, name=kwargs.get('organization'))
         # We are not getting here without an authenticated user. It is time
         # to store the cart into the database.
         _session_cart_to_database(self.request)
@@ -233,7 +272,7 @@ class ChargeReceiptView(DetailView):
                         'exp_date': self.object.exp_date,
                         'charge_id': self.object.processor_id,
                         'amount': self.object.amount,
-                        'organization': Organization.objects.get_site_owner()})
+                        'customer': self.customer})
         return context
 
 
@@ -302,29 +341,3 @@ def redeem_coupon(request, organization):
     return redirect(reverse('saas_pay_cart', args=(organization,)))
 
 
-def update_card(request, organization):
-    context = { 'user': request.user,
-                'organization': organization }
-    context.update(csrf(request))
-    if request.method == 'POST':
-        form = CreditCardForm(request.POST)
-        if form.is_valid():
-            now = datetime.datetime.now()
-            stripe_token = form.cleaned_data['stripeToken']
-            # With Stripe, we don't need to wait on an IPN. We get
-            # a card token here.
-            Organization.objects.associate_processor(organization, stripe_token)
-            email = None
-            if organization.managers.count() > 0:
-                email = organization.managers.all()[0].email
-            messages.success(request,
-                "Your credit card on file was sucessfully updated")
-            return redirect(reverse('saas_billing_info',
-                                    args=(organization,)))
-        else:
-            messages.error(request, "The form did not validates")
-    else:
-        form = CreditCardForm()
-    context.update({'form': form})
-    context.update({ 'STRIPE_PUB_KEY': settings.STRIPE_PUB_KEY })
-    return render(request, "saas/card_update.html", context)

@@ -27,18 +27,21 @@ Forms shown by the saas application
 """
 
 from django import forms
+from django.template.defaultfilters import slugify
+from django.utils.translation import ugettext_lazy as _
 
 from saas.models import Plan
-
+from saas.compat import User
 
 class CreditCardForm(forms.Form):
     '''Update Card Information.'''
     stripeToken = forms.CharField(required=False)
-    remember_card = forms.BooleanField(required=False)
+    remember_card = forms.BooleanField(
+        label=_("Remember this card"), required=False, initial=True)
 
     def __init__(self, *args, **kwargs):
         #call our superclasse's initializer
-        super(forms.Form, self).__init__(*args, **kwargs)
+        super(CreditCardForm, self).__init__(*args, **kwargs)
         #define other fields dynamically:
         self.fields['card_name'] = forms.CharField(
             label='Card Holder', required=False)
@@ -66,14 +69,24 @@ class PlanForm(forms.ModelForm):
     """
     class Meta:
         model = Plan
-        exclude = [ 'discontinued_at', 'length', 'next_plan', 'organization',
-            'slug' ]
+        exclude = [ 'discontinued_at', 'is_active', 'length', 'next_plan',
+                    'organization', 'slug' ]
 
     def save(self, commit=True):
         if self.initial.has_key('organization'):
             self.instance.organization = self.initial['organization']
         self.instance.slug = slugify(self.cleaned_data['title'])
         return super(PlanForm, self).save(commit)
+
+
+class UserForm(forms.ModelForm):
+    """
+    Form to update a ``User`` profile.
+    """
+
+    class Meta:
+        model = User
+        fields = ['username', 'email', 'first_name', 'last_name']
 
 
 class UserRelationForm(forms.Form):

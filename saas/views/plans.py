@@ -22,6 +22,7 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+from django.core.urlresolvers import reverse
 from django.shortcuts import get_object_or_404
 from django.views.generic.edit import CreateView, UpdateView
 from django.views.generic.detail import SingleObjectMixin
@@ -55,6 +56,9 @@ class PlanCreateView(PlanFormMixin, CreateView):
     Create a new ``Plan`` for an ``Organization``.
     """
     pass
+
+    def get_success_url(self):
+        return reverse('saas_metrics_plans', args=(self.organization,))
 
 
 class PlanUpdateView(PlanFormMixin, UpdateView):

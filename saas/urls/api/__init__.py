@@ -1,4 +1,4 @@
-# Copyright (c) 2013, The DjaoDjin Team
+# Copyright (c) 2014, Fortylines LLC
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -22,22 +22,11 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-'''Billing urls'''
+'''SaaS API URLs'''
 
 from django.conf.urls import patterns, include, url
 
-from saas.views.billing import (CardUpdateView, ChargeReceiptView,
-    PlaceOrderView, TransactionListView, redeem_coupon, pay_now)
-
 urlpatterns = patterns(
-    'saas.views.billing',
-    url(r'^card', CardUpdateView.as_view(), name='saas_update_card'),
-    url(r'^balance/pay/', pay_now, name='saas_pay_now'),
-    url(r'^cart/', PlaceOrderView.as_view(), name='saas_organization_cart'),
-    url(r'^coupon/redeem/', redeem_coupon, name='saas_redeem_coupon'),
-    url(r'^receipt/(?P<charge>[a-zA-Z0-9_]+)',
-        ChargeReceiptView.as_view(), name='saas_charge_receipt'),
-    url(r'^$', TransactionListView.as_view(), name='saas_billing_info'),
+    url(r'^cart/', include('saas.urls.api.cart')),
+    url(r'^', include('saas.urls.api.resources')),
 )
-
-

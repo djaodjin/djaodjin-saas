@@ -1,4 +1,4 @@
-# Copyright (c) 2014, The DjaoDjin Team
+# Copyright (c) 2014, Fortylines LLC
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -22,44 +22,32 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-"""
-Helpers to redirect based on session.
-"""
+from django.views.generic import UpdateView
 
-from django.http import Http404
-from django.views.generic import RedirectView
-
+from saas.compat import User
+from saas.forms import UserForm
 from saas.models import Organization
 
 
-class OrganizationRedirectView(RedirectView):
+class UserProfileView(UpdateView):
+    """
+    If a user is manager for an Organization, she can access the Organization profile.
+    If a user is manager for an Organization subscribed to another Organization,
+    she can access the product provided by that organization.
+    """
 
-    slug_url_kwarg = 'organization'
-
-    def get_redirect_url(self, *args, **kwargs):
-        """
-        Find the ``Organization`` associated with the request user
-        and return the URL that contains the organization slug
-        to redirect to.
-        """
-        managed = Organization.objects.find_managed(
-            self.request.user)
-        if managed.count() == 1:
-            kwargs.update({ self.slug_url_kwarg: managed.get()})
-            return super(OrganizationRedirectView, self).get_redirect_url(
-                *args, **kwargs)
-        raise Http404("Cannot find your billing profile!")
-
-
-class UserRedirectView(RedirectView):
-
+    model = User
+    form_class = UserForm
     slug_url_kwarg = 'user'
-    pattern_name='users_profile'
+    slug_field = 'username'
+    template_name = 'users/user_form.html'
 
-    def get_redirect_url(self, *args, **kwargs):
-        """
-        Find the ``User`` associated with the request user
-        and return the URL that contains the username to redirect to.
-        """
-        kwargs.update({ self.slug_url_kwarg: self.request.user.username })
-        return super(UserRedirectView, self).get_redirect_url(*args, **kwargs)
+    def get_context_data(self, **kwargs):
+        context = super(UserProfileView, self).get_context_data(**kwargs)
+        username = self.kwargs.get(self.slug_url_kwarg)
+        try:
+            context.update({
+                'organization': Organization.objects.get(name=username)})
+        except Organization.DoesNotExist:
+            pass
+        return context
