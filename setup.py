@@ -14,6 +14,7 @@ setup(
               'saas.static',
               'saas.templatetags',
               'saas.templates',
+              'saas.urls',
               'saas.urls.api',
               'saas.views',
               'saas.api',
