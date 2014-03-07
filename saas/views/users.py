@@ -22,11 +22,38 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from django.views.generic import UpdateView
+from django.shortcuts import get_object_or_404
+from django.views.generic import ListView, UpdateView
 
 from saas.compat import User
 from saas.forms import UserForm
 from saas.models import Organization
+from saas.views.auth import managed_organizations
+
+class ProductListView(ListView):
+    """List of organizations the request.user is a manager
+    or contributor for."""
+
+    paginate_by = 10
+    slug_url_kwarg = 'user'
+    slug_field = 'username'
+    template_name = 'saas/managed_list.html'
+
+    def get_queryset(self):
+        self.user = get_object_or_404(
+            User, username=self.kwargs.get(self.slug_url_kwarg))
+        return managed_organizations(self.user)
+
+    def get_context_data(self, **kwargs):
+        context = super(ProductListView, self).get_context_data(**kwargs)
+        context.update({'organizations': context['object_list']})
+        try:
+            context.update({
+                'organization': Organization.objects.get(
+                        slug=self.user.username)})
+        except Organization.DoesNotExist:
+            pass
+        return context
 
 
 class UserProfileView(UpdateView):

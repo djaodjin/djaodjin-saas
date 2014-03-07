@@ -39,7 +39,7 @@ def managed_organizations(user):
     List of organization this user is a manager for.
     """
     queryset = []
-    for org in Organization.objects.all().order_by('name'):
+    for org in Organization.objects.all().order_by('slug'):
         try:
             queryset += [
                 valid_manager_for_organization(user, org)]

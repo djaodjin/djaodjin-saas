@@ -22,27 +22,17 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-'''SaaS urls'''
+'''Urls'''
 
 from django.conf.urls import patterns, include, url
 
-from saas.views import OrganizationRedirectView
-from saas.settings import ACCT_REGEX
+from saas.views.users import ProductListView
 
 urlpatterns = patterns(
-    'saas.views',
-    url(r'^api/',
-        include('saas.urls.api')),
-    url(r'^billing/cart/',
-        OrganizationRedirectView.as_view(pattern_name='saas_organization_cart'),
-        name='saas_cart'),
-    url(r'^billing/(?P<organization>%s)/' % ACCT_REGEX,
-        include('saas.urls.billing')),
-    url(r'^metrics/(?P<organization>%s)/' % ACCT_REGEX,
-        include('saas.urls.metrics')),
-    url(r'^profile/(?P<organization>%s)/' % ACCT_REGEX,
-        include('saas.urls.profile')),
-    url(r'^users/(?P<user>%s)/' % ACCT_REGEX,
-        include('saas.urls.app.users')),
+    'saas.views.users',
+    url(r'^products/',
+        ProductListView.as_view(), name='saas_user_product_list'),
 )
+
+
 

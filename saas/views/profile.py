@@ -43,27 +43,11 @@ from saas.ledger import balance
 from saas.forms import UserRelationForm
 from saas.models import Organization, Plan
 from saas.views.auth import valid_manager_for_organization
-from saas.views.auth import managed_organizations
 import saas.backends as backend
 from saas.compat import User
 
 
 LOGGER = logging.getLogger(__name__)
-
-
-class OrganizationListView(ListView):
-    """List of organizations the request.user is a manager for."""
-
-    paginate_by = 10
-    template_name = 'saas/managed_list.html'
-
-    def get_queryset(self):
-        return managed_organizations(self.request.user)
-
-    def get_context_data(self, **kwargs):
-        context = super(OrganizationListView, self).get_context_data(**kwargs)
-        context.update({'organizations': context['object_list']})
-        return context
 
 
 class ContributorListView(ListView):
