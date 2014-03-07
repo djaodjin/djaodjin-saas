@@ -416,16 +416,22 @@ class Plan(models.Model):
     """
     Recurring billing plan
     """
-    MONTHLY = 4
+    UNSPECIFIED = 0
+    HOURLY   = 1
+    DAILY    = 2
+    WEEKLY   = 3
+    MONTHLY  = 4
+    QUATERLY = 5
+    YEARLY   = 7
 
     INTERVAL_CHOICES = [
-        (0, "UNSPECIFIED"), # XXX Appears in drop down boxes
-        (1, "HOURLY"),
-        (2, "DAILY"),
-        (3, "WEEKLY"),
-        (4, "MONTHLY"),
-        (5, "QUATERLY"),
-        (7, "YEARLY"),
+        (UNSPECIFIED, "UNSPECIFIED"), # XXX Appears in drop down boxes
+        (HOURLY, "HOURLY"),
+        (DAILY, "DAILY"),
+        (WEEKLY, "WEEKLY"),
+        (MONTHLY, "MONTHLY"),
+        (QUATERLY, "QUATERLY"),
+        (YEARLY, "YEARLY"),
         ]
 
     slug = models.SlugField()
