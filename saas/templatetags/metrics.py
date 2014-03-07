@@ -67,6 +67,6 @@ def products(organization):
         # We don't use QuerySet.distinct('organization') because the SQLite
         # backend does not support DISTINCT ON queries.
         return organization.subscriptions.all().values(
-            'organization__slug').distinct()
+            'organization__slug', 'organization__full_name').distinct()
     return []
 
