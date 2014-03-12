@@ -28,11 +28,12 @@
 
 import datetime, logging
 
-from django.db import models
+from django.db import models, transaction
+from django.db.models import Sum
 from django.utils.timezone import utc
 from django.contrib.sites.models import Site
 from django.utils.translation import ugettext_lazy as _
-from durationfield.db.models.fields.duration import DurationField
+from django.utils.decorators import method_decorator
 
 from saas import settings
 from saas import get_manager_relation_model, get_contributor_relation_model
@@ -244,33 +245,57 @@ class CartItemManager(models.Manager):
     def get_cart(self, user):
         return self.filter(user=user, recorded=False)
 
-    def get_invoicables_for(self, item, start_time=None, prorate_to=None):
-        invoicables = []
+    def as_transaction(self, subscription, customer, amount,
+                       start_time=None, descr=None):
         if not start_time:
             start_time = datetime.datetime.utcnow().replace(tzinfo=utc)
-        if item.plan.setup_amount:
+        return Transaction(
+            created_at=start_time,
+            amount=amount,
+            descr=descr,
+            orig_account=Transaction.INCOME,
+            dest_account=Transaction.PAYABLE,
+            orig_organization=subscription.plan.organization,
+            dest_organization=customer,
+            event_id=subscription.id)
+
+    def get_invoicables_for(self, subscription, customer,
+                            start_time=None, prorate_to=None):
+        if not start_time:
+            start_time = datetime.datetime.utcnow().replace(tzinfo=utc)
+        invoicables = []
+        plan = subscription.plan
+        if plan.setup_amount:
             # One time setup fee always charged in full.
-            if item.plan.period_amount:
-                descr = "%s (one-time setup)" % item.plan.get_title()
+            if plan.period_amount:
+                descr = "%s (one-time setup)" % plan.get_title()
             else:
-                descr = item.plan.get_title()
-            invoicables += [{
-                "amount": item.plan.setup_amount, "description": descr}]
+                descr = plan.get_title()
+            invoicables += [self.as_transaction(subscription, customer,
+                plan.setup_amount, start_time, descr)]
         if prorate_to:
-            prorated_amount = item.plan.prorate_period(start_time, prorate_to)
+            prorated_amount = plan.prorate_period(start_time, prorate_to)
+            descr = "%s (pro-rated first period)" % plan.get_title()
+        else:
+            prorated_amount = plan.period_amount
+            descr = "%s (first period)" % plan.get_title()
+        if prorated_amount:
             # The prorated amount might still be zero in which case we don't
             # want to add it to the invoice.
-            if prorated_amount:
-                invoicables += [{"amount": prorated_amount,
-                    "description": ("%s (pro-rated first period)"
-                                    % item.plan.get_title())}]
+            invoicables += [self.as_transaction(subscription, customer,
+                prorated_amount, start_time, descr)]
         return invoicables
 
-    def get_invoicables(self, customer, user, start_date=None,
-        prorate_to_billing=False):
+    def get_invoicables(self, customer, user, coupons,
+                        start_date=None, prorate_to_billing=False):
         """
         Returns a list of invoicable items (amount, description)
-        from the items in a user/customer cart.
+        from the items in a user/customer cart. Schema:
+        invoicable_items = [
+            { "subscription": Subscription,
+              "lines": [{
+              }, ...],
+            }, ...]
         """
         invoicables = []
         if not start_date:
@@ -280,41 +305,64 @@ class CartItemManager(models.Manager):
             # XXX First we add enough periods to get the next billing date later
             # than start_date but no more than one period in the future.
             prorate_to = customer.billing_start
-        for item in self.get_cart(user=user):
-            invoicables += self.get_invoicables_for(
-                item, start_date, prorate_to)
-        return invoicables
+        invoiced_items = []
+        for cart_item in self.get_cart(user=user):
+            subscription = Subscription(
+                organization=customer, plan=cart_item.plan)
+            lines = self.get_invoicables_for(
+                    subscription, customer, start_date, prorate_to)
+            item_amount = 0
+            for line in lines:
+                item_amount = item_amount + line.amount
+            for coupon in coupons:
+                coupon_amount = item_amount * coupon.percentage / 100
+                lines += [Transaction(
+                        created_at=start_time,
+                        amount=coupon_amount,
+                        descr='redeem coupon #%s' % coupon.code,
+                        orig_account=Transaction.PAYABLE,
+                        dest_account=Transaction.REDEEM,
+                        orig_organization=customer,
+                        dest_organization=subscription.plan.organization,
+                        event_id=subscription.id)]
+            invoiced_items += [ { 'subscription': subscription,
+                "lines": lines } ]
+        return invoiced_items
 
-    def checkout(self, customer, user, start_date=None):
+    @method_decorator(transaction.atomic)
+    def checkout(self, customer, user, coupons, start_date=None):
         """
         Creates transactions based on a set of items in a cart.
         """
         if not start_date:
             start_date = datetime.datetime.utcnow().replace(tzinfo=utc)
-        for invoicable in self.get_invoicables(customer, user, start_date):
-            Transaction.objects.invoice(
-                customer, invoicable["amount"],
-                description=invoicable["description"],
-                created_at=start_date)
-        for item in self.get_cart(user):
-            Subscription.objects.create(
-               organization=customer, plan=item.plan)
-            item.recorded = True
-            item.save()
+        for invoicable in self.get_invoicables(
+                customer, user, coupons, start_date=start_date):
+            subscription = invoicable['subscription']
+            subscription.save()
+            for transaction in invoicable['lines']:
+                transaction.save()
+            # XXX Associated cart_item recorded.
+            cart_items = self.filter(
+                user=user, plan=subscription.plan, recorded=False)
+            if cart_items.exists():
+                cart_item = cart_items.get()
+                cart_item.recorded = True
+                cart_item.save()
 
 
 class CartItem(models.Model):
     """
     A user (authenticated or anonymous) shops for plans by adding them
-    to her cart. At checkout, the user is presented with the billing
+    to her cart. When placing an order, the user is presented with the billing
     account (``Organization``) those items apply to.
 
     Historical Note: The billing account was previously required at the time
     the item is added to the cart. The ``cart_items`` is the only extra state
     kept in the session, and kept solely for anonymous users. We do not store
     the billing account in the session. It is retrieved from the url. As a
-    result the billing account is set at checkout, not when the item is added
-    to the cart.
+    result the billing account (i.e. an ``Organization``) is set when an
+    order is placed, not when the item is added to the cart.
     """
     objects = CartItemManager()
 
@@ -409,6 +457,7 @@ class Coupon(models.Model):
     customer = models.ForeignKey(Organization, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     code = models.SlugField(primary_key=True, db_index=True)
+    percent = models.IntegerField(help_text="Percentage discounted")
     redeemed = models.BooleanField(default=False)
 
 
@@ -520,6 +569,8 @@ class Subscription(models.Model):
     last_payment = models.ForeignKey('Transaction', null=True,
         related_name='payment_for',
         help_text=_("Marks the last payment related to the subscription."))
+    last_charge = models.ForeignKey('Charge', null=True,
+        help_text=_("Marks the last charge related to the subscription."))
 
     class Meta:
         unique_together = ('organization', 'plan')
@@ -537,6 +588,77 @@ class TransactionManager(models.Manager):
         credit.save()
         return credit
 
+    def get_balance(self, organization, account='Payable'): # Transaction not defined
+        """
+        Returns payable balance for an organization
+        """
+        amount = self.filter(dest_organization=organization,
+            dest_account=Transaction.PAYABLE).aggregate(
+            Sum('amount'))['amount__sum']
+        if amount is None:
+            due_amount = 0
+        else:
+            due_amount = amount
+        amount = self.filter(orig_organization=organization,
+            orig_account=Transaction.PAYABLE).aggregate(
+            Sum('amount'))['amount__sum']
+        if amount is None:
+            paid_amount = 0
+        else:
+            paid_amount = amount
+        return due_amount - paid_amount
+
+    def get_invoicables(self, subscription):
+        """
+        Returns transactions which have not been charged to a customer yet.
+
+        invoicable_items = [
+            { "subscription": Subscription,
+              "lines": [{
+              }, ...],
+            }, ...]
+        """
+        lines = []
+        customer = subscription.organization
+        # All Transactions related to this subscription since the last payment.
+        if subscription.last_payment:
+            queryset = self.filter(
+                models.Q(dest_account=Transaction.PAYABLE)
+                | models.Q(dest_account=Transaction.REDEEM),
+                event_id=subscription.id,
+                created_at__gte=subscription.last_payment.created_at).order(
+                    'created_at')
+        else:
+            queryset = self.filter(
+                models.Q(dest_account=Transaction.PAYABLE)
+                | models.Q(dest_account=Transaction.REDEEM),
+                event_id=subscription.id).order_by('created_at')
+        invoiced_amount = 0
+        amount = queryset.filter(dest_account=Transaction.PAYABLE).aggregate(
+            Sum('amount'))['amount__sum']
+        if amount is not None:
+            invoiced_amount += amount
+        amount = queryset.filter(dest_account=Transaction.REDEEM).aggregate(
+            Sum('amount'))['amount__sum']
+        if amount is not None:
+            invoiced_amount -= amount
+        lines += list(queryset)
+        invoiced_subscription = {
+            'subscription': subscription, 'lines': list(queryset) }
+        balance = self.get_balance(customer) - invoiced_amount
+        print "XXX invoiced_amount: " + str(invoiced_amount) + ", balance: " + str(balance)
+        if balance != 0:
+            return [{'subscription': None,
+                       'lines': [Transaction(
+                amount=balance,
+                descr='balance for %s' % subscription.organization,
+                orig_account=Transaction.INCOME,
+                dest_account=Transaction.PAYABLE,
+                orig_organization=subscription.plan.organization,
+                dest_organization=customer)]},
+                    invoiced_subscription ]
+        return [ invoiced_subscription ]
+
     def invoice(self, customer, amount,
                 description=None, event_id=None, created_at=None):
         if not created_at:
@@ -548,17 +670,6 @@ class TransactionManager(models.Manager):
             descr=description,
             event_id=event_id,
             created_at=created_at)
-
-    def redeem_coupon(self, amount, coupon):
-        if amount:
-            self.create(
-                orig_organization=Organization.objects.get_site_owner(),
-                orig_account='Redeem',
-                dest_organization=coupon.customer,
-                dest_account='Balance',
-                amount=amount,
-                descr='redeem coupon #%s' % coupon.code)
-            coupon.redeemed = True
 
     def refund(self, customer, amount, description=None, event_id=None):
         usage = self.create(
@@ -601,6 +712,13 @@ class Transaction(models.Model):
 
     use 'ledger register' for tax acrual tax reporting.
     '''
+    ASSETS = 'Assets'
+    CHARGEBACK = 'Chargeback'
+    INCOME = 'Income'
+    PAYABLE = 'Payable'
+    REDEEM = 'Redeem'
+    REFUND = 'Refund'
+    WRITEOFF = 'Writeoff'
 
     objects = TransactionManager()
 

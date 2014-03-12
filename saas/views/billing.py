@@ -1,4 +1,4 @@
-# Copyright (c) 2014, The DjaoDjin Team
+# Copyright (c) 2014, Fortylines LLC
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -27,24 +27,25 @@
 import datetime, logging
 
 from django import forms
-from django.db.models import Q, Sum
-from django.contrib import messages
 from django.utils.translation import ugettext_lazy as _
 from django.core.urlresolvers import reverse
 from django.core.context_processors import csrf
 from django.core.exceptions import PermissionDenied
+from django.db import IntegrityError
+from django.db.models import Q, Sum
+from django.contrib import messages
+from django.shortcuts import render, redirect, get_object_or_404
 from django.views.decorators.http import require_GET
-from django.views.generic import DetailView, ListView, FormView
+from django.views.generic import DetailView, FormView, ListView, TemplateView
 from django.views.generic.list import MultipleObjectTemplateResponseMixin
 from django.views.generic.edit import BaseFormView, FormMixin
-from django.shortcuts import render, redirect, get_object_or_404
+from django.views.generic.base import ContextMixin
 
 import saas.backends as backend
 import saas.settings as settings
-from saas.ledger import balance
 from saas.forms import CreditCardForm, PayNowForm
 from saas.views.auth import managed_organizations, valid_manager_for_organization
-from saas.models import CartItem, Charge, Coupon, Organization, Plan, Transaction
+from saas.models import CartItem, Charge, Coupon, Organization, Plan, Transaction, Subscription
 
 
 LOGGER = logging.getLogger(__name__)
@@ -57,11 +58,45 @@ def _session_cart_to_database(request):
     if request.session.has_key('cart_items'):
         for item in request.session['cart_items']:
             plan = Plan.objects.get(slug=item['plan'])
-            CartItem.objects.create(user=request.user, plan=plan)
+            try:
+                CartItem.objects.create(user=request.user, plan=plan)
+            except IntegrityError, err:
+                # This might happen during testing of the place order
+                # through the test driver. Either way, if the item is
+                # already in the cart, it is OK to forget about this
+                # exception.
+                LOGGER.warning('Plan %d is already in %d cart db.',
+                               plan.id, request.user.id)
         del request.session['cart_items']
 
 
-class CardFormMixin(FormMixin):
+class InvoicablesMixin(ContextMixin):
+
+    def amounts(self, invoicables):
+        total_amount = 0
+        for item in invoicables:
+            for line in item['lines']:
+                if line.dest_account == Transaction.REDEEM:
+                    total_amount = total_amount - line.amount
+                else:
+                    total_amount = total_amount + line.amount
+        return total_amount
+
+    def get_context_data(self, **kwargs):
+        context = super(InvoicablesMixin, self).get_context_data(**kwargs)
+        total_amount = self.amounts(self.invoicables)
+        context.update({'total_amount': total_amount})
+        if total_amount:
+            context.update({'STRIPE_PUB_KEY': settings.STRIPE_PUB_KEY})
+            # Retrieve customer information from the backend
+            last4, exp_date = backend.retrieve_card(self.customer)
+            if last4 != "N/A":
+                context.update({'last4': last4, 'exp_date': exp_date})
+
+        return context
+
+
+class CardFormMixin(object):
 
     form_class = CreditCardForm
     slug_field = 'name'
@@ -145,8 +180,8 @@ class TransactionListView(ListView):
         return context
 
 
-class PlaceOrderView(CardFormMixin, MultipleObjectTemplateResponseMixin,
-                     BaseFormView):
+class PlaceOrderView(InvoicablesMixin, CardFormMixin,
+                     MultipleObjectTemplateResponseMixin, BaseFormView):
     """
     Where a user enters his payment information and submit her order.
     """
@@ -165,10 +200,7 @@ class PlaceOrderView(CardFormMixin, MultipleObjectTemplateResponseMixin,
         organization.
         """
         cart = CartItem.objects.get_cart(user=self.request.user)
-        coupons = Coupon.objects.filter(
-            user=self.request.user, customer=self.customer, redeemed=False)
-        total_amount, discount_amount = self.amounts(
-            self.get_invoicables(), coupons)
+        total_amount = self.amounts(self.get_queryset())
         if total_amount:
             # XXX We always remember the card instead of taking input
             # from the form.cleaned_data['remember_card'] field.
@@ -179,9 +211,9 @@ class PlaceOrderView(CardFormMixin, MultipleObjectTemplateResponseMixin,
                 remember_card=remember_card)
         # We commit in the db AFTER the charge goes through. In case anything
         # goes wrong with the charge the cart is still in a consistent state.
-        CartItem.objects.checkout(self.customer, self.request.user)
-        if len(coupons) > 0:
-            Transaction.objects.redeem_coupon(discount_amount, coupons[0])
+        # XXX need to readeem coupon in atomic checkout.
+        CartItem.objects.checkout(
+            self.customer, self.request.user, self.coupons)
         return super(PlaceOrderView, self).form_valid(form)
 
     def get_success_url(self):
@@ -192,29 +224,15 @@ class PlaceOrderView(CardFormMixin, MultipleObjectTemplateResponseMixin,
                       _("Your order has been processed. Thank you!"))
         return reverse('saas_organization_profile', args=(self.customer,))
 
-    def amounts(self, cart, coupons):
-        discount_amount = 0
-        total_amount = 0
-        for item in cart:
-            total_amount = total_amount + item["amount"]
-        # Reduce price by as much  Coupon.
-        if len(coupons) > 0:
-            discount_amount = total_amount
-        return total_amount - discount_amount, discount_amount
-
-    def get_invoicables(self):
-        """
-        Get the cart for this customer.
-        """
-        return CartItem.objects.get_invoicables(
-            customer=self.customer, user=self.request.user)
-
     def get_queryset(self):
         """
         Get the cart for this customer.
         """
-        queryset = self.get_invoicables()
-        return queryset
+        self.coupons = Coupon.objects.filter(
+            user=self.request.user, customer=self.customer, redeemed=False)
+        return CartItem.objects.get_invoicables(
+            customer=self.customer, user=self.request.user,
+            coupons=self.coupons)
 
     def dispatch(self, *args, **kwargs):
         # We are not getting here without an authenticated user. It is time
@@ -223,24 +241,13 @@ class PlaceOrderView(CardFormMixin, MultipleObjectTemplateResponseMixin,
         return super(PlaceOrderView, self).dispatch(*args, **kwargs)
 
     def get_context_data(self, **kwargs):
-        self.object_list = self.get_queryset()
+        self.invoicables = self.get_queryset()
+        self.object_list = self.invoicables
         kwargs.update({'object_list': self.object_list})
         context = super(PlaceOrderView, self).get_context_data(**kwargs)
-        # Reduce price by as much  Coupon.
-        coupons = Coupon.objects.filter(
-            user=self.request.user, customer=self.customer, redeemed=False)
-        total_amount, discount_amount = self.amounts(self.object_list, coupons)
-        context.update({'coupons': coupons,
-                        'discount_amount': discount_amount,
+        context.update({'coupons': self.coupons,
                         'coupon_form': RedeemCouponForm(),
-                        'total_amount': total_amount,
                         'organization': self.customer})
-        if total_amount:
-            context.update({'STRIPE_PUB_KEY': settings.STRIPE_PUB_KEY})
-            # Retrieve customer information from the backend
-            last4, exp_date = backend.retrieve_card(self.customer)
-            if last4 != "N/A":
-                context.update({'last4': last4, 'exp_date': exp_date})
         return context
 
 
@@ -282,7 +289,7 @@ def pay_now(request, organization):
     context = { 'user': request.user,
                 'organization': organization }
     context.update(csrf(request))
-    balance_dues = balance(customer)
+    balance_dues = Transaction.objects.get_balance(customer)
     if balance_dues < 0:
         balance_credits = - balance_dues
         balance_dues = 0
@@ -341,3 +348,29 @@ def redeem_coupon(request, organization):
     return redirect(reverse('saas_pay_cart', args=(organization,)))
 
 
+class PaySubscriptionView(InvoicablesMixin, CardFormMixin, FormView):
+    """
+    Create a charge for a ``Subscription``.
+    """
+
+    plan_url_kwarg = 'subscribed_plan'
+    template_name = 'saas/pay_subscription.html'
+
+    def get_subscription(self):
+        return get_object_or_404(Subscription,
+            organization__slug=self.kwargs.get('organization'),
+            plan__slug=self.kwargs.get(self.plan_url_kwarg))
+
+    def get_context_data(self, **kwargs):
+        subscription = self.get_subscription()
+        self.invoicables = Transaction.objects.get_invoicables(subscription)
+        context = super(PaySubscriptionView, self).get_context_data(**kwargs)
+        if (not subscription.last_charge
+            or subscription.last_charge.state == Charge.FAILED
+            or subscription.last_charge.state == Charge.DISPUTED):
+            # No charge yet, let's run it. First, get the balance items
+            # charge failed does not hurt to show again balance.
+            pass
+        context.update({'object_list': self.invoicables,
+                        'organization': self.customer})
+        return context

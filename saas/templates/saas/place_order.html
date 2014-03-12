@@ -2,51 +2,14 @@
 {% load currency %}
 
 {% block content %}
-{% if object_list %}
-<section id="balance">
-  <h1>Subscriptions</h1>
-  <table class="table table-striped">
-    <thead>
-      <tr>
-        <th></th>
-        <th>Amount</th>
-        <th>Description</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for entry in object_list %}
-      <tr>
-        <td></td>
-        <td>{{entry.amount|usd}}</td>
-        <td>{{entry.description}}</td>
-      </tr>
-      {% endfor %}
-      {% if coupons %}
-      {% for entry in coupons %}
-      <tr>
-        <td></td>
-        <td>- {{discount_amount|usd}}</td>
-        <td>Coupon {{entry.code}}</td>
-      </tr>
-      {% endfor %}
-      {% endif %}
-    </tbody>
-    <tfooter>
-      <tr>
-        <th>Total</th>
-        <th>{{total_amount|usd}}</th>
-        <th></th>
-      </tr>
-    </tfooter>
-  </table>
-</section>
+{% include "saas/balance.html" %}
 
-{% if total_amount %}
+{% if total_amount and coupon_form %}
 <section id="coupon">
   <h1>Coupon</h1>
   <form method="post" id="redeem-form" class="form-horizontal"
         action="{% url 'saas_redeem_coupon' organization %}">
-    {{ form.non_field_errors }}
+    {{ coupon_form.non_field_errors }}
     {% csrf_token %}
     {{coupon_form.as_table}}
     <button type="submit" class="btn btn-primary payment-submit">Redeem</button>
@@ -54,41 +17,6 @@
 </section>
 {% endif %}
 
-<section id="card">
-  <h1>Place Order</h1>
-  <form method="post" id="payment-form" class="form-horizontal" action=".">
-    {% if total_amount %}
-    {% if last4 %}
-    <a class="btn" href="{% url 'saas_update_card' organization %}">Update</a>
-    <dl class="dl-horizontal">
-      <dt>card</dt>
-      <dd>{{last4}}</dd>
-    </dl>
-    <dl class="dl-horizontal">
-      <dt>expires</dt>
-      <dd>{{exp_date}}</dd>
-    </dl>
-    {% else %}
-    {% include "saas/card_form_fields.html" %}
-    {% endif %}
-    {% endif %}
-    <fieldset>
-      {% if not last4 %}
-      {% if total_amount %}
-      <div id="remember_card" class="control-group">
-        <label class="control-label">Remember this card</label>
-        <div class="controls">
-          <input id="remember_card" name="remember_card" type="checkbox" />
-        </div>
-      </div>
-      {% endif %}
-      {% endif %}
-      {% csrf_token %}
-      <button type="submit" class="btn btn-primary payment-submit">Place Order</button>
-    </fieldset>
-  </form>
-</section>
-{% else %}
-<p>Your subscription cart is empty.</p>
-{% endif %}
+{% include "saas/card_use.html" with title="Place Order" %}
+
 {% endblock %}

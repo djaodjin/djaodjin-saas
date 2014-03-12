@@ -1,0 +1,47 @@
+{% extends "saas/card_base.html" %}
+{% load currency %}
+
+{% block content %}
+
+{% include "saas/balance.html" %}
+
+<section id="charge">
+{% if not subscription.last_charge %}
+A charge of {{total_amount|usd}} will be created on your card. Thank you.
+{% else %}
+{% with subscription.last_charge as charge %}
+{% if charge.state == Charge.FAILED or charge.state == Charge.DISPUTED %}
+<p>
+On {{charge.created_at}} we attempted to charge your card
+</p>
+<div>
+    <dl class="dl-horizontal">
+        <dt>card</dt>
+        <dd>{{charge.last4}}</dd>
+    </dl>
+    <dl class="dl-horizontal">
+        <dt>expires</dt>
+        <dd>{{charge.exp_date}}</dd>
+    </dl>
+</div>
+<p>
+The charge
+{% if charge.state == Charge.FAILED %}failed
+{% else %}
+{% if charge.state == Charge.DISPUTED %}was disputed
+{% endif %}
+{% endif %}
+(ref: {{charge.processor_id}}).
+</p>
+<p>
+Please enter a valid credit card. A new charge of {{total_amount|usd}}
+will be created. Thank you.
+</p>
+{% endif %}
+{% endwith %}
+{% endif %}
+</section>
+
+{% include "saas/card_use.html" with title="Pay Now" %}
+
+{% endblock %}

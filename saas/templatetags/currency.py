@@ -7,6 +7,7 @@ from saas.models import Plan
 
 register = template.Library()
 
+
 @register.filter()
 def usd(value):
     if not value:

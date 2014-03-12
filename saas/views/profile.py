@@ -39,7 +39,6 @@ from django.utils.decorators import method_decorator
 
 import saas.settings as settings
 from saas import get_manager_relation_model, get_contributor_relation_model
-from saas.ledger import balance
 from saas.forms import UserRelationForm
 from saas.models import Organization, Plan
 from saas.views.auth import valid_manager_for_organization

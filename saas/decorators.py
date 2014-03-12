@@ -1,4 +1,4 @@
-# Copyright (c) 2013, Fortylines LLC
+# Copyright (c) 2014, Fortylines LLC
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -41,6 +41,7 @@ from django.contrib import messages
 from django.contrib.sites.models import RequestSite, Site
 from django.contrib.auth import REDIRECT_FIELD_NAME
 from django.contrib.auth import REDIRECT_FIELD_NAME, logout as auth_logout
+from django.http import Http404
 from django.shortcuts import get_object_or_404
 from django.utils.decorators import available_attrs
 from django.utils.translation import ugettext_lazy as _
@@ -116,6 +117,53 @@ def requires_manager(function=None):
             if organization:
                 return view_func(request, *args, **kwargs)
             raise PermissionDenied
+        return _wrapped_view
+
+    if function:
+        return decorator(function)
+    return decorator
+
+
+def requires_paid_subscription(function=None,
+                               redirect_field_name=REDIRECT_FIELD_NAME):
+    """
+    Decorator that checks a specificed subscription is paid.
+
+    It redirects to an appropriate page when it is not. In case:
+    - no charge is associated to the subscription => trigger payment
+    - charge.status is failed                     => update card
+    - charge.status is in-progress                => waiting
+    """
+    def decorator(view_func):
+        @wraps(view_func, assigned=available_attrs(view_func))
+        def _wrapped_view(request, *args, **kwargs):
+            subscriber = None
+            if kwargs.has_key('organization'):
+                subscriber = valid_manager_for_organization(
+                    request.user, kwargs.get('organization'))
+            plan = None
+            if kwargs.has_key('subscribed_plan'):
+                plan = get_object_or_404(
+                    Plan, slug=kwargs.get('subscribed_plan'))
+            if subscriber and plan:
+                subscription = get_object_or_404(Subscription,
+                    organization=subscriber, plan=plan)
+                if (not subscription.last_charge
+                    or subscription.last_charge.state == Charge.FAILED
+                    or subscription.last_charge.state == Charge.DISPUTED):
+                    # No charge or a problem with the existing charge,
+                    # we trigger a new charge.
+                    return _insert_url(request, redirect_field_name,
+                        reverse('saas_pay_subscription',
+                            kwargs={'subscriber': subscriber, 'plan': plan}))
+                elif subscription.last_charge.state == Charge.CREATED:
+                    return _insert_url(request, redirect_field_name,
+                        reverse('saas_wait_charge_state',
+                            kwargs={'charge': subscription.last_charge}))
+
+                return view_func(request, *args, **kwargs)
+            raise Http404
+
         return _wrapped_view
 
     if function:

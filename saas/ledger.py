@@ -28,18 +28,6 @@ from saas.models import Organization
 
 LOGGER = logging.getLogger(__name__)
 
-def balance(organization):
-    """returns balance due for an organization"""
-    if isinstance(organization, basestring):
-        try:
-            organization = Organization.objects.get(slug=organization)
-        except Organization.DoesNotExist:
-            raise
-    balances = read_balances()
-    if organization.slug in balances:
-        return balances[organization.slug]
-    return 0
-
 
 def read_balances(until=datetime.datetime.now()):
     """Balances associated to customer accounts.
@@ -54,7 +42,7 @@ def read_balances(until=datetime.datetime.now()):
         (3, 1100)
 
     """
-    account = 'Balance'
+    account = Transaction.ASSETS
     cursor = connection.cursor()
     cursor.execute(
 """select t1.dest_organization_id, sum(t1.amount - coalesce(t2.amount, 0))

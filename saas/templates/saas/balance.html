@@ -1,0 +1,41 @@
+{% load currency %}
+
+<section id="balance">
+  <h1>Subscriptions</h1>
+  {% if object_list %}
+  <table>
+    <thead>
+      <tr>
+        <th></th>
+        <th>Amount</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for entry in object_list %}
+      {% if entry.subscription.plan.get_title %}
+      <tr>
+        <td colspan="3">{{entry.subscription.plan.get_title}}</td>
+      </tr>
+      {% endif %}
+      {% for line in entry.lines %}
+      <tr>
+        <td></td>
+        <td>{{line.amount|usd}}</td>
+        <td>{{line.descr}}</td>
+      </tr>
+      {% endfor %}
+      {% endfor %}
+    </tbody>
+    <tfooter>
+      <tr>
+        <th>Total</th>
+        <th>{{total_amount|usd}}</th>
+        <th></th>
+      </tr>
+    </tfooter>
+  </table>
+  {% else %}
+  <p>Your subscription cart is empty.</p>
+  {% endif %}
+</section>

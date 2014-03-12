@@ -86,7 +86,7 @@ class LedgerTests(TestCase):
 
     def _create_charge_for_balance(self, customer_name):
         customer = Organization.objects.get(slug=customer_name)
-        prev_balance = balance(customer)
+        prev_balance = Transaction.objects.get_balance(customer)
         charge = Charge.objects.charge_card(
             customer, amount=prev_balance)
         return customer, charge.processor_id
@@ -100,7 +100,7 @@ class LedgerTests(TestCase):
         No Issue."""
         customer, charge_id = self._create_charge_for_balance('abc')
         charge_succeeded(charge_id)
-        next_balance = balance(customer)
+        next_balance = Transaction.objects.get_balance(customer)
         assert(next_balance == 0)
 
     def test_pay_now_two_success(self):
@@ -109,7 +109,7 @@ class LedgerTests(TestCase):
         customer, charge_id = self._create_charge_for_balance('abc')
         charge_succeeded(charge_id)
         charge_succeeded(charge_id)
-        next_balance = balance(customer)
+        next_balance = Transaction.objects.get_balance(customer)
         assert(next_balance == 0)
 
     def test_charge_cards(self):
