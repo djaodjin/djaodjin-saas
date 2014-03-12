@@ -4,15 +4,15 @@
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
 #
-#   * Redistributions of source code must retain the above copyright notice,
-#     this list of conditions and the following disclaimer.
-#   * Redistributions in binary form must reproduce the above copyright notice,
-#     this list of conditions and the following disclaimer in the documentation
-#     and/or other materials provided with the distribution.
+# 1. Redistributions of source code must retain the above copyright notice,
+#    this list of conditions and the following disclaimer.
+# 2. Redistributions in binary form must reproduce the above copyright
+#    notice, this list of conditions and the following disclaimer in the
+#    documentation and/or other materials provided with the distribution.
 #
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
-# THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+# "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED
+# TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
 # PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR
 # CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
 # EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
@@ -27,7 +27,10 @@ We used to decorate the saas views with the "appropriate" decorators
 except in many projects appropriate had a different meaning.
 
 It turns out that the access control logic is better left to be configured
-in the site URLConf through extensions like https://github.com/mila/django-urldecorators.
+in the site URLConf through extensions like django-urldecorators:
+
+    https://github.com/mila/django-urldecorators.
+
 This is not only more flexible but also make security audits a lot easier.
 """
 
@@ -37,17 +40,12 @@ from functools import wraps
 from django.conf import settings
 from django.core.exceptions import PermissionDenied
 from django.core.urlresolvers import reverse
-from django.contrib import messages
-from django.contrib.sites.models import RequestSite, Site
 from django.contrib.auth import REDIRECT_FIELD_NAME
-from django.contrib.auth import REDIRECT_FIELD_NAME, logout as auth_logout
 from django.http import Http404
 from django.shortcuts import get_object_or_404
 from django.utils.decorators import available_attrs
-from django.utils.translation import ugettext_lazy as _
-from django.template.loader import render_to_string
 
-from saas.models import Plan, Signature
+from saas.models import Charge, Plan, Signature, Subscription
 from saas.views.auth import valid_manager_for_organization
 
 LOGGER = logging.getLogger(__name__)

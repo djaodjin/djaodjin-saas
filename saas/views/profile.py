@@ -4,15 +4,15 @@
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
 #
-#   * Redistributions of source code must retain the above copyright notice,
-#     this list of conditions and the following disclaimer.
-#   * Redistributions in binary form must reproduce the above copyright notice,
-#     this list of conditions and the following disclaimer in the documentation
-#     and/or other materials provided with the distribution.
+# 1. Redistributions of source code must retain the above copyright notice,
+#    this list of conditions and the following disclaimer.
+# 2. Redistributions in binary form must reproduce the above copyright
+#    notice, this list of conditions and the following disclaimer in the
+#    documentation and/or other materials provided with the distribution.
 #
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
-# THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+# "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED
+# TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
 # PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR
 # CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
 # EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
@@ -24,25 +24,20 @@
 
 """Manage Profile information"""
 
-import datetime, logging
+import logging
 
 from django import forms
-from django.db.models import Q
 from django.contrib import messages
 from django.core.urlresolvers import reverse
 from django.core.context_processors import csrf
 from django.shortcuts import render, redirect, get_object_or_404
 from django.views.generic.list import ListView
 from django.views.generic.edit import UpdateView
-from django.views.decorators.http import require_GET, require_POST
-from django.utils.decorators import method_decorator
+from django.views.decorators.http import require_POST
 
-import saas.settings as settings
 from saas import get_manager_relation_model, get_contributor_relation_model
 from saas.forms import UserRelationForm
 from saas.models import Organization, Plan
-from saas.views.auth import valid_manager_for_organization
-import saas.backends as backend
 from saas.compat import User
 
 
@@ -132,7 +127,7 @@ class OrganizationProfileForm(forms.ModelForm):
         model = Organization
         fields = ['full_name', 'email', 'phone', 'street_address',
                   'locality', 'region', 'postal_code',
-                  'country_name' ]
+                  'country_name']
 
 
 class OrganizationProfileView(UpdateView):
@@ -140,7 +135,7 @@ class OrganizationProfileView(UpdateView):
     model = Organization
     form_class = OrganizationProfileForm
     slug_url_kwarg = 'organization'
-    template_name = "saas/organization_profile.html";
+    template_name = "saas/organization_profile.html"
 
     def get_success_url(self):
         messages.info(self.request, 'Profile Updated.')
@@ -161,12 +156,11 @@ def organization_add_managers(request, organization):
                     'saas_organization_profile', args=(organization,)))
     else:
         form = UserRelationForm()
-    context = { 'user': request.user,
-                'organization': organization,
-                'form': form,
-                'call': reverse(
-                    'saas_add_managers', args=(organization,)),
-                 }
+    context = {'user': request.user,
+               'organization': organization,
+               'form': form,
+               'call': reverse('saas_add_managers', args=(organization,)),
+               }
     context.update(csrf(request))
     return render(request, "saas/organization_user_relation.html", context)
 
@@ -183,12 +177,11 @@ def organization_remove_managers(request, organization):
                     'saas_organization_profile', args=(organization,)))
     else:
         form = UserRelationForm()
-    context = { 'user': request.user,
-                'organization': organization,
-                'form': form,
-                'call': reverse(
-                    'saas_remove_managers', args=(organization,)),
-                }
+    context = {'user': request.user,
+               'organization': organization,
+               'form': form,
+               'call': reverse('saas_remove_managers', args=(organization,)),
+               }
     context.update(csrf(request))
     return render(request, "saas/organization_user_relation.html", context)
 
@@ -207,12 +200,11 @@ def organization_add_contributors(request, organization):
                     'saas_organization_profile', args=(organization,)))
     else:
         form = UserRelationForm()
-    context = { 'user': request.user,
-                'organization': organization,
-                'form': form,
-                'call': reverse(
-                    'saas_add_contributors', args=(organization,)),
-                }
+    context = {'user': request.user,
+               'organization': organization,
+               'form': form,
+               'call': reverse('saas_add_contributors', args=(organization,)),
+               }
     context.update(csrf(request))
     return render(request, "saas/organization_user_relation.html", context)
 
@@ -229,12 +221,11 @@ def organization_remove_contributors(request, organization):
                     'saas_organization_profile', args=(organization,)))
     else:
         form = UserRelationForm()
-    context = { 'user': request.user,
-                'organization': organization,
-                'form': form,
-                'call': reverse(
-                    'saas_remove_contributors', args=(organization,)),
-                }
+    context = {'user': request.user,
+               'organization': organization,
+               'form': form,
+              'call': reverse('saas_remove_contributors', args=(organization,)),
+               }
     context.update(csrf(request))
     return render(request, "saas/organization_user_relation.html", context)
 

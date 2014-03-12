@@ -4,15 +4,15 @@
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
 #
-#   * Redistributions of source code must retain the above copyright notice,
-#     this list of conditions and the following disclaimer.
-#   * Redistributions in binary form must reproduce the above copyright notice,
-#     this list of conditions and the following disclaimer in the documentation
-#     and/or other materials provided with the distribution.
+# 1. Redistributions of source code must retain the above copyright notice,
+#    this list of conditions and the following disclaimer.
+# 2. Redistributions in binary form must reproduce the above copyright
+#    notice, this list of conditions and the following disclaimer in the
+#    documentation and/or other materials provided with the distribution.
 #
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
-# THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+# "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED
+# TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
 # PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR
 # CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
 # EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
@@ -22,7 +22,9 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-"""Manage Billing information"""
+"""
+Views related to billing information
+"""
 
 import datetime, logging
 
@@ -32,20 +34,20 @@ from django.core.urlresolvers import reverse
 from django.core.context_processors import csrf
 from django.core.exceptions import PermissionDenied
 from django.db import IntegrityError
-from django.db.models import Q, Sum
+from django.db.models import Q
 from django.contrib import messages
 from django.shortcuts import render, redirect, get_object_or_404
-from django.views.decorators.http import require_GET
-from django.views.generic import DetailView, FormView, ListView, TemplateView
+from django.views.generic import DetailView, FormView, ListView
 from django.views.generic.list import MultipleObjectTemplateResponseMixin
-from django.views.generic.edit import BaseFormView, FormMixin
+from django.views.generic.edit import BaseFormView
 from django.views.generic.base import ContextMixin
 
 import saas.backends as backend
 import saas.settings as settings
 from saas.forms import CreditCardForm, PayNowForm
-from saas.views.auth import managed_organizations, valid_manager_for_organization
-from saas.models import CartItem, Charge, Coupon, Organization, Plan, Transaction, Subscription
+from saas.views.auth import valid_manager_for_organization
+from saas.models import (CartItem, Charge, Coupon, Organization, Plan,
+    Transaction, Subscription)
 
 
 LOGGER = logging.getLogger(__name__)
@@ -286,8 +288,7 @@ class ChargeReceiptView(DetailView):
 def pay_now(request, organization):
     organization = get_object_or_404(Organization, slug=organization)
     customer = organization
-    context = { 'user': request.user,
-                'organization': organization }
+    context = {'user': request.user, 'organization': organization}
     context.update(csrf(request))
     balance_dues = Transaction.objects.get_balance(customer)
     if balance_dues < 0:
@@ -317,7 +318,7 @@ def pay_now(request, organization):
                 messages.error(request,
                     'We do not create charges for less than 50 cents')
         else:
-            messages.error(request,'Unable to create charge')
+            messages.error(request, 'Unable to create charge')
     else:
         form = PayNowForm()
     context.update({'balance_credits': balance_credits,
@@ -328,12 +329,13 @@ def pay_now(request, organization):
 
 class RedeemCouponForm(forms.Form):
     """Form used to redeem a coupon."""
-    code = forms.CharField(widget=forms.TextInput(attrs={'class':'form-control'}))
+    code = forms.CharField(widget=forms.TextInput(
+            attrs={'class':'form-control'}))
 
 def redeem_coupon(request, organization):
     """Adds a coupon to the user cart."""
-    context = { 'user': request.user,
-                'organization': organization }
+    context = {'user': request.user,
+                'organization': organization}
     context.update(csrf(request))
     if request.method == 'POST':
         form = RedeemCouponForm(request.POST)

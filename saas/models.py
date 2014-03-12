@@ -1,18 +1,18 @@
-# Copyright (c) 2014, The DjaoDjin Team
+# Copyright (c) 2014, Fortylines LLC
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
 #
-#   * Redistributions of source code must retain the above copyright notice,
-#     this list of conditions and the following disclaimer.
-#   * Redistributions in binary form must reproduce the above copyright notice,
-#     this list of conditions and the following disclaimer in the documentation
-#     and/or other materials provided with the distribution.
+# 1. Redistributions of source code must retain the above copyright notice,
+#    this list of conditions and the following disclaimer.
+# 2. Redistributions in binary form must reproduce the above copyright
+#    notice, this list of conditions and the following disclaimer in the
+#    documentation and/or other materials provided with the distribution.
 #
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
-# THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+# "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED
+# TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
 # PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR
 # CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
 # EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
@@ -198,7 +198,7 @@ class Organization(models.Model):
 
 class Agreement(models.Model):
     slug = models.SlugField()
-    title =  models.CharField(max_length=150, unique=True)
+    title = models.CharField(max_length=150, unique=True)
     modified = models.DateTimeField(auto_now_add=True)
     def __unicode__(self):
         return unicode(self.slug)
@@ -287,7 +287,7 @@ class CartItemManager(models.Manager):
         return invoicables
 
     def get_invoicables(self, customer, user, coupons,
-                        start_date=None, prorate_to_billing=False):
+                        start_time=None, prorate_to_billing=False):
         """
         Returns a list of invoicable items (amount, description)
         from the items in a user/customer cart. Schema:
@@ -298,19 +298,19 @@ class CartItemManager(models.Manager):
             }, ...]
         """
         invoicables = []
-        if not start_date:
-            start_date = datetime.datetime.utcnow().replace(tzinfo=utc)
+        if not start_time:
+            start_time = datetime.datetime.utcnow().replace(tzinfo=utc)
         prorate_to = None
         if prorate_to_billing:
             # XXX First we add enough periods to get the next billing date later
-            # than start_date but no more than one period in the future.
+            # than start_time but no more than one period in the future.
             prorate_to = customer.billing_start
         invoiced_items = []
         for cart_item in self.get_cart(user=user):
             subscription = Subscription(
                 organization=customer, plan=cart_item.plan)
             lines = self.get_invoicables_for(
-                    subscription, customer, start_date, prorate_to)
+                    subscription, customer, start_time, prorate_to)
             item_amount = 0
             for line in lines:
                 item_amount = item_amount + line.amount
@@ -325,19 +325,18 @@ class CartItemManager(models.Manager):
                         orig_organization=customer,
                         dest_organization=subscription.plan.organization,
                         event_id=subscription.id)]
-            invoiced_items += [ { 'subscription': subscription,
-                "lines": lines } ]
+            invoiced_items += [{'subscription': subscription, "lines": lines}]
         return invoiced_items
 
     @method_decorator(transaction.atomic)
-    def checkout(self, customer, user, coupons, start_date=None):
+    def checkout(self, customer, user, coupons, start_time=None):
         """
         Creates transactions based on a set of items in a cart.
         """
-        if not start_date:
-            start_date = datetime.datetime.utcnow().replace(tzinfo=utc)
+        if not start_time:
+            start_time = datetime.datetime.utcnow().replace(tzinfo=utc)
         for invoicable in self.get_invoicables(
-                customer, user, coupons, start_date=start_date):
+                customer, user, coupons, start_time=start_time):
             subscription = invoicable['subscription']
             subscription.save()
             for transaction in invoicable['lines']:
@@ -423,9 +422,9 @@ class Charge(models.Model):
     We save the last4 and expiration date so we are able to present
     a receipt.
     """
-    CREATED  = 0
-    DONE     = 1
-    FAILED   = 2
+    CREATED = 0
+    DONE = 1
+    FAILED = 2
     DISPUTED = 3
     CHARGE_STATES = {
         (CREATED, 'created'),
@@ -466,12 +465,12 @@ class Plan(models.Model):
     Recurring billing plan
     """
     UNSPECIFIED = 0
-    HOURLY   = 1
-    DAILY    = 2
-    WEEKLY   = 3
-    MONTHLY  = 4
+    HOURLY = 1
+    DAILY = 2
+    WEEKLY = 3
+    MONTHLY = 4
     QUATERLY = 5
-    YEARLY   = 7
+    YEARLY = 7
 
     INTERVAL_CHOICES = [
         (UNSPECIFIED, "UNSPECIFIED"), # XXX Appears in drop down boxes
@@ -487,8 +486,8 @@ class Plan(models.Model):
     title = models.CharField(max_length=50)
     description = models.TextField()
     is_active = models.BooleanField(default=False)
-    created_at = models.DateTimeField(auto_now_add=True) # we use created_at by convention in other models.
-    discontinued_at = models.DateTimeField(null=True,blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    discontinued_at = models.DateTimeField(null=True, blank=True)
     organization = models.ForeignKey(Organization)
     setup_amount = models.IntegerField(default=0,
         help_text=_('One-time charge amount (in cents).'))
@@ -588,7 +587,8 @@ class TransactionManager(models.Manager):
         credit.save()
         return credit
 
-    def get_balance(self, organization, account='Payable'): # Transaction not defined
+    def get_balance(self, organization,
+        account='Payable'): # ``Transaction`` is not defined at this point.
         """
         Returns payable balance for an organization
         """
@@ -644,9 +644,10 @@ class TransactionManager(models.Manager):
             invoiced_amount -= amount
         lines += list(queryset)
         invoiced_subscription = {
-            'subscription': subscription, 'lines': list(queryset) }
+            'subscription': subscription, 'lines': list(queryset)}
         balance = self.get_balance(customer) - invoiced_amount
-        print "XXX invoiced_amount: " + str(invoiced_amount) + ", balance: " + str(balance)
+        print "XXX invoiced_amount: " + str(invoiced_amount) \
+            + ", balance: " + str(balance)
         if balance != 0:
             return [{'subscription': None,
                        'lines': [Transaction(
@@ -656,13 +657,13 @@ class TransactionManager(models.Manager):
                 dest_account=Transaction.PAYABLE,
                 orig_organization=subscription.plan.organization,
                 dest_organization=customer)]},
-                    invoiced_subscription ]
-        return [ invoiced_subscription ]
+                    invoiced_subscription]
+        return [invoiced_subscription]
 
     def invoice(self, customer, amount,
                 description=None, event_id=None, created_at=None):
         if not created_at:
-            at = start_date = datetime.datetime.utcnow().replace(tzinfo=utc)
+            created_at = datetime.datetime.utcnow().replace(tzinfo=utc)
         usage = self.create(
             orig_organization=customer, dest_organization=customer,
             orig_account="Usage", dest_account="Balance",
@@ -742,4 +743,4 @@ class NewVisitors(models.Model):
     New Visitors metrics populated by reading the web server logs.
     """
     date = models.DateField(unique=True)
-    visitors_number = models.IntegerField(default = 0)
+    visitors_number = models.IntegerField(default=0)

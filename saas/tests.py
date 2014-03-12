@@ -4,15 +4,15 @@
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
 #
-#   * Redistributions of source code must retain the above copyright notice,
-#     this list of conditions and the following disclaimer.
-#   * Redistributions in binary form must reproduce the above copyright notice,
-#     this list of conditions and the following disclaimer in the documentation
-#     and/or other materials provided with the distribution.
+# 1. Redistributions of source code must retain the above copyright notice,
+#    this list of conditions and the following disclaimer.
+# 2. Redistributions in binary form must reproduce the above copyright
+#    notice, this list of conditions and the following disclaimer in the
+#    documentation and/or other materials provided with the distribution.
 #
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
-# THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+# "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED
+# TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
 # PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR
 # CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
 # EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
@@ -37,7 +37,7 @@ from saas.compat import User
 from saas.views.metrics import (month_periods,
                                 organization_monthly_revenue_customers)
 from saas.models import Organization, Transaction, Charge
-from saas.ledger import balance, read_balances
+from saas.ledger import read_balances
 from saas.charge import (
     charge_succeeded,
     charge_failed,
@@ -52,7 +52,7 @@ from saas.charge import (
 @skip("still pb committing the associated processor_id before the tests start")
 class LedgerTests(TestCase):
     '''Tests ledger functionality.'''
-    fixtures = [ 'test_data' ]
+    fixtures = ['test_data']
 
     @classmethod
     def setUpClass(cls):
@@ -101,7 +101,7 @@ class LedgerTests(TestCase):
         customer, charge_id = self._create_charge_for_balance('abc')
         charge_succeeded(charge_id)
         next_balance = Transaction.objects.get_balance(customer)
-        assert(next_balance == 0)
+        assert next_balance == 0
 
     def test_pay_now_two_success(self):
         """Pay the balance of account.
@@ -110,7 +110,7 @@ class LedgerTests(TestCase):
         charge_succeeded(charge_id)
         charge_succeeded(charge_id)
         next_balance = Transaction.objects.get_balance(customer)
-        assert(next_balance == 0)
+        assert next_balance == 0
 
     def test_charge_cards(self):
         """Charge all customers credit cards for fees due

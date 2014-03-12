@@ -22,7 +22,7 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from django.conf.urls import patterns, include, url
+from django.conf.urls import patterns, url
 
 from saas.settings import PROCESSOR_HOOK_URL
 from saas.backends import processor_hook
