@@ -59,15 +59,15 @@ def personal(organization):
 
 
 @register.filter()
-def products(organization):
+def products(subscriptions):
     """
     Returns a list of distinct providers (i.e. ``Organization``) from
     the plans the *organization* is subscribed to.
     """
-    if organization:
+    if subscriptions:
         # We don't use QuerySet.distinct('organization') because the SQLite
         # backend does not support DISTINCT ON queries.
-        return organization.subscriptions.all().values(
+        return subscriptions.values(
             'organization__slug', 'organization__full_name').distinct()
     return []
 

@@ -27,6 +27,7 @@
 from django.conf.urls import patterns, include, url
 
 urlpatterns = patterns(
+    url(r'^stripe/', include('saas.backends.urls')),
     url(r'^cart/', include('saas.urls.api.cart')),
     url(r'^', include('saas.urls.api.resources')),
 )

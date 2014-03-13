@@ -34,6 +34,7 @@ from django.utils.timezone import utc
 from django.contrib.sites.models import Site
 from django.utils.translation import ugettext_lazy as _
 from django.utils.decorators import method_decorator
+from stripe.error import InvalidRequestError
 
 from saas import settings
 from saas import get_manager_relation_model, get_contributor_relation_model
@@ -256,8 +257,7 @@ class CartItemManager(models.Manager):
             orig_account=Transaction.INCOME,
             dest_account=Transaction.PAYABLE,
             orig_organization=subscription.plan.organization,
-            dest_organization=customer,
-            event_id=subscription.id)
+            dest_organization=customer)
 
     def get_invoicables_for(self, subscription, customer,
                             start_time=None, prorate_to=None):
@@ -323,8 +323,7 @@ class CartItemManager(models.Manager):
                         orig_account=Transaction.PAYABLE,
                         dest_account=Transaction.REDEEM,
                         orig_organization=customer,
-                        dest_organization=subscription.plan.organization,
-                        event_id=subscription.id)]
+                        dest_organization=subscription.plan.organization)]
             invoiced_items += [{'subscription': subscription, "lines": lines}]
         return invoiced_items
 
@@ -333,21 +332,27 @@ class CartItemManager(models.Manager):
         """
         Creates transactions based on a set of items in a cart.
         """
+        subscriptions = []
         if not start_time:
             start_time = datetime.datetime.utcnow().replace(tzinfo=utc)
         for invoicable in self.get_invoicables(
                 customer, user, coupons, start_time=start_time):
             subscription = invoicable['subscription']
             subscription.save()
+            subscriptions += [subscription]
             for transaction in invoicable['lines']:
+                # We can't set the event_id until the subscription is saved
+                # in the database.
+                transaction.event_id = subscription.id
                 transaction.save()
-            # XXX Associated cart_item recorded.
             cart_items = self.filter(
                 user=user, plan=subscription.plan, recorded=False)
             if cart_items.exists():
                 cart_item = cart_items.get()
                 cart_item.recorded = True
                 cart_item.save()
+        # XXX Filters all subscriptions which are due at the time of checkout.
+        return Transaction.objects.none()
 
 
 class CartItem(models.Model):
@@ -380,40 +385,61 @@ class CartItem(models.Model):
 
 class ChargeManager(models.Manager):
 
-    def charge_card(self, customer, amount, description=None,
+    def charge_card(self, customer, transactions, description=None,
                     user=None, token=None, remember_card=True):
         """
         Create a charge on a customer card.
         """
         # Be careful, stripe will not processed charges less than 50 cents.
         import saas.backends as backend # Avoid import loop
-        descr = '%s subscription to %s' % (
+        amount = transactions.aggregate(Sum('amount')).get('amount__sum', 0)
+        if amount is None:
+            amount = 0
+        descr = '%s subscriptions through %s' % (
             customer.full_name,
             Organization.objects.get_site_owner().full_name)
         if user:
             descr += ' (%s)' % user.username
-        if token:
-            if remember_card:
-                Organization.objects.associate_processor(customer, card=token)
+        try:
+            if token:
+                if remember_card:
+                    Organization.objects.associate_processor(
+                        customer, card=token)
+                    (processor_charge_id, created_at,
+                     last4, exp_date) = backend.create_charge(
+                        customer, amount, descr)
+                else:
+                    (processor_charge_id, created_at,
+                     last4, exp_date) = backend.create_charge_on_card(
+                        token, amount, descr)
+            else:
                 (processor_charge_id, created_at,
                  last4, exp_date) = backend.create_charge(
                     customer, amount, descr)
-            else:
-                (processor_charge_id, created_at,
-                 last4, exp_date) = backend.create_charge_on_card(
-                    token, amount, descr)
-        else:
-            (processor_charge_id, created_at,
-             last4, exp_date) = backend.create_charge(
-                customer, amount, descr)
-        # Create record of the charge in our database
-        charge = self.create(processor_id=processor_charge_id, amount=amount,
-                             created_at=created_at, customer=customer,
-                             description=descr, last4=last4, exp_date=exp_date)
-        if charge:
+            # Create record of the charge in our database
+            charge = self.create(
+                processor_id=processor_charge_id, amount=amount,
+                created_at=created_at, description=descr,
+                customer=customer, last4=last4, exp_date=exp_date)
+            charge.invoiced_items.add(*transactions)
+            charge.save()
             LOGGER.info('Created charge #%s of %d cents to %s',
                         charge.id, charge.amount, customer)
+        except InvalidRequestError:
+            LOGGER.info('InvalidRequestError for charge of %d cents to %s',
+                        amount, customer)
+            charge = None
         return charge
+
+    def last_charge(self, subscription):
+        """
+        Returns the last charge for a subscription.
+        """
+        queryset = self.filter(
+            invoiced_items__event_id=subscription.id).order_by('-created_at')
+        if queryset.exists():
+            return queryset.first()
+        return None
 
 
 class Charge(models.Model):
@@ -436,15 +462,33 @@ class Charge(models.Model):
     objects = ChargeManager()
 
     created_at = models.DateTimeField(auto_now_add=True)
-    # Amount in cents
-    amount = models.IntegerField(default=0)
-    customer = models.ForeignKey(Organization)
+    amount = models.IntegerField(default=0, help_text="Amount in cents")
+    customer = models.ForeignKey(Organization,
+        help_text='organization charged')
+    invoiced_items = models.ManyToManyField(
+        'Transaction', related_name='charges',
+        help_text="transactions invoiced through this charge")
     description = models.TextField(null=True)
     last4 = models.IntegerField()
     exp_date = models.DateField()
     processor = models.SlugField()
     processor_id = models.SlugField(unique=True, db_index=True)
     state = models.SmallIntegerField(choices=CHARGE_STATES, default=CREATED)
+
+    # XXX unique together paid and invoiced.
+    # customer and invoiced_items account payble should match.
+
+    @property
+    def is_disputed(self):
+        return self.state == self.DISPUTED
+
+    @property
+    def is_failed(self):
+        return self.state == self.FAILED
+
+    @property
+    def is_paid(self):
+        return self.state == self.DONE
 
 
 class Coupon(models.Model):
@@ -561,21 +605,22 @@ class Subscription(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     organization = models.ForeignKey('Organization')
     plan = models.ForeignKey('Plan')
-    last_invoice = models.ForeignKey('Transaction', null=True,
-        related_name='invoice_for',
-        help_text=_("Transaction which indicates the last invoice "
-                    "for the recurring portion of a Plan"))
-    last_payment = models.ForeignKey('Transaction', null=True,
-        related_name='payment_for',
-        help_text=_("Marks the last payment related to the subscription."))
-    last_charge = models.ForeignKey('Charge', null=True,
-        help_text=_("Marks the last charge related to the subscription."))
 
     class Meta:
         unique_together = ('organization', 'plan')
 
 
 class TransactionManager(models.Manager):
+
+    def by_charge(self, charge):
+        return charge.invoiced_items.all()
+
+    def by_subsciptions(self, subscriptions, at_time):
+        return self.filter(
+            models.Q(dest_account=Transaction.PAYABLE)
+            | models.Q(dest_account=Transaction.REDEEM),
+            event_id__in=subscriptions,
+            created_at=at_time).order('created_at')
 
     def create_credit(self, customer, amount):
         credit = self.create(
@@ -618,15 +663,15 @@ class TransactionManager(models.Manager):
               }, ...],
             }, ...]
         """
-        lines = []
         customer = subscription.organization
         # All Transactions related to this subscription since the last payment.
-        if subscription.last_payment:
+        last_charge = Charge.objects.last_charge(subscription)
+        if last_charge:
             queryset = self.filter(
                 models.Q(dest_account=Transaction.PAYABLE)
                 | models.Q(dest_account=Transaction.REDEEM),
                 event_id=subscription.id,
-                created_at__gte=subscription.last_payment.created_at).order(
+                created_at__gt=last_charge.created_at).order(
                     'created_at')
         else:
             queryset = self.filter(
@@ -642,12 +687,9 @@ class TransactionManager(models.Manager):
             Sum('amount'))['amount__sum']
         if amount is not None:
             invoiced_amount -= amount
-        lines += list(queryset)
         invoiced_subscription = {
             'subscription': subscription, 'lines': list(queryset)}
         balance = self.get_balance(customer) - invoiced_amount
-        print "XXX invoiced_amount: " + str(invoiced_amount) \
-            + ", balance: " + str(balance)
         if balance != 0:
             return [{'subscription': None,
                        'lines': [Transaction(
@@ -675,15 +717,15 @@ class TransactionManager(models.Manager):
     def refund(self, customer, amount, description=None, event_id=None):
         usage = self.create(
             orig_organization=Organization.objects.get_site_owner(),
-            orig_account='Assets',
+            orig_account=Transaction.ASSETS,
             dest_organization=Organization.objects.get_site_owner(),
-            dest_account='Refund',
+            dest_account=Transaction.REFUND,
             amount=amount,
             descr=description,
             event_id=event_id)
         usage = self.create(
             orig_organization=Organization.objects.get_site_owner(),
-            orig_account='Refund',
+            orig_account=Transaction.REFUND,
             dest_organization=customer,
             dest_account='Balance',
             amount=amount,
@@ -694,7 +736,7 @@ class TransactionManager(models.Manager):
         payment = self.create(
             orig_organization=customer,
             dest_organization=Organization.objects.get_site_owner(),
-            orig_account='Balance', dest_account='Assets',
+            orig_account=Transaction.PAYABLE, dest_account=Transaction.ASSETS,
             amount=amount,
             descr=description,
             event_id=event_id)
@@ -736,6 +778,10 @@ class Transaction(models.Model):
     descr = models.TextField(default="N/A")
     event_id = models.SlugField(null=True, help_text=
         _('Event at the origin of this transaction (ex. job, charge, etc.)'))
+
+    @property
+    def is_payable(self):
+        return self.dest_account == self.PAYABLE
 
 
 class NewVisitors(models.Model):

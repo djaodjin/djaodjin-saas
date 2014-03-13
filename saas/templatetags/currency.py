@@ -39,6 +39,17 @@ def usd(value):
     return '$%.2f' % (float(value) / 100)
     # XXX return locale.currency(value, grouping=True)
 
+
+@register.filter()
+def credits(value):
+    return usd(abs(value))
+
+
+@register.filter()
+def debits(value):
+    return usd(abs(value))
+
+
 @register.filter()
 def humanize_period(period):
     if period == Plan.INTERVAL_CHOICES[1][0]:

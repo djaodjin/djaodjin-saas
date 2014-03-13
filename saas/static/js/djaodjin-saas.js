@@ -58,6 +58,21 @@ function toggleActivatePlan(event) {
 }
 
 
+function waitForChargeCompleted(charge) {
+  $.get('/api/charges/' + charge + '/',
+      {dataType: "json",
+      success: function(data) {
+          if( data['state'] == '' ) {
+             self.addClass('activated');
+             self.text('Deactivate')
+          } else {
+             setTimeout("waitForChargeCompleted(" + charge + ");", 1000);
+          }
+      }
+  });
+}
+
+
 function initAjaxCSRFHook(csrf_token) {
     /** Include the csrf_token into the headers to authenticate with the server
         on ajax requests. */

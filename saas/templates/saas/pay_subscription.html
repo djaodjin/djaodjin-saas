@@ -6,11 +6,11 @@
 {% include "saas/balance.html" %}
 
 <section id="charge">
-{% if not subscription.last_charge %}
+{% if not last_charge %}
 A charge of {{total_amount|usd}} will be created on your card. Thank you.
 {% else %}
-{% with subscription.last_charge as charge %}
-{% if charge.state == Charge.FAILED or charge.state == Charge.DISPUTED %}
+{% with last_charge as charge %}
+{% if charge.is_failed or charge.is_disputed %}
 <p>
 On {{charge.created_at}} we attempted to charge your card
 </p>
@@ -26,9 +26,9 @@ On {{charge.created_at}} we attempted to charge your card
 </div>
 <p>
 The charge
-{% if charge.state == Charge.FAILED %}failed
+{% if charge.is_failed %}failed
 {% else %}
-{% if charge.state == Charge.DISPUTED %}was disputed
+{% if charge.is_disputed %}was disputed
 {% endif %}
 {% endif %}
 (ref: {{charge.processor_id}}).

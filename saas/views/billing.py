@@ -29,14 +29,16 @@ Views related to billing information
 import datetime, logging
 
 from django import forms
-from django.utils.translation import ugettext_lazy as _
-from django.core.urlresolvers import reverse
+from django.contrib.auth import REDIRECT_FIELD_NAME
 from django.core.context_processors import csrf
 from django.core.exceptions import PermissionDenied
+from django.core.urlresolvers import reverse
 from django.db import IntegrityError
-from django.db.models import Q
+from django.db.models import Q, Sum
+from django.db.models.query import QuerySet
 from django.contrib import messages
 from django.shortcuts import render, redirect, get_object_or_404
+from django.utils.translation import ugettext_lazy as _
 from django.views.generic import DetailView, FormView, ListView
 from django.views.generic.list import MultipleObjectTemplateResponseMixin
 from django.views.generic.edit import BaseFormView
@@ -48,7 +50,7 @@ from saas.forms import CreditCardForm, PayNowForm
 from saas.views.auth import valid_manager_for_organization
 from saas.models import (CartItem, Charge, Coupon, Organization, Plan,
     Transaction, Subscription)
-
+from signup.auth import validate_redirect_url
 
 LOGGER = logging.getLogger(__name__)
 
@@ -72,7 +74,21 @@ def _session_cart_to_database(request):
         del request.session['cart_items']
 
 
-class InvoicablesMixin(ContextMixin):
+class InsertedURLMixin(ContextMixin):
+
+    def get_context_data(self, **kwargs):
+        context = super(InsertedURLMixin, self).get_context_data(**kwargs)
+        redirect_path = validate_redirect_url(
+            self.request.GET.get(REDIRECT_FIELD_NAME, None))
+        if not redirect_path:
+            redirect_path = validate_redirect_url(
+                self.request.META.get('HTTP_REFERER', ''))
+        if redirect_path:
+            context.update({REDIRECT_FIELD_NAME: redirect_path})
+        return context
+
+
+class InvoicablesMixin(InsertedURLMixin):
 
     def amounts(self, invoicables):
         total_amount = 0
@@ -84,17 +100,45 @@ class InvoicablesMixin(ContextMixin):
                     total_amount = total_amount + line.amount
         return total_amount
 
+    def get_invoiced_items(self):
+        """
+        Returns the transactions which are being charged.
+        """
+        return []
+
+    def form_valid(self, form):
+        """
+        If the form is valid we, optionally, checkout the cart items
+        and charge the invoiced items which are due now.
+        """
+        # XXX We always remember the card instead of taking input
+        # from the form.cleaned_data['remember_card'] field.
+        remember_card = True
+        stripe_token = form.cleaned_data['stripeToken']
+
+        if stripe_token and remember_card:
+            Organization.objects.associate_processor(
+                self.customer, stripe_token)
+            stripe_token = None
+        # We create a charge based on the transactions created here
+        # so we must commit them before creating the charge.
+        # This is done indirectly through calling ``get_invoiced_items``.
+        self.invoiced_items = self.get_invoiced_items()
+        try:
+            self.charge = Charge.objects.charge_card(
+                self.customer, self.invoiced_items, self.request.user,
+                token=stripe_token,
+                remember_card=remember_card)
+        except Charge.DoesNotExist:
+            LOGGER.info('XXX Could not create charge.')
+        return super(InvoicablesMixin, self).form_valid(form)
+
     def get_context_data(self, **kwargs):
         context = super(InvoicablesMixin, self).get_context_data(**kwargs)
         total_amount = self.amounts(self.invoicables)
         context.update({'total_amount': total_amount})
         if total_amount:
-            context.update({'STRIPE_PUB_KEY': settings.STRIPE_PUB_KEY})
-            # Retrieve customer information from the backend
-            last4, exp_date = backend.retrieve_card(self.customer)
-            if last4 != "N/A":
-                context.update({'last4': last4, 'exp_date': exp_date})
-
+            context.update(backend.get_context_data(self.customer))
         return context
 
 
@@ -124,7 +168,7 @@ class CardFormMixin(object):
         return kwargs
 
 
-class CardUpdateView(CardFormMixin, FormView):
+class CardUpdateView(InsertedURLMixin, CardFormMixin, FormView):
 
     template_name = 'saas/card_update.html'
 
@@ -144,11 +188,15 @@ class CardUpdateView(CardFormMixin, FormView):
 
     def get_context_data(self, **kwargs):
         context = super(CardUpdateView, self).get_context_data(**kwargs)
-        context.update({'organization': self.customer,
-                        'STRIPE_PUB_KEY': settings.STRIPE_PUB_KEY})
+        context.update(backend.get_context_data(self.customer))
+        context.update({'organization': self.customer})
         return context
 
     def get_success_url(self):
+        redirect_path = validate_redirect_url(
+            self.request.GET.get(REDIRECT_FIELD_NAME, None))
+        if redirect_path:
+            return redirect_path
         return reverse('saas_billing_info', args=(self.customer,))
 
 
@@ -173,11 +221,13 @@ class TransactionListView(ListView):
         context = super(TransactionListView, self).get_context_data(**kwargs)
         # Retrieve customer information from the backend
         context.update({'organization': self.customer})
+        balance = Transaction.objects.get_balance(self.customer)
         last4, exp_date = backend.retrieve_card(self.customer)
         context.update({
             'last4': last4,
             'exp_date': exp_date,
-            'organization': self.customer
+            'organization': self.customer,
+            'balance_payable': balance
             })
         return context
 
@@ -194,37 +244,14 @@ class PlaceOrderView(InvoicablesMixin, CardFormMixin,
     #     is never invalid and thus allow the same code to place an order
     #     with a total amount of zero.
 
-    def form_valid(self, form):
+    def get_invoiced_items(self):
         """
-        If the form is valid, a Charge was created on Stripe,
-        we just have to add one Transaction per new subscription
-        as well as associate that subscription to the appropriate
-        organization.
+        Returns the transactions which are being charged.
         """
-        cart = CartItem.objects.get_cart(user=self.request.user)
-        total_amount = self.amounts(self.get_queryset())
-        if total_amount:
-            # XXX We always remember the card instead of taking input
-            # from the form.cleaned_data['remember_card'] field.
-            remember_card = True
-            self.charge = Charge.objects.charge_card(
-                self.customer, total_amount, self.request.user,
-                token=form.cleaned_data['stripeToken'],
-                remember_card=remember_card)
-        # We commit in the db AFTER the charge goes through. In case anything
-        # goes wrong with the charge the cart is still in a consistent state.
-        # XXX need to readeem coupon in atomic checkout.
-        CartItem.objects.checkout(
+        self.coupons = Coupon.objects.filter(
+            user=self.request.user, customer=self.customer, redeemed=False)
+        return CartItem.objects.checkout(
             self.customer, self.request.user, self.coupons)
-        return super(PlaceOrderView, self).form_valid(form)
-
-    def get_success_url(self):
-        if hasattr(self, 'charge'):
-            return reverse('saas_charge_receipt',
-                           args=(self.customer, self.charge.processor_id))
-        messages.info(self.request,
-                      _("Your order has been processed. Thank you!"))
-        return reverse('saas_organization_profile', args=(self.customer,))
 
     def get_queryset(self):
         """
@@ -252,6 +279,21 @@ class PlaceOrderView(InvoicablesMixin, CardFormMixin,
                         'organization': self.customer})
         return context
 
+    def get_success_url(self):
+        redirect_path = validate_redirect_url(
+            self.request.GET.get(REDIRECT_FIELD_NAME, None))
+        if hasattr(self, 'charge') and self.charge:
+            if redirect_path:
+                return '%s?%s=%s' % (
+                    reverse('saas_charge_receipt',
+                        args=(self.charge.customer, self.charge.processor_id)),
+                    REDIRECT_FIELD_NAME, redirect_path)
+            return reverse('saas_charge_receipt',
+                        args=(self.charge.customer, self.charge.processor_id))
+        if redirect_path:
+            return redirect_path
+        return reverse('saas_organization_profile', args=(self.customer,))
+
 
 class ChargeReceiptView(DetailView):
     """
@@ -277,11 +319,10 @@ class ChargeReceiptView(DetailView):
 
     def get_context_data(self, **kwargs):
         context = super(ChargeReceiptView, self).get_context_data(**kwargs)
-        context.update({'last4': self.object.last4,
-                        'exp_date': self.object.exp_date,
-                        'charge_id': self.object.processor_id,
-                        'amount': self.object.amount,
-                        'customer': self.customer})
+        invoiced_items = Transaction.objects.by_charge(self.object)
+        context.update({'charge': self.object,
+                        'invoiced_items': invoiced_items,
+                        'organization': self.customer})
         return context
 
 
@@ -305,6 +346,7 @@ def pay_now(request, organization):
             if amount > 50:
                 # Stripe will not processed charges less than 50 cents.
                 last4, exp_date = backend.retrieve_card(customer)
+                raise PermissionDenied # XXX until we update to new charge_card method signature.
                 charge = Charge.objects.charge_card(
                     customer, amount=amount, user=request.user)
                 context.update({
@@ -358,21 +400,54 @@ class PaySubscriptionView(InvoicablesMixin, CardFormMixin, FormView):
     plan_url_kwarg = 'subscribed_plan'
     template_name = 'saas/pay_subscription.html'
 
+    def get_invoiced_items(self):
+        """
+        Returns the transactions which are being charged.
+        """
+        self.subscription = self.get_subscription()
+        invoicables = Transaction.objects.get_invoicables(
+            self.subscription)
+        invoiced_items = Transaction.objects.none()
+        for invoicable in invoicables:
+            # Because we added a "fake" balance Transaction.
+            if isinstance(invoicable['lines'], QuerySet):
+                invoiced_items |= invoicable['lines']
+        return invoiced_items
+
     def get_subscription(self):
         return get_object_or_404(Subscription,
             organization__slug=self.kwargs.get('organization'),
             plan__slug=self.kwargs.get(self.plan_url_kwarg))
 
     def get_context_data(self, **kwargs):
-        subscription = self.get_subscription()
-        self.invoicables = Transaction.objects.get_invoicables(subscription)
+        self.subscription = self.get_subscription()
+        self.invoicables = Transaction.objects.get_invoicables(
+            self.subscription)
         context = super(PaySubscriptionView, self).get_context_data(**kwargs)
-        if (not subscription.last_charge
-            or subscription.last_charge.state == Charge.FAILED
-            or subscription.last_charge.state == Charge.DISPUTED):
+        last_charge = Charge.objects.last_charge(self.subscription)
+        if (not last_charge
+            or last_charge.state == Charge.FAILED
+            or last_charge.state == Charge.DISPUTED):
             # No charge yet, let's run it. First, get the balance items
             # charge failed does not hurt to show again balance.
             pass
-        context.update({'object_list': self.invoicables,
+        context.update({'subscription': self.subscription,
+                        'last_charge': last_charge,
+                        'object_list': self.invoicables,
                         'organization': self.customer})
         return context
+
+    def get_success_url(self):
+        redirect_path = validate_redirect_url(
+            self.request.GET.get(REDIRECT_FIELD_NAME, None))
+        if hasattr(self, 'charge') and self.charge:
+            if redirect_path:
+                return '%s?%s=%s' % (
+                    reverse('saas_charge_receipt',
+                        args=(self.charge.customer, self.charge.processor_id)),
+                    REDIRECT_FIELD_NAME, redirect_path)
+            return reverse('saas_charge_receipt',
+                        args=(self.charge.customer, self.charge.processor_id))
+        if redirect_path:
+            return redirect_path
+        return reverse('saas_organization_profile', args=(self.customer,))

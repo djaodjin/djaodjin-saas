@@ -123,7 +123,9 @@ def requires_manager(function=None):
 
 
 def requires_paid_subscription(function=None,
-                               redirect_field_name=REDIRECT_FIELD_NAME):
+                              organization_kwarg_slug='organization',
+                              plan_kwarg_slug='subscribed_plan',
+                              redirect_field_name=REDIRECT_FIELD_NAME):
     """
     Decorator that checks a specificed subscription is paid.
 
@@ -136,28 +138,30 @@ def requires_paid_subscription(function=None,
         @wraps(view_func, assigned=available_attrs(view_func))
         def _wrapped_view(request, *args, **kwargs):
             subscriber = None
-            if kwargs.has_key('organization'):
+            if kwargs.has_key(organization_kwarg_slug):
                 subscriber = valid_manager_for_organization(
-                    request.user, kwargs.get('organization'))
+                    request.user, kwargs.get(organization_kwarg_slug))
             plan = None
-            if kwargs.has_key('subscribed_plan'):
+            if kwargs.has_key(plan_kwarg_slug):
                 plan = get_object_or_404(
-                    Plan, slug=kwargs.get('subscribed_plan'))
+                    Plan, slug=kwargs.get(plan_kwarg_slug))
             if subscriber and plan:
                 subscription = get_object_or_404(Subscription,
                     organization=subscriber, plan=plan)
-                if (not subscription.last_charge
-                    or subscription.last_charge.state == Charge.FAILED
-                    or subscription.last_charge.state == Charge.DISPUTED):
+                last_charge = Charge.objects.last_charge(subscription)
+                if (not last_charge
+                    or last_charge.state == Charge.FAILED
+                    or last_charge.state == Charge.DISPUTED):
                     # No charge or a problem with the existing charge,
                     # we trigger a new charge.
                     return _insert_url(request, redirect_field_name,
                         reverse('saas_pay_subscription',
-                            kwargs={'subscriber': subscriber, 'plan': plan}))
-                elif subscription.last_charge.state == Charge.CREATED:
+                            kwargs={'organization': subscriber,
+                                    'subscribed_plan': plan}))
+                elif last_charge.state == Charge.CREATED:
                     return _insert_url(request, redirect_field_name,
-                        reverse('saas_wait_charge_state',
-                            kwargs={'charge': subscription.last_charge}))
+                        reverse('saas_charge_receipt',
+                        args=(last_charge.customer, last_charge.processor_id)))
 
                 return view_func(request, *args, **kwargs)
             raise Http404

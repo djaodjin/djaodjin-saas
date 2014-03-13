@@ -42,7 +42,7 @@ urlpatterns = patterns(
     url(r'^balance/pay/', pay_now, name='saas_pay_now'),
     url(r'^coupon/redeem/', redeem_coupon, name='saas_redeem_coupon'),
     url(r'^cart/', PlaceOrderView.as_view(), name='saas_organization_cart'),
-    url(r'^card', CardUpdateView.as_view(), name='saas_update_card'),
+    url(r'^card/', CardUpdateView.as_view(), name='saas_update_card'),
     url(r'^receipt/(?P<charge>[a-zA-Z0-9_]+)',
         ChargeReceiptView.as_view(), name='saas_charge_receipt'),
     url(r'^$', TransactionListView.as_view(), name='saas_billing_info'),

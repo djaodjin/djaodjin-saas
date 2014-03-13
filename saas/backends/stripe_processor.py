@@ -26,7 +26,7 @@ import datetime, logging, re
 
 import stripe
 from django.http import Http404
-from django.conf import settings
+from django.conf import settings as django_settings
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
@@ -38,12 +38,20 @@ from saas.charge import (
     charge_dispute_created,
     charge_dispute_updated,
     charge_dispute_closed)
-from saas.settings import STRIPE_PRIV_KEY
+from saas import settings
 
 
 LOGGER = logging.getLogger(__name__)
 
-stripe.api_key = STRIPE_PRIV_KEY
+stripe.api_key = settings.STRIPE_PRIV_KEY
+
+
+def get_context_data(customer):
+    context = {'STRIPE_PUB_KEY': settings.STRIPE_PUB_KEY}
+    last4, exp_date = retrieve_card(customer)
+    if last4 != "N/A":
+        context.update({'last4': last4, 'exp_date': exp_date})
+    return context
 
 
 def list_customers(org_pat=r'.*'):
@@ -121,8 +129,9 @@ def retrieve_card(customer):
 @api_view(['POST'])
 def processor_hook(request):
     # Attempt to validate the event by posting it back to Stripe.
-    if settings.DEBUG:
-        event = stripe.Event.construct_from(request.DATA, STRIPE_PRIV_KEY)
+    if django_settings.DEBUG:
+        event = stripe.Event.construct_from(
+            request.DATA, settings.STRIPE_PRIV_KEY)
     else:
         event = stripe.Event.retrieve(request.DATA['id'])
     if not event:
