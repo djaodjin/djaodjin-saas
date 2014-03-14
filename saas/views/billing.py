@@ -175,15 +175,17 @@ class CardUpdateView(InsertedURLMixin, CardFormMixin, FormView):
     def form_valid(self, form):
         now = datetime.datetime.now()
         stripe_token = form.cleaned_data['stripeToken']
-        # With Stripe, we don't need to wait on an IPN. We get
-        # a card token here.
-        Organization.objects.associate_processor(self.customer, stripe_token)
-        email = None
-        if self.customer.managers.count() > 0:
-            email = self.customer.managers.all()[0].email
-            # XXX email all managers that the card was updated.
-        messages.success(self.request,
-            "Your credit card on file was sucessfully updated")
+        if stripe_token:
+            # Since all fields are optional, we cannot assume the card token
+            # will be present (i.e. in case of erroneous POST request).
+            Organization.objects.associate_processor(
+                self.customer, stripe_token)
+            email = None
+            if self.customer.managers.count() > 0:
+                email = self.customer.managers.all()[0].email
+                # XXX email all managers that the card was updated.
+            messages.success(self.request,
+                "Your credit card on file was sucessfully updated")
         return super(CardUpdateView, self).form_valid(form)
 
     def get_context_data(self, **kwargs):

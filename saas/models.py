@@ -307,8 +307,12 @@ class CartItemManager(models.Manager):
             prorate_to = customer.billing_start
         invoiced_items = []
         for cart_item in self.get_cart(user=user):
-            subscription = Subscription(
-                organization=customer, plan=cart_item.plan)
+            try:
+                subscription = Subscription.objects.get(
+                    organization=customer, plan=cart_item.plan)
+            except Subscription.DoesNotExist:
+                subscription = Subscription(
+                    organization=customer, plan=cart_item.plan)
             lines = self.get_invoicables_for(
                     subscription, customer, start_time, prorate_to)
             item_amount = 0
@@ -338,19 +342,20 @@ class CartItemManager(models.Manager):
         for invoicable in self.get_invoicables(
                 customer, user, coupons, start_time=start_time):
             subscription = invoicable['subscription']
-            subscription.save()
-            subscriptions += [subscription]
-            for transaction in invoicable['lines']:
-                # We can't set the event_id until the subscription is saved
-                # in the database.
-                transaction.event_id = subscription.id
-                transaction.save()
-            cart_items = self.filter(
-                user=user, plan=subscription.plan, recorded=False)
-            if cart_items.exists():
-                cart_item = cart_items.get()
-                cart_item.recorded = True
-                cart_item.save()
+            if not subscription.id:
+                subscription.save()
+                subscriptions += [subscription]
+                for transaction in invoicable['lines']:
+                    # We can't set the event_id until the subscription is saved
+                    # in the database.
+                    transaction.event_id = subscription.id
+                    transaction.save()
+                cart_items = self.filter(
+                    user=user, plan=subscription.plan, recorded=False)
+                if cart_items.exists():
+                    cart_item = cart_items.get()
+                    cart_item.recorded = True
+                    cart_item.save()
         # XXX Filters all subscriptions which are due at the time of checkout.
         return Transaction.objects.none()
 
