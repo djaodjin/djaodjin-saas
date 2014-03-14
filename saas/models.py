@@ -350,12 +350,12 @@ class CartItemManager(models.Manager):
                     # in the database.
                     transaction.event_id = subscription.id
                     transaction.save()
-                cart_items = self.filter(
-                    user=user, plan=subscription.plan, recorded=False)
-                if cart_items.exists():
-                    cart_item = cart_items.get()
-                    cart_item.recorded = True
-                    cart_item.save()
+            cart_items = self.filter(
+                user=user, plan=subscription.plan, recorded=False)
+            if cart_items.exists():
+                cart_item = cart_items.get()
+                cart_item.recorded = True
+                cart_item.save()
         # XXX Filters all subscriptions which are due at the time of checkout.
         return Transaction.objects.none()
 
