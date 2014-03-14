@@ -198,7 +198,7 @@ class Organization(models.Model):
 
 
 class Agreement(models.Model):
-    slug = models.SlugField()
+    slug = models.SlugField(unique=True)
     title = models.CharField(max_length=150, unique=True)
     modified = models.DateTimeField(auto_now_add=True)
     def __unicode__(self):
@@ -531,7 +531,7 @@ class Plan(models.Model):
         (YEARLY, "YEARLY"),
         ]
 
-    slug = models.SlugField()
+    slug = models.SlugField(unique=True)
     title = models.CharField(max_length=50)
     description = models.TextField()
     is_active = models.BooleanField(default=False)

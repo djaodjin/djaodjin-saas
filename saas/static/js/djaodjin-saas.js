@@ -1,5 +1,19 @@
-/* Functionality related to the SaaS API for Carts.
+/* Functionality related to the SaaS API.
  */
+
+
+/** Update fields in a ``Plan`` by executing an AJAX request on the backend.
+ */
+function updatePlanAPI(plan, title, description, success) {
+  $.ajax({ type: "PATCH",
+           url: '/api/plans/' + plan + '/',
+           data: JSON.stringify({ "title": title, "description": description }),
+          datatype: "json",
+          contentType: "application/json; charset=utf-8",
+          success: success,
+  });
+}
+
 
 function toggleCartItem(event) {
   var self = $(this);

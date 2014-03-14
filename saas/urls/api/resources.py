@@ -28,11 +28,13 @@ URLs for the resources API of djaodjin saas.
 
 from django.conf.urls import patterns, url
 
-from saas.api.plans import PlanActivateAPIView
+from saas.api.plans import PlanActivateAPIView, PlanResourceView
 from saas.settings import ACCT_REGEX
 
 urlpatterns = patterns('saas.api',
     url(r'^plans/(?P<plan>%s)/activate/' % ACCT_REGEX,
         PlanActivateAPIView.as_view(), name='saas_api_plan_activate'),
+    url(r'^plans/(?P<plan>%s)/' % ACCT_REGEX,
+        PlanResourceView.as_view(), name='saas_api_plan'),
 )
 

@@ -22,10 +22,20 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from rest_framework.generics import UpdateAPIView
+from django.template.defaultfilters import slugify
+from rest_framework.generics import RetrieveUpdateDestroyAPIView, UpdateAPIView
 from rest_framework import serializers
 
 from saas.models import Plan
+
+
+class PlanSerializer(serializers.ModelSerializer):
+
+   class Meta:
+        model = Plan
+        fields = ('slug', 'title', 'description',
+                  'setup_amount', 'period_amount', 'interval')
+        read_only_fields = ('slug',)
 
 
 class PlanActivateSerializer(serializers.ModelSerializer):
@@ -40,3 +50,17 @@ class PlanActivateAPIView(UpdateAPIView):
     model = Plan
     slug_url_kwarg = 'plan'
     serializer_class = PlanActivateSerializer
+
+
+class PlanResourceView(RetrieveUpdateDestroyAPIView):
+
+    model = Plan
+    slug_url_kwarg = 'plan'
+    serializer_class = PlanSerializer
+
+    def pre_save(self, obj):
+        # XXX do not recompute slug here because some other resource's slug
+        # was derived of it. The URLs won't look consistent if we do.
+        # setattr(obj, 'slug', slugify(obj.title))
+        pass
+
