@@ -250,10 +250,9 @@ class PlaceOrderView(InvoicablesMixin, CardFormMixin,
         """
         Returns the transactions which are being charged.
         """
-        self.coupons = Coupon.objects.filter(
-            user=self.request.user, customer=self.customer, redeemed=False)
+        self.invoicables = self.get_queryset()
         return CartItem.objects.checkout(
-            self.customer, self.request.user, self.coupons)
+            self.invoicables, user=self.request.user)
 
     def get_queryset(self):
         """

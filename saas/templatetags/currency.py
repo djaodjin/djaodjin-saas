@@ -51,6 +51,12 @@ def debits(value):
 
 
 @register.filter()
+def percentage(value):
+    if not value:
+        return '0 %%'
+    return '%.1f %%' % (float(value) / 1000)
+
+@register.filter()
 def humanize_period(period):
     if period == Plan.INTERVAL_CHOICES[1][0]:
         return "per hour"

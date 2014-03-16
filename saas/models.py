@@ -130,6 +130,20 @@ class OrganizationManager(models.Manager):
         """
         return self.filter(managers__id=user.id)
 
+    def providers(self, subscriptions):
+        """
+        Set of ``Organization`` which provides the plans referenced
+        by *subscriptions*.
+        """
+        if subscriptions:
+            # Would be almost straightforward in a single raw SQL query
+            # but expressing it for the Django compiler is not easy.
+            selectors = set([])
+            for subscription in subscriptions:
+                selectors |= set([subscription.plan.organization.id])
+            return self.filter(pk__in=selectors)
+        return self.none()
+
 
 class Organization_Managers(models.Model):
     organization = models.ForeignKey('Organization')
@@ -279,9 +293,10 @@ class CartItemManager(models.Manager):
         else:
             prorated_amount = plan.period_amount
             descr = "%s (first period)" % plan.get_title()
-        if prorated_amount:
-            # The prorated amount might still be zero in which case we don't
-            # want to add it to the invoice.
+        if prorated_amount > 0 or plan.setup_amount == 0:
+            # The prorated amount might still be zero in which case we will
+            # only add it to the invoice if there are no one-time fee.
+            # This enable freemium business models.
             invoicables += [self.as_transaction(subscription, customer,
                 prorated_amount, start_time, descr)]
         return invoicables
@@ -332,15 +347,12 @@ class CartItemManager(models.Manager):
         return invoiced_items
 
     @method_decorator(transaction.atomic)
-    def checkout(self, customer, user, coupons, start_time=None):
+    def checkout(self, invoicables, user):
         """
         Creates transactions based on a set of items in a cart.
         """
         subscriptions = []
-        if not start_time:
-            start_time = datetime.datetime.utcnow().replace(tzinfo=utc)
-        for invoicable in self.get_invoicables(
-                customer, user, coupons, start_time=start_time):
+        for invoicable in invoicables:
             subscription = invoicable['subscription']
             if not subscription.id:
                 subscription.save()

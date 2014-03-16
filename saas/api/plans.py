@@ -23,15 +23,26 @@
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 from django.template.defaultfilters import slugify
-from rest_framework.generics import RetrieveUpdateDestroyAPIView, UpdateAPIView
+from rest_framework.generics import (CreateAPIView,
+    RetrieveUpdateDestroyAPIView, UpdateAPIView)
 from rest_framework import serializers
 
 from saas.models import Plan
+from saas.views.auth import valid_manager_for_organization
+
+class PlanCreateSerializer(serializers.ModelSerializer):
+
+    organization = serializers.SlugRelatedField(many=False, slug_field='slug')
+
+    class Meta:
+        model = Plan
+        fields = ('organization', 'title', 'description', 'is_active',
+                  'setup_amount', 'period_amount', 'interval')
 
 
 class PlanSerializer(serializers.ModelSerializer):
 
-   class Meta:
+    class Meta:
         model = Plan
         fields = ('slug', 'title', 'description',
                   'setup_amount', 'period_amount', 'interval')
@@ -50,6 +61,16 @@ class PlanActivateAPIView(UpdateAPIView):
     model = Plan
     slug_url_kwarg = 'plan'
     serializer_class = PlanActivateSerializer
+
+
+class PlanCreateAPIView(CreateAPIView):
+
+    model = Plan
+    serializer_class = PlanCreateSerializer
+
+    def pre_save(self, obj):
+        valid_manager_for_organization(self.request.user, obj.organization)
+        setattr(obj, 'slug', slugify('%s-%s' % (obj.organization, obj.title)))
 
 
 class PlanResourceView(RetrieveUpdateDestroyAPIView):

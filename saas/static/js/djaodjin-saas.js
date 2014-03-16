@@ -2,6 +2,25 @@
  */
 
 
+/** Create a ``Plan`` by executing an AJAX request on the backend.
+ */
+function createPlanAPI(organization, success) {
+  $.ajax({ type: "POST",
+           url: '/api/plans/',
+           data: JSON.stringify({"organization": organization,
+               "title": "New Plan",
+               "description": "Write the description of the plan here.",
+               "interval": 4,
+               "is_active": 1}),
+           datatype: "json",
+           contentType: "application/json; charset=utf-8",
+           success: success,
+           error: function(data) {
+               console.log("error", data);
+           }
+  });
+}
+
 /** Update fields in a ``Plan`` by executing an AJAX request on the backend.
  */
 function updatePlanAPI(plan, title, description, success) {
