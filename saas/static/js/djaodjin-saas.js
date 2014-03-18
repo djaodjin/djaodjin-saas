@@ -23,10 +23,10 @@ function createPlanAPI(organization, success) {
 
 /** Update fields in a ``Plan`` by executing an AJAX request on the backend.
  */
-function updatePlanAPI(plan, title, description, success) {
+function updatePlanAPI(plan, data, success) {
   $.ajax({ type: "PATCH",
            url: '/api/plans/' + plan + '/',
-           data: JSON.stringify({ "title": title, "description": description }),
+           data: JSON.stringify(data),
           datatype: "json",
           contentType: "application/json; charset=utf-8",
           success: success,

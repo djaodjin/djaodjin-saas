@@ -28,176 +28,17 @@ from datetime import datetime, date, timedelta
 from django.db.models.sql.query import RawQuery
 from django.db.models import Count, Min, Sum, Max
 from django.shortcuts import render, render_to_response, get_object_or_404
+from django.utils.datastructures import SortedDict
 from django.utils.timezone import utc
 from django.views.decorators.http import require_GET
 from django.views.generic import TemplateView
 from django.core.serializers.json import DjangoJSONEncoder
 
 from saas.views.auth import valid_manager_for_organization
+from saas.managers.metrics import aggregate_monthly_transactions, month_periods
 from saas.models import (Organization, Plan, Subscription, Transaction,
     NewVisitors)
 from saas.compat import User
-
-
-def month_periods(nb_months=12, from_date=None):
-    """constructs a list of (nb_months + 1) dates in the past that fall
-    on the first of each month until *from_date* which is the last entry
-    of the list returned."""
-    dates = []
-    if not from_date:
-        from_date = date.today()
-    if isinstance(from_date, basestring):
-        from_date = datetime.strptime(from_date, '%Y-%m')
-    from_date = datetime(day=from_date.day, month=from_date.month,
-                             year=from_date.year, tzinfo=utc)
-    last = from_date
-    dates.append(last)
-    if last.day != 1:
-        last = datetime(day=1, month=last.month, year=last.year, tzinfo=utc)
-        dates.append(last)
-        nb_months = nb_months - 1
-    for index in range(0, nb_months):
-        year = last.year
-        month = last.month - 1
-        if month < 1:
-            year = last.year - month / 12 - 1
-            month = 12 - (month % 12)
-        last = datetime(day=1, month=month, year=year, tzinfo=utc)
-        dates.append(last)
-    dates.reverse()
-    return dates
-
-
-def aggregate_monthly(organization, account, from_date=None):
-    """Returns a table of records over a period of 12 months *from_date*."""
-    customers = []
-    receivables = []
-    new_customers = []
-    new_receivables = []
-    churn_customers = []
-    churn_receivables = []
-    queryset = None
-    # We want to be able to compare *last* to *from_date* and not get django
-    # warnings because timezones are not specified.
-    dates = month_periods(13, from_date)
-    first_date = dates[0]
-    seam_date = dates[1]
-    for last_date in dates[2:]:
-        churn_query = RawQuery(
-"""SELECT COUNT(DISTINCT(prev.dest_organization_id)), SUM(prev.amount)
-       FROM saas_transaction prev
-       LEFT OUTER JOIN (
-         SELECT distinct(dest_organization_id)
-           FROM saas_transaction
-           WHERE created_at >= '%(seam_date)s'
-         AND created_at < '%(last_date)s'
-         AND orig_organization_id = '%(organization_id)s'
-         AND orig_account = '%(account)s') curr
-         ON prev.dest_organization_id = curr.dest_organization_id
-       WHERE prev.created_at >= '%(first_date)s'
-         AND prev.created_at < '%(seam_date)s'
-         AND prev.orig_organization_id = '%(organization_id)s'
-         AND prev.orig_account = '%(account)s'
-         AND curr.dest_organization_id IS NULL""" % {
-                "first_date": first_date,
-                "seam_date": seam_date,
-                "last_date": last_date,
-                "organization_id": organization.id,
-                "account": account}, 'default')
-        churn_customer, churn_receivable = iter(churn_query).next()
-        query_result = Transaction.objects.filter(
-            orig_organization=organization,
-            orig_account=account,
-            created_at__gte=seam_date,
-            created_at__lt=last_date).aggregate(
-            Count('dest_organization', distinct=True),
-            Sum('amount'))
-        customer = query_result['dest_organization__count']
-        receivable = query_result['amount__sum']
-        new_query = RawQuery(
-"""SELECT count(distinct(curr.dest_organization_id)), SUM(curr.amount)
-   FROM saas_transaction curr
-       LEFT OUTER JOIN (
-         SELECT distinct(dest_organization_id)
-           FROM saas_transaction
-           WHERE created_at >= '%(first_date)s'
-         AND created_at < '%(seam_date)s'
-         AND orig_organization_id = '%(organization_id)s'
-         AND orig_account = '%(account)s') prev
-         ON curr.dest_organization_id = prev.dest_organization_id
-       WHERE curr.created_at >= '%(seam_date)s'
-         AND curr.created_at < '%(last_date)s'
-         AND curr.orig_organization_id = '%(organization_id)s'
-         AND curr.orig_account = '%(account)s'
-         AND prev.dest_organization_id IS NULL""" % {
-                "first_date": first_date,
-                "seam_date": seam_date,
-                "last_date": last_date,
-                "organization_id": organization.id,
-                "account": account}, 'default')
-        new_customer, new_receivable = iter(new_query).next()
-        period = last_date
-        churn_customers += [(period, churn_customer)]
-        churn_receivables += [(period, - int(churn_receivable or 0))]
-        customers += [(period, customer)]
-        receivables += [(period, int(receivable or 0))]
-        new_customers += [(period, new_customer)]
-        new_receivables += [(period, int(new_receivable or 0))]
-        first_date = seam_date
-        seam_date = last_date
-    return ((churn_customers, customers, new_customers),
-            (churn_receivables, receivables, new_receivables))
-
-
-def organization_monthly_revenue_customers(organization, from_date=None):
-    """
-    12 months of total/new/churn income and customers
-    extracted from Transactions.
-    """
-    account = 'Income'
-    customers, incomes = aggregate_monthly(organization, account, from_date)
-    churned_custs, total_custs, new_custs = customers
-    churned_income, total_income, new_income = incomes
-    net_new_custs = []
-    cust_churn_percent = []
-    last_nb_total_custs = 0
-    for index in range(0, 12):
-        period, nb_total_custs = total_custs[index]
-        period, nb_new_custs = new_custs[index]
-        period, nb_churned_custs = churned_custs[index]
-        net_new_custs += [(period, nb_new_custs - nb_churned_custs)]
-        if last_nb_total_custs:
-            cust_churn_percent += [(
-                    period, nb_churned_custs * 100.0 / last_nb_total_custs)]
-        else:
-            cust_churn_percent += [(period, 0)]
-        last_nb_total_custs = nb_total_custs
-    table = [{"key": "Total %s" % account,
-              "values": total_income
-              },
-             {"key": "%s from new Customers" % account,
-              "values": new_income
-              },
-             {"key": "%s from churned Customers" % account,
-              "values": churned_income
-              },
-             {"key": "Total # of Customers",
-              "values": total_custs
-              },
-             {"key": "# of new Customers",
-              "values": new_custs
-              },
-             {"key": "# of churned Customers",
-              "values": churned_custs
-              },
-             {"key": "Net New Customers",
-              "values": net_new_custs
-              },
-             {"key": "% Customer Churn",
-              "values": cust_churn_percent
-              },
-             ]
-    return table
 
 
 class PlansMetricsView(TemplateView):
@@ -219,12 +60,17 @@ class PlansMetricsView(TemplateView):
                 from_date=self.kwargs.get('from_date')):
                 # XXX IMPLEMENT CODE take into account when subscription ends.
                 values.append([end_period, Subscription.objects.filter(
-                    plan=plan, created_at__lt=end_period).count()])
+                    plan=plan, created_at__lte=end_period,
+                    ends_at__gt=end_period).count()])
             # XXX The template relies on "key" being plan.slug
             table.append({"key": plan.slug, "values": values})
-        context.update({'title': "Active Subscribers",
-                        'organization': organization, 'table': table,
-                        "table_json": json.dumps(table, cls=DjangoJSONEncoder)})
+        data = SortedDict()
+        data['subscribers'] = {"title": "Active Subscribers",
+                               "table": table}
+        context.update({'title': "Plans",
+            "organization": organization,
+            "data": data,
+            "data_json": json.dumps(data, cls=DjangoJSONEncoder)})
         return context
 
 
@@ -233,17 +79,23 @@ class RevenueMetricsView(TemplateView):
     Generate a table of revenue (rows) per months (columns).
     """
 
-    template_name = 'saas/metrics_base.html'
+    template_name = 'saas/revenue_metrics.html'
 
     def get_context_data(self, **kwargs):
         context = super(RevenueMetricsView, self).get_context_data(**kwargs)
         organization = get_object_or_404(
             Organization, slug=kwargs.get('organization'))
         from_date = kwargs.get('from_date', None)
-        table = organization_monthly_revenue_customers(organization, from_date)
+        income_table, customer_table = aggregate_monthly_transactions(
+            organization, from_date)
+        data = SortedDict()
+        data['amount'] = {"title": "Amount",
+                          "unit": "$", "table": income_table}
+        data['customers'] = {"title": "Customers", "table": customer_table}
         context = {"title": "Revenue Metrics",
-                   "organization": organization, "table": table,
-                   "table_json": json.dumps(table, cls=DjangoJSONEncoder)}
+                   "organization": organization,
+                   "data": data,
+                   "data_json": json.dumps(data, cls=DjangoJSONEncoder)}
         return context
 
 

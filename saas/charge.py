@@ -68,16 +68,15 @@ def charge_succeeded(charge_id):
     if charge.state != charge.DONE:
         charge.state = charge.DONE
         charge.save()
-        Transaction.objects.pay_balance(
-            charge.customer, charge.amount,
-            description=charge.description,
-            event_id=charge.id)
+        Transaction.objects.pay_balance(charge)
+
 
 def charge_failed(charge_id):
     """Invoked by the processor callback when a charge has failed."""
     charge = get_object_or_404(Charge, processor_id=charge_id)
     charge.state = charge.FAILED
     charge.save()
+
 
 def charge_refunded(charge_id):
     """Invoked by the processor callback when a charge has been refunded."""

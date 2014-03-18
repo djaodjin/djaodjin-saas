@@ -46,7 +46,6 @@ class PlanSerializer(serializers.ModelSerializer):
         model = Plan
         fields = ('slug', 'title', 'description',
                   'setup_amount', 'period_amount', 'interval')
-        read_only_fields = ('slug',)
 
 
 class PlanActivateSerializer(serializers.ModelSerializer):
@@ -80,8 +79,11 @@ class PlanResourceView(RetrieveUpdateDestroyAPIView):
     serializer_class = PlanSerializer
 
     def pre_save(self, obj):
-        # XXX do not recompute slug here because some other resource's slug
-        # was derived of it. The URLs won't look consistent if we do.
-        # setattr(obj, 'slug', slugify(obj.title))
-        pass
+        if 'slug' in self.request.DATA:
+            # Only when a slug field is passed will we force recompute it here.
+            # In cases some other resource's slug was derived on the initial
+            # slug, we don't want to do this to prevent inconsistent look
+            # of the derived URLs.
+            setattr(obj, 'slug', slugify(
+                    '%s-%s' % (obj.organization, obj.title)))
 

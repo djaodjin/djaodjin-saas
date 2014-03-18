@@ -41,6 +41,7 @@ setup(
               'saas.urls',
               'saas.urls.api',
               'saas.urls.app',
+              'saas.managers',
               'saas.views',
               'saas.api',
               ],

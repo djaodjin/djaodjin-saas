@@ -28,8 +28,10 @@
 
 import datetime, logging
 
-from django.db import models, transaction
+from dateutil.relativedelta import relativedelta 
+from django.db import IntegrityError, models, transaction
 from django.db.models import Sum
+from django.db.models.query import QuerySet
 from django.utils.timezone import utc
 from django.contrib.sites.models import Site
 from django.utils.translation import ugettext_lazy as _
@@ -326,8 +328,8 @@ class CartItemManager(models.Manager):
                 subscription = Subscription.objects.get(
                     organization=customer, plan=cart_item.plan)
             except Subscription.DoesNotExist:
-                subscription = Subscription(
-                    organization=customer, plan=cart_item.plan)
+                subscription = Subscription.objects.new_instance(
+                    customer, cart_item.plan)
             lines = self.get_invoicables_for(
                     subscription, customer, start_time, prorate_to)
             item_amount = 0
@@ -496,6 +498,13 @@ class Charge(models.Model):
     # customer and invoiced_items account payble should match.
 
     @property
+    def invoiced_total_amount(self):
+        """
+        Returns the total amount of all invoiced items.
+        """
+        return total_amount(self.invoiced_items.all())
+
+    @property
     def is_disputed(self):
         return self.state == self.DISPUTED
 
@@ -569,6 +578,21 @@ class Plan(models.Model):
     def __unicode__(self):
         return unicode(self.slug)
 
+    def end_of_period(self, start_time):
+        if self.interval == self.HOURLY:
+            return start_time + datetime.timedelta(hours=1)
+        elif self.interval == self.DAILY:
+            return start_time + datetime.timedelta(days=1)
+        elif self.interval == self.WEEKLY:
+            return start_time + datetime.timedelta(days=7)
+        elif self.interval == self.MONTHLY:
+            return start_time + relativedelta(months=1)
+        elif self.interval == self.QUATERLY:
+            return start_time + relativedelta(months=3)
+        elif self.interval == self.YEARLY:
+            return start_time + relativedelta(years=1)
+        return start_time
+
     def get_title(self):
         """
         Returns a printable human-readable title for the plan.
@@ -615,11 +639,34 @@ class Plan(models.Model):
         return int(self.period_amount * fraction)
 
 
+class SubscriptionManager(models.Manager):
+
+    def create(self, **kwargs):
+        if not kwargs.has_key('ends_at'):
+            start_time = datetime.datetime.utcnow().replace(tzinfo=utc)
+            plan = kwargs.get('plan')
+            return super(SubscriptionManager, self).create(
+                ends_at=plan.end_of_period(start_time), **kwargs)
+        return super(SubscriptionManager, self).create(**kwargs)
+
+    def new_instance(organization, plan, start_time=None):
+        """
+        New ``Subscription`` instance which is explicitely not in the db.
+        """
+        if not start_time:
+            start_time = datetime.datetime.utcnow().replace(tzinfo=utc)
+        return Subscription(organization=organization, plan=plan,
+            ends_at=plan.end_of_period(start_time))
+
+
 class Subscription(models.Model):
     """
     Subscriptions of an Organization to a Plan
     """
+    objects = SubscriptionManager()
+
     created_at = models.DateTimeField(auto_now_add=True)
+    ends_at = models.DateTimeField()
     organization = models.ForeignKey('Organization')
     plan = models.ForeignKey('Plan')
 
@@ -632,12 +679,18 @@ class TransactionManager(models.Manager):
     def by_charge(self, charge):
         return charge.invoiced_items.all()
 
-    def by_subsciptions(self, subscriptions, at_time):
-        return self.filter(
+    def by_subsciptions(self, subscriptions, at_time=None):
+        """
+        Returns a ``QuerySet`` of all transactions related to a set
+        of subscriptions.
+        """
+        queryset = self.filter(
             models.Q(dest_account=Transaction.PAYABLE)
             | models.Q(dest_account=Transaction.REDEEM),
-            event_id__in=subscriptions,
-            created_at=at_time).order('created_at')
+            event_id__in=subscriptions)
+        if at_time:
+            queryset = queryset.filter(created_at=at_time)
+        return queryset.order_by('created_at')
 
     def create_credit(self, customer, amount):
         credit = self.create(
@@ -719,17 +772,28 @@ class TransactionManager(models.Manager):
                     invoiced_subscription]
         return [invoiced_subscription]
 
-    def invoice(self, customer, amount,
-                description=None, event_id=None, created_at=None):
-        if not created_at:
-            created_at = datetime.datetime.utcnow().replace(tzinfo=utc)
-        usage = self.create(
-            orig_organization=customer, dest_organization=customer,
-            orig_account="Usage", dest_account="Balance",
-            amount=amount,
-            descr=description,
-            event_id=event_id,
-            created_at=created_at)
+    def use_of_service(self, subscription, descr=None, start_time=None):
+        """
+        Each time a provider delivers a service to a client, a transaction
+        is recorded that goes from the provider ``Income`` account to
+        the client ``Payable`` account.
+        """
+        if not descr:
+            descr = "subscription to %s" % subscription.plan
+        transaction = self.create(
+            descr=descr,
+            amount=subscription.plan.period_amount,
+            event_id=subscription.id,
+            orig_account=Transaction.INCOME,
+            dest_account=Transaction.PAYABLE,
+            orig_organization=subscription.plan.organization,
+            dest_organization=subscription.organization)
+        if start_time:
+            # When we want to override the created_at, we need to update
+            # the Transaction after the fact because auto_now_add will
+            # force override a created_at field otherwise.
+            self.filter(pk=transaction.id).update(created_at=start_time)
+        return transaction
 
     def refund(self, customer, amount, description=None, event_id=None):
         usage = self.create(
@@ -749,16 +813,48 @@ class TransactionManager(models.Manager):
             descr=description,
             event_id=event_id)
 
-    def pay_balance(self, customer, amount, description=None, event_id=None):
-        payment = self.create(
-            orig_organization=customer,
-            dest_organization=Organization.objects.get_site_owner(),
-            orig_account=Transaction.PAYABLE, dest_account=Transaction.ASSETS,
-            amount=amount,
-            descr=description,
-            event_id=event_id)
-        payment.save()
-        return payment
+    def pay_balance(self, charge):
+        """
+        When a charge through the payment processor is sucessful, a transaction
+        is created from client payable to processor assets. The amount of the
+        charge is then redistributed to the providers (minus processor fee).
+        """
+        charge_transaction = self.create(
+            event_id=charge.id,
+            descr=charge.description,
+            created_at=charge.created_at,
+            amount=charge.amount,
+            orig_account=Transaction.PAYABLE,
+            dest_account=Transaction.ASSETS,
+            orig_organization=charge.customer,
+            dest_organization=Organization.objects.get_site_owner())
+        # Once we have created a transaction for the charge, let's
+        # redistribute the money to the rightful owners.
+        total_amount = 0
+        for item in charge.invoiced_items.all():
+            try:
+                subscription = Subscription.objects.get(pk=item.event_id)
+                fee_plan = Subscription.objects.get(
+                    organization=subscription.plan.organization,
+                    plan__organization=Organization.objects.get_site_owner())
+                fee_amount = fee_plan.prorate_transaction(item.amount)
+                payment_amount = item.amount - fee_amount
+                total_amount += item.amount
+                payment = self.create(
+                    event_id=charge.id,
+                    descr="payment for %s" % subscription.plan,
+                    created_at=charge.created_at,
+                    amount=payment_amount,
+                    orig_account=Transaction.ASSETS,
+                    dest_account=Transaction.ASSETS,
+                    orig_organization=Organization.objects.get_site_owner(),
+                    dest_organization=subscription.plan.organization)
+            except Subscription.DoesNotExist as err:
+                LOGGER.error("Could not find subscription: %s", err)
+        if total_amount > charge.amount:
+            raise IntegrityError("The total amount of invoiced items for "\
+              "charge %s exceed the amount of the charge.", charge.processor_id)
+        return charge_transaction
 
 
 class Transaction(models.Model):
@@ -796,10 +892,6 @@ class Transaction(models.Model):
     event_id = models.SlugField(null=True, help_text=
         _('Event at the origin of this transaction (ex. job, charge, etc.)'))
 
-    @property
-    def is_payable(self):
-        return self.dest_account == self.PAYABLE
-
 
 class NewVisitors(models.Model):
     """
@@ -807,3 +899,18 @@ class NewVisitors(models.Model):
     """
     date = models.DateField(unique=True)
     visitors_number = models.IntegerField(default=0)
+
+
+def total_amount(transactions):
+    """
+    Return the sum of the amount in the *transactions* set.
+    """
+    amount = 0
+    if isinstance(transactions, QuerySet):
+        amount = transactions.aggregate(Sum('amount'))['amount__sum']
+        if amount is None:
+            amount = 0
+    else:
+        for item in transactions:
+            amount += item.amount
+    return amount

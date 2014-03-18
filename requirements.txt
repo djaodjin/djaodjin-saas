@@ -7,4 +7,5 @@ Markdown
 stripe
 # measuring engagement
 django-app-metrics
+python-dateutil
 

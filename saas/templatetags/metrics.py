@@ -32,6 +32,15 @@ register = template.Library()
 
 
 @register.filter()
+def is_payable(transaction, organization):
+    """
+    True if the transaction is in the organization's payable balance.
+    """
+    return (transaction.dest_organization == organization
+            and transaction.dest_account == self.PAYABLE)
+
+
+@register.filter()
 def is_incomplete_month(date):
     return ((isinstance(date, basestring) and not date.endswith('01'))
         or (isinstance(date, datetime) and date.day != 1))
