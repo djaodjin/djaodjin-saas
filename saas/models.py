@@ -649,7 +649,7 @@ class SubscriptionManager(models.Manager):
                 ends_at=plan.end_of_period(start_time), **kwargs)
         return super(SubscriptionManager, self).create(**kwargs)
 
-    def new_instance(organization, plan, start_time=None):
+    def new_instance(self, organization, plan, start_time=None):
         """
         New ``Subscription`` instance which is explicitely not in the db.
         """

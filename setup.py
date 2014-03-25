@@ -36,7 +36,6 @@ setup(
               'saas.management.commands',
               'saas.migrations',
               'saas.templatetags',
-              'saas.templates',
               'saas.urls',
               'saas.urls.api',
               'saas.urls.app',

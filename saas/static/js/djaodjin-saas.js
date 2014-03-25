@@ -50,7 +50,7 @@ function toggleCartItem(event) {
           }
       });
   } else {
-      $.ajax({ type: "POST", // XXX PUT?
+      $.ajax({ type: "POST", // XXX Might still prefer to do PUT on list.
           url: '/api/cart/',
           data: JSON.stringify({ "plan": self.attr("id") }),
           datatype: "json",

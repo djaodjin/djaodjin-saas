@@ -36,7 +36,7 @@ class PlanRelatedField(serializers.RelatedField):
         return value.slug
 
     def from_native(self, data):
-        return Plan.objects.get(slug=data)
+        return get_object_or_404(Plan, slug=data)
 
 
 class CartItemSerializer(serializers.ModelSerializer):
@@ -83,11 +83,30 @@ class CartItemAPIView(CreateAPIView):
         # that look like security risks (ex: trying to set the id or slug.)
         setattr(obj, 'user', self.request.user)
 
+    def create_or_none(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.DATA, files=request.FILES)
+        if serializer.is_valid():
+            self.pre_save(serializer.object)
+            try:
+                self.object = self.model.objects.get(
+                    user=self.request.user, plan__slug=serializer.data['plan'])
+                self.post_save(self.object, created=False)
+                headers = self.get_success_headers(serializer.data)
+                return Response(serializer.data, status=status.HTTP_200_OK,
+                    headers=headers)
+            except self.model.DoesNotExist:
+                self.object = serializer.save(force_insert=True)
+                self.post_save(self.object, created=True)
+                headers = self.get_success_headers(serializer.data)
+                return Response(serializer.data, status=status.HTTP_201_CREATED,
+                    headers=headers)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
     def post(self, request, *args, **kwargs):
         if self.request.user.is_authenticated():
             # If the user is authenticated, we just create the cart items
             # into the database.
-            return self.create(request, *args, **kwargs)
+            return self.create_or_none(request, *args, **kwargs)
         else:
             # We have an anonymous user so let's play some tricks with
             # the session data.
