@@ -22,11 +22,9 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-import locale
-
 from django import template
 
-from saas.models import Plan
+from saas.models import Plan, as_money
 
 
 register = template.Library()
@@ -34,19 +32,11 @@ register = template.Library()
 
 @register.filter()
 def usd(value):
-    if not value:
-        return '$0.00'
-    return '$%.2f' % (float(value) / 100)
-    # XXX return locale.currency(value, grouping=True)
+    return as_money(value)
 
 
 @register.filter()
-def credits(value):
-    return usd(abs(value))
-
-
-@register.filter()
-def debits(value):
+def humanize_balance(value):
     return usd(abs(value))
 
 
@@ -58,16 +48,17 @@ def percentage(value):
 
 @register.filter()
 def humanize_period(period):
+    result = "per ?"
     if period == Plan.INTERVAL_CHOICES[1][0]:
-        return "per hour"
+        result = "per hour"
     elif period == Plan.INTERVAL_CHOICES[2][0]:
-        return "per day"
+        result = "per day"
     elif period == Plan.INTERVAL_CHOICES[3][0]:
-        return "per week"
+        result = "per week"
     elif period == Plan.INTERVAL_CHOICES[4][0]:
-        return "per month"
+        result = "per month"
     elif period == Plan.INTERVAL_CHOICES[5][0]:
-        return "per quarter"
+        result = "per quarter"
     elif period == Plan.INTERVAL_CHOICES[6][0]:
-        return "per year"
-    return "per ?"
+        result = "per year"
+    return result

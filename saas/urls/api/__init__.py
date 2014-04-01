@@ -26,12 +26,8 @@
 
 from django.conf.urls import patterns, include, url
 
-from saas.api.plans import PlanCreateAPIView
-
 urlpatterns = patterns(
     url(r'^stripe/', include('saas.backends.urls')),
     url(r'^cart/', include('saas.urls.api.cart')),
-    url(r'^plans/$',
-        PlanCreateAPIView.as_view(), name='saas_api_plan_new'),
     url(r'^', include('saas.urls.api.resources')),
 )

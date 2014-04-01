@@ -3,7 +3,7 @@
 {% load currency %}
 
 {% block localheader %}
-<script type="text/javascript" src="https://js.stripe.com/v1/"></script>
+<script type="text/javascript" src="https://js.stripe.com/v2/"></script>
 {% endblock %}
 
 {% block saas_content %}
@@ -27,7 +27,7 @@
     <dd>Balance Credits</dd>
         {% else %}
     <dt>{{balance_dues|usd}}</dt>
-    <dd>Balance due (<a href="{% url 'saas_pay_now' organization %}">pay now</a>)</dd>
+    <dd>Balance due (<a href="{% url 'saas_organization_balance' organization %}">pay now</a>)</dd>
     {% endif %}
   </dl>
 </section>

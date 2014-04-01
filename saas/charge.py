@@ -31,14 +31,15 @@ import datetime, logging
 from django.db.models import Sum
 from django.shortcuts import get_object_or_404
 
-from saas.models import Organization, Charge, Transaction
+from saas.models import Organization, Charge
 from saas.ledger import read_balances
 
 LOGGER = logging.getLogger(__name__)
 
 def create_charges(until=datetime.datetime.now()):
-    """Create a set of charges based on the transaction table."""
-
+    """
+    Create a set of charges based on the transaction table.
+    """
     for customer_id, balance in read_balances(until):
         customer = Organization.objects.get(pk=customer_id)
         charges = Charge.objects.filter(customer=customer).exclude(
@@ -53,7 +54,7 @@ def create_charges(until=datetime.datetime.now()):
                 LOGGER.info('CHARGE %dc to %s', amount, customer)
                 # Stripe will not processed charges less than 50 cents.
                 try:
-                    charge = Charge.objects.charge_card(customer, amount=amount)
+                    Charge.objects.charge_card(customer, amount=amount)
                 except:
                     raise
             else:
@@ -66,9 +67,7 @@ def charge_succeeded(charge_id):
     """Invoked by the processor callback when a charge has succeeded."""
     charge = get_object_or_404(Charge, processor_id=charge_id)
     if charge.state != charge.DONE:
-        charge.state = charge.DONE
-        charge.save()
-        Transaction.objects.pay_balance(charge)
+        charge.payment_successful()
 
 
 def charge_failed(charge_id):
@@ -79,26 +78,43 @@ def charge_failed(charge_id):
 
 
 def charge_refunded(charge_id):
-    """Invoked by the processor callback when a charge has been refunded."""
+    """
+    Invoked by the processor callback when a charge has been refunded.
+    """
     charge = get_object_or_404(Charge, processor_id=charge_id)
+    charge.refund()
+
 
 def charge_captured(charge_id):
+    """
+    Invoked by the processor callback when a charge has been captured.
+    """
     charge = get_object_or_404(Charge, processor_id=charge_id)
+    charge.capture()
+
 
 def charge_dispute_created(charge_id):
-    """Invoked by the processor callback when a charge has been disputed."""
+    """
+    Invoked by the processor callback when a charge has been disputed.
+    """
     charge = get_object_or_404(Charge, processor_id=charge_id)
     charge.state = charge.DISPUTED
     charge.save()
 
+
 def charge_dispute_updated(charge_id):
-    """Invoked by the processor callback when a disputed charge has been
-    updated."""
+    """
+    Invoked by the processor callback when a disputed charge has been updated.
+    """
     charge = get_object_or_404(Charge, processor_id=charge_id)
+    charge.state = charge.DISPUTED
+    charge.save()
+
 
 def charge_dispute_closed(charge_id):
-    """Invoked by the processor callback when a disputed charge has been
-    closed."""
+    """
+    Invoked by the processor callback when a disputed charge has been closed.
+    """
     charge = get_object_or_404(Charge, processor_id=charge_id)
     charge.state = charge.DONE
     charge.save()

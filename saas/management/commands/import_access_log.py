@@ -24,15 +24,14 @@
 
 """Command for the cron job. Daily statistics"""
 
-import datetime, sys, time
+import datetime, time
 
 from django.core.management.base import BaseCommand
 
-from saas.models import Organization, NewVisitors
-from saas.compat import User
+from saas.models import NewVisitors
+
 
 class Command(BaseCommand):
-
 
     help = "Save new vistor datas into the database."\
 " This command needs the path of the log file to analyse."
@@ -40,7 +39,6 @@ class Command(BaseCommand):
     def handle(self, args, **options):
 
         visitors = []
-        values = []
         log3 = []
         browser = []
         date = []
@@ -55,13 +53,10 @@ class Command(BaseCommand):
         rob2 = "AhrefsBot"
 
         for ligne in log.readlines():
-            log1 = ligne
             if ((not rob  in ligne) and (not pub in ligne)
                 and (not spy in ligne) and (not spy2 in ligne)
                 and (not goog in ligne) and (not rob2 in ligne)):
                 visitors += [ligne]
-
-        print(len(visitors))
 
         # create a dictionnary of IP, browser per date
         for i in range(len(visitors)):
@@ -69,13 +64,11 @@ class Command(BaseCommand):
             log3 = visitors[i].split("[")
             date = log3[1].split("]")
             datee = (date[0].split(":"))[0]
-
-            IP = log3[0].split(" -")[0]
-
-            c = time.strptime(datee, "%d/%b/%Y")
-            dt = datetime.strftime(
-                datetime.fromtimestamp(time.mktime(c)), "%Y/%m/%d")
-            browser += [{"IP": IP, "browser": browser_name, "date": dt}]
+            ip_addr = log3[0].split(" -")[0]
+            browser += [{"IP": ip_addr, "browser": browser_name,
+                "date": datetime.datetime.strftime(
+                    datetime.datetime.fromtimestamp(time.mktime(
+                    time.strptime(datee, "%d/%b/%Y"))), "%Y/%m/%d")}]
 
             # all dates per visitors
         dates_per_unique_visitor = {}
@@ -86,32 +79,20 @@ class Command(BaseCommand):
             dates_per_unique_visitor[key] += [datas["date"]]
 
         final_list = {}
-        for it in dates_per_unique_visitor:
-            key = dates_per_unique_visitor[it][0]
+        for itu in dates_per_unique_visitor:
+            key = dates_per_unique_visitor[itu][0]
             if not key in final_list:
                 final_list[key] = []
+            final_list[key] += [itu]
 
-            final_list[key] += [it]
-
-        table = []
-        total = []
-        total2 = 0
         final_list2 = sorted(final_list.items())
-
-
-        for it in range(len(final_list2)):
-            total += [len(final_list2[it][1])]
-            total2 += len(final_list2[it][1])
-            c = time.strptime(final_list2[it][0], "%Y/%m/%d")
-
-            dt = datetime.datetime.strftime(
-                datetime.datetime.fromtimestamp(time.mktime(c)), "%Y-%m-%d")
-
-            new = NewVisitors()
-            new.date = dt
-            new.visitors_number = len(final_list2[it][1])
+        for itu in range(len(final_list2)):
             # check in database if the date exists and if not save into
             # the database
-            newvisitor = NewVisitors.objects.filter(date=dt)
-            if not newvisitor:
-                new.save()
+            NewVisitors.objects.get_or_create(
+                date=datetime.datetime.strftime(
+                    datetime.datetime.fromtimestamp(time.mktime(
+                            time.strptime(final_list2[itu][0], "%Y/%m/%d"))),
+                    "%Y-%m-%d"),
+                visitors_number=len(final_list2[itu][1]))
+

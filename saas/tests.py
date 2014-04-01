@@ -22,36 +22,28 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-import time, urlparse
 from datetime import date, datetime
 from unittest import skip
 
 from django.test import TestCase
 from django.utils.timezone import utc
-from django.test.client import Client
-from django.core.urlresolvers import reverse
 from django.core.management import call_command
 from django.db import transaction
 
-from saas.compat import User
-from saas.views.metrics import (month_periods,
-                                organization_monthly_revenue_customers)
+from saas.views.metrics import month_periods
+from saas.managers.metrics import aggregate_monthly_transactions
 from saas.models import Organization, Transaction, Charge
-from saas.ledger import read_balances
 from saas.charge import (
     charge_succeeded,
-    charge_failed,
-    charge_refunded,
-    charge_captured,
-    charge_dispute_created,
-    charge_dispute_updated,
-    charge_dispute_closed,
     create_charges)
 
 
 @skip("still pb committing the associated processor_id before the tests start")
 class LedgerTests(TestCase):
-    '''Tests ledger functionality.'''
+    #pylint: disable=no-self-use
+    """
+    Tests ledger functionality.
+    """
     fixtures = ['test_data']
 
     @classmethod
@@ -62,6 +54,7 @@ class LedgerTests(TestCase):
 
         # We have to use this slightly awkward syntax due to the fact
         # that we're using *args and **kwargs together.
+        #pylint: disable=star-args
         call_command('loaddata', *['test_organization'],
                      **{'verbosity': 0, 'database': 'default',
                         'skip_validation': True})
@@ -79,20 +72,27 @@ class LedgerTests(TestCase):
 
     def _create_charge(self, customer_name, amount):
         customer = Organization.objects.get(slug=customer_name)
-        customer = Organization.objects.get(slug=customer_name)
+        invoiced_items = [Transaction.objects.create(
+            created_at=datetime.utcnow().replace(tzinfo=utc),
+            descr='reason for charge',
+            orig_amount=amount,
+            orig_account=Transaction.PAYABLE,
+            orig_organization=customer,
+            dest_amount=amount,
+            dest_account=Transaction.FUNDS,
+            dest_organization=customer)]
         charge = Charge.objects.charge_card(
-            customer, amount=amount)
+            customer, invoiced_items)
         return customer, charge.processor_id
+
 
     def _create_charge_for_balance(self, customer_name):
         customer = Organization.objects.get(slug=customer_name)
-        prev_balance = Transaction.objects.get_balance(customer)
-        charge = Charge.objects.charge_card(
-            customer, amount=prev_balance)
-        return customer, charge.processor_id
+        prev_balance = Transaction.objects.get_organization_balance(customer)
+        return self._create_charge(customer_name, prev_balance)
 
     def test_create_usage(self):
-        customer, processor_id = self._create_charge('abc', 1000)
+        _, processor_id = self._create_charge('abc', 1000)
         assert len(processor_id) > 0
 
     def test_pay_now(self):
@@ -100,7 +100,7 @@ class LedgerTests(TestCase):
         No Issue."""
         customer, charge_id = self._create_charge_for_balance('abc')
         charge_succeeded(charge_id)
-        next_balance = Transaction.objects.get_balance(customer)
+        next_balance = Transaction.objects.get_organization_balance(customer)
         assert next_balance == 0
 
     def test_pay_now_two_success(self):
@@ -109,7 +109,7 @@ class LedgerTests(TestCase):
         customer, charge_id = self._create_charge_for_balance('abc')
         charge_succeeded(charge_id)
         charge_succeeded(charge_id)
-        next_balance = Transaction.objects.get_balance(customer)
+        next_balance = Transaction.objects.get_organization_balance(customer)
         assert next_balance == 0
 
     def test_charge_cards(self):
@@ -121,7 +121,10 @@ class LedgerTests(TestCase):
 
 #@skip("debugging")
 class MetricsTests(TestCase):
-    '''Tests ledger functionality.'''
+    #pylint: disable=no-self-use
+    """
+    Tests metrics functionality.
+    """
     fixtures = ['test_organization', 'test_metrics']
 
     def test_month_periods_full_year(self):
@@ -142,7 +145,7 @@ class MetricsTests(TestCase):
         assert dates[11] == datetime(year=2013, month=12, day=1, tzinfo=utc)
         assert dates[12] == datetime(year=2014, month=1, day=1, tzinfo=utc)
 
-    def test_month_periods_incomplete_last_month(self):
+    def test_incomplete_last_month(self):
         dates = month_periods(
             from_date=date(year=2014, month=1, day=9))
         assert len(dates) == 13
@@ -160,14 +163,13 @@ class MetricsTests(TestCase):
         assert dates[11] == datetime(year=2014, month=1, day=1, tzinfo=utc)
         assert dates[12] == datetime(year=2014, month=1, day=9, tzinfo=utc)
 
-
-    def test_organization_monthly_income(self):
+    def test_monthly_income(self):
         """Jan 2012: ABC has 2 customers,
         Feb 2012: ABC lost 1 customer,
         Mar 2012: ABC gains 1 customer,
         Apr 2012: ABC lost 1 customer and gains 1 customer,
         May 2012: No change."""
-        table = organization_monthly_revenue_customers(
+        table, _ = aggregate_monthly_transactions(
             Organization.objects.get(pk=2),
             from_date=date(year=2014, month=1, day=1))
         for entry in table:

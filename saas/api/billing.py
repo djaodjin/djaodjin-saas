@@ -25,13 +25,16 @@
 from django.shortcuts import get_object_or_404
 from rest_framework import status
 from rest_framework.generics import CreateAPIView, DestroyAPIView
-from rest_framework.renderers import JSONRenderer
 from rest_framework.response import Response
 from rest_framework import serializers
 
 from saas.models import CartItem, Plan
 
+#pylint: disable=no-init
+#pylint: disable=old-style-class
+
 class PlanRelatedField(serializers.RelatedField):
+
     def to_native(self, value):
         return value.slug
 
@@ -40,6 +43,7 @@ class PlanRelatedField(serializers.RelatedField):
 
 
 class CartItemSerializer(serializers.ModelSerializer):
+
     plan = PlanRelatedField(read_only=False, required=True)
 
     class Meta:
@@ -52,7 +56,7 @@ class CartItemAPIView(CreateAPIView):
     model = CartItem
     serializer_class = CartItemSerializer
 
-    def create_in_session(self, request, *args, **kwargs):
+    def create_in_session(self, request):
         serializer = self.get_serializer(data=request.DATA, files=request.FILES)
         if serializer.is_valid():
             cart_items = []
@@ -68,7 +72,6 @@ class CartItemAPIView(CreateAPIView):
                 cart_items += [serializer.data] # because unable to serialize
                                                 # Models (serializer.object).
             request.session['cart_items'] = cart_items
-            serialized_cart_items = cart_items
             headers = self.get_success_headers(serializer.data)
             return Response(serializer.data,
                             status=status.HTTP_201_CREATED,
@@ -83,7 +86,7 @@ class CartItemAPIView(CreateAPIView):
         # that look like security risks (ex: trying to set the id or slug.)
         setattr(obj, 'user', self.request.user)
 
-    def create_or_none(self, request, *args, **kwargs):
+    def create_or_none(self, request):
         serializer = self.get_serializer(data=request.DATA, files=request.FILES)
         if serializer.is_valid():
             self.pre_save(serializer.object)
@@ -110,7 +113,7 @@ class CartItemAPIView(CreateAPIView):
         else:
             # We have an anonymous user so let's play some tricks with
             # the session data.
-            return self.create_in_session(request, *args, **kwargs)
+            return self.create_in_session(request)
 
 
 class CartItemDestroyAPIView(DestroyAPIView):
@@ -118,7 +121,7 @@ class CartItemDestroyAPIView(DestroyAPIView):
     model = CartItem
 #    serializer_class = CartItemSerializer
 
-    def destroy_in_session(self, request, *args, **kwargs):
+    def destroy_in_session(self, request):
         cart_items = []
         if request.session.has_key('cart_items'):
             cart_items = request.session['cart_items']
@@ -139,12 +142,11 @@ class CartItemDestroyAPIView(DestroyAPIView):
 
     def delete(self, request, *args, **kwargs):
         destroyed = self.destroy_in_session(request, *args, **kwargs)
-        if destroyed:
-            # We found the items in the session cart, nothing else to do.
-            return Response(status=status.HTTP_204_NO_CONTENT)
-        if self.request.user.is_authenticated():
+        # We found the items in the session cart, nothing else to do.
+        if not destroyed and self.request.user.is_authenticated():
             # If the user is authenticated, we delete the cart items
             # from the database.
             return self.destroy(request, *args, **kwargs)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
 

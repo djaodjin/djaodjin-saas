@@ -22,25 +22,8 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-"""
-URLs for the resources API of djaodjin saas.
-"""
+from django.dispatch import Signal
 
-from django.conf.urls import patterns, url
-from saas.settings import ACCT_REGEX
-
-from saas.api.charges import ChargeResourceView
-from saas.api.plans import (PlanActivateAPIView, PlanCreateAPIView,
-    PlanResourceView)
-
-urlpatterns = patterns('saas.api',
-    url(r'^plans/(?P<plan>%s)/activate/' % ACCT_REGEX,
-        PlanActivateAPIView.as_view(), name='saas_api_plan_activate'),
-    url(r'^plans/(?P<plan>%s)/' % ACCT_REGEX,
-        PlanResourceView.as_view(), name='saas_api_plan'),
-    url(r'^plans/$',
-        PlanCreateAPIView.as_view(), name='saas_api_plan_new'),
-    url(r'^charges/(?P<charge>%s)/' % ACCT_REGEX,
-        ChargeResourceView.as_view(), name='saas_api_charge'),
-)
-
+#pylint: disable=invalid-name
+bank_updated = Signal(providing_args=["organization", "user"])
+card_updated = Signal(providing_args=["organization", "user"])

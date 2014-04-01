@@ -108,6 +108,10 @@ def requires_manager(function=None):
             if kwargs.has_key('plan'):
                 plan = get_object_or_404(Plan, slug=kwargs.get('plan'))
                 organization = plan.organization
+            elif kwargs.has_key('charge'):
+                charge = get_object_or_404(
+                    Charge, processor_id=kwargs.get('charge'))
+                organization = charge.customer
             elif kwargs.has_key('organization'):
                 organization = kwargs.get('organization')
             organization = valid_manager_for_organization(

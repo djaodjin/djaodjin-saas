@@ -22,25 +22,41 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-"""
-URLs for the resources API of djaodjin saas.
-"""
+import re
 
-from django.conf.urls import patterns, url
-from saas.settings import ACCT_REGEX
+from django import template
+from django.utils.safestring import mark_safe
 
-from saas.api.charges import ChargeResourceView
-from saas.api.plans import (PlanActivateAPIView, PlanCreateAPIView,
-    PlanResourceView)
+from saas.humanize import as_buy_periods, describe_buy_periods, match_unlock
+from saas.humanize import (DESCRIBE_BALANCE, DESCRIBE_BUY_PERIODS,
+    DESCRIBE_UNLOCK_NOW, DESCRIBE_UNLOCK_LATER)
 
-urlpatterns = patterns('saas.api',
-    url(r'^plans/(?P<plan>%s)/activate/' % ACCT_REGEX,
-        PlanActivateAPIView.as_view(), name='saas_api_plan_activate'),
-    url(r'^plans/(?P<plan>%s)/' % ACCT_REGEX,
-        PlanResourceView.as_view(), name='saas_api_plan'),
-    url(r'^plans/$',
-        PlanCreateAPIView.as_view(), name='saas_api_plan_new'),
-    url(r'^charges/(?P<charge>%s)/' % ACCT_REGEX,
-        ChargeResourceView.as_view(), name='saas_api_charge'),
-)
+register = template.Library()
+
+
+@register.filter(needs_autoescape=False)
+def describe(transaction):
+    look = re.match(DESCRIBE_BUY_PERIODS % {
+        'plan': r'(?P<plan>\S+)', 'ends_at': r'.*', 'humanized_periods': r'.*'},
+        transaction.descr)
+    if not look:
+        look = re.match(DESCRIBE_UNLOCK_NOW % {
+            'plan': r'(?P<plan>\S+)', 'unlock_event': r'.*'},
+            transaction.descr)
+    if not look:
+        look = re.match(DESCRIBE_UNLOCK_LATER % {
+            'plan': r'(?P<plan>\S+)', 'unlock_event': r'.*',
+            'amount': r'.*'}, transaction.descr)
+    if not look:
+        look = re.match(DESCRIBE_BALANCE % {
+            'plan': r'(?P<plan>\S+)'}, transaction.descr)
+    if not look:
+        return transaction.descr
+
+    provider = transaction.orig_organization
+    subscriber = transaction.dest_organization
+    plan_link = ('<a href="/%s/app/%s/%s">%s</a>' %
+        (provider, subscriber, look.group('plan'), look.group('plan')))
+    return mark_safe(
+            transaction.descr.replace(look.group('plan'), plan_link))
 

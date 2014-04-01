@@ -92,17 +92,39 @@ function toggleActivatePlan(event) {
 
 
 function waitForChargeCompleted(charge) {
-  $.get('/api/charges/' + charge + '/',
-      {dataType: "json",
+  $.ajax({ type: "GET",
+           url: '/api/charges/' + charge + '/',
+           datatype: "json",
+          contentType: "application/json; charset=utf-8",
       success: function(data) {
-          if( data['state'] == '' ) {
-             self.addClass('activated');
-             self.text('Deactivate')
+          if( data['state'] == 'created' ) {
+             setTimeout('waitForChargeCompleted("' + charge + '");', 1000);
           } else {
-             setTimeout("waitForChargeCompleted(" + charge + ");", 1000);
+              $('.created').addClass('hidden');
+              $('.' + data['state']).removeClass('hidden');
           }
       }
   });
+}
+
+/** Update total amount charged on card based on selected subscription charges.
+ */
+function updateTotalAmount(formNode) {
+    var candidates = formNode.find("input:radio");
+    var totalAmount = 0;
+    for( var i = 0; i < candidates.length; ++i ) {
+        var radio = $(candidates[i]);
+        if( radio.is(':checked') ) {
+            totalAmount += parseInt(radio.val());
+        }
+    }
+    usdTotalAmount = '$' + (totalAmount / 100).toFixed(2);
+    $("#total_amount").text(usdTotalAmount);
+}
+
+
+function onSubscribeChargeChange() {
+    updateTotalAmount($(this).parents("form"));
 }
 
 

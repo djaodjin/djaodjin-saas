@@ -33,6 +33,9 @@ from django.utils.translation import ugettext_lazy as _
 from saas.models import Plan
 from saas.compat import User
 
+#pylint: disable=super-on-old-class
+#pylint: disable=no-member
+
 class CreditCardForm(forms.Form):
     '''Update Card Information.'''
     stripeToken = forms.CharField(required=False)
@@ -55,12 +58,9 @@ class CreditCardForm(forms.Form):
             label='Country', required=False)
         self.fields['card_address_state'] = forms.CharField(
             label='State', required=False)
-
-
-class PayNowForm(forms.Form):
-    '''Pay amount on card'''
-    amount = forms.FloatField(required=False)
-    full_amount = forms.BooleanField(required=False)
+        for item in self.initial:
+            if item.startswith('plan-'):
+                self.fields[item] = forms.CharField(required=True)
 
 
 class PlanForm(forms.ModelForm):

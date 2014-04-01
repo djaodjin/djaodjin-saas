@@ -25,7 +25,7 @@
 from datetime import datetime, date, timedelta
 
 from django.db.models.sql.query import RawQuery
-from django.db.models import Count, Min, Sum, Max
+from django.db.models import Count, Sum
 from django.utils.timezone import utc
 
 from saas.models import Transaction
@@ -36,18 +36,18 @@ def month_periods(nb_months=12, from_date=None):
     of the list returned."""
     dates = []
     if not from_date:
-        from_date = date.today()
+        from_date = datetime.utcnow().replace(tzinfo=utc)
     if isinstance(from_date, basestring):
         from_date = datetime.strptime(from_date, '%Y-%m')
     from_date = datetime(day=from_date.day, month=from_date.month,
-                             year=from_date.year, tzinfo=utc)
+        year=from_date.year, tzinfo=utc)
     last = from_date
     dates.append(last)
     if last.day != 1:
         last = datetime(day=1, month=last.month, year=last.year, tzinfo=utc)
         dates.append(last)
         nb_months = nb_months - 1
-    for index in range(0, nb_months):
+    for _ in range(0, nb_months):
         year = last.year
         month = last.month - 1
         if month < 1:
@@ -60,14 +60,16 @@ def month_periods(nb_months=12, from_date=None):
 
 
 def aggregate_monthly(organization, account, from_date=None):
-    """Returns a table of records over a period of 12 months *from_date*."""
+    """
+    Returns a table of records over a period of 12 months *from_date*.
+    """
+    #pylint: disable=too-many-locals
     customers = []
     receivables = []
     new_customers = []
     new_receivables = []
     churn_customers = []
     churn_receivables = []
-    queryset = None
     # We want to be able to compare *last* to *from_date* and not get django
     # warnings because timezones are not specified.
     dates = month_periods(13, from_date)
@@ -75,7 +77,7 @@ def aggregate_monthly(organization, account, from_date=None):
     seam_date = dates[1]
     for last_date in dates[2:]:
         churn_query = RawQuery(
-"""SELECT COUNT(DISTINCT(prev.dest_organization_id)), SUM(prev.amount)
+"""SELECT COUNT(DISTINCT(prev.dest_organization_id)), SUM(prev.dest_amount)
        FROM saas_transaction prev
        LEFT OUTER JOIN (
          SELECT distinct(dest_organization_id)
@@ -102,11 +104,11 @@ def aggregate_monthly(organization, account, from_date=None):
             created_at__gte=seam_date,
             created_at__lt=last_date).aggregate(
             Count('dest_organization', distinct=True),
-            Sum('amount'))
+            Sum('dest_amount'))
         customer = query_result['dest_organization__count']
-        receivable = query_result['amount__sum']
+        receivable = query_result['dest_amount__sum']
         new_query = RawQuery(
-"""SELECT count(distinct(curr.dest_organization_id)), SUM(curr.amount)
+"""SELECT count(distinct(curr.dest_organization_id)), SUM(curr.dest_amount)
    FROM saas_transaction curr
        LEFT OUTER JOIN (
          SELECT distinct(dest_organization_id)
@@ -145,7 +147,8 @@ def aggregate_monthly_transactions(organization, from_date=None):
     12 months of total/new/churn income and customers
     extracted from Transactions.
     """
-    account = 'Income'
+    #pylint: disable=too-many-locals
+    account = Transaction.INCOME
     customers, incomes = aggregate_monthly(organization, account, from_date)
     churned_custs, total_custs, new_custs = customers
     churned_income, total_income, new_income = incomes

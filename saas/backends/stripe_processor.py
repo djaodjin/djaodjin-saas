@@ -54,6 +54,23 @@ def get_context_data(customer):
     return context
 
 
+def get_bank_context(organization):
+    context = {'STRIPE_PUB_KEY': settings.STRIPE_PUB_KEY}
+    if organization.processor_recipient_id:
+        try:
+            rcp = stripe.Recipient.retrieve(organization.processor_recipient_id)
+            context.update({
+                'bank_name': rcp.active_account.bank_name,
+                'last4': '***-%s' % rcp.active_account.last4,
+                'currency': rcp.active_account.currency})
+        except stripe.error.InvalidRequestError:
+            context.update({'bank_name': 'Unaccessible',
+                'last4': 'Unaccessible', 'currency': 'Unaccessible'})
+    else:
+        context.update({'bank_name': 'N/A', 'last4': 'N/A', 'currency': 'N/A'})
+    return context
+
+
 def list_customers(org_pat=r'.*'):
     """
     Returns a list of Stripe.Customer objects whose description field
@@ -83,7 +100,8 @@ def create_charge(customer, amount, descr=None):
         amount=amount, currency="usd",
         customer=customer.processor_id,
         description=descr)
-    return (processor_charge.id, processor_charge.created,
+    created_at = datetime.datetime.fromtimestamp(processor_charge.created)
+    return (processor_charge.id, created_at,
             processor_charge.card.last4,
             datetime.date(processor_charge.card.exp_year,
                           processor_charge.card.exp_month, 1))
@@ -96,15 +114,52 @@ def create_charge_on_card(card, amount, descr=None):
     processor_charge = stripe.Charge.create(
         amount=amount, currency="usd",
         card=card, description=descr)
-    return (processor_charge.id, processor_charge.created,
+    created_at = datetime.datetime.fromtimestamp(processor_charge.created)
+    return (processor_charge.id, created_at,
             processor_charge.card.last4,
             datetime.date(processor_charge.card.exp_year,
                           processor_charge.card.exp_month, 1))
 
 
+def create_transfer(customer, amount, descr=None):
+    """
+    Transfer *amount* into the customer bank account.
+    """
+    if not descr:
+        descr = "Transfer from " % Organization.objects.get_site_owner().email
+    transfer = stripe.Transfer.create(
+        amount=amount,
+        currency="usd",
+        recipient=customer.processor_recipient_id,
+        description=descr)
+    created_at = datetime.datetime.fromtimestamp(transfer.created)
+    return (transfer.id, created_at)
+
+
 def create_customer(name, card):
     processor_customer = stripe.Customer.create(description=name, card=card)
     return processor_customer.id
+
+
+def create_or_update_bank(organization, bank_token):
+    rcp = None
+    if organization.processor_recipient_id:
+        try:
+            rcp = stripe.Recipient.retrieve(organization.processor_recipient_id)
+            rcp.bank_account = bank_token
+            rcp.save()
+        except stripe.error.InvalidRequestError:
+            LOGGER.error(
+                "Retrieve recipient %s", organization.processor_recipient_id)
+    if not rcp:
+        rcp = stripe.Recipient.create(
+            name=organization.full_name,
+            type="corporation",
+            # XXX add tax id.
+            email=organization.email,
+            bank_account=bank_token)
+        organization.processor_recipient_id = rcp.id
+        organization.save()
 
 
 def update_card(customer, card):
@@ -124,6 +179,15 @@ def retrieve_card(customer):
             exp_date = "%02d/%04d" % (processor_customer.default_card.exp_month,
                                       processor_customer.default_card.exp_year)
     return last4, exp_date
+
+
+def pull_charge(charge):
+    # XXX make sure to avoid race condition.
+    if charge.is_progress:
+        stripe_charge = stripe.Charge.retrieve(charge.processor_id)
+        if stripe_charge.paid:
+            charge_succeeded(charge.processor_id)
+    return charge
 
 
 @api_view(['POST'])

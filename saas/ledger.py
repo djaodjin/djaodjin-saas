@@ -44,10 +44,11 @@ def read_balances(until=datetime.datetime.now()):
         (3, 1100)
 
     """
-    account = Transaction.ASSETS
+    account = Transaction.FUNDS
     cursor = connection.cursor()
     cursor.execute(
-"""select t1.dest_organization_id, sum(t1.amount - coalesce(t2.amount, 0))
+"""select t1.dest_organization_id,
+     sum(t1.dest_amount - coalesce(t2.dest_amount, 0))
 from saas_transaction t1 left outer join saas_transaction t2
 on t1.dest_organization_id = t2.orig_organization_id
    and t1.dest_account = t2.orig_account

@@ -30,6 +30,7 @@ from saas.views.profile import (
     ContributorListView, ManagerListView,
     OrganizationProfileView, SubscriberListView, SubscriptionListView)
 from saas.views.plans import PlanCreateView, PlanUpdateView
+from saas.views.profile import ContributorsRemove
 from saas.settings import ACCT_REGEX
 
 urlpatterns = patterns(
@@ -37,7 +38,7 @@ urlpatterns = patterns(
     url(r'^contributors/add',
         'organization_add_contributors', name='saas_add_contributors'),
     url(r'^contributors/remove',
-        'organization_remove_contributors', name='saas_remove_contributors'),
+        ContributorsRemove.as_view(), name='saas_remove_contributors'),
     url(r'^contributors/',
         ContributorListView.as_view(), name='saas_contributor_list'),
     url(r'^managers/add',

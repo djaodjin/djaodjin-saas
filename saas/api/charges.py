@@ -22,25 +22,33 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-"""
-URLs for the resources API of djaodjin saas.
-"""
+from rest_framework.generics import RetrieveAPIView
+from rest_framework import serializers
 
-from django.conf.urls import patterns, url
-from saas.settings import ACCT_REGEX
+from saas.models import Charge
+import saas.backends as backend
 
-from saas.api.charges import ChargeResourceView
-from saas.api.plans import (PlanActivateAPIView, PlanCreateAPIView,
-    PlanResourceView)
+#pylint: disable=no-init
+#pylint: disable=old-style-class
 
-urlpatterns = patterns('saas.api',
-    url(r'^plans/(?P<plan>%s)/activate/' % ACCT_REGEX,
-        PlanActivateAPIView.as_view(), name='saas_api_plan_activate'),
-    url(r'^plans/(?P<plan>%s)/' % ACCT_REGEX,
-        PlanResourceView.as_view(), name='saas_api_plan'),
-    url(r'^plans/$',
-        PlanCreateAPIView.as_view(), name='saas_api_plan_new'),
-    url(r'^charges/(?P<charge>%s)/' % ACCT_REGEX,
-        ChargeResourceView.as_view(), name='saas_api_charge'),
-)
+class ChargeSerializer(serializers.ModelSerializer):
 
+    state = serializers.CharField(source='get_state_display')
+
+    class Meta:
+        model = Charge
+        fields = ('created_at', 'amount', 'description', 'last4', 'exp_date',
+                  'processor_id', 'state')
+
+
+class ChargeResourceView(RetrieveAPIView):
+
+    model = Charge
+    slug_url_kwarg = 'charge'
+    slug_field = 'processor_id'
+    serializer_class = ChargeSerializer
+
+    def get_object(self, queryset=None):
+        charge = super(ChargeResourceView, self).get_object(queryset)
+        backend.pull_charge(charge)
+        return charge

@@ -27,17 +27,23 @@ from datetime import datetime, timedelta
 from django import template
 
 from saas.compat import User
+from saas.models import Transaction
 
 register = template.Library()
 
 
 @register.filter()
-def is_payable(transaction, organization):
+def is_debit(transaction, organization):
     """
-    True if the transaction is in the organization's payable balance.
+    True if the transaction can be tagged as a debit. That is
+    it is either payable by the organization or the transaction
+    moves from a Funds account to the organization's Expenses account.
     """
-    return (transaction.dest_organization == organization
-            and transaction.dest_account == self.PAYABLE)
+    return ((transaction.dest_organization == organization
+             and transaction.dest_account == Transaction.PAYABLE)
+            or (transaction.dest_organization == organization
+                and transaction.dest_account == Transaction.EXPENSES
+                and transaction.orig_account == Transaction.FUNDS))
 
 
 @register.filter()

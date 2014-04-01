@@ -30,6 +30,9 @@ from rest_framework import serializers
 from saas.models import Plan
 from saas.views.auth import valid_manager_for_organization
 
+#pylint: disable=no-init
+#pylint: disable=old-style-class
+
 class PlanCreateSerializer(serializers.ModelSerializer):
 
     organization = serializers.SlugRelatedField(many=False, slug_field='slug')

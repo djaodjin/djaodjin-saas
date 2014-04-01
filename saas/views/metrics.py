@@ -25,8 +25,7 @@
 import json
 from datetime import datetime, date, timedelta
 
-from django.db.models.sql.query import RawQuery
-from django.db.models import Count, Min, Sum, Max
+from django.db.models import Min, Sum, Max
 from django.shortcuts import render, render_to_response, get_object_or_404
 from django.utils.datastructures import SortedDict
 from django.utils.timezone import utc
@@ -111,7 +110,7 @@ def organization_usage(request, organization):
     today = date.today()
     end = datetime(day=today.day, month=today.month, year=today.year,
                             tzinfo=utc)
-    for month in range(0, 12):
+    for _ in range(0, 12):
         first = datetime(day=1, month=end.month, year=end.year,
                                   tzinfo=utc)
         usages = Transaction.objects.filter(
@@ -145,7 +144,7 @@ def organization_overall(request):
         end = datetime(day=today.day, month=today.month, year=today.year,
                                 tzinfo=utc)
 
-        for month in range(0, 12):
+        for _ in range(0, 12):
             first = datetime(day=1, month=end.month, year=end.year,
                                       tzinfo=utc)
             usages = Transaction.objects.filter(
@@ -178,25 +177,19 @@ def statistic(request):
 
     min_date = min_date.get('date__min', 0)
     max_date = max_date.get('date__max', 0)
-
-    date_tabl = []
-
-    for new in newvisitor:
-        date_tabl += [{"x": new.date, "y": new.visitors_number}]
-
-    for item in date_tabl:
-        item["x"] = datetime.strftime(t["x"], "%Y/%m/%d")
-        item["y"] = item["y"]/5
+    date_tabl = [{"x": datetime.strftime(new.date, "%Y/%m/%d"),
+                  "y": new.visitors_number / 5}
+                  for new in newvisitor]
 
     current_date = min_date
     delta = timedelta(days=1)
     while current_date <= max_date:
         j = len(date_tabl)
-        t = []
+        tbl = []
         for i in range(j):
             if date_tabl[i]["x"] == datetime.strftime(current_date, "%Y/%m/%d"):
-                t += [i]
-        if len(t) == 0:
+                tbl += [i]
+        if len(tbl) == 0:
             date_tabl += [{
                     "x": datetime.strftime(current_date, "%Y/%m/%d"), "y": 0}]
             current_date += delta
@@ -207,15 +200,14 @@ def statistic(request):
 
     ########################################################
     # Conversion visitors to trial
-    user = User.objects.all()
     date_joined_username = []
-    for us in user:
-        if (datetime.strftime(us.date_joined, "%Y/%m/%d")
+    for user in User.objects.all():
+        if (datetime.strftime(user.date_joined, "%Y/%m/%d")
             > datetime.strftime(min_date, "%Y/%m/%d") and
-            datetime.strftime(us.date_joined, "%Y/%m/%d")
+            datetime.strftime(user.date_joined, "%Y/%m/%d")
             < datetime.strftime(max_date, "%Y/%m/%d")):
             date_joined_username += [{
-                    "date": us.date_joined, "user": str(us.username)}]
+                    "date": user.date_joined, "user": str(user.username)}]
 
     user_per_joined_date = {}
     for datas in date_joined_username:
@@ -225,8 +217,8 @@ def statistic(request):
         user_per_joined_date[key] += [datas["user"]]
 
     trial = []
-    for t in user_per_joined_date.keys():
-        trial += [{"x": t, "y": len(user_per_joined_date[t])}]
+    for joined_at in user_per_joined_date.keys():
+        trial += [{"x": joined_at, "y": len(user_per_joined_date[joined_at])}]
 
     min_date_trial = User.objects.all().aggregate(Min('date_joined'))
     max_date_trial = User.objects.all().aggregate(Max('date_joined'))
@@ -234,21 +226,21 @@ def statistic(request):
     min_date_trial = min_date_trial.get('date_joined__min', 0)
     max_date_trial = max_date_trial.get('date_joined__max', 0)
 
-    for t in trial:
-        t["x"] = datetime.strftime(t["x"], "%Y/%m/%d")
-    d = min_date
+    for item in trial:
+        item["x"] = datetime.strftime(item["x"], "%Y/%m/%d")
+    curr_date = min_date
     delta = timedelta(days=1)
-    while d <= max_date:
+    while curr_date <= max_date:
         j = len(trial)
-        t = []
+        count = 0
         for i in range(j):
-            if trial[i]["x"] == datetime.strftime(d, "%Y/%m/%d"):
-                t += [i]
-        if len(t) == 0:
-            trial += [{"x": datetime.strftime(d, "%Y/%m/%d"), "y": 0}]
-            d += delta
+            if trial[i]["x"] == datetime.strftime(curr_date, "%Y/%m/%d"):
+                count += 1
+        if count == 0:
+            trial += [{"x": datetime.strftime(curr_date, "%Y/%m/%d"), "y": 0}]
+            curr_date += delta
         else:
-            d += delta
+            curr_date += delta
 
     trial.sort()
 

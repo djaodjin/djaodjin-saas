@@ -24,9 +24,16 @@
 
 """
 Views related to billing information
+
+There are two views where invoicables are presented and charges are created:
+
+1. ``PlaceOrderView`` for items in the cart, create new subscriptions
+   or pay in advance.
+
+2. ``PayBalanceView`` for subscriptions with balance dues
 """
 
-import datetime, logging
+import datetime,  logging
 
 from django import forms
 from django.contrib.auth import REDIRECT_FIELD_NAME
@@ -34,22 +41,22 @@ from django.core.context_processors import csrf
 from django.core.exceptions import PermissionDenied
 from django.core.urlresolvers import reverse
 from django.db import IntegrityError
-from django.db.models import Q, Sum
-from django.db.models.query import QuerySet
+from django.db.models import Q
 from django.contrib import messages
-from django.shortcuts import render, redirect, get_object_or_404
-from django.utils.translation import ugettext_lazy as _
+from django.shortcuts import redirect, get_object_or_404
+from django.utils.timezone import utc
 from django.views.generic import DetailView, FormView, ListView
 from django.views.generic.list import MultipleObjectTemplateResponseMixin
 from django.views.generic.edit import BaseFormView
 from django.views.generic.base import ContextMixin
 
 import saas.backends as backend
-import saas.settings as settings
-from saas.forms import CreditCardForm, PayNowForm
+from saas.forms import CreditCardForm
 from saas.views.auth import valid_manager_for_organization
 from saas.models import (CartItem, Charge, Coupon, Organization, Plan,
     Transaction, Subscription)
+from saas.humanize import (as_money, describe_buy_periods, match_unlock,
+    DESCRIBE_BUY_PERIODS, DESCRIBE_UNLOCK_NOW, DESCRIBE_UNLOCK_LATER)
 from signup.auth import validate_redirect_url
 
 LOGGER = logging.getLogger(__name__)
@@ -64,7 +71,7 @@ def _session_cart_to_database(request):
             plan = Plan.objects.get(slug=item['plan'])
             try:
                 CartItem.objects.create(user=request.user, plan=plan)
-            except IntegrityError, err:
+            except IntegrityError: #pylint: disable=catching-non-exception
                 # This might happen during testing of the place order
                 # through the test driver. Either way, if the item is
                 # already in the cart, it is OK to forget about this
@@ -72,6 +79,28 @@ def _session_cart_to_database(request):
                 LOGGER.warning('Plan %d is already in %d cart db.',
                                plan.id, request.user.id)
         del request.session['cart_items']
+
+
+class CardFormMixin(object):
+
+    form_class = CreditCardForm
+    organization_url_kwarg = 'organization'
+
+    def get_initial(self):
+        """
+        Populates place order forms with the organization address
+        whenever possible.
+        """
+        self.customer = get_object_or_404(
+            Organization, slug=self.kwargs.get(self.organization_url_kwarg))
+        kwargs = super(CardFormMixin, self).get_initial()
+        kwargs.update({'card_name': self.customer.full_name,
+                       'card_city': self.customer.locality,
+                       'card_address_line1': self.customer.street_address,
+                       'card_address_country': self.customer.country_name,
+                       'card_address_state': self.customer.region,
+                       'card_address_zip': self.customer.postal_code})
+        return kwargs
 
 
 class InsertedURLMixin(ContextMixin):
@@ -88,23 +117,24 @@ class InsertedURLMixin(ContextMixin):
         return context
 
 
-class InvoicablesMixin(InsertedURLMixin):
+class InvoicablesView(InsertedURLMixin, CardFormMixin, FormView):
+    """
+    Create a charge for items that must be charged on submit.
+    """
 
-    def amounts(self, invoicables):
-        total_amount = 0
-        for item in invoicables:
-            for line in item['lines']:
-                if line.dest_account == Transaction.REDEEM:
-                    total_amount = total_amount - line.amount
-                else:
-                    total_amount = total_amount + line.amount
-        return total_amount
+    context_object_name = 'invoicables'
 
-    def get_invoiced_items(self):
-        """
-        Returns the transactions which are being charged.
-        """
-        return []
+    # Implementation Node:
+    #     All fields in CreditCardForm are optional to insure the form
+    #     is never invalid and thus allow the same code to place an order
+    #     with a total amount of zero.
+
+    def get_initial(self):
+        kwargs = super(InvoicablesView, self).get_initial()
+        for invoicable in self.invoicables:
+            kwargs.update({
+                'plan-%s' % invoicable['subscription'].plan.slug: ""})
+        return kwargs
 
     def form_valid(self, form):
         """
@@ -116,56 +146,45 @@ class InvoicablesMixin(InsertedURLMixin):
         remember_card = True
         stripe_token = form.cleaned_data['stripeToken']
 
-        if stripe_token and remember_card:
-            Organization.objects.associate_processor(
-                self.customer, stripe_token)
-            stripe_token = None
         # We create a charge based on the transactions created here
         # so we must commit them before creating the charge.
-        # This is done indirectly through calling ``get_invoiced_items``.
-        self.invoiced_items = self.get_invoiced_items()
-        try:
-            self.charge = Charge.objects.charge_card(
-                self.customer, self.invoiced_items, self.request.user,
-                token=stripe_token,
-                remember_card=remember_card)
-        except Charge.DoesNotExist:
-            LOGGER.info('XXX Could not create charge.')
-        return super(InvoicablesMixin, self).form_valid(form)
+        for invoicable in self.invoicables:
+            # We use two conventions here:
+            # 1. POST parameters prefixed with plan- correspond to an entry
+            #    in the invoicables
+            # 2. Amounts for each line in a entry are unique and are what
+            #    is passed for the value of the matching POST parameter.
+            plan = invoicable['subscription'].plan
+            plan_key = 'plan-%s' % plan.slug
+            if plan_key in form.cleaned_data:
+                selected_line = int(form.cleaned_data[plan_key])
+                for line in invoicable['options']:
+                    if line.dest_amount == selected_line:
+                        # Normalize unlock line description to
+                        # "subscribe <plan> until ..."
+                        if match_unlock(line.descr):
+                            line.descr = describe_buy_periods(
+                                plan, plan.end_of_period(
+                                    line.created_at, line.orig_amount),
+                                line.orig_amount)
+                        invoicable['lines'] += [line]
+
+        self.charge = self.customer.checkout(
+            self.invoicables, self.request.user,
+            token=stripe_token, remember_card=remember_card)
+        return super(InvoicablesView, self).form_valid(form)
 
     def get_context_data(self, **kwargs):
-        context = super(InvoicablesMixin, self).get_context_data(**kwargs)
-        total_amount = self.amounts(self.invoicables)
-        context.update({'total_amount': total_amount})
-        if total_amount:
-            context.update(backend.get_context_data(self.customer))
+        context = super(InvoicablesView, self).get_context_data(**kwargs)
+        context.update(backend.get_context_data(self.customer))
+        context.update({'organization': self.customer,
+                        'invoicables': self.invoicables})
         return context
 
+    def get_form(self, form_class):
+        self.invoicables = self.get_queryset()
+        return super(InvoicablesView, self).get_form(form_class)
 
-class CardFormMixin(object):
-
-    form_class = CreditCardForm
-    slug_field = 'name'
-    slug_url_kwarg = 'organization'
-
-    def get_object(self, queryset=None):
-        return get_object_or_404(
-            Organization, slug=self.kwargs.get(self.slug_url_kwarg))
-
-    def get_initial(self):
-        """
-        Populates place order forms with the organization address
-        whenever possible.
-        """
-        self.customer = self.get_object()
-        kwargs = super(CardFormMixin, self).get_initial()
-        kwargs.update({'card_name': self.customer.full_name,
-                       'card_city': self.customer.locality,
-                       'card_address_line1': self.customer.street_address,
-                       'card_address_country': self.customer.country_name,
-                       'card_address_state': self.customer.region,
-                       'card_address_zip': self.customer.postal_code})
-        return kwargs
 
 
 class CardUpdateView(InsertedURLMixin, CardFormMixin, FormView):
@@ -173,17 +192,12 @@ class CardUpdateView(InsertedURLMixin, CardFormMixin, FormView):
     template_name = 'saas/card_update.html'
 
     def form_valid(self, form):
-        now = datetime.datetime.now()
         stripe_token = form.cleaned_data['stripeToken']
         if stripe_token:
             # Since all fields are optional, we cannot assume the card token
             # will be present (i.e. in case of erroneous POST request).
             Organization.objects.associate_processor(
                 self.customer, stripe_token)
-            email = None
-            if self.customer.managers.count() > 0:
-                email = self.customer.managers.all()[0].email
-                # XXX email all managers that the card was updated.
             messages.success(self.request,
                 "Your credit card on file was sucessfully updated")
         return super(CardUpdateView, self).form_valid(form)
@@ -206,24 +220,26 @@ class TransactionListView(ListView):
 
     paginate_by = 10
     template_name = 'saas/billing_info.html'
+    organization_url_kwarg = 'organization'
 
     def get_queryset(self):
         """
         Get the list of transactions for this organization.
         """
         self.customer = get_object_or_404(
-            Organization, slug=self.kwargs.get('organization'))
+            Organization, slug=self.kwargs.get(self.organization_url_kwarg))
         queryset = Transaction.objects.filter(
-            Q(orig_organization=self.customer)
-            | Q(dest_organization=self.customer)
-        ).order_by('created_at')
+            Q(dest_account=Transaction.PAYABLE)
+            | Q(dest_account=Transaction.EXPENSES),
+            dest_organization=self.customer
+        ).exclude(orig_account=Transaction.PAYABLE).order_by('-created_at')
         return queryset
 
     def get_context_data(self, **kwargs):
         context = super(TransactionListView, self).get_context_data(**kwargs)
         # Retrieve customer information from the backend
         context.update({'organization': self.customer})
-        balance = Transaction.objects.get_balance(self.customer)
+        balance = Transaction.objects.get_organization_balance(self.customer)
         last4, exp_date = backend.retrieve_card(self.customer)
         context.update({
             'last4': last4,
@@ -234,51 +250,111 @@ class TransactionListView(ListView):
         return context
 
 
-class PlaceOrderView(InvoicablesMixin, CardFormMixin,
-                     MultipleObjectTemplateResponseMixin, BaseFormView):
+class PlaceOrderView(InvoicablesView):
     """
-    Where a user enters his payment information and submit her order.
+    Subscribe an organization to various plans and collect payment due upfront.
     """
+
     template_name = 'saas/place_order.html'
 
-    # Implementation Node:
-    #     All fields in CreditCardForm are optional to insure the form
-    #     is never invalid and thus allow the same code to place an order
-    #     with a total amount of zero.
+    def get_invoicable_options(self, subscription,
+                               created_at=None, prorate_to=None):
+        """
+        Return a set of lines that must charged Today and a set of choices
+        based on current subscriptions that the user might be willing
+        to charge Today.
+        """
+        if not created_at:
+            created_at = datetime.datetime.utcnow().replace(tzinfo=utc)
+        option_items = []
+        plan = subscription.plan
+        # XXX Not charging setup fee, it complicates the design too much
+        # at this point.
 
-    def get_invoiced_items(self):
-        """
-        Returns the transactions which are being charged.
-        """
-        self.invoicables = self.get_queryset()
-        return CartItem.objects.checkout(
-            self.invoicables, user=self.request.user)
+        # Pro-rated to billing cycle
+        prorated_amount = 0
+        if prorate_to:
+            prorated_amount = plan.prorate_period(created_at, prorate_to)
+
+        if plan.period_amount == 0:
+            # We are having a freemium business models, no discounts.
+            option_items += [subscription.use_of_service(1, prorated_amount,
+                created_at, "free")]
+
+        elif plan.unlock_event:
+            # Locked plans are free until an event.
+            option_items += [subscription.use_of_service(1, plan.period_amount,
+               created_at, DESCRIBE_UNLOCK_NOW % {
+                        'plan': plan, 'unlock_event': plan.unlock_event})]
+            option_items += [subscription.use_of_service(1, 0,
+               created_at, DESCRIBE_UNLOCK_LATER % {
+                        'amount': as_money(plan.period_amount),
+                        'plan': plan, 'unlock_event': plan.unlock_event})]
+
+        elif plan.interval == Plan.MONTHLY:
+            # Give a change for discount when paying periods in advance
+            discount_percent = 0
+            for nb_periods in [1, 3, 6, 12]:
+                option_items += [subscription.use_of_service(
+                    nb_periods, prorated_amount, created_at,
+                    discount_percent=discount_percent)]
+                discount_percent += 10
+
+        elif plan.interval == Plan.YEARLY:
+            # Give a change for discount when paying periods in advance
+            discount_percent = 0
+            for nb_periods in [1, 2, 3]:
+                option_items += [subscription.use_of_service(
+                    nb_periods, prorated_amount, created_at,
+                    discount_percent=discount_percent)]
+                discount_percent += 10
+
+        return option_items
 
     def get_queryset(self):
         """
-        Get the cart for this customer.
+        Returns a set of invoicables from the items in a user's cart.
+        Schema:
+        invoicables = [
+            { "subscription": Subscription,
+              "lines": [Transaction, ...],
+              "options": [Transaction, ...],
+            }, ...]
         """
-        self.coupons = Coupon.objects.filter(
-            user=self.request.user, customer=self.customer, redeemed=False)
-        return CartItem.objects.get_invoicables(
-            customer=self.customer, user=self.request.user,
-            coupons=self.coupons)
+        self.customer = get_object_or_404(
+            Organization, slug=self.kwargs.get(self.organization_url_kwarg))
+        created_at = datetime.datetime.utcnow().replace(tzinfo=utc)
+        prorate_to_billing=False
+        prorate_to = None
+        if prorate_to_billing:
+            # XXX First we add enough periods to get the next billing date later
+            # than created_at but no more than one period in the future.
+            prorate_to = self.customer.billing_start
+        invoicables = []
+        for cart_item in CartItem.objects.get_cart(user=self.request.user):
+            try:
+                subscription = Subscription.objects.get(
+                    organization=self.customer, plan=cart_item.plan)
+            except Subscription.DoesNotExist:
+                ends_at = prorate_to
+                if not ends_at:
+                    ends_at = created_at
+                subscription = Subscription.objects.new_instance(
+                    self.customer, cart_item.plan, ends_at=ends_at)
+            if subscription.id:
+                options = []
+            else:
+                options = self.get_invoicable_options(
+                    subscription, created_at, prorate_to)
+            invoicables += [{
+                'subscription': subscription, "lines": [], "options": options}]
+        return invoicables
 
     def dispatch(self, *args, **kwargs):
         # We are not getting here without an authenticated user. It is time
         # to store the cart into the database.
         _session_cart_to_database(self.request)
         return super(PlaceOrderView, self).dispatch(*args, **kwargs)
-
-    def get_context_data(self, **kwargs):
-        self.invoicables = self.get_queryset()
-        self.object_list = self.invoicables
-        kwargs.update({'object_list': self.object_list})
-        context = super(PlaceOrderView, self).get_context_data(**kwargs)
-        context.update({'coupons': self.coupons,
-                        'coupon_form': RedeemCouponForm(),
-                        'organization': self.customer})
-        return context
 
     def get_success_url(self):
         redirect_path = validate_redirect_url(
@@ -327,49 +403,6 @@ class ChargeReceiptView(DetailView):
         return context
 
 
-def pay_now(request, organization):
-    organization = get_object_or_404(Organization, slug=organization)
-    customer = organization
-    context = {'user': request.user, 'organization': organization}
-    context.update(csrf(request))
-    balance_dues = Transaction.objects.get_balance(customer)
-    if balance_dues < 0:
-        balance_credits = - balance_dues
-        balance_dues = 0
-    else:
-        balance_credits = None
-    if request.method == 'POST':
-        form = PayNowForm(request.POST)
-        if form.is_valid():
-            amount = int(form.cleaned_data['amount'] * 100)
-            if form.cleaned_data['full_amount']:
-                amount = balance_dues
-            if amount > 50:
-                # Stripe will not processed charges less than 50 cents.
-                last4, exp_date = backend.retrieve_card(customer)
-                raise PermissionDenied # XXX until we update to new charge_card method signature.
-                charge = Charge.objects.charge_card(
-                    customer, amount=amount, user=request.user)
-                context.update({
-                    'charge_id': charge.pk,
-                    'amount': amount,
-                    'last4': last4,
-                    'exp_date': exp_date})
-                return render(request, "saas/payment_receipt.html",
-                                          context)
-            else:
-                messages.error(request,
-                    'We do not create charges for less than 50 cents')
-        else:
-            messages.error(request, 'Unable to create charge')
-    else:
-        form = PayNowForm()
-    context.update({'balance_credits': balance_credits,
-                    'balance_dues': balance_dues,
-                    'form': form})
-    return render(request, "saas/pay_now.html", context)
-
-
 class RedeemCouponForm(forms.Form):
     """Form used to redeem a coupon."""
     code = forms.CharField(widget=forms.TextInput(
@@ -393,50 +426,51 @@ def redeem_coupon(request, organization):
     return redirect(reverse('saas_pay_cart', args=(organization,)))
 
 
-class PaySubscriptionView(InvoicablesMixin, CardFormMixin, FormView):
+class PayBalanceView(InvoicablesView):
     """
-    Create a charge for a ``Subscription``.
+    Set of invoicables for all subscriptions which have a balance due.
     """
 
     plan_url_kwarg = 'subscribed_plan'
     template_name = 'saas/pay_subscription.html'
 
-    def get_invoiced_items(self):
+    def get_invoicable_options(self, subscription,
+                               created_at=None, prorate_to=None):
+        payable = Transaction.objects.get_subscription_payable(
+            subscription, created_at)
+        if payable.dest_amount > 0:
+            later = Transaction.objects.get_subscription_later(
+                subscription, created_at)
+            return [payable, later]
+        return []
+
+    def get_queryset(self):
         """
-        Returns the transactions which are being charged.
+        Create a set of invoicables from balances due on subscriptions
+
+        self.invoicables = [
+            { "subscription": Subscription,
+              "lines": [Transaction, ...],
+              "options": [Transaction, ...],
+            }, ...]
         """
-        self.subscription = self.get_subscription()
-        invoicables = Transaction.objects.get_invoicables(
-            self.subscription)
-        invoiced_items = Transaction.objects.none()
-        for invoicable in invoicables:
-            # Because we added a "fake" balance Transaction.
-            if isinstance(invoicable['lines'], QuerySet):
-                invoiced_items |= invoicable['lines']
-        return invoiced_items
+        self.customer = get_object_or_404(Organization,
+            slug=self.kwargs.get(self.organization_url_kwarg))
+        invoicables = []
+        created_at = datetime.datetime.utcnow().replace(tzinfo=utc)
+        for subscription in Subscription.objects.active_for(self.customer):
+            options = self.get_invoicable_options(subscription, created_at)
+            if len(options) > 0:
+                invoicables += [
+                {'subscription': subscription,
+                 "lines": [],
+                 "options": options}]
+        return invoicables
 
     def get_subscription(self):
         return get_object_or_404(Subscription,
-            organization__slug=self.kwargs.get('organization'),
+            organization__slug=self.kwargs.get(self.organization_url_kwarg),
             plan__slug=self.kwargs.get(self.plan_url_kwarg))
-
-    def get_context_data(self, **kwargs):
-        self.subscription = self.get_subscription()
-        self.invoicables = Transaction.objects.get_invoicables(
-            self.subscription)
-        context = super(PaySubscriptionView, self).get_context_data(**kwargs)
-        last_charge = Charge.objects.last_charge(self.subscription)
-        if (not last_charge
-            or last_charge.state == Charge.FAILED
-            or last_charge.state == Charge.DISPUTED):
-            # No charge yet, let's run it. First, get the balance items
-            # charge failed does not hurt to show again balance.
-            pass
-        context.update({'subscription': self.subscription,
-                        'last_charge': last_charge,
-                        'object_list': self.invoicables,
-                        'organization': self.customer})
-        return context
 
     def get_success_url(self):
         redirect_path = validate_redirect_url(

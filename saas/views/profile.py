@@ -31,13 +31,12 @@ from django.contrib import messages
 from django.core.urlresolvers import reverse
 from django.core.context_processors import csrf
 from django.shortcuts import render, redirect, get_object_or_404
-from django.views.generic.list import ListView
-from django.views.generic.edit import UpdateView
+from django.views.generic import FormView, ListView, UpdateView
 from django.views.decorators.http import require_POST
 
 from saas import get_manager_relation_model, get_contributor_relation_model
 from saas.forms import UserRelationForm
-from saas.models import Organization, Plan
+from saas.models import Organization, Subscription
 from saas.compat import User
 
 
@@ -106,14 +105,14 @@ class SubscriptionListView(ListView):
     List of Plans this organization is subscribed to.
     """
 
-    model = Plan
+    model = Subscription
     paginate_by = 10
     template_name = 'saas/subscription_list.html'
 
     def get_queryset(self):
         self.organization = Organization.objects.get(
             slug=self.kwargs.get('organization'))
-        return self.organization.subscriptions.all()
+        return Subscription.objects.active_for(self.organization)
 
     def get_context_data(self, **kwargs):
         context = super(SubscriptionListView, self).get_context_data(**kwargs)
@@ -209,25 +208,26 @@ def organization_add_contributors(request, organization):
     return render(request, "saas/organization_user_relation.html", context)
 
 
-@require_POST
-def organization_remove_contributors(request, organization):
-    if request.method == 'POST':
-        form = UserRelationForm(request.POST)
-        if form.is_valid():
-            username = form.cleaned_data['username']
-            organization.contributors.remove(
-                User.objects.get(username=username))
-            return redirect(reverse(
-                    'saas_organization_profile', args=(organization,)))
-    else:
-        form = UserRelationForm()
-    context = {'user': request.user,
-               'organization': organization,
-               'form': form,
-              'call': reverse('saas_remove_contributors', args=(organization,)),
-               }
-    context.update(csrf(request))
-    return render(request, "saas/organization_user_relation.html", context)
+class ContributorsRemove(FormView):
 
+    template_name = "saas/organization_user_relation.html"
 
+    def form_valid(self, form):
+        self.organization = get_object_or_404(
+            Organization, slug=self.kwargs.get('organization'))
+        user = get_object_or_404(User, username=form.cleaned_data['username'])
+        self.organization.contributors.remove(user)
 
+    def get_context_data(self, **kwargs):
+        self.organization = get_object_or_404(
+            Organization, slug=self.kwargs.get('organization'))
+        context = super(ContributorsRemove, self).get_context_data(**kwargs)
+        context = {'user': self.request.user,
+            'organization': self.organization,
+            'call': reverse(
+                'saas_remove_contributors', args=(self.organization,))}
+        return context
+
+    def get_success_url(self):
+        return redirect(reverse(
+                'saas_organization_profile', args=(self.organization,)))

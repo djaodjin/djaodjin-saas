@@ -28,23 +28,20 @@ from django.conf.urls import patterns, url
 
 from saas.settings import ACCT_REGEX
 from saas.views.billing import (CardUpdateView, ChargeReceiptView,
-    PaySubscriptionView, PlaceOrderView, TransactionListView,
-    redeem_coupon, pay_now)
+    PlaceOrderView, TransactionListView, redeem_coupon, PayBalanceView)
 
 urlpatterns = patterns(
     'saas.views.billing',
     # Implementation Note: <subscribed_plan> (not <plan>) such that
     # the required_manager decorator does not raise a PermissionDenied
     # for a plan <organization> is subscribed to.
-    url(r'^pay/(?P<subscribed_plan>%s)/' % ACCT_REGEX,
-        PaySubscriptionView.as_view(),
-        name='saas_pay_subscription'),
-    url(r'^balance/pay/', pay_now, name='saas_pay_now'),
+    url(r'^receipt/(?P<charge>[a-zA-Z0-9_]+)',
+        ChargeReceiptView.as_view(), name='saas_charge_receipt'),
     url(r'^coupon/redeem/', redeem_coupon, name='saas_redeem_coupon'),
     url(r'^cart/', PlaceOrderView.as_view(), name='saas_organization_cart'),
     url(r'^card/', CardUpdateView.as_view(), name='saas_update_card'),
-    url(r'^receipt/(?P<charge>[a-zA-Z0-9_]+)',
-        ChargeReceiptView.as_view(), name='saas_charge_receipt'),
+    url(r'^balance/((?P<subscribed_plan>%s)/)?' % ACCT_REGEX,
+        PayBalanceView.as_view(), name='saas_organization_balance'),
     url(r'^$', TransactionListView.as_view(), name='saas_billing_info'),
 )
 
