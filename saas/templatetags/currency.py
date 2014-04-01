@@ -44,7 +44,7 @@ def humanize_balance(value):
 def percentage(value):
     if not value:
         return '0 %%'
-    return '%.1f %%' % (float(value) / 1000)
+    return '%.1f %%' % (float(value) / 100)
 
 @register.filter()
 def humanize_period(period):
