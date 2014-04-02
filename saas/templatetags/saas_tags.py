@@ -25,13 +25,26 @@
 import re
 
 from django import template
+from django.core.exceptions import PermissionDenied
 from django.utils.safestring import mark_safe
 
 from saas.humanize import as_buy_periods, describe_buy_periods, match_unlock
 from saas.humanize import (DESCRIBE_BALANCE, DESCRIBE_BUY_PERIODS,
     DESCRIBE_UNLOCK_NOW, DESCRIBE_UNLOCK_LATER)
+from saas.views.auth import valid_manager_for_organization
 
 register = template.Library()
+
+@register.filter
+def is_manager(request, organization):
+    if not organization:
+        organization = request.client
+    request.user
+    try:
+        valid_manager_for_organization(request.user, organization)
+    except PermissionDenied:
+        return False
+    return True
 
 
 @register.filter(needs_autoescape=False)
