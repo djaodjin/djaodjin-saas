@@ -34,7 +34,8 @@ from django.views.generic import TemplateView
 from django.core.serializers.json import DjangoJSONEncoder
 
 from saas.views.auth import valid_manager_for_organization
-from saas.managers.metrics import aggregate_monthly_transactions, month_periods
+from saas.managers.metrics import (active_subscribers,
+    aggregate_monthly_transactions, churn_subscribers, month_periods)
 from saas.models import (Organization, Plan, Subscription, Transaction,
     NewVisitors)
 from saas.compat import User
@@ -54,18 +55,16 @@ class PlansMetricsView(TemplateView):
             Organization, slug=kwargs.get('organization'))
         table = []
         for plan in Plan.objects.filter(organization=organization):
-            values = []
-            for end_period in month_periods(
-                from_date=self.kwargs.get('from_date')):
-                # XXX IMPLEMENT CODE take into account when subscription ends.
-                values.append([end_period, Subscription.objects.filter(
-                    plan=plan, created_at__lte=end_period,
-                    ends_at__gt=end_period).count()])
+            values = active_subscribers(
+                plan, from_date=self.kwargs.get('from_date'))
             # XXX The template relies on "key" being plan.slug
             table.append({"key": plan.slug, "values": values})
+        extra = [{"key": "churn",
+            "values": churn_subscribers(
+                from_date=self.kwargs.get('from_date'))}]
         data = SortedDict()
         data['subscribers'] = {"title": "Active Subscribers",
-                               "table": table}
+                               "table": table, "extra": extra}
         context.update({'title': "Plans",
             "organization": organization,
             "data": data,

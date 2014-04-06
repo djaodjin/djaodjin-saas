@@ -28,7 +28,7 @@ from django.db.models.sql.query import RawQuery
 from django.db.models import Count, Sum
 from django.utils.timezone import utc
 
-from saas.models import Transaction
+from saas.models import Subscription, Transaction
 
 def month_periods(nb_months=12, from_date=None):
     """constructs a list of (nb_months + 1) dates in the past that fall
@@ -193,3 +193,35 @@ def aggregate_monthly_transactions(organization, from_date=None):
                        },
                       ]
     return income_table, customer_table
+
+
+def active_subscribers(plan, from_date=None):
+    """
+    List of active subscribers for a *plan*.
+    """
+    values = []
+    for end_period in month_periods(from_date=from_date):
+        values.append([end_period, Subscription.objects.filter(
+            plan=plan, created_at__lte=end_period,
+            ends_at__gt=end_period).count()])
+    return values
+
+
+def churn_subscribers(plan=None, from_date=None):
+    """
+    List of churn subscribers from the previous period for a *plan*.
+    """
+    values = []
+    dates = month_periods(13, from_date)
+    start_period = dates[0]
+    if plan:
+        for end_period in dates[1:]:
+            values.append([end_period, Subscription.objects.filter(plan=plan,
+                ends_at__gte=start_period, ends_at__lt=end_period).count()])
+            start_period = end_period
+    else:
+        for end_period in dates[1:]:
+            values.append([end_period, Subscription.objects.filter(
+                ends_at__gte=start_period, ends_at__lt=end_period).count()])
+            start_period = end_period
+    return values
