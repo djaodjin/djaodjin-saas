@@ -141,82 +141,95 @@ class OrganizationProfileView(UpdateView):
         return reverse('saas_organization_profile', args=(self.object,))
 
 
-@require_POST
-def organization_add_managers(request, organization):
-    if request.method == 'POST':
-        form = UserRelationForm(request.POST)
-        if form.is_valid():
-            username = form.cleaned_data['username']
-            relation = get_manager_relation_model()(
-                organization=organization,
-                user=User.objects.get(username=username))
-            relation.save()
-            return redirect(reverse(
-                    'saas_organization_profile', args=(organization,)))
-    else:
-        form = UserRelationForm()
-    context = {'user': request.user,
-               'organization': organization,
-               'form': form,
-               'call': reverse('saas_add_managers', args=(organization,)),
-               }
-    context.update(csrf(request))
-    return render(request, "saas/organization_user_relation.html", context)
-
-
-@require_POST
-def organization_remove_managers(request, organization):
-    if request.method == 'POST':
-        form = UserRelationForm(request.POST)
-        if form.is_valid():
-            username = form.cleaned_data['username']
-            organization.managers.remove(
-                User.objects.get(username=username))
-            return redirect(reverse(
-                    'saas_organization_profile', args=(organization,)))
-    else:
-        form = UserRelationForm()
-    context = {'user': request.user,
-               'organization': organization,
-               'form': form,
-               'call': reverse('saas_remove_managers', args=(organization,)),
-               }
-    context.update(csrf(request))
-    return render(request, "saas/organization_user_relation.html", context)
-
-
-@require_POST
-def organization_add_contributors(request, organization):
-    if request.method == 'POST':
-        form = UserRelationForm(request.POST)
-        if form.is_valid():
-            username = form.cleaned_data['username']
-            relation = get_contributor_relation_model()(
-                organization=organization,
-                user=User.objects.get(username=username))
-            relation.save()
-            return redirect(reverse(
-                    'saas_organization_profile', args=(organization,)))
-    else:
-        form = UserRelationForm()
-    context = {'user': request.user,
-               'organization': organization,
-               'form': form,
-               'call': reverse('saas_add_contributors', args=(organization,)),
-               }
-    context.update(csrf(request))
-    return render(request, "saas/organization_user_relation.html", context)
-
-
-class ContributorsRemove(FormView):
+class ManagersAdd(FormView):
 
     template_name = "saas/organization_user_relation.html"
+    form_class = UserRelationForm
 
     def form_valid(self, form):
         self.organization = get_object_or_404(
             Organization, slug=self.kwargs.get('organization'))
         user = get_object_or_404(User, username=form.cleaned_data['username'])
-        self.organization.contributors.remove(user)
+        self.organization.add_manager(user)
+        return super(ManagersAdd, self).form_valid(form)
+
+    def get_context_data(self, **kwargs):
+        self.organization = get_object_or_404(
+            Organization, slug=self.kwargs.get('organization'))
+        context = super(ManagersAdd, self).get_context_data(**kwargs)
+        context = {'user': self.request.user,
+            'organization': self.organization,
+            'call': reverse(
+                'saas_add_managers', args=(self.organization,))}
+        return context
+
+    def get_success_url(self):
+        return reverse('saas_manager_list', args=(self.organization,))
+
+
+class ManagersRemove(FormView):
+
+    template_name = "saas/organization_user_relation.html"
+    form_class = UserRelationForm
+
+    def form_valid(self, form):
+        self.organization = get_object_or_404(
+            Organization, slug=self.kwargs.get('organization'))
+        user = get_object_or_404(User, username=form.cleaned_data['username'])
+        self.organization.remove_manager(user)
+        return super(ManagersRemove, self).form_valid(form)
+
+    def get_context_data(self, **kwargs):
+        self.organization = get_object_or_404(
+            Organization, slug=self.kwargs.get('organization'))
+        context = super(ManagersRemove, self).get_context_data(**kwargs)
+        context = {'user': self.request.user,
+            'organization': self.organization,
+            'call': reverse(
+                'saas_remove_managers', args=(self.organization,))}
+        return context
+
+    def get_success_url(self):
+        return reverse('saas_manager_list', args=(self.organization,))
+
+
+class ContributorsAdd(FormView):
+
+    template_name = "saas/organization_user_relation.html"
+    form_class = UserRelationForm
+
+    def form_valid(self, form):
+        self.organization = get_object_or_404(
+            Organization, slug=self.kwargs.get('organization'))
+        user = get_object_or_404(User, username=form.cleaned_data['username'])
+        self.organization.add_manager(user)
+        return super(ContributorsAdd, self).form_valid(form)
+
+    def get_context_data(self, **kwargs):
+        self.organization = get_object_or_404(
+            Organization, slug=self.kwargs.get('organization'))
+        context = super(ContributorsAdd, self).get_context_data(**kwargs)
+        context = {'user': self.request.user,
+            'organization': self.organization,
+            'call': reverse(
+                'saas_add_contributors', args=(self.organization,))}
+        return context
+
+    def get_success_url(self):
+        return reverse('saas_contributors_list', args=(self.organization,))
+
+
+class ContributorsRemove(FormView):
+
+    template_name = "saas/organization_user_relation.html"
+    form_class = UserRelationForm
+
+    def form_valid(self, form):
+        self.organization = get_object_or_404(
+            Organization, slug=self.kwargs.get('organization'))
+        user = get_object_or_404(User, username=form.cleaned_data['username'])
+        self.organization.remove_contributor(user)
+        return super(ContributorsRemove, self).form_valid(form)
 
     def get_context_data(self, **kwargs):
         self.organization = get_object_or_404(
@@ -229,5 +242,4 @@ class ContributorsRemove(FormView):
         return context
 
     def get_success_url(self):
-        return redirect(reverse(
-                'saas_organization_profile', args=(self.organization,)))
+        return reverse('saas_contributors_list', args=(self.organization,))

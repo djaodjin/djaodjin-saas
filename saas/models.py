@@ -255,6 +255,22 @@ class Organization(models.Model):
             self, invoiced_items, user,
             token=token, remember_card=remember_card)
 
+    def remove_contributor(self, user):
+        """
+        Remove user as a contributor to organization.
+        """
+        relation = get_contributor_relation_model().objects.get(
+            organization=self, user=user)
+        relation.delete()
+
+    def remove_manager(self, user):
+        """
+        Add user as a manager to organization.
+        """
+        relation = get_manager_relation_model().objects.get(
+            organization=self, user=user)
+        relation.delete()
+
     @method_decorator(transaction.atomic)
     def withdraw_funds(self, amount, user, created_at=None):
         """
