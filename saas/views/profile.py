@@ -29,12 +29,9 @@ import logging
 from django import forms
 from django.contrib import messages
 from django.core.urlresolvers import reverse
-from django.core.context_processors import csrf
-from django.shortcuts import render, redirect, get_object_or_404
+from django.shortcuts import get_object_or_404
 from django.views.generic import FormView, ListView, UpdateView
-from django.views.decorators.http import require_POST
 
-from saas import get_manager_relation_model, get_contributor_relation_model
 from saas.forms import UserRelationForm
 from saas.models import Organization, Subscription
 from saas.compat import User

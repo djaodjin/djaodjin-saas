@@ -33,7 +33,7 @@ There are two views where invoicables are presented and charges are created:
 2. ``PayBalanceView`` for subscriptions with balance dues
 """
 
-import datetime,  logging
+import datetime, logging
 
 from django import forms
 from django.contrib.auth import REDIRECT_FIELD_NAME
@@ -46,8 +46,6 @@ from django.contrib import messages
 from django.shortcuts import redirect, get_object_or_404
 from django.utils.timezone import utc
 from django.views.generic import DetailView, FormView, ListView
-from django.views.generic.list import MultipleObjectTemplateResponseMixin
-from django.views.generic.edit import BaseFormView
 from django.views.generic.base import ContextMixin
 
 import saas.backends as backend
@@ -56,7 +54,7 @@ from saas.views.auth import valid_manager_for_organization
 from saas.models import (CartItem, Charge, Coupon, Organization, Plan,
     Transaction, Subscription)
 from saas.humanize import (as_money, describe_buy_periods, match_unlock,
-    DESCRIBE_BUY_PERIODS, DESCRIBE_UNLOCK_NOW, DESCRIBE_UNLOCK_LATER)
+    DESCRIBE_UNLOCK_NOW, DESCRIBE_UNLOCK_LATER)
 from signup.auth import validate_redirect_url
 
 LOGGER = logging.getLogger(__name__)
@@ -324,7 +322,7 @@ class PlaceOrderView(InvoicablesView):
         self.customer = get_object_or_404(
             Organization, slug=self.kwargs.get(self.organization_url_kwarg))
         created_at = datetime.datetime.utcnow().replace(tzinfo=utc)
-        prorate_to_billing=False
+        prorate_to_billing = False
         prorate_to = None
         if prorate_to_billing:
             # XXX First we add enough periods to get the next billing date later

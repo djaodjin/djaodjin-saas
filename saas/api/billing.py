@@ -121,11 +121,11 @@ class CartItemDestroyAPIView(DestroyAPIView):
     model = CartItem
 #    serializer_class = CartItemSerializer
 
-    def destroy_in_session(self, request):
+    def destroy_in_session(self, request, *args, **kwargs):
         cart_items = []
         if request.session.has_key('cart_items'):
             cart_items = request.session['cart_items']
-        candidate = self.kwargs.get('plan')
+        candidate = kwargs.get('plan')
         serialized_cart_items = []
         found = False
         for item in cart_items:

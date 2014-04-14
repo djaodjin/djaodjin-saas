@@ -38,6 +38,7 @@ from saas.charge import (
     charge_dispute_created,
     charge_dispute_updated,
     charge_dispute_closed)
+from saas.models import Organization
 from saas import settings
 
 

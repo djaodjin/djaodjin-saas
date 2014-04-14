@@ -35,8 +35,8 @@ from django.core.serializers.json import DjangoJSONEncoder
 
 from saas.views.auth import valid_manager_for_organization
 from saas.managers.metrics import (active_subscribers,
-    aggregate_monthly_transactions, churn_subscribers, month_periods)
-from saas.models import (Organization, Plan, Subscription, Transaction,
+    aggregate_monthly_transactions, churn_subscribers)
+from saas.models import (Organization, Plan, Transaction,
     NewVisitors)
 from saas.compat import User
 

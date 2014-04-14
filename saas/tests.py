@@ -30,8 +30,7 @@ from django.utils.timezone import utc
 from django.core.management import call_command
 from django.db import transaction
 
-from saas.views.metrics import month_periods
-from saas.managers.metrics import aggregate_monthly_transactions
+from saas.managers.metrics import aggregate_monthly_transactions, month_periods
 from saas.models import Organization, Transaction, Charge
 from saas.charge import (
     charge_succeeded,

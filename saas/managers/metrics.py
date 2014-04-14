@@ -22,7 +22,7 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from datetime import datetime, date, timedelta
+from datetime import datetime
 
 from django.db.models.sql.query import RawQuery
 from django.db.models import Count, Sum

@@ -24,6 +24,10 @@
 
 import datetime, re
 
+from django.utils.timezone import utc
+
+from saas.models import Plan
+
 DESCRIBE_BALANCE = \
     "Balance on %(plan)s"
 
@@ -48,8 +52,7 @@ def as_buy_periods(descr):
     look = re.match(DESCRIBE_BUY_PERIODS % {
             'plan': r'(?P<plan>\S+)',
             'ends_at': r'(?P<ends_at>\d\d\d\d/\d\d/\d\d)',
-            'humanized_periods': r'(?P<nb_periods>\d+).*'},
-                    transaction.descr)
+            'humanized_periods': r'(?P<nb_periods>\d+).*'}, descr)
     if look:
         try:
             plan = Plan.objects.get(slug=look.group('plan'))
