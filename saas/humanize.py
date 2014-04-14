@@ -26,8 +26,6 @@ import datetime, re
 
 from django.utils.timezone import utc
 
-from saas.models import Plan
-
 DESCRIBE_BALANCE = \
     "Balance on %(plan)s"
 
@@ -46,6 +44,7 @@ def as_buy_periods(descr):
     Returns a triplet (plan, ends_at, nb_periods) from a string
     formatted with DESCRIBE_BUY_PERIODS.
     """
+    from saas.models import Plan
     plan = None
     nb_periods = 0
     ends_at = datetime.datetime()
