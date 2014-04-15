@@ -18,10 +18,10 @@ def load_config(confpath):
             line = conffile.readline()
             while line != '':
                 if not line.startswith('#'):
-                    look = re.match('(\w+)\s*=\s*(.*)', line)
+                    look = re.match(r'(\w+)\s*=\s*(.*)', line)
                     if look:
                         value = look.group(2) \
-                            % { 'LOCALSTATEDIR': APP_ROOT + '/var' }
+                            % {'LOCALSTATEDIR': APP_ROOT + '/var'}
                         try:
                             # Once Django 1.5 introduced ALLOWED_HOSTS (a tuple
                             # definitely in the site.conf set), we had no choice
@@ -48,12 +48,12 @@ MANAGERS = ADMINS
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3', # Add 'postgresql_psycopg2', 'mysql', 'sqlite3' or 'oracle'.
-        'NAME': os.path.join(os.getcwd(), 'saas_testsite.sqlite'),                      # Or path to database file if using sqlite3.
-        'USER': '',                      # Not used with sqlite3.
-        'PASSWORD': '',                  # Not used with sqlite3.
-        'HOST': '',                      # Set to empty string for localhost. Not used with sqlite3.
-        'PORT': '',                      # Set to empty string for default. Not used with sqlite3.
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': os.path.join(os.getcwd(), 'saas_testsite.sqlite'),
+        'USER': '',
+        'PASSWORD': '',
+        'HOST': '',
+        'PORT': '',
     }
 }
 
@@ -146,11 +146,7 @@ ROOT_URLCONF = 'testsite.urls'
 # Python dotted path to the WSGI application used by Django's runserver.
 WSGI_APPLICATION = 'testsite.wsgi.application'
 
-TEMPLATE_DIRS = (
-    # Put strings here, like "/home/html/django_templates" or "C:/www/django/templates".
-    # Always use forward slashes, even on Windows.
-    # Don't forget to use absolute paths, not relative paths.
-)
+TEMPLATE_DIRS = ()
 
 # django-app-metrics (not installing celery)
 CELERY_ALWAYS_EAGER = True
