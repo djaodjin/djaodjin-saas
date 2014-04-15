@@ -22,4 +22,5 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from saas.backends.stripe_processor import *
+# XXX temporary shortcut until we have multiple backends
+from saas.backends.stripe_processor import * #pylint: disable=wildcard-import

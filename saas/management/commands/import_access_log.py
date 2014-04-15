@@ -22,13 +22,17 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-"""Command for the cron job. Daily statistics"""
+"""
+Command for the cron job. Daily visitors
+"""
 
-import datetime, time
+import datetime, logging, re, time
 
 from django.core.management.base import BaseCommand
 
 from saas.models import NewVisitors
+
+LOGGER = logging.getLogger(__name__)
 
 
 class Command(BaseCommand):
@@ -37,62 +41,50 @@ class Command(BaseCommand):
 " This command needs the path of the log file to analyse."
 
     def handle(self, args, **options):
+        #pylint: disable=too-many-locals
+        for arg in args:
+            with open(arg) as log:
+                visitors = []
+                # delete all bots
+                excludes = ["bot", "Pub", "Spider", "spider", "AhrefsBot"]
+                for line in log.readlines():
+                    if not re.match(r'.*(%s).*' % '|'.join(excludes), line):
+                        visitors += [line]
 
-        visitors = []
-        log3 = []
-        browser = []
-        date = []
-        log = open(args)
+                # create a dictionnary of IP, browser per date
+                browser = []
+                for line in visitors:
+                    look = re.match(
+r'(?P<ip_addr>\S+) - - \[(?P<date>.*)\].*"(?<browser>.+)" ".+"', line)
+                    if look:
+                        browser += [{"IP": look.group('ip_addr'),
+                            "browser": look.group('browser'),
+                            "date": datetime.datetime.strftime(
+                                datetime.datetime.fromtimestamp(time.mktime(
+                                time.strptime(look.group('date'), "%d/%b/%Y"))),
+                                    "%Y/%m/%d")}]
 
-        #delete all bot
-        rob = "bot"
-        pub = "Pub"
-        spy = "Spider"
-        spy2 = "spider"
-        goog = "google"
-        rob2 = "AhrefsBot"
+                # all dates per visitors
+                dates_per_unique_visitor = {}
+                for datas in browser:
+                    key = (datas["IP"], datas["browser"])
+                    if not key in dates_per_unique_visitor:
+                        dates_per_unique_visitor[key] = []
+                    dates_per_unique_visitor[key] += [datas["date"]]
 
-        for ligne in log.readlines():
-            if ((not rob  in ligne) and (not pub in ligne)
-                and (not spy in ligne) and (not spy2 in ligne)
-                and (not goog in ligne) and (not rob2 in ligne)):
-                visitors += [ligne]
+                final_list = {}
+                for itu in dates_per_unique_visitor:
+                    key = dates_per_unique_visitor[itu][0]
+                    if not key in final_list:
+                        final_list[key] = []
+                    final_list[key] += [itu]
 
-        # create a dictionnary of IP, browser per date
-        for i in range(len(visitors)):
-            browser_name = (visitors[i].split('"'))[5]
-            log3 = visitors[i].split("[")
-            date = log3[1].split("]")
-            datee = (date[0].split(":"))[0]
-            ip_addr = log3[0].split(" -")[0]
-            browser += [{"IP": ip_addr, "browser": browser_name,
-                "date": datetime.datetime.strftime(
-                    datetime.datetime.fromtimestamp(time.mktime(
-                    time.strptime(datee, "%d/%b/%Y"))), "%Y/%m/%d")}]
-
-            # all dates per visitors
-        dates_per_unique_visitor = {}
-        for datas in browser:
-            key = (datas["IP"], datas["browser"])
-            if not key in dates_per_unique_visitor:
-                dates_per_unique_visitor[key] = []
-            dates_per_unique_visitor[key] += [datas["date"]]
-
-        final_list = {}
-        for itu in dates_per_unique_visitor:
-            key = dates_per_unique_visitor[itu][0]
-            if not key in final_list:
-                final_list[key] = []
-            final_list[key] += [itu]
-
-        final_list2 = sorted(final_list.items())
-        for itu in range(len(final_list2)):
-            # check in database if the date exists and if not save into
-            # the database
-            NewVisitors.objects.get_or_create(
-                date=datetime.datetime.strftime(
-                    datetime.datetime.fromtimestamp(time.mktime(
-                            time.strptime(final_list2[itu][0], "%Y/%m/%d"))),
-                    "%Y-%m-%d"),
-                visitors_number=len(final_list2[itu][1]))
+                for item in sorted(final_list.items()):
+                    # check in database if the date exists and if not save into
+                    # the database
+                    NewVisitors.objects.get_or_create(
+                        date=datetime.datetime.strftime(
+                            datetime.datetime.fromtimestamp(time.mktime(
+                            time.strptime(item[0], "%Y/%m/%d"))), "%Y-%m-%d"),
+                        visitors_number=len(item[1]))
 

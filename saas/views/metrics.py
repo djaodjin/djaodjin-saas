@@ -26,10 +26,9 @@ import json
 from datetime import datetime, date, timedelta
 
 from django.db.models import Min, Sum, Max
-from django.shortcuts import render, render_to_response, get_object_or_404
+from django.shortcuts import get_object_or_404
 from django.utils.datastructures import SortedDict
 from django.utils.timezone import utc
-from django.views.decorators.http import require_GET
 from django.views.generic import TemplateView
 from django.core.serializers.json import DjangoJSONEncoder
 
@@ -97,52 +96,21 @@ class RevenueMetricsView(TemplateView):
         return context
 
 
-@require_GET
-def organization_usage(request, organization):
-    organization = valid_manager_for_organization(request.user, organization)
+class UsageMetricsView(TemplateView):
 
-    # Note: There is a way to get the result in a single SQL statement
-    # but that requires to deal with differences in database backends
-    # (MySQL: date_format, SQLite: strftime) and get around the
-    # "Raw query must include the primary key" constraint.
-    values = []
-    today = date.today()
-    end = datetime(day=today.day, month=today.month, year=today.year,
-                            tzinfo=utc)
-    for _ in range(0, 12):
-        first = datetime(day=1, month=end.month, year=end.year,
-                                  tzinfo=utc)
-        usages = Transaction.objects.filter(
-            orig_organization=organization, orig_account='Usage',
-            created_at__lt=first).aggregate(Sum('amount'))
-        amount = usages.get('amount__sum', 0)
-        if not amount:
-            # The key could be associated with a "None".
-            amount = 0
-        values += [{"x": date.strftime(first, "%Y/%m/%d"),
-                    "y": amount}]
-        end = first - timedelta(days=1)
-    context = {
-        'data': [{"key": "Usage",
-                 "values": values}],
-        'organization_id': organization.slug}
-    return render(request, "saas/usage_chart.html", context)
+    template_name = "saas/usage_chart.html"
 
-
-@require_GET
-def organization_overall(request):
-
-    organizations = Organization.objects.all()
-    all_values = []
-
-    for organization_all in organizations:
-        organization = valid_manager_for_organization(
-            request.user, organization_all)
+    def get_context_data(self, **kwargs):
+        organization = get_object_or_404(
+            Organization, slug=kwargs.get('organization'))
+        # Note: There is a way to get the result in a single SQL statement
+        # but that requires to deal with differences in database backends
+        # (MySQL: date_format, SQLite: strftime) and get around the
+        # "Raw query must include the primary key" constraint.
         values = []
         today = date.today()
         end = datetime(day=today.day, month=today.month, year=today.year,
                                 tzinfo=utc)
-
         for _ in range(0, 12):
             first = datetime(day=1, month=end.month, year=end.year,
                                       tzinfo=utc)
@@ -153,99 +121,128 @@ def organization_overall(request):
             if not amount:
                 # The key could be associated with a "None".
                 amount = 0
-            values += [{"x": date.strftime(first, "%Y/%m/%d"),
-                        "y": amount}]
+            values += [{"x": date.strftime(first, "%Y/%m/%d"), "y": amount}]
             end = first - timedelta(days=1)
-        all_values += [{"key": str(organization_all.slug), "values": values}]
+        context = {
+            'data': [{"key": "Usage", "values": values}],
+            'organization_id': organization.slug}
+        return context
 
-    context = {'data' : all_values}
 
-    return render(request, "saas/general_chart.html", context)
+class OverallMetricsView(TemplateView):
+
+    template_name = "saas/general_chart.html"
+
+    def get_context_data(self, **kwargs):
+        organizations = Organization.objects.all()
+        all_values = []
+
+        for organization_all in organizations:
+            organization = valid_manager_for_organization(
+                self.request.user, organization_all)
+            values = []
+            today = date.today()
+            end = datetime(day=today.day, month=today.month, year=today.year,
+                                    tzinfo=utc)
+            for _ in range(0, 12):
+                first = datetime(day=1, month=end.month, year=end.year,
+                                          tzinfo=utc)
+                usages = Transaction.objects.filter(
+                    orig_organization=organization, orig_account='Usage',
+                    created_at__lt=first).aggregate(Sum('amount'))
+                amount = usages.get('amount__sum', 0)
+                if not amount:
+                    # The key could be associated with a "None".
+                    amount = 0
+                values += [{"x": date.strftime(first, "%Y/%m/%d"),
+                            "y": amount}]
+                end = first - timedelta(days=1)
+            all_values += [{
+                "key": str(organization_all.slug), "values": values}]
+        context = {'data' : all_values}
+        return context
 
 
-@require_GET
-def statistic(request):
-    # New vistor analyse
-    newvisitor = NewVisitors.objects.all()
+class VisitorsView(TemplateView):
+    """
+    Number of visitors as measured by the website logs.
+    """
 
-    if not newvisitor:
-        return render_to_response("saas/stat.html")
+    template_name = 'saas/stat.html'
 
-    min_date = NewVisitors.objects.all().aggregate(Min('date'))
-    max_date = NewVisitors.objects.all().aggregate(Max('date'))
-
-    min_date = min_date.get('date__min', 0)
-    max_date = max_date.get('date__max', 0)
-    date_tabl = [{"x": datetime.strftime(new.date, "%Y/%m/%d"),
-                  "y": new.visitors_number / 5}
-                  for new in newvisitor]
-
-    current_date = min_date
-    delta = timedelta(days=1)
-    while current_date <= max_date:
-        j = len(date_tabl)
-        tbl = []
-        for i in range(j):
-            if date_tabl[i]["x"] == datetime.strftime(current_date, "%Y/%m/%d"):
-                tbl += [i]
-        if len(tbl) == 0:
-            date_tabl += [{
+    def get_context_data(self, **kwargs):
+        #pylint: disable=too-many-locals
+        context = super(VisitorsView, self).get_context_data(**kwargs)
+        min_date = NewVisitors.objects.all().aggregate(Min('date'))
+        max_date = NewVisitors.objects.all().aggregate(Max('date'))
+        min_date = min_date.get('date__min', 0)
+        max_date = max_date.get('date__max', 0)
+        date_tabl = [{"x": datetime.strftime(new.date, "%Y/%m/%d"),
+                      "y": new.visitors_number / 5}
+                     for new in NewVisitors.objects.all()]
+        current_date = min_date
+        delta = timedelta(days=1)
+        while current_date <= max_date:
+            j = len(date_tabl)
+            tbl = []
+            for i in range(j):
+                if date_tabl[i]["x"] == datetime.strftime(
+                    current_date, "%Y/%m/%d"):
+                    tbl += [i]
+            if len(tbl) == 0:
+                date_tabl += [{
                     "x": datetime.strftime(current_date, "%Y/%m/%d"), "y": 0}]
             current_date += delta
-        else:
-            current_date += delta
 
-    date_tabl.sort()
+        date_tabl.sort()
 
-    ########################################################
-    # Conversion visitors to trial
-    date_joined_username = []
-    for user in User.objects.all():
-        if (datetime.strftime(user.date_joined, "%Y/%m/%d")
-            > datetime.strftime(min_date, "%Y/%m/%d") and
-            datetime.strftime(user.date_joined, "%Y/%m/%d")
-            < datetime.strftime(max_date, "%Y/%m/%d")):
-            date_joined_username += [{
-                    "date": user.date_joined, "user": str(user.username)}]
+        ########################################################
+        # Conversion visitors to trial
+        date_joined_username = []
+        for user in User.objects.all():
+            if (datetime.strftime(user.date_joined, "%Y/%m/%d")
+                > datetime.strftime(min_date, "%Y/%m/%d") and
+                datetime.strftime(user.date_joined, "%Y/%m/%d")
+                < datetime.strftime(max_date, "%Y/%m/%d")):
+                date_joined_username += [{
+                        "date": user.date_joined, "user": str(user.username)}]
 
-    user_per_joined_date = {}
-    for datas in date_joined_username:
-        key = datas["date"]
-        if not key in user_per_joined_date:
-            user_per_joined_date[key] = []
-        user_per_joined_date[key] += [datas["user"]]
+        user_per_joined_date = {}
+        for datas in date_joined_username:
+            key = datas["date"]
+            if not key in user_per_joined_date:
+                user_per_joined_date[key] = []
+            user_per_joined_date[key] += [datas["user"]]
 
-    trial = []
-    for joined_at in user_per_joined_date.keys():
-        trial += [{"x": joined_at, "y": len(user_per_joined_date[joined_at])}]
+        trial = []
+        for joined_at in user_per_joined_date.keys():
+            trial += [{
+                "x": joined_at, "y": len(user_per_joined_date[joined_at])}]
 
-    min_date_trial = User.objects.all().aggregate(Min('date_joined'))
-    max_date_trial = User.objects.all().aggregate(Max('date_joined'))
+        min_date_trial = User.objects.all().aggregate(Min('date_joined'))
+        max_date_trial = User.objects.all().aggregate(Max('date_joined'))
+        min_date_trial = min_date_trial.get('date_joined__min', 0)
+        max_date_trial = max_date_trial.get('date_joined__max', 0)
 
-    min_date_trial = min_date_trial.get('date_joined__min', 0)
-    max_date_trial = max_date_trial.get('date_joined__max', 0)
-
-    for item in trial:
-        item["x"] = datetime.strftime(item["x"], "%Y/%m/%d")
-    curr_date = min_date
-    delta = timedelta(days=1)
-    while curr_date <= max_date:
-        j = len(trial)
-        count = 0
-        for i in range(j):
-            if trial[i]["x"] == datetime.strftime(curr_date, "%Y/%m/%d"):
-                count += 1
-        if count == 0:
-            trial += [{"x": datetime.strftime(curr_date, "%Y/%m/%d"), "y": 0}]
+        for item in trial:
+            item["x"] = datetime.strftime(item["x"], "%Y/%m/%d")
+        curr_date = min_date
+        delta = timedelta(days=1)
+        while curr_date <= max_date:
+            j = len(trial)
+            count = 0
+            for i in range(j):
+                if trial[i]["x"] == datetime.strftime(curr_date, "%Y/%m/%d"):
+                    count += 1
+            if count == 0:
+                trial += [{
+                    "x": datetime.strftime(curr_date, "%Y/%m/%d"), "y": 0}]
             curr_date += delta
-        else:
-            curr_date += delta
+        trial.sort()
 
-    trial.sort()
-
-    context = {'data' : [{"key": "Signup number",
-                          "color": "#d62728",
-                          "values": trial},
-                         {"key": "New visitor number",
-                          "values": date_tabl}]}
-    return render_to_response("saas/stat.html", context)
+        context = {'data' : [{"key": "Signup number",
+                              "color": "#d62728",
+                              "values": trial},
+                             {"key": "New visitor number",
+                              "values": date_tabl}]}
+        return context

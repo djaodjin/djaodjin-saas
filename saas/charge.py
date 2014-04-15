@@ -26,41 +26,47 @@
 Dealing with charges
 """
 
-import datetime, logging
+import logging
 
 from django.db.models import Sum
 from django.shortcuts import get_object_or_404
 
-from saas.models import Organization, Charge
-from saas.ledger import read_balances
+from saas.compat import datetime_or_now
+from saas.models import Charge, Organization, Transaction
+
 
 LOGGER = logging.getLogger(__name__)
 
-def create_charges(until=datetime.datetime.now()):
+def create_charges_for_balance(until=None):
     """
-    Create a set of charges based on the transaction table.
+    Create charges for all accounts payable.
     """
-    for customer_id, balance in read_balances(until):
-        customer = Organization.objects.get(pk=customer_id)
-        charges = Charge.objects.filter(customer=customer).exclude(
+    until = datetime_or_now(until)
+    for organization in Organization.objects.all():
+        charges = Charge.objects.filter(customer=organization).exclude(
             state=Charge.DONE).aggregate(Sum('amount'))
         inflight_charges = charges['amount__sum']
         # We will create charges only when we have no charges
         # already in flight for this customer.
         if not inflight_charges:
-            inflight_charges = 0 # Such that subsequent logic works regardless
-            amount = balance - inflight_charges
-            if amount > 50:
-                LOGGER.info('CHARGE %dc to %s', amount, customer)
+            balance_t = Transaction.objects.get_organization_payable(
+                organization, until=until)
+            if balance_t.dest_amount > 50:
+                LOGGER.info('CHARGE %dc to %s',
+                    balance_t.dest_amount, balance_t.dest_organization)
                 # Stripe will not processed charges less than 50 cents.
                 try:
-                    Charge.objects.charge_card(customer, amount=amount)
+                    balance_t.save()
+                    Charge.objects.charge_card(
+                        balance_t.dest_organization, balance_t)
                 except:
                     raise
             else:
-                LOGGER.info('SKIP   %s (less than 50c)', customer)
+                LOGGER.info('SKIP   %s (less than 50c)',
+                    balance_t.dest_organization)
         else:
-            LOGGER.info('SKIP   %s (one charge already in flight)', customer)
+            LOGGER.info('SKIP   %s (one charge already in flight)',
+                balance_t.dest_organization)
 
 
 def charge_succeeded(charge_id):

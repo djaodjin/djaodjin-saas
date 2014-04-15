@@ -134,6 +134,13 @@ class InvoicablesView(InsertedURLMixin, CardFormMixin, FormView):
                 'plan-%s' % invoicable['subscription'].plan.slug: ""})
         return kwargs
 
+    def get_queryset(self): #pylint: disable=no-self-use
+        """
+        Subclasses should override this method to return
+        a set of invoicable items.
+        """
+        return []
+
     def form_valid(self, form):
         """
         If the form is valid we, optionally, checkout the cart items
@@ -255,8 +262,8 @@ class PlaceOrderView(InvoicablesView):
 
     template_name = 'saas/place_order.html'
 
-    def get_invoicable_options(self, subscription,
-                               created_at=None, prorate_to=None):
+    @staticmethod
+    def get_invoicable_options(subscription, created_at=None, prorate_to=None):
         """
         Return a set of lines that must charged Today and a set of choices
         based on current subscriptions that the user might be willing
@@ -432,8 +439,9 @@ class PayBalanceView(InvoicablesView):
     plan_url_kwarg = 'subscribed_plan'
     template_name = 'saas/pay_subscription.html'
 
-    def get_invoicable_options(self, subscription,
-                               created_at=None, prorate_to=None):
+    @staticmethod
+    def get_invoicable_options(subscription, created_at=None, prorate_to=None):
+        #pylint: disable=unused-argument
         payable = Transaction.objects.get_subscription_payable(
             subscription, created_at)
         if payable.dest_amount > 0:

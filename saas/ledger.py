@@ -52,7 +52,7 @@ def read_balances(until=datetime.datetime.now()):
 from saas_transaction t1 left outer join saas_transaction t2
 on t1.dest_organization_id = t2.orig_organization_id
    and t1.dest_account = t2.orig_account
-where t1.dest_account = '%s'
+where t1.dest_account = '%s' and t1.created_at < '%s' and t2.created_at < '%s'
 group by t1.dest_organization_id
-""" % account)
+""" % (account, until, until))
     return cursor.fetchall()

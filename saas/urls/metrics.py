@@ -26,11 +26,12 @@
 
 from django.conf.urls import patterns, url
 
-from saas.views.metrics import PlansMetricsView, RevenueMetricsView
+from saas.views.metrics import (
+    PlansMetricsView, RevenueMetricsView, UsageMetricsView)
 
 urlpatterns = patterns(
     'saas.views.metrics',
-    url(r'^usage/', 'organization_usage', name='saas_organization_usage'),
+    url(r'^usage/', UsageMetricsView.as_view(), name='saas_organization_usage'),
     url(r'^plans/((?P<from_date>\d\d\d\d-\d\d)/)?',
         PlansMetricsView.as_view(), name='saas_metrics_plans'),
     url(r'^((?P<from_date>\d\d\d\d-\d\d))?',

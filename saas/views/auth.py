@@ -81,7 +81,7 @@ def valid_manager_for_organization(user, organization):
     raise PermissionDenied
 
 
-def valid_contributor_to_organization(user, organization):
+def valid_contributor(user, organization):
     """
     Returns a tuple (*organization*, *is_manager*) where *organization*
     is an Organization instance and *is_manager* is ``True`` when the

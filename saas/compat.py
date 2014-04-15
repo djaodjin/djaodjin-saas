@@ -22,6 +22,16 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+import datetime
+
+from django.utils.timezone import utc
+
+def datetime_or_now(dtime_at=None):
+    if not dtime_at:
+        return datetime.datetime.utcnow().replace(tzinfo=utc)
+    return dtime_at
+
+
 try:
     from django.contrib.auth import get_user_model
 except ImportError: # django < 1.5

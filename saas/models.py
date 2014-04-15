@@ -1,3 +1,5 @@
+#pylint: disable=too-many-lines
+
 # Copyright (c) 2014, Fortylines LLC
 # All rights reserved.
 #
@@ -32,7 +34,6 @@ from dateutil.relativedelta import relativedelta
 from django.db import IntegrityError, models, transaction
 from django.db.models import Sum
 from django.db.models.query import QuerySet
-from django.utils.timezone import utc
 from django.utils.translation import ugettext_lazy as _
 from django.utils.decorators import method_decorator
 from stripe.error import InvalidRequestError
@@ -40,10 +41,11 @@ from stripe.error import InvalidRequestError
 from saas import settings
 from saas import signals
 from saas import get_manager_relation_model, get_contributor_relation_model
+from saas.compat import datetime_or_now
+
 from saas.humanize import as_money, describe_buy_periods, DESCRIBE_BALANCE
 
 LOGGER = logging.getLogger(__name__)
-
 
 class OrganizationManager(models.Manager):
 
@@ -287,8 +289,7 @@ class Organization(models.Model):
             djaodjin:Payable
         """
         import saas.backends as backend # avoid import loop
-        if not created_at:
-            created_at = datetime.datetime.utcnow().replace(tzinfo=utc)
+        created_at = datetime_or_now(created_at)
         try:
             provider_subscription = Subscription.objects.get(
                 organization=self,
@@ -422,6 +423,7 @@ class ChargeManager(models.Manager):
 
     def charge_card(self, customer, transactions, descr=None,
                     user=None, token=None, remember_card=True):
+        #pylint: disable=too-many-arguments
         """
         Create a charge on a customer card.
         """
@@ -635,8 +637,7 @@ class Charge(models.Model):
         """
         Partially refund the charge.
         """
-        if not created_at:
-            created_at = datetime.datetime.utcnow().replace(tzinfo=utc)
+        created_at = datetime_or_now(created_at)
         # XXX fix
         Transaction.objects.create(
             created_at=created_at,
@@ -813,16 +814,15 @@ class SubscriptionManager(models.Manager):
         """
         Returns active subscriptions for *organization*
         """
-        if not ends_at:
-            ends_at = datetime.datetime.utcnow().replace(tzinfo=utc)
+        ends_at = datetime_or_now(ends_at)
         return self.filter(organization=organization, ends_at__gt=ends_at)
 
     def create(self, **kwargs):
         if not kwargs.has_key('ends_at'):
-            start_time = datetime.datetime.utcnow().replace(tzinfo=utc)
+            created_at = datetime_or_now(kwargs.get('created_at', None))
             plan = kwargs.get('plan')
             return super(SubscriptionManager, self).create(
-                ends_at=plan.end_of_period(start_time), **kwargs)
+                ends_at=plan.end_of_period(created_at), **kwargs)
         return super(SubscriptionManager, self).create(**kwargs)
 
     def new_instance(self, organization, plan, ends_at=None):
@@ -857,6 +857,7 @@ class Subscription(models.Model):
 
     def use_of_service(self, nb_periods, prorated_amount=0,
         created_at=None, descr=None, discount_percent=None):
+        #pylint: disable=too-many-arguments
         """
         Each time a provider delivers a service to a client, a transaction
         is recorded that goes from the provider ``Income`` account to
@@ -874,8 +875,7 @@ class Subscription(models.Model):
             # If we already have a description, all bets are off on
             # what the amount represents (see unlock_event).
             amount = prorated_amount
-        if not created_at:
-            created_at = datetime.datetime.utcnow().replace(tzinfo=utc)
+        created_at = datetime_or_now(created_at)
         return Transaction(
             created_at=created_at,
             descr=descr,
@@ -948,20 +948,42 @@ class TransactionManager(models.Manager):
                 invoiced_items_ids += [invoiced_item.id]
         return self.filter(id__in=invoiced_items_ids)
 
-    def get_organization_balance(self, organization, account=None):
+    def get_organization_balance(self, organization, account=None, until=None):
         """
         Returns the balance on an organization's account
         (by default: ``Payable``).
         """
+        until = datetime_or_now(until)
         if not account:
             account = Transaction.PAYABLE
         dest_amount = sum_dest_amount(self.filter(
-            dest_organization=organization,
-            dest_account=account))
+            dest_organization=organization, dest_account=account,
+            created_at__lt=until))
         orig_amount = sum_orig_amount(self.filter(
-            orig_organization=organization,
-            orig_account=account))
+            orig_organization=organization, orig_account=account,
+            created_at__lt=until))
         return dest_amount - orig_amount
+
+    def get_organization_payable(self, organization,
+                                 until=None, created_at=None):
+        """
+        Returns a ``Transaction`` for the organization balance.
+        """
+        until = datetime_or_now(until)
+        if not created_at:
+            # Use *until* to avoid being off by a few microseconds.
+            created_at = datetime_or_now(until)
+        balance = self.get_organization_balance(organization)
+        return Transaction(
+            created_at=created_at,
+            # Re-use Description template here:
+            descr=DESCRIBE_BALANCE % {'plan': organization},
+            orig_amount=balance,
+            orig_account=Transaction.PAYABLE,
+            orig_organization=organization,
+            dest_amount=balance,
+            dest_account=Transaction.PAYABLE,
+            dest_organization=organization)
 
     def get_subscription_balance(self, subscription):
         """
@@ -984,8 +1006,7 @@ class TransactionManager(models.Manager):
         """
         Returns a ``Transaction`` for the subscription balance.
         """
-        if not created_at:
-            created_at = datetime.datetime.utcnow().replace(tzinfo=utc)
+        created_at = datetime_or_now(created_at)
         balance = self.get_subscription_balance(subscription)
         return Transaction(
             created_at=created_at,
@@ -1001,8 +1022,7 @@ class TransactionManager(models.Manager):
         """
         Returns a ``Transaction`` for the subscription balance to be paid later.
         """
-        if not created_at:
-            created_at = datetime.datetime.utcnow().replace(tzinfo=utc)
+        created_at = datetime_or_now(created_at)
         balance = self.get_subscription_balance(subscription)
         return Transaction(
             created_at=created_at,

@@ -32,9 +32,7 @@ from django.db import transaction
 
 from saas.managers.metrics import aggregate_monthly_transactions, month_periods
 from saas.models import Organization, Transaction, Charge
-from saas.charge import (
-    charge_succeeded,
-    create_charges)
+from saas.charge import charge_succeeded, create_charges_for_balance
 
 
 @skip("still pb committing the associated processor_id before the tests start")
@@ -114,7 +112,7 @@ class LedgerTests(TestCase):
     def test_charge_cards(self):
         """Charge all customers credit cards for fees due
         since the last time the card was charged."""
-        create_charges(until=datetime(2013, 04, 21))
+        create_charges_for_balance(until=datetime(2013, 04, 21))
         assert True
 
 

@@ -119,9 +119,10 @@ class CartItemAPIView(CreateAPIView):
 class CartItemDestroyAPIView(DestroyAPIView):
 
     model = CartItem
-#    serializer_class = CartItemSerializer
 
-    def destroy_in_session(self, request, *args, **kwargs):
+    @staticmethod
+    def destroy_in_session(request, *args, **kwargs):
+        #pylint: disable=unused-argument
         cart_items = []
         if request.session.has_key('cart_items'):
             cart_items = request.session['cart_items']
