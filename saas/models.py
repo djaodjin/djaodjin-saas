@@ -43,7 +43,8 @@ from saas import signals
 from saas import get_manager_relation_model, get_contributor_relation_model
 from saas.compat import datetime_or_now
 
-from saas.humanize import as_money, describe_buy_periods, DESCRIBE_BALANCE
+from saas.humanize import (as_money, describe_buy_periods, DESCRIBE_BALANCE,
+    DESCRIBE_CHARGED_CARD)
 
 LOGGER = logging.getLogger(__name__)
 
@@ -430,7 +431,8 @@ class ChargeManager(models.Manager):
         # Be careful, stripe will not processed charges less than 50 cents.
         import saas.backends as backend # Avoid import loop
         amount = sum_dest_amount(transactions)
-        descr = 'charged credit card of %s' % customer.full_name
+        descr = DESCRIBE_CHARGED_CARD % {
+            'charge': '', 'organization': customer.full_name}
         if user:
             descr += ' (%s)' % user.username
         try:
@@ -450,6 +452,10 @@ class ChargeManager(models.Manager):
                  last4, exp_date) = backend.create_charge(
                     customer, amount, descr)
             # Create record of the charge in our database
+            descr = DESCRIBE_CHARGED_CARD % {'charge': processor_charge_id,
+                'organization': customer.full_name}
+            if user:
+                descr += ' (%s)' % user.username
             charge = self.create(
                 processor_id=processor_charge_id, amount=amount,
                 created_at=created_at, description=descr,

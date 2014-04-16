@@ -32,6 +32,9 @@ DESCRIBE_BALANCE = \
 DESCRIBE_BUY_PERIODS = \
     "Subscription to %(plan)s until %(ends_at)s (%(humanized_periods)s)"
 
+DESCRIBE_CHARGED_CARD = \
+    "Charge %(charge)s on credit card of %(organization)s"
+
 DESCRIBE_UNLOCK_NOW = \
     "Unlock %(plan)s now. Don't worry later to %(unlock_event)s."
 

@@ -26,10 +26,11 @@ import re
 
 from django import template
 from django.core.exceptions import PermissionDenied
+from django.core.urlresolvers import reverse
 from django.utils.safestring import mark_safe
 
 from saas.humanize import (DESCRIBE_BALANCE, DESCRIBE_BUY_PERIODS,
-    DESCRIBE_UNLOCK_NOW, DESCRIBE_UNLOCK_LATER)
+    DESCRIBE_CHARGED_CARD, DESCRIBE_UNLOCK_NOW, DESCRIBE_UNLOCK_LATER)
 from saas.views.auth import valid_manager_for_organization
 
 register = template.Library()
@@ -47,6 +48,8 @@ def is_manager(request, organization):
 
 @register.filter(needs_autoescape=False)
 def describe(transaction):
+    provider = transaction.orig_organization
+    subscriber = transaction.dest_organization
     look = re.match(DESCRIBE_BUY_PERIODS % {
         'plan': r'(?P<plan>\S+)', 'ends_at': r'.*', 'humanized_periods': r'.*'},
         transaction.descr)
@@ -62,11 +65,17 @@ def describe(transaction):
         look = re.match(DESCRIBE_BALANCE % {
             'plan': r'(?P<plan>\S+)'}, transaction.descr)
     if not look:
+        look = re.match(DESCRIBE_CHARGED_CARD  % {
+            'charge': r'(?P<charge>\S+)', 'organization': r'.*'},
+            transaction.descr)
+        if look:
+            link = '<a href="%s">%s</a>' % (reverse('saas_charge_receipt',
+                args=(subscriber, look.group('charge'),)), look.group('charge'))
+            return mark_safe(
+                transaction.descr.replace(look.group('charge'), link))
         return transaction.descr
 
-    provider = transaction.orig_organization
-    subscriber = transaction.dest_organization
-    plan_link = ('<a href="/%s/app/%s/%s">%s</a>' %
+    plan_link = ('<a href="/%s/app/%s/%s/">%s</a>' %
         (provider, subscriber, look.group('plan'), look.group('plan')))
     return mark_safe(
             transaction.descr.replace(look.group('plan'), plan_link))

@@ -33,7 +33,7 @@ There are two views where invoicables are presented and charges are created:
 2. ``PayBalanceView`` for subscriptions with balance dues
 """
 
-import datetime, logging
+import copy, datetime, logging
 
 from django import forms
 from django.contrib.auth import REDIRECT_FIELD_NAME
@@ -47,6 +47,7 @@ from django.shortcuts import redirect, get_object_or_404
 from django.utils.timezone import utc
 from django.views.generic import DetailView, FormView, ListView
 from django.views.generic.base import ContextMixin
+from stripe.error import CardError
 
 import saas.backends as backend
 from saas.forms import CreditCardForm
@@ -151,9 +152,10 @@ class InvoicablesView(InsertedURLMixin, CardFormMixin, FormView):
         remember_card = True
         stripe_token = form.cleaned_data['stripeToken']
 
-        # We create a charge based on the transactions created here
-        # so we must commit them before creating the charge.
-        for invoicable in self.invoicables:
+        # deep copy the invoicables because we are updating the list in place
+        # and we don't want to keep the edited state on a card failure.
+        invoicables = copy.deepcopy(self.invoicables)
+        for invoicable in invoicables:
             # We use two conventions here:
             # 1. POST parameters prefixed with plan- correspond to an entry
             #    in the invoicables
@@ -174,9 +176,15 @@ class InvoicablesView(InsertedURLMixin, CardFormMixin, FormView):
                                 line.orig_amount)
                         invoicable['lines'] += [line]
 
-        self.charge = self.customer.checkout(
-            self.invoicables, self.request.user,
-            token=stripe_token, remember_card=remember_card)
+        try:
+            self.charge = self.customer.checkout(
+                invoicables, self.request.user,
+                token=stripe_token, remember_card=remember_card)
+        except CardError as err:
+            messages.error(self.request, err)
+            print "XXX invoicables: " + str(invoicables)
+            print "XXX self.invoicables: " + str(self.invoicables)
+            return self.form_invalid(form)
         return super(InvoicablesView, self).form_valid(form)
 
     def get_context_data(self, **kwargs):
@@ -308,7 +316,7 @@ class PlaceOrderView(InvoicablesView):
         elif plan.interval == Plan.YEARLY:
             # Give a change for discount when paying periods in advance
             discount_percent = 0
-            for nb_periods in [1, 2, 3]:
+            for nb_periods in [1]: # XXX disabled discount until configurable.
                 option_items += [subscription.use_of_service(
                     nb_periods, prorated_amount, created_at,
                     discount_percent=discount_percent)]
