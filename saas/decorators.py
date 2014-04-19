@@ -152,21 +152,11 @@ def requires_paid_subscription(function=None,
             if subscriber and plan:
                 subscription = get_object_or_404(Subscription,
                     organization=subscriber, plan=plan)
-                last_charge = Charge.objects.last_charge(subscription)
-                if (not last_charge
-                    or last_charge.state == Charge.FAILED
-                    or last_charge.state == Charge.DISPUTED):
-                    # No charge or a problem with the existing charge,
-                    # we trigger a new charge.
+                if subscription.is_locked:
                     return _insert_url(request, redirect_field_name,
-                        reverse('saas_pay_subscription',
+                        reverse('saas_organization_balance',
                             kwargs={'organization': subscriber,
                                     'subscribed_plan': plan}))
-                elif last_charge.state == Charge.CREATED:
-                    return _insert_url(request, redirect_field_name,
-                        reverse('saas_charge_receipt',
-                        args=(last_charge.customer, last_charge.processor_id)))
-
                 return view_func(request, *args, **kwargs)
             raise Http404
 

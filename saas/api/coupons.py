@@ -22,31 +22,49 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-"""
-URLs for the resources API of djaodjin saas.
-"""
+from rest_framework.generics import (
+    ListCreateAPIView, RetrieveUpdateDestroyAPIView)
+from rest_framework import serializers
 
-from django.conf.urls import patterns, url
-from saas.settings import ACCT_REGEX
+from saas.models import Coupon
+from saas.mixins import OrganizationMixin
 
-from saas.api.charges import ChargeResourceView
-from saas.api.coupons import CouponListAPIView, CouponDetailAPIView
-from saas.api.plans import (PlanActivateAPIView, PlanCreateAPIView,
-    PlanResourceView)
+#pylint: disable=no-init
+#pylint: disable=old-style-class
 
-urlpatterns = patterns('saas.api',
-    url(r'^(?P<organization>%s)/coupons/(?P<coupon>%s)/'
-        % (ACCT_REGEX, ACCT_REGEX),
-        CouponDetailAPIView.as_view(), name='saas_api_coupon_detail'),
-    url(r'^(?P<organization>%s)/coupons/?' % ACCT_REGEX,
-        CouponListAPIView.as_view(), name='saas_api_coupon_list'),
-    url(r'^plans/(?P<plan>%s)/activate/' % ACCT_REGEX,
-        PlanActivateAPIView.as_view(), name='saas_api_plan_activate'),
-    url(r'^plans/(?P<plan>%s)/' % ACCT_REGEX,
-        PlanResourceView.as_view(), name='saas_api_plan'),
-    url(r'^plans/$',
-        PlanCreateAPIView.as_view(), name='saas_api_plan_new'),
-    url(r'^charges/(?P<charge>%s)/' % ACCT_REGEX,
-        ChargeResourceView.as_view(), name='saas_api_charge'),
-)
 
+class CouponSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = Coupon
+        fields = ('created_at', 'code', 'percent', )
+
+
+class CouponMixin(OrganizationMixin):
+
+    model = Coupon
+    serializer_class = CouponSerializer
+
+    def pre_save(self, obj):
+        """
+        Force organization to the one that can be retrieved from the URL.
+        """
+        obj.organization = self.get_organization()
+        return super(CouponMixin, self).pre_save(obj)
+
+
+class CouponListAPIView(CouponMixin, ListCreateAPIView):
+
+    model = Coupon
+    serializer_class = CouponSerializer
+
+    def get_queryset(self):
+        queryset = super(CouponListAPIView, self).get_queryset()
+        return queryset.filter(organization__slug=self.kwargs.get(
+                self.organization_url_kwarg))
+
+
+class CouponDetailAPIView(CouponMixin, RetrieveUpdateDestroyAPIView):
+
+#    lookup_field = 'id'
+    pass

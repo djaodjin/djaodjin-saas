@@ -22,31 +22,24 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-"""
-URLs for the resources API of djaodjin saas.
-"""
+from django.shortcuts import get_object_or_404
+from django.views.generic.base import ContextMixin
 
-from django.conf.urls import patterns, url
-from saas.settings import ACCT_REGEX
+from saas.models import Organization
 
-from saas.api.charges import ChargeResourceView
-from saas.api.coupons import CouponListAPIView, CouponDetailAPIView
-from saas.api.plans import (PlanActivateAPIView, PlanCreateAPIView,
-    PlanResourceView)
 
-urlpatterns = patterns('saas.api',
-    url(r'^(?P<organization>%s)/coupons/(?P<coupon>%s)/'
-        % (ACCT_REGEX, ACCT_REGEX),
-        CouponDetailAPIView.as_view(), name='saas_api_coupon_detail'),
-    url(r'^(?P<organization>%s)/coupons/?' % ACCT_REGEX,
-        CouponListAPIView.as_view(), name='saas_api_coupon_list'),
-    url(r'^plans/(?P<plan>%s)/activate/' % ACCT_REGEX,
-        PlanActivateAPIView.as_view(), name='saas_api_plan_activate'),
-    url(r'^plans/(?P<plan>%s)/' % ACCT_REGEX,
-        PlanResourceView.as_view(), name='saas_api_plan'),
-    url(r'^plans/$',
-        PlanCreateAPIView.as_view(), name='saas_api_plan_new'),
-    url(r'^charges/(?P<charge>%s)/' % ACCT_REGEX,
-        ChargeResourceView.as_view(), name='saas_api_charge'),
-)
+class OrganizationMixin(ContextMixin):
+    """
+    Returns an ``Organization`` from a URL.
+    """
 
+    organization_url_kwarg = 'organization'
+
+    def get_organization(self):
+        return get_object_or_404(Organization,
+            slug=self.kwargs.get(self.organization_url_kwarg))
+
+    def get_context_data(self, **kwargs):
+        context = super(OrganizationMixin, self).get_context_data(**kwargs)
+        context.update({'organization': self.get_organization()})
+        return context

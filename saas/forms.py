@@ -79,6 +79,14 @@ class PlanForm(forms.ModelForm):
         return super(PlanForm, self).save(commit)
 
 
+class RedeemCouponForm(forms.Form):
+    """
+    Form used to redeem a coupon.
+    """
+
+    code = forms.CharField()
+
+
 class UserForm(forms.ModelForm):
     """
     Form to update a ``User`` profile.

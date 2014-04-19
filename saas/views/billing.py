@@ -35,22 +35,21 @@ There are two views where invoicables are presented and charges are created:
 
 import copy, datetime, logging
 
-from django import forms
 from django.contrib.auth import REDIRECT_FIELD_NAME
-from django.core.context_processors import csrf
 from django.core.exceptions import PermissionDenied
 from django.core.urlresolvers import reverse
 from django.db import IntegrityError
 from django.db.models import Q
 from django.contrib import messages
-from django.shortcuts import redirect, get_object_or_404
+from django.shortcuts import get_object_or_404
 from django.utils.timezone import utc
 from django.views.generic import DetailView, FormView, ListView
 from django.views.generic.base import ContextMixin
 from stripe.error import CardError
 
 import saas.backends as backend
-from saas.forms import CreditCardForm
+from saas.forms import CreditCardForm, RedeemCouponForm
+from saas.mixins import OrganizationMixin
 from saas.views.auth import valid_manager_for_organization
 from saas.models import (CartItem, Charge, Coupon, Organization, Plan,
     Transaction, Subscription)
@@ -270,8 +269,14 @@ class PlaceOrderView(InvoicablesView):
 
     template_name = 'saas/place_order.html'
 
+    def get_context_data(self, **kwargs):
+        context = super(PlaceOrderView, self).get_context_data(**kwargs)
+        context.update({'coupon_form': RedeemCouponForm()})
+        return context
+
     @staticmethod
-    def get_invoicable_options(subscription, created_at=None, prorate_to=None):
+    def get_invoicable_options(subscription,
+                              created_at=None, prorate_to=None, coupon=None):
         """
         Return a set of lines that must charged Today and a set of choices
         based on current subscriptions that the user might be willing
@@ -289,6 +294,10 @@ class PlaceOrderView(InvoicablesView):
         if prorate_to:
             prorated_amount = plan.prorate_period(created_at, prorate_to)
 
+        discount_percent = 0
+        if coupon:
+            discount_percent = coupon.percent
+
         if plan.period_amount == 0:
             # We are having a freemium business models, no discounts.
             option_items += [subscription.use_of_service(1, prorated_amount,
@@ -298,7 +307,8 @@ class PlaceOrderView(InvoicablesView):
             # Locked plans are free until an event.
             option_items += [subscription.use_of_service(1, plan.period_amount,
                created_at, DESCRIBE_UNLOCK_NOW % {
-                        'plan': plan, 'unlock_event': plan.unlock_event})]
+                        'plan': plan, 'unlock_event': plan.unlock_event},
+               discount_percent=discount_percent)]
             option_items += [subscription.use_of_service(1, 0,
                created_at, DESCRIBE_UNLOCK_LATER % {
                         'amount': as_money(plan.period_amount),
@@ -306,7 +316,6 @@ class PlaceOrderView(InvoicablesView):
 
         elif plan.interval == Plan.MONTHLY:
             # Give a change for discount when paying periods in advance
-            discount_percent = 0
             for nb_periods in [1, 3, 6, 12]:
                 option_items += [subscription.use_of_service(
                     nb_periods, prorated_amount, created_at,
@@ -315,7 +324,6 @@ class PlaceOrderView(InvoicablesView):
 
         elif plan.interval == Plan.YEARLY:
             # Give a change for discount when paying periods in advance
-            discount_percent = 0
             for nb_periods in [1]: # XXX disabled discount until configurable.
                 option_items += [subscription.use_of_service(
                     nb_periods, prorated_amount, created_at,
@@ -357,8 +365,8 @@ class PlaceOrderView(InvoicablesView):
             if subscription.id:
                 options = []
             else:
-                options = self.get_invoicable_options(
-                    subscription, created_at, prorate_to)
+                options = self.get_invoicable_options(subscription, created_at,
+                    prorate_to=prorate_to, coupon=cart_item.coupon)
             invoicables += [{
                 'subscription': subscription, "lines": [], "options": options}]
         return invoicables
@@ -416,27 +424,29 @@ class ChargeReceiptView(DetailView):
         return context
 
 
-class RedeemCouponForm(forms.Form):
-    """Form used to redeem a coupon."""
-    code = forms.CharField(widget=forms.TextInput(
-            attrs={'class':'form-control'}))
+class CouponListView(OrganizationMixin, ListView):
+    """
+    View to manage coupons
+    """
+    model = Coupon
 
-def redeem_coupon(request, organization):
-    """Adds a coupon to the user cart."""
-    context = {'user': request.user,
-                'organization': organization}
-    context.update(csrf(request))
-    if request.method == 'POST':
-        form = RedeemCouponForm(request.POST)
-        if form.is_valid():
-            coupon = get_object_or_404(Coupon, code=form.cleaned_data['code'])
-            coupon.user = request.user
-            coupon.customer = organization
-            coupon.save()
-        else:
-            # XXX on error find a way to get a message back to User.
-            pass
-    return redirect(reverse('saas_pay_cart', args=(organization,)))
+
+class CouponRedeemView(OrganizationMixin, FormView):
+
+    form_class = RedeemCouponForm
+
+    def form_valid(self, form):
+        for item in CartItem.objects.get_cart(self.request.user):
+            coupon = Coupon.objects.filter(code=form.cleaned_data['code'],
+                organization=item.plan.organization).first()
+            if coupon:
+                item.coupon = coupon
+                item.save()
+        return super(CouponRedeemView, self).form_valid(form)
+
+    def get_success_url(self):
+        return reverse(
+            'saas_organization_cart', args=(self.get_organization(),))
 
 
 class PayBalanceView(InvoicablesView):

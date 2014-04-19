@@ -410,6 +410,8 @@ class CartItem(models.Model):
         help_text=_("user who added the item to the cart."))
     plan = models.ForeignKey('Plan',
         help_text=_("item added to the cart."))
+    coupon = models.ForeignKey('Coupon', null=True,
+        help_text=_("coupon to apply to the plan."))
     recorded = models.BooleanField(default=False,
         help_text=_("whever the item has been checked out or not."))
 
@@ -671,16 +673,16 @@ class Coupon(models.Model):
     """
     Coupons are used on invoiced to give a rebate to a customer.
     """
-    user = models.ForeignKey(
-        settings.AUTH_USER_MODEL, db_column='user_id', null=True)
-    customer = models.ForeignKey(Organization, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
-    code = models.SlugField(primary_key=True, db_index=True)
+    code = models.SlugField()
     percent = models.IntegerField(help_text="Percentage discounted")
-    redeemed = models.BooleanField(default=False)
+    organization = models.ForeignKey(Organization)
+
+    class Meta:
+        unique_together = ('organization', 'code')
 
     def __unicode__(self):
-        return '%s-%s' % (self.user, self.code)
+        return '%s-%s' % (self.organization, self.code)
 
 
 class Plan(models.Model):

@@ -28,7 +28,8 @@ from django.conf.urls import patterns, url
 
 from saas.settings import ACCT_REGEX
 from saas.views.billing import (CardUpdateView, ChargeReceiptView,
-    PlaceOrderView, TransactionListView, redeem_coupon, PayBalanceView)
+    CouponListView, PlaceOrderView, TransactionListView,
+    CouponRedeemView, PayBalanceView)
 
 urlpatterns = patterns(
     'saas.views.billing',
@@ -37,7 +38,9 @@ urlpatterns = patterns(
     # for a plan <organization> is subscribed to.
     url(r'^receipt/(?P<charge>[a-zA-Z0-9_]+)',
         ChargeReceiptView.as_view(), name='saas_charge_receipt'),
-    url(r'^coupon/redeem/', redeem_coupon, name='saas_redeem_coupon'),
+    url(r'^coupons/', CouponListView.as_view(), name='saas_coupon_list'),
+    url(r'^redeem/',
+        CouponRedeemView.as_view(), name='saas_coupon_redeem'),
     url(r'^cart/', PlaceOrderView.as_view(), name='saas_organization_cart'),
     url(r'^card/', CardUpdateView.as_view(), name='saas_update_card'),
     url(r'^balance/((?P<subscribed_plan>%s)/)?' % ACCT_REGEX,
