@@ -400,7 +400,7 @@ class ChargeReceiptView(DetailView):
     model = Charge
     slug_field = 'processor_id'
     slug_url_kwarg = 'charge'
-    template_name = 'saas/payment_receipt.html'
+    template_name = 'saas/charge_receipt.html'
 
     def get_queryset(self):
         """
