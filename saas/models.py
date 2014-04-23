@@ -641,6 +641,25 @@ class Charge(models.Model):
               "charge %s exceed the amount of the charge.", self.processor_id)
         return charge_transaction
 
+    @property
+    def provider(self):
+        """
+        If all the invoiced items on this charge are related to the same
+        provider, returns that ``Organization`` otherwise returns the site
+        owner.
+        """
+        result = None
+        for item in self.invoiced_items.all():
+            subscription = Subscription.objects.get(pk=item.event_id)
+            if not result:
+                result = subscription.plan.organization
+            elif result != subscription.plan.organization:
+                result = None
+                break
+        if not result:
+            result = Organization.objects.get_site_owner()
+        return result
+
     def refund(self, amount=0, description=None, created_at=None):
         """
         Partially refund the charge.

@@ -1,6 +1,18 @@
 /* Functionality related to the SaaS API.
  */
 
+function showMessages(messages, style) {
+    $("#messages").removeClass('hidden');
+    var messageBlock = $('<div class="alert alert-block"><button type="button" class="close" data-dismiss="alert">&times;</button></div>');
+    $("#messages .row").append(messageBlock);
+    if( style ) {
+        messageBlock.addClass("alert-" + style);
+    }
+    for( var i = 0; i < messages.length; ++i ) {
+        messageBlock.append('<p>' + messages[i] + '</p>');
+    }
+}
+
 
 /** Create a ``Plan`` by executing an AJAX request on the backend.
  */
@@ -16,7 +28,7 @@ function createPlanAPI(organization, success) {
            contentType: "application/json; charset=utf-8",
            success: success,
            error: function(data) {
-               console.log("error", data);
+               showMessages(["An error occurred while emailing a copy of the receipt (" + data.status + " " + data.statusText + "). Please accept our apologies."], "danger");
            }
   });
 }
@@ -106,6 +118,24 @@ function waitForChargeCompleted(charge) {
       }
   });
 }
+
+
+function emailChargeReceipt() {
+  var self = $(this);
+  event.preventDefault();
+  $.ajax({ type: "POST",
+           url: urls.saas_api_email_charge_receipt,
+           datatype: "json",
+          contentType: "application/json; charset=utf-8",
+      success: function(data) {
+          showMessages(["A copy of the receipt was sent to " + data['email'] + "."], "info");
+      },
+      error: function(data) {
+          showMessages(["An error occurred while emailing a copy of the receipt (" + data.status + " " + data.statusText + "). Please accept our apologies."], "danger");
+      }
+  });
+}
+
 
 /** Update total amount charged on card based on selected subscription charges.
  */

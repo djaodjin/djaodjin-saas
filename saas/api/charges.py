@@ -22,11 +22,14 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+from rest_framework.generics import GenericAPIView
+from rest_framework.response import Response
 from rest_framework.generics import RetrieveAPIView
 from rest_framework import serializers
 
+from saas import signals
 from saas.models import Charge
-import saas.backends as backend
+from saas.mixins import ChargeMixin
 
 #pylint: disable=no-init
 #pylint: disable=old-style-class
@@ -41,14 +44,19 @@ class ChargeSerializer(serializers.ModelSerializer):
                   'processor_id', 'state')
 
 
-class ChargeResourceView(RetrieveAPIView):
+class ChargeResourceView(ChargeMixin, RetrieveAPIView):
 
-    model = Charge
-    slug_url_kwarg = 'charge'
-    slug_field = 'processor_id'
     serializer_class = ChargeSerializer
 
-    def get_object(self, queryset=None):
-        charge = super(ChargeResourceView, self).get_object(queryset)
-        backend.pull_charge(charge)
-        return charge
+
+class EmailChargeReceiptAPIView(ChargeMixin, GenericAPIView):
+    """
+    Email the charge receipt to the request user.
+    """
+
+    def post(self, request, *args, **kwargs): #pylint: disable=unused-variable
+        self.object = self.get_object()
+        signals.charge_updated.send(
+            sender=__name__, charge=self.object, user=request.user)
+        return Response({
+            "charge_id": self.object.processor_id, "email": request.user.email})

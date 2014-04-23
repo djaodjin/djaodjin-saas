@@ -27,3 +27,4 @@ from django.dispatch import Signal
 #pylint: disable=invalid-name
 bank_updated = Signal(providing_args=["organization", "user"])
 card_updated = Signal(providing_args=["organization", "user"])
+charge_updated = Signal(providing_args=["charge", "user"])

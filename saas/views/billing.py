@@ -36,7 +36,6 @@ There are two views where invoicables are presented and charges are created:
 import copy, datetime, logging
 
 from django.contrib.auth import REDIRECT_FIELD_NAME
-from django.core.exceptions import PermissionDenied
 from django.core.urlresolvers import reverse
 from django.db import IntegrityError
 from django.db.models import Q
@@ -49,9 +48,8 @@ from stripe.error import CardError
 
 import saas.backends as backend
 from saas.forms import CreditCardForm, RedeemCouponForm
-from saas.mixins import OrganizationMixin
-from saas.views.auth import valid_manager_for_organization
-from saas.models import (CartItem, Charge, Coupon, Organization, Plan,
+from saas.mixins import ChargeMixin, OrganizationMixin
+from saas.models import (CartItem, Coupon, Organization, Plan,
     Transaction, Subscription)
 from saas.humanize import (as_money, describe_buy_periods, match_unlock,
     DESCRIBE_UNLOCK_NOW, DESCRIBE_UNLOCK_LATER)
@@ -393,35 +391,11 @@ class PlaceOrderView(InvoicablesView):
         return reverse('saas_organization_profile', args=(self.customer,))
 
 
-class ChargeReceiptView(DetailView):
+class ChargeReceiptView(ChargeMixin, DetailView):
     """
     Display a receipt for a created charge.
     """
-    model = Charge
-    slug_field = 'processor_id'
-    slug_url_kwarg = 'charge'
     template_name = 'saas/charge_receipt.html'
-
-    def get_queryset(self):
-        """
-        Get the cart for this customer.
-        """
-        queryset = Charge.objects.filter(
-            processor_id=self.kwargs.get(self.slug_url_kwarg))
-        if queryset.exists():
-            self.customer = valid_manager_for_organization(
-                self.request.user, queryset.get().customer)
-        else:
-            raise PermissionDenied
-        return queryset
-
-    def get_context_data(self, **kwargs):
-        context = super(ChargeReceiptView, self).get_context_data(**kwargs)
-        invoiced_items = Transaction.objects.by_charge(self.object)
-        context.update({'charge': self.object,
-                        'invoiced_items': invoiced_items,
-                        'organization': self.customer})
-        return context
 
 
 class CouponListView(OrganizationMixin, ListView):

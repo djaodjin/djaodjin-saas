@@ -3,18 +3,14 @@
 {% load currency %}
 
 {% block saas_content %}
-<div class="container-fluid">
+<div>
   <section id="info">
-    <div class="page-header">
-      <div class="helptext">
-        <h1>Payment Receipt</h1>
-      </div>
-    </div>
-    <dl class="dl-horizontal">
+    <h1>Charge Receipt</h1>
+    <dl>
       <dt>card</dt>
       <dd>{{last4}}</dd>
     </dl>
-    <dl class="dl-horizontal">
+    <dl>
       <dt>expires</dt>
       <dd>{{exp_date}}</dd>
     </dl>

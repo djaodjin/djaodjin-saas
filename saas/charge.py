@@ -33,9 +33,10 @@ from django.shortcuts import get_object_or_404
 
 from saas.compat import datetime_or_now
 from saas.models import Charge, Organization, Transaction
-
+from saas import signals
 
 LOGGER = logging.getLogger(__name__)
+
 
 def create_charges_for_balance(until=None):
     """
@@ -74,6 +75,7 @@ def charge_succeeded(charge_id):
     charge = get_object_or_404(Charge, processor_id=charge_id)
     if charge.state != charge.DONE:
         charge.payment_successful()
+        signals.charge_updated.send(charge)
 
 
 def charge_failed(charge_id):
@@ -81,6 +83,7 @@ def charge_failed(charge_id):
     charge = get_object_or_404(Charge, processor_id=charge_id)
     charge.state = charge.FAILED
     charge.save()
+    signals.charge_updated.send(charge)
 
 
 def charge_refunded(charge_id):
@@ -89,6 +92,7 @@ def charge_refunded(charge_id):
     """
     charge = get_object_or_404(Charge, processor_id=charge_id)
     charge.refund()
+    signals.charge_updated.send(charge)
 
 
 def charge_captured(charge_id):
@@ -97,6 +101,7 @@ def charge_captured(charge_id):
     """
     charge = get_object_or_404(Charge, processor_id=charge_id)
     charge.capture()
+    signals.charge_updated.send(charge)
 
 
 def charge_dispute_created(charge_id):
@@ -106,6 +111,7 @@ def charge_dispute_created(charge_id):
     charge = get_object_or_404(Charge, processor_id=charge_id)
     charge.state = charge.DISPUTED
     charge.save()
+    signals.charge_updated.send(charge)
 
 
 def charge_dispute_updated(charge_id):
@@ -115,6 +121,7 @@ def charge_dispute_updated(charge_id):
     charge = get_object_or_404(Charge, processor_id=charge_id)
     charge.state = charge.DISPUTED
     charge.save()
+    signals.charge_updated.send(charge)
 
 
 def charge_dispute_closed(charge_id):
@@ -124,5 +131,16 @@ def charge_dispute_closed(charge_id):
     charge = get_object_or_404(Charge, processor_id=charge_id)
     charge.state = charge.DONE
     charge.save()
+    signals.charge_updated.send(charge)
 
+
+def get_charge_context(charge):
+    """
+    Return a dictionnary useful to populate charge receipt templates.
+    """
+    context = {'charge': charge,
+               'invoiced_items': charge.invoiced_items.all(),
+               'organization': charge.customer,
+               'provider': charge.provider}
+    return context
 

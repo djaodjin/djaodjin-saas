@@ -24,8 +24,30 @@
 
 from django.shortcuts import get_object_or_404
 from django.views.generic.base import ContextMixin
+from django.views.generic.detail import SingleObjectMixin
 
-from saas.models import Organization
+import saas.backends as backend
+from saas.charge import get_charge_context
+from saas.models import Charge, Organization
+
+
+class ChargeMixin(SingleObjectMixin):
+    """
+    Display a receipt for a created charge.
+    """
+    model = Charge
+    slug_field = 'processor_id'
+    slug_url_kwarg = 'charge'
+
+    def get_object(self, queryset=None):
+        charge = super(ChargeMixin, self).get_object(queryset)
+        backend.pull_charge(charge)
+        return charge
+
+    def get_context_data(self, **kwargs):
+        context = super(ChargeMixin, self).get_context_data(**kwargs)
+        context.update(get_charge_context(self.object))
+        return context
 
 
 class OrganizationMixin(ContextMixin):
