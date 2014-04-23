@@ -177,10 +177,11 @@ class InvoicablesView(InsertedURLMixin, CardFormMixin, FormView):
             self.charge = self.customer.checkout(
                 invoicables, self.request.user,
                 token=stripe_token, remember_card=remember_card)
+            messages.info(self.request, "A receipt will be sent to"\
+" %(email)s once the charge has been processed. Thank you."
+                          % {'email': self.customer.email})
         except CardError as err:
             messages.error(self.request, err)
-            print "XXX invoicables: " + str(invoicables)
-            print "XXX self.invoicables: " + str(self.invoicables)
             return self.form_invalid(form)
         return super(InvoicablesView, self).form_valid(form)
 

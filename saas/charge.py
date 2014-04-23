@@ -75,7 +75,7 @@ def charge_succeeded(charge_id):
     charge = get_object_or_404(Charge, processor_id=charge_id)
     if charge.state != charge.DONE:
         charge.payment_successful()
-        signals.charge_updated.send(charge)
+        signals.charge_updated.send(sender=__name__, charge=charge, user=None)
 
 
 def charge_failed(charge_id):
@@ -83,7 +83,7 @@ def charge_failed(charge_id):
     charge = get_object_or_404(Charge, processor_id=charge_id)
     charge.state = charge.FAILED
     charge.save()
-    signals.charge_updated.send(charge)
+    signals.charge_updated.send(sender=__name__, charge=charge, user=None)
 
 
 def charge_refunded(charge_id):
@@ -92,7 +92,7 @@ def charge_refunded(charge_id):
     """
     charge = get_object_or_404(Charge, processor_id=charge_id)
     charge.refund()
-    signals.charge_updated.send(charge)
+    signals.charge_updated.send(sender=__name__, charge=charge, user=None)
 
 
 def charge_captured(charge_id):
@@ -101,7 +101,7 @@ def charge_captured(charge_id):
     """
     charge = get_object_or_404(Charge, processor_id=charge_id)
     charge.capture()
-    signals.charge_updated.send(charge)
+    signals.charge_updated.send(charge=charge, user=None)
 
 
 def charge_dispute_created(charge_id):
@@ -111,7 +111,7 @@ def charge_dispute_created(charge_id):
     charge = get_object_or_404(Charge, processor_id=charge_id)
     charge.state = charge.DISPUTED
     charge.save()
-    signals.charge_updated.send(charge)
+    signals.charge_updated.send(sender=__name__, charge=charge, user=None)
 
 
 def charge_dispute_updated(charge_id):
@@ -121,7 +121,7 @@ def charge_dispute_updated(charge_id):
     charge = get_object_or_404(Charge, processor_id=charge_id)
     charge.state = charge.DISPUTED
     charge.save()
-    signals.charge_updated.send(charge)
+    signals.charge_updated.send(sender=__name__, charge=charge, user=None)
 
 
 def charge_dispute_closed(charge_id):
@@ -131,7 +131,7 @@ def charge_dispute_closed(charge_id):
     charge = get_object_or_404(Charge, processor_id=charge_id)
     charge.state = charge.DONE
     charge.save()
-    signals.charge_updated.send(charge)
+    signals.charge_updated.send(sender=__name__, charge=charge, user=None)
 
 
 def get_charge_context(charge):
