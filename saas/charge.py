@@ -101,7 +101,7 @@ def charge_captured(charge_id):
     """
     charge = get_object_or_404(Charge, processor_id=charge_id)
     charge.capture()
-    signals.charge_updated.send(charge=charge, user=None)
+    signals.charge_updated.send(sender=__name__, charge=charge, user=None)
 
 
 def charge_dispute_created(charge_id):
