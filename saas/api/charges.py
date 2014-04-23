@@ -53,8 +53,8 @@ class EmailChargeReceiptAPIView(ChargeMixin, GenericAPIView):
     """
     Email the charge receipt to the request user.
     """
-
-    def post(self, request, *args, **kwargs): #pylint: disable=unused-variable
+    #pylint: disable=unused-variable
+    def post(self, request, *args, **kwargs):
         self.object = self.get_object()
         signals.charge_updated.send(
             sender=__name__, charge=self.object, user=request.user)
