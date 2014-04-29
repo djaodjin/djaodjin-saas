@@ -126,6 +126,32 @@ def requires_manager(function=None):
     return decorator
 
 
+def requires_manager_or_provider(function=None):
+    """
+    Validates the user is a manager for the organization or a manager
+    for the provider's organization.
+    """
+    def decorator(view_func):
+        @wraps(view_func, assigned=available_attrs(view_func))
+        def _wrapped_view(request, *args, **kwargs):
+            # XXX Handle case of re-subscriptions...
+            subscription = get_object_or_404(Subscription,
+                organization__slug=kwargs.get('organization'),
+                plan__slug=kwargs.get('plan'))
+            try:
+                valid_manager_for_organization(
+                    request.user, subscription.organization)
+            except PermissionDenied:
+                valid_manager_for_organization(
+                    request.user, subscription.plan.organization)
+            return view_func(request, *args, **kwargs)
+        return _wrapped_view
+
+    if function:
+        return decorator(function)
+    return decorator
+
+
 def requires_paid_subscription(function=None,
                               organization_kwarg_slug='organization',
                               plan_kwarg_slug='subscribed_plan',

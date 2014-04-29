@@ -321,7 +321,7 @@ class PlaceOrderView(InvoicablesView):
                     discount_percent=discount_percent)]
                 discount_percent += 10
 
-        elif plan.interval == Plan.YEARLY:
+        else:
             # Give a change for discount when paying periods in advance
             for nb_periods in [1]: # XXX disabled discount until configurable.
                 option_items += [subscription.use_of_service(

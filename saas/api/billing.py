@@ -24,14 +24,32 @@
 
 from django.shortcuts import get_object_or_404
 from rest_framework import status
-from rest_framework.generics import CreateAPIView, DestroyAPIView
+from rest_framework.generics import CreateAPIView, DestroyAPIView, UpdateAPIView
 from rest_framework.response import Response
 from rest_framework import serializers
 
-from saas.models import CartItem, Plan
+from saas.compat import datetime_or_now
+from saas.models import CartItem, Plan, Subscription
 
 #pylint: disable=no-init
 #pylint: disable=old-style-class
+
+class SubscriptionSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = Subscription
+
+
+class SubscriptionMixin(object):
+
+    model = Subscription
+    serializer_class = SubscriptionSerializer
+
+    def get_queryset(self):
+        return Subscription.objects.filter(
+            organization__slug=self.kwargs.get('organization'),
+            plan__slug=self.kwargs.get('plan'))
+
 
 class PlanRelatedField(serializers.RelatedField):
 
@@ -149,5 +167,18 @@ class CartItemDestroyAPIView(DestroyAPIView):
             # from the database.
             return self.destroy(request, *args, **kwargs)
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class UnsubscribeAPIView(SubscriptionMixin, UpdateAPIView):
+    """
+    Unsubscribe an organization to a plan.
+    """
+
+    def update(self, request, *args, **kwargs):
+        self.object = self.get_object()
+        self.object.ends_at = datetime_or_now()
+        self.object.save()
+        serializer = self.get_serializer(self.object)
+        return Response(serializer.data) #pylint: disable=no-member
 
 

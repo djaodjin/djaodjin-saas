@@ -22,13 +22,18 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-'''SaaS API URLs'''
+"""
+API accessible by both, a manager of the provider organization
+and a manager of the subscribed organization.
+"""
 
-from django.conf.urls import patterns, include, url
+from django.conf.urls import patterns, url
 
-urlpatterns = patterns(
-    url(r'^stripe/', include('saas.backends.urls')),
-    url(r'^cart/', include('saas.urls.api.cart')),
-    url(r'^', include('saas.urls.api.subscriptions')),
-    url(r'^', include('saas.urls.api.resources')),
+from saas.api.billing import UnsubscribeAPIView
+from saas.settings import ACCT_REGEX
+
+urlpatterns = patterns('',
+    url(r'^(?P<organization>%s)/unsubscribe/((?P<subscribed_plan>%s)/)?'
+        % (ACCT_REGEX, ACCT_REGEX),
+        UnsubscribeAPIView.as_view(), name='saas_api_unsubscribe'),
 )

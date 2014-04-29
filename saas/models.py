@@ -844,6 +844,15 @@ class SubscriptionManager(models.Manager):
         ends_at = datetime_or_now(ends_at)
         return self.filter(organization=organization, ends_at__gt=ends_at)
 
+    def active_with_provider(self, organization, provider, ends_at=None):
+        """
+        Returns a list of active subscriptions for organization
+        for which provider is the owner of the plan.
+        """
+        ends_at = datetime_or_now(ends_at)
+        return self.filter(organization=organization,
+            plan__organization=provider, ends_at__gt=ends_at)
+
     def create(self, **kwargs):
         if not kwargs.has_key('ends_at'):
             created_at = datetime_or_now(kwargs.get('created_at', None))

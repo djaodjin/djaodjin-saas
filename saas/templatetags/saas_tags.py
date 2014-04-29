@@ -31,6 +31,7 @@ from django.utils.safestring import mark_safe
 
 from saas.humanize import (DESCRIBE_BALANCE, DESCRIBE_BUY_PERIODS,
     DESCRIBE_CHARGED_CARD, DESCRIBE_UNLOCK_NOW, DESCRIBE_UNLOCK_LATER)
+from saas.models import Subscription
 from saas.views.auth import valid_manager_for_organization
 
 register = template.Library()
@@ -44,6 +45,15 @@ def is_manager(request, organization):
     except PermissionDenied:
         return False
     return True
+
+
+@register.filter
+def active_with_provider(organization, provider):
+    """
+    Returns a list of active subscriptions for organization for which provider
+    is the owner of the plan.
+    """
+    return Subscription.objects.active_with_provider(organization, provider)
 
 
 @register.filter(needs_autoescape=False)
