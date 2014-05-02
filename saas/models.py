@@ -31,6 +31,7 @@
 import datetime, logging
 
 from dateutil.relativedelta import relativedelta
+from django.core.urlresolvers import reverse
 from django.db import IntegrityError, models, transaction
 from django.db.models import Sum
 from django.db.models.query import QuerySet
@@ -725,7 +726,6 @@ class Plan(models.Model):
     YEARLY = 7
 
     INTERVAL_CHOICES = [
-        (UNSPECIFIED, "UNSPECIFIED"), # XXX Appears in drop down boxes
         (HOURLY, "HOURLY"),
         (DAILY, "DAILY"),
         (WEEKLY, "WEEKLY"),
@@ -748,7 +748,7 @@ class Plan(models.Model):
     transaction_fee = models.IntegerField(default=0,
         help_text=_('Fee per transaction (in per 10000).'))
     interval = models.IntegerField(choices=INTERVAL_CHOICES)
-    unlock_event = models.CharField(max_length=128,
+    unlock_event = models.CharField(max_length=128, null=True, blank=True,
         help_text=_('Payment required to access full service'))
     # end game
     length = models.IntegerField(null=True, blank=True,
@@ -777,6 +777,9 @@ class Plan(models.Model):
         elif self.interval == self.YEARLY:
             result += relativedelta(years=1 * nb_periods)
         return result
+
+    def get_absolute_url(self):
+        return reverse('saas_plan_edit', args=(self.organization, self,))
 
     def get_title(self):
         """

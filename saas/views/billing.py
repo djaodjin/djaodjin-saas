@@ -321,13 +321,17 @@ class PlaceOrderView(InvoicablesView):
                     discount_percent=discount_percent)]
                 discount_percent += 10
 
-        else:
+        elif plan.interval == Plan.YEARLY:
             # Give a change for discount when paying periods in advance
             for nb_periods in [1]: # XXX disabled discount until configurable.
                 option_items += [subscription.use_of_service(
                     nb_periods, prorated_amount, created_at,
                     discount_percent=discount_percent)]
                 discount_percent += 10
+
+        else:
+            raise IntegrityError(#pylint: disable=nonstandard-exception
+                "Cannot use interval specified for plan '%s'" % plan)
 
         return option_items
 
