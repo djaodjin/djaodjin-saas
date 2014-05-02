@@ -49,6 +49,19 @@ class ChargeResourceView(ChargeMixin, RetrieveAPIView):
     serializer_class = ChargeSerializer
 
 
+class ChargeRefundAPIView(ChargeMixin, GenericAPIView):
+    """
+    Refund part of a ``Charge``.
+    """
+
+    serializer_class = ChargeSerializer
+
+    def post(self, request, *args, **kwargs): #pylint: disable=unused-argument
+        self.object = self.get_object()
+        print "XXX " + str(request.DATA)
+        return Response(self.object)
+
+
 class EmailChargeReceiptAPIView(ChargeMixin, GenericAPIView):
     """
     Email the charge receipt to the request user.

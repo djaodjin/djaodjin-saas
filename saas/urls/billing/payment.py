@@ -23,37 +23,26 @@
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 """
-URLs for the resources API of djaodjin saas.
+URLs updating processing information and inserting transactions
+through POST requests.
 """
 
 from django.conf.urls import patterns, url
+
 from saas.settings import ACCT_REGEX
+from saas.views.billing import (CardUpdateView,
+    CouponListView, PlaceOrderView, CouponRedeemView, PayBalanceView)
 
-from saas.api.charges import (ChargeResourceView, EmailChargeReceiptAPIView,
-    ChargeRefundAPIView)
-from saas.api.coupons import CouponListAPIView, CouponDetailAPIView
-from saas.api.plans import (PlanActivateAPIView, PlanCreateAPIView,
-    PlanResourceView)
-
-urlpatterns = patterns('saas.api',
-    url(r'^(?P<organization>%s)/coupons/(?P<coupon>%s)/'
-        % (ACCT_REGEX, ACCT_REGEX),
-        CouponDetailAPIView.as_view(), name='saas_api_coupon_detail'),
-    url(r'^(?P<organization>%s)/coupons/?' % ACCT_REGEX,
-        CouponListAPIView.as_view(), name='saas_api_coupon_list'),
-    url(r'^plans/(?P<plan>%s)/activate/' % ACCT_REGEX,
-        PlanActivateAPIView.as_view(), name='saas_api_plan_activate'),
-    url(r'^plans/(?P<plan>%s)/' % ACCT_REGEX,
-        PlanResourceView.as_view(), name='saas_api_plan'),
-    url(r'^plans/$',
-        PlanCreateAPIView.as_view(), name='saas_api_plan_new'),
-    url(r'^charges/(?P<charge>%s)/refund/' % ACCT_REGEX,
-        ChargeRefundAPIView.as_view(),
-        name='saas_api_charge_refund'),
-    url(r'^charges/(?P<charge>%s)/email/' % ACCT_REGEX,
-        EmailChargeReceiptAPIView.as_view(),
-        name='saas_api_email_charge_receipt'),
-    url(r'^charges/(?P<charge>%s)/' % ACCT_REGEX,
-        ChargeResourceView.as_view(), name='saas_api_charge'),
+urlpatterns = patterns(
+    'saas.views.billing',
+    # Implementation Note: <subscribed_plan> (not <plan>) such that
+    # the required_manager decorator does not raise a PermissionDenied
+    # for a plan <organization> is subscribed to.
+    url(r'^coupons/', CouponListView.as_view(), name='saas_coupon_list'),
+    url(r'^redeem/',
+        CouponRedeemView.as_view(), name='saas_coupon_redeem'),
+    url(r'^cart/', PlaceOrderView.as_view(), name='saas_organization_cart'),
+    url(r'^card/', CardUpdateView.as_view(), name='saas_update_card'),
+    url(r'^balance/((?P<subscribed_plan>%s)/)?' % ACCT_REGEX,
+        PayBalanceView.as_view(), name='saas_organization_balance'),
 )
-

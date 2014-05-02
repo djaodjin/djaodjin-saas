@@ -23,37 +23,16 @@
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 """
-URLs for the resources API of djaodjin saas.
+URLs responding to GET requests with billing history.
 """
 
 from django.conf.urls import patterns, url
-from saas.settings import ACCT_REGEX
 
-from saas.api.charges import (ChargeResourceView, EmailChargeReceiptAPIView,
-    ChargeRefundAPIView)
-from saas.api.coupons import CouponListAPIView, CouponDetailAPIView
-from saas.api.plans import (PlanActivateAPIView, PlanCreateAPIView,
-    PlanResourceView)
+from saas.views.billing import ChargeReceiptView, TransactionListView
 
-urlpatterns = patterns('saas.api',
-    url(r'^(?P<organization>%s)/coupons/(?P<coupon>%s)/'
-        % (ACCT_REGEX, ACCT_REGEX),
-        CouponDetailAPIView.as_view(), name='saas_api_coupon_detail'),
-    url(r'^(?P<organization>%s)/coupons/?' % ACCT_REGEX,
-        CouponListAPIView.as_view(), name='saas_api_coupon_list'),
-    url(r'^plans/(?P<plan>%s)/activate/' % ACCT_REGEX,
-        PlanActivateAPIView.as_view(), name='saas_api_plan_activate'),
-    url(r'^plans/(?P<plan>%s)/' % ACCT_REGEX,
-        PlanResourceView.as_view(), name='saas_api_plan'),
-    url(r'^plans/$',
-        PlanCreateAPIView.as_view(), name='saas_api_plan_new'),
-    url(r'^charges/(?P<charge>%s)/refund/' % ACCT_REGEX,
-        ChargeRefundAPIView.as_view(),
-        name='saas_api_charge_refund'),
-    url(r'^charges/(?P<charge>%s)/email/' % ACCT_REGEX,
-        EmailChargeReceiptAPIView.as_view(),
-        name='saas_api_email_charge_receipt'),
-    url(r'^charges/(?P<charge>%s)/' % ACCT_REGEX,
-        ChargeResourceView.as_view(), name='saas_api_charge'),
+urlpatterns = patterns(
+    'saas.views.billing',
+    url(r'^receipt/(?P<charge>[a-zA-Z0-9_]+)',
+        ChargeReceiptView.as_view(), name='saas_charge_receipt'),
+    url(r'^$', TransactionListView.as_view(), name='saas_billing_info'),
 )
-

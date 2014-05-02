@@ -103,37 +103,61 @@ function toggleActivatePlan(event) {
 }
 
 
-function waitForChargeCompleted(charge) {
-  $.ajax({ type: "GET",
-           url: '/api/charges/' + charge + '/',
+var Charge = function(charge_id, urls) {
+    this.charge_id = charge_id;
+    this.urls = urls;
+};
+
+
+Charge.prototype.emailReceipt = function() {
+    var self = this;
+    event.preventDefault();
+    $.ajax({ type: "POST",
+           url: self.urls.saas_api_email_charge_receipt,
            datatype: "json",
           contentType: "application/json; charset=utf-8",
-      success: function(data) {
-          if( data['state'] == 'created' ) {
-             setTimeout('waitForChargeCompleted("' + charge + '");', 1000);
-          } else {
-              $('.created').addClass('hidden');
-              $('.' + data['state']).removeClass('hidden');
-          }
-      }
-  });
+        success: function(data) {
+            showMessages(["A copy of the receipt was sent to " + data['email'] + "."], "info");
+        },
+        error: function(data) {
+            showMessages(["An error occurred while emailing a copy of the receipt (" + data.status + " " + data.statusText + "). Please accept our apologies."], "danger");
+        }
+    });
 }
 
 
-function emailChargeReceipt() {
-  var self = $(this);
-  event.preventDefault();
-  $.ajax({ type: "POST",
-           url: urls.saas_api_email_charge_receipt,
+Charge.prototype.refund = function() {
+    var self = this;
+    event.preventDefault();
+    $.ajax({ type: "POST",
+           url: self.urls.saas_api_charge_refund,
            datatype: "json",
           contentType: "application/json; charset=utf-8",
-      success: function(data) {
-          showMessages(["A copy of the receipt was sent to " + data['email'] + "."], "info");
-      },
-      error: function(data) {
-          showMessages(["An error occurred while emailing a copy of the receipt (" + data.status + " " + data.statusText + "). Please accept our apologies."], "danger");
-      }
-  });
+        success: function(data) {
+          showMessages(["The transaction was refunded."], "info");
+        },
+        error: function(data) {
+          showMessages(["An error occurred while refunding the charge (" + data.status + " " + data.statusText + "). Please accept our apologies."], "danger");
+        }
+    });
+}
+
+
+Charge.prototype.waitForCompletion = function() {
+    var self = this;
+    $.ajax({ type: "GET",
+           url: self.urls.saas_api_charge,
+           datatype: "json",
+          contentType: "application/json; charset=utf-8",
+        success: function(data) {
+            if( data['state'] == 'created' ) {
+                setTimeout(function() { self.waitForCompletion(); }, 1000);
+            } else {
+                $('.created').addClass('hidden');
+                $('.' + data['state']).removeClass('hidden');
+            }
+        }
+    });
 }
 
 

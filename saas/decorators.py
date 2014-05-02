@@ -45,7 +45,7 @@ from django.http import Http404
 from django.shortcuts import get_object_or_404
 from django.utils.decorators import available_attrs
 
-from saas.models import Charge, Plan, Signature, Subscription
+from saas.models import Charge, Organization, Plan, Signature, Subscription
 from saas.views.auth import valid_manager_for_organization
 
 LOGGER = logging.getLogger(__name__)
@@ -134,16 +134,23 @@ def requires_manager_or_provider(function=None):
     def decorator(view_func):
         @wraps(view_func, assigned=available_attrs(view_func))
         def _wrapped_view(request, *args, **kwargs):
-            # XXX Handle case of re-subscriptions...
-            subscription = get_object_or_404(Subscription,
-                organization__slug=kwargs.get('organization'),
-                plan__slug=kwargs.get('plan'))
+            organization = get_object_or_404(Organization,
+                slug=kwargs.get('organization'))
             try:
-                valid_manager_for_organization(
-                    request.user, subscription.organization)
+                valid_manager_for_organization(request.user, organization)
             except PermissionDenied:
-                valid_manager_for_organization(
-                    request.user, subscription.plan.organization)
+                provider = None
+                for prov in Organization.objects.providers_to(organization):
+                    try:
+                        provider = valid_manager_for_organization(
+                            request.user, prov)
+                        break
+                    except PermissionDenied:
+                        pass
+                if not provider:
+                    raise PermissionDenied("%(user)s is neither a manager '\
+' of %(organization)s nor a manager of one of %(organization)s providers."
+                        % {'user': request.user, 'organization': organization})
             return view_func(request, *args, **kwargs)
         return _wrapped_view
 

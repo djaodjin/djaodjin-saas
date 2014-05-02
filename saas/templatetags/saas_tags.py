@@ -90,3 +90,19 @@ def describe(transaction):
     return mark_safe(
             transaction.descr.replace(look.group('plan'), plan_link))
 
+
+@register.filter(needs_autoescape=False)
+def refund_enable(transaction, user):
+    """
+    Returns True if *user* is able to trigger a refund on *transaction*.
+    """
+    subscription = Subscription.objects.filter(pk=transaction.event_id).first()
+    if subscription:
+        try:
+            valid_manager_for_organization(user, subscription.plan.organization)
+            return True
+        except PermissionDenied:
+            pass
+    return False
+
+

@@ -126,6 +126,14 @@ class OrganizationManager(models.Manager):
             return self.filter(pk__in=selectors)
         return self.none()
 
+    def providers_to(self, organization):
+        """
+        Set of ``Organization`` which provides active services
+        to a subscribed *organization*.
+        """
+        return self.providers(Subscription.objects.filter(
+            organization=organization))
+
 
 class Organization_Managers(models.Model): #pylint: disable=invalid-name
 
