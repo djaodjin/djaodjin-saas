@@ -40,7 +40,7 @@ from django.core.urlresolvers import reverse
 from django.db import IntegrityError
 from django.db.models import Q
 from django.contrib import messages
-from django.shortcuts import get_object_or_404
+from django.shortcuts import get_object_or_404, redirect
 from django.utils.timezone import utc
 from django.views.generic import DetailView, FormView, ListView
 from django.views.generic.base import ContextMixin
@@ -422,6 +422,10 @@ class CouponRedeemView(OrganizationMixin, FormView):
                 item.coupon = coupon
                 item.save()
         return super(CouponRedeemView, self).form_valid(form)
+
+    def form_invalid(self, form):
+        messages.error(self.request, "The Coupon is invalid.")
+        return redirect(self.get_success_url())
 
     def get_success_url(self):
         return reverse(
