@@ -44,6 +44,13 @@ class CouponMixin(OrganizationMixin):
 
     model = Coupon
     serializer_class = CouponSerializer
+    slug_field = 'code'
+    slug_url_kwarg = 'coupon'
+
+    def get_queryset(self):
+        queryset = super(CouponMixin, self).get_queryset()
+        return queryset.filter(organization__slug=self.kwargs.get(
+                self.organization_url_kwarg))
 
     def pre_save(self, obj):
         """
@@ -55,16 +62,8 @@ class CouponMixin(OrganizationMixin):
 
 class CouponListAPIView(CouponMixin, ListCreateAPIView):
 
-    model = Coupon
-    serializer_class = CouponSerializer
-
-    def get_queryset(self):
-        queryset = super(CouponListAPIView, self).get_queryset()
-        return queryset.filter(organization__slug=self.kwargs.get(
-                self.organization_url_kwarg))
-
+    pass
 
 class CouponDetailAPIView(CouponMixin, RetrieveUpdateDestroyAPIView):
 
-#    lookup_field = 'id'
     pass

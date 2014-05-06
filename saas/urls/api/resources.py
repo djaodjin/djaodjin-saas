@@ -35,7 +35,7 @@ from saas.api.plans import (PlanActivateAPIView, PlanCreateAPIView,
     PlanResourceView)
 
 urlpatterns = patterns('saas.api',
-    url(r'^(?P<organization>%s)/coupons/(?P<coupon>%s)/'
+    url(r'^(?P<organization>%s)/coupons/(?P<coupon>%s)/?'
         % (ACCT_REGEX, ACCT_REGEX),
         CouponDetailAPIView.as_view(), name='saas_api_coupon_detail'),
     url(r'^(?P<organization>%s)/coupons/?' % ACCT_REGEX,
