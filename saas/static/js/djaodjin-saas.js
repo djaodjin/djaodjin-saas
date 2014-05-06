@@ -11,6 +11,8 @@ function showMessages(messages, style) {
     for( var i = 0; i < messages.length; ++i ) {
         messageBlock.append('<p>' + messages[i] + '</p>');
     }
+    $("html, body").animate({ scrollTop: $("#messages").offset().top - 50 },
+        500);
 }
 
 
