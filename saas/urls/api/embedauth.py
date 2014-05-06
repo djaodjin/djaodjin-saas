@@ -22,12 +22,23 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-'''SaaS API URLs'''
+"""
+These URLs embed their own authentication directly into the implementation.
+
+While most URLs rely on external decorators to grant permissions, these
+URLs have peculiar requirements more easily encoded as part of the view
+implementation itself.
+"""
 
 from django.conf.urls import patterns, include, url
+from saas.settings import ACCT_REGEX
+
+from saas.api.charges import ChargeRefundAPIView
 
 urlpatterns = patterns(
-    url(r'^', include('saas.urls.api.embedauth')),
-    url(r'^', include('saas.urls.api.subscriptions')),
-    url(r'^', include('saas.urls.api.resources')),
+    url(r'^stripe/', include('saas.backends.urls')),
+    url(r'^cart/', include('saas.urls.api.cart')),
+    url(r'^charges/(?P<charge>%s)/refund/' % ACCT_REGEX,
+        ChargeRefundAPIView.as_view(),
+        name='saas_api_charge_refund'),
 )

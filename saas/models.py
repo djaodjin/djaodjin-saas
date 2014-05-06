@@ -45,9 +45,15 @@ from saas import get_manager_relation_model, get_contributor_relation_model
 from saas.compat import datetime_or_now
 
 from saas.humanize import (as_money, describe_buy_periods, DESCRIBE_BALANCE,
-    DESCRIBE_CHARGED_CARD)
+    DESCRIBE_CHARGED_CARD, DESCRIBE_CHARGED_CARD_PROCESSOR,
+    DESCRIBE_CHARGED_CARD_PROVIDER, DESCRIBE_CHARGED_CARD_REFUND)
 
 LOGGER = logging.getLogger(__name__)
+
+class InsufficientFunds(Exception):
+
+    pass
+
 
 class OrganizationManager(models.Manager):
 
@@ -202,6 +208,9 @@ class Organization(models.Model):
     subscriptions = models.ManyToManyField('Plan',
         related_name='subscribes', through='Subscription')
     billing_start = models.DateField(null=True, auto_now_add=True)
+
+    funds_balance = models.IntegerField(default=0,
+        help_text="Funds escrowed in cents")
     processor = models.CharField(null=True, max_length=20)
     processor_id = models.CharField(null=True,
         blank=True, max_length=20)
@@ -283,6 +292,26 @@ class Organization(models.Model):
             organization=self, user=user)
         relation.delete()
 
+    def processor_fee(self, total_amount):
+        """
+        Returns a triplet: third-party ``Organization`` processing the payment,
+        fee amount and id of the subscription this provider organization
+        has to the payment processor.
+        """
+        try:
+            provider_subscription = Subscription.objects.get(
+                organization=self,
+                plan__organization=Organization.objects.get_site_owner())
+            processor = provider_subscription.plan.organization
+            provider_subscription_id = provider_subscription.id
+            fee_amount = provider_subscription.plan.prorate_transaction(
+                total_amount)
+        except Subscription.DoesNotExist:
+            processor = Organization.objects.get_site_owner()
+            provider_subscription_id = None
+            fee_amount = 0
+        return processor, fee_amount, provider_subscription_id
+
     @method_decorator(transaction.atomic)
     def withdraw_funds(self, amount, user, created_at=None):
         """
@@ -291,24 +320,11 @@ class Organization(models.Model):
         This will create two transactions. For example:
 
         2014/01/31 00:00:00 #hosting - distribution to cowork
-            djaodjin:Expenses                            6000
-            djaodjin:Funds
-
-        2014/01/31 00:00:00 #hosting - distribution to cowork
-            cowork:Funds                                 6000
-            djaodjin:Payable
+            cowork:Funds                            6000
+            cowork:Withdraw
         """
         import saas.backends as backend # avoid import loop
         created_at = datetime_or_now(created_at)
-        try:
-            provider_subscription = Subscription.objects.get(
-                organization=self,
-                plan__organization=Organization.objects.get_site_owner())
-            processor = provider_subscription.plan.organization
-            provider_subscription_id = provider_subscription.id
-        except Subscription.DoesNotExist:
-            processor = Organization.objects.get_site_owner()
-            provider_subscription_id = None
         descr = "withdraw from %s" % self.full_name
         if user:
             descr += ' (%s)' % user.username
@@ -319,26 +335,14 @@ class Organization(models.Model):
             event_id=processor_transfer_id,
             descr=descr,
             created_at=created_at,
-            orig_amount=amount,
-            orig_account=Transaction.PAYABLE,
-            orig_organization=processor,
             dest_amount=amount,
             dest_account=Transaction.FUNDS,
-            dest_organization=self)
-        descr = "withdraw by %s" % self.full_name
-        if user:
-            descr += ' (%s)' % user.username
-        # expense
-        Transaction.objects.create(
-            event_id=provider_subscription_id,
-            descr=descr,
-            created_at=created_at,
+            dest_organization=self,
             orig_amount=amount,
-            orig_account=Transaction.FUNDS,
-            orig_organization=processor,
-            dest_amount=amount,
-            dest_account=Transaction.EXPENSES,
-            dest_organization=processor)
+            orig_account=Transaction.WITHDRAW,
+            orig_organization=self)
+        self.funds_balance += amount
+        self.save()
 
 
 class Agreement(models.Model):
@@ -471,8 +475,8 @@ class ChargeManager(models.Manager):
                 processor_id=processor_charge_id, amount=amount,
                 created_at=created_at, description=descr,
                 customer=customer, last4=last4, exp_date=exp_date)
-            charge.invoiced_items.add(*transactions) #pylint: disable=star-args
-            charge.save()
+            for invoiced in transactions:
+                ChargeItem.objects.create(invoiced=invoiced, charge=charge)
             LOGGER.info('Created charge #%s of %d cents to %s',
                         charge.processor_id, charge.amount, customer)
         except InvalidRequestError:
@@ -515,9 +519,6 @@ class Charge(models.Model):
     amount = models.IntegerField(default=0, help_text="Amount in cents")
     customer = models.ForeignKey(Organization,
         help_text='organization charged')
-    invoiced_items = models.ManyToManyField(
-        'Transaction', related_name='charges',
-        help_text="transactions invoiced through this charge")
     description = models.TextField(null=True)
     last4 = models.IntegerField()
     exp_date = models.DateField()
@@ -536,7 +537,7 @@ class Charge(models.Model):
         """
         Returns the total amount of all invoiced items.
         """
-        return sum_dest_amount(self.invoiced_items.all())
+        return sum_dest_amount(Transaction.objects.by_charge(self))
 
     @property
     def is_disputed(self):
@@ -565,85 +566,72 @@ class Charge(models.Model):
         is created from client payable to processor assets. The amount of the
         charge is then redistributed to the providers (minus processor fee).
         """
+        assert self.state == self.CREATED
         self.state = self.DONE
         self.save()
 
         # Example:
         # 2014/01/15 00:00:00 charge on xia card
         #     xia:Expenses                                 13800
-        #     djaodjin:Income
+        #     xia:Payable
         charge_transaction = Transaction.objects.create(
             event_id=self.id,
             descr=self.description,
             created_at=self.created_at,
-            orig_amount=self.amount,
-            orig_account=Transaction.INCOME,
-            orig_organization=Organization.objects.get_site_owner(),
             dest_amount=self.amount,
             dest_account=Transaction.EXPENSES,
-            dest_organization=self.customer)
+            dest_organization=self.customer,
+            orig_amount=self.amount,
+            orig_account=Transaction.PAYABLE,
+            orig_organization=self.customer)
         # Once we have created a transaction for the charge, let's
         # redistribute the money to the rightful owners.
-        for item in self.invoiced_items.all():
-            subscription = Subscription.objects.get(pk=item.event_id)
-            customer = subscription.organization
+        for charge_item in self.charge_items.all(): #pylint: disable=no-member
+            invoiced_item = charge_item.invoiced
+            subscription = Subscription.objects.get(pk=invoiced_item.event_id)
             provider = subscription.plan.organization
-            try:
-                provider_subscription = Subscription.objects.get(
-                    organization=subscription.plan.organization,
-                    plan__organization=Organization.objects.get_site_owner())
-                processor = provider_subscription.plan.organization
-                provider_subscription_id = provider_subscription.id
-                fee_amount = provider_subscription.plan.prorate_transaction(
-                    item.dest_amount)
-            except Subscription.DoesNotExist:
-                processor = Organization.objects.get_site_owner()
-                provider_subscription_id = None
-                fee_amount = 0
-            distribute_amount = item.dest_amount - fee_amount
+            total_amount = invoiced_item.dest_amount
+            processor, fee_amount, provider_subscription_id = \
+                provider.processor_fee(total_amount)
+            distribute_amount = invoiced_item.dest_amount - fee_amount
             if fee_amount > 0:
                 # Example:
                 # 2014/01/15 00:00:00 #hosting - fee to cowork
-                #           cowork:Expenses                                900
-                #           djaodjin:Funds
-                Transaction.objects.create(
+                #           djaodjin:Escrow                                900
+                #           djaodjin:Income
+                charge_item.invoiced_fee = Transaction.objects.create(
                     event_id=provider_subscription_id,
-                    descr="Processing fee for %s" % subscription,
+                    descr=DESCRIBE_CHARGED_CARD_PROCESSOR % {
+                        'charge': self.processor_id,
+                        'subscription': subscription},
                     created_at=self.created_at,
-                    orig_amount=fee_amount,
-                    orig_account=Transaction.FUNDS,
-                    orig_organization=processor,
                     dest_amount=fee_amount,
-                    dest_account=Transaction.EXPENSES,
-                    dest_organization=provider)
+                    dest_account=Transaction.ESCROW,
+                    dest_organization=processor,
+                    orig_amount=fee_amount,
+                    orig_account=Transaction.INCOME,
+                    orig_organization=processor)
+                charge_item.save()
+
             # Example:
             # 2014/01/15 00:00:00 #hosting - distribution due to cowork
-            #           djaodjin:Payable                              6000
+            #           djaodjin:Escrow                          6000
             #           cowork:Funds
             Transaction.objects.create(
                 event_id=provider_subscription_id,
-                descr="distribution due to %s" % provider,
+                descr=DESCRIBE_CHARGED_CARD_PROVIDER % {
+                        'charge': self.processor_id,
+                        'subscription': subscription},
                 created_at=self.created_at,
+                dest_amount=distribute_amount,
+                dest_account=Transaction.ESCROW,
+                dest_organization=processor,
                 orig_amount=distribute_amount,
                 orig_account=Transaction.FUNDS,
-                orig_organization=provider,
-                dest_amount=distribute_amount,
-                dest_account=Transaction.PAYABLE,
-                dest_organization=processor)
-            # Example:
-            # 2014/01/15 00:00:00 #desk - payment for subscription
-            #           djaodjin:Funds                                6900
-            #           xia:Payable
-            Transaction.objects.create(
-                event_id=subscription.id,
-                descr="payment for %s" % subscription.plan,
-                created_at=self.created_at,
-                orig_amount=item.dest_amount,
-                orig_account=Transaction.PAYABLE,
-                orig_organization=customer,
-                dest_amount=item.dest_amount,
-                dest_account=Transaction.FUNDS,
-                dest_organization=processor)
+                orig_organization=provider)
+            provider.funds_balance -= distribute_amount
+            provider.save()
+
         if self.invoiced_total_amount > self.amount:
             #pylint: disable=nonstandard-exception
             raise IntegrityError("The total amount of invoiced items for "\
@@ -658,8 +646,9 @@ class Charge(models.Model):
         owner.
         """
         result = None
-        for item in self.invoiced_items.all():
-            subscription = Subscription.objects.get(pk=item.event_id)
+        for charge_item in self.charge_items.all(): #pylint: disable=no-member
+            invoiced_item = charge_item.invoiced
+            subscription = Subscription.objects.get(pk=invoiced_item.event_id)
             if not result:
                 result = subscription.plan.organization
             elif result != subscription.plan.organization:
@@ -669,32 +658,122 @@ class Charge(models.Model):
             result = Organization.objects.get_site_owner()
         return result
 
-    def refund(self, amount=0, description=None, created_at=None):
+    @method_decorator(transaction.atomic)
+    def refund(self, linenum, created_at=None):
+        # XXX We donot currently supply a *description* for the refund.
         """
-        Partially refund the charge.
+        Partially refund a charge for transaction *linenum*.
         """
+        import saas.backends as backend # avoid import loop
+        assert self.state == self.DONE
         created_at = datetime_or_now(created_at)
-        # XXX fix
-        Transaction.objects.create(
+        #pylint: disable=no-member
+        charge_item = self.charge_items.all()[linenum]
+        invoiced_item = charge_item.invoiced
+        customer = invoiced_item.dest_organization
+        provider = invoiced_item.orig_organization
+        total_amount = invoiced_item.dest_amount
+
+        # Record the intent of refunding the charge item
+        # Example:
+        # 2014/01/15 00:00:00 refund line item
+        #           cowork:Payable                              6900
+        #           xia:Refunded
+        descr = DESCRIBE_CHARGED_CARD_REFUND % {
+            'charge': self.processor_id, 'descr': invoiced_item.descr}
+        charge_item.refunded = Transaction.objects.create(
+            event_id=invoiced_item.event_id,
+            descr=descr,
             created_at=created_at,
-            orig_amount=amount,
-            orig_organization=Organization.objects.get_site_owner(),
-            orig_account=Transaction.FUNDS,
-            dest_organization=Organization.objects.get_site_owner(),
-            dest_account=Transaction.REFUND,
-            dest_amount=amount,
-            descr=description,
-            event_id=self.processor_id)
+            orig_amount=total_amount,
+            orig_account=Transaction.REFUNDED,
+            orig_organization=customer,
+            dest_amount=total_amount,
+            dest_account=Transaction.PAYABLE,
+            dest_organization=provider)
+        charge_item.save()
+
+        fee_amount = 0
+        processor = Organization.objects.get_site_owner()
+        if charge_item.invoiced_fee:
+            # 2014/01/31 Revert processing Fee to elearning
+            #           djaodjin:Refund                                   900
+            #           djaodjin:Escrow
+            fee_amount = charge_item.invoiced_fee.orig_amount
+            Transaction.objects.create(
+                event_id=charge_item.invoiced_fee.event_id,
+                # The Charge id is already included in the description here.
+                descr="Refunded %s" % charge_item.invoiced_fee.descr,
+                created_at=created_at,
+                dest_amount=fee_amount,
+                dest_account=Transaction.REFUND,
+                dest_organization=processor,
+                orig_amount=fee_amount,
+                orig_account=Transaction.ESCROW,
+                orig_organization=processor)
+
+        distribute_amount = total_amount - fee_amount
+        if provider.funds_balance + distribute_amount > 0:
+            raise InsufficientFunds(
+                '%(provider)s has %(funds_available)s of funds available.'\
+' %(funds_required)s are required to refund "%(descr)s"' % {
+                    'provider': provider,
+                   'funds_available': as_money(abs(provider.funds_balance)),
+                   'funds_required': as_money(abs(distribute_amount)),
+                   'descr': invoiced_item.descr})
+
+        # 2014/01/31 Amount kept on behalf of elearning
+        #            elearning:Funds                                    6000
+        #            djaodjin:Escrow
         Transaction.objects.create(
+            event_id=invoiced_item.event_id,
+            descr=descr,
             created_at=created_at,
-            orig_amount=amount,
-            orig_organization=Organization.objects.get_site_owner(),
-            orig_account=Transaction.REFUND,
-            dest_organization=self.customer,
+            dest_amount=distribute_amount,
             dest_account=Transaction.FUNDS,
-            dest_amount=amount,
-            descr=description,
-            event_id=self.processor_id)
+            dest_organization=provider,
+            orig_amount=distribute_amount,
+            orig_account=Transaction.ESCROW,
+            orig_organization=processor)
+        provider.funds_balance += distribute_amount
+        provider.save()
+
+        # 2014/01/31 Promise was fulfiled as far as Xia is concerned
+        #           elearning:Refund                              6900
+        #           elearning:Payable
+        Transaction.objects.create(
+            event_id=invoiced_item.event_id,
+            descr=descr,
+            created_at=created_at,
+            dest_amount=total_amount,
+            dest_account=Transaction.REFUND,
+            dest_organization=provider,
+            orig_amount=total_amount,
+            orig_account=Transaction.PAYABLE,
+            orig_organization=provider)
+
+        backend.refund_charge(self, distribute_amount)
+
+
+class ChargeItem(models.Model):
+    """
+    Keep track of each item invoiced within a ``Charge``.
+    """
+    charge = models.ForeignKey(Charge, related_name='charge_items')
+    invoiced = models.ForeignKey('Transaction', related_name='invoiced_item',
+        help_text="transaction invoiced through this charge")
+    invoiced_fee = models.ForeignKey('Transaction', null=True,
+        related_name='invoiced_fee_item',
+        help_text="fee transaction to process the transaction invoiced"\
+" through this charge")
+    refunded = models.ForeignKey('Transaction', related_name='refunded_item',
+        null=True, help_text="transaction for the refund of the charge item")
+
+    class Meta:
+        unique_together = ('charge', 'invoiced')
+
+    def __unicode__(self):
+        return '%s-%s' % (unicode(self.charge), unicode(self.invoiced))
 
 
 class Coupon(models.Model):
@@ -939,8 +1018,10 @@ class Subscription(models.Model):
 class TransactionManager(models.Manager):
 
     def by_charge(self, charge):
-        #pylint: disable=no-self-use
-        return charge.invoiced_items.all()
+        #select * from transactions inner join charge_items on
+        #transaction.id=charge_items.invoiced and charge_items.charge=charge;
+        print "XXX YOP for %s" % str(charge)
+        return self.filter(invoiced_item__charge=charge)
 
     def by_subsciptions(self, subscriptions, at_time=None):
         """
@@ -1094,14 +1175,18 @@ class Transaction(models.Model):
 
     use 'ledger register' for tax acrual tax reporting.
     '''
-    FUNDS = 'Funds'
-    INCOME = 'Income'
-    PAYABLE = 'Payable'
-    EXPENSES = 'Expenses'
+    FUNDS = 'Funds'         # <= 0 receipient side
+    INCOME = 'Income'       # <= 0 receipient side
+    REFUNDED = 'Refunded'   # <= 0 billing side
+    WITHDRAW = 'Withdraw'
+
+    ESCROW = 'Escrow'       # processor side
+    EXPENSES = 'Expenses'   # >= 0 billing side
+    PAYABLE = 'Payable'     # >= 0 billing side
+    REFUND = 'Refund'       # >= 0 receipient side
 
     CHARGEBACK = 'Chargeback'
     REDEEM = 'Redeem'
-    REFUND = 'Refund'
     WRITEOFF = 'Writeoff'
 
     objects = TransactionManager()

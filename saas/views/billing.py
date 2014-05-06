@@ -228,6 +228,10 @@ class CardUpdateView(InsertedURLMixin, CardFormMixin, FormView):
 
 
 class TransactionListView(ListView):
+    """
+    This page shows the subscriptions an Organization paid for
+    as well as payment refunded.
+    """
 
     paginate_by = 10
     template_name = 'saas/billing_info.html'
@@ -240,10 +244,12 @@ class TransactionListView(ListView):
         self.customer = get_object_or_404(
             Organization, slug=self.kwargs.get(self.organization_url_kwarg))
         queryset = Transaction.objects.filter(
-            Q(dest_account=Transaction.PAYABLE)
-            | Q(dest_account=Transaction.EXPENSES),
-            dest_organization=self.customer
-        ).exclude(orig_account=Transaction.PAYABLE).order_by('-created_at')
+            (Q(dest_organization=self.customer)
+             & ((Q(dest_account=Transaction.PAYABLE) # Only customer side
+                 & Q(orig_account=Transaction.INCOME))
+                | Q(dest_account=Transaction.EXPENSES)))
+            |(Q(orig_organization=self.customer)
+              & Q(orig_account=Transaction.REFUNDED))).order_by('-created_at')
         return queryset
 
     def get_context_data(self, **kwargs):

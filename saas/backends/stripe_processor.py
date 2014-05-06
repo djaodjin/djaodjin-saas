@@ -108,6 +108,14 @@ def create_charge(customer, amount, descr=None):
                           processor_charge.card.exp_month, 1))
 
 
+def refund_charge(charge, amount):
+    """
+    Refund a charge on the associated card.
+    """
+    processor_charge = stripe.Charge.retrieve(charge.processor_id)
+    processor_charge.refund(amount=amount)
+
+
 def create_charge_on_card(card, amount, descr=None):
     """
     Create a charge on a specified card.

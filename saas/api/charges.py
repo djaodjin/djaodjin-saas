@@ -22,13 +22,15 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+from django.http import Http404
+from rest_framework import status
 from rest_framework.generics import GenericAPIView
 from rest_framework.response import Response
 from rest_framework.generics import RetrieveAPIView
 from rest_framework import serializers
 
 from saas import signals
-from saas.models import Charge
+from saas.models import Charge, InsufficientFunds
 from saas.mixins import ChargeMixin
 
 #pylint: disable=no-init
@@ -49,7 +51,7 @@ class ChargeResourceView(ChargeMixin, RetrieveAPIView):
     serializer_class = ChargeSerializer
 
 
-class ChargeRefundAPIView(ChargeMixin, GenericAPIView):
+class ChargeRefundAPIView(ChargeMixin, RetrieveAPIView):
     """
     Refund part of a ``Charge``.
     """
@@ -58,8 +60,17 @@ class ChargeRefundAPIView(ChargeMixin, GenericAPIView):
 
     def post(self, request, *args, **kwargs): #pylint: disable=unused-argument
         self.object = self.get_object()
-        print "XXX " + str(request.DATA)
-        return Response(self.object)
+        try:
+            for linenum in request.DATA.get('linenums', []):
+                try:
+                    self.object.refund(int(linenum))
+                except ValueError:
+                    raise Http404("Unable to retrieve line '%s' in %s"
+                        % (linenum, self.object))
+        except InsufficientFunds as insufficient_funds_err:
+            return Response({"detail": str(insufficient_funds_err)},
+                status=status.HTTP_405_METHOD_NOT_ALLOWED)
+        return super(ChargeRefundAPIView, self).get(request, *args, **kwargs)
 
 
 class EmailChargeReceiptAPIView(ChargeMixin, GenericAPIView):

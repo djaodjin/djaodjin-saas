@@ -30,7 +30,7 @@ from django.core.urlresolvers import reverse
 from django.utils.safestring import mark_safe
 
 from saas.humanize import (DESCRIBE_BALANCE, DESCRIBE_BUY_PERIODS,
-    DESCRIBE_CHARGED_CARD, DESCRIBE_UNLOCK_NOW, DESCRIBE_UNLOCK_LATER)
+    DESCRIBE_UNLOCK_NOW, DESCRIBE_UNLOCK_LATER)
 from saas.models import Subscription
 from saas.views.auth import valid_manager_for_organization
 
@@ -75,9 +75,10 @@ def describe(transaction):
         look = re.match(DESCRIBE_BALANCE % {
             'plan': r'(?P<plan>\S+)'}, transaction.descr)
     if not look:
-        look = re.match(DESCRIBE_CHARGED_CARD  % {
-            'charge': r'(?P<charge>\S+)', 'organization': r'.*'},
-            transaction.descr)
+        # DESCRIBE_CHARGED_CARD, DESCRIBE_CHARGED_CARD_PROCESSOR
+        # and DESCRIBE_CHARGED_CARD_PROVIDER.
+        # are specially crafted to start with "Charge ..."
+        look = re.match(r'Charge (?P<charge>\S+)', transaction.descr)
         if look:
             link = '<a href="%s">%s</a>' % (reverse('saas_charge_receipt',
                 args=(subscriber, look.group('charge'),)), look.group('charge'))

@@ -35,6 +35,15 @@ DESCRIBE_BUY_PERIODS = \
 DESCRIBE_CHARGED_CARD = \
     "Charge %(charge)s on credit card of %(organization)s"
 
+DESCRIBE_CHARGED_CARD_PROCESSOR = \
+    "Charge %(charge)s processor fee for %(subscription)s"
+
+DESCRIBE_CHARGED_CARD_PROVIDER = \
+    "Charge %(charge)s distribution for %(subscription)s"
+
+DESCRIBE_CHARGED_CARD_REFUND = \
+    "Refunded %(descr)s on Charge %(charge)s"
+
 DESCRIBE_UNLOCK_NOW = \
     "Unlock %(plan)s now. Don't worry later to %(unlock_event)s."
 

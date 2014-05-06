@@ -91,7 +91,7 @@ def charge_refunded(charge_id):
     Invoked by the processor callback when a charge has been refunded.
     """
     charge = get_object_or_404(Charge, processor_id=charge_id)
-    charge.refund()
+    charge.refund() # XXX not this when we refactor
     signals.charge_updated.send(sender=__name__, charge=charge, user=None)
 
 
@@ -139,7 +139,7 @@ def get_charge_context(charge):
     Return a dictionnary useful to populate charge receipt templates.
     """
     context = {'charge': charge,
-               'invoiced_items': charge.invoiced_items.all(),
+               'charge_items': charge.charge_items.all(),
                'organization': charge.customer,
                'provider': charge.provider}
     return context
