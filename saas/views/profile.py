@@ -108,7 +108,7 @@ class SubscriberListView(OrganizationMixin, FormMixin, ListView):
     def get_success_url(self):
         return reverse('saas_subscriber_list', args=(self.organization,))
 
-    def post(self, request, *args, **kwargs):
+    def post(self, request, *args, **kwargs): #pylint: disable=unused-argument
         # We have created a form per subscriber/plan.
         form_class = self.get_form_class()
         form = self.get_form(form_class)
