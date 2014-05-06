@@ -826,7 +826,8 @@ class Plan(models.Model):
         help_text=_('Recurring amount per period (in cents).'))
     transaction_fee = models.IntegerField(default=0,
         help_text=_('Fee per transaction (in per 10000).'))
-    interval = models.IntegerField(choices=INTERVAL_CHOICES)
+    interval = models.IntegerField(
+        choices=INTERVAL_CHOICES, default=YEARLY)
     unlock_event = models.CharField(max_length=128, null=True, blank=True,
         help_text=_('Payment required to access full service'))
     # end game
