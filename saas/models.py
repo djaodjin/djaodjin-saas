@@ -981,6 +981,10 @@ class Subscription(models.Model):
     def is_locked(self):
         return Transaction.objects.get_subscription_balance(self) > 0
 
+    def unsubscribe_now(self):
+        self.ends_at = datetime_or_now()
+        self.save()
+
     def use_of_service(self, nb_periods, prorated_amount=0,
         created_at=None, descr=None, discount_percent=None):
         #pylint: disable=too-many-arguments

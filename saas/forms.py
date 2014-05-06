@@ -87,6 +87,15 @@ class RedeemCouponForm(forms.Form):
     code = forms.CharField()
 
 
+class UnsubscribeForm(forms.Form):
+    """
+    Form used to unsubscribe a customer from a plan.
+    """
+
+    plan = forms.SlugField()
+    subscriber = forms.SlugField()
+
+
 class UserForm(forms.ModelForm):
     """
     Form to update a ``User`` profile.

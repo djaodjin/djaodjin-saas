@@ -31,73 +31,97 @@ from django.contrib import messages
 from django.core.urlresolvers import reverse
 from django.shortcuts import get_object_or_404
 from django.views.generic import FormView, ListView, UpdateView
+from django.views.generic.edit import FormMixin
 
-from saas.forms import UserRelationForm
-from saas.models import Organization, Subscription
+from saas.forms import UserRelationForm, UnsubscribeForm
+from saas.mixins import OrganizationMixin
+from saas.models import Organization, Subscription, datetime_or_now
 from saas.compat import User
 
 
 LOGGER = logging.getLogger(__name__)
 
 
-class ContributorListView(ListView):
+class ContributorListView(OrganizationMixin, ListView):
     """List of contributors to an organization."""
 
     paginate_by = 10
     template_name = 'saas/contributor_list.html'
 
     def get_queryset(self):
-        self.organization = get_object_or_404(
-            Organization, slug=self.kwargs.get('organization'))
+        self.organization = self.get_organization()
         return self.organization.contributors.all()
 
     def get_context_data(self, **kwargs):
         context = super(ContributorListView, self).get_context_data(**kwargs)
-        context.update({'organization': self.organization,
-                        'contributors': context['object_list']})
+        context.update({'contributors': context['object_list']})
         return context
 
 
-class ManagerListView(ListView):
+class ManagerListView(OrganizationMixin, ListView):
     """List of managers for an organization."""
 
     paginate_by = 10
     template_name = 'saas/manager_list.html'
 
     def get_queryset(self):
-        self.organization = get_object_or_404(
-            Organization, slug=self.kwargs.get('organization'))
+        self.organization = self.get_organization()
         return self.organization.managers.all()
 
     def get_context_data(self, **kwargs):
         context = super(ManagerListView, self).get_context_data(**kwargs)
-        context.update({'organization': self.organization,
-                        'managers': context['object_list']})
+        context.update({'managers': context['object_list']})
         return context
 
 
-class SubscriberListView(ListView):
+class SubscriberListView(OrganizationMixin, FormMixin, ListView):
     """
     List of organizations subscribed to a plan provided by the organization.
     """
 
     paginate_by = 10
+    form_class = UnsubscribeForm
     template_name = 'saas/subscriber_list.html'
 
+    def form_valid(self, form):
+        # As long as request.user is authorized to self.get_organization(),
+        # the subscription will either be valid or a 404 raised.
+        self.organization = self.get_organization()
+        subscription = get_object_or_404(Subscription,
+            organization__slug=form.cleaned_data['subscriber'],
+            plan__slug=form.cleaned_data['plan'],
+            plan__organization=self.organization)
+        subscription.unsubscribe_now()
+        return super(SubscriberListView, self).form_valid(form)
+
     def get_queryset(self):
-        self.organization = get_object_or_404(
-            Organization, slug=self.kwargs.get('organization'))
+        self.organization = self.get_organization()
         return Organization.objects.filter(
-            subscriptions__organization=self.organization)
+            subscription__ends_at__gte=datetime_or_now(),
+            subscriptions__organization=self.organization).distinct()
 
     def get_context_data(self, **kwargs):
         context = super(SubscriberListView, self).get_context_data(**kwargs)
-        context.update({'organization': self.organization,
-                        'subscribers': context['object_list']})
+        context.update({'subscribers': context['object_list']})
         return context
 
+    def get_success_url(self):
+        return reverse('saas_subscriber_list', args=(self.organization,))
 
-class SubscriptionListView(ListView):
+    def post(self, request, *args, **kwargs):
+        # We have created a form per subscriber/plan.
+        form_class = self.get_form_class()
+        form = self.get_form(form_class)
+        if form.is_valid():
+            return self.form_valid(form)
+        else:
+            return self.form_invalid(form)
+
+    def put(self, *args, **kwargs):
+        return self.post(*args, **kwargs)
+
+
+class SubscriptionListView(OrganizationMixin, ListView):
     """
     List of Plans this organization is subscribed to.
     """
@@ -107,14 +131,12 @@ class SubscriptionListView(ListView):
     template_name = 'saas/subscription_list.html'
 
     def get_queryset(self):
-        self.organization = Organization.objects.get(
-            slug=self.kwargs.get('organization'))
+        self.organization = self.get_organization()
         return Subscription.objects.active_for(self.organization)
 
     def get_context_data(self, **kwargs):
         context = super(SubscriptionListView, self).get_context_data(**kwargs)
-        context.update({'organization': self.organization,
-                        'subscriptions': context['object_list']})
+        context.update({'subscriptions': context['object_list']})
         return context
 
 
