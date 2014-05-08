@@ -78,7 +78,7 @@ class PlanCreateAPIView(CreateAPIView):
             slug = slugify(
                 '%s-%d' % (slug, i))
             i += 1
-        setattr(obj, 'slug',  slug)
+        setattr(obj, 'slug', slug)
 
 
 class PlanResourceView(RetrieveUpdateDestroyAPIView):
@@ -99,5 +99,5 @@ class PlanResourceView(RetrieveUpdateDestroyAPIView):
                 slug = slugify(
                     '%s-%d' % (slug, i))
                 i += 1
-            setattr(obj, 'slug',  slug)
+            setattr(obj, 'slug', slug)
 
