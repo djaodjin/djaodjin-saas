@@ -49,16 +49,16 @@ def percentage(value):
 @register.filter()
 def humanize_period(period):
     result = "per ?"
-    if period == Plan.INTERVAL_CHOICES[1][0]:
+    if period == Plan.INTERVAL_CHOICES[0][0]:
         result = "per hour"
-    elif period == Plan.INTERVAL_CHOICES[2][0]:
+    elif period == Plan.INTERVAL_CHOICES[1][0]:
         result = "per day"
-    elif period == Plan.INTERVAL_CHOICES[3][0]:
+    elif period == Plan.INTERVAL_CHOICES[2][0]:
         result = "per week"
-    elif period == Plan.INTERVAL_CHOICES[4][0]:
+    elif period == Plan.INTERVAL_CHOICES[3][0]:
         result = "per month"
-    elif period == Plan.INTERVAL_CHOICES[5][0]:
+    elif period == Plan.INTERVAL_CHOICES[4][0]:
         result = "per quarter"
-    elif period == Plan.INTERVAL_CHOICES[6][0]:
+    elif period == Plan.INTERVAL_CHOICES[5][0]:
         result = "per year"
     return result

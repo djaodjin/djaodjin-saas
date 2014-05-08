@@ -72,7 +72,13 @@ class PlanCreateAPIView(CreateAPIView):
 
     def pre_save(self, obj):
         valid_manager_for_organization(self.request.user, obj.organization)
-        setattr(obj, 'slug', slugify('%s-%s' % (obj.organization, obj.title)))
+        slug = slugify('%s-%s' % (obj.organization, obj.title))
+        i = 0
+        while Plan.objects.filter(slug__exact=slug).count() > 0:
+            slug = slugify(
+                '%s-%d' % (slug, i))
+            i += 1
+        setattr(obj, 'slug',  slug)
 
 
 class PlanResourceView(RetrieveUpdateDestroyAPIView):
@@ -87,6 +93,11 @@ class PlanResourceView(RetrieveUpdateDestroyAPIView):
             # In cases some other resource's slug was derived on the initial
             # slug, we don't want to do this to prevent inconsistent look
             # of the derived URLs.
-            setattr(obj, 'slug', slugify(
-                    '%s-%s' % (obj.organization, obj.title)))
+            slug = slugify('%s-%s' % (obj.organization, obj.title))
+            i = 0
+            while Plan.objects.filter(slug__exact=slug).count() > 0:
+                slug = slugify(
+                    '%s-%d' % (slug, i))
+                i += 1
+            setattr(obj, 'slug',  slug)
 

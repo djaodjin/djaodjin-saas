@@ -40,10 +40,20 @@ function createPlanAPI(organization, success) {
 function updatePlanAPI(plan, data, success) {
   $.ajax({ type: "PATCH",
            url: '/api/plans/' + plan + '/',
+           async: false,
            data: JSON.stringify(data),
           datatype: "json",
           contentType: "application/json; charset=utf-8",
           success: success,
+  });
+}
+
+
+function getPlanAPI(plan, success) {
+  $.ajax({ type: "GET",
+         async:false,
+         url: '/api/plans/' + plan + '/',
+         success: success,
   });
 }
 
