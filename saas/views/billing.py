@@ -262,7 +262,7 @@ class TransactionListView(ListView):
         try:
             last4, exp_date = backend.retrieve_card(self.customer)
             context.update({'last4': last4, 'exp_date': exp_date})
-        except IntegrityError:
+        except IntegrityError: #pylint: disable=catching-non-exception
             messages.error(self.request, "There has been a problem with the"\
 " payment processor backend. We have also been notified and started working"\
 " on the issue. Sorry for the temporary inconvenience.")
