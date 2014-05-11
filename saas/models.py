@@ -889,9 +889,10 @@ class Plan(models.Model):
 
     def prorate_transaction(self, amount):
         """
-        Return the fee associated to a transaction.
+        Return the payment processor fee associated to a transaction
+        (usually 2.9% + 30 cents).
         """
-        return amount * self.transaction_fee / 10000
+        return amount * self.transaction_fee / 10000 + 3000 # (i.e. + 30 cents)
 
     def prorate_period(self, start_time, end_time):
         """
