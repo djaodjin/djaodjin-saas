@@ -186,6 +186,7 @@ def retrieve_card(customer):
             processor_customer = stripe.Customer.retrieve(
                 customer.processor_id, expand=['default_card'])
         except stripe.error.StripeError as err:
+            #pylint: disable=nonstandard-exception
             LOGGER.exception(err)
             raise IntegrityError(str(err))
         if processor_customer.default_card:
