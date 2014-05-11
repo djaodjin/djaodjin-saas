@@ -257,13 +257,15 @@ class TransactionListView(ListView):
         # Retrieve customer information from the backend
         context.update({'organization': self.customer})
         balance = Transaction.objects.get_organization_balance(self.customer)
-        last4, exp_date = backend.retrieve_card(self.customer)
         context.update({
-            'last4': last4,
-            'exp_date': exp_date,
-            'organization': self.customer,
-            'balance_payable': balance
-            })
+            'organization': self.customer, 'balance_payable': balance})
+        try:
+            last4, exp_date = backend.retrieve_card(self.customer)
+            context.update({'last4': last4, 'exp_date': exp_date})
+        except IntegrityError:
+            messages.error(self.request, "There has been a problem with the"\
+" payment processor backend. We have also been notified and started working"\
+" on the issue. Sorry for the temporary inconvenience.")
         return context
 
 

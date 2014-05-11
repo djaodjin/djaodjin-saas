@@ -1025,7 +1025,6 @@ class TransactionManager(models.Manager):
     def by_charge(self, charge):
         #select * from transactions inner join charge_items on
         #transaction.id=charge_items.invoiced and charge_items.charge=charge;
-        print "XXX YOP for %s" % str(charge)
         return self.filter(invoiced_item__charge=charge)
 
     def by_subsciptions(self, subscriptions, at_time=None):

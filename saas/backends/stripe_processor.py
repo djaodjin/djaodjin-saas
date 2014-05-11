@@ -25,6 +25,7 @@
 import datetime, logging, re
 
 import stripe
+from django.db import IntegrityError
 from django.http import Http404
 from django.conf import settings as django_settings
 from rest_framework.decorators import api_view
@@ -181,8 +182,12 @@ def retrieve_card(customer):
     last4 = "N/A"
     exp_date = "N/A"
     if customer.processor_id:
-        processor_customer = stripe.Customer.retrieve(
-            customer.processor_id, expand=['default_card'])
+        try:
+            processor_customer = stripe.Customer.retrieve(
+                customer.processor_id, expand=['default_card'])
+        except stripe.error.StripeError as err:
+            LOGGER.exception(err)
+            raise IntegrityError(str(err))
         if processor_customer.default_card:
             last4 = '***-%s' % str(processor_customer.default_card.last4)
             exp_date = "%02d/%04d" % (processor_customer.default_card.exp_month,
