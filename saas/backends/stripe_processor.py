@@ -43,7 +43,7 @@ from saas.models import Organization
 from saas import settings
 
 
-LOGGER = logging.getLogger(__name__)
+LOGGER = logging.getLogger('django.request') # We want ADMINS to about this.
 
 stripe.api_key = settings.STRIPE_PRIV_KEY
 
