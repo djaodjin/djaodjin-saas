@@ -177,7 +177,8 @@ class InvoicablesView(InsertedURLMixin, CardFormMixin, FormView):
             self.charge = self.customer.checkout(
                 invoicables, self.request.user,
                 token=stripe_token, remember_card=remember_card)
-            messages.info(self.request, "A receipt will be sent to"\
+            if self.charge and self.charge.invoiced_total_amount > 0:
+                messages.info(self.request, "A receipt will be sent to"\
 " %(email)s once the charge has been processed. Thank you."
                           % {'email': self.customer.email})
         except CardError as err:
@@ -257,13 +258,15 @@ class TransactionListView(ListView):
         # Retrieve customer information from the backend
         context.update({'organization': self.customer})
         balance = Transaction.objects.get_organization_balance(self.customer)
-        last4, exp_date = backend.retrieve_card(self.customer)
         context.update({
-            'last4': last4,
-            'exp_date': exp_date,
-            'organization': self.customer,
-            'balance_payable': balance
-            })
+            'organization': self.customer, 'balance_payable': balance})
+        try:
+            last4, exp_date = backend.retrieve_card(self.customer)
+            context.update({'last4': last4, 'exp_date': exp_date})
+        except IntegrityError: #pylint: disable=catching-non-exception
+            messages.error(self.request, "There has been a problem with the"\
+" payment processor backend. We have also been notified and started working"\
+" on the issue. Sorry for the temporary inconvenience.")
         return context
 
 
