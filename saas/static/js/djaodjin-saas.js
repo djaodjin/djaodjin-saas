@@ -48,6 +48,14 @@ function updatePlanAPI(plan, data, success) {
   });
 }
 
+function deletePlanAPI(plan, success) {
+  $.ajax({ type: "DELETE",
+           url: '/api/plans/' + plan + '/',
+           async: false,
+          success: success,
+  });
+}
+
 
 function getPlanAPI(plan, success) {
   $.ajax({ type: "GET",
