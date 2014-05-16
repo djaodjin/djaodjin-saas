@@ -188,11 +188,12 @@ def aggregate_monthly_transactions(organization, from_date=None):
                       {"key": "Net New Customers",
                        "values": net_new_custs
                        },
-                      {"key": "% Customer Churn",
+                      ]
+    customer_extra = [{"key": "% Customer Churn",
                        "values": cust_churn_percent
                        },
                       ]
-    return income_table, customer_table
+    return income_table, customer_table, customer_extra
 
 
 def active_subscribers(plan, from_date=None):

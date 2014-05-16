@@ -83,12 +83,13 @@ class RevenueMetricsView(TemplateView):
         organization = get_object_or_404(
             Organization, slug=kwargs.get('organization'))
         from_date = kwargs.get('from_date', None)
-        income_table, customer_table = aggregate_monthly_transactions(
-            organization, from_date)
+        income_table, customer_table, customer_extra = \
+            aggregate_monthly_transactions(organization, from_date)
         data = SortedDict()
         data['amount'] = {"title": "Amount",
                           "unit": "$", "table": income_table}
-        data['customers'] = {"title": "Customers", "table": customer_table}
+        data['customers'] = {"title": "Customers",
+                             "table": customer_table, "extra": customer_extra}
         context = {"title": "Revenue Metrics",
                    "organization": organization,
                    "data": data,

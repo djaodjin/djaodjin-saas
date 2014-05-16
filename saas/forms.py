@@ -70,7 +70,7 @@ class PlanForm(forms.ModelForm):
     class Meta:
         model = Plan
         exclude = ['discontinued_at', 'is_active', 'length', 'next_plan',
-                    'organization', 'slug', 'transaction_fee']
+                   'organization', 'setup_amount', 'slug', 'transaction_fee']
 
     def save(self, commit=True):
         if self.initial.has_key('organization'):
