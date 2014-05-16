@@ -203,6 +203,11 @@ function updateTotalAmount(formNode) {
     }
     usdTotalAmount = '$' + (totalAmount / 100).toFixed(2);
     $("#total_amount").text(usdTotalAmount);
+    if( totalAmount > 0 ) {
+        if( !$("#card-use").is(':visible') ) $("#card-use").slideDown();
+    } else {
+        if( $("#card-use").is(':visible') ) $("#card-use").slideUp();
+    }
 }
 
 

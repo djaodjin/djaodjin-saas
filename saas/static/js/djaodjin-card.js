@@ -35,6 +35,10 @@ function initCardProcessor(cardForm, stripePubKey) {
 		var valid = true
 		var error_messages = ""
 
+		if( !cardForm.find("#card-use").is(':visible') ) {
+			cardForm.get(0).submit();
+		}
+
 		/* BE CAREFULL: Do not add name="" to these <input> nodes,
 		   else they will hit our server and break PCI compliance. */
 		var number = cardForm.find("#card-number").val()

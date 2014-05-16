@@ -329,6 +329,8 @@ class PlaceOrderView(InvoicablesView):
                     nb_periods, prorated_amount, created_at,
                     discount_percent=discount_percent)]
                 discount_percent += 10
+                if discount_percent >= 100:
+                    discount_percent = 100
 
         elif plan.interval == Plan.YEARLY:
             # Give a change for discount when paying periods in advance
@@ -337,6 +339,8 @@ class PlaceOrderView(InvoicablesView):
                     nb_periods, prorated_amount, created_at,
                     discount_percent=discount_percent)]
                 discount_percent += 10
+                if discount_percent >= 100:
+                    discount_percent = 100
 
         else:
             raise IntegrityError(#pylint: disable=nonstandard-exception
@@ -424,12 +428,19 @@ class CouponRedeemView(OrganizationMixin, FormView):
     form_class = RedeemCouponForm
 
     def form_valid(self, form):
+        coupon_applied = False
         for item in CartItem.objects.get_cart(self.request.user):
             coupon = Coupon.objects.filter(code=form.cleaned_data['code'],
                 organization=item.plan.organization).first()
             if coupon:
+                coupon_applied = True
                 item.coupon = coupon
                 item.save()
+        if coupon_applied:
+            messages.success(self.request, "The Coupon was sucessful applied")
+        else:
+            messages.error(self.request,
+                "No items can be discounted using this coupon.")
         return super(CouponRedeemView, self).form_valid(form)
 
     def form_invalid(self, form):
