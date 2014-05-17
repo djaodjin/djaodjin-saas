@@ -22,26 +22,22 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-"""
-These URLs embed their own authentication directly into the implementation.
+from rest_framework import status
+from rest_framework.generics import GenericAPIView
+from rest_framework.response import Response
 
-While most URLs rely on external decorators to grant permissions, these
-URLs have peculiar requirements more easily encoded as part of the view
-implementation itself.
-"""
+from saas import backends
+from saas.mixins import OrganizationMixin
 
-from django.conf.urls import patterns, include, url
-from saas.settings import ACCT_REGEX
+#pylint: disable=no-init
+#pylint: disable=old-style-class
 
-from saas.api.charges import ChargeRefundAPIView
-from saas.api.users import UserListAPIView
+class RetrieveCardAPIView(OrganizationMixin, GenericAPIView):
 
-urlpatterns = patterns(
-    url(r'^stripe/', include('saas.backends.urls')),
-    url(r'^cart/', include('saas.urls.api.cart')),
-    url(r'^charges/(?P<charge>%s)/refund/' % ACCT_REGEX,
-        ChargeRefundAPIView.as_view(),
-        name='saas_api_charge_refund'),
-    url(r'^users/?',
-        UserListAPIView.as_view(), name='saas_api_user_list'),
-)
+    def get(self, request, *args, **kwargs): #pylint: disable=unused-argument
+        organization = self.get_organization()
+        last4, exp_date = backends.retrieve_card(organization.processor_id)
+        return Response({"last4": last4, "exp_date": exp_date},
+            status=status.HTTP_200_OK)
+
+

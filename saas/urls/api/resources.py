@@ -23,7 +23,7 @@
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 """
-URLs for the resources API of djaodjin saas.
+URLs API for resources
 """
 
 from django.conf.urls import patterns, url
@@ -31,6 +31,7 @@ from saas.settings import ACCT_REGEX
 
 from saas.api.charges import ChargeResourceView, EmailChargeReceiptAPIView
 from saas.api.coupons import CouponListAPIView, CouponDetailAPIView
+from saas.api.users import ManagerListAPIView, ManagerDetailAPIView
 from saas.api.plans import (PlanActivateAPIView, PlanCreateAPIView,
     PlanResourceView)
 
@@ -40,6 +41,11 @@ urlpatterns = patterns('saas.api',
         CouponDetailAPIView.as_view(), name='saas_api_coupon_detail'),
     url(r'^(?P<organization>%s)/coupons/?' % ACCT_REGEX,
         CouponListAPIView.as_view(), name='saas_api_coupon_list'),
+    url(r'^(?P<organization>%s)/managers/(?P<user>%s)/?'
+        % (ACCT_REGEX, ACCT_REGEX),
+        ManagerDetailAPIView.as_view(), name='saas_api_manager_detail'),
+    url(r'^(?P<organization>%s)/managers/?' % ACCT_REGEX,
+        ManagerListAPIView.as_view(), name='saas_api_manager_list'),
     url(r'^plans/(?P<plan>%s)/activate/' % ACCT_REGEX,
         PlanActivateAPIView.as_view(), name='saas_api_plan_activate'),
     url(r'^plans/(?P<plan>%s)/' % ACCT_REGEX,

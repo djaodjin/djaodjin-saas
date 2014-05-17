@@ -225,17 +225,18 @@ class Organization(models.Model):
         """
         Add user as a contributor to organization.
         """
-        relation = get_contributor_relation_model()(
+        _, created = \
+            get_contributor_relation_model().objects.get_or_create(
             organization=self, user=user)
-        relation.save()
+        return created
 
     def add_manager(self, user):
         """
         Add user as a manager to organization.
         """
-        relation = get_manager_relation_model()(
+        _, created = get_manager_relation_model().objects.get_or_create(
             organization=self, user=user)
-        relation.save()
+        return created
 
     def associate_bank(self, bank_token):
         import saas.backends as backend # avoid import loop

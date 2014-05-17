@@ -27,7 +27,9 @@ from django.views.generic.base import ContextMixin
 from django.views.generic.detail import SingleObjectMixin
 
 import saas.backends as backend
+from saas import get_manager_relation_model
 from saas.charge import get_charge_context
+from saas.compat import User
 from saas.models import Charge, Organization
 
 
@@ -65,3 +67,28 @@ class OrganizationMixin(ContextMixin):
         context = super(OrganizationMixin, self).get_context_data(**kwargs)
         context.update({'organization': self.get_organization()})
         return context
+
+
+class UserMixin(ContextMixin):
+    """
+    Returns an ``User`` from a URL.
+    """
+
+    user_url_kwarg = 'user'
+
+    def get_user(self):
+        return get_object_or_404(User,
+            username=self.kwargs.get(self.user_url_kwarg))
+
+
+class ManagerRelationMixin(OrganizationMixin, UserMixin):
+    """
+    Returns a Manager relation from a URL.
+    """
+
+    model = get_manager_relation_model()
+
+    def get_object(self, queryset=None): #pylint: disable=unused-argument
+        return get_object_or_404(get_manager_relation_model(),
+            organization=self.get_organization(), user=self.get_user())
+
