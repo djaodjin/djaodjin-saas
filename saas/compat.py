@@ -25,7 +25,6 @@
 import datetime, urlparse
 
 from django.conf import settings
-from django.contrib.auth import REDIRECT_FIELD_NAME
 from django.http.request import split_domain_port, validate_host
 from django.utils.timezone import utc
 
