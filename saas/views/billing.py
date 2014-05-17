@@ -47,13 +47,13 @@ from django.views.generic.base import ContextMixin
 from stripe.error import CardError
 
 import saas.backends as backend
+from saas.compat import validate_redirect_url
 from saas.forms import CreditCardForm, RedeemCouponForm
 from saas.mixins import ChargeMixin, OrganizationMixin
 from saas.models import (CartItem, Coupon, Organization, Plan,
     Transaction, Subscription)
 from saas.humanize import (as_money, describe_buy_periods, match_unlock,
     DESCRIBE_UNLOCK_NOW, DESCRIBE_UNLOCK_LATER)
-from signup.auth import validate_redirect_url
 
 LOGGER = logging.getLogger(__name__)
 

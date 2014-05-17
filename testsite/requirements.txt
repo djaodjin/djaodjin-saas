@@ -1,3 +1,1 @@
-gunicorn
-South>=0.7.6
-django-urldecorators
+django-urldecorators>=0.5

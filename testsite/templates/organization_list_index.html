@@ -1,0 +1,5 @@
+{% extends "saas/base.html" %}
+
+{% block saas_content %}
+{% include "saas/organization_list.html" with title="organizations" organizations=object_list %}
+{% endblock %}

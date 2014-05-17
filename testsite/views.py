@@ -30,3 +30,4 @@ from saas.models import Organization
 class OrganizationListView(ListView):
 
     model = Organization
+    template_name = 'organization_list_index.html'

@@ -11,10 +11,6 @@
 <a id="saas_metrics_summary" href="{% url 'saas_metrics_summary' organization %}">revenue</a>
 <a id="saas_metrics_plans" href="{% url 'saas_metrics_plans' organization %}">plans</a>
 {% endif %}
-{% if user.is_staff %}
-<a href="{% url 'saas_metrics_overall' %}">overall</a>
-<a href="{% url 'saas_metrics_stats' %}">stats</a>
-{% endif %}
 {% endblock %}
 
 {% block content %}

@@ -235,7 +235,7 @@ class ContributorsAdd(FormView):
         return context
 
     def get_success_url(self):
-        return reverse('saas_contributors_list', args=(self.organization,))
+        return reverse('saas_contributor_list', args=(self.organization,))
 
 
 class ContributorsRemove(FormView):
@@ -261,4 +261,4 @@ class ContributorsRemove(FormView):
         return context
 
     def get_success_url(self):
-        return reverse('saas_contributors_list', args=(self.organization,))
+        return reverse('saas_contributor_list', args=(self.organization,))

@@ -1,11 +1,12 @@
-Django>=1.6
-django-durationfield
-djangorestframework>=2.0
+Django>=1.6.5
+django-durationfield>=0.5.1
+djangorestframework>=2.3.13
 # We need Python Markdown for django.contrib.markup. markdown2 is not enough.
-Markdown
+Markdown>=2.4
 --extra-index-url https://code.stripe.com
-stripe
+stripe>=1.14.0
 # measuring engagement
 django-app-metrics
-python-dateutil
+python-dateutil>=2.2
+
 
