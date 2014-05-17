@@ -64,9 +64,6 @@ class RelationListAPIView(OrganizationMixin, ListCreateAPIView):
     model = User
     serializer_class = UserSerializer
 
-    def add_relation(self, user):
-        return None
-
     def create(self, request, *args, **kwargs):
         #pylint: disable=no-member
         serializer = self.get_serializer(data=request.DATA, files=request.FILES)
@@ -92,7 +89,7 @@ class ContributorListAPIView(RelationListAPIView):
         return self.organization.add_contributor(user)
 
     def get_queryset(self):
-        queryset = super(RelationListAPIView, self).get_queryset()
+        queryset = super(ContributorListAPIView, self).get_queryset()
         return queryset.filter(contributes__slug=self.kwargs.get(
                 self.organization_url_kwarg))
 
@@ -108,7 +105,7 @@ class ManagerListAPIView(RelationListAPIView):
         return self.organization.add_manager(user)
 
     def get_queryset(self):
-        queryset = super(RelationListAPIView, self).get_queryset()
+        queryset = super(ManagerListAPIView, self).get_queryset()
         return queryset.filter(manages__slug=self.kwargs.get(
                 self.organization_url_kwarg))
 
