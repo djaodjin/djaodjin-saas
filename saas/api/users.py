@@ -32,8 +32,9 @@ from rest_framework.generics import (DestroyAPIView, ListAPIView,
     ListCreateAPIView)
 from rest_framework.response import Response
 
+from saas import get_contributor_relation_model, get_manager_relation_model
 from saas.compat import User
-from saas.mixins import OrganizationMixin, ManagerRelationMixin
+from saas.mixins import OrganizationMixin, RelationMixin
 
 #pylint: disable=no-init
 #pylint: disable=old-style-class
@@ -58,23 +59,21 @@ class UserSerializer(serializers.ModelSerializer):
         return instance
 
 
-class ManagerListAPIView(OrganizationMixin, ListCreateAPIView):
+class RelationListAPIView(OrganizationMixin, ListCreateAPIView):
 
     model = User
     serializer_class = UserSerializer
 
-    def get_queryset(self):
-        queryset = super(ManagerListAPIView, self).get_queryset()
-        return queryset.filter(manages__slug=self.kwargs.get(
-                self.organization_url_kwarg))
+    def add_relation(self, user):
+        return None
 
     def create(self, request, *args, **kwargs):
         #pylint: disable=no-member
         serializer = self.get_serializer(data=request.DATA, files=request.FILES)
         if serializer.is_valid():
             user = get_object_or_404(User, username=serializer.data['username'])
-            organization = self.get_organization()
-            if organization.add_manager(user):
+            self.organization = self.get_organization()
+            if self.add_relation(user):
                 resp_status = status.HTTP_201_CREATED
             else:
                 resp_status = status.HTTP_200_OK
@@ -87,9 +86,36 @@ class ManagerListAPIView(OrganizationMixin, ListCreateAPIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
-class ManagerDetailAPIView(ManagerRelationMixin, DestroyAPIView):
+class ContributorListAPIView(RelationListAPIView):
 
-    pass
+    def add_relation(self, user):
+        return self.organization.add_contributor(user)
+
+    def get_queryset(self):
+        queryset = super(RelationListAPIView, self).get_queryset()
+        return queryset.filter(contributes__slug=self.kwargs.get(
+                self.organization_url_kwarg))
+
+
+class ContributorDetailAPIView(RelationMixin, DestroyAPIView):
+
+    model = get_contributor_relation_model()
+
+
+class ManagerListAPIView(RelationListAPIView):
+
+    def add_relation(self, user):
+        return self.organization.add_manager(user)
+
+    def get_queryset(self):
+        queryset = super(RelationListAPIView, self).get_queryset()
+        return queryset.filter(manages__slug=self.kwargs.get(
+                self.organization_url_kwarg))
+
+
+class ManagerDetailAPIView(RelationMixin, DestroyAPIView):
+
+    model = get_manager_relation_model()
 
 
 class UserListAPIView(ListAPIView):

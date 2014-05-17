@@ -31,7 +31,8 @@ from saas.settings import ACCT_REGEX
 
 from saas.api.charges import ChargeResourceView, EmailChargeReceiptAPIView
 from saas.api.coupons import CouponListAPIView, CouponDetailAPIView
-from saas.api.users import ManagerListAPIView, ManagerDetailAPIView
+from saas.api.users import (ContributorListAPIView, ContributorDetailAPIView,
+    ManagerListAPIView, ManagerDetailAPIView)
 from saas.api.plans import (PlanActivateAPIView, PlanCreateAPIView,
     PlanResourceView)
 
@@ -41,6 +42,11 @@ urlpatterns = patterns('saas.api',
         CouponDetailAPIView.as_view(), name='saas_api_coupon_detail'),
     url(r'^(?P<organization>%s)/coupons/?' % ACCT_REGEX,
         CouponListAPIView.as_view(), name='saas_api_coupon_list'),
+    url(r'^(?P<organization>%s)/contributors/(?P<user>%s)/?'
+        % (ACCT_REGEX, ACCT_REGEX),
+        ContributorDetailAPIView.as_view(), name='saas_api_contributor_detail'),
+    url(r'^(?P<organization>%s)/contributors/?' % ACCT_REGEX,
+        ContributorListAPIView.as_view(), name='saas_api_contributor_list'),
     url(r'^(?P<organization>%s)/managers/(?P<user>%s)/?'
         % (ACCT_REGEX, ACCT_REGEX),
         ManagerDetailAPIView.as_view(), name='saas_api_manager_detail'),
