@@ -37,10 +37,10 @@ from django.db.models import Sum
 from django.db.models.query import QuerySet
 from django.utils.translation import ugettext_lazy as _
 from django.utils.decorators import method_decorator
-from stripe.error import InvalidRequestError
 
 from saas import settings
 from saas import signals
+from saas.backends import PROCESSOR_BACKEND, ProcessorError
 from saas import get_manager_relation_model, get_contributor_relation_model
 from saas.compat import datetime_or_now
 
@@ -72,25 +72,6 @@ class OrganizationManager(models.Manager):
         customer = self.create(created_at=creation_time,
             slug=name, billing_start=billing_start)
         return customer
-
-    def associate_processor(self, customer, card=None):
-        import saas.backends as backend # avoid import loop
-        if not isinstance(customer, Organization):
-            if isinstance(customer, basestring):
-                customer = self.get(slug=customer)
-            else:
-                customer = self.get(pk=customer)
-        if not customer.processor_id:
-            # We don't have a processor_id yet for this customer,
-            # so let's create one.
-            customer.processor_id = backend.create_customer(
-                customer.slug, card)
-            customer.save()
-            LOGGER.info('Created customer #%s for %s on processor',
-                        customer.processor_id, customer)
-        else:
-            backend.update_card(customer, card)
-            signals.card_updated.send(customer)
 
     def get_organization(self, organization):
         """Returns an ``Organization`` instance from the organization
@@ -238,10 +219,17 @@ class Organization(models.Model):
             organization=self, user=user)
         return created
 
-    def associate_bank(self, bank_token):
-        import saas.backends as backend # avoid import loop
-        backend.create_or_update_bank(self, bank_token)
+    def update_bank(self, bank_token):
+        PROCESSOR_BACKEND.create_or_update_bank(self, bank_token)
+        LOGGER.info('Updated bank information for %s on processor (%s)',
+                    self, self.processor_recipient_id)
         signals.bank_updated.send(self)
+
+    def update_card(self, card_token=None):
+        PROCESSOR_BACKEND.create_or_update_card(self, card_token)
+        LOGGER.info('Updated card information for %s on processor (%s)',
+                    self, self.processor_id)
+        signals.card_updated.send(self)
 
     @method_decorator(transaction.atomic)
     def checkout(self, invoicables, user, token=None, remember_card=True):
@@ -293,6 +281,12 @@ class Organization(models.Model):
             organization=self, user=user)
         relation.delete()
 
+    def retrieve_bank(self):
+        """
+        Returns associated bank account as a dictionnary.
+        """
+        return PROCESSOR_BACKEND.retrieve_bank(self)
+
     def processor_fee(self, total_amount):
         """
         Returns a triplet: third-party ``Organization`` processing the payment,
@@ -324,14 +318,15 @@ class Organization(models.Model):
             cowork:Funds                            6000
             cowork:Withdraw
         """
-        import saas.backends as backend # avoid import loop
         created_at = datetime_or_now(created_at)
         descr = "withdraw from %s" % self.full_name
         if user:
             descr += ' (%s)' % user.username
-        # Execute transaction on backend first
-        processor_transfer_id, _ = backend.create_transfer(self, amount, descr)
-        # payment
+        # Execute transaction on processor first such that any processor
+        # exception will be raised before we attempt to store
+        # the ``Transaction``.
+        processor_transfer_id, _ = PROCESSOR_BACKEND.create_transfer(
+            self, amount, descr)
         Transaction.objects.create(
             event_id=processor_transfer_id,
             descr=descr,
@@ -445,7 +440,6 @@ class ChargeManager(models.Manager):
         Create a charge on a customer card.
         """
         # Be careful, stripe will not processed charges less than 50 cents.
-        import saas.backends as backend # Avoid import loop
         amount = sum_dest_amount(transactions)
         descr = DESCRIBE_CHARGED_CARD % {
             'charge': '', 'organization': customer.full_name}
@@ -454,18 +448,17 @@ class ChargeManager(models.Manager):
         try:
             if token:
                 if remember_card:
-                    Organization.objects.associate_processor(
-                        customer, card=token)
+                    customer.update_card(card_token=token)
                     (processor_charge_id, created_at,
-                     last4, exp_date) = backend.create_charge(
+                     last4, exp_date) = PROCESSOR_BACKEND.create_charge(
                         customer, amount, descr)
                 else:
                     (processor_charge_id, created_at,
-                     last4, exp_date) = backend.create_charge_on_card(
+                     last4, exp_date) = PROCESSOR_BACKEND.create_charge_on_card(
                         token, amount, descr)
             else:
                 (processor_charge_id, created_at,
-                 last4, exp_date) = backend.create_charge(
+                 last4, exp_date) = PROCESSOR_BACKEND.create_charge(
                     customer, amount, descr)
             # Create record of the charge in our database
             descr = DESCRIBE_CHARGED_CARD % {'charge': processor_charge_id,
@@ -480,7 +473,7 @@ class ChargeManager(models.Manager):
                 ChargeItem.objects.create(invoiced=invoiced, charge=charge)
             LOGGER.info('Created charge #%s of %d cents to %s',
                         charge.processor_id, charge.amount, customer)
-        except InvalidRequestError:
+        except ProcessorError:
             LOGGER.info('InvalidRequestError for charge of %d cents to %s',
                         amount, customer)
             charge = None
@@ -558,7 +551,28 @@ class Charge(models.Model):
 
     def capture(self):
         # XXX Create transaction
-        pass
+        signals.charge_updated.send(sender=__name__, charge=self, user=None)
+
+    def dispute_created(self):
+        self.state = self.DISPUTED
+        self.save()
+        signals.charge_updated.send(sender=__name__, charge=self, user=None)
+
+    def dispute_updated(self):
+        self.state = self.DISPUTED
+        self.save()
+        signals.charge_updated.send(sender=__name__, charge=self, user=None)
+
+    def dispute_closed(self):
+        self.state = self.DONE
+        self.save()
+        signals.charge_updated.send(sender=__name__, charge=self, user=None)
+
+    def failed(self):
+        self.state = self.FAILED
+        self.save()
+        signals.charge_updated.send(sender=__name__, charge=self, user=None)
+
 
     @method_decorator(transaction.atomic)
     def payment_successful(self):
@@ -637,6 +651,8 @@ class Charge(models.Model):
             #pylint: disable=nonstandard-exception
             raise IntegrityError("The total amount of invoiced items for "\
               "charge %s exceed the amount of the charge.", self.processor_id)
+
+        signals.charge_updated.send(sender=__name__, charge=self, user=None)
         return charge_transaction
 
     @property
@@ -665,7 +681,6 @@ class Charge(models.Model):
         """
         Partially refund a charge for transaction *linenum*.
         """
-        import saas.backends as backend # avoid import loop
         assert self.state == self.DONE
         created_at = datetime_or_now(created_at)
         #pylint: disable=no-member
@@ -753,8 +768,15 @@ class Charge(models.Model):
             orig_account=Transaction.PAYABLE,
             orig_organization=provider)
 
-        backend.refund_charge(self, distribute_amount)
+        PROCESSOR_BACKEND.refund_charge(self, distribute_amount)
+        signals.charge_updated.send(sender=__name__, charge=self, user=None)
 
+    def retrieve(self):
+        """
+        Retrieve the state of charge from the processor.
+        """
+        PROCESSOR_BACKEND.retrieve_charge(self)
+        return self
 
 class ChargeItem(models.Model):
     """

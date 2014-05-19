@@ -22,5 +22,10 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-# XXX temporary shortcut until we have multiple backends
-from saas.backends.stripe_processor import * #pylint: disable=wildcard-import
+from stripe.error import StripeError as ProcessorError
+
+from saas import settings
+from saas.backends.stripe_processor import StripeBackend
+
+PROCESSOR_BACKEND = StripeBackend(
+    settings.STRIPE_PUB_KEY, settings.STRIPE_PRIV_KEY)

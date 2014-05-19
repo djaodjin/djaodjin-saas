@@ -27,7 +27,7 @@ from optparse import make_option
 
 from django.core.management.base import BaseCommand
 
-from saas.backends import list_customers
+from saas.backends import PROCESSOR_BACKEND
 
 
 class Command(BaseCommand):
@@ -46,7 +46,7 @@ from the payment processor service."""
         pat = r'.*'
         if len(args) > 0:
             pat = args[0]
-        for cust in list_customers(pat):
+        for cust in PROCESSOR_BACKEND.list_customers(pat):
             sys.stdout.write('%s %s\n' % (str(cust.id), str(cust.description)))
             if not options['no_execute']:
                 cust.delete()

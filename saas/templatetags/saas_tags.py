@@ -23,18 +23,75 @@
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import re
+from datetime import datetime, timedelta
 
 from django import template
 from django.core.exceptions import PermissionDenied
 from django.core.urlresolvers import reverse
 from django.utils.safestring import mark_safe
 
+from saas.compat import User
 from saas.humanize import (DESCRIBE_BALANCE, DESCRIBE_BUY_PERIODS,
     DESCRIBE_UNLOCK_NOW, DESCRIBE_UNLOCK_LATER)
-from saas.models import Subscription
+from saas.models import Subscription, Transaction
 from saas.views.auth import valid_manager_for_organization
 
 register = template.Library()
+
+
+@register.filter()
+def is_debit(transaction, organization):
+    """
+    True if the transaction can be tagged as a debit. That is
+    it is either payable by the organization or the transaction
+    moves from a Funds account to the organization's Expenses account.
+    """
+    return (transaction.dest_organization == organization
+            and (transaction.dest_account == Transaction.PAYABLE
+                 or transaction.dest_account == Transaction.REFUND
+                 or transaction.dest_account == Transaction.FUNDS))
+
+
+@register.filter()
+def is_incomplete_month(date):
+    return ((isinstance(date, basestring) and not date.endswith('01'))
+        or (isinstance(date, datetime) and date.day != 1))
+
+
+@register.filter()
+def monthly_caption(last_date):
+    """returns a formatted caption describing the period whose end
+    date is *last_date*."""
+    if last_date.day == 1:
+        prev = last_date - timedelta(days=2) # more than one day to make sure
+        return datetime.strftime(prev, "%b'%y")
+    else:
+        return datetime.strftime(last_date, "%b'%y") + "*"
+
+
+@register.filter()
+def personal(organization):
+    """
+    Returns ``True`` if the organization is undistinguishable from a user.
+    """
+    if organization:
+        return User.objects.filter(username=organization).exists()
+    return False
+
+
+@register.filter()
+def products(subscriptions):
+    """
+    Returns a list of distinct providers (i.e. ``Organization``) from
+    the plans the *organization* is subscribed to.
+    """
+    if subscriptions:
+        # We don't use QuerySet.distinct('organization') because SQLite
+        # does not support DISTINCT ON queries.
+        return subscriptions.values(
+            'organization__slug', 'organization__full_name').distinct()
+    return []
+
 
 @register.filter
 def is_manager(request, organization):

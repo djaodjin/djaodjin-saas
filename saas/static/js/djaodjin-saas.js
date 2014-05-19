@@ -16,7 +16,7 @@ function showMessages(messages, style) {
 }
 
 
-/** Create a ``Plan`` by executing an AJAX request on the backend.
+/** Create a ``Plan`` by executing an AJAX request to the service.
  */
 function createPlanAPI(organization, success) {
   $.ajax({ type: "POST",
@@ -35,7 +35,7 @@ function createPlanAPI(organization, success) {
   });
 }
 
-/** Update fields in a ``Plan`` by executing an AJAX request on the backend.
+/** Update fields in a ``Plan`` by executing an AJAX request to the service.
  */
 function updatePlanAPI(plan, data, success) {
   $.ajax({ type: "PATCH",
@@ -96,7 +96,7 @@ function toggleCartItem(event) {
 
 
 /** Toggle a ``Plan`` from active to inactive and vise-versa
-    by executing an AJAX request on the backend.
+    by executing an AJAX request to the service.
  */
 function toggleActivatePlan(event) {
   var self = $(this);

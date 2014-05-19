@@ -28,209 +28,228 @@ import stripe
 from django.db import IntegrityError
 from django.http import Http404
 from django.conf import settings as django_settings
+from django.shortcuts import get_object_or_404
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
-
-from saas.charge import (
-    charge_succeeded,
-    charge_failed,
-    charge_refunded,
-    charge_captured,
-    charge_dispute_created,
-    charge_dispute_updated,
-    charge_dispute_closed)
-from saas.models import Organization
-from saas import settings
 
 
 LOGGER = logging.getLogger('django.request') # We want ADMINS to about this.
 
-stripe.api_key = settings.STRIPE_PRIV_KEY
 
+class StripeBackend(object):
 
-def get_context_data(customer):
-    context = {'STRIPE_PUB_KEY': settings.STRIPE_PUB_KEY}
-    last4, exp_date = retrieve_card(customer)
-    if last4 != "N/A":
-        context.update({'last4': last4, 'exp_date': exp_date})
-    return context
+    pub_key = None
+    priv_key = None
 
+    def __init__(self, pub_key, priv_key):
+        self.pub_key = pub_key
+        self.priv_key = priv_key
 
-def get_bank_context(organization):
-    context = {'STRIPE_PUB_KEY': settings.STRIPE_PUB_KEY}
-    if organization.processor_recipient_id:
-        try:
-            rcp = stripe.Recipient.retrieve(organization.processor_recipient_id)
-            context.update({
-                'bank_name': rcp.active_account.bank_name,
-                'last4': '***-%s' % rcp.active_account.last4,
-                'currency': rcp.active_account.currency})
-        except stripe.error.InvalidRequestError:
-            context.update({'bank_name': 'Unaccessible',
-                'last4': 'Unaccessible', 'currency': 'Unaccessible'})
-    else:
-        context.update({'bank_name': 'N/A', 'last4': 'N/A', 'currency': 'N/A'})
-    return context
-
-
-def list_customers(org_pat=r'.*'):
-    """
-    Returns a list of Stripe.Customer objects whose description field
-    matches *org_pat*.
-    """
-    customers = []
-    nb_customers_listed = 0
-    response = stripe.Customer.all()
-    all_custs = response['data']
-    while len(all_custs) > 0:
-        for cust in all_custs:
-            # We use the description field to store extra information
-            # that connects the Stripe customer back to our database.
-            if re.match(org_pat, cust.description):
-                customers.append(cust)
-        nb_customers_listed = nb_customers_listed + len(all_custs)
-        response = stripe.Customer.all(offset=nb_customers_listed)
+    def list_customers(self, org_pat=r'.*'):
+        """
+        Returns a list of Stripe.Customer objects whose description field
+        matches *org_pat*.
+        """
+        stripe.api_key = self.priv_key
+        customers = []
+        nb_customers_listed = 0
+        response = stripe.Customer.all()
         all_custs = response['data']
-    return customers
+        while len(all_custs) > 0:
+            for cust in all_custs:
+                # We use the description field to store extra information
+                # that connects the Stripe customer back to our database.
+                if re.match(org_pat, cust.description):
+                    customers.append(cust)
+            nb_customers_listed = nb_customers_listed + len(all_custs)
+            response = stripe.Customer.all(offset=nb_customers_listed)
+            all_custs = response['data']
+        return customers
 
 
-def create_charge(customer, amount, descr=None):
-    """
-    Create a charge on the default card associated to the customer.
-    """
-    processor_charge = stripe.Charge.create(
-        amount=amount, currency="usd",
-        customer=customer.processor_id,
-        description=descr)
-    created_at = datetime.datetime.fromtimestamp(processor_charge.created)
-    return (processor_charge.id, created_at,
-            processor_charge.card.last4,
-            datetime.date(processor_charge.card.exp_year,
-                          processor_charge.card.exp_month, 1))
+    def create_charge(self, organization, amount, descr=None):
+        """
+        Create a charge on the default card associated to the organization.
+        """
+        stripe.api_key = self.priv_key
+        processor_charge = stripe.Charge.create(
+            amount=amount, currency="usd",
+            customer=organization.processor_id,
+            description=descr)
+        created_at = datetime.datetime.fromtimestamp(processor_charge.created)
+        return (processor_charge.id, created_at,
+                processor_charge.card.last4,
+                datetime.date(processor_charge.card.exp_year,
+                              processor_charge.card.exp_month, 1))
 
 
-def refund_charge(charge, amount):
-    """
-    Refund a charge on the associated card.
-    """
-    processor_charge = stripe.Charge.retrieve(charge.processor_id)
-    processor_charge.refund(amount=amount)
+    def refund_charge(self, charge, amount):
+        """
+        Refund a charge on the associated card.
+        """
+        stripe.api_key = self.priv_key
+        processor_charge = stripe.Charge.retrieve(charge.processor_id)
+        processor_charge.refund(amount=amount)
 
 
-def create_charge_on_card(card, amount, descr=None):
-    """
-    Create a charge on a specified card.
-    """
-    processor_charge = stripe.Charge.create(
-        amount=amount, currency="usd",
-        card=card, description=descr)
-    created_at = datetime.datetime.fromtimestamp(processor_charge.created)
-    return (processor_charge.id, created_at,
-            processor_charge.card.last4,
-            datetime.date(processor_charge.card.exp_year,
-                          processor_charge.card.exp_month, 1))
+    def create_charge_on_card(self, card, amount, descr=None):
+        """
+        Create a charge on a specified card.
+        """
+        stripe.api_key = self.priv_key
+        processor_charge = stripe.Charge.create(
+            amount=amount, currency="usd",
+            card=card, description=descr)
+        created_at = datetime.datetime.fromtimestamp(processor_charge.created)
+        return (processor_charge.id, created_at,
+                processor_charge.card.last4,
+                datetime.date(processor_charge.card.exp_year,
+                              processor_charge.card.exp_month, 1))
 
 
-def create_transfer(customer, amount, descr=None):
-    """
-    Transfer *amount* into the customer bank account.
-    """
-    if not descr:
-        descr = "Transfer from " % Organization.objects.get_site_owner().email
-    transfer = stripe.Transfer.create(
-        amount=amount,
-        currency="usd",
-        recipient=customer.processor_recipient_id,
-        description=descr)
-    created_at = datetime.datetime.fromtimestamp(transfer.created)
-    return (transfer.id, created_at)
+    def create_transfer(self, organization, amount, descr=None):
+        """
+        Transfer *amount* into the organization bank account.
+        """
+        stripe.api_key = self.priv_key
+        transfer = stripe.Transfer.create(
+            amount=amount,
+            currency="usd",
+            recipient=organization.processor_recipient_id,
+            description=descr)
+        created_at = datetime.datetime.fromtimestamp(transfer.created)
+        return (transfer.id, created_at)
 
+    def create_or_update_bank(self, organization, bank_token):
+        """
+        Create or update a bank account associated to an organization on Stripe.
+        """
+        stripe.api_key = self.priv_key
+        rcp = None
+        if organization.processor_recipient_id:
+            try:
+                rcp = stripe.Recipient.retrieve(
+                    organization.processor_recipient_id)
+                rcp.bank_account = bank_token
+                rcp.save()
+            except stripe.error.InvalidRequestError:
+                LOGGER.error("Retrieve recipient %s",
+                             organization.processor_recipient_id)
+        if not rcp:
+            rcp = stripe.Recipient.create(
+                name=organization.full_name,
+                type="corporation",
+                # XXX add tax id.
+                email=organization.email,
+                bank_account=bank_token)
+            organization.processor_recipient_id = rcp.id
+            organization.save()
 
-def create_customer(name, card):
-    processor_customer = stripe.Customer.create(description=name, card=card)
-    return processor_customer.id
+    def create_or_update_card(self, organization, card_token):
+        """
+        Create or update a card associated to an organization on Stripe.
+        """
+        stripe.api_key = self.priv_key
+        p_customer = None
+        if organization.processor_id:
+            try:
+                p_customer = stripe.Customer.retrieve(organization.processor_id)
+                p_customer.card = card_token
+                p_customer.save()
+            except stripe.error.InvalidRequestError:
+                # Can't find the customer on Stripe. This can be related to
+                # a switch from using devel to production keys.
+                # We will seamlessly create a new customer on Stripe.
+                LOGGER.warning("Retrieve customer %s on Stripe for %s",
+                    organization.processor_id, organization)
+        if not p_customer:
+            p_customer = stripe.Customer.create(
+                email=organization.email,
+                description=organization.slug,
+                card=card_token)
+            organization.processor_id = p_customer
+            organization.save()
 
+    def retrieve_bank(self, organization):
+        stripe.api_key = self.priv_key
+        context = {'STRIPE_PUB_KEY': self.pub_key}
+        if organization.processor_recipient_id:
+            try:
+                rcp = stripe.Recipient.retrieve(
+                    organization.processor_recipient_id)
+                context.update({
+                    'bank_name': rcp.active_account.bank_name,
+                    'last4': '***-%s' % rcp.active_account.last4,
+                    'currency': rcp.active_account.currency})
+            except stripe.error.InvalidRequestError:
+                context.update({'bank_name': 'Unaccessible',
+                    'last4': 'Unaccessible', 'currency': 'Unaccessible'})
+        else:
+            context.update({'bank_name': 'N/A', 'last4': 'N/A',
+                            'currency': 'N/A'})
+        return context
 
-def create_or_update_bank(organization, bank_token):
-    rcp = None
-    if organization.processor_recipient_id:
-        try:
-            rcp = stripe.Recipient.retrieve(organization.processor_recipient_id)
-            rcp.bank_account = bank_token
-            rcp.save()
-        except stripe.error.InvalidRequestError:
-            LOGGER.error(
-                "Retrieve recipient %s", organization.processor_recipient_id)
-    if not rcp:
-        rcp = stripe.Recipient.create(
-            name=organization.full_name,
-            type="corporation",
-            # XXX add tax id.
-            email=organization.email,
-            bank_account=bank_token)
-        organization.processor_recipient_id = rcp.id
-        organization.save()
+    def retrieve_card(self, organization):
+        stripe.api_key = self.priv_key
+        context = {'STRIPE_PUB_KEY': self.pub_key}
+        if organization.processor_id:
+            try:
+                p_customer = stripe.Customer.retrieve(
+                    organization.processor_id, expand=['default_card'])
+            except stripe.error.StripeError as err:
+                #pylint: disable=nonstandard-exception
+                LOGGER.exception(err)
+                raise IntegrityError(str(err))
+            if p_customer.default_card:
+                last4 = '***-%s' % str(p_customer.default_card.last4)
+                exp_date = "%02d/%04d" % (
+                    p_customer.default_card.exp_month,
+                    p_customer.default_card.exp_year)
+                context.update({'last4': last4, 'exp_date': exp_date})
+        return context
 
-
-def update_card(customer, card):
-    processor_customer = stripe.Customer.retrieve(customer.processor_id)
-    processor_customer.card = card
-    processor_customer.save()
-
-
-def retrieve_card(customer):
-    last4 = "N/A"
-    exp_date = "N/A"
-    if customer.processor_id:
-        try:
-            processor_customer = stripe.Customer.retrieve(
-                customer.processor_id, expand=['default_card'])
-        except stripe.error.StripeError as err:
-            #pylint: disable=nonstandard-exception
-            LOGGER.exception(err)
-            raise IntegrityError(str(err))
-        if processor_customer.default_card:
-            last4 = '***-%s' % str(processor_customer.default_card.last4)
-            exp_date = "%02d/%04d" % (processor_customer.default_card.exp_month,
-                                      processor_customer.default_card.exp_year)
-    return last4, exp_date
-
-
-def pull_charge(charge):
-    # XXX make sure to avoid race condition.
-    if charge.is_progress:
-        stripe_charge = stripe.Charge.retrieve(charge.processor_id)
-        if stripe_charge.paid:
-            charge_succeeded(charge.processor_id)
-    return charge
+    def retrieve_charge(self, charge):
+        # XXX make sure to avoid race condition.
+        stripe.api_key = self.priv_key
+        if charge.is_progress:
+            stripe_charge = stripe.Charge.retrieve(charge.processor_id)
+            if stripe_charge.paid:
+                charge.payment_successful()
+        return charge
 
 
 @api_view(['POST'])
 def processor_hook(request):
+    stripe.api_key = StripeBackend.priv_key
+    from saas.models import Charge # avoid import loop
     # Attempt to validate the event by posting it back to Stripe.
     if django_settings.DEBUG:
-        event = stripe.Event.construct_from(
-            request.DATA, settings.STRIPE_PRIV_KEY)
+        event = stripe.Event.construct_from(request.DATA, stripe.api_key)
     else:
         event = stripe.Event.retrieve(request.DATA['id'])
     if not event:
         LOGGER.error("Posted stripe event %s FAIL", request.DATA['id'])
         raise Http404
     LOGGER.info("Posted stripe event %s PASS", event.id)
+    charge = get_object_or_404(Charge, processor_id=event.data.object.id)
 
     if event.type == 'charge.succeeded':
-        charge_succeeded(event.data.object.id)
+        if charge.state != charge.DONE:
+            charge.payment_successful()
+        else:
+            LOGGER.warning(
+                "Already received a charge.succeeded event for %s", charge)
     elif event.type == 'charge.failed':
-        charge_failed(event.data.object.id)
+        charge.failed()
     elif event.type == 'charge.refunded':
-        charge_refunded(event.data.object.id)
+        charge.refund()
     elif event.type == 'charge.captured':
-        charge_captured(event.data.object.id)
+        charge.capture()
     elif event.type == 'charge.dispute.created':
-        charge_dispute_created(event.data.object.id)
+        charge.dispute_created()
     elif event.type == 'charge.dispute.updated':
-        charge_dispute_updated(event.data.object.id)
+        charge.dispute_updated()
     elif event.type == 'charge.dispute.closed':
-        charge_dispute_closed(event.data.object.id)
+        charge.dispute_closed()
 
     return Response("OK")

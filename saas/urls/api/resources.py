@@ -29,6 +29,7 @@ URLs API for resources
 from django.conf.urls import patterns, url
 from saas.settings import ACCT_REGEX
 
+from saas.api.backend import RetrieveBankAPIView, RetrieveCardAPIView
 from saas.api.charges import ChargeResourceView, EmailChargeReceiptAPIView
 from saas.api.coupons import CouponListAPIView, CouponDetailAPIView
 from saas.api.users import (ContributorListAPIView, ContributorDetailAPIView,
@@ -37,6 +38,10 @@ from saas.api.plans import (PlanActivateAPIView, PlanCreateAPIView,
     PlanResourceView)
 
 urlpatterns = patterns('saas.api',
+    url(r'^(?P<organization>%s)/bank/?' % ACCT_REGEX,
+        RetrieveBankAPIView.as_view(), name='saas_api_bank'),
+    url(r'^(?P<organization>%s)/card/?' % ACCT_REGEX,
+        RetrieveCardAPIView.as_view(), name='saas_api_card'),
     url(r'^(?P<organization>%s)/coupons/(?P<coupon>%s)/?'
         % (ACCT_REGEX, ACCT_REGEX),
         CouponDetailAPIView.as_view(), name='saas_api_coupon_detail'),

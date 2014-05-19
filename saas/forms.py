@@ -36,6 +36,13 @@ from saas.compat import User
 #pylint: disable=super-on-old-class
 #pylint: disable=no-member
 
+class BankForm(forms.Form):
+    """
+    Update Bank Information
+    """
+    stripeToken = forms.CharField(required=False)
+
+
 class CreditCardForm(forms.Form):
     '''Update Card Information.'''
     stripeToken = forms.CharField(required=False)
@@ -110,3 +117,9 @@ class UserRelationForm(forms.Form):
     '''Form to add/remove contributors and managers.'''
     username = forms.CharField()
 
+
+class WithdrawForm(BankForm):
+    """
+    Withdraw amount from ``Funds`` to a bank account
+    """
+    amount = forms.FloatField(label="Amount (in $)", required=False)

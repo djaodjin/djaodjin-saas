@@ -26,24 +26,28 @@ from django.shortcuts import get_object_or_404
 from django.views.generic.base import ContextMixin
 from django.views.generic.detail import SingleObjectMixin
 
-import saas.backends as backend
-from saas.charge import get_charge_context
 from saas.compat import User
 from saas.models import Charge, Organization
 
 
+def get_charge_context(charge):
+    """
+    Return a dictionnary useful to populate charge receipt templates.
+    """
+    context = {'charge': charge,
+               'charge_items': charge.charge_items.all(),
+               'organization': charge.customer,
+               'provider': charge.provider}
+    return context
+
+
 class ChargeMixin(SingleObjectMixin):
     """
-    Display a receipt for a created charge.
+    Mixin for a ``Charge`` object.
     """
     model = Charge
     slug_field = 'processor_id'
     slug_url_kwarg = 'charge'
-
-    def get_object(self, queryset=None):
-        charge = super(ChargeMixin, self).get_object(queryset)
-        backend.pull_charge(charge)
-        return charge
 
     def get_context_data(self, **kwargs):
         context = super(ChargeMixin, self).get_context_data(**kwargs)

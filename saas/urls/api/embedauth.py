@@ -36,8 +36,7 @@ from saas.settings import ACCT_REGEX
 from saas.api.charges import ChargeRefundAPIView
 from saas.api.users import UserListAPIView
 
-urlpatterns = patterns(
-    url(r'^stripe/', include('saas.backends.urls')),
+urlpatterns = patterns('',
     url(r'^cart/', include('saas.urls.api.cart')),
     url(r'^charges/(?P<charge>%s)/refund/' % ACCT_REGEX,
         ChargeRefundAPIView.as_view(),

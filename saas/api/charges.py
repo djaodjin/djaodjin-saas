@@ -36,6 +36,26 @@ from saas.mixins import ChargeMixin
 #pylint: disable=no-init
 #pylint: disable=old-style-class
 
+class RetrieveChargeMixin(ChargeMixin):
+    """
+    Mixin for a ``Charge`` object that will first retrieve the state of
+    the ``Charge`` from the processor API.
+
+    This mixin is intended to be used for API requests. Pages should
+    use the parent ChargeMixin and use AJAX calls to retrieve the state
+    of a ``Charge`` in order to deal with latency and service errors
+    from the processor.
+    """
+    model = Charge
+    slug_field = 'processor_id'
+    slug_url_kwarg = 'charge'
+
+    def get_object(self, queryset=None):
+        charge = super(RetrieveChargeMixin, self).get_object(queryset)
+        charge.retrieve()
+        return charge
+
+
 class ChargeSerializer(serializers.ModelSerializer):
 
     state = serializers.CharField(source='get_state_display')
@@ -46,12 +66,12 @@ class ChargeSerializer(serializers.ModelSerializer):
                   'processor_id', 'state')
 
 
-class ChargeResourceView(ChargeMixin, RetrieveAPIView):
+class ChargeResourceView(RetrieveChargeMixin, RetrieveAPIView):
 
     serializer_class = ChargeSerializer
 
 
-class ChargeRefundAPIView(ChargeMixin, RetrieveAPIView):
+class ChargeRefundAPIView(RetrieveChargeMixin, RetrieveAPIView):
     """
     Refund part of a ``Charge``.
     """
@@ -73,7 +93,7 @@ class ChargeRefundAPIView(ChargeMixin, RetrieveAPIView):
         return super(ChargeRefundAPIView, self).get(request, *args, **kwargs)
 
 
-class EmailChargeReceiptAPIView(ChargeMixin, GenericAPIView):
+class EmailChargeReceiptAPIView(RetrieveChargeMixin, GenericAPIView):
     """
     Email the charge receipt to the request user.
     """

@@ -29,11 +29,10 @@ Dealing with charges
 import logging
 
 from django.db.models import Sum
-from django.shortcuts import get_object_or_404
 
 from saas.compat import datetime_or_now
 from saas.models import Charge, Organization, Transaction
-from saas import signals
+
 
 LOGGER = logging.getLogger(__name__)
 
@@ -68,79 +67,3 @@ def create_charges_for_balance(until=None):
         else:
             LOGGER.info('SKIP   %s (one charge already in flight)',
                 balance_t.dest_organization)
-
-
-def charge_succeeded(charge_id):
-    """Invoked by the processor callback when a charge has succeeded."""
-    charge = get_object_or_404(Charge, processor_id=charge_id)
-    if charge.state != charge.DONE:
-        charge.payment_successful()
-        signals.charge_updated.send(sender=__name__, charge=charge, user=None)
-
-
-def charge_failed(charge_id):
-    """Invoked by the processor callback when a charge has failed."""
-    charge = get_object_or_404(Charge, processor_id=charge_id)
-    charge.state = charge.FAILED
-    charge.save()
-    signals.charge_updated.send(sender=__name__, charge=charge, user=None)
-
-
-def charge_refunded(charge_id):
-    """
-    Invoked by the processor callback when a charge has been refunded.
-    """
-    charge = get_object_or_404(Charge, processor_id=charge_id)
-    charge.refund() # XXX not this when we refactor
-    signals.charge_updated.send(sender=__name__, charge=charge, user=None)
-
-
-def charge_captured(charge_id):
-    """
-    Invoked by the processor callback when a charge has been captured.
-    """
-    charge = get_object_or_404(Charge, processor_id=charge_id)
-    charge.capture()
-    signals.charge_updated.send(sender=__name__, charge=charge, user=None)
-
-
-def charge_dispute_created(charge_id):
-    """
-    Invoked by the processor callback when a charge has been disputed.
-    """
-    charge = get_object_or_404(Charge, processor_id=charge_id)
-    charge.state = charge.DISPUTED
-    charge.save()
-    signals.charge_updated.send(sender=__name__, charge=charge, user=None)
-
-
-def charge_dispute_updated(charge_id):
-    """
-    Invoked by the processor callback when a disputed charge has been updated.
-    """
-    charge = get_object_or_404(Charge, processor_id=charge_id)
-    charge.state = charge.DISPUTED
-    charge.save()
-    signals.charge_updated.send(sender=__name__, charge=charge, user=None)
-
-
-def charge_dispute_closed(charge_id):
-    """
-    Invoked by the processor callback when a disputed charge has been closed.
-    """
-    charge = get_object_or_404(Charge, processor_id=charge_id)
-    charge.state = charge.DONE
-    charge.save()
-    signals.charge_updated.send(sender=__name__, charge=charge, user=None)
-
-
-def get_charge_context(charge):
-    """
-    Return a dictionnary useful to populate charge receipt templates.
-    """
-    context = {'charge': charge,
-               'charge_items': charge.charge_items.all(),
-               'organization': charge.customer,
-               'provider': charge.provider}
-    return context
-

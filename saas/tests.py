@@ -32,7 +32,7 @@ from django.db import transaction
 
 from saas.managers.metrics import aggregate_monthly_transactions, month_periods
 from saas.models import Organization, Transaction, Charge
-from saas.charge import charge_succeeded, create_charges_for_balance
+from saas.charge import create_charges_for_balance
 
 
 @skip("still pb committing the associated processor_id before the tests start")
@@ -60,10 +60,10 @@ class LedgerTests(TestCase):
         transaction.enter_transaction_management(using='default')
         transaction.managed(True, using='default')
         for customer in Organization.objects.all():
-            Organization.objects.associate_processor(
-                customer, card={'number': '4242424242424242',
-                                'exp_month': '12',
-                                'exp_year': '2014'})
+            customer.update_card(
+                card={'number': '4242424242424242',
+                      'exp_month': '12',
+                      'exp_year': '2014'})
         transaction.commit(using='default')
         transaction.leave_transaction_management(using='default')
 
@@ -80,7 +80,7 @@ class LedgerTests(TestCase):
             dest_organization=customer)]
         charge = Charge.objects.charge_card(
             customer, invoiced_items)
-        return customer, charge.processor_id
+        return customer, charge
 
 
     def _create_charge_for_balance(self, customer_name):
@@ -95,17 +95,17 @@ class LedgerTests(TestCase):
     def test_pay_now(self):
         """Pay the balance of account.
         No Issue."""
-        customer, charge_id = self._create_charge_for_balance('abc')
-        charge_succeeded(charge_id)
+        customer, charge = self._create_charge_for_balance('abc')
+        charge.payment_sucessful()
         next_balance = Transaction.objects.get_organization_balance(customer)
         assert next_balance == 0
 
     def test_pay_now_two_success(self):
         """Pay the balance of account.
         Receive two 'charge.succeeded' events."""
-        customer, charge_id = self._create_charge_for_balance('abc')
-        charge_succeeded(charge_id)
-        charge_succeeded(charge_id)
+        customer, charge = self._create_charge_for_balance('abc')
+        charge.payment_sucessful()
+        charge.payment_sucessful()
         next_balance = Transaction.objects.get_organization_balance(customer)
         assert next_balance == 0
 

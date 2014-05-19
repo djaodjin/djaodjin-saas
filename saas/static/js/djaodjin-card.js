@@ -1,13 +1,25 @@
 // These are the function to interact with the Stripe payment processor.
 
-function showErrorMessages(messages) {
-	$("#messages").removeClass('hidden');
-	$("#messages .row").append(
-	'<div class="alert alert-block alert-danger"><ul class="list-unstyled"><li>' + messages + '</li></ul></div>')
-}
+var Card = function(urls) {
+    this.urls = urls;
+};
+
+
+Card.prototype.query = function() {
+    var self = this;
+    $.get(self.urls.saas_api_card, function(result) {
+        $("#last4").text(result.data.last4);
+        $("#exp_date").text(result.data.exp_date);
+    }).fail(function() {
+        $("#last4").text("Err");
+        $("#exp_date").text("Err");
+    });
+};
 
 
 function initCardProcessor(cardForm, stripePubKey) {
+    
+    /* Retrieve card information from processor if available. */
 
 	var submitButton = cardForm.find('[type="submit"]');
 
@@ -17,7 +29,7 @@ function initCardProcessor(cardForm, stripePubKey) {
 	function stripeResponseHandler(status, response) {
 		if (response.error) {
 			// show the errors on the form
-			showErrorMessages(response.error.message);
+			showMessages([response.error.message], "danger");
 			submitButton.removeAttr("disabled");
 		} else {
 			// token contains id, last4, and card type
@@ -126,7 +138,7 @@ function initCardProcessor(cardForm, stripePubKey) {
 				address_country: address_country
 			}, stripeResponseHandler);
 		} else {
-			showErrorMessages(error_messages);
+			showMessages([error_messages], "danger");
 			submitButton.removeAttr("disabled");
 		}
 		// prevent the form from submitting with the default action
@@ -151,5 +163,6 @@ function initCardProcessor(cardForm, stripePubKey) {
 			cardForm.find('#discover').css( "opacity", "0.1" );
 		}
 	});
+
 	cardForm.submit(stripeCreateToken);
 }

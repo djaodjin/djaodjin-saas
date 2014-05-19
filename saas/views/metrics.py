@@ -105,7 +105,7 @@ class UsageMetricsView(TemplateView):
         organization = get_object_or_404(
             Organization, slug=kwargs.get('organization'))
         # Note: There is a way to get the result in a single SQL statement
-        # but that requires to deal with differences in database backends
+        # but that requires to deal with differences in databases
         # (MySQL: date_format, SQLite: strftime) and get around the
         # "Raw query must include the primary key" constraint.
         values = []

@@ -25,7 +25,7 @@
 from django.conf.urls import patterns, url
 
 from saas.settings import PROCESSOR_HOOK_URL
-from saas.backends import processor_hook
+from saas.backends.stripe_processor import processor_hook
 
 urlpatterns = patterns(
     'saas.backends',

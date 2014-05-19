@@ -43,12 +43,10 @@ from django.contrib import messages
 from django.shortcuts import get_object_or_404, redirect
 from django.utils.timezone import utc
 from django.views.generic import DetailView, FormView, ListView
-from django.views.generic.base import ContextMixin
-from stripe.error import CardError
 
-import saas.backends as backend
+from saas.backends import PROCESSOR_BACKEND, ProcessorError
 from saas.compat import validate_redirect_url
-from saas.forms import CreditCardForm, RedeemCouponForm
+from saas.forms import BankForm, CreditCardForm, RedeemCouponForm, WithdrawForm
 from saas.mixins import ChargeMixin, OrganizationMixin
 from saas.models import (CartItem, Coupon, Organization, Plan,
     Transaction, Subscription)
@@ -77,7 +75,18 @@ def _session_cart_to_database(request):
         del request.session['cart_items']
 
 
-class CardFormMixin(object):
+class BankMixin(OrganizationMixin):
+    """
+    Adds bank information to the context.
+    """
+
+    def get_context_data(self, **kwargs):
+        context = super(BankMixin, self).get_context_data(**kwargs)
+        context.update(PROCESSOR_BACKEND.retrieve_bank(self.get_organization()))
+        return context
+
+
+class CardFormMixin(OrganizationMixin):
 
     form_class = CreditCardForm
     organization_url_kwarg = 'organization'
@@ -87,8 +96,7 @@ class CardFormMixin(object):
         Populates place order forms with the organization address
         whenever possible.
         """
-        self.customer = get_object_or_404(
-            Organization, slug=self.kwargs.get(self.organization_url_kwarg))
+        self.customer = self.get_organization()
         kwargs = super(CardFormMixin, self).get_initial()
         kwargs.update({'card_name': self.customer.full_name,
                        'card_city': self.customer.locality,
@@ -98,11 +106,16 @@ class CardFormMixin(object):
                        'card_address_zip': self.customer.postal_code})
         return kwargs
 
-
-class InsertedURLMixin(ContextMixin):
-
     def get_context_data(self, **kwargs):
-        context = super(InsertedURLMixin, self).get_context_data(**kwargs)
+        context = super(CardFormMixin, self).get_context_data(**kwargs)
+        context.update(PROCESSOR_BACKEND.retrieve_card(self.customer))
+        return context
+
+
+class InsertedURLMixin(object):
+
+    def get_redirect_path(self, **kwargs): #pylint: disable=unused-argument
+        context = {}
         redirect_path = validate_redirect_url(
             self.request.GET.get(REDIRECT_FIELD_NAME, None))
         if not redirect_path:
@@ -111,6 +124,34 @@ class InsertedURLMixin(ContextMixin):
         if redirect_path:
             context.update({REDIRECT_FIELD_NAME: redirect_path})
         return context
+
+
+class BankUpdateView(BankMixin, FormView):
+    """
+    The bank information is used to transfer funds to those organization
+    who are providers on the marketplace.
+    """
+
+    form_class = BankForm
+    template_name = 'saas/bank_update.html'
+
+    def form_valid(self, form):
+        self.organization = self.get_organization()
+        stripe_token = form.cleaned_data['stripeToken']
+        if stripe_token:
+            # Since all fields are optional, we cannot assume the card token
+            # will be present (i.e. in case of erroneous POST request).
+            self.organization.update_bank(stripe_token)
+            messages.success(self.request,
+                "Your bank on file was sucessfully updated")
+        return super(BankUpdateView, self).form_valid(form)
+
+    def get_success_url(self):
+        redirect_path = validate_redirect_url(
+            self.request.GET.get(REDIRECT_FIELD_NAME, None))
+        if redirect_path:
+            return redirect_path
+        return reverse('saas_transfer_info', args=(self.organization,))
 
 
 class InvoicablesView(InsertedURLMixin, CardFormMixin, FormView):
@@ -181,16 +222,15 @@ class InvoicablesView(InsertedURLMixin, CardFormMixin, FormView):
                 messages.info(self.request, "A receipt will be sent to"\
 " %(email)s once the charge has been processed. Thank you."
                           % {'email': self.customer.email})
-        except CardError as err:
+        except ProcessorError as err:
             messages.error(self.request, err)
             return self.form_invalid(form)
         return super(InvoicablesView, self).form_valid(form)
 
     def get_context_data(self, **kwargs):
         context = super(InvoicablesView, self).get_context_data(**kwargs)
-        context.update(backend.get_context_data(self.customer))
-        context.update({'organization': self.customer,
-                        'invoicables': self.invoicables})
+        context.update(self.get_redirect_path())
+        context.update({'invoicables': self.invoicables})
         return context
 
     def get_form(self, form_class):
@@ -208,16 +248,14 @@ class CardUpdateView(InsertedURLMixin, CardFormMixin, FormView):
         if stripe_token:
             # Since all fields are optional, we cannot assume the card token
             # will be present (i.e. in case of erroneous POST request).
-            Organization.objects.associate_processor(
-                self.customer, stripe_token)
+            self.customer.update_card(stripe_token)
             messages.success(self.request,
                 "Your credit card on file was sucessfully updated")
         return super(CardUpdateView, self).form_valid(form)
 
     def get_context_data(self, **kwargs):
         context = super(CardUpdateView, self).get_context_data(**kwargs)
-        context.update(backend.get_context_data(self.customer))
-        context.update({'organization': self.customer})
+        context.update(self.get_redirect_path())
         return context
 
     def get_success_url(self):
@@ -255,18 +293,45 @@ class TransactionListView(ListView):
 
     def get_context_data(self, **kwargs):
         context = super(TransactionListView, self).get_context_data(**kwargs)
-        # Retrieve customer information from the backend
         context.update({'organization': self.customer})
         balance = Transaction.objects.get_organization_balance(self.customer)
         context.update({
             'organization': self.customer, 'balance_payable': balance})
-        try:
-            last4, exp_date = backend.retrieve_card(self.customer)
-            context.update({'last4': last4, 'exp_date': exp_date})
-        except IntegrityError: #pylint: disable=catching-non-exception
-            messages.error(self.request, "There has been a problem with the"\
-" payment processor backend. We have also been notified and started working"\
-" on the issue. Sorry for the temporary inconvenience.")
+        return context
+
+
+class TransferListView(BankMixin, ListView):
+    """
+    List of transfers from processor to an organization bank account.
+    """
+
+    paginate_by = 10
+    template_name = 'saas/transfer_list.html'
+
+    def get_queryset(self):
+        """
+        Get the list of transactions for this organization.
+        """
+        self.organization = get_object_or_404(
+            Organization, slug=self.kwargs.get('organization'))
+        queryset = Transaction.objects.filter(
+            # All transactions involving Funds
+            ((Q(orig_organization=self.organization)
+              & Q(orig_account=Transaction.FUNDS))
+            | (Q(dest_organization=self.organization)
+              & Q(dest_account=Transaction.FUNDS)))
+            # and all transactions whose Escrow for itself.
+            | (Q(orig_organization=self.organization)
+               & Q(dest_organization=self.organization)
+               & (Q(orig_account=Transaction.ESCROW)
+                 | Q(dest_account=Transaction.ESCROW)))).order_by('-created_at')
+        return queryset
+
+    def get_context_data(self, **kwargs):
+        context = super(TransferListView, self).get_context_data(**kwargs)
+        balance = Transaction.objects.get_organization_balance(
+            self.organization, Transaction.FUNDS)
+        context.update({'balance': balance})
         return context
 
 
@@ -513,3 +578,36 @@ class PayBalanceView(InvoicablesView):
         if redirect_path:
             return redirect_path
         return reverse('saas_organization_profile', args=(self.customer,))
+
+
+class WithdrawView(BankMixin, FormView):
+
+    form_class = WithdrawForm
+    template_name = 'saas/withdraw_form.html'
+
+    def get_initial(self):
+        self.organization = self.get_organization()
+        kwargs = super(WithdrawView, self).get_initial()
+        balance = Transaction.objects.get_organization_balance(
+            self.organization, Transaction.FUNDS)
+        kwargs.update({'amount': (- balance / 100.0) if balance < 0 else 0})
+        return kwargs
+
+    def form_valid(self, form):
+        stripe_token = form.cleaned_data['stripeToken']
+        if stripe_token:
+            # Since all fields are optional, we cannot assume the card token
+            # will be present (i.e. in case of erroneous POST request).
+            self.organization.update_bank(stripe_token)
+            messages.success(self.request,
+                "Your bank on file was sucessfully updated")
+        amount_withdrawn = int(float(form.cleaned_data['amount']) * 100)
+        self.organization.withdraw_funds(amount_withdrawn, self.request.user)
+        return super(WithdrawView, self).form_valid(form)
+
+    def get_success_url(self):
+        redirect_path = validate_redirect_url(
+            self.request.GET.get(REDIRECT_FIELD_NAME, None))
+        if redirect_path:
+            return redirect_path
+        return reverse('saas_transfer_info', args=(self.organization,))

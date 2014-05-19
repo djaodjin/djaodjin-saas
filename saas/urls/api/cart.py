@@ -31,7 +31,7 @@ from django.conf.urls import patterns, url
 from saas.api.billing import CartItemAPIView, CartItemDestroyAPIView
 from saas.settings import ACCT_REGEX
 
-urlpatterns = patterns('saas.api',
+urlpatterns = patterns('',
     url(r'^(?P<plan>%s)/' % ACCT_REGEX,
         CartItemDestroyAPIView.as_view(), name='saas_api_cart_delete'),
     url(r'^', CartItemAPIView.as_view(), name='saas_api_cart'),
