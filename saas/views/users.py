@@ -47,12 +47,6 @@ class ProductListView(ListView):
     def get_context_data(self, **kwargs):
         context = super(ProductListView, self).get_context_data(**kwargs)
         context.update({'organizations': context['object_list']})
-        try:
-            context.update({
-                'organization': Organization.objects.get(
-                        slug=self.user.username)})
-        except Organization.DoesNotExist:
-            pass
         return context
 
 
@@ -67,7 +61,7 @@ class UserProfileView(UpdateView):
     form_class = UserForm
     slug_url_kwarg = 'user'
     slug_field = 'username'
-    template_name = 'users/user_form.html'
+    template_name = 'saas/user_form.html'
 
     def get_context_data(self, **kwargs):
         context = super(UserProfileView, self).get_context_data(**kwargs)

@@ -30,10 +30,9 @@ from django.core.exceptions import PermissionDenied
 from django.core.urlresolvers import reverse
 from django.utils.safestring import mark_safe
 
-from saas.compat import User
 from saas.humanize import (DESCRIBE_BALANCE, DESCRIBE_BUY_PERIODS,
     DESCRIBE_UNLOCK_NOW, DESCRIBE_UNLOCK_LATER)
-from saas.models import Subscription, Transaction
+from saas.models import Organization, Subscription, Transaction
 from saas.views.auth import valid_manager_for_organization
 
 register = template.Library()
@@ -70,13 +69,15 @@ def monthly_caption(last_date):
 
 
 @register.filter()
-def personal(organization):
+def person(user):
     """
-    Returns ``True`` if the organization is undistinguishable from a user.
+    Returns the person ``Organization`` associated to the user or None
+    in none can be reliably found.
     """
-    if organization:
-        return User.objects.filter(username=organization).exists()
-    return False
+    queryset = Organization.objects.filter(slug=user.username)
+    if queryset.exists():
+        return queryset.get()
+    return None
 
 
 @register.filter()
@@ -91,6 +92,23 @@ def products(subscriptions):
         return subscriptions.values(
             'organization__slug', 'organization__full_name').distinct()
     return []
+
+
+@register.filter()
+def top_managed_organizations(user):
+    """
+    Returns a queryset of the 8 most important organizations the user
+    is a manager for.
+    """
+    return user.manages.all()[:8]
+
+
+@register.filter()
+def more_managed_organizations(user):
+    """
+    Returns True if the user manages more than 8 organizations.
+    """
+    return user.manages.count() >= 8
 
 
 @register.filter
