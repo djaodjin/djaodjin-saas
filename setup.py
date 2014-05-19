@@ -34,7 +34,6 @@ setup(
     packages=['saas',
               'saas.backends',
               'saas.management.commands',
-              'saas.migrations',
               'saas.templatetags',
               'saas.urls',
               'saas.urls.api',
