@@ -32,6 +32,7 @@ import datetime, logging
 
 from dateutil.relativedelta import relativedelta
 from django.core.urlresolvers import reverse
+from django.core.validators import MaxValueValidator
 from django.db import IntegrityError, models, transaction
 from django.db.models import Sum
 from django.db.models.query import QuerySet
@@ -190,7 +191,7 @@ class Organization(models.Model):
         related_name='subscribes', through='Subscription')
     billing_start = models.DateField(null=True, auto_now_add=True)
 
-    funds_balance = models.IntegerField(default=0,
+    funds_balance = models.PositiveIntegerField(default=0,
         help_text="Funds escrowed in cents")
     processor = models.CharField(null=True, max_length=20)
     processor_id = models.CharField(null=True,
@@ -312,11 +313,11 @@ class Organization(models.Model):
         """
         Withdraw funds from the site into the organization's bank account.
 
-        This will create two transactions. For example:
+        This will one transactions. For example:
 
-        2014/01/31 00:00:00 #hosting - distribution to cowork
-            cowork:Funds                            6000
-            cowork:Withdraw
+        2014/02/15 elearning withdraws $60 from funds held by djaodjin
+            djaodjin:Withdraw                             6000
+            elearning:Funds
         """
         created_at = datetime_or_now(created_at)
         descr = "withdraw from %s" % self.full_name
@@ -327,17 +328,18 @@ class Organization(models.Model):
         # the ``Transaction``.
         processor_transfer_id, _ = PROCESSOR_BACKEND.create_transfer(
             self, amount, descr)
+        processor = Organization.objects.get_site_owner()
         Transaction.objects.create(
             event_id=processor_transfer_id,
             descr=descr,
             created_at=created_at,
             dest_amount=amount,
-            dest_account=Transaction.FUNDS,
-            dest_organization=self,
+            dest_account=Transaction.WITHDRAW,
+            dest_organization=processor,
             orig_amount=amount,
-            orig_account=Transaction.WITHDRAW,
+            orig_account=Transaction.FUNDS,
             orig_organization=self)
-        self.funds_balance += amount
+        self.funds_balance -= amount
         self.save()
 
 
@@ -479,16 +481,6 @@ class ChargeManager(models.Manager):
             charge = None
         return charge
 
-    def last_charge(self, subscription):
-        """
-        Returns the last charge for a subscription.
-        """
-        queryset = self.filter(
-            invoiced_items__event_id=subscription.id).order_by('-created_at')
-        if queryset.exists():
-            return queryset.first()
-        return None
-
 
 class Charge(models.Model):
     """
@@ -510,15 +502,16 @@ class Charge(models.Model):
     objects = ChargeManager()
 
     created_at = models.DateTimeField(auto_now_add=True)
-    amount = models.IntegerField(default=0, help_text="Amount in cents")
+    amount = models.PositiveIntegerField(default=0, help_text="Amount in cents")
     customer = models.ForeignKey(Organization,
         help_text='organization charged')
     description = models.TextField(null=True)
-    last4 = models.IntegerField()
+    last4 = models.PositiveSmallIntegerField()
     exp_date = models.DateField()
     processor = models.SlugField()
     processor_id = models.SlugField(unique=True, db_index=True)
-    state = models.SmallIntegerField(choices=CHARGE_STATES, default=CREATED)
+    state = models.PositiveSmallIntegerField(
+        choices=CHARGE_STATES, default=CREATED)
 
     # XXX unique together paid and invoiced.
     # customer and invoiced_items account payble should match.
@@ -586,9 +579,10 @@ class Charge(models.Model):
         self.save()
 
         # Example:
-        # 2014/01/15 00:00:00 charge on xia card
-        #     xia:Expenses                                 13800
-        #     xia:Payable
+        # 2014/01/15 charge on xia card
+        #     xia:Expenses                                 15800
+        #     djaodjin:Income
+        processor = Organization.objects.get_site_owner()
         charge_transaction = Transaction.objects.create(
             event_id=self.id,
             descr=self.description,
@@ -597,8 +591,8 @@ class Charge(models.Model):
             dest_account=Transaction.EXPENSES,
             dest_organization=self.customer,
             orig_amount=self.amount,
-            orig_account=Transaction.PAYABLE,
-            orig_organization=self.customer)
+            orig_account=Transaction.INCOME,
+            orig_organization=processor)
         # Once we have created a transaction for the charge, let's
         # redistribute the money to the rightful owners.
         for charge_item in self.charge_items.all(): #pylint: disable=no-member
@@ -606,45 +600,46 @@ class Charge(models.Model):
             subscription = Subscription.objects.get(pk=invoiced_item.event_id)
             provider = subscription.plan.organization
             total_amount = invoiced_item.dest_amount
-            processor, fee_amount, provider_subscription_id = \
-                provider.processor_fee(total_amount)
+            processor, fee_amount, _ = provider.processor_fee(total_amount)
             distribute_amount = invoiced_item.dest_amount - fee_amount
             if fee_amount > 0:
                 # Example:
-                # 2014/01/15 00:00:00 #hosting - fee to cowork
-                #           djaodjin:Escrow                                900
-                #           djaodjin:Income
+                # 2014/01/15 fee to cowork
+                #     djaodjin:Funds                               900
+                #     xia:Payable:desk
                 charge_item.invoiced_fee = Transaction.objects.create(
-                    event_id=provider_subscription_id,
+                    event_id=subscription.id,
                     descr=DESCRIBE_CHARGED_CARD_PROCESSOR % {
                         'charge': self.processor_id,
                         'subscription': subscription},
                     created_at=self.created_at,
                     dest_amount=fee_amount,
-                    dest_account=Transaction.ESCROW,
+                    dest_account=Transaction.FUNDS,
                     dest_organization=processor,
                     orig_amount=fee_amount,
-                    orig_account=Transaction.INCOME,
-                    orig_organization=processor)
+                    orig_account=Transaction.PAYABLE,
+                    orig_organization=self.customer)
                 charge_item.save()
+                processor.funds_balance += fee_amount
+                processor.save()
 
             # Example:
-            # 2014/01/15 00:00:00 #hosting - distribution due to cowork
-            #           djaodjin:Escrow                          6000
-            #           cowork:Funds
+            # 2014/01/15 distribution due to cowork
+            #     cowork:Funds                                  8000
+            #     xia:Payable:desk
             Transaction.objects.create(
-                event_id=provider_subscription_id,
+                event_id=subscription.id,
                 descr=DESCRIBE_CHARGED_CARD_PROVIDER % {
                         'charge': self.processor_id,
                         'subscription': subscription},
                 created_at=self.created_at,
                 dest_amount=distribute_amount,
-                dest_account=Transaction.ESCROW,
-                dest_organization=processor,
+                dest_account=Transaction.FUNDS,
+                dest_organization=provider,
                 orig_amount=distribute_amount,
-                orig_account=Transaction.FUNDS,
-                orig_organization=provider)
-            provider.funds_balance -= distribute_amount
+                orig_account=Transaction.PAYABLE,
+                orig_organization=self.customer)
+            provider.funds_balance += distribute_amount
             provider.save()
 
         if self.invoiced_total_amount > self.amount:
@@ -690,34 +685,34 @@ class Charge(models.Model):
         provider = invoiced_item.orig_organization
         total_amount = invoiced_item.dest_amount
 
-        # Record the intent of refunding the charge item
+        # Record the refund
         # Example:
-        # 2014/01/15 00:00:00 refund line item
-        #           cowork:Payable                              6900
-        #           xia:Refunded
+        # 2014/03/15 refunding the charge
+        #     elearning:Refund                              6900
+        #     xia:Refunded
         descr = DESCRIBE_CHARGED_CARD_REFUND % {
             'charge': self.processor_id, 'descr': invoiced_item.descr}
         charge_item.refunded = Transaction.objects.create(
-            event_id=invoiced_item.event_id,
+            event_id=self.id,
             descr=descr,
             created_at=created_at,
+            dest_amount=total_amount,
+            dest_account=Transaction.REFUND,
+            dest_organization=provider,
             orig_amount=total_amount,
             orig_account=Transaction.REFUNDED,
-            orig_organization=customer,
-            dest_amount=total_amount,
-            dest_account=Transaction.PAYABLE,
-            dest_organization=provider)
+            orig_organization=customer)
         charge_item.save()
 
         fee_amount = 0
         processor = Organization.objects.get_site_owner()
         if charge_item.invoiced_fee:
-            # 2014/01/31 Revert processing Fee to elearning
-            #           djaodjin:Refund                                   900
-            #           djaodjin:Escrow
+            # 2014/03/15 elearning promises to refund $69 to Xia
+            #     djaodjin:Refund                                900
+            #     djaodjin:Funds
             fee_amount = charge_item.invoiced_fee.orig_amount
             Transaction.objects.create(
-                event_id=charge_item.invoiced_fee.event_id,
+                event_id=self.id,
                 # The Charge id is already included in the description here.
                 descr="Refunded %s" % charge_item.invoiced_fee.descr,
                 created_at=created_at,
@@ -725,11 +720,13 @@ class Charge(models.Model):
                 dest_account=Transaction.REFUND,
                 dest_organization=processor,
                 orig_amount=fee_amount,
-                orig_account=Transaction.ESCROW,
+                orig_account=Transaction.FUNDS,
                 orig_organization=processor)
+            processor.funds_balance -= fee_amount
+            processor.save()
 
         distribute_amount = total_amount - fee_amount
-        if provider.funds_balance + distribute_amount > 0:
+        if provider.funds_balance - distribute_amount < 0:
             raise InsufficientFunds(
                 '%(provider)s has %(funds_available)s of funds available.'\
 ' %(funds_required)s are required to refund "%(descr)s"' % {
@@ -738,35 +735,21 @@ class Charge(models.Model):
                    'funds_required': as_money(abs(distribute_amount)),
                    'descr': invoiced_item.descr})
 
-        # 2014/01/31 Amount kept on behalf of elearning
-        #            elearning:Funds                                    6000
-        #            djaodjin:Escrow
+        # 2014/03/15 cancel payment to elearning
+        #     djaodjin:Refund                               6000
+        #     elearning:Funds
         Transaction.objects.create(
-            event_id=invoiced_item.event_id,
+            event_id=self.id,
             descr=descr,
             created_at=created_at,
             dest_amount=distribute_amount,
-            dest_account=Transaction.FUNDS,
-            dest_organization=provider,
-            orig_amount=distribute_amount,
-            orig_account=Transaction.ESCROW,
-            orig_organization=processor)
-        provider.funds_balance += distribute_amount
-        provider.save()
-
-        # 2014/01/31 Promise was fulfiled as far as Xia is concerned
-        #           elearning:Refund                              6900
-        #           elearning:Payable
-        Transaction.objects.create(
-            event_id=invoiced_item.event_id,
-            descr=descr,
-            created_at=created_at,
-            dest_amount=total_amount,
             dest_account=Transaction.REFUND,
-            dest_organization=provider,
-            orig_amount=total_amount,
-            orig_account=Transaction.PAYABLE,
+            dest_organization=processor,
+            orig_amount=distribute_amount,
+            orig_account=Transaction.FUNDS,
             orig_organization=provider)
+        provider.funds_balance -= distribute_amount
+        provider.save()
 
         PROCESSOR_BACKEND.refund_charge(self, distribute_amount)
         signals.charge_updated.send(sender=__name__, charge=self, user=None)
@@ -805,7 +788,9 @@ class Coupon(models.Model):
     """
     created_at = models.DateTimeField(auto_now_add=True)
     code = models.SlugField()
-    percent = models.IntegerField(help_text="Percentage discounted")
+    percent = models.PositiveSmallIntegerField(
+        validators=[MaxValueValidator(100)],
+        help_text="Percentage discounted")
     organization = models.ForeignKey(Organization)
 
     class Meta:
@@ -843,18 +828,18 @@ class Plan(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     discontinued_at = models.DateTimeField(null=True, blank=True)
     organization = models.ForeignKey(Organization)
-    setup_amount = models.IntegerField(default=0,
+    setup_amount = models.PositiveIntegerField(default=0,
         help_text=_('One-time charge amount (in cents).'))
-    period_amount = models.IntegerField(default=0,
+    period_amount = models.PositiveIntegerField(default=0,
         help_text=_('Recurring amount per period (in cents).'))
-    transaction_fee = models.IntegerField(default=0,
+    transaction_fee = models.PositiveIntegerField(default=0,
         help_text=_('Fee per transaction (in per 10000).'))
-    interval = models.IntegerField(
+    interval = models.PositiveSmallIntegerField(
         choices=INTERVAL_CHOICES, default=YEARLY)
     unlock_event = models.CharField(max_length=128, null=True, blank=True,
         help_text=_('Payment required to access full service'))
     # end game
-    length = models.IntegerField(null=True, blank=True,
+    length = models.PositiveSmallIntegerField(null=True, blank=True,
         help_text=_('Number of intervals the plan before the plan ends.'))
     # Pb with next : maybe create an other model for it
     next_plan = models.ForeignKey("Plan", null=True)
@@ -915,7 +900,7 @@ class Plan(models.Model):
         Return the payment processor fee associated to a transaction
         (usually 2.9% + 30 cents).
         """
-        return amount * self.transaction_fee / 10000 + 3000 # (i.e. + 30 cents)
+        return amount * self.transaction_fee / 10000 + 30 # (i.e. + 30 cents)
 
     def prorate_period(self, start_time, end_time):
         """
@@ -1203,15 +1188,16 @@ class Transaction(models.Model):
 
     use 'ledger register' for tax acrual tax reporting.
     '''
+    # provider side
     FUNDS = 'Funds'         # <= 0 receipient side
     INCOME = 'Income'       # <= 0 receipient side
-    REFUNDED = 'Refunded'   # <= 0 billing side
     WITHDRAW = 'Withdraw'
+    REFUND = 'Refund'       # >= 0 receipient side
 
-    ESCROW = 'Escrow'       # processor side
+    # customer side
     EXPENSES = 'Expenses'   # >= 0 billing side
     PAYABLE = 'Payable'     # >= 0 billing side
-    REFUND = 'Refund'       # >= 0 receipient side
+    REFUNDED = 'Refunded'   # <= 0 billing side
 
     CHARGEBACK = 'Chargeback'
     REDEEM = 'Redeem'
@@ -1226,7 +1212,7 @@ class Transaction(models.Model):
     orig_account = models.CharField(max_length=30, default="unknown")
     orig_organization = models.ForeignKey(Organization,
         related_name="outgoing")
-    orig_amount = models.IntegerField(default=0,
+    orig_amount = models.PositiveIntegerField(default=0,
         help_text=_('amount withdrawn from origin in origin units'))
     orig_units = models.CharField(max_length=3, default="usd",
         help_text=_('Measure of units on origin account'))
@@ -1234,7 +1220,7 @@ class Transaction(models.Model):
     dest_account = models.CharField(max_length=30, default="unknown")
     dest_organization = models.ForeignKey(Organization,
         related_name="incoming")
-    dest_amount = models.IntegerField(default=0,
+    dest_amount = models.PositiveIntegerField(default=0,
         help_text=_('amount deposited into destination in destination units'))
     dest_units = models.CharField(max_length=3, default="usd",
         help_text=_('Measure of units on destination account'))
@@ -1253,7 +1239,7 @@ class NewVisitors(models.Model):
     New Visitors metrics populated by reading the web server logs.
     """
     date = models.DateField(unique=True)
-    visitors_number = models.IntegerField(default=0)
+    visitors_number = models.PositiveIntegerField(default=0)
 
     def __unicode__(self):
         return unicode(self.id)

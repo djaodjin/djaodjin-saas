@@ -284,8 +284,7 @@ class TransactionListView(ListView):
             Organization, slug=self.kwargs.get(self.organization_url_kwarg))
         queryset = Transaction.objects.filter(
             (Q(dest_organization=self.customer)
-             & ((Q(dest_account=Transaction.PAYABLE) # Only customer side
-                 & Q(orig_account=Transaction.INCOME))
+             & (Q(dest_account=Transaction.PAYABLE) # Only customer side
                 | Q(dest_account=Transaction.EXPENSES)))
             |(Q(orig_organization=self.customer)
               & Q(orig_account=Transaction.REFUNDED))).order_by('-created_at')
@@ -319,12 +318,7 @@ class TransferListView(BankMixin, ListView):
             ((Q(orig_organization=self.organization)
               & Q(orig_account=Transaction.FUNDS))
             | (Q(dest_organization=self.organization)
-              & Q(dest_account=Transaction.FUNDS)))
-            # and all transactions whose Escrow for itself.
-            | (Q(orig_organization=self.organization)
-               & Q(dest_organization=self.organization)
-               & (Q(orig_account=Transaction.ESCROW)
-                 | Q(dest_account=Transaction.ESCROW)))).order_by('-created_at')
+              & Q(dest_account=Transaction.FUNDS)))).order_by('-created_at')
         return queryset
 
     def get_context_data(self, **kwargs):
@@ -495,7 +489,8 @@ class CouponRedeemView(OrganizationMixin, FormView):
     def form_valid(self, form):
         coupon_applied = False
         for item in CartItem.objects.get_cart(self.request.user):
-            coupon = Coupon.objects.filter(code=form.cleaned_data['code'],
+            coupon = Coupon.objects.filter( # case incensitive search.
+                code__iexact=form.cleaned_data['code'],
                 organization=item.plan.organization).first()
             if coupon:
                 coupon_applied = True

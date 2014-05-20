@@ -30,7 +30,7 @@ from django import forms
 from django.template.defaultfilters import slugify
 from django.utils.translation import ugettext_lazy as _
 
-from saas.models import Plan
+from saas.models import Organization, Plan
 from saas.compat import User
 
 #pylint: disable=super-on-old-class
@@ -68,6 +68,15 @@ class CreditCardForm(forms.Form):
         for item in self.initial:
             if item.startswith('plan-'):
                 self.fields[item] = forms.CharField(required=True)
+
+
+class OrganizationForm(forms.ModelForm):
+
+    class Meta:
+        model = Organization
+        fields = ['full_name', 'email', 'phone', 'street_address',
+                  'locality', 'region', 'postal_code',
+                  'country_name']
 
 
 class PlanForm(forms.ModelForm):

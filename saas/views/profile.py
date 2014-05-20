@@ -26,14 +26,13 @@
 
 import logging
 
-from django import forms
 from django.contrib import messages
 from django.core.urlresolvers import reverse
 from django.shortcuts import get_object_or_404
 from django.views.generic import FormView, ListView, UpdateView
 from django.views.generic.edit import FormMixin
 
-from saas.forms import UserRelationForm, UnsubscribeForm
+from saas.forms import OrganizationForm, UserRelationForm, UnsubscribeForm
 from saas.mixins import OrganizationMixin
 from saas.models import Organization, Subscription, datetime_or_now
 from saas.compat import User
@@ -140,18 +139,10 @@ class SubscriptionListView(OrganizationMixin, ListView):
         return context
 
 
-class OrganizationProfileForm(forms.ModelForm):
-    class Meta:
-        model = Organization
-        fields = ['full_name', 'email', 'phone', 'street_address',
-                  'locality', 'region', 'postal_code',
-                  'country_name']
-
-
 class OrganizationProfileView(UpdateView):
 
     model = Organization
-    form_class = OrganizationProfileForm
+    form_class = OrganizationForm
     slug_url_kwarg = 'organization'
     template_name = "saas/organization_profile.html"
 
