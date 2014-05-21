@@ -1,5 +1,80 @@
 // These are the function to interact with the Stripe payment processor.
 
+function initBankProcessor(bankForm, stripePubKey) {
+
+	var submitButton = bankForm.find('[type="submit"]');
+
+	/* Implementation Note:
+	   As an inner functions because we use *bankForm* and *stripePubKey*
+	   within. */
+	function stripeResponseHandler(status, response) {
+		if (response.error) {
+			// show the errors on the form
+			showMessages([response.error.message], "danger");
+			submitButton.removeAttr("disabled");
+		} else {
+			// token contains id, etc.
+			var token = response['id'];
+			// insert the token into the form so it gets submitted to the server
+			bankForm.append(
+			"<input type='hidden' name='stripeToken' value='" + token + "'/>");
+			// and submit
+			bankForm.get(0).submit();
+		}
+	}
+
+	function stripeCreateToken(event) {
+		// disable the submit button to prevent repeated clicks
+		submitButton.attr("disabled", "disabled");
+		var valid = true
+		var error_messages = ""
+
+		var country = bankForm.find("#country").val()
+		if( country == "" ) {
+			if( error_messages ) error_messages += ", "
+			error_messages += "Country"
+			bankForm.find("#row-country").addClass('has-error');
+			valid = false
+		}
+
+		/* BE CAREFULL: Do not add name="" to these <input> nodes,
+		   else they will hit our server and break PCI compliance. */
+		var accountNumber = bankForm.find("#account-number").val()
+		if(!Stripe.bankAccount.validateAccountNumber(accountNumber, country)) {
+			if( error_messages ) error_messages += ", "
+			error_messages += "Account Number"
+			bankForm.find("#row-account-number").addClass('has-error');
+			valid = false
+		}
+		var routingNumber = bankForm.find("#routing-number").val()
+		if(!Stripe.bankAccount.validateRoutingNumber(routingNumber, country)) {
+			if( error_messages ) error_messages += ", "
+			error_messages += "Routing Number"
+			bankForm.find("#row-routing-number").addClass('has-error');
+			valid = false
+		}
+		if( error_messages ) {
+			error_messages += " field(s) cannot be empty."
+		}
+		if( valid ) {
+			// this identifies your website in the createToken call below
+			Stripe.setPublishableKey(stripePubKey);
+			Stripe.bankAccount.createToken({
+				country: country,
+				routingNumber: routingNumber,
+				accountNumber: accountNumber
+			}, stripeResponseHandler);
+		} else {
+			showMessages([error_messages], "danger");
+			submitButton.removeAttr("disabled");
+		}
+		// prevent the form from submitting with the default action
+		return false;
+	}
+	bankForm.submit(stripeCreateToken);
+}
+
+
 var Card = function(urls) {
     this.urls = urls;
 };
@@ -49,6 +124,7 @@ function initCardProcessor(cardForm, stripePubKey) {
 
 		if( !cardForm.find("#card-use").is(':visible') ) {
 			cardForm.get(0).submit();
+			return;
 		}
 
 		/* BE CAREFULL: Do not add name="" to these <input> nodes,

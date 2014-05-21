@@ -261,7 +261,7 @@ class Organization(models.Model):
                     invoiced_item.event_id = subscription.id
                     invoiced_items += [invoiced_item]
 
-        invoiced_items = Transaction.objects.execute_order(invoiced_items)
+        invoiced_items = Transaction.objects.execute_order(invoiced_items, user)
         return Charge.objects.charge_card(
             self, invoiced_items, user,
             token=token, remember_card=remember_card)
@@ -657,18 +657,9 @@ class Charge(models.Model):
         provider, returns that ``Organization`` otherwise returns the site
         owner.
         """
-        result = None
-        for charge_item in self.charge_items.all(): #pylint: disable=no-member
-            invoiced_item = charge_item.invoiced
-            subscription = Subscription.objects.get(pk=invoiced_item.event_id)
-            if not result:
-                result = subscription.plan.organization
-            elif result != subscription.plan.organization:
-                result = None
-                break
-        if not result:
-            result = Organization.objects.get_site_owner()
-        return result
+        #pylint: disable=no-member
+        return Transaction.objects.provider([charge_item.invoiced
+                         for charge_item in self.charge_items.all()])
 
     @method_decorator(transaction.atomic)
     def refund(self, linenum, created_at=None):
@@ -1059,7 +1050,7 @@ class TransactionManager(models.Manager):
         credit.save()
         return credit
 
-    def execute_order(self, invoiced_items):
+    def execute_order(self, invoiced_items, user=None):
         """
         Save invoiced_items, a set of ``Transaction`` and update when
         each associated ``Subscription`` ends.
@@ -1087,6 +1078,8 @@ class TransactionManager(models.Manager):
             invoiced_item.save()
             if pay_now:
                 invoiced_items_ids += [invoiced_item.id]
+        signals.order_executed.send(
+            sender=__name__, invoiced_items=invoiced_items_ids, user=user)
         return self.filter(id__in=invoiced_items_ids)
 
     def get_organization_balance(self, organization, account=None, until=None):
@@ -1175,6 +1168,24 @@ class TransactionManager(models.Manager):
             dest_amount=0,
             dest_account=Transaction.PAYABLE,
             dest_organization=subscription.organization)
+
+    @staticmethod
+    def provider(invoiced_items):
+        """
+        If all subscriptions referenced by *invoiced_items* are to the same
+        provider, return it otherwise return the site owner.
+        """
+        result = None
+        for invoiced_item in invoiced_items:
+            subscription = Subscription.objects.get(pk=invoiced_item.event_id)
+            if not result:
+                result = subscription.plan.organization
+            elif result != subscription.plan.organization:
+                result = Organization.objects.get_site_owner()
+                break
+        if not result:
+            result = Organization.objects.get_site_owner()
+        return result
 
 
 class Transaction(models.Model):

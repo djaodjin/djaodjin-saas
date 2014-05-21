@@ -28,3 +28,4 @@ from django.dispatch import Signal
 bank_updated = Signal(providing_args=["organization", "user"])
 card_updated = Signal(providing_args=["organization", "user"])
 charge_updated = Signal(providing_args=["charge", "user"])
+order_executed = Signal(providing_args=["invoiced_items", "user"])
