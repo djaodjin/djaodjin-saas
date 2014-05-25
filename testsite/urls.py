@@ -22,11 +22,14 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from urldecorators import patterns, include, url
+from django.contrib.auth.decorators import login_required
 from django.core.urlresolvers import reverse_lazy
 from django.views.generic import RedirectView, TemplateView
+from urldecorators import patterns, include, url
 
-from testsite.views import OrganizationListView
+from saas.views import OrganizationRedirectView
+from testsite.views.organization import OrganizationListView
+from testsite.views.registration import PersonalRegistrationView
 
 # Uncomment the next two lines to enable the admin:
 from django.contrib import admin
@@ -39,6 +42,10 @@ urlpatterns = patterns('',
 
     url(r'^accounts/profile/',
         RedirectView.as_view(url=reverse_lazy('home'))),
+    url(r'^accounts/register/$',
+        PersonalRegistrationView.as_view(
+            success_url=reverse_lazy('course_progress')),
+        name='registration_personal'),
     url(r'^accounts/', include('django.contrib.auth.urls')),
     url(r'^saas/$',
         OrganizationListView.as_view(), name='saas_organization_list',
@@ -46,6 +53,11 @@ urlpatterns = patterns('',
     url(r'^legal/', include('saas.urls.legal')),
     url(r'^processor/', include('saas.backends.urls')),
     url(r'^$', TemplateView.as_view(template_name='index.html'), name='home'),
+    url(r'^billing/cart/',
+        login_required(OrganizationRedirectView.as_view(
+                pattern_name='saas_organization_cart'),
+                       login_url=reverse_lazy('registration_personal')),
+        name='saas_cart'),
     url(r'^', include('saas.urls'),
         decorators=['saas.decorators.requires_manager']),
 )

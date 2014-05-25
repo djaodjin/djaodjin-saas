@@ -221,24 +221,5 @@ function initCardProcessor(cardForm, stripePubKey) {
 		return false;
 	}
 
-	cardForm.find("#card-number").payment('formatCardNumber');
-	cardForm.find("#card-number").keyup(function(){
-		var cc_type = $.payment.cardType(cardForm.find("#card-number").val());
-		if (cc_type == 'visa'){
-			cardForm.find('#visa').css( "opacity", "1" );
-		}else if (cc_type == 'mastercard'){
-			cardForm.find('#mastercard').css( "opacity", "1" );
-		}else if (cc_type == 'amex'){
-			cardForm.find('#amex').css( "opacity", "1" );
-		}else if (cc_type == 'discover'){
-			cardForm.find('#discover').css( "opacity", "1" );
-		}else{
-			cardForm.find('#visa').css( "opacity","0.1");
-			cardForm.find('#mastercard').css( "opacity", "0.1" );
-			cardForm.find('#amex').css( "opacity", "0.1" );
-			cardForm.find('#discover').css( "opacity", "0.1" );
-		}
-	});
-
 	cardForm.submit(stripeCreateToken);
 }

@@ -26,7 +26,7 @@
 
 from django.conf.urls import patterns, include, url
 
-urlpatterns = patterns(
+urlpatterns = patterns('',
     url(r'^', include('saas.urls.api.embedauth')),
     url(r'^', include('saas.urls.api.subscriptions')),
     url(r'^', include('saas.urls.api.resources')),

@@ -476,9 +476,9 @@ class ChargeManager(models.Manager):
             LOGGER.info('Created charge #%s of %d cents to %s',
                         charge.processor_id, charge.amount, customer)
         except ProcessorError:
-            LOGGER.info('InvalidRequestError for charge of %d cents to %s',
+            LOGGER.error('InvalidRequestError for charge of %d cents to %s',
                         amount, customer)
-            charge = None
+            raise
         return charge
 
 
