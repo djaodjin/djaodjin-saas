@@ -26,9 +26,7 @@
 PEP 386-compliant version number for the saas django app.
 """
 
-from django.core.exceptions import ImproperlyConfigured
-
-__version__ = '0.1.2'
+__version__ = '0.1.3'
 
 
 def _get_model_class(full_name, settings_meta):
@@ -36,6 +34,7 @@ def _get_model_class(full_name, settings_meta):
     Returns a model class loaded from *full_name*. *settings_meta* is the name
     of the corresponding settings variable (used for error messages).
     """
+    from django.core.exceptions import ImproperlyConfigured
     from django.db.models import get_model
 
     try:
