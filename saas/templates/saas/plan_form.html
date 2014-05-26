@@ -19,7 +19,12 @@
 <script type="text/javascript">
 $(document).ready(function(){
     initAjaxCSRFHook("{{csrf_token}}");
-    $(".activate").click(toggleActivatePlan);
+    $(".activate").click(function(event) {
+        var self = $(this);
+        event.preventDefault();
+        toggleActivatePlan(self,
+            {'saas_api_plan': "{% url 'saas_api_plan_new' %}" });
+    });
 });
 </script>
 {% endblock %}

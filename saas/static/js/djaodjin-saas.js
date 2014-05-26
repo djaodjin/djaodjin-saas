@@ -16,11 +16,59 @@ function showMessages(messages, style) {
 }
 
 
+function initAjaxCSRFHook(csrf_token) {
+    /** Include the csrf_token into the headers to authenticate with the server
+        on ajax requests. */
+    $(document).ajaxSend(function(event, xhr, settings) {
+        function sameOrigin(url) {
+            // url could be relative or scheme relative or absolute
+            var host = document.location.host; // host + port
+            var protocol = document.location.protocol;
+            var sr_origin = '//' + host;
+            var origin = protocol + sr_origin;
+            // Allow absolute or scheme relative URLs to same origin
+            return (url == origin ||
+                url.slice(0, origin.length + 1) == origin + '/') ||
+               (url == sr_origin ||
+                url.slice(0, sr_origin.length + 1) == sr_origin + '/') ||
+        // or any other URL that isn't scheme relative or absolute i.e relative.
+               !(/^(\/\/|http:|https:).*/.test(url));
+        }
+        function safeMethod(method) {
+            return (/^(GET|HEAD|OPTIONS|TRACE)$/.test(method));
+        }
+        if (!safeMethod(settings.type) && sameOrigin(settings.url)) {
+            xhr.setRequestHeader("X-CSRFToken", csrf_token);
+        }
+    });
+}
+
+
+var Plan = function(id, urls) {
+    this.urls = urls;
+    this.id = id;
+}
+
+/** Activate a ``Plan`` by executing an AJAX request to the service.
+ */
+Plan.prototype.activate = function(is_active, successFunction) {
+  var self = this;
+  $.ajax({ type: "PATCH",
+           url: self.urls.saas_api_plan + self.id + '/activate/',
+           data: JSON.stringify({ "is_active": is_active }),
+          datatype: "json",
+          contentType: "application/json; charset=utf-8",
+      success: successFunction,
+  });
+}
+
+
 /** Create a ``Plan`` by executing an AJAX request to the service.
  */
-function createPlanAPI(organization, success) {
-  $.ajax({ type: "POST",
-           url: '/api/plans/',
+Plan.prototype.create = function(organization, successFunction) {
+    var self = this;
+     $.ajax({ type: "POST",
+           url: self.urls.saas_api_plan,
            data: JSON.stringify({"organization": organization,
                "title": "New Plan",
                "description": "Write the description of the plan here.",
@@ -28,96 +76,88 @@ function createPlanAPI(organization, success) {
                "is_active": 1}),
            datatype: "json",
            contentType: "application/json; charset=utf-8",
-           success: success,
+           success: successFunction,
            error: function(data) {
-               showMessages(["An error occurred while emailing a copy of the receipt (" + data.status + " " + data.statusText + "). Please accept our apologies."], "danger");
+               showMessages(["An error occurred while creating the plan ("
+                   + data.status + " " + data.statusText
+                   + "). Please accept our apologies."], "danger");
            }
   });
 }
 
 /** Update fields in a ``Plan`` by executing an AJAX request to the service.
  */
-function updatePlanAPI(plan, data, success) {
+Plan.prototype.update = function(data, successFunction) {
+  var self = this;
   $.ajax({ type: "PATCH",
-           url: '/api/plans/' + plan + '/',
+           url: self.urls.saas_api_plan + self.id + '/',
            async: false,
            data: JSON.stringify(data),
           datatype: "json",
           contentType: "application/json; charset=utf-8",
-          success: success,
+          success: successFunction,
   });
 }
 
-function deletePlanAPI(plan, success) {
+Plan.prototype.destroy = function(successFunction) {
+  var self = this;
   $.ajax({ type: "DELETE",
-           url: '/api/plans/' + plan + '/',
+           url: self.urls.saas_api_plan + self.id + '/',
            async: false,
-          success: success,
+           success: successFunction,
   });
 }
 
 
-function getPlanAPI(plan, success) {
+Plan.prototype.get = function(successFunction) {
+  var self = this;
   $.ajax({ type: "GET",
-         async:false,
-         url: '/api/plans/' + plan + '/',
-         success: success,
+           url: self.urls.saas_api_plan + self.id + '/',
+           success: successFunction,
   });
 }
 
 
-function toggleCartItem(event) {
-  var self = $(this);
-  event.preventDefault();
-  if( self.text() == "Remove from Cart" ) {
-      $.ajax({ type: "DELETE",
-          url: '/api/cart/' + self.attr("id") + '/',
-/*
-          data: JSON.stringify({ "plan": self.attr("id") }),
-          datatype: "json",
-          contentType: "application/json; charset=utf-8",
-*/
-          success: function(data) {
-              self.text("Add to Cart");
-          }
-      });
-  } else {
-      $.ajax({ type: "POST", // XXX Might still prefer to do PUT on list.
-          url: '/api/cart/',
-          data: JSON.stringify({ "plan": self.attr("id") }),
-          datatype: "json",
-          contentType: "application/json; charset=utf-8",
-          success: function(data) {
-              self.text("Remove from Cart");
-          }
-      });
-  }
+var CartItem = function(id, urls) {
+    this.item = id;
+    this.urls = urls;
+};
+
+CartItem.prototype.add = function(successFunction) {
+    var self = this;
+    $.ajax({ type: "POST", // XXX Might still prefer to do PUT on list.
+        url: self.urls.saas_api_cart,
+        data: JSON.stringify({ "plan": self.item }),
+        datatype: "json",
+        contentType: "application/json; charset=utf-8",
+        success: successFunction,
+    });
+}
+
+CartItem.prototype.remove = function(successFunction) {
+    var self = this;
+    $.ajax({ type: "DELETE",
+        url: self.urls.saas_api_cart + self.item + '/',
+        success: successFunction,
+    });
 }
 
 
 /** Toggle a ``Plan`` from active to inactive and vise-versa
     by executing an AJAX request to the service.
  */
-function toggleActivatePlan(event) {
-  var self = $(this);
-  event.preventDefault();
-  pathname_parts = document.location.pathname.split('/')
-  organization = pathname_parts[2]
-  plan = pathname_parts[4]
-  is_active = !self.hasClass('activated');
-  $.ajax({ type: "PATCH",
-           url: '/api/plans/' + plan + '/activate/',
-           data: JSON.stringify({ "is_active": is_active }),
-          datatype: "json",
-          contentType: "application/json; charset=utf-8",
-      success: function(data) {
-         if( data['is_active'] ) {
-             self.addClass('activated');
-             self.text('Deactivate')
-         } else {
-             self.removeClass('activated');
-             self.text('Activate')
-         }
+function toggleActivatePlan(button, urls) {
+  var pathname_parts = document.location.pathname.split('/')
+  var organization = pathname_parts[2]
+  var thisPlan = new Plan(pathname_parts[4], urls);
+  var is_active = !button.hasClass('activated');
+  thisPlan.activate(!button.hasClass('activated'), function(data) {
+      if( data['is_active'] ) {
+          button.addClass('activated');
+          button.text('Deactivate');
+      } else {
+          button.removeClass('activated');
+          button.text('Activate');
       }
   });
 }
@@ -213,32 +253,4 @@ function updateTotalAmount(formNode) {
 
 function onSubscribeChargeChange() {
     updateTotalAmount($(this).parents("form"));
-}
-
-
-function initAjaxCSRFHook(csrf_token) {
-    /** Include the csrf_token into the headers to authenticate with the server
-        on ajax requests. */
-    $(document).ajaxSend(function(event, xhr, settings) {
-        function sameOrigin(url) {
-            // url could be relative or scheme relative or absolute
-            var host = document.location.host; // host + port
-            var protocol = document.location.protocol;
-            var sr_origin = '//' + host;
-            var origin = protocol + sr_origin;
-            // Allow absolute or scheme relative URLs to same origin
-            return (url == origin ||
-                url.slice(0, origin.length + 1) == origin + '/') ||
-               (url == sr_origin ||
-                url.slice(0, sr_origin.length + 1) == sr_origin + '/') ||
-        // or any other URL that isn't scheme relative or absolute i.e relative.
-               !(/^(\/\/|http:|https:).*/.test(url));
-        }
-        function safeMethod(method) {
-            return (/^(GET|HEAD|OPTIONS|TRACE)$/.test(method));
-        }
-        if (!safeMethod(settings.type) && sameOrigin(settings.url)) {
-            xhr.setRequestHeader("X-CSRFToken", csrf_token);
-        }
-    });
 }
