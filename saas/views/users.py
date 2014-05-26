@@ -22,6 +22,8 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+from django.contrib import messages
+from django.core.urlresolvers import reverse
 from django.shortcuts import get_object_or_404
 from django.views.generic import ListView, UpdateView
 
@@ -72,3 +74,8 @@ class UserProfileView(UpdateView):
         except Organization.DoesNotExist:
             pass
         return context
+
+    def get_success_url(self):
+        messages.info(self.request, 'Profile Updated.')
+        return reverse('users_profile', args=(self.object,))
+

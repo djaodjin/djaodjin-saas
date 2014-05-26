@@ -22,7 +22,7 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from django.db.models.sql.query import RawQuery
 from django.db.models import Count, Sum
@@ -36,7 +36,8 @@ def month_periods(nb_months=12, from_date=None):
     of the list returned."""
     dates = []
     if not from_date:
-        from_date = datetime.utcnow().replace(tzinfo=utc)
+        # By default, we pick tomorrow so that income from Today shows up.
+        from_date = datetime.utcnow().replace(tzinfo=utc) + timedelta(days=1)
     if isinstance(from_date, basestring):
         from_date = datetime.strptime(from_date, '%Y-%m')
     from_date = datetime(day=from_date.day, month=from_date.month,

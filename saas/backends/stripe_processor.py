@@ -184,9 +184,6 @@ class StripeBackend(object):
             except stripe.error.InvalidRequestError:
                 context.update({'bank_name': 'Unaccessible',
                     'last4': 'Unaccessible', 'currency': 'Unaccessible'})
-        else:
-            context.update({'bank_name': 'N/A', 'last4': 'N/A',
-                            'currency': 'N/A'})
         return context
 
     def retrieve_card(self, organization):
