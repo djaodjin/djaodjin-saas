@@ -1,5 +1,5 @@
-This code was taken out of fortylines main repo and generalized into
-an opensource Django SaaS framework.
+This is the Django framework on which DjaoDjin SaaS backend is built.
+
 
 Development
 ===========

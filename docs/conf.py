@@ -44,8 +44,8 @@ source_suffix = '.rst'
 master_doc = 'index'
 
 # General information about the project.
-project = u'saas_framework'
-copyright = u'2014, Fortylines LLC'
+project = u'djaodjin-saas'
+copyright = u'2014, DjaoDjin inc.'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -168,7 +168,7 @@ html_static_path = ['_static']
 #html_file_suffix = None
 
 # Output file base name for HTML help builder.
-htmlhelp_basename = 'saas_frameworkdoc'
+htmlhelp_basename = 'djaodjin-saas-doc'
 
 
 # -- Options for LaTeX output --------------------------------------------------
@@ -187,8 +187,8 @@ latex_elements = {
 # Grouping the document tree into LaTeX files. List of tuples
 # (source start file, target name, title, author, documentclass [howto/manual]).
 latex_documents = [
-  ('index', 'saas_framework.tex', u'django\\_saas Documentation',
-   u'Fortylines LLC', 'manual'),
+  ('index', 'djaodjin-saas.tex', u'django\\_saas Documentation',
+   u'DjaoDjin inc.', 'manual'),
 ]
 
 # The name of an image file (relative to this directory) to place at the top of
@@ -217,8 +217,8 @@ latex_documents = [
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
 man_pages = [
-    ('index', 'saas_framework', u'saas_framework Documentation',
-     [u'Fortylines LLC'], 1)
+    ('index', 'djaodjin-saas', u'djaodjin-saas Documentation',
+     [u'DjaoDjin inc.'], 1)
 ]
 
 # If true, show URL addresses after external links.
@@ -231,8 +231,8 @@ man_pages = [
 # (source start file, target name, title, author,
 #  dir menu entry, description, category)
 texinfo_documents = [
-  ('index', 'saas_framework', u'saas_framework Documentation',
-   u'Fortylines LLC', 'saas_framework', 'One line description of project.',
+  ('index', 'djaodjin-saas', u'djaodjin-saas Documentation',
+   u'DjaoDjin inc.', 'djaodjin-saas', 'One line description of project.',
    'Miscellaneous'),
 ]
 
