@@ -1,0 +1,15 @@
+{% extends "saas/base.html" %}
+{% load saas_tags %}
+
+{% block sidebar %}
+<ul>
+  <li><a id="users_profile" href="{% url 'users_profile' user %}">profile</a></li>
+  <hr />
+  {% for organization in user|top_managed_organizations %}
+  <li><a href="{% url 'saas_organization_profile' organization %}">{{organization.full_name}}</a></li>
+  {% endfor %}
+  {% if user|more_managed_organizations %}
+  <li><a id="saas_user_product_list" href="{% url 'saas_user_product_list' user %}">products</a></li>
+  {% endif %}
+</ul>
+{% endblock %}

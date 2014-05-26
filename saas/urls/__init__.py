@@ -45,6 +45,6 @@ urlpatterns = patterns(
     url(r'^profile/(?P<organization>%s)/' % ACCT_REGEX,
         include('saas.urls.profile')),
     url(r'^users/(?P<user>%s)/' % ACCT_REGEX,
-        include('saas.urls.app.users')),
+        include('saas.urls.users')),
 )
 

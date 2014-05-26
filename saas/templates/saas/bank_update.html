@@ -1,0 +1,12 @@
+{% extends "saas/base.html" %}
+
+{% block localheader %}
+<script type="text/javascript" src="https://js.stripe.com/v2/"></script>
+{% endblock %}
+
+{% block saas_content %}
+<section id="bank_update">
+    <h1>Update Bank for {{ organization }}</h1>
+    {% include "saas/bank_use.html" with title="Update" %}
+</section>
+{% endblock %}

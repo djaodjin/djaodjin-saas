@@ -1,0 +1,32 @@
+{% extends "saas/base.html" %}
+{% load currency %}
+{% load saas_tags %}
+
+{% block saas_content %}
+<section id="info">
+  <h1>Bank Information <a href="{% url 'saas_update_bank' organization %}">Update</a></h1>
+  <div>
+    <dl>
+      <dt>Bank</dt>
+      <dd>{{bank_name}}</dd>
+    </dl>
+    <dl>
+      <dt>Account Number</dt>
+      <dd>{{last4}}</dd>
+    </dl>
+  </div>
+</section>
+<section id="funds">
+  <h1>Funds</h1>
+  <dl>
+    {% if balance <= 0 %}
+    <dt>{{balance|humanize_balance}}</dt>
+    <dd>Available {% if balance < 0 %}(<a href="{% url 'saas_withdraw_funds' organization %}">withdraw</a>){% endif %}</dd>
+    {% else %}
+    <dt>{{balance|humanize_balance}}</dt>
+    <dd>Balance due</dd>
+    {% endif %}
+  </dl>
+</section>
+{% include "saas/transaction_list.html" %}
+{% endblock %}

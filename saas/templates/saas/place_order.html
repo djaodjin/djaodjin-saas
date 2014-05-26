@@ -1,22 +1,49 @@
-{% extends "saas/card_base.html" %}
+{% extends "saas/base.html" %}
 {% load currency %}
 
-{% block content %}
-{% include "saas/balance.html" %}
+{% block localheader %}
+<script type="text/javascript" src="https://js.stripe.com/v2/"></script>
+{% endblock %}
 
-{% if total_amount and coupon_form %}
-<section id="coupon">
-  <h1>Coupon</h1>
-  <form method="post" id="redeem-form" class="form-horizontal"
-        action="{% url 'saas_redeem_coupon' organization %}">
-    {{ coupon_form.non_field_errors }}
-    {% csrf_token %}
-    {{coupon_form.as_table}}
-    <button type="submit" class="btn btn-primary payment-submit">Redeem</button>
-  </form>
-</section>
+{% block sidebar %}
+<!-- When placing an order, we disable the sidebar menu -->
+{% endblock %}
+
+{% block saas_content %}
+<div>
+    <h1>Place an order</h1>
+{% if invoicables %}
+<div>
+    <div>
+        <form method="post" id="redeem-form"
+              action="{% url 'saas_coupon_redeem' organization %}">
+            {% csrf_token %}
+            <div>
+                <label>If you have a coupon code, it is time to redeem it now!</label>
+                <input id="id_code" name="code"
+                       type="text" placeholder="Coupon code">
+                <button type="submit">Redeem</button>
+            </div>
+        </form>
+    </div>
+</div>
+<div>
+    <div>
+        <form method="post" id="payment-form"
+              action=".{% if next %}/?next={{ next }}{% endif %}">
+            {% csrf_token %}
+            <fieldset>
+                <legend>Subscribe to the following items</legend>
+                {% include "saas/balance.html" %}
+            </fieldset>
+            {% include "saas/card_use.html" with title="Subscribe" %}
+        </form>
+    </div>
+</div>
+{% else %}
+<div>
+    <p>Your subscription cart is empty.</p>
+</div>
 {% endif %}
-
-{% include "saas/card_use.html" with title="Place Order" %}
-
+</div>
 {% endblock %}

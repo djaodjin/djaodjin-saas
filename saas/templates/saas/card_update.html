@@ -1,22 +1,18 @@
-{% extends "saas/card_base.html" %}
+{% extends "saas/base.html" %}
 {% load i18n %}
+{% load assets %}
+
+{% block localheader %}
+<script type="text/javascript" src="https://js.stripe.com/v2/"></script>
+{% endblock %}
 
 {% block saas_content %}
-<div class="container-fluid">
-  <section id="refill">
-    <div class="page-header">
-      <h1>Update to {{ organization }}</h1>
-    </div>
-    <form method="post" id="payment-form" class="form-horizontal"
-          action="{% url 'saas_update_card' organization %}">
-      {% include "saas/card_form_fields.html" %}
-      <div class="control-group">
-        <div class="controls">
-          {% csrf_token %}
-          <button type="submit" class="btn btn-primary payment-submit">{% trans 'Update' %}</button>
-        </div>
-      </div>
+<section id="update_card">
+    <h1>Update Card for {{ organization }}</h1>
+    <form method="post" id="payment-form"
+          action=".{% if next %}/?next={{ next }}{% endif %}">
+        {% csrf_token %}
+        {% include "saas/card_use.html" with title="Update" update_mode=True %}
     </form>
-  </section>
-</div>
+</section>
 {% endblock %}

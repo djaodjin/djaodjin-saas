@@ -4,18 +4,13 @@
 {% block saas_content %}
 <section id="plan">
 {% for p in plan %}
-	{{p.title}}</br>
-Setup amount: {{p.setup_amount}}
-Period amount: {{p.period_amount}}/{{p.interval}}
-Transaction fee: {{p.transaction_fee}}/transaction
-</br>
-{{p.description}}
-		</br></br>
-		<a class="btn" href="{% url 'saas_edit_plan' organization p.id %}">Edit Plan</a>
-		</br></br>
-		<hr>
-	{% endfor %}
-</br></br>
-
+    {{p.title}}</br>
+    Setup amount: {{p.setup_amount}}<br/>
+    Period amount: {{p.period_amount}}/{{p.interval}}<br/>
+    Transaction fee: {{p.transaction_fee}}/transaction<br/>
+    {{p.description}}<br />
+    <a href="{% url 'saas_edit_plan' organization p %}">Edit Plan</a>
+<hr>
+{% endfor %}
 </section>
 {% endblock %}

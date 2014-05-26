@@ -1,0 +1,49 @@
+{% load static from staticfiles %}
+
+<form method="post" id="bank-form" action=".{% if next %}/?next={{ next }}{% endif %}">
+      {% csrf_token %}
+      <fieldset>
+      <legend>Bank Information {% if last4 and not update_mode %}<a href="{% url 'saas_update_bank' organization %}">Update</a>{% endif %}
+      </legend>
+      {% if last4 %}
+      <div>
+            <dl>
+                  <dt>Bank</dt>
+                  <dd>{{bank_name}}</dd>
+            </dl>
+            <dl>
+                  <dt>Account Number</dt>
+                  <dd>{{last4}}</dd>
+            </dl>
+      </div>
+      {% endif %}
+      {% if not last4 or update_mode %}
+      <!-- BE CAREFULL: Do not add name="" to these <input> nodes, else
+           values will hit the server and break PCI compliance. -->
+      <div id="row-account-number">
+            <label for="account-number">Account Number</label>
+            <input id="account-number"
+                   type="text" size="16" autocomplete="off" />
+      </div>
+      <div id="row-routing-number">
+            <label for="routing-number">Routing Number</label>
+            <input id="routing-number"
+                   type="text" size="16" autocomplete="off" />
+      </div>
+      <div id="row-country">
+            <label for="country">Country</label>
+            <input id="country"
+                   type="text" size="16" autocomplete="off" />
+      </div>
+      {% endif %}
+      <button type="submit">{{title}}</button>
+</form>
+<script type="text/javascript" src="{% static 'js/djaodjin-saas.js' %}"></script>
+<script type="text/javascript" src="{% static 'js/djaodjin-stripe.js' %}"></script>
+<script type="text/javascript">
+{% if not last4 or update_mode %}
+$(document).ready(function() {
+    initBankProcessor($("#bank-form"), "{{STRIPE_PUB_KEY}}");
+});
+{% endif %}
+</script>

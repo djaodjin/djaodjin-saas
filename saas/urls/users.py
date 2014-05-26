@@ -26,12 +26,13 @@
 
 from django.conf.urls import patterns, url
 
-from saas.views.users import ProductListView
+from saas.views.users import ProductListView, UserProfileView
 
-urlpatterns = patterns(
-    'saas.views.users',
+urlpatterns = patterns('saas.views.users',
     url(r'^products/',
         ProductListView.as_view(), name='saas_user_product_list'),
+    url('^',
+        UserProfileView.as_view(), name='users_profile'),
 )
 
 

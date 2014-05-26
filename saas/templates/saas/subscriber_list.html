@@ -1,5 +1,45 @@
 {% extends "saas/base.html" %}
+{% load saas_tags %}
 
 {% block saas_content %}
-{% include "saas/organization_list.html" with title="subscribers" organizations=subscribers %}
+<section id="subscribers">
+  <h1>{{organization.full_name}} Active Subscribers</h1>
+  <table>
+    <thead>
+      <tr>
+        <th>Subscriber</th>
+        <th>Plan</th>
+        <th>Since</th>
+        <th>Ends At</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for subscriber in subscribers %}
+      <tr>
+        <td colspan="4"><a href="{% url 'saas_organization_profile' subscriber %}">{{subscriber.full_name}}</a></td>
+      </tr>
+      {% for subscription in subscriber|active_with_provider:organization %}
+      <tr>
+        <td></td>
+        <td>{{subscription.plan.title}}</td>
+        <td>{{subscription.created_at|date:"d M Y"}}</td>
+        <td>{{subscription.ends_at|date:"d M Y"}}</td>
+        <td>
+          <form method="post" action=".">
+            {% csrf_token %}
+            <input name="plan" type="hidden" value="{{subscription.plan}}" />
+            <input name="subscriber" type="hidden" value="{{subscriber}}" />
+            <button type="submit" name="submit" value="Unsubscribe">Unsubscribe Now</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+      {% empty %}
+      <tr><td colspan="4"><em>No Subscribers</em></td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% include "paginator.html" %}
+</section>
 {% endblock %}

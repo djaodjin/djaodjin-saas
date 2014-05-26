@@ -3,11 +3,11 @@
   <form method="post"
         action="{% url 'saas_add_'|add:title organization %}">
     <input name="username" type="text" size="32" />
-    <input type="submit" class="btn" value="Add" />
+    <input type="submit" value="Add" />
     {% csrf_token %}
   </form>
   {% if users %}
-  <table class="table table-striped">
+  <table>
     <thead>
       <tr>
         <th></th>
@@ -22,7 +22,7 @@
           <form method="post"
                 action="{% url 'saas_remove_'|add:title organization %}">
             <input name="username" type="hidden" value="{{user.username}}" />
-            <input type="submit" class="btn btn-danger"
+            <input type="submit"
                    value="Remove" />
             {% csrf_token %}
           </form>

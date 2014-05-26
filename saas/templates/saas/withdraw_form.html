@@ -1,0 +1,20 @@
+{% extends "saas/base.html" %}
+{% load currency %}
+
+{% block localheader %}
+<script type="text/javascript" src="https://js.stripe.com/v2/"></script>
+{% endblock %}
+
+{% block saas_content %}
+<h1>Withdraw funds to your bank account</h1>
+
+<form method="post" id="bank-form"
+      action=".{% if next %}/?next={{ next }}{% endif %}">
+      {% csrf_token %}
+      <fieldset>
+        <legend>Amount to transfer</legend>
+        {{form.as_p}}
+      </fieldset>
+      {% include "saas/bank_use.html" with title="Withdraw" %}
+</form>
+{% endblock %}

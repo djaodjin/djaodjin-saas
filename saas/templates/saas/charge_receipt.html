@@ -1,27 +1,110 @@
 {% extends "saas/base.html" %}
-{% load i18n %}
 {% load currency %}
+{% load saas_tags %}
+{% load static from staticfiles %}
 
 {% block saas_content %}
 <div>
+  <h1>Charge Receipt</h1>
+  <section id="status">
+    {% comment %}
+        The following paragraphs are specially crafted such that only
+        one appears at any one time and ``waitForChargeCompleted``
+        can easily toggle between them.
+    {% endcomment %}
+    <p class="done {% if not charge.is_paid %}hidden{% endif %}">
+      On {{charge.created_at}}, the credit card has been charged for an amount
+      of {{charge.amount|usd}}. Payment Information:
+    </p>
+    <p class="failed {% if not charge.is_failed %}hidden{% endif %}">
+    On {{charge.created_at}}, we attempted to charge your card for
+    {{charge.amount|usd}}. The charge failed.
+    </p>
+    <p class="disputed {% if not charge.is_disputed %}hidden{% endif %}">
+    On {{charge.created_at}}, we attempted to charge your card for
+    {{charge.amount|usd}}. The charge was disputed.
+    </p>
+    <p class="created {% if not charge.is_progress %}hidden{% endif %}">
+    On {{charge.created_at}}, we attempted to charge your card for
+    {{charge.amount|usd}}. The charge is in progres...
+    </p>
+  </section>
   <section id="info">
-    <h1>Charge Receipt</h1>
+    <dl>
+      <dt>REFERENCE</dt>
+      <dd>#{{ charge.processor_id }}</dd>
+    </dl>
+    <dl>
+      <dt>amount</dt>
+      <dd>{{charge.amount|usd}}</dd>
+    </dl>
     <dl>
       <dt>card</dt>
-      <dd>{{last4}}</dd>
+      <dd>**** - {{charge.last4}}</dd>
     </dl>
     <dl>
       <dt>expires</dt>
-      <dd>{{exp_date}}</dd>
+      <dd>{{charge.exp_date}}</dd>
     </dl>
-    <p>
-      Your credit card has been charged for an amount
-      of {{amount|usd}}. For your records,
-      the charge number is {{ charge_id }}.
-    </p>
-    <p>
-      Thank you for your continuous business. Any questions
-      or comments, email us at <a href="mailto:{{organization.email}}">{{organization.email}}</a>.
-    </p>
   </section>
+  <section id="invoiced_items">
+    <table>
+      <thead>
+        <tr>
+          <th>Amount</th>
+          <th>Description</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for line in charge_items %}
+        <tr>
+          <td>{{line.invoiced.dest_amount|usd}}</td>
+          <td>{{line.invoiced|describe}}</td>
+          <td>
+            {% if line.refunded %}
+            <em>Refunded</em>
+            {% else %}
+            {% if line.invoiced|refund_enable:user %}
+            <button class="charge-refund"
+                    data-linenum="{{forloop.counter0}}">Refund</button>
+            {% endif %}
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+</div>
+  {% if next_url %}
+  <div>
+    <a href="{{next_url}}">Next &gt;</a>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
+
+{% block bodyscripts %}
+<script type="text/javascript" src="{% static 'js/djaodjin-saas.js' %}"></script>
+<script type="text/javascript" src="{% static 'js/djaodjin-stripe.js' %}"></script>
+<script type="text/javascript">
+var urls = {
+    'saas_api_charge':
+        "{% url 'saas_api_charge' charge %}",
+    'saas_api_charge_refund':
+        "{% url 'saas_api_charge_refund' charge %}",
+}
+$(document).ready(function() {
+    initAjaxCSRFHook("{{csrf_token}}");
+    var thisCharge = new Charge("{{charge.processor_id}}", urls);
+    $(".charge-refund").click(function () {
+        var linenum = $(this).attr('data-linenum');
+        thisCharge.refund(linenum);
+    });
+{% if charge.is_progress %}
+    thisCharge.waitForCompletion();
+{% endif %}
+});
+</script>
 {% endblock %}

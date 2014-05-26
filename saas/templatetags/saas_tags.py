@@ -26,6 +26,7 @@ import re
 from datetime import datetime, timedelta
 
 from django import template
+from django.conf import settings
 from django.core.exceptions import PermissionDenied
 from django.core.urlresolvers import reverse
 from django.utils.safestring import mark_safe
@@ -120,6 +121,11 @@ def is_manager(request, organization):
     except PermissionDenied:
         return False
     return True
+
+
+@register.filter
+def is_site_owner(organization):
+    return organization.pk == settings.SITE_ID
 
 
 @register.filter

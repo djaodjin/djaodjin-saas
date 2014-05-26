@@ -198,3 +198,32 @@ def requires_paid_subscription(function=None,
     if function:
         return decorator(function)
     return decorator
+
+
+def requires_self_manager_provider(function=None):
+    """
+    Decorator that checks that the user is either herself
+    or a manager for an organization providing services to
+    an organization the user is involved with.
+    """
+    def decorator(view_func):
+        @wraps(view_func, assigned=available_attrs(view_func))
+        def _wrapped_view(request, *args, **kwargs):
+            if not request.user.is_authenticated():
+                raise PermissionDenied
+            if request.user.username != kwargs.get('user'):
+                managed = Organization.objects.filter(
+                    managers__username=kwargs.get('user'))
+                # Organization that are managed by both users
+                if not managed.filter(managers__id=request.user.id).exists():
+                    # Organization that are managed by a provider
+                    if not managed.filter(
+                        subscriptions__organization__managers__id=\
+                            request.user.id).exists():
+                        raise PermissionDenied
+            return view_func(request, *args, **kwargs)
+        return _wrapped_view
+
+    if function:
+        return decorator(function)
+    return decorator

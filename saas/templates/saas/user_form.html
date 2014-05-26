@@ -1,0 +1,14 @@
+{% extends "saas/user_base.html" %}
+{% load i18n %}
+
+{% block saas_content %}
+<section id="personal">
+  <h1>Personal</h1>
+  {% if request.user == object %}
+  <a href="{% url 'password_change' %}">Change Password</a>
+  {% endif %}
+  <div>
+  {{ form.as_p }}
+  </div>
+</section>
+{% endblock %}

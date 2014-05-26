@@ -1,60 +1,49 @@
 {% extends "saas/base.html" %}
-{% load i18n %}
+{% load static from staticfiles %}
 {% load currency %}
-
-{% block localheader %}
-<script type="text/javascript" src="https://js.stripe.com/v2/"></script>
-{% endblock %}
+{% load saas_tags %}
 
 {% block saas_content %}
 <section id="info">
   <h1>Credit Card</h1>
-  <a class="btn" href="{% url 'saas_update_card' organization %}">Update</a>
-  <dl class="dl-horizontal">
+  <a href="{% url 'saas_update_card' organization %}">Update</a>
+  <dl>
     <dt>card</dt>
-    <dd>{{last4}}</dd>
+    <dd id="last4">{% if last4 %}{{last4}}{% else %}N/A{% endif %}</dd>
   </dl>
-  <dl class="dl-horizontal">
+  <dl>
     <dt>expires</dt>
-    <dd>{{exp_date}}</dd>
+    <dd id="exp_date">{% if exp_date %}{{exp_date}}{% else %}N/A{% endif %}</dd>
   </dl>
 </section>
 <section id="balance">
   <h1>Balance</h1>
-  <dl class="dl-horizontal">
-    {% if balance_credits %}
-    <dt>{{balance_credits|usd}}</dt>
+  <dl>
+    {% if balance_payable >= 0 %}
+    <dt>{{balance_payable|humanize_balance}}</dt>
+    <dd>Balance due {% if balance_payable > 0 %}(<a href="{% url 'saas_organization_balance' organization %}">pay now</a>){% endif %}</dd>
+    {% else %}
+    <dt>{{balance_payable|humanize_balance}}</dt>
     <dd>Balance Credits</dd>
-        {% else %}
-    <dt>{{balance_dues|usd}}</dt>
-    <dd>Balance due (<a href="{% url 'saas_organization_balance' organization %}">pay now</a>)</dd>
     {% endif %}
   </dl>
 </section>
-<section id="transactions">
-  <h1>Transactions</h1>
-  {% if transaction_list %}
-  <table>
-    <thead>
-      <tr>
-        <th>Date</th>
-        <th>Description</th>
-        <th>Amount</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for entry in transaction_list %}
-      <tr>
-        <td>{{entry.created_at|date:"d M Y"}}</td>
-        <td>{{entry.descr}}</td>
-        <td>{{entry.amount|usd}}</td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-  {% include "paginator.html" %}
-  {% else %}
-  <em>No Transactions</em>
-  {% endif %}
-</section>
+{% include "saas/transaction_list.html" %}
+</div>
+{% endblock %}
+
+{% block bodyscripts %}
+<script type="text/javascript" src="{% static 'js/djaodjin-saas.js' %}"></script>
+<script type="text/javascript" src="{% static 'js/djaodjin-stripe.js' %}"></script>
+<script type="text/javascript">
+/* XXX Temporarly disabled
+{% if STRIPE_PUB_KEY %}
+$(document).ready(function() {
+    var thisCard = new Card({'saas_api_card':
+        "{% url 'saas_api_card' organization %}"});
+    thisCard.query();
+});
+{% endif %}
+*/
+</script>
 {% endblock %}

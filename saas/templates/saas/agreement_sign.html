@@ -1,21 +1,16 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="container-fluid">
-  <p class="errorlist">
-    {{ errmsg }}
-  </p>
-  <p>
-    Please sign:
-  </p>
-  {{page|safe}}{% comment %}
-                  It is ok to use a safe here. We load the .md file from disk.
-               {% endcomment %}
+<p>
+  Please sign:
+</p>
+{{page|safe}}{% comment %}
+             It is ok to use a safe here. We load the .md file from disk.
+             {% endcomment %}
 
-  <form class="form-inline" method="post" action="sign?next={{ next }}">
-    {{ form.as_ul }}
-    {% csrf_token %}
-    <input type="submit" class="btn btn-primary" value="I Agree" />
-  </form>
-</div>
+<form method="post" action="sign?next={{ next }}">
+  {{ form.as_ul }}
+  {% csrf_token %}
+  <input type="submit" value="I Agree" />
+</form>
 {% endblock %}

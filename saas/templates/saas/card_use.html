@@ -1,34 +1,67 @@
-<section id="card">
-  <h1>{{title}}</h1>
-  <form method="post" id="payment-form" class="form-horizontal" action=".">
-    {% if total_amount > 0 %}
-    {% if last4 %}
-    <a class="btn" href="{% url 'saas_update_card' organization %}">Update</a>
-    <dl class="dl-horizontal">
-      <dt>card</dt>
-      <dd>{{last4}}</dd>
-    </dl>
-    <dl class="dl-horizontal">
-      <dt>expires</dt>
-      <dd>{{exp_date}}</dd>
-    </dl>
-    {% else %}
-    {% include "saas/card_form_fields.html" %}
-    {% endif %}
-    {% endif %}
-    <fieldset>
-      {% if not last4 %}
-      {% if total_amount %}
-      <div id="remember_card" class="control-group">
-        <label class="control-label">Remember this card</label>
-        <div class="controls">
-          <input id="remember_card" name="remember_card" type="checkbox" />
-        </div>
+{% load static from staticfiles %}
+
+<div id="card-use">
+<fieldset>
+      <legend>Credit Card Information{% if last4 and not update_mode %}<a href="{% url 'saas_update_card' organization %}">Update</a>{% endif %}</legend>
+      {% if last4 %}
+      <div>
+            <dl>
+                  <dt>card</dt>
+                  <dd>{{last4}}</dd>
+            </dl>
+            <dl>
+                  <dt>expires</dt>
+                  <dd>{{exp_date}}</dd>
+            </dl>
       </div>
       {% endif %}
-      {% endif %}
-    </fieldset>
-    {% csrf_token %}
-    <button type="submit">{{title}}</button>
-  </form>
-</section>
+      {% if not last4 or update_mode %}
+      <!-- BE CAREFULL: Do not add name="" to these <input> nodes, else
+           values will hit the server and break PCI compliance. -->
+      <div id="row-number">
+            <label for="card-number">Card Number</label>
+            <input id="card-number"
+                   type="text" size="16" placeholder="Card number"
+                   autocomplete="off" />
+      </div>
+      <div id="row-exp">
+            <label>Expiration</label>
+            <input id="card-exp-month"
+                   type="text" maxlength="2" size="2" placeholder="MM" />
+            <input id="card-exp-year"
+                   type="text" maxlength="4" size="4" placeholder="YYYY" />
+      </div>
+      <div id="row-cvc">
+            <label>Security Code</label>
+            <input id="card-cvc"
+                   type="text" maxlength="4" size="3" placeholder="CVC"
+                   autocomplete="off" />
+      </div>
+</fieldset>
+<fieldset>
+      <legend>Billing Address</legend>
+      {{form.card_name}}
+      {{form.card_address_line1}}
+      {{form.card_city}}
+      {{form.card_address_state}}
+      {{form.card_address_zip}}
+      {{form.card_address_country}}
+{% endif %}
+{% comment %}
+  Previous endif before fieldset closing tag so the "Credit Card Information"
+  fieldset is closed correctly both ways.
+{% endcomment %}
+</fieldset>
+</div> <!-- #card-use -->
+<div>
+      <button type="submit">{{title}}</button>
+</div>
+<script type="text/javascript" src="{% static 'js/djaodjin-saas.js' %}"></script>
+<script type="text/javascript" src="{% static 'js/djaodjin-stripe.js' %}"></script>
+<script type="text/javascript">
+{% if not last4 or update_mode %}
+$(document).ready(function() {
+    initCardProcessor($("#payment-form"), "{{STRIPE_PUB_KEY}}");
+});
+{% endif %}
+</script>

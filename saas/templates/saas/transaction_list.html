@@ -1,0 +1,29 @@
+{% load currency %}
+{% load saas_tags %}
+
+<section id="transactions">
+  <h1>Transactions</h1>
+  <table>
+    <thead>
+      <tr>
+        <th>Date</th>
+        <th>Description</th>
+        <th>Amount</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for entry in transaction_list %}
+      <tr>
+        <td>{{entry.created_at|date:"d M Y"}}</td>
+        <td>{{entry|describe}}</td>
+        <td>{% if entry|is_debit:organization %}-{% endif %}{{entry.dest_amount|usd}}</td>
+      </tr>
+      {% empty %}
+      <tr>
+        <td colspan="3"><em>No Transactions</em></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% include "paginator.html" %}
+</section>
