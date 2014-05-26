@@ -27,7 +27,7 @@ from distutils.core import setup
 import saas
 
 setup(
-    name='saas',
+    name='djaodjin-saas',
     version=saas.__version__,
     author='The DjaoDjin Team',
     author_email='support@djaodjin.com',
@@ -37,7 +37,6 @@ setup(
               'saas.templatetags',
               'saas.urls',
               'saas.urls.api',
-              'saas.urls.app',
               'saas.urls.billing',
               'saas.managers',
               'saas.views',
@@ -47,7 +46,9 @@ setup(
                            'static/js/*.js',
                            'templates/saas/*.html',
                            'templates/saas/agreements/*']},
-    url='https://github.com/djaodjin/saas_framework/',
+    url='https://github.com/djaodjin/djaodjin-saas/',
+    download_url='https://github.com/djaodjin/djaodjin-saas/tarball/%s' \
+        % saas.__version__,
     license='BSD',
     description='DjaoDjin SaaS implementation',
     long_description=open('README.md').read(),

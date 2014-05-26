@@ -28,7 +28,7 @@ PEP 386-compliant version number for the saas django app.
 
 from django.core.exceptions import ImproperlyConfigured
 
-__version__ = '0.1dev'
+__version__ = '0.1.1'
 
 
 def _get_model_class(full_name, settings_meta):
