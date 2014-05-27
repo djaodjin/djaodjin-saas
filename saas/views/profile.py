@@ -28,11 +28,14 @@ import logging
 
 from django.contrib import messages
 from django.core.urlresolvers import reverse
+from django.db import transaction
 from django.shortcuts import get_object_or_404
 from django.views.generic import FormView, ListView, UpdateView
 from django.views.generic.edit import FormMixin
+from django.utils.decorators import method_decorator
 
-from saas.forms import OrganizationForm, UserRelationForm, UnsubscribeForm
+from saas.forms import (OrganizationForm, ManagerAndOrganizationForm,
+    UserRelationForm, UnsubscribeForm)
 from saas.mixins import OrganizationMixin
 from saas.models import Organization, Subscription, datetime_or_now
 from saas.compat import User
@@ -142,9 +145,47 @@ class SubscriptionListView(OrganizationMixin, ListView):
 class OrganizationProfileView(UpdateView):
 
     model = Organization
-    form_class = OrganizationForm
     slug_url_kwarg = 'organization'
     template_name = "saas/organization_profile.html"
+
+    def attached_manager(self):
+        if self.object.managers.count() == 1:
+            manager = self.object.managers.first()
+            if self.object.slug == manager.username:
+                return manager
+        return None
+
+    @method_decorator(transaction.atomic)
+    def form_valid(self, form):
+        manager = self.attached_manager()
+        if manager:
+            if form.cleaned_data['slug']:
+                manager.username = form.cleaned_data['slug']
+            if form.cleaned_data['full_name']:
+                name_parts = form.cleaned_data['full_name'].split(' ')
+                if len(name_parts) > 1:
+                    manager.first_name = name_parts[0]
+                    manager.last_name = ' '.join(name_parts[1:])
+                else:
+                    manager.first_name = student.full_name
+                    manager.last_name = ''
+            if form.cleaned_data['email']:
+                manager.email = form.cleaned_data['email']
+            manager.save()
+        return super(OrganizationProfileView, self).form_valid(form)
+
+    def get_context_data(self, **kwargs):
+        context = super(
+            OrganizationProfileView, self).get_context_data(**kwargs)
+        context.update({"attached_manager": self.attached_manager()})
+        return context
+
+    def get_form_class(self):
+        if self.attached_manager():
+            # There is only one manager so we will add the User fields
+            # to the form so they can be updated at the same time.
+            return ManagerAndOrganizationForm
+        return OrganizationForm
 
     def get_success_url(self):
         messages.info(self.request, 'Profile Updated.')

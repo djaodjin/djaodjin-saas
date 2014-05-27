@@ -443,6 +443,8 @@ class ChargeManager(models.Manager):
         """
         # Be careful, stripe will not processed charges less than 50 cents.
         amount = sum_dest_amount(transactions)
+        if amount == 0:
+            return None
         descr = DESCRIBE_CHARGED_CARD % {
             'charge': '', 'organization': customer.full_name}
         if user:

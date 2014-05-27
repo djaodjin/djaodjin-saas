@@ -79,6 +79,15 @@ class OrganizationForm(forms.ModelForm):
                   'country_name']
 
 
+class ManagerAndOrganizationForm(OrganizationForm):
+
+    def __init__(self, *args, **kwargs):
+        #call our superclasse's initializer
+        super(ManagerAndOrganizationForm, self).__init__(*args, **kwargs)
+        # XXX define other fields dynamically (username, etc.):
+        # Unless it is not necessary?
+
+
 class PlanForm(forms.ModelForm):
     """
     Form to create or update a ``Plan``.
