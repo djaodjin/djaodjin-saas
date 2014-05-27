@@ -167,7 +167,7 @@ class OrganizationProfileView(UpdateView):
                     manager.first_name = name_parts[0]
                     manager.last_name = ' '.join(name_parts[1:])
                 else:
-                    manager.first_name = student.full_name
+                    manager.first_name = form.cleaned_data['full_name']
                     manager.last_name = ''
             if form.cleaned_data['email']:
                 manager.email = form.cleaned_data['email']
