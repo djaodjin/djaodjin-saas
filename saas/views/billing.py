@@ -35,6 +35,7 @@ There are two views where invoicables are presented and charges are created:
 
 import copy, datetime, logging
 
+from django import http
 from django.contrib.auth import REDIRECT_FIELD_NAME
 from django.core.urlresolvers import reverse
 from django.db import IntegrityError
@@ -336,10 +337,24 @@ class PlaceOrderView(InvoicablesView):
 
     template_name = 'saas/place_order.html'
 
+    def dispatch(self, *args, **kwargs):
+        # We are not getting here without an authenticated user. It is time
+        # to store the cart into the database.
+        _session_cart_to_database(self.request)
+        return super(PlaceOrderView, self).dispatch(*args, **kwargs)
+
     def get_context_data(self, **kwargs):
         context = super(PlaceOrderView, self).get_context_data(**kwargs)
         context.update({'coupon_form': RedeemCouponForm()})
         return context
+
+    def get(self, request, *args, **kwargs):
+        if not CartItem.objects.get_cart(user=self.request.user).exists():
+            messages.info(self.request,
+              "Your Cart is empty. Please add some items to your cart before"
+" you check out.")
+            return http.HttpResponseRedirect(reverse('saas_cart_plan_list'))
+        return super(PlaceOrderView, self).get(request, *args, **kwargs)
 
     @staticmethod
     def get_invoicable_options(subscription,
@@ -445,12 +460,6 @@ class PlaceOrderView(InvoicablesView):
             invoicables += [{
                 'subscription': subscription, "lines": [], "options": options}]
         return invoicables
-
-    def dispatch(self, *args, **kwargs):
-        # We are not getting here without an authenticated user. It is time
-        # to store the cart into the database.
-        _session_cart_to_database(self.request)
-        return super(PlaceOrderView, self).dispatch(*args, **kwargs)
 
     def get_success_url(self):
         redirect_path = validate_redirect_url(

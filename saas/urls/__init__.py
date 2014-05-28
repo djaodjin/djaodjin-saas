@@ -29,12 +29,15 @@ URLs for the saas django app
 from django.conf.urls import patterns, include, url
 
 from saas.views import OrganizationRedirectView
+from saas.views.plans import CartPlanListView
 from saas.settings import ACCT_REGEX
 
 urlpatterns = patterns(
     'saas.views',
     url(r'^api/',
         include('saas.urls.api')),
+# XXX Can't be defined here this way if we want to override it.
+#    url(r'^plans/', CartPlanListView.as_view(), name='saas_cart_plan_list'),
     url(r'^billing/cart/',
         OrganizationRedirectView.as_view(pattern_name='saas_organization_cart'),
         name='saas_cart'),

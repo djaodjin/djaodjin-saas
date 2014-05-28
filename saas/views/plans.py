@@ -24,7 +24,7 @@
 
 from django.core.urlresolvers import reverse
 from django.shortcuts import get_object_or_404
-from django.views.generic.edit import CreateView, UpdateView
+from django.views.generic import CreateView, ListView, UpdateView
 from django.views.generic.detail import SingleObjectMixin
 
 from saas.models import Plan, Organization
@@ -49,6 +49,19 @@ class PlanFormMixin(SingleObjectMixin):
         context = super(PlanFormMixin, self).get_context_data(**kwargs)
         context.update({'organization': self.organization})
         return context
+
+
+class CartPlanListView(ListView):
+    """
+    List of plans available for subscription.
+    """
+
+    model = Plan
+    template_name = 'saas/cart_plan_list.html'
+
+    def get_queryset(self):
+        queryset = Plan.objects.filter(is_active=True)
+        return queryset
 
 
 class PlanCreateView(PlanFormMixin, CreateView):
