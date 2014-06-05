@@ -1,0 +1,18 @@
+{% load currency %}
+{% load saas_tags %}
+
+{% block subject %}
+{{provider.full_name}} Order Confirmation
+{% endblock %}
+
+{% block plain_content %}
+{{provider.full_name}} Order Confirmation
+
+{% for line in invoiced_items %}
+    {{line.dest_amount|usd}}
+    {{line}}
+{% endfor %}
+
+Any questions or comments, email us at <a href="mailto:{{provider.email}}">{{provider.email}}</a>.
+
+{% endblock %}

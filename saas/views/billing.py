@@ -113,20 +113,6 @@ class CardFormMixin(OrganizationMixin):
         return context
 
 
-class InsertedURLMixin(object):
-
-    def get_redirect_path(self, **kwargs): #pylint: disable=unused-argument
-        context = {}
-        redirect_path = validate_redirect_url(
-            self.request.GET.get(REDIRECT_FIELD_NAME, None))
-        if not redirect_path:
-            redirect_path = validate_redirect_url(
-                self.request.META.get('HTTP_REFERER', ''))
-        if redirect_path:
-            context.update({REDIRECT_FIELD_NAME: redirect_path})
-        return context
-
-
 class BankUpdateView(BankMixin, FormView):
     """
     The bank information is used to transfer funds to those organization
@@ -155,7 +141,7 @@ class BankUpdateView(BankMixin, FormView):
         return reverse('saas_transfer_info', args=(self.organization,))
 
 
-class InvoicablesView(InsertedURLMixin, CardFormMixin, FormView):
+class InvoicablesView(CardFormMixin, FormView):
     """
     Create a charge for items that must be charged on submit.
     """
@@ -173,6 +159,14 @@ class InvoicablesView(InsertedURLMixin, CardFormMixin, FormView):
             kwargs.update({
                 'plan-%s' % invoicable['subscription'].plan.slug: ""})
         return kwargs
+
+    def get_redirect_path(self, **kwargs): #pylint: disable=unused-argument
+        context = {}
+        redirect_path = validate_redirect_url(
+            self.request.GET.get(REDIRECT_FIELD_NAME, None))
+        if redirect_path:
+            context.update({REDIRECT_FIELD_NAME: redirect_path})
+        return context
 
     def get_queryset(self): #pylint: disable=no-self-use
         """
@@ -193,6 +187,7 @@ class InvoicablesView(InsertedURLMixin, CardFormMixin, FormView):
 
         # deep copy the invoicables because we are updating the list in place
         # and we don't want to keep the edited state on a card failure.
+        self.sole_provider = None
         invoicables = copy.deepcopy(self.invoicables)
         for invoicable in invoicables:
             # We use two conventions here:
@@ -203,6 +198,10 @@ class InvoicablesView(InsertedURLMixin, CardFormMixin, FormView):
             plan = invoicable['subscription'].plan
             plan_key = 'plan-%s' % plan.slug
             if plan_key in form.cleaned_data:
+                if self.sole_provider is None:
+                    self.sole_provider = plan.organization
+                elif self.sole_provider != plan.organization:
+                    self.sole_provider = False
                 selected_line = int(form.cleaned_data[plan_key])
                 for line in invoicable['options']:
                     if line.dest_amount == selected_line:
@@ -240,7 +239,7 @@ class InvoicablesView(InsertedURLMixin, CardFormMixin, FormView):
 
 
 
-class CardUpdateView(InsertedURLMixin, CardFormMixin, FormView):
+class CardUpdateView(CardFormMixin, FormView):
 
     template_name = 'saas/card_update.html'
 
@@ -257,6 +256,17 @@ class CardUpdateView(InsertedURLMixin, CardFormMixin, FormView):
     def get_context_data(self, **kwargs):
         context = super(CardUpdateView, self).get_context_data(**kwargs)
         context.update(self.get_redirect_path())
+        return context
+
+    def get_redirect_path(self, **kwargs): #pylint: disable=unused-argument
+        context = {}
+        redirect_path = validate_redirect_url(
+            self.request.GET.get(REDIRECT_FIELD_NAME, None))
+        if not redirect_path:
+            redirect_path = validate_redirect_url(
+                self.request.META.get('HTTP_REFERER', ''))
+        if redirect_path:
+            context.update({REDIRECT_FIELD_NAME: redirect_path})
         return context
 
     def get_success_url(self):
@@ -474,6 +484,9 @@ class PlaceOrderView(InvoicablesView):
                         args=(self.charge.customer, self.charge.processor_id))
         if redirect_path:
             return redirect_path
+        if self.sole_provider:
+            return reverse('product_default_start',
+                args=(self.sole_provider, self.customer))
         return reverse('saas_organization_profile', args=(self.customer,))
 
 
