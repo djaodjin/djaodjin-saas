@@ -10,9 +10,9 @@
 
 {% for line in invoiced_items %}
     {{line.dest_amount|usd}}
-    {{line}}
+    {{line.descr}}
 {% endfor %}
 
-Any questions or comments, email us at <a href="mailto:{{provider.email}}">{{provider.email}}</a>.
+Any questions or comments, email us at {{provider.email}}.
 
 {% endblock %}
