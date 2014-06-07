@@ -159,7 +159,7 @@ class OrganizationProfileView(UpdateView):
     def form_valid(self, form):
         manager = self.attached_manager()
         if manager:
-            if form.cleaned_data['slug']:
+            if form.cleaned_data.get('slug', None):
                 manager.username = form.cleaned_data['slug']
             if form.cleaned_data['full_name']:
                 name_parts = form.cleaned_data['full_name'].split(' ')
