@@ -96,7 +96,6 @@ var urls = {
         "{% url 'saas_api_charge_refund' charge %}",
 }
 $(document).ready(function() {
-    initAjaxCSRFHook("{{csrf_token}}");
     var thisCharge = new Charge("{{charge.processor_id}}", urls);
     $(".charge-refund").click(function () {
         var linenum = $(this).attr('data-linenum');

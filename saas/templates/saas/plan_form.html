@@ -18,7 +18,6 @@
 {% block bodyscripts %}
 <script type="text/javascript">
 $(document).ready(function(){
-    initAjaxCSRFHook("{{csrf_token}}");
     $(".activate").click(function(event) {
         var self = $(this);
         event.preventDefault();

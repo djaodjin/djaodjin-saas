@@ -1,7 +1,27 @@
+{% load static from staticfiles %}
 <!DOCTYPE html>
 <html>
 <head>
   <title>SaaS Testsite</title>
+  <script type="text/javascript" src="{% static 'vendor/js/jquery.js' %}"></script>
+  <script type="text/javascript" src="{% static 'vendor/js/jquery.cookie.js' %}"></script>
+  {% if csrf_token %}
+  <script type="text/javascript">
+var csrftoken = $.cookie('csrftoken');
+function csrfSafeMethod(method) {
+    // these HTTP methods do not require CSRF protection
+    return (/^(GET|HEAD|OPTIONS|TRACE)$/.test(method));
+}
+$.ajaxSetup({
+    crossDomain: false, // obviates need for sameOrigin test
+    beforeSend: function(xhr, settings) {
+        if (!csrfSafeMethod(settings.type)) {
+            xhr.setRequestHeader("X-CSRFToken", csrftoken);
+        }
+    }
+});
+  </script>
+  {% endif %}
   {% block localheader %}
   {% endblock %}
 </head>
