@@ -167,7 +167,7 @@ class StripeBackend(object):
                 email=organization.email,
                 description=organization.slug,
                 card=card_token)
-            organization.processor_id = p_customer
+            organization.processor_id = p_customer.id
             organization.save()
 
     def retrieve_bank(self, organization):

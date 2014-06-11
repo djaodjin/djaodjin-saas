@@ -42,8 +42,11 @@ class ProductListView(ListView):
     template_name = 'saas/managed_list.html'
 
     def get_queryset(self):
-        self.user = get_object_or_404(
-            User, username=self.kwargs.get(self.slug_url_kwarg))
+        try:
+            self.user = User.objects.get(
+                username=self.kwargs.get(self.slug_url_kwarg))
+        except User.DoesNotExist:
+            self.user = self.request.user
         return managed_organizations(self.user)
 
     def get_context_data(self, **kwargs):

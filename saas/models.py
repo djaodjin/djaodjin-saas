@@ -197,7 +197,7 @@ class Organization(models.Model):
     processor_id = models.CharField(null=True,
         blank=True, max_length=20)
     processor_recipient_id = models.CharField(
-        null=True, blank=True, max_length=20,
+        null=True, blank=True, max_length=40,
         help_text=_("Used to deposit funds to the organization bank account"))
 
     def __unicode__(self):
@@ -419,6 +419,7 @@ class CartItem(models.Model):
     created_at = models.DateTimeField(auto_now_add=True,
         help_text=_("date/time at which the item was added to the cart."))
     user = models.ForeignKey(settings.AUTH_USER_MODEL, db_column='user_id',
+        related_name='cart_items',
         help_text=_("user who added the item to the cart."))
     plan = models.ForeignKey('Plan',
         help_text=_("item added to the cart."))
