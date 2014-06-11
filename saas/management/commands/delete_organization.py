@@ -29,12 +29,9 @@ including Transaction history.
 
 from django.core.management.base import BaseCommand
 
-#from saas.compat import User
-from saas.compat import datetime_or_now
+# We need this import to avoid getting an exception importing 'saas.models'
+from saas.compat import datetime_or_now #pylint: disable=unused-import
 from saas.models import Organization
-
-
-LOGGER = logging.getLogger(__name__)
 
 
 class Command(BaseCommand):
