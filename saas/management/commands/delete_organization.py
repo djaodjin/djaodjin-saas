@@ -27,8 +27,6 @@ Command to obliterate all traces of an Organization,
 including Transaction history.
 """
 
-import datetime, logging, re, time
-
 from django.core.management.base import BaseCommand
 
 #from saas.compat import User
