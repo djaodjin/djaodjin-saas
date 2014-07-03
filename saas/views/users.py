@@ -22,13 +22,9 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from django.contrib import messages
-from django.core.urlresolvers import reverse
-from django.views.generic import ListView, UpdateView
+from django.views.generic import ListView
 
 from saas.compat import User
-from saas.forms import UserForm
-from saas.models import Organization
 from saas.views.auth import managed_organizations
 
 class ProductListView(ListView):
@@ -54,30 +50,4 @@ class ProductListView(ListView):
         return context
 
 
-class UserProfileView(UpdateView):
-    """
-    If a user is manager for an Organization, she can access the Organization
-    profile. If a user is manager for an Organization subscribed to another
-    Organization, she can access the product provided by that organization.
-    """
-
-    model = User
-    form_class = UserForm
-    slug_url_kwarg = 'user'
-    slug_field = 'username'
-    template_name = 'saas/user_form.html'
-
-    def get_context_data(self, **kwargs):
-        context = super(UserProfileView, self).get_context_data(**kwargs)
-        username = self.kwargs.get(self.slug_url_kwarg)
-        try:
-            context.update({
-                'organization': Organization.objects.get(slug=username)})
-        except Organization.DoesNotExist:
-            pass
-        return context
-
-    def get_success_url(self):
-        messages.info(self.request, 'Profile Updated.')
-        return reverse('users_profile', args=(self.object,))
 

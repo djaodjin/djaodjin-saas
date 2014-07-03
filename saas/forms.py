@@ -31,7 +31,6 @@ from django.template.defaultfilters import slugify
 from django.utils.translation import ugettext_lazy as _
 
 from saas.models import Organization, Plan
-from saas.compat import User
 
 #pylint: disable=super-on-old-class
 #pylint: disable=no-member
@@ -119,16 +118,6 @@ class UnsubscribeForm(forms.Form):
 
     plan = forms.SlugField()
     subscriber = forms.SlugField()
-
-
-class UserForm(forms.ModelForm):
-    """
-    Form to update a ``User`` profile.
-    """
-
-    class Meta:
-        model = User
-        fields = ['username', 'email', 'first_name', 'last_name']
 
 
 class UserRelationForm(forms.Form):

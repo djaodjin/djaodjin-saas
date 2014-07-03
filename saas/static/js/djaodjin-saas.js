@@ -89,6 +89,24 @@ Plan.prototype.get = function(successFunction) {
   });
 }
 
+/** Toggle a ``Plan`` from active to inactive and vise-versa
+    by executing an AJAX request to the service.
+ */
+function toggleActivatePlan(button, urls) {
+  var planSlug = button.attr('data-plan');
+  var thisPlan = new Plan(planSlug, urls);
+  var is_active = !button.hasClass('activated');
+  thisPlan.activate(!button.hasClass('activated'), function(data) {
+      if( data['is_active'] ) {
+          button.addClass('activated');
+          button.text('Deactivate');
+      } else {
+          button.removeClass('activated');
+          button.text('Activate');
+      }
+  });
+}
+
 
 var CartItem = function(id, urls) {
     this.item = id;
@@ -112,26 +130,6 @@ CartItem.prototype.remove = function(successFunction) {
         url: self.urls.saas_api_cart + self.item + '/',
         success: successFunction,
     });
-}
-
-
-/** Toggle a ``Plan`` from active to inactive and vise-versa
-    by executing an AJAX request to the service.
- */
-function toggleActivatePlan(button, urls) {
-  var pathname_parts = document.location.pathname.split('/')
-  var organization = pathname_parts[2]
-  var thisPlan = new Plan(pathname_parts[4], urls);
-  var is_active = !button.hasClass('activated');
-  thisPlan.activate(!button.hasClass('activated'), function(data) {
-      if( data['is_active'] ) {
-          button.addClass('activated');
-          button.text('Deactivate');
-      } else {
-          button.removeClass('activated');
-          button.text('Activate');
-      }
-  });
 }
 
 

@@ -241,7 +241,7 @@ class InvoicablesView(CardFormMixin, FormView):
 
 class CardUpdateView(CardFormMixin, FormView):
 
-    template_name = 'saas/card_update.html'
+    template_name = 'billing/card.html'
 
     def form_valid(self, form):
         stripe_token = form.cleaned_data['stripeToken']
@@ -284,7 +284,7 @@ class TransactionListView(ListView):
     """
 
     paginate_by = 10
-    template_name = 'saas/billing_info.html'
+    template_name = 'billing/index.html'
     organization_url_kwarg = 'organization'
 
     def get_queryset(self):
@@ -345,7 +345,7 @@ class PlaceOrderView(InvoicablesView):
     Subscribe an organization to various plans and collect payment due upfront.
     """
 
-    template_name = 'saas/place_order.html'
+    template_name = 'billing/cart.html'
 
     def dispatch(self, *args, **kwargs):
         # We are not getting here without an authenticated user. It is time
@@ -540,7 +540,7 @@ class PayBalanceView(InvoicablesView):
     """
 
     plan_url_kwarg = 'subscribed_plan'
-    template_name = 'saas/pay_subscription.html'
+    template_name = 'billing/balance.html'
 
     @staticmethod
     def get_invoicable_options(subscription, created_at=None, prorate_to=None):
