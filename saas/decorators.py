@@ -46,9 +46,68 @@ from django.shortcuts import get_object_or_404
 from django.utils.decorators import available_attrs
 
 from saas.models import Charge, Organization, Plan, Signature, Subscription
-from saas.views.auth import valid_manager_for_organization
+from saas.views.auth import valid_manager_for_organization, valid_contributor
+from saas.settings import SKIP_PERMISSION_CHECK
 
 LOGGER = logging.getLogger(__name__)
+
+
+def _valid_manager(user, candidates):
+    """
+    Returns the subset of a queryset of ``Organization``, *candidates*
+    which have *user* as a manager.
+    """
+    results = []
+    if SKIP_PERMISSION_CHECK:
+        if user:
+            username = user.username
+        else:
+            username = '(none)'
+        LOGGER.warning("Skip permission check for %s on organization %s",
+                       username, organization)
+        return candidates
+    if user and user.is_authenticated():
+        try:
+            return candidates.filter(managers__id=user.id)
+        except AttributeError:
+            for candidate in candidates:
+                if candidate.managers.filter(id=user.id).exists():
+                    results += [candidate]
+    return results
+
+
+def _valid_contributor(user, candidates):
+    """
+    Returns a tuple made of two list of ``Organization`` from *candidates*.
+    The first element contains organizations which have *user*
+    as a manager. The second element contains organizations which have *user*
+    as a contributor.
+    """
+    contributed = []
+    managed = _valid_manager(user, candidates)
+    if user and user.is_authenticated():
+        try:
+            contributed = candidates.exclude(managed).filter(
+                contributors__id=user.id)
+        except AttributeError:
+            for candidate in candidates:
+                if (not candidate in managed
+                    and candidate.contributors.filter(id=user.id).exists()):
+                    contributed += [candidate]
+    return (managed, contributed)
+
+
+def _contributor_readonly(request, candidates):
+    """
+    Returns a tuple made of two list of ``Organization`` from *candidates*.
+    """
+    if request.method == "GET":
+        managed, contributed = _valid_contributor(request.user, candidates)
+    else:
+        contributed = []
+        managed = _valid_manager(request.user, candidates)
+    return len(managed + contributed) > 0
+
 
 def _insert_url(request, redirect_field_name=REDIRECT_FIELD_NAME,
                 inserted_url=None):
@@ -113,10 +172,9 @@ def requires_manager(function=None):
                     Charge, processor_id=kwargs.get('charge'))
                 organization = charge.customer
             elif kwargs.has_key('organization'):
-                organization = kwargs.get('organization')
-            organization = valid_manager_for_organization(
-                request.user, organization)
-            if organization:
+                organization = get_object_or_404(Organization,
+                    slug=kwargs.get('organization'))
+            if _contributor_readonly(request, [organization]):
                 return view_func(request, *args, **kwargs)
             raise PermissionDenied
         return _wrapped_view
@@ -136,22 +194,12 @@ def requires_manager_or_provider(function=None):
         def _wrapped_view(request, *args, **kwargs):
             organization = get_object_or_404(Organization,
                 slug=kwargs.get('organization'))
-            try:
-                valid_manager_for_organization(request.user, organization)
-            except PermissionDenied:
-                provider = None
-                for prov in Organization.objects.providers_to(organization):
-                    try:
-                        provider = valid_manager_for_organization(
-                            request.user, prov)
-                        break
-                    except PermissionDenied:
-                        pass
-                if not provider:
-                    raise PermissionDenied("%(user)s is neither a manager '\
+            if _contributor_readonly(request, [organization]
+                + list(Organization.objects.providers_to(organization))):
+                return view_func(request, *args, **kwargs)
+            raise PermissionDenied("%(user)s is neither a manager '\
 ' of %(organization)s nor a manager of one of %(organization)s providers."
                         % {'user': request.user, 'organization': organization})
-            return view_func(request, *args, **kwargs)
         return _wrapped_view
 
     if function:
@@ -212,15 +260,14 @@ def requires_self_manager_provider(function=None):
             if not request.user.is_authenticated():
                 raise PermissionDenied
             if request.user.username != kwargs.get('user'):
+                # Organization that are managed by both users
                 managed = Organization.objects.filter(
                     managers__username=kwargs.get('user'))
-                # Organization that are managed by both users
-                if not managed.filter(managers__id=request.user.id).exists():
-                    # Organization that are managed by a provider
-                    if not managed.filter(
-                        subscriptions__organization__managers__id=\
-                            request.user.id).exists():
-                        raise PermissionDenied
+                # XXX Use Organization.objects.providers_to(organization)?
+                providers = Organization.objects.filter(
+                    subscribes__organization__in=managed)
+                if not _contributor_readonly(request, managed + providers):
+                    raise PermissionDenied
             return view_func(request, *args, **kwargs)
         return _wrapped_view
 
