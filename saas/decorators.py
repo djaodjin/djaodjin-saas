@@ -46,7 +46,6 @@ from django.shortcuts import get_object_or_404
 from django.utils.decorators import available_attrs
 
 from saas.models import Charge, Organization, Plan, Signature, Subscription
-from saas.views.auth import valid_manager_for_organization, valid_contributor
 from saas.settings import SKIP_PERMISSION_CHECK
 
 LOGGER = logging.getLogger(__name__)
@@ -63,8 +62,8 @@ def _valid_manager(user, candidates):
             username = user.username
         else:
             username = '(none)'
-        LOGGER.warning("Skip permission check for %s on organization %s",
-                       username, organization)
+        LOGGER.warning("Skip permission check for %s on organizations %s",
+                       username, candidates)
         return candidates
     if user and user.is_authenticated():
         try:
@@ -224,8 +223,11 @@ def requires_paid_subscription(function=None,
         def _wrapped_view(request, *args, **kwargs):
             subscriber = None
             if kwargs.has_key(organization_kwarg_slug):
-                subscriber = valid_manager_for_organization(
-                    request.user, kwargs.get(organization_kwarg_slug))
+                subscribers = _valid_manager(
+                    request.user, Organization.objects.filter(
+                        slug=kwargs.get(organization_kwarg_slug)))
+                if len(subscribers) > 0:
+                    subscriber = subscribers[0]
             plan = None
             if kwargs.has_key(plan_kwarg_slug):
                 plan = get_object_or_404(
