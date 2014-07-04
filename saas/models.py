@@ -992,7 +992,7 @@ class Subscription(models.Model):
         self.save()
 
     def use_of_service(self, nb_periods, prorated_amount=0,
-        created_at=None, descr=None, discount_percent=None):
+        created_at=None, descr=None, discount_percent=0):
         #pylint: disable=too-many-arguments
         """
         Each time a provider delivers a service to a client, a transaction
