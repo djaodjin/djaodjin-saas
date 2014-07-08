@@ -494,7 +494,7 @@ class ChargeReceiptView(ChargeMixin, DetailView):
     """
     Display a receipt for a created charge.
     """
-    template_name = 'saas/charge_receipt.html'
+    template_name = 'billing/receipt.html'
 
 
 class CouponListView(OrganizationMixin, ListView):
