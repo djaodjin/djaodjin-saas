@@ -22,18 +22,13 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-"""
-URLs related to bank account information.
-"""
+from extended_templates.pdf import PdfTemplateResponse
+from saas.views.billing import ChargeReceiptView
 
-from django.conf.urls import patterns, url
 
-from saas.views.billing import (BankUpdateView, TransferListView, WithdrawView,
-    CouponListView)
-
-urlpatterns = patterns('',
-    url(r'^coupons/', CouponListView.as_view(), name='saas_coupon_list'),
-    url(r'^withdraw/', WithdrawView.as_view(), name='saas_withdraw_funds'),
-    url(r'^transfers/', TransferListView.as_view(), name='saas_transfer_info'),
-    url(r'^bank/', BankUpdateView.as_view(), name='saas_update_bank'),
-)
+class PrintableChargeReceiptView(ChargeReceiptView):
+    """
+    Charge receipt as printable PDF format.
+    """
+    template_name = 'saas/printable_charge_receipt.html'
+    response_class = PdfTemplateResponse

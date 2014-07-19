@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section id="redirects">
+  <h1>Redirects to ...</h1>
+  {% for redirect in redirects %}
+  <div>
+      <a href="{{redirect.0}}">{{redirect.1}}</a>
+  </div>
+  {% endfor %}
+</section>
+{% endblock %}

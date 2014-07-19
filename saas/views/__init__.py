@@ -26,29 +26,40 @@
 Helpers to redirect based on session.
 """
 
-from django.http import Http404
+from django import http
 from django.views.generic import RedirectView
+from django.views.generic.base import TemplateResponseMixin
 
 from saas.models import Organization
 
 
-class OrganizationRedirectView(RedirectView):
+class OrganizationRedirectView(TemplateResponseMixin, RedirectView):
+    """
+    Find the ``Organization`` associated with the request user
+    and return the URL that contains the organization slug
+    to redirect to.
+    """
 
+    template_name = 'saas/organization_redirects.html'
     slug_url_kwarg = 'organization'
 
-    def get_redirect_url(self, *args, **kwargs):
-        """
-        Find the ``Organization`` associated with the request user
-        and return the URL that contains the organization slug
-        to redirect to.
-        """
-        managed = Organization.objects.find_managed(
-            self.request.user)
+    def get(self, request, *args, **kwargs):
+        managed = Organization.objects.find_managed(request.user)
         if managed.count() == 1:
             kwargs.update({self.slug_url_kwarg: managed.get()})
-            return super(OrganizationRedirectView, self).get_redirect_url(
-                *args, **kwargs)
-        raise Http404("Cannot find your billing profile!")
+            return super(OrganizationRedirectView, self).get(
+                request, *args, **kwargs)
+        elif managed.count() > 1:
+            redirects = []
+            for organization in managed:
+                kwargs.update({self.slug_url_kwarg: organization})
+                url = super(OrganizationRedirectView, self).get_redirect_url(
+                    *args, **kwargs)
+                redirects += [(url, organization.full_name)]
+            context = {'redirects': redirects}
+            return self.render_to_response(context)
+        # XXX Create a new organization here!
+        raise http.Http404("Cannot find your billing profile!")
 
 
 class UserRedirectView(RedirectView):

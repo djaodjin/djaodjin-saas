@@ -28,27 +28,19 @@ from rest_framework.generics import (CreateAPIView,
 from rest_framework import serializers
 
 from saas.models import Plan
-from saas.views.auth import valid_manager_for_organization
+from saas.mixins import OrganizationMixin
 
 #pylint: disable=no-init
 #pylint: disable=old-style-class
-
-class PlanCreateSerializer(serializers.ModelSerializer):
-
-    organization = serializers.SlugRelatedField(many=False, slug_field='slug')
-
-    class Meta:
-        model = Plan
-        fields = ('organization', 'title', 'description', 'is_active',
-                  'setup_amount', 'period_amount', 'interval')
 
 
 class PlanSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Plan
-        fields = ('slug', 'title', 'description',
+        fields = ('slug', 'title', 'description', 'is_active',
                   'setup_amount', 'period_amount', 'interval')
+        read_only_fields = ('slug',)
 
 
 class PlanActivateSerializer(serializers.ModelSerializer):
@@ -58,33 +50,43 @@ class PlanActivateSerializer(serializers.ModelSerializer):
         fields = ('is_active',)
 
 
-class PlanActivateAPIView(UpdateAPIView):
+class PlanMixin(OrganizationMixin):
 
     model = Plan
     slug_url_kwarg = 'plan'
-    serializer_class = PlanActivateSerializer
 
+    def get_queryset(self):
+        queryset = super(PlanMixin, self).get_queryset()
+        return queryset.filter(organization__slug=self.kwargs.get(
+                self.organization_url_kwarg))
 
-class PlanCreateAPIView(CreateAPIView):
-
-    model = Plan
-    serializer_class = PlanCreateSerializer
-
-    def pre_save(self, obj):
-        valid_manager_for_organization(self.request.user, obj.organization)
-        slug = slugify('%s-%s' % (obj.organization, obj.title))
+    @staticmethod
+    def slugify(obj):
+        slug = slugify(obj.title)
         i = 0
         while Plan.objects.filter(slug__exact=slug).count() > 0:
-            slug = slugify(
-                '%s-%d' % (slug, i))
+            slug = slugify('%s-%d' % (slug, i))
             i += 1
         setattr(obj, 'slug', slug)
 
 
-class PlanResourceView(RetrieveUpdateDestroyAPIView):
 
-    model = Plan
-    slug_url_kwarg = 'plan'
+class PlanActivateAPIView(PlanMixin, UpdateAPIView):
+
+    serializer_class = PlanActivateSerializer
+
+
+class PlanCreateAPIView(PlanMixin, CreateAPIView):
+
+    serializer_class = PlanSerializer
+
+    def pre_save(self, obj):
+        obj.organization = self.get_organization()
+        self.slugify(obj)
+
+
+class PlanResourceView(PlanMixin, RetrieveUpdateDestroyAPIView):
+
     serializer_class = PlanSerializer
 
     def pre_save(self, obj):
@@ -93,11 +95,5 @@ class PlanResourceView(RetrieveUpdateDestroyAPIView):
             # In cases some other resource's slug was derived on the initial
             # slug, we don't want to do this to prevent inconsistent look
             # of the derived URLs.
-            slug = slugify('%s-%s' % (obj.organization, obj.title))
-            i = 0
-            while Plan.objects.filter(slug__exact=slug).count() > 0:
-                slug = slugify(
-                    '%s-%d' % (slug, i))
-                i += 1
-            setattr(obj, 'slug', slug)
+            self.slugify(obj)
 

@@ -114,8 +114,6 @@ def more_managed_organizations(user):
 
 @register.filter
 def is_manager(request, organization):
-    if not organization:
-        organization = request.client
     try:
         valid_manager_for_organization(request.user, organization)
     except PermissionDenied:

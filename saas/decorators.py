@@ -265,10 +265,10 @@ def requires_self_manager_provider(function=None):
                 # Organization that are managed by both users
                 managed = Organization.objects.filter(
                     managers__username=kwargs.get('user'))
-                # XXX Use Organization.objects.providers_to(organization)?
-                providers = Organization.objects.filter(
-                    subscribes__organization__in=managed)
-                if not _contributor_readonly(request, managed + providers):
+                providers = Organization.objects.providers(
+                    Subscription.objects.filter(organization__in=managed))
+                if not _contributor_readonly(request,
+                                             list(managed) + list(providers)):
                     raise PermissionDenied
             return view_func(request, *args, **kwargs)
         return _wrapped_view
