@@ -100,7 +100,7 @@ Plan.prototype.get = function(successFunction) {
 /** Toggle a ``Plan`` from active to inactive and vise-versa
     by executing an AJAX request to the service.
  */
-function toggleActivatePlan(button, urls) {
+function toggleActivatePlan(button) {
   var planSlug = button.attr('data-plan');
   var thisPlan = new Plan(planSlug);
   var is_active = !button.hasClass('activated');

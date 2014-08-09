@@ -18,11 +18,11 @@
 {% block bodyscripts %}
 <script type="text/javascript">
 $(document).ready(function(){
+    Plan.initEndPoints("{{form.instance.organization}}");
     $(".activate").click(function(event) {
         var self = $(this);
         event.preventDefault();
-        toggleActivatePlan(self,
-            {'saas_api_plan': "{% url 'saas_api_plan_new' %}" });
+        toggleActivatePlan(self);
     });
 });
 </script>
