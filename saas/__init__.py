@@ -26,7 +26,7 @@
 PEP 386-compliant version number for the saas django app.
 """
 
-__version__ = '0.1.3'
+__version__ = '0.1.4'
 
 
 def _get_model_class(full_name, settings_meta):
