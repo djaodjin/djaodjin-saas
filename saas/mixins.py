@@ -27,7 +27,7 @@ from django.views.generic.base import ContextMixin
 from django.views.generic.detail import SingleObjectMixin
 
 from saas.compat import User
-from saas.models import Charge, Organization
+from saas.models import Charge, Coupon, Organization
 
 
 def get_charge_context(charge):
@@ -69,6 +69,24 @@ class OrganizationMixin(ContextMixin):
     def get_context_data(self, **kwargs):
         context = super(OrganizationMixin, self).get_context_data(**kwargs)
         context.update({'organization': self.get_organization()})
+        return context
+
+
+class CouponMixin(OrganizationMixin):
+    """
+    Returns a ``Coupon`` from a URL.
+    """
+
+    coupon_url_kwarg = 'coupon'
+
+    def get_coupon(self):
+        return get_object_or_404(Coupon,
+            code=self.kwargs.get(self.coupon_url_kwarg),
+            organization=self.get_organization())
+
+    def get_context_data(self, **kwargs):
+        context = super(CouponMixin, self).get_context_data(**kwargs)
+        context.update({'coupon': self.get_coupon()})
         return context
 
 

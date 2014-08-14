@@ -28,7 +28,7 @@
 #   The models and managers are declared in the same file to avoid messy
 #   import loops.
 
-import datetime, logging
+import datetime, logging, re
 
 from dateutil.relativedelta import relativedelta
 from django.core.urlresolvers import reverse
@@ -36,8 +36,9 @@ from django.core.validators import MaxValueValidator
 from django.db import IntegrityError, models, transaction
 from django.db.models import Sum
 from django.db.models.query import QuerySet
-from django.utils.translation import ugettext_lazy as _
 from django.utils.decorators import method_decorator
+from django.utils.timezone import utc
+from django.utils.translation import ugettext_lazy as _
 
 from saas import settings
 from saas import signals
@@ -45,11 +46,15 @@ from saas.backends import PROCESSOR_BACKEND, ProcessorError
 from saas import get_manager_relation_model, get_contributor_relation_model
 from saas.compat import datetime_or_now
 
-from saas.humanize import (as_money, describe_buy_periods, DESCRIBE_BALANCE,
+from saas.humanize import (as_money, describe_buy_periods,
+    DESCRIBE_BALANCE, DESCRIBE_BUY_PERIODS,
     DESCRIBE_CHARGED_CARD, DESCRIBE_CHARGED_CARD_PROCESSOR,
     DESCRIBE_CHARGED_CARD_PROVIDER, DESCRIBE_CHARGED_CARD_REFUND)
 
 LOGGER = logging.getLogger(__name__)
+
+#pylint: disable=old-style-class,no-init
+
 
 class InsufficientFunds(Exception):
 
@@ -422,7 +427,7 @@ class CartItem(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, db_column='user_id',
         related_name='cart_items',
         help_text=_("user who added the item to the cart."))
-    plan = models.ForeignKey('Plan',
+    plan = models.ForeignKey('Plan', null=True,
         help_text=_("item added to the cart."))
     coupon = models.ForeignKey('Coupon', null=True,
         help_text=_("coupon to apply to the plan."))
@@ -784,7 +789,7 @@ class Coupon(models.Model):
     """
     created_at = models.DateTimeField(auto_now_add=True)
     code = models.SlugField()
-    percent = models.PositiveSmallIntegerField(
+    percent = models.PositiveSmallIntegerField(default=0,
         validators=[MaxValueValidator(100)],
         help_text="Percentage discounted")
     organization = models.ForeignKey(Organization)
@@ -796,10 +801,37 @@ class Coupon(models.Model):
         return '%s-%s' % (self.organization, self.code)
 
 
+class PlanManager(models.Manager):
+
+    def as_buy_periods(self, descr):
+        """
+        Returns a triplet (plan, ends_at, nb_periods) from a string
+        formatted with DESCRIBE_BUY_PERIODS.
+        """
+        plan = None
+        nb_periods = 0
+        ends_at = datetime.datetime()
+        look = re.match(DESCRIBE_BUY_PERIODS % {
+                'plan': r'(?P<plan>\S+)',
+                'ends_at': r'(?P<ends_at>\d\d\d\d/\d\d/\d\d)',
+                'humanized_periods': r'(?P<nb_periods>\d+).*'}, descr)
+        if look:
+            try:
+                plan = self.get(slug=look.group('plan'))
+            except Plan.DoesNotExist:
+                plan = None
+            ends_at = datetime.datetime.strptime(
+                look.group('ends_at'), '%Y/%m/%d').replace(tzinfo=utc)
+            nb_periods = int(look.group('nb_periods'))
+        return (plan, ends_at, nb_periods)
+
+
 class Plan(models.Model):
     """
     Recurring billing plan
     """
+    objects = PlanManager()
+
     UNSPECIFIED = 0
     HOURLY = 1
     DAILY = 2
@@ -818,7 +850,7 @@ class Plan(models.Model):
         ]
 
     slug = models.SlugField(unique=True)
-    title = models.CharField(max_length=50)
+    title = models.CharField(max_length=50, null=True)
     description = models.TextField()
     is_active = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)

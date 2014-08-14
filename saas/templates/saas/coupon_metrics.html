@@ -1,0 +1,33 @@
+{% extends "saas/base.html" %}
+{% load saas_tags %}
+
+{% block saas_content %}
+<section id="coupon_metrics">
+  <h1>{{coupon.code}} Performance</h1>
+  <p>
+{{coupon.code}} was used {{cartitem_list.count}} time{{cartitem_list.count|pluralize}}.
+  </p>
+  <table>
+    <thead>
+      <tr>
+        <th>User</th>
+        <th>Plan</th>
+        <th>Used at</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for cartitem in cartitem_list %}
+      <tr>
+        <td><a href="{% url 'users_profile' cartitem.user %}">{{cartitem.user.get_full_name}}</a></td>
+        <td>{{cartitem.plan}}</td>
+        <td>{{cartitem.created_at}}</td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="3"><em>No Item</em></td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% include "paginator.html" %}
+</section>
+{% endblock %}
+

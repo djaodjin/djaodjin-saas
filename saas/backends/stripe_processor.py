@@ -26,12 +26,6 @@ import datetime, logging, re
 
 import stripe
 from django.db import IntegrityError
-from django.http import Http404
-from django.conf import settings as django_settings
-from django.shortcuts import get_object_or_404
-from rest_framework.decorators import api_view
-from rest_framework.response import Response
-
 
 LOGGER = logging.getLogger('django.request') # We want ADMINS to about this.
 
@@ -213,40 +207,3 @@ class StripeBackend(object):
             if stripe_charge.paid:
                 charge.payment_successful()
         return charge
-
-
-@api_view(['POST'])
-def processor_hook(request):
-    stripe.api_key = StripeBackend.priv_key
-    from saas.models import Charge # avoid import loop
-    # Attempt to validate the event by posting it back to Stripe.
-    if django_settings.DEBUG:
-        event = stripe.Event.construct_from(request.DATA, stripe.api_key)
-    else:
-        event = stripe.Event.retrieve(request.DATA['id'])
-    if not event:
-        LOGGER.error("Posted stripe event %s FAIL", request.DATA['id'])
-        raise Http404
-    LOGGER.info("Posted stripe event %s PASS", event.id)
-    charge = get_object_or_404(Charge, processor_id=event.data.object.id)
-
-    if event.type == 'charge.succeeded':
-        if charge.state != charge.DONE:
-            charge.payment_successful()
-        else:
-            LOGGER.warning(
-                "Already received a charge.succeeded event for %s", charge)
-    elif event.type == 'charge.failed':
-        charge.failed()
-    elif event.type == 'charge.refunded':
-        charge.refund()
-    elif event.type == 'charge.captured':
-        charge.capture()
-    elif event.type == 'charge.dispute.created':
-        charge.dispute_created()
-    elif event.type == 'charge.dispute.updated':
-        charge.dispute_updated()
-    elif event.type == 'charge.dispute.closed':
-        charge.dispute_closed()
-
-    return Response("OK")

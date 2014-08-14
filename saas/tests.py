@@ -67,7 +67,8 @@ class LedgerTests(TestCase):
         transaction.commit(using='default')
         transaction.leave_transaction_management(using='default')
 
-    def _create_charge(self, customer_name, amount):
+    @staticmethod
+    def _create_charge(customer_name, amount):
         customer = Organization.objects.get(slug=customer_name)
         invoiced_items = [Transaction.objects.create(
             created_at=datetime.utcnow().replace(tzinfo=utc),
@@ -90,7 +91,7 @@ class LedgerTests(TestCase):
 
     def test_create_usage(self):
         _, processor_id = self._create_charge('abc', 1000)
-        assert len(processor_id) > 0
+        self.assertTrue(len(processor_id) > 0)
 
     def test_pay_now(self):
         """Pay the balance of account.
@@ -98,7 +99,7 @@ class LedgerTests(TestCase):
         customer, charge = self._create_charge_for_balance('abc')
         charge.payment_sucessful()
         next_balance = Transaction.objects.get_organization_balance(customer)
-        assert next_balance == 0
+        self.assertTrue(next_balance == 0)
 
     def test_pay_now_two_success(self):
         """Pay the balance of account.
@@ -107,7 +108,7 @@ class LedgerTests(TestCase):
         charge.payment_sucessful()
         charge.payment_sucessful()
         next_balance = Transaction.objects.get_organization_balance(customer)
-        assert next_balance == 0
+        self.assertTrue(next_balance == 0)
 
     def test_charge_cards(self):
         """Charge all customers credit cards for fees due
@@ -118,7 +119,6 @@ class LedgerTests(TestCase):
 
 #@skip("debugging")
 class MetricsTests(TestCase):
-    #pylint: disable=no-self-use
     """
     Tests metrics functionality.
     """
@@ -127,38 +127,64 @@ class MetricsTests(TestCase):
     def test_month_periods_full_year(self):
         dates = month_periods(
             from_date=date(year=2014, month=1, day=1))
-        assert len(dates) == 13
-        assert dates[0] == datetime(year=2013, month=1, day=1, tzinfo=utc)
-        assert dates[1] == datetime(year=2013, month=2, day=1, tzinfo=utc)
-        assert dates[2] == datetime(year=2013, month=3, day=1, tzinfo=utc)
-        assert dates[3] == datetime(year=2013, month=4, day=1, tzinfo=utc)
-        assert dates[4] == datetime(year=2013, month=5, day=1, tzinfo=utc)
-        assert dates[5] == datetime(year=2013, month=6, day=1, tzinfo=utc)
-        assert dates[6] == datetime(year=2013, month=7, day=1, tzinfo=utc)
-        assert dates[7] == datetime(year=2013, month=8, day=1, tzinfo=utc)
-        assert dates[8] == datetime(year=2013, month=9, day=1, tzinfo=utc)
-        assert dates[9] == datetime(year=2013, month=10, day=1, tzinfo=utc)
-        assert dates[10] == datetime(year=2013, month=11, day=1, tzinfo=utc)
-        assert dates[11] == datetime(year=2013, month=12, day=1, tzinfo=utc)
-        assert dates[12] == datetime(year=2014, month=1, day=1, tzinfo=utc)
+        self.assertTrue(len(dates) == 13)
+        self.assertTrue(
+            dates[0] == datetime(year=2013, month=1, day=1, tzinfo=utc))
+        self.assertTrue(
+            dates[1] == datetime(year=2013, month=2, day=1, tzinfo=utc))
+        self.assertTrue(
+            dates[2] == datetime(year=2013, month=3, day=1, tzinfo=utc))
+        self.assertTrue(
+            dates[3] == datetime(year=2013, month=4, day=1, tzinfo=utc))
+        self.assertTrue(
+            dates[4] == datetime(year=2013, month=5, day=1, tzinfo=utc))
+        self.assertTrue(
+            dates[5] == datetime(year=2013, month=6, day=1, tzinfo=utc))
+        self.assertTrue(
+            dates[6] == datetime(year=2013, month=7, day=1, tzinfo=utc))
+        self.assertTrue(
+            dates[7] == datetime(year=2013, month=8, day=1, tzinfo=utc))
+        self.assertTrue(
+            dates[8] == datetime(year=2013, month=9, day=1, tzinfo=utc))
+        self.assertTrue(
+            dates[9] == datetime(year=2013, month=10, day=1, tzinfo=utc))
+        self.assertTrue(
+            dates[10] == datetime(year=2013, month=11, day=1, tzinfo=utc))
+        self.assertTrue(
+            dates[11] == datetime(year=2013, month=12, day=1, tzinfo=utc))
+        self.assertTrue(
+            dates[12] == datetime(year=2014, month=1, day=1, tzinfo=utc))
 
     def test_incomplete_last_month(self):
         dates = month_periods(
             from_date=date(year=2014, month=1, day=9))
-        assert len(dates) == 13
-        assert dates[0] == datetime(year=2013, month=2, day=1, tzinfo=utc)
-        assert dates[1] == datetime(year=2013, month=3, day=1, tzinfo=utc)
-        assert dates[2] == datetime(year=2013, month=4, day=1, tzinfo=utc)
-        assert dates[3] == datetime(year=2013, month=5, day=1, tzinfo=utc)
-        assert dates[4] == datetime(year=2013, month=6, day=1, tzinfo=utc)
-        assert dates[5] == datetime(year=2013, month=7, day=1, tzinfo=utc)
-        assert dates[6] == datetime(year=2013, month=8, day=1, tzinfo=utc)
-        assert dates[7] == datetime(year=2013, month=9, day=1, tzinfo=utc)
-        assert dates[8] == datetime(year=2013, month=10, day=1, tzinfo=utc)
-        assert dates[9] == datetime(year=2013, month=11, day=1, tzinfo=utc)
-        assert dates[10] == datetime(year=2013, month=12, day=1, tzinfo=utc)
-        assert dates[11] == datetime(year=2014, month=1, day=1, tzinfo=utc)
-        assert dates[12] == datetime(year=2014, month=1, day=9, tzinfo=utc)
+        self.assertTrue(len(dates) == 13)
+        self.assertTrue(
+            dates[0] == datetime(year=2013, month=2, day=1, tzinfo=utc))
+        self.assertTrue(
+            dates[1] == datetime(year=2013, month=3, day=1, tzinfo=utc))
+        self.assertTrue(
+            dates[2] == datetime(year=2013, month=4, day=1, tzinfo=utc))
+        self.assertTrue(
+            dates[3] == datetime(year=2013, month=5, day=1, tzinfo=utc))
+        self.assertTrue(
+            dates[4] == datetime(year=2013, month=6, day=1, tzinfo=utc))
+        self.assertTrue(
+            dates[5] == datetime(year=2013, month=7, day=1, tzinfo=utc))
+        self.assertTrue(
+            dates[6] == datetime(year=2013, month=8, day=1, tzinfo=utc))
+        self.assertTrue(
+            dates[7] == datetime(year=2013, month=9, day=1, tzinfo=utc))
+        self.assertTrue(
+            dates[8] == datetime(year=2013, month=10, day=1, tzinfo=utc))
+        self.assertTrue(
+            dates[9] == datetime(year=2013, month=11, day=1, tzinfo=utc))
+        self.assertTrue(
+            dates[10] == datetime(year=2013, month=12, day=1, tzinfo=utc))
+        self.assertTrue(
+            dates[11] == datetime(year=2014, month=1, day=1, tzinfo=utc))
+        self.assertTrue(
+            dates[12] == datetime(year=2014, month=1, day=9, tzinfo=utc))
 
     def test_monthly_income(self):
         """Jan 2012: ABC has 2 customers,
@@ -172,26 +198,26 @@ class MetricsTests(TestCase):
         for entry in table:
             values = entry["values"]
             if entry["key"] == "Total # of Customers":
-                assert values[0][1] == 2
-                assert values[1][1] == 1
-                assert values[2][1] == 2
-                assert values[3][1] == 2
-                assert values[4][1] == 2
-                assert values[4][1] == 2
+                self.assertTrue(values[0][1] == 2)
+                self.assertTrue(values[1][1] == 1)
+                self.assertTrue(values[2][1] == 2)
+                self.assertTrue(values[3][1] == 2)
+                self.assertTrue(values[4][1] == 2)
+                self.assertTrue(values[4][1] == 2)
             elif entry["key"] == "# of new Customers":
-                assert values[0][1] == 2  # We have no records before
-                assert values[1][1] == 0
-                assert values[2][1] == 1
-                assert values[3][1] == 1
-                assert values[4][1] == 0
-                assert values[4][1] == 0
+                self.assertTrue(values[0][1] == 2)  # We have no records before
+                self.assertTrue(values[1][1] == 0)
+                self.assertTrue(values[2][1] == 1)
+                self.assertTrue(values[3][1] == 1)
+                self.assertTrue(values[4][1] == 0)
+                self.assertTrue(values[4][1] == 0)
             elif entry["key"] == "# of churned Customers":
-                assert values[0][1] == 0
-                assert values[1][1] == 1
-                assert values[2][1] == 0
-                assert values[3][1] == 1
-                assert values[4][1] == 0
-                assert values[4][1] == 0
+                self.assertTrue(values[0][1] == 0)
+                self.assertTrue(values[1][1] == 1)
+                self.assertTrue(values[2][1] == 0)
+                self.assertTrue(values[3][1] == 1)
+                self.assertTrue(values[4][1] == 0)
+                self.assertTrue(values[4][1] == 0)
 
 
 

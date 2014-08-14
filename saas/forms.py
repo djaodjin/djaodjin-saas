@@ -32,8 +32,8 @@ from django.utils.translation import ugettext_lazy as _
 
 from saas.models import Organization, Plan
 
-#pylint: disable=super-on-old-class
-#pylint: disable=no-member
+#pylint: disable=super-on-old-class,no-member
+#pylint: disable=old-style-class,no-init
 
 class BankForm(forms.Form):
     """

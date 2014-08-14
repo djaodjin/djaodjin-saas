@@ -29,15 +29,31 @@ from django.db.models import Min, Sum, Max
 from django.shortcuts import get_object_or_404
 from django.utils.datastructures import SortedDict
 from django.utils.timezone import utc
-from django.views.generic import TemplateView
+from django.views.generic import ListView, TemplateView
 from django.core.serializers.json import DjangoJSONEncoder
 
+from saas.mixins import CouponMixin
 from saas.views.auth import valid_manager_for_organization
 from saas.managers.metrics import (active_subscribers,
     aggregate_monthly_transactions, churn_subscribers)
-from saas.models import (Organization, Plan, Transaction,
+from saas.models import (CartItem, Organization, Plan, Transaction,
     NewVisitors)
 from saas.compat import User
+
+
+class CouponMetricsView(CouponMixin, ListView):
+    """
+    Performance of Coupon based on CartItem.
+    """
+
+    model = CartItem
+    paginate_by = 10
+    template_name = 'saas/coupon_metrics.html'
+
+    def get_queryset(self):
+        queryset = super(CouponMetricsView, self).get_queryset().filter(
+            coupon=self.get_coupon(), recorded=True)
+        return queryset
 
 
 class PlansMetricsView(TemplateView):

@@ -26,7 +26,8 @@
 
 from django.conf.urls import patterns, url
 
-from saas.views.metrics import (
+from saas.settings import ACCT_REGEX
+from saas.views.metrics import (CouponMetricsView,
     PlansMetricsView, RevenueMetricsView, UsageMetricsView)
 
 urlpatterns = patterns(
@@ -34,6 +35,8 @@ urlpatterns = patterns(
     url(r'^usage/', UsageMetricsView.as_view(), name='saas_organization_usage'),
     url(r'^plans/((?P<from_date>\d\d\d\d-\d\d)/)?',
         PlansMetricsView.as_view(), name='saas_metrics_plans'),
+    url(r'^coupons/((?P<coupon>%s)/)?' % ACCT_REGEX,
+        CouponMetricsView.as_view(), name='saas_metrics_coupons'),
     url(r'^((?P<from_date>\d\d\d\d-\d\d))?',
         RevenueMetricsView.as_view(), name='saas_metrics_summary'),
 )
