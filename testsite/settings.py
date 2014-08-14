@@ -27,6 +27,7 @@ def load_config(confpath):
                             # definitely in the site.conf set), we had no choice
                             # other than using eval. The {} are here to restrict
                             # the globals and locals context eval has access to.
+                            # pylint: disable=eval-used
                             setattr(sys.modules[__name__],
                                     look.group(1).upper(), eval(value, {}, {}))
                         except StandardError:
