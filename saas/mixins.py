@@ -27,7 +27,7 @@ from django.views.generic.base import ContextMixin
 from django.views.generic.detail import SingleObjectMixin
 
 from saas.compat import User
-from saas.models import Charge, Coupon, Organization
+from saas.models import Charge, Coupon, Organization, Subscription
 
 
 def get_charge_context(charge):
@@ -88,6 +88,23 @@ class CouponMixin(OrganizationMixin):
         context = super(CouponMixin, self).get_context_data(**kwargs)
         context.update({'coupon': self.get_coupon()})
         return context
+
+
+class SubscriptionMixin(object):
+
+    model = Subscription
+
+    def get_queryset(self):
+        return Subscription.objects.filter(
+            organization__slug=self.kwargs.get('organization'))
+
+    def get_object(self):
+        queryset = self.get_queryset()
+        if 'plan' in self.kwargs:
+            plan = self.kwargs.get('plan')
+        else:
+            plan = self.kwargs.get('subscribed_plan')
+        return queryset.filter(plan__slug=plan).get()
 
 
 class UserMixin(ContextMixin):

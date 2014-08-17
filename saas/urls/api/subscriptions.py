@@ -29,11 +29,16 @@ and a manager of the subscribed organization.
 
 from django.conf.urls import patterns, url
 
-from saas.api.billing import UnsubscribeAPIView
+from saas.api.subscriptions import (
+    SubscriptionDetailAPIView, SubscriptionListAPIView)
 from saas.settings import ACCT_REGEX
 
 urlpatterns = patterns('',
-    url(r'^(?P<organization>%s)/unsubscribe/((?P<subscribed_plan>%s)/)?'
+    url(r'^(?P<organization>%s)/subscriptions/(?P<subscribed_plan>%s)/?'
         % (ACCT_REGEX, ACCT_REGEX),
-        UnsubscribeAPIView.as_view(), name='saas_api_unsubscribe'),
+        SubscriptionDetailAPIView.as_view(),
+        name='saas_api_subscription_detail'),
+    url(r'^(?P<organization>%s)/subscriptions/?' % ACCT_REGEX,
+        SubscriptionListAPIView.as_view(),
+        name='saas_api_subscription_list'),
 )
