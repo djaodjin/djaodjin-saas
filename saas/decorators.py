@@ -96,7 +96,7 @@ def _valid_contributor(user, candidates):
     return (managed, contributed)
 
 
-def _contributor_readonly(request, candidates):
+def _valid_contributor_readonly(request, candidates):
     """
     Returns a tuple made of two list of ``Organization`` from *candidates*.
     """
@@ -105,6 +105,14 @@ def _contributor_readonly(request, candidates):
     else:
         contributed = []
         managed = _valid_manager(request.user, candidates)
+    return managed, contributed
+
+
+def _contributor_readonly(request, candidates):
+    """
+    Returns True if any candidate is accessible to the request user.
+    """
+    managed, contributed = _valid_contributor_readonly(request, candidates)
     return len(managed + contributed) > 0
 
 
@@ -223,11 +231,13 @@ def requires_paid_subscription(function=None,
         def _wrapped_view(request, *args, **kwargs):
             subscriber = None
             if kwargs.has_key(organization_kwarg_slug):
-                subscribers = _valid_manager(
-                    request.user, Organization.objects.filter(
-                        slug=kwargs.get(organization_kwarg_slug)))
-                if len(subscribers) > 0:
-                    subscriber = subscribers[0]
+                subscriber = get_object_or_404(Organization,
+                    slug=kwargs.get(organization_kwarg_slug))
+                if not _contributor_readonly(request, [subscriber]
+                    + list(Organization.objects.providers_to(subscriber))):
+                    raise PermissionDenied("%(user)s is neither a manager '\
+' of %(organization)s nor a manager of one of %(organization)s providers."
+                        % {'user': request.user, 'organization': subscriber})
             plan = None
             if kwargs.has_key(plan_kwarg_slug):
                 plan = get_object_or_404(
