@@ -453,6 +453,7 @@ class ChargeManager(models.Manager):
         amount = sum_dest_amount(transactions)
         if amount == 0:
             return None
+        stmt_descr = Transaction.objects.provider(transactions).full_name
         descr = DESCRIBE_CHARGED_CARD % {
             'charge': '', 'organization': customer.full_name}
         if user:
@@ -463,15 +464,15 @@ class ChargeManager(models.Manager):
                     customer.update_card(card_token=token)
                     (processor_charge_id, created_at,
                      last4, exp_date) = PROCESSOR_BACKEND.create_charge(
-                        customer, amount, descr)
+                        customer, amount, descr, stmt_descr)
                 else:
                     (processor_charge_id, created_at,
                      last4, exp_date) = PROCESSOR_BACKEND.create_charge_on_card(
-                        token, amount, descr)
+                        token, amount, descr, stmt_descr)
             else:
                 (processor_charge_id, created_at,
                  last4, exp_date) = PROCESSOR_BACKEND.create_charge(
-                    customer, amount, descr)
+                    customer, amount, descr, stmt_descr)
             # Create record of the charge in our database
             descr = DESCRIBE_CHARGED_CARD % {'charge': processor_charge_id,
                 'organization': customer.full_name}

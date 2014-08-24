@@ -61,15 +61,18 @@ class StripeBackend(object):
         return customers
 
 
-    def create_charge(self, organization, amount, descr=None):
+    def create_charge(self, organization, amount, descr=None, stmt_descr=None):
         """
         Create a charge on the default card associated to the organization.
+
+        *stmt_descr* can only be 15 characters maximum.
         """
         stripe.api_key = self.priv_key
         processor_charge = stripe.Charge.create(
             amount=amount, currency="usd",
             customer=organization.processor_id,
-            description=descr)
+            description=descr,
+            statement_description=stmt_descr[:15])
         created_at = datetime.datetime.fromtimestamp(processor_charge.created)
         return (processor_charge.id, created_at,
                 processor_charge.card.last4,
@@ -86,14 +89,16 @@ class StripeBackend(object):
         processor_charge.refund(amount=amount)
 
 
-    def create_charge_on_card(self, card, amount, descr=None):
+    def create_charge_on_card(self, card, amount, descr=None, stmt_descr=None):
         """
         Create a charge on a specified card.
+
+        *stmt_descr* can only be 15 characters maximum.
         """
         stripe.api_key = self.priv_key
         processor_charge = stripe.Charge.create(
             amount=amount, currency="usd",
-            card=card, description=descr)
+            card=card, description=descr, statement_description=stmt_descr[:15])
         created_at = datetime.datetime.fromtimestamp(processor_charge.created)
         return (processor_charge.id, created_at,
                 processor_charge.card.last4,
