@@ -199,9 +199,15 @@ def requires_manager_or_provider(function=None):
     def decorator(view_func):
         @wraps(view_func, assigned=available_attrs(view_func))
         def _wrapped_view(request, *args, **kwargs):
-            organization = get_object_or_404(Organization,
-                slug=kwargs.get('organization'))
-            if _contributor_readonly(request, [organization]
+            organization = None
+            if kwargs.has_key('organization'):
+                organization = get_object_or_404(Organization,
+                    slug=kwargs.get('organization'))
+            elif kwargs.has_key('charge'):
+                charge = get_object_or_404(
+                    Charge, processor_id=kwargs.get('charge'))
+                organization = charge.customer
+            if organization and _contributor_readonly(request, [organization]
                 + list(Organization.objects.providers_to(organization))):
                 return view_func(request, *args, **kwargs)
             raise PermissionDenied("%(user)s is neither a manager '\
