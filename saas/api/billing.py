@@ -22,6 +22,33 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+"""
+Add and remove plans from a user subscription cart.
+
+.. http:post:: /api/cart/
+
+    Add a ``Plan`` into the subscription cart of a ``User``.
+
+   **Example request**:
+
+   .. sourcecode:: http
+
+    {
+        "plan": null
+    }
+
+   **Example response**:
+
+   .. sourcecode:: http
+
+    {
+        "plan": null
+    }
+
+.. http:delete:: /api/cart/:plan
+
+"""
+
 from django.shortcuts import get_object_or_404
 from rest_framework import status
 from rest_framework.generics import CreateAPIView, DestroyAPIView
@@ -117,6 +144,9 @@ class CartItemAPIView(CreateAPIView):
 
 
 class CartItemDestroyAPIView(DestroyAPIView):
+    """
+    Remove a ``Plan`` into the subscription cart of a ``User``.
+    """
 
     model = CartItem
 

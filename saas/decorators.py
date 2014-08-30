@@ -23,15 +23,11 @@
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 """
-We used to decorate the saas views with the "appropriate" decorators
-except in many projects appropriate had a different meaning.
+The access control logic is best configured in the site URLConf through
+extensions like `django-urldecorators`_. This is not only more flexible but
+also make security audits a lot easier.
 
-It turns out that the access control logic is better left to be configured
-in the site URLConf through extensions like django-urldecorators:
-
-    https://github.com/mila/django-urldecorators.
-
-This is not only more flexible but also make security audits a lot easier.
+.. _django-urldecorators: https://github.com/mila/django-urldecorators
 """
 
 import logging, urlparse
@@ -163,74 +159,17 @@ def requires_agreement(function=None,
     return decorator
 
 
-def requires_manager(function=None):
-    """
-    Decorator for views that checks that the user is a manager
-    for the organization.
-    """
-    def decorator(view_func):
-        @wraps(view_func, assigned=available_attrs(view_func))
-        def _wrapped_view(request, *args, **kwargs):
-            if kwargs.has_key('plan'):
-                plan = get_object_or_404(Plan, slug=kwargs.get('plan'))
-                organization = plan.organization
-            elif kwargs.has_key('charge'):
-                charge = get_object_or_404(
-                    Charge, processor_id=kwargs.get('charge'))
-                organization = charge.customer
-            elif kwargs.has_key('organization'):
-                organization = get_object_or_404(Organization,
-                    slug=kwargs.get('organization'))
-            if _contributor_readonly(request, [organization]):
-                return view_func(request, *args, **kwargs)
-            raise PermissionDenied
-        return _wrapped_view
-
-    if function:
-        return decorator(function)
-    return decorator
-
-
-def requires_manager_or_provider(function=None):
-    """
-    Validates the user is a manager for the organization or a manager
-    for the provider's organization.
-    """
-    def decorator(view_func):
-        @wraps(view_func, assigned=available_attrs(view_func))
-        def _wrapped_view(request, *args, **kwargs):
-            organization = None
-            if kwargs.has_key('organization'):
-                organization = get_object_or_404(Organization,
-                    slug=kwargs.get('organization'))
-            elif kwargs.has_key('charge'):
-                charge = get_object_or_404(
-                    Charge, processor_id=kwargs.get('charge'))
-                organization = charge.customer
-            if organization and _contributor_readonly(request, [organization]
-                + list(Organization.objects.providers_to(organization))):
-                return view_func(request, *args, **kwargs)
-            raise PermissionDenied("%(user)s is neither a manager '\
-' of %(organization)s nor a manager of one of %(organization)s providers."
-                        % {'user': request.user, 'organization': organization})
-        return _wrapped_view
-
-    if function:
-        return decorator(function)
-    return decorator
-
-
 def requires_paid_subscription(function=None,
                               organization_kwarg_slug='organization',
                               plan_kwarg_slug='subscribed_plan',
                               redirect_field_name=REDIRECT_FIELD_NAME):
     """
-    Decorator that checks a specificed subscription is paid.
+    Decorator that checks a specified subscription is paid. It redirects to an
+    appropriate page when this is not the case:
 
-    It redirects to an appropriate page when it is not. In case:
-    - no charge is associated to the subscription => trigger payment
-    - charge.status is failed                     => update card
-    - charge.status is in-progress                => waiting
+    - Payment page when no charge is associated to the subscription,
+    - Update Credit Card page when ``charge.status`` is ``failed``,
+    - Waiting page when ``charge.status`` is ``in-progress``.
     """
     def decorator(view_func):
         @wraps(view_func, assigned=available_attrs(view_func))
@@ -266,11 +205,89 @@ def requires_paid_subscription(function=None,
     return decorator
 
 
+def requires_manager(function=None):
+    """
+    Decorator for views that checks that the request authenticated ``User``
+    is a contributor or manager for the ``Organization`` associated to the URL.
+
+    Managers can issue all types of requests (GET, POST, etc.) while
+    contributors are restricted to GET requests.
+
+    .. image:: perms-contrib.*
+    """
+    def decorator(view_func):
+        @wraps(view_func, assigned=available_attrs(view_func))
+        def _wrapped_view(request, *args, **kwargs):
+            if kwargs.has_key('plan'):
+                plan = get_object_or_404(Plan, slug=kwargs.get('plan'))
+                organization = plan.organization
+            elif kwargs.has_key('charge'):
+                charge = get_object_or_404(
+                    Charge, processor_id=kwargs.get('charge'))
+                organization = charge.customer
+            elif kwargs.has_key('organization'):
+                organization = get_object_or_404(Organization,
+                    slug=kwargs.get('organization'))
+            if _contributor_readonly(request, [organization]):
+                return view_func(request, *args, **kwargs)
+            raise PermissionDenied
+        return _wrapped_view
+
+    if function:
+        return decorator(function)
+    return decorator
+
+
+def requires_manager_or_provider(function=None):
+    """
+    Decorator for views that checks that the request authenticated ``User``
+    is a contributor (or manager) for the ``Organization`` associated to the URL
+    itself or a contributor (or manager) to a provider for the ``Organization``
+    associated to the URL.
+
+    Managers can issue all types of requests (GET, POST, etc.) while
+    contributors are restricted to GET requests.
+
+    .. image:: perms-contrib-subscribes.*
+    """
+    def decorator(view_func):
+        @wraps(view_func, assigned=available_attrs(view_func))
+        def _wrapped_view(request, *args, **kwargs):
+            organization = None
+            if kwargs.has_key('organization'):
+                organization = get_object_or_404(Organization,
+                    slug=kwargs.get('organization'))
+            elif kwargs.has_key('charge'):
+                charge = get_object_or_404(
+                    Charge, processor_id=kwargs.get('charge'))
+                organization = charge.customer
+            if organization and _contributor_readonly(request, [organization]
+                + list(Organization.objects.providers_to(organization))):
+                return view_func(request, *args, **kwargs)
+            raise PermissionDenied("%(user)s is neither a manager '\
+' of %(organization)s nor a manager of one of %(organization)s providers."
+                        % {'user': request.user, 'organization': organization})
+        return _wrapped_view
+
+    if function:
+        return decorator(function)
+    return decorator
+
+
 def requires_self_manager_provider(function=None):
     """
-    Decorator that checks that the user is either herself
-    or a manager for an organization providing services to
-    an organization the user is involved with.
+    Decorator for views that checks that the request authenticated ``User``
+    is the user associated to the URL.
+    Authenticated users that can also access the URL through this decorator
+    are contributors (or managers) for any ``Organization`` associated
+    with the user served by the URL (the accessed user is a direct contributor
+    or manager of the organization) and transitively contributors (or managers)
+    for any provider to one of these direct organizations.
+
+    Managers can issue all types of requests (GET, POST, etc.) while
+    contributors are restricted to GET requests.
+
+    .. image:: perms-self-contrib-subscribes.*
     """
     def decorator(view_func):
         @wraps(view_func, assigned=available_attrs(view_func))

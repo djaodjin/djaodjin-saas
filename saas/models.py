@@ -28,6 +28,19 @@
 #   The models and managers are declared in the same file to avoid messy
 #   import loops.
 
+"""
+A billing profile (credit card and deposit bank account) is represented by
+an ``Organization``.
+Organizations subscribe to services provided by other Organizations
+through a subscription ``Plan``.
+There are mechanism provided to authenticate as an Organization. Instead
+``User`` authenticate with the application (through a login page
+or an API token). They are then able to access URLs related to an Organization
+based on their relation with that Organization. Two sets or relations
+are supported: managers and contributors (for details see
+:doc:`Security <security>`).
+"""
+
 import datetime, logging, re
 
 from dateutil.relativedelta import relativedelta
@@ -1001,7 +1014,9 @@ class SubscriptionManager(models.Manager):
 
 class Subscription(models.Model):
     """
-    Subscriptions of an Organization to a Plan
+    ``Subscription`` represent a service contract (``Plan``) between
+    two ``Organization``, a client and a provider, that is paid by the client
+    to the provider over the lifetime of the subscription.
     """
     objects = SubscriptionManager()
 

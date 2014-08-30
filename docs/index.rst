@@ -6,20 +6,23 @@
 Welcome to Djaodjin saas's documentation!
 =========================================
 
-Djaodjin's saas is a Django application that implements logic to support
-subscription-based Sofware-as-a-Service businesses. It includes a generic
-organization hierarchy with admin/contributor security model, a double
-entry book keeping ledger and charts to visualize a saas business performace.
+djaodjin-saas is a Django application that implements the logic to support
+subscription-based Sofware-as-a-Service businesses.
+
+Major Features:
+
+- Separate billing profiles and authenticated users
+- Double entry book keeping ledger
+- Flexible security framework
 
 Contents:
 
 .. toctree::
    :maxdepth: 1
 
+   subscriptions
    models
-   ledger
-   metrics
-
+   security
 
 Indices and tables
 ==================

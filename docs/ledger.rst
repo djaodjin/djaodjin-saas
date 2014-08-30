@@ -1,25 +1,5 @@
-Subscription Logic
-==================
-
-A customer, represented by an ``Organization`` instance later referenced as
-*client*, subscribes to services from an ``Organization`` known as *provider*.
-
-.. image:: timeline.*
-
-At the time a client first subscribes to service, a billing cycle is established
-for the client. From that time on, a client is billed at the begining of each
-billing cycle for all services subscribed to.
-
-In normal business operations, service is available as soon as client
-subscribes; service becomes unavailable at the end of a billing cycle.
-
-Whenever potential fraud is detected, that is a client's card is denied
-N number of times or a chargeback is created, a client is locked out
-immediately.
-
-
 Transactions
-------------
+============
 
 Transactions are recorded in an append-only double-entry book keeping ledger
 using the following Model
@@ -38,14 +18,49 @@ event_id          Tie-in to third-party payment processor at the origin
                   of the transaction (optional)
 ================= ===========
 
-A ``Transaction`` records the movement of an *amount* from a *client*
+A ``Transaction`` records the movement of an *amount* from a *customer*
 Organization's account to a *provider* Organization's account. When actual
 charges are generated, a third-party processor organization is also involved.
-The client and provider are potentially identical when an amount is moved
+The customer and provider are potentially identical when an amount is moved
 from one account to another account within the same Organization.
+
+Accounts
+--------
 
 Each organization has exactly 6 accounts: Income, Assets, Payable, Refund,
 Chargeback and Writeoff.
+
+These accounts are used to create a provider's balance sheet from
+the ``Transaction`` table which contains the following information:
+
+- Assets
+    Cash amount currently held by the provider.
+- Income
+    Total amount paid to the provider for services.
+- Expenses
+    These includes Refund, Chargeback and Writeoff which were paid
+    back to clients.
+- (Liabilities)
+    In a marketplace scenario, these *Payable* are invoices that were billed
+    to the provider, acting as a client, that have not been settled yet.
+
+These accounts are also used to create a "valuable client" payment profile
+as such for example:
+
+- Value
+    The total amount invoiced for services to the client.
+- *Payable*
+    Amount currenly payable by the client to providers for services
+    that has not been settled yet.
+- Acquisition and Retention
+    Amount for free trials and other goodies given to the client at
+    a provider's initiative.
+- Dispute
+    Amount that refunded, charged back or written off in association
+    with services provided to the client.
+
+Records
+-------
 
 .. image:: transactions.*
 
@@ -55,24 +70,24 @@ the following actions.
 Use of Service
 ^^^^^^^^^^^^^^
 
-Each time a provider delivers a service to a client, a transaction is recorded
-that goes from the provider ``Income`` account to the client ``Payable``
+Each time a provider delivers a service to a customer, a transaction is recorded
+that goes from the provider ``Income`` account to the customer ``Payable``
 account.
 
     yyyy/mm/dd description
-               client:Payable                       amount
+               customer:Payable                       amount
                provider:Income
 
 Charge Created
 ^^^^^^^^^^^^^^
 
 When a charge through the payment processor is sucessful, a transaction is
-created from client payable to provider assets and processor income (fee).
+created from customer payable to provider assets and processor income (fee).
 
     yyyy/mm/dd description
                provider:Assets        amount_minus_fee
                processor:Income       processor_fee
-               client:Payable
+               customer:Payable
 
 From an implementation standpoint, two ``Transaction`` records are created,
 one for the provider and one for the processor.
@@ -81,11 +96,11 @@ Refund and Chargeback
 ^^^^^^^^^^^^^^^^^^^^^
 
 Refunds are initiated initiated by the provider while chargebacks are initated
-by the client. In either case, they represent a loss of income while the service
+by the customer. In either case, they represent a loss of income while the service
 was provided.
 
     yyyy/mm/dd description
-               client:*payback*     amount
+               customer:*payback*     amount
                processor:Income     processor_fee
                provider:Assets
 
@@ -102,12 +117,12 @@ Write off
 ^^^^^^^^^
 
 Sometimes, a provider will give up and assume payables cannot be recovered
-from a client. At that point a writeoff transaction is recorded in order
+from a customer. At that point a writeoff transaction is recorded in order
 to keep the ledger balanced.
 
     yyyy/mm/dd description
-               client:Writeoff       amount
-               client:Payable
+               customer:Writeoff       amount
+               customer:Payable
 
 Charges
 -------

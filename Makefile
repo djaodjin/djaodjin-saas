@@ -7,6 +7,7 @@ installTop    ?= $(VIRTUAL_ENV)
 binDir        ?= $(installTop)/bin
 
 PYTHON        := $(binDir)/python
+installDirs   ?= install -d
 
 install::
 	cd $(srcDir) && $(PYTHON) ./setup.py install --quiet
@@ -18,4 +19,5 @@ initdb:
 						testsite/fixtures/test_data.json
 
 doc:
+	$(installDirs) docs
 	cd $(srcDir) && sphinx-build -b html ./docs $(PWD)/docs

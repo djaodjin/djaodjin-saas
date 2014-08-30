@@ -10,3 +10,5 @@ django-app-metrics
 python-dateutil>=2.2
 django-extra-views>=0.6.5
 
+# development
+sphinxcontrib-httpdomain
