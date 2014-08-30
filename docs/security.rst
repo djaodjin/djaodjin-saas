@@ -24,16 +24,12 @@ Decorators Available
     requires_manager_or_provider, requires_self_manager_provider
 
 
--We used to decorate the saas views with the "appropriate" decorators
--except in many projects appropriate had a different meaning.
-+The access control logic is best configured in the site URLConf through
-+extensions like `django-urldecorators`_. This is not only more flexible but
-+also make security audits a lot easier.
- 
--It turns out that the access control logic is better left to be configured
--in the site URLConf through extensions like django-urldecorators:
--
--    https://github.com/mila/django-urldecorators.
--
--This is not only more flexible but also make security audits a lot easier.
-+.. _django-urldecorators: https://github.com/mila/django-urldecorators
+.. rubric:: Design Note
+
+We used to decorate the saas views with the "appropriate" decorators,
+except in many projects appropriate had a different meaning. It turns out
+that the access control logic is better left to be configured
+in the site URLConf through extensions like `django-urldecorators`_.
+This is not only more flexible but also make security audits a lot easier.
+
+.. _django-urldecorators: https://github.com/mila/django-urldecorators
