@@ -1,5 +1,13 @@
-This is the Django framework on which DjaoDjin SaaS backend is built.
+djaodjin-saas is a Django application that implements the logic to support
+subscription-based Sofware-as-a-Service businesses.
 
+Major Features:
+
+- Separate billing profiles and authenticated users
+- Double entry book keeping ledger
+- Flexible security framework
+
+Full documentation for the project is available at [Read-the-Docs](http://djaodjin-saas.readthedocs.org/)
 
 Development
 ===========
