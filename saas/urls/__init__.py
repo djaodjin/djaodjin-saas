@@ -36,8 +36,7 @@ urlpatterns = patterns(
     'saas.views',
     url(r'^api/',
         include('saas.urls.api')),
-# XXX Can't be defined here this way if we want to override it.
-#    url(r'^plans/', CartPlanListView.as_view(), name='saas_cart_plan_list'),
+    url(r'^pricing/', CartPlanListView.as_view(), name='saas_cart_plan_list'),
     url(r'^billing/cart/',
         OrganizationRedirectView.as_view(pattern_name='saas_organization_cart'),
         name='saas_cart'),

@@ -22,6 +22,7 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+from django.core.context_processors import csrf
 from django.core.urlresolvers import reverse
 from django.shortcuts import get_object_or_404
 from django.views.generic import CreateView, ListView, UpdateView
@@ -29,6 +30,7 @@ from django.views.generic.detail import SingleObjectMixin
 
 from saas.models import Plan, Organization
 from saas.forms import PlanForm
+
 
 class PlanFormMixin(SingleObjectMixin):
 
@@ -57,11 +59,25 @@ class CartPlanListView(ListView):
     """
 
     model = Plan
+    organization_url_kwarg = 'organization'
     template_name = 'saas/cart_plan_list.html'
 
+    def get_organization(self):
+        return Organization.objects.get_organization(
+            self.kwargs.get(self.organization_url_kwarg, None))
+
     def get_queryset(self):
-        queryset = Plan.objects.filter(is_active=True)
+        queryset = Plan.objects.filter(
+            organization=self.get_organization(),
+            is_active=True).order_by('period_amount')
         return queryset
+
+    def get_context_data(self, **kwargs):
+        context = super(CartPlanListView, self).get_context_data(**kwargs)
+        # We add the csrf token here so that javascript on the page
+        # can call the shopping cart API.
+        context.update(csrf(self.request))
+        return context
 
 
 class PlanCreateView(PlanFormMixin, CreateView):

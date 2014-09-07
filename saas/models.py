@@ -222,19 +222,21 @@ class Organization(models.Model):
     def __unicode__(self):
         return unicode(self.slug)
 
-    def add_contributor(self, user):
+    def add_contributor(self, user, at_time=None):
         """
         Add user as a contributor to organization.
         """
+        #pylint: disable=unused-argument
         _, created = \
             get_contributor_relation_model().objects.get_or_create(
             organization=self, user=user)
         return created
 
-    def add_manager(self, user):
+    def add_manager(self, user, at_time=None):
         """
         Add user as a manager to organization.
         """
+        #pylint: disable=unused-argument
         _, created = get_manager_relation_model().objects.get_or_create(
             organization=self, user=user)
         return created
