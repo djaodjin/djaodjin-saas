@@ -30,7 +30,7 @@ including Transaction history.
 from django.core.management.base import BaseCommand
 
 # We need this import to avoid getting an exception importing 'saas.models'
-from saas.compat import datetime_or_now #pylint: disable=unused-import
+from saas.utils import datetime_or_now #pylint: disable=unused-import
 from saas.models import Organization
 
 

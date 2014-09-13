@@ -30,7 +30,7 @@ import logging
 
 from django.db.models import Sum
 
-from saas.compat import datetime_or_now
+from saas.utils import datetime_or_now
 from saas.models import Charge, Organization, Transaction
 
 
