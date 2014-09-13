@@ -46,7 +46,7 @@ from django.utils.timezone import utc
 from django.views.generic import DetailView, FormView, ListView
 
 from saas.backends import PROCESSOR_BACKEND, ProcessorError
-from saas.compat import validate_redirect_url
+from saas.utils import validate_redirect_url
 from saas.forms import BankForm, CreditCardForm, RedeemCouponForm, WithdrawForm
 from saas.mixins import ChargeMixin, OrganizationMixin
 from saas.models import (CartItem, Coupon, Organization, Plan,

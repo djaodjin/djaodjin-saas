@@ -27,7 +27,7 @@ from rest_framework.generics import (
 from rest_framework.response import Response
 from rest_framework import serializers
 
-from saas.compat import datetime_or_now
+from saas.utils import datetime_or_now
 from saas.mixins import SubscriptionMixin
 from saas.models import Subscription
 

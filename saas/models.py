@@ -57,7 +57,7 @@ from saas import settings
 from saas import signals
 from saas.backends import PROCESSOR_BACKEND, ProcessorError
 from saas import get_manager_relation_model, get_contributor_relation_model
-from saas.compat import datetime_or_now
+from saas.utils import datetime_or_now
 
 from saas.humanize import (as_money, describe_buy_periods,
     DESCRIBE_BALANCE, DESCRIBE_BUY_PERIODS,
