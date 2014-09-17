@@ -28,34 +28,16 @@ from django.conf.urls import patterns, url
 
 from saas.views.profile import (
     ContributorListView, ManagerListView,
-    OrganizationProfileView, SubscriberListView, SubscriptionListView)
-from saas.views.plans import PlanCreateView, PlanUpdateView
-from saas.views.profile import (ContributorsAdd, ContributorsRemove,
-    ManagersAdd, ManagersRemove)
-from saas.settings import ACCT_REGEX
+    OrganizationProfileView, SubscriptionListView)
 
 urlpatterns = patterns(
     'saas.views.profile',
-    url(r'^contributors/add',
-        ContributorsAdd.as_view(), name='saas_add_contributors'),
-    url(r'^contributors/remove',
-        ContributorsRemove.as_view(), name='saas_remove_contributors'),
     url(r'^contributors/',
         ContributorListView.as_view(), name='saas_contributor_list'),
-    url(r'^managers/add',
-        ManagersAdd.as_view(), name='saas_add_managers'),
-    url(r'^managers/remove',
-        ManagersRemove.as_view(), name='saas_remove_managers'),
     url(r'^managers/',
         ManagerListView.as_view(), name='saas_manager_list'),
-    url(r'^subscribers/',
-        SubscriberListView.as_view(), name='saas_subscriber_list'),
     url(r'^subscriptions/',
         SubscriptionListView.as_view(), name='saas_subscription_list'),
-    url(r'^plans/new/',
-        PlanCreateView.as_view(), name='saas_plan_new'),
-    url(r'^plans/(?P<plan>%s)/' % ACCT_REGEX,
-        PlanUpdateView.as_view(), name='saas_plan_edit'),
     url(r'^$',
         OrganizationProfileView.as_view(), name='saas_organization_profile'),
 )

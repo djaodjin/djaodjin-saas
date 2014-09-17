@@ -20,8 +20,8 @@ Decorators Available
 --------------------
 
 .. automodule:: saas.decorators
-   :members: requires_agreement, requires_paid_subscription, requires_manager,
-    requires_manager_or_provider, requires_self_manager_provider
+   :members: requires_agreement, requires_paid_subscription, requires_direct,
+    requires_provider, requires_self_provider
 
 
 .. rubric:: Design Note

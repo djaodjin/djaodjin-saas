@@ -44,6 +44,8 @@ MANAGER_RELATION = getattr(settings, 'SAAS_MANAGER_RELATION',
 
 PROCESSOR_HOOK_URL = getattr(settings, 'SAAS_PROCESSOR_HOOK_URL', "postevent")
 
+PROVIDER_CALLABLE = getattr(settings, 'SAAS_PROVIDER_CALLABLE', None)
+
 SITE_ID = getattr(settings, 'SAAS_SITE_ID', getattr(settings, 'SITE_ID', 1))
 
 # BE EXTRA CAREFUL! This variable is used to bypass PermissionDenied

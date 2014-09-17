@@ -27,7 +27,7 @@ from rest_framework.generics import (
 from rest_framework import serializers
 
 from saas.models import Coupon
-from saas.mixins import OrganizationMixin
+from saas.mixins import ProviderMixin
 
 #pylint: disable=no-init
 #pylint: disable=old-style-class
@@ -40,7 +40,7 @@ class CouponSerializer(serializers.ModelSerializer):
         fields = ('created_at', 'code', 'percent', )
 
 
-class CouponMixin(OrganizationMixin):
+class CouponMixin(ProviderMixin):
 
     model = Coupon
     serializer_class = CouponSerializer
@@ -49,8 +49,7 @@ class CouponMixin(OrganizationMixin):
 
     def get_queryset(self):
         queryset = super(CouponMixin, self).get_queryset()
-        return queryset.filter(organization__slug=self.kwargs.get(
-                self.organization_url_kwarg))
+        return queryset.filter(organization=self.get_organization())
 
     def pre_save(self, obj):
         """

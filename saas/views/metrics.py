@@ -26,13 +26,12 @@ import json
 from datetime import datetime, date, timedelta
 
 from django.db.models import Min, Sum, Max
-from django.shortcuts import get_object_or_404
 from django.utils.datastructures import SortedDict
 from django.utils.timezone import utc
 from django.views.generic import ListView, TemplateView
 from django.core.serializers.json import DjangoJSONEncoder
 
-from saas.mixins import CouponMixin
+from saas.mixins import CouponMixin, ProviderMixin
 from saas.views.auth import valid_manager_for_organization
 from saas.managers.metrics import (active_subscribers,
     aggregate_monthly_transactions, churn_subscribers)
@@ -62,7 +61,7 @@ class CouponMetricsView(CouponMixin, ListView):
         return context
 
 
-class PlansMetricsView(TemplateView):
+class PlansMetricsView(ProviderMixin, TemplateView):
     """
     Performance of Plans for a time period
     (as a count of subscribers per plan per month)
@@ -72,8 +71,7 @@ class PlansMetricsView(TemplateView):
 
     def get_context_data(self, **kwargs):
         context = super(PlansMetricsView, self).get_context_data(**kwargs)
-        organization = get_object_or_404(
-            Organization, slug=kwargs.get('organization'))
+        organization = self.get_organization()
         table = []
         for plan in Plan.objects.filter(organization=organization):
             values = active_subscribers(
@@ -87,13 +85,12 @@ class PlansMetricsView(TemplateView):
         data['subscribers'] = {"title": "Active Subscribers",
                                "table": table, "extra": extra}
         context.update({'title': "Plans",
-            "organization": organization,
             "data": data,
             "data_json": json.dumps(data, cls=DjangoJSONEncoder)})
         return context
 
 
-class RevenueMetricsView(TemplateView):
+class RevenueMetricsView(ProviderMixin, TemplateView):
     """
     Generate a table of revenue (rows) per months (columns).
     """
@@ -102,8 +99,7 @@ class RevenueMetricsView(TemplateView):
 
     def get_context_data(self, **kwargs):
         context = super(RevenueMetricsView, self).get_context_data(**kwargs)
-        organization = get_object_or_404(
-            Organization, slug=kwargs.get('organization'))
+        organization = self.get_organization()
         from_date = kwargs.get('from_date', None)
         income_table, customer_table, customer_extra = \
             aggregate_monthly_transactions(organization, from_date)
@@ -112,20 +108,19 @@ class RevenueMetricsView(TemplateView):
                           "unit": "$", "table": income_table}
         data['customers'] = {"title": "Customers",
                              "table": customer_table, "extra": customer_extra}
-        context = {"title": "Revenue Metrics",
-                   "organization": organization,
-                   "data": data,
-                   "data_json": json.dumps(data, cls=DjangoJSONEncoder)}
+        context.update({"title": "Revenue Metrics",
+            "data": data,
+            "data_json": json.dumps(data, cls=DjangoJSONEncoder)})
         return context
 
 
-class UsageMetricsView(TemplateView):
+class UsageMetricsView(ProviderMixin, TemplateView):
 
     template_name = "saas/usage_chart.html"
 
     def get_context_data(self, **kwargs):
-        organization = get_object_or_404(
-            Organization, slug=kwargs.get('organization'))
+        context = super(UsageMetricsView, self).get_context_data(**kwargs)
+        organization = self.get_organization()
         # Note: There is a way to get the result in a single SQL statement
         # but that requires to deal with differences in databases
         # (MySQL: date_format, SQLite: strftime) and get around the
@@ -146,9 +141,7 @@ class UsageMetricsView(TemplateView):
                 amount = 0
             values += [{"x": date.strftime(first, "%Y/%m/%d"), "y": amount}]
             end = first - timedelta(days=1)
-        context = {
-            'data': [{"key": "Usage", "values": values}],
-            'organization_id': organization.slug}
+        context.update({'data': [{"key": "Usage", "values": values}]})
         return context
 
 

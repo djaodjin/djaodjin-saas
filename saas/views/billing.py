@@ -48,9 +48,8 @@ from django.views.generic import DetailView, FormView, ListView
 from saas.backends import PROCESSOR_BACKEND, ProcessorError
 from saas.utils import validate_redirect_url
 from saas.forms import BankForm, CreditCardForm, RedeemCouponForm, WithdrawForm
-from saas.mixins import ChargeMixin, OrganizationMixin
-from saas.models import (CartItem, Coupon, Organization, Plan,
-    Transaction, Subscription)
+from saas.mixins import ChargeMixin, OrganizationMixin, ProviderMixin
+from saas.models import CartItem, Coupon, Plan, Transaction, Subscription
 from saas.humanize import (as_money, describe_buy_periods, match_unlock,
     DESCRIBE_UNLOCK_NOW, DESCRIBE_UNLOCK_LATER)
 
@@ -76,7 +75,7 @@ def _session_cart_to_database(request):
         del request.session['cart_items']
 
 
-class BankMixin(OrganizationMixin):
+class BankMixin(ProviderMixin):
     """
     Adds bank information to the context.
     """
@@ -277,7 +276,7 @@ class CardUpdateView(CardFormMixin, FormView):
         return reverse('saas_billing_info', args=(self.customer,))
 
 
-class TransactionListView(ListView):
+class TransactionListView(OrganizationMixin, ListView):
     """
     This page shows the subscriptions an Organization paid for
     as well as payment refunded.
@@ -285,14 +284,12 @@ class TransactionListView(ListView):
 
     paginate_by = 10
     template_name = 'billing/index.html'
-    organization_url_kwarg = 'organization'
 
     def get_queryset(self):
         """
         Get the list of transactions for this organization.
         """
-        self.customer = get_object_or_404(
-            Organization, slug=self.kwargs.get(self.organization_url_kwarg))
+        self.customer = self.get_organization()
         queryset = Transaction.objects.filter(
             (Q(dest_organization=self.customer)
              & (Q(dest_account=Transaction.PAYABLE) # Only customer side
@@ -322,8 +319,7 @@ class TransferListView(BankMixin, ListView):
         """
         Get the list of transactions for this organization.
         """
-        self.organization = get_object_or_404(
-            Organization, slug=self.kwargs.get('organization'))
+        self.organization = self.get_organization()
         queryset = Transaction.objects.filter(
             # All transactions involving Funds
             ((Q(orig_organization=self.organization)
@@ -442,8 +438,7 @@ class PlaceOrderView(InvoicablesView):
               "options": [Transaction, ...],
             }, ...]
         """
-        self.customer = get_object_or_404(
-            Organization, slug=self.kwargs.get(self.organization_url_kwarg))
+        self.customer = self.get_organization()
         created_at = datetime.datetime.utcnow().replace(tzinfo=utc)
         prorate_to_billing = False
         prorate_to = None
@@ -497,7 +492,7 @@ class ChargeReceiptView(ChargeMixin, DetailView):
     template_name = 'billing/receipt.html'
 
 
-class CouponListView(OrganizationMixin, ListView):
+class CouponListView(ProviderMixin, ListView):
     """
     View to manage coupons
     """
@@ -563,8 +558,7 @@ class PayBalanceView(InvoicablesView):
               "options": [Transaction, ...],
             }, ...]
         """
-        self.customer = get_object_or_404(Organization,
-            slug=self.kwargs.get(self.organization_url_kwarg))
+        self.customer = self.get_organization()
         invoicables = []
         created_at = datetime.datetime.utcnow().replace(tzinfo=utc)
         for subscription in Subscription.objects.active_for(self.customer):
@@ -578,7 +572,7 @@ class PayBalanceView(InvoicablesView):
 
     def get_subscription(self):
         return get_object_or_404(Subscription,
-            organization__slug=self.kwargs.get(self.organization_url_kwarg),
+            organization=self.get_organization(),
             plan__slug=self.kwargs.get(self.plan_url_kwarg))
 
     def get_success_url(self):

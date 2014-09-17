@@ -1,9 +1,0 @@
-{% extends "saas/base.html" %}
-
-{% block saas_content %}
-  <form method="post" action="{{call}}">
-    {{form.as_ul}}
-    <input type="submit" value="Submit" />
-    {% csrf_token %}
-  </form>
-{% endblock %}

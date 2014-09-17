@@ -31,16 +31,15 @@ from django.core.urlresolvers import reverse
 from django.core.exceptions import ImproperlyConfigured
 from django.db import transaction
 from django.shortcuts import get_object_or_404
-from django.views.generic import FormView, ListView, UpdateView
+from django.views.generic import ListView, UpdateView
 from django.views.generic.edit import FormMixin
 from django.utils.decorators import method_decorator
 from extra_views import SearchableListMixin, SortableListMixin
 
 from saas.forms import (OrganizationForm, ManagerAndOrganizationForm,
-    UserRelationForm, UnsubscribeForm)
-from saas.mixins import OrganizationMixin
+    UnsubscribeForm)
+from saas.mixins import OrganizationMixin, ProviderMixin
 from saas.models import Organization, Subscription, datetime_or_now
-from saas.compat import User
 
 
 LOGGER = logging.getLogger(__name__)
@@ -78,19 +77,19 @@ class ManagerListView(OrganizationMixin, ListView):
         return context
 
 
-class SubscriptionListMixin(OrganizationMixin): #MultipleObjectMixin):
+class SubscriberListBaseView(ProviderMixin, ListView):
 
     model = Subscription
 
     def get_queryset(self):
         self.organization = self.get_organization()
-        return super(SubscriptionListMixin, self).get_queryset().filter(
+        queryset = super(SubscriberListBaseView, self).get_queryset().filter(
             ends_at__gte=datetime_or_now(),
             plan__organization=self.organization).distinct()
+        return queryset
 
 
-class SmartSubscriptionListMixin(
-    SearchableListMixin, SortableListMixin, SubscriptionListMixin):
+class SmartListMixin(SearchableListMixin, SortableListMixin):
     """
     Subscriber list which is also searchable and sortable.
     """
@@ -110,7 +109,7 @@ class SmartSubscriptionListMixin(
 
     def get_context_data(self, **kwargs):
         context = super(
-            SmartSubscriptionListMixin, self).get_context_data(**kwargs)
+            SmartListMixin, self).get_context_data(**kwargs)
         context.update({'q': self.request.GET.get('q', '')})
         return context
 
@@ -130,13 +129,13 @@ class SmartSubscriptionListMixin(
                     self.template_name_suffix))
         try:
             names += super(
-                SmartSubscriptionListMixin, self).get_template_names()
+                SmartListMixin, self).get_template_names()
         except ImproperlyConfigured:
             pass
         return names
 
 
-class SubscriberListView(SmartSubscriptionListMixin, FormMixin, ListView):
+class SubscriberListView(SmartListMixin, FormMixin, SubscriberListBaseView):
     """
     List of organizations subscribed to a plan provided by the organization.
     """
@@ -241,105 +240,3 @@ class OrganizationProfileView(UpdateView):
         return reverse('saas_organization_profile', args=(self.object,))
 
 
-class ManagersAdd(FormView):
-
-    template_name = "saas/organization_user_relation.html"
-    form_class = UserRelationForm
-
-    def form_valid(self, form):
-        self.organization = get_object_or_404(
-            Organization, slug=self.kwargs.get('organization'))
-        user = get_object_or_404(User, username=form.cleaned_data['username'])
-        self.organization.add_manager(user)
-        return super(ManagersAdd, self).form_valid(form)
-
-    def get_context_data(self, **kwargs):
-        self.organization = get_object_or_404(
-            Organization, slug=self.kwargs.get('organization'))
-        context = super(ManagersAdd, self).get_context_data(**kwargs)
-        context = {'user': self.request.user,
-            'organization': self.organization,
-            'call': reverse(
-                'saas_add_managers', args=(self.organization,))}
-        return context
-
-    def get_success_url(self):
-        return reverse('saas_manager_list', args=(self.organization,))
-
-
-class ManagersRemove(FormView):
-
-    template_name = "saas/organization_user_relation.html"
-    form_class = UserRelationForm
-
-    def form_valid(self, form):
-        self.organization = get_object_or_404(
-            Organization, slug=self.kwargs.get('organization'))
-        user = get_object_or_404(User, username=form.cleaned_data['username'])
-        self.organization.remove_manager(user)
-        return super(ManagersRemove, self).form_valid(form)
-
-    def get_context_data(self, **kwargs):
-        self.organization = get_object_or_404(
-            Organization, slug=self.kwargs.get('organization'))
-        context = super(ManagersRemove, self).get_context_data(**kwargs)
-        context = {'user': self.request.user,
-            'organization': self.organization,
-            'call': reverse(
-                'saas_remove_managers', args=(self.organization,))}
-        return context
-
-    def get_success_url(self):
-        return reverse('saas_manager_list', args=(self.organization,))
-
-
-class ContributorsAdd(FormView):
-
-    template_name = "saas/organization_user_relation.html"
-    form_class = UserRelationForm
-
-    def form_valid(self, form):
-        self.organization = get_object_or_404(
-            Organization, slug=self.kwargs.get('organization'))
-        user = get_object_or_404(User, username=form.cleaned_data['username'])
-        self.organization.add_manager(user)
-        return super(ContributorsAdd, self).form_valid(form)
-
-    def get_context_data(self, **kwargs):
-        self.organization = get_object_or_404(
-            Organization, slug=self.kwargs.get('organization'))
-        context = super(ContributorsAdd, self).get_context_data(**kwargs)
-        context = {'user': self.request.user,
-            'organization': self.organization,
-            'call': reverse(
-                'saas_add_contributors', args=(self.organization,))}
-        return context
-
-    def get_success_url(self):
-        return reverse('saas_contributor_list', args=(self.organization,))
-
-
-class ContributorsRemove(FormView):
-
-    template_name = "saas/organization_user_relation.html"
-    form_class = UserRelationForm
-
-    def form_valid(self, form):
-        self.organization = get_object_or_404(
-            Organization, slug=self.kwargs.get('organization'))
-        user = get_object_or_404(User, username=form.cleaned_data['username'])
-        self.organization.remove_contributor(user)
-        return super(ContributorsRemove, self).form_valid(form)
-
-    def get_context_data(self, **kwargs):
-        self.organization = get_object_or_404(
-            Organization, slug=self.kwargs.get('organization'))
-        context = super(ContributorsRemove, self).get_context_data(**kwargs)
-        context = {'user': self.request.user,
-            'organization': self.organization,
-            'call': reverse(
-                'saas_remove_contributors', args=(self.organization,))}
-        return context
-
-    def get_success_url(self):
-        return reverse('saas_contributor_list', args=(self.organization,))

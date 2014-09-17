@@ -1,20 +1,20 @@
 {% extends "saas/base.html" %}
+{% load static from staticfiles %}
 
 {% block localheader %}
-<link href="/static/css/nv.d3.css" rel="stylesheet" />
+<link href="{% static 'css/nv.d3.css' %}" rel="stylesheet" />
 {% endblock %}
 
 {% block saas_content %}
-<h1> Organization : {{ organization_id }}</h1>
+<h1> Organization : {{organization}}</h1>
 <pre id="chart">
   <svg>
   </svg>
 </pre>
-<script src="/static/js/vendor/jquery-1.9.1.js"></script>
-<script src="/static/js/vendor/d3.v3.js"></script>
-<script src="/static/js/vendor/nv.d3.js"></script>
+<script src="{% static 'js/vendor/jquery-1.9.1.js' %}"></script>
+<script src="{% static 'js/vendor/d3.v3.js' %}"></script>
+<script src="{% static 'js/vendor/nv.d3.js' %}"></script>
 <script type="text/javascript">
-
 function update_chart(data) {
 var col = 0;
 nv.addGraph(function() {
@@ -35,14 +35,9 @@ nv.addGraph(function() {
         .x(function(d) { return d.x })
         .y(function(d) { return d.y })
         .width(width).height(height)//Change chart size////
-            
-           
-           
-    
+
     chart.margin({left: 75});//Margin to see 'Amount'////
-    
-    
-            
+
     chart.xAxis
       .axisLabel('Date')
       .tickFormat(function(d) { return d3.time.format('%x')(new Date(d)); });

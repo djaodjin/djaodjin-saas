@@ -23,30 +23,18 @@
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 """
-URLs API for resources
+URLs API for profile resources (contributors, managers and subscriptions)
 """
 
 from django.conf.urls import patterns, url
-from saas.settings import ACCT_REGEX
 
-from saas.api.backend import RetrieveBankAPIView, RetrieveCardAPIView
-from saas.api.charges import ChargeResourceView, EmailChargeReceiptAPIView
-from saas.api.coupons import CouponListAPIView, CouponDetailAPIView
+from saas.settings import ACCT_REGEX
+from saas.api.subscriptions import (SubscriptionDetailAPIView,
+    SubscriptionListAPIView)
 from saas.api.users import (ContributorListAPIView, ContributorDetailAPIView,
     ManagerListAPIView, ManagerDetailAPIView)
-from saas.api.plans import (PlanActivateAPIView, PlanCreateAPIView,
-    PlanResourceView)
 
 urlpatterns = patterns('saas.api',
-    url(r'^(?P<organization>%s)/bank/?' % ACCT_REGEX,
-        RetrieveBankAPIView.as_view(), name='saas_api_bank'),
-    url(r'^(?P<organization>%s)/card/?' % ACCT_REGEX,
-        RetrieveCardAPIView.as_view(), name='saas_api_card'),
-    url(r'^(?P<organization>%s)/coupons/(?P<coupon>%s)/?'
-        % (ACCT_REGEX, ACCT_REGEX),
-        CouponDetailAPIView.as_view(), name='saas_api_coupon_detail'),
-    url(r'^(?P<organization>%s)/coupons/?' % ACCT_REGEX,
-        CouponListAPIView.as_view(), name='saas_api_coupon_list'),
     url(r'^(?P<organization>%s)/contributors/(?P<user>%s)/?'
         % (ACCT_REGEX, ACCT_REGEX),
         ContributorDetailAPIView.as_view(), name='saas_api_contributor_detail'),
@@ -57,18 +45,11 @@ urlpatterns = patterns('saas.api',
         ManagerDetailAPIView.as_view(), name='saas_api_manager_detail'),
     url(r'^(?P<organization>%s)/managers/?' % ACCT_REGEX,
         ManagerListAPIView.as_view(), name='saas_api_manager_list'),
-    url(r'^(?P<organization>%s)/plans/(?P<plan>%s)/activate/' % (ACCT_REGEX,
-                                                                 ACCT_REGEX),
-        PlanActivateAPIView.as_view(), name='saas_api_plan_activate'),
-    url(r'^(?P<organization>%s)/plans/(?P<plan>%s)/?' % (ACCT_REGEX,
-                                                         ACCT_REGEX),
-        PlanResourceView.as_view(), name='saas_api_plan'),
-    url(r'^(?P<organization>%s)/plans/?' % ACCT_REGEX,
-        PlanCreateAPIView.as_view(), name='saas_api_plan_new'),
-    url(r'^charges/(?P<charge>%s)/email/' % ACCT_REGEX,
-        EmailChargeReceiptAPIView.as_view(),
-        name='saas_api_email_charge_receipt'),
-    url(r'^charges/(?P<charge>%s)/?' % ACCT_REGEX,
-        ChargeResourceView.as_view(), name='saas_api_charge'),
+    url(r'^(?P<organization>%s)/subscriptions/(?P<subscribed_plan>%s)/?'
+        % (ACCT_REGEX, ACCT_REGEX),
+        SubscriptionDetailAPIView.as_view(),
+        name='saas_api_subscription_detail'),
+    url(r'^(?P<organization>%s)/subscriptions/?' % ACCT_REGEX,
+        SubscriptionListAPIView.as_view(),
+        name='saas_api_subscription_list'),
 )
-

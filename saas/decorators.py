@@ -41,7 +41,8 @@ from django.http import Http404
 from django.shortcuts import get_object_or_404
 from django.utils.decorators import available_attrs
 
-from saas.models import Charge, Organization, Plan, Signature, Subscription
+from saas.models import (Charge, Organization, Plan, Signature, Subscription,
+    get_current_provider)
 from saas.settings import SKIP_PERMISSION_CHECK
 
 LOGGER = logging.getLogger(__name__)
@@ -205,10 +206,11 @@ def requires_paid_subscription(function=None,
     return decorator
 
 
-def requires_manager(function=None):
+def requires_direct(function=None):
     """
     Decorator for views that checks that the request authenticated ``User``
-    is a contributor or manager for the ``Organization`` associated to the URL.
+    is a direct contributor (or manager) for the ``Organization`` associated
+    to the request.
 
     Managers can issue all types of requests (GET, POST, etc.) while
     contributors are restricted to GET requests.
@@ -218,17 +220,17 @@ def requires_manager(function=None):
     def decorator(view_func):
         @wraps(view_func, assigned=available_attrs(view_func))
         def _wrapped_view(request, *args, **kwargs):
-            if kwargs.has_key('plan'):
-                plan = get_object_or_404(Plan, slug=kwargs.get('plan'))
-                organization = plan.organization
-            elif kwargs.has_key('charge'):
+            organization = None
+            if kwargs.has_key('charge'):
                 charge = get_object_or_404(
                     Charge, processor_id=kwargs.get('charge'))
                 organization = charge.customer
             elif kwargs.has_key('organization'):
                 organization = get_object_or_404(Organization,
                     slug=kwargs.get('organization'))
-            if _contributor_readonly(request, [organization]):
+            else:
+                organization = get_current_provider(request)
+            if organization and _contributor_readonly(request, [organization]):
                 return view_func(request, *args, **kwargs)
             raise PermissionDenied
         return _wrapped_view
@@ -238,12 +240,12 @@ def requires_manager(function=None):
     return decorator
 
 
-def requires_manager_or_provider(function=None):
+def requires_provider(function=None):
     """
     Decorator for views that checks that the request authenticated ``User``
-    is a contributor (or manager) for the ``Organization`` associated to the URL
-    itself or a contributor (or manager) to a provider for the ``Organization``
-    associated to the URL.
+    is a contributor (or manager) for the ``Organization`` associated to
+    the request itself or a contributor (or manager) to a provider for
+    the ``Organization`` associated to the request.
 
     Managers can issue all types of requests (GET, POST, etc.) while
     contributors are restricted to GET requests.
@@ -254,19 +256,19 @@ def requires_manager_or_provider(function=None):
         @wraps(view_func, assigned=available_attrs(view_func))
         def _wrapped_view(request, *args, **kwargs):
             organization = None
-            if kwargs.has_key('organization'):
-                organization = get_object_or_404(Organization,
-                    slug=kwargs.get('organization'))
-            elif kwargs.has_key('charge'):
+            if kwargs.has_key('charge'):
                 charge = get_object_or_404(
                     Charge, processor_id=kwargs.get('charge'))
                 organization = charge.customer
+            elif kwargs.has_key('organization'):
+                organization = get_object_or_404(Organization,
+                    slug=kwargs.get('organization'))
             if organization and _contributor_readonly(request, [organization]
                 + list(Organization.objects.providers_to(organization))):
                 return view_func(request, *args, **kwargs)
-            raise PermissionDenied("%(user)s is neither a manager '\
-' of %(organization)s nor a manager of one of %(organization)s providers."
-                        % {'user': request.user, 'organization': organization})
+            raise PermissionDenied("%(auth)s is neither a manager "\
+" of %(organization)s nor a manager of one of %(organization)s providers."
+                        % {'auth': request.user, 'organization': organization})
         return _wrapped_view
 
     if function:
@@ -274,7 +276,42 @@ def requires_manager_or_provider(function=None):
     return decorator
 
 
-def requires_self_manager_provider(function=None):
+def requires_provider_only(function=None):
+    """
+    Decorator for views that checks that the request authenticated ``User``
+    is a contributor (or manager) for a provider to the ``Organization``
+    associated to the request.
+
+    Managers can issue all types of requests (GET, POST, etc.) while
+    contributors are restricted to GET requests.
+
+    .. image:: perms-contrib-provider-only.*
+    """
+    def decorator(view_func):
+        @wraps(view_func, assigned=available_attrs(view_func))
+        def _wrapped_view(request, *args, **kwargs):
+            organization = None
+            if kwargs.has_key('charge'):
+                charge = get_object_or_404(
+                    Charge, processor_id=kwargs.get('charge'))
+                organization = charge.customer
+            elif kwargs.has_key('organization'):
+                organization = get_object_or_404(Organization,
+                    slug=kwargs.get('organization'))
+            if organization and _contributor_readonly(request,
+                list(Organization.objects.providers_to(organization))):
+                return view_func(request, *args, **kwargs)
+            raise PermissionDenied("%(auth)s has no direct relation to"\
+" a provider of %(organization)s."
+                        % {'auth': request.user, 'organization': organization})
+        return _wrapped_view
+
+    if function:
+        return decorator(function)
+    return decorator
+
+
+def requires_self_provider(function=None):
     """
     Decorator for views that checks that the request authenticated ``User``
     is the user associated to the URL.
@@ -296,13 +333,15 @@ def requires_self_manager_provider(function=None):
                 raise PermissionDenied
             if request.user.username != kwargs.get('user'):
                 # Organization that are managed by both users
-                managed = Organization.objects.filter(
-                    managers__username=kwargs.get('user'))
+                directs = Organization.objects.accessible_by(kwargs.get('user'))
                 providers = Organization.objects.providers(
-                    Subscription.objects.filter(organization__in=managed))
+                    Subscription.objects.filter(organization__in=directs))
                 if not _contributor_readonly(request,
-                                             list(managed) + list(providers)):
-                    raise PermissionDenied
+                                             list(directs) + list(providers)):
+                    raise PermissionDenied("%(auth)s has neither a direct"\
+" relation to an organization connected to %(user)s nor a connection to one"\
+"of the providers to such organization."
+                        % {'auth': request.user, 'user': kwargs.get('user')})
             return view_func(request, *args, **kwargs)
         return _wrapped_view
 

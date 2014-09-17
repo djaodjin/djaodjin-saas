@@ -30,3 +30,10 @@ except ImportError: # django < 1.5
 else:
     User = get_user_model()                     #pylint: disable=invalid-name
 
+
+try:
+    #pylint: disable=no-name-in-module, unused-import
+    from django.utils.module_loading import import_string
+except ImportError: # django < 1.7
+    #pylint: disable=unused-import
+    from django.utils.module_loading import import_by_path as import_string

@@ -40,7 +40,8 @@ from django.http import HttpResponseRedirect
 from django.views.generic.list import ListView
 from django.views.generic.detail import DetailView
 
-from saas.models import Organization, Agreement, Signature
+from saas.mixins import ProviderMixin
+from saas.models import (Agreement, Signature, get_current_provider)
 
 class AgreementDetailView(DetailView):
 
@@ -53,14 +54,9 @@ class AgreementDetailView(DetailView):
         return context
 
 
-class AgreementListView(ListView):
+class AgreementListView(ProviderMixin, ListView):
 
     model = Agreement
-
-    def get_context_data(self, **kwargs):
-        context = super(AgreementListView, self).get_context_data(**kwargs)
-        context['organization'] = Organization.objects.get_site_owner()
-        return context
 
 
 class SignatureForm(forms.Form):
@@ -79,7 +75,7 @@ def _read_agreement_file(slug, context=None):
     if not context:
         context = {
             'site': Site.objects.get(pk=settings.SITE_ID),
-            'organization': Organization.objects.get_site_owner()}
+            'organization': get_current_provider()}
     source, _ = loader.find_template('saas/agreements/legal_%s.md' % slug)
     return markdown.markdown(source.render(Context(context)))
 

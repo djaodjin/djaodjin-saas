@@ -23,17 +23,27 @@
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 """
-URLs related to bank account information.
+URLs API for provider resources related to billing
 """
 
 from django.conf.urls import patterns, url
 
-from saas.views.billing import (BankUpdateView, TransferListView, WithdrawView,
-    CouponListView)
+from saas.settings import ACCT_REGEX
+from saas.api.backend import RetrieveBankAPIView
+from saas.api.coupons import CouponListAPIView, CouponDetailAPIView
+from saas.api.plans import (PlanActivateAPIView, PlanCreateAPIView,
+    PlanResourceView)
 
 urlpatterns = patterns('',
-    url(r'^coupons/', CouponListView.as_view(), name='saas_coupon_list'),
-    url(r'^withdraw/', WithdrawView.as_view(), name='saas_withdraw_funds'),
-    url(r'^transfers/', TransferListView.as_view(), name='saas_transfer_info'),
-    url(r'^bank/', BankUpdateView.as_view(), name='saas_update_bank'),
+    url(r'^bank/?', RetrieveBankAPIView.as_view(), name='saas_api_bank'),
+    url(r'^coupons/(?P<coupon>%s)/?' % ACCT_REGEX,
+        CouponDetailAPIView.as_view(), name='saas_api_coupon_detail'),
+    url(r'^coupons/?',
+        CouponListAPIView.as_view(), name='saas_api_coupon_list'),
+    url(r'^plans/(?P<plan>%s)/activate/' % ACCT_REGEX,
+        PlanActivateAPIView.as_view(), name='saas_api_plan_activate'),
+    url(r'^plans/(?P<plan>%s)/?' % ACCT_REGEX,
+        PlanResourceView.as_view(), name='saas_api_plan'),
+    url(r'^plans/?',
+        PlanCreateAPIView.as_view(), name='saas_api_plan_new'),
 )

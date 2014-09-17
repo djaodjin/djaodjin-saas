@@ -23,22 +23,16 @@
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 """
-API accessible by both, a manager of the provider organization
-and a manager of the subscribed organization.
+URLs related to provider pages
 """
 
-from django.conf.urls import patterns, url
-
-from saas.api.subscriptions import (
-    SubscriptionDetailAPIView, SubscriptionListAPIView)
-from saas.settings import ACCT_REGEX
+from django.conf.urls import patterns, include, url
 
 urlpatterns = patterns('',
-    url(r'^(?P<organization>%s)/subscriptions/(?P<subscribed_plan>%s)/?'
-        % (ACCT_REGEX, ACCT_REGEX),
-        SubscriptionDetailAPIView.as_view(),
-        name='saas_api_subscription_detail'),
-    url(r'^(?P<organization>%s)/subscriptions/?' % ACCT_REGEX,
-        SubscriptionListAPIView.as_view(),
-        name='saas_api_subscription_list'),
+    url(r'^billing/',
+        include('saas.urls.provider.billing')),
+    url(r'^metrics/',
+        include('saas.urls.provider.metrics')),
+    url(r'^',
+        include('saas.urls.provider.profile')),
 )

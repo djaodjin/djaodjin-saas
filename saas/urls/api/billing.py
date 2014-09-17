@@ -22,29 +22,17 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from rest_framework import status
-from rest_framework.generics import GenericAPIView
-from rest_framework.response import Response
+"""
+URLs API for resources
+"""
 
-from saas.backends import PROCESSOR_BACKEND
-from saas.mixins import OrganizationMixin, ProviderMixin
+from django.conf.urls import patterns, url
 
-#pylint: disable=no-init
-#pylint: disable=old-style-class
+from saas.settings import ACCT_REGEX
+from saas.api.backend import RetrieveCardAPIView
 
-class RetrieveBankAPIView(ProviderMixin, GenericAPIView):
-
-    def get(self, request, *args, **kwargs): #pylint: disable=unused-argument
-        return Response(
-            PROCESSOR_BACKEND.retrieve_bank(self.get_organization()),
-            status=status.HTTP_200_OK)
-
-
-class RetrieveCardAPIView(OrganizationMixin, GenericAPIView):
-
-    def get(self, request, *args, **kwargs): #pylint: disable=unused-argument
-        return Response(
-            PROCESSOR_BACKEND.retrieve_card(self.get_organization()),
-            status=status.HTTP_200_OK)
-
+urlpatterns = patterns('saas.api',
+    url(r'^(?P<organization>%s)/card/?' % ACCT_REGEX,
+        RetrieveCardAPIView.as_view(), name='saas_api_card'),
+)
 

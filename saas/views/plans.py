@@ -24,15 +24,15 @@
 
 from django.core.context_processors import csrf
 from django.core.urlresolvers import reverse
-from django.shortcuts import get_object_or_404
 from django.views.generic import CreateView, ListView, UpdateView
 from django.views.generic.detail import SingleObjectMixin
 
-from saas.models import Plan, Organization
+from saas.mixins import ProviderMixin
+from saas.models import Plan
 from saas.forms import PlanForm
 
 
-class PlanFormMixin(SingleObjectMixin):
+class PlanFormMixin(ProviderMixin, SingleObjectMixin):
 
     model = Plan
     form_class = PlanForm
@@ -42,8 +42,7 @@ class PlanFormMixin(SingleObjectMixin):
         Returns the initial data to use for forms on this view.
         """
         kwargs = super(PlanFormMixin, self).get_initial()
-        self.organization = get_object_or_404(Organization,
-            slug=self.kwargs.get('organization'))
+        self.organization = self.get_organization()
         kwargs.update({'organization': self.organization})
         return kwargs
 
@@ -53,18 +52,13 @@ class PlanFormMixin(SingleObjectMixin):
         return context
 
 
-class CartPlanListView(ListView):
+class CartPlanListView(ProviderMixin, ListView):
     """
     List of plans available for subscription.
     """
 
     model = Plan
-    organization_url_kwarg = 'organization'
     template_name = 'saas/cart_plan_list.html'
-
-    def get_organization(self):
-        return Organization.objects.get_organization(
-            self.kwargs.get(self.organization_url_kwarg, None))
 
     def get_queryset(self):
         queryset = Plan.objects.filter(

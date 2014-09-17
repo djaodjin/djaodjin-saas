@@ -28,7 +28,7 @@ from rest_framework.generics import (CreateAPIView,
 from rest_framework import serializers
 
 from saas.models import Plan
-from saas.mixins import OrganizationMixin
+from saas.mixins import ProviderMixin
 
 #pylint: disable=no-init
 #pylint: disable=old-style-class
@@ -50,7 +50,7 @@ class PlanActivateSerializer(serializers.ModelSerializer):
         fields = ('is_active',)
 
 
-class PlanMixin(OrganizationMixin):
+class PlanMixin(ProviderMixin):
 
     model = Plan
     slug_url_kwarg = 'plan'

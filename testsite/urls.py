@@ -59,5 +59,5 @@ urlpatterns = patterns('',
                        login_url=reverse_lazy('registration_personal')),
         name='saas_cart'),
     url(r'^', include('saas.urls'),
-        decorators=['saas.decorators.requires_manager']),
+        decorators=['saas.decorators.requires_direct']),
 )

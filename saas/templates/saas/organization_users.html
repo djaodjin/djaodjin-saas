@@ -1,43 +1,26 @@
-<section id="{{title}}">
+<section id="{{title}}" ng-app="{{title}}App">
   <h1>{{title}}</h1>
-  <form method="post"
-        action="{% url 'saas_add_'|add:title organization %}">
-    <input name="username" type="text" size="32" />
-    <input type="submit" value="Add" />
-    {% csrf_token %}
-  </form>
-  {% if users %}
-  <table>
-    <thead>
-      <tr>
-        <th></th>
-        <th>Username</th>
-        <th>Email</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for user in users %}
-      <tr>
-        <td>
-          <form method="post"
-                action="{% url 'saas_remove_'|add:title organization %}">
-            <input name="username" type="hidden" value="{{user.username}}" />
-            <input type="submit"
-                   value="Remove" />
-            {% csrf_token %}
-          </form>
-        </td>
-        <td>
-          {{user.username}}
-        </td>
-        <td>
-          {{user.email}}
-        </td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-  {% else %}
-  <em>This organization has no {{title}}.</em>
-  {% endif %}
+  <div ng-controller="{{title}}ListCtrl">
+    <form>
+      <input type="text" ng-model="user.username" placeholder="Username or Email" />
+      <input type="submit" ng-click="save()" />
+    </form>
+    <table>
+      <thead>
+        <tr>
+          <th>Username</th>
+          <th>Email</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr ng-repeat="user in users" ng-cloak>
+          <td>[[user.username]]</td>
+          <td>[[user.email]]</td>
+          <td><button ng-click="remove($index)">Remove</button></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
 </section>
+

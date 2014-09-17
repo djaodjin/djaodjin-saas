@@ -47,7 +47,7 @@ from dateutil.relativedelta import relativedelta
 from django.core.urlresolvers import reverse
 from django.core.validators import MaxValueValidator
 from django.db import IntegrityError, models, transaction
-from django.db.models import Sum
+from django.db.models import Q, Sum
 from django.db.models.query import QuerySet
 from django.utils.decorators import method_decorator
 from django.utils.timezone import utc
@@ -55,8 +55,8 @@ from django.utils.translation import ugettext_lazy as _
 
 from saas import settings
 from saas import signals
-from saas.backends import PROCESSOR_BACKEND, ProcessorError
 from saas import get_manager_relation_model, get_contributor_relation_model
+from saas.backends import PROCESSOR_BACKEND, ProcessorError
 from saas.utils import datetime_or_now
 
 from saas.humanize import (as_money, describe_buy_periods,
@@ -92,20 +92,20 @@ class OrganizationManager(models.Manager):
             slug=name, billing_start=billing_start)
         return customer
 
-    def get_organization(self, organization):
-        """Returns an ``Organization`` instance from the organization
-        parameter which could either be an id or a slug.
-
-        In case organization is None, this method returns the site owner.
+    def accessible_by(self, user):
         """
-        if organization is None:
-            return self.get_site_owner()
-        if not isinstance(organization, Organization):
-            return self.get(slug=organization)
-        return organization
+        Returns a QuerySet of Organziation which *user* either has
+        a manager or contributor relation to.
 
-    def get_site_owner(self):
-        return self.get(pk=settings.SITE_ID)
+        When *user* is a string instead of a ``User`` instance, it will
+        be interpreted as a username.
+        """
+        if isinstance(user, str):
+            return self.filter(Q(managers__username=user)
+                | Q(contributors__username=user))
+        return self.filter(Q(managers__pk=user.pk)
+                | Q(contributors__pk=user.pk))
+
 
     def find_contributed(self, user):
         """
@@ -115,9 +115,14 @@ class OrganizationManager(models.Manager):
 
     def find_managed(self, user):
         """
-        Returns a QuerySet of Organziation for which the user is a manager.
+        Returns a QuerySet of Organziation for which *user* is a manager.
+
+        When *user* is a string instead of a ``User`` instance, it will
+        be interpreted as a username.
         """
-        return self.filter(managers__id=user.id)
+        if isinstance(user, str):
+            return self.filter(managers__username=user)
+        return self.filter(managers__pk=user.pk)
 
     def providers(self, subscriptions):
         """
@@ -318,13 +323,13 @@ class Organization(models.Model):
         try:
             provider_subscription = Subscription.objects.get(
                 organization=self,
-                plan__organization=Organization.objects.get_site_owner())
+                plan__organization=get_current_provider())
             processor = provider_subscription.plan.organization
             provider_subscription_id = provider_subscription.id
             fee_amount = provider_subscription.plan.prorate_transaction(
                 total_amount)
         except Subscription.DoesNotExist:
-            processor = Organization.objects.get_site_owner()
+            processor = get_current_provider()
             provider_subscription_id = None
             fee_amount = 0
         return processor, fee_amount, provider_subscription_id
@@ -349,7 +354,7 @@ class Organization(models.Model):
         # the ``Transaction``.
         processor_transfer_id, _ = PROCESSOR_BACKEND.create_transfer(
             self, amount, descr)
-        processor = Organization.objects.get_site_owner()
+        processor = get_current_provider()
         Transaction.objects.create(
             event_id=processor_transfer_id,
             descr=descr,
@@ -608,7 +613,7 @@ class Charge(models.Model):
         # 2014/01/15 charge on xia card
         #     xia:Expenses                                 15800
         #     djaodjin:Income
-        processor = Organization.objects.get_site_owner()
+        processor = get_current_provider()
         charge_transaction = Transaction.objects.create(
             event_id=self.id,
             descr=self.description,
@@ -722,7 +727,7 @@ class Charge(models.Model):
         charge_item.save()
 
         fee_amount = 0
-        processor = Organization.objects.get_site_owner()
+        processor = get_current_provider()
         if charge_item.invoiced_fee:
             # 2014/03/15 elearning promises to refund $69 to Xia
             #     djaodjin:Refund                                900
@@ -871,7 +876,7 @@ class Plan(models.Model):
     is_active = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     discontinued_at = models.DateTimeField(null=True, blank=True)
-    organization = models.ForeignKey(Organization)
+    organization = models.ForeignKey(Organization, related_name='plans')
     setup_amount = models.PositiveIntegerField(default=0,
         help_text=_('One-time charge amount (in cents).'))
     period_amount = models.PositiveIntegerField(default=0,
@@ -1097,7 +1102,7 @@ class TransactionManager(models.Manager):
 
     def create_credit(self, customer, amount):
         credit = self.create(
-            orig_organization=Organization.objects.get_site_owner(),
+            orig_organization=get_current_provider(), # XXX move to Organization
             dest_organization=customer,
             orig_account='Incentive', dest_account='Balance',
             amount=amount,
@@ -1236,10 +1241,10 @@ class TransactionManager(models.Manager):
             if not result:
                 result = subscription.plan.organization
             elif result != subscription.plan.organization:
-                result = Organization.objects.get_site_owner()
+                result = get_current_provider()
                 break
         if not result:
-            result = Organization.objects.get_site_owner()
+            result = get_current_provider()
         return result
 
 
@@ -1309,6 +1314,16 @@ class NewVisitors(models.Model):
 
     def __unicode__(self):
         return unicode(self.id)
+
+
+def get_current_provider(request=None):
+    """
+    Returns the site-wide provider from a request.
+    """
+    if settings.PROVIDER_CALLABLE:
+        from saas.compat import import_string
+        return import_string(settings.PROVIDER_CALLABLE)(request)
+    return Organization.objects.get(pk=settings.SITE_ID)
 
 
 def sum_dest_amount(transactions):

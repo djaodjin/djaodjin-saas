@@ -27,7 +27,8 @@ from django.views.generic.base import ContextMixin
 from django.views.generic.detail import SingleObjectMixin
 
 from saas.compat import User
-from saas.models import Charge, Coupon, Organization, Subscription
+from saas.models import (Charge, Coupon, Organization, Subscription,
+    get_current_provider)
 
 
 def get_charge_context(charge):
@@ -72,7 +73,20 @@ class OrganizationMixin(ContextMixin):
         return context
 
 
-class CouponMixin(OrganizationMixin):
+class ProviderMixin(OrganizationMixin):
+    """
+    Returns an ``Organization`` from a URL or the site owner by default.
+    """
+
+    def get_organization(self):
+        queryset = Organization.objects.filter(
+            slug=self.kwargs.get(self.organization_url_kwarg))
+        if queryset.exists():
+            return queryset.get()
+        return get_current_provider(self.request)
+
+
+class CouponMixin(ProviderMixin):
     """
     Returns a ``Coupon`` from a URL.
     """

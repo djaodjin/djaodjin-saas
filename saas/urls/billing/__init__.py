@@ -30,7 +30,6 @@ from django.conf.urls import patterns, url, include
 
 urlpatterns = patterns(
     'saas.views.billing',
-    url(r'^', include('saas.urls.billing.bank')),
     url(r'^', include('saas.urls.billing.payment')),
     url(r'^', include('saas.urls.billing.info')),
 )

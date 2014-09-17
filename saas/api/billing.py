@@ -47,6 +47,17 @@ Add and remove plans from a user subscription cart.
 
 .. http:delete:: /api/cart/:plan
 
+    Remove a ``Plan`` from the subscription cart of a ``User``.
+
+   **Example request**:
+
+   .. sourcecode:: http
+
+   **Example response**:
+
+   .. sourcecode:: http
+
+   OK
 """
 
 from django.shortcuts import get_object_or_404

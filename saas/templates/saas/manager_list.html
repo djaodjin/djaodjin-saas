@@ -1,5 +1,33 @@
 {% extends "saas/base.html" %}
+{% load static from staticfiles %}
 
 {% block saas_content %}
-{% include "saas/organization_users.html" with title="managers" users=managers %}
+{% include "saas/organization_users.html" with title="manager" %}
+{% endblock %}
+
+{% block bodyscripts %}
+<script type="text/javascript" charset="utf-8" src="{% static 'vendor/js/angular.js' %}"></script>
+<script type="text/javascript" charset="utf-8" src="{% static 'vendor/js/angular-touch.js' %}"></script>
+<script type="text/javascript" charset="utf-8" src="{% static 'vendor/js/angular-animate.js' %}"></script>
+<script type="text/javascript" charset="utf-8" src="{% static 'vendor/js/angular-route.js' %}"></script>
+<script type="text/javascript" charset="utf-8" src="{% static 'vendor/js/angular-resource.js' %}"></script>
+<script type="text/javascript" charset="utf-8" src="{% static 'js/djaodjin-saas-angular.js' %}"></script>
+<script>
+/* Implementation Note: Not including a list of dependent modules
+   (2nd parameter to `module`) "re-opens" the module for additional
+   configuration. */
+var app = angular.module('managerApp');
+/* Add the CSRF Token: */
+app.config(['$interpolateProvider', '$httpProvider',
+           function($interpolateProvider, $httpProvider) {
+    $httpProvider.defaults.headers.common['X-CSRFToken'] = '{{ csrf_token|escapejs }}';
+    /* Makes it easier to separate between django and angularjs templates */
+    $interpolateProvider.startSymbol('[[');
+    $interpolateProvider.endSymbol(']]');
+}]);
+app.constant('urls', {
+    saas_api_manager_url: "{% url 'saas_api_manager_list' organization %}",
+    saas_api_user_url: "{% url 'saas_api_user_list' %}",
+});
+</script>
 {% endblock %}

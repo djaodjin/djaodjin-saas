@@ -22,29 +22,18 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from rest_framework import status
-from rest_framework.generics import GenericAPIView
-from rest_framework.response import Response
+"""
+URLs related to provider bank account information.
+"""
 
-from saas.backends import PROCESSOR_BACKEND
-from saas.mixins import OrganizationMixin, ProviderMixin
+from django.conf.urls import patterns, url
 
-#pylint: disable=no-init
-#pylint: disable=old-style-class
+from saas.views.billing import (BankUpdateView, TransferListView, WithdrawView,
+    CouponListView)
 
-class RetrieveBankAPIView(ProviderMixin, GenericAPIView):
-
-    def get(self, request, *args, **kwargs): #pylint: disable=unused-argument
-        return Response(
-            PROCESSOR_BACKEND.retrieve_bank(self.get_organization()),
-            status=status.HTTP_200_OK)
-
-
-class RetrieveCardAPIView(OrganizationMixin, GenericAPIView):
-
-    def get(self, request, *args, **kwargs): #pylint: disable=unused-argument
-        return Response(
-            PROCESSOR_BACKEND.retrieve_card(self.get_organization()),
-            status=status.HTTP_200_OK)
-
-
+urlpatterns = patterns('',
+    url(r'^coupons/', CouponListView.as_view(), name='saas_coupon_list'),
+    url(r'^withdraw/', WithdrawView.as_view(), name='saas_withdraw_funds'),
+    url(r'^transfers/', TransferListView.as_view(), name='saas_transfer_info'),
+    url(r'^bank/', BankUpdateView.as_view(), name='saas_update_bank'),
+)

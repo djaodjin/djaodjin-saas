@@ -27,7 +27,11 @@
 from django.conf.urls import patterns, include, url
 
 urlpatterns = patterns('',
+    url(r'^', include('saas.urls.api.cart')),
+    url(r'^', include('saas.urls.api.charges')),
+    url(r'^', include('saas.urls.api.provider.billing')),
+    url(r'^', include('saas.urls.api.provider.charges')),
     url(r'^', include('saas.urls.api.embedauth')),
-    url(r'^', include('saas.urls.api.subscriptions')),
-    url(r'^', include('saas.urls.api.resources')),
+    url(r'^', include('saas.urls.api.billing')),
+    url(r'^', include('saas.urls.api.profile')),
 )

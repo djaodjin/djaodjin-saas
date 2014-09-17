@@ -127,6 +127,11 @@ def is_site_owner(organization):
 
 
 @register.filter
+def is_provider(organization):
+    return organization.plans.exists()
+
+
+@register.filter
 def active_with_provider(organization, provider):
     """
     Returns a list of active subscriptions for organization for which provider

@@ -22,29 +22,21 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from rest_framework import status
-from rest_framework.generics import GenericAPIView
-from rest_framework.response import Response
+"""
+URLs related to provider bank account information.
+"""
 
-from saas.backends import PROCESSOR_BACKEND
-from saas.mixins import OrganizationMixin, ProviderMixin
+from django.conf.urls import patterns, url
 
-#pylint: disable=no-init
-#pylint: disable=old-style-class
+from saas.views.profile import SubscriberListView
+from saas.views.plans import PlanCreateView, PlanUpdateView
+from saas.settings import ACCT_REGEX
 
-class RetrieveBankAPIView(ProviderMixin, GenericAPIView):
-
-    def get(self, request, *args, **kwargs): #pylint: disable=unused-argument
-        return Response(
-            PROCESSOR_BACKEND.retrieve_bank(self.get_organization()),
-            status=status.HTTP_200_OK)
-
-
-class RetrieveCardAPIView(OrganizationMixin, GenericAPIView):
-
-    def get(self, request, *args, **kwargs): #pylint: disable=unused-argument
-        return Response(
-            PROCESSOR_BACKEND.retrieve_card(self.get_organization()),
-            status=status.HTTP_200_OK)
-
-
+urlpatterns = patterns('',
+    url(r'^subscribers/',
+        SubscriberListView.as_view(), name='saas_subscriber_list'),
+    url(r'^plans/new/',
+        PlanCreateView.as_view(), name='saas_plan_new'),
+    url(r'^plans/(?P<plan>%s)/' % ACCT_REGEX,
+        PlanUpdateView.as_view(), name='saas_plan_edit'),
+)
