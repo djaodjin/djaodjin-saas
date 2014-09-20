@@ -52,6 +52,7 @@ from django.db.models.query import QuerySet
 from django.utils.decorators import method_decorator
 from django.utils.timezone import utc
 from django.utils.translation import ugettext_lazy as _
+from django_countries.fields import CountryField
 
 from saas import settings
 from saas import signals
@@ -197,7 +198,7 @@ class Organization(models.Model):
     locality = models.CharField(max_length=50)
     region = models.CharField(max_length=50)
     postal_code = models.CharField(max_length=50)
-    country_name = models.CharField(max_length=75)
+    country = CountryField()
 
     belongs = models.ForeignKey('Organization',
         related_name='owner', null=True)

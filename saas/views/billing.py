@@ -101,7 +101,7 @@ class CardFormMixin(OrganizationMixin):
         kwargs.update({'card_name': self.customer.full_name,
                        'card_city': self.customer.locality,
                        'card_address_line1': self.customer.street_address,
-                       'card_address_country': self.customer.country_name,
+                       'card_address_country': self.customer.country,
                        'card_address_state': self.customer.region,
                        'card_address_zip': self.customer.postal_code})
         return kwargs

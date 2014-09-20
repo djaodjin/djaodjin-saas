@@ -45,7 +45,7 @@ urlpatterns = patterns('',
     url(r'^accounts/register/$',
         PersonalRegistrationView.as_view(
             success_url=reverse_lazy('course_progress')),
-        name='registration_personal'),
+        name='registration_register'),
     url(r'^accounts/', include('django.contrib.auth.urls')),
     url(r'^saas/$',
         OrganizationListView.as_view(), name='saas_organization_list',

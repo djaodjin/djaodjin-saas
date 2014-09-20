@@ -100,7 +100,7 @@ class SmartListMixin(SearchableListMixin, SortableListMixin):
                      'organization__locality',
                      'organization__region',
                      'organization__postal_code',
-                     'organization__country_name']
+                     'organization__country__name']
 
     sort_fields_aliases = [('organization__full_name', 'full_name'),
                            ('plan__title', 'plan'),

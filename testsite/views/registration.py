@@ -27,12 +27,12 @@ from django.db import transaction
 from django.contrib.auth import authenticate
 from django.contrib.auth import login as auth_login
 from django.utils.decorators import method_decorator
+from django_countries.widgets import CountrySelectWidget
+from django_countries import countries
 from saas.models import Organization, Signature
 from signup.signals import user_registered as signup_signals_user_registered
 from signup.views import SignupView
-
 from saas.compat import User
-
 
 class PersonalRegistrationForm(forms.Form):
     """
@@ -61,7 +61,8 @@ class PersonalRegistrationForm(forms.Form):
         error_messages={
             'invalid': "The postal code may contain only letters, numbers "\
                          "and '-' characters."})
-    country = forms.RegexField(regex=r'^[a-zA-Z ]+$', label='Country')
+    country = forms.RegexField(regex=r'^[a-zA-Z ]+$',
+        widget=CountrySelectWidget(choices=countries), label='Country')
 
     def clean(self):
         """
@@ -188,7 +189,7 @@ class PersonalRegistrationView(SignupView):
             locality=cleaned_data['city'],
             region=cleaned_data['state'],
             postal_code=cleaned_data['zip_code'],
-            country_name=cleaned_data['country'])
+            country=cleaned_data['country'])
         account.add_manager(user)
 
         # Sign-in the newly registered user

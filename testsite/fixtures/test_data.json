@@ -10,7 +10,7 @@
       "locality":  "San Francisco",
       "region": "CA",
       "postal_code": "94102",
-      "country_name": "USA",
+      "country": "US",
       "is_active": 1
     },
     "model": "saas.Organization",

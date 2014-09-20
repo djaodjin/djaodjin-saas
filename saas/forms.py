@@ -29,6 +29,7 @@ Forms shown by the saas application
 from django import forms
 from django.template.defaultfilters import slugify
 from django.utils.translation import ugettext_lazy as _
+from django_countries.widgets import CountrySelectWidget
 
 from saas.models import Organization, Plan
 
@@ -61,6 +62,7 @@ class CreditCardForm(forms.Form):
         self.fields['card_address_zip'] = forms.CharField(
             label='Zip', required=False)
         self.fields['card_address_country'] = forms.CharField(
+            widget=CountrySelectWidget,
             label='Country', required=False)
         self.fields['card_address_state'] = forms.CharField(
             label='State', required=False)
@@ -73,9 +75,10 @@ class OrganizationForm(forms.ModelForm):
 
     class Meta:
         model = Organization
-        fields = ['full_name', 'email', 'phone', 'street_address',
+        fields = ('full_name', 'email', 'phone', 'street_address',
                   'locality', 'region', 'postal_code',
-                  'country_name']
+                  'country')
+        widgets = {'country': CountrySelectWidget}
 
 
 class ManagerAndOrganizationForm(OrganizationForm):
