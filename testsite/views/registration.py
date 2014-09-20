@@ -27,7 +27,6 @@ from django.db import transaction
 from django.contrib.auth import authenticate
 from django.contrib.auth import login as auth_login
 from django.utils.decorators import method_decorator
-from django_countries.widgets import CountrySelectWidget
 from django_countries import countries
 from saas.models import Organization, Signature
 from signup.signals import user_registered as signup_signals_user_registered
@@ -55,14 +54,14 @@ class PersonalRegistrationForm(forms.Form):
     last_name = forms.CharField(label='Last name', max_length=30)
     street_address = forms.CharField(label='Street Addess')
     city = forms.CharField(label='City')
-    state = forms.CharField(label='State/province')
+    region = forms.CharField(label='State/province')
     zip_code = forms.RegexField(label='Postal code', max_length=30,
         regex=r'^[\w-]+$',
         error_messages={
             'invalid': "The postal code may contain only letters, numbers "\
                          "and '-' characters."})
     country = forms.RegexField(regex=r'^[a-zA-Z ]+$',
-        widget=CountrySelectWidget(choices=countries), label='Country')
+        widget=forms.widgets.Select(choices=countries), label='Country')
 
     def clean(self):
         """
@@ -187,7 +186,7 @@ class PersonalRegistrationView(SignupView):
             email=cleaned_data['email'],
             street_address=cleaned_data['street_address'],
             locality=cleaned_data['city'],
-            region=cleaned_data['state'],
+            region=cleaned_data['region'],
             postal_code=cleaned_data['zip_code'],
             country=cleaned_data['country'])
         account.add_manager(user)

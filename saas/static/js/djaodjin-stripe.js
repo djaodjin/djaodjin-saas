@@ -174,10 +174,10 @@ function initCardProcessor(cardForm, stripePubKey) {
 			cardForm.find("#row-city").addClass('has-error');
 			valid = false
 		}
-		var address_state = cardForm.find("[name='card_address_state']").val()
+		var address_state = cardForm.find("[name='region']").val()
 		if( address_state == "" ) {
 			if( error_messages ) error_messages += ", "
-			error_messages += "State"
+			error_messages += "State/Province"
 			cardForm.find("#row-address-state").addClass('has-error');
 			valid = false
 		}
@@ -188,11 +188,11 @@ function initCardProcessor(cardForm, stripePubKey) {
 			cardForm.find("#row-address-zip").addClass('has-error');
 			valid = false
 		}
-		var address_country = cardForm.find("[name='card_address_country']").val()
+		var address_country = cardForm.find("[name='country']").val()
 		if( address_country == "" ) {
 			if( error_messages ) error_messages += ", "
 			error_messages += "Country"
-			cardForm.find("#div_id_card_address_country").addClass('has-error');
+			cardForm.find("#div_id_country").addClass('has-error');
 			valid = false
 		}
 		if( error_messages ) {

@@ -21,7 +21,7 @@
 <script type="text/javascript" charset="utf-8" src="{% static 'js/djaodjin-postal.js' %}"></script>
 <script type="text/javascript">
 $(document).ready(function(){
-    $("[name='state']").state({country:$("[name='country']")});
+    $("[name='region']").region({country:$("[name='country']")});
 });
 </script>
 {% endblock %}

@@ -1,40 +1,47 @@
 (function ($) {
 
-   function State(el, options){
+   function Region(el, options){
       this.element = $(el);
       this.options = options;
       this._init();
    }
 
-   State.prototype = {
+   Region.prototype = {
       _init: function () {
-          var stateSel = this;
+          var regionSel = this;
           var coutrySel = $(this.options.country);
           coutrySel.change(function() {
-              stateSel._country(this.value);
+              regionSel._country(this.value);
           });
       },
 
       _country: function (country) {
           var node = this.element;
-          var stateSel = '';
-          if( country in this._states ) {
-              stateSel = '<select id="id_state" name="state">';
-              var localStates = this._states[country];
-              for(var key in localStates ) {
-                  stateSel += '<option value="' + key + '">'
-                      + localStates[key] + '</option>';
+          var id = this.element.attr('id');
+          var name = this.element.attr('name');
+          var value = this.element.val();
+          var regionSel = '';
+          if( country in this._regions ) {
+              regionSel = '<select id="' + id + '" name="' + name + '">';
+              var localRegions = this._regions[country];
+              for(var key in localRegions ) {
+                  regionSel += '<option value="' + key + '"';
+                  if(key == value) {
+                      regionSel += 'selected';
+                  }
+                  regionSel += '>' + localRegions[key] + '</option>';
               }
-              stateSel += '</select>';
+              regionSel += '</select>';
           } else {
-              stateSel = '<input id="id_state" name="state" type="text">'
+              regionSel = '<input id="' + id + '" name="' + name
+                  + '" type="text" value="' + value + '">'
           }
-          stateSel = $(stateSel);
-          this.element.replaceWith(stateSel);
-          this.element = stateSel;
+          regionSel = $(regionSel);
+          this.element.replaceWith(regionSel);
+          this.element = regionSel;
       },
 
-      _states: {
+      _regions: {
 "US": {
     'AL': 'Alabama',
     'AK': 'Alaska',
@@ -102,12 +109,12 @@
 
    }
 
-   $.fn.state = function(options) {
-      var opts = $.extend( {}, $.fn.state.defaults, options );
-      state = new State($(this), opts);
+   $.fn.region = function(options) {
+      var opts = $.extend( {}, $.fn.region.defaults, options );
+      region = new Region($(this), opts);
    };
 
-   $.fn.state.defaults = {
+   $.fn.region.defaults = {
       country: null,
    };
 

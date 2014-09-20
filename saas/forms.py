@@ -29,7 +29,8 @@ Forms shown by the saas application
 from django import forms
 from django.template.defaultfilters import slugify
 from django.utils.translation import ugettext_lazy as _
-from django_countries.widgets import CountrySelectWidget
+from django_countries import countries
+import localflavor.us.forms as us_forms
 
 from saas.models import Organization, Plan
 
@@ -43,7 +44,25 @@ class BankForm(forms.Form):
     stripeToken = forms.CharField(required=False)
 
 
-class CreditCardForm(forms.Form):
+class PostalFormMixin(object):
+
+    def add_postal_country(self, field_name='country',
+                          country=None, required=True):
+        self.fields[field_name] = forms.CharField(
+            widget=forms.widgets.Select(choices=countries),
+            label='Country', required=required)
+
+    def add_postal_region(self, field_name='region',
+                          country=None, required=True):
+        if country and country.code == "US":
+            widget = us_forms.USPSSelect
+        else:
+            widget = form.widgets.InputText
+        self.fields[field_name] = forms.CharField(
+                widget=widget, label='State/Province', required=required)
+
+
+class CreditCardForm(PostalFormMixin, forms.Form):
     '''Update Card Information.'''
     stripeToken = forms.CharField(required=False)
     remember_card = forms.BooleanField(
@@ -59,26 +78,31 @@ class CreditCardForm(forms.Form):
             label='City', required=False)
         self.fields['card_address_line1'] = forms.CharField(
             label='Street', required=False)
+        self.add_postal_region(country=self.initial['country'], required=False)
         self.fields['card_address_zip'] = forms.CharField(
             label='Zip', required=False)
-        self.fields['card_address_country'] = forms.CharField(
-            widget=CountrySelectWidget,
-            label='Country', required=False)
-        self.fields['card_address_state'] = forms.CharField(
-            label='State', required=False)
+        self.add_postal_country(required=False)
         for item in self.initial:
             if item.startswith('plan-'):
                 self.fields[item] = forms.CharField(required=True)
 
 
-class OrganizationForm(forms.ModelForm):
+class OrganizationForm(PostalFormMixin, forms.ModelForm):
 
     class Meta:
         model = Organization
         fields = ('full_name', 'email', 'phone', 'street_address',
                   'locality', 'region', 'postal_code',
                   'country')
-        widgets = {'country': CountrySelectWidget}
+        widgets = {'country': forms.widgets.Select(choices=countries)}
+
+    def __init__(self, *args, **kwargs):
+        super(OrganizationForm, self).__init__(*args, **kwargs)
+        if self.instance and self.instance.country:
+            country = self.instance.country
+        else:
+            country = Country("US")
+        self.add_postal_region(country=country)
 
 
 class ManagerAndOrganizationForm(OrganizationForm):
