@@ -4,7 +4,7 @@
 function showMessages(messages, style) {
     $("#messages").removeClass('hidden');
     var messageBlock = $('<div class="alert alert-block"><button type="button" class="close" data-dismiss="alert">&times;</button></div>');
-    $("#messages .row").append(messageBlock);
+    $("#messages div").append(messageBlock);
     if( style ) {
         messageBlock.addClass("alert-" + style);
     }
@@ -232,3 +232,57 @@ function updateTotalAmount(formNode) {
 function onSubscribeChargeChange() {
     updateTotalAmount($(this).parents("form"));
 }
+
+
+(function ($) {
+
+   function Redeem(el, options){
+      this.element = $(el);
+      this.options = options;
+      this._init();
+   }
+
+   Redeem.prototype = {
+      _init: function () {
+          var self = this;
+          this.element.submit(function() {
+              var code = $(this).find('[name="code"]').val();
+              self._redeem(code);
+              // prevent the form from submitting with the default action
+              return false;
+          });
+      },
+
+      _redeem: function(code) {
+          $.ajax({ type: "POST",
+                   url: this.options.saas_api_redeem_coupon,
+                   data: JSON.stringify({"code": code }),
+                   datatype: "json",
+                   contentType: "application/json; charset=utf-8",
+                 }).done(function(data) {
+                     // XXX does not show messages since we reload...
+                     showMessages([data.responseJSON['details']]);
+                     location.reload();
+                 }).fail(function(data) {
+                     if('details' in data.responseJSON) {
+                         showMessages(
+                             [data.responseJSON['details']], "danger");
+                     } else {
+                         showMessages(["Error " + data.status + ": "
++ data.responseText + ". Please accept our apologies."], "danger");
+                     }
+                 });
+          return false;
+      }
+   }
+
+   $.fn.redeem = function(options) {
+      var opts = $.extend( {}, $.fn.redeem.defaults, options );
+      redeem = new Redeem($(this), opts);
+   };
+
+   $.fn.redeem.defaults = {
+       'saas_api_redeem_coupon': '/api/cart/redeem/',
+   };
+
+})(jQuery);

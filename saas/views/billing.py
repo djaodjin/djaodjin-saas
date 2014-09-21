@@ -499,36 +499,6 @@ class CouponListView(ProviderMixin, ListView):
     model = Coupon
 
 
-class CouponRedeemView(OrganizationMixin, FormView):
-
-    form_class = RedeemCouponForm
-
-    def form_valid(self, form):
-        coupon_applied = False
-        for item in CartItem.objects.get_cart(self.request.user):
-            coupon = Coupon.objects.filter( # case incensitive search.
-                code__iexact=form.cleaned_data['code'],
-                organization=item.plan.organization).first()
-            if coupon:
-                coupon_applied = True
-                item.coupon = coupon
-                item.save()
-        if coupon_applied:
-            messages.success(self.request, "The Coupon was sucessful applied")
-        else:
-            messages.error(self.request,
-                "No items can be discounted using this coupon.")
-        return super(CouponRedeemView, self).form_valid(form)
-
-    def form_invalid(self, form):
-        messages.error(self.request, "The Coupon is invalid.")
-        return redirect(self.get_success_url())
-
-    def get_success_url(self):
-        return reverse(
-            'saas_organization_cart', args=(self.get_organization(),))
-
-
 class PayBalanceView(InvoicablesView):
     """
     Set of invoicables for all subscriptions which have a balance due.

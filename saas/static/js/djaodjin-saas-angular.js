@@ -2,13 +2,14 @@
   Apps
   ============================================================================*/
 
-angular.module('couponApp', ['ngRoute', 'couponControllers', 'couponServices']);
-angular.module('contributorApp', ['ngRoute',
+angular.module('couponApp', ['ui.bootstrap', 'ngRoute',
+    'couponControllers', 'couponServices']);
+angular.module('contributorApp', ['ui.bootstrap', 'ngRoute',
     'contributorControllers', 'contributorServices']);
-angular.module('managerApp', ['ngRoute', 'managerControllers',
-    'managerServices']);
-angular.module('subscriptionApp', ['ngRoute', 'subscriptionControllers',
-    'subscriptionServices']);
+angular.module('managerApp', ['ui.bootstrap', 'ngRoute',
+    'managerControllers', 'managerServices']);
+angular.module('subscriptionApp', ['ui.bootstrap', 'ngRoute',
+    'subscriptionControllers', 'subscriptionServices']);
 
 
 /*=============================================================================
@@ -24,7 +25,9 @@ var subscriptionServices = angular.module('subscriptionServices', [
 couponServices.factory('Coupon', ['$resource', 'urls',
   function($resource, urls){
     return $resource(
-        urls.saas_api_coupon_url + '/:coupon', { 'coupon':'@coupon'});
+        urls.saas_api_coupon_url + '/:coupon', {'coupon':'@code'},
+            {create: {method:'POST'},
+             update: {method:'PUT', isArray:false}});
   }]);
 
 contributorServices.factory('Contributor', ['$resource', 'urls',
@@ -61,7 +64,7 @@ couponControllers.controller('CouponListCtrl',
     $scope.urls = urls;
     $scope.coupons = Coupon.query();
 
-    $scope.newCoupon = new Coupon()
+    $scope.newCoupon = new Coupon();
 
     $scope.remove = function (idx) {
         Coupon.remove({ coupon: $scope.coupons[idx].code }, function (success) {
@@ -70,13 +73,43 @@ couponControllers.controller('CouponListCtrl',
     }
 
     $scope.save = function() {
-        $scope.newCoupon.$save().then(function(result) {
-            $scope.coupons.push(result);
-        }).then(function() {
+        $http.post(urls.saas_api_coupon_url,$scope.newCoupon).success(
+        function(result) {
+            $scope.coupons.push(new Coupon(result));
             // Reset our editor to a new blank post
             $scope.newCoupon = new Coupon()
         });
     }
+
+    // calendar for expiration date
+    $scope.open = function($event, coupon) {
+        $event.preventDefault();
+        $event.stopPropagation();
+        coupon.opened = true;
+    };
+
+    $scope.$watch('coupons', function(newVal, oldVal, scope) {
+        var length = ( oldVal.length < newVal.length ) ?
+            oldVal.length : newVal.length;
+        for( var i = 0; i < length; ++i ) {
+            if( oldVal[i].ends_at != newVal[i].ends_at ) {
+                newVal[i].$update().then(function(result) {
+                    // XXX message expiration date was updated.
+                });
+            }
+        }
+    }, true);
+
+    $scope.dateOptions = {
+        formatYear: 'yy',
+        startingDay: 1
+    };
+
+    $scope.initDate = new Date('2016-15-20');
+    $scope.minDate = new Date();
+    $scope.maxDate = new Date('2016-01-01');
+    $scope.formats = ['dd-MMMM-yyyy', 'yyyy/MM/dd', 'dd.MM.yyyy', 'shortDate'];
+    $scope.format = $scope.formats[0];
 }]);
 
 

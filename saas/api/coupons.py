@@ -22,12 +22,16 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from rest_framework.generics import (
+from django.contrib import messages
+from django.db.models import Q
+from rest_framework import serializers, status
+from rest_framework.generics import (GenericAPIView,
     ListCreateAPIView, RetrieveUpdateDestroyAPIView)
-from rest_framework import serializers
+from rest_framework.response import Response
 
-from saas.models import Coupon
+from saas.models import CartItem, Coupon
 from saas.mixins import ProviderMixin
+from saas.utils import datetime_or_now
 
 #pylint: disable=no-init
 #pylint: disable=old-style-class
@@ -37,7 +41,15 @@ class CouponSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Coupon
-        fields = ('created_at', 'code', 'percent', )
+        fields = ('code', 'percent', 'created_at', 'ends_at')
+
+
+class RedeemCouponSerializer(serializers.Serializer):
+    """
+    Serializer to redeem a ``Coupon``.
+    """
+
+    code = serializers.CharField()
 
 
 class CouponMixin(ProviderMixin):
@@ -61,8 +73,68 @@ class CouponMixin(ProviderMixin):
 
 class CouponListAPIView(CouponMixin, ListCreateAPIView):
 
-    pass
+    def post(self, request, *args, **kwargs): #pylint: disable=unused-argument
+        return super(CouponListAPIView, self).post(request, *args, **kwargs)
+
 
 class CouponDetailAPIView(CouponMixin, RetrieveUpdateDestroyAPIView):
 
     pass
+
+
+class CouponRedeemAPIView(GenericAPIView):
+    """
+.. http:post:: /api/cart/redeem/
+
+    Redeem a ``Coupon`` and apply the discount to the eligible items
+    in the cart.
+
+   **Example request**:
+
+   .. sourcecode:: http
+
+    {
+        "code": "LABORDAY"
+    }
+
+   **Example response**:
+
+   .. sourcecode:: http
+
+    {
+        "details": "Coupon 'LABORDAY' was sucessful applied."
+    }
+    """
+    serializer_class = RedeemCouponSerializer
+
+    def redeem(self, request, coupon_code):
+        now = datetime_or_now()
+        coupon_applied = False
+        for item in CartItem.objects.get_cart(request.user):
+            coupon = Coupon.objects.filter(
+                Q(ends_at__isnull=True) | Q(ends_at__gt=now),
+                code__iexact=coupon_code, # case incensitive search.
+                organization=item.plan.organization).first()
+            if coupon:
+                coupon_applied = True
+                item.coupon = coupon
+                item.save()
+        return coupon_applied
+
+    def post(self, request, *args, **kwargs): #pylint: disable=unused-argument
+        serializer = self.get_serializer(data=request.DATA, files=request.FILES)
+        if serializer.is_valid():
+            coupon_code = serializer.data['code']
+            if self.redeem(request, coupon_code):
+                details = {"details": (
+                        "Coupon '%s' was sucessful applied." % coupon_code)}
+                headers = self.get_success_headers(serializer.data)
+                # XXX does not show details since we reload in djaodjin-saas.
+                messages.success(request, details['details'])
+                return Response(details, status=status.HTTP_200_OK,
+                                headers=headers)
+            else:
+                details = {"details": (
+"No items can be discounted using this coupon: %s." % coupon_code)}
+                return Response(details, status=status.HTTP_400_BAD_REQUEST)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

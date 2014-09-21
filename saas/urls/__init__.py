@@ -34,8 +34,7 @@ from saas.settings import ACCT_REGEX
 
 urlpatterns = patterns(
     'saas.views',
-    url(r'^api/',
-        include('saas.urls.api')),
+    url(r'^api/', include('saas.urls.api')),
     url(r'^pricing/', CartPlanListView.as_view(), name='saas_cart_plan_list'),
     url(r'^', include('saas.urls.provider')),
     url(r'^billing/cart/',

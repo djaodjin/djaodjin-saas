@@ -1,0 +1,58 @@
+{% extends "saas/base.html" %}
+{% load static from staticfiles %}
+
+{% block saas_content %}
+<div ng-app="couponApp">
+    <h1>Coupons</h1>
+    <table ng-controller="CouponListCtrl">
+      <thead>
+        <tr>
+          <th>Code</th>
+          <th>Percent</th>
+          <th>Created At</th>
+          <th>Expires At</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tr>
+        <form>
+          <td>
+            <input type="text" ng-model="newCoupon.code" placeholder="Code">
+          </td>
+          <td>
+            <input type="text" ng-model="newCoupon.percent" placeholder="Percent">
+          </td>
+          <td>
+            <button ng-click="save()">Create Coupon</button>
+          </td>
+        </form>
+      </tr>
+    {% verbatim %}
+    <tr ng-repeat="coupon in coupons" ng-cloak>
+        <td><a href="{{urls.saas_metrics_coupons_url}}{{coupon.code}}/">{{coupon.code}}</a></td>
+        <td>{{coupon.percent}}</td>
+        <td>{{coupon.created_at | date : mediumDate}}</td>
+        <td>{{coupon.ends_at ? (coupon.ends_at | date : mediumDate) : "Never"}}</td>
+        <td><button ng-click="remove($index)">Remove</button></td>
+    </tr>
+    {% endverbatim %}
+</table>
+</div>
+{% endblock %}
+
+{% block saas_bodyscripts %}
+<script>
+/* Implementation Note: Not including a list of dependent modules
+   (2nd parameter to `module`) "re-opens" the module for additional
+   configuration. */
+var app = angular.module('couponApp');
+/* Add the CSRF Token: */
+app.config(['$httpProvider', function($httpProvider) {
+    $httpProvider.defaults.headers.common['X-CSRFToken'] = '{{csrf_token|escapejs}}';
+}]);
+app.constant('urls', {
+    saas_api_coupon_url: "{% url 'saas_api_coupon_list' %}",
+    saas_metrics_coupons_url: "{% url 'saas_metrics_coupons' organization %}",
+});
+</script>
+{% endblock %}

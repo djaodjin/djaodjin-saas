@@ -4,7 +4,6 @@
 <head>
   <title>SaaS Testsite</title>
   <script type="text/javascript" src="{% static 'vendor/js/jquery.js' %}"></script>
-  <script type="text/javascript" src="{% static 'vendor/js/jquery.cookie.js' %}"></script>
   {% if csrf_token %}
   <script type="text/javascript">
 var csrftoken = $.cookie('csrftoken');
@@ -27,15 +26,24 @@ $.ajaxSetup({
 </head>
 <body>
   {% block menubar %}{% endblock %}
-  <div class="row-fluid">
-    <div class="span12">
-      <ul id="messages" class="messages">
-        {% for message in messages %}
-        {% if message.tags %}<li class="alert alert-{{ message.tags }}">
-        {% else %}<li class="alert">{% endif %}
-        {{ message }}</li>
-        {% endfor %}
-      </ul>
+  <div id="messages" class="{% if not messages and not form.non_field_errors %}hidden{% endif %}">
+    <div>
+      {% for message in messages %}
+      <div class="alert{% if message.tags %} alert-{{message.tags}}{% endif %}">
+        <button type="button" class="close" data-dismiss="alert">&times;</button>
+        {% if 'safe' in message.tags %}
+        <p>{{ message|safe }}</p>
+        {% else %}
+        <p>{{ message }}</p>
+        {% endif %}
+      </div>
+      {% endfor %}
+      {% for message in form.non_field_errors %}
+      <div class="alert alert-danger">
+        <button type="button" class="close" data-dismiss="alert">&times;</button>
+        <p>{{message}}</p>
+      </div>
+      {% endfor %}
     </div>
   </div>
   {% block content %}{% endblock %}

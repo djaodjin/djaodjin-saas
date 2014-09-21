@@ -15,8 +15,7 @@
 {% if invoicables %}
 <div>
     <div>
-        <form method="post" id="redeem-form"
-              action="{% url 'saas_coupon_redeem' organization %}">
+        <form method="post" id="redeem-form">
             {% csrf_token %}
             <div>
                 <label>If you have a coupon code, it is time to redeem it now!</label>
@@ -46,4 +45,13 @@
 </div>
 {% endif %}
 </div>
+{% endblock %}
+
+{% block saas_bodyscripts %}
+<script type="text/javascript">
+$(document).ready(function() {
+    $("#redeem-form").redeem(
+        {'saas_api_redeem_coupon': "{% url 'saas_api_redeem_coupon' %}" });
+});
+</script>
 {% endblock %}

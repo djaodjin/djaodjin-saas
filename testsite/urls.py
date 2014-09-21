@@ -27,7 +27,9 @@ from django.core.urlresolvers import reverse_lazy
 from django.views.generic import RedirectView, TemplateView
 from urldecorators import patterns, include, url
 
+from saas.settings import ACCT_REGEX
 from saas.views import OrganizationRedirectView
+from saas.views.plans import CartPlanListView
 from testsite.views.organization import OrganizationListView
 from testsite.views.registration import PersonalRegistrationView
 
@@ -58,6 +60,20 @@ urlpatterns = patterns('',
                 pattern_name='saas_organization_cart'),
                        login_url=reverse_lazy('registration_personal')),
         name='saas_cart'),
-    url(r'^', include('saas.urls'),
+    # saas urls with provider key to implement marketplace.
+    url(r'^api/', include('saas.urls.api'),
+        decorators=['saas.decorators.requires_direct']),
+    url(r'^pricing/', CartPlanListView.as_view(), name='saas_cart_plan_list'),
+    url(r'^provider/(?P<organization>%s)/' % ACCT_REGEX,
+        include('saas.urls.provider'),
+        decorators=['saas.decorators.requires_direct']),
+    url(r'^billing/(?P<organization>%s)/' % ACCT_REGEX,
+        include('saas.urls.billing'),
+        decorators=['saas.decorators.requires_direct']),
+    url(r'^profile/(?P<organization>%s)/' % ACCT_REGEX,
+        include('saas.urls.profile'),
+        decorators=['saas.decorators.requires_direct']),
+    url(r'^users/(?P<user>%s)/' % ACCT_REGEX,
+        include('saas.urls.users'),
         decorators=['saas.decorators.requires_direct']),
 )

@@ -815,12 +815,22 @@ class Coupon(models.Model):
         validators=[MaxValueValidator(100)],
         help_text="Percentage discounted")
     organization = models.ForeignKey(Organization)
+    ends_at = models.DateTimeField(null=True, blank=True)
+    description = models.TextField()
 
     class Meta:
         unique_together = ('organization', 'code')
 
     def __unicode__(self):
         return '%s-%s' % (self.organization, self.code)
+
+    def save(self, force_insert=False, force_update=False, using=None,
+             update_fields=None):
+        if not self.created_at:
+            self.created_at = datetime_or_now()
+        if not self.ends_at:
+            self.ends_at = self.created_at + datetime.timedelta(days=30)
+        super(Coupon, self).save()
 
 
 class PlanManager(models.Manager):
