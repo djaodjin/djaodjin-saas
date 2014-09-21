@@ -101,7 +101,7 @@ class OrganizationForm(PostalFormMixin, forms.ModelForm):
         if self.instance and self.instance.country:
             country = self.instance.country
         else:
-            country = Country("US")
+            country = Country("US", None)
         self.add_postal_region(country=country)
 
 
