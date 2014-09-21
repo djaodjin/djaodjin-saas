@@ -30,6 +30,7 @@ from django import forms
 from django.template.defaultfilters import slugify
 from django.utils.translation import ugettext_lazy as _
 from django_countries import countries
+from django_countries.fields import Country
 import localflavor.us.forms as us_forms
 
 from saas.models import Organization, Plan
@@ -46,8 +47,7 @@ class BankForm(forms.Form):
 
 class PostalFormMixin(object):
 
-    def add_postal_country(self, field_name='country',
-                          country=None, required=True):
+    def add_postal_country(self, field_name='country', required=True):
         self.fields[field_name] = forms.CharField(
             widget=forms.widgets.Select(choices=countries),
             label='Country', required=required)
@@ -57,7 +57,7 @@ class PostalFormMixin(object):
         if country and country.code == "US":
             widget = us_forms.USPSSelect
         else:
-            widget = form.widgets.InputText
+            widget = forms.widgets.TextInput
         self.fields[field_name] = forms.CharField(
                 widget=widget, label='State/Province', required=required)
 

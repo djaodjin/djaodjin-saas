@@ -107,7 +107,8 @@ class CouponRedeemAPIView(GenericAPIView):
     """
     serializer_class = RedeemCouponSerializer
 
-    def redeem(self, request, coupon_code):
+    @staticmethod
+    def redeem(request, coupon_code):
         now = datetime_or_now()
         coupon_applied = False
         for item in CartItem.objects.get_cart(request.user):
@@ -128,7 +129,7 @@ class CouponRedeemAPIView(GenericAPIView):
             if self.redeem(request, coupon_code):
                 details = {"details": (
                         "Coupon '%s' was sucessful applied." % coupon_code)}
-                headers = self.get_success_headers(serializer.data)
+                headers = {}
                 # XXX does not show details since we reload in djaodjin-saas.
                 messages.success(request, details['details'])
                 return Response(details, status=status.HTTP_200_OK,

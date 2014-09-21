@@ -809,6 +809,7 @@ class Coupon(models.Model):
     """
     Coupons are used on invoiced to give a rebate to a customer.
     """
+    #pylint: disable=super-on-old-class
     created_at = models.DateTimeField(auto_now_add=True)
     code = models.SlugField()
     percent = models.PositiveSmallIntegerField(default=0,
@@ -830,7 +831,9 @@ class Coupon(models.Model):
             self.created_at = datetime_or_now()
         if not self.ends_at:
             self.ends_at = self.created_at + datetime.timedelta(days=30)
-        super(Coupon, self).save()
+        super(Coupon, self).save(force_insert=force_insert,
+             force_update=force_update, using=using,
+             update_fields=update_fields)
 
 
 class PlanManager(models.Manager):
