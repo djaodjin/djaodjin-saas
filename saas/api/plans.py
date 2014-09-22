@@ -57,8 +57,7 @@ class PlanMixin(ProviderMixin):
 
     def get_queryset(self):
         queryset = super(PlanMixin, self).get_queryset()
-        return queryset.filter(organization__slug=self.kwargs.get(
-                self.organization_url_kwarg))
+        return queryset.filter(organization=self.get_organization())
 
     @staticmethod
     def slugify(obj):

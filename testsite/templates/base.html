@@ -27,7 +27,7 @@ $.ajaxSetup({
 <body>
   {% block menubar %}{% endblock %}
   <div id="messages" class="{% if not messages and not form.non_field_errors %}hidden{% endif %}">
-    <div>
+    <div id="messages-content">
       {% for message in messages %}
       <div class="alert{% if message.tags %} alert-{{message.tags}}{% endif %}">
         <button type="button" class="close" data-dismiss="alert">&times;</button>

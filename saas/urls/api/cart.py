@@ -26,7 +26,7 @@
 URLs for the cart API of djaodjin saas.
 """
 
-from django.conf.urls import patterns, url
+from django.conf.urls import patterns, url, include
 
 from saas.api.billing import CartItemAPIView, CartItemDestroyAPIView
 from saas.api.coupons import CouponRedeemAPIView
@@ -38,4 +38,5 @@ urlpatterns = patterns('',
     url(r'^cart/(?P<plan>%s)/' % ACCT_REGEX,
         CartItemDestroyAPIView.as_view(), name='saas_api_cart_delete'),
     url(r'^cart/', CartItemAPIView.as_view(), name='saas_api_cart'),
+    url(r'^charge-processor/', include('saas.backends.urls')),
 )

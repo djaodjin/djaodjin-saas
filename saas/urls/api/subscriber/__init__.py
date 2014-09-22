@@ -22,38 +22,12 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from distutils.core import setup
+'''API URLs typically associated with the subscriber.'''
 
-import saas
+from django.conf.urls import patterns, include, url
 
-setup(
-    name='djaodjin-saas',
-    version=saas.__version__,
-    author='The DjaoDjin Team',
-    author_email='support@djaodjin.com',
-    packages=['saas',
-              'saas.backends',
-              'saas.management.commands',
-              'saas.templatetags',
-              'saas.urls',
-              'saas.urls.api',
-              'saas.urls.api.provider',
-              'saas.urls.api.subscriber',
-              'saas.urls.billing',
-              'saas.urls.provider',
-              'saas.urls.subscriber',
-              'saas.managers',
-              'saas.views',
-              'saas.api',
-              ],
-    package_data={'saas': ['fixtures/*',
-                           'static/js/*.js',
-                           'templates/saas/*.html',
-                           'templates/saas/agreements/*']},
-    url='https://github.com/djaodjin/djaodjin-saas/',
-    download_url='https://github.com/djaodjin/djaodjin-saas/tarball/%s' \
-        % saas.__version__,
-    license='BSD',
-    description='DjaoDjin SaaS implementation',
-    long_description=open('README.md').read(),
+urlpatterns = patterns('',
+    url(r'^', include('saas.urls.api.subscriber.charges')),
+    url(r'^', include('saas.urls.api.subscriber.billing')),
+    url(r'^', include('saas.urls.api.subscriber.profile')),
 )

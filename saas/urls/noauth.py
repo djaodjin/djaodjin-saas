@@ -23,14 +23,16 @@
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 from django.conf.urls import patterns, url
+
+from saas.views.plans import CartPlanListView
 from saas.views.legal import (sign_agreement, AgreementDetailView,
     AgreementListView)
 
-urlpatterns = patterns(
-    'saas.views.legal',
-    url(r'^(?P<slug>[\_\d\w]+)/sign$',
+urlpatterns = patterns('',
+    url(r'^legal/(?P<slug>[\_\d\w]+)/sign$',
         sign_agreement, name='legal_sign_agreement'),
-    url(r'^(?P<slug>[\_\d\w]+)/$',
+    url(r'^legal/(?P<slug>[\_\d\w]+)/$',
         AgreementDetailView.as_view(), name='legal_agreement'),
-    url(r'^$', AgreementListView.as_view(), name='legal_agreement_list'),
+    url(r'^legal/$', AgreementListView.as_view(), name='legal_agreement_list'),
+    url(r'^pricing/', CartPlanListView.as_view(), name='saas_cart_plan_list'),
 )

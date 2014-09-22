@@ -2,38 +2,34 @@
  */
 
 function showMessages(messages, style) {
-    $("#messages").removeClass('hidden');
-    var messageBlock = $('<div class="alert alert-block"><button type="button" class="close" data-dismiss="alert">&times;</button></div>');
-    $("#messages div").append(messageBlock);
+    var messageBlock = '<div class="alert alert-block';
     if( style ) {
-        messageBlock.addClass("alert-" + style);
+        messageBlock += ' alert-' + style;
     }
+    messageBlock += '"><button type="button" class="close" data-dismiss="alert">&times;</button>';
     for( var i = 0; i < messages.length; ++i ) {
-        messageBlock.append('<p>' + messages[i] + '</p>');
+        messageBlock += '<p>' + messages[i] + '</p>';
     }
+    messageBlock += '</div>';
+    $("#messages").removeClass('hidden');
+    $("#messages-content").append(messageBlock);
     $("html, body").animate({ scrollTop: $("#messages").offset().top - 50 },
         500);
 }
 
 
-function Plan(id) {
+function Plan(id, urls) {
     this.id = id;
-}
-
-Plan.initEndPoints = function(organization, urls) {
-    this.urls = {
-        'saas_api_plan': '/api/'+ organization + '/plans',
-    }
-    jQuery.extend(this.urls, urls);
+    this.urls = urls;
 }
 
 
 /** Create a ``Plan`` by executing an AJAX request to the service.
  */
-Plan.create = function(successFunction) {
+Plan.prototype.create = function(successFunction) {
     var self = this;
      $.ajax({ type: "POST",
-           url: Plan.urls.saas_api_plan + '/',
+           url: this.urls.saas_api_plan + '/',
            data: JSON.stringify({
                "title": "New Plan",
                "description": "Write the description of the plan here.",
@@ -56,7 +52,7 @@ Plan.create = function(successFunction) {
 Plan.prototype.activate = function(is_active, successFunction) {
   var self = this;
   $.ajax({ type: "PATCH",
-           url: Plan.urls.saas_api_plan + '/' + self.id + '/activate/',
+           url: this.urls.saas_api_plan + '/' + self.id + '/activate/',
            data: JSON.stringify({ "is_active": is_active }),
           datatype: "json",
           contentType: "application/json; charset=utf-8",
@@ -70,7 +66,7 @@ Plan.prototype.activate = function(is_active, successFunction) {
 Plan.prototype.update = function(data, successFunction) {
   var self = this;
   $.ajax({ type: "PATCH",
-           url: Plan.urls.saas_api_plan + '/' + self.id + '/',
+           url: this.urls.saas_api_plan + '/' + self.id + '/',
            async: false,
            data: JSON.stringify(data),
           datatype: "json",
@@ -82,7 +78,7 @@ Plan.prototype.update = function(data, successFunction) {
 Plan.prototype.destroy = function(successFunction) {
   var self = this;
   $.ajax({ type: "DELETE",
-           url: Plan.urls.saas_api_plan + '/' + self.id + '/',
+           url: this.urls.saas_api_plan + '/' + self.id + '/',
            async: false,
            success: successFunction,
   });
@@ -92,7 +88,7 @@ Plan.prototype.destroy = function(successFunction) {
 Plan.prototype.get = function(successFunction) {
   var self = this;
   $.ajax({ type: "GET",
-           url: Plan.urls.saas_api_plan + '/' + self.id + '/',
+           url: this.urls.saas_api_plan + '/' + self.id + '/',
            success: successFunction,
   });
 }
@@ -100,9 +96,9 @@ Plan.prototype.get = function(successFunction) {
 /** Toggle a ``Plan`` from active to inactive and vise-versa
     by executing an AJAX request to the service.
  */
-function toggleActivatePlan(button) {
+function toggleActivatePlan(button, urls) {
   var planSlug = button.attr('data-plan');
-  var thisPlan = new Plan(planSlug);
+  var thisPlan = new Plan(planSlug, urls);
   var is_active = !button.hasClass('activated');
   thisPlan.activate(!button.hasClass('activated'), function(data) {
       if( data['is_active'] ) {

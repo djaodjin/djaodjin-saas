@@ -23,15 +23,22 @@
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 """
-These URLs embed their own authentication directly into the implementation.
-
-While most URLs rely on external decorators to grant permissions, these
-URLs have peculiar requirements more easily encoded as part of the view
-implementation itself.
+URLs for the saas django app
 """
 
 from django.conf.urls import patterns, include, url
 
+from saas.views import OrganizationRedirectView
+from saas.settings import ACCT_REGEX
+
 urlpatterns = patterns('',
-    url(r'^stripe/', include('saas.backends.urls')),
+    url(r'^billing/cart/',
+        OrganizationRedirectView.as_view(pattern_name='saas_organization_cart'),
+        name='saas_cart'),
+    url(r'^billing/(?P<organization>%s)/' % ACCT_REGEX,
+        include('saas.urls.billing')),
+    url(r'^profile/(?P<organization>%s)/' % ACCT_REGEX,
+        include('saas.urls.profile')),
+    url(r'^users/(?P<user>%s)/' % ACCT_REGEX,
+        include('saas.urls.users')),
 )
