@@ -33,10 +33,16 @@ from django.utils.safestring import mark_safe
 
 from saas.humanize import (DESCRIBE_BALANCE, DESCRIBE_BUY_PERIODS,
     DESCRIBE_UNLOCK_NOW, DESCRIBE_UNLOCK_LATER)
-from saas.models import Organization, Subscription, Transaction
+from saas.models import (Organization, Subscription, Transaction,
+    get_current_provider)
 from saas.views.auth import valid_manager_for_organization
 
 register = template.Library()
+
+
+@register.filter()
+def is_current_provider(request, organization):
+    return organization == get_current_provider(request)
 
 
 @register.filter()
