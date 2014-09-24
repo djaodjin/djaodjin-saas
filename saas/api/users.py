@@ -22,18 +22,37 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+from django.core.exceptions import ValidationError
 from django.shortcuts import get_object_or_404
-from rest_framework import status
+from rest_framework import serializers, status
 from rest_framework.generics import (DestroyAPIView, ListCreateAPIView)
 from rest_framework.response import Response
 
 from saas import get_contributor_relation_model, get_manager_relation_model
 from saas.compat import User
 from saas.mixins import OrganizationMixin, RelationMixin
-from signup.api import UserSerializer
 
 #pylint: disable=no-init
 #pylint: disable=old-style-class
+
+class UserSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = User
+        fields = ('username', 'email', 'first_name', 'last_name')
+
+    def full_clean(self, instance):
+        # Implementation Note:
+        # We only want to make sure we get a correctly formatted username
+        # without validating the User is unique in the database. rest_framework
+        # does not propagate the flag here so we override the method.
+        try:
+            instance.full_clean(exclude=self.get_validation_exclusions(),
+                                validate_unique=False)
+        except ValidationError as err:
+            self._errors = err.message_dict
+            return None
+        return instance
 
 
 class RelationListAPIView(OrganizationMixin, ListCreateAPIView):
