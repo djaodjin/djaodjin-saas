@@ -1,2 +1,5 @@
 django-urldecorators>=0.5
 djaodjin-signup
+
+# development
+sphinxcontrib-httpdomain

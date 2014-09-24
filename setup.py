@@ -26,11 +26,19 @@ from distutils.core import setup
 
 import saas
 
+requirements = []
+with open('./requirements.txt') as requirements_txt:
+    for line in requirements_txt:
+        prerequisite = line.split('#')[0].strip()
+        if prerequisite:
+            requirements += [prerequisite]
+
 setup(
     name='djaodjin-saas',
     version=saas.__version__,
     author='The DjaoDjin Team',
     author_email='support@djaodjin.com',
+    install_requires=requirements,
     packages=['saas',
               'saas.backends',
               'saas.management.commands',
