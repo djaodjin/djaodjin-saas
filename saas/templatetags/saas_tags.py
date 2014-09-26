@@ -37,6 +37,8 @@ from saas.humanize import (DESCRIBE_BALANCE, DESCRIBE_BUY_PERIODS,
 from saas.models import (Organization, Subscription, Transaction,
     get_current_provider)
 from saas.views.auth import valid_manager_for_organization
+from saas.compat import User
+
 
 register = template.Library()
 
@@ -82,11 +84,16 @@ def attached_manager(user):
     Returns the person ``Organization`` associated to the user or None
     in none can be reliably found.
     """
-    queryset = Organization.objects.filter(slug=user.username)
+    if isinstance(user, User):
+        username = user.username
+    elif isinstance(user, basestring):
+        username = user
+    else:
+        return None
+    queryset = Organization.objects.filter(slug=username)
     if queryset.exists():
         return queryset.get()
     return None
-
 
 @register.filter()
 def products(subscriptions):
