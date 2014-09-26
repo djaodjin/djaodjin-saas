@@ -82,9 +82,9 @@ var Card = function(urls) {
 
 Card.prototype.query = function() {
     var self = this;
-    $.get(self.urls.saas_api_card, function(result) {
-        $("#last4").text(result.data.last4);
-        $("#exp_date").text(result.data.exp_date);
+    $.get(self.urls.saas_api_card, function(data) {
+        $("#last4").text(data.last4);
+        $("#exp_date").text(data.exp_date);
     }).fail(function() {
         $("#last4").text("Err");
         $("#exp_date").text("Err");
