@@ -480,6 +480,7 @@ class PlaceOrderView(InvoicablesView):
         if redirect_path:
             return redirect_path
         if self.sole_provider:
+            # XXX product_default_start is not defined in url patterns.
             return reverse('product_default_start',
                 args=(self.sole_provider, self.customer))
         return reverse('saas_organization_profile', args=(self.customer,))

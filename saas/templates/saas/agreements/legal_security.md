@@ -14,8 +14,8 @@ directly.
 Physical Security
 -----------------
 
-All of {{organization.full_name}} online services are hosted at Rackspace. As many well-known
-major web sites, we rely on Rackspace physical security to its data centers.
+All of {{organization.full_name}} online services are hosted at Amazon. As many well-known
+major web sites, we rely on Amazon physical security to its data centers.
 
 Backups are kept off-line off-site.
 
@@ -29,7 +29,7 @@ patches as they become available. Since you cannot hack something that
 is not there, we are always on the look out to remove unnecessary packages
 in the first place.
 
-On top of Rackspace security policies, each virtual machine is configured
+On top of Amazon security policies, each virtual machine is configured
 with its own firewall with only the minimum number of ports open.
 
 Solely the strict minimum number of {{organization.full_name}} employees have shell

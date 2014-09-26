@@ -101,7 +101,7 @@ class OrganizationManager(models.Manager):
         When *user* is a string instead of a ``User`` instance, it will
         be interpreted as a username.
         """
-        if isinstance(user, str):
+        if isinstance(user, basestring):
             return self.filter(Q(managers__username=user)
                 | Q(contributors__username=user))
         return self.filter(Q(managers__pk=user.pk)
@@ -607,8 +607,6 @@ class Charge(models.Model):
         charge is then redistributed to the providers (minus processor fee).
         """
         assert self.state == self.CREATED
-        self.state = self.DONE
-        self.save()
 
         # Example:
         # 2014/01/15 charge on xia card
@@ -678,6 +676,9 @@ class Charge(models.Model):
             #pylint: disable=nonstandard-exception
             raise IntegrityError("The total amount of invoiced items for "\
               "charge %s exceed the amount of the charge.", self.processor_id)
+
+        self.state = self.DONE
+        self.save()
 
         signals.charge_updated.send(sender=__name__, charge=self, user=None)
         return charge_transaction

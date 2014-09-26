@@ -253,11 +253,11 @@ function onSubscribeChargeChange() {
           $.ajax({ type: "POST",
                    url: this.options.saas_api_redeem_coupon,
                    data: JSON.stringify({"code": code }),
-                   datatype: "json",
+                   dataType: "json",
                    contentType: "application/json; charset=utf-8",
                  }).done(function(data) {
                      // XXX does not show messages since we reload...
-                     showMessages([data.responseJSON['details']]);
+                     showMessages([data['details']]);
                      location.reload();
                  }).fail(function(data) {
                      if('details' in data.responseJSON) {

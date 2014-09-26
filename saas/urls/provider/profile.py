@@ -28,7 +28,8 @@ URLs related to provider bank account information.
 
 from django.conf.urls import patterns, url
 
-from saas.views.profile import SubscriberListView
+from saas.views.profile import (ProviderManagerListView,
+    ProviderProfileView, SubscriberListView)
 from saas.views.plans import PlanCreateView, PlanUpdateView
 from saas.settings import ACCT_REGEX
 
@@ -39,4 +40,8 @@ urlpatterns = patterns('',
         PlanCreateView.as_view(), name='saas_plan_new'),
     url(r'^plans/(?P<plan>%s)/' % ACCT_REGEX,
         PlanUpdateView.as_view(), name='saas_plan_edit'),
+    url(r'^managers/',
+        ProviderManagerListView.as_view(), name='saas_provider_manager_list'),
+    url(r'^$',
+        ProviderProfileView.as_view(), name='saas_provider_profile'),
 )

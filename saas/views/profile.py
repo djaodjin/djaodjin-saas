@@ -41,40 +41,67 @@ from saas.forms import (OrganizationForm, ManagerAndOrganizationForm,
 from saas.mixins import OrganizationMixin, ProviderMixin
 from saas.models import Organization, Subscription, datetime_or_now
 
-
 LOGGER = logging.getLogger(__name__)
 
 
-class ContributorListView(OrganizationMixin, ListView):
-    """List of contributors to an organization."""
+class ContributorListBaseView(ListView):
+    """
+    List of contributors for an organization.
+
+    Must be used with an OrganizationMixin or a ProviderMixin.
+    """
 
     paginate_by = 10
     template_name = 'saas/contributor_list.html'
 
-    def get_queryset(self):
+    def get_queryset(self):# XXX not necessary since we use a REST API,
+                           # yet need to find out to get the pagination correct.
         self.organization = self.get_organization()
         return self.organization.contributors.all()
 
-    def get_context_data(self, **kwargs):
-        context = super(ContributorListView, self).get_context_data(**kwargs)
-        context.update({'contributors': context['object_list']})
-        return context
+
+class ProviderContributorListView(ProviderMixin, ContributorListBaseView):
+    """
+    List of contributors for the site provider.
+    """
+    pass
 
 
-class ManagerListView(OrganizationMixin, ListView):
-    """List of managers for an organization."""
+class ContributorListView(OrganizationMixin, ContributorListBaseView):
+    """
+    List of contributors for an organization.
+    """
+    pass
+
+
+class ManagerListBaseView(ListView):
+    """
+    List of managers for an organization.
+
+    Must be used with an OrganizationMixin or a ProviderMixin.
+    """
 
     paginate_by = 10
     template_name = 'saas/manager_list.html'
 
-    def get_queryset(self):
+    def get_queryset(self):# XXX not necessary since we use a REST API,
+                           # yet need to find out to get the pagination correct.
         self.organization = self.get_organization()
         return self.organization.managers.all()
 
-    def get_context_data(self, **kwargs):
-        context = super(ManagerListView, self).get_context_data(**kwargs)
-        context.update({'managers': context['object_list']})
-        return context
+
+class ProviderManagerListView(ProviderMixin, ManagerListBaseView):
+    """
+    List of managers for the site provider.
+    """
+    pass
+
+
+class ManagerListView(OrganizationMixin, ManagerListBaseView):
+    """
+    List of managers for an organization.
+    """
+    pass
 
 
 class SubscriberListBaseView(ProviderMixin, ListView):
@@ -240,3 +267,11 @@ class OrganizationProfileView(UpdateView):
         return reverse('saas_organization_profile', args=(self.object,))
 
 
+class ProviderProfileView(ProviderMixin, OrganizationProfileView):
+
+    def get_object(self, queryset=None):
+        return self.get_organization()
+
+    def get_success_url(self):
+        messages.info(self.request, 'Profile Updated.')
+        return reverse('saas_provider_profile',)

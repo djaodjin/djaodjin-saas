@@ -98,10 +98,13 @@ class OrganizationForm(PostalFormMixin, forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super(OrganizationForm, self).__init__(*args, **kwargs)
+        if not (self.initial.has_key('country') and self.initial['country']):
+            self.initial['country'] = Country("US", None)
+        country = self.initial['country']
         if self.instance and self.instance.country:
             country = self.instance.country
-        else:
-            country = Country("US", None)
+        if not self.fields['country'].initial:
+            self.fields['country'].initial = country.code
         self.add_postal_region(country=country)
 
 

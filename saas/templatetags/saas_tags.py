@@ -30,6 +30,7 @@ from django.conf import settings
 from django.core.exceptions import PermissionDenied
 from django.core.urlresolvers import reverse
 from django.utils.safestring import mark_safe
+from django.utils.timezone import utc
 
 from saas.humanize import (DESCRIBE_BALANCE, DESCRIBE_BUY_PERIODS,
     DESCRIBE_UNLOCK_NOW, DESCRIBE_UNLOCK_LATER)
@@ -76,7 +77,7 @@ def monthly_caption(last_date):
 
 
 @register.filter()
-def person(user):
+def attached_manager(user):
     """
     Returns the person ``Organization`` associated to the user or None
     in none can be reliably found.
@@ -194,6 +195,20 @@ def refund_enable(transaction, user):
             return True
         except PermissionDenied:
             pass
+    return False
+
+
+@register.filter()
+def date_in_future(value, arg=None):
+    if value:
+        if arg:
+            base = arg
+        else:
+            base = datetime.utcnow().replace(tzinfo=utc)
+        if isinstance(value, long) or isinstance(value, int):
+            value = datetime.fromtimestamp(value).replace(tzinfo=utc)
+        if value > base:
+            return True
     return False
 
 
