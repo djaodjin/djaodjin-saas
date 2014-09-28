@@ -3,7 +3,7 @@
 
 {% block saas_content %}
 <section id="subscribers">
-  <h1>{{organization.full_name}} Active Subscribers</h1>
+  <h1>{{organization.printable_name}} Active Subscribers</h1>
   <table>
     <thead>
       <tr>
@@ -17,7 +17,7 @@
     <tbody>
       {% for subscriber in subscribers %}
       <tr>
-        <td colspan="4"><a href="{% url 'saas_organization_profile' subscriber %}">{{subscriber.full_name}}</a></td>
+        <td colspan="4"><a href="{% url 'saas_organization_profile' subscriber %}">{{subscriber.printable_name}}</a></td>
       </tr>
       {% for subscription in subscriber|active_with_provider:organization %}
       <tr>

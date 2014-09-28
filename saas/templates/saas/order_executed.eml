@@ -2,11 +2,11 @@
 {% load saas_tags %}
 
 {% block subject %}
-{{provider.full_name}} Order Confirmation
+{{provider.printable_name}} Order Confirmation
 {% endblock %}
 
 {% block plain_content %}
-{{provider.full_name}} Order Confirmation
+{{provider.printable_name}} Order Confirmation
 
 {% for line in invoiced_items %}
     {{line.dest_amount|usd}}

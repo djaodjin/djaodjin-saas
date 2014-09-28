@@ -44,8 +44,9 @@ register = template.Library()
 
 
 @register.filter()
-def is_current_provider(request, organization):
-    return organization == get_current_provider(request)
+def is_current_provider(organization):
+    # XXX Use slug because both organizations might come from a different db.
+    return organization.slug == get_current_provider().slug
 
 
 @register.filter()

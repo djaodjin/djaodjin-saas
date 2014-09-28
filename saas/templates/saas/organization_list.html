@@ -10,7 +10,7 @@
     <tbody>
       {% for entry in organizations %}
       <tr>
-        <td><a href="{% url 'saas_organization_profile' entry %}">{{entry.full_name}}</a></td>
+        <td><a href="{% url 'saas_organization_profile' entry %}">{{entry.printable_name}}</a></td>
       </tr>
       {% endfor %}
     </tbody>

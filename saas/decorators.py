@@ -229,7 +229,7 @@ def requires_direct(function=None):
                 organization = get_object_or_404(Organization,
                     slug=kwargs.get('organization'))
             else:
-                organization = get_current_provider(request)
+                organization = get_current_provider()
             if organization and _contributor_readonly(request, [organization]):
                 return view_func(request, *args, **kwargs)
             raise PermissionDenied

@@ -13,8 +13,11 @@ function showMessages(messages, style) {
     messageBlock += '</div>';
     $("#messages").removeClass('hidden');
     $("#messages-content").append(messageBlock);
-    $("html, body").animate({ scrollTop: $("#messages").offset().top - 50 },
-        500);
+    $("html, body").animate({
+        // scrollTop: $("#messages").offset().top - 50
+        // avoid weird animation when messages at the top:
+        scrollTop: $("body").offset().top
+    }, 500);
 }
 
 

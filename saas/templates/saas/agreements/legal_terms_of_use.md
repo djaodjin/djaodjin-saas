@@ -1,4 +1,4 @@
-{{organization.full_name}} Terms of Use
+{{organization.printable_name}} Terms of Use
 =======================================
 
 By using {{site.domain}} web site (&quot;Service&quot;), you are agreeing
@@ -19,7 +19,7 @@ your Account. You agree to use the Service at your own risk.
     productive use of the Service.
 
 1.2 You are responsible for maintaining the security of your username
-    and password. {{organization.full_name}} cannot and will not be liable
+    and password. {{organization.printable_name}} cannot and will not be liable
     for any loss or damage from your failure to comply with this security
     obligation.
 
@@ -48,10 +48,10 @@ your Account. You agree to use the Service at your own risk.
     that Account will be immediately deleted from the Service. This information
      can not be recovered once it has been deleted.
 
-3.3 {{organization.full_name}}, in its sole discretion, has the right to suspend
+3.3 {{organization.printable_name}}, in its sole discretion, has the right to suspend
     or terminate an Account at any time.
 
-3.4 {{organization.full_name}} reserves the right to refuse service to anyone
+3.4 {{organization.printable_name}} reserves the right to refuse service to anyone
     for any reason at any time.
 
 4. Copyright and Content Ownership
@@ -60,16 +60,16 @@ your Account. You agree to use the Service at your own risk.
 4.1 We claim no intellectual property rights over the material you provide
     to the Service. Your materials uploaded remain yours.
 
-4.2 You shall defend {{organization.full_name}} against any claim, demand,
-    suit or proceeding made or brought against {{organization.full_name}}
+4.2 You shall defend {{organization.printable_name}} against any claim, demand,
+    suit or proceeding made or brought against {{organization.printable_name}}
     that Your Content, or Your use of the Service infringes or misappropriates
     the intellectual property rights of a third party or violates applicable
     laws.
 
-4.3 You shall indemnify {{organization.full_name}} for any damages finally
+4.3 You shall indemnify {{organization.printable_name}} for any damages finally
     awarded against, and for reasonable attorney’s fees incurred by,
-    {{organization.full_name}} in connection with any such claim, demand, suit
-    or proceeding; provided, that {{organization.full_name}}
+    {{organization.printable_name}} in connection with any such claim, demand, suit
+    or proceeding; provided, that {{organization.printable_name}}
 
 <ul>
 	(1) promptly gives You written notice of the claim, demand, suit
@@ -80,7 +80,7 @@ your Account. You agree to use the Service at your own risk.
 	(2) gives You sole control of the defense and settlement of the claim,
     demand, suit or proceeding (provided that You may not settle any claim,
     demand, suit or proceeding unless the settlement unconditionally
-    releases {{organization.full_name}} of all liability).
+    releases {{organization.printable_name}} of all liability).
 </ul>
 
 <ul>
@@ -107,7 +107,7 @@ your Account. You agree to use the Service at your own risk.
 
 5.5 The Internet is a complex system. You understand that You Content
     is transmitted, stored and manipulated using third-party networks
-    and devices {{organization.full_name}} as no control over.
+    and devices {{organization.printable_name}} as no control over.
     We do a reasonable attempt at keeping your private and secure in
     the best of our abilities.
 
@@ -118,11 +118,11 @@ your Account. You agree to use the Service at your own risk.
     an &quot;as is&quot; and &quot;as available&quot; basis.
 
 6.2 You agree not to reproduce, duplicate, modify, sell or resell the Service
-    without the express written permission by {{organization.full_name}}.
+    without the express written permission by {{organization.printable_name}}.
 
 6.3 Be nice, just do not hack into the Service or falsely imply that you are
-    associated with the Service, {{organization.full_name}}, or any other
-    {{organization.full_name}} service.
+    associated with the Service, {{organization.printable_name}}, or any other
+    {{organization.printable_name}} service.
 
 6.4 Questions about the Terms of Use should be sent to {{organization.email}}.
 

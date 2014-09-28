@@ -228,6 +228,15 @@ class Organization(models.Model):
     def __unicode__(self):
         return unicode(self.slug)
 
+    @property
+    def printable_name(self):
+        """
+        Insures we can actually print a name visible on paper.
+        """
+        if self.full_name:
+            return self.full_name
+        return self.slug
+
     def add_contributor(self, user, at_time=None):
         """
         Add user as a contributor to organization.
@@ -347,7 +356,7 @@ class Organization(models.Model):
             elearning:Funds
         """
         created_at = datetime_or_now(created_at)
-        descr = "withdraw from %s" % self.full_name
+        descr = "withdraw from %s" % self.printable_name
         if user:
             descr += ' (%s)' % user.username
         # Execute transaction on processor first such that any processor
@@ -474,9 +483,9 @@ class ChargeManager(models.Manager):
         amount = sum_dest_amount(transactions)
         if amount == 0:
             return None
-        stmt_descr = Transaction.objects.provider(transactions).full_name
+        stmt_descr = Transaction.objects.provider(transactions).printable_name
         descr = DESCRIBE_CHARGED_CARD % {
-            'charge': '', 'organization': customer.full_name}
+            'charge': '', 'organization': customer.printable_name}
         if user:
             descr += ' (%s)' % user.username
         try:
@@ -496,7 +505,7 @@ class ChargeManager(models.Manager):
                     customer, amount, descr, stmt_descr)
             # Create record of the charge in our database
             descr = DESCRIBE_CHARGED_CARD % {'charge': processor_charge_id,
-                'organization': customer.full_name}
+                'organization': customer.printable_name}
             if user:
                 descr += ' (%s)' % user.username
             charge = self.create(
@@ -1331,13 +1340,13 @@ class NewVisitors(models.Model):
         return unicode(self.id)
 
 
-def get_current_provider(request=None):
+def get_current_provider():
     """
     Returns the site-wide provider from a request.
     """
     if settings.PROVIDER_CALLABLE:
         from saas.compat import import_string
-        return import_string(settings.PROVIDER_CALLABLE)(request)
+        return import_string(settings.PROVIDER_CALLABLE)()
     return Organization.objects.get(pk=settings.SITE_ID)
 
 

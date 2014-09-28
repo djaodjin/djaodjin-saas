@@ -136,7 +136,7 @@ class StripeBackend(object):
                              organization.processor_recipient_id)
         if not rcp:
             rcp = stripe.Recipient.create(
-                name=organization.full_name,
+                name=organization.printable_name,
                 type="corporation",
                 # XXX add tax id.
                 email=organization.email,

@@ -83,7 +83,7 @@ class ProviderMixin(OrganizationMixin):
             slug=self.kwargs.get(self.organization_url_kwarg))
         if queryset.exists():
             return queryset.get()
-        return get_current_provider(self.request)
+        return get_current_provider()
 
 
 class CouponMixin(ProviderMixin):
