@@ -79,10 +79,11 @@ class ProviderMixin(OrganizationMixin):
     """
 
     def get_organization(self):
-        queryset = Organization.objects.filter(
-            slug=self.kwargs.get(self.organization_url_kwarg))
-        if queryset.exists():
-            return queryset.get()
+        if self.organization_url_kwarg in self.kwargs:
+            queryset = Organization.objects.filter(
+                slug=self.kwargs.get(self.organization_url_kwarg))
+            if queryset.exists():
+                return queryset.get()
         return get_current_provider()
 
 
