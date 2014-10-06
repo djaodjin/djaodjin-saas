@@ -41,7 +41,7 @@ class CouponSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Coupon
-        fields = ('code', 'percent', 'created_at', 'ends_at')
+        fields = ('code', 'percent', 'created_at', 'ends_at', 'description')
 
 
 class RedeemCouponSerializer(serializers.Serializer):

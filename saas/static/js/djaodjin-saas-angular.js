@@ -59,8 +59,8 @@ var managerControllers = angular.module('managerControllers', []);
 var subscriptionControllers = angular.module('subscriptionControllers', []);
 
 couponControllers.controller('CouponListCtrl',
-    ['$scope', '$http', 'Coupon', 'urls',
-     function($scope, $http, Coupon, urls) {
+    ['$scope', '$http', '$timeout', 'Coupon', 'urls',
+     function($scope, $http, $timeout, Coupon, urls) {
     $scope.urls = urls;
     $scope.coupons = Coupon.query();
 
@@ -70,16 +70,16 @@ couponControllers.controller('CouponListCtrl',
         Coupon.remove({ coupon: $scope.coupons[idx].code }, function (success) {
             $scope.coupons.splice(idx, 1);
         });
-    }
+    };
 
     $scope.save = function() {
         $http.post(urls.saas_api_coupon_url,$scope.newCoupon).success(
         function(result) {
             $scope.coupons.push(new Coupon(result));
             // Reset our editor to a new blank post
-            $scope.newCoupon = new Coupon()
+            $scope.newCoupon = new Coupon();
         });
-    }
+    };
 
     // calendar for expiration date
     $scope.open = function($event, coupon) {
@@ -103,6 +103,24 @@ couponControllers.controller('CouponListCtrl',
     $scope.dateOptions = {
         formatYear: 'yy',
         startingDay: 1
+    };
+
+    $scope.editDescription = function (idx){
+        $scope.edit_description = Array.apply(null, Array($scope.coupons.length)).map(function() {
+            return false; 
+        });
+        $scope.edit_description[idx] = true;
+        $timeout(function(){
+            angular.element('#input_description').focus();
+        }, 100);
+        
+    };
+
+    $scope.saveDescription = function(event, coupon, idx){
+        if (event.which === 13 || event.type == 'blur' ){
+            $scope.edit_description[idx] = false;
+            coupon.$update();
+        }
     };
 
     $scope.initDate = new Date('2016-15-20');
