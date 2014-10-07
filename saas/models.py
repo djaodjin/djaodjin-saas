@@ -827,7 +827,7 @@ class Coupon(models.Model):
         help_text="Percentage discounted")
     organization = models.ForeignKey(Organization)
     ends_at = models.DateTimeField(null=True, blank=True)
-    description = models.TextField()
+    description = models.TextField(null=True, blank=True)
 
     class Meta:
         unique_together = ('organization', 'code')
