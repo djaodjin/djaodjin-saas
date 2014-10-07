@@ -22,12 +22,15 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-'''API URLs typically associated with the provider.'''
+"""
+URLs API for provider resources related to billing
+"""
 
-from django.conf.urls import patterns, include, url
+from django.conf.urls import patterns, url
+
+from saas.api.metrics import RevenueMetricsAPIView
 
 urlpatterns = patterns('',
-    url(r'^', include('saas.urls.api.provider.billing')),
-    url(r'^', include('saas.urls.api.provider.charges')),
-    url(r'^', include('saas.urls.api.provider.metrics')),
+    url(r'^metrics/revenue/?',
+        RevenueMetricsAPIView.as_view(), name='saas_api_metrics_revenue'),
 )

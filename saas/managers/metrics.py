@@ -30,6 +30,7 @@ from django.utils.timezone import utc
 
 from saas.models import Subscription, Transaction
 
+
 def month_periods(nb_months=12, from_date=None):
     """constructs a list of (nb_months + 1) dates in the past that fall
     on the first of each month until *from_date* which is the last entry
@@ -206,6 +207,15 @@ def active_subscribers(plan, from_date=None):
         values.append([end_period, Subscription.objects.filter(
             plan=plan, created_at__lte=end_period,
             ends_at__gt=end_period).count()])
+    return values
+
+
+def monthly_balances(organization, account=None, until=None):
+    values = []
+    for end_period in month_periods(from_date=until):
+        values.append([end_period,
+            Transaction.objects.get_organization_balance(
+                    organization, account=account, until=end_period)])
     return values
 
 

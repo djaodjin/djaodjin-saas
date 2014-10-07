@@ -22,12 +22,25 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-'''API URLs typically associated with the provider.'''
+from rest_framework.views import APIView
+from rest_framework.response import Response
 
-from django.conf.urls import patterns, include, url
+from saas.mixins import ProviderMixin
+from saas.models import Transaction
+from saas.utils import datetime_or_now
+from saas.managers.metrics import monthly_balances
 
-urlpatterns = patterns('',
-    url(r'^', include('saas.urls.api.provider.billing')),
-    url(r'^', include('saas.urls.api.provider.charges')),
-    url(r'^', include('saas.urls.api.provider.metrics')),
-)
+
+class RevenueMetricsAPIView(ProviderMixin, APIView):
+    """
+    Generate a table of revenue (rows) per months (columns).
+    """
+
+    def get(self, request, *args, **kwargs): #pylint: disable=unused-argument
+        organization = self.get_organization()
+        at_date = datetime_or_now(request.get('at', None))
+        return Response([{
+            'key': Transaction.INCOME,
+            'values': monthly_balances(
+                        organization, Transaction.INCOME, at_date)
+            }])
