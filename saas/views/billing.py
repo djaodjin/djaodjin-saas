@@ -100,7 +100,6 @@ class CardFormMixin(OrganizationMixin):
         Populates place order forms with the organization address
         whenever possible.
         """
-        print "XXX [CardFormMixin.get_initial]"
         self.customer = self.get_organization()
         kwargs = super(CardFormMixin, self).get_initial()
         kwargs.update({'card_name': self.customer.full_name,
@@ -151,7 +150,6 @@ class InvoicablesFormMixin(OrganizationMixin):
     """
 
     def get_initial(self):
-        print "XXX [InvoicablesFormMixin.get_initial]"
         kwargs = super(InvoicablesFormMixin, self).get_initial()
         for invoicable in self.invoicables:
             if invoicable['options']:
@@ -405,16 +403,16 @@ class CartBaseView(InvoicablesFormMixin, FormView):
 
         if plan.period_amount == 0:
             # We are having a freemium business models, no discounts.
-            option_items += [subscription.use_of_service(1, prorated_amount,
+            option_items += [subscription.create_order(1, prorated_amount,
                 created_at, "free")]
 
         elif plan.unlock_event:
             # Locked plans are free until an event.
-            option_items += [subscription.use_of_service(1, plan.period_amount,
+            option_items += [subscription.create_order(1, plan.period_amount,
                created_at, DESCRIBE_UNLOCK_NOW % {
                         'plan': plan, 'unlock_event': plan.unlock_event},
                discount_percent=discount_percent)]
-            option_items += [subscription.use_of_service(1, 0,
+            option_items += [subscription.create_order(1, 0,
                created_at, DESCRIBE_UNLOCK_LATER % {
                         'amount': as_money(plan.period_amount),
                         'plan': plan, 'unlock_event': plan.unlock_event})]
@@ -422,7 +420,7 @@ class CartBaseView(InvoicablesFormMixin, FormView):
         elif plan.interval == Plan.MONTHLY:
             # Give a change for discount when paying periods in advance
             for nb_periods in [1, 3, 6, 12]:
-                option_items += [subscription.use_of_service(
+                option_items += [subscription.create_order(
                     nb_periods, prorated_amount, created_at,
                     discount_percent=discount_percent)]
                 discount_percent += 10
@@ -432,7 +430,7 @@ class CartBaseView(InvoicablesFormMixin, FormView):
         elif plan.interval == Plan.YEARLY:
             # Give a change for discount when paying periods in advance
             for nb_periods in [1]: # XXX disabled discount until configurable.
-                option_items += [subscription.use_of_service(
+                option_items += [subscription.create_order(
                     nb_periods, prorated_amount, created_at,
                     discount_percent=discount_percent)]
                 discount_percent += 10

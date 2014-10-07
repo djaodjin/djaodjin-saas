@@ -363,25 +363,19 @@ class Organization(models.Model):
         """
         return PROCESSOR_BACKEND.retrieve_bank(self)
 
-    def processor_fee(self, total_amount):
+    def processor_fee(self, processor, total_amount):
         """
-        Returns a triplet: third-party ``Organization`` processing the payment,
-        fee amount and id of the subscription this provider organization
-        has to the payment processor.
+        Returns fee amount paid to processor.
         """
         try:
             provider_subscription = Subscription.objects.get(
-                organization=self,
-                plan__organization=get_current_provider())
-            processor = provider_subscription.plan.organization
-            provider_subscription_id = provider_subscription.id
+                organization=self, plan__organization=processor)
             fee_amount = provider_subscription.plan.prorate_transaction(
                 total_amount)
         except Subscription.DoesNotExist:
-            processor = get_current_provider()
-            provider_subscription_id = None
-            fee_amount = 0
-        return processor, fee_amount, provider_subscription_id
+            fee_amount = PROCESSOR_BACKEND.prorate_transaction(
+                total_amount)
+        return fee_amount
 
     @method_decorator(transaction.atomic)
     def withdraw_funds(self, amount, user, created_at=None):
@@ -403,14 +397,13 @@ class Organization(models.Model):
         # the ``Transaction``.
         processor_transfer_id, _ = PROCESSOR_BACKEND.create_transfer(
             self, amount, descr)
-        processor = get_current_provider()
         Transaction.objects.create(
             event_id=processor_transfer_id,
             descr=descr,
             created_at=created_at,
             dest_amount=amount,
             dest_account=Transaction.WITHDRAW,
-            dest_organization=processor,
+            dest_organization=Charge.get_processor(),
             orig_amount=amount,
             orig_account=Transaction.FUNDS,
             orig_organization=self)
@@ -625,6 +618,10 @@ class Charge(models.Model):
     def __unicode__(self):
         return unicode(self.processor_id)
 
+    @staticmethod
+    def get_processor():
+        return Organization.objects.get(pk=settings.SITE_ID)
+
     @property
     def invoiced_total_amount(self):
         """
@@ -686,7 +683,7 @@ class Charge(models.Model):
         # 2014/01/15 charge on xia card
         #     xia:Expenses                                 15800
         #     djaodjin:Income
-        processor = get_current_provider()
+        processor = self.get_processor()
         charge_transaction = Transaction.objects.create(
             event_id=self.id,
             descr=self.description,
@@ -704,7 +701,7 @@ class Charge(models.Model):
             subscription = Subscription.objects.get(pk=invoiced_item.event_id)
             provider = subscription.plan.organization
             total_amount = invoiced_item.dest_amount
-            processor, fee_amount, _ = provider.processor_fee(total_amount)
+            fee_amount = processor.processor_fee(total_amount)
             distribute_amount = invoiced_item.dest_amount - fee_amount
             if fee_amount > 0:
                 # Example:
@@ -776,6 +773,7 @@ class Charge(models.Model):
         """
         assert self.state == self.DONE
         created_at = datetime_or_now(created_at)
+        processor = self.get_processor()
         #pylint: disable=no-member
         charge_item = self.charge_items.all()[linenum]
         invoiced_item = charge_item.invoiced
@@ -803,7 +801,6 @@ class Charge(models.Model):
         charge_item.save()
 
         fee_amount = 0
-        processor = get_current_provider()
         if charge_item.invoiced_fee:
             # 2014/03/15 elearning promises to refund $69 to Xia
             #     djaodjin:Refund                                900
@@ -1040,10 +1037,9 @@ class Plan(models.Model):
 
     def prorate_transaction(self, amount):
         """
-        Return the payment processor fee associated to a transaction
-        (usually 2.9% + 30 cents).
+        Hosting service paid through a transaction fee.
         """
-        return amount * self.transaction_fee / 10000 + 30 # (i.e. + 30 cents)
+        return amount * self.transaction_fee
 
     def prorate_period(self, start_time, end_time):
         """
@@ -1140,13 +1136,17 @@ class Subscription(models.Model):
         self.ends_at = datetime_or_now()
         self.save()
 
-    def use_of_service(self, nb_periods, prorated_amount=0,
+    def create_order(self, nb_periods, prorated_amount=0,
         created_at=None, descr=None, discount_percent=0):
         #pylint: disable=too-many-arguments
         """
-        Each time a provider delivers a service to a client, a transaction
-        is recorded that goes from the provider ``Income`` account to
-        the client ``Payable`` account.
+        Each time a customer orders a subscription from a provider,
+        a Transaction is recorded that goes from the provider ``Receivable``
+        account to the customer ``Payable`` account.
+
+            yyyy/mm/dd description
+                   customer:Payable                       amount
+                   provider:Receivable
         """
         if not descr:
             amount = int(
@@ -1166,7 +1166,7 @@ class Subscription(models.Model):
             descr=descr,
             orig_amount=nb_periods,
             orig_units=Transaction.PLAN_UNITS,
-            orig_account=Transaction.INCOME,
+            orig_account=Transaction.INCOME, # XXX Receivable
             orig_organization=self.plan.organization,
             dest_amount=amount,
             dest_account=Transaction.PAYABLE,
@@ -1362,8 +1362,8 @@ class Transaction(models.Model):
 
     # provider side
     BACKLOG = 'Backlog'
-    FUNDS = 'Funds'         # <= 0 receipient side
-    INCOME = 'Income'       # <= 0 receipient side
+    FUNDS = 'Funds'           # <= 0 receipient side
+    INCOME = 'Income'         # <= 0 receipient side
     WITHDRAW = 'Withdraw'
     REFUND = 'Refund'       # >= 0 receipient side
 
