@@ -213,7 +213,8 @@ class StripeBackend(object):
                 charge.payment_successful()
         return charge
 
-    def prorate_transaction(self, amount):
+    @staticmethod
+    def prorate_transaction(amount):
         """
         Return Stripe processing fee associated to a transaction
         (i.e. 2.9% + 30 cents).
