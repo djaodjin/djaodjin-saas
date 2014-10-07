@@ -63,7 +63,9 @@ class PostalFormMixin(object):
 
 
 class CreditCardForm(PostalFormMixin, forms.Form):
-    '''Update Card Information.'''
+    """
+    Update Card Information.
+    """
     stripeToken = forms.CharField(required=False)
     remember_card = forms.BooleanField(
         label=_("Remember this card"), required=False, initial=True)
@@ -83,7 +85,16 @@ class CreditCardForm(PostalFormMixin, forms.Form):
             label='Zip', required=False)
         self.add_postal_country(required=False)
         for item in self.initial:
-            if item.startswith('plan-'):
+            if item.startswith('cart-'):
+                self.fields[item] = forms.CharField(required=True)
+
+
+class CartPeriodsForm(forms.Form):
+
+    def __init__(self, *args, **kwargs):
+        super(CartPeriodsForm, self).__init__(*args, **kwargs)
+        for item in self.initial:
+            if item.startswith('cart-'):
                 self.fields[item] = forms.CharField(required=True)
 
 

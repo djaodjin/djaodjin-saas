@@ -1,0 +1,36 @@
+{% load assets %}
+{% load currency %}
+{% load saas_tags %}
+
+{% block subject %}
+{{provider.printable_name}} Subscription
+{% endblock %}
+
+{% block html_content %}
+<html>
+<head>
+</head>
+<body>
+<div>
+<p>
+Hello {{full_name}},
+</p>
+<p>
+I generated a one-time coupon code for you to access {{coupon.plan.title}}.
+
+Please register to <a href="https://{{site.domain}}">{{site}}</a>.
+When ask for payment information, enter the following one-time coupon code:
+</p>
+<p>
+{{coupon.code}}
+</p>
+<p>
+Thank you,<br />
+{{user.full_name}}
+</p>
+Any questions or comments, email us at <a href="mailto:{{provider.email}}">{{provider.email}}</a>.
+</p>
+</div>
+</body>
+</html>
+{% endblock %}

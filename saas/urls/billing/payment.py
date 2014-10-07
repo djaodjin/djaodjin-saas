@@ -30,15 +30,18 @@ through POST requests.
 from django.conf.urls import patterns, url
 
 from saas.settings import ACCT_REGEX
-from saas.views.billing import CardUpdateView, PlaceOrderView, PayBalanceView
+from saas.views.billing import (CartPeriodsView, CartSeatsView,
+    CardUpdateView, CartView, BalanceView)
 
 urlpatterns = patterns(
     'saas.views.billing',
+    url(r'^cart-seats/', CartSeatsView.as_view(), name='saas_cart_seats'),
+    url(r'^cart-periods/', CartPeriodsView.as_view(), name='saas_cart_periods'),
+    url(r'^cart/', CartView.as_view(), name='saas_organization_cart'),
+    url(r'^card/', CardUpdateView.as_view(), name='saas_update_card'),
     # Implementation Note: <subscribed_plan> (not <plan>) such that
     # the required_manager decorator does not raise a PermissionDenied
     # for a plan <organization> is subscribed to.
-    url(r'^cart/', PlaceOrderView.as_view(), name='saas_organization_cart'),
-    url(r'^card/', CardUpdateView.as_view(), name='saas_update_card'),
     url(r'^balance/((?P<subscribed_plan>%s)/)?' % ACCT_REGEX,
-        PayBalanceView.as_view(), name='saas_organization_balance'),
+        BalanceView.as_view(), name='saas_organization_balance'),
 )

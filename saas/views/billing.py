@@ -27,13 +27,16 @@ Views related to billing information
 
 There are two views where invoicables are presented and charges are created:
 
-1. ``PlaceOrderView`` for items in the cart, create new subscriptions
+1. ``CartView`` for items in the cart, create new subscriptions
    or pay in advance.
 
-2. ``PayBalanceView`` for subscriptions with balance dues
+2. ``BalanceView`` for subscriptions with balance dues
+
+
+Note: nb_periods is stored in the Transaction orig_amount.
 """
 
-import copy, datetime, logging
+import copy, logging
 
 from django import http
 from django.contrib.auth import REDIRECT_FIELD_NAME
@@ -42,14 +45,15 @@ from django.db import IntegrityError
 from django.db.models import Q
 from django.contrib import messages
 from django.shortcuts import get_object_or_404
-from django.utils.timezone import utc
 from django.views.generic import DetailView, FormView, ListView
 
 from saas.backends import PROCESSOR_BACKEND, ProcessorError
-from saas.utils import validate_redirect_url
-from saas.forms import BankForm, CreditCardForm, RedeemCouponForm, WithdrawForm
+from saas.utils import validate_redirect_url, datetime_or_now
+from saas.forms import (BankForm, CartPeriodsForm, CreditCardForm,
+    RedeemCouponForm, WithdrawForm)
 from saas.mixins import ChargeMixin, OrganizationMixin, ProviderMixin
-from saas.models import CartItem, Coupon, Plan, Transaction, Subscription
+from saas.models import (Organization, CartItem, Coupon, Plan, Transaction,
+    Subscription)
 from saas.humanize import (as_money, describe_buy_periods, match_unlock,
     DESCRIBE_UNLOCK_NOW, DESCRIBE_UNLOCK_LATER)
 
@@ -96,6 +100,7 @@ class CardFormMixin(OrganizationMixin):
         Populates place order forms with the organization address
         whenever possible.
         """
+        print "XXX [CardFormMixin.get_initial]"
         self.customer = self.get_organization()
         kwargs = super(CardFormMixin, self).get_initial()
         kwargs.update({'card_name': self.customer.full_name,
@@ -140,24 +145,33 @@ class BankUpdateView(BankMixin, FormView):
         return reverse('saas_transfer_info', args=(self.organization,))
 
 
-class InvoicablesView(CardFormMixin, FormView):
+class InvoicablesFormMixin(OrganizationMixin):
     """
-    Create a charge for items that must be charged on submit.
+    Mixin a list of invoicables
     """
-
-    context_object_name = 'invoicables'
-
-    # Implementation Node:
-    #     All fields in CreditCardForm are optional to insure the form
-    #     is never invalid and thus allow the same code to place an order
-    #     with a total amount of zero.
 
     def get_initial(self):
-        kwargs = super(InvoicablesView, self).get_initial()
+        print "XXX [InvoicablesFormMixin.get_initial]"
+        kwargs = super(InvoicablesFormMixin, self).get_initial()
         for invoicable in self.invoicables:
-            kwargs.update({
-                'plan-%s' % invoicable['subscription'].plan.slug: ""})
+            if invoicable['options']:
+                kwargs.update({invoicable['name']: ""})
         return kwargs
+
+    def get_form(self, form_class):
+        self.invoicables = self.get_queryset()
+        return super(InvoicablesFormMixin, self).get_form(form_class)
+
+    def get_context_data(self, **kwargs):
+        context = super(InvoicablesFormMixin, self).get_context_data(**kwargs)
+        lines_amount = 0
+        for invoicable in self.invoicables:
+            for line in invoicable['lines']:
+                lines_amount += line.dest_amount
+        context.update(self.get_redirect_path())
+        context.update({'invoicables': self.invoicables,
+                        "lines_amount": lines_amount})
+        return context
 
     def get_redirect_path(self, **kwargs): #pylint: disable=unused-argument
         context = {}
@@ -167,12 +181,16 @@ class InvoicablesView(CardFormMixin, FormView):
             context.update({REDIRECT_FIELD_NAME: redirect_path})
         return context
 
-    def get_queryset(self): #pylint: disable=no-self-use
-        """
-        Subclasses should override this method to return
-        a set of invoicable items.
-        """
-        return []
+
+class CardInvoicablesFormMixin(CardFormMixin, InvoicablesFormMixin):
+    """
+    Create a charge for items that must be charged on submit.
+    """
+
+    # Implementation Node:
+    #     All fields in CreditCardForm are optional to insure the form
+    #     is never invalid and thus allow the same code to place an order
+    #     with a total amount of zero.
 
     def form_valid(self, form):
         """
@@ -190,12 +208,12 @@ class InvoicablesView(CardFormMixin, FormView):
         invoicables = copy.deepcopy(self.invoicables)
         for invoicable in invoicables:
             # We use two conventions here:
-            # 1. POST parameters prefixed with plan- correspond to an entry
+            # 1. POST parameters prefixed with cart- correspond to an entry
             #    in the invoicables
             # 2. Amounts for each line in a entry are unique and are what
             #    is passed for the value of the matching POST parameter.
             plan = invoicable['subscription'].plan
-            plan_key = 'plan-%s' % plan.slug
+            plan_key = invoicable['name']
             if plan_key in form.cleaned_data:
                 if self.sole_provider is None:
                     self.sole_provider = plan.organization
@@ -224,18 +242,27 @@ class InvoicablesView(CardFormMixin, FormView):
         except ProcessorError as err:
             messages.error(self.request, err)
             return self.form_invalid(form)
-        return super(InvoicablesView, self).form_valid(form)
+        return super(CardInvoicablesFormMixin, self).form_valid(form)
 
-    def get_context_data(self, **kwargs):
-        context = super(InvoicablesView, self).get_context_data(**kwargs)
-        context.update(self.get_redirect_path())
-        context.update({'invoicables': self.invoicables})
-        return context
-
-    def get_form(self, form_class):
-        self.invoicables = self.get_queryset()
-        return super(InvoicablesView, self).get_form(form_class)
-
+    def get_success_url(self):
+        redirect_path = validate_redirect_url(
+            self.request.GET.get(REDIRECT_FIELD_NAME, None))
+        if hasattr(self, 'charge') and self.charge:
+            if redirect_path:
+                return '%s?%s=%s' % (
+                    reverse('saas_charge_receipt',
+                        args=(self.charge.customer, self.charge.processor_id)),
+                    REDIRECT_FIELD_NAME, redirect_path)
+            return reverse('saas_charge_receipt',
+                        args=(self.charge.customer, self.charge.processor_id))
+        if redirect_path:
+            return redirect_path
+        if self.sole_provider:
+            # XXX product_default_start is not defined in url patterns.
+            return '/%(organization)s/app/%(subscriber)s/' % {
+                'organization': self.sole_provider,
+                'subscriber': self.customer}
+        return reverse('saas_organization_profile', args=(self.customer,))
 
 
 class CardUpdateView(CardFormMixin, FormView):
@@ -336,31 +363,21 @@ class TransferListView(BankMixin, ListView):
         return context
 
 
-class PlaceOrderView(InvoicablesView):
+class CartBaseView(InvoicablesFormMixin, FormView):
     """
     Subscribe an organization to various plans and collect payment due upfront.
     """
-
-    template_name = 'billing/cart.html'
 
     def dispatch(self, *args, **kwargs):
         # We are not getting here without an authenticated user. It is time
         # to store the cart into the database.
         _session_cart_to_database(self.request)
-        return super(PlaceOrderView, self).dispatch(*args, **kwargs)
+        return super(CartBaseView, self).dispatch(*args, **kwargs)
 
     def get_context_data(self, **kwargs):
-        context = super(PlaceOrderView, self).get_context_data(**kwargs)
+        context = super(CartBaseView, self).get_context_data(**kwargs)
         context.update({'coupon_form': RedeemCouponForm()})
         return context
-
-    def get(self, request, *args, **kwargs):
-        if not CartItem.objects.get_cart(user=self.request.user).exists():
-            messages.info(self.request,
-              "Your Cart is empty. Please add some items to your cart before"
-" you check out.")
-            return http.HttpResponseRedirect(reverse('saas_cart_plan_list'))
-        return super(PlaceOrderView, self).get(request, *args, **kwargs)
 
     @staticmethod
     def get_invoicable_options(subscription,
@@ -370,8 +387,8 @@ class PlaceOrderView(InvoicablesView):
         based on current subscriptions that the user might be willing
         to charge Today.
         """
-        if not created_at:
-            created_at = datetime.datetime.utcnow().replace(tzinfo=utc)
+        #pylint: disable=too-many-locals
+        created_at = datetime_or_now(created_at)
         option_items = []
         plan = subscription.plan
         # XXX Not charging setup fee, it complicates the design too much
@@ -430,16 +447,18 @@ class PlaceOrderView(InvoicablesView):
 
     def get_queryset(self):
         """
-        Returns a set of invoicables from the items in a user's cart.
+        Returns a set of invoicables grouped by ``Plan`` from the items
+        in a user's cart.
+
         Schema:
         invoicables = [
-            { "subscription": Subscription,
-              "lines": [Transaction, ...],
-              "options": [Transaction, ...],
-            }, ...]
+                { "subscription": Subscription,
+                  "lines": [Transaction, ...],
+                  "options": [Transaction, ...],
+                }, ...]
         """
         self.customer = self.get_organization()
-        created_at = datetime.datetime.utcnow().replace(tzinfo=utc)
+        created_at = datetime_or_now()
         prorate_to_billing = False
         prorate_to = None
         if prorate_to_billing:
@@ -448,42 +467,143 @@ class PlaceOrderView(InvoicablesView):
             prorate_to = self.customer.billing_start
         invoicables = []
         for cart_item in CartItem.objects.get_cart(user=self.request.user):
+            if cart_item.email:
+                full_name = ' '.join([
+                        cart_item.first_name, cart_item.last_name]).strip()
+                for_descr = ', for %s (%s)' % (full_name, cart_item.email)
+                organization_queryset = Organization.objects.filter(
+                    email=cart_item.email)
+                if organization_queryset.exists():
+                    organization = organization_queryset.get()
+                else:
+                    organization = Organization(
+                        full_name='%s %s' % (
+                            cart_item.first_name, cart_item.last_name),
+                        email=cart_item.email)
+            else:
+                for_descr = ''
+                organization = self.customer
             try:
                 subscription = Subscription.objects.get(
-                    organization=self.customer, plan=cart_item.plan)
+                    organization=organization, plan=cart_item.plan)
             except Subscription.DoesNotExist:
                 ends_at = prorate_to
                 if not ends_at:
                     ends_at = created_at
                 subscription = Subscription.objects.new_instance(
-                    self.customer, cart_item.plan, ends_at=ends_at)
-            if subscription.id:
-                options = []
-            else:
-                options = self.get_invoicable_options(subscription, created_at,
-                    prorate_to=prorate_to, coupon=cart_item.coupon)
+                    organization, cart_item.plan, ends_at=ends_at)
+            lines = []
+            options = self.get_invoicable_options(subscription, created_at,
+                prorate_to=prorate_to, coupon=cart_item.coupon)
+            if cart_item.nb_periods > 0:
+                # The number of periods was already selected so we generate
+                # a line instead.
+                for line in options:
+                    if line.orig_amount == cart_item.nb_periods:
+                        line.descr += for_descr
+                        lines += [line]
+                        options = []
+                        break
             invoicables += [{
-                'subscription': subscription, "lines": [], "options": options}]
+                'name': cart_item.name, 'descr': cart_item.descr,
+                'subscription': subscription,
+                "lines": lines, "options": options}]
         return invoicables
 
     def get_success_url(self):
         redirect_path = validate_redirect_url(
             self.request.GET.get(REDIRECT_FIELD_NAME, None))
-        if hasattr(self, 'charge') and self.charge:
-            if redirect_path:
-                return '%s?%s=%s' % (
-                    reverse('saas_charge_receipt',
-                        args=(self.charge.customer, self.charge.processor_id)),
-                    REDIRECT_FIELD_NAME, redirect_path)
-            return reverse('saas_charge_receipt',
-                        args=(self.charge.customer, self.charge.processor_id))
         if redirect_path:
-            return redirect_path
-        if self.sole_provider:
-            # XXX product_default_start is not defined in url patterns.
-            return reverse('product_default_start',
-                args=(self.sole_provider, self.customer))
-        return reverse('saas_organization_profile', args=(self.customer,))
+            return '%s?%s=%s' % (
+                reverse('saas_organization_cart', args=(self.customer,)),
+                REDIRECT_FIELD_NAME, redirect_path)
+        return reverse('saas_organization_cart', args=(self.customer,))
+
+
+class CartPeriodsView(CartBaseView):
+    """
+    Optional page to pay multiple periods in advance.
+    """
+    form_class = CartPeriodsForm
+    template_name = 'saas/cart_periods.html'
+
+    def form_valid(self, form):
+        """
+        If the form is valid we, optionally, checkout the cart items
+        and charge the invoiced items which are due now.
+        """
+        for invoicable in self.invoicables:
+            # We use two conventions here:
+            # 1. POST parameters prefixed with cart- correspond to an entry
+            #    in the invoicables
+            # 2. Amounts for each line in a entry are unique and are what
+            #    is passed for the value of the matching POST parameter.
+            plan = invoicable['subscription'].plan
+            plan_key = invoicable['name']
+            if plan_key in form.cleaned_data:
+                selected_line = int(form.cleaned_data[plan_key])
+                for line in invoicable['options']:
+                    if line.dest_amount == selected_line:
+                        queryset = CartItem.objects.get_cart(
+                            user=self.request.user).filter(plan=plan)
+                        for cart_item in queryset:
+                            cart_item.nb_periods = line.orig_amount
+                            cart_item.save()
+        return super(CartPeriodsView, self).form_valid(form)
+
+    @property
+    def cart_items(self):
+        return CartItem.objects.get_cart(user=self.request.user)
+
+    def get(self, request, *args, **kwargs):
+        if not self.cart_items.exists():
+            messages.info(self.request,
+              "Your Cart is empty. Please add some items to your cart before"
+" you check out.")
+            return http.HttpResponseRedirect(reverse('saas_cart_plan_list'))
+        return super(CartPeriodsView, self).get(request, *args, **kwargs)
+
+
+class CartSeatsView(CartPeriodsView):
+    """
+    Optional page to subcribe multiple organizations to a ``Plan`` while paying
+    through through a third-party ``Organization`` (i.e. self.customer).
+    """
+    form_class = CartPeriodsForm # XXX
+    template_name = 'saas/cart_seats.html'
+
+    def get(self, request, *args, **kwargs):
+        self.customer = self.get_organization()
+        if self.cart_items.filter(nb_periods=0).exists():
+            return http.HttpResponseRedirect(
+                reverse('saas_cart_periods', args=(self.customer,)))
+        return super(CartSeatsView, self).get(request, *args, **kwargs)
+
+    def get_context_data(self, **kwargs):
+        context = super(CartSeatsView, self).get_context_data(**kwargs)
+        context.update({
+                'is_bulk_buyer': self.get_organization().is_bulk_buyer})
+        return context
+
+
+class CartView(CardInvoicablesFormMixin, CartSeatsView):
+
+    template_name = 'billing/cart.html'
+
+    def get(self, request, *args, **kwargs):
+        self.customer = self.get_organization()
+        if (self.customer.is_bulk_buyer and
+            self.cart_items.filter(
+                Q(email__isnull=True) | Q(email='')).exists()):
+            # A bulk buyer customer can buy subscriptions for other people.
+            return http.HttpResponseRedirect(
+                reverse('saas_cart_seats', args=(self.customer,)))
+        return super(CartView, self).get(request, *args, **kwargs)
+
+    def get_context_data(self, **kwargs):
+        context = super(CartView, self).get_context_data(**kwargs)
+        context.update({'is_bulk_buyer': False})
+        return context
 
 
 class ChargeReceiptView(ChargeMixin, DetailView):
@@ -500,7 +620,7 @@ class CouponListView(ProviderMixin, ListView):
     model = Coupon
 
 
-class PayBalanceView(InvoicablesView):
+class BalanceView(CardInvoicablesFormMixin, FormView):
     """
     Set of invoicables for all subscriptions which have a balance due.
     """
@@ -531,7 +651,7 @@ class PayBalanceView(InvoicablesView):
         """
         self.customer = self.get_organization()
         invoicables = []
-        created_at = datetime.datetime.utcnow().replace(tzinfo=utc)
+        created_at = datetime_or_now()
         for subscription in Subscription.objects.active_for(self.customer):
             options = self.get_invoicable_options(subscription, created_at)
             if len(options) > 0:
@@ -545,21 +665,6 @@ class PayBalanceView(InvoicablesView):
         return get_object_or_404(Subscription,
             organization=self.get_organization(),
             plan__slug=self.kwargs.get(self.plan_url_kwarg))
-
-    def get_success_url(self):
-        redirect_path = validate_redirect_url(
-            self.request.GET.get(REDIRECT_FIELD_NAME, None))
-        if hasattr(self, 'charge') and self.charge:
-            if redirect_path:
-                return '%s?%s=%s' % (
-                    reverse('saas_charge_receipt',
-                        args=(self.charge.customer, self.charge.processor_id)),
-                    REDIRECT_FIELD_NAME, redirect_path)
-            return reverse('saas_charge_receipt',
-                        args=(self.charge.customer, self.charge.processor_id))
-        if redirect_path:
-            return redirect_path
-        return reverse('saas_organization_profile', args=(self.customer,))
 
 
 class WithdrawView(BankMixin, FormView):

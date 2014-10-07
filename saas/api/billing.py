@@ -34,7 +34,7 @@ Add and remove plans from a user subscription cart.
    .. sourcecode:: http
 
     {
-        "plan": null
+        "plan": "premium",
     }
 
    **Example response**:
@@ -42,7 +42,7 @@ Add and remove plans from a user subscription cart.
    .. sourcecode:: http
 
     {
-        "plan": null
+        "plan": "premium",
     }
 
 .. http:delete:: /api/cart/:plan
@@ -60,6 +60,7 @@ Add and remove plans from a user subscription cart.
    OK
 """
 
+from django.db.models import Q
 from django.shortcuts import get_object_or_404
 from rest_framework import status
 from rest_framework.generics import CreateAPIView, DestroyAPIView
@@ -86,7 +87,7 @@ class CartItemSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = CartItem
-        fields = ('plan',)
+        fields = ('plan', 'nb_periods', 'first_name', 'last_name', 'email')
 
 
 class CartItemAPIView(CreateAPIView):
@@ -125,17 +126,52 @@ class CartItemAPIView(CreateAPIView):
         setattr(obj, 'user', self.request.user)
 
     def create_or_none(self, request):
-        serializer = self.get_serializer(data=request.DATA, files=request.FILES)
+        #pylint: disable=star-args
+        self.object = None
+        if 'plan' in request.DATA:
+            kwargs = {'user': self.request.user,
+                      'plan__slug': request.DATA['plan']}
+            if 'email' in request.DATA:
+                # We are attempting to buy one bluk subscriptions for multiple
+                # organizations here.
+                seat_queryset = self.model.objects.filter(
+                    email=request.DATA['email'], **kwargs)
+                if seat_queryset.exists():
+                    self.object = seat_queryset.get()
+                else:
+                    noseat_queryset = self.model.objects.filter(
+                        Q(email__isnull=True) | Q(email=''), **kwargs)
+                    if noseat_queryset.exists():
+                        self.object = noseat_queryset.get()
+            else:
+                queryset = self.model.objects.filter(**kwargs)
+                if queryset.exists():
+                    self.object = queryset.get()
+
+        serializer = self.get_serializer(
+            instance=self.object, data=request.DATA, files=request.FILES)
         if serializer.is_valid():
             self.pre_save(serializer.object)
-            try:
-                self.object = self.model.objects.get(
-                    user=self.request.user, plan__slug=serializer.data['plan'])
+            if serializer.data['email'] and not serializer.data['nb_periods']:
+                # When adding seated subscriptions to the cart (i.e.
+                # explicit email field) we must have a nb_periods,
+                # XXX a constraint from the user interface.
+                periods_queryset = self.model.objects.filter(
+                    **kwargs).exclude(nb_periods=0)
+                if periods_queryset.exists():
+                    setattr(serializer.object,
+                        'nb_periods', periods_queryset.first().nb_periods)
+                else:
+                    return Response({'nb_periods':
+                        ['Adding a seat and no period specified']},
+                        status=status.HTTP_400_BAD_REQUEST)
+            if self.object:
+                self.object = serializer.save()
                 self.post_save(self.object, created=False)
                 headers = self.get_success_headers(serializer.data)
                 return Response(serializer.data, status=status.HTTP_200_OK,
                     headers=headers)
-            except self.model.DoesNotExist:
+            else:
                 self.object = serializer.save(force_insert=True)
                 self.post_save(self.object, created=True)
                 headers = self.get_success_headers(serializer.data)

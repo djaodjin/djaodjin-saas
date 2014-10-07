@@ -1,25 +1,19 @@
 {% load currency %}
 
-<section id="balance">
-  {% if invoicables %}
+{% regroup invoicables by subscription.plan as invoicables_by_plan %}
+
+<fieldset>
   <table>
-    <tbody>
-      {% for entry in invoicables %}
+    {% for plan_group in invoicables_by_plan %}
+    <tbody data-plan="{{plan_group.grouper}}">
       <tr>
         <td colspan="3">
-          {% if entry.options|length == 0 %}
-          <strike>
-          {% endif %}
-            <em>{{entry.subscription.plan.get_title}}</em>
-            from <em>{{entry.subscription.plan.organization}}</em>
-          {% if entry.options|length == 0 %}
-          </strike>
-    &dash; <em>already subscribed until {{entry.subscription.ends_at}}</em>
-          {% endif %}
+          <em>{{plan_group.grouper.title}} from {{plan_group.grouper.organization.printable_name}}</em>
         </td>
       </tr>
+      {% for entry in plan_group.list %}
       {% for line in entry.lines %}
-      <tr>
+      <tr class="invoice-item">
         <td></td>
         <td>{{line.dest_amount|usd}}</td>
         <td>{{line.descr}}
@@ -28,27 +22,35 @@
       {% endfor %}
       {% for line in entry.options %}
       <tr>
-        <td><input type="radio" name="plan-{{entry.subscription.plan.slug}}" value="{{line.dest_amount}}" {% if forloop.first %}checked="1"{% endif %}></input></td>
+        <td><input type="radio" name="{{entry.name}}" value="{{line.dest_amount}}" {% if forloop.first %}checked="1"{% endif %}></input></td>
         <td>{{line.dest_amount|usd}}</td>
         <td>{{line.descr}}
         </td>
       </tr>
       {% endfor %}
       {% endfor %}
+      {% if is_bulk_buyer %}
+      {% comment %}
+      XXX We rely on the code in views/billing.py to insure there are lines
+      and no options when bulk_buyer is ``True``.
+      {% endcomment %}
+      <tr class="seat">
+        <td colspan="3">
+          <input class="seat-first-name" type="text" placeholder="First Name" />
+          <input class="seat-last-name" type="text" placeholder="Last Name" />
+          <input class="seat-email" type="text" placeholder="Email" />
+          <button type="button" class="add-seat" type="button">Add</button>
+        </td>
+      </tr>
+      {% endif %}
     </tbody>
+    {% endfor %}
     <tfooter>
       <tr>
         <th></th>
-        <th id="total_amount"></th>
+        <th class="total-amount">{{lines_amount|usd}}</th>
         <th>Charged Today</th>
       </tr>
     </tfooter>
   </table>
-  {% endif %}
-<script type="text/javascript">
-$(document).ready(function() {
-    $('input:radio').change(onSubscribeChargeChange);
-    updateTotalAmount($("form"));
-});
-</script>
-</section>
+</fieldset>

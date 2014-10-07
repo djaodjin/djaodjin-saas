@@ -22,7 +22,7 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-import datetime, urlparse
+import datetime, random, urlparse
 
 from django.conf import settings
 from django.http.request import split_domain_port, validate_host
@@ -51,3 +51,17 @@ def validate_redirect_url(next_url):
         if not (domain and validate_host(domain, allowed_hosts)):
             return None
     return parts.path
+
+
+def generate_random_slug(prefix=None):
+    """
+    This function is used, for example, to create Coupon code mechanically
+    when a customer pays for the subscriptions of an organization which
+    does not yet exist in the database.
+    """
+    suffix = "".join([random.choice("abcdefghijklmnopqrstuvwxyz0123456789-")
+                      for _ in range(50)])
+    if prefix:
+        return str(prefix) + suffix
+    return suffix
+

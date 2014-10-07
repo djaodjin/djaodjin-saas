@@ -102,7 +102,7 @@ class CouponRedeemAPIView(GenericAPIView):
    .. sourcecode:: http
 
     {
-        "details": "Coupon 'LABORDAY' was sucessful applied."
+        "details": "Coupon 'LABORDAY' was successfully applied."
     }
     """
     serializer_class = RedeemCouponSerializer
@@ -116,7 +116,9 @@ class CouponRedeemAPIView(GenericAPIView):
                 Q(ends_at__isnull=True) | Q(ends_at__gt=now),
                 code__iexact=coupon_code, # case incensitive search.
                 organization=item.plan.organization).first()
-            if coupon:
+            if coupon and (not coupon.plan or (coupon.plan == item.plan)):
+                # Coupon can be restricted to a plan or apply to all plans
+                # of an organization.
                 coupon_applied = True
                 item.coupon = coupon
                 item.save()
@@ -128,7 +130,7 @@ class CouponRedeemAPIView(GenericAPIView):
             coupon_code = serializer.data['code']
             if self.redeem(request, coupon_code):
                 details = {"details": (
-                        "Coupon '%s' was sucessful applied." % coupon_code)}
+                        "Coupon '%s' was successfully applied." % coupon_code)}
                 headers = {}
                 # XXX does not show details since we reload in djaodjin-saas.
                 messages.success(request, details['details'])

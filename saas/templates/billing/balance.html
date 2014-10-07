@@ -2,9 +2,11 @@
 {% load currency %}
 
 {% block content %}
-
+{% if invoicables %}
 {% include "saas/balance.html" %}
-
+{% else %}
+<p>You have no balance due.</p>
+{% endif %}
 <section id="charge">
 {% if not last_charge %}
 A charge of {{total_amount|usd}} will be created on your card. Thank you.

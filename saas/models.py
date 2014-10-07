@@ -49,6 +49,7 @@ from django.core.validators import MaxValueValidator
 from django.db import IntegrityError, models, transaction
 from django.db.models import Q, Sum
 from django.db.models.query import QuerySet
+from django.utils.http import quote
 from django.utils.decorators import method_decorator
 from django.utils.timezone import utc
 from django.utils.translation import ugettext_lazy as _
@@ -58,7 +59,7 @@ from saas import settings
 from saas import signals
 from saas import get_manager_relation_model, get_contributor_relation_model
 from saas.backends import PROCESSOR_BACKEND, ProcessorError
-from saas.utils import datetime_or_now
+from saas.utils import datetime_or_now, generate_random_slug
 
 from saas.humanize import (as_money, describe_buy_periods,
     DESCRIBE_BALANCE, DESCRIBE_BUY_PERIODS,
@@ -186,9 +187,12 @@ class Organization(models.Model):
 
     created_at = models.DateTimeField(auto_now_add=True)
     is_active = models.BooleanField(default=True)
+    is_bulk_buyer = models.BooleanField(default=False,
+        help_text=_("Enable this organization to pay subscriptions on behalf"\
+"of others."))
     full_name = models.CharField(_('full name'), max_length=60, blank=True)
     # contact by e-mail
-    email = models.EmailField(
+    email = models.EmailField(unique=True, # XXX
         help_text=_("Contact email for support related to the organization."))
     # contact by phone
     phone = models.CharField(max_length=50,
@@ -275,32 +279,67 @@ class Organization(models.Model):
         in the ledger. Associated subscriptions will be updated such that
         the ends_at is extended in the future.
         """
+        #pylint: disable=too-many-locals
         invoiced_items = []
+        new_organizations = []
         for invoicable in invoicables:
             subscription = invoicable['subscription']
-            assert subscription.organization == self
-            lines = invoicable['lines']
-            if len(lines) > 0:
-                # Otherwise there is nothing to invoice for the subscription.
-                if not subscription.id:
-                    subscription.save()
-                    cart_items = CartItem.objects.filter(
-                        user=user, plan=subscription.plan, recorded=False)
-                    if cart_items.exists():
-                        cart_item = cart_items.get()
-                        cart_item.recorded = True
-                        cart_item.save()
-                for invoiced_item in invoicable['lines']:
-                    # We can't set the event_id until the subscription is saved
-                    # in the database.
-                    invoiced_item.orig_units = subscription.id
-                    invoiced_item.event_id = subscription.id
-                    invoiced_items += [invoiced_item]
+            if not subscription.organization.id:
+                # When the organization does not exist into the database,
+                # we will create a random (i.e. hard to guess) one-time
+                # 100% discount coupon that will be emailed to the expected
+                # subscriber.
+                new_organizations += [subscription.organization]
+            else:
+                # When the organization does not exist into the database,
+                # the subscription will be created once the one-time
+                # 100% discout coupon is applied.
+                subscription.save()
+
+            # If the invoicable we are checking out is somehow related to
+            # a user shopping cart, we mark that cart item as recorded.
+            cart_items = CartItem.objects.filter(
+                user=user, plan=subscription.plan, recorded=False)
+            if cart_items.exists():
+                bulk_items = cart_items.filter(
+                    email=subscription.organization.email)
+                if bulk_items.exists():
+                    cart_item = bulk_items.get()
+                else:
+                    cart_item = cart_items.get()
+                cart_item.recorded = True
+                cart_item.save()
+
+            for invoiced_item in invoicable['lines']:
+                # We can't set the event_id until the subscription is saved
+                # in the database.
+                invoiced_item.event_id = subscription.id
+                invoiced_item.orig_units = Transaction.PLAN_UNITS
+                invoiced_items += [invoiced_item]
 
         invoiced_items = Transaction.objects.execute_order(invoiced_items, user)
-        return Charge.objects.charge_card(
-            self, invoiced_items, user,
+        charge = Charge.objects.charge_card(self, invoiced_items, user,
             token=token, remember_card=remember_card)
+
+        # Create a 100% discount coupon that will be emailed to
+        # the expected subscribers. We do it after the charge is created
+        # just that we don't inadvertently email new subscribers in case
+        # something goes wrong.
+        if new_organizations:
+            coupon = Coupon.objects.create(
+                code=generate_random_slug(),
+                organization=subscription.plan,
+                plan=subscription.plan,
+                percent=100, nb_attempts=len(new_organizations),
+                description='Bulk buying from %s (charge %s)' % (
+                    self.printable_name, charge))
+            LOGGER.info('Auto-generated Coupon #%s', coupon.id)
+            for organization in new_organizations:
+                signals.one_time_coupon_generated.send(
+                    sender=__name__, subscriber_email=organization.email,
+                    coupon=coupon, user=user)
+
+        return charge
 
     def remove_contributor(self, user):
         """
@@ -434,7 +473,7 @@ class Signature(models.Model):
 class CartItemManager(models.Manager):
 
     def get_cart(self, user):
-        return self.filter(user=user, recorded=False)
+        return self.filter(user=user, recorded=False).order_by('plan')
 
 
 class CartItem(models.Model):
@@ -464,11 +503,37 @@ class CartItem(models.Model):
     recorded = models.BooleanField(default=False,
         help_text=_("whever the item has been checked out or not."))
 
+    # The following fields are for number of periods pre-paid in advance.
+    nb_periods = models.PositiveIntegerField(default=0)
+
+    # The following fields are used for plans priced per seat. They do not
+    # refer to a User nor Organization key because those might not yet exist
+    # at the time the seat is created.
+    first_name = models.CharField(_('first name'), max_length=30, blank=True)
+    last_name = models.CharField(_('last name'), max_length=30, blank=True)
+    email = models.EmailField(_('email address'), blank=True)
+
     class Meta:
-        unique_together = ('user', 'plan')
+        unique_together = ('user', 'plan', 'email')
 
     def __unicode__(self):
         return '%s-%s' % (self.user, self.plan)
+
+    @property
+    def descr(self):
+        result = '%s from %s' % (
+            self.plan.get_title(), self.plan.organization.printable_name)
+        if self.email:
+            full_name = ' '.join([self.first_name, self.last_name]).strip()
+            result = 'Subscribe %s (%s) to %s' % (full_name, self.email, result)
+        return result
+
+    @property
+    def name(self):
+        result = 'cart-%s' % self.plan.slug
+        if self.email:
+            result = '%s-%s' % (result, quote(self.email))
+        return result
 
 
 class ChargeManager(models.Manager):
@@ -822,12 +887,17 @@ class Coupon(models.Model):
     #pylint: disable=super-on-old-class
     created_at = models.DateTimeField(auto_now_add=True)
     code = models.SlugField()
+    description = models.TextField(null=True, blank=True)
     percent = models.PositiveSmallIntegerField(default=0,
         validators=[MaxValueValidator(100)],
         help_text="Percentage discounted")
+    # restrict use in scope
     organization = models.ForeignKey(Organization)
+    plan = models.ForeignKey('saas.Plan', null=True, blank=True)
+    # restrict use in time and count.
     ends_at = models.DateTimeField(null=True, blank=True)
-    description = models.TextField(null=True, blank=True)
+    nb_attempts = models.IntegerField(null=True, blank=True,
+        help_text="Number of times the coupon can be used")
 
     class Meta:
         unique_together = ('organization', 'code')
@@ -1095,7 +1165,7 @@ class Subscription(models.Model):
             created_at=created_at,
             descr=descr,
             orig_amount=nb_periods,
-            orig_units=self.plan.id,
+            orig_units=Transaction.PLAN_UNITS,
             orig_account=Transaction.INCOME,
             orig_organization=self.plan.organization,
             dest_amount=amount,
@@ -1145,23 +1215,28 @@ class TransactionManager(models.Manager):
         """
         invoiced_items_ids = []
         for invoiced_item in invoiced_items:
-            pay_now = True
-            subscription = Subscription.objects.get(pk=invoiced_item.event_id)
-            if invoiced_item.orig_units != 'usd':
-                # XXX need to reverse and maybe introduce sepical *period* unit
-                subscription.ends_at = subscription.plan.end_of_period(
-                    subscription.ends_at, invoiced_item.orig_amount)
-            subscription.save()
-            if (subscription.plan.unlock_event
-                and invoiced_item.dest_amount == 0):
-                # We are dealing with access now, pay later, orders.
-                invoiced_item.dest_amount = subscription.plan.period_amount
-                pay_now = False
-            invoiced_item.orig_amount = invoiced_item.dest_amount
-            invoiced_item.orig_units = invoiced_item.dest_units
-            invoiced_item.save()
-            if pay_now:
-                invoiced_items_ids += [invoiced_item.id]
+            if invoiced_item.event_id:
+                # XXX When an customer pays on behalf of an organization
+                # which does not exist in the database, we cannot create
+                # the subscription, hence we do not have an event_id
+                # at this point.
+                pay_now = True
+                subscription = Subscription.objects.get(
+                    pk=invoiced_item.event_id)
+                if invoiced_item.orig_units == Transaction.PLAN_UNITS:
+                    subscription.ends_at = subscription.plan.end_of_period(
+                        subscription.ends_at, invoiced_item.orig_amount)
+                subscription.save()
+                if (subscription.plan.unlock_event
+                    and invoiced_item.dest_amount == 0):
+                    # We are dealing with access now, pay later, orders.
+                    invoiced_item.dest_amount = subscription.plan.period_amount
+                    pay_now = False
+                invoiced_item.orig_amount = invoiced_item.dest_amount
+                invoiced_item.orig_units = invoiced_item.dest_units
+                invoiced_item.save()
+                if pay_now:
+                    invoiced_items_ids += [invoiced_item.id]
         signals.order_executed.send(
             sender=__name__, invoiced_items=invoiced_items_ids, user=user)
         return self.filter(id__in=invoiced_items_ids)
@@ -1283,7 +1358,10 @@ class Transaction(models.Model):
 
     use 'ledger register' for tax acrual tax reporting.
     '''
+    PLAN_UNITS = '___'
+
     # provider side
+    BACKLOG = 'Backlog'
     FUNDS = 'Funds'         # <= 0 receipient side
     INCOME = 'Income'       # <= 0 receipient side
     WITHDRAW = 'Withdraw'
