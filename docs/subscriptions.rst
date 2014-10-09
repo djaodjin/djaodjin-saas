@@ -1,5 +1,9 @@
-Subscriptions
-=============
+The Subscription Cycle
+======================
+
+The ``Subscription`` model (see :doc:`models <models>`) is the corner stone
+on which access to the service is authorized. It is also a fundamental block
+of the :doc:`Flexible Security Framework <security>`.
 
 .. autoclass:: saas.models.Subscription
 
@@ -12,7 +16,7 @@ at the begining of each billing cycle for all services subscribed to.
 .. image:: timeline.*
 
 Thus all subscriptions are charged as a single credit card charge through
-the payment processor (by default Stripe).
+the payment processor (by default `Stripe <https://stripe.com/>`_).
 
 In normal business operations, service is available as soon as customer
 subscribes; service becomes unavailable at the end of a billing cycle.

@@ -31,13 +31,14 @@
 """
 A billing profile (credit card and deposit bank account) is represented by
 an ``Organization``.
-Organizations subscribe to services provided by other Organizations
-through a subscription ``Plan``.
-There are mechanism provided to authenticate as an Organization. Instead
-``User`` authenticate with the application (through a login page
-or an API token). They are then able to access URLs related to an Organization
-based on their relation with that Organization. Two sets or relations
-are supported: managers and contributors (for details see
+An organization (subscriber) subscribes to services provided by another
+organization (provider) through a ``Subscription`` to a ``Plan``.
+
+There are no mechanism provided to authenticate as an ``Organization``.
+Instead ``User`` authenticate with the application (through a login page
+or an API token). They are then able to access URLs related
+to an ``Organization`` based on their relation with that ``Organization``.
+Two sets or relations are supported: managers and contributors (for details see
 :doc:`Security <security>`).
 """
 
@@ -192,7 +193,8 @@ class Organization(models.Model):
 "of others."))
     full_name = models.CharField(_('full name'), max_length=60, blank=True)
     # contact by e-mail
-    email = models.EmailField(unique=True, # XXX
+    email = models.EmailField(# XXX if we use unique=True here, the project
+                              #     wizard must be changed.
         help_text=_("Contact email for support related to the organization."))
     # contact by phone
     phone = models.CharField(max_length=50,
@@ -1112,8 +1114,8 @@ class SubscriptionManager(models.Manager):
 class Subscription(models.Model):
     """
     ``Subscription`` represent a service contract (``Plan``) between
-    two ``Organization``, a client and a provider, that is paid by the client
-    to the provider over the lifetime of the subscription.
+    two ``Organization``, a subscriber and a provider, that is paid
+    by the subscriber to the provider over the lifetime of the subscription.
     """
     objects = SubscriptionManager()
 
@@ -1147,6 +1149,8 @@ class Subscription(models.Model):
             yyyy/mm/dd description
                    customer:Payable                       amount
                    provider:Receivable
+
+        Note: nb_periods is stored in the Transaction orig_amount.
         """
         if not descr:
             amount = int(

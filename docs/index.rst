@@ -21,6 +21,8 @@ Contents:
    :maxdepth: 1
 
    subscriptions
+   orders
+   ledgers
    models
    security
 

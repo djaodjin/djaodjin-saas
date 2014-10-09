@@ -95,6 +95,9 @@ class CartItemAPIView(CreateAPIView):
     model = CartItem
     serializer_class = CartItemSerializer
 
+    authentication_classes = [] # XXX workaround until we figure what is wrong
+                                # with proxy and csrf
+
     def create_in_session(self, request):
         serializer = self.get_serializer(data=request.DATA, files=request.FILES)
         if serializer.is_valid():

@@ -23,17 +23,16 @@
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 """
-Views related to billing information
-
-There are two views where invoicables are presented and charges are created:
+The two primary views to place an order are ``CartView`` and ``BalanceView``.
+``CartView`` is used to implement the checkout and place a new order while
+``BalanceView`` is used to pay an ``Organization`` balance due, either because
+a charge wasn't sucessful and/or the provider implements a subscribe-pay-later
+policy.
 
 1. ``CartView`` for items in the cart, create new subscriptions
    or pay in advance.
 
 2. ``BalanceView`` for subscriptions with balance dues
-
-
-Note: nb_periods is stored in the Transaction orig_amount.
 """
 
 import copy, logging
@@ -363,7 +362,32 @@ class TransferListView(BankMixin, ListView):
 
 class CartBaseView(InvoicablesFormMixin, FormView):
     """
-    Subscribe an organization to various plans and collect payment due upfront.
+    The main pupose of ``CartBaseView`` is generate an list of invoicables
+    from ``CartItem`` records associated to a ``request.user``.
+
+    The invoicables list is generated from the following schema:
+
+        invoicables = [
+                { "subscription": Subscription,
+                  "lines": [Transaction, ...],
+                  "options": [Transaction, ...],
+                }, ...]
+
+    Each subscription is either an actual record in the database (paying
+    more periods on a subscription) or ``Subscription`` instance that only
+    exists in memory but will be committed on checkout.
+
+    The ``Transaction`` list keyed by "lines" contains in-memory instances
+    for the invoice items that will be committed and charged when the order
+    is finally placed.
+
+    The ``Transaction`` list keyed by "options" contains in-memory instances
+    the user can choose from. Options usually include various number of periods
+    that can be pre-paid now for a discount. ex:
+
+        $189.00 Subscription to streetside until 2014/11/07 (1 month)
+        $510.30 Subscription to streetside until 2015/01/07 (3 months, 10% off)
+        $907.20 Subscription to streetside until 2015/04/07 (6 months, 20% off)
     """
 
     def dispatch(self, *args, **kwargs):
@@ -444,17 +468,6 @@ class CartBaseView(InvoicablesFormMixin, FormView):
         return option_items
 
     def get_queryset(self):
-        """
-        Returns a set of invoicables grouped by ``Plan`` from the items
-        in a user's cart.
-
-        Schema:
-        invoicables = [
-                { "subscription": Subscription,
-                  "lines": [Transaction, ...],
-                  "options": [Transaction, ...],
-                }, ...]
-        """
         self.customer = self.get_organization()
         created_at = datetime_or_now()
         prorate_to_billing = False
@@ -585,6 +598,12 @@ class CartSeatsView(CartPeriodsView):
 
 
 class CartView(CardInvoicablesFormMixin, CartSeatsView):
+    """
+    ``CartView`` derives from ``CartSeatsView`` which itself derives from
+    ``CartPeriodsView``, all of which overrides the ``get`` method to redirect
+    to the appropriate step in the order pipeline no matter the original entry
+    point.
+    """
 
     template_name = 'billing/cart.html'
 
@@ -621,6 +640,18 @@ class CouponListView(ProviderMixin, ListView):
 class BalanceView(CardInvoicablesFormMixin, FormView):
     """
     Set of invoicables for all subscriptions which have a balance due.
+
+    While ``CartView`` generates the invoicables from the ``CartItem``
+    model, ``BalanceView`` generates the invoicables from ``Subscription``
+    for which the amount payable by the customer is positive.
+
+    The invoicables list is generated from the following schema:
+
+        invoicables = [
+                { "subscription": Subscription,
+                  "lines": [Transaction, ...],
+                  "options": [Transaction, ...],
+                }, ...]
     """
 
     plan_url_kwarg = 'subscribed_plan'
@@ -638,15 +669,6 @@ class BalanceView(CardInvoicablesFormMixin, FormView):
         return []
 
     def get_queryset(self):
-        """
-        Create a set of invoicables from balances due on subscriptions
-
-        self.invoicables = [
-            { "subscription": Subscription,
-              "lines": [Transaction, ...],
-              "options": [Transaction, ...],
-            }, ...]
-        """
         self.customer = self.get_organization()
         invoicables = []
         created_at = datetime_or_now()
