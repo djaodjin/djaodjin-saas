@@ -110,7 +110,7 @@ class CartItemAPIView(CreateAPIView):
             for item in cart_items:
                 found = True
                 # all serialized fields match ...
-                for field in serializer_class._meta.fields:
+                for field in self.serializer_class.meta.fields:
                     if field in serializer.data and field in item:
                         found &= (serializer.data[field] == item[field])
                 if found:
