@@ -95,8 +95,10 @@ class CartItemAPIView(CreateAPIView):
     model = CartItem
     serializer_class = CartItemSerializer
 
-    authentication_classes = [] # XXX workaround until we figure what is wrong
-                                # with proxy and csrf
+    # XXX This was a workaround until we figure what is wrong with proxy
+    # and csrf, unfortunately it prevents authenticated users to add into
+    # their db cart, instead put their choices into the unauth session.
+    # authentication_classes = []
 
     def create_in_session(self, request):
         serializer = self.get_serializer(data=request.DATA, files=request.FILES)
@@ -105,10 +107,13 @@ class CartItemAPIView(CreateAPIView):
             if request.session.has_key('cart_items'):
                 cart_items = request.session['cart_items']
             found = False
-            candidate = serializer.data['plan']
             for item in cart_items:
-                if item['plan'] == candidate:
-                    found = True
+                found = True
+                # all serialized fields match ...
+                for field in serializer_class._meta.fields:
+                    if field in serializer.data and field in item:
+                        found &= (serializer.data[field] == item[field])
+                if found:
                     break
             if not found:
                 cart_items += [serializer.data] # because unable to serialize

@@ -65,16 +65,16 @@ def _session_cart_to_database(request):
     """
     if request.session.has_key('cart_items'):
         for item in request.session['cart_items']:
-            plan = Plan.objects.get(slug=item['plan'])
+            item['plan'] = Plan.objects.get(slug=item['plan'])
+            item['user'] = request.user
             try:
-                CartItem.objects.create(user=request.user, plan=plan)
+                CartItem.objects.create(**item)
             except IntegrityError: #pylint: disable=catching-non-exception
                 # This might happen during testing of the place order
                 # through the test driver. Either way, if the item is
                 # already in the cart, it is OK to forget about this
                 # exception.
-                LOGGER.warning('Plan %d is already in %d cart db.',
-                               plan.id, request.user.id)
+                LOGGER.warning('%s is already in cart db.', item)
         del request.session['cart_items']
 
 
@@ -112,6 +112,9 @@ class CardFormMixin(OrganizationMixin):
     def get_context_data(self, **kwargs):
         context = super(CardFormMixin, self).get_context_data(**kwargs)
         context.update(PROCESSOR_BACKEND.retrieve_card(self.customer))
+        if not context['STRIPE_PUB_KEY']:
+            # XXX helpful for debugging test infrastructure.
+            messages.error(self.request, "STRIPE_PUB_KEY is not defined.")
         return context
 
 
@@ -211,11 +214,11 @@ class CardInvoicablesFormMixin(CardFormMixin, InvoicablesFormMixin):
             #    is passed for the value of the matching POST parameter.
             plan = invoicable['subscription'].plan
             plan_key = invoicable['name']
+            if self.sole_provider is None:
+                self.sole_provider = plan.organization
+            elif self.sole_provider != plan.organization:
+                self.sole_provider = False
             if plan_key in form.cleaned_data:
-                if self.sole_provider is None:
-                    self.sole_provider = plan.organization
-                elif self.sole_provider != plan.organization:
-                    self.sole_provider = False
                 selected_line = int(form.cleaned_data[plan_key])
                 for line in invoicable['options']:
                     if line.dest_amount == selected_line:
