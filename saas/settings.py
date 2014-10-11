@@ -29,28 +29,34 @@ the appropriate settings.
 """
 from django.conf import settings
 
+_SETTINGS = {
+    'CREDIT_ON_CREATE': 1000,
+    'CONTRIBUTOR_RELATION': 'saas.Organization_Contributors',
+    'MANAGER_RELATION': 'saas.Organization_Managers',
+    'PROCESSOR_HOOK_URL': 'postevent',
+    'PROVIDER_CALLABLE': None,
+    'SKIP_PERMISSION_CHECK': False,
+    'PROVIDER_ID': getattr(settings, 'SITE_ID', 1),
+    'PROCESSOR_ID': 1,
+}
+_SETTINGS.update(getattr(settings, 'SAAS', {}))
+
+
 ACCT_REGEX = r'[a-zA-Z0-9_\-]+'
+AUTH_USER_MODEL = getattr(
+    settings, 'AUTH_USER_MODEL', 'django.contrib.auth.models.User')
 
-AUTH_USER_MODEL = getattr(settings, 'AUTH_USER_MODEL',
-                          'django.contrib.auth.models.User')
-
-CREDIT_ON_CREATE = getattr(settings, 'SAAS_CREDIT_ON_CREATE', 1000)
-
-CONTRIBUTOR_RELATION = getattr(settings, 'SAAS_CONTRIBUTOR_RELATION',
-                               'saas.Organization_Contributors')
-
-MANAGER_RELATION = getattr(settings, 'SAAS_MANAGER_RELATION',
-                           'saas.Organization_Managers')
-
-PROCESSOR_HOOK_URL = getattr(settings, 'SAAS_PROCESSOR_HOOK_URL', "postevent")
-
-PROVIDER_CALLABLE = getattr(settings, 'SAAS_PROVIDER_CALLABLE', None)
-
-SITE_ID = getattr(settings, 'SAAS_SITE_ID', getattr(settings, 'SITE_ID', 1))
+CREDIT_ON_CREATE = _SETTINGS.get('CREDIT_ON_CREATE')
+CONTRIBUTOR_RELATION = _SETTINGS.get('CONTRIBUTOR_RELATION')
+MANAGER_RELATION = _SETTINGS.get('MANAGER_RELATION')
+PROCESSOR_HOOK_URL = _SETTINGS.get('PROCESSOR_HOOK_URL')
+PROVIDER_CALLABLE = _SETTINGS.get('PROVIDER_CALLABLE')
+PROVIDER_ID = _SETTINGS.get('PROVIDER_ID')
+PROCESSOR_ID = _SETTINGS.get('PROCESSOR_ID')
 
 # BE EXTRA CAREFUL! This variable is used to bypass PermissionDenied
 # exceptions. It is solely intended as a debug flexibility nob.
-SKIP_PERMISSION_CHECK = getattr(settings, 'SAAS_SKIP_PERMISSION_CHECK', False)
+SKIP_PERMISSION_CHECK = _SETTINGS.get('SKIP_PERMISSION_CHECK')
 
 STRIPE_PRIV_KEY = getattr(settings, 'STRIPE_PRIV_KEY', "Undefined")
 STRIPE_PUB_KEY = getattr(settings, 'STRIPE_PUB_KEY', "Undefined")

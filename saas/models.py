@@ -365,16 +365,20 @@ class Organization(models.Model):
         """
         return PROCESSOR_BACKEND.retrieve_bank(self)
 
-    def processor_fee(self, processor, total_amount):
+    def processor_fee(self, total_amount, processor=None):
         """
         Returns fee amount paid to processor.
         """
-        try:
-            provider_subscription = Subscription.objects.get(
-                organization=self, plan__organization=processor)
-            fee_amount = provider_subscription.plan.prorate_transaction(
-                total_amount)
-        except Subscription.DoesNotExist:
+        fee_amount = 0
+        if processor:
+            try:
+                provider_subscription = Subscription.objects.get(
+                    organization=self, plan__organization=processor)
+                fee_amount = provider_subscription.plan.prorate_transaction(
+                    total_amount)
+            except Subscription.DoesNotExist:
+                processor = None
+        if not processor:
             fee_amount = PROCESSOR_BACKEND.prorate_transaction(
                 total_amount)
         return fee_amount
@@ -622,7 +626,7 @@ class Charge(models.Model):
 
     @staticmethod
     def get_processor():
-        return Organization.objects.get(pk=settings.SITE_ID)
+        return Organization.objects.get(pk=settings.PROCESSOR_ID)
 
     @property
     def invoiced_total_amount(self):
@@ -703,7 +707,7 @@ class Charge(models.Model):
             subscription = Subscription.objects.get(pk=invoiced_item.event_id)
             provider = subscription.plan.organization
             total_amount = invoiced_item.dest_amount
-            fee_amount = processor.processor_fee(total_amount)
+            fee_amount = provider.processor_fee(total_amount, processor)
             distribute_amount = invoiced_item.dest_amount - fee_amount
             if fee_amount > 0:
                 # Example:
@@ -1134,6 +1138,13 @@ class Subscription(models.Model):
     def is_locked(self):
         return Transaction.objects.get_subscription_balance(self) > 0
 
+    def charge_in_progress(self):
+        queryset = Charge.objects.filter(
+            customer=self.organization, state=Charge.CREATED)
+        if queryset.exists():
+            return queryset.first()
+        return None
+
     def unsubscribe_now(self):
         self.ends_at = datetime_or_now()
         self.save()
@@ -1429,7 +1440,7 @@ def get_current_provider():
     if settings.PROVIDER_CALLABLE:
         from saas.compat import import_string
         return import_string(settings.PROVIDER_CALLABLE)()
-    return Organization.objects.get(pk=settings.SITE_ID)
+    return Organization.objects.get(pk=settings.PROVIDER_ID)
 
 
 def sum_dest_amount(transactions):

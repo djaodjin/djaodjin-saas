@@ -26,7 +26,6 @@ import re
 from datetime import datetime, timedelta
 
 from django import template
-from django.conf import settings
 from django.core.exceptions import PermissionDenied
 from django.core.urlresolvers import reverse
 from django.utils.safestring import mark_safe
@@ -38,6 +37,7 @@ from saas.models import (Organization, Subscription, Transaction,
     get_current_provider)
 from saas.views.auth import valid_manager_for_organization
 from saas.compat import User
+from saas import settings
 
 
 register = template.Library()
@@ -66,6 +66,25 @@ def is_debit(transaction, organization):
 def is_incomplete_month(date):
     return ((isinstance(date, basestring) and not date.endswith('01'))
         or (isinstance(date, datetime) and date.day != 1))
+
+
+@register.filter
+def is_manager(request, organization):
+    try:
+        valid_manager_for_organization(request.user, organization)
+    except PermissionDenied:
+        return False
+    return True
+
+
+@register.filter
+def is_provider(organization):
+    return organization.plans.exists()
+
+
+@register.filter
+def is_site_owner(organization):
+    return organization.pk == settings.PROVIDER_ID
 
 
 @register.filter()
@@ -125,25 +144,6 @@ def more_managed_organizations(user):
     Returns True if the user manages more than 8 organizations.
     """
     return user.manages.count() >= 8
-
-
-@register.filter
-def is_manager(request, organization):
-    try:
-        valid_manager_for_organization(request.user, organization)
-    except PermissionDenied:
-        return False
-    return True
-
-
-@register.filter
-def is_site_owner(organization):
-    return organization.pk == settings.SITE_ID
-
-
-@register.filter
-def is_provider(organization):
-    return organization.plans.exists()
 
 
 @register.filter

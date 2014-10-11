@@ -113,11 +113,15 @@ function toggleActivatePlan(button, urls) {
 
 
 function CartItem(options) {
-    this.item = options.plan;
+    this.item = {};
+    var restricted = ['plan', 'nb_periods', 'first_name', 'last_name', 'email'];
+    for(var i=0; i<restricted.length; ++i ){
+        var key = restricted[i];
+        if( key in options ) {
+            this.item[key] = options[key];
+        }
+    }
     this.urls = options.urls;
-    this.first_name = options.first_name;
-    this.last_name = options.last_name;
-    this.email = options.email;
 };
 
 
@@ -126,10 +130,7 @@ CartItem.prototype = {
         var self = this;
         $.ajax({ type: "POST", // XXX Might still prefer to do PUT on list.
                  url: self.urls.saas_api_cart,
-                 data: JSON.stringify({"plan": self.item,
-                                       "first_name": self.first_name,
-                                       "last_name": self.last_name,
-                                       "email": self.email}),
+                 data: JSON.stringify(self.item),
                  datatype: "json",
                  contentType: "application/json; charset=utf-8",
                  success: successFunc,

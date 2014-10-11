@@ -18,7 +18,15 @@
         </td>
         <td>{{subscription.ends_at}}</td>
         <td>
-          {% if subscription.is_locked %}<a href="{% url 'saas_organization_balance' subscription.organization subscription %}">Unlock</a>{% endif %}
+          {% if subscription.is_locked %}
+          {% with subscription.charge_in_progress as charge %}
+          {% if charge %}
+          <a href="{% url 'saas_charge_receipt' subscription.organization charge %}">Charge in progress</a>
+          {% else %}
+          <a href="{% url 'saas_organization_balance' subscription.organization subscription %}">Unlock</a>
+          {% endif %}
+          {% endwith %}
+          {% endif %}
         </td>
         <td>
           <!-- XXX Cancel Subscription -->
