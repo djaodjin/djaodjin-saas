@@ -1,0 +1,80 @@
+{% extends "saas/base.html" %}
+
+{% block saas_content %}
+<section ng-app="subscriberApp">
+    <div ng-controller="subscriberCtrl">
+        <h1>Subscriber pipeline</h1>
+        <form>
+            <div>
+                <label for="start_at">
+                    From
+                </label>
+                <input id="start_at" type="text" ng-model="start_at" placeholder="date" />
+            </div>
+            <div>
+                <label for="ends_at">
+              To
+                </label>
+                <input id="ends_at" type="text" ng-model="ends_at" placeholder="date" />
+            </div>
+            <div>
+                <button ng-click="refresh()">Refresh</button>
+            </div>
+        </form>
+        <div>
+            <div>
+                <h2>Registered</h2>
+                <ul>
+                    <li ng-repeat="organization in registered" ng-cloak>
+                        [[organization.full_name]]
+                    </li>
+                </ul>
+            </div>
+            <div>
+                <h2>Subscribed</h2>
+                <ul>
+                    <li ng-repeat="organization in subscribed" ng-cloak>
+                        [[organization.full_name]]
+                    </li>
+                </ul>
+            </div>
+            <div>
+                <h2>Ending</h2>
+                <ul>
+                    <li ng-repeat="organization in ending" ng-cloak>
+                        [[organization.full_name]]
+                    </li>
+                </ul>
+            </div>
+            <div>
+                <h2>Churned</h2>
+                <ul>
+                    <li ng-repeat="organization in churned" ng-cloak>
+                        [[organization.full_name]]
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}
+
+{% block saas_bodyscripts %}
+<script>
+/* Implementation Note: Not including a list of dependent modules
+   (2nd parameter to `module`) "re-opens" the module for additional
+   configuration. */
+var app = angular.module('subscriberApp');
+/* Add the CSRF Token: */
+app.config(['$interpolateProvider', '$httpProvider',
+           function($interpolateProvider, $httpProvider) {
+    $httpProvider.defaults.headers.common['X-CSRFToken'] = '{{ csrf_token|escapejs }}';
+    /* Makes it easier to separate between django and angularjs templates */
+    $interpolateProvider.startSymbol('[[');
+    $interpolateProvider.endSymbol(']]');
+}]);
+app.constant('urls', {
+    saas_api_subscriber_pipeline: "{% url 'saas_api_subscriber_pipeline' %}",
+});
+</script>
+{% endblock %}

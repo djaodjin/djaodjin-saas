@@ -22,13 +22,16 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+import datetime
+
 from rest_framework.views import APIView
 from rest_framework.response import Response
 
 from saas.mixins import ProviderMixin
-from saas.models import Transaction
+from saas.models import Transaction, Organization
 from saas.utils import datetime_or_now
 from saas.managers.metrics import monthly_balances
+from saas.api.serializers import OrganizationSerializer
 
 
 class RevenueMetricsAPIView(ProviderMixin, APIView):
@@ -38,9 +41,57 @@ class RevenueMetricsAPIView(ProviderMixin, APIView):
 
     def get(self, request, *args, **kwargs): #pylint: disable=unused-argument
         organization = self.get_organization()
-        at_date = datetime_or_now(request.get('at', None))
+        at_date = datetime_or_now(request.DATA.get('at', None))
         return Response([{
             'key': Transaction.INCOME,
             'values': monthly_balances(
                         organization, Transaction.INCOME, at_date)
             }])
+
+
+class SubscriberPipelineAPIView(ProviderMixin, APIView):
+
+    serializer_class = OrganizationSerializer
+
+
+    def get(self, request, *args, **kwargs):
+        #pylint: disable=no-member
+        self.provider = self.get_organization()
+        start_at = datetime_or_now(request.DATA.get('start_at', None))
+        ends_at = datetime_or_now(request.DATA.get('ends_at', None))
+        serializer = self.serializer_class()
+        return Response({
+            'start_at': start_at,
+            'ends_at': ends_at,
+            'churned': [serializer.to_native(organization)
+                         for organization in self.churned(start_at, ends_at)],
+            'ending': [serializer.to_native(organization)
+                         for organization in self.ending(ends_at)],
+            'registered': [serializer.to_native(organization)
+                        for organization in self.registered()],
+            'subscribed': [serializer.to_native(organization)
+                        for organization in self.subscribed(ends_at)],
+            })
+
+    def churned(self, start_time, end_time):
+        return Organization.objects.filter(
+            subscription__plan__organization=self.provider,
+            subscription__ends_at__gte=start_time,
+            subscription__ends_at__lt=end_time)
+
+    def ending(self, end_time):
+        return Organization.objects.filter(
+            subscription__plan__organization=self.provider,
+            subscription__created_at__lt=end_time,
+            subscription__ends_at__gte=end_time,
+            subscription__ends_at__lt=end_time + datetime.timedelta(days=5))
+
+    @staticmethod
+    def registered():
+        return Organization.objects.filter(subscription__isnull=True)
+
+    def subscribed(self, end_time):
+        return Organization.objects.filter(
+            subscription__plan__organization=self.provider,
+            subscription__created_at__lt=end_time,
+            subscription__ends_at__gte=end_time + datetime.timedelta(days=5))

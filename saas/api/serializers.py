@@ -22,18 +22,14 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-"""
-URLs API for provider resources related to billing
-"""
+from rest_framework import serializers
+from saas.models import Organization
 
-from django.conf.urls import patterns, url
+#pylint: disable=no-init,old-style-class
 
-from saas.api.metrics import RevenueMetricsAPIView, SubscriberPipelineAPIView
+class OrganizationSerializer(serializers.ModelSerializer):
 
-urlpatterns = patterns('',
-    url(r'^metrics/pipeline/?',
-        SubscriberPipelineAPIView.as_view(),
-        name='saas_api_subscriber_pipeline'),
-    url(r'^metrics/revenue/?',
-        RevenueMetricsAPIView.as_view(), name='saas_api_metrics_revenue'),
-)
+    class Meta:
+        model = Organization
+        fields = ('slug', 'full_name', )
+        read_only_fields = ('slug', )

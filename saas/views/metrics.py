@@ -114,6 +114,12 @@ class RevenueMetricsView(ProviderMixin, TemplateView):
         return context
 
 
+class SubscriberPipelineView(ProviderMixin, TemplateView):
+
+    template_name = "saas/subscriber_pipeline.html"
+
+
+
 class UsageMetricsView(ProviderMixin, TemplateView):
 
     template_name = "saas/usage_chart.html"

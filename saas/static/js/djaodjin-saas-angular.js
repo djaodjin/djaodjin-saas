@@ -10,6 +10,8 @@ angular.module('managerApp', ['ui.bootstrap', 'ngRoute',
     'managerControllers', 'managerServices']);
 angular.module('subscriptionApp', ['ui.bootstrap', 'ngRoute',
     'subscriptionControllers', 'subscriptionServices']);
+angular.module('subscriberApp', ['ui.bootstrap', 'ngRoute',
+    'subscriberControllers']);
 
 
 /*=============================================================================
@@ -21,6 +23,7 @@ var contributorServices = angular.module('contributorServices', ['ngResource']);
 var managerServices = angular.module('managerServices', ['ngResource']);
 var subscriptionServices = angular.module('subscriptionServices', [
     'ngResource']);
+
 
 couponServices.factory('Coupon', ['$resource', 'urls',
   function($resource, urls){
@@ -48,7 +51,6 @@ subscriptionServices.factory('Subscription', ['$resource', 'urls',
         urls.saas_api_subscription_url + '/:plan', {plan:'@plan'});
   }]);
 
-
 /*=============================================================================
   Controllers
   ============================================================================*/
@@ -57,6 +59,7 @@ var couponControllers = angular.module('couponControllers', []);
 var contributorControllers = angular.module('contributorControllers', []);
 var managerControllers = angular.module('managerControllers', []);
 var subscriptionControllers = angular.module('subscriptionControllers', []);
+var subscriberControllers = angular.module('subscriberControllers', []);
 
 couponControllers.controller('CouponListCtrl',
     ['$scope', '$http', '$timeout', 'Coupon', 'urls',
@@ -107,13 +110,12 @@ couponControllers.controller('CouponListCtrl',
 
     $scope.editDescription = function (idx){
         $scope.edit_description = Array.apply(null, Array($scope.coupons.length)).map(function() {
-            return false; 
+            return false;
         });
         $scope.edit_description[idx] = true;
         $timeout(function(){
             angular.element('#input_description').focus();
         }, 100);
-        
     };
 
     $scope.saveDescription = function(event, coupon, idx){
@@ -211,5 +213,32 @@ subscriptionControllers.controller('subscriptionListCtrl',
             $http.$delete(url).then(function(data){ location.reload(); });
         }
     }
+}]);
+
+subscriberControllers.controller('subscriberCtrl',
+    ['$scope', '$http', 'urls',
+    function($scope, $http, urls) {
+
+    $scope.start_at = new Date();
+    $scope.ends_at = new Date();
+    $scope.dateOptions = {formatYear: 'yy', startingDay: 1};
+    $scope.formats = ['dd-MMMM-yyyy', 'yyyy/MM/dd', 'dd.MM.yyyy', 'shortDate'];
+    $scope.format = $scope.formats[0];
+
+    $scope.registered = [];
+    $scope.subscribed = [];
+    $scope.ending = [];
+    $scope.churned = [];
+
+    $scope.refresh = function() {
+        $http.get(urls.saas_api_subscriber_pipeline).success(function(data) {
+            $scope.registered = data.registered;
+            $scope.subscribed = data.subscribed;
+            $scope.ending = data.ending;
+            $scope.churned = data.churned;
+        });
+    }
+
+    $scope.refresh();
 }]);
 
