@@ -229,17 +229,14 @@ subscriberControllers.controller('subscriberCtrl',
     $scope.formats = ['dd-MMMM-yyyy', 'yyyy/MM/dd', 'dd.MM.yyyy', 'shortDate'];
     $scope.format = $scope.formats[0];
 
-    $scope.registered = [];
-    $scope.subscribed = [];
-    $scope.ending = [];
-    $scope.churned = [];
+    // initialized with *maxSize* empty items for layout during first load.
+    $scope.registered = [{}, {}, {}, {}, {}, {}, {}, {}, {}, {}];
+    $scope.subscribed = [{}, {}, {}, {}, {}, {}, {}, {}, {}, {}];
+    $scope.churned = [{}, {}, {}, {}, {}, {}, {}, {}, {}, {}];
 
     $scope.maxSize = 10;  // Limit number for pagination size
     $scope.numPages = 5;  // Total number of pages to display
-    $scope.churnedCurrentPage = 1;
-    $scope.endingCurrentPage = 1;
-    $scope.registeredCurrentPage = 1;
-    $scope.subscribedCurrentPage = 1;
+    $scope.currentPage = {churned: 1, registered: 1, subscribed: 1};
 
     // calendar for start_at and ends_at
     $scope.open = function($event, date_at) {
@@ -264,47 +261,72 @@ subscriberControllers.controller('subscriberCtrl',
         $scope.refresh();
     }, true);
 
-    $scope.churnedPageChanged = function() {
-        console.log('Churned page changed to: ' + $scope.churnedCurrentPage);
+    $scope.pageChanged = function(dataset) {
+        $scope.refresh(dataset);
     };
 
-    $scope.endingPageChanged = function() {
-        console.log('Ending page changed to: ' + $scope.endingCurrentPage);
-    };
+    $scope.refresh = function(dataset) {
+        if( typeof dataset === "undefined" || dataset == 'churned' ) {
+            params = {start_at: $scope.start_at, ends_at: $scope.ends_at};
+            if( $scope.currentPage.churned > 1 ) {
+                params['offset'] = ($scope.currentPage.churned - 1)
+                    * $scope.maxSize;
+            }
+            $http.get(urls.saas_api_churned, {
+                params: params
+            }).success(function(data) {
+                $scope.churned = data;
+                for( var i = $scope.churned.churned.length;
+                     i < $scope.maxSize; ++i ) {
+                    $scope.churned.churned.push({});
+                }
+            });
+        }
+        if( typeof dataset === "undefined" || dataset == 'registered' ) {
+            params = {start_at: $scope.start_at, ends_at: $scope.ends_at};
+            if( $scope.currentPage.registered > 1 ) {
+                params['offset'] = ($scope.currentPage.registered - 1)
+                    * $scope.maxSize;
+            }
+            $http.get(urls.saas_api_registered, {
+                params: params
+            }).success(function(data) {
+                $scope.registered = data;
+                for( var i = $scope.registered.registered.length;
+                     i < $scope.maxSize; ++i ) {
+                    $scope.registered.registered.push({});
+                }
+            });
+        }
+        if( typeof dataset === "undefined" || dataset == 'subscribed' ) {
+            params = {start_at: $scope.start_at, ends_at: $scope.ends_at};
+            if( $scope.currentPage.subscribed > 1 ) {
+                params['offset'] = ($scope.currentPage.subscribed - 1)
+                    * $scope.maxSize;
+            }
+            $http.get(urls.saas_api_subscribed, {
+                params: params
+            }).success(function(data) {
+                $scope.subscribed = data;
+                for( var i = $scope.subscribed.subscribed.length;
+                     i < $scope.maxSize; ++i ) {
+                    $scope.subscribed.subscribed.push({});
+                }
+            });
+        }
+    }
 
-    $scope.registeredPageChanged = function() {
-        console.log('Registered page changed to: ' + $scope.registeredCurrentPage);
-    };
-
-    $scope.subscribedPageChanged = function() {
-        console.log('Subscribed page changed to: ' + $scope.subscribedCurrentPage);
-    };
-
-    $scope.refresh = function() {
-        $http.get(urls.saas_api_churned, {params: {
-            start_at: $scope.start_at,
-            ends_at: $scope.ends_at,
-        }}).success(function(data) {
-            $scope.churned = data;
-        });
-        $http.get(urls.saas_api_ending, {params: {
-            start_at: $scope.start_at,
-            ends_at: $scope.ends_at,
-        }}).success(function(data) {
-            $scope.ending = data;
-        });
-        $http.get(urls.saas_api_registered, {params: {
-            start_at: $scope.start_at,
-            ends_at: $scope.ends_at,
-        }}).success(function(data) {
-            $scope.registered = data;
-        });
-        $http.get(urls.saas_api_subscribed, {params: {
-            start_at: $scope.start_at,
-            ends_at: $scope.ends_at,
-        }}).success(function(data) {
-            $scope.subscribed = data;
-        });
+    $scope.endsSoon = function(organization) {
+        var cutOff = new Date($scope.ends_at);
+        cutOff.setDate($scope.ends_at.getDate() + 5);
+        for( var i = 0; i < organization.subscriptions.length; ++i ) {
+            var sub = organization.subscriptions[i];
+            var subEndsAt = new Date(sub.ends_at);
+            if( subEndsAt < cutOff ) {
+                return "ends-soon";
+            }
+        }
+        return "";
     }
 }]);
 

@@ -23,13 +23,25 @@
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 from rest_framework import serializers
-from saas.models import Organization
+from saas.models import Organization, Subscription
 
 #pylint: disable=no-init,old-style-class
 
+class SubscriptionSerializer(serializers.ModelSerializer):
+
+    plan = serializers.SlugRelatedField(read_only=True, slug_field='slug')
+
+    class Meta:
+        model = Subscription
+        fields = ('created_at', 'ends_at', 'plan', )
+
+
 class OrganizationSerializer(serializers.ModelSerializer):
+
+    subscriptions = SubscriptionSerializer(
+        source='subscription_set', many=True, read_only=True)
 
     class Meta:
         model = Organization
-        fields = ('slug', 'full_name', )
+        fields = ('slug', 'full_name', 'subscriptions', )
         read_only_fields = ('slug', )

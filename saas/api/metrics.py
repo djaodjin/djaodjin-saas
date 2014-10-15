@@ -22,8 +22,6 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-import datetime
-
 from django.utils.dateparse import parse_datetime
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -86,20 +84,7 @@ class ChurnedAPIView(OrganizationListAPIView):
         return Organization.objects.filter(
             subscription__plan__organization=self.provider,
             subscription__ends_at__gte=start_time,
-            subscription__ends_at__lt=end_time)
-
-
-class EndingAPIView(OrganizationListAPIView):
-
-    queryset_name = 'ending'
-
-    def get_queryset(self, start_time, end_time):
-        #pylint: disable=unused-argument
-        return Organization.objects.filter(
-            subscription__plan__organization=self.provider,
-            subscription__created_at__lt=end_time,
-            subscription__ends_at__gte=end_time,
-            subscription__ends_at__lt=end_time + datetime.timedelta(days=5))
+            subscription__ends_at__lt=end_time).order_by('full_name')
 
 
 class RegisteredAPIView(OrganizationListAPIView):
@@ -109,7 +94,8 @@ class RegisteredAPIView(OrganizationListAPIView):
     @staticmethod
     def get_queryset(start_time, end_time):
         #pylint: disable=unused-argument
-        return Organization.objects.filter(subscription__isnull=True)
+        return Organization.objects.filter(
+            subscription__isnull=True).order_by('full_name')
 
 
 class SubscribedAPIView(OrganizationListAPIView):
@@ -121,4 +107,5 @@ class SubscribedAPIView(OrganizationListAPIView):
         return Organization.objects.filter(
             subscription__plan__organization=self.provider,
             subscription__created_at__lt=end_time,
-            subscription__ends_at__gte=end_time + datetime.timedelta(days=5))
+            subscription__ends_at__gte=end_time).order_by(
+            'subscription__ends_at', 'full_name')
