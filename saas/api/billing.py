@@ -136,7 +136,6 @@ class CartItemAPIView(CreateAPIView):
 
     def create_or_none(self, request):
         #pylint: disable=star-args
-        print "XXX [create_or_none] request.DATA=" + str(request.DATA)
         self.object = None
         if 'plan' in request.DATA:
             kwargs = {'user': self.request.user,

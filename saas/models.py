@@ -293,9 +293,8 @@ class Organization(models.Model):
                 # subscriber.
                 new_organizations += [subscription.organization]
             else:
-                # When the organization does not exist into the database,
-                # the subscription will be created once the one-time
-                # 100% discout coupon is applied.
+                LOGGER.info("[checkout] save subscription of %s to %s",
+                    subscription.organization, subscription.plan)
                 subscription.save()
 
             # If the invoicable we are checking out is somehow related to
