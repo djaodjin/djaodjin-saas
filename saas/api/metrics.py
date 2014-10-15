@@ -24,6 +24,7 @@
 
 import datetime
 
+from django.utils.dateparse import parse_datetime
 from rest_framework.views import APIView
 from rest_framework.response import Response
 
@@ -49,48 +50,74 @@ class RevenueMetricsAPIView(ProviderMixin, APIView):
             }])
 
 
-class SubscriberPipelineAPIView(ProviderMixin, APIView):
+class OrganizationListAPIView(ProviderMixin, APIView):
 
+    model = Organization
     serializer_class = OrganizationSerializer
-
 
     def get(self, request, *args, **kwargs):
         #pylint: disable=no-member
         self.provider = self.get_organization()
-        start_at = datetime_or_now(request.DATA.get('start_at', None))
-        ends_at = datetime_or_now(request.DATA.get('ends_at', None))
+        start_at = request.GET.get('start_at', None)
+        if start_at:
+            start_at = parse_datetime(start_at)
+        start_at = datetime_or_now(start_at)
+        ends_at = request.GET.get('ends_at', None)
+        if ends_at:
+            ends_at = parse_datetime(ends_at)
+        ends_at = datetime_or_now(ends_at)
+        queryset = self.get_queryset(start_at, ends_at)
         serializer = self.serializer_class()
         return Response({
             'start_at': start_at,
             'ends_at': ends_at,
-            'churned': [serializer.to_native(organization)
-                         for organization in self.churned(start_at, ends_at)],
-            'ending': [serializer.to_native(organization)
-                         for organization in self.ending(ends_at)],
-            'registered': [serializer.to_native(organization)
-                        for organization in self.registered()],
-            'subscribed': [serializer.to_native(organization)
-                        for organization in self.subscribed(ends_at)],
+            'count': queryset.count(),
+            self.queryset_name: [serializer.to_native(organization)
+                for organization in queryset],
             })
 
-    def churned(self, start_time, end_time):
+
+
+class ChurnedAPIView(OrganizationListAPIView):
+
+    queryset_name = 'churned'
+
+    def get_queryset(self, start_time, end_time):
         return Organization.objects.filter(
             subscription__plan__organization=self.provider,
             subscription__ends_at__gte=start_time,
             subscription__ends_at__lt=end_time)
 
-    def ending(self, end_time):
+
+class EndingAPIView(OrganizationListAPIView):
+
+    queryset_name = 'ending'
+
+    def get_queryset(self, start_time, end_time):
+        #pylint: disable=unused-argument
         return Organization.objects.filter(
             subscription__plan__organization=self.provider,
             subscription__created_at__lt=end_time,
             subscription__ends_at__gte=end_time,
             subscription__ends_at__lt=end_time + datetime.timedelta(days=5))
 
+
+class RegisteredAPIView(OrganizationListAPIView):
+
+    queryset_name = 'registered'
+
     @staticmethod
-    def registered():
+    def get_queryset(start_time, end_time):
+        #pylint: disable=unused-argument
         return Organization.objects.filter(subscription__isnull=True)
 
-    def subscribed(self, end_time):
+
+class SubscribedAPIView(OrganizationListAPIView):
+
+    queryset_name = 'subscribed'
+
+    def get_queryset(self, start_time, end_time):
+        #pylint: disable=unused-argument
         return Organization.objects.filter(
             subscription__plan__organization=self.provider,
             subscription__created_at__lt=end_time,

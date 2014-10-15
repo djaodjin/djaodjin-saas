@@ -25,20 +25,24 @@
 '''Urls'''
 
 from django.conf.urls import patterns, url
+from django.views.generic import TemplateView
 
+from saas.settings import ACCT_REGEX
 from saas.views.profile import (
     ContributorListView, ManagerListView,
     OrganizationProfileView, SubscriptionListView)
 
 urlpatterns = patterns(
     'saas.views.profile',
-    url(r'^contributors/',
+    url(r'^(?P<organization>%s)/contributors/' % ACCT_REGEX,
         ContributorListView.as_view(), name='saas_contributor_list'),
-    url(r'^managers/',
+    url(r'^(?P<organization>%s)/managers/' % ACCT_REGEX,
         ManagerListView.as_view(), name='saas_manager_list'),
-    url(r'^subscriptions/',
+    url(r'^(?P<organization>%s)/subscriptions/' % ACCT_REGEX,
         SubscriptionListView.as_view(), name='saas_subscription_list'),
-    url(r'^$',
+    url(r'^$(?P<organization>%s)/' % ACCT_REGEX,
         OrganizationProfileView.as_view(), name='saas_organization_profile'),
+    url(r'^$',
+        TemplateView.as_view(), name='saas_profile'),
 )
 

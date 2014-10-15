@@ -219,8 +219,12 @@ subscriberControllers.controller('subscriberCtrl',
     ['$scope', '$http', 'urls',
     function($scope, $http, urls) {
 
+    $scope.opened = { 'start_at': false, 'ends_at': false }
     $scope.start_at = new Date();
     $scope.ends_at = new Date();
+
+    $scope.minDate = new Date('2014-01-01');
+    $scope.maxDate = new Date('2016-01-01');
     $scope.dateOptions = {formatYear: 'yy', startingDay: 1};
     $scope.formats = ['dd-MMMM-yyyy', 'yyyy/MM/dd', 'dd.MM.yyyy', 'shortDate'];
     $scope.format = $scope.formats[0];
@@ -230,15 +234,77 @@ subscriberControllers.controller('subscriberCtrl',
     $scope.ending = [];
     $scope.churned = [];
 
+    $scope.maxSize = 10;  // Limit number for pagination size
+    $scope.numPages = 5;  // Total number of pages to display
+    $scope.churnedCurrentPage = 1;
+    $scope.endingCurrentPage = 1;
+    $scope.registeredCurrentPage = 1;
+    $scope.subscribedCurrentPage = 1;
+
+    // calendar for start_at and ends_at
+    $scope.open = function($event, date_at) {
+        $event.preventDefault();
+        $event.stopPropagation();
+        $scope.opened[date_at] = true;
+    };
+
+    // XXX start_at and ends_at will be both updated on reload
+    //     which will lead to two calls to the backend instead of one.
+    $scope.$watch('start_at', function(newVal, oldVal, scope) {
+        if( $scope.ends_at < newVal ) {
+            $scope.ends_at = newVal;
+        }
+        $scope.refresh();
+    }, true);
+
+    $scope.$watch('ends_at', function(newVal, oldVal, scope) {
+        if( $scope.start_at > newVal ) {
+            $scope.start_at = newVal;
+        }
+        $scope.refresh();
+    }, true);
+
+    $scope.churnedPageChanged = function() {
+        console.log('Churned page changed to: ' + $scope.churnedCurrentPage);
+    };
+
+    $scope.endingPageChanged = function() {
+        console.log('Ending page changed to: ' + $scope.endingCurrentPage);
+    };
+
+    $scope.registeredPageChanged = function() {
+        console.log('Registered page changed to: ' + $scope.registeredCurrentPage);
+    };
+
+    $scope.subscribedPageChanged = function() {
+        console.log('Subscribed page changed to: ' + $scope.subscribedCurrentPage);
+    };
+
     $scope.refresh = function() {
-        $http.get(urls.saas_api_subscriber_pipeline).success(function(data) {
-            $scope.registered = data.registered;
-            $scope.subscribed = data.subscribed;
-            $scope.ending = data.ending;
-            $scope.churned = data.churned;
+        $http.get(urls.saas_api_churned, {params: {
+            start_at: $scope.start_at,
+            ends_at: $scope.ends_at,
+        }}).success(function(data) {
+            $scope.churned = data;
+        });
+        $http.get(urls.saas_api_ending, {params: {
+            start_at: $scope.start_at,
+            ends_at: $scope.ends_at,
+        }}).success(function(data) {
+            $scope.ending = data;
+        });
+        $http.get(urls.saas_api_registered, {params: {
+            start_at: $scope.start_at,
+            ends_at: $scope.ends_at,
+        }}).success(function(data) {
+            $scope.registered = data;
+        });
+        $http.get(urls.saas_api_subscribed, {params: {
+            start_at: $scope.start_at,
+            ends_at: $scope.ends_at,
+        }}).success(function(data) {
+            $scope.subscribed = data;
         });
     }
-
-    $scope.refresh();
 }]);
 
