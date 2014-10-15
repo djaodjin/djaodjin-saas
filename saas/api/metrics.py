@@ -56,7 +56,7 @@ class OrganizationListAPIView(ProviderMixin, APIView):
     serializer_class = OrganizationSerializer
 
     def get(self, request, *args, **kwargs):
-        #pylint: disable=no-member
+        #pylint: disable=no-member,unused-argument
         self.provider = self.get_organization()
         start_at = request.GET.get('start_at', None)
         if start_at:
