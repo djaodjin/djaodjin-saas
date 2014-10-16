@@ -22,13 +22,15 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+from django.utils.dateparse import parse_datetime
 from rest_framework.views import APIView
 from rest_framework.response import Response
 
 from saas.mixins import ProviderMixin
-from saas.models import Transaction
+from saas.models import Transaction, Organization
 from saas.utils import datetime_or_now
 from saas.managers.metrics import monthly_balances
+from saas.api.serializers import OrganizationSerializer
 
 
 class RevenueMetricsAPIView(ProviderMixin, APIView):
@@ -38,9 +40,72 @@ class RevenueMetricsAPIView(ProviderMixin, APIView):
 
     def get(self, request, *args, **kwargs): #pylint: disable=unused-argument
         organization = self.get_organization()
-        at_date = datetime_or_now(request.get('at', None))
+        at_date = datetime_or_now(request.DATA.get('at', None))
         return Response([{
             'key': Transaction.INCOME,
             'values': monthly_balances(
                         organization, Transaction.INCOME, at_date)
             }])
+
+
+class OrganizationListAPIView(ProviderMixin, APIView):
+
+    model = Organization
+    serializer_class = OrganizationSerializer
+
+    def get(self, request, *args, **kwargs):
+        #pylint: disable=no-member,unused-argument
+        self.provider = self.get_organization()
+        start_at = request.GET.get('start_at', None)
+        if start_at:
+            start_at = parse_datetime(start_at)
+        start_at = datetime_or_now(start_at)
+        ends_at = request.GET.get('ends_at', None)
+        if ends_at:
+            ends_at = parse_datetime(ends_at)
+        ends_at = datetime_or_now(ends_at)
+        queryset = self.get_queryset(start_at, ends_at)
+        serializer = self.serializer_class()
+        return Response({
+            'start_at': start_at,
+            'ends_at': ends_at,
+            'count': queryset.count(),
+            self.queryset_name: [serializer.to_native(organization)
+                for organization in queryset],
+            })
+
+
+
+class ChurnedAPIView(OrganizationListAPIView):
+
+    queryset_name = 'churned'
+
+    def get_queryset(self, start_time, end_time):
+        return Organization.objects.filter(
+            subscription__plan__organization=self.provider,
+            subscription__ends_at__gte=start_time,
+            subscription__ends_at__lt=end_time).order_by('full_name')
+
+
+class RegisteredAPIView(OrganizationListAPIView):
+
+    queryset_name = 'registered'
+
+    @staticmethod
+    def get_queryset(start_time, end_time):
+        #pylint: disable=unused-argument
+        return Organization.objects.filter(
+            subscription__isnull=True).order_by('full_name')
+
+
+class SubscribedAPIView(OrganizationListAPIView):
+
+    queryset_name = 'subscribed'
+
+    def get_queryset(self, start_time, end_time):
+        #pylint: disable=unused-argument
+        return Organization.objects.filter(
+            subscription__plan__organization=self.provider,
+            subscription__created_at__lt=end_time,
+            subscription__ends_at__gte=end_time).order_by(
+            'subscription__ends_at', 'full_name')

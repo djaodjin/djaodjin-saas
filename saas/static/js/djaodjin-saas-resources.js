@@ -141,7 +141,7 @@ CartItem.prototype = {
     remove: function(successFunction) {
         var self = this;
         $.ajax({ type: "DELETE",
-                 url: self.urls.saas_api_cart + self.item + '/',
+                 url: self.urls.saas_api_cart + self.item.plan + '/',
                  success: successFunction,
                });
     },

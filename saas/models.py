@@ -190,7 +190,7 @@ class Organization(models.Model):
     is_active = models.BooleanField(default=True)
     is_bulk_buyer = models.BooleanField(default=False,
         help_text=_("Enable this organization to pay subscriptions on behalf"\
-"of others."))
+" of others."))
     full_name = models.CharField(_('full name'), max_length=60, blank=True)
     # contact by e-mail
     email = models.EmailField(# XXX if we use unique=True here, the project
@@ -293,9 +293,8 @@ class Organization(models.Model):
                 # subscriber.
                 new_organizations += [subscription.organization]
             else:
-                # When the organization does not exist into the database,
-                # the subscription will be created once the one-time
-                # 100% discout coupon is applied.
+                LOGGER.info("[checkout] save subscription of %s to %s",
+                    subscription.organization, subscription.plan)
                 subscription.save()
 
             # If the invoicable we are checking out is somehow related to
@@ -472,7 +471,9 @@ class Signature(models.Model):
 class CartItemManager(models.Manager):
 
     def get_cart(self, user):
-        return self.filter(user=user, recorded=False).order_by('plan')
+        # Order by plan then id so the order is consistent between
+        # billing/cart(-.*)/ pages.
+        return self.filter(user=user, recorded=False).order_by('plan', 'id')
 
 
 class CartItem(models.Model):

@@ -22,22 +22,26 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-"""
-URLs for the saas django app
-"""
+from rest_framework import serializers
+from saas.models import Organization, Subscription
 
-from django.conf.urls import patterns, include, url
+#pylint: disable=no-init,old-style-class
 
-from saas.views import OrganizationRedirectView
-from saas.settings import ACCT_REGEX
+class SubscriptionSerializer(serializers.ModelSerializer):
 
-urlpatterns = patterns('',
-    url(r'^billing/cart/',
-        OrganizationRedirectView.as_view(pattern_name='saas_organization_cart'),
-        name='saas_cart'),
-    url(r'^billing/(?P<organization>%s)/' % ACCT_REGEX,
-        include('saas.urls.billing')),
-    url(r'^profile/', include('saas.urls.profile')),
-    url(r'^users/(?P<user>%s)/' % ACCT_REGEX,
-        include('saas.urls.users')),
-)
+    plan = serializers.SlugRelatedField(read_only=True, slug_field='slug')
+
+    class Meta:
+        model = Subscription
+        fields = ('created_at', 'ends_at', 'plan', )
+
+
+class OrganizationSerializer(serializers.ModelSerializer):
+
+    subscriptions = SubscriptionSerializer(
+        source='subscription_set', many=True, read_only=True)
+
+    class Meta:
+        model = Organization
+        fields = ('slug', 'full_name', 'subscriptions', )
+        read_only_fields = ('slug', )

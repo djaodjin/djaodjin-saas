@@ -94,6 +94,8 @@ class CartItemAPIView(CreateAPIView):
 
     model = CartItem
     serializer_class = CartItemSerializer
+    fields = ('plan', 'nb_periods', 'coupon',
+        'first_name', 'last_name', 'email')
 
     # XXX This was a workaround until we figure what is wrong with proxy
     # and csrf, unfortunately it prevents authenticated users to add into
@@ -110,8 +112,7 @@ class CartItemAPIView(CreateAPIView):
             for item in cart_items:
                 found = True
                 # XXX all serialized fields match ...
-                for field in ('plan', 'nb_periods', 'first_name', 'last_name',
-                              'email'):
+                for field in self.fields:
                     if field in serializer.data and field in item:
                         found &= (serializer.data[field] == item[field])
                 if found:
@@ -135,39 +136,34 @@ class CartItemAPIView(CreateAPIView):
         setattr(obj, 'user', self.request.user)
 
     def create_or_none(self, request):
-        #pylint: disable=star-args
-        print "XXX [create_or_none] request.DATA=" + str(request.DATA)
         self.object = None
         if 'plan' in request.DATA:
-            kwargs = {'user': self.request.user,
-                      'plan__slug': request.DATA['plan']}
-            if 'email' in request.DATA:
-                # We are attempting to buy one bluk subscriptions for multiple
-                # organizations here.
-                seat_queryset = self.model.objects.filter(
-                    email=request.DATA['email'], **kwargs)
-                if seat_queryset.exists():
-                    self.object = seat_queryset.get()
-                else:
-                    noseat_queryset = self.model.objects.filter(
-                        Q(email__isnull=True) | Q(email=''), **kwargs)
-                    if noseat_queryset.exists():
-                        self.object = noseat_queryset.get()
-            else:
-                queryset = self.model.objects.filter(**kwargs)
-                if queryset.exists():
-                    self.object = queryset.get()
-
+            email = request.DATA.get('email', '')
+            queryset = self.model.objects.filter(
+                Q(email__isnull=True) | Q(email='') | Q(email=email),
+                user=self.request.user,
+                plan__slug=request.DATA['plan']).order_by('-email')
+            if queryset.exists():
+                self.object = queryset.first()
         serializer = self.get_serializer(
             instance=self.object, data=request.DATA, files=request.FILES)
         if serializer.is_valid():
             self.pre_save(serializer.object)
-            if serializer.data['email'] and not serializer.data['nb_periods']:
+            if not self.object:
+                queryset = self.model.objects.filter(
+                    user=self.request.user,
+                    plan__slug=request.DATA['plan'])
+                if queryset.exists():
+                    cart_item = queryset.get()
+                    for field in self.fields:
+                        if not getattr(serializer.object, field):
+                            setattr(serializer.object, field,
+                                getattr(cart_item, field))
+            if serializer.object.email:
                 # When adding seated subscriptions to the cart (i.e.
                 # explicit email field) we must have a nb_periods,
                 # XXX a constraint from the user interface.
-                periods_queryset = self.model.objects.filter(
-                    **kwargs).exclude(nb_periods=0)
+                periods_queryset = queryset.exclude(nb_periods=0)
                 if periods_queryset.exists():
                     setattr(serializer.object,
                         'nb_periods', periods_queryset.first().nb_periods)

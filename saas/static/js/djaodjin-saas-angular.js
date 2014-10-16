@@ -10,6 +10,8 @@ angular.module('managerApp', ['ui.bootstrap', 'ngRoute',
     'managerControllers', 'managerServices']);
 angular.module('subscriptionApp', ['ui.bootstrap', 'ngRoute',
     'subscriptionControllers', 'subscriptionServices']);
+angular.module('subscriberApp', ['ui.bootstrap', 'ngRoute',
+    'subscriberControllers']);
 
 
 /*=============================================================================
@@ -21,6 +23,7 @@ var contributorServices = angular.module('contributorServices', ['ngResource']);
 var managerServices = angular.module('managerServices', ['ngResource']);
 var subscriptionServices = angular.module('subscriptionServices', [
     'ngResource']);
+
 
 couponServices.factory('Coupon', ['$resource', 'urls',
   function($resource, urls){
@@ -48,7 +51,6 @@ subscriptionServices.factory('Subscription', ['$resource', 'urls',
         urls.saas_api_subscription_url + '/:plan', {plan:'@plan'});
   }]);
 
-
 /*=============================================================================
   Controllers
   ============================================================================*/
@@ -57,6 +59,7 @@ var couponControllers = angular.module('couponControllers', []);
 var contributorControllers = angular.module('contributorControllers', []);
 var managerControllers = angular.module('managerControllers', []);
 var subscriptionControllers = angular.module('subscriptionControllers', []);
+var subscriberControllers = angular.module('subscriberControllers', []);
 
 couponControllers.controller('CouponListCtrl',
     ['$scope', '$http', '$timeout', 'Coupon', 'urls',
@@ -107,13 +110,12 @@ couponControllers.controller('CouponListCtrl',
 
     $scope.editDescription = function (idx){
         $scope.edit_description = Array.apply(null, Array($scope.coupons.length)).map(function() {
-            return false; 
+            return false;
         });
         $scope.edit_description[idx] = true;
         $timeout(function(){
             angular.element('#input_description').focus();
         }, 100);
-        
     };
 
     $scope.saveDescription = function(event, coupon, idx){
@@ -210,6 +212,121 @@ subscriptionControllers.controller('subscriptionListCtrl',
         if( confirm("Are you sure?") ) {
             $http.$delete(url).then(function(data){ location.reload(); });
         }
+    }
+}]);
+
+subscriberControllers.controller('subscriberCtrl',
+    ['$scope', '$http', 'urls',
+    function($scope, $http, urls) {
+
+    $scope.opened = { 'start_at': false, 'ends_at': false }
+    $scope.start_at = new Date();
+    $scope.ends_at = new Date();
+
+    $scope.minDate = new Date('2014-01-01');
+    $scope.maxDate = new Date('2016-01-01');
+    $scope.dateOptions = {formatYear: 'yy', startingDay: 1};
+    $scope.formats = ['dd-MMMM-yyyy', 'yyyy/MM/dd', 'dd.MM.yyyy', 'shortDate'];
+    $scope.format = $scope.formats[0];
+
+    // initialized with *maxSize* empty items for layout during first load.
+    $scope.registered = [{}, {}, {}, {}, {}, {}, {}, {}, {}, {}];
+    $scope.subscribed = [{}, {}, {}, {}, {}, {}, {}, {}, {}, {}];
+    $scope.churned = [{}, {}, {}, {}, {}, {}, {}, {}, {}, {}];
+
+    $scope.maxSize = 10;  // Limit number for pagination size
+    $scope.numPages = 5;  // Total number of pages to display
+    $scope.currentPage = {churned: 1, registered: 1, subscribed: 1};
+
+    // calendar for start_at and ends_at
+    $scope.open = function($event, date_at) {
+        $event.preventDefault();
+        $event.stopPropagation();
+        $scope.opened[date_at] = true;
+    };
+
+    // XXX start_at and ends_at will be both updated on reload
+    //     which will lead to two calls to the backend instead of one.
+    $scope.$watch('start_at', function(newVal, oldVal, scope) {
+        if( $scope.ends_at < newVal ) {
+            $scope.ends_at = newVal;
+        }
+        $scope.refresh();
+    }, true);
+
+    $scope.$watch('ends_at', function(newVal, oldVal, scope) {
+        if( $scope.start_at > newVal ) {
+            $scope.start_at = newVal;
+        }
+        $scope.refresh();
+    }, true);
+
+    $scope.pageChanged = function(dataset) {
+        $scope.refresh(dataset);
+    };
+
+    $scope.refresh = function(dataset) {
+        if( typeof dataset === "undefined" || dataset == 'churned' ) {
+            params = {start_at: $scope.start_at, ends_at: $scope.ends_at};
+            if( $scope.currentPage.churned > 1 ) {
+                params['offset'] = ($scope.currentPage.churned - 1)
+                    * $scope.maxSize;
+            }
+            $http.get(urls.saas_api_churned, {
+                params: params
+            }).success(function(data) {
+                $scope.churned = data;
+                for( var i = $scope.churned.churned.length;
+                     i < $scope.maxSize; ++i ) {
+                    $scope.churned.churned.push({});
+                }
+            });
+        }
+        if( typeof dataset === "undefined" || dataset == 'registered' ) {
+            params = {start_at: $scope.start_at, ends_at: $scope.ends_at};
+            if( $scope.currentPage.registered > 1 ) {
+                params['offset'] = ($scope.currentPage.registered - 1)
+                    * $scope.maxSize;
+            }
+            $http.get(urls.saas_api_registered, {
+                params: params
+            }).success(function(data) {
+                $scope.registered = data;
+                for( var i = $scope.registered.registered.length;
+                     i < $scope.maxSize; ++i ) {
+                    $scope.registered.registered.push({});
+                }
+            });
+        }
+        if( typeof dataset === "undefined" || dataset == 'subscribed' ) {
+            params = {start_at: $scope.start_at, ends_at: $scope.ends_at};
+            if( $scope.currentPage.subscribed > 1 ) {
+                params['offset'] = ($scope.currentPage.subscribed - 1)
+                    * $scope.maxSize;
+            }
+            $http.get(urls.saas_api_subscribed, {
+                params: params
+            }).success(function(data) {
+                $scope.subscribed = data;
+                for( var i = $scope.subscribed.subscribed.length;
+                     i < $scope.maxSize; ++i ) {
+                    $scope.subscribed.subscribed.push({});
+                }
+            });
+        }
+    }
+
+    $scope.endsSoon = function(organization) {
+        var cutOff = new Date($scope.ends_at);
+        cutOff.setDate($scope.ends_at.getDate() + 5);
+        for( var i = 0; i < organization.subscriptions.length; ++i ) {
+            var sub = organization.subscriptions[i];
+            var subEndsAt = new Date(sub.ends_at);
+            if( subEndsAt < cutOff ) {
+                return "ends-soon";
+            }
+        }
+        return "";
     }
 }]);
 

@@ -1,0 +1,79 @@
+{% extends "saas/base.html" %}
+
+{% block saas_content %}
+<section id="" ng-app="subscriberApp">
+    <h1>Subscriber pipeline</h1>
+    <div ng-controller="subscriberCtrl">
+        <div>
+            <span>From</span>
+            <span class="date" datepicker-popup="[[format]]" ng-model="start_at" is-open="opened.start_at" min-date="minDate" max-date="maxDate" datepicker-options="dateOptions" date-disabled="disabled(date, mode)" ng-required="true" close-text="Close">[[start_at | date : mediumDate]]
+            </span>
+            <span>
+                <button type="button" ng-click="open($event, 'start_at')">Pick</button>
+            </span>
+            <span>To</span>
+            <span class="date" datepicker-popup="[[format]]" ng-model="ends_at" is-open="opened.ends_at" min-date="minDate" max-date="maxDate" datepicker-options="dateOptions" date-disabled="disabled(date, mode)" ng-required="true" close-text="Close">[[ends_at | date : mediumDate]]</span>
+            <span>
+                <button type="button" ng-click="open($event, 'ends_at')">Pick</button>
+            </span>
+        </div>
+        <div>
+            <div>
+                <h2>Registered</h2>
+                <p>Total: [[registered.count]]</p>
+                <ul>
+                    <li ng-repeat="organization in registered.registered" ng-cloak>
+                        <a ng-if="organization.slug" href="{% url 'saas_profile' %}[[organization.slug]]/">[[organization.full_name]]</a>
+                        <span ng-if="!organization.slug">&nbsp;</span>
+                    </li>
+                </ul>
+                <pagination total-items="registered.count" ng-model="currentPage.registered" max-size="maxSize" boundary-links="true" rotate="false" num-pages="numPages" previous-text="&lsaquo;" next-text="&rsaquo;" first-text="&laquo;" last-text="&raquo;" ng-change="pageChanged('registered')"></pagination>
+            </div>
+            <div>
+                <h2>Subscribed</h2>
+                <p>Total: [[subscribed.count]]</p>
+                <ul>
+                    <li ng-repeat="organization in subscribed.subscribed" ng-cloak>
+                        <a ng-if="organization.slug" class="[[endsSoon(organization)]]" href="{% url 'saas_profile' %}[[organization.slug]]/">[[organization.full_name]]</a>
+                        <span ng-if="!organization.slug">&nbsp;</span>
+                    </li>
+                </ul>
+                <pagination total-items="subscribed.count" ng-model="currentPage.subscribed" max-size="maxSize" boundary-links="true" rotate="false" num-pages="numPages" previous-text="&lsaquo;" next-text="&rsaquo;" first-text="&laquo;" last-text="&raquo;" ng-change="pageChanged('subscribed')"></pagination>
+            </div>
+            <div>
+                <h2>Churned</h2>
+                <p>Total: [[churned.count]]</p>
+                <ul>
+                    <li ng-repeat="organization in churned.churned" ng-cloak>
+                        <a ng-if="organization.slug" href="{% url 'saas_profile' %}[[organization.slug]]/">[[organization.full_name]]</a>
+                        <span ng-if="!organization.slug">&nbsp;</span>
+                    </li>
+                </ul>
+                <pagination total-items="churned.count" ng-model="currentPage.churned" max-size="maxSize" boundary-links="true" rotate="false" num-pages="numPages" previous-text="&lsaquo;" next-text="&rsaquo;" first-text="&laquo;" last-text="&raquo;" ng-change="pageChanged('churned')"></pagination>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}
+
+{% block saas_bodyscripts %}
+<script>
+/* Implementation Note: Not including a list of dependent modules
+   (2nd parameter to `module`) "re-opens" the module for additional
+   configuration. */
+var app = angular.module('subscriberApp');
+/* Add the CSRF Token: */
+app.config(['$interpolateProvider', '$httpProvider',
+           function($interpolateProvider, $httpProvider) {
+    $httpProvider.defaults.headers.common['X-CSRFToken'] = '{{ csrf_token|escapejs }}';
+    /* Makes it easier to separate between django and angularjs templates */
+    $interpolateProvider.startSymbol('[[');
+    $interpolateProvider.endSymbol(']]');
+}]);
+app.constant('urls', {
+    saas_api_churned: "{% url 'saas_api_churned' %}",
+    saas_api_registered: "{% url 'saas_api_registered' %}",
+    saas_api_subscribed: "{% url 'saas_api_subscribed' %}",
+});
+</script>
+{% endblock %}

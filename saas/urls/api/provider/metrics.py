@@ -28,9 +28,16 @@ URLs API for provider resources related to billing
 
 from django.conf.urls import patterns, url
 
-from saas.api.metrics import RevenueMetricsAPIView
+from saas.api.metrics import (RevenueMetricsAPIView, ChurnedAPIView,
+    RegisteredAPIView, SubscribedAPIView)
 
 urlpatterns = patterns('',
+    url(r'^metrics/churned/?',
+        ChurnedAPIView.as_view(), name='saas_api_churned'),
+    url(r'^metrics/registered/?',
+        RegisteredAPIView.as_view(), name='saas_api_registered'),
+    url(r'^metrics/subscribed/?',
+        SubscribedAPIView.as_view(), name='saas_api_subscribed'),
     url(r'^metrics/revenue/?',
         RevenueMetricsAPIView.as_view(), name='saas_api_metrics_revenue'),
 )
