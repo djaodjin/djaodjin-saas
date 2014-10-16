@@ -88,6 +88,10 @@ class PlanResourceView(PlanMixin, RetrieveUpdateDestroyAPIView):
 
     serializer_class = PlanSerializer
 
+    def put(self, request, *args, **kwargs):
+        kwargs.update({'partial':True})
+        return self.update(request, *args, **kwargs)
+
     def pre_save(self, obj):
         if 'slug' in self.request.DATA:
             # Only when a slug field is passed will we force recompute it here.
