@@ -40,7 +40,7 @@ urlpatterns = patterns(
         ManagerListView.as_view(), name='saas_manager_list'),
     url(r'^(?P<organization>%s)/subscriptions/' % ACCT_REGEX,
         SubscriptionListView.as_view(), name='saas_subscription_list'),
-    url(r'^$(?P<organization>%s)/' % ACCT_REGEX,
+    url(r'^(?P<organization>%s)/' % ACCT_REGEX,
         OrganizationProfileView.as_view(), name='saas_organization_profile'),
     url(r'^$',
         TemplateView.as_view(), name='saas_profile'),
