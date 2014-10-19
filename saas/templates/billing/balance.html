@@ -9,7 +9,7 @@
 {% endif %}
 <section id="charge">
 {% if not last_charge %}
-A charge of {% money_localize total_amount total_unit %} will be created
+A charge of {{total_amount|humanize_money:total_unit}} will be created
 on your card. Thank you.
 {% else %}
 {% with last_charge as charge %}
@@ -38,7 +38,7 @@ The charge
 </p>
 <p>
 Please enter a valid credit card. A new charge of
-{% money_localize total_amount total_unit %} will be created. Thank you.
+{{total_amount|humanize_money:total_unit}} will be created. Thank you.
 </p>
 {% endif %}
 {% endwith %}

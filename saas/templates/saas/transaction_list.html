@@ -16,7 +16,7 @@
       <tr>
         <td>{{entry.created_at|date:"d M Y"}}</td>
         <td>{{entry|describe}}</td>
-        <td>{% if entry|is_debit:organization %}-{% endif %}{% money_localize entry.dest_amount entry.dest_unit %}</td>
+        <td>{% if entry|is_debit:organization %}-{% endif %}{{entry.dest_amount|humanize_money:entry.dest_unit}}</td>
       </tr>
       {% empty %}
       <tr>

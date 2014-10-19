@@ -50,6 +50,9 @@ DESCRIBE_UNLOCK_LATER = \
 
 
 def as_money(value, currency='usd'):
+    if currency.startswith('-'):
+        value = - value
+        currency = currency[1:]
     currency = currency.lower()
     if currency == 'cad':
         return '$%.2f CAD' % (float(value) / 100)

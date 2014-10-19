@@ -20,10 +20,10 @@
   <h1>Funds</h1>
   <dl>
     {% if balance >= 0 %}
-    <dt>{% money_localize balance 'usd' %}</dt>
+    <dt>{{balance|humanize_money:'usd'}}</dt>
     <dd>Available {% if balance > 0 %}(<a href="{% url 'saas_withdraw_funds' organization %}">withdraw</a>){% endif %}</dd>
     {% else %}
-    <dt>{% money_localize -balance 'usd' %}</dt>
+    <dt>{{balance|humanize_money:'-usd'}}</dt>
     <dd>Balance due</dd>
     {% endif %}
   </dl>
