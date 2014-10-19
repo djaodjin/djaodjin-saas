@@ -31,13 +31,13 @@ register = template.Library()
 
 
 @register.filter()
-def usd(value):
-    return as_money(value)
+def money_localize(value, currency):
+    return as_money(value, currency)
 
 
 @register.filter()
-def humanize_balance(value):
-    return usd(abs(value))
+def humanize_balance(value, currency_unit):
+    return money_localize(abs(value), currency_unit)
 
 
 @register.filter()

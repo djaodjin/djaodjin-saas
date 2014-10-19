@@ -9,7 +9,7 @@
 {{provider.printable_name}} Order Confirmation
 
 {% for line in invoiced_items %}
-    {{line.dest_amount|usd}}
+    {% money_localize line.dest_amount line.dest_unit %}
     {{line.descr}}
 {% endfor %}
 

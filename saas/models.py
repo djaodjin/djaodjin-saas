@@ -545,7 +545,7 @@ class ChargeManager(models.Manager):
         Create a charge on a customer card.
         """
         # Be careful, stripe will not processed charges less than 50 cents.
-        amount = sum_dest_amount(transactions)
+        amount, unit = sum_dest_amount(transactions)
         if amount == 0:
             return None
         stmt_descr = Transaction.objects.provider(transactions).printable_name
@@ -559,15 +559,15 @@ class ChargeManager(models.Manager):
                     customer.update_card(card_token=token)
                     (processor_charge_id, created_at,
                      last4, exp_date) = PROCESSOR_BACKEND.create_charge(
-                        customer, amount, descr, stmt_descr)
+                        customer, amount, unit, descr, stmt_descr)
                 else:
                     (processor_charge_id, created_at,
                      last4, exp_date) = PROCESSOR_BACKEND.create_charge_on_card(
-                        token, amount, descr, stmt_descr)
+                        token, amount, unit, descr, stmt_descr)
             else:
                 (processor_charge_id, created_at,
                  last4, exp_date) = PROCESSOR_BACKEND.create_charge(
-                    customer, amount, descr, stmt_descr)
+                    customer, amount, unit, descr, stmt_descr)
             # Create record of the charge in our database
             descr = DESCRIBE_CHARGED_CARD % {'charge': processor_charge_id,
                 'organization': customer.printable_name}
@@ -609,6 +609,7 @@ class Charge(models.Model):
 
     created_at = models.DateTimeField(auto_now_add=True)
     amount = models.PositiveIntegerField(default=0, help_text="Amount in cents")
+    unit = models.CharField(max_length=3, default='usd')
     customer = models.ForeignKey(Organization,
         help_text='organization charged')
     description = models.TextField(null=True)
@@ -634,7 +635,9 @@ class Charge(models.Model):
         """
         Returns the total amount of all invoiced items.
         """
-        return sum_dest_amount(Transaction.objects.by_charge(self))
+        # XXX changed interface of invoiced_total_amount
+        amount, unit = sum_dest_amount(Transaction.objects.by_charge(self))
+        return amount, unit
 
     @property
     def is_disputed(self):
@@ -975,6 +978,7 @@ class Plan(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     discontinued_at = models.DateTimeField(null=True, blank=True)
     organization = models.ForeignKey(Organization, related_name='plans')
+    unit = models.CharField(max_length=3, default='usd')
     setup_amount = models.PositiveIntegerField(default=0,
         help_text=_('One-time charge amount (in cents).'))
     period_amount = models.PositiveIntegerField(default=0,
@@ -1265,10 +1269,10 @@ class TransactionManager(models.Manager):
         until = datetime_or_now(until)
         if not account:
             account = Transaction.PAYABLE
-        dest_amount = sum_dest_amount(self.filter(
+        dest_amount, _ = sum_dest_amount(self.filter(
             dest_organization=organization, dest_account=account,
             created_at__lt=until))
-        orig_amount = sum_orig_amount(self.filter(
+        orig_amount, _ = sum_orig_amount(self.filter(
             orig_organization=organization, orig_account=account,
             created_at__lt=until))
         return dest_amount - orig_amount
@@ -1301,11 +1305,11 @@ class TransactionManager(models.Manager):
         The balance on a subscription is used to determine when
         a subscription is locked (balance due) or unlocked (no balance).
         """
-        dest_amount = sum_dest_amount(self.filter(
+        dest_amount, _ = sum_dest_amount(self.filter(
             dest_organization=subscription.organization,
             dest_account=Transaction.PAYABLE,
             event_id=subscription.id))
-        orig_amount = sum_orig_amount(self.filter(
+        orig_amount, _ = sum_orig_amount(self.filter(
             orig_organization=subscription.organization,
             orig_account=Transaction.PAYABLE,
             event_id=subscription.id))
@@ -1449,6 +1453,7 @@ def sum_dest_amount(transactions):
     Return the sum of the amount in the *transactions* set.
     """
     amount = 0
+    unit = 'usd' # XXX
     if isinstance(transactions, QuerySet):
         amount = transactions.aggregate(Sum('dest_amount'))['dest_amount__sum']
         if amount is None:
@@ -1456,13 +1461,14 @@ def sum_dest_amount(transactions):
     else:
         for item in transactions:
             amount += item.dest_amount
-    return amount
+    return amount, unit
 
 def sum_orig_amount(transactions):
     """
     Return the sum of the amount in the *transactions* set.
     """
     amount = 0
+    unit = 'usd' # XXX
     if isinstance(transactions, QuerySet):
         amount = transactions.aggregate(Sum('orig_amount'))['orig_amount__sum']
         if amount is None:
@@ -1470,4 +1476,4 @@ def sum_orig_amount(transactions):
     else:
         for item in transactions:
             amount += item.dest_amount
-    return amount
+    return amount, unit

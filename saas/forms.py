@@ -104,7 +104,7 @@ class OrganizationForm(PostalFormMixin, forms.ModelForm):
         model = Organization
         fields = ('full_name', 'email', 'phone', 'street_address',
                   'locality', 'region', 'postal_code',
-                  'country')
+                  'country', 'is_bulk_buyer')
         widgets = {'country': forms.widgets.Select(choices=countries)}
 
     def __init__(self, *args, **kwargs):

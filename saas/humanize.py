@@ -49,9 +49,10 @@ DESCRIBE_UNLOCK_LATER = \
     "Access %(plan)s Today. Pay %(amount)s later to %(unlock_event)s."
 
 
-def as_money(value):
-    if not value:
-        return '$0.00'
+def as_money(value, currency='usd'):
+    currency = currency.lower()
+    if currency == 'cad':
+        return '$%.2f CAD' % (float(value) / 100)
     return '$%.2f' % (float(value) / 100)
     # XXX return locale.currency(value, grouping=True)
 

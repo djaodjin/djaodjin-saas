@@ -165,12 +165,15 @@ class InvoicablesFormMixin(OrganizationMixin):
     def get_context_data(self, **kwargs):
         context = super(InvoicablesFormMixin, self).get_context_data(**kwargs)
         lines_amount = 0
+        lines_unit = 'usd'
         for invoicable in self.invoicables:
             for line in invoicable['lines']:
                 lines_amount += line.dest_amount
+                lines_unit = line.dest_unit
         context.update(self.get_redirect_path())
         context.update({'invoicables': self.invoicables,
-                        "lines_amount": lines_amount})
+                        "lines_amount": lines_amount,
+                        "lines_unit": lines_unit})
         return context
 
     def get_redirect_path(self, **kwargs): #pylint: disable=unused-argument

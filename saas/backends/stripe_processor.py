@@ -61,7 +61,8 @@ class StripeBackend(object):
         return customers
 
 
-    def create_charge(self, organization, amount, descr=None, stmt_descr=None):
+    def create_charge(
+        self, organization, amount, unit, descr=None, stmt_descr=None):
         """
         Create a charge on the default card associated to the organization.
 
@@ -69,7 +70,7 @@ class StripeBackend(object):
         """
         stripe.api_key = self.priv_key
         processor_charge = stripe.Charge.create(
-            amount=amount, currency="usd",
+            amount=amount, currency=unit,
             customer=organization.processor_id,
             description=descr,
             statement_description=stmt_descr[:15])
@@ -89,7 +90,8 @@ class StripeBackend(object):
         processor_charge.refund(amount=amount)
 
 
-    def create_charge_on_card(self, card, amount, descr=None, stmt_descr=None):
+    def create_charge_on_card(
+        self, card, amount, unit, descr=None, stmt_descr=None):
         """
         Create a charge on a specified card.
 
@@ -97,7 +99,7 @@ class StripeBackend(object):
         """
         stripe.api_key = self.priv_key
         processor_charge = stripe.Charge.create(
-            amount=amount, currency="usd",
+            amount=amount, currency=unit,
             card=card, description=descr, statement_description=stmt_descr[:15])
         created_at = datetime.datetime.fromtimestamp(processor_charge.created)
         return (processor_charge.id, created_at,
@@ -106,14 +108,14 @@ class StripeBackend(object):
                               processor_charge.card.exp_month, 1))
 
 
-    def create_transfer(self, organization, amount, descr=None):
+    def create_transfer(self, organization, amount, unit, descr=None):
         """
         Transfer *amount* into the organization bank account.
         """
         stripe.api_key = self.priv_key
         transfer = stripe.Transfer.create(
             amount=amount,
-            currency="usd",
+            currency=unit,
             recipient=organization.processor_recipient_id,
             description=descr)
         created_at = datetime.datetime.fromtimestamp(transfer.created)

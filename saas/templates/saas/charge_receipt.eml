@@ -25,7 +25,7 @@ This is a Charge Receipt for {{charge.processor_id}}
     </dl>
     <p>
       Your credit card has been charged for an amount
-      of {{amount|usd}}. For your records,
+      of {% money_localize charge.amount charge.unit %}. For your records,
       the charge reference is {{charge.processor_id}}.
     </p>
     <p>

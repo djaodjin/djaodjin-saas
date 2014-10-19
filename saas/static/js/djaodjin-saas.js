@@ -88,8 +88,12 @@
                     totalAmount += lineAmount;
                 }
             }
-            usdTotalAmount = '$' + (totalAmount / 100).toFixed(2);
-            totalAmountNode.text(usdTotalAmount);
+            totalAmountText = '' + (totalAmount / 100).toFixed(2);
+            totalAmountText = '$' + totalAmountText
+            if( self.options.currency_unit == 'cad' ) {
+                totalAmountText = '$' + totalAmountText + ' CAD';
+            }
+            totalAmountNode.text(totalAmountText);
             if( totalAmount > 0 ) {
                 if( !$("#card-use").is(':visible') ) $("#card-use").slideDown();
             } else {
@@ -104,6 +108,7 @@
     };
 
     $.fn.invoice.defaults = {
+        'currency_unit': 'usd',
         'saas_api_cart': '/api/cart/',
     };
 

@@ -14,19 +14,19 @@
     {% endcomment %}
     <p class="done {% if not charge.is_paid %}hidden{% endif %}">
       On {{charge.created_at}}, the credit card has been charged for an amount
-      of {{charge.amount|usd}}. Payment Information:
+      of {% money_localize charge.amount charge.unit %}. Payment Information:
     </p>
     <p class="failed {% if not charge.is_failed %}hidden{% endif %}">
     On {{charge.created_at}}, we attempted to charge your card for
-    {{charge.amount|usd}}. The charge failed.
+    {% money_localize charge.amount charge.unit %}. The charge failed.
     </p>
     <p class="disputed {% if not charge.is_disputed %}hidden{% endif %}">
     On {{charge.created_at}}, we attempted to charge your card for
-    {{charge.amount|usd}}. The charge was disputed.
+    {% money_localize charge.amount charge.unit %}. The charge was disputed.
     </p>
     <p class="created {% if not charge.is_progress %}hidden{% endif %}">
     On {{charge.created_at}}, we attempted to charge your card for
-    {{charge.amount|usd}}. The charge is in progres...
+    {% money_localize charge.amount charge.unit %}. The charge is in progres...
     </p>
   </section>
   <section id="info">
@@ -36,7 +36,7 @@
     </dl>
     <dl>
       <dt>amount</dt>
-      <dd>{{charge.amount|usd}}</dd>
+      <dd>{% money_localize charge.amount charge.unit %}</dd>
     </dl>
     <dl>
       <dt>card</dt>
@@ -59,7 +59,7 @@
       <tbody>
         {% for line in charge_items %}
         <tr>
-          <td>{{line.invoiced.dest_amount|usd}}</td>
+          <td>{% money_localize line.invoiced.dest_amount line.invoiced.dest_unit %}</td>
           <td>{{line.invoiced|describe}}</td>
           <td>
             {% if line.refunded %}

@@ -39,7 +39,8 @@ $(document).ready(function() {
     $("#redeem-form").redeem(
         {'saas_api_redeem_coupon': "{% url 'saas_api_redeem_coupon' %}" });
     $("#payment-form").invoice(
-        { 'saas_api_cart': "{% url 'saas_api_cart' %}" });
+        { 'currency_unit': '{{lines_unit}}',
+          'saas_api_cart': "{% url 'saas_api_cart' %}" });
 });
 </script>
 {% block order_bodyscripts %}{% endblock %}
