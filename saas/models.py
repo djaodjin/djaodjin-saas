@@ -540,7 +540,7 @@ class ChargeManager(models.Manager):
 
     def charge_card(self, customer, transactions, descr=None,
                     user=None, token=None, remember_card=True):
-        #pylint: disable=too-many-arguments
+        #pylint: disable=too-many-arguments,too-many-locals
         """
         Create a charge on a customer card.
         """

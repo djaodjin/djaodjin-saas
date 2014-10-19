@@ -61,8 +61,9 @@ class StripeBackend(object):
         return customers
 
 
-    def create_charge(
-        self, organization, amount, unit, descr=None, stmt_descr=None):
+    def create_charge(self, organization, amount, unit,
+        descr=None, stmt_descr=None):
+        #pylint: disable=too-many-arguments
         """
         Create a charge on the default card associated to the organization.
 
@@ -90,8 +91,9 @@ class StripeBackend(object):
         processor_charge.refund(amount=amount)
 
 
-    def create_charge_on_card(
-        self, card, amount, unit, descr=None, stmt_descr=None):
+    def create_charge_on_card(self, card, amount, unit,
+        descr=None, stmt_descr=None):
+        #pylint: disable=too-many-arguments
         """
         Create a charge on a specified card.
 
