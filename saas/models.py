@@ -1059,7 +1059,7 @@ class Plan(models.Model):
         """
         Hosting service paid through a transaction fee.
         """
-        return amount * self.transaction_fee
+        return (amount * self.transaction_fee) / 10000
 
     def prorate_period(self, start_time, end_time):
         """
