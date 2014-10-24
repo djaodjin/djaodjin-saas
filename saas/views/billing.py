@@ -167,6 +167,9 @@ class InvoicablesFormMixin(OrganizationMixin):
         lines_amount = 0
         lines_unit = 'usd'
         for invoicable in self.invoicables:
+            if len(invoicable['options']) > 0:
+                # In case it is pure options, no lines.
+                lines_unit = invoicable['options'][0].dest_unit
             for line in invoicable['lines']:
                 lines_amount += line.dest_amount
                 lines_unit = line.dest_unit
@@ -331,9 +334,15 @@ class TransactionListView(OrganizationMixin, ListView):
     def get_context_data(self, **kwargs):
         context = super(TransactionListView, self).get_context_data(**kwargs)
         context.update({'organization': self.customer})
-        balance = Transaction.objects.get_organization_balance(self.customer)
-        context.update({
-            'organization': self.customer, 'balance_payable': balance})
+        balance_amount, balance_unit \
+            = Transaction.objects.get_organization_balance(self.customer)
+        if balance_amount < 0:
+            # It is not straightforward to inverse a number in Django templates
+            # so we do it with a convention on the ``humanize_money`` filter.
+            balance_unit = '-%s' % balance_unit
+        context.update({'organization': self.customer,
+                        'balance_amount': balance_amount,
+                        'balance_unit': balance_unit})
         return context
 
 
@@ -360,9 +369,11 @@ class TransferListView(BankMixin, ListView):
 
     def get_context_data(self, **kwargs):
         context = super(TransferListView, self).get_context_data(**kwargs)
-        balance = Transaction.objects.get_organization_balance(
+        balance_amount, balance_unit \
+            = Transaction.objects.get_organization_balance(
             self.organization, Transaction.FUNDS)
-        context.update({'balance': balance})
+        context.update({'balance_amount': balance_amount,
+                        'balance_unit': balance_unit})
         return context
 
 
@@ -444,7 +455,7 @@ class CartBaseView(InvoicablesFormMixin, FormView):
                discount_percent=discount_percent)]
             option_items += [subscription.create_order(1, 0,
                created_at, DESCRIBE_UNLOCK_LATER % {
-                        'amount': as_money(plan.period_amount),
+                        'amount': as_money(plan.period_amount, plan.unit),
                         'plan': plan, 'unlock_event': plan.unlock_event})]
 
         elif plan.interval == Plan.MONTHLY:
@@ -655,6 +666,8 @@ class BalanceView(CardInvoicablesFormMixin, FormView):
 
         invoicables = [
                 { "subscription": Subscription,
+                  "name": "",
+                  "descr": "",
                   "lines": [Transaction, ...],
                   "options": [Transaction, ...],
                 }, ...]
@@ -681,10 +694,11 @@ class BalanceView(CardInvoicablesFormMixin, FormView):
         for subscription in Subscription.objects.active_for(self.customer):
             options = self.get_invoicable_options(subscription, created_at)
             if len(options) > 0:
-                invoicables += [
-                {'subscription': subscription,
-                 "lines": [],
-                 "options": options}]
+                invoicables += [{
+                    'subscription': subscription,
+                    'name': 'cart-%s' % subscription.plan.slug,
+                    'lines': [],
+                    'options': options}]
         return invoicables
 
     def get_subscription(self):
@@ -701,7 +715,7 @@ class WithdrawView(BankMixin, FormView):
     def get_initial(self):
         self.organization = self.get_organization()
         kwargs = super(WithdrawView, self).get_initial()
-        balance = Transaction.objects.get_organization_balance(
+        balance, _ = Transaction.objects.get_organization_balance(
             self.organization, Transaction.FUNDS)
         kwargs.update({'amount': (- balance / 100.0) if balance < 0 else 0})
         return kwargs

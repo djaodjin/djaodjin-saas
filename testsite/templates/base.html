@@ -1,4 +1,5 @@
 {% load static from staticfiles %}
+{% load saas_tags %}
 <!DOCTYPE html>
 <html>
 <head>
@@ -6,26 +7,39 @@
   <script type="text/javascript" src="{% static 'vendor/js/jquery.js' %}"></script>
   {% if csrf_token %}
   <script type="text/javascript">
-var csrftoken = $.cookie('csrftoken');
-function csrfSafeMethod(method) {
-    // these HTTP methods do not require CSRF protection
-    return (/^(GET|HEAD|OPTIONS|TRACE)$/.test(method));
-}
-$.ajaxSetup({
-    crossDomain: false, // obviates need for sameOrigin test
-    beforeSend: function(xhr, settings) {
-        if (!csrfSafeMethod(settings.type)) {
-            xhr.setRequestHeader("X-CSRFToken", csrftoken);
-        }
+    function csrfSafeMethod(method) {
+        // these HTTP methods do not require CSRF protection
+        return (/^(GET|HEAD|OPTIONS|TRACE)$/.test(method));
     }
-});
+    $.ajaxSetup({
+        crossDomain: false, // obviates need for sameOrigin test
+        beforeSend: function(xhr, settings) {
+            if (!csrfSafeMethod(settings.type)) {
+                xhr.setRequestHeader("X-CSRFToken", "{{csrf_token}}");
+            }
+        }
+    });
   </script>
   {% endif %}
-  {% block localheader %}
-  {% endblock %}
+  {% block localheader %}{% endblock %}
 </head>
 <body>
-  {% block menubar %}{% endblock %}
+  {% block menubar %}
+  <ul>
+  <li><a href="/">Home</a></li>
+  <li><a href="{% url 'saas_cart_plan_list' %}">Pricing</a></li>
+  {% if user.is_authenticated %}
+  <li>
+    {% with user|attached_manager as organization %}
+    <a href="{% if organization %}{% url 'saas_organization_profile' organization %}{% else %}{% url 'accounts_profile' %}{% endif %}">{{user.username}}</a>
+    {% endwith %}
+  </li>
+  <li><a href="{% url 'logout' %}">Sign Out</a></li>
+  {% else %}
+  <li><a href="{% url 'login' %}">Sign In</a></li>
+  {% endif %}
+  </ul>
+  {% endblock %}
   <div id="messages" class="{% if not messages and not form.non_field_errors %}hidden{% endif %}">
     <div id="messages-content">
       {% for message in messages %}

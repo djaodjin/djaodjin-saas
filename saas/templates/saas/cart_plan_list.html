@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% load static from staticfiles %}
+{% load saas_tags %}
+{% load currency %}
+
+{% block content %}
+<section>
+    <form method="post" action=".">
+        {% csrf_token %}
+        {% for plan in plan_list %}
+        <div id="{{plan.slug}}" class="plan-short">
+            {% if plan.created_at|date_in_future %}
+            <p>Avalaible soon!</p>
+            {% endif %}
+            <h2>{{plan.title}}</h2>
+            {% if plan.period_amount > 0 %}
+            <p>
+            {{plan.period_amount|humanize_money:plan.unit}} {{plan.interval|humanize_period}}
+            </p>
+            {% endif %}
+            {% if plan.setup_amount > 0 %}
+            one-time: {{plan.setup_amount|humanize_money:plan.unit}}
+            {% endif %}
+            {% if plan.transaction_fee > 0 %}
+            <p>
+            {{plan.transaction_fee|percentage}} + 30c per transaction
+            </p>
+            {% endif %}
+            <div>
+                {{plan.description}}
+            </div>
+            <button type="submit" name="submit" value="{{plan.slug}}">Subscribe</button>
+        </div>
+        {% empty %}
+        <em>No Plans yet</em>
+        {% endfor %}
+    </form>
+</section>
+{% endblock %}
+
+{% block bodyscripts %}
+<script type="text/javascript" src="{% static 'js/djaodjin-saas.js' %}"></script>
+<script type="text/javascript" src="{% static 'js/djaodjin-saas-resources.js' %}"></script>
+<script type="text/javascript">
+$(document).ready(function() {
+    /* Select Plan and move to cart page. */
+    $(".plan-short").click(function (event) {
+        var self = $(this);
+        event.preventDefault();
+        var thisCartItem = new CartItem({
+            'plan': self.attr('id'),
+            'urls': {'saas_api_cart': "{% url 'saas_api_cart' %}"}});
+        thisCartItem.add(function(data) {
+            window.location = "{% url 'saas_cart' %}";
+        });
+    });
+});
+</script>
+{% endblock %}

@@ -1,5 +1,5 @@
 [
-  {
+{
     "fields": {
       "slug": "abc",
       "full_name": "ABC Corp.",
@@ -13,10 +13,48 @@
       "country": "US",
       "is_active": 1
     },
-    "model": "saas.Organization",
-    "pk": 2
+    "model": "saas.Organization", "pk": 2
+},
+{
+  "fields": {
+    "slug":"basic",
+    "created_at": "2013-08-30T14:16:55-09:00",
+    "setup_amount": 3000,
+    "period_amount": 2000,
+    "interval": 4,
+    "description": "Basic Plan",
+    "organization" : 2,
+    "is_active": 1
   },
-  {
+  "model" : "saas.Plan", "pk": 1
+},
+{
+  "fields": {
+    "slug": "medium",
+    "created_at":"2013-08-30T14:16:55-09:00",
+    "setup_amount": 2000,
+    "period_amount": 3000,
+    "interval": 4,
+    "description": "Medium Plan",
+    "organization" : 2,
+    "is_active": 1
+  },
+  "model" : "saas.Plan", "pk": 2
+},
+{
+  "fields": {
+    "slug": "premium",
+    "created_at": "2013-08-30T14:16:55-09:00",
+    "setup_amount": 1000,
+    "period_amount": 4000,
+    "interval": 4,
+    "description": "Premium Plan",
+    "organization" : 2,
+    "is_active": 1
+  },
+  "model" : "saas.Plan", "pk": 3
+},
+{
     "fields": {
       "date_joined": "2012-09-14T14:16:55-09:00",
       "email": "donny@localhost.localdomain",
@@ -29,26 +67,23 @@
       "password": "pbkdf2_sha256$10000$z0MBiWn0Rlem$iZdC6uHomlE07qGK/TqfcfxNzKJtFp03c0JILF1frRc=", 
       "username": "donny"
     },
-    "model": "auth.User",
-    "pk": 2
-  },
-  {
+    "model": "auth.User", "pk": 2
+},
+{
     "fields":{
       "organization": 1,
       "user": 2
     },
-    "model": "saas.organization_managers",
-    "pk": 1
-  },
-  {
+    "model": "saas.organization_managers", "pk": 1
+},
+{
     "fields":{
       "organization": 2,
       "user": 2
     },
-    "model": "saas.organization_managers",
-    "pk": 2
-  },
-  {
+    "model": "saas.organization_managers", "pk": 2
+},
+{
     "fields": {
       "date_joined": "2012-09-14T14:16:55-09:00",
       "email": "scott@localhost.localdomain",
@@ -63,26 +98,22 @@
       "user_permissions": [],
       "username": "scott"
     },
-    "model": "auth.User",
-    "pk": 3
-  },
-  {
+    "model": "auth.User", "pk": 3
+},
+{
     "fields": {
       "created_at": "2012-08-14T14:16:55-09:00",
       "plan": 1,
       "user": 2
     },
-    "model": "saas.CartItem",
-    "pk": 1
-  },
-  {
+    "model": "saas.CartItem", "pk": 1
+},
+{
     "fields": {
       "created_at": "2012-08-14T14:16:55-09:00",
       "code": "AAA",
       "organization": 1,
       "percent": 20
     },
-    "model": "saas.Coupon",
-    "pk": 1
-  }
-]
+    "model": "saas.Coupon", "pk": 1
+}]

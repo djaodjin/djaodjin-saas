@@ -88,10 +88,11 @@
                     totalAmount += lineAmount;
                 }
             }
-            totalAmountText = '' + (totalAmount / 100).toFixed(2);
-            totalAmountText = '$' + totalAmountText
+            var totalAmountText = '' + (totalAmount / 100).toFixed(2);
             if( self.options.currency_unit == 'cad' ) {
                 totalAmountText = '$' + totalAmountText + ' CAD';
+            } else {
+                totalAmountText = '$' + totalAmountText;
             }
             totalAmountNode.text(totalAmountText);
             if( totalAmount > 0 ) {

@@ -19,11 +19,11 @@
 <section id="funds">
   <h1>Funds</h1>
   <dl>
-    {% if balance >= 0 %}
-    <dt>{{balance|humanize_money:'usd'}}</dt>
-    <dd>Available {% if balance > 0 %}(<a href="{% url 'saas_withdraw_funds' organization %}">withdraw</a>){% endif %}</dd>
+    {% if balance_amount >= 0 %}
+    <dt>{{balance_amount|humanize_money:balance_unit}}</dt>
+    <dd>Available {% if balance_amount > 0 %}(<a href="{% url 'saas_withdraw_funds' organization %}">withdraw</a>){% endif %}</dd>
     {% else %}
-    <dt>{{balance|humanize_money:'-usd'}}</dt>
+    <dt>{{balance_amount|humanize_money:balance_unit}}</dt>
     <dd>Balance due</dd>
     {% endif %}
   </dl>

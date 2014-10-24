@@ -315,7 +315,7 @@ class Organization(models.Model):
                 # We can't set the event_id until the subscription is saved
                 # in the database.
                 invoiced_item.event_id = subscription.id
-                invoiced_item.orig_units = Transaction.PLAN_UNITS
+                invoiced_item.orig_unit = Transaction.PLAN_UNIT
                 invoiced_items += [invoiced_item]
 
         invoiced_items = Transaction.objects.execute_order(invoiced_items, user)
@@ -406,9 +406,11 @@ class Organization(models.Model):
             event_id=processor_transfer_id,
             descr=descr,
             created_at=created_at,
+            dest_unit='usd', # XXX currency on receipient bank account
             dest_amount=amount,
             dest_account=Transaction.WITHDRAW,
             dest_organization=Charge.get_processor(),
+            orig_unit='usd', # XXX
             orig_amount=amount,
             orig_account=Transaction.FUNDS,
             orig_organization=self)
@@ -753,7 +755,8 @@ class Charge(models.Model):
             provider.funds_balance += distribute_amount
             provider.save()
 
-        if self.invoiced_total_amount > self.amount:
+        invoiced_amount, _ = self.invoiced_total_amount
+        if invoiced_amount > self.amount:
             #pylint: disable=nonstandard-exception
             raise IntegrityError("The total amount of invoiced items for "\
               "charge %s exceed the amount of the charge.", self.processor_id)
@@ -802,9 +805,11 @@ class Charge(models.Model):
             event_id=self.id,
             descr=descr,
             created_at=created_at,
+            dest_unit=self.unit,
             dest_amount=total_amount,
             dest_account=Transaction.REFUND,
             dest_organization=provider,
+            orig_unit=self.unit,
             orig_amount=total_amount,
             orig_account=Transaction.REFUNDED,
             orig_organization=customer)
@@ -821,9 +826,11 @@ class Charge(models.Model):
                 # The Charge id is already included in the description here.
                 descr="Refunded %s" % charge_item.invoiced_fee.descr,
                 created_at=created_at,
+                dest_unit=self.unit,
                 dest_amount=fee_amount,
                 dest_account=Transaction.REFUND,
                 dest_organization=processor,
+                orig_unit=self.unit,
                 orig_amount=fee_amount,
                 orig_account=Transaction.FUNDS,
                 orig_organization=processor)
@@ -835,10 +842,10 @@ class Charge(models.Model):
             raise InsufficientFunds(
                 '%(provider)s has %(funds_available)s of funds available.'\
 ' %(funds_required)s are required to refund "%(descr)s"' % {
-                    'provider': provider,
-                   'funds_available': as_money(abs(provider.funds_balance)),
-                   'funds_required': as_money(abs(distribute_amount)),
-                   'descr': invoiced_item.descr})
+            'provider': provider,
+            'funds_available': as_money(abs(provider.funds_balance), self.unit),
+            'funds_required': as_money(abs(distribute_amount), self.unit),
+            'descr': invoiced_item.descr})
 
         # 2014/03/15 cancel payment to elearning
         #     djaodjin:Refund                               6000
@@ -847,9 +854,11 @@ class Charge(models.Model):
             event_id=self.id,
             descr=descr,
             created_at=created_at,
+            dest_unit=self.unit,
             dest_amount=distribute_amount,
             dest_account=Transaction.REFUND,
             dest_organization=processor,
+            orig_unit=self.unit,
             orig_amount=distribute_amount,
             orig_account=Transaction.FUNDS,
             orig_organization=provider)
@@ -1185,10 +1194,11 @@ class Subscription(models.Model):
             created_at=created_at,
             descr=descr,
             orig_amount=nb_periods,
-            orig_units=Transaction.PLAN_UNITS,
+            orig_unit=Transaction.PLAN_UNIT,
             orig_account=Transaction.INCOME, # XXX Receivable
             orig_organization=self.plan.organization,
             dest_amount=amount,
+            dest_unit=self.plan.unit,
             dest_account=Transaction.PAYABLE,
             dest_organization=self.organization,
             event_id=self.id)
@@ -1243,7 +1253,7 @@ class TransactionManager(models.Manager):
                 pay_now = True
                 subscription = Subscription.objects.get(
                     pk=invoiced_item.event_id)
-                if invoiced_item.orig_units == Transaction.PLAN_UNITS:
+                if invoiced_item.orig_unit == Transaction.PLAN_UNIT:
                     subscription.ends_at = subscription.plan.end_of_period(
                         subscription.ends_at, invoiced_item.orig_amount)
                 subscription.save()
@@ -1253,7 +1263,7 @@ class TransactionManager(models.Manager):
                     invoiced_item.dest_amount = subscription.plan.period_amount
                     pay_now = False
                 invoiced_item.orig_amount = invoiced_item.dest_amount
-                invoiced_item.orig_units = invoiced_item.dest_units
+                invoiced_item.orig_unit = invoiced_item.dest_unit
                 invoiced_item.save()
                 if pay_now:
                     invoiced_items_ids += [invoiced_item.id]
@@ -1269,13 +1279,17 @@ class TransactionManager(models.Manager):
         until = datetime_or_now(until)
         if not account:
             account = Transaction.PAYABLE
-        dest_amount, _ = sum_dest_amount(self.filter(
+        dest_amount, dest_unit = sum_dest_amount(self.filter(
             dest_organization=organization, dest_account=account,
             created_at__lt=until))
-        orig_amount, _ = sum_orig_amount(self.filter(
+        orig_amount, orig_unit = sum_orig_amount(self.filter(
             orig_organization=organization, orig_account=account,
             created_at__lt=until))
-        return dest_amount - orig_amount
+        if dest_unit != orig_unit:
+            LOGGER.error('orig and dest balances until %s for account'\
+' %s of %s have different unit (%s vs. %s).', until, account, organization,
+                         orig_unit, dest_unit)
+        return dest_amount - orig_amount, dest_unit
 
     def get_organization_payable(self, organization,
                                  until=None, created_at=None):
@@ -1286,14 +1300,16 @@ class TransactionManager(models.Manager):
         if not created_at:
             # Use *until* to avoid being off by a few microseconds.
             created_at = datetime_or_now(until)
-        balance = self.get_organization_balance(organization)
+        balance, unit = self.get_organization_balance(organization)
         return Transaction(
             created_at=created_at,
             # Re-use Description template here:
             descr=DESCRIBE_BALANCE % {'plan': organization},
+            orig_unit=unit,
             orig_amount=balance,
             orig_account=Transaction.PAYABLE,
             orig_organization=organization,
+            dest_unit=unit,
             dest_amount=balance,
             dest_account=Transaction.PAYABLE,
             dest_organization=organization)
@@ -1305,28 +1321,33 @@ class TransactionManager(models.Manager):
         The balance on a subscription is used to determine when
         a subscription is locked (balance due) or unlocked (no balance).
         """
-        dest_amount, _ = sum_dest_amount(self.filter(
+        dest_amount, dest_unit = sum_dest_amount(self.filter(
             dest_organization=subscription.organization,
             dest_account=Transaction.PAYABLE,
             event_id=subscription.id))
-        orig_amount, _ = sum_orig_amount(self.filter(
+        orig_amount, orig_unit = sum_orig_amount(self.filter(
             orig_organization=subscription.organization,
             orig_account=Transaction.PAYABLE,
             event_id=subscription.id))
-        return dest_amount - orig_amount
+        if dest_unit != orig_unit:
+            LOGGER.error('orig and dest balances for subscription '\
+' %s have different unit (%s vs. %s).', subscription, orig_unit, dest_unit)
+        return dest_amount - orig_amount, dest_unit
 
     def get_subscription_payable(self, subscription, created_at=None):
         """
         Returns a ``Transaction`` for the subscription balance.
         """
         created_at = datetime_or_now(created_at)
-        balance = self.get_subscription_balance(subscription)
+        balance, unit = self.get_subscription_balance(subscription)
         return Transaction(
             created_at=created_at,
             descr=DESCRIBE_BALANCE % {'plan': subscription.plan},
+            orig_unit=unit,
             orig_amount=balance,
             orig_account=Transaction.PAYABLE,
             orig_organization=subscription.organization,
+            dest_unit=unit,
             dest_amount=balance,
             dest_account=Transaction.PAYABLE,
             dest_organization=subscription.organization)
@@ -1336,14 +1357,16 @@ class TransactionManager(models.Manager):
         Returns a ``Transaction`` for the subscription balance to be paid later.
         """
         created_at = datetime_or_now(created_at)
-        balance = self.get_subscription_balance(subscription)
+        balance, unit = self.get_subscription_balance(subscription)
         return Transaction(
             created_at=created_at,
             descr=('Pay balance of %s on %s later'
-                   % (as_money(balance), subscription.plan)),
+                   % (as_money(balance, unit), subscription.plan)),
+            orig_unit=unit,
             orig_amount=balance,
             orig_account=Transaction.PAYABLE,
             orig_organization=subscription.organization,
+            dest_unit=unit,
             dest_amount=0,
             dest_account=Transaction.PAYABLE,
             dest_organization=subscription.organization)
@@ -1378,7 +1401,7 @@ class Transaction(models.Model):
 
     use 'ledger register' for tax acrual tax reporting.
     '''
-    PLAN_UNITS = '___'
+    PLAN_UNIT = '___'
 
     # provider side
     BACKLOG = 'Backlog'
@@ -1407,7 +1430,7 @@ class Transaction(models.Model):
         related_name="outgoing")
     orig_amount = models.PositiveIntegerField(default=0,
         help_text=_('amount withdrawn from origin in origin units'))
-    orig_units = models.CharField(max_length=3, default="usd",
+    orig_unit = models.CharField(max_length=3, default="usd",
         help_text=_('Measure of units on origin account'))
 
     dest_account = models.CharField(max_length=30, default="unknown")
@@ -1415,7 +1438,7 @@ class Transaction(models.Model):
         related_name="incoming")
     dest_amount = models.PositiveIntegerField(default=0,
         help_text=_('amount deposited into destination in destination units'))
-    dest_units = models.CharField(max_length=3, default="usd",
+    dest_unit = models.CharField(max_length=3, default="usd",
         help_text=_('Measure of units on destination account'))
 
     # Optional
@@ -1455,12 +1478,19 @@ def sum_dest_amount(transactions):
     amount = 0
     unit = 'usd' # XXX
     if isinstance(transactions, QuerySet):
-        amount = transactions.aggregate(Sum('dest_amount'))['dest_amount__sum']
-        if amount is None:
-            amount = 0
+        if transactions.exists():
+            queryset_unit = transactions.values('dest_unit').distinct()
+            if queryset_unit.count() > 1:
+                LOGGER.error(
+                  "Trying to sum amounts with different units %s", transactions)
+            unit = queryset_unit.first()['dest_unit']
+            queryset_amount = transactions.aggregate(Sum('dest_amount'))
+            amount = queryset_amount['dest_amount__sum']
     else:
         for item in transactions:
             amount += item.dest_amount
+            unit = item.dest_unit      # Only works because transactions were
+                                       # previously filtered by ``dest_unit``.
     return amount, unit
 
 def sum_orig_amount(transactions):
@@ -1470,10 +1500,17 @@ def sum_orig_amount(transactions):
     amount = 0
     unit = 'usd' # XXX
     if isinstance(transactions, QuerySet):
-        amount = transactions.aggregate(Sum('orig_amount'))['orig_amount__sum']
-        if amount is None:
-            amount = 0
+        if transactions.exists():
+            queryset_unit = transactions.values('orig_unit').distinct()
+            if queryset_unit.count() > 1:
+                LOGGER.error(
+                  "Trying to sum amounts with different units %s", transactions)
+            unit = queryset_unit.first()['orig_unit']
+            queryset_amount = transactions.aggregate(Sum('orig_amount'))
+            amount = queryset_amount['orig_amount__sum']
     else:
         for item in transactions:
-            amount += item.dest_amount
+            amount += item.orig_amount
+            unit = item.orig_unit      # Only works because transactions were
+                                       # previously filtered by ``orig_unit``.
     return amount, unit
