@@ -24,7 +24,7 @@
 
 from django.contrib.auth.decorators import login_required
 from django.core.urlresolvers import reverse_lazy
-from django.views.generic import RedirectView, TemplateView
+from django.views.generic import TemplateView
 from urldecorators import patterns, include, url
 
 from saas.settings import ACCT_REGEX
