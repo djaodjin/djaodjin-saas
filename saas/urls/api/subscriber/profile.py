@@ -29,6 +29,7 @@ URLs API for profile resources (contributors, managers and subscriptions)
 from django.conf.urls import patterns, url
 
 from saas.settings import ACCT_REGEX
+from saas.api.organizations import OrganizationDetailAPIView
 from saas.api.subscriptions import (SubscriptionDetailAPIView,
     SubscriptionListAPIView)
 from saas.api.users import (ContributorListAPIView, ContributorDetailAPIView,
@@ -52,4 +53,6 @@ urlpatterns = patterns('saas.api',
     url(r'^(?P<organization>%s)/subscriptions/?' % ACCT_REGEX,
         SubscriptionListAPIView.as_view(),
         name='saas_api_subscription_list'),
+    url(r'^(?P<organization>%s)/?$' % ACCT_REGEX,
+        OrganizationDetailAPIView.as_view(), name='saas_api_organization'),
 )

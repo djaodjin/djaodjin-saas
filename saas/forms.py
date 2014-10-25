@@ -103,8 +103,7 @@ class OrganizationForm(PostalFormMixin, forms.ModelForm):
     class Meta:
         model = Organization
         fields = ('full_name', 'email', 'phone', 'street_address',
-                  'locality', 'region', 'postal_code',
-                  'country', 'is_bulk_buyer')
+                  'locality', 'region', 'postal_code', 'country')
         widgets = {'country': forms.widgets.Select(choices=countries)}
 
     def __init__(self, *args, **kwargs):
@@ -117,6 +116,14 @@ class OrganizationForm(PostalFormMixin, forms.ModelForm):
         if not self.fields['country'].initial:
             self.fields['country'].initial = country.code
         self.add_postal_region(country=country)
+        if self.initial.has_key('is_bulk_buyer'):
+            initial = self.initial['is_bulk_buyer']
+            if self.instance:
+                initial = self.instance.is_bulk_buyer
+            self.fields['is_bulk_buyer'] = forms.BooleanField(required=False,
+                initial=initial,
+                label="Enable this organization to pay subscriptions on behalf"\
+" of others.")
 
 
 class ManagerAndOrganizationForm(OrganizationForm):

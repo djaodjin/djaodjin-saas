@@ -22,10 +22,12 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+from django.db.models import Q
 from django.utils.dateparse import parse_datetime
 from rest_framework.views import APIView
 from rest_framework.response import Response
 
+from saas import settings
 from saas.mixins import ProviderMixin
 from saas.models import Transaction, Organization
 from saas.utils import datetime_or_now
@@ -91,11 +93,13 @@ class RegisteredAPIView(OrganizationListAPIView):
 
     queryset_name = 'registered'
 
-    @staticmethod
-    def get_queryset(start_time, end_time):
+    def get_queryset(self, start_time, end_time):
         #pylint: disable=unused-argument
         return Organization.objects.filter(
-            subscription__isnull=True).order_by('full_name')
+            Q(subscription__isnull=True) |
+            Q(subscription__created_at__gte=end_time), created_at__lt=end_time
+            ).exclude(pk__in=[self.provider.pk, settings.PROCESSOR_ID]
+            ).order_by('full_name')
 
 
 class SubscribedAPIView(OrganizationListAPIView):

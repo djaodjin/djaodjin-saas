@@ -63,6 +63,14 @@ class OrganizationMixin(ContextMixin):
 
     organization_url_kwarg = 'organization'
 
+    @staticmethod
+    def attached_manager(organization):
+        if organization.managers.count() == 1:
+            manager = organization.managers.first()
+            if organization.slug == manager.username:
+                return manager
+        return None
+
     def get_organization(self):
         return get_object_or_404(Organization,
             slug=self.kwargs.get(self.organization_url_kwarg))

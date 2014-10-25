@@ -329,7 +329,7 @@ class Organization(models.Model):
         if new_organizations:
             coupon = Coupon.objects.create(
                 code=generate_random_slug(),
-                organization=subscription.plan,
+                organization=subscription.plan.organization,
                 plan=subscription.plan,
                 percent=100, nb_attempts=len(new_organizations),
                 description='Bulk buying from %s (charge %s)' % (

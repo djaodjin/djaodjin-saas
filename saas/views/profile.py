@@ -227,22 +227,20 @@ class SubscriptionListView(OrganizationMixin, ListView):
         return context
 
 
-class OrganizationProfileView(UpdateView):
+class OrganizationProfileView(OrganizationMixin, UpdateView):
 
     model = Organization
+    slug_field = 'slug'
     slug_url_kwarg = 'organization'
     template_name = "saas/organization_profile.html"
 
-    def attached_manager(self):
-        if self.object.managers.count() == 1:
-            manager = self.object.managers.first()
-            if self.object.slug == manager.username:
-                return manager
-        return None
-
     @method_decorator(transaction.atomic)
     def form_valid(self, form):
-        manager = self.attached_manager()
+        if 'is_bulk_buyer' in form.cleaned_data:
+            self.object.is_bulk_buyer = form.cleaned_data['is_bulk_buyer']
+        else:
+            self.object.is_bulk_buyer = False
+        manager = self.attached_manager(self.object)
         if manager:
             if form.cleaned_data.get('slug', None):
                 manager.username = form.cleaned_data['slug']
@@ -262,15 +260,23 @@ class OrganizationProfileView(UpdateView):
     def get_context_data(self, **kwargs):
         context = super(
             OrganizationProfileView, self).get_context_data(**kwargs)
-        context.update({"attached_manager": self.attached_manager()})
+        context.update({"attached_manager": self.attached_manager(self.object)})
         return context
 
     def get_form_class(self):
-        if self.attached_manager():
+        if self.attached_manager(self.object):
             # There is only one manager so we will add the User fields
             # to the form so they can be updated at the same time.
             return ManagerAndOrganizationForm
         return OrganizationForm
+
+    def get_initial(self):
+        kwargs = super(OrganizationProfileView, self).get_initial()
+        queryset = Organization.objects.providers_to(
+            self.object).filter(managers__id=self.request.user.id)
+        if queryset.exists():
+            kwargs.update({'is_bulk_buyer': self.object.is_bulk_buyer})
+        return kwargs
 
     def get_success_url(self):
         messages.info(self.request, 'Profile Updated.')
