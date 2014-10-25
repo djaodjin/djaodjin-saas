@@ -28,6 +28,7 @@ from rest_framework import serializers, status
 from rest_framework.generics import (GenericAPIView,
     ListCreateAPIView, RetrieveUpdateDestroyAPIView)
 from rest_framework.response import Response
+from extra_views.contrib.mixins import SearchableListMixin, SortableListMixin
 
 from saas.models import CartItem, Coupon
 from saas.mixins import ProviderMixin
@@ -71,7 +72,25 @@ class CouponMixin(ProviderMixin):
         return super(CouponMixin, self).pre_save(obj)
 
 
-class CouponListAPIView(CouponMixin, ListCreateAPIView):
+class SmartCouponListMixin(SearchableListMixin, SortableListMixin):
+    """
+    Subscriber list which is also searchable and sortable.
+    """
+    search_fields = ['created_at',
+                     'code',
+                     'description',
+                     'percent',
+                     'ends_at',
+                     'organization__full_name']
+
+    sort_fields_aliases = [('code', 'code'),
+                           ('percent', 'percent'),
+                           ('ends_at', 'ends_at'),
+                           ('description', 'description'),
+                           ('created_at', 'created_at')]
+
+
+class CouponListAPIView(SmartCouponListMixin, CouponMixin, ListCreateAPIView):
 
     def post(self, request, *args, **kwargs): #pylint: disable=unused-argument
         return super(CouponListAPIView, self).post(request, *args, **kwargs)

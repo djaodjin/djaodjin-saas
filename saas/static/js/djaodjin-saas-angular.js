@@ -65,9 +65,50 @@ couponControllers.controller('CouponListCtrl',
     ['$scope', '$http', '$timeout', 'Coupon', 'urls',
      function($scope, $http, $timeout, Coupon, urls) {
     $scope.urls = urls;
-    $scope.coupons = Coupon.query();
-
+    $scope.dir = {code: 'asc'};
+    $scope.params = {o: 'code', ot: $scope.dir['code']};
+    $scope.coupons = Coupon.query($scope.params);
     $scope.newCoupon = new Coupon();
+
+    $scope.filterExpr = '';
+    $scope.maxSize = 10;  // Limit number for pagination size
+    $scope.numPages = 5;  // Total number of pages to display
+    $scope.currentPage = 1;
+
+    $scope.dateOptions = {
+        formatYear: 'yy',
+        startingDay: 1
+    };
+
+    $scope.initDate = new Date('2016-15-20');
+    $scope.minDate = new Date();
+    $scope.maxDate = new Date('2016-01-01');
+    $scope.formats = ['dd-MMMM-yyyy', 'yyyy/MM/dd', 'dd.MM.yyyy', 'shortDate'];
+    $scope.format = $scope.formats[0];
+
+    $scope.filterList = function(regex) {
+        console.log("filterExp:", regex);
+        if( regex ) {
+            $scope.params['q'] = regex;
+        } else {
+            delete $scope.params['q'];
+        }
+        $scope.coupons = Coupon.query($scope.params);
+    };
+
+    // calendar for expiration date
+    $scope.open = function($event, coupon) {
+        $event.preventDefault();
+        $event.stopPropagation();
+        coupon.opened = true;
+    };
+
+    $scope.pageChanged = function() {
+        if( $scope.currentPage > 1 ) {
+            $scope.params['offset'] = ($scope.currentPage - 1) * $scope.maxSize;
+        }
+        $scope.coupons = Coupon.query($scope.params);
+    };
 
     $scope.remove = function (idx) {
         Coupon.remove({ coupon: $scope.coupons[idx].code }, function (success) {
@@ -84,12 +125,18 @@ couponControllers.controller('CouponListCtrl',
         });
     };
 
-    // calendar for expiration date
-    $scope.open = function($event, coupon) {
-        $event.preventDefault();
-        $event.stopPropagation();
-        coupon.opened = true;
-    };
+    $scope.sortBy = function(fieldName) {
+        if( $scope.dir[fieldName] == 'asc' ) {
+            $scope.dir = {};
+            $scope.dir[fieldName] = 'desc';
+        } else {
+            $scope.dir = {};
+            $scope.dir[fieldName] = 'asc';
+        }
+        $scope.params['o'] = fieldName;
+        $scope.params['ot'] = $scope.dir[fieldName];
+        $scope.coupons = Coupon.query($scope.params);
+    }
 
     $scope.$watch('coupons', function(newVal, oldVal, scope) {
         var length = ( oldVal.length < newVal.length ) ?
@@ -102,11 +149,6 @@ couponControllers.controller('CouponListCtrl',
             }
         }
     }, true);
-
-    $scope.dateOptions = {
-        formatYear: 'yy',
-        startingDay: 1
-    };
 
     $scope.editDescription = function (idx){
         $scope.edit_description = Array.apply(null, Array($scope.coupons.length)).map(function() {
@@ -124,12 +166,6 @@ couponControllers.controller('CouponListCtrl',
             coupon.$update();
         }
     };
-
-    $scope.initDate = new Date('2016-15-20');
-    $scope.minDate = new Date();
-    $scope.maxDate = new Date('2016-01-01');
-    $scope.formats = ['dd-MMMM-yyyy', 'yyyy/MM/dd', 'dd.MM.yyyy', 'shortDate'];
-    $scope.format = $scope.formats[0];
 }]);
 
 
