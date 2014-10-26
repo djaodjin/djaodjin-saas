@@ -1150,7 +1150,8 @@ class Subscription(models.Model):
 
     @property
     def is_locked(self):
-        return Transaction.objects.get_subscription_balance(self) > 0
+        balance, _ = Transaction.objects.get_subscription_balance(self)
+        return balance > 0
 
     def charge_in_progress(self):
         queryset = Charge.objects.filter(
