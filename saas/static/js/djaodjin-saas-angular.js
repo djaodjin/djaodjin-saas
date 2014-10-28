@@ -12,6 +12,8 @@ angular.module('subscriptionApp', ['ui.bootstrap', 'ngRoute',
     'subscriptionControllers', 'subscriptionServices']);
 angular.module('subscriberApp', ['ui.bootstrap', 'ngRoute',
     'subscriberControllers']);
+angular.module('transactionApp', ['ui.bootstrap', 'ngRoute',
+    'transactionControllers', 'transactionServices']);
 
 
 /*=============================================================================
@@ -23,6 +25,7 @@ var contributorServices = angular.module('contributorServices', ['ngResource']);
 var managerServices = angular.module('managerServices', ['ngResource']);
 var subscriptionServices = angular.module('subscriptionServices', [
     'ngResource']);
+var transactionServices = angular.module('transactionServices', ['ngResource']);
 
 
 couponServices.factory('Coupon', ['$resource', 'urls',
@@ -51,6 +54,12 @@ subscriptionServices.factory('Subscription', ['$resource', 'urls',
         urls.saas_api_subscription_url + '/:plan', {plan:'@plan'});
   }]);
 
+transactionServices.factory('Transaction', ['$resource', 'urls',
+  function($resource, urls){
+    return $resource(
+        urls.saas_api_transaction_url + '/:id', {id:'@id'});
+  }]);
+
 /*=============================================================================
   Controllers
   ============================================================================*/
@@ -60,6 +69,7 @@ var contributorControllers = angular.module('contributorControllers', []);
 var managerControllers = angular.module('managerControllers', []);
 var subscriptionControllers = angular.module('subscriptionControllers', []);
 var subscriberControllers = angular.module('subscriberControllers', []);
+var transactionControllers = angular.module('transactionControllers', []);
 
 couponControllers.controller('CouponListCtrl',
     ['$scope', '$http', '$timeout', 'Coupon', 'urls',
@@ -69,6 +79,7 @@ couponControllers.controller('CouponListCtrl',
     $scope.params = {o: 'code', ot: $scope.dir['code']};
     $scope.coupons = Coupon.query($scope.params);
     $scope.newCoupon = new Coupon();
+    console.log("XXX", Coupon.query.action);
 
     $scope.filterExpr = '';
     $scope.maxSize = 10;  // Limit number for pagination size
@@ -240,16 +251,70 @@ managerControllers.controller('managerListCtrl',
 
 }]);
 
+
 subscriptionControllers.controller('subscriptionListCtrl',
     ['$scope', '$http', 'Subscription', 'urls',
     function($scope, $http, Subscription, urls) {
 
-    $scope.unsubscribe = function(url) {
+    var defaultSortByField = 'organization';
+    $scope.dir = {}
+    $scope.dir[defaultSortByField] = 'asc';
+    $scope.params = {o: defaultSortByField, ot: $scope.dir[defaultSortByField]};
+    $scope.subscriptions = Subscription.query($scope.params);
+
+    $scope.filterExpr = '';
+    $scope.maxSize = 10;  // Limit number for pagination size
+    $scope.numPages = 5;  // Total number of pages to display
+    $scope.currentPage = 1;
+
+    $scope.dateOptions = {
+        formatYear: 'yy',
+        startingDay: 1
+    };
+
+    $scope.initDate = new Date('2016-15-20');
+    $scope.minDate = new Date();
+    $scope.maxDate = new Date('2016-01-01');
+    $scope.formats = ['dd-MMMM-yyyy', 'yyyy/MM/dd', 'dd.MM.yyyy', 'shortDate'];
+    $scope.format = $scope.formats[0];
+
+    $scope.filterList = function(regex) {
+        console.log("filterExp:", regex);
+        if( regex ) {
+            $scope.params['q'] = regex;
+        } else {
+            delete $scope.params['q'];
+        }
+        $scope.subscriptions = Subscription.query($scope.params);
+    };
+
+    $scope.pageChanged = function() {
+        if( $scope.currentPage > 1 ) {
+            $scope.params['offset'] = ($scope.currentPage - 1) * $scope.maxSize;
+        }
+        $scope.subscriptions = Subscription.query($scope.params);
+    };
+
+    $scope.sortBy = function(fieldName) {
+        if( $scope.dir[fieldName] == 'asc' ) {
+            $scope.dir = {};
+            $scope.dir[fieldName] = 'desc';
+        } else {
+            $scope.dir = {};
+            $scope.dir[fieldName] = 'asc';
+        }
+        $scope.params['o'] = fieldName;
+        $scope.params['ot'] = $scope.dir[fieldName];
+        $scope.subscriptions = Subscription.query($scope.params);
+    }
+
+    $scope.unsubscribe = function(organization, plan) {
         if( confirm("Are you sure?") ) {
-            $http.$delete(url).then(function(data){ location.reload(); });
+            $http.delete(urls.saas_api + organization + "/subscriptions/" + plan).then(function(data){ location.reload(); });
         }
     }
 }]);
+
 
 subscriberControllers.controller('subscriberCtrl',
     ['$scope', '$http', 'urls',
@@ -364,5 +429,63 @@ subscriberControllers.controller('subscriberCtrl',
         }
         return "";
     }
+}]);
+
+
+transactionControllers.controller('transactionListCtrl',
+    ['$scope', '$http', '$timeout', 'Transaction',
+     function($scope, $http, $timeout, Transaction) {
+    var defaultSortByField = 'date';
+    $scope.dir = {}
+    $scope.dir[defaultSortByField] = 'desc';
+    $scope.params = {o: defaultSortByField, ot: $scope.dir[defaultSortByField]};
+    $scope.transactions = Transaction.query($scope.params);
+
+    $scope.filterExpr = '';
+    $scope.maxSize = 10;  // Limit number for pagination size
+    $scope.numPages = 5;  // Total number of pages to display
+    $scope.currentPage = 1;
+
+    $scope.dateOptions = {
+        formatYear: 'yy',
+        startingDay: 1
+    };
+
+    $scope.initDate = new Date('2016-15-20');
+    $scope.minDate = new Date();
+    $scope.maxDate = new Date('2016-01-01');
+    $scope.formats = ['dd-MMMM-yyyy', 'yyyy/MM/dd', 'dd.MM.yyyy', 'shortDate'];
+    $scope.format = $scope.formats[0];
+
+    $scope.filterList = function(regex) {
+        console.log("filterExp:", regex);
+        if( regex ) {
+            $scope.params['q'] = regex;
+        } else {
+            delete $scope.params['q'];
+        }
+        $scope.transactions = Transaction.query($scope.params);
+    };
+
+    $scope.pageChanged = function() {
+        if( $scope.currentPage > 1 ) {
+            $scope.params['offset'] = ($scope.currentPage - 1) * $scope.maxSize;
+        }
+        $scope.transactions = Transaction.query($scope.params);
+    };
+
+    $scope.sortBy = function(fieldName) {
+        if( $scope.dir[fieldName] == 'asc' ) {
+            $scope.dir = {};
+            $scope.dir[fieldName] = 'desc';
+        } else {
+            $scope.dir = {};
+            $scope.dir[fieldName] = 'asc';
+        }
+        $scope.params['o'] = fieldName;
+        $scope.params['ot'] = $scope.dir[fieldName];
+        $scope.transactions = Transaction.query($scope.params);
+    }
+
 }]);
 

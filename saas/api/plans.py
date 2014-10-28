@@ -29,18 +29,10 @@ from rest_framework import serializers
 
 from saas.models import Plan
 from saas.mixins import ProviderMixin
+from saas.api.serializers import PlanSerializer
 
 #pylint: disable=no-init
 #pylint: disable=old-style-class
-
-
-class PlanSerializer(serializers.ModelSerializer):
-
-    class Meta:
-        model = Plan
-        fields = ('slug', 'title', 'description', 'is_active',
-                  'setup_amount', 'period_amount', 'interval')
-        read_only_fields = ('slug',)
 
 
 class PlanActivateSerializer(serializers.ModelSerializer):

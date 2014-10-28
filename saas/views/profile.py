@@ -28,18 +28,13 @@ import logging
 
 from django.contrib import messages
 from django.core.urlresolvers import reverse
-from django.core.exceptions import ImproperlyConfigured
 from django.db import transaction
-from django.shortcuts import get_object_or_404
-from django.views.generic import ListView, UpdateView
-from django.views.generic.edit import FormMixin
+from django.views.generic import ListView, TemplateView, UpdateView
 from django.utils.decorators import method_decorator
-from extra_views import SearchableListMixin, SortableListMixin
 
-from saas.forms import (OrganizationForm, ManagerAndOrganizationForm,
-    UnsubscribeForm)
+from saas.forms import OrganizationForm, ManagerAndOrganizationForm
 from saas.mixins import OrganizationMixin, ProviderMixin
-from saas.models import Organization, Subscription, datetime_or_now
+from saas.models import Organization, Subscription
 
 LOGGER = logging.getLogger(__name__)
 
@@ -114,98 +109,12 @@ class ManagerListView(OrganizationMixin, ManagerListBaseView):
     pass
 
 
-class SubscriberListBaseView(ProviderMixin, ListView):
-
-    model = Subscription
-
-    def get_queryset(self):
-        self.organization = self.get_organization()
-        queryset = super(SubscriberListBaseView, self).get_queryset().filter(
-            ends_at__gte=datetime_or_now(),
-            plan__organization=self.organization).distinct()
-        return queryset
-
-
-class SmartListMixin(SearchableListMixin, SortableListMixin):
-    """
-    Subscriber list which is also searchable and sortable.
-    """
-    search_fields = ['organization__full_name',
-                     'organization__email',
-                     'organization__phone',
-                     'organization__street_address',
-                     'organization__locality',
-                     'organization__region',
-                     'organization__postal_code',
-                     'organization__country']
-
-    sort_fields_aliases = [('organization__full_name', 'full_name'),
-                           ('plan__title', 'plan'),
-                           ('created_at', 'since'),
-                           ('ends_at', 'ends_at')]
-
-    def get_context_data(self, **kwargs):
-        context = super(
-            SmartListMixin, self).get_context_data(**kwargs)
-        context.update({'q': self.request.GET.get('q', '')})
-        return context
-
-    def get_template_names(self):
-        """
-        Return a list of template names to be used for the request. Must return
-        a list. May not be called if render_to_response is overridden.
-        """
-        names = []
-        if self.sort_helper.initial_sort:
-            if hasattr(self.object_list, 'model'):
-                #pylint: disable=protected-access
-                opts = self.object_list.model._meta
-                names.append("%s/%s_sort_by_%s%s.html" % (
-                    opts.app_label, opts.model_name,
-                    self.sort_helper.sort_fields[self.sort_helper.initial_sort],
-                    self.template_name_suffix))
-        try:
-            names += super(
-                SmartListMixin, self).get_template_names()
-        except ImproperlyConfigured:
-            pass
-        return names
-
-
-class SubscriberListView(SmartListMixin, FormMixin, SubscriberListBaseView):
+class SubscriberListView(ProviderMixin, TemplateView):
     """
     List of organizations subscribed to a plan provided by the organization.
     """
 
-    paginate_by = 25
-    form_class = UnsubscribeForm
     template_name = 'saas/subscriber_list.html'
-
-    def form_valid(self, form):
-        # As long as request.user is authorized to self.get_organization(),
-        # the subscription will either be valid or a 404 raised.
-        self.organization = self.get_organization()
-        subscription = get_object_or_404(Subscription,
-            organization__slug=form.cleaned_data['subscriber'],
-            plan__slug=form.cleaned_data['plan'],
-            plan__organization=self.organization)
-        subscription.unsubscribe_now()
-        return super(SubscriberListView, self).form_valid(form)
-
-    def get_success_url(self):
-        return reverse('saas_subscriber_list', args=(self.organization,))
-
-    def post(self, request, *args, **kwargs): #pylint: disable=unused-argument
-        # We have created a form per subscriber/plan.
-        form_class = self.get_form_class()
-        form = self.get_form(form_class)
-        if form.is_valid():
-            return self.form_valid(form)
-        else:
-            return self.form_invalid(form)
-
-    def put(self, *args, **kwargs):
-        return self.post(*args, **kwargs)
 
 
 class SubscriptionListView(OrganizationMixin, ListView):

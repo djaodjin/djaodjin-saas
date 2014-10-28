@@ -30,6 +30,7 @@ from django.conf.urls import patterns, url
 
 from saas.api.metrics import (RevenueMetricsAPIView, ChurnedAPIView,
     RegisteredAPIView, SubscribedAPIView)
+from saas.api.subscriptions import ActiveSubscriptionAPIView
 
 urlpatterns = patterns('',
     url(r'^metrics/churned/?',
@@ -40,4 +41,6 @@ urlpatterns = patterns('',
         SubscribedAPIView.as_view(), name='saas_api_subscribed'),
     url(r'^metrics/revenue/?',
         RevenueMetricsAPIView.as_view(), name='saas_api_metrics_revenue'),
+    url(r'^subscriptions/active/?',
+      ActiveSubscriptionAPIView.as_view(), name='saas_api_active_subscription'),
 )

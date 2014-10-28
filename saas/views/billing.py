@@ -44,7 +44,7 @@ from django.db import IntegrityError
 from django.db.models import Q
 from django.contrib import messages
 from django.shortcuts import get_object_or_404
-from django.views.generic import DetailView, FormView, ListView
+from django.views.generic import DetailView, FormView, ListView, TemplateView
 
 from saas.backends import PROCESSOR_BACKEND, ProcessorError
 from saas.utils import validate_redirect_url, datetime_or_now
@@ -309,31 +309,17 @@ class CardUpdateView(CardFormMixin, FormView):
         return reverse('saas_billing_info', args=(self.customer,))
 
 
-class TransactionListView(OrganizationMixin, ListView):
+class TransactionListView(OrganizationMixin, TemplateView):
     """
     This page shows the subscriptions an Organization paid for
     as well as payment refunded.
     """
 
-    paginate_by = 10
     template_name = 'billing/index.html'
 
-    def get_queryset(self):
-        """
-        Get the list of transactions for this organization.
-        """
-        self.customer = self.get_organization()
-        queryset = Transaction.objects.filter(
-            (Q(dest_organization=self.customer)
-             & (Q(dest_account=Transaction.PAYABLE) # Only customer side
-                | Q(dest_account=Transaction.EXPENSES)))
-            |(Q(orig_organization=self.customer)
-              & Q(orig_account=Transaction.REFUNDED))).order_by('-created_at')
-        return queryset
-
     def get_context_data(self, **kwargs):
+        self.customer = self.get_organization()
         context = super(TransactionListView, self).get_context_data(**kwargs)
-        context.update({'organization': self.customer})
         balance_amount, balance_unit \
             = Transaction.objects.get_organization_balance(self.customer)
         if balance_amount < 0:
@@ -346,28 +332,15 @@ class TransactionListView(OrganizationMixin, ListView):
         return context
 
 
-class TransferListView(BankMixin, ListView):
+class TransferListView(BankMixin, TemplateView):
     """
     List of transfers from processor to an organization bank account.
     """
 
-    paginate_by = 10
     template_name = 'saas/transfer_list.html'
 
-    def get_queryset(self):
-        """
-        Get the list of transactions for this organization.
-        """
-        self.organization = self.get_organization()
-        queryset = Transaction.objects.filter(
-            # All transactions involving Funds
-            ((Q(orig_organization=self.organization)
-              & Q(orig_account=Transaction.FUNDS))
-            | (Q(dest_organization=self.organization)
-              & Q(dest_account=Transaction.FUNDS)))).order_by('-created_at')
-        return queryset
-
     def get_context_data(self, **kwargs):
+        self.organization = self.get_organization()
         context = super(TransferListView, self).get_context_data(**kwargs)
         balance_amount, balance_unit \
             = Transaction.objects.get_organization_balance(

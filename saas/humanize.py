@@ -24,6 +24,9 @@
 
 import datetime, re
 
+from django.core.urlresolvers import reverse
+
+
 DESCRIBE_BALANCE = \
     "Balance on %(plan)s"
 
@@ -77,3 +80,36 @@ def match_unlock(descr):
     if not look:
         return False
     return True
+
+
+def as_html_description(transaction):
+    provider = transaction.orig_organization
+    subscriber = transaction.dest_organization
+    look = re.match(DESCRIBE_BUY_PERIODS % {
+        'plan': r'(?P<plan>\S+)', 'ends_at': r'.*', 'humanized_periods': r'.*'},
+        transaction.descr)
+    if not look:
+        look = re.match(DESCRIBE_UNLOCK_NOW % {
+            'plan': r'(?P<plan>\S+)', 'unlock_event': r'.*'},
+            transaction.descr)
+    if not look:
+        look = re.match(DESCRIBE_UNLOCK_LATER % {
+            'plan': r'(?P<plan>\S+)', 'unlock_event': r'.*',
+            'amount': r'.*'}, transaction.descr)
+    if not look:
+        look = re.match(DESCRIBE_BALANCE % {
+            'plan': r'(?P<plan>\S+)'}, transaction.descr)
+    if not look:
+        # DESCRIBE_CHARGED_CARD, DESCRIBE_CHARGED_CARD_PROCESSOR
+        # and DESCRIBE_CHARGED_CARD_PROVIDER.
+        # are specially crafted to start with "Charge ..."
+        look = re.match(r'Charge (?P<charge>\S+)', transaction.descr)
+        if look:
+            link = '<a href="%s">%s</a>' % (reverse('saas_charge_receipt',
+                args=(subscriber, look.group('charge'),)), look.group('charge'))
+            return transaction.descr.replace(look.group('charge'), link)
+        return transaction.descr
+
+    plan_link = ('<a href="/%s/app/%s/%s/">%s</a>' %
+        (provider, subscriber, look.group('plan'), look.group('plan')))
+    return transaction.descr.replace(look.group('plan'), plan_link)

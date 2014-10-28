@@ -22,17 +22,14 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-import re
 from datetime import datetime, timedelta
 
 from django import template
 from django.core.exceptions import PermissionDenied
-from django.core.urlresolvers import reverse
 from django.utils.safestring import mark_safe
 from django.utils.timezone import utc
 
-from saas.humanize import (DESCRIBE_BALANCE, DESCRIBE_BUY_PERIODS,
-    DESCRIBE_UNLOCK_NOW, DESCRIBE_UNLOCK_LATER)
+from saas.humanize import as_html_description
 from saas.models import (Organization, Subscription, Transaction,
     get_current_provider)
 from saas.views.auth import valid_manager_for_organization
@@ -157,38 +154,7 @@ def active_with_provider(organization, provider):
 
 @register.filter(needs_autoescape=False)
 def describe(transaction):
-    provider = transaction.orig_organization
-    subscriber = transaction.dest_organization
-    look = re.match(DESCRIBE_BUY_PERIODS % {
-        'plan': r'(?P<plan>\S+)', 'ends_at': r'.*', 'humanized_periods': r'.*'},
-        transaction.descr)
-    if not look:
-        look = re.match(DESCRIBE_UNLOCK_NOW % {
-            'plan': r'(?P<plan>\S+)', 'unlock_event': r'.*'},
-            transaction.descr)
-    if not look:
-        look = re.match(DESCRIBE_UNLOCK_LATER % {
-            'plan': r'(?P<plan>\S+)', 'unlock_event': r'.*',
-            'amount': r'.*'}, transaction.descr)
-    if not look:
-        look = re.match(DESCRIBE_BALANCE % {
-            'plan': r'(?P<plan>\S+)'}, transaction.descr)
-    if not look:
-        # DESCRIBE_CHARGED_CARD, DESCRIBE_CHARGED_CARD_PROCESSOR
-        # and DESCRIBE_CHARGED_CARD_PROVIDER.
-        # are specially crafted to start with "Charge ..."
-        look = re.match(r'Charge (?P<charge>\S+)', transaction.descr)
-        if look:
-            link = '<a href="%s">%s</a>' % (reverse('saas_charge_receipt',
-                args=(subscriber, look.group('charge'),)), look.group('charge'))
-            return mark_safe(
-                transaction.descr.replace(look.group('charge'), link))
-        return transaction.descr
-
-    plan_link = ('<a href="/%s/app/%s/%s/">%s</a>' %
-        (provider, subscriber, look.group('plan'), look.group('plan')))
-    return mark_safe(
-            transaction.descr.replace(look.group('plan'), plan_link))
+    return mark_safe(as_html_description(transaction))
 
 
 @register.filter(needs_autoescape=False)

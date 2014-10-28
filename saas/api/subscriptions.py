@@ -22,23 +22,37 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from rest_framework.generics import (
+from rest_framework.generics import (ListAPIView,
     ListCreateAPIView, RetrieveUpdateDestroyAPIView)
 from rest_framework.response import Response
 from rest_framework import serializers
+from extra_views.contrib.mixins import SearchableListMixin, SortableListMixin
 
 from saas.utils import datetime_or_now
-from saas.mixins import SubscriptionMixin
-from saas.models import Subscription
+from saas.models import Organization, Subscription
+from saas.mixins import ProviderMixin, SubscriptionMixin
+from saas.api.serializers import PlanSerializer
 
 #pylint: disable=no-init,old-style-class
 
 
+class OrganizationSerializer(serializers.ModelSerializer):
+
+    printable_name = serializers.CharField(
+        source='printable_name', read_only=True)
+
+    class Meta:
+        model = Organization
+        fields = ('slug', 'printable_name', )
+
 class SubscriptionSerializer(serializers.ModelSerializer):
+
+    organization = OrganizationSerializer(source='organization', read_only=True)
+    plan = PlanSerializer(source='plan', read_only=True)
 
     class Meta:
         model = Subscription
-
+        fields = ('created_at', 'ends_at', 'organization', 'plan')
 
 class SubscriptionListAPIView(SubscriptionMixin, ListCreateAPIView):
 
@@ -52,7 +66,44 @@ class SubscriptionDetailAPIView(SubscriptionMixin,
 
     def delete(self, request, *args, **kwargs):
         self.object = self.get_object()
-        self.object.ends_at = datetime_or_now()
-        self.object.save()
+        self.object.unsubscribe_now()
         serializer = self.get_serializer(self.object)
         return Response(serializer.data) #pylint: disable=no-member
+
+
+class ActiveSubscriptionBaseAPIView(ProviderMixin, ListAPIView):
+
+    model = Subscription
+
+    def get_queryset(self):
+        self.organization = self.get_organization()
+        queryset = super(
+            ActiveSubscriptionBaseAPIView, self).get_queryset().filter(
+            ends_at__gte=datetime_or_now(),
+            plan__organization=self.organization).distinct()
+        return queryset
+
+
+class SmartListMixin(SearchableListMixin, SortableListMixin):
+    """
+    Subscriber list which is also searchable and sortable.
+    """
+    search_fields = ['organization__full_name',
+                     'organization__email',
+                     'organization__phone',
+                     'organization__street_address',
+                     'organization__locality',
+                     'organization__region',
+                     'organization__postal_code',
+                     'organization__country']
+
+    sort_fields_aliases = [('organization__full_name', 'organization'),
+                           ('plan__title', 'plan'),
+                           ('created_at', 'since'),
+                           ('ends_at', 'ends_at')]
+
+
+class ActiveSubscriptionAPIView(SmartListMixin, ActiveSubscriptionBaseAPIView):
+
+    serializer_class = SubscriptionSerializer
+

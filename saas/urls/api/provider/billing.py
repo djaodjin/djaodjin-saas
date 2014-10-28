@@ -33,6 +33,7 @@ from saas.api.backend import RetrieveBankAPIView
 from saas.api.coupons import CouponListAPIView, CouponDetailAPIView
 from saas.api.plans import (PlanActivateAPIView, PlanCreateAPIView,
     PlanResourceView)
+from saas.api.transactions import TransferListAPIView
 
 urlpatterns = patterns('',
     url(r'^bank/?', RetrieveBankAPIView.as_view(), name='saas_api_bank'),
@@ -46,4 +47,6 @@ urlpatterns = patterns('',
         PlanResourceView.as_view(), name='saas_api_plan'),
     url(r'^plans/?',
         PlanCreateAPIView.as_view(), name='saas_api_plan_new'),
+    url(r'^transfers/?',
+        TransferListAPIView.as_view(), name='saas_api_transfer_list'),
 )
