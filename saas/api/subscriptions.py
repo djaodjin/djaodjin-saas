@@ -52,7 +52,9 @@ class SubscriptionSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Subscription
-        fields = ('created_at', 'ends_at', 'organization', 'plan')
+        fields = ('created_at', 'ends_at', 'description',
+                  'organization', 'plan',)
+
 
 class SubscriptionListAPIView(SubscriptionMixin, ListCreateAPIView):
 
@@ -99,11 +101,12 @@ class SmartListMixin(SearchableListMixin, SortableListMixin):
 
     sort_fields_aliases = [('organization__full_name', 'organization'),
                            ('plan__title', 'plan'),
-                           ('created_at', 'since'),
+                           ('created_at', 'created_at'),
                            ('ends_at', 'ends_at')]
 
 
 class ActiveSubscriptionAPIView(SmartListMixin, ActiveSubscriptionBaseAPIView):
 
     serializer_class = SubscriptionSerializer
+    paginate_by = 25
 

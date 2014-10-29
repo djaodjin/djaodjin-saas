@@ -32,7 +32,8 @@ couponServices.factory('Coupon', ['$resource', 'urls',
   function($resource, urls){
     return $resource(
         urls.saas_api_coupon_url + '/:coupon', {'coupon':'@code'},
-            {create: {method:'POST'},
+            {query: {method:'GET'},
+             create: {method:'POST'},
              update: {method:'PUT', isArray:false}});
   }]);
 
@@ -51,13 +52,15 @@ managerServices.factory('Manager', ['$resource', 'urls',
 subscriptionServices.factory('Subscription', ['$resource', 'urls',
   function($resource, urls){
     return $resource(
-        urls.saas_api_subscription_url + '/:plan', {plan:'@plan'});
+        urls.saas_api_subscription_url + '/:plan', {plan:'@plan'},
+            {query: {method:'GET'}});
   }]);
 
 transactionServices.factory('Transaction', ['$resource', 'urls',
   function($resource, urls){
     return $resource(
-        urls.saas_api_transaction_url + '/:id', {id:'@id'});
+        urls.saas_api_transaction_url + '/:id', {id:'@id'},
+            {query: {method:'GET'}});
   }]);
 
 /*=============================================================================
@@ -75,15 +78,21 @@ couponControllers.controller('CouponListCtrl',
     ['$scope', '$http', '$timeout', 'Coupon', 'urls',
      function($scope, $http, $timeout, Coupon, urls) {
     $scope.urls = urls;
+    $scope.totalItems = 0;
     $scope.dir = {code: 'asc'};
     $scope.params = {o: 'code', ot: $scope.dir['code']};
-    $scope.coupons = Coupon.query($scope.params);
+    $scope.coupons = Coupon.query($scope.params, function() {
+        /* We cannot watch coupons.count otherwise things start
+           to snowball. We must update totalItems only when it truly changed.*/
+        if( $scope.coupons.count != $scope.totalItems ) {
+            $scope.totalItems = $scope.coupons.count;
+        }
+    });
     $scope.newCoupon = new Coupon();
-    console.log("XXX", Coupon.query.action);
 
     $scope.filterExpr = '';
-    $scope.maxSize = 10;  // Limit number for pagination size
-    $scope.numPages = 5;  // Total number of pages to display
+    $scope.itemsPerPage = 25; // Must match on the server-side.
+    $scope.numPages = 5;      // Total number of pages to display
     $scope.currentPage = 1;
 
     $scope.dateOptions = {
@@ -98,13 +107,16 @@ couponControllers.controller('CouponListCtrl',
     $scope.format = $scope.formats[0];
 
     $scope.filterList = function(regex) {
-        console.log("filterExp:", regex);
         if( regex ) {
             $scope.params['q'] = regex;
         } else {
             delete $scope.params['q'];
         }
-        $scope.coupons = Coupon.query($scope.params);
+        $scope.coupons = Coupon.query($scope.params, function() {
+            if( $scope.coupons.count != $scope.totalItems ) {
+                $scope.totalItems = $scope.coupons.count;
+            }
+        });
     };
 
     // calendar for expiration date
@@ -116,21 +128,32 @@ couponControllers.controller('CouponListCtrl',
 
     $scope.pageChanged = function() {
         if( $scope.currentPage > 1 ) {
-            $scope.params['offset'] = ($scope.currentPage - 1) * $scope.maxSize;
+            $scope.params['page'] = $scope.currentPage;
+        } else {
+            delete $scope.params['page'];
         }
-        $scope.coupons = Coupon.query($scope.params);
+        $scope.coupons = Coupon.query($scope.params, function() {
+            if( $scope.coupons.count != $scope.totalItems ) {
+                $scope.totalItems = $scope.coupons.count;
+            }
+        });
     };
 
     $scope.remove = function (idx) {
-        Coupon.remove({ coupon: $scope.coupons[idx].code }, function (success) {
-            $scope.coupons.splice(idx, 1);
+        Coupon.remove({ coupon: $scope.coupons.results[idx].code },
+        function (success) {
+            $scope.coupons = Coupon.query($scope.params, function() {
+                if( $scope.coupons.count != $scope.totalItems ) {
+                    $scope.totalItems = $scope.coupons.count;
+                }
+            });
         });
     };
 
     $scope.save = function() {
-        $http.post(urls.saas_api_coupon_url,$scope.newCoupon).success(
+        $http.post(urls.saas_api_coupon_url, $scope.newCoupon).success(
         function(result) {
-            $scope.coupons.push(new Coupon(result));
+            $scope.coupons.results.push(new Coupon(result));
             // Reset our editor to a new blank post
             $scope.newCoupon = new Coupon();
         });
@@ -146,23 +169,34 @@ couponControllers.controller('CouponListCtrl',
         }
         $scope.params['o'] = fieldName;
         $scope.params['ot'] = $scope.dir[fieldName];
-        $scope.coupons = Coupon.query($scope.params);
+        $scope.currentPage = 1;
+        // pageChanged only called on click?
+        delete $scope.params['page'];
+        $scope.coupons = Coupon.query($scope.params, function() {
+            if( $scope.coupons.count != $scope.totalItems ) {
+                $scope.totalItems = $scope.coupons.count;
+            }
+        });
     }
 
     $scope.$watch('coupons', function(newVal, oldVal, scope) {
-        var length = ( oldVal.length < newVal.length ) ?
-            oldVal.length : newVal.length;
-        for( var i = 0; i < length; ++i ) {
-            if( oldVal[i].ends_at != newVal[i].ends_at ) {
-                newVal[i].$update().then(function(result) {
-                    // XXX message expiration date was updated.
-                });
+        if( newVal.hasOwnProperty('results')
+            && oldVal.hasOwnProperty('results') ) {
+            var length = ( oldVal.results.length < newVal.results.length ) ?
+                oldVal.results.length : newVal.results.length;
+            for( var i = 0; i < length; ++i ) {
+                if( oldVal.results[i].ends_at != newVal.results[i].ends_at ) {
+                    Coupon.update(newVal.results[i], function(result) {
+                        // XXX message expiration date was updated.
+                    });
+                }
             }
         }
     }, true);
 
     $scope.editDescription = function (idx){
-        $scope.edit_description = Array.apply(null, Array($scope.coupons.length)).map(function() {
+        $scope.edit_description = Array.apply(
+            null, Array($scope.coupons.results.length)).map(function() {
             return false;
         });
         $scope.edit_description[idx] = true;
@@ -174,7 +208,6 @@ couponControllers.controller('CouponListCtrl',
     $scope.saveDescription = function(event, coupon, idx){
         if (event.which === 13 || event.type == 'blur' ){
             $scope.edit_description[idx] = false;
-            coupon.$update();
         }
     };
 }]);
@@ -253,18 +286,25 @@ managerControllers.controller('managerListCtrl',
 
 
 subscriptionControllers.controller('subscriptionListCtrl',
-    ['$scope', '$http', 'Subscription', 'urls',
-    function($scope, $http, Subscription, urls) {
+    ['$scope', '$http', '$timeout', 'Subscription', 'urls',
+    function($scope, $http, $timeout, Subscription, urls) {
 
     var defaultSortByField = 'organization';
     $scope.dir = {}
+    $scope.totalItems = 0;
     $scope.dir[defaultSortByField] = 'asc';
     $scope.params = {o: defaultSortByField, ot: $scope.dir[defaultSortByField]};
-    $scope.subscriptions = Subscription.query($scope.params);
+    $scope.subscriptions = Subscription.query($scope.params, function() {
+        /* We cannot watch subscriptions.count otherwise things start
+           to snowball. We must update totalItems only when it truly changed.*/
+        if( $scope.subscriptions.count != $scope.totalItems ) {
+            $scope.totalItems = $scope.subscriptions.count;
+        }
+    });
 
     $scope.filterExpr = '';
-    $scope.maxSize = 10;  // Limit number for pagination size
-    $scope.numPages = 5;  // Total number of pages to display
+    $scope.itemsPerPage = 25; // Must match on the server-side.
+    $scope.numPages = 5;      // Total number of pages to display
     $scope.currentPage = 1;
 
     $scope.dateOptions = {
@@ -278,21 +318,50 @@ subscriptionControllers.controller('subscriptionListCtrl',
     $scope.formats = ['dd-MMMM-yyyy', 'yyyy/MM/dd', 'dd.MM.yyyy', 'shortDate'];
     $scope.format = $scope.formats[0];
 
+    $scope.editDescription = function (event, entry) {
+        var input = angular.element(event.target).parent().find('input');
+        entry['editDescription'] = true;
+        $timeout(function() {
+            input.focus();
+        }, 100);
+    };
+
+    $scope.saveDescription = function(event, entry){
+        if (event.which === 13 || event.type == 'blur' ){
+            delete entry['editDescription'];
+            $http.patch(urls.saas_api + entry.organization.slug
+                + "/subscriptions/" + entry.plan.slug,
+                {description: entry.description}).then(
+                function(data){
+                    // XXX message expiration date was updated.
+            });
+        }
+    };
+
     $scope.filterList = function(regex) {
-        console.log("filterExp:", regex);
         if( regex ) {
             $scope.params['q'] = regex;
         } else {
             delete $scope.params['q'];
         }
-        $scope.subscriptions = Subscription.query($scope.params);
+        $scope.subscriptions = Subscription.query($scope.params, function() {
+            if( $scope.subscriptions.count != $scope.totalItems ) {
+                $scope.totalItems = $scope.subscriptions.count;
+            }
+        });
     };
 
     $scope.pageChanged = function() {
         if( $scope.currentPage > 1 ) {
-            $scope.params['offset'] = ($scope.currentPage - 1) * $scope.maxSize;
+            $scope.params['page'] = $scope.currentPage;
+        } else {
+            delete $scope.params['page'];
         }
-        $scope.subscriptions = Subscription.query($scope.params);
+        $scope.subscriptions = Subscription.query($scope.params, function () {
+            if( $scope.subscriptions.count != $scope.totalItems ) {
+                $scope.totalItems = $scope.subscriptions.count;
+            }
+        });
     };
 
     $scope.sortBy = function(fieldName) {
@@ -305,12 +374,28 @@ subscriptionControllers.controller('subscriptionListCtrl',
         }
         $scope.params['o'] = fieldName;
         $scope.params['ot'] = $scope.dir[fieldName];
-        $scope.subscriptions = Subscription.query($scope.params);
+        $scope.currentPage = 1;
+        // pageChanged only called on click?
+        delete $scope.params['page'];
+        $scope.subscriptions = Subscription.query($scope.params, function () {
+            if( $scope.subscriptions.count != $scope.totalItems ) {
+                $scope.totalItems = $scope.subscriptions.count;
+            }
+        });
     }
 
     $scope.unsubscribe = function(organization, plan) {
         if( confirm("Are you sure?") ) {
-            $http.delete(urls.saas_api + organization + "/subscriptions/" + plan).then(function(data){ location.reload(); });
+            $http.delete(
+                urls.saas_api + organization + "/subscriptions/" + plan).then(
+            function() {
+                $scope.subscriptions = Subscription.query($scope.params,
+            function() {
+                if( $scope.subscriptions.count != $scope.totalItems ) {
+                    $scope.totalItems = $scope.subscriptions.count;
+                }
+            });
+            });
         }
     }
 }]);
@@ -436,15 +521,23 @@ transactionControllers.controller('transactionListCtrl',
     ['$scope', '$http', '$timeout', 'Transaction',
      function($scope, $http, $timeout, Transaction) {
     var defaultSortByField = 'date';
-    $scope.dir = {}
+    $scope.dir = {};
+    $scope.totalItems = 0;
     $scope.dir[defaultSortByField] = 'desc';
     $scope.params = {o: defaultSortByField, ot: $scope.dir[defaultSortByField]};
-    $scope.transactions = Transaction.query($scope.params);
+    $scope.transactions = Transaction.query($scope.params, function() {
+        /* We cannot watch transactions.count otherwise things start
+           to snowball. We must update totalItems only when it truly changed.*/
+        if( $scope.transactions.count != $scope.totalItems ) {
+            $scope.totalItems = $scope.transactions.count;
+        }
+    });
 
     $scope.filterExpr = '';
-    $scope.maxSize = 10;  // Limit number for pagination size
-    $scope.numPages = 5;  // Total number of pages to display
+    $scope.itemsPerPage = 25; // Must match on the server-side.
+    $scope.numPages = 5;      // Total number of pages to display
     $scope.currentPage = 1;
+    /* currentPage will be saturated at maxSize when maxSize is defined. */
 
     $scope.dateOptions = {
         formatYear: 'yy',
@@ -458,20 +551,29 @@ transactionControllers.controller('transactionListCtrl',
     $scope.format = $scope.formats[0];
 
     $scope.filterList = function(regex) {
-        console.log("filterExp:", regex);
         if( regex ) {
             $scope.params['q'] = regex;
         } else {
             delete $scope.params['q'];
         }
-        $scope.transactions = Transaction.query($scope.params);
+        $scope.transactions = Transaction.query($scope.params, function() {
+            if( $scope.transactions.count != $scope.totalItems ) {
+                $scope.totalItems = $scope.transactions.count;
+            }
+        });
     };
 
     $scope.pageChanged = function() {
         if( $scope.currentPage > 1 ) {
-            $scope.params['offset'] = ($scope.currentPage - 1) * $scope.maxSize;
+            $scope.params['page'] = $scope.currentPage;
+        } else {
+            delete $scope.params['page'];
         }
-        $scope.transactions = Transaction.query($scope.params);
+        $scope.transactions = Transaction.query($scope.params, function() {
+            if( $scope.transactions.count != $scope.totalItems ) {
+                $scope.totalItems = $scope.transactions.count;
+            }
+        });
     };
 
     $scope.sortBy = function(fieldName) {
@@ -484,7 +586,14 @@ transactionControllers.controller('transactionListCtrl',
         }
         $scope.params['o'] = fieldName;
         $scope.params['ot'] = $scope.dir[fieldName];
-        $scope.transactions = Transaction.query($scope.params);
+        $scope.currentPage = 1;
+        // pageChanged only called on click?
+        delete $scope.params['page'];
+        $scope.transactions = Transaction.query($scope.params, function() {
+            if( $scope.transactions.count != $scope.totalItems ) {
+                $scope.totalItems = $scope.transactions.count;
+            }
+        });
     }
 
 }]);

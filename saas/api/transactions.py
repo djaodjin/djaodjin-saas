@@ -24,6 +24,7 @@
 
 from django.db.models import Q
 from rest_framework import serializers
+from rest_framework.response import Response
 from rest_framework.generics import ListAPIView
 from extra_views.contrib.mixins import SearchableListMixin, SortableListMixin
 
@@ -113,6 +114,7 @@ class TransactionListAPIView(SmartTransactionListMixin,
                              TransactionListBaseAPIView):
 
     serializer_class = TransactionSerializer
+    paginate_by = 25
 
 
 class TransferListBaseAPIView(ProviderMixin, ListAPIView):
@@ -134,4 +136,4 @@ class TransferListBaseAPIView(ProviderMixin, ListAPIView):
 class TransferListAPIView(SmartTransactionListMixin, TransferListBaseAPIView):
 
     serializer_class = TransactionSerializer
-
+    paginate_by = 25

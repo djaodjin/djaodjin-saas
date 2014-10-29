@@ -1139,6 +1139,7 @@ class Subscription(models.Model):
 
     created_at = models.DateTimeField(auto_now_add=True)
     ends_at = models.DateTimeField()
+    description = models.TextField(null=True, blank=True)
     organization = models.ForeignKey('Organization')
     plan = models.ForeignKey('Plan')
 

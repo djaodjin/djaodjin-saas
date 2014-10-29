@@ -92,8 +92,7 @@ class SmartCouponListMixin(SearchableListMixin, SortableListMixin):
 
 class CouponListAPIView(SmartCouponListMixin, CouponMixin, ListCreateAPIView):
 
-    def post(self, request, *args, **kwargs): #pylint: disable=unused-argument
-        return super(CouponListAPIView, self).post(request, *args, **kwargs)
+    paginate_by = 25
 
 
 class CouponDetailAPIView(CouponMixin, RetrieveUpdateDestroyAPIView):
