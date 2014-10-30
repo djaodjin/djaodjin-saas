@@ -24,8 +24,10 @@
 
 from datetime import datetime, timedelta
 
+import markdown
 from django import template
 from django.core.exceptions import PermissionDenied
+from django.template.defaultfilters import stringfilter
 from django.utils.safestring import mark_safe
 from django.utils.timezone import utc
 
@@ -82,6 +84,15 @@ def is_provider(organization):
 @register.filter
 def is_site_owner(organization):
     return organization.pk == settings.PROVIDER_ID
+
+
+@register.filter(needs_autoescape=False)
+@stringfilter
+def md(text): #pylint: disable=invalid-name
+    return mark_safe(markdown.markdown(text,
+        safe_mode='replace',
+        html_replacement_text='<em>RAW HTML NOT ALLOWED</em>',
+        enable_attributes=False))
 
 
 @register.filter()
