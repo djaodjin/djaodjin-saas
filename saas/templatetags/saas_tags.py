@@ -86,6 +86,16 @@ def is_site_owner(organization):
     return organization.pk == settings.PROVIDER_ID
 
 
+@register.filter()
+def manages_subscriber_to(user, plan):
+    """
+    Returns ``True`` if the user is a manager for an organization
+    subscribed to plan.
+    """
+    return (user.is_authenticated()
+            and user.manages.filter(subscriptions__plan=plan).exists())
+
+
 @register.filter(needs_autoescape=False)
 @stringfilter
 def md(text): #pylint: disable=invalid-name

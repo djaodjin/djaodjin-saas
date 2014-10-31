@@ -28,7 +28,6 @@ import urlparse
 
 from django import forms
 from django.conf import settings
-from django.contrib.sites.models import Site
 from django.template import loader
 from django.template.base import Context
 from django.forms.widgets import CheckboxInput
@@ -74,7 +73,6 @@ def _read_agreement_file(slug, context=None):
     import markdown
     if not context:
         context = {
-            'site': Site.objects.get(pk=settings.SITE_ID),
             'organization': get_current_provider()}
     source, _ = loader.find_template('saas/agreements/legal_%s.md' % slug)
     return markdown.markdown(source.render(Context(context)))

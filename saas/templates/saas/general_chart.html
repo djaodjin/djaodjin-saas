@@ -1,7 +1,8 @@
 {% extends "saas/base.html" %}
+{% load static from staticfiles %}
 
 {% block localheader %}
-<link href="/static/css/nv.d3.css" rel="stylesheet" />
+<link href="{% static 'css/nv.d3.css' %}" rel="stylesheet" />
 {% endblock %}
 
 {% block saas_content %}
@@ -10,9 +11,9 @@
     <svg>
     </svg>
 </pre>
-<script src="/static/js/vendor/jquery-1.9.1.js"></script>
-<script src="/static/js/vendor/d3.v3.js"></script>
-<script src="/static/js/vendor/nv.d3.js"></script>
+<script src="{% static 'js/vendor/jquery-1.9.1.js' %}"></script>
+<script src="{% static 'js/vendor/d3.v3.js' %}"></script>
+<script src="{% static 'js/vendor/nv.d3.js' %}"></script>
 <script type="text/javascript">
     
     function update_chart(data) {
