@@ -420,8 +420,8 @@ subscriberControllers.controller('subscriberCtrl',
     $scope.subscribed = [{}, {}, {}, {}, {}, {}, {}, {}, {}, {}];
     $scope.churned = [{}, {}, {}, {}, {}, {}, {}, {}, {}, {}];
 
-    $scope.maxSize = 10;  // Limit number for pagination size
     $scope.numPages = 5;  // Total number of pages to display
+    $scope.itemsPerPage = 25; // Must match on the server-side.
     $scope.currentPage = {churned: 1, registered: 1, subscribed: 1};
 
     // calendar for start_at and ends_at
@@ -455,8 +455,7 @@ subscriberControllers.controller('subscriberCtrl',
         if( typeof dataset === "undefined" || dataset == 'churned' ) {
             params = {start_at: $scope.start_at, ends_at: $scope.ends_at};
             if( $scope.currentPage.churned > 1 ) {
-                params['offset'] = ($scope.currentPage.churned - 1)
-                    * $scope.maxSize;
+                params['page'] = $scope.currentPage.churned;
             }
             $http.get(urls.saas_api_churned, {
                 params: params
@@ -471,8 +470,7 @@ subscriberControllers.controller('subscriberCtrl',
         if( typeof dataset === "undefined" || dataset == 'registered' ) {
             params = {start_at: $scope.start_at, ends_at: $scope.ends_at};
             if( $scope.currentPage.registered > 1 ) {
-                params['offset'] = ($scope.currentPage.registered - 1)
-                    * $scope.maxSize;
+                params['page'] = $scope.currentPage.registered;
             }
             $http.get(urls.saas_api_registered, {
                 params: params
@@ -487,8 +485,7 @@ subscriberControllers.controller('subscriberCtrl',
         if( typeof dataset === "undefined" || dataset == 'subscribed' ) {
             params = {start_at: $scope.start_at, ends_at: $scope.ends_at};
             if( $scope.currentPage.subscribed > 1 ) {
-                params['offset'] = ($scope.currentPage.subscribed - 1)
-                    * $scope.maxSize;
+                params['page'] = $scope.currentPage.subscribed;
             }
             $http.get(urls.saas_api_subscribed, {
                 params: params

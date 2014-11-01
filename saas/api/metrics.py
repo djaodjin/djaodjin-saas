@@ -25,6 +25,7 @@
 from django.db.models import Q
 from django.utils.dateparse import parse_datetime
 from rest_framework.views import APIView
+from rest_framework.generics import GenericAPIView
 from rest_framework.response import Response
 
 from saas import settings
@@ -50,10 +51,11 @@ class RevenueMetricsAPIView(ProviderMixin, APIView):
             }])
 
 
-class OrganizationListAPIView(ProviderMixin, APIView):
+class OrganizationListAPIView(ProviderMixin, GenericAPIView):
 
     model = Organization
     serializer_class = OrganizationSerializer
+    paginate_by = 25
 
     def get(self, request, *args, **kwargs):
         #pylint: disable=no-member,unused-argument
@@ -67,13 +69,14 @@ class OrganizationListAPIView(ProviderMixin, APIView):
             ends_at = parse_datetime(ends_at)
         ends_at = datetime_or_now(ends_at)
         queryset = self.get_queryset(start_at, ends_at)
+        page = self.paginate_queryset(queryset)
         serializer = self.serializer_class()
         return Response({
             'start_at': start_at,
             'ends_at': ends_at,
             'count': queryset.count(),
             self.queryset_name: [serializer.to_native(organization)
-                for organization in queryset],
+                for organization in page.object_list],
             })
 
 
