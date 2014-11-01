@@ -68,7 +68,7 @@ class OrganizationListAPIView(ProviderMixin, GenericAPIView):
         if ends_at:
             ends_at = parse_datetime(ends_at)
         ends_at = datetime_or_now(ends_at)
-        queryset = self.get_queryset(start_at, ends_at)
+        queryset = self.get_range_queryset(start_at, ends_at)
         page = self.paginate_queryset(queryset)
         serializer = self.serializer_class()
         return Response({
@@ -85,7 +85,7 @@ class ChurnedAPIView(OrganizationListAPIView):
 
     queryset_name = 'churned'
 
-    def get_queryset(self, start_time, end_time):
+    def get_range_queryset(self, start_time, end_time):
         return Organization.objects.filter(
             subscription__plan__organization=self.provider,
             subscription__ends_at__gte=start_time,
@@ -96,7 +96,7 @@ class RegisteredAPIView(OrganizationListAPIView):
 
     queryset_name = 'registered'
 
-    def get_queryset(self, start_time, end_time):
+    def get_range_queryset(self, start_time, end_time):
         #pylint: disable=unused-argument
         return Organization.objects.filter(
             Q(subscription__isnull=True) |
@@ -109,7 +109,7 @@ class SubscribedAPIView(OrganizationListAPIView):
 
     queryset_name = 'subscribed'
 
-    def get_queryset(self, start_time, end_time):
+    def get_range_queryset(self, start_time, end_time):
         #pylint: disable=unused-argument
         return Organization.objects.filter(
             subscription__plan__organization=self.provider,
