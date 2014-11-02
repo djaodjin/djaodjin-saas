@@ -462,7 +462,7 @@ subscriberControllers.controller('subscriberCtrl',
             }).success(function(data) {
                 $scope.churned = data;
                 for( var i = $scope.churned.churned.length;
-                     i < $scope.maxSize; ++i ) {
+                     i < $scope.itemsPerPage; ++i ) {
                     $scope.churned.churned.push({});
                 }
             });
@@ -477,7 +477,7 @@ subscriberControllers.controller('subscriberCtrl',
             }).success(function(data) {
                 $scope.registered = data;
                 for( var i = $scope.registered.registered.length;
-                     i < $scope.maxSize; ++i ) {
+                     i < $scope.itemsPerPage; ++i ) {
                     $scope.registered.registered.push({});
                 }
             });
@@ -492,7 +492,7 @@ subscriberControllers.controller('subscriberCtrl',
             }).success(function(data) {
                 $scope.subscribed = data;
                 for( var i = $scope.subscribed.subscribed.length;
-                     i < $scope.maxSize; ++i ) {
+                     i < $scope.itemsPerPage; ++i ) {
                     $scope.subscribed.subscribed.push({});
                 }
             });
