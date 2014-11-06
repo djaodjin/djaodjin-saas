@@ -90,7 +90,8 @@ class SmartListMixin(SearchableListMixin, SortableListMixin):
     """
     Subscriber list which is also searchable and sortable.
     """
-    search_fields = ['organization__full_name',
+    search_fields = ['organization__slug',
+                     'organization__full_name',
                      'organization__email',
                      'organization__phone',
                      'organization__street_address',
