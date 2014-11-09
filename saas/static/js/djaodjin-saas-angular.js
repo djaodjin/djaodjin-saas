@@ -92,7 +92,7 @@ couponControllers.controller('CouponListCtrl',
 
     $scope.filterExpr = '';
     $scope.itemsPerPage = 25; // Must match on the server-side.
-    $scope.numPages = 5;      // Total number of pages to display
+    $scope.maxSize = 5;      // Total number of pages to display
     $scope.currentPage = 1;
 
     $scope.dateOptions = {
@@ -304,7 +304,7 @@ subscriptionControllers.controller('subscriptionListCtrl',
 
     $scope.filterExpr = '';
     $scope.itemsPerPage = 25; // Must match on the server-side.
-    $scope.numPages = 5;      // Total number of pages to display
+    $scope.maxSize = 5;      // Total number of pages to display
     $scope.currentPage = 1;
 
     $scope.dateOptions = {
@@ -420,7 +420,7 @@ subscriberControllers.controller('subscriberCtrl',
     $scope.subscribed = [{}, {}, {}, {}, {}, {}, {}, {}, {}, {}];
     $scope.churned = [{}, {}, {}, {}, {}, {}, {}, {}, {}, {}];
 
-    $scope.numPages = 5;  // Total number of pages to display
+    $scope.maxSize = 5;  // Total number of pages to display
     $scope.itemsPerPage = 25; // Must match on the server-side.
     $scope.currentPage = {churned: 1, registered: 1, subscribed: 1};
 
@@ -532,7 +532,7 @@ transactionControllers.controller('transactionListCtrl',
 
     $scope.filterExpr = '';
     $scope.itemsPerPage = 25; // Must match on the server-side.
-    $scope.numPages = 5;      // Total number of pages to display
+    $scope.maxSize = 5;      // Total number of pages to display
     $scope.currentPage = 1;
     /* currentPage will be saturated at maxSize when maxSize is defined. */
 
