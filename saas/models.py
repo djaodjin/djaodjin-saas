@@ -1027,7 +1027,7 @@ class Plan(models.Model):
         return result
 
     def get_absolute_url(self):
-        return reverse('saas_plan_edit', args=(self.organization, self,))
+        return reverse('saas_plan_edit', args=(self,))
 
     def get_title(self):
         """
