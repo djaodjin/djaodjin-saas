@@ -110,14 +110,14 @@ class StripeBackend(object):
                               processor_charge.card.exp_month, 1))
 
 
-    def create_transfer(self, organization, amount, unit, descr=None):
+    def create_transfer(self, organization, amount, descr=None):
         """
         Transfer *amount* into the organization bank account.
         """
         stripe.api_key = self.priv_key
         transfer = stripe.Transfer.create(
             amount=amount,
-            currency=unit,
+            currency='usd', # XXX should be derived from organization bank
             recipient=organization.processor_recipient_id,
             description=descr)
         created_at = datetime.datetime.fromtimestamp(transfer.created)
