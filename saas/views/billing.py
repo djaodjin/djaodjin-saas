@@ -143,7 +143,7 @@ class BankUpdateView(BankMixin, FormView):
             self.request.GET.get(REDIRECT_FIELD_NAME, None))
         if redirect_path:
             return redirect_path
-        return reverse('saas_transfer_info', args=(self.organization,))
+        return reverse('saas_transfer_info')
 
 
 class InvoicablesFormMixin(OrganizationMixin):
@@ -710,4 +710,4 @@ class WithdrawView(BankMixin, FormView):
             self.request.GET.get(REDIRECT_FIELD_NAME, None))
         if redirect_path:
             return redirect_path
-        return reverse('saas_transfer_info', args=(self.organization,))
+        return reverse('saas_transfer_info')
