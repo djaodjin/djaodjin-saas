@@ -47,6 +47,13 @@ from saas.settings import SKIP_PERMISSION_CHECK
 
 LOGGER = logging.getLogger(__name__)
 
+# With ``WEAK`` authorization, contributors can issue POST, PUT, PATCH, DELETE
+# requests. With ``NORMAL`` authorization, contributors can issue GET requests
+# and nothing else. With ``STRONG`` authorization, contributors cannot issue
+# any requests, only managers can.
+WEAK = 0
+NORMAL = 1
+STRONG = 2
 
 def _valid_manager(user, candidates):
     """
@@ -93,23 +100,46 @@ def _valid_contributor(user, candidates):
     return (managed, contributed)
 
 
-def _valid_contributor_readonly(request, candidates):
+def has_contributor_level(user, candidates):
     """
-    Returns a tuple made of two list of ``Organization`` from *candidates*.
+    Returns True if *user* is manager or contributor to any ``Organization``
+    in *candidates*.
     """
+    managed, contributed = _valid_contributor(user, candidates)
+    return len(managed + contributed) > 0
+
+
+def _filter_valid_access(request, candidates, strength=NORMAL):
+    """
+    Returns a tuple made of two lists of ``Organization`` from *candidates*.
+
+    The first item in the tuple are the organizations managed by *request.user*
+    while the second item in the tuple are the organizations contributed to
+    by *request.user*.
+
+    The set of contributed organizations is further filtered by
+    *request.method* and *strength*.
+    """
+    managed = []
+    contributed = []
     if request.method == "GET":
-        managed, contributed = _valid_contributor(request.user, candidates)
+        if strength == STRONG:
+            managed = _valid_manager(request.user, candidates)
+        else:
+            managed, contributed = _valid_contributor(request.user, candidates)
     else:
-        contributed = []
-        managed = _valid_manager(request.user, candidates)
+        if strength == WEAK:
+            managed, contributed = _valid_contributor(request.user, candidates)
+        else:
+            managed = _valid_manager(request.user, candidates)
     return managed, contributed
 
 
-def _contributor_readonly(request, candidates):
+def _has_valid_access(request, candidates, strength=NORMAL):
     """
     Returns True if any candidate is accessible to the request user.
     """
-    managed, contributed = _valid_contributor_readonly(request, candidates)
+    managed, contributed = _filter_valid_access(request, candidates, strength)
     return len(managed + contributed) > 0
 
 
@@ -163,7 +193,8 @@ def requires_agreement(function=None,
 def requires_paid_subscription(function=None,
                               organization_kwarg_slug='organization',
                               plan_kwarg_slug='subscribed_plan',
-                              redirect_field_name=REDIRECT_FIELD_NAME):
+                              redirect_field_name=REDIRECT_FIELD_NAME,
+                              strength=NORMAL):
     """
     Decorator that checks a specified subscription is paid. It redirects to an
     appropriate page when this is not the case:
@@ -179,8 +210,9 @@ def requires_paid_subscription(function=None,
             if kwargs.has_key(organization_kwarg_slug):
                 subscriber = get_object_or_404(Organization,
                     slug=kwargs.get(organization_kwarg_slug))
-                if not _contributor_readonly(request, [subscriber]
-                    + list(Organization.objects.providers_to(subscriber))):
+                if not _has_valid_access(request, [subscriber]
+                        + list(Organization.objects.providers_to(subscriber)),
+                        strength):
                     raise PermissionDenied("%(user)s is neither a manager '\
 ' of %(organization)s nor a manager of one of %(organization)s providers."
                         % {'user': request.user, 'organization': subscriber})
@@ -206,7 +238,7 @@ def requires_paid_subscription(function=None,
     return decorator
 
 
-def requires_direct(function=None):
+def requires_direct(function=None, strength=NORMAL):
     """
     Decorator for views that checks that the request authenticated ``User``
     is a direct contributor (or manager) for the ``Organization`` associated
@@ -230,7 +262,8 @@ def requires_direct(function=None):
                     slug=kwargs.get('organization'))
             else:
                 organization = get_current_provider()
-            if organization and _contributor_readonly(request, [organization]):
+            if organization and _has_valid_access(request,
+                    [organization], strength):
                 return view_func(request, *args, **kwargs)
             raise PermissionDenied
         return _wrapped_view
@@ -240,7 +273,27 @@ def requires_direct(function=None):
     return decorator
 
 
-def requires_provider(function=None):
+def requires_direct_weak(function=None):
+    """
+    Decorator for views that checks that the request authenticated ``User``
+    is a direct contributor (or manager) for the ``Organization`` associated
+    to the request.
+
+    Both managers and contributors can issue all types of requests
+    (GET, POST, etc.).
+    """
+    return requires_direct(function, strength=WEAK)
+
+
+def requires_direct_strong(function=None):
+    """
+    Decorator for views that checks that the request authenticated ``User``
+    is a direct manager for the ``Organization`` associated to the request.
+    """
+    return requires_direct(function, strength=STRONG)
+
+
+def requires_provider(function=None, strength=NORMAL):
     """
     Decorator for views that checks that the request authenticated ``User``
     is a contributor (or manager) for the ``Organization`` associated to
@@ -263,8 +316,9 @@ def requires_provider(function=None):
             elif kwargs.has_key('organization'):
                 organization = get_object_or_404(Organization,
                     slug=kwargs.get('organization'))
-            if organization and _contributor_readonly(request, [organization]
-                + list(Organization.objects.providers_to(organization))):
+            if organization and _has_valid_access(request, [organization]
+                    + list(Organization.objects.providers_to(organization)),
+                    strength):
                 return view_func(request, *args, **kwargs)
             raise PermissionDenied("%(auth)s is neither a manager "\
 " of %(organization)s nor a manager of one of %(organization)s providers."
@@ -276,7 +330,7 @@ def requires_provider(function=None):
     return decorator
 
 
-def requires_provider_only(function=None):
+def requires_provider_only(function=None, strength=NORMAL):
     """
     Decorator for views that checks that the request authenticated ``User``
     is a contributor (or manager) for a provider to the ``Organization``
@@ -298,8 +352,9 @@ def requires_provider_only(function=None):
             elif kwargs.has_key('organization'):
                 organization = get_object_or_404(Organization,
                     slug=kwargs.get('organization'))
-            if organization and _contributor_readonly(request,
-                list(Organization.objects.providers_to(organization))):
+            if organization and _has_valid_access(request,
+                    list(Organization.objects.providers_to(organization)),
+                    strength):
                 return view_func(request, *args, **kwargs)
             raise PermissionDenied("%(auth)s has no direct relation to"\
 " a provider of %(organization)s."
@@ -311,7 +366,7 @@ def requires_provider_only(function=None):
     return decorator
 
 
-def requires_self_provider(function=None):
+def requires_self_provider(function=None, strength=NORMAL):
     """
     Decorator for views that checks that the request authenticated ``User``
     is the user associated to the URL.
@@ -336,8 +391,8 @@ def requires_self_provider(function=None):
                 directs = Organization.objects.accessible_by(kwargs.get('user'))
                 providers = Organization.objects.providers(
                     Subscription.objects.filter(organization__in=directs))
-                if not _contributor_readonly(request,
-                                             list(directs) + list(providers)):
+                if not _has_valid_access(request,
+                        list(directs) + list(providers), strength):
                     raise PermissionDenied("%(auth)s has neither a direct"\
 " relation to an organization connected to %(user)s nor a connection to one"\
 "of the providers to such organization."
