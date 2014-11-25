@@ -26,6 +26,8 @@ import datetime, re
 
 from django.core.urlresolvers import reverse
 
+from saas.utils import product_url
+
 
 DESCRIBE_BALANCE = \
     "Balance on %(plan)s"
@@ -110,6 +112,7 @@ def as_html_description(transaction):
             return transaction.descr.replace(look.group('charge'), link)
         return transaction.descr
 
-    plan_link = ('<a href="/%s/app/%s/%s/">%s</a>' %
-        (provider, subscriber, look.group('plan'), look.group('plan')))
+    plan_link = ('<a href="/%s/%s/">%s</a>' % (
+        product_url(provider, subscriber),
+        look.group('plan'), look.group('plan')))
     return transaction.descr.replace(look.group('plan'), plan_link)

@@ -55,6 +55,8 @@ from saas.models import (Organization, CartItem, Coupon, Plan, Transaction,
     Subscription)
 from saas.humanize import (as_money, describe_buy_periods, match_unlock,
     DESCRIBE_UNLOCK_NOW, DESCRIBE_UNLOCK_LATER)
+from saas.utils import product_url
+
 
 LOGGER = logging.getLogger(__name__)
 
@@ -264,10 +266,7 @@ class CardInvoicablesFormMixin(CardFormMixin, InvoicablesFormMixin):
         if redirect_path:
             return redirect_path
         if self.sole_provider:
-            # XXX product_default_start is not defined in url patterns.
-            return '/%(organization)s/app/%(subscriber)s/' % {
-                'organization': self.sole_provider,
-                'subscriber': self.customer}
+            return product_url(self.sole_provider, self.customer)
         return reverse('saas_organization_profile', args=(self.customer,))
 
 

@@ -65,3 +65,14 @@ def generate_random_slug(prefix=None):
         return str(prefix) + suffix
     return suffix
 
+
+def product_url(organization, subscriber=None):
+    """
+    We cannot use a basic ``reverse('product_default_start')`` here because
+    *organization* and ``get_current_provider`` might be different.
+    """
+    if subscriber:
+        return '/%(organization)s/app/%(subscriber)s/' % {
+            'organization': organization,
+            'subscriber': subscriber}
+    return '/%(organization)s/app/' % {'organization': organization}

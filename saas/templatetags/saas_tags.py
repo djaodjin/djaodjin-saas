@@ -37,6 +37,7 @@ from saas.models import (Organization, Subscription, Transaction,
 from saas.views.auth import valid_manager_for_organization
 from saas.compat import User
 from saas import settings
+from saas.utils import product_url as utils_product_url
 
 
 register = template.Library()
@@ -207,3 +208,6 @@ def date_in_future(value, arg=None):
     return False
 
 
+@register.filter(needs_autoescape=False)
+def product_url(organization, subscriber=None):
+    return utils_product_url(organization, subscriber)
