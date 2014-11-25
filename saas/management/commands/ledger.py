@@ -22,17 +22,27 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-import datetime, re, sys
+import datetime, locale, re, sys
+from optparse import make_option
 
 from django.core.management.base import BaseCommand
 from django.utils.timezone import utc
+
 # We need this import to avoid getting an exception importing 'saas.models'
 from saas.utils import datetime_or_now #pylint: disable=unused-import
-from saas.models import Organization, Transaction
+from saas.models import Organization, Transaction, get_current_provider
+
 
 class Command(BaseCommand):
     help = 'Manage ledger.'
-    args = 'subcommand'
+    option_list = BaseCommand.option_list + (
+        make_option('--account-first', action='store_true',
+            dest='account_first', default=False,
+            help='Interpret the item before the first ":" '\
+'separator as the account name'),
+        )
+
+    args = 'subcommand [--account-first]'
     requires_model_validation = False
 
     def handle(self, *args, **options):
@@ -59,45 +69,80 @@ class Command(BaseCommand):
         'orig_account': transaction.orig_account})
 
         elif subcommand == 'import':
-            descr = None
-            amount = None
-            reference = None
-            created_at = None
-            orig_account = None
-            dest_account = None
-            orig_organization = None
-            dest_organization = None
-            for line in sys.stdin.readlines():
+            account_first = options.get('account_first', False)
+            filedesc = sys.stdin
+            line = filedesc.readline()
+            while line != '':
                 look = re.match(
-                  r'(\d\d\d\d/\d\d/\d\d \d\d:\d\d:\d\d)\s+#(\S+) - (.*)', line)
+                    r'(?P<created_at>\d\d\d\d/\d\d/\d\d( \d\d:\d\d:\d\d)?)'\
+r'\s+(#(?P<reference>\S+) -)?(?P<descr>.*)', line)
                 if look:
                     # Start of a transaction
-                    created_at = datetime.datetime.strptime(look.group(1),
-                        '%Y/%m/%d %H:%M:%S').replace(tzinfo=utc)
-                    reference = look.group(2).strip()
-                    descr = look.group(3).strip()
-                else:
-                    look = re.match(r'\s+(\w+):(\w+)\s+(.+)', line)
-                    if look:
-                        dest_organization = Organization.objects.get(
-                            slug=look.group(1))
-                        dest_account = look.group(2)
-                        amount = look.group(3)
+                    try:
+                        created_at = datetime.datetime.strptime(
+                            look.group('created_at'),
+                            '%Y/%m/%d %H:%M:%S').replace(tzinfo=utc)
+                    except ValueError:
+                        created_at = datetime.datetime.strptime(
+                            look.group('created_at'),
+                            '%Y/%m/%d').replace(tzinfo=utc)
+                    if look.group('reference'):
+                        reference = look.group('reference').strip()
                     else:
-                        look = re.match(r'\s+(\w+):(\w+)', line)
-                        if look:
-                            orig_organization = Organization.objects.get(
-                                slug=look.group(1))
-                            orig_account = look.group(2)
-                            # Assuming no errors, at this point we have
-                            # a full transaction.
-                            Transaction.objects.create(
-                                created_at=created_at,
-                                descr=descr,
-                                orig_amount=amount,
-                                dest_amount=amount,
-                                dest_organization=dest_organization,
-                                dest_account=dest_account,
-                                orig_organization=orig_organization,
-                                orig_account=orig_account,
-                                event_id=reference)
+                        reference = None
+                    descr = look.group('descr').strip()
+                    line = filedesc.readline()
+                    dest_organization, dest_account, dest_amount \
+                        = parse_line(line, account_first)
+                    line = filedesc.readline()
+                    orig_organization, orig_account, _ \
+                        = parse_line(line, account_first)
+                    if dest_organization and orig_organization:
+                        # Assuming no errors, at this point we have
+                        # a full transaction.
+                        Transaction.objects.create(
+                            created_at=created_at,
+                            descr=descr,
+                            dest_unit='usd',
+                            dest_amount=dest_amount,
+                            dest_organization=dest_organization,
+                            dest_account=dest_account,
+                            orig_amount=dest_amount,
+                            orig_unit='usd',
+                            orig_organization=orig_organization,
+                            orig_account=orig_account,
+                            event_id=reference)
+                line = filedesc.readline()
+
+
+def parse_line(line, account_first=False):
+    """
+    Parse an (organization, account, amount) triplet.
+    """
+    if account_first:
+        look = re.match(r'\s+(?P<account>(\w+:)+)(?P<organization>\w+)'\
+r'(\s+(?P<amount>.+))?', line)
+    else:
+        look = re.match(r'\s+(?P<organization>\w+)(?P<account>(:(\w+))+)'\
+r'(\s+(?P<amount>.+))?', line)
+    if look:
+        organization_slug = look.group('organization')
+        account = look.group('account')
+        if account.startswith(':'):
+            account = account[1:]
+        if account.endswith(':'):
+            account = account[:-1]
+        amount = look.group('amount')
+        if amount and amount.startswith('$'):
+            locale.setlocale(locale.LC_ALL, 'en_US')
+            amount = long(locale.atof(amount[1:]) * 100)
+        try:
+            organization = Organization.objects.get(slug=organization_slug)
+            if account_first and (
+                    account.startswith('Income')
+                    or account.startswith('Expenses')):
+                organization = get_current_provider()
+            return (organization, account, amount)
+        except Organization.DoesNotExist:
+            print "Cannot find Organization '%s'" % organization_slug
+    return (None, None, None)
