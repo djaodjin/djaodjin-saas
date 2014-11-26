@@ -40,6 +40,9 @@ class Command(BaseCommand):
             dest='account_first', default=False,
             help='Interpret the item before the first ":" '\
 'separator as the account name'),
+       make_option('--create-organizations', action='store_true',
+            dest='create_organizations', default=False,
+            help='Create organization if it does not exist.'),
         )
 
     args = 'subcommand [--account-first]'
@@ -70,6 +73,7 @@ class Command(BaseCommand):
 
         elif subcommand == 'import':
             account_first = options.get('account_first', False)
+            create_organizations = options.get('create_organizations', False)
             filedesc = sys.stdin
             line = filedesc.readline()
             while line != '':
@@ -93,10 +97,10 @@ r'\s+(#(?P<reference>\S+) -)?(?P<descr>.*)', line)
                     descr = look.group('descr').strip()
                     line = filedesc.readline()
                     dest_organization, dest_account, dest_amount \
-                        = parse_line(line, account_first)
+                        = parse_line(line, account_first, create_organizations)
                     line = filedesc.readline()
                     orig_organization, orig_account, _ \
-                        = parse_line(line, account_first)
+                        = parse_line(line, account_first, create_organizations)
                     if dest_organization and orig_organization:
                         # Assuming no errors, at this point we have
                         # a full transaction.
@@ -115,7 +119,7 @@ r'\s+(#(?P<reference>\S+) -)?(?P<descr>.*)', line)
                 line = filedesc.readline()
 
 
-def parse_line(line, account_first=False):
+def parse_line(line, account_first=False, create_organizations=False):
     """
     Parse an (organization, account, amount) triplet.
     """
@@ -137,7 +141,11 @@ r'(\s+(?P<amount>.+))?', line)
             locale.setlocale(locale.LC_ALL, 'en_US')
             amount = long(locale.atof(amount[1:]) * 100)
         try:
-            organization = Organization.objects.get(slug=organization_slug)
+            if create_organizations:
+                organization, _ = Organization.objects.get_or_create(
+                    slug=organization_slug)
+            else:
+                organization = Organization.objects.get(slug=organization_slug)
             if account_first and (
                     account.startswith('Income')
                     or account.startswith('Expenses')):

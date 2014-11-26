@@ -24,6 +24,7 @@
 
 from datetime import datetime, timedelta
 
+from django.db import router
 from django.db.models.sql.query import RawQuery
 from django.db.models import Count, Sum
 from django.utils.timezone import utc
@@ -98,7 +99,7 @@ def aggregate_monthly(organization, account, from_date=None):
                 "seam_date": seam_date,
                 "last_date": last_date,
                 "organization_id": organization.id,
-                "account": account}, 'default')
+                "account": account}, router.db_for_read(Transaction))
         churn_customer, churn_receivable = iter(churn_query).next()
         query_result = Transaction.objects.filter(
             orig_organization=organization,
@@ -129,7 +130,7 @@ def aggregate_monthly(organization, account, from_date=None):
                 "seam_date": seam_date,
                 "last_date": last_date,
                 "organization_id": organization.id,
-                "account": account}, 'default')
+                "account": account}, router.db_for_read(Transaction))
         new_customer, new_receivable = iter(new_query).next()
         period = last_date
         churn_customers += [(period, churn_customer)]
@@ -213,9 +214,9 @@ def active_subscribers(plan, from_date=None):
 def monthly_balances(organization, account=None, until=None):
     values = []
     for end_period in month_periods(from_date=until):
-        values.append([end_period,
-            Transaction.objects.get_organization_balance(
-                    organization, account=account, until=end_period)])
+        balance, _ = Transaction.objects.get_organization_balance(
+            organization, account=account, until=end_period)
+        values.append([end_period, abs(balance)])
     return values
 
 

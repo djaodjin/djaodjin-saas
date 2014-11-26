@@ -43,12 +43,21 @@ class RevenueMetricsAPIView(ProviderMixin, APIView):
 
     def get(self, request, *args, **kwargs): #pylint: disable=unused-argument
         organization = self.get_organization()
-        at_date = datetime_or_now(request.DATA.get('at', None))
-        return Response([{
-            'key': Transaction.INCOME,
-            'values': monthly_balances(
-                        organization, Transaction.INCOME, at_date)
-            }])
+        start_at = request.GET.get('start_at', None)
+        if start_at:
+            start_at = parse_datetime(start_at)
+        start_at = datetime_or_now(start_at)
+        ends_at = request.GET.get('ends_at', None)
+        if ends_at:
+            ends_at = parse_datetime(ends_at)
+        ends_at = datetime_or_now(ends_at)
+        result = []
+        for key in (Transaction.INCOME, Transaction.BACKLOG):
+            result += [{
+                'key': key,
+                'values': monthly_balances(organization, key, ends_at)
+            }]
+        return Response(result)
 
 
 class OrganizationListAPIView(ProviderMixin, GenericAPIView):
