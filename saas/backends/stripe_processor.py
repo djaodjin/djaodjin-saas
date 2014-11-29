@@ -229,7 +229,7 @@ class StripeBackend(object):
         return (amount * 290 + 5000) / 10000 + 30
 
     @staticmethod
-    def prorate_transfer(amount):
+    def prorate_transfer(amount): #pylint: disable=unused-argument
         """
         Return Stripe processing fee associated to a transfer
         (i.e. 25 cents).
