@@ -119,7 +119,8 @@ class StripeBackend(object):
             amount=amount,
             currency='usd', # XXX should be derived from organization bank
             recipient=organization.processor_recipient_id,
-            description=descr)
+            description=descr,
+            statement_description=organization.printable_name)
         created_at = datetime.datetime.fromtimestamp(transfer.created)
         return (transfer.id, created_at)
 
@@ -223,4 +224,14 @@ class StripeBackend(object):
         Return Stripe processing fee associated to a transaction
         (i.e. 2.9% + 30 cents).
         """
-        return amount * 290 / 10000 + 30
+        # Stripe rounds up so we do the same here. Be careful Python 3.x
+        # semantics are broken and will return a float instead of a int.
+        return (amount * 290 + 5000) / 10000 + 30
+
+    @staticmethod
+    def prorate_transfer(amount):
+        """
+        Return Stripe processing fee associated to a transfer
+        (i.e. 25 cents).
+        """
+        return 25

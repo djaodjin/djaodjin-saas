@@ -393,6 +393,7 @@ class Organization(models.Model):
             djaodjin:Withdraw                             6000
             elearning:Funds
         """
+        funds_unit = 'usd' # XXX currency on receipient bank account
         created_at = datetime_or_now(created_at)
         descr = "withdraw from %s" % self.printable_name
         if user:
@@ -402,19 +403,35 @@ class Organization(models.Model):
         # the ``Transaction``.
         processor_transfer_id, _ = PROCESSOR_BACKEND.create_transfer(
             self, amount, descr)
+        processor = Charge.get_processor()
         Transaction.objects.create(
             event_id=processor_transfer_id,
             descr=descr,
             created_at=created_at,
-            dest_unit='usd', # XXX currency on receipient bank account
+            dest_unit=funds_unit,
             dest_amount=amount,
             dest_account=Transaction.WITHDRAW,
-            dest_organization=Charge.get_processor(),
-            orig_unit='usd', # XXX
+            dest_organization=processor,
+            orig_unit=funds_unit,
             orig_amount=amount,
             orig_account=Transaction.FUNDS,
             orig_organization=self)
-        self.funds_balance -= amount
+        transfer_fee = PROCESSOR_BACKEND.prorate_transfer(amount)
+        if transfer_fee:
+            # Add processor fee for transfer.
+            Transaction.objects.create(
+                event_id=processor_transfer_id,
+                descr='Transfer fee for %s' % processor_transfer_id,
+                created_at=created_at,
+                dest_unit=funds_unit,
+                dest_amount=transfer_fee,
+                dest_account=Transaction.FUNDS,
+                dest_organization=processor,
+                orig_unit=funds_unit,
+                orig_amount=transfer_fee,
+                orig_account=Transaction.FUNDS,
+                orig_organization=self)
+        self.funds_balance -= (amount + transfer_fee)
         self.save()
 
 
@@ -1282,10 +1299,10 @@ class TransactionManager(models.Manager):
         if not account:
             account = Transaction.PAYABLE
         dest_amount, dest_unit = sum_dest_amount(self.filter(
-            dest_organization=organization, dest_account=account,
+            dest_organization=organization, dest_account__startswith=account,
             created_at__lt=until))
         orig_amount, orig_unit = sum_orig_amount(self.filter(
-            orig_organization=organization, orig_account=account,
+            orig_organization=organization, orig_account__startswith=account,
             created_at__lt=until))
         if dest_unit != orig_unit:
             LOGGER.error('orig and dest balances until %s for account'\
@@ -1409,8 +1426,8 @@ class Transaction(models.Model):
     BACKLOG = 'Backlog'
     FUNDS = 'Funds'           # <= 0 receipient side
     INCOME = 'Income'         # <= 0 receipient side
+    REFUND = 'Refund'         # >= 0 receipient side
     WITHDRAW = 'Withdraw'
-    REFUND = 'Refund'       # >= 0 receipient side
 
     # customer side
     EXPENSES = 'Expenses'   # >= 0 billing side
