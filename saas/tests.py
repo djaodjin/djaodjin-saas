@@ -196,7 +196,7 @@ class MetricsTests(TestCase):
         Apr 2012: ABC lost 1 customer and gains 1 customer,
         May 2012: No change."""
         table, _, _ = aggregate_monthly_transactions(
-            Organization.objects.get(pk=2),
+            Organization.objects.get(pk=2), Transaction.INCOME,
             from_date=date(year=2014, month=1, day=1))
         for entry in table:
             values = entry["values"]

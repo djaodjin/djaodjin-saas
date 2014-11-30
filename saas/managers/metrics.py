@@ -29,7 +29,7 @@ from django.db.models.sql.query import RawQuery
 from django.db.models import Count, Sum
 from django.utils.timezone import utc
 
-from saas.models import Subscription, Transaction
+from saas.models import Plan, Subscription, Transaction
 
 
 def month_periods(nb_months=12, from_date=None):
@@ -62,11 +62,17 @@ def month_periods(nb_months=12, from_date=None):
     return dates
 
 
-def aggregate_monthly(organization, account, from_date=None):
+def aggregate_monthly(organization, account, interval,
+                      from_date=None, reverse=False):
     """
     Returns a table of records over a period of 12 months *from_date*.
     """
     #pylint: disable=too-many-locals
+    orig = 'orig'
+    dest = 'dest'
+    if reverse:
+        orig = 'dest'
+        dest = 'orig'
     customers = []
     receivables = []
     new_customers = []
@@ -76,85 +82,115 @@ def aggregate_monthly(organization, account, from_date=None):
     # We want to be able to compare *last* to *from_date* and not get django
     # warnings because timezones are not specified.
     dates = month_periods(13, from_date)
-    first_date = dates[0]
-    seam_date = dates[1]
-    for last_date in dates[2:]:
+    trail_period_start = dates[0]
+    period_start = dates[1]
+    for period_end in dates[2:]:
+        if interval == Plan.YEARLY:
+            prev_period_start = datetime(
+                day=period_start.day, month=period_start.month,
+                year=period_start.year - 1, tzinfo=period_start.tzinfo)
+            prev_period_end = datetime(
+                day=period_end.day, month=period_end.month,
+                year=period_end.year - 1, tzinfo=period_end.tzinfo)
+        else:
+            # default to monthly
+            prev_period_start = trail_period_start
+            prev_period_end = period_start
         churn_query = RawQuery(
-"""SELECT COUNT(DISTINCT(prev.dest_organization_id)), SUM(prev.dest_amount)
+"""SELECT COUNT(DISTINCT(prev.%(dest)s_organization_id)),
+          SUM(prev.%(dest)s_amount)
        FROM saas_transaction prev
        LEFT OUTER JOIN (
-         SELECT distinct(dest_organization_id)
+         SELECT distinct(%(dest)s_organization_id)
            FROM saas_transaction
-           WHERE created_at >= '%(seam_date)s'
-         AND created_at < '%(last_date)s'
-         AND orig_organization_id = '%(organization_id)s'
-         AND orig_account = '%(account)s') curr
-         ON prev.dest_organization_id = curr.dest_organization_id
-       WHERE prev.created_at >= '%(first_date)s'
-         AND prev.created_at < '%(seam_date)s'
-         AND prev.orig_organization_id = '%(organization_id)s'
-         AND prev.orig_account = '%(account)s'
-         AND curr.dest_organization_id IS NULL""" % {
-                "first_date": first_date,
-                "seam_date": seam_date,
-                "last_date": last_date,
+           WHERE created_at >= '%(period_start)s'
+         AND created_at < '%(period_end)s'
+         AND %(orig)s_organization_id = '%(organization_id)s'
+         AND %(orig)s_account = '%(account)s') curr
+         ON prev.%(dest)s_organization_id = curr.%(dest)s_organization_id
+       WHERE prev.created_at >= '%(prev_period_start)s'
+         AND prev.created_at < '%(prev_period_end)s'
+         AND prev.%(orig)s_organization_id = '%(organization_id)s'
+         AND prev.%(orig)s_account = '%(account)s'
+         AND curr.%(dest)s_organization_id IS NULL""" % {
+                "orig": orig, "dest": dest,
+                "prev_period_start": prev_period_start,
+                "prev_period_end": prev_period_end,
+                "period_start": period_start,
+                "period_end": period_end,
                 "organization_id": organization.id,
                 "account": account}, router.db_for_read(Transaction))
         churn_customer, churn_receivable = iter(churn_query).next()
+        # A bit ugly but it does the job ...
+        if orig == 'orig':
+            kwargs = {'orig_organization': organization,
+                      'orig_account': account}
+        else:
+            kwargs = {'dest_organization': organization,
+                      'dest_account': account}
+        # pylint: disable=star-args
         query_result = Transaction.objects.filter(
-            orig_organization=organization,
-            orig_account=account,
-            created_at__gte=seam_date,
-            created_at__lt=last_date).aggregate(
-            Count('dest_organization', distinct=True),
-            Sum('dest_amount'))
-        customer = query_result['dest_organization__count']
-        receivable = query_result['dest_amount__sum']
+            created_at__gte=period_start,
+            created_at__lt=period_end, **kwargs).aggregate(
+            Count('%s_organization' % dest, distinct=True),
+            Sum('%s_amount' % dest))
+        customer = query_result['%s_organization__count' % dest]
+        receivable = query_result['%s_amount__sum' % dest]
         new_query = RawQuery(
-"""SELECT count(distinct(curr.dest_organization_id)), SUM(curr.dest_amount)
+"""SELECT count(distinct(curr.%(dest)s_organization_id)),
+          SUM(curr.%(dest)s_amount)
    FROM saas_transaction curr
        LEFT OUTER JOIN (
-         SELECT distinct(dest_organization_id)
+         SELECT distinct(%(dest)s_organization_id)
            FROM saas_transaction
-           WHERE created_at >= '%(first_date)s'
-         AND created_at < '%(seam_date)s'
-         AND orig_organization_id = '%(organization_id)s'
-         AND orig_account = '%(account)s') prev
-         ON curr.dest_organization_id = prev.dest_organization_id
-       WHERE curr.created_at >= '%(seam_date)s'
-         AND curr.created_at < '%(last_date)s'
-         AND curr.orig_organization_id = '%(organization_id)s'
-         AND curr.orig_account = '%(account)s'
-         AND prev.dest_organization_id IS NULL""" % {
-                "first_date": first_date,
-                "seam_date": seam_date,
-                "last_date": last_date,
+           WHERE created_at >= '%(prev_period_start)s'
+         AND created_at < '%(prev_period_end)s'
+         AND %(orig)s_organization_id = '%(organization_id)s'
+         AND %(orig)s_account = '%(account)s') prev
+         ON curr.%(dest)s_organization_id = prev.%(dest)s_organization_id
+       WHERE curr.created_at >= '%(period_start)s'
+         AND curr.created_at < '%(period_end)s'
+         AND curr.%(orig)s_organization_id = '%(organization_id)s'
+         AND curr.%(orig)s_account = '%(account)s'
+         AND prev.%(dest)s_organization_id IS NULL""" % {
+                "orig": orig, "dest": dest,
+                "prev_period_start": prev_period_start,
+                "prev_period_end": prev_period_end,
+                "period_start": period_start,
+                "period_end": period_end,
                 "organization_id": organization.id,
                 "account": account}, router.db_for_read(Transaction))
         new_customer, new_receivable = iter(new_query).next()
-        period = last_date
+        period = period_end
         churn_customers += [(period, churn_customer)]
         churn_receivables += [(period, int(churn_receivable or 0))]
         customers += [(period, customer)]
         receivables += [(period, int(receivable or 0))]
         new_customers += [(period, new_customer)]
         new_receivables += [(period, int(new_receivable or 0))]
-        first_date = seam_date
-        seam_date = last_date
+        trail_period_start = period_start
+        period_start = period_end
     return ((churn_customers, customers, new_customers),
             (churn_receivables, receivables, new_receivables))
 
 
-def aggregate_monthly_transactions(organization, from_date=None):
+def aggregate_monthly_transactions(organization, account,
+    account_title=None, from_date=None, reverse=False):
     """
-    12 months of total/new/churn income and customers
-    extracted from Transactions.
+    12 months of total/new/churn into or out of (see *reverse*) *account*
+    and associated distinct customers as extracted from Transactions.
     """
     #pylint: disable=too-many-locals
-    account = Transaction.INCOME
-    customers, incomes = aggregate_monthly(organization, account, from_date)
+    if not account_title:
+        account_title = str(account)
+    plan_periods = organization.plans.values('interval').distinct()
+    interval = Plan.MONTHLY
+    if len(plan_periods) == 1:
+        interval = plan_periods[0]['interval']
+    customers, account_totals = aggregate_monthly(
+        organization, account, interval, from_date=from_date, reverse=reverse)
     churned_custs, total_custs, new_custs = customers
-    churned_income, total_income, new_income = incomes
+    churned_account, total_account, new_account = account_totals
     net_new_custs = []
     cust_churn_percent = []
     last_nb_total_custs = 0
@@ -169,14 +205,14 @@ def aggregate_monthly_transactions(organization, from_date=None):
         else:
             cust_churn_percent += [(period, 0)]
         last_nb_total_custs = nb_total_custs
-    income_table = [{"key": "Total %s" % account,
-                     "values": total_income
+    account_table = [{"key": "Total %s" % account_title,
+                     "values": total_account
                      },
-                    {"key": "%s from new Customers" % account,
-                     "values": new_income
+                    {"key": "%s from new Customers" % account_title,
+                     "values": new_account
                      },
-                    {"key": "%s lost from churned Customers" % account,
-                     "values": churned_income
+                    {"key": "%s lost from churned Customers" % account_title,
+                     "values": churned_account
                      },
                     ]
     customer_table = [{"key": "Total # of Customers",
@@ -196,7 +232,7 @@ def aggregate_monthly_transactions(organization, from_date=None):
                        "values": cust_churn_percent
                        },
                       ]
-    return income_table, customer_table, customer_extra
+    return account_table, customer_table, customer_extra
 
 
 def active_subscribers(plan, from_date=None):

@@ -100,12 +100,17 @@ class RevenueMetricsView(ProviderMixin, TemplateView):
     def get_context_data(self, **kwargs):
         context = super(RevenueMetricsView, self).get_context_data(**kwargs)
         organization = self.get_organization()
+        reverse = True
+        account_title = 'Payments'
+        account = Transaction.FUNDS
         from_date = kwargs.get('from_date', None)
-        income_table, customer_table, customer_extra = \
-            aggregate_monthly_transactions(organization, from_date)
+        account_table, customer_table, customer_extra = \
+            aggregate_monthly_transactions(organization, account,
+                account_title=account_title, from_date=from_date,
+                reverse=reverse)
         data = SortedDict()
         data['amount'] = {"title": "Amount",
-                          "unit": "$", "table": income_table}
+                          "unit": "$", "table": account_table}
         data['customers'] = {"title": "Customers",
                              "table": customer_table, "extra": customer_extra}
         context.update({"title": "Revenue Metrics",
