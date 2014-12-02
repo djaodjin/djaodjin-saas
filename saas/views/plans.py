@@ -28,7 +28,7 @@ from django.views.generic import CreateView, ListView, UpdateView
 from django.views.generic.detail import SingleObjectMixin
 
 from saas.mixins import ProviderMixin
-from saas.models import Plan
+from saas.models import CartItem, Plan
 from saas.forms import PlanForm
 
 
@@ -71,6 +71,14 @@ class CartPlanListView(ProviderMixin, ListView):
         # We add the csrf token here so that javascript on the page
         # can call the shopping cart API.
         context.update(csrf(self.request))
+        items_selected = []
+        if self.request.user.is_authenticated():
+            items_selected += [item.plan.slug
+                for item in CartItem.objects.filter(user=self.request.user)]
+        if self.request.session.has_key('cart_items'):
+            items_selected += [item['plan']
+                for item in self.request.session['cart_items']]
+        context.update({'items_selected': items_selected})
         return context
 
 
