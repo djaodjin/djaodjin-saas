@@ -22,6 +22,7 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+from django.contrib.auth import REDIRECT_FIELD_NAME
 from django.core.context_processors import csrf
 from django.core.urlresolvers import reverse
 from django.views.generic import CreateView, ListView, UpdateView
@@ -59,6 +60,7 @@ class CartPlanListView(ProviderMixin, ListView):
 
     model = Plan
     template_name = 'saas/cart_plan_list.html'
+    redirect_url = 'saas_cart'
 
     def get_queryset(self):
         queryset = Plan.objects.filter(
@@ -78,8 +80,25 @@ class CartPlanListView(ProviderMixin, ListView):
         if self.request.session.has_key('cart_items'):
             items_selected += [item['plan']
                 for item in self.request.session['cart_items']]
-        context.update({'items_selected': items_selected})
+        context.update({'items_selected': items_selected,
+            REDIRECT_FIELD_NAME: reverse(self.redirect_url)})
         return context
+
+    def post(self, request, *args, **kwargs):
+        """
+        Add cliked ``Plan`` as an item in the user cart.
+        """
+        if 'submit' in request.POST:
+            # XXX Add to Cart
+            return HttpResponseRedirect(self.get_success_url())
+        return self.get(request, *args, **kwargs)
+
+    def get_success_url(self):
+        redirect_path = validate_redirect_url(
+            self.request.GET.get(REDIRECT_FIELD_NAME, None))
+        if redirect_path:
+            return redirect_path
+        return reverse('saas_organization_cart')
 
 
 class PlanCreateView(PlanFormMixin, CreateView):
