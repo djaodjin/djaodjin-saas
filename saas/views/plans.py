@@ -25,12 +25,14 @@
 from django.contrib.auth import REDIRECT_FIELD_NAME
 from django.core.context_processors import csrf
 from django.core.urlresolvers import reverse
+from django.http import HttpResponseRedirect
 from django.views.generic import CreateView, ListView, UpdateView
 from django.views.generic.detail import SingleObjectMixin
 
+from saas.forms import PlanForm
 from saas.mixins import ProviderMixin
 from saas.models import CartItem, Plan
-from saas.forms import PlanForm
+from saas.utils import validate_redirect_url
 
 
 class PlanFormMixin(ProviderMixin, SingleObjectMixin):
