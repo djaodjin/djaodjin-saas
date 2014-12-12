@@ -300,8 +300,8 @@ def requires_provider(function=None, strength=NORMAL):
     the request itself or a contributor (or manager) to a provider for
     the ``Organization`` associated to the request.
 
-    Managers can issue all types of requests (GET, POST, etc.) while
-    contributors are restricted to GET requests.
+    When *strength* is NORMAL, managers can issue all types of requests
+    (GET, POST, etc.) while contributors are restricted to GET requests.
 
     .. image:: perms-contrib-subscribes.*
     """
@@ -330,14 +330,37 @@ def requires_provider(function=None, strength=NORMAL):
     return decorator
 
 
+def requires_provider_weak(function=None):
+    """
+    Decorator for views that checks that the request authenticated ``User``
+    is a contributor (or manager) for the ``Organization`` associated to
+    the request itself or a contributor (or manager) to a provider for
+    the ``Organization`` associated to the request.
+
+    Both managers and contributors can issue all types of requests
+    (GET, POST, etc.).
+    """
+    return requires_provider(function, strength=WEAK)
+
+
+def requires_provider_strong(function=None):
+    """
+    Decorator for views that checks that the request authenticated ``User``
+    is a manager for the ``Organization`` associated to the request itself
+    or a manager to a provider for the ``Organization`` associated
+    to the request.
+    """
+    return requires_provider(function, strength=STRONG)
+
+
 def requires_provider_only(function=None, strength=NORMAL):
     """
     Decorator for views that checks that the request authenticated ``User``
     is a contributor (or manager) for a provider to the ``Organization``
     associated to the request.
 
-    Managers can issue all types of requests (GET, POST, etc.) while
-    contributors are restricted to GET requests.
+    When *strength* is NORMAL, managers can issue all types of requests
+    (GET, POST, etc.) while contributors are restricted to GET requests.
 
     .. image:: perms-contrib-provider-only.*
     """
@@ -366,6 +389,27 @@ def requires_provider_only(function=None, strength=NORMAL):
     return decorator
 
 
+def requires_provider_only_weak(function=None):
+    """
+    Decorator for views that checks that the request authenticated ``User``
+    is a contributor (or manager) for a provider to the ``Organization``
+    associated to the request.
+
+    Both managers and contributors can issue all types of requests
+    (GET, POST, etc.).
+    """
+    return requires_provider_only(function, strength=WEAK)
+
+
+def requires_provider_only_strong(function=None):
+    """
+    Decorator for views that checks that the request authenticated ``User``
+    is a manager for a provider to the ``Organization`` associated
+    to the request.
+    """
+    return requires_provider_only(function, strength=STRONG)
+
+
 def requires_self_provider(function=None, strength=NORMAL):
     """
     Decorator for views that checks that the request authenticated ``User``
@@ -376,8 +420,8 @@ def requires_self_provider(function=None, strength=NORMAL):
     or manager of the organization) and transitively contributors (or managers)
     for any provider to one of these direct organizations.
 
-    Managers can issue all types of requests (GET, POST, etc.) while
-    contributors are restricted to GET requests.
+    When *strength* is NORMAL, managers can issue all types of requests
+    (GET, POST, etc.) while contributors are restricted to GET requests.
 
     .. image:: perms-self-contrib-subscribes.*
     """
@@ -403,3 +447,34 @@ def requires_self_provider(function=None, strength=NORMAL):
     if function:
         return decorator(function)
     return decorator
+
+
+def requires_self_provider_weak(function=None):
+    """
+    Decorator for views that checks that the request authenticated ``User``
+    is the user associated to the URL.
+    Authenticated users that can also access the URL through this decorator
+    are contributors (or managers) for any ``Organization`` associated
+    with the user served by the URL (the accessed user is a direct contributor
+    or manager of the organization) and transitively contributors (or managers)
+    for any provider to one of these direct organizations.
+
+    Both managers and contributors can issue all types of requests
+    (GET, POST, etc.).
+    """
+    return requires_self_provider(function, strength=WEAK)
+
+
+def requires_self_provider_strong(function=None):
+    """
+    Decorator for views that checks that the request authenticated ``User``
+    is the user associated to the URL.
+    Authenticated users that can also access the URL through this decorator
+    are managers for any ``Organization`` associated with the user served
+    by the URL (the accessed user is a direct manager of the organization
+    and transitively managers for any provider to one of these direct
+    organizations.
+    """
+    return requires_self_provider(function, strength=STRONG)
+
+
