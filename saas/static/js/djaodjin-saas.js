@@ -21,9 +21,9 @@
                 event.preventDefault();
                 var subscription = $(this).parents('tbody');
                 var prevLine = $(this).parents('tr').prev();
-                var seatFirstName = $('.seat-first-name');
-                var seatLastName = $('.seat-last-name');
-                var seatEmail = $('.seat-email');
+                var seatFirstName = subscription.find('.seat-first-name');
+                var seatLastName = subscription.find('.seat-last-name');
+                var seatEmail = subscription.find('.seat-email');
                 var item = new CartItem({
                     'plan': subscription.attr('data-plan'),
                     'first_name': seatFirstName.val(),
@@ -139,7 +139,7 @@
                    contentType: "application/json; charset=utf-8",
                  }).done(function(data) {
                      // XXX does not show messages since we reload...
-                     showMessages([data['details']]);
+                     showMessages([data['details']], "success");
                      location.reload();
                  }).fail(function(data) {
                      if('details' in data.responseJSON) {

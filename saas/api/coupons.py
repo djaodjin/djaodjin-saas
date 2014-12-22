@@ -22,7 +22,6 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from django.contrib import messages
 from django.db.models import Q
 from rest_framework import serializers, status
 from rest_framework.generics import (GenericAPIView,
@@ -150,8 +149,6 @@ class CouponRedeemAPIView(GenericAPIView):
                 details = {"details": (
                         "Coupon '%s' was successfully applied." % coupon_code)}
                 headers = {}
-                # XXX does not show details since we reload in djaodjin-saas.
-                messages.success(request, details['details'])
                 return Response(details, status=status.HTTP_200_OK,
                                 headers=headers)
             else:

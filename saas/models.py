@@ -243,24 +243,33 @@ class Organization(models.Model):
             return self.full_name
         return self.slug
 
+    def _add_relation(self, user, model):
+        # Implementation Note:
+        # Django get_or_create will call router.db_for_write without
+        # an instance so the using database will be lost. The following
+        # code saves the relation in the correct database associated
+        # with the organization.
+        queryset = model.objects.db_manager(using=self._state.db).filter(
+            organization=self, user=user)
+        if not queryset.exists():
+            m2m = model(organization=self, user=user)
+            m2m.save(using=self._state.db, force_insert=True)
+            return True
+        return False
+
     def add_contributor(self, user, at_time=None):
         """
         Add user as a contributor to organization.
         """
         #pylint: disable=unused-argument
-        _, created = \
-            get_contributor_relation_model().objects.get_or_create(
-            organization=self, user=user)
-        return created
+        return self._add_relation(user, get_contributor_relation_model())
 
     def add_manager(self, user, at_time=None):
         """
         Add user as a manager to organization.
         """
         #pylint: disable=unused-argument
-        _, created = get_manager_relation_model().objects.get_or_create(
-            organization=self, user=user)
-        return created
+        return self._add_relation(user, get_manager_relation_model())
 
     def update_bank(self, bank_token):
         PROCESSOR_BACKEND.create_or_update_bank(self, bank_token)
@@ -489,10 +498,11 @@ class Signature(models.Model):
 
 class CartItemManager(models.Manager):
 
-    def get_cart(self, user):
+    def get_cart(self, user, *args, **kwargs):
         # Order by plan then id so the order is consistent between
         # billing/cart(-.*)/ pages.
-        return self.filter(user=user, recorded=False).order_by('plan', 'id')
+        return self.filter(user=user, recorded=False,
+            *args, **kwargs).order_by('plan', 'id')
 
 
 class CartItem(models.Model):
@@ -1252,6 +1262,12 @@ class TransactionManager(models.Manager):
             descr='Credit for creating an organization')
         credit.save()
         return credit
+
+    def distinct_accounts(self):
+        return (set([val['orig_account']
+                    for val in self.all().values('orig_account').distinct()])
+                | set([val['dest_account']
+                    for val in self.all().values('dest_account').distinct()]))
 
     def execute_order(self, invoiced_items, user=None):
         """

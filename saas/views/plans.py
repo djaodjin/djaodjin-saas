@@ -30,7 +30,7 @@ from django.views.generic import CreateView, ListView, UpdateView
 from django.views.generic.detail import SingleObjectMixin
 
 from saas.forms import PlanForm
-from saas.mixins import ProviderMixin
+from saas.mixins import CartMixin, ProviderMixin
 from saas.models import CartItem, Plan
 from saas.utils import validate_redirect_url
 
@@ -55,7 +55,7 @@ class PlanFormMixin(ProviderMixin, SingleObjectMixin):
         return context
 
 
-class CartPlanListView(ProviderMixin, ListView):
+class CartPlanListView(ProviderMixin, CartMixin, ListView):
     """
     List of plans available for subscription.
     """
@@ -91,7 +91,8 @@ class CartPlanListView(ProviderMixin, ListView):
         Add cliked ``Plan`` as an item in the user cart.
         """
         if 'submit' in request.POST:
-            # XXX Add to Cart
+            #pylint: disable=star-args
+            self.insert_item(request, **request.POST)
             return HttpResponseRedirect(self.get_success_url())
         return self.get(request, *args, **kwargs)
 
@@ -100,7 +101,7 @@ class CartPlanListView(ProviderMixin, ListView):
             self.request.GET.get(REDIRECT_FIELD_NAME, None))
         if redirect_path:
             return redirect_path
-        return reverse('saas_organization_cart')
+        return reverse(self.redirect_url)
 
 
 class PlanCreateView(PlanFormMixin, CreateView):

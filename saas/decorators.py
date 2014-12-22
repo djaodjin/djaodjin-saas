@@ -157,6 +157,8 @@ def _insert_url(request, redirect_field_name=REDIRECT_FIELD_NAME,
     if ((not login_scheme or login_scheme == current_scheme) and
         (not login_netloc or login_netloc == current_netloc)):
         path = request.get_full_path()
+    # As long as *inserted_url* is not None, this call will redirect
+    # anything (i.e. inserted_url), not just the login.
     from django.contrib.auth.views import redirect_to_login
     return redirect_to_login(path, inserted_url, redirect_field_name)
 
