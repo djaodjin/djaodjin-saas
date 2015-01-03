@@ -227,7 +227,6 @@ def pass_provider(request, charge=None, organization=None, strength=NORMAL):
 
     .. image:: perms-contrib-subscribes.*
     """
-    organization = None
     if charge and not isinstance(charge, Charge):
         charge = get_object_or_404(Charge, processor_id=charge)
         organization = charge.customer
