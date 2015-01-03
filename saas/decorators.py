@@ -37,7 +37,6 @@ from django.conf import settings
 from django.core.exceptions import PermissionDenied
 from django.core.urlresolvers import reverse
 from django.contrib.auth import REDIRECT_FIELD_NAME
-from django.http import Http404
 from django.shortcuts import get_object_or_404
 from django.utils.decorators import available_attrs
 
@@ -164,6 +163,7 @@ def _insert_url(request, redirect_field_name=REDIRECT_FIELD_NAME,
 
 
 def pass_paid_subscription(request, organization=None, plan=None):
+    #pylint: disable=unused-argument
     if organization and not isinstance(organization, Organization):
         organization = get_object_or_404(Organization, slug=organization)
     if plan and not isinstance(plan, Plan):
@@ -228,7 +228,7 @@ def pass_provider(request, charge=None, organization=None, strength=NORMAL):
     .. image:: perms-contrib-subscribes.*
     """
     organization = None
-    if charge:
+    if charge and not isinstance(charge, Charge):
         charge = get_object_or_404(Charge, processor_id=charge)
         organization = charge.customer
     elif organization and not isinstance(organization, Organization):
@@ -409,10 +409,12 @@ def requires_paid_subscription(function=None,
         def _wrapped_view(request, *args, **kwargs):
             subscriber = get_object_or_404(
                 Organization, slug=kwargs.get(organization_kwarg_slug, None))
+            plan = get_object_or_404(
+                Plan, slug=kwargs.get(plan_kwarg_slug, None))
             if pass_provider(
                     request, organization=subscriber, strength=strength):
-                if pass_paid_subscription(request, organization=subscriber,
-                    plan=kwargs.get(plan_kwarg_slug, None)):
+                if pass_paid_subscription(
+                    request, organization=subscriber, plan=plan):
                     return view_func(request, *args, **kwargs)
                 else:
                     return _insert_url(request, redirect_field_name,
@@ -496,8 +498,9 @@ def requires_provider(function=None, strength=NORMAL):
                              strength=strength):
                 return view_func(request, *args, **kwargs)
             raise PermissionDenied("%(auth)s is neither a manager "\
-" of %(organization)s nor a manager of one of %(organization)s providers."
-                        % {'auth': request.user, 'organization': organization})
+" for %(slug)s nor a manager of one of %(slug)s providers." % {
+    'auth': request.user,
+    'slug': kwargs.get('charge', kwargs.get('organization', None))})
         return _wrapped_view
 
     if function:
@@ -547,8 +550,8 @@ def requires_provider_only(function=None, strength=NORMAL):
                              strength=strength):
                 return view_func(request, *args, **kwargs)
             raise PermissionDenied("%(auth)s has no direct relation to"\
-" a provider of %(organization)s."
-                        % {'auth': request.user, 'organization': organization})
+" a provider for %(slug)s." % {'auth': request.user,
+        'slug': kwargs.get('charge', kwargs.get('organization', None))})
         return _wrapped_view
 
     if function:
