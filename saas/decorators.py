@@ -330,7 +330,7 @@ def pass_self_provider(request, user=None, strength=NORMAL):
             Subscription.objects.filter(organization__in=directs))
         return _has_valid_access(request,
             list(directs) + list(providers), strength)
-    return False
+    return True
 
 
 def pass_self_provider_weak(request, user=None):
