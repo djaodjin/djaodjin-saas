@@ -163,6 +163,205 @@ def _insert_url(request, redirect_field_name=REDIRECT_FIELD_NAME,
     return redirect_to_login(path, inserted_url, redirect_field_name)
 
 
+def pass_paid_subscription(request, organization=None, plan=None):
+    if organization and not isinstance(organization, Organization):
+        organization = get_object_or_404(Organization, slug=organization)
+    if plan and not isinstance(plan, Plan):
+        plan = get_object_or_404(Plan, slug=plan)
+    subscription = get_object_or_404(
+        Subscription, organization=organization, plan=plan)
+    return not subscription.is_locked
+
+
+def pass_direct(request, charge=None, organization=None, strength=NORMAL):
+    """
+    Returns True if the request authenticated ``User`` is a direct contributor
+    (or manager) for the ``Organization`` associated to the request.
+
+    Managers can issue all types of requests (GET, POST, etc.) while
+    contributors are restricted to GET requests.
+
+    .. image:: perms-contrib.*
+    """
+    if charge:
+        charge = get_object_or_404(Charge, processor_id=charge)
+        organization = charge.customer
+    elif organization and not isinstance(organization, Organization):
+        organization = get_object_or_404(Organization, slug=organization)
+    else:
+        organization = get_current_provider()
+    return organization and _has_valid_access(request, [organization], strength)
+
+
+def pass_direct_weak(request, charge=None, organization=None):
+    """
+    Returns True if the request authenticated ``User``
+    is a direct contributor (or manager) for the ``Organization`` associated
+    to the request.
+
+    Both managers and contributors can issue all types of requests
+    (GET, POST, etc.).
+    """
+    return pass_direct(
+        request, charge=charge, organization=organization, strength=WEAK)
+
+
+def pass_direct_strong(request, charge=None, organization=None):
+    """
+    Returns True if the request authenticated ``User``
+    is a direct manager for the ``Organization`` associated to the request.
+    """
+    return pass_direct(
+        request, charge=charge, organization=organization, strength=STRONG)
+
+
+def pass_provider(request, charge=None, organization=None, strength=NORMAL):
+    """
+    Returns True if the request authenticated ``User``
+    is a contributor (or manager) for the ``Organization`` associated to
+    the request itself or a contributor (or manager) to a provider for
+    the ``Organization`` associated to the request.
+
+    When *strength* is NORMAL, managers can issue all types of requests
+    (GET, POST, etc.) while contributors are restricted to GET requests.
+
+    .. image:: perms-contrib-subscribes.*
+    """
+    organization = None
+    if charge:
+        charge = get_object_or_404(Charge, processor_id=charge)
+        organization = charge.customer
+    elif organization and not isinstance(organization, Organization):
+        organization = get_object_or_404(Organization, slug=organization)
+    return organization and _has_valid_access(request, [organization]
+            + list(Organization.objects.providers_to(organization)),
+            strength)
+
+
+def pass_provider_weak(request, charge=None, organization=None):
+    """
+    Returns True if the request authenticated ``User``
+    is a contributor (or manager) for the ``Organization`` associated to
+    the request itself or a contributor (or manager) to a provider for
+    the ``Organization`` associated to the request.
+
+    Both managers and contributors can issue all types of requests
+    (GET, POST, etc.).
+    """
+    return pass_provider(
+        request, charge=charge, organization=organization, strength=WEAK)
+
+
+def pass_provider_strong(request, charge=None, organization=None):
+    """
+    Returns True if the request authenticated ``User``
+    is a manager for the ``Organization`` associated to the request itself
+    or a manager to a provider for the ``Organization`` associated
+    to the request.
+    """
+    return pass_provider(
+        request, charge=charge, organization=organization, strength=STRONG)
+
+
+def pass_provider_only(request,
+                       charge=None, organization=None, strength=NORMAL):
+    """
+    Returns True if the request authenticated ``User``
+    is a contributor (or manager) for a provider to the ``Organization``
+    associated to the request.
+
+    When *strength* is NORMAL, managers can issue all types of requests
+    (GET, POST, etc.) while contributors are restricted to GET requests.
+
+    .. image:: perms-contrib-provider-only.*
+    """
+    if charge:
+        charge = get_object_or_404(Charge, processor_id=charge)
+        organization = charge.customer
+    elif organization:
+        organization = get_object_or_404(Organization, slug=organization)
+    return organization and _has_valid_access(request,
+            list(Organization.objects.providers_to(organization)),
+            strength)
+
+
+def pass_provider_only_weak(request, charge=None, organization=None):
+    """
+    Returns True if the request authenticated ``User``
+    is a contributor (or manager) for a provider to the ``Organization``
+    associated to the request.
+
+    Both managers and contributors can issue all types of requests
+    (GET, POST, etc.).
+    """
+    return pass_provider_only(
+        request, charge=charge, organization=organization, strength=WEAK)
+
+
+def pass_provider_only_strong(request, charge=None, organization=None):
+    """
+    Returns True if the request authenticated ``User``
+    is a manager for a provider to the ``Organization`` associated
+    to the request.
+    """
+    return pass_provider_only(
+        request, charge=charge, organization=organization, strength=STRONG)
+
+
+def pass_self_provider(request, user=None, strength=NORMAL):
+    """
+    Returns True if the request authenticated ``User``
+    is the user associated to the URL.
+    Authenticated users that can also access the URL through this decorator
+    are contributors (or managers) for any ``Organization`` associated
+    with the user served by the URL (the accessed user is a direct contributor
+    or manager of the organization) and transitively contributors (or managers)
+    for any provider to one of these direct organizations.
+
+    When *strength* is NORMAL, managers can issue all types of requests
+    (GET, POST, etc.) while contributors are restricted to GET requests.
+
+    .. image:: perms-self-contrib-subscribes.*
+    """
+    if request.user.username != user:
+        # Organization that are managed by both users
+        directs = Organization.objects.accessible_by(user)
+        providers = Organization.objects.providers(
+            Subscription.objects.filter(organization__in=directs))
+        return _has_valid_access(request,
+            list(directs) + list(providers), strength)
+    return False
+
+
+def pass_self_provider_weak(request, user=None):
+    """
+    Returns True if the request authenticated ``User``
+    is the user associated to the URL.
+    Authenticated users that can also access the URL through this decorator
+    are contributors (or managers) for any ``Organization`` associated
+    with the user served by the URL (the accessed user is a direct contributor
+    or manager of the organization) and transitively contributors (or managers)
+    for any provider to one of these direct organizations.
+
+    Both managers and contributors can issue all types of requests
+    (GET, POST, etc.).
+    """
+    return pass_self_provider(request, user=user, strength=WEAK)
+
+
+def pass_self_provider_strong(request, user=None):
+    """
+    Returns True if the request authenticated ``User``
+    is the user associated to the URL.
+    Authenticated users that can also access the URL through this decorator
+    are managers for any ``Organization`` associated with the user served
+    by the URL (the accessed user is a direct manager of the organization
+    and transitively managers for any provider to one of these direct
+    organizations.
+    """
+    return pass_self_provider(request, user=user, strength=STRONG)
+
+
 def requires_agreement(function=None,
                        agreement='terms_of_use',
                        redirect_field_name=REDIRECT_FIELD_NAME,
@@ -208,30 +407,21 @@ def requires_paid_subscription(function=None,
     def decorator(view_func):
         @wraps(view_func, assigned=available_attrs(view_func))
         def _wrapped_view(request, *args, **kwargs):
-            subscriber = None
-            if kwargs.has_key(organization_kwarg_slug):
-                subscriber = get_object_or_404(Organization,
-                    slug=kwargs.get(organization_kwarg_slug))
-                if not _has_valid_access(request, [subscriber]
-                        + list(Organization.objects.providers_to(subscriber)),
-                        strength):
-                    raise PermissionDenied("%(user)s is neither a manager '\
-' of %(organization)s nor a manager of one of %(organization)s providers."
-                        % {'user': request.user, 'organization': subscriber})
-            plan = None
-            if kwargs.has_key(plan_kwarg_slug):
-                plan = get_object_or_404(
-                    Plan, slug=kwargs.get(plan_kwarg_slug))
-            if subscriber and plan:
-                subscription = get_object_or_404(Subscription,
-                    organization=subscriber, plan=plan)
-                if subscription.is_locked:
+            subscriber = get_object_or_404(
+                Organization, slug=kwargs.get(organization_kwarg_slug, None))
+            if pass_provider(
+                    request, organization=subscriber, strength=strength):
+                if pass_paid_subscription(request, organization=subscriber,
+                    plan=kwargs.get(plan_kwarg_slug, None)):
+                    return view_func(request, *args, **kwargs)
+                else:
                     return _insert_url(request, redirect_field_name,
                         reverse('saas_organization_balance',
                             kwargs={'organization': subscriber,
                                     'subscribed_plan': plan}))
-                return view_func(request, *args, **kwargs)
-            raise Http404
+            raise PermissionDenied("%(user)s is neither a manager '\
+' of %(organization)s nor a manager of one of %(organization)s providers."
+                % {'user': request.user, 'organization': subscriber})
 
         return _wrapped_view
 
@@ -254,18 +444,9 @@ def requires_direct(function=None, strength=NORMAL):
     def decorator(view_func):
         @wraps(view_func, assigned=available_attrs(view_func))
         def _wrapped_view(request, *args, **kwargs):
-            organization = None
-            if kwargs.has_key('charge'):
-                charge = get_object_or_404(
-                    Charge, processor_id=kwargs.get('charge'))
-                organization = charge.customer
-            elif kwargs.has_key('organization'):
-                organization = get_object_or_404(Organization,
-                    slug=kwargs.get('organization'))
-            else:
-                organization = get_current_provider()
-            if organization and _has_valid_access(request,
-                    [organization], strength):
+            if pass_direct(request, charge=kwargs.get('charge', None),
+                           organization=kwargs.get('organization', None),
+                           strength=strength):
                 return view_func(request, *args, **kwargs)
             raise PermissionDenied
         return _wrapped_view
@@ -310,17 +491,9 @@ def requires_provider(function=None, strength=NORMAL):
     def decorator(view_func):
         @wraps(view_func, assigned=available_attrs(view_func))
         def _wrapped_view(request, *args, **kwargs):
-            organization = None
-            if kwargs.has_key('charge'):
-                charge = get_object_or_404(
-                    Charge, processor_id=kwargs.get('charge'))
-                organization = charge.customer
-            elif kwargs.has_key('organization'):
-                organization = get_object_or_404(Organization,
-                    slug=kwargs.get('organization'))
-            if organization and _has_valid_access(request, [organization]
-                    + list(Organization.objects.providers_to(organization)),
-                    strength):
+            if pass_provider(request, charge=kwargs.get('charge', None),
+                             organization=kwargs.get('organization', None),
+                             strength=strength):
                 return view_func(request, *args, **kwargs)
             raise PermissionDenied("%(auth)s is neither a manager "\
 " of %(organization)s nor a manager of one of %(organization)s providers."
@@ -369,17 +542,9 @@ def requires_provider_only(function=None, strength=NORMAL):
     def decorator(view_func):
         @wraps(view_func, assigned=available_attrs(view_func))
         def _wrapped_view(request, *args, **kwargs):
-            organization = None
-            if kwargs.has_key('charge'):
-                charge = get_object_or_404(
-                    Charge, processor_id=kwargs.get('charge'))
-                organization = charge.customer
-            elif kwargs.has_key('organization'):
-                organization = get_object_or_404(Organization,
-                    slug=kwargs.get('organization'))
-            if organization and _has_valid_access(request,
-                    list(Organization.objects.providers_to(organization)),
-                    strength):
+            if pass_provider_only(request, charge=kwargs.get('charge', None),
+                             organization=kwargs.get('organization', None),
+                             strength=strength):
                 return view_func(request, *args, **kwargs)
             raise PermissionDenied("%(auth)s has no direct relation to"\
 " a provider of %(organization)s."
@@ -430,20 +595,13 @@ def requires_self_provider(function=None, strength=NORMAL):
     def decorator(view_func):
         @wraps(view_func, assigned=available_attrs(view_func))
         def _wrapped_view(request, *args, **kwargs):
-            if not request.user.is_authenticated():
-                raise PermissionDenied
-            if request.user.username != kwargs.get('user'):
-                # Organization that are managed by both users
-                directs = Organization.objects.accessible_by(kwargs.get('user'))
-                providers = Organization.objects.providers(
-                    Subscription.objects.filter(organization__in=directs))
-                if not _has_valid_access(request,
-                        list(directs) + list(providers), strength):
-                    raise PermissionDenied("%(auth)s has neither a direct"\
+            if pass_self_provider(
+                    request, user=kwargs.get('user', None), strength=strength):
+                return view_func(request, *args, **kwargs)
+            raise PermissionDenied("%(auth)s has neither a direct"\
 " relation to an organization connected to %(user)s nor a connection to one"\
-"of the providers to such organization."
-                        % {'auth': request.user, 'user': kwargs.get('user')})
-            return view_func(request, *args, **kwargs)
+"of the providers to such organization." % {
+    'auth': request.user, 'user': kwargs.get('user', None)})
         return _wrapped_view
 
     if function:
