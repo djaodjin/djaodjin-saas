@@ -209,6 +209,9 @@ class CardInvoicablesFormMixin(CardFormMixin, InvoicablesFormMixin):
         # from the form.cleaned_data['remember_card'] field.
         remember_card = True
         stripe_token = form.cleaned_data['stripeToken']
+        if not stripe_token:
+            LOGGER.error("POST to payment page without a stripeToken (%s)",
+                form.cleaned_data)
 
         # deep copy the invoicables because we are updating the list in place
         # and we don't want to keep the edited state on a card failure.

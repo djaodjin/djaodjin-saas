@@ -91,8 +91,7 @@ class CartPlanListView(ProviderMixin, CartMixin, ListView):
         Add cliked ``Plan`` as an item in the user cart.
         """
         if 'submit' in request.POST:
-            #pylint: disable=star-args
-            self.insert_item(request, **request.POST)
+            self.insert_item(request, plan=request.POST['submit'])
             return HttpResponseRedirect(self.get_success_url())
         return self.get(request, *args, **kwargs)
 

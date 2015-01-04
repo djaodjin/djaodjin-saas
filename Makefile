@@ -10,7 +10,8 @@ PYTHON        := $(binDir)/python
 installDirs   ?= install -d
 
 install::
-	cd $(srcDir) && $(PYTHON) ./setup.py install --quiet
+	cd $(srcDir) && $(PYTHON) ./setup.py --quiet \
+		build -b $(CURDIR)/build install
 
 initdb:
 	-rm -f saas_testsite.sqlite

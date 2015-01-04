@@ -22,6 +22,7 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+from django.contrib import messages
 from django.db.models import Q
 from rest_framework import serializers, status
 from rest_framework.generics import (GenericAPIView,
@@ -149,6 +150,12 @@ class CouponRedeemAPIView(GenericAPIView):
                 details = {"details": (
                         "Coupon '%s' was successfully applied." % coupon_code)}
                 headers = {}
+                # XXX Django 1.7: 500 error, argument must be an HttpRequest
+                # object, not 'Request'. Not an issue with Django 1.6.2
+                # Since we rely on the message to appear after reload of
+                # the cart page in the casperjs tests, we can't get rid
+                # of this statement just yet.
+                messages.success(request, details['details'])
                 return Response(details, status=status.HTTP_200_OK,
                                 headers=headers)
             else:
