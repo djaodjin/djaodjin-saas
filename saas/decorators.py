@@ -416,10 +416,11 @@ def requires_paid_subscription(function=None,
                     request, organization=subscriber, plan=plan):
                     return view_func(request, *args, **kwargs)
                 else:
+                    # Note: I couldn't figure out why passing kwargs
+                    # stopped working.
                     return _insert_url(request, redirect_field_name,
                         reverse('saas_organization_balance',
-                            kwargs={'organization': subscriber,
-                                    'subscribed_plan': plan}))
+                                args=(subscriber.slug, plan.slug)))
             raise PermissionDenied("%(user)s is neither a manager '\
 ' of %(organization)s nor a manager of one of %(organization)s providers."
                 % {'user': request.user, 'organization': subscriber})
