@@ -67,6 +67,7 @@
             {% else %}
             {% if line.invoiced|refund_enable:user %}
             <button class="charge-refund"
+                    data-toggle="modal" data-target="#charge-refund"
                     data-linenum="{{forloop.counter0}}">Refund</button>
             {% endif %}
             {% endif %}
@@ -83,6 +84,41 @@
   </div>
   {% endif %}
 </div>
+<!-- modal dialog for Refunds -->
+<div class="modal fade"
+     id="charge-refund" tabindex="-1" role="dialog"
+     aria-labelledby="Refund" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close"
+                        data-dismiss="modal" aria-hidden="true">&times;</button>
+                <h4 class="modal-title">Refund</h4>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <div class="controls">
+                        <input class="form-control form-control"
+                               name="amount" maxlength="32" type="text"
+                               value="0" />
+                    </div>
+                </div>
+                <div>
+                    <p>
+Please specify the amount you would like refunded.
+                    </p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default"
+                        data-dismiss="modal">Cancel</button>
+                <button type="button" class="submit-refund btn btn-primary"
+                        data-dismiss="modal">OK</button>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- end of modal dialog for Refunds -->
 {% endblock %}
 
 {% block bodyscripts %}
@@ -99,8 +135,13 @@ $(document).ready(function() {
     var thisCharge = new Charge("{{charge.processor_id}}", urls);
     $(".charge-refund").click(function () {
         var linenum = $(this).attr('data-linenum');
-        thisCharge.refund(linenum);
+        $("#charge-refund [name='amount']").val(linenum);
     });
+    $("#charge-refund .submit-refund").click(function () {
+        alert('refund', $("#charge-refund [name='amount']").val());
+//XXX        thisCharge.refund(linenum);
+    });
+
 {% if charge.is_progress %}
     thisCharge.waitForCompletion();
 {% endif %}

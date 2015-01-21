@@ -23,6 +23,7 @@
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 from django.http import Http404
+from django.db import transaction
 from rest_framework import status
 from rest_framework.generics import GenericAPIView
 from rest_framework.response import Response
@@ -80,16 +81,18 @@ class ChargeRefundAPIView(RetrieveChargeMixin, RetrieveAPIView):
 
     def post(self, request, *args, **kwargs): #pylint: disable=unused-argument
         self.object = self.get_object()
-        try:
-            for linenum in request.DATA.get('linenums', []):
-                try:
-                    self.object.refund(int(linenum))
-                except ValueError:
-                    raise Http404("Unable to retrieve line '%s' in %s"
-                        % (linenum, self.object))
-        except InsufficientFunds as insufficient_funds_err:
-            return Response({"detail": str(insufficient_funds_err)},
-                status=status.HTTP_405_METHOD_NOT_ALLOWED)
+        with transaction.atomic():
+            try:
+                for line in request.DATA.get('lines', []):
+                    try:
+                        self.object.refund(int(line['num']),
+                            refunded_amount=int(line.get('refunded_amount', 0)))
+                    except ValueError:
+                        raise Http404("Unable to retrieve line '%s' in %s"
+                            % (line, self.object))
+            except InsufficientFunds as insufficient_funds_err:
+                return Response({"detail": str(insufficient_funds_err)},
+                    status=status.HTTP_405_METHOD_NOT_ALLOWED)
         return super(ChargeRefundAPIView, self).get(request, *args, **kwargs)
 
 

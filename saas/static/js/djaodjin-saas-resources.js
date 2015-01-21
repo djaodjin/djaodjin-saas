@@ -172,26 +172,33 @@ Charge.prototype = {
                });
     },
 
-    refund: function(linenum) {
+    refund: function(linenum, refundedAmount) {
         var self = this;
         event.preventDefault();
         var refundButton = $('[data-linenum="' + linenum + '"]');
         refundButton.attr("disabled", "disabled");
         $.ajax({ type: "POST",
                  url: self.urls.saas_api_charge_refund,
-                 data: JSON.stringify({ "linenums": [linenum] }),
+                 data: JSON.stringify({"lines":
+                     [{"num": linenum, "refunded_amount":refundedAmount}]}),
                  datatype: "json",
                  contentType: "application/json; charset=utf-8",
                  success: function(data) {
+                     var message = "Amount refunded.";
+                     if( data.responseJSON ) {
+                         message = data.responseJSON.detail;
+                     }
+                     showMessages([message], "info");
                      refundButton.replaceWith("<em>Refunded</em>");
-                     showMessages(["The transaction was refunded."], "info");
                  },
                  error: function(data) {
                      var message = data.statusText;
                      if( data.responseJSON ) {
                          message = data.responseJSON.detail;
                      }
-                     showMessages(["An error occurred while refunding the charge (" + data.status + " - " + message + "). Please accept our apologies."], "danger");
+                     showMessages([
+"An error occurred while refunding the charge (" + data.status + " - "
++ message + "). Please accept our apologies."], "danger");
                      refundButton.removeAttr("disabled");
                  }
                });
