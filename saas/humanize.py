@@ -45,7 +45,7 @@ DESCRIBE_CHARGED_CARD_PROVIDER = \
     "Charge %(charge)s distribution for %(subscription)s"
 
 DESCRIBE_CHARGED_CARD_REFUND = \
-    "Refunded %(descr)s on Charge %(charge)s"
+    "Charge %(charge)s refund for %(descr)s"
 
 DESCRIBE_UNLOCK_NOW = \
     "Unlock %(plan)s now. Don't worry later to %(unlock_event)s."
