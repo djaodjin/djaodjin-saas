@@ -162,6 +162,16 @@ def _insert_url(request, redirect_field_name=REDIRECT_FIELD_NAME,
     return redirect_to_login(path, inserted_url, redirect_field_name)
 
 
+def pass_authenticated(request):
+    return request.user.is_authenticated()
+
+
+def pass_agreement(request, agreement='terms_of_use'):
+    if request.user.is_authenticated():
+        # Check signature of the legal agreement
+        return Signature.objects.has_been_accepted(
+                agreement=agreement, user=request.user)
+
 def pass_paid_subscription(request, organization=None, plan=None):
     #pylint: disable=unused-argument
     if organization and not isinstance(organization, Organization):
