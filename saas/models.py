@@ -378,17 +378,20 @@ class Organization(models.Model):
         Returns fee amount paid to processor.
         """
         fee_amount = 0
-        if processor:
-            try:
-                provider_subscription = Subscription.objects.get(
-                    organization=self, plan__organization=processor)
-                fee_amount = provider_subscription.plan.prorate_transaction(
+        if total_amount > 0:
+            # Because of a minimum fixed fee to process a charge, we must
+            # insure we don't end up with a minimum fixed fee on a full refund.
+            if processor:
+                try:
+                    provider_subscription = Subscription.objects.get(
+                        organization=self, plan__organization=processor)
+                    fee_amount = provider_subscription.plan.prorate_transaction(
+                        total_amount)
+                except Subscription.DoesNotExist:
+                    processor = None
+            if not processor:
+                fee_amount = PROCESSOR_BACKEND.prorate_transaction(
                     total_amount)
-            except Subscription.DoesNotExist:
-                processor = None
-        if not processor:
-            fee_amount = PROCESSOR_BACKEND.prorate_transaction(
-                total_amount)
         return fee_amount
 
     @method_decorator(transaction.atomic)
@@ -805,77 +808,54 @@ class Charge(models.Model):
         return Transaction.objects.provider([charge_item.invoiced
                          for charge_item in self.charge_items.all()])
 
-    @method_decorator(transaction.atomic)
     def refund(self, linenum, refunded_amount=None, created_at=None):
         # XXX We donot currently supply a *description* for the refund.
         """
         Partially refund a charge for transaction *linenum*.
         """
         assert self.state == self.DONE
+
+        # We do all computation and checks before starting to modify
+        # the database to minimize the chances of getting into
+        # an inconsistent state.
         created_at = datetime_or_now(created_at)
         processor = self.get_processor()
         #pylint: disable=no-member
         charge_item = self.charge_items.all()[linenum]
+        if charge_item.refunded:
+            # Implementation Note: Currently we can only refund the line
+            # item once (either partial or full).
+            raise InsufficientFunds("Charge %s was already refunded %s",
+                self.processor_id, as_money(charge_item.refunded.dest_amount))
+
         invoiced_item = charge_item.invoiced
         customer = invoiced_item.dest_organization
         provider = invoiced_item.orig_organization
         if refunded_amount is None:
             refunded_amount = invoiced_item.dest_amount
+        refunded_fee_amount = 0
+        if charge_item.invoiced_fee:
+            # Implementation Note: There is a fixed 30 cents component
+            # to the processor fee. We must recompute the corrected
+            # fee on the total amount left over after the refund.
+            corrected_fee_amount = provider.processor_fee(
+                invoiced_item.dest_amount - refunded_amount,
+                self.get_processor())
+            if charge_item.invoiced_fee.orig_amount > corrected_fee_amount:
+                refunded_fee_amount = (charge_item.invoiced_fee.orig_amount
+                    - corrected_fee_amount)
+        refunded_distribute_amount = refunded_amount - refunded_fee_amount
+        LOGGER.info("Refund charge %s for %d cents"\
+            " (distributed: %d cents, processor fee: %d cents)",
+            self.processor_id, refunded_amount,
+            refunded_distribute_amount, refunded_fee_amount)
 
-        # XXX check if an refunded item already exist.
         if refunded_amount > invoiced_item.dest_amount:
             raise InsufficientFunds("Cannot refund %(funds_required)s"\
 " while there is only %(funds_available)s available on the line item."
 % {'funds_available': as_money(abs(invoiced_item.dest_amount), self.unit),
    'funds_required': as_money(abs(refunded_amount), self.unit)})
-
-        # Record the refund
-        # Example:
-        # 2014/03/15 refunding the charge
-        #     elearning:Refund                              6900
-        #     xia:Refunded
-        descr = DESCRIBE_CHARGED_CARD_REFUND % {
-            'charge': self.processor_id, 'descr': invoiced_item.descr}
-        charge_item.refunded = Transaction.objects.create(
-            event_id=self.id,
-            descr=descr,
-            created_at=created_at,
-            dest_unit=self.unit,
-            dest_amount=refunded_amount,
-            dest_account=Transaction.REFUND,
-            dest_organization=provider,
-            orig_unit=self.unit,
-            orig_amount=refunded_amount,
-            orig_account=Transaction.REFUNDED,
-            orig_organization=customer)
-        charge_item.save()
-
-        refunded_fee_amount = 0
-        if charge_item.invoiced_fee:
-            # 2014/03/15 elearning promises to refund $69 to Xia
-            #     djaodjin:Refund                                900
-            #     djaodjin:Funds
-            refunded_fee_amount = (charge_item.invoiced_fee.orig_amount
-                - provider.processor_fee(invoiced_item.dest_amount
-                    - charge_item.refunded.dest_amount, self.get_processor()))
-            Transaction.objects.create(
-                event_id=self.id,
-                # The Charge id is already included in the description here.
-                descr="Refunded %s" % charge_item.invoiced_fee.descr,
-                created_at=created_at,
-                dest_unit=self.unit,
-                dest_amount=refunded_fee_amount,
-                dest_account=Transaction.REFUND,
-                dest_organization=processor,
-                orig_unit=self.unit,
-                orig_amount=refunded_fee_amount,
-                orig_account=Transaction.FUNDS,
-                orig_organization=processor)
-            processor.funds_balance -= refunded_fee_amount
-            processor.save()
-
-        refunded_distribute_amount = refunded_amount - refunded_fee_amount
-        if provider.funds_balance - refunded_distribute_amount < 0:
+        if refunded_distribute_amount > provider.funds_balance:
             raise InsufficientFunds(
                 '%(provider)s has %(funds_available)s of funds available.'\
 ' %(funds_required)s are required to refund "%(descr)s"' % {
@@ -884,27 +864,70 @@ class Charge(models.Model):
     'funds_required': as_money(abs(refunded_distribute_amount), self.unit),
     'descr': invoiced_item.descr})
 
-        # 2014/03/15 cancel payment to elearning
-        #     djaodjin:Refund                               6000
-        #     elearning:Funds
-        Transaction.objects.create(
-            event_id=self.id,
-            descr=descr,
-            created_at=created_at,
-            dest_unit=self.unit,
-            dest_amount=refunded_distribute_amount,
-            dest_account=Transaction.REFUND,
-            dest_organization=processor,
-            orig_unit=self.unit,
-            orig_amount=refunded_distribute_amount,
-            orig_account=Transaction.FUNDS,
-            orig_organization=provider)
-        provider.funds_balance -= refunded_distribute_amount
-        provider.save()
+        with transaction.atomic():
+            # Record the refund
+            # Example:
+            # 2014/03/15 refunding the charge
+            #     elearning:Refund                              6900
+            #     xia:Refunded
+            descr = DESCRIBE_CHARGED_CARD_REFUND % {
+                'charge': self.processor_id, 'descr': invoiced_item.descr}
+            charge_item.refunded = Transaction.objects.create(
+                event_id=self.id,
+                descr=descr,
+                created_at=created_at,
+                dest_unit=self.unit,
+                dest_amount=refunded_amount,
+                dest_account=Transaction.REFUND,
+                dest_organization=provider,
+                orig_unit=self.unit,
+                orig_amount=refunded_amount,
+                orig_account=Transaction.REFUNDED,
+                orig_organization=customer)
+            charge_item.save()
 
-        # Note: On Stripe refunded the total amount that was charged
-        # has the effect of refunding both the distributed and fee amounts.
-        PROCESSOR_BACKEND.refund_charge(self, refunded_amount)
+            if charge_item.invoiced_fee:
+                # 2014/03/15 elearning promises to refund $69 to Xia
+                #     djaodjin:Refund                                900
+                #     djaodjin:Funds
+                Transaction.objects.create(
+                    event_id=self.id,
+                    # The Charge id is already included in the description here.
+                    descr=charge_item.invoiced_fee.descr.replace(
+                        'processor fee', 'refund processor fee'),
+                    created_at=created_at,
+                    dest_unit=self.unit,
+                    dest_amount=refunded_fee_amount,
+                    dest_account=Transaction.REFUND,
+                    dest_organization=processor,
+                    orig_unit=self.unit,
+                    orig_amount=refunded_fee_amount,
+                    orig_account=Transaction.FUNDS,
+                    orig_organization=processor)
+                processor.funds_balance -= refunded_fee_amount
+                processor.save()
+
+            # 2014/03/15 cancel payment to elearning
+            #     djaodjin:Refund                               6000
+            #     elearning:Funds
+            Transaction.objects.create(
+                event_id=self.id,
+                descr=descr,
+                created_at=created_at,
+                dest_unit=self.unit,
+                dest_amount=refunded_distribute_amount,
+                dest_account=Transaction.REFUND,
+                dest_organization=processor,
+                orig_unit=self.unit,
+                orig_amount=refunded_distribute_amount,
+                orig_account=Transaction.FUNDS,
+                orig_organization=provider)
+            provider.funds_balance -= refunded_distribute_amount
+            provider.save()
+
+            # Note: On Stripe refunded the total amount that was charged
+            # has the effect of refunding both the distributed and fee amounts.
+            PROCESSOR_BACKEND.refund_charge(self, refunded_amount)
         signals.charge_updated.send(sender=__name__, charge=self, user=None)
 
     def retrieve(self):
