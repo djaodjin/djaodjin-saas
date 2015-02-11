@@ -30,14 +30,13 @@ from django.template.defaultfilters import stringfilter
 from django.utils.safestring import mark_safe
 from django.utils.timezone import utc
 
+from saas import settings
+from saas.compat import User
 from saas.humanize import as_html_description
 from saas.models import (Organization, Subscription, Transaction,
     get_current_provider)
 from saas.decorators import pass_direct, _valid_manager
-from saas.compat import User
-from saas import settings
 from saas.utils import product_url as utils_product_url
-
 
 register = template.Library()
 
@@ -69,12 +68,13 @@ def is_incomplete_month(date):
 
 @register.filter
 def is_direct(request, organization):
-    return pass_direct(request.user, organization=organization)
+    return pass_direct(request, organization=organization)
 
 
 @register.filter
 def is_manager(request, organization):
-    return _valid_manager(request.user, [organization])
+    return _valid_manager(
+        request.user, Organization.objects.filter(slug=organization))
 
 
 @register.filter
