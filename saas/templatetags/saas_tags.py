@@ -1,4 +1,4 @@
-# Copyright (c) 2014, DjaoDjin inc.
+# Copyright (c) 2015, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -26,7 +26,6 @@ from datetime import datetime, timedelta
 
 import markdown
 from django import template
-from django.core.exceptions import PermissionDenied
 from django.template.defaultfilters import stringfilter
 from django.utils.safestring import mark_safe
 from django.utils.timezone import utc
@@ -34,7 +33,7 @@ from django.utils.timezone import utc
 from saas.humanize import as_html_description
 from saas.models import (Organization, Subscription, Transaction,
     get_current_provider)
-from saas.views.auth import valid_manager_for_organization
+from saas.decorators import pass_direct, _valid_manager
 from saas.compat import User
 from saas import settings
 from saas.utils import product_url as utils_product_url
@@ -69,12 +68,13 @@ def is_incomplete_month(date):
 
 
 @register.filter
+def is_direct(request, organization):
+    return pass_direct(request.user, organization=organization)
+
+
+@register.filter
 def is_manager(request, organization):
-    try:
-        valid_manager_for_organization(request.user, organization)
-    except PermissionDenied:
-        return False
-    return True
+    return _valid_manager(request.user, [organization])
 
 
 @register.filter
@@ -186,11 +186,7 @@ def refund_enable(transaction, user):
     """
     subscription = Subscription.objects.filter(pk=transaction.event_id).first()
     if subscription:
-        try:
-            valid_manager_for_organization(user, subscription.plan.organization)
-            return True
-        except PermissionDenied:
-            pass
+        return _valid_manager(user, [subscription.plan.organization])
     return False
 
 
