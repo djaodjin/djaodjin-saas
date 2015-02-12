@@ -82,8 +82,12 @@ class CartPlanListView(ProviderMixin, CartMixin, ListView):
         if self.request.session.has_key('cart_items'):
             items_selected += [item['plan']
                 for item in self.request.session['cart_items']]
+        if self.redirect_url.startswith('/'):
+            redirect_url = self.redirect_url
+        else:
+            redirect_url = reverse(self.redirect_url)
         context.update({'items_selected': items_selected,
-            REDIRECT_FIELD_NAME: reverse(self.redirect_url)})
+            REDIRECT_FIELD_NAME: redirect_url})
         return context
 
     def post(self, request, *args, **kwargs):
