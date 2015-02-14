@@ -14,6 +14,7 @@ angular.module('subscriberApp', ['ui.bootstrap', 'ngRoute',
     'subscriberControllers']);
 angular.module('transactionApp', ['ui.bootstrap', 'ngRoute',
     'transactionControllers', 'transactionServices']);
+angular.module('metricApp', ['ui.bootstrap', 'ngRoute', 'metricControllers']);
 
 
 /*=============================================================================
@@ -73,6 +74,7 @@ var managerControllers = angular.module('managerControllers', []);
 var subscriptionControllers = angular.module('subscriptionControllers', []);
 var subscriberControllers = angular.module('subscriberControllers', []);
 var transactionControllers = angular.module('transactionControllers', []);
+var metricControllers = angular.module('metricControllers', []);
 
 couponControllers.controller('CouponListCtrl',
     ['$scope', '$http', '$timeout', 'Coupon', 'urls',
@@ -595,3 +597,14 @@ transactionControllers.controller('transactionListCtrl',
 
 }]);
 
+
+metricControllers.controller('metricCtrl',
+    ['$scope', '$http', 'urls',
+     function($scope, $http, urls) {
+
+    $scope.balances = [];
+    $http.get(urls.saas_api_metrics_balance).success(
+        function(data) {
+            $scope.balances = data;
+    });
+}]);

@@ -1,4 +1,4 @@
-# Copyright (c) 2014, DjaoDjin inc.
+# Copyright (c) 2015, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -36,7 +36,7 @@ from saas.managers.metrics import monthly_balances
 from saas.api.serializers import OrganizationSerializer
 
 
-class RevenueMetricsAPIView(ProviderMixin, APIView):
+class BalancesAPIView(ProviderMixin, APIView):
     """
     Generate a table of revenue (rows) per months (columns).
     """
@@ -52,7 +52,7 @@ class RevenueMetricsAPIView(ProviderMixin, APIView):
             ends_at = parse_datetime(ends_at)
         ends_at = datetime_or_now(ends_at)
         result = []
-        for key in (Transaction.INCOME, Transaction.BACKLOG):
+        for key in Transaction.objects.distinct_accounts():
             result += [{
                 'key': key,
                 'values': monthly_balances(organization, key, ends_at)

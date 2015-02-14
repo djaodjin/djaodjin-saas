@@ -1,4 +1,4 @@
-# Copyright (c) 2014, DjaoDjin inc.
+# Copyright (c) 2015, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -22,19 +22,21 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-import json
+import csv, json
 from datetime import datetime, date, timedelta
 
 from django.db.models import Min, Sum, Max
+from django.http import HttpResponse
 from django.utils.datastructures import SortedDict
 from django.utils.timezone import utc
 from django.views.generic import ListView, TemplateView
 from django.core.serializers.json import DjangoJSONEncoder
 
-from saas.mixins import CouponMixin, ProviderMixin
+from saas.mixins import CouponMixin, ProviderMixin, MetricsMixin
 from saas.views.auth import valid_manager_for_organization
 from saas.managers.metrics import (active_subscribers,
-    aggregate_monthly_transactions, churn_subscribers)
+    aggregate_monthly_transactions, churn_subscribers,
+    monthly_balances, month_periods)
 from saas.models import (CartItem, Organization, Plan, Transaction,
     NewVisitors)
 from saas.compat import User
@@ -90,7 +92,7 @@ class PlansMetricsView(ProviderMixin, TemplateView):
         return context
 
 
-class RevenueMetricsView(ProviderMixin, TemplateView):
+class RevenueMetricsView(MetricsMixin, TemplateView):
     """
     Generate a table of revenue (rows) per months (columns).
     """
@@ -99,14 +101,12 @@ class RevenueMetricsView(ProviderMixin, TemplateView):
 
     def get_context_data(self, **kwargs):
         context = super(RevenueMetricsView, self).get_context_data(**kwargs)
-        organization = self.get_organization()
         reverse = True
         account_title = 'Payments'
         account = Transaction.FUNDS
-        from_date = kwargs.get('from_date', None)
         account_table, customer_table, customer_extra = \
-            aggregate_monthly_transactions(organization, account,
-                account_title=account_title, from_date=from_date,
+            aggregate_monthly_transactions(self.organization, account,
+                account_title=account_title, from_date=self.ends_at,
                 reverse=reverse)
         data = SortedDict()
         data['amount'] = {"title": "Amount",
@@ -117,6 +117,44 @@ class RevenueMetricsView(ProviderMixin, TemplateView):
             "data": data,
             "data_json": json.dumps(data, cls=DjangoJSONEncoder)})
         return context
+
+
+class BalancesMetricsView(MetricsMixin, TemplateView):
+    """
+    Display balances.
+    """
+
+    template_name = 'saas/metrics_balances.html'
+
+    def get_context_data(self, **kwargs):
+        context = super(BalancesMetricsView, self).get_context_data(**kwargs)
+        context.update({'title': 'Balances'})
+        return context
+
+
+class BalancesDownloadView(MetricsMixin, TemplateView):
+    """
+    Export balance metrics as a CSV file.
+    """
+    queryname = 'balances'
+
+    def get(self, request, *args, **kwargs): #pylint: disable=unused-argument
+        self.cache_fields(request)
+        response = HttpResponse(content_type='text/csv')
+        response['Content-Disposition'] = ('attachment; filename="%s.csv"'
+            % self.queryname)
+        writer = csv.writer(response)
+        # column headers
+        values = ['name']
+        for end_period in month_periods(from_date=self.ends_at):
+            values += [end_period]
+        writer.writerow(values)
+        # rows
+        for key in Transaction.objects.distinct_accounts():
+            values = [key] + [item[1] for item in monthly_balances(
+                self.organization, key, self.ends_at)]
+            writer.writerow(values)
+        return response
 
 
 class SubscriberPipelineView(ProviderMixin, TemplateView):

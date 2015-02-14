@@ -1,4 +1,4 @@
-# Copyright (c) 2014, DjaoDjin inc.
+# Copyright (c) 2015, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -28,7 +28,7 @@ URLs API for provider resources related to billing
 
 from django.conf.urls import patterns, url
 
-from saas.api.metrics import (RevenueMetricsAPIView, ChurnedAPIView,
+from saas.api.metrics import (BalancesAPIView, ChurnedAPIView,
     RegisteredAPIView, SubscribedAPIView)
 from saas.api.subscriptions import ActiveSubscriptionAPIView
 
@@ -39,8 +39,8 @@ urlpatterns = patterns('',
         RegisteredAPIView.as_view(), name='saas_api_registered'),
     url(r'^metrics/subscribed/?',
         SubscribedAPIView.as_view(), name='saas_api_subscribed'),
-    url(r'^metrics/revenue/?',
-        RevenueMetricsAPIView.as_view(), name='saas_api_metrics_revenue'),
+    url(r'^metrics/balances/?',
+        BalancesAPIView.as_view(), name='saas_api_balances'),
     url(r'^subscriptions/active/?',
       ActiveSubscriptionAPIView.as_view(), name='saas_api_active_subscription'),
 )

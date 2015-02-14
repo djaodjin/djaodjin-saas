@@ -1,4 +1,4 @@
-# Copyright (c) 2014, DjaoDjin inc.
+# Copyright (c) 2015, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -27,7 +27,8 @@
 from django.conf.urls import patterns, url
 
 from saas.settings import ACCT_REGEX
-from saas.views.metrics import (CouponMetricsView, PlansMetricsView,
+from saas.views.metrics import (BalancesDownloadView, BalancesMetricsView,
+    CouponMetricsView, PlansMetricsView,
     RevenueMetricsView, SubscriberPipelineView, UsageMetricsView)
 
 urlpatterns = patterns(
@@ -39,6 +40,10 @@ urlpatterns = patterns(
         PlansMetricsView.as_view(), name='saas_metrics_plans'),
     url(r'^coupons/((?P<coupon>%s)/)?' % ACCT_REGEX,
         CouponMetricsView.as_view(), name='saas_metrics_coupons'),
-    url(r'^((?P<from_date>\d\d\d\d-\d\d))?',
+    url(r'^balances/download/',
+        BalancesDownloadView.as_view(), name='saas_balances_download'),
+    url(r'^balances/',
+        BalancesMetricsView.as_view(), name='saas_metrics_balances'),
+    url(r'^',
         RevenueMetricsView.as_view(), name='saas_metrics_summary'),
 )

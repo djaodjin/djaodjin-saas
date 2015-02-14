@@ -146,9 +146,7 @@ r'(\s+(?P<amount>.+))?', line)
                     slug=organization_slug)
             else:
                 organization = Organization.objects.get(slug=organization_slug)
-            if account_first and (
-                    account.startswith('Income')
-                    or account.startswith('Expenses')):
+            if account_first:
                 organization = get_current_provider()
             return (organization, account, amount)
         except Organization.DoesNotExist:
