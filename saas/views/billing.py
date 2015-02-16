@@ -443,7 +443,8 @@ class CartBaseView(InvoicablesFormMixin, FormView):
                 if discount_percent >= 100:
                     discount_percent = 100
 
-        elif plan.interval == Plan.YEARLY:
+        elif plan.interval in (Plan.YEARLY, Plan.DAILY, Plan.WEEKLY,
+                Plan.HOURLY, Plan.QUATERLY):
             # Give a change for discount when paying periods in advance
             for nb_periods in [1]: # XXX disabled discount until configurable.
                 option_items += [subscription.create_order(
