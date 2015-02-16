@@ -98,7 +98,8 @@ class ChurnedAPIView(OrganizationListAPIView):
         return Organization.objects.filter(
             subscription__plan__organization=self.provider,
             subscription__ends_at__gte=start_time,
-            subscription__ends_at__lt=end_time).order_by('full_name')
+            subscription__ends_at__lt=end_time).order_by(
+                '-subscription__ends_at', 'full_name').distinct()
 
 
 class RegisteredAPIView(OrganizationListAPIView):
@@ -111,7 +112,7 @@ class RegisteredAPIView(OrganizationListAPIView):
             Q(subscription__isnull=True) |
             Q(subscription__created_at__gte=end_time), created_at__lt=end_time
             ).exclude(pk__in=[self.provider.pk, settings.PROCESSOR_ID]
-            ).order_by('full_name')
+            ).order_by('-created_at', 'full_name').distinct()
 
 
 class SubscribedAPIView(OrganizationListAPIView):
@@ -124,4 +125,4 @@ class SubscribedAPIView(OrganizationListAPIView):
             subscription__plan__organization=self.provider,
             subscription__created_at__lt=end_time,
             subscription__ends_at__gte=end_time).order_by(
-            'subscription__ends_at', 'full_name')
+            'subscription__ends_at', 'full_name').distinct()
