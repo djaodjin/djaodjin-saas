@@ -513,6 +513,24 @@ subscriberControllers.controller('subscriberCtrl',
         }
         return "";
     }
+
+    $scope.relativeDate = function(organization) {
+        var cutOff = new Date($scope.ends_at);
+        var dateTime = new Date(organization.created_at);
+        for( var i = 0; i < organization.subscriptions.length; ++i ) {
+            var sub = organization.subscriptions[i];
+            var subEndsAt = new Date(sub.ends_at);
+            if( i == 0 || subEndsAt < dateTime ) {
+                dateTime = subEndsAt;
+            }
+        }
+        if( dateTime <= cutOff ) {
+            return moment.duration(cutOff - dateTime).humanize() + ' ago';
+        } else {
+            return 'for ' + moment.duration(dateTime - cutOff).humanize();
+        }
+    }
+
 }]);
 
 

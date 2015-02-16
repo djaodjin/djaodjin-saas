@@ -43,7 +43,7 @@ class OrganizationSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Organization
-        fields = ('slug', 'full_name', 'subscriptions', )
+        fields = ('slug', 'full_name', 'created_at', 'subscriptions', )
         read_only_fields = ('slug', )
 
 
