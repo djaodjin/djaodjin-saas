@@ -29,7 +29,7 @@ import logging
 from django.contrib import messages
 from django.core.urlresolvers import reverse
 from django.db import transaction
-from django.views.generic import ListView, TemplateView, UpdateView
+from django.views.generic import CreateView, ListView, TemplateView, UpdateView
 from django.utils.decorators import method_decorator
 
 from saas.forms import OrganizationForm, ManagerAndOrganizationForm
@@ -134,6 +134,14 @@ class SubscriptionListView(OrganizationMixin, ListView):
         context = super(SubscriptionListView, self).get_context_data(**kwargs)
         context.update({'subscriptions': context['object_list']})
         return context
+
+
+class OrganizationCreateView(CreateView):
+
+    model = Organization
+    template_name = "saas/organization_profile.html"
+
+    # XXX Implement creation of a new organization.
 
 
 class OrganizationProfileView(OrganizationMixin, UpdateView):

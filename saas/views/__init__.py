@@ -46,20 +46,19 @@ class OrganizationRedirectView(TemplateResponseMixin, RedirectView):
     def get(self, request, *args, **kwargs):
         managed = Organization.objects.find_managed(request.user)
         if managed.count() == 1:
-            kwargs.update({self.slug_url_kwarg: managed.get()})
-            return super(OrganizationRedirectView, self).get(
-                request, *args, **kwargs)
-        elif managed.count() > 1:
-            redirects = []
-            for organization in managed:
-                kwargs.update({self.slug_url_kwarg: organization})
-                url = super(OrganizationRedirectView, self).get_redirect_url(
-                    *args, **kwargs)
-                redirects += [(url, organization.printable_name)]
-            context = {'redirects': redirects}
-            return self.render_to_response(context)
-        # XXX Create a new organization here!
-        raise http.Http404("Cannot find your billing profile!")
+            organization = managed.get()
+            if organization.slug == request.user.username:
+                kwargs.update({self.slug_url_kwarg: managed.get()})
+                return super(OrganizationRedirectView, self).get(
+                    request, *args, **kwargs)
+        redirects = []
+        for organization in managed:
+            kwargs.update({self.slug_url_kwarg: organization})
+            url = super(OrganizationRedirectView, self).get_redirect_url(
+                *args, **kwargs)
+            redirects += [(url, organization.printable_name)]
+        context = {'redirects': redirects}
+        return self.render_to_response(context)
 
 
 class UserRedirectView(RedirectView):

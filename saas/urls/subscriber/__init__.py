@@ -29,9 +29,12 @@ URLs for the saas django app
 from django.conf.urls import patterns, include, url
 
 from saas.views import OrganizationRedirectView
+from saas.views.profile import OrganizationCreateView
 from saas.settings import ACCT_REGEX
 
 urlpatterns = patterns('',
+    url(r'^app/new/', OrganizationCreateView.as_view(),
+        name='saas_organization_create'),
     url(r'^billing/cart/',
         OrganizationRedirectView.as_view(pattern_name='saas_organization_cart'),
         name='saas_cart'),
