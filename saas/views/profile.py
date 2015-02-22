@@ -1,4 +1,4 @@
-# Copyright (c) 2014, DjaoDjin inc.
+# Copyright (c) 2015, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -29,10 +29,12 @@ import logging
 from django.contrib import messages
 from django.core.urlresolvers import reverse
 from django.db import transaction
+from django.http import HttpResponseRedirect
 from django.views.generic import CreateView, ListView, TemplateView, UpdateView
 from django.utils.decorators import method_decorator
 
-from saas.forms import OrganizationForm, ManagerAndOrganizationForm
+from saas.forms import (OrganizationForm, OrganizationCreateForm,
+    ManagerAndOrganizationForm)
 from saas.mixins import OrganizationMixin, ProviderMixin
 from saas.models import Organization, Subscription
 
@@ -139,9 +141,23 @@ class SubscriptionListView(OrganizationMixin, ListView):
 class OrganizationCreateView(CreateView):
 
     model = Organization
-    template_name = "saas/organization_profile.html"
+    form_class = OrganizationCreateForm
+    pattern_name = 'saas_organization_cart'
+    template_name = "saas/organization_create.html"
 
-    # XXX Implement creation of a new organization.
+    def form_valid(self, form):
+        with transaction.atomic():
+            self.object = form.save()
+            self.object.add_manager(self.request.user)
+        return HttpResponseRedirect(self.get_success_url())
+
+    def get_initial(self):
+        kwargs = super(OrganizationCreateView, self).get_initial()
+        kwargs.update({'email': self.request.user.email})
+        return kwargs
+
+    def get_success_url(self):
+        return reverse(self.pattern_name, args=(self.object,))
 
 
 class OrganizationProfileView(OrganizationMixin, UpdateView):

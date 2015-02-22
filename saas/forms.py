@@ -108,14 +108,18 @@ class OrganizationForm(PostalFormMixin, forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super(OrganizationForm, self).__init__(*args, **kwargs)
-        if not (self.initial.has_key('country') and self.initial['country']):
-            self.initial['country'] = Country("US", None)
-        country = self.initial['country']
-        if self.instance and self.instance.country:
-            country = self.instance.country
-        if not self.fields['country'].initial:
-            self.fields['country'].initial = country.code
-        self.add_postal_region(country=country)
+        if self.fields.has_key('country'):
+            # Country field is optional. We won't add a State/Province
+            # in case it is omitted.
+            if not (self.initial.has_key('country')
+                and self.initial['country']):
+                self.initial['country'] = Country("US", None)
+            country = self.initial.get('country', None)
+            if self.instance and self.instance.country:
+                country = self.instance.country
+            if not self.fields['country'].initial:
+                self.fields['country'].initial = country.code
+            self.add_postal_region(country=country)
         if self.initial.has_key('is_bulk_buyer'):
             initial = self.initial['is_bulk_buyer']
             if self.instance:
@@ -124,6 +128,13 @@ class OrganizationForm(PostalFormMixin, forms.ModelForm):
                 initial=initial,
                 label="Enable this organization to pay subscriptions on behalf"\
 " of others.")
+
+
+class OrganizationCreateForm(OrganizationForm):
+
+    class Meta:
+        model = Organization
+        fields = ('slug', 'full_name', 'email')
 
 
 class ManagerAndOrganizationForm(OrganizationForm):
