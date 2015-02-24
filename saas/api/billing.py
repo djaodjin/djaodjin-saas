@@ -74,7 +74,9 @@ from saas.mixins import CartMixin
 
 class PlanRelatedField(serializers.RelatedField):
 
-    queryset = Plan.objects.all()
+    def __init__(self, **kwargs):
+        super(PlanRelatedField, self).__init__(
+            queryset=Plan.objects.all(), **kwargs)
 
     def to_native(self, value):
         return value.slug
