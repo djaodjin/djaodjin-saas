@@ -1,4 +1,4 @@
-# Copyright (c) 2014, DjaoDjin inc.
+# Copyright (c) 2015, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -73,6 +73,8 @@ from saas.mixins import CartMixin
 
 
 class PlanRelatedField(serializers.RelatedField):
+
+    queryset = Plan.objects.all()
 
     def to_native(self, value):
         return value.slug
