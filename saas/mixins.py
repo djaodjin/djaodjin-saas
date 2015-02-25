@@ -48,6 +48,7 @@ class CartMixin(object):
 
     @staticmethod
     def insert_item(request, **kwargs):
+        #pylint: disable=too-many-statements
         created = False
         inserted_item = None
         template_item = None
