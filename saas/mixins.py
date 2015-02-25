@@ -85,13 +85,18 @@ class CartMixin(object):
             else:
                 # New CartItem
                 created = True
-                inserted_item = CartItem.objects.create(
+                item_queryset = CartItem.objects.get_cart(user=request.user,
                     plan=get_object_or_404(Plan, slug=kwargs['plan']),
-                    nb_periods=kwargs.get('nb_periods', 0),
-                    first_name=kwargs.get('first_name', ''),
-                    last_name=kwargs.get('last_name', ''),
-                    email=email,
-                    user=request.user)
+                    email=email)
+                if item_queryset.exists():
+                    inserted_item = item_queryset.get()
+                else:
+                    inserted_item = CartItem.objects.create(
+                        email=email, user=request.user,
+                        plan=get_object_or_404(Plan, slug=kwargs['plan']),
+                        nb_periods=kwargs.get('nb_periods', 0),
+                        first_name=kwargs.get('first_name', ''),
+                        last_name=kwargs.get('last_name', ''))
 
         else:
             # We have an anonymous user so let's play some tricks with

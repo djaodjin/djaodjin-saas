@@ -195,10 +195,9 @@ class Organization(models.Model):
     # contact by e-mail
     email = models.EmailField(# XXX if we use unique=True here, the project
                               #     wizard must be changed.
-        help_text=_("Contact email for support related to the organization."))
+        )
     # contact by phone
-    phone = models.CharField(max_length=50,
-        help_text=_("Contact phone for support related to the organization."))
+    phone = models.CharField(max_length=50)
     # contact by physical mail
     street_address = models.CharField(max_length=150)
     locality = models.CharField(max_length=50)
@@ -399,11 +398,16 @@ class Organization(models.Model):
         """
         Withdraw funds from the site into the organization's bank account.
 
-        This will one transactions. For example:
+        We record one straightforward ``Transaction`` for the withdrawal
+        and an additional one in case there is a processor transfer fee::
 
-        2014/02/15 elearning withdraws $60 from funds held by djaodjin
-            djaodjin:Withdraw                             6000
-            elearning:Funds
+            yyyy/mm/dd withdrawal
+                processor:Withdraw         *amount*
+                provider:Funds
+
+            yyyy/mm/dd transfer fee (Stripe: 25 cents)
+                processor:Funds            fee_amount
+                provider:Funds
         """
         funds_unit = 'usd' # XXX currency on receipient bank account
         created_at = datetime_or_now(created_at)
@@ -520,6 +524,11 @@ class CartItem(models.Model):
     the billing account in the session. It is retrieved from the url. As a
     result the billing account (i.e. an ``Organization``) is set when an
     order is placed, not when the item is added to the cart.
+
+    Another Historical Note: If we allow a user to buy more periods at
+    a bargain price, then ('user', 'plan', 'email') should not be unique
+    together. There should only be one ``CartItem`` not yet recorded
+    with ('user', 'plan', 'email') unique together.
     """
     objects = CartItemManager()
 
@@ -544,9 +553,6 @@ class CartItem(models.Model):
     first_name = models.CharField(_('first name'), max_length=30, blank=True)
     last_name = models.CharField(_('last name'), max_length=30, blank=True)
     email = models.EmailField(_('email address'), blank=True)
-
-    class Meta:
-        unique_together = ('user', 'plan', 'email')
 
     def __unicode__(self):
         return '%s-%s' % (self.user, self.plan)
@@ -718,6 +724,22 @@ class Charge(models.Model):
         When a charge through the payment processor is sucessful, a transaction
         is created from client payable to processor assets. The amount of the
         charge is then redistributed to the providers (minus processor fee).
+
+        Record the charge::
+
+            yyyy/mm/dd processor event
+                subscriber:Expenses      total_charge_amount
+                processor:Income
+
+        Distribute processor fee and funds to the provider::
+
+            yyyy/mm/dd processor fee paid by first provider
+                processor:Funds          processor_fee
+                subscriber:Payable
+
+            yyyy/mm/dd distribution to first provider
+                provider:Funds          distribute_amount
+                subscriber:Payable
         """
         assert self.state == self.CREATED
 
@@ -811,7 +833,23 @@ class Charge(models.Model):
     def refund(self, linenum, refunded_amount=None, created_at=None):
         # XXX We donot currently supply a *description* for the refund.
         """
-        Partially refund a charge for transaction *linenum*.
+        Each ``ChargeItem`` as referenced by *linenum* can be partially
+        refunded.
+
+            yyyy/mm/dd refund to subscriber
+                provider:Refund         *refunded_amount*
+                subscriber:Refunded
+
+            yyyy/mm/dd refund of processor fee
+                processor:Refund        refunded_fee_amount
+                processor:Funds
+
+            yyyy/mm/dd refund of distribute amount
+                processor:Refund        refunded_distribute_amount
+                provider:Funds
+
+        Note: The system does not currently support more than one refund
+        per ``ChargeItem``.
         """
         assert self.state == self.DONE
 
@@ -1231,13 +1269,19 @@ class Subscription(models.Model):
         created_at=None, descr=None, discount_percent=0):
         #pylint: disable=too-many-arguments
         """
-        Each time a customer orders a subscription from a provider,
-        a Transaction is recorded that goes from the provider ``Receivable``
-        account to the customer ``Payable`` account.
+        Each time a subscriber places an order through
+        the /billing/:organization/cart/ page, a ``Transaction``
+        is recorded as follow::
 
             yyyy/mm/dd description
-                   customer:Payable                       amount
-                   provider:Receivable
+                subscriber:Payable                       amount
+                provider:Receivable
+
+        Example::
+
+            2014/09/10 subscribe to open-space plan
+                xia:Payable                             $179.99
+                cowork:Receivable
 
         Note: nb_periods is stored in the Transaction orig_amount.
         """

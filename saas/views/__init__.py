@@ -27,6 +27,7 @@ Helpers to redirect based on session.
 """
 
 from django import http
+from django.core.urlresolvers import reverse
 from django.views.generic import RedirectView
 from django.views.generic.base import TemplateResponseMixin
 
@@ -45,7 +46,11 @@ class OrganizationRedirectView(TemplateResponseMixin, RedirectView):
 
     def get(self, request, *args, **kwargs):
         managed = Organization.objects.find_managed(request.user)
-        if managed.count() == 1:
+        count = managed.count()
+        if count == 0:
+            return http.HttpResponseRedirect(
+                reverse('saas_organization_create'))
+        if count == 1:
             organization = managed.get()
             if organization.slug == request.user.username:
                 kwargs.update({self.slug_url_kwarg: managed.get()})
