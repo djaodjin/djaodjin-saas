@@ -323,7 +323,6 @@ class Organization(models.Model):
                 # We can't set the event_id until the subscription is saved
                 # in the database.
                 invoiced_item.event_id = subscription.id
-                invoiced_item.orig_unit = Transaction.PLAN_UNIT
                 invoiced_items += [invoiced_item]
 
         invoiced_items = Transaction.objects.execute_order(invoiced_items, user)
@@ -382,8 +381,13 @@ class Organization(models.Model):
             # insure we don't end up with a minimum fixed fee on a full refund.
             if processor:
                 try:
-                    provider_subscription = Subscription.objects.get(
-                        organization=self, plan__organization=processor)
+                    provider_subscription = Subscription.objects.filter(
+                        organization=self,
+                        plan__organization=processor).order_by(
+                            '-created_at').first()
+                    if not provider_subscription:
+                        # first() will return None.
+                        raise Subscription.DoesNotExist
                     fee_amount = provider_subscription.plan.prorate_transaction(
                         total_amount)
                 except Subscription.DoesNotExist:
@@ -1381,8 +1385,9 @@ class TransactionManager(models.Manager):
                 invoiced_item.save()
                 if pay_now:
                     invoiced_items_ids += [invoiced_item.id]
-        signals.order_executed.send(
-            sender=__name__, invoiced_items=invoiced_items_ids, user=user)
+        if len(invoiced_items_ids) > 0:
+            signals.order_executed.send(
+                sender=__name__, invoiced_items=invoiced_items_ids, user=user)
         return self.filter(id__in=invoiced_items_ids)
 
     def get_organization_balance(self, organization, account=None, until=None):
