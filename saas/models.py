@@ -380,17 +380,14 @@ class Organization(models.Model):
             # Because of a minimum fixed fee to process a charge, we must
             # insure we don't end up with a minimum fixed fee on a full refund.
             if processor:
-                try:
-                    provider_subscription = Subscription.objects.filter(
-                        organization=self,
-                        plan__organization=processor).order_by(
-                            '-created_at').first()
-                    if not provider_subscription:
-                        # first() will return None.
-                        raise Subscription.DoesNotExist
+                provider_subscription = Subscription.objects.filter(
+                    organization=self, plan__organization=processor).order_by(
+                        '-created_at').first()
+                if provider_subscription:
+                    # first() will return None.
                     fee_amount = provider_subscription.plan.prorate_transaction(
                         total_amount)
-                except Subscription.DoesNotExist:
+                else:
                     processor = None
             if not processor:
                 fee_amount = PROCESSOR_BACKEND.prorate_transaction(
