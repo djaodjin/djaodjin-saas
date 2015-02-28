@@ -143,7 +143,7 @@ class CouponRedeemAPIView(GenericAPIView):
         return coupon_applied
 
     def post(self, request, *args, **kwargs): #pylint: disable=unused-argument
-        serializer = self.get_serializer(data=request.DATA, files=request.FILES)
+        serializer = self.get_serializer(data=request.DATA)
         if serializer.is_valid():
             coupon_code = serializer.data['code']
             if self.redeem(request, coupon_code):

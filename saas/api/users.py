@@ -62,7 +62,7 @@ class RelationListAPIView(OrganizationMixin, ListCreateAPIView):
 
     def create(self, request, *args, **kwargs):
         #pylint: disable=no-member
-        serializer = self.get_serializer(data=request.DATA, files=request.FILES)
+        serializer = self.get_serializer(data=request.DATA)
         if serializer.is_valid():
             user = get_object_or_404(User, username=serializer.data['username'])
             self.organization = self.get_organization()

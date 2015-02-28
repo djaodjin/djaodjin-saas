@@ -106,7 +106,7 @@ class CartItemAPIView(CartMixin, CreateAPIView):
     # authentication_classes = []
 
     def post(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.DATA, files=request.FILES)
+        serializer = self.get_serializer(data=request.DATA)
         if serializer.is_valid():
             #pylint: disable=star-args
             cart_item, created = self.insert_item(request, **serializer.data)
