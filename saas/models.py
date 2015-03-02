@@ -1,6 +1,6 @@
 #pylint: disable=too-many-lines
 
-# Copyright (c) 2014, DjaoDjin inc.
+# Copyright (c) 2015, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -665,6 +665,16 @@ class Charge(models.Model):
     def __unicode__(self):
         return unicode(self.processor_id)
 
+    @property
+    def line_items(self):
+        """
+        In most cases, use the ``line_items`` property instead of
+        the ``charge_items`` because the order in which the records
+        are returned is not guarenteed by SQL.
+        This is important when identifying line items by an index.
+        """
+        return self.charge_items.order_by('id')
+
     @staticmethod
     def get_processor():
         return Organization.objects.get(pk=settings.PROCESSOR_ID)
@@ -860,12 +870,12 @@ class Charge(models.Model):
         created_at = datetime_or_now(created_at)
         processor = self.get_processor()
         #pylint: disable=no-member
-        charge_item = self.charge_items.all()[linenum]
+        charge_item = self.line_items[linenum]
         if charge_item.refunded:
             # Implementation Note: Currently we can only refund the line
             # item once (either partial or full).
-            raise InsufficientFunds("Charge %s was already refunded %s",
-                self.processor_id, as_money(charge_item.refunded.dest_amount))
+            raise InsufficientFunds("Charge %s was already refunded %s" %
+                (self.processor_id, as_money(charge_item.refunded.dest_amount)))
 
         invoiced_item = charge_item.invoiced
         customer = invoiced_item.dest_organization

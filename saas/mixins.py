@@ -1,4 +1,4 @@
-# Copyright (c) 2014, DjaoDjin inc.
+# Copyright (c) 2015, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -38,7 +38,7 @@ def get_charge_context(charge):
     Return a dictionnary useful to populate charge receipt templates.
     """
     context = {'charge': charge,
-               'charge_items': charge.charge_items.all(),
+               'charge_items': charge.line_items,
                'organization': charge.customer,
                'provider': charge.provider}
     return context
