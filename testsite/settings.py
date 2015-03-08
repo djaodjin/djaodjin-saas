@@ -2,7 +2,7 @@
 
 import os.path
 
-APP_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 def load_config(confpath):
     '''
@@ -21,7 +21,7 @@ def load_config(confpath):
                     look = re.match(r'(\w+)\s*=\s*(.*)', line)
                     if look:
                         value = look.group(2) \
-                            % {'LOCALSTATEDIR': APP_ROOT + '/var'}
+                            % {'LOCALSTATEDIR': BASE_DIR + '/var'}
                         try:
                             # Once Django 1.5 introduced ALLOWED_HOSTS (a tuple
                             # definitely in the site.conf set), we had no choice
@@ -36,7 +36,7 @@ def load_config(confpath):
     else:
         sys.stderr.write('warning: config file %s does not exist.\n' % confpath)
 
-load_config(os.path.join(APP_ROOT, 'credentials'))
+load_config(os.path.join(BASE_DIR, 'credentials'))
 
 DEBUG = True
 TEMPLATE_DEBUG = DEBUG
