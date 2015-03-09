@@ -277,7 +277,7 @@ class RelationMixin(OrganizationMixin, UserMixin):
     Returns a User-Organization relation from a URL.
     """
 
-    def get_object(self, queryset=None): #pylint: disable=unused-argument
+    def get_object(self):
         return get_object_or_404(self.model,
             organization=self.get_organization(), user=self.get_user())
 

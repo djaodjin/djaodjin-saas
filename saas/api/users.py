@@ -22,7 +22,9 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+from django.core import validators
 from django.shortcuts import get_object_or_404
+from django.utils.translation import ugettext_lazy as _
 from rest_framework import serializers, status
 from rest_framework.generics import (DestroyAPIView, ListCreateAPIView)
 from rest_framework.response import Response
@@ -36,6 +38,12 @@ from saas.mixins import OrganizationMixin, RelationMixin
 
 class UserSerializer(serializers.ModelSerializer):
 
+    # Only way I found out to remove the ``UniqueValidator``. We are not
+    # interested to create new instances here.
+    username = serializers.CharField(validators=[
+        validators.RegexValidator(r'^[\w.@+-]+$', _('Enter a valid username.'),
+            'invalid')])
+
     class Meta:
         model = User
         fields = ('username', 'email', 'first_name', 'last_name')
@@ -43,26 +51,27 @@ class UserSerializer(serializers.ModelSerializer):
 
 class RelationListAPIView(OrganizationMixin, ListCreateAPIView):
 
-    model = User
+    queryset = User.objects.all()
     serializer_class = UserSerializer
 
-    def create(self, request, *args, **kwargs):
-        #pylint: disable=no-member
-        serializer = self.get_serializer(data=request.DATA)
-        if serializer.is_valid():
-            user = get_object_or_404(User, username=serializer.data['username'])
-            self.organization = self.get_organization()
-            if self.add_relation(user):
-                resp_status = status.HTTP_201_CREATED
-            else:
-                resp_status = status.HTTP_200_OK
-            # We were going to return the list of managers here but
-            # angularjs complains about deserialization of a list
-            # while expecting a single object.
-            return Response(serializer.data, status=resp_status,
-                headers=self.get_success_headers(serializer.data))
+    def add_relation(self, user):
+        raise NotImplementedError(
+            "add_relation should be overriden in derived classes.")
 
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = get_object_or_404(User, username=serializer.data['username'])
+        self.organization = self.get_organization()
+        if self.add_relation(user):
+            resp_status = status.HTTP_201_CREATED
+        else:
+            resp_status = status.HTTP_200_OK
+        # We were going to return the list of managers here but
+        # angularjs complains about deserialization of a list
+        # while expecting a single object.
+        return Response(serializer.data, status=resp_status,
+            headers=self.get_success_headers(serializer.data))
 
 
 class ContributorListAPIView(RelationListAPIView):

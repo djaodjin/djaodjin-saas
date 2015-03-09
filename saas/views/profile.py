@@ -41,7 +41,7 @@ from saas.models import Organization, Subscription
 LOGGER = logging.getLogger(__name__)
 
 
-class ContributorListBaseView(ListView):
+class ContributorListBaseView(TemplateView):
     """
     List of contributors for an organization.
 
@@ -64,7 +64,7 @@ class ContributorListView(OrganizationMixin, ContributorListBaseView):
     pass
 
 
-class ManagerListBaseView(ListView):
+class ManagerListBaseView(TemplateView):
     """
     List of managers for an organization.
 

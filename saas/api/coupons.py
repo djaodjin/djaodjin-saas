@@ -63,19 +63,17 @@ class CouponMixin(ProviderMixin):
 
     model = Coupon
     serializer_class = CouponSerializer
-    slug_field = 'code'
-    slug_url_kwarg = 'coupon'
+    lookup_field = 'code'
+    lookup_url_kwarg = 'coupon'
 
     def get_queryset(self):
-        queryset = super(CouponMixin, self).get_queryset()
-        return queryset.filter(organization=self.get_organization())
+        return Coupon.objects.filter(organization=self.get_organization())
 
-    def pre_save(self, obj):
-        """
-        Force organization to the one that can be retrieved from the URL.
-        """
-        obj.organization = self.get_organization()
-        return super(CouponMixin, self).pre_save(obj)
+    def perform_create(self, serializer):
+        serializer.save(organization=self.get_organization())
+
+    def perform_update(self, serializer):
+        serializer.save(organization=self.get_organization())
 
 
 class SmartCouponListMixin(SearchableListMixin, SortableListMixin):

@@ -1,4 +1,4 @@
-# Copyright (c) 2014, DjaoDjin inc.
+# Copyright (c) 2015, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -45,6 +45,7 @@ class OrganizationSerializer(serializers.ModelSerializer):
         model = Organization
         fields = ('slug', 'printable_name', )
 
+
 class SubscriptionSerializer(serializers.ModelSerializer):
 
     organization = OrganizationSerializer(source='organization', read_only=True)
@@ -79,11 +80,9 @@ class ActiveSubscriptionBaseAPIView(ProviderMixin, ListAPIView):
 
     def get_queryset(self):
         self.organization = self.get_organization()
-        queryset = super(
-            ActiveSubscriptionBaseAPIView, self).get_queryset().filter(
+        return Subscription.objects.filter(
             ends_at__gte=datetime_or_now(),
             plan__organization=self.organization).distinct()
-        return queryset
 
 
 class SmartListMixin(SearchableListMixin, SortableListMixin):
