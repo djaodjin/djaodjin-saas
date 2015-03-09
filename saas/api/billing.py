@@ -61,10 +61,9 @@ Add and remove plans from a user subscription cart.
 """
 
 from django.shortcuts import get_object_or_404
-from rest_framework import status
 from rest_framework.generics import CreateAPIView, DestroyAPIView
 from rest_framework.response import Response
-from rest_framework import serializers
+from rest_framework import serializers, status
 
 from saas.models import CartItem, Plan
 from saas.mixins import CartMixin
@@ -78,10 +77,11 @@ class PlanRelatedField(serializers.RelatedField):
         super(PlanRelatedField, self).__init__(
             queryset=Plan.objects.all(), **kwargs)
 
-    def to_native(self, value):
-        return value.slug
+    # Django REST Framework 3.0
+    def to_representation(self, obj):
+        return obj.slug
 
-    def from_native(self, data):
+    def to_internal_value(self, data):
         return get_object_or_404(Plan, slug=data)
 
 
@@ -113,7 +113,7 @@ class CartItemAPIView(CartMixin, CreateAPIView):
             # insert_item will either return a dict or a CartItem instance
             # (which cannot be directly serialized).
             if isinstance(cart_item, CartItem):
-                cart_item = serializer.to_native(cart_item)
+                cart_item = serializer.to_representation(cart_item)
             if created:
                 headers = self.get_success_headers(cart_item)
                 return Response(cart_item, status=status.HTTP_201_CREATED,
@@ -149,7 +149,7 @@ class CartItemDestroyAPIView(DestroyAPIView):
         request.session['cart_items'] = serialized_cart_items
         return found
 
-    def get_object(self, queryset=None):
+    def get_object(self):
         return get_object_or_404(CartItem,
             plan__slug=self.kwargs.get('plan'), user=self.request.user)
 

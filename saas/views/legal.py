@@ -66,7 +66,7 @@ class SignatureForm(forms.Form):
         widget=CheckboxInput)
 
     def __init__(self, data=None):
-        forms.Form.__init__(self, data=data, label_suffix='')
+        super(SignatureForm, self).__init__(data=data, label_suffix='')
 
 
 def _read_agreement_file(slug, context=None):

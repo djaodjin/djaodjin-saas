@@ -1,4 +1,4 @@
-# Copyright (c) 2014, DjaoDjin inc.
+# Copyright (c) 2015, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -28,40 +28,20 @@ PEP 386-compliant version number for the saas django app.
 
 __version__ = '0.1.7-dev'
 
-
-def _get_model_class(full_name, settings_meta):
-    """
-    Returns a model class loaded from *full_name*. *settings_meta* is the name
-    of the corresponding settings variable (used for error messages).
-    """
-    from django.core.exceptions import ImproperlyConfigured
-    from django.db.models import get_model
-
-    try:
-        app_label, model_name = full_name.split('.')
-    except ValueError:
-        raise ImproperlyConfigured(
-            "%s must be of the form 'app_label.model_name'" % settings_meta)
-    model_class = get_model(app_label, model_name)
-    if model_class is None:
-        raise ImproperlyConfigured(
-            "%s refers to model '%s' that has not been installed"
-            % (settings_meta, full_name))
-    return model_class
-
-
 def get_manager_relation_model():
     """
     Returns the manager relation model that is active in this project.
     """
-    from saas import settings
-    return _get_model_class(settings.MANAGER_RELATION, 'MANAGER_RELATION')
+    from . import settings
+    from .compat import get_model_class
+    return get_model_class(settings.MANAGER_RELATION, 'MANAGER_RELATION')
 
 
 def get_contributor_relation_model():
     """
     Returns the contributor relation model that is active in this project.
     """
-    from saas import settings
-    return _get_model_class(
+    from . import settings
+    from .compat import get_model_class
+    return get_model_class(
         settings.CONTRIBUTOR_RELATION, 'CONTRIBUTOR_RELATION')

@@ -504,77 +504,6 @@ class Signature(models.Model):
         return '%s-%s' % (self.user, self.agreement)
 
 
-class CartItemManager(models.Manager):
-
-    def get_cart(self, user, *args, **kwargs):
-        # Order by plan then id so the order is consistent between
-        # billing/cart(-.*)/ pages.
-        return self.filter(user=user, recorded=False,
-            *args, **kwargs).order_by('plan', 'id')
-
-
-class CartItem(models.Model):
-    """
-    A user (authenticated or anonymous) shops for plans by adding them
-    to her cart. When placing an order, the user is presented with the billing
-    account (``Organization``) those items apply to.
-
-    Historical Note: The billing account was previously required at the time
-    the item is added to the cart. The ``cart_items`` is the only extra state
-    kept in the session, and kept solely for anonymous users. We do not store
-    the billing account in the session. It is retrieved from the url. As a
-    result the billing account (i.e. an ``Organization``) is set when an
-    order is placed, not when the item is added to the cart.
-
-    Another Historical Note: If we allow a user to buy more periods at
-    a bargain price, then ('user', 'plan', 'email') should not be unique
-    together. There should only be one ``CartItem`` not yet recorded
-    with ('user', 'plan', 'email') unique together.
-    """
-    objects = CartItemManager()
-
-    created_at = models.DateTimeField(auto_now_add=True,
-        help_text=_("date/time at which the item was added to the cart."))
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, db_column='user_id',
-        related_name='cart_items',
-        help_text=_("user who added the item to the cart."))
-    plan = models.ForeignKey('Plan', null=True,
-        help_text=_("item added to the cart."))
-    coupon = models.ForeignKey('Coupon', null=True,
-        help_text=_("coupon to apply to the plan."))
-    recorded = models.BooleanField(default=False,
-        help_text=_("whever the item has been checked out or not."))
-
-    # The following fields are for number of periods pre-paid in advance.
-    nb_periods = models.PositiveIntegerField(default=0)
-
-    # The following fields are used for plans priced per seat. They do not
-    # refer to a User nor Organization key because those might not yet exist
-    # at the time the seat is created.
-    first_name = models.CharField(_('first name'), max_length=30, blank=True)
-    last_name = models.CharField(_('last name'), max_length=30, blank=True)
-    email = models.EmailField(_('email address'), blank=True)
-
-    def __unicode__(self):
-        return '%s-%s' % (self.user, self.plan)
-
-    @property
-    def descr(self):
-        result = '%s from %s' % (
-            self.plan.get_title(), self.plan.organization.printable_name)
-        if self.email:
-            full_name = ' '.join([self.first_name, self.last_name]).strip()
-            result = 'Subscribe %s (%s) to %s' % (full_name, self.email, result)
-        return result
-
-    @property
-    def name(self):
-        result = 'cart-%s' % self.plan.slug
-        if self.email:
-            result = '%s-%s' % (result, quote(self.email))
-        return result
-
-
 class ChargeManager(models.Manager):
 
     def charge_card(self, customer, transactions, descr=None,
@@ -1204,6 +1133,77 @@ class Plan(models.Model):
         return int(self.period_amount * fraction)
 
 
+class CartItemQuerySet(models.QuerySet):
+
+    def get_cart(self, user, *args, **kwargs):
+        # Order by plan then id so the order is consistent between
+        # billing/cart(-.*)/ pages.
+        return self.filter(user=user, recorded=False,
+            *args, **kwargs).order_by('plan', 'id')
+
+
+class CartItem(models.Model):
+    """
+    A user (authenticated or anonymous) shops for plans by adding them
+    to her cart. When placing an order, the user is presented with the billing
+    account (``Organization``) those items apply to.
+
+    Historical Note: The billing account was previously required at the time
+    the item is added to the cart. The ``cart_items`` is the only extra state
+    kept in the session, and kept solely for anonymous users. We do not store
+    the billing account in the session. It is retrieved from the url. As a
+    result the billing account (i.e. an ``Organization``) is set when an
+    order is placed, not when the item is added to the cart.
+
+    Another Historical Note: If we allow a user to buy more periods at
+    a bargain price, then ('user', 'plan', 'email') should not be unique
+    together. There should only be one ``CartItem`` not yet recorded
+    with ('user', 'plan', 'email') unique together.
+    """
+    objects = CartItemQuerySet.as_manager()
+
+    created_at = models.DateTimeField(auto_now_add=True,
+        help_text=_("date/time at which the item was added to the cart."))
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, db_column='user_id',
+        related_name='cart_items',
+        help_text=_("user who added the item to the cart."))
+    plan = models.ForeignKey(Plan, null=True,
+        help_text=_("item added to the cart."))
+    coupon = models.ForeignKey(Coupon, null=True,
+        help_text=_("coupon to apply to the plan."))
+    recorded = models.BooleanField(default=False,
+        help_text=_("whever the item has been checked out or not."))
+
+    # The following fields are for number of periods pre-paid in advance.
+    nb_periods = models.PositiveIntegerField(default=0)
+
+    # The following fields are used for plans priced per seat. They do not
+    # refer to a User nor Organization key because those might not yet exist
+    # at the time the seat is created.
+    first_name = models.CharField(_('first name'), max_length=30, blank=True)
+    last_name = models.CharField(_('last name'), max_length=30, blank=True)
+    email = models.EmailField(_('email address'), blank=True)
+
+    def __unicode__(self):
+        return '%s-%s' % (self.user, self.plan)
+
+    @property
+    def descr(self):
+        result = '%s from %s' % (
+            self.plan.get_title(), self.plan.organization.printable_name)
+        if self.email:
+            full_name = ' '.join([self.first_name, self.last_name]).strip()
+            result = 'Subscribe %s (%s) to %s' % (full_name, self.email, result)
+        return result
+
+    @property
+    def name(self):
+        result = 'cart-%s' % self.plan.slug
+        if self.email:
+            result = '%s-%s' % (result, quote(self.email))
+        return result
+
+
 class SubscriptionManager(models.Manager):
     #pylint: disable=super-on-old-class
 
@@ -1251,8 +1251,8 @@ class Subscription(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     ends_at = models.DateTimeField()
     description = models.TextField(null=True, blank=True)
-    organization = models.ForeignKey('Organization')
-    plan = models.ForeignKey('Plan')
+    organization = models.ForeignKey(Organization)
+    plan = models.ForeignKey(Plan)
 
     class Meta:
         unique_together = ('organization', 'plan')

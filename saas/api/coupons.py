@@ -1,4 +1,4 @@
-# Copyright (c) 2014, DjaoDjin inc.
+# Copyright (c) 2015, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -51,6 +51,12 @@ class RedeemCouponSerializer(serializers.Serializer):
     """
 
     code = serializers.CharField()
+
+    def create(self, validated_data):
+        return validated_data
+
+    def update(self, instance, validated_data):
+        raise RuntimeError('`update()` should not have been called.')
 
 
 class CouponMixin(ProviderMixin):

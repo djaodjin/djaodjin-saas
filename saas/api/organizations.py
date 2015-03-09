@@ -51,7 +51,6 @@ class OrganizationDetailAPIView(OrganizationMixin,
         """
         obj = self.get_organization()
         manager = self.attached_manager(obj)
-        self.pre_delete(obj)
         email = obj.email
         slug = '_archive_%d' % obj.id
         look = re.match(r'.*(@\S+)', settings.ADMINS[0][1])
@@ -67,7 +66,6 @@ class OrganizationDetailAPIView(OrganizationMixin,
             obj.email = email
             obj.is_active = False
             obj.save()
-        self.post_delete(obj)
         auth_logout(request)
         return Response(status=status.HTTP_204_NO_CONTENT)
 

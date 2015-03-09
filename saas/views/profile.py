@@ -47,19 +47,7 @@ class ContributorListBaseView(ListView):
 
     Must be used with an OrganizationMixin or a ProviderMixin.
     """
-
-    paginate_by = 10
     template_name = 'saas/contributor_list.html'
-
-    # Make pylint happy: ``get_organization`` will be picked up correctly
-    # in the derived classes.
-    def get_organization(self):
-        return self
-
-    def get_queryset(self):# XXX not necessary since we use a REST API,
-                           # yet need to find out to get the pagination correct.
-        self.organization = self.get_organization()
-        return self.organization.contributors.all()
 
 
 class ProviderContributorListView(ProviderMixin, ContributorListBaseView):
@@ -82,19 +70,7 @@ class ManagerListBaseView(ListView):
 
     Must be used with an OrganizationMixin or a ProviderMixin.
     """
-
-    paginate_by = 10
     template_name = 'saas/manager_list.html'
-
-    # Make pylint happy: ``get_organization`` will be picked up correctly
-    # in the derived classes.
-    def get_organization(self):
-        return self
-
-    def get_queryset(self):# XXX not necessary since we use a REST API,
-                           # yet need to find out to get the pagination correct.
-        self.organization = self.get_organization()
-        return self.organization.managers.all()
 
 
 class ProviderManagerListView(ProviderMixin, ManagerListBaseView):
