@@ -1,4 +1,4 @@
-# Copyright (c) 2014, DjaoDjin inc.
+# Copyright (c) 2015, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -51,15 +51,28 @@ class PlanMixin(ProviderMixin):
         queryset = super(PlanMixin, self).get_queryset()
         return queryset.filter(organization=self.get_organization())
 
+    def perform_create(self, serializer):
+        serializer.save(organization=self.get_organization(),
+            slug=self.slugify(serializer.validated_data['title']))
+
+    def perform_update(self, serializer):
+        if slug in serializer.validated_data:
+            # Only when a slug field is passed will we force recompute it here.
+            # In cases some other resource's slug was derived on the initial
+            # slug, we don't want to do this to prevent inconsistent look
+            # of the derived URLs.
+            serializer.validated_data['slug'] \
+                = self.slugify(serializer.validated_data['title'])
+        serializer.save(organization=self.get_organization())
+
     @staticmethod
-    def slugify(obj):
-        slug = slugify(obj.title)
+    def slugify(title):
+        slug = slugify(title)
         i = 0
         while Plan.objects.filter(slug__exact=slug).count() > 0:
             slug = slugify('%s-%d' % (slug, i))
             i += 1
-        setattr(obj, 'slug', slug)
-
+        return slug
 
 
 class PlanActivateAPIView(PlanMixin, UpdateAPIView):
@@ -71,20 +84,8 @@ class PlanCreateAPIView(PlanMixin, CreateAPIView):
 
     serializer_class = PlanSerializer
 
-    def pre_save(self, obj):
-        obj.organization = self.get_organization()
-        self.slugify(obj)
-
 
 class PlanResourceView(PlanMixin, RetrieveUpdateDestroyAPIView):
 
     serializer_class = PlanSerializer
-
-    def pre_save(self, obj):
-        if 'slug' in self.request.DATA:
-            # Only when a slug field is passed will we force recompute it here.
-            # In cases some other resource's slug was derived on the initial
-            # slug, we don't want to do this to prevent inconsistent look
-            # of the derived URLs.
-            self.slugify(obj)
 
