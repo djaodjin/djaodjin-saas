@@ -1,4 +1,4 @@
-# Copyright (c) 2014, DjaoDjin inc.
+# Copyright (c) 2015, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -22,6 +22,7 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+from django.contrib import messages
 from django.contrib.auth import REDIRECT_FIELD_NAME
 from django.core.context_processors import csrf
 from django.core.urlresolvers import reverse
@@ -122,3 +123,6 @@ class PlanUpdateView(PlanFormMixin, UpdateView):
     """
     slug_url_kwarg = 'plan'
 
+    def get_success_url(self):
+        messages.success(self.request, 'Plan successfully updated.')
+        return super(PlanUpdateView, self).get_success_url()
