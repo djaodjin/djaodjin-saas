@@ -1,4 +1,4 @@
-# Copyright (c) 2014, DjaoDjin inc.
+# Copyright (c) 2015, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -33,7 +33,6 @@ also make security audits a lot easier.
 import logging, urlparse
 
 from functools import wraps
-from django.conf import settings
 from django.core.exceptions import PermissionDenied
 from django.core.urlresolvers import reverse
 from django.contrib.auth import REDIRECT_FIELD_NAME
@@ -42,7 +41,7 @@ from django.utils.decorators import available_attrs
 
 from saas.models import (Charge, Organization, Plan, Signature, Subscription,
     get_current_provider)
-from saas.settings import SKIP_PERMISSION_CHECK
+from saas import settings
 
 LOGGER = logging.getLogger(__name__)
 
@@ -60,7 +59,7 @@ def _valid_manager(user, candidates):
     which have *user* as a manager.
     """
     results = []
-    if SKIP_PERMISSION_CHECK:
+    if settings.SKIP_PERMISSION_CHECK:
         if user:
             username = user.username
         else:
@@ -166,7 +165,7 @@ def pass_authenticated(request):
     return request.user.is_authenticated()
 
 
-def pass_agreement(request, agreement='terms_of_use'):
+def pass_agreement(request, agreement=settings.TERMS_OF_USE):
     if request.user.is_authenticated():
         # Check signature of the legal agreement
         return Signature.objects.has_been_accepted(
@@ -372,7 +371,7 @@ def pass_self_provider_strong(request, user=None):
 
 
 def requires_agreement(function=None,
-                       agreement='terms_of_use',
+                       agreement=settings.TERMS_OF_USE,
                        redirect_field_name=REDIRECT_FIELD_NAME,
                        login_url=None):
     """

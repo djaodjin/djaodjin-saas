@@ -61,3 +61,5 @@ SKIP_PERMISSION_CHECK = _SETTINGS.get('SKIP_PERMISSION_CHECK')
 STRIPE_PRIV_KEY = getattr(settings, 'STRIPE_PRIV_KEY', "Undefined")
 STRIPE_PUB_KEY = getattr(settings, 'STRIPE_PUB_KEY', "Undefined")
 
+LOGIN_URL = getattr(settings, 'LOGIN_URL')
+TERMS_OF_USE = getattr(settings, 'TERMS_OF_USE', 'terms-of-use')
