@@ -466,14 +466,15 @@ class SignatureManager(models.Manager):
 
     def create_signature(self, agreement, user):
         if isinstance(agreement, basestring):
-            agreement = Agreement.objects.get(slug=agreement)
+            #pylint: disable=no-member
+            agreement = Agreement.objects.db_manager(self.db).get(
+                slug=agreement)
         try:
             sig = self.get(agreement=agreement, user=user)
-            sig.last_signed = datetime.datetime.now()
+            sig.last_signed = datetime_or_now()
             sig.save()
         except Signature.DoesNotExist:
-            sig = self.create(
-                agreement=agreement, user=user)
+            sig = self.create(agreement=agreement, user=user)
         return sig
 
     def has_been_accepted(self, agreement, user):
