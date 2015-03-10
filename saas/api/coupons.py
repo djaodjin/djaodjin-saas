@@ -159,7 +159,7 @@ class CouponRedeemAPIView(GenericAPIView):
                 # Since we rely on the message to appear after reload of
                 # the cart page in the casperjs tests, we can't get rid
                 # of this statement just yet.
-                messages.success(request, details['details'])
+                messages.success(request._request, details['details'])
                 return Response(details, status=status.HTTP_200_OK,
                                 headers=headers)
             else:
