@@ -56,7 +56,7 @@ class PlanMixin(ProviderMixin):
             slug=self.slugify(serializer.validated_data['title']))
 
     def perform_update(self, serializer):
-        if slug in serializer.validated_data:
+        if 'slug' in serializer.validated_data:
             # Only when a slug field is passed will we force recompute it here.
             # In cases some other resource's slug was derived on the initial
             # slug, we don't want to do this to prevent inconsistent look
