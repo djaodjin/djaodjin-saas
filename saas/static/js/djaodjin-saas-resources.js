@@ -172,10 +172,9 @@ Charge.prototype = {
                });
     },
 
-    refund: function(linenum, refundedAmount) {
+    refund: function(linenum, refundedAmount, refundButton) {
         var self = this;
         event.preventDefault();
-        var refundButton = $('[data-linenum="' + linenum + '"]');
         refundButton.attr("disabled", "disabled");
         $.ajax({ type: "POST",
                  url: self.urls.saas_api_charge_refund,

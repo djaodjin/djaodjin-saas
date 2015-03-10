@@ -134,12 +134,26 @@ var urls = {
 $(document).ready(function() {
     var thisCharge = new Charge("{{charge.processor_id}}", urls);
     $(".charge-refund").click(function () {
-        var linenum = $(this).attr('data-linenum');
-        $("#charge-refund [name='amount']").val(linenum);
+        var self = $(this);
+        var availableAmount = self.attr("data-available-amount");
+        var refundedInput = $("#charge-refund [name='amount']");
+        refundedInput.attr("max", availableAmount);
+        refundedInput.attr("data-linenum", self.attr("data-linenum"));
+        refundedInput.val(availableAmount);
     });
     $("#charge-refund .submit-refund").click(function () {
-        alert('refund', $("#charge-refund [name='amount']").val());
-//XXX        thisCharge.refund(linenum);
+        var refundedInput = $("#charge-refund [name='amount']");
+        var availableAmount = refundedInput.attr("max");
+        var linenum = refundedInput.attr("data-linenum");
+        var refundedAmount = refundedInput.val();
+        if( refundedAmount > availableAmount ) {
+            refundedAmount = availableAmount;
+        }
+        if( refundedAmount > 0 ) {
+            thisCharge.refund(linenum, refundedAmount,
+                // refundButton
+                $('.charge-refund[data-linenum="' + linenum + '"]'));
+        }
     });
 
 {% if charge.is_progress %}
