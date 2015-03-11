@@ -78,14 +78,14 @@ class OrganizationListAPIView(ProviderMixin, GenericAPIView):
             ends_at = parse_datetime(ends_at)
         ends_at = datetime_or_now(ends_at)
         queryset = self.get_range_queryset(start_at, ends_at)
-        page = self.paginate_queryset(queryset)
+        page_object_list = self.paginate_queryset(queryset)
         serializer = self.serializer_class()
         return Response({
             'start_at': start_at,
             'ends_at': ends_at,
             'count': queryset.count(),
             self.queryset_name: [serializer.to_native(organization)
-                for organization in page.object_list],
+                for organization in page_object_list],
             })
 
 
