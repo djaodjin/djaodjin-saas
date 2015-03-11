@@ -45,7 +45,8 @@ class PlanActivateSerializer(serializers.ModelSerializer):
 class PlanMixin(ProviderMixin):
 
     model = Plan
-    slug_url_kwarg = 'plan'
+    lookup_field = 'slug'
+    lookup_url_kwarg = 'plan'
 
     def get_queryset(self):
         return Plan.objects.filter(organization=self.get_organization())
