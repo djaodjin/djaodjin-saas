@@ -48,8 +48,7 @@ class PlanMixin(ProviderMixin):
     slug_url_kwarg = 'plan'
 
     def get_queryset(self):
-        queryset = super(PlanMixin, self).get_queryset()
-        return queryset.filter(organization=self.get_organization())
+        return Plan.objects.filter(organization=self.get_organization())
 
     def perform_create(self, serializer):
         serializer.save(organization=self.get_organization(),
