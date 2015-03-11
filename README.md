@@ -20,6 +20,7 @@ run the testsite webapp.
     $ source _installTop_/bin/activate
     $ pip install -r requirements.txt -r testsite/requirements.txt
     $ python manage.py syncdb
+    $ python manage.py loaddata saas/fixtures/saas_data.json
     $ python manage.py loaddata testsite/fixtures/test_data.json
     $ python manage.py runserver
 

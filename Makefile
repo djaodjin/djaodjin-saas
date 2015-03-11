@@ -16,6 +16,8 @@ install::
 initdb:
 	-rm -f saas_testsite.sqlite
 	cd $(srcDir) && $(PYTHON) ./manage.py syncdb --noinput
+	d $(srcDir) && $(PYTHON) ./manage.py loaddata \
+						saas/fixtures/saas_data.json
 	cd $(srcDir) && $(PYTHON) ./manage.py loaddata \
 						testsite/fixtures/test_data.json
 
