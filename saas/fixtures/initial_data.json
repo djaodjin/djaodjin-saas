@@ -10,7 +10,7 @@
   },
   {
     "fields": {
-      "slug": "terms-of-use",
+      "slug": "terms_of_use",
       "title": "Terms Of Use",
       "modified": "2012-08-14T00:00:00-09:00"
     },
