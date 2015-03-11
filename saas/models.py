@@ -1134,7 +1134,7 @@ class Plan(models.Model):
         return int(self.period_amount * fraction)
 
 
-class CartItemQuerySet(models.QuerySet):
+class CartItemManager(models.Manager):
 
     def get_cart(self, user, *args, **kwargs):
         # Order by plan then id so the order is consistent between
@@ -1161,7 +1161,7 @@ class CartItem(models.Model):
     together. There should only be one ``CartItem`` not yet recorded
     with ('user', 'plan', 'email') unique together.
     """
-    objects = CartItemQuerySet.as_manager()
+    objects = CartItemManager()
 
     created_at = models.DateTimeField(auto_now_add=True,
         help_text=_("date/time at which the item was added to the cart."))
