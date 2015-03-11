@@ -51,6 +51,8 @@ class PostalFormMixin(object):
         self.fields[field_name] = forms.CharField(
             widget=forms.widgets.Select(choices=countries),
             label='Country', required=required)
+        # default value for country select
+        self.initial[field_name] = 'US'
 
     def add_postal_region(self, field_name='region',
                           country=None, required=True):

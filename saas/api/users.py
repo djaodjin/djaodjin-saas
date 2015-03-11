@@ -61,7 +61,10 @@ class RelationListAPIView(OrganizationMixin, ListCreateAPIView):
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        user = get_object_or_404(User, username=serializer.data['username'])
+        try:
+            user = User.objects.get(username=serializer.data['username'])
+        except User.DoesNotExist:
+            user = get_object_or_404(User, email=serializer.data['username'])
         self.organization = self.get_organization()
         if self.add_relation(user):
             resp_status = status.HTTP_201_CREATED
