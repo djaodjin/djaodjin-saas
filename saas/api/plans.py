@@ -27,7 +27,7 @@ from rest_framework.generics import (CreateAPIView,
     RetrieveUpdateDestroyAPIView, UpdateAPIView)
 from rest_framework import serializers
 
-from saas.models import Plan
+from saas.models import Plan, Subscription
 from saas.mixins import ProviderMixin
 from saas.api.serializers import PlanSerializer
 
@@ -56,14 +56,16 @@ class PlanMixin(ProviderMixin):
             slug=self.slugify(serializer.validated_data['title']))
 
     def perform_update(self, serializer):
-        if 'slug' in serializer.validated_data:
-            # Only when a slug field is passed will we force recompute it here.
+        organization = self.get_organization()
+        if not Subscription.objects.filter(plan=self.get_object()).exists():
+            # In case no subscription has ever been created for this ``Plan``
+            # it seems safe to update its slug.
             # In cases some other resource's slug was derived on the initial
-            # slug, we don't want to do this to prevent inconsistent look
-            # of the derived URLs.
-            serializer.validated_data['slug'] \
+            # slug, we don't want to perform an update and get inconsistent
+            # look of the derived URLs.
+            serializer._validated_data['slug'] \
                 = self.slugify(serializer.validated_data['title'])
-        serializer.save(organization=self.get_organization())
+        serializer.save(organization=organization)
 
     @staticmethod
     def slugify(title):
