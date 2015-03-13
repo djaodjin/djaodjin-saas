@@ -63,6 +63,7 @@ class PlanMixin(ProviderMixin):
             # In cases some other resource's slug was derived on the initial
             # slug, we don't want to perform an update and get inconsistent
             # look of the derived URLs.
+            # pylint: disable=protected-access
             serializer._validated_data['slug'] \
                 = self.slugify(serializer.validated_data['title'])
         serializer.save(organization=organization)
