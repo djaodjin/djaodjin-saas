@@ -84,7 +84,7 @@ class OrganizationListAPIView(ProviderMixin, GenericAPIView):
             'start_at': start_at,
             'ends_at': ends_at,
             'count': queryset.count(),
-            self.queryset_name: [serializer.to_native(organization)
+            self.queryset_name: [serializer.to_representation(organization)
                 for organization in page_object_list],
             })
 
