@@ -966,7 +966,16 @@ class Coupon(models.Model):
              update_fields=None):
         if not self.created_at:
             self.created_at = datetime_or_now()
-        if not self.ends_at:
+        # Implementation Note:
+        # We want ``ends_at`` on a newly created ``Coupon`` to defaults
+        # to an expiration date, yet we want to force an update on the Coupon
+        # to enable a "never" expiration date. We can't enable both semantics
+        # through ``ends_at == None``, so the serializer ``perform_update``
+        # explicitely set ends_at to 'never' (not a datetime instance).
+        if self.ends_at:
+            if str(self.ends_at) == 'never':
+                self.ends_at = None
+        else:
             self.ends_at = self.created_at + datetime.timedelta(days=30)
         super(Coupon, self).save(force_insert=force_insert,
              force_update=force_update, using=using,

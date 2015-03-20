@@ -189,7 +189,10 @@ couponControllers.controller('CouponListCtrl',
             for( var i = 0; i < length; ++i ) {
                 if( oldVal.results[i].ends_at != newVal.results[i].ends_at ) {
                     Coupon.update(newVal.results[i], function(result) {
-                        // XXX message expiration date was updated.
+                        // XXX We don't show messages here because it becomes
+                        // quickly annoying if they do not disappear
+                        // automatically.
+                        // showMessages(["Coupon was successfully updated."], 'success');
                     });
                 }
             }

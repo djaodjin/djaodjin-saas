@@ -73,7 +73,11 @@ class CouponMixin(ProviderMixin):
         serializer.save(organization=self.get_organization())
 
     def perform_update(self, serializer):
-        serializer.save(organization=self.get_organization())
+        if 'ends_at' in serializer.validated_data:
+            serializer.save(organization=self.get_organization())
+        else:
+            serializer.save(organization=self.get_organization(),
+                ends_at='never')
 
 
 class SmartCouponListMixin(SearchableListMixin, SortableListMixin):
