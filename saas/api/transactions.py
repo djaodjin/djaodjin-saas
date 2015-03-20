@@ -45,15 +45,6 @@ class TransactionSerializer(serializers.ModelSerializer):
     amount = serializers.CharField(source='dest_amount', read_only=True)
     is_debit = serializers.CharField(source='dest_amount', read_only=True)
 
-    @staticmethod
-    def transform_description(obj, value):
-        #pylint: disable=unused-argument
-        return as_html_description(obj)
-
-    def transform_is_debit(self, obj, value):
-        #pylint: disable=unused-argument
-        return self._is_debit(obj)
-
     def _is_debit(self, transaction):
         """
         True if the transaction can be tagged as a debit. That is
@@ -67,10 +58,14 @@ class TransactionSerializer(serializers.ModelSerializer):
                 or (transaction.orig_organization == organization    # provider
                  and transaction.orig_account == Transaction.FUNDS))
 
-    def transform_amount(self, obj, value):
-        #pylint: disable=unused-argument
-        return as_money(obj.dest_amount, '-%s' % obj.dest_unit
-            if self._is_debit(obj) else obj.dest_unit)
+    def to_representation(self, obj):
+        ret = super(TransactionSerializer, self).to_representation(obj)
+        ret.update({
+            'description': as_html_description(obj),
+            'is_debit': self._is_debit(obj),
+            'amount': as_money(obj.dest_amount, '-%s' % obj.dest_unit
+                        if self._is_debit(obj) else obj.dest_unit)})
+        return ret
 
     class Meta:
         model = Transaction
