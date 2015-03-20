@@ -48,8 +48,8 @@ class OrganizationSerializer(serializers.ModelSerializer):
 
 class SubscriptionSerializer(serializers.ModelSerializer):
 
-    organization = OrganizationSerializer(source='organization', read_only=True)
-    plan = PlanSerializer(source='plan', read_only=True)
+    organization = OrganizationSerializer(read_only=True)
+    plan = PlanSerializer(read_only=True)
 
     class Meta:
         model = Subscription
