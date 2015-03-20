@@ -38,8 +38,7 @@ from saas.api.serializers import PlanSerializer
 
 class OrganizationSerializer(serializers.ModelSerializer):
 
-    printable_name = serializers.CharField(
-        source='printable_name', read_only=True)
+    printable_name = serializers.CharField(read_only=True)
 
     class Meta:
         model = Organization
