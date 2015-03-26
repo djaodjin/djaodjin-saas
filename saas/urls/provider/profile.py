@@ -1,4 +1,4 @@
-# Copyright (c) 2014, DjaoDjin inc.
+# Copyright (c) 2015, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -36,10 +36,10 @@ from saas.settings import ACCT_REGEX
 urlpatterns = patterns('',
     url(r'^subscribers/',
         SubscriberListView.as_view(), name='saas_subscriber_list'),
-    url(r'^plans/new/',
-        PlanCreateView.as_view(), name='saas_plan_new'),
     url(r'^plans/(?P<plan>%s)/' % ACCT_REGEX,
         PlanUpdateView.as_view(), name='saas_plan_edit'),
+    url(r'^plans/',
+        PlanCreateView.as_view(), name='saas_plan_new'),
     url(r'^contributors/',
         ProviderContributorListView.as_view(),
         name='saas_provider_contributor_list'),
