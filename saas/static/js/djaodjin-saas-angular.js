@@ -234,7 +234,7 @@ contributorControllers.controller('contributorListCtrl',
     };
 
     $scope.save = function() {
-        (new Contributor({username:$scope.user})).$save(
+        (new Contributor($scope.user)).$save(
             function(success) {
                 /* XXX Couldn't figure out how to get the status code
                    here so we just reload the list. */
@@ -270,7 +270,7 @@ managerControllers.controller('managerListCtrl',
     };
 
     $scope.save = function() {
-        (new Manager({username:$scope.user})).$save(
+        (new Manager($scope.user)).$save(
             function(success) {
                 /* XXX Couldn't figure out how to get the status code
                    here so we just reload the list. */
