@@ -31,7 +31,7 @@
   {% if user.is_authenticated %}
   <li>
     {% with user|attached_manager as organization %}
-    <a href="{% if organization %}{% url 'saas_organization_profile' organization %}{% else %}{% url 'accounts_profile' %}{% endif %}">{{user.username}}</a>
+    {# <a href="{% if organization %}{% url 'saas_organization_profile' organization %}{% else %}{% url 'accounts_profile' %}{% endif %}">{{user.username}}</a> #}
     {% endwith %}
   </li>
   <li><a href="{% url 'logout' %}">Sign Out</a></li>
