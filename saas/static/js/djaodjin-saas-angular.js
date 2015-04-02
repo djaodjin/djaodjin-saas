@@ -414,6 +414,9 @@ subscriberControllers.controller('subscriberCtrl',
     $scope.opened = { 'start_at': false, 'ends_at': false }
     $scope.start_at = new Date();
     $scope.ends_at = new Date();
+    $scope.registered_loading = false;
+    $scope.subscribed_loading = false;
+    $scope.churned_loading = false;
 
     $scope.minDate = new Date('2014-01-01');
     $scope.maxDate = new Date('2016-01-01');
@@ -458,6 +461,9 @@ subscriberControllers.controller('subscriberCtrl',
     };
 
     $scope.refresh = function(dataset) {
+        $scope.registered_loading = true;
+        $scope.subscribed_loading = true;
+        $scope.churned_loading = true;
         if( typeof dataset === "undefined" || dataset == 'churned' ) {
             params = {start_at: $scope.start_at, ends_at: $scope.ends_at};
             if( $scope.currentPage.churned > 1 ) {
@@ -466,6 +472,7 @@ subscriberControllers.controller('subscriberCtrl',
             $http.get(urls.saas_api_churned, {
                 params: params
             }).success(function(data) {
+                $scope.churned_loading = false;
                 $scope.churned = data;
                 for( var i = $scope.churned.churned.length;
                      i < $scope.itemsPerPage; ++i ) {
@@ -481,6 +488,7 @@ subscriberControllers.controller('subscriberCtrl',
             $http.get(urls.saas_api_registered, {
                 params: params
             }).success(function(data) {
+                $scope.registered_loading = false;
                 $scope.registered = data;
                 for( var i = $scope.registered.registered.length;
                      i < $scope.itemsPerPage; ++i ) {
@@ -496,6 +504,7 @@ subscriberControllers.controller('subscriberCtrl',
             $http.get(urls.saas_api_subscribed, {
                 params: params
             }).success(function(data) {
+                $scope.subscribed_loading = false;
                 $scope.subscribed = data;
                 for( var i = $scope.subscribed.subscribed.length;
                      i < $scope.itemsPerPage; ++i ) {

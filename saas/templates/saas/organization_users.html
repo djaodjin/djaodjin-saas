@@ -5,7 +5,9 @@
       <input type="text" ng-model="user.username" placeholder="Username or Email" />
       <input type="submit" ng-click="save()" />
     </form>
-    <table>
+    <h2 ng-hide="users.$resolved">Please wait...</h2>
+    <h2 ng-show="users.$resolved && users.length == 0"><em>No {{title}} yet</em></h2>
+    <table ng-show="users.$resolved && users.length > 0">
       <thead>
         <tr>
           <th>Username</th>
