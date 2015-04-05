@@ -282,7 +282,7 @@ class CardUpdateView(CardFormMixin, FormView):
         if stripe_token:
             # Since all fields are optional, we cannot assume the card token
             # will be present (i.e. in case of erroneous POST request).
-            self.customer.update_card(stripe_token)
+            self.customer.update_card(stripe_token, self.request.user)
             messages.success(self.request,
                 "Your credit card on file was sucessfully updated")
         return super(CardUpdateView, self).form_valid(form)
