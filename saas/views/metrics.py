@@ -79,7 +79,7 @@ class PlansMetricsView(ProviderMixin, TemplateView):
             values = active_subscribers(
                 plan, from_date=self.kwargs.get('from_date'))
             # XXX The template relies on "key" being plan.slug
-            table.append({"key": plan.slug, "values": values})
+            table.append({"key": plan.slug, "values": values, "is_active": plan.is_active})
         extra = [{"key": "churn",
             "values": churn_subscribers(
                 from_date=self.kwargs.get('from_date'))}]
