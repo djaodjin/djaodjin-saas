@@ -1,4 +1,4 @@
-# Copyright (c) 2014, DjaoDjin inc.
+# Copyright (c) 2015, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -22,15 +22,18 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+import urlparse
+
 from django import forms
+from django.conf import settings
+from django.contrib.auth import REDIRECT_FIELD_NAME
+from django.contrib.auth import authenticate, login as auth_login
 from django.db import transaction
-from django.contrib.auth import authenticate
-from django.contrib.auth import login as auth_login
+from django.http import HttpResponseRedirect
 from django.utils.decorators import method_decorator
+from django.views.generic.edit import FormView
 from django_countries import countries
 from saas.models import Organization, Signature
-from signup.signals import user_registered as signup_signals_user_registered
-from signup.views import SignupView
 from saas.compat import User
 
 class PersonalRegistrationForm(forms.Form):
@@ -155,13 +158,31 @@ class PersonalRegistrationForm(forms.Form):
         return self.cleaned_data['username']
 
 
-class PersonalRegistrationView(SignupView):
+class PersonalRegistrationView(FormView):
     """
     Register a user, create an organization and associate the user as
     a manager for the organization.
     """
 
     form_class = PersonalRegistrationForm
+    template_name = 'accounts/register.html'
+    fail_url = ('registration_register', (), {})
+    success_url = settings.LOGIN_REDIRECT_URL
+
+    def get_context_data(self, **kwargs):
+        context = super(PersonalRegistrationView, self).get_context_data(
+            **kwargs)
+        next_url = self.request.GET.get(REDIRECT_FIELD_NAME, None)
+        if next_url:
+            context.update({REDIRECT_FIELD_NAME: next_url})
+        return context
+
+    def form_valid(self, form):
+        self.register(**form.cleaned_data)
+        next_url = self.request.GET.get(REDIRECT_FIELD_NAME, None)
+        if next_url:
+            return HttpResponseRedirect(urlparse.urlparse(next_url).path)
+        return super(PersonalRegistrationView, self).form_valid(form)
 
     @method_decorator(transaction.atomic)
     def register(self, **cleaned_data):
@@ -194,9 +215,6 @@ class PersonalRegistrationView(SignupView):
         # Sign-in the newly registered user
         user = authenticate(username=username, password=password)
         auth_login(self.request, user)
-
-        signup_signals_user_registered.send(
-            sender=__name__, user=user, request=self.request)
 
         return user
 

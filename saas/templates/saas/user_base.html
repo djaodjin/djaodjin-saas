@@ -2,14 +2,13 @@
 {% load saas_tags %}
 
 {% block sidebar %}
-<ul>
-  <li><a id="users_profile" href="{% url 'users_profile' user %}">profile</a></li>
-  <hr />
+<div>
+  <a id="users_profile" href="{% url 'users_profile' user %}">profile</a>
   {% for organization in user|top_managed_organizations %}
-  <li><a href="{% url 'saas_organization_profile' organization %}">{{organization.printable_name}}</a></li>
+  | <a href="{% url 'saas_organization_profile' organization %}">{{organization.printable_name}}</a>
   {% endfor %}
   {% if user|more_managed_organizations %}
-  <li><a id="saas_user_product_list" href="{% url 'saas_user_product_list' user %}">products</a></li>
+  | <a id="saas_user_product_list" href="{% url 'saas_user_product_list' user %}">products</a>
   {% endif %}
-</ul>
+</div>
 {% endblock %}

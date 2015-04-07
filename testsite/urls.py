@@ -1,4 +1,4 @@
-# Copyright (c) 2014, DjaoDjin inc.
+# Copyright (c) 2015, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -30,7 +30,7 @@ from urldecorators import patterns, include, url
 from saas.settings import ACCT_REGEX
 from saas.views import OrganizationRedirectView
 from saas.views.plans import CartPlanListView
-from testsite.views.organization import OrganizationListView
+from testsite.views.organization import OrganizationListView, UserProfileView
 from testsite.views.registration import PersonalRegistrationView
 
 # Uncomment the next two lines to enable the admin:
@@ -45,6 +45,8 @@ urlpatterns = patterns('',
         PersonalRegistrationView.as_view(
             success_url=reverse_lazy('home')),
         name='registration_register'),
+    url(r'^users/(?P<user>[\w.@+-]+)/',
+        UserProfileView.as_view(), name='users_profile'),
     url(r'^accounts/', include('django.contrib.auth.urls')),
     url(r'^saas/$',
         OrganizationListView.as_view(), name='saas_organization_list',
@@ -68,4 +70,6 @@ urlpatterns = patterns('',
         decorators=['saas.decorators.requires_direct']),
     url(r'^', include('saas.urls.subscriber'),
         decorators=['saas.decorators.requires_direct']),
+    url(r'^(?P<provider>[\w.@+-]+)/app/',
+        TemplateView.as_view(template_name='app.html'), name='app'),
 )

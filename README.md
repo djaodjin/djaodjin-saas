@@ -19,10 +19,20 @@ run the testsite webapp.
     $ virtualenv-2.7 _installTop_
     $ source _installTop_/bin/activate
     $ pip install -r requirements.txt -r testsite/requirements.txt
-    $ python manage.py syncdb
-    $ python manage.py loaddata saas/fixtures/saas_data.json
-    $ python manage.py loaddata testsite/fixtures/test_data.json
+    $ make initdb
     $ python manage.py runserver
 
     # Browse http://localhost:8000/
     # Login with username: donny and password: yoyo
+
+To test payment through [Stripe](https://stripe.com/):
+
+1. Verify the Stripe API version you are using in the Stripe dashboard.
+
+    API Version: 2014-03-28
+
+2. Add your Stripe keys in the credentials file.
+
+    # Authentication with payment provider
+    STRIPE_PUB_KEY = "_your_stripe_public_api_key_"
+    STRIPE_PRIV_KEY = "_your_stripe_private_api_key_"

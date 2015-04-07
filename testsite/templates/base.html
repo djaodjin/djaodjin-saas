@@ -25,20 +25,16 @@
 </head>
 <body>
   {% block menubar %}
-  <ul>
-  <li><a href="/">Home</a></li>
-  <li><a href="{% url 'saas_cart_plan_list' %}">Pricing</a></li>
+  <div>
+  <a href="/">Home</a>
+  | <a href="{% url 'saas_cart_plan_list' %}">Pricing</a>
   {% if user.is_authenticated %}
-  <li>
-    {% with user|attached_manager as organization %}
-    {# <a href="{% if organization %}{% url 'saas_organization_profile' organization %}{% else %}{% url 'accounts_profile' %}{% endif %}">{{user.username}}</a> #}
-    {% endwith %}
-  </li>
-  <li><a href="{% url 'logout' %}">Sign Out</a></li>
+  | <a href="{% url 'users_profile' user %}">{{user.username}}</a>
+  | <a href="{% url 'logout' %}?next=/">Sign Out</a>
   {% else %}
-  <li><a href="{% url 'login' %}">Sign In</a></li>
+  | <a href="{% url 'login' %}">Sign In</a>
   {% endif %}
-  </ul>
+  </div>
   {% endblock %}
   <div id="messages" class="{% if not messages and not form.non_field_errors %}hidden{% endif %}">
     <div id="messages-content">

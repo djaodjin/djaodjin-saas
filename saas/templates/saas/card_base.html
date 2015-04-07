@@ -5,15 +5,3 @@
 {% block localheader %}
 <script type="text/javascript" src="https://js.stripe.com/v2/"></script>
 {% endblock %}
-
-{% block bodyscripts %}
-<script src="{% static 'js/vendor/jquery-1.9.1.js' %}"></script>
-<script src="{% static 'js/djaodjin-card.js' %}"></script>
-<script type="text/javascript">
-{% if STRIPE_PUB_KEY %}
-$(document).ready(function() {
-    initCardProcessor($("#payment-form"), "{{STRIPE_PUB_KEY}}");
-});
-{% endif %}
-</script>
-{% endblock %}

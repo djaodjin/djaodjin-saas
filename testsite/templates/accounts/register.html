@@ -5,7 +5,7 @@
 <div>
     <h1>Sign up</div>
     <div>
-        <form action="{% url 'registration_register' %}" method="post">
+        <form action="{% url 'registration_register' %}{% if next %}?next={{next}}{% endif %}" method="post">
             {% csrf_token %}
             {{form.as_p}}
             <input type="submit" name="submit" value="Submit" />
