@@ -276,11 +276,12 @@ class Organization(models.Model):
                     self, self.processor_recipient_id)
         signals.bank_updated.send(self)
 
-    def update_card(self, card_token=None):
+    def update_card(self, card_token, user):
         PROCESSOR_BACKEND.create_or_update_card(self, card_token)
         LOGGER.info('Updated card information for %s on processor (%s)',
                     self, self.processor_id)
-        signals.card_updated.send(self)
+        signals.card_updated.send(sender=__name__, organization=self,
+            user=user)
 
     @method_decorator(transaction.atomic)
     def checkout(self, invoicables, user, token=None, remember_card=True):
