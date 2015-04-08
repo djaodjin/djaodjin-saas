@@ -18,7 +18,7 @@ run the testsite webapp.
 
     $ virtualenv-2.7 _installTop_
     $ source _installTop_/bin/activate
-    $ pip install -r requirements.txt -r testsite/requirements.txt
+    $ pip install -r testsite/requirements.txt
     $ make initdb
     $ python manage.py runserver
 
