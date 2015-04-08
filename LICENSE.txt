@@ -1,4 +1,4 @@
-Copyright (c) 2014, DjaoDjin inc.
+Copyright (c) 2015, DjaoDjin inc.
 All rights reserved.
 
  Redistribution and use in source and binary forms, with or without
@@ -26,11 +26,11 @@ The following files are copyright of their respective owners and are included
 in the repo purely for convienience:
 
 - From http://jquery.com/
-  - static/js/jquery-1.9.1.js
+  - static/vendor/js/jquery.js
 
 - From http://d3js.org/
-  - static/js/d3.v3.js
+  - static/vendor/js/d3.v3.js
 
 - From http://nvd3.org/
-  - static/js/nv.d3.js
-  - static/css/nv.d3.css
+  - static/vendor/js/nv.d3.js
+  - static/vendor/css/nv.d3.css

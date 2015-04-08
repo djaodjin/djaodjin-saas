@@ -1,4 +1,4 @@
-# Copyright (c) 2014, DjaoDjin inc.
+# Copyright (c) 2015, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -22,7 +22,7 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from django.views.generic import ListView
+from django.views.generic import ListView, TemplateView
 
 from saas.models import Organization
 
@@ -31,3 +31,8 @@ class OrganizationListView(ListView):
 
     model = Organization
     template_name = 'organization_list_index.html'
+
+
+class UserProfileView(TemplateView):
+
+    template_name = 'accounts/profile.html'

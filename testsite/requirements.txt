@@ -1,15 +1,16 @@
-Django>=1.6
-django-durationfield>=0.5
-djangorestframework>=2.3
+Django==1.7.6
+django-durationfield==0.5.1
+djangorestframework>=3.1.0
 # We need Python Markdown for django.contrib.markup. markdown2 is not enough.
-Markdown>=2.4
-stripe>=1.14.0
-python-dateutil>=2.2
-django-extra-views>=0.6.5
-django-countries>=2.1.2
-django-localflavor>=1.0
-django-urldecorators>=0.5
-djaodjin-signup>=0.1.6
+Markdown==2.6.1
+stripe==1.21.0
+python-dateutil==2.4.1
+django-extra-views==0.6.5
+django-countries==3.2
+django-localflavor==1.1
+
+# testsite-only
+django-urldecorators==0.5
 
 # development
 Sphinx

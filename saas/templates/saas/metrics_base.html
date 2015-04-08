@@ -1,31 +1,46 @@
 {% extends "saas/base.html" %}
+{% load currency %}
 {% load saas_tags %}
 
 {% block saas_content %}
 <section id="metrics_table">
   <h1>{{title}} for {{organization}}</h1>
-  <table>
+  {% for key, table_title in data.items %}
+  <table style="border:1px solid;">
     <thead>
       <tr>
         <th></th>
-        {% for entry in data.0.table.0.values %}
+        {% for entry in table_title.table.0.values %}
         <th {% if entry.0|is_incomplete_month %}title="ends {{entry.0}}"{% endif %}>{{entry.0|monthly_caption}}</th>
         {% endfor %}
       </tr>
     </thead>
     <tbody>
-      {% for key, elements in data.items %}
-      {% for row in elements.table %}
+      {% for row in table_title.table %}
       <tr>
-        <th>{{row.key}}</th>
+        <th style="border:1px solid;">{{row.key}}</th>
           {% for values in row.values %}
-          <td align="right">{{values.1}}</td>
+          <td class="number-value" style="border:1px solid;">
+          {% if table_title.unit %}
+            {{values.1|humanize_money:table_title.unit}}
+          {% else %}
+            {{values.1}}
+          {% endif %}
+          </td>
           {% endfor %}
       </tr>
       {% endfor %}
+      {% for row in table_title.extra %}
+      <tr>
+        <th style="border:1px solid;">{{row.key}}</th>
+        {% for values in row.values %}
+        <td class="number-value" style="border:1px solid;">{{values.1}}</td>
+        {% endfor %}
+      </tr>
       {% endfor %}
     </tbody>
   </table>
+  {% endfor %}
 </section>
 {% endblock %}
 

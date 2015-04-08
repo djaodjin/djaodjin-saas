@@ -10,26 +10,25 @@
     {% comment %}
     We are dealing with the site owner.
     {% endcomment %}
-    <ul>
-      <li><a id="saas_manager_list" href="{% url 'saas_manager_list' organization %}">managers</a></li>
-      <li><a id="saas_contributor_list" href="{% url 'saas_contributor_list' organization %}">contributors</a></li>
-      <li><a id="saas_coupon_list" href="{% url 'saas_coupon_list' organization %}">coupons</a></li>
-      <li><a id="saas_transfer_info" href="{% url 'saas_transfer_info' organization %}">funds</a></li>
-      <li><a id="saas_metrics_summary" href="{% url 'saas_metrics_summary' organization %}">revenue</a></li>
-      <li><a id="saas_metrics_plans" href="{% url 'saas_metrics_plans' organization %}">plans</a></li>
-      <li><a id="saas_subscriber_list" href="{% url 'saas_subscriber_list' organization %}">subscribers</a></li>
-      <li><a id="saas_subscriber_pipeline" href="{% url 'saas_subscriber_pipeline' organization %}">retention</a></li>
-    </ul>
-    <hr />
+    <div>
+      <a id="saas_manager_list" href="{% url 'saas_manager_list' organization %}">managers</a>
+      | <a id="saas_contributor_list" href="{% url 'saas_contributor_list' organization %}">contributors</a>
+      | <a id="saas_coupon_list" href="{% url 'saas_coupon_list' organization %}">coupons</a>
+      | <a id="saas_transfer_info" href="{% url 'saas_transfer_info' organization %}">funds</a>
+      | <a id="saas_metrics_summary" href="{% url 'saas_metrics_summary' organization %}">revenue</a>
+      | <a id="saas_metrics_plans" href="{% url 'saas_metrics_plans' organization %}">plans</a>
+      | <a id="saas_subscriber_list" href="{% url 'saas_subscriber_list' organization %}">subscribers</a></li>
+      | <a id="saas_subscriber_pipeline" href="{% url 'saas_subscriber_pipeline' organization %}">retention</a>
+    </div>
     {% endif %}
     {% comment %}
     Subscriptions for the organization
     {% endcomment %}
-    <ul>
-      <li><a id="saas_organization_profile" href="{% url 'saas_organization_profile' organization %}">profile</a></li>
-      <li><a id="saas_billing_info" href="{% url 'saas_billing_info' organization %}">billing</a></li>
-      <li><a id="saas_subscription_list" href="{% url 'saas_subscription_list' organization %}">subscriptions</a>
-    </ul>
+    <div>
+      <a id="saas_organization_profile" href="{% url 'saas_organization_profile' organization %}">profile</a>
+      | <a id="saas_billing_info" href="{% url 'saas_billing_info' organization %}">billing</a>
+      | <a id="saas_subscription_list" href="{% url 'saas_subscription_list' organization %}">subscriptions</a>
+    </div>
     {% endblock %}
   </div>
   <div>
