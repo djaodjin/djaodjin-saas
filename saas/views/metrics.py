@@ -24,14 +24,21 @@
 
 import csv, json
 from datetime import datetime, date, timedelta
+from StringIO import StringIO
+from types import MethodType
 
 from django.db.models import Min, Sum, Max
 from django.http import HttpResponse
 from django.utils.datastructures import SortedDict
+from django.utils.dateparse import parse_datetime
 from django.utils.timezone import utc
-from django.views.generic import ListView, TemplateView
+from django.views.generic import ListView, TemplateView, View
 from django.core.serializers.json import DjangoJSONEncoder
 
+# importing views for their data retrieval methods (maybe should be managers?)
+from saas.api.metrics import (ChurnedAPIView, RegisteredAPIView,
+    SubscribedAPIView)
+from saas.api.serializers import OrganizationSerializer
 from saas.mixins import CouponMixin, ProviderMixin, MetricsMixin
 from saas.views.auth import valid_manager_for_organization
 from saas.managers.metrics import (active_subscribers,
@@ -40,6 +47,7 @@ from saas.managers.metrics import (active_subscribers,
 from saas.models import (CartItem, Organization, Plan, Transaction,
     NewVisitors)
 from saas.compat import User
+from saas.utils import datetime_or_now
 
 
 class CouponMetricsView(CouponMixin, ListView):
@@ -161,6 +169,41 @@ class SubscriberPipelineView(ProviderMixin, TemplateView):
 
     template_name = "saas/subscriber_pipeline.html"
 
+
+class SubscriberPipelineDownloadView(ProviderMixin, View):
+
+    queryset_view_map = {
+        'registered': RegisteredAPIView,
+        'subscribed': SubscribedAPIView,
+        'churned': ChurnedAPIView,
+    }
+
+    def get(self, request, subscriber_type, **kwargs):
+        queryset_view = self.queryset_view_map[subscriber_type]
+
+        class APIViewProxy(queryset_view):
+            def __init__(self, provider):
+                self.provider = provider
+        view_proxy = APIViewProxy(self.get_organization())
+        view_proxy.get_range_queryset = MethodType(
+            queryset_view.get_range_queryset, view_proxy)
+
+        start_date = datetime_or_now(
+            parse_datetime(request.GET.get('start_date', None)))
+        end_date = datetime_or_now(
+            parse_datetime(request.GET.get('end_date', None)))
+
+        content = StringIO()
+        csv_writer = csv.writer(content)
+        csv_writer.writerow(['Name', 'Email', 'Registration Date'])
+        for org in view_proxy.get_range_queryset(start_date, end_date):
+            csv_writer.writerow([org.full_name, org.email, org.created_at])
+        content.seek(0)
+        resp = HttpResponse(content, content_type='text/csv')
+        resp['Content-Disposition'] = \
+            'attachment; filename="subscribers-{}-{}.csv"'.format(
+                subscriber_type, datetime.now().strftime('%Y%m%d'))
+        return resp
 
 
 class UsageMetricsView(ProviderMixin, TemplateView):
