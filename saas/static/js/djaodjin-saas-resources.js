@@ -90,7 +90,7 @@ Plan.prototype = {
                  success: successFunction,
                });
     },
-}
+};
 
 
 /** Toggle a ``Plan`` from active to inactive and vise-versa
@@ -122,7 +122,7 @@ function CartItem(options) {
         }
     }
     this.urls = options.urls;
-};
+}
 
 
 CartItem.prototype = {
@@ -145,13 +145,13 @@ CartItem.prototype = {
                  success: successFunction,
                });
     },
-}
+};
 
 
 function Charge(charge_id, urls) {
     this.charge_id = charge_id;
     this.urls = urls;
-};
+}
 
 
 Charge.prototype = {
@@ -172,7 +172,7 @@ Charge.prototype = {
                });
     },
 
-    refund: function(linenum, refundedAmount, refundButton) {
+    refund: function(event, linenum, refundedAmount, refundButton) {
         var self = this;
         event.preventDefault();
         refundButton.attr("disabled", "disabled");

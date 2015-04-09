@@ -526,7 +526,7 @@ class ChargeManager(models.Manager):
         try:
             if token:
                 if remember_card:
-                    customer.update_card(card_token=token)
+                    customer.update_card(card_token=token, user=user)
                     (processor_charge_id, created_at,
                      last4, exp_date) = PROCESSOR_BACKEND.create_charge(
                         customer, amount, unit, descr, stmt_descr)
