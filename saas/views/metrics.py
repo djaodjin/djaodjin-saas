@@ -38,7 +38,6 @@ from django.core.serializers.json import DjangoJSONEncoder
 # importing views for their data retrieval methods (maybe should be managers?)
 from saas.api.metrics import (ChurnedAPIView, RegisteredAPIView,
     SubscribedAPIView)
-from saas.api.serializers import OrganizationSerializer
 from saas.mixins import CouponMixin, ProviderMixin, MetricsMixin
 from saas.views.auth import valid_manager_for_organization
 from saas.managers.metrics import (active_subscribers,
@@ -87,7 +86,8 @@ class PlansMetricsView(ProviderMixin, TemplateView):
             values = active_subscribers(
                 plan, from_date=self.kwargs.get('from_date'))
             # XXX The template relies on "key" being plan.slug
-            table.append({"key": plan.slug, "values": values, "is_active": plan.is_active})
+            table.append({"key": plan.slug, "values": values,
+                          "is_active": plan.is_active})
         extra = [{"key": "churn",
             "values": churn_subscribers(
                 from_date=self.kwargs.get('from_date'))}]
