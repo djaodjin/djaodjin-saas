@@ -414,8 +414,10 @@ class CartBaseView(InvoicablesFormMixin, FormView):
             prorated_amount = plan.prorate_period(created_at, prorate_to)
 
         discount_percent = 0
+        discount_descr = None
         if coupon:
             discount_percent = coupon.percent
+            discount_descr = coupon.code
 
         if plan.period_amount == 0:
             # We are having a freemium business models, no discounts.
@@ -427,7 +429,8 @@ class CartBaseView(InvoicablesFormMixin, FormView):
             option_items += [subscription.create_order(1, plan.period_amount,
                created_at, DESCRIBE_UNLOCK_NOW % {
                         'plan': plan, 'unlock_event': plan.unlock_event},
-               discount_percent=discount_percent)]
+               discount_percent=discount_percent,
+               discount_descr=discount_descr)]
             option_items += [subscription.create_order(1, 0,
                created_at, DESCRIBE_UNLOCK_LATER % {
                         'amount': as_money(plan.period_amount, plan.unit),
@@ -438,7 +441,8 @@ class CartBaseView(InvoicablesFormMixin, FormView):
             for nb_periods in [1, 3, 6, 12]:
                 option_items += [subscription.create_order(
                     nb_periods, prorated_amount, created_at,
-                    discount_percent=discount_percent)]
+                    discount_percent=discount_percent,
+                    discount_descr=discount_descr)]
                 discount_percent += 10
                 if discount_percent >= 100:
                     discount_percent = 100
@@ -449,7 +453,8 @@ class CartBaseView(InvoicablesFormMixin, FormView):
             for nb_periods in [1]: # XXX disabled discount until configurable.
                 option_items += [subscription.create_order(
                     nb_periods, prorated_amount, created_at,
-                    discount_percent=discount_percent)]
+                    discount_percent=discount_percent,
+                    discount_descr=discount_descr)]
                 discount_percent += 10
                 if discount_percent >= 100:
                     discount_percent = 100

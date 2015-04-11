@@ -1288,7 +1288,8 @@ class Subscription(models.Model):
         self.save()
 
     def create_order(self, nb_periods, prorated_amount=0,
-        created_at=None, descr=None, discount_percent=0):
+        created_at=None, descr=None, discount_percent=0,
+        discount_descr=None):
         #pylint: disable=too-many-arguments
         """
         Each time a subscriber places an order through
@@ -1314,7 +1315,8 @@ class Subscription(models.Model):
             ends_at = self.plan.end_of_period(self.ends_at, nb_periods)
             descr = describe_buy_periods(self.plan, ends_at, nb_periods)
             if discount_percent:
-                descr += ' - a %d%% discount' % discount_percent
+                descr += ' - a %d%% discount (code: %s)' % (
+                    discount_percent, discount_descr)
         else:
             # If we already have a description, all bets are off on
             # what the amount represents (see unlock_event).
