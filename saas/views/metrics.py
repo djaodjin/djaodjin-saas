@@ -71,6 +71,45 @@ class CouponMetricsView(CouponMixin, ListView):
         return context
 
 
+class CouponMetricsDownloadView(ProviderMixin, View):
+
+    headings = [
+        'Code',
+        'Percentage',
+        'Name',
+        'Email',
+        'Plan',
+        'Amount',
+    ]
+
+    queryset_view_map = {
+        'registered': RegisteredAPIView,
+        'subscribed': SubscribedAPIView,
+        'churned': ChurnedAPIView,
+    }
+
+    def get(self, request, **kwargs):
+        queryset = CartItem.objects.filter(coupon__isnull=False)
+
+        content = StringIO()
+        csv_writer = csv.writer(content)
+        csv_writer.writerow(self.headings)
+        for cartitem in queryset:
+            csv_writer.writerow([
+                cartitem.coupon.code,
+                cartitem.coupon.percent,
+                ' '.join([cartitem.first_name, cartitem.last_name]),
+                cartitem.email,
+                cartitem.plan,
+                123.00, # TODO: where is this?
+            ])
+        content.seek(0)
+        resp = HttpResponse(content, content_type='text/csv')
+        resp['Content-Disposition'] = datetime.now().strftime(
+            'attachment; filename="coupons-%Y%m%d.csv"')
+        return resp
+
+
 class PlansMetricsView(ProviderMixin, TemplateView):
     """
     Performance of Plans for a time period
