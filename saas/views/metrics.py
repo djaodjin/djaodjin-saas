@@ -38,6 +38,9 @@ from django.core.serializers.json import DjangoJSONEncoder
 # importing views for their data retrieval methods (maybe should be managers?)
 from saas.api.metrics import (ChurnedAPIView, RegisteredAPIView,
     SubscribedAPIView)
+from saas.api.coupons import SmartCouponListMixin
+# NB: there is another CouponMixin
+from saas.api.coupons import CouponMixin as CouponAPIMixin
 from saas.api.serializers import OrganizationSerializer
 from saas.mixins import CouponMixin, ProviderMixin, MetricsMixin
 from saas.views.auth import valid_manager_for_organization
@@ -45,7 +48,7 @@ from saas.managers.metrics import (active_subscribers,
     aggregate_monthly_transactions, churn_subscribers,
     monthly_balances, month_periods)
 from saas.models import (CartItem, Organization, Plan, Transaction,
-    NewVisitors)
+    NewVisitors, Coupon)
 from saas.compat import User
 from saas.utils import datetime_or_now
 
@@ -79,29 +82,31 @@ class CouponMetricsDownloadView(ProviderMixin, View):
         'Name',
         'Email',
         'Plan',
-        'Amount',
     ]
 
-    queryset_view_map = {
-        'registered': RegisteredAPIView,
-        'subscribed': SubscribedAPIView,
-        'churned': ChurnedAPIView,
-    }
-
     def get(self, request, **kwargs):
-        queryset = CartItem.objects.filter(coupon__isnull=False)
+        class CouponAPIDummyView(SmartCouponListMixin, CouponAPIMixin):
+            '''
+            Stand-in for a view so that django-extra-views can create a
+            filtered QuerySet for us. This guarantees that we consider only the
+            same Coupons that are displayed to the user in the admin display.
+            '''
+            def __init__(self, request, kwargs):
+                self.request = request
+                self.kwargs = kwargs
+
+        coupons = CouponAPIDummyView(request, kwargs).get_queryset()
 
         content = StringIO()
         csv_writer = csv.writer(content)
         csv_writer.writerow(self.headings)
-        for cartitem in queryset:
+        for cartitem in CartItem.objects.filter(coupon__in=coupons):
             csv_writer.writerow([
                 cartitem.coupon.code,
                 cartitem.coupon.percent,
-                ' '.join([cartitem.first_name, cartitem.last_name]),
-                cartitem.email,
+                ' '.join([cartitem.user.first_name, cartitem.user.last_name]),
+                cartitem.user.email,
                 cartitem.plan,
-                123.00, # TODO: where is this?
             ])
         content.seek(0)
         resp = HttpResponse(content, content_type='text/csv')
