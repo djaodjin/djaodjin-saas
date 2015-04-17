@@ -126,3 +126,9 @@ class PlanUpdateView(PlanFormMixin, UpdateView):
     def get_success_url(self):
         messages.success(self.request, 'Plan successfully updated.')
         return super(PlanUpdateView, self).get_success_url()
+
+    def get_context_data(self, **kwargs):
+        context = super(PlanUpdateView, self).get_context_data(**kwargs)
+        plan = self.get_object()
+        context['show_delete'] = plan.subscription_set.count() == 0
+        return context
