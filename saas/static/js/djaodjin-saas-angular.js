@@ -187,7 +187,7 @@ couponControllers.controller('CouponListCtrl',
             var length = ( oldVal.results.length < newVal.results.length ) ?
                 oldVal.results.length : newVal.results.length;
             for( var i = 0; i < length; ++i ) {
-                if( oldVal.results[i].ends_at != newVal.results[i].ends_at ) {
+                if( (oldVal.results[i].ends_at != newVal.results[i].ends_at) || (oldVal.results[i].description != newVal.results[i].description)) {
                     Coupon.update(newVal.results[i], function(result) {
                         // XXX We don't show messages here because it becomes
                         // quickly annoying if they do not disappear
