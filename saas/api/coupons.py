@@ -84,12 +84,12 @@ class SmartCouponListMixin(SearchableListMixin, SortableListMixin):
     """
     Subscriber list which is also searchable and sortable.
     """
-    search_fields = ['created_at',
-                     'code',
+    search_fields = ['code',
                      'description',
                      'percent',
-                     'ends_at',
                      'organization__full_name']
+
+    search_date_fields = ['created_at', 'ends_at']
 
     sort_fields_aliases = [('code', 'code'),
                            ('percent', 'percent'),
