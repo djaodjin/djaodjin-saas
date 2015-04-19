@@ -41,14 +41,13 @@ from saas.api.metrics import (ChurnedAPIView, RegisteredAPIView,
 from saas.api.coupons import SmartCouponListMixin
 # NB: there is another CouponMixin
 from saas.api.coupons import CouponMixin as CouponAPIMixin
-from saas.api.serializers import OrganizationSerializer
 from saas.mixins import CouponMixin, ProviderMixin, MetricsMixin
 from saas.views.auth import valid_manager_for_organization
 from saas.managers.metrics import (active_subscribers,
     aggregate_monthly_transactions, churn_subscribers,
     monthly_balances, month_periods)
 from saas.models import (CartItem, Organization, Plan, Transaction,
-    NewVisitors, Coupon)
+    NewVisitors)
 from saas.compat import User
 from saas.utils import datetime_or_now
 
