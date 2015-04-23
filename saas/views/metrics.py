@@ -101,11 +101,12 @@ class CouponMetricsDownloadView(ProviderMixin, View):
         csv_writer.writerow(self.headings)
         for cartitem in CartItem.objects.filter(coupon__in=coupons):
             csv_writer.writerow([
-                cartitem.coupon.code,
+                cartitem.coupon.code.encode('utf-8'),
                 cartitem.coupon.percent,
-                ' '.join([cartitem.user.first_name, cartitem.user.last_name]),
-                cartitem.user.email,
-                cartitem.plan,
+                ' '.join([cartitem.user.first_name, cartitem.user.last_name]).\
+                    encode('utf-8'),
+                cartitem.user.email.encode('utf-8'),
+                cartitem.plan.slug.encode('utf-8'),
             ])
         content.seek(0)
         resp = HttpResponse(content, content_type='text/csv')
