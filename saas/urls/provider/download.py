@@ -22,26 +22,21 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-'''Urls to metrics'''
+'''Urls to provider downloads'''
 
 from django.conf.urls import patterns, url
 
 from saas.settings import ACCT_REGEX
-from saas.views.metrics import (BalancesMetricsView,
-    CouponMetricsView, PlansMetricsView, RevenueMetricsView,
-    SubscriberPipelineView, UsageMetricsView)
+from saas.views.metrics import (BalancesDownloadView,
+    CouponMetricsDownloadView, SubscriberPipelineDownloadView)
 
 urlpatterns = patterns(
     'saas.views.metrics',
-    url(r'^usage/', UsageMetricsView.as_view(), name='saas_organization_usage'),
-    url(r'^pipeline/$',
-        SubscriberPipelineView.as_view(), name='saas_subscriber_pipeline'),
-    url(r'^plans/((?P<from_date>\d\d\d\d-\d\d)/)?',
-        PlansMetricsView.as_view(), name='saas_metrics_plans'),
-    url(r'^coupons/((?P<coupon>%s)/)?' % ACCT_REGEX,
-        CouponMetricsView.as_view(), name='saas_metrics_coupons'),
+    url(r'^pipeline/(?P<subscriber_type>[\w]+)$',
+        SubscriberPipelineDownloadView.as_view(),
+        name='saas_subscriber_pipeline_download'),
+    url(r'^coupons/', CouponMetricsDownloadView.as_view(),
+        name='saas_metrics_coupons_download'),
     url(r'^balances/',
-        BalancesMetricsView.as_view(), name='saas_metrics_balances'),
-    url(r'^',
-        RevenueMetricsView.as_view(), name='saas_metrics_summary'),
+        BalancesDownloadView.as_view(), name='saas_balances_download'),
 )

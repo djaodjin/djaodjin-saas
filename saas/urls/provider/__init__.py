@@ -33,6 +33,8 @@ urlpatterns = patterns('',
         include('saas.urls.provider.billing')),
     url(r'^metrics/',
         include('saas.urls.provider.metrics')),
+    url(r'^download/',
+        include('saas.urls.provider.download')),
     url(r'^',
         include('saas.urls.provider.profile')),
 )
