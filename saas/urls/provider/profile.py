@@ -30,13 +30,15 @@ from django.conf.urls import patterns, url
 
 from saas.views.profile import (ProviderManagerListView,
     ProviderContributorListView, ProviderProfileView, SubscriberListView)
-from saas.views.plans import PlanCreateView, PlanUpdateView
+from saas.views.plans import PlanCreateView, PlanUpdateView, PlanDeleteView
 from saas.settings import ACCT_REGEX
 
 urlpatterns = patterns('',
     url(r'^subscribers/',
         SubscriberListView.as_view(), name='saas_subscriber_list'),
-    url(r'^plans/(?P<plan>%s)/' % ACCT_REGEX,
+    url(r'^delete_plan/(?P<plan>%s)/$' % ACCT_REGEX,
+        PlanDeleteView.as_view(), name='saas_plan_delete'),
+    url(r'^plans/(?P<plan>%s)/$' % ACCT_REGEX,
         PlanUpdateView.as_view(), name='saas_plan_edit'),
     url(r'^plans/',
         PlanCreateView.as_view(), name='saas_plan_new'),

@@ -27,7 +27,7 @@ from django.contrib.auth import REDIRECT_FIELD_NAME
 from django.core.context_processors import csrf
 from django.core.urlresolvers import reverse
 from django.http import HttpResponseRedirect
-from django.views.generic import CreateView, ListView, UpdateView
+from django.views.generic import CreateView, ListView, UpdateView, DeleteView
 from django.views.generic.detail import SingleObjectMixin
 
 from saas.forms import PlanForm
@@ -132,3 +132,25 @@ class PlanUpdateView(PlanFormMixin, UpdateView):
         plan = self.get_object()
         context['show_delete'] = plan.subscription_set.count() == 0
         return context
+
+
+class PlanDeleteView(ProviderMixin, DeleteView):
+    '''
+    Delete a plan
+    '''
+    model = Plan
+    slug_url_kwarg = 'plan'
+
+    def delete(self, *args, **kwargs):
+        '''
+        Override to provide some validation.
+
+        Without this, users could subvert the "no deleting plans with 
+        subscribers" rule via URL manipulation.
+        '''
+        if self.get_object().subscription_set.count() != 0:
+            raise Exception('cannot delete a plan with subscribers')
+        return super(PlanDeleteView, self).delete(*args, **kwargs)
+
+    def get_success_url(self):
+        return reverse('saas_metrics_plans', args=(self.get_organization(),))
