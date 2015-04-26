@@ -145,7 +145,7 @@ class PlanDeleteView(ProviderMixin, DeleteView):
         '''
         Override to provide some validation.
 
-        Without this, users could subvert the "no deleting plans with 
+        Without this, users could subvert the "no deleting plans with
         subscribers" rule via URL manipulation.
         '''
         if self.get_object().subscription_set.count() != 0:
