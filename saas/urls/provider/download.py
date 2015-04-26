@@ -26,7 +26,6 @@
 
 from django.conf.urls import patterns, url
 
-from saas.settings import ACCT_REGEX
 from saas.views.metrics import (BalancesDownloadView,
     CouponMetricsDownloadView, SubscriberPipelineDownloadView)
 
