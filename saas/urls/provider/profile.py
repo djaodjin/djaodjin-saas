@@ -36,7 +36,7 @@ from saas.settings import ACCT_REGEX
 urlpatterns = patterns('',
     url(r'^subscribers/',
         SubscriberListView.as_view(), name='saas_subscriber_list'),
-    url(r'^plan/(?P<plan>%s)/delete/$' % ACCT_REGEX,
+    url(r'^plans/(?P<plan>%s)/delete/$' % ACCT_REGEX,
         PlanDeleteView.as_view(), name='saas_plan_delete'),
     url(r'^plans/(?P<plan>%s)/$' % ACCT_REGEX,
         PlanUpdateView.as_view(), name='saas_plan_edit'),

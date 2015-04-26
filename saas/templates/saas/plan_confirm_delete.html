@@ -1,10 +1,9 @@
-{% extends "saas/base-2col.html" %}
-{% load crispy_forms_tags %}
-{% load assets %}
+{% extends "saas/base.html" %}
 
 {% block saas_content %}
-<form action="" method="post">{% csrf_token %}
+<form action="" method="post">
+    {% csrf_token %}
     <p>Are you sure you want to delete the plan "{{ object }}"?</p>
-    <button type="submit" class="btn btn-primary">Confirm</button>
+    <button type="submit">Confirm</button>
 </form>
 {% endblock %}
