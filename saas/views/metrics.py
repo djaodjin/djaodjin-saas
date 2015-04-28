@@ -242,7 +242,10 @@ class SubscriberPipelineDownloadView(ProviderMixin, View):
         csv_writer = csv.writer(content)
         csv_writer.writerow(['Name', 'Email', 'Registration Date'])
         for org in view_proxy.get_range_queryset(start_date, end_date):
-            csv_writer.writerow([org.full_name, org.email, org.created_at])
+            csv_writer.writerow([
+                org.full_name.encode('utf-8'),
+                org.email.encode('utf-8'),
+                org.created_at])
         content.seek(0)
         resp = HttpResponse(content, content_type='text/csv')
         resp['Content-Disposition'] = \
