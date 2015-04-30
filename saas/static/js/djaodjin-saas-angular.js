@@ -15,6 +15,7 @@ angular.module('subscriberApp', ['ui.bootstrap', 'ngRoute',
 angular.module('transactionApp', ['ui.bootstrap', 'ngRoute',
     'transactionControllers', 'transactionServices']);
 angular.module('metricApp', ['ui.bootstrap', 'ngRoute', 'metricControllers']);
+angular.module('revenueApp', ['ui.bootstrap', 'ngRoute', 'revenueControllers']);
 
 
 /*=============================================================================
@@ -75,6 +76,7 @@ var subscriptionControllers = angular.module('subscriptionControllers', []);
 var subscriberControllers = angular.module('subscriberControllers', []);
 var transactionControllers = angular.module('transactionControllers', []);
 var metricControllers = angular.module('metricControllers', []);
+var revenueControllers = angular.module('revenueControllers', []);
 
 couponControllers.controller('CouponListCtrl',
     ['$scope', '$http', '$timeout', 'Coupon', 'urls',
@@ -641,4 +643,18 @@ metricControllers.controller('metricCtrl',
         function(data) {
             $scope.balances = data;
     });
+}]);
+
+revenueControllers.controller('revenueCtrl',
+    ['$scope', '$http', 'urls',
+    function($scope, $http, urls) {
+
+    $scope.ends_at = new Date();
+
+    // calendar for start_at and ends_at
+    $scope.open = function($event) {
+        $event.preventDefault();
+        $event.stopPropagation();
+        $scope.opened = true;
+    };
 }]);
