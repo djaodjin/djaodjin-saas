@@ -35,7 +35,10 @@ policy.
 2. ``BalanceView`` for subscriptions with balance dues
 """
 
-import copy, logging
+import copy, csv, logging
+from datetime import datetime
+from decimal import Decimal
+from StringIO import StringIO
 
 from django import http
 from django.contrib.auth import REDIRECT_FIELD_NAME
@@ -43,9 +46,12 @@ from django.core.urlresolvers import reverse
 from django.db import IntegrityError
 from django.db.models import Q
 from django.contrib import messages
+from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
-from django.views.generic import DetailView, FormView, ListView, TemplateView
+from django.views.generic import (DetailView, FormView, ListView,
+    TemplateView, View)
 
+from saas.api.transactions import SmartTransactionListMixin
 from saas.backends import PROCESSOR_BACKEND, ProcessorError
 from saas.utils import validate_redirect_url, datetime_or_now
 from saas.forms import (BankForm, CartPeriodsForm, CreditCardForm,
@@ -330,7 +336,10 @@ class TransactionListView(OrganizationMixin, TemplateView):
             balance_unit = '-%s' % balance_unit
         context.update({'organization': self.customer,
                         'balance_amount': balance_amount,
-                        'balance_unit': balance_unit})
+                        'balance_unit': balance_unit,
+                        'download_url': reverse(
+                            'saas_transactions_download',
+                            kwargs={'organization': self.customer})})
         return context
 
 
@@ -348,8 +357,91 @@ class TransferListView(BankMixin, TemplateView):
             = Transaction.objects.get_organization_balance(
             self.organization, Transaction.FUNDS)
         context.update({'balance_amount': balance_amount,
-                        'balance_unit': balance_unit})
+                        'balance_unit': balance_unit,
+                        'download_url': reverse('saas_transfers_download')})
         return context
+
+
+class AbstractTransactionDownloadView(OrganizationMixin, View):
+
+    def get_queryset(self):
+        """
+        Get the list of transactions for this organization.
+        """
+        org = self.get_organization()
+        return Transaction.objects.by_customer(org)
+
+
+class TransactionDownloadView(SmartTransactionListMixin, AbstractTransactionDownloadView):
+
+    headings = [
+        'Created At',
+        'Amount',
+        'Unit',
+        'Description'
+    ]
+
+    def get(self, request, **kwargs):
+        org = self.get_organization()
+        transactions = self.get_queryset()
+
+        content = StringIO()
+        csv_writer = csv.writer(content)
+        csv_writer.writerow(self.headings)
+        for transaction in transactions:
+            csv_writer.writerow([
+                transaction.created_at,
+                '{:.2f}'.format((-1 if transaction.is_debit(org) else 1) * 
+                    Decimal(transaction.dest_amount) / 100),
+                transaction.dest_unit.encode('utf-8'),
+                transaction.descr.encode('utf-8'),
+            ])
+        content.seek(0)
+        resp = HttpResponse(content, content_type='text/csv')
+        resp['Content-Disposition'] = datetime.now().strftime(
+            'attachment; filename="transactions-%Y%m%d.csv"')
+        return resp
+
+
+class AbstractTransferDownloadView(ProviderMixin, View):
+
+    def get_queryset(self):
+        """
+        Get the list of transactions for this organization.
+        """
+        org = self.get_organization()
+        return Transaction.objects.by_organization(org, Transaction.FUNDS)
+
+
+class TransferDownloadView(SmartTransactionListMixin, AbstractTransferDownloadView):
+
+    headings = [
+        'Created At',
+        'Amount',
+        'Unit',
+        'Description'
+    ]
+
+    def get(self, request, **kwargs):
+        org = self.get_organization()
+        transactions = self.get_queryset()
+
+        content = StringIO()
+        csv_writer = csv.writer(content)
+        csv_writer.writerow(self.headings)
+        for transaction in transactions:
+            csv_writer.writerow([
+                transaction.created_at,
+                '{:.2f}'.format((-1 if transaction.is_debit(org) else 1) * 
+                    Decimal(transaction.dest_amount) / 100),
+                transaction.dest_unit.encode('utf-8'),
+                transaction.descr.encode('utf-8'),
+            ])
+        content.seek(0)
+        resp = HttpResponse(content, content_type='text/csv')
+        resp['Content-Disposition'] = datetime.now().strftime(
+            'attachment; filename="funds-%Y%m%d.csv"')
+        return resp
 
 
 class CartBaseView(InvoicablesFormMixin, FormView):

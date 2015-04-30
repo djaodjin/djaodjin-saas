@@ -52,11 +52,7 @@ class TransactionSerializer(serializers.ModelSerializer):
         moves from a Funds account to the organization's Expenses account.
         """
         #pylint: disable=no-member
-        organization = self.context['view'].organization
-        return ((transaction.dest_organization == organization       # customer
-                 and transaction.dest_account == Transaction.EXPENSES)
-                or (transaction.orig_organization == organization    # provider
-                 and transaction.orig_account == Transaction.FUNDS))
+        return transaction.is_debit(self.context['view'].organization)
 
     def to_representation(self, obj):
         ret = super(TransactionSerializer, self).to_representation(obj)
@@ -95,13 +91,7 @@ class TransactionListBaseAPIView(OrganizationMixin, ListAPIView):
         Get the list of transactions for this organization.
         """
         self.organization = self.get_organization()
-        queryset = Transaction.objects.filter(
-            (Q(dest_organization=self.organization)
-             & (Q(dest_account=Transaction.PAYABLE) # Only customer side
-                | Q(dest_account=Transaction.EXPENSES)))
-            |(Q(orig_organization=self.organization)
-              & Q(orig_account=Transaction.REFUNDED)))
-        return queryset
+        return Transaction.objects.by_customer(self.organization)
 
 
 class TransactionListAPIView(SmartTransactionListMixin,
@@ -118,13 +108,8 @@ class TransferListBaseAPIView(ProviderMixin, ListAPIView):
         Get the list of transactions for this organization.
         """
         self.organization = self.get_organization()
-        queryset = Transaction.objects.filter(
-            # All transactions involving Funds
-            ((Q(orig_organization=self.organization)
-              & Q(orig_account=Transaction.FUNDS))
-            | (Q(dest_organization=self.organization)
-              & Q(dest_account=Transaction.FUNDS))))
-        return queryset
+        return Transaction.objects.by_organization(
+            self.organization, Transaction.FUNDS)
 
 
 class TransferListAPIView(SmartTransactionListMixin, TransferListBaseAPIView):
