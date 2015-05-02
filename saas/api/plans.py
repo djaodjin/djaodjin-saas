@@ -71,10 +71,11 @@ class PlanMixin(ProviderMixin):
 
     @staticmethod
     def slugify(title):
-        slug = slugify(title)
+        slug_base = slugify(title)
         i = 0
+        slug = slug_base
         while Plan.objects.filter(slug__exact=slug).count() > 0:
-            slug = slugify('%s-%d' % (slug, i))
+            slug = slugify('%s-%d' % (slug_base, i))
             i += 1
         return slug
 

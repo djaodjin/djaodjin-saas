@@ -100,10 +100,9 @@ def manages_subscriber_to(user, plan):
 @register.filter(needs_autoescape=False)
 @stringfilter
 def md(text): #pylint: disable=invalid-name
-    return mark_safe(markdown.markdown(text,
-        safe_mode='replace',
-        html_replacement_text='<em>RAW HTML NOT ALLOWED</em>',
-        enable_attributes=False))
+    # XXX safe_mode is deprecated. Should we use bleach? As shown in example:
+    # https://pythonhosted.org/Markdown/reference.html#markdown
+    return mark_safe(markdown.markdown(text, enable_attributes=False))
 
 
 @register.filter()
