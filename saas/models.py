@@ -1528,6 +1528,26 @@ class TransactionManager(models.Manager):
             result = get_current_provider()
         return result
 
+    def by_organization(self, organization, transaction_type):
+        return self.filter(
+            # All transactions involving Funds
+            ((Q(orig_organization=organization)
+              & Q(orig_account=transaction_type))
+            | (Q(dest_organization=organization)
+              & Q(dest_account=transaction_type))))
+
+
+    def by_customer(self, organization):
+        """
+        Return transactions related to this organization, as a customer.
+        """
+        return Transaction.objects.filter(
+            (Q(dest_organization=organization)
+             & (Q(dest_account=Transaction.PAYABLE) # Only customer side
+                | Q(dest_account=Transaction.EXPENSES)))
+            |(Q(orig_organization=organization)
+              & Q(orig_account=Transaction.REFUNDED)))
+
 
 class Transaction(models.Model):
     '''The Transaction table stores entries in the double-entry bookkeeping
@@ -1587,6 +1607,15 @@ class Transaction(models.Model):
 
     def __unicode__(self):
         return unicode(self.id)
+
+    def is_debit(self, organization):
+        '''
+        Return True if this transaction is a debit (negative ledger entry).
+        '''
+        return ((self.dest_organization == organization       # customer
+                 and self.dest_account == Transaction.EXPENSES)
+                or (self.orig_organization == organization    # provider
+                 and self.orig_account == Transaction.FUNDS))
 
 
 class NewVisitors(models.Model):
