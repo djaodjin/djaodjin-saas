@@ -164,7 +164,7 @@ class StripeBackend(object):
                 p_customer.card = card_token
                 p_customer.save()
                 signals.card_updated.send(
-                    sender=__name__, organization=self, user=user)
+                    sender=__name__, organization=organization, user=user)
             except stripe.error.InvalidRequestError:
                 # Can't find the customer on Stripe. This can be related to
                 # a switch from using devel to production keys.
