@@ -33,8 +33,7 @@ from django.utils.timezone import utc
 from saas import settings
 from saas.compat import User
 from saas.humanize import as_html_description
-from saas.models import (Organization, Subscription, Transaction,
-    get_current_provider)
+from saas.models import Organization, Subscription, get_current_provider
 from saas.decorators import pass_direct, _valid_manager
 from saas.utils import product_url as utils_product_url
 

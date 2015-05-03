@@ -1,4 +1,4 @@
-# Copyright (c) 2014, DjaoDjin inc.
+# Copyright (c) 2015, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -24,8 +24,11 @@
 
 import datetime, logging, re
 
-import stripe
 from django.db import IntegrityError
+import stripe
+
+from saas import signals
+
 
 LOGGER = logging.getLogger('django.request') # We want ADMINS to about this.
 
@@ -149,7 +152,7 @@ class StripeBackend(object):
             organization.processor_recipient_id = rcp.id
             organization.save()
 
-    def create_or_update_card(self, organization, card_token):
+    def create_or_update_card(self, organization, card_token, user=None):
         """
         Create or update a card associated to an organization on Stripe.
         """
@@ -160,6 +163,8 @@ class StripeBackend(object):
                 p_customer = stripe.Customer.retrieve(organization.processor_id)
                 p_customer.card = card_token
                 p_customer.save()
+                signals.card_updated.send(
+                    sender=__name__, organization=self, user=user)
             except stripe.error.InvalidRequestError:
                 # Can't find the customer on Stripe. This can be related to
                 # a switch from using devel to production keys.

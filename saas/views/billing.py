@@ -1,4 +1,4 @@
-# Copyright (c) 2014, DjaoDjin inc.
+# Copyright (c) 2015, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -372,7 +372,8 @@ class AbstractTransactionDownloadView(OrganizationMixin, View):
         return Transaction.objects.by_customer(org)
 
 
-class TransactionDownloadView(SmartTransactionListMixin, AbstractTransactionDownloadView):
+class TransactionDownloadView(SmartTransactionListMixin,
+                              AbstractTransactionDownloadView):
 
     headings = [
         'Created At',
@@ -391,7 +392,7 @@ class TransactionDownloadView(SmartTransactionListMixin, AbstractTransactionDown
         for transaction in transactions:
             csv_writer.writerow([
                 transaction.created_at,
-                '{:.2f}'.format((-1 if transaction.is_debit(org) else 1) * 
+                '{:.2f}'.format((-1 if transaction.is_debit(org) else 1) *
                     Decimal(transaction.dest_amount) / 100),
                 transaction.dest_unit.encode('utf-8'),
                 transaction.descr.encode('utf-8'),
@@ -413,7 +414,8 @@ class AbstractTransferDownloadView(ProviderMixin, View):
         return Transaction.objects.by_organization(org, Transaction.FUNDS)
 
 
-class TransferDownloadView(SmartTransactionListMixin, AbstractTransferDownloadView):
+class TransferDownloadView(SmartTransactionListMixin,
+                           AbstractTransferDownloadView):
 
     headings = [
         'Created At',
@@ -432,7 +434,7 @@ class TransferDownloadView(SmartTransactionListMixin, AbstractTransferDownloadVi
         for transaction in transactions:
             csv_writer.writerow([
                 transaction.created_at,
-                '{:.2f}'.format((-1 if transaction.is_debit(org) else 1) * 
+                '{:.2f}'.format((-1 if transaction.is_debit(org) else 1) *
                     Decimal(transaction.dest_amount) / 100),
                 transaction.dest_unit.encode('utf-8'),
                 transaction.descr.encode('utf-8'),
