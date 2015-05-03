@@ -54,10 +54,7 @@ def is_debit(transaction, organization):
     it is either payable by the organization or the transaction
     moves from a Funds account to the organization's Expenses account.
     """
-    return ((transaction.dest_organization == organization           # customer
-             and transaction.dest_account == Transaction.EXPENSES)
-            or (transaction.orig_organization == organization        # provider
-             and transaction.orig_account == Transaction.FUNDS))
+    return transaction.is_debit(organization)
 
 
 @register.filter()

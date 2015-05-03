@@ -28,6 +28,7 @@ from django.conf.urls import patterns, url
 
 from saas.views.metrics import (BalancesDownloadView,
     CouponMetricsDownloadView, SubscriberPipelineDownloadView)
+from saas.views.billing import TransferDownloadView
 
 urlpatterns = patterns(
     'saas.views.metrics',
@@ -38,4 +39,6 @@ urlpatterns = patterns(
         name='saas_metrics_coupons_download'),
     url(r'^balances/',
         BalancesDownloadView.as_view(), name='saas_balances_download'),
+    url(r'^transfers',
+        TransferDownloadView.as_view(), name='saas_transfers_download'),
 )
