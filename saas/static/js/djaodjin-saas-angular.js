@@ -295,10 +295,10 @@ subscriptionControllers.controller('subscriptionListCtrl',
     ['$scope', '$http', '$timeout', 'Subscription', 'urls',
     function($scope, $http, $timeout, Subscription, urls) {
 
-    var defaultSortByField = 'organization';
+    var defaultSortByField = 'created_at';
     $scope.dir = {}
     $scope.totalItems = 0;
-    $scope.dir[defaultSortByField] = 'asc';
+    $scope.dir[defaultSortByField] = 'desc';
     $scope.params = {o: defaultSortByField, ot: $scope.dir[defaultSortByField]};
     $scope.subscriptions = Subscription.query($scope.params, function() {
         /* We cannot watch subscriptions.count otherwise things start
