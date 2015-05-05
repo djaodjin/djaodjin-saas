@@ -58,7 +58,7 @@ from saas.forms import (BankForm, CartPeriodsForm, CreditCardForm,
     RedeemCouponForm, WithdrawForm)
 from saas.mixins import ChargeMixin, OrganizationMixin, ProviderMixin
 from saas.models import (Organization, CartItem, Coupon, Plan, Transaction,
-    Subscription)
+    Subscription, get_current_provider)
 from saas.humanize import (as_money, describe_buy_periods, match_unlock,
     DESCRIBE_UNLOCK_NOW, DESCRIBE_UNLOCK_LATER)
 from saas.utils import product_url
@@ -109,11 +109,20 @@ class CardFormMixin(OrganizationMixin):
         """
         self.customer = self.get_organization()
         kwargs = super(CardFormMixin, self).get_initial()
+        provider = get_current_provider()
+        if self.customer.country:
+            country = self.customer.country
+        else:
+            country = provider.country
+        if self.customer.region:
+            region = self.customer.region
+        else:
+            region = provider.region
         kwargs.update({'card_name': self.customer.full_name,
                        'card_city': self.customer.locality,
                        'card_address_line1': self.customer.street_address,
-                       'country': self.customer.country,
-                       'region': self.customer.region,
+                       'country': country,
+                       'region': region,
                        'card_address_zip': self.customer.postal_code})
         return kwargs
 
