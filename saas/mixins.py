@@ -197,6 +197,10 @@ class ProviderMixin(OrganizationMixin):
                 return queryset.get()
         return get_current_provider()
 
+    @staticmethod
+    def get_provider():
+        return get_current_provider()
+
 
 class CouponMixin(ProviderMixin):
     """

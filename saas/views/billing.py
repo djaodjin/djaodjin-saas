@@ -1,4 +1,4 @@
-# Copyright (c) 2014, DjaoDjin inc.
+# Copyright (c) 2015, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -58,7 +58,7 @@ from saas.forms import (BankForm, CartPeriodsForm, CreditCardForm,
     RedeemCouponForm, WithdrawForm)
 from saas.mixins import ChargeMixin, OrganizationMixin, ProviderMixin
 from saas.models import (Organization, CartItem, Coupon, Plan, Transaction,
-    Subscription)
+    Subscription, get_current_provider)
 from saas.humanize import (as_money, describe_buy_periods, match_unlock,
     DESCRIBE_UNLOCK_NOW, DESCRIBE_UNLOCK_LATER)
 from saas.utils import product_url
@@ -109,11 +109,20 @@ class CardFormMixin(OrganizationMixin):
         """
         self.customer = self.get_organization()
         kwargs = super(CardFormMixin, self).get_initial()
+        provider = get_current_provider()
+        if self.customer.country:
+            country = self.customer.country
+        else:
+            country = provider.country
+        if self.customer.region:
+            region = self.customer.region
+        else:
+            region = provider.region
         kwargs.update({'card_name': self.customer.full_name,
                        'card_city': self.customer.locality,
                        'card_address_line1': self.customer.street_address,
-                       'country': self.customer.country,
-                       'region': self.customer.region,
+                       'country': country,
+                       'region': region,
                        'card_address_zip': self.customer.postal_code})
         return kwargs
 
@@ -372,7 +381,8 @@ class AbstractTransactionDownloadView(OrganizationMixin, View):
         return Transaction.objects.by_customer(org)
 
 
-class TransactionDownloadView(SmartTransactionListMixin, AbstractTransactionDownloadView):
+class TransactionDownloadView(SmartTransactionListMixin,
+                              AbstractTransactionDownloadView):
 
     headings = [
         'Created At',
@@ -391,7 +401,7 @@ class TransactionDownloadView(SmartTransactionListMixin, AbstractTransactionDown
         for transaction in transactions:
             csv_writer.writerow([
                 transaction.created_at,
-                '{:.2f}'.format((-1 if transaction.is_debit(org) else 1) * 
+                '{:.2f}'.format((-1 if transaction.is_debit(org) else 1) *
                     Decimal(transaction.dest_amount) / 100),
                 transaction.dest_unit.encode('utf-8'),
                 transaction.descr.encode('utf-8'),
@@ -413,7 +423,8 @@ class AbstractTransferDownloadView(ProviderMixin, View):
         return Transaction.objects.by_organization(org, Transaction.FUNDS)
 
 
-class TransferDownloadView(SmartTransactionListMixin, AbstractTransferDownloadView):
+class TransferDownloadView(SmartTransactionListMixin,
+                           AbstractTransferDownloadView):
 
     headings = [
         'Created At',
@@ -432,7 +443,7 @@ class TransferDownloadView(SmartTransactionListMixin, AbstractTransferDownloadVi
         for transaction in transactions:
             csv_writer.writerow([
                 transaction.created_at,
-                '{:.2f}'.format((-1 if transaction.is_debit(org) else 1) * 
+                '{:.2f}'.format((-1 if transaction.is_debit(org) else 1) *
                     Decimal(transaction.dest_amount) / 100),
                 transaction.dest_unit.encode('utf-8'),
                 transaction.descr.encode('utf-8'),

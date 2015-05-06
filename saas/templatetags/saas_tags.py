@@ -33,8 +33,7 @@ from django.utils.timezone import utc
 from saas import settings
 from saas.compat import User
 from saas.humanize import as_html_description
-from saas.models import (Organization, Subscription, Transaction,
-    get_current_provider)
+from saas.models import Organization, Subscription, get_current_provider
 from saas.decorators import pass_direct, _valid_manager
 from saas.utils import product_url as utils_product_url
 
@@ -97,10 +96,9 @@ def manages_subscriber_to(user, plan):
 @register.filter(needs_autoescape=False)
 @stringfilter
 def md(text): #pylint: disable=invalid-name
-    return mark_safe(markdown.markdown(text,
-        safe_mode='replace',
-        html_replacement_text='<em>RAW HTML NOT ALLOWED</em>',
-        enable_attributes=False))
+    # XXX safe_mode is deprecated. Should we use bleach? As shown in example:
+    # https://pythonhosted.org/Markdown/reference.html#markdown
+    return mark_safe(markdown.markdown(text, enable_attributes=False))
 
 
 @register.filter()

@@ -277,11 +277,9 @@ class Organization(models.Model):
         signals.bank_updated.send(self)
 
     def update_card(self, card_token, user):
-        PROCESSOR_BACKEND.create_or_update_card(self, card_token)
+        PROCESSOR_BACKEND.create_or_update_card(self, card_token, user)
         LOGGER.info('Updated card information for %s on processor (%s)',
                     self, self.processor_id)
-        signals.card_updated.send(sender=__name__, organization=self,
-            user=user)
 
     @method_decorator(transaction.atomic)
     def checkout(self, invoicables, user, token=None, remember_card=True):
@@ -663,9 +661,10 @@ class Charge(models.Model):
     @method_decorator(transaction.atomic)
     def payment_successful(self):
         """
-        When a charge through the payment processor is sucessful, a transaction
-        is created from client payable to processor assets. The amount of the
-        charge is then redistributed to the providers (minus processor fee).
+        When a charge through the payment processor is sucessful,
+        a ``Transaction`` records the charge from as a subscriber's expense
+        and a processor's income. The amount of the charge is then
+        redistributed to the providers (minus processor fee).
 
         Record the charge::
 
@@ -1541,7 +1540,7 @@ class TransactionManager(models.Manager):
         """
         Return transactions related to this organization, as a customer.
         """
-        return Transaction.objects.filter(
+        return self.filter(
             (Q(dest_organization=organization)
              & (Q(dest_account=Transaction.PAYABLE) # Only customer side
                 | Q(dest_account=Transaction.EXPENSES)))
