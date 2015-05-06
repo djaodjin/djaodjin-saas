@@ -1533,7 +1533,8 @@ class TransactionManager(models.Manager):
             ((Q(orig_organization=organization)
               & Q(orig_account=transaction_type))
             | (Q(dest_organization=organization)
-              & Q(dest_account=transaction_type))))
+              & Q(dest_account=transaction_type)))) \
+            .order_by('-created_at')
 
 
     def by_customer(self, organization):
@@ -1545,7 +1546,8 @@ class TransactionManager(models.Manager):
              & (Q(dest_account=Transaction.PAYABLE) # Only customer side
                 | Q(dest_account=Transaction.EXPENSES)))
             |(Q(orig_organization=organization)
-              & Q(orig_account=Transaction.REFUNDED)))
+              & Q(orig_account=Transaction.REFUNDED))) \
+            .order_by('-created_at')
 
 
 class Transaction(models.Model):
