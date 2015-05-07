@@ -1,14 +1,15 @@
 function showMessages(messages, style) {
-    var messageBlock = '<div class="alert alert-block';
+    "use strict";
+    var messageBlock = "<div class=\"alert alert-block";
     if( style ) {
-        messageBlock += ' alert-' + style;
+        messageBlock += " alert-" + style;
     }
-    messageBlock += '"><button type="button" class="close" data-dismiss="alert">&times;</button>';
+    messageBlock += "\"><button type=\"button\" class=\"close\" data-dismiss=\"alert\">&times;</button>";
     for( var i = 0; i < messages.length; ++i ) {
-        messageBlock += '<p>' + messages[i] + '</p>';
+        messageBlock += "<p>" + messages[i] + "</p>";
     }
-    messageBlock += '</div>';
-    $("#messages").removeClass('hidden');
+    messageBlock += "</div>";
+    $("#messages").removeClass("hidden");
     $("#messages-content").append(messageBlock);
     $("html, body").animate({
         // scrollTop: $("#messages").offset().top - 50
@@ -19,6 +20,7 @@ function showMessages(messages, style) {
 
 
 function Plan(id, urls) {
+    "use strict";
     this.id = id;
     this.urls = urls;
 }
@@ -28,9 +30,10 @@ function Plan(id, urls) {
  */
 Plan.prototype = {
     create: function(successFunction) {
+        "use strict";
         var self = this;
         $.ajax({ type: "POST",
-                 url: this.urls.saas_api_plan + '/',
+                 url: self.urls.saas_api_plan + "/",
                  data: JSON.stringify({
                      "title": "New Plan",
                      "description": "Write the description of the plan here.",
@@ -49,47 +52,51 @@ Plan.prototype = {
 
     /** Activate a ``Plan`` by executing an AJAX request to the service.
      */
-    activate: function(is_active, successFunction) {
+    activate: function(isActive, successFunction) {
+        "use strict";
         var self = this;
         $.ajax({ type: "PATCH",
-                 url: this.urls.saas_api_plan + '/' + self.id + '/activate/',
-                 data: JSON.stringify({ "is_active": is_active }),
+                 url: this.urls.saas_api_plan + "/" + self.id + "/activate/",
+                 data: JSON.stringify({ "is_active": isActive }),
                  datatype: "json",
                  contentType: "application/json; charset=utf-8",
-                 success: successFunction,
+                 success: successFunction
                });
     },
 
     /** Update fields in a ``Plan`` by executing an AJAX request to the service.
      */
     update: function(data, successFunction) {
+        "use strict";
         var self = this;
         $.ajax({ type: "PATCH",
-                 url: this.urls.saas_api_plan + '/' + self.id + '/',
+                 url: this.urls.saas_api_plan + "/" + self.id + "/",
                  async: false,
                  data: JSON.stringify(data),
                  datatype: "json",
                  contentType: "application/json; charset=utf-8",
-                 success: successFunction,
+                 success: successFunction
                });
     },
 
     destroy: function(successFunction) {
+        "use strict";
         var self = this;
         $.ajax({ type: "DELETE",
-                 url: this.urls.saas_api_plan + '/' + self.id + '/',
+                 url: this.urls.saas_api_plan + "/" + self.id + "/",
                  async: false,
-                 success: successFunction,
+                 success: successFunction
                });
     },
 
     get: function(successFunction) {
+        "use strict";
         var self = this;
         $.ajax({ type: "GET",
-                 url: this.urls.saas_api_plan + '/' + self.id + '/',
-                 success: successFunction,
+                 url: this.urls.saas_api_plan + "/" + self.id + "/",
+                 success: successFunction
                });
-    },
+    }
 };
 
 
@@ -97,25 +104,26 @@ Plan.prototype = {
     by executing an AJAX request to the service.
  */
 function toggleActivatePlan(button, urls) {
-  var planSlug = button.attr('data-plan');
+  "use strict";
+  var planSlug = button.attr("data-plan");
   var thisPlan = new Plan(planSlug, urls);
-  var is_active = !button.hasClass('activated');
-  thisPlan.activate(!button.hasClass('activated'), function(data) {
-      if( data['is_active'] ) {
-          button.addClass('activated');
-          button.text('Deactivate');
+  thisPlan.activate(!button.hasClass("activated"), function(data) {
+      if( data.is_active ) {
+          button.addClass("activated");
+          button.text("Deactivate");
       } else {
-          button.removeClass('activated');
-          button.text('Activate');
+          button.removeClass("activated");
+          button.text("Activate");
       }
   });
 }
 
 
 function CartItem(options) {
+    "use strict";
     this.item = {};
-    var restricted = ['plan', 'nb_periods', 'first_name', 'last_name', 'email'];
-    for(var i=0; i<restricted.length; ++i ){
+    var restricted = ["plan", "nb_periods", "first_name", "last_name", "email"];
+    for(var i = 0; i < restricted.length; ++i ){
         var key = restricted[i];
         if( key in options ) {
             this.item[key] = options[key];
@@ -127,6 +135,7 @@ function CartItem(options) {
 
 CartItem.prototype = {
     add: function(successFunc, errorFunc) {
+        "use strict";
         var self = this;
         $.ajax({ type: "POST", // XXX Might still prefer to do PUT on list.
                  url: self.urls.saas_api_cart,
@@ -134,22 +143,24 @@ CartItem.prototype = {
                  datatype: "json",
                  contentType: "application/json; charset=utf-8",
                  success: successFunc,
-                 error: errorFunc,
+                 error: errorFunc
                });
     },
 
     remove: function(successFunction) {
+        "use strict";
         var self = this;
         $.ajax({ type: "DELETE",
-                 url: self.urls.saas_api_cart + self.item.plan + '/',
-                 success: successFunction,
+                 url: self.urls.saas_api_cart + self.item.plan + "/",
+                 success: successFunction
                });
-    },
+    }
 };
 
 
-function Charge(charge_id, urls) {
-    this.charge_id = charge_id;
+function Charge(chargeId, urls) {
+    "use strict";
+    this.chargeId = chargeId;
     this.urls = urls;
 }
 
@@ -157,14 +168,14 @@ function Charge(charge_id, urls) {
 Charge.prototype = {
 
     emailReceipt: function() {
+        "use strict";
         var self = this;
-        event.preventDefault();
         $.ajax({ type: "POST",
                  url: self.urls.saas_api_email_charge_receipt,
                  datatype: "json",
                  contentType: "application/json; charset=utf-8",
                  success: function(data) {
-                     showMessages(["A copy of the receipt was sent to " + data['email'] + "."], "info");
+                     showMessages(["A copy of the receipt was sent to " + data.email + "."], "info");
                  },
                  error: function(data) {
                      showMessages(["An error occurred while emailing a copy of the receipt (" + data.status + " " + data.statusText + "). Please accept our apologies."], "danger");
@@ -173,13 +184,14 @@ Charge.prototype = {
     },
 
     refund: function(event, linenum, refundedAmount, refundButton) {
+        "use strict";
         var self = this;
         event.preventDefault();
         refundButton.attr("disabled", "disabled");
         $.ajax({ type: "POST",
                  url: self.urls.saas_api_charge_refund,
                  data: JSON.stringify({"lines":
-                     [{"num": linenum, "refunded_amount":refundedAmount}]}),
+                     [{"num": linenum, "refunded_amount": refundedAmount}]}),
                  datatype: "json",
                  contentType: "application/json; charset=utf-8",
                  success: function(data) {
@@ -204,19 +216,20 @@ Charge.prototype = {
     },
 
     waitForCompletion: function() {
+        "use strict";
         var self = this;
         $.ajax({ type: "GET",
                  url: self.urls.saas_api_charge,
                  datatype: "json",
                  contentType: "application/json; charset=utf-8",
                  success: function(data) {
-                     if( data['state'] == 'created' ) {
+                     if( data.state == "created" ) {
                          setTimeout(function() { self.waitForCompletion(); }, 1000);
                      } else {
-                         $('.created').addClass('hidden');
-                         $('.' + data['state']).removeClass('hidden');
+                         $(".created").addClass("hidden");
+                         $("." + data.state).removeClass("hidden");
                      }
                  }
                });
-    },
-}
+    }
+};
