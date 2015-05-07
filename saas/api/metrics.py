@@ -22,13 +22,17 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+from django.core.serializers.json import DjangoJSONEncoder
 from django.db.models import Q
+from django.utils.datastructures import SortedDict
 from django.utils.dateparse import parse_datetime
+import json
 from rest_framework.views import APIView
 from rest_framework.generics import GenericAPIView
 from rest_framework.response import Response
 
 from saas import settings
+from saas.managers.metrics import aggregate_monthly_transactions
 from saas.mixins import ProviderMixin
 from saas.models import Transaction, Organization
 from saas.utils import datetime_or_now
@@ -58,6 +62,29 @@ class BalancesAPIView(ProviderMixin, APIView):
                 'values': monthly_balances(organization, key, ends_at)
             }]
         return Response(result)
+
+
+class RevenueAPIView(ProviderMixin, APIView):
+    """
+    Produce revenue stats
+    """
+    def get(self, request, *args, **kwargs):
+        reverse = True
+        account_title = 'Payments'
+        account = Transaction.FUNDS
+        account_table, customer_table, customer_extra = \
+            aggregate_monthly_transactions(self.get_organization(), account,
+                account_title=account_title,
+                from_date=request.GET.get('ends_at', None),
+                reverse=reverse)
+        data = SortedDict()
+        data['amount'] = {"title": "Amount",
+                          "unit": "$", "table": account_table}
+        data['customers'] = {"title": "Customers",
+                             "table": customer_table, "extra": customer_extra}
+        return Response(
+            {"title": "Revenue Metrics",
+            "data": data})
 
 
 class OrganizationListAPIView(ProviderMixin, GenericAPIView):

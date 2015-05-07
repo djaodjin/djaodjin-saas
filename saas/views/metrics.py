@@ -153,7 +153,6 @@ class RevenueMetricsView(MetricsMixin, TemplateView):
     template_name = 'saas/revenue_metrics.html'
 
     def get_context_data(self, **kwargs):
-        print 'RevenueMetricsView'
         context = super(RevenueMetricsView, self).get_context_data(**kwargs)
         reverse = True
         account_title = 'Payments'

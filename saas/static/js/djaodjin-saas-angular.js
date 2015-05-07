@@ -651,6 +651,24 @@ revenueControllers.controller('revenueCtrl',
 
     $scope.ends_at = new Date();
 
+    $http.get(urls.saas_api_revenue).success(
+        function(data) {
+            for(var tableId in data.data) {
+                if(! data.data.hasOwnProperty(tableId)) {
+                    continue;
+                }
+
+                var tableData = data.data[tableId];
+                debugger;
+                updateChart(
+                    '#' + tableId + ' svg',
+                    tableData['table'],
+                    tableData['unit'] && 0.01
+                );
+            };
+        }
+    );
+
     // calendar for start_at and ends_at
     $scope.open = function($event) {
         $event.preventDefault();
