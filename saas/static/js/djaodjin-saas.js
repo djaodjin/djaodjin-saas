@@ -1,7 +1,7 @@
 /* Functionality related to the SaaS API.
  */
 (function ($) {
-
+    "use strict";
     /* invoice */
     function Invoice(el, options){
         this.element = $(el);
@@ -34,8 +34,8 @@
                 seatLastName.val('');
                 seatEmail.val('');
                 item.add(function(data, textStatus, jqXHR) {
-                    var msg = data.first_name + " " + data.last_name
-                        + " (" + data.email + ")";
+                    var msg = data.first_name + " " + data.last_name +
+                    " (" + data.email + ")";
                     var newLine = prevLine;
                     if( jqXHR.status == 201 ) {
                         newLine = prevLine.clone();
@@ -55,7 +55,7 @@
                     for( var field in result.responseJSON ) {
                         msgs = msgs.concat(result.responseJSON[field]);
                     }
-                    if( !(msgs.length > 0) ) {
+                    if( (msgs.length <= 0) ) {
                         msgs = ['ERROR ' + result.status + ': ' + result.statusText];
                     }
                     showMessages(msgs, 'danger');
@@ -101,7 +101,7 @@
                 if( $("#card-use").is(':visible') ) $("#card-use").slideUp();
             }
         },
-    }
+    };
 
     $.fn.invoice = function(options) {
         var opts = $.extend( {}, $.fn.invoice.defaults, options );
@@ -139,20 +139,20 @@
                    contentType: "application/json; charset=utf-8",
                  }).done(function(data) {
                      // XXX does not show messages since we reload...
-                     showMessages([data['details']], "success");
+                     showMessages([data.details], "success");
                      location.reload();
                  }).fail(function(data) {
                      if('details' in data.responseJSON) {
-                         showMessages(
-                             [data.responseJSON['details']], "danger");
+                          showMessages(
+                            [data.responseJSON.details], "danger");
                      } else {
-                         showMessages(["Error " + data.status + ": "
-+ data.responseText + ". Please accept our apologies."], "danger");
+                          showMessages(["Error " + data.status + ": " + 
+                            data.responseText + ". Please accept our apologies."], "danger");
                      }
                  });
           return false;
       }
-   }
+   };
 
    $.fn.redeem = function(options) {
       var opts = $.extend( {}, $.fn.redeem.defaults, options );

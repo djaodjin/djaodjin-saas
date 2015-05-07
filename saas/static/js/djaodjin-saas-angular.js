@@ -31,6 +31,7 @@ var transactionServices = angular.module('transactionServices', ['ngResource']);
 
 couponServices.factory('Coupon', ['$resource', 'urls',
   function($resource, urls){
+    "use strict";
     return $resource(
         urls.saas_api_coupon_url + '/:coupon', {'coupon':'@code'},
             {query: {method:'GET'},
@@ -40,18 +41,21 @@ couponServices.factory('Coupon', ['$resource', 'urls',
 
 contributorServices.factory('Contributor', ['$resource', 'urls',
   function($resource, urls){
+    "use strict";
     return $resource(
         urls.saas_api_contributor_url + '/:user', {'user':'@user'});
   }]);
 
 managerServices.factory('Manager', ['$resource', 'urls',
   function($resource, urls){
+    "use strict";
     return $resource(
         urls.saas_api_manager_url + '/:user', {'user':'@user'});
   }]);
 
 subscriptionServices.factory('Subscription', ['$resource', 'urls',
   function($resource, urls){
+    "use strict";
     return $resource(
         urls.saas_api_subscription_url + '/:plan', {plan:'@plan'},
             {query: {method:'GET'}});
@@ -59,6 +63,7 @@ subscriptionServices.factory('Subscription', ['$resource', 'urls',
 
 transactionServices.factory('Transaction', ['$resource', 'urls',
   function($resource, urls){
+    "use strict";
     return $resource(
         urls.saas_api_transaction_url + '/:id', {id:'@id'},
             {query: {method:'GET'}});
@@ -79,10 +84,11 @@ var metricControllers = angular.module('metricControllers', []);
 couponControllers.controller('CouponListCtrl',
     ['$scope', '$http', '$timeout', 'Coupon', 'urls',
      function($scope, $http, $timeout, Coupon, urls) {
+    "use strict";
     $scope.urls = urls;
     $scope.totalItems = 0;
     $scope.dir = {code: 'asc'};
-    $scope.params = {o: 'code', ot: $scope.dir['code']};
+    $scope.params = {o: 'code', ot: $scope.dir.code};
     $scope.coupons = Coupon.query($scope.params, function() {
         /* We cannot watch coupons.count otherwise things start
            to snowball. We must update totalItems only when it truly changed.*/
@@ -110,9 +116,9 @@ couponControllers.controller('CouponListCtrl',
 
     $scope.filterList = function(regex) {
         if( regex ) {
-            $scope.params['q'] = regex;
+            $scope.params.q = regex;
         } else {
-            delete $scope.params['q'];
+            delete $scope.params.q;
         }
         $scope.coupons = Coupon.query($scope.params, function() {
             if( $scope.coupons.count != $scope.totalItems ) {
@@ -130,9 +136,9 @@ couponControllers.controller('CouponListCtrl',
 
     $scope.pageChanged = function() {
         if( $scope.currentPage > 1 ) {
-            $scope.params['page'] = $scope.currentPage;
+            $scope.params.page = $scope.currentPage;
         } else {
-            delete $scope.params['page'];
+            delete $scope.params.page;
         }
         $scope.coupons = Coupon.query($scope.params, function() {
             if( $scope.coupons.count != $scope.totalItems ) {
@@ -169,21 +175,21 @@ couponControllers.controller('CouponListCtrl',
             $scope.dir = {};
             $scope.dir[fieldName] = 'asc';
         }
-        $scope.params['o'] = fieldName;
-        $scope.params['ot'] = $scope.dir[fieldName];
+        $scope.params.o = fieldName;
+        $scope.params.ot = $scope.dir[fieldName];
         $scope.currentPage = 1;
         // pageChanged only called on click?
-        delete $scope.params['page'];
+        delete $scope.params.page;
         $scope.coupons = Coupon.query($scope.params, function() {
             if( $scope.coupons.count != $scope.totalItems ) {
                 $scope.totalItems = $scope.coupons.count;
             }
         });
-    }
+    };
 
     $scope.$watch('coupons', function(newVal, oldVal, scope) {
-        if( newVal.hasOwnProperty('results')
-            && oldVal.hasOwnProperty('results') ) {
+        if( newVal.hasOwnProperty('results') &&
+            oldVal.hasOwnProperty('results') ) {
             var length = ( oldVal.results.length < newVal.results.length ) ?
                 oldVal.results.length : newVal.results.length;
             for( var i = 0; i < length; ++i ) {
@@ -201,7 +207,7 @@ couponControllers.controller('CouponListCtrl',
 
     $scope.editDescription = function (idx){
         $scope.edit_description = Array.apply(
-            null, Array($scope.coupons.results.length)).map(function() {
+            null, new Array($scope.coupons.results.length)).map(function() {
             return false;
         });
         $scope.edit_description[idx] = true;
@@ -221,7 +227,7 @@ couponControllers.controller('CouponListCtrl',
 contributorControllers.controller('contributorListCtrl',
     ['$scope', '$http', 'Contributor', 'urls',
     function($scope, $http, Contributor, urls) {
-
+    "use strict";
     $scope.users = Contributor.query();
 
     $scope.user = null;
@@ -257,7 +263,7 @@ contributorControllers.controller('contributorListCtrl',
 managerControllers.controller('managerListCtrl',
     ['$scope', '$http', 'Manager', 'urls',
     function($scope, $http, Manager, urls) {
-
+    "use strict";
     $scope.users = Manager.query();
 
     $scope.user = null;
@@ -294,9 +300,9 @@ managerControllers.controller('managerListCtrl',
 subscriptionControllers.controller('subscriptionListCtrl',
     ['$scope', '$http', '$timeout', 'Subscription', 'urls',
     function($scope, $http, $timeout, Subscription, urls) {
-
+    "use strict";
     var defaultSortByField = 'created_at';
-    $scope.dir = {}
+    $scope.dir = {};
     $scope.totalItems = 0;
     $scope.dir[defaultSortByField] = 'desc';
     $scope.params = {o: defaultSortByField, ot: $scope.dir[defaultSortByField]};
@@ -326,7 +332,7 @@ subscriptionControllers.controller('subscriptionListCtrl',
 
     $scope.editDescription = function (event, entry) {
         var input = angular.element(event.target).parent().find('input');
-        entry['editDescription'] = true;
+        entry.editDescription = true;
         $timeout(function() {
             input.focus();
         }, 100);
@@ -334,9 +340,9 @@ subscriptionControllers.controller('subscriptionListCtrl',
 
     $scope.saveDescription = function(event, entry){
         if (event.which === 13 || event.type == 'blur' ){
-            delete entry['editDescription'];
-            $http.patch(urls.saas_api + entry.organization.slug
-                + "/subscriptions/" + entry.plan.slug,
+            delete entry.editDescription;
+            $http.patch(urls.saas_api + entry.organization.slug +
+                "/subscriptions/" + entry.plan.slug,
                 {description: entry.description}).then(
                 function(data){
                     // XXX message expiration date was updated.
@@ -346,9 +352,9 @@ subscriptionControllers.controller('subscriptionListCtrl',
 
     $scope.filterList = function(regex) {
         if( regex ) {
-            $scope.params['q'] = regex;
+            $scope.params.q = regex;
         } else {
-            delete $scope.params['q'];
+            delete $scope.params.q;
         }
         $scope.subscriptions = Subscription.query($scope.params, function() {
             if( $scope.subscriptions.count != $scope.totalItems ) {
@@ -359,9 +365,9 @@ subscriptionControllers.controller('subscriptionListCtrl',
 
     $scope.pageChanged = function() {
         if( $scope.currentPage > 1 ) {
-            $scope.params['page'] = $scope.currentPage;
+            $scope.params.page = $scope.currentPage;
         } else {
-            delete $scope.params['page'];
+            delete $scope.params.page;
         }
         $scope.subscriptions = Subscription.query($scope.params, function () {
             if( $scope.subscriptions.count != $scope.totalItems ) {
@@ -378,17 +384,17 @@ subscriptionControllers.controller('subscriptionListCtrl',
             $scope.dir = {};
             $scope.dir[fieldName] = 'asc';
         }
-        $scope.params['o'] = fieldName;
-        $scope.params['ot'] = $scope.dir[fieldName];
+        $scope.params.o = fieldName;
+        $scope.params.ot = $scope.dir[fieldName];
         $scope.currentPage = 1;
         // pageChanged only called on click?
-        delete $scope.params['page'];
+        delete $scope.paramspage;
         $scope.subscriptions = Subscription.query($scope.params, function () {
             if( $scope.subscriptions.count != $scope.totalItems ) {
                 $scope.totalItems = $scope.subscriptions.count;
             }
         });
-    }
+    };
 
     $scope.unsubscribe = function(organization, plan) {
         if( confirm("Are you sure?") ) {
@@ -403,15 +409,15 @@ subscriptionControllers.controller('subscriptionListCtrl',
             });
             });
         }
-    }
+    };
 }]);
 
 
 subscriberControllers.controller('subscriberCtrl',
     ['$scope', '$http', 'urls',
     function($scope, $http, urls) {
-
-    $scope.opened = { 'start_at': false, 'ends_at': false }
+    "use strict";
+    $scope.opened = { 'start_at': false, 'ends_at': false };
     $scope.start_at = new Date();
     $scope.ends_at = new Date();
     $scope.registered_loading = false;
@@ -467,7 +473,7 @@ subscriberControllers.controller('subscriberCtrl',
         if( typeof dataset === "undefined" || dataset == 'churned' ) {
             params = {start_at: $scope.start_at, ends_at: $scope.ends_at};
             if( $scope.currentPage.churned > 1 ) {
-                params['page'] = $scope.currentPage.churned;
+                params.page = $scope.currentPage.churned;
             }
             $http.get(urls.saas_api_churned, {
                 params: params
@@ -483,7 +489,7 @@ subscriberControllers.controller('subscriberCtrl',
         if( typeof dataset === "undefined" || dataset == 'registered' ) {
             params = {start_at: $scope.start_at, ends_at: $scope.ends_at};
             if( $scope.currentPage.registered > 1 ) {
-                params['page'] = $scope.currentPage.registered;
+                params.page = $scope.currentPage.registered;
             }
             $http.get(urls.saas_api_registered, {
                 params: params
@@ -499,7 +505,7 @@ subscriberControllers.controller('subscriberCtrl',
         if( typeof dataset === "undefined" || dataset == 'subscribed' ) {
             params = {start_at: $scope.start_at, ends_at: $scope.ends_at};
             if( $scope.currentPage.subscribed > 1 ) {
-                params['page'] = $scope.currentPage.subscribed;
+                params.page = $scope.currentPage.subscribed;
             }
             $http.get(urls.saas_api_subscribed, {
                 params: params
@@ -512,7 +518,7 @@ subscriberControllers.controller('subscriberCtrl',
                 }
             });
         }
-    }
+    };
 
     $scope.endsSoon = function(organization) {
         var cutOff = new Date($scope.ends_at);
@@ -525,7 +531,7 @@ subscriberControllers.controller('subscriberCtrl',
             }
         }
         return "";
-    }
+    };
 
     $scope.relativeDate = function(organization, future) {
         var cutOff = new Date($scope.ends_at);
@@ -534,8 +540,8 @@ subscriberControllers.controller('subscriberCtrl',
             var sub = organization.subscriptions[i];
             var subEndsAt = new Date(sub.ends_at);
             if( future ) {
-                if( dateTime < cutOff
-                    || (subEndsAt > cutOff && subEndsAt < dateTime) ) {
+                if( dateTime < cutOff ||
+                    (subEndsAt > cutOff && subEndsAt < dateTime) ) {
                     dateTime = subEndsAt;
                 }
             }
@@ -545,7 +551,7 @@ subscriberControllers.controller('subscriberCtrl',
         } else {
             return 'for ' + moment.duration(dateTime - cutOff).humanize();
         }
-    }
+    };
 
 }]);
 
@@ -553,6 +559,7 @@ subscriberControllers.controller('subscriberCtrl',
 transactionControllers.controller('transactionListCtrl',
     ['$scope', '$http', '$timeout', 'Transaction',
      function($scope, $http, $timeout, Transaction) {
+    "use strict";
     var defaultSortByField = 'date';
     $scope.dir = {};
     $scope.totalItems = 0;
@@ -585,9 +592,9 @@ transactionControllers.controller('transactionListCtrl',
 
     $scope.filterList = function(regex) {
         if( regex ) {
-            $scope.params['q'] = regex;
+            $scope.params.q = regex;
         } else {
-            delete $scope.params['q'];
+            delete $scope.params.q;
         }
         $scope.transactions = Transaction.query($scope.params, function() {
             if( $scope.transactions.count != $scope.totalItems ) {
@@ -598,9 +605,9 @@ transactionControllers.controller('transactionListCtrl',
 
     $scope.pageChanged = function() {
         if( $scope.currentPage > 1 ) {
-            $scope.params['page'] = $scope.currentPage;
+            $scope.params.page = $scope.currentPage;
         } else {
-            delete $scope.params['page'];
+            delete $scope.params.page;
         }
         $scope.transactions = Transaction.query($scope.params, function() {
             if( $scope.transactions.count != $scope.totalItems ) {
@@ -617,17 +624,17 @@ transactionControllers.controller('transactionListCtrl',
             $scope.dir = {};
             $scope.dir[fieldName] = 'asc';
         }
-        $scope.params['o'] = fieldName;
-        $scope.params['ot'] = $scope.dir[fieldName];
+        $scope.params.o = fieldName;
+        $scope.params.ot = $scope.dir[fieldName];
         $scope.currentPage = 1;
         // pageChanged only called on click?
-        delete $scope.params['page'];
+        delete $scope.params.page;
         $scope.transactions = Transaction.query($scope.params, function() {
             if( $scope.transactions.count != $scope.totalItems ) {
                 $scope.totalItems = $scope.transactions.count;
             }
         });
-    }
+    };
 
 }]);
 
@@ -635,7 +642,7 @@ transactionControllers.controller('transactionListCtrl',
 metricControllers.controller('metricCtrl',
     ['$scope', '$http', 'urls',
      function($scope, $http, urls) {
-
+    "use strict";
     $scope.balances = [];
     $http.get(urls.saas_api_metrics_balance).success(
         function(data) {

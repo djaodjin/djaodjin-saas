@@ -1,4 +1,5 @@
 (function ($) {
+  "use strict";
 
    function Region(el, options){
       this.element = $(el);
@@ -23,8 +24,8 @@
           var value = this.element.val();
           var regionSel = '';
           if( country in this._regions ) {
-              regionSel = '<select id="' + id
-                  + '" class="form-control" name="' + name + '">';
+              regionSel = '<select id="' + id + 
+              '" class="form-control" name="' + name + '">';
               var localRegions = this._regions[country];
               for(var key in localRegions ) {
                   regionSel += '<option value="' + key + '"';
@@ -35,9 +36,9 @@
               }
               regionSel += '</select>';
           } else {
-              regionSel = '<input id="' + id
-                  + '" class="form-control" name="' + name
-                  + '" type="text" value="' + value + '">'
+              regionSel = '<input id="' + id + 
+                '" class="form-control" name="' + name + 
+                '" type="text" value="' + value + '">';
           }
           regionSel = $(regionSel);
           this.element.replaceWith(regionSel);
@@ -124,7 +125,7 @@
     'WY': 'Wyoming'},
       },
 
-   }
+   };
 
    $.fn.region = function(options) {
       var opts = $.extend( {}, $.fn.region.defaults, options );
