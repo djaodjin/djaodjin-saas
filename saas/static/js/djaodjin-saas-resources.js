@@ -43,9 +43,9 @@ Plan.prototype = {
                  contentType: "application/json; charset=utf-8",
                  success: successFunction,
                  error: function(data) {
-                     showMessages(["An error occurred while creating the plan ("
-                                   + data.status + " " + data.statusText
-                                   + "). Please accept our apologies."], "danger");
+                     showMessages(["An error occurred while creating the plan (" +
+                                   data.status + " " + data.statusText +
+                                   "). Please accept our apologies."], "danger");
                  }
                });
     },
@@ -208,8 +208,8 @@ Charge.prototype = {
                          message = data.responseJSON.detail;
                      }
                      showMessages([
-"An error occurred while refunding the charge (" + data.status + " - "
-+ message + "). Please accept our apologies."], "danger");
+                        "An error occurred while refunding the charge (" + data.status + " - " + 
+                        message + "). Please accept our apologies."], "danger");
                      refundButton.removeAttr("disabled");
                  }
                });
