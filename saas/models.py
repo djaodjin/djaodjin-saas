@@ -1636,7 +1636,9 @@ def get_current_provider():
     """
     if settings.PROVIDER_CALLABLE:
         from saas.compat import import_string
-        return import_string(settings.PROVIDER_CALLABLE)()
+        provider_slug = str(import_string(settings.PROVIDER_CALLABLE)())
+        LOGGER.warning("saas: get_current_provider('%s')", provider_slug)
+        return Organization.objects.get(slug=provider_slug)
     return Organization.objects.get(pk=settings.PROVIDER_ID)
 
 
