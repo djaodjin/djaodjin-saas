@@ -1048,6 +1048,8 @@ class Plan(models.Model):
         choices=INTERVAL_CHOICES, default=YEARLY)
     unlock_event = models.CharField(max_length=128, null=True, blank=True,
         help_text=_('Payment required to access full service'))
+    advance_discount = models.PositiveIntegerField(default=0,
+        help_text=_('incr discount for payment of multiple periods (in %%).'))
     # end game
     length = models.PositiveSmallIntegerField(null=True, blank=True,
         help_text=_('Number of intervals the plan before the plan ends.'))
@@ -1288,7 +1290,7 @@ class Subscription(models.Model):
 
     def create_order(self, nb_periods, prorated_amount=0,
         created_at=None, descr=None, discount_percent=0,
-        discount_descr=None):
+        descr_suffix=None):
         #pylint: disable=too-many-arguments
         """
         Each time a subscriber places an order through
@@ -1312,10 +1314,8 @@ class Subscription(models.Model):
                 (prorated_amount + (self.plan.period_amount * nb_periods))
                 * (100 - discount_percent) / 100)
             ends_at = self.plan.end_of_period(self.ends_at, nb_periods)
-            descr = describe_buy_periods(self.plan, ends_at, nb_periods)
-            if discount_percent:
-                descr += ' - a %d%% discount (code: %s)' % (
-                    discount_percent, discount_descr)
+            descr = describe_buy_periods(self.plan, ends_at, nb_periods,
+                discount_percent=discount_percent, descr_suffix=descr_suffix)
         else:
             # If we already have a description, all bets are off on
             # what the amount represents (see unlock_event).
@@ -1637,7 +1637,7 @@ def get_current_provider():
     if settings.PROVIDER_CALLABLE:
         from saas.compat import import_string
         provider_slug = str(import_string(settings.PROVIDER_CALLABLE)())
-        LOGGER.warning("saas: get_current_provider('%s')", provider_slug)
+        LOGGER.debug("saas: get_current_provider('%s')", provider_slug)
         return Organization.objects.get(slug=provider_slug)
     return Organization.objects.get(pk=settings.PROVIDER_ID)
 

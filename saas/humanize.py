@@ -65,11 +65,17 @@ def as_money(value, currency='usd'):
     # XXX return locale.currency(value, grouping=True)
 
 
-def describe_buy_periods(plan, ends_at, nb_periods):
-    return (DESCRIBE_BUY_PERIODS %
-            {'plan': plan,
-             'ends_at': datetime.datetime.strftime(ends_at, '%Y/%m/%d'),
-             'humanized_periods': plan.humanize_period(nb_periods)})
+def describe_buy_periods(plan, ends_at, nb_periods,
+    discount_percent=0, descr_suffix=None):
+    descr = (DESCRIBE_BUY_PERIODS %
+        {'plan': plan,
+         'ends_at': datetime.datetime.strftime(ends_at, '%Y/%m/%d'),
+         'humanized_periods': plan.humanize_period(nb_periods)})
+    if discount_percent:
+        descr += ' - a %d%% discount' % discount_percent
+    if descr_suffix:
+        descr += ' %s' % descr_suffix
+    return descr
 
 
 def match_unlock(descr):
