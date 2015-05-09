@@ -498,7 +498,7 @@ class CartBaseView(InvoicablesFormMixin, FormView):
 
     @staticmethod
     def get_invoicable_options(subscription,
-                              created_at=None, prorate_to=None, coupon=None):
+        created_at=None, prorate_to=None, coupon=None):
         """
         Return a set of lines that must charged Today and a set of choices
         based on current subscriptions that the user might be willing
@@ -517,10 +517,10 @@ class CartBaseView(InvoicablesFormMixin, FormView):
             prorated_amount = plan.prorate_period(created_at, prorate_to)
 
         discount_percent = 0
-        discount_descr = None
+        descr_suffix = None
         if coupon:
             discount_percent = coupon.percent
-            discount_descr = coupon.code
+            descr_suffix = '(code: %s)' % coupon.code
 
         if plan.period_amount == 0:
             # We are having a freemium business models, no discounts.
@@ -533,38 +533,29 @@ class CartBaseView(InvoicablesFormMixin, FormView):
                created_at, DESCRIBE_UNLOCK_NOW % {
                         'plan': plan, 'unlock_event': plan.unlock_event},
                discount_percent=discount_percent,
-               discount_descr=discount_descr)]
+               descr_suffix=descr_suffix)]
             option_items += [subscription.create_order(1, 0,
                created_at, DESCRIBE_UNLOCK_LATER % {
                         'amount': as_money(plan.period_amount, plan.unit),
                         'plan': plan, 'unlock_event': plan.unlock_event})]
 
-        elif plan.interval == Plan.MONTHLY:
-            # Give a change for discount when paying periods in advance
-            for nb_periods in [1, 3, 6, 12]:
-                option_items += [subscription.create_order(
-                    nb_periods, prorated_amount, created_at,
-                    discount_percent=discount_percent,
-                    discount_descr=discount_descr)]
-                discount_percent += 10
-                if discount_percent >= 100:
-                    discount_percent = 100
-
-        elif plan.interval in (Plan.YEARLY, Plan.DAILY, Plan.WEEKLY,
-                Plan.HOURLY, Plan.QUATERLY):
-            # Give a change for discount when paying periods in advance
-            for nb_periods in [1]: # XXX disabled discount until configurable.
-                option_items += [subscription.create_order(
-                    nb_periods, prorated_amount, created_at,
-                    discount_percent=discount_percent,
-                    discount_descr=discount_descr)]
-                discount_percent += 10
-                if discount_percent >= 100:
-                    discount_percent = 100
-
         else:
-            raise IntegrityError(#pylint: disable=nonstandard-exception
-                "Cannot use interval specified for plan '%s'" % plan)
+            natural_periods = [1]
+            if plan.advance_discount > 0:
+                # Give a chance for discount when paying periods in advance
+                if plan.interval == Plan.MONTHLY:
+                    natural_periods = [1, 3, 6, 12]
+                elif plan.interval == Plan.YEARLY:
+                    natural_periods = [1, 2, 3]
+
+            for nb_periods in natural_periods:
+                option_items += [subscription.create_order(
+                    nb_periods, prorated_amount, created_at,
+                    discount_percent=discount_percent,
+                    descr_suffix=descr_suffix)]
+                discount_percent += plan.advance_discount
+                if discount_percent >= 100:
+                    discount_percent = 100
 
         return option_items
 
