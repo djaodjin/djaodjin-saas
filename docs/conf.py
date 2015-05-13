@@ -13,9 +13,12 @@
 
 import sys, os
 
+import django
+
 # Add root of django app to PYTHONPATH and setup Django.
 sys.path.insert(0, os.path.abspath(os.path.dirname(os.path.dirname(__file__))))
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "testsite.settings")
+django.setup()
 
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the

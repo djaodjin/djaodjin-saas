@@ -401,13 +401,23 @@ class Organization(models.Model):
         We record one straightforward ``Transaction`` for the withdrawal
         and an additional one in case there is a processor transfer fee::
 
-            yyyy/mm/dd withdrawal
-                processor:Withdraw         *amount*
+            yyyy/mm/dd withdrawal to provider bank account
+                processor:Withdraw                       amount
                 provider:Funds
 
-            yyyy/mm/dd transfer fee (Stripe: 25 cents)
-                processor:Funds            fee_amount
+            yyyy/mm/dd processor fee paid by provider (Stripe: 25 cents)
+                processor:Funds                          processor_fee
                 provider:Funds
+
+        Example::
+
+            2014/09/10 withdraw from cowork
+                stripe:Withdraw                          $174.52
+                cowork:Funds
+
+            2014/09/10 transfer fee to Stripe
+                stripe:Funds                               $0.25
+                cowork:Funds
         """
         funds_unit = 'usd' # XXX currency on receipient bank account
         created_at = datetime_or_now(created_at)
@@ -664,23 +674,37 @@ class Charge(models.Model):
         When a charge through the payment processor is sucessful,
         a ``Transaction`` records the charge from as a subscriber's expense
         and a processor's income. The amount of the charge is then
-        redistributed to the providers (minus processor fee).
+        redistributed to the providers (minus processor fee)::
 
-        Record the charge::
+            ; Record the charge
 
             yyyy/mm/dd processor event
-                subscriber:Expenses      total_charge_amount
+                subscriber:Expenses                      charge_amount
                 processor:Income
 
-        Distribute processor fee and funds to the provider::
+            ; Distribute processor fee and funds to the provider
 
-            yyyy/mm/dd processor fee paid by first provider
-                processor:Funds          processor_fee
+            yyyy/mm/dd processor fee paid by provider
+                processor:Funds                          processor_fee
                 subscriber:Payable
 
-            yyyy/mm/dd distribution to first provider
-                provider:Funds          distribute_amount
+            yyyy/mm/dd distribution to provider
+                provider:Funds                           distribute_amount
                 subscriber:Payable
+
+        Example::
+
+            2014/09/10 Charge ch_ABC123 on credit card of xia
+                xia:Expenses                             $179.99
+                stripe:Income
+
+            2014/09/10 Charge ch_ABC123 processor fee for open-space
+                stripe:Funds                               $5.22
+                xia:Payable
+
+            2014/09/10 Charge ch_ABC123 distribution for open-space
+                cowork:Funds                             $174.77
+                xia:Payable
         """
         assert self.state == self.CREATED
 
@@ -775,19 +799,33 @@ class Charge(models.Model):
         # XXX We donot currently supply a *description* for the refund.
         """
         Each ``ChargeItem`` as referenced by *linenum* can be partially
-        refunded.
+        refunded::
 
             yyyy/mm/dd refund to subscriber
-                provider:Refund         *refunded_amount*
+                provider:Refund                          refunded_amount
                 subscriber:Refunded
 
             yyyy/mm/dd refund of processor fee
-                processor:Refund        refunded_fee_amount
+                processor:Refund                         processor_fee
                 processor:Funds
 
-            yyyy/mm/dd refund of distribute amount
-                processor:Refund        refunded_distribute_amount
+            yyyy/mm/dd refund of processor fee
+                processor:Refund                         distribute_amount
                 provider:Funds
+
+        Example::
+
+            2014/09/10 Charge ch_ABC123 refund for subscribe to open-space plan
+                cowork:Refund                            $179.99
+                xia:Refunded
+
+            2014/09/10 Charge ch_ABC123 refund processor fee
+                stripe:Refund                              $5.22
+                stripe:Funds
+
+            2014/09/10 Charge ch_ABC123 cancel distribution
+                stripe:Refund                            $174.77
+                cowork:Funds
 
         Note: The system does not currently support more than one refund
         per ``ChargeItem``.
@@ -844,11 +882,7 @@ class Charge(models.Model):
     'descr': invoiced_item.descr})
 
         with transaction.atomic():
-            # Record the refund
-            # Example:
-            # 2014/03/15 refunding the charge
-            #     elearning:Refund                              6900
-            #     xia:Refunded
+            # Record the refund from provider to subscriber
             descr = DESCRIBE_CHARGED_CARD_REFUND % {
                 'charge': self.processor_id, 'descr': invoiced_item.descr}
             charge_item.refunded = Transaction.objects.create(
@@ -866,9 +900,7 @@ class Charge(models.Model):
             charge_item.save()
 
             if charge_item.invoiced_fee:
-                # 2014/03/15 elearning promises to refund $69 to Xia
-                #     djaodjin:Refund                                900
-                #     djaodjin:Funds
+                # Refund the processor fee (if exists)
                 Transaction.objects.create(
                     event_id=self.id,
                     # The Charge id is already included in the description here.
@@ -886,9 +918,7 @@ class Charge(models.Model):
                 processor.funds_balance -= refunded_fee_amount
                 processor.save()
 
-            # 2014/03/15 cancel payment to elearning
-            #     djaodjin:Refund                               6000
-            #     elearning:Funds
+            # cancel payment to provider
             Transaction.objects.create(
                 event_id=self.id,
                 descr=descr,
@@ -1299,15 +1329,20 @@ class Subscription(models.Model):
 
             yyyy/mm/dd description
                 subscriber:Payable                       amount
-                provider:Receivable
+                provider:Income
 
         Example::
 
             2014/09/10 subscribe to open-space plan
                 xia:Payable                             $179.99
-                cowork:Receivable
+                cowork:Income
 
-        Note: nb_periods is stored in the Transaction orig_amount.
+        At first, ``nb_periods``, the number of period paid in advance,
+        is stored in the ``Transaction.orig_amount``. The ``Transaction``
+        is created in ``Subscription.create_order``, then only later saved
+        when ``TransactionManager.execute_order`` is called through
+        ``Organization.checkout``. ``execute_order`` will replace
+        ``orig_amount`` by the correct amount in the expected currency.
         """
         if not descr:
             amount = int(
