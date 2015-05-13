@@ -36,3 +36,9 @@ To test payment through [Stripe](https://stripe.com/):
     # Authentication with payment provider
     STRIPE_PUB_KEY = "_your_stripe_public_api_key_"
     STRIPE_PRIV_KEY = "_your_stripe_private_api_key_"
+
+Release Notes
+=============
+
+- version 0.1.7 supports Django 1.7 and django-restframework 3.1
+

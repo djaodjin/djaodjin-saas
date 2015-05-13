@@ -26,7 +26,7 @@
 PEP 386-compliant version number for the saas django app.
 """
 
-__version__ = '0.1.7-dev'
+__version__ = '0.1.7'
 
 def get_manager_relation_model():
     """
