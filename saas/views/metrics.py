@@ -166,9 +166,7 @@ class RevenueMetricsView(MetricsMixin, TemplateView):
                           "unit": "$", "table": account_table}
         data['customers'] = {"title": "Customers",
                              "table": customer_table, "extra": customer_extra}
-        context.update({"title": "Revenue Metrics",
-            "data": data,
-            "data_json": json.dumps(data, cls=DjangoJSONEncoder)})
+        context.update({"title": "Revenue Metrics"})
         return context
 
 

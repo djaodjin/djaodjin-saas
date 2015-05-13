@@ -651,15 +651,35 @@ revenueControllers.controller('revenueCtrl',
 
     $scope.ends_at = new Date();
 
+    // these aren't documented; do they do anything?
+    $scope.formats = ['MM-yyyy', 'yyyy/MM', 'MM.yyyy'];
+    $scope.format = $scope.formats[0];
+
+    $scope.dateOptions = {
+        formatYear: 'yyyy',
+        startingDay: 1,
+        mode: 'month',
+        minMode: 'month'
+    };
+
+    $scope.opened = false;
+
+    $scope.debugDump = function() {
+        console.log($scope.ends_at);
+        setTimeout($scope.debugDump, 2000);
+    }
+    setTimeout($scope.debugDump, 2000);
+
     $http.get(urls.saas_api_revenue).success(
         function(data) {
+            console.log('successfully gotten');
             for(var tableId in data.data) {
                 if(! data.data.hasOwnProperty(tableId)) {
                     continue;
                 }
 
+                console.log('updating chart: ' + tableId);
                 var tableData = data.data[tableId];
-                debugger;
                 updateChart(
                     '#' + tableId + ' svg',
                     tableData['table'],
@@ -669,7 +689,7 @@ revenueControllers.controller('revenueCtrl',
         }
     );
 
-    // calendar for start_at and ends_at
+    // open the date picker
     $scope.open = function($event) {
         $event.preventDefault();
         $event.stopPropagation();
