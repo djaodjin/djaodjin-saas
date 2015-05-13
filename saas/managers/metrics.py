@@ -128,7 +128,6 @@ def aggregate_monthly(organization, account, interval,
         else:
             kwargs = {'dest_organization': organization,
                       'dest_account': account}
-        # pylint: disable=star-args
         query_result = Transaction.objects.filter(
             created_at__gte=period_start,
             created_at__lt=period_end, **kwargs).aggregate(

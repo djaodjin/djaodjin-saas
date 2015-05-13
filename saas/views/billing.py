@@ -76,7 +76,7 @@ def _session_cart_to_database(request):
             item['plan'] = Plan.objects.get(slug=item['plan'])
             item['user'] = request.user
             try:
-                CartItem.objects.create(**item) #pylint: disable=star-args
+                CartItem.objects.create(**item)
             except IntegrityError: #pylint: disable=catching-non-exception
                 # This might happen during testing of the place order
                 # through the test driver. Either way, if the item is
