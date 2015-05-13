@@ -22,7 +22,7 @@ Contents:
 
    subscriptions
    orders
-   ledgers
+   ledger
    models
    security
 
