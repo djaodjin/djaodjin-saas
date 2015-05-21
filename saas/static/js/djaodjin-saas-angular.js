@@ -680,4 +680,11 @@ revenueControllers.controller('revenueCtrl',
         $event.stopPropagation();
         $scope.opened = true;
     };
+
+    $scope.$watch('ends_at', function(newVal, oldVal, scope) {
+        if( $scope.ends_at != newVal ) {
+            $scope.ends_at = newVal;
+        }
+        $scope.refreshTable();
+    }, true);
 }]);
