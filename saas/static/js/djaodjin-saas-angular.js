@@ -659,6 +659,12 @@ revenueControllers.controller('revenueCtrl',
 
     $scope.ends_at = $scope.endOfMonth(new Date());
 
+    $scope.tabs = [
+        {key: 'amount', title: 'Amount', unit: '$'},
+        {key: 'customers', title: 'Customers'},
+    ];
+    $scope.activeTab = 'amount';
+
     // these aren't documented; do they do anything?
     $scope.formats = ['MM-yyyy', 'yyyy/MM', 'MM.yyyy'];
     $scope.format = $scope.formats[0];
@@ -672,8 +678,7 @@ revenueControllers.controller('revenueCtrl',
 
     $scope.opened = false;
     $scope.refreshTable = function() {
-        var selectedTable = $('.table-chooser li.active a').attr('href').replace(/^#/, '');
-        $http.get(urls.saas_api_revenue, {params: {'ends_at': $scope.ends_at, 'table_key': selectedTable}}).success(
+        $http.get(urls.saas_api_revenue, {params: {'ends_at': $scope.ends_at, 'table_key': $scope.activeTab}}).success(
             function(data) {
                 data = data.data;
                 updateChart('#metrics-table svg', data.table, data.unit && 0.01);
@@ -681,6 +686,12 @@ revenueControllers.controller('revenueCtrl',
         );
     };
     $scope.refreshTable();
+
+    // change the selected tab
+    $scope.tabClicked = function($event) {
+        $scope.activeTab = $event.target.getAttribute('href').replace(/^#/, '');
+        $scope.refreshTable();
+    };
 
     // open the date picker
     $scope.open = function($event) {
