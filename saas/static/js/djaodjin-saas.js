@@ -105,7 +105,7 @@
 
     $.fn.invoice = function(options) {
         var opts = $.extend( {}, $.fn.invoice.defaults, options );
-        invoice = new Invoice($(this), opts);
+        var invoice = new Invoice($(this), opts);
     };
 
     $.fn.invoice.defaults = {
@@ -156,7 +156,7 @@
 
    $.fn.redeem = function(options) {
       var opts = $.extend( {}, $.fn.redeem.defaults, options );
-      redeem = new Redeem($(this), opts);
+      var redeem = new Redeem($(this), opts);
    };
 
    $.fn.redeem.defaults = {
