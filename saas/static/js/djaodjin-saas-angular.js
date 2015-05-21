@@ -649,7 +649,14 @@ revenueControllers.controller('revenueCtrl',
     ['$scope', '$http', 'urls',
     function($scope, $http, urls) {
 
-    $scope.ends_at = new Date();
+    $scope.ends_at = function() {
+        var current = new Date();
+        return new Date(
+            current.getFullYear(),
+            current.getMonth() + 1,
+            0
+        )
+    }();
 
     // these aren't documented; do they do anything?
     $scope.formats = ['MM-yyyy', 'yyyy/MM', 'MM.yyyy'];
