@@ -649,14 +649,15 @@ revenueControllers.controller('revenueCtrl',
     ['$scope', '$http', 'urls',
     function($scope, $http, urls) {
 
-    $scope.ends_at = function() {
-        var current = new Date();
+    $scope.endOfMonth = function(date) {
         return new Date(
-            current.getFullYear(),
-            current.getMonth() + 1,
+            date.getFullYear(),
+            date.getMonth() + 1,
             0
         )
-    }();
+    };
+
+    $scope.ends_at = $scope.endOfMonth(new Date());
 
     // these aren't documented; do they do anything?
     $scope.formats = ['MM-yyyy', 'yyyy/MM', 'MM.yyyy'];
@@ -689,9 +690,7 @@ revenueControllers.controller('revenueCtrl',
     };
 
     $scope.$watch('ends_at', function(newVal, oldVal, scope) {
-        if( $scope.ends_at != newVal ) {
-            $scope.ends_at = newVal;
-        }
+        $scope.ends_at = $scope.endOfMonth(newVal);
         $scope.refreshTable();
     }, true);
 }]);
