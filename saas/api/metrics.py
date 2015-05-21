@@ -69,13 +69,24 @@ class RevenueAPIView(ProviderMixin, APIView):
     Produce revenue stats
     """
     def get(self, request, *args, **kwargs):
+        ends_at = request.GET.get('ends_at', None)
+        if ends_at:
+            ends_at = parse_datetime(ends_at)
+        ends_at = datetime_or_now(ends_at)
+
+        table_key = request.GET['table_key']
+
         reverse = True
         account_title = 'Payments'
         account = Transaction.FUNDS
+
+        # TODO: refactor to only build the table (customer or amount)
+        # relevant to the request
+
         account_table, customer_table, customer_extra = \
             aggregate_monthly_transactions(self.get_organization(), account,
                 account_title=account_title,
-                from_date=request.GET.get('ends_at', None),
+                from_date=ends_at,
                 reverse=reverse)
         data = SortedDict()
         data['amount'] = {"title": "Amount",
@@ -84,7 +95,7 @@ class RevenueAPIView(ProviderMixin, APIView):
                              "table": customer_table, "extra": customer_extra}
         return Response(
             {"title": "Revenue Metrics",
-            "data": data})
+            "data": data[table_key]})
 
 
 class OrganizationListAPIView(ProviderMixin, GenericAPIView):

@@ -663,31 +663,16 @@ revenueControllers.controller('revenueCtrl',
     };
 
     $scope.opened = false;
-
-    $scope.debugDump = function() {
-        console.log($scope.ends_at);
-        setTimeout($scope.debugDump, 2000);
-    }
-    setTimeout($scope.debugDump, 2000);
-
-    $http.get(urls.saas_api_revenue).success(
-        function(data) {
-            console.log('successfully gotten');
-            for(var tableId in data.data) {
-                if(! data.data.hasOwnProperty(tableId)) {
-                    continue;
-                }
-
-                console.log('updating chart: ' + tableId);
-                var tableData = data.data[tableId];
-                updateChart(
-                    '#' + tableId + ' svg',
-                    tableData['table'],
-                    tableData['unit'] && 0.01
-                );
-            };
-        }
-    );
+    $scope.refreshTable = function() {
+        var selectedTable = $('.table-chooser li.active a').attr('href').replace(/^#/, '');
+        $http.get(urls.saas_api_revenue, {params: {'ends_at': $scope.ends_at, 'table_key': selectedTable}}).success(
+            function(data) {
+                data = data.data;
+                updateChart('#metrics-table svg', data.table, data.unit && 0.01);
+            }
+        );
+    };
+    $scope.refreshTable();
 
     // open the date picker
     $scope.open = function($event) {

@@ -166,7 +166,13 @@ class RevenueMetricsView(MetricsMixin, TemplateView):
                           "unit": "$", "table": account_table}
         data['customers'] = {"title": "Customers",
                              "table": customer_table, "extra": customer_extra}
-        context.update({"title": "Revenue Metrics"})
+        context.update({
+            "title": "Revenue Metrics",
+            "tables": [
+                {"title": "Amount", "unit": "$", "key": "amount", "active": True},
+                {"title": "Customers", "key": "customers"},
+            ]
+        })
         return context
 
 
