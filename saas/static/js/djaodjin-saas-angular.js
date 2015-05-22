@@ -698,6 +698,7 @@ revenueControllers.controller('revenueCtrl',
         mode: 'month',
         minMode: 'month'
     };
+    $scope.maxDate = $scope.endOfMonth(new Date());
 
     $scope.opened = false;
 
