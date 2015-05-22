@@ -677,10 +677,27 @@ revenueControllers.controller('revenueCtrl',
     };
 
     $scope.opened = false;
+    $scope.tableMonths = null;
     $scope.refreshTable = function() {
         $http.get(urls.saas_api_revenue, {params: {'ends_at': $scope.ends_at, 'table_key': $scope.activeTab}}).success(
             function(data) {
                 data = data.data;
+
+                function TableMonth(datestr) {
+                    this.date = moment(datestr);
+                    this.caption = function() {
+                        var result = this.date.format('MMM\'YY');
+                        var endOfCurMonth = moment($scope.endOfMonth(new Date()));
+                        if( endOfCurMonth.diff(this.date, 'months') < 1 ) {
+                            // add incomplete month marker
+                            result += '*';
+                        }
+                        return result;
+                    }
+                }
+                $scope.tableMonths = data.table[0].values.map(function(valueElem) { 
+                    return new TableMonth(valueElem[0]);
+                });
                 updateChart('#metrics-table svg', data.table, data.unit && 0.01);
             }
         );
