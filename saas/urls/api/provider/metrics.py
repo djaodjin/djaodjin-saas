@@ -29,7 +29,7 @@ URLs API for provider resources related to billing
 from django.conf.urls import patterns, url
 
 from saas.api.metrics import (BalancesAPIView, ChurnedAPIView,
-    RegisteredAPIView, SubscribedAPIView)
+    RegisteredAPIView, SubscribedAPIView, RevenueAPIView)
 from saas.api.subscriptions import ActiveSubscriptionAPIView
 
 urlpatterns = patterns('',
@@ -43,4 +43,6 @@ urlpatterns = patterns('',
         BalancesAPIView.as_view(), name='saas_api_balances'),
     url(r'^subscriptions/active/?',
       ActiveSubscriptionAPIView.as_view(), name='saas_api_active_subscription'),
+    url(r'^metrics/revenue/?',
+        RevenueAPIView.as_view(), name='saas_api_revenue'),
 )
