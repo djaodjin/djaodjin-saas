@@ -26,7 +26,6 @@ from django.core.serializers.json import DjangoJSONEncoder
 from django.db.models import Q
 from django.utils.datastructures import SortedDict
 from django.utils.dateparse import parse_datetime
-import json
 from rest_framework.views import APIView
 from rest_framework.generics import GenericAPIView
 from rest_framework.response import Response
