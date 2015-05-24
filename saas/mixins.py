@@ -232,12 +232,9 @@ class MetricsMixin(ProviderMixin):
             self.start_at = parse_datetime(self.start_at)
         self.start_at = datetime_or_now(self.start_at)
         self.ends_at = self.request.GET.get('ends_at', None)
-        print 'request', self.request.GET.get('ends_at', None)
         if self.ends_at:
             self.ends_at = parse_datetime(self.ends_at)
-        print 'Ends at', self.ends_at
         self.ends_at = datetime_or_now(self.ends_at)
-        print 'After datetime_or_now', self.ends_at
 
     def get(self, request, *args, **kwargs): #pylint: disable=unused-argument
         self.cache_fields(request)
