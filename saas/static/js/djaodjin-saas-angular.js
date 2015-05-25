@@ -713,7 +713,10 @@ revenueControllers.controller('revenueCtrl',
     $scope.tableMonths = null;
     $scope.tableRows = null;
     $scope.refreshTable = function() {
-        $http.get(urls.saas_api_revenue, {params: {'ends_at': $scope.ends_at, 'table_key': $scope.activeTab}}).success(
+        $http.get(
+            urls.saas_api_revenue.replace('_TABLEKEY', $scope.activeTab),
+            {params: {'ends_at': $scope.ends_at, 'table_key': $scope.activeTab}}
+        ).success(
             function(response) {
                 var data = response.data;
 

@@ -43,6 +43,6 @@ urlpatterns = patterns('',
         BalancesAPIView.as_view(), name='saas_api_balances'),
     url(r'^subscriptions/active/?',
       ActiveSubscriptionAPIView.as_view(), name='saas_api_active_subscription'),
-    url(r'^metrics/revenue/?',
+    url(r'^metrics/revenue/(?P<table_key>\w+)/?',
         RevenueAPIView.as_view(), name='saas_api_revenue'),
 )

@@ -67,13 +67,11 @@ class RevenueAPIView(ProviderMixin, APIView):
     """
     Produce revenue stats
     """
-    def get(self, request, *args, **kwargs):
+    def get(self, request, table_key, *args, **kwargs):
         ends_at = request.GET.get('ends_at', None)
         if ends_at:
             ends_at = parse_datetime(ends_at)
         ends_at = datetime_or_now(ends_at)
-
-        table_key = request.GET['table_key']
 
         reverse = True
         account_title = 'Payments'
