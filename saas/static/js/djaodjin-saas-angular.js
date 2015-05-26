@@ -676,8 +676,8 @@ metricControllers.controller('metricCtrl',
 }]);
 
 revenueControllers.controller('revenueCtrl',
-    ['$scope', '$http', '$filter', 'urls',
-    function($scope, $http, $filter, urls) {
+    ['$scope', '$http', '$filter', 'urls', 'tables',
+    function($scope, $http, $filter, urls, tables) {
 
     $scope.endOfMonth = function(date) {
         return new Date(
@@ -689,10 +689,7 @@ revenueControllers.controller('revenueCtrl',
 
     $scope.ends_at = $scope.endOfMonth(new Date());
 
-    $scope.tabs = [
-        {key: 'amount', title: 'Amount', unit: '$'},
-        {key: 'customers', title: 'Customers'},
-    ];
+    $scope.tabs = tables;
     $scope.activeTab = 'amount';
 
     // these aren't documented; do they do anything?
