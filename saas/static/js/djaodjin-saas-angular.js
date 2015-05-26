@@ -11,7 +11,7 @@ angular.module('revenueFilters', [])
         ));
         return function(datestr) {
             var date = moment(datestr);
-            var heading = date.format('MMM\'YY'); 
+            var heading = date.format('MMM\'YY');
             if( endOfCurMonth.diff(date, 'months') < 1 ) {
                 // add incomplete month marker
                 heading += '*';
@@ -712,7 +712,7 @@ revenueControllers.controller('revenueCtrl',
     $scope.refreshTable = function() {
         $http.get(
             urls.saas_api_revenue.replace('_TABLEKEY', $scope.activeTab),
-            {params: {'ends_at': $scope.ends_at, 'table_key': $scope.activeTab}}
+            {params: {'ends_at': $scope.ends_at}}
         ).success(
             function(response) {
                 var data = response.data;
