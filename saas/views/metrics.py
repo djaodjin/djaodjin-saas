@@ -154,21 +154,15 @@ class RevenueMetricsView(MetricsMixin, TemplateView):
 
     def get_context_data(self, **kwargs):
         context = super(RevenueMetricsView, self).get_context_data(**kwargs)
-        reverse = True
-        account_title = 'Payments'
-        account = Transaction.FUNDS
-        account_table, customer_table, customer_extra = \
-            aggregate_monthly_transactions(self.organization, account,
-                account_title=account_title, from_date=self.ends_at,
-                reverse=reverse)
-        data = SortedDict()
-        data['amount'] = {"title": "Amount",
-                          "unit": "$", "table": account_table}
-        data['customers'] = {"title": "Customers",
-                             "table": customer_table, "extra": customer_extra}
-        context.update({"title": "Revenue Metrics",
-            "data": data,
-            "data_json": json.dumps(data, cls=DjangoJSONEncoder)})
+        tables = [
+            {"title": "Amount", "unit": "$", "key": "amount", "active": True},
+            {"title": "Customers", "key": "customers"},
+        ]
+        context.update({
+            "title": "Revenue Metrics",
+            "tables": tables,
+            "tables_json": json.dumps(tables),
+        })
         return context
 
 
