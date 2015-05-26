@@ -22,7 +22,6 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from django.core.serializers.json import DjangoJSONEncoder
 from django.db.models import Q
 from django.utils.datastructures import SortedDict
 from django.utils.dateparse import parse_datetime
