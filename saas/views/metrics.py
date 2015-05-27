@@ -154,7 +154,7 @@ class RevenueMetricsView(MetricsMixin, TemplateView):
     def get_context_data(self, **kwargs):
         context = super(RevenueMetricsView, self).get_context_data(**kwargs)
         tables = [
-            {"title": "Amount", "unit": "$", "key": "amount", "active": True},
+            {"title": "Amount", "key": "amount", "active": True},
             {"title": "Customers", "key": "customers"},
         ]
         context.update({

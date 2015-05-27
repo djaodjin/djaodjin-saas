@@ -707,6 +707,8 @@ revenueControllers.controller('revenueCtrl',
     $scope.opened = false;
 
     // forward declarations for computed properties extracted from JSON API
+    $scope.unit = null;
+    $scope.scale = null;
     $scope.tableMonths = null;
     $scope.tableRows = null;
     $scope.refreshTable = function() {
@@ -734,24 +736,25 @@ revenueControllers.controller('revenueCtrl',
                 $scope.tableRows = data.table.map(tableMapper).concat(
                     extra.map(tableMapper));
 
+                $scope.unit = data.unit;
+                $scope.scale = parseFloat(data.scale);
+                if( isNaN($scope.scale) ) {
+                    $scope.scale = 1.0;
+                }
                 // manual binding - trigger updates to the graph
-                updateChart('#metrics-table svg', data.table, data.unit && 0.01);
+                updateChart('#metrics-table svg',
+                    data.table, data.unit, $scope.scale);
             }
         );
     };
     $scope.refreshTable();
 
     $scope.formatCell = function(cell) {
-        var tabInfo = $scope.tabs.filter(function(elem) {
-            return elem.key == $scope.activeTab;
-        })
-        if(! tabInfo.length == 1) {
-            throw 'Could not determine selected tab';
-        }
-        if(tabInfo[0].unit) {
-            return $filter('currency')(cell / 100);
+        var value = cell * $scope.scale;
+        if($scope.scale) {
+            return $filter('currency')(value);
         } else {
-            return $filter('number')(cell);
+            return $filter('number')(value);
         }
     }
 

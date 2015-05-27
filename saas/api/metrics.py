@@ -85,8 +85,11 @@ class RevenueAPIView(ProviderMixin, APIView):
                 from_date=ends_at,
                 reverse=reverse)
         data = SortedDict()
+        # By convention, if we have a ``unit``, the table contains
+        # amounts in cents. We thus scale by 0.01 to get a human
+        # readable 'whole dollar' amounts.
         data['amount'] = {"title": "Amount",
-                          "unit": "$", "table": account_table}
+                          "unit": "$", "scale": 0.01, "table": account_table}
         data['customers'] = {"title": "Customers",
                              "table": customer_table, "extra": customer_extra}
         return Response(
