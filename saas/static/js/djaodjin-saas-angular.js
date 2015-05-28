@@ -1,4 +1,27 @@
 /*=============================================================================
+  Filters
+  ============================================================================*/
+angular.module('revenueFilters', [])
+    .filter('monthHeading', function() {
+        var current = new Date();
+        var endOfCurMonth = moment(new Date(
+            current.getFullYear(),
+            current.getMonth() + 1,
+            0
+        ));
+        return function(datestr) {
+            var date = moment(datestr);
+            var heading = date.format('MMM\'YY'); 
+            if( endOfCurMonth.diff(date, 'months') < 1 ) {
+                // add incomplete month marker
+                heading += '*';
+            }
+            return heading;
+        };
+    });
+
+
+/*=============================================================================
   Apps
   ============================================================================*/
 
@@ -15,6 +38,7 @@ angular.module('subscriberApp', ['ui.bootstrap', 'ngRoute',
 angular.module('transactionApp', ['ui.bootstrap', 'ngRoute',
     'transactionControllers', 'transactionServices']);
 angular.module('metricApp', ['ui.bootstrap', 'ngRoute', 'metricControllers']);
+angular.module('revenueApp', ['ui.bootstrap', 'ngRoute', 'revenueControllers', 'revenueFilters']);
 
 
 /*=============================================================================
@@ -80,6 +104,7 @@ var subscriptionControllers = angular.module('subscriptionControllers', []);
 var subscriberControllers = angular.module('subscriberControllers', []);
 var transactionControllers = angular.module('transactionControllers', []);
 var metricControllers = angular.module('metricControllers', []);
+var revenueControllers = angular.module('revenueControllers', []);
 
 couponControllers.controller('CouponListCtrl',
     ['$scope', '$http', '$timeout', 'Coupon', 'urls',
@@ -648,4 +673,103 @@ metricControllers.controller('metricCtrl',
         function(data) {
             $scope.balances = data;
     });
+}]);
+
+revenueControllers.controller('revenueCtrl',
+    ['$scope', '$http', '$filter', 'urls', 'tables',
+    function($scope, $http, $filter, urls, tables) {
+
+    $scope.endOfMonth = function(date) {
+        return new Date(
+            date.getFullYear(),
+            date.getMonth() + 1,
+            0
+        )
+    };
+
+    $scope.ends_at = $scope.endOfMonth(new Date());
+
+    $scope.tabs = tables;
+    $scope.activeTab = 'amount';
+
+    // these aren't documented; do they do anything?
+    $scope.formats = ['MM-yyyy', 'yyyy/MM', 'MM.yyyy'];
+    $scope.format = $scope.formats[0];
+
+    $scope.dateOptions = {
+        formatYear: 'yyyy',
+        startingDay: 1,
+        mode: 'month',
+        minMode: 'month'
+    };
+    $scope.maxDate = $scope.endOfMonth(new Date());
+
+    $scope.opened = false;
+
+    // forward declarations for computed properties extracted from JSON API
+    $scope.tableMonths = null;
+    $scope.tableRows = null;
+    $scope.refreshTable = function() {
+        $http.get(
+            urls.saas_api_revenue.replace('_TABLEKEY', $scope.activeTab),
+            {params: {'ends_at': $scope.ends_at, 'table_key': $scope.activeTab}}
+        ).success(
+            function(response) {
+                var data = response.data;
+
+                $scope.tableMonths = data.table[0].values.map(function(valueElem) { 
+                    return valueElem[0];
+                });
+                var tableMapper = function(rawRow) {
+                    return {
+                        heading: rawRow.key,
+                        cells: rawRow.values.map(function(rawCell) {
+                            return rawCell[1];
+                        })
+                    }
+                };
+
+                // add "extra" rows at the end
+                var extra = data.extra || [];
+                $scope.tableRows = data.table.map(tableMapper).concat(
+                    extra.map(tableMapper));
+
+                // manual binding - trigger updates to the graph
+                updateChart('#metrics-table svg', data.table, data.unit && 0.01);
+            }
+        );
+    };
+    $scope.refreshTable();
+
+    $scope.formatCell = function(cell) {
+        var tabInfo = $scope.tabs.filter(function(elem) {
+            return elem.key == $scope.activeTab;
+        })
+        if(! tabInfo.length == 1) {
+            throw 'Could not determine selected tab';
+        }
+        if(tabInfo[0].unit) {
+            return $filter('currency')(cell / 100);
+        } else {
+            return $filter('number')(cell);
+        }
+    }
+
+    // change the selected tab
+    $scope.tabClicked = function($event) {
+        $scope.activeTab = $event.target.getAttribute('href').replace(/^#/, '');
+        $scope.refreshTable();
+    };
+
+    // open the date picker
+    $scope.open = function($event) {
+        $event.preventDefault();
+        $event.stopPropagation();
+        $scope.opened = true;
+    };
+
+    $scope.$watch('ends_at', function(newVal, oldVal, scope) {
+        $scope.ends_at = $scope.endOfMonth(newVal);
+        $scope.refreshTable();
+    }, true);
 }]);
