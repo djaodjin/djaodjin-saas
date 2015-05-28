@@ -43,8 +43,7 @@ from saas.api.coupons import SmartCouponListMixin
 from saas.api.coupons import CouponMixin as CouponAPIMixin
 from saas.mixins import CouponMixin, ProviderMixin, MetricsMixin
 from saas.views.auth import valid_manager_for_organization
-from saas.managers.metrics import (active_subscribers,
-    aggregate_monthly_transactions, churn_subscribers,
+from saas.managers.metrics import (active_subscribers, churn_subscribers,
     monthly_balances, month_periods)
 from saas.models import (CartItem, Organization, Plan, Transaction,
     NewVisitors)
@@ -155,7 +154,7 @@ class RevenueMetricsView(MetricsMixin, TemplateView):
     def get_context_data(self, **kwargs):
         context = super(RevenueMetricsView, self).get_context_data(**kwargs)
         tables = [
-            {"title": "Amount", "unit": "$", "key": "amount", "active": True},
+            {"title": "Amount", "key": "amount", "active": True},
             {"title": "Customers", "key": "customers"},
         ]
         context.update({
