@@ -242,6 +242,26 @@ class Organization(models.Model):
             return self.full_name
         return self.slug
 
+    @property
+    def has_profile_completed(self):
+        return self.full_name and \
+            self.email and \
+            self.phone and \
+            self.street_address and \
+            self.locality and \
+            self.region and \
+            self.postal_code and \
+            self.country
+
+    @property
+    def has_plan(self):
+        return Plan.objects.filter(
+            organization=self).count() > 0
+
+    @property
+    def has_bank_account(self):
+        return self.processor_recipient_id
+
     def _add_relation(self, user, model):
         # Implementation Note:
         # Django get_or_create will call router.db_for_write without
