@@ -160,7 +160,7 @@ class BankUpdateView(BankMixin, FormView):
             self.request.GET.get(REDIRECT_FIELD_NAME, None))
         if redirect_path:
             return redirect_path
-        return reverse('saas_transfer_info')
+        return reverse('saas_transfer_info', self.organization())
 
 
 class InvoicablesFormMixin(OrganizationMixin):
@@ -367,7 +367,8 @@ class TransferListView(BankMixin, TemplateView):
             self.organization, Transaction.FUNDS)
         context.update({'balance_amount': balance_amount,
                         'balance_unit': balance_unit,
-                        'download_url': reverse('saas_transfers_download')})
+                        'download_url': reverse('saas_transfers_download',
+                            kwargs={'organization': self.organization})})
         return context
 
 
