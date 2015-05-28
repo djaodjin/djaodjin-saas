@@ -30,7 +30,8 @@ from saas.settings import ACCT_REGEX
 from saas.views import OrganizationRedirectView
 from saas.views.profile import (
     ContributorListView, ManagerListView,
-    OrganizationProfileView, SubscriptionListView)
+    OrganizationProfileView, OrganizationDashboardView,
+    SubscriptionListView)
 
 urlpatterns = patterns(
     'saas.views.profile',
@@ -40,6 +41,8 @@ urlpatterns = patterns(
         ManagerListView.as_view(), name='saas_manager_list'),
     url(r'^(?P<organization>%s)/subscriptions/' % ACCT_REGEX,
         SubscriptionListView.as_view(), name='saas_subscription_list'),
+    url(r'^(?P<organization>%s)/dashboard/' % ACCT_REGEX,
+        OrganizationDashboardView.as_view(), name='saas_organization_dashboard'),
     url(r'^(?P<organization>%s)/' % ACCT_REGEX,
         OrganizationProfileView.as_view(), name='saas_organization_profile'),
     url(r'^$', OrganizationRedirectView.as_view(

@@ -30,7 +30,10 @@ from django.contrib import messages
 from django.core.urlresolvers import reverse
 from django.db import transaction
 from django.http import HttpResponseRedirect
-from django.views.generic import CreateView, ListView, TemplateView, UpdateView
+from django.views.generic import (
+    CreateView, ListView,
+    TemplateView, UpdateView,
+    DetailView)
 from django.utils.decorators import method_decorator
 
 from saas.forms import (OrganizationForm, OrganizationCreateForm,
@@ -134,6 +137,52 @@ class OrganizationCreateView(CreateView):
 
     def get_success_url(self):
         return reverse(self.pattern_name, args=(self.object,))
+
+
+class OrganizationDashboardView(DetailView):
+
+    model = Organization
+    slug_url_kwarg = 'organization'
+    template_name = "saas/organization_root.html"
+    steps = [
+        {
+            'test': 'has_profile_completed',
+            'verbose_name': 'Edit profile',
+            'url_name': 'saas_organization_profile'
+        },
+        {
+            'test': 'has_plan',
+            'verbose_name': 'Configure plan',
+            'url_name': 'saas_plan_new'
+        },
+        {
+            'test': 'has_bank_account',
+            'verbose_name': 'Configure Bank account',
+            'url_name': 'saas_update_bank'
+        }
+    ]
+
+    def get_steps(self):
+        return self.steps
+
+    def get_context_data(self, **kwargs):
+        context = super(
+            OrganizationDashboardView, self).get_context_data(**kwargs)
+        organization = context['organization']
+        progress = 0
+        next_steps = []
+        steps = self.get_steps()
+        for step in steps:
+            if not getattr(organization, step['test']):
+                step['url'] = reverse(step['url_name'],
+                    kwargs={'organization': organization})
+                next_steps += [step]
+        progress = (len(steps) - len(next_steps)) * 100/len(steps)
+        context.update({
+            'progress':progress,
+            'next_steps':next_steps
+            })
+        return context
 
 
 class OrganizationProfileView(OrganizationMixin, UpdateView):

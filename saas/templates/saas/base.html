@@ -25,7 +25,8 @@
     Subscriptions for the organization
     {% endcomment %}
     <div>
-      <a id="saas_organization_profile" href="{% url 'saas_organization_profile' organization %}">profile</a>
+      <a id="saas_organization_dashboard" href="{% url 'saas_organization_dashboard' organization %}">Dashboard</a>
+      | <a id="saas_organization_profile" href="{% url 'saas_organization_profile' organization %}">profile</a>
       | <a id="saas_billing_info" href="{% url 'saas_billing_info' organization %}">billing</a>
       | <a id="saas_subscription_list" href="{% url 'saas_subscription_list' organization %}">subscriptions</a>
     </div>
