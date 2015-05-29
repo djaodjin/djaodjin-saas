@@ -1,0 +1,27 @@
+{% extends "saas/base.html" %}
+{% block saas_content %}
+<section>
+    <h3>Overview</h3>
+
+    <h4>Site setup : {{progress}}%</h4>
+
+    <h4>Next steps</h4>
+    <ul>
+        {% for step in next_steps %}
+            <li>{{step.verbose_name}} <a href="{{step.url}}">Go &raquo;</a></li>
+        {% endfor %}
+    </ul>
+
+    {% comment %}
+    XXX - Improvment of root view
+    <h4>Today revenue</h4>
+    
+    <h4>Recent payments</h4>
+
+    <h4>Balance</h4>
+
+    <h4>Recent registrants</h4>
+    {% endcomment %}
+
+</section>
+{% endblock %}
