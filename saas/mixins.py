@@ -178,6 +178,15 @@ class OrganizationMixin(ContextMixin):
         return get_object_or_404(Organization,
             slug=self.kwargs.get(self.organization_url_kwarg))
 
+    def get_url_kwargs(self):
+        """
+        Rebuilds the ``kwargs`` to pass to ``reverse()``.
+        """
+        url_kwargs = {}
+        if 'organization' in self.kwargs:
+            url_kwargs.update({'organization': self.kwargs['organization']})
+        return url_kwargs
+
     def get_context_data(self, **kwargs):
         context = super(OrganizationMixin, self).get_context_data(**kwargs)
         context.update({'organization': self.get_organization()})

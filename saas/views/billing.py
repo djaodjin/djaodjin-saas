@@ -160,7 +160,7 @@ class BankUpdateView(BankMixin, FormView):
             self.request.GET.get(REDIRECT_FIELD_NAME, None))
         if redirect_path:
             return redirect_path
-        return reverse('saas_transfer_info', self.organization())
+        return reverse('saas_transfer_info', kwargs=self.get_url_kwargs())
 
 
 class InvoicablesFormMixin(OrganizationMixin):
@@ -343,12 +343,12 @@ class TransactionListView(OrganizationMixin, TemplateView):
             # It is not straightforward to inverse a number in Django templates
             # so we do it with a convention on the ``humanize_money`` filter.
             balance_unit = '-%s' % balance_unit
-        context.update({'organization': self.customer,
-                        'balance_amount': balance_amount,
-                        'balance_unit': balance_unit,
-                        'download_url': reverse(
-                            'saas_transactions_download',
-                            kwargs={'organization': self.customer})})
+        context.update({
+            'organization': self.customer,
+            'balance_amount': balance_amount,
+            'balance_unit': balance_unit,
+            'download_url': reverse(
+                'saas_transactions_download', kwargs=self.get_url_kwargs())})
         return context
 
 
@@ -365,10 +365,11 @@ class TransferListView(BankMixin, TemplateView):
         balance_amount, balance_unit \
             = Transaction.objects.get_organization_balance(
             self.organization, Transaction.FUNDS)
-        context.update({'balance_amount': balance_amount,
-                        'balance_unit': balance_unit,
-                        'download_url': reverse('saas_transfers_download',
-                            kwargs={'organization': self.organization})})
+        context.update({
+            'balance_amount': balance_amount,
+            'balance_unit': balance_unit,
+            'download_url': reverse(
+                'saas_transfers_download', kwargs=self.get_url_kwargs())})
         return context
 
 

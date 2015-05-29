@@ -139,11 +139,11 @@ class OrganizationCreateView(CreateView):
         return reverse(self.pattern_name, args=(self.object,))
 
 
-class OrganizationDashboardView(DetailView):
+class ProviderDashboardView(ProviderMixin, DetailView):
 
     model = Organization
     slug_url_kwarg = 'organization'
-    template_name = "saas/organization_root.html"
+    template_name = "saas/provider/dashboard.html"
     steps = [
         {
             'test': 'has_profile_completed',
@@ -162,20 +162,23 @@ class OrganizationDashboardView(DetailView):
         }
     ]
 
+    def get_object(self, queryset=None):
+        return self.get_organization()
+
     def get_steps(self):
         return self.steps
 
     def get_context_data(self, **kwargs):
         context = super(
-            OrganizationDashboardView, self).get_context_data(**kwargs)
-        organization = context['organization']
+            ProviderDashboardView, self).get_context_data(**kwargs)
+        organization = self.get_organization()
         progress = 0
         next_steps = []
         steps = self.get_steps()
         for step in steps:
             if not getattr(organization, step['test']):
-                step['url'] = reverse(step['url_name'],
-                    kwargs={'organization': organization})
+                step['url'] = reverse(
+                    step['url_name'], kwargs=self.get_url_kwargs())
                 next_steps += [step]
         progress = (len(steps) - len(next_steps)) * 100/len(steps)
         context.update({
