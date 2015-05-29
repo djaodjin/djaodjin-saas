@@ -496,7 +496,7 @@ subscriberControllers.controller('subscriberCtrl',
         $scope.subscribed_loading = true;
         $scope.churned_loading = true;
         if( typeof dataset === "undefined" || dataset == 'churned' ) {
-            params = {start_at: $scope.start_at, ends_at: $scope.ends_at};
+            var params = {start_at: $scope.start_at, ends_at: $scope.ends_at};
             if( $scope.currentPage.churned > 1 ) {
                 params.page = $scope.currentPage.churned;
             }
