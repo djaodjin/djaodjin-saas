@@ -310,7 +310,7 @@ class Organization(models.Model):
         """
         #pylint: disable=too-many-locals
         invoiced_items = []
-        new_organizations = []
+        new_organizations = {}
         for invoicable in invoicables:
             subscription = invoicable['subscription']
             if not subscription.organization.id:
@@ -318,7 +318,10 @@ class Organization(models.Model):
                 # we will create a random (i.e. hard to guess) one-time
                 # 100% discount coupon that will be emailed to the expected
                 # subscriber.
-                new_organizations += [subscription.organization]
+                if not subscription.plan in new_organizations:
+                    new_organizations[subscription.plan] = []
+                new_organizations[subscription.plan] += [
+                    subscription.organization]
             else:
                 LOGGER.info("[checkout] save subscription of %s to %s",
                     subscription.organization, subscription.plan)
@@ -338,33 +341,51 @@ class Organization(models.Model):
                 cart_item.recorded = True
                 cart_item.save()
 
+        # At this point we have gathered all the ``Organization``
+        # which have yet to be registered. For these no ``Subscription``
+        # has been created yet. We create a 100% discount coupon that will
+        # be emailed to the expected subscribers. We record the coupon
+        # code as an event_id.
+        coupons = {}
+        for plan, absentees in new_organizations.iteritems():
+            coupon = Coupon.objects.create(
+                code=generate_random_slug(),
+                organization=plan.organization,
+                plan=plan,
+                percent=100, nb_attempts=len(absentees),
+                description='Bulk buying from %s (%s)' % (
+                    self.printable_name, user))
+            LOGGER.info('Auto-generated Coupon %s for %d subscriptions to %s',
+                coupon.code, len(absentees), plan)
+            coupons.update({plan: coupon})
+
+        # We now either have a ``subscription.id`` (subscriber present
+        # in the database) or a ``Coupon`` (subscriber absent from
+        # the database).
+        for invoicable in invoicables:
+            subscription = invoicable['subscription']
+            if subscription.id:
+                event_id = subscription.id
+            else:
+                # We do not use id's here. Integers are reserved
+                # to match ``Subscription.id``.
+                event_id = 'cpn_%s' % coupons[subscription.plan].code
             for invoiced_item in invoicable['lines']:
-                # We can't set the event_id until the subscription is saved
-                # in the database.
-                invoiced_item.event_id = subscription.id
+                invoiced_item.event_id = event_id
                 invoiced_items += [invoiced_item]
 
         invoiced_items = Transaction.objects.execute_order(invoiced_items, user)
         charge = Charge.objects.charge_card(self, invoiced_items, user,
             token=token, remember_card=remember_card)
 
-        # Create a 100% discount coupon that will be emailed to
-        # the expected subscribers. We do it after the charge is created
-        # just that we don't inadvertently email new subscribers in case
-        # something goes wrong.
-        if new_organizations:
-            coupon = Coupon.objects.create(
-                code=generate_random_slug(),
-                organization=subscription.plan.organization,
-                plan=subscription.plan,
-                percent=100, nb_attempts=len(new_organizations),
-                description='Bulk buying from %s (charge %s)' % (
-                    self.printable_name, charge))
-            LOGGER.info('Auto-generated Coupon #%s', coupon.id)
-            for organization in new_organizations:
+        # We email users which have yet to be registerd after the charge
+        # is created, just that we don't inadvertently email new subscribers
+        # in case something goes wrong.
+        for plan, absentees in new_organizations.iteritems():
+            for organization in absentees:
                 signals.one_time_coupon_generated.send(
-                    sender=__name__, subscriber_email=organization.email,
-                    coupon=coupon, user=user)
+                    sender=__name__, subscriber=organization,
+                    coupon=coupons[plan], user=user)
 
         return charge
 
@@ -747,8 +768,8 @@ class Charge(models.Model):
         # redistribute the money to the rightful owners.
         for charge_item in self.charge_items.all(): #pylint: disable=no-member
             invoiced_item = charge_item.invoiced
-            subscription = Subscription.objects.get(pk=invoiced_item.event_id)
-            provider = subscription.plan.organization
+            event = invoiced_item.get_event()
+            provider = event.provider
             total_amount = invoiced_item.dest_amount
             fee_amount = provider.processor_fee(total_amount, processor)
             distribute_amount = invoiced_item.dest_amount - fee_amount
@@ -758,10 +779,9 @@ class Charge(models.Model):
                 #     djaodjin:Funds                               900
                 #     xia:Payable:desk
                 charge_item.invoiced_fee = Transaction.objects.create(
-                    event_id=subscription.id,
+                    event_id=invoiced_item.event_id,
                     descr=DESCRIBE_CHARGED_CARD_PROCESSOR % {
-                        'charge': self.processor_id,
-                        'subscription': subscription},
+                        'charge': self.processor_id, 'event': event},
                     created_at=self.created_at,
                     dest_amount=fee_amount,
                     dest_account=Transaction.FUNDS,
@@ -778,10 +798,9 @@ class Charge(models.Model):
             #     cowork:Funds                                  8000
             #     xia:Payable:desk
             Transaction.objects.create(
-                event_id=subscription.id,
+                event_id=invoiced_item.event_id,
                 descr=DESCRIBE_CHARGED_CARD_PROVIDER % {
-                        'charge': self.processor_id,
-                        'subscription': subscription},
+                        'charge': self.processor_id, 'event': event},
                 created_at=self.created_at,
                 dest_amount=distribute_amount,
                 dest_account=Transaction.FUNDS,
@@ -1011,6 +1030,10 @@ class Coupon(models.Model):
 
     def __unicode__(self):
         return '%s-%s' % (self.organization, self.code)
+
+    @property
+    def provider(self):
+        return self.organization
 
     def save(self, force_insert=False, force_update=False, using=None,
              update_fields=None):
@@ -1327,6 +1350,10 @@ class Subscription(models.Model):
         balance, _ = Transaction.objects.get_subscription_balance(self)
         return balance > 0
 
+    @property
+    def provider(self):
+        return self.plan.organization
+
     def charge_in_progress(self):
         queryset = Charge.objects.filter(
             customer=self.organization, state=Charge.CREATED)
@@ -1437,14 +1464,16 @@ class TransactionManager(models.Manager):
         """
         invoiced_items_ids = []
         for invoiced_item in invoiced_items:
-            if invoiced_item.event_id:
-                # XXX When an customer pays on behalf of an organization
-                # which does not exist in the database, we cannot create
-                # the subscription, hence we do not have an event_id
-                # at this point.
-                pay_now = True
-                subscription = Subscription.objects.get(
-                    pk=invoiced_item.event_id)
+            # When an customer pays on behalf of an organization
+            # which does not exist in the database, we cannot create
+            # a ``Subscription`` since we don't have an ``Organization`` yet.
+            pay_now = True
+            try:
+                subscription = Subscription.objects.filter(
+                    pk=invoiced_item.event_id).first()
+            except ValueError:
+                subscription = None
+            if subscription:
                 if invoiced_item.orig_unit == Transaction.PLAN_UNIT:
                     subscription.ends_at = subscription.plan.end_of_period(
                         subscription.ends_at, invoiced_item.orig_amount)
@@ -1454,11 +1483,11 @@ class TransactionManager(models.Manager):
                     # We are dealing with access now, pay later, orders.
                     invoiced_item.dest_amount = subscription.plan.period_amount
                     pay_now = False
-                invoiced_item.orig_amount = invoiced_item.dest_amount
-                invoiced_item.orig_unit = invoiced_item.dest_unit
-                invoiced_item.save()
-                if pay_now:
-                    invoiced_items_ids += [invoiced_item.id]
+            invoiced_item.orig_amount = invoiced_item.dest_amount
+            invoiced_item.orig_unit = invoiced_item.dest_unit
+            invoiced_item.save()
+            if pay_now:
+                invoiced_items_ids += [invoiced_item.id]
         if len(invoiced_items_ids) > 0:
             signals.order_executed.send(
                 sender=__name__, invoiced_items=invoiced_items_ids, user=user)
@@ -1572,12 +1601,13 @@ class TransactionManager(models.Manager):
         """
         result = None
         for invoiced_item in invoiced_items:
-            subscription = Subscription.objects.get(pk=invoiced_item.event_id)
-            if not result:
-                result = subscription.plan.organization
-            elif result != subscription.plan.organization:
-                result = get_current_provider()
-                break
+            event = invoiced_item.get_event()
+            if event:
+                if not result:
+                    result = event.provider
+                elif result != event.provider:
+                    result = get_current_provider()
+                    break
         if not result:
             result = get_current_provider()
         return result
@@ -1672,6 +1702,18 @@ class Transaction(models.Model):
                  and self.dest_account == Transaction.EXPENSES)
                 or (self.orig_organization == organization    # provider
                  and self.orig_account == Transaction.FUNDS))
+
+    def get_event(self):
+        """
+        Returns the associated 'event' (Subscription, Coupon, etc)
+        if available.
+        """
+        try:
+            return Subscription.objects.get(id=self.event_id)
+        except ValueError:
+            if self.event_id.startswith('cpn_'):
+                return Coupon.objects.get(code=self.event_id[4:])
+        return None
 
 
 class NewVisitors(models.Model):

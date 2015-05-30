@@ -589,8 +589,10 @@ class CartBaseView(InvoicablesFormMixin, FormView):
                 for_descr = ''
                 organization = self.customer
             try:
+                # If we can extend a current ``Subscription`` we will.
                 subscription = Subscription.objects.get(
-                    organization=organization, plan=cart_item.plan)
+                    organization=organization, plan=cart_item.plan,
+                    ends_at__gt=datetime_or_now())
             except Subscription.DoesNotExist:
                 ends_at = prorate_to
                 if not ends_at:
@@ -605,6 +607,13 @@ class CartBaseView(InvoicablesFormMixin, FormView):
                 # a line instead.
                 for line in options:
                     if line.orig_amount == cart_item.nb_periods:
+                        # ``Subscription.create_order`` will have created
+                        # a ``Transaction`` with the ultimate subscriber
+                        # as payee. Overriding ``dest_organization`` here
+                        # insures in all cases (bulk and direct buying),
+                        # the transaction is recorded (in ``execute_order``)
+                        # on behalf of the customer on the checkout page.
+                        line.dest_organization = self.customer
                         line.descr += for_descr
                         lines += [line]
                         options = []

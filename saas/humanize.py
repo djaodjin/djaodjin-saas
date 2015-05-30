@@ -39,10 +39,10 @@ DESCRIBE_CHARGED_CARD = \
     "Charge %(charge)s on credit card of %(organization)s"
 
 DESCRIBE_CHARGED_CARD_PROCESSOR = \
-    "Charge %(charge)s processor fee for %(subscription)s"
+    "Charge %(charge)s processor fee for %(event)s"
 
 DESCRIBE_CHARGED_CARD_PROVIDER = \
-    "Charge %(charge)s distribution for %(subscription)s"
+    "Charge %(charge)s distribution for %(event)s"
 
 DESCRIBE_CHARGED_CARD_REFUND = \
     "Charge %(charge)s refund for %(descr)s"

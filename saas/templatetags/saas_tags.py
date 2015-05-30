@@ -42,8 +42,14 @@ register = template.Library()
 
 @register.filter()
 def is_current_provider(organization):
-    # XXX Use slug because both organizations might come from a different db.
-    return organization.slug == get_current_provider().slug
+    # We do a string compare here because both ``Organization`` might come
+    # from a different db. That is if the organization parameter is not
+    # a unicode string itself.
+    if isinstance(organization, basestring):
+        slug = organization
+    else:
+        slug = organization.slug
+    return slug == get_current_provider().slug
 
 
 @register.filter()
@@ -179,9 +185,9 @@ def refund_enable(transaction, user):
     """
     Returns True if *user* is able to trigger a refund on *transaction*.
     """
-    subscription = Subscription.objects.filter(pk=transaction.event_id).first()
-    if subscription:
-        return _valid_manager(user, [subscription.plan.organization])
+    event = transaction.get_event()
+    if event:
+        return _valid_manager(user, [event.provider])
     return False
 
 
