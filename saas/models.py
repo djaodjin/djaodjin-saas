@@ -59,7 +59,7 @@ from django_countries.fields import CountryField
 from saas import settings
 from saas import signals
 from saas import get_manager_relation_model, get_contributor_relation_model
-from saas.backends import PROCESSOR_BACKEND, ProcessorError
+from saas.backends import PROCESSOR_BACKEND, ProcessorError, CardError
 from saas.utils import datetime_or_now, generate_random_slug
 
 from saas.humanize import (as_money, describe_buy_periods,
@@ -292,14 +292,14 @@ class Organization(models.Model):
 
     def update_bank(self, bank_token):
         PROCESSOR_BACKEND.create_or_update_bank(self, bank_token)
-        LOGGER.info('Updated bank information for %s on processor (%s)',
-                    self, self.processor_recipient_id)
+        LOGGER.info('Updated bank information for %s on processor '\
+            '{"recipient_id": %s}', self, self.processor_recipient_id)
         signals.bank_updated.send(self)
 
     def update_card(self, card_token, user):
         PROCESSOR_BACKEND.create_or_update_card(self, card_token, user)
-        LOGGER.info('Updated card information for %s on processor (%s)',
-                    self, self.processor_id)
+        LOGGER.info('Updated card information for %s on processor '\
+            '{"processor_id": %s}', self, self.processor_id)
 
     @method_decorator(transaction.atomic)
     def checkout(self, invoicables, user, token=None, remember_card=True):
@@ -600,9 +600,17 @@ class ChargeManager(models.Manager):
                 ChargeItem.objects.create(invoiced=invoiced, charge=charge)
             LOGGER.info('Created charge #%s of %d cents to %s',
                         charge.processor_id, charge.amount, customer)
-        except ProcessorError:
-            LOGGER.error('InvalidRequestError for charge of %d cents to %s',
-                        amount, customer)
+        except CardError as err:
+            # Expected runtime error. We just log that the charge was declined.
+            LOGGER.info('CardError for charge of %d cents to %s: %s',
+                        amount, customer, err)
+            raise
+        except ProcessorError as err:
+            # An error from the processor which indicates the logic might be
+            # incorrect, the network down, etc. We want to know about it right
+            # away.
+            LOGGER.exception('ProcessorError for charge of %d cents to %s: %s',
+                        amount, customer, err)
             raise
         return charge
 

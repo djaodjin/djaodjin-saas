@@ -23,6 +23,7 @@
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 from stripe.error import StripeError as ProcessorError
+from stripe.error import CardError as CardError
 
 from saas import settings
 from saas.backends.stripe_processor import StripeBackend

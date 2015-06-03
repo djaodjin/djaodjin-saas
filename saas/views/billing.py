@@ -220,13 +220,10 @@ class CardInvoicablesFormMixin(CardFormMixin, InvoicablesFormMixin):
         If the form is valid we, optionally, checkout the cart items
         and charge the invoiced items which are due now.
         """
-        # XXX We always remember the card instead of taking input
-        # from the form.cleaned_data['remember_card'] field.
-        remember_card = True
+        # We remember the card by default. ``stripeToken`` is not present
+        # when we are creating charges on a card already on file.
+        remember_card = form.cleaned_data.get('remember_card', True)
         stripe_token = form.cleaned_data['stripeToken']
-        if not stripe_token:
-            LOGGER.error("POST to payment page without a stripeToken (%s)",
-                form.cleaned_data)
 
         # deep copy the invoicables because we are updating the list in place
         # and we don't want to keep the edited state on a card failure.
