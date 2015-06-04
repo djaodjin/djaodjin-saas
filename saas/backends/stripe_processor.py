@@ -63,6 +63,27 @@ class StripeBackend(object):
             all_custs = response['data']
         return customers
 
+    def charge_distribution(self, charge, refunded=0, unit='usd'):
+        if charge.unit != unit:
+            # Avoids an HTTP request to Stripe API when we can compute it.
+            stripe.api_key = self.priv_key
+            balance_transactions = stripe.BalanceTransaction.all(
+                source=charge.processor_id)
+            assert len(balance_transactions.data) == 1
+            fee_unit = balance_transactions.data[0].currency
+            fee_amount = balance_transactions.data[0].fee
+            distribute_unit = balance_transactions.data[0].currency
+            distribute_amount = balance_transactions.data[0].amount
+        else:
+            # Stripe processing fee associated to a transaction
+            # is 2.9% + 30 cents.
+            # Stripe rounds up so we do the same here. Be careful Python 3.x
+            # semantics are broken and will return a float instead of a int.
+            fee_unit = charge.unit
+            fee_amount = ((charge.amount - refunded) * 290 + 5000) / 10000 + 30
+            distribute_amount = charge.amount - refunded - fee_amount
+            distribute_unit = charge.unit
+        return distribute_amount, distribute_unit, fee_amount, fee_unit
 
     def create_charge(self, organization, amount, unit,
         descr=None, stmt_descr=None):
@@ -222,16 +243,6 @@ class StripeBackend(object):
             if stripe_charge.paid:
                 charge.payment_successful()
         return charge
-
-    @staticmethod
-    def prorate_transaction(amount):
-        """
-        Return Stripe processing fee associated to a transaction
-        (i.e. 2.9% + 30 cents).
-        """
-        # Stripe rounds up so we do the same here. Be careful Python 3.x
-        # semantics are broken and will return a float instead of a int.
-        return (amount * 290 + 5000) / 10000 + 30
 
     @staticmethod
     def prorate_transfer(amount): #pylint: disable=unused-argument

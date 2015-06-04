@@ -411,29 +411,6 @@ class Organization(models.Model):
         """
         return PROCESSOR_BACKEND.retrieve_bank(self)
 
-    def processor_fee(self, total_amount, processor=None):
-        """
-        Returns fee amount paid to processor.
-        """
-        fee_amount = 0
-        if total_amount > 0:
-            # Because of a minimum fixed fee to process a charge, we must
-            # insure we don't end up with a minimum fixed fee on a full refund.
-            if processor:
-                provider_subscription = Subscription.objects.filter(
-                    organization=self, plan__organization=processor).order_by(
-                        '-created_at').first()
-                if provider_subscription:
-                    # first() will return None.
-                    fee_amount = provider_subscription.plan.prorate_transaction(
-                        total_amount)
-                else:
-                    processor = None
-            if not processor:
-                fee_amount = PROCESSOR_BACKEND.prorate_transaction(
-                    total_amount)
-        return fee_amount
-
     @method_decorator(transaction.atomic)
     def withdraw_funds(self, amount, user, created_at=None):
         """
@@ -593,7 +570,7 @@ class ChargeManager(models.Manager):
             if user:
                 descr += ' (%s)' % user.username
             charge = self.create(
-                processor_id=processor_charge_id, amount=amount,
+                processor_id=processor_charge_id, amount=amount, unit=unit,
                 created_at=created_at, description=descr,
                 customer=customer, last4=last4, exp_date=exp_date)
             for invoiced in transactions:
@@ -755,6 +732,7 @@ class Charge(models.Model):
                 cowork:Funds                             $174.77
                 xia:Payable
         """
+        #pylint: disable=too-many-locals
         assert self.state == self.CREATED
 
         # Example:
@@ -762,14 +740,21 @@ class Charge(models.Model):
         #     xia:Expenses                                 15800
         #     djaodjin:Income
         processor = self.get_processor()
+        total_distribute_amount, \
+            funds_unit, \
+            total_fee_amount, \
+            processor_funds_unit = PROCESSOR_BACKEND.charge_distribution(self)
+
         charge_transaction = Transaction.objects.create(
             event_id=self.id,
             descr=self.description,
             created_at=self.created_at,
+            dest_unit=self.unit,
             dest_amount=self.amount,
             dest_account=Transaction.EXPENSES,
             dest_organization=self.customer,
-            orig_amount=self.amount,
+            orig_unit=processor_funds_unit,
+            orig_amount=total_distribute_amount,
             orig_account=Transaction.INCOME,
             orig_organization=processor)
         # Once we have created a transaction for the charge, let's
@@ -778,9 +763,17 @@ class Charge(models.Model):
             invoiced_item = charge_item.invoiced
             event = invoiced_item.get_event()
             provider = event.provider
-            total_amount = invoiced_item.dest_amount
-            fee_amount = provider.processor_fee(total_amount, processor)
-            distribute_amount = invoiced_item.dest_amount - fee_amount
+            charge_item_amount = invoiced_item.dest_amount
+            # Has long as we have only one item and charge/funds are using
+            # same unit, multiplication and division are carefully crafted
+            # to keep full precision.
+            # XXX to check with transfer btw currencies and multiple items.
+            orig_fee_amount = (charge_item_amount *
+                total_fee_amount / (total_distribute_amount + total_fee_amount))
+            orig_distribute_amount = charge_item_amount - orig_fee_amount
+            fee_amount = ((total_fee_amount * charge_item_amount / self.amount))
+            distribute_amount = (
+                total_distribute_amount * charge_item_amount / self.amount)
             if fee_amount > 0:
                 # Example:
                 # 2014/01/15 fee to cowork
@@ -791,10 +784,12 @@ class Charge(models.Model):
                     descr=DESCRIBE_CHARGED_CARD_PROCESSOR % {
                         'charge': self.processor_id, 'event': event},
                     created_at=self.created_at,
+                    dest_unit=processor_funds_unit,
                     dest_amount=fee_amount,
                     dest_account=Transaction.FUNDS,
                     dest_organization=processor,
-                    orig_amount=fee_amount,
+                    orig_unit=self.unit,
+                    orig_amount=orig_fee_amount,
                     orig_account=Transaction.PAYABLE,
                     orig_organization=self.customer)
                 charge_item.save()
@@ -810,10 +805,12 @@ class Charge(models.Model):
                 descr=DESCRIBE_CHARGED_CARD_PROVIDER % {
                         'charge': self.processor_id, 'event': event},
                 created_at=self.created_at,
+                dest_unit=funds_unit,
                 dest_amount=distribute_amount,
                 dest_account=Transaction.FUNDS,
                 dest_organization=provider,
-                orig_amount=distribute_amount,
+                orig_unit=self.unit,
+                orig_amount=orig_distribute_amount,
                 orig_account=Transaction.PAYABLE,
                 orig_organization=self.customer)
             provider.funds_balance += distribute_amount
@@ -877,6 +874,7 @@ class Charge(models.Model):
         Note: The system does not currently support more than one refund
         per ``ChargeItem``.
         """
+        #pylint: disable=too-many-locals
         assert self.state == self.DONE
 
         # We do all computation and checks before starting to modify
@@ -897,18 +895,32 @@ class Charge(models.Model):
         provider = invoiced_item.orig_organization
         if refunded_amount is None:
             refunded_amount = invoiced_item.dest_amount
+
+        previously_refunded, _ = sum_orig_amount(
+            Transaction.objects.by_charge(self).filter(
+                orig_account=Transaction.REFUNDED))
+        total_distribute_amount, funds_unit, \
+            total_fee_amount, processor_funds_unit \
+            = PROCESSOR_BACKEND.charge_distribution(
+                self, refunded=previously_refunded + refunded_amount)
+        corrected_distribute_amount = (total_distribute_amount
+            * invoiced_item.dest_amount / self.amount)
+        # refunded_distribute_amount
+        #     = distribute_amount - corrected_distribute_amount
+        refunded_distribute_amount = (invoiced_item.orig_amount
+            - charge_item.invoiced_fee.dest_amount
+            - corrected_distribute_amount)
+
         refunded_fee_amount = 0
         if charge_item.invoiced_fee:
             # Implementation Note: There is a fixed 30 cents component
             # to the processor fee. We must recompute the corrected
             # fee on the total amount left over after the refund.
-            corrected_fee_amount = provider.processor_fee(
-                invoiced_item.dest_amount - refunded_amount,
-                self.get_processor())
-            if charge_item.invoiced_fee.orig_amount > corrected_fee_amount:
-                refunded_fee_amount = (charge_item.invoiced_fee.orig_amount
+            corrected_fee_amount = (
+                total_fee_amount * invoiced_item.dest_amount / self.amount)
+            if charge_item.invoiced_fee.dest_amount > corrected_fee_amount:
+                refunded_fee_amount = (charge_item.invoiced_fee.dest_amount
                     - corrected_fee_amount)
-        refunded_distribute_amount = refunded_amount - refunded_fee_amount
         LOGGER.info("Refund charge %s for %d cents"\
             " (distributed: %d cents, processor fee: %d cents)",
             self.processor_id, refunded_amount,
@@ -936,8 +948,8 @@ class Charge(models.Model):
                 event_id=self.id,
                 descr=descr,
                 created_at=created_at,
-                dest_unit=self.unit,
-                dest_amount=refunded_amount,
+                dest_unit=funds_unit,
+                dest_amount=refunded_distribute_amount + refunded_fee_amount,
                 dest_account=Transaction.REFUND,
                 dest_organization=provider,
                 orig_unit=self.unit,
@@ -954,11 +966,11 @@ class Charge(models.Model):
                     descr=charge_item.invoiced_fee.descr.replace(
                         'processor fee', 'refund processor fee'),
                     created_at=created_at,
-                    dest_unit=self.unit,
+                    dest_unit=processor_funds_unit,
                     dest_amount=refunded_fee_amount,
                     dest_account=Transaction.REFUND,
                     dest_organization=processor,
-                    orig_unit=self.unit,
+                    orig_unit=processor_funds_unit,
                     orig_amount=refunded_fee_amount,
                     orig_account=Transaction.FUNDS,
                     orig_organization=processor)
@@ -970,11 +982,11 @@ class Charge(models.Model):
                 event_id=self.id,
                 descr=descr,
                 created_at=created_at,
-                dest_unit=self.unit,
+                dest_unit=processor_funds_unit,
                 dest_amount=refunded_distribute_amount,
                 dest_account=Transaction.REFUND,
                 dest_organization=processor,
-                orig_unit=self.unit,
+                orig_unit=funds_unit,
                 orig_amount=refunded_distribute_amount,
                 orig_account=Transaction.FUNDS,
                 orig_organization=provider)
@@ -1515,11 +1527,17 @@ class TransactionManager(models.Manager):
         orig_amount, orig_unit = sum_orig_amount(self.filter(
             orig_organization=organization, orig_account__startswith=account,
             created_at__lt=until))
-        if dest_unit != orig_unit:
-            LOGGER.error('orig and dest balances until %s for account'\
-' %s of %s have different unit (%s vs. %s).', until, account, organization,
-                         orig_unit, dest_unit)
-        return dest_amount - orig_amount, dest_unit
+        if dest_unit is None:
+            unit = orig_unit
+        elif orig_unit is None:
+            unit = dest_unit
+        elif dest_unit != orig_unit:
+            raise ValueError('orig and dest balances until %s for account'\
+' %s of %s have different unit (%s vs. %s).' % (until, account, organization,
+                orig_unit, dest_unit))
+        else:
+            unit = dest_unit
+        return dest_amount - orig_amount, unit
 
     def get_organization_payable(self, organization,
                                  until=None, created_at=None):
@@ -1559,10 +1577,16 @@ class TransactionManager(models.Manager):
             orig_organization=subscription.organization,
             orig_account=Transaction.PAYABLE,
             event_id=subscription.id))
-        if dest_unit != orig_unit:
-            LOGGER.error('orig and dest balances for subscription '\
-' %s have different unit (%s vs. %s).', subscription, orig_unit, dest_unit)
-        return dest_amount - orig_amount, dest_unit
+        if dest_unit is None:
+            unit = orig_unit
+        elif orig_unit is None:
+            unit = dest_unit
+        elif dest_unit != orig_unit:
+            raise ValueError('orig and dest balances for subscription %s'\
+' have different unit (%s vs. %s).' % (subscription, orig_unit, dest_unit))
+        else:
+            unit = dest_unit
+        return dest_amount - orig_amount, unit
 
     def get_subscription_payable(self, subscription, created_at=None):
         """
@@ -1752,13 +1776,13 @@ def sum_dest_amount(transactions):
     Return the sum of the amount in the *transactions* set.
     """
     amount = 0
-    unit = 'usd' # XXX
+    unit = None
     if isinstance(transactions, QuerySet):
         if transactions.exists():
             queryset_unit = transactions.values('dest_unit').distinct()
             if queryset_unit.count() > 1:
-                LOGGER.error(
-                  "Trying to sum amounts with different units %s", transactions)
+                raise ValueError('Trying to sum amounts with different units %s'
+                    % queryset_unit)
             unit = queryset_unit.first()['dest_unit']
             queryset_amount = transactions.aggregate(Sum('dest_amount'))
             amount = queryset_amount['dest_amount__sum']
@@ -1774,13 +1798,13 @@ def sum_orig_amount(transactions):
     Return the sum of the amount in the *transactions* set.
     """
     amount = 0
-    unit = 'usd' # XXX
+    unit = None
     if isinstance(transactions, QuerySet):
         if transactions.exists():
             queryset_unit = transactions.values('orig_unit').distinct()
             if queryset_unit.count() > 1:
-                LOGGER.error(
-                  "Trying to sum amounts with different units %s", transactions)
+                raise ValueError('Trying to sum amounts with different units %s'
+                    % queryset_unit)
             unit = queryset_unit.first()['orig_unit']
             queryset_amount = transactions.aggregate(Sum('orig_amount'))
             amount = queryset_amount['orig_amount__sum']

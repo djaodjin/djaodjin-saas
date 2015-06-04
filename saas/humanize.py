@@ -55,6 +55,8 @@ DESCRIBE_UNLOCK_LATER = \
 
 
 def as_money(value, currency='usd'):
+    if value == 0:
+        return '0.00'
     if currency.startswith('-'):
         value = - value
         currency = currency[1:]
