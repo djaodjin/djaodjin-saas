@@ -27,14 +27,22 @@
 from django.conf.urls import patterns, url
 
 from saas.views.metrics import (BalancesDownloadView,
-    CouponMetricsDownloadView, SubscriberPipelineDownloadView)
+    CouponMetricsDownloadView, SubscriberPipelineSubscribedDownloadView,
+    SubscriberPipelineRegisteredDownloadView,
+    SubscriberPipelineChurnedDownloadView)
 from saas.views.billing import TransferDownloadView
 
 urlpatterns = patterns(
     'saas.views.metrics',
-    url(r'^pipeline/(?P<subscriber_type>[\w]+)$',
-        SubscriberPipelineDownloadView.as_view(),
-        name='saas_subscriber_pipeline_download'),
+    url(r'^pipeline/registered/?',
+        SubscriberPipelineRegisteredDownloadView.as_view(),
+        name='saas_subscriber_pipeline_download_registered'),
+    url(r'^pipeline/subscribed/?',
+        SubscriberPipelineSubscribedDownloadView.as_view(),
+        name='saas_subscriber_pipeline_download_subscribed'),
+    url(r'^pipeline/churned/?',
+        SubscriberPipelineChurnedDownloadView.as_view(),
+        name='saas_subscriber_pipeline_download_churned'),
     url(r'^coupons/', CouponMetricsDownloadView.as_view(),
         name='saas_metrics_coupons_download'),
     url(r'^balances/',

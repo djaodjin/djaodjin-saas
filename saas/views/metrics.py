@@ -35,14 +35,14 @@ from django.utils.timezone import utc
 from django.views.generic import ListView, TemplateView, View
 from django.core.serializers.json import DjangoJSONEncoder
 
-# importing views for their data retrieval methods (maybe should be managers?)
-from saas.api.metrics import (ChurnedAPIView, RegisteredAPIView,
-    SubscribedAPIView)
 from saas.api.coupons import SmartCouponListMixin
 # NB: there is another CouponMixin
 from saas.api.coupons import CouponMixin as CouponAPIMixin
+from saas.api.metrics import (RegisteredQuerysetMixin, SubscribedQuerysetMixin, 
+    ChurnedQuerysetMixin)
 from saas.mixins import CouponMixin, ProviderMixin, MetricsMixin
 from saas.views.auth import valid_manager_for_organization
+from saas.views.download import CSVDownloadView
 from saas.managers.metrics import (active_subscribers, churn_subscribers,
     monthly_balances, month_periods)
 from saas.models import (CartItem, Organization, Plan, Transaction,
@@ -72,7 +72,8 @@ class CouponMetricsView(CouponMixin, ListView):
         return context
 
 
-class CouponMetricsDownloadView(ProviderMixin, View):
+class CouponMetricsDownloadView(
+        SmartCouponListMixin, CouponAPIMixin, ProviderMixin, CSVDownloadView):
 
     headings = [
         'Code',
@@ -82,37 +83,30 @@ class CouponMetricsDownloadView(ProviderMixin, View):
         'Plan',
     ]
 
-    def get(self, request, **kwargs):
-        class CouponAPIDummyView(SmartCouponListMixin, CouponAPIMixin):
-            '''
-            Stand-in for a view so that django-extra-views can create a
-            filtered QuerySet for us. This guarantees that we consider only the
-            same Coupons that are displayed to the user in the admin display.
-            '''
-            def __init__(self, request, kwargs):
-                self.request = request
-                self.kwargs = kwargs
+    def get_headings(self):
+        return self.headings
 
-        coupons = CouponAPIDummyView(request, kwargs).get_queryset()
+    def get_filename(self):
+        return datetime.now().strftime('coupons-%Y%m%d.csv')
 
-        content = StringIO()
-        csv_writer = csv.writer(content)
-        csv_writer.writerow(self.headings)
-        for cartitem in CartItem.objects.filter(coupon__in=coupons):
-            csv_writer.writerow([
-                cartitem.coupon.code.encode('utf-8'),
-                cartitem.coupon.percent,
-                ' '.join([cartitem.user.first_name, cartitem.user.last_name]).\
-                    encode('utf-8'),
-                cartitem.user.email.encode('utf-8'),
-                cartitem.plan.slug.encode('utf-8'),
-            ])
-        content.seek(0)
-        resp = HttpResponse(content, content_type='text/csv')
-        resp['Content-Disposition'] = datetime.now().strftime(
-            'attachment; filename="coupons-%Y%m%d.csv"')
-        return resp
+    def get_queryset(self):
+        '''
+        Return CartItems related to the Coupon specified in the URL.
+        '''
+        # invoke SmartCouponListMixin to get the coupon specified by URL params
+        coupons = super(CouponMetricsDownloadView, self).get_queryset()
+        # get related CartItems
+        return CartItem.objects.filter(coupon__in=coupons)
 
+    def queryrow_to_columns(self, cartitem):
+        return [
+            cartitem.coupon.code.encode('utf-8'),
+            cartitem.coupon.percent,
+            ' '.join([cartitem.user.first_name, cartitem.user.last_name]).\
+                encode('utf-8'),
+            cartitem.user.email.encode('utf-8'),
+            cartitem.plan.slug.encode('utf-8'),
+        ]
 
 class PlansMetricsView(ProviderMixin, TemplateView):
     """
@@ -178,73 +172,82 @@ class BalancesMetricsView(MetricsMixin, TemplateView):
         return context
 
 
-class BalancesDownloadView(MetricsMixin, TemplateView):
+class BalancesDownloadView(MetricsMixin, CSVDownloadView):
     """
     Export balance metrics as a CSV file.
     """
     queryname = 'balances'
 
-    def get(self, request, *args, **kwargs): #pylint: disable=unused-argument
-        self.cache_fields(request)
-        response = HttpResponse(content_type='text/csv')
-        response['Content-Disposition'] = ('attachment; filename="%s.csv"'
-            % self.queryname)
-        writer = csv.writer(response)
-        # column headers
-        values = ['name']
-        for end_period in month_periods(from_date=self.ends_at):
-            values += [end_period]
-        writer.writerow(values)
-        # rows
-        for key in Transaction.objects.distinct_accounts():
-            values = [key] + [item[1] for item in monthly_balances(
-                self.organization, key, self.ends_at)]
-            writer.writerow(values)
-        return response
+    def get_headings(self):
+        return ['name'] + [
+            end_period for end_period in month_periods(from_date=self.ends_at)]
 
+    def get_filename(self, *_):
+        return '{}.csv'.format(self.queryname)
+
+    def get(self, request, *args, **kwargs): #pylint: disable=unused-argument
+        # cache_fields sets attributes like 'starts_at', required by other methods
+        self.cache_fields(request)
+        return super(BalancesDownloadView, self).get(request, *args, **kwargs)
+
+    def get_queryset(self, *_):
+        return Transaction.objects.distinct_accounts()
+
+    def queryrow_to_columns(self, account):
+        return [account] + [item[1] for item in monthly_balances(
+            self.organization, account, self.ends_at)]
 
 class SubscriberPipelineView(ProviderMixin, TemplateView):
 
     template_name = "saas/subscriber_pipeline.html"
 
 
-class SubscriberPipelineDownloadView(ProviderMixin, View):
+class AbstractSubscriberPipelineDownloadView(ProviderMixin, CSVDownloadView):
 
-    queryset_view_map = {
-        'registered': RegisteredAPIView,
-        'subscribed': SubscribedAPIView,
-        'churned': ChurnedAPIView,
-    }
+    def get(self, request, *args, **kwargs):
+        self.provider = self.get_organization()
+        self.start_date = datetime_or_now(
+            parse_datetime(request.GET.get('start_date', None).strip('"')))
+        self.end_date = datetime_or_now(
+            parse_datetime(request.GET.get('end_date', None).strip('"')))
 
-    def get(self, request, subscriber_type, **kwargs):
-        queryset_view = self.queryset_view_map[subscriber_type]
+        return super(AbstractSubscriberPipelineDownloadView, self).get(
+            request, *args, **kwargs)
 
-        class APIViewProxy(queryset_view):
-            def __init__(self, provider):
-                self.provider = provider
-        view_proxy = APIViewProxy(self.get_organization())
-        view_proxy.get_range_queryset = MethodType(
-            queryset_view.get_range_queryset, view_proxy)
+    def get_queryset(self):
+        return self.get_range_queryset(self.start_date, self.end_date)
 
-        start_date = datetime_or_now(
-            parse_datetime(request.GET.get('start_date', None)))
-        end_date = datetime_or_now(
-            parse_datetime(request.GET.get('end_date', None)))
+    def get_headings(self):
+        return ['Name', 'Email', 'Registration Date']
 
-        content = StringIO()
-        csv_writer = csv.writer(content)
-        csv_writer.writerow(['Name', 'Email', 'Registration Date'])
-        for org in view_proxy.get_range_queryset(start_date, end_date):
-            csv_writer.writerow([
-                org.full_name.encode('utf-8'),
-                org.email.encode('utf-8'),
-                org.created_at])
-        content.seek(0)
-        resp = HttpResponse(content, content_type='text/csv')
-        resp['Content-Disposition'] = \
-            'attachment; filename="subscribers-{}-{}.csv"'.format(
-                subscriber_type, datetime.now().strftime('%Y%m%d'))
-        return resp
+    def get_filename(self):
+        return 'subscribers-{}-{}.csv'.format(
+            self.subscriber_type, datetime.now().strftime('%Y%m%d'))
+
+    def queryrow_to_columns(self, org):
+        return [
+            org.full_name.encode('utf-8'),
+            org.email.encode('utf-8'),
+            org.created_at,
+        ]
+
+
+class SubscriberPipelineRegisteredDownloadView(
+        RegisteredQuerysetMixin, AbstractSubscriberPipelineDownloadView):
+
+    subscriber_type = 'registered'
+
+
+class SubscriberPipelineSubscribedDownloadView(
+        SubscribedQuerysetMixin, AbstractSubscriberPipelineDownloadView):
+
+    subscriber_type = 'subscribed'
+
+
+class SubscriberPipelineChurnedDownloadView(
+        ChurnedQuerysetMixin, AbstractSubscriberPipelineDownloadView):
+
+    subscriber_type = 'churned'
 
 
 class UsageMetricsView(ProviderMixin, TemplateView):

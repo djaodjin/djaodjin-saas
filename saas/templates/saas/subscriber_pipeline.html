@@ -22,7 +22,7 @@
                 <h2>Registered</h2>
                 <h2 ng-show="registered_loading">Please wait...</h2>
                 <p ng-hide="registered_loading">Total: [[registered.count]]</p>
-                <p ng-hide="registered_loading"><a href="{% url 'saas_subscriber_pipeline_download' 'registered' %}?start_date=[[start_at]]&amp;end_date=[[ends_at]]">Download</a></p>
+                <p ng-hide="registered_loading"><a href="{% url 'saas_subscriber_pipeline_download_registered' %}?start_date=[[start_at]]&amp;end_date=[[ends_at]]">Download</a></p>
                 <ul ng-hide="registered_loading">
                     <li ng-repeat="organization in registered.registered" ng-cloak>
                         <a ng-if="organization.slug" href="{% url 'saas_profile' %}[[organization.slug]]/">[[organization.full_name]]</a>
@@ -35,7 +35,7 @@
                 <h2>Subscribed</h2>
                 <h2 ng-show="subscribed_loading">Please wait...</h2>
                 <p ng-hide="subscribed_loading">Total: [[subscribed.count]]</p>
-                <p ng-hide="subscribed_loading"><a href="{% url 'saas_subscriber_pipeline_download' 'subscribed' %}?start_date=[[start_at]]&amp;end_date=[[ends_at]]">Download</a></p>
+                <p ng-hide="subscribed_loading"><a href="{% url 'saas_subscriber_pipeline_download_subscribed' %}?start_date=[[start_at]]&amp;end_date=[[ends_at]]">Download</a></p>
                 <ul ng-hide="subscribed_loading">
                     <li ng-repeat="organization in subscribed.subscribed" ng-cloak>
                         <a ng-if="organization.slug" class="[[endsSoon(organization)]]" href="{% url 'saas_profile' %}[[organization.slug]]/">[[organization.full_name]]</a>
@@ -49,7 +49,7 @@
                 <p>Total: [[churned.count]]</p>
                 <h2 ng-show="churned_loading"><i class="fa fa-refresh fa-spin"></i></h2>
                 <p ng-hide="churned_loading">Total: [[churned.count]]</p>
-                <p ng-hide="churned_loading"><a href="{% url 'saas_subscriber_pipeline_download' 'churned' %}?start_date=[[start_at]]&amp;end_date=[[ends_at]]">Download</a></p>
+                <p ng-hide="churned_loading"><a href="{% url 'saas_subscriber_pipeline_download_churned' %}?start_date=[[start_at]]&amp;end_date=[[ends_at]]">Download</a></p>
                 <ul ng-hide="churned_loading">
                     <li ng-repeat="organization in churned.churned" ng-cloak>
                         <a ng-if="organization.slug" href="{% url 'saas_profile' %}[[organization.slug]]/">[[organization.full_name]]</a>
