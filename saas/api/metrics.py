@@ -126,10 +126,7 @@ class OrganizationListAPIView(ProviderMixin, GenericAPIView):
             })
 
 
-
-class ChurnedAPIView(OrganizationListAPIView):
-
-    queryset_name = 'churned'
+class ChurnedQuerysetMixin(object):
 
     def get_range_queryset(self, start_time, end_time):
         return Organization.objects.filter(
@@ -139,9 +136,12 @@ class ChurnedAPIView(OrganizationListAPIView):
                 '-subscription__ends_at', 'full_name').distinct()
 
 
-class RegisteredAPIView(OrganizationListAPIView):
+class ChurnedAPIView(ChurnedQuerysetMixin, OrganizationListAPIView):
 
-    queryset_name = 'registered'
+    queryset_name = 'churned'
+
+
+class RegisteredQuerysetMixin(object):
 
     def get_range_queryset(self, start_time, end_time):
         #pylint: disable=unused-argument
@@ -152,9 +152,12 @@ class RegisteredAPIView(OrganizationListAPIView):
             ).order_by('-created_at', 'full_name').distinct()
 
 
-class SubscribedAPIView(OrganizationListAPIView):
+class RegisteredAPIView(RegisteredQuerysetMixin, OrganizationListAPIView):
 
-    queryset_name = 'subscribed'
+    queryset_name = 'registered'
+
+
+class SubscribedQuerysetMixin(object):
 
     def get_range_queryset(self, start_time, end_time):
         #pylint: disable=unused-argument
@@ -163,3 +166,8 @@ class SubscribedAPIView(OrganizationListAPIView):
             subscription__created_at__lt=end_time,
             subscription__ends_at__gte=end_time).order_by(
             'subscription__ends_at', 'full_name').distinct()
+
+
+class SubscribedAPIView(SubscribedQuerysetMixin, OrganizationListAPIView):
+
+    queryset_name = 'subscribed'
