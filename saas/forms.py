@@ -126,8 +126,7 @@ class OrganizationForm(PostalFormMixin, forms.ModelForm):
                 initial = self.instance.is_bulk_buyer
             self.fields['is_bulk_buyer'] = forms.BooleanField(required=False,
                 initial=initial,
-                label="Enable this organization to pay subscriptions on behalf"\
-" of others.")
+                label="I want to buy in bulk on behalf of others.")
 
 
 class OrganizationCreateForm(OrganizationForm):

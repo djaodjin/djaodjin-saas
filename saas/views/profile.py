@@ -233,10 +233,7 @@ class OrganizationProfileView(OrganizationMixin, UpdateView):
 
     def get_initial(self):
         kwargs = super(OrganizationProfileView, self).get_initial()
-        queryset = Organization.objects.providers_to(
-            self.object).filter(managers__id=self.request.user.id)
-        if queryset.exists():
-            kwargs.update({'is_bulk_buyer': self.object.is_bulk_buyer})
+        kwargs.update({'is_bulk_buyer': self.object.is_bulk_buyer})
         return kwargs
 
     def get_success_url(self):
