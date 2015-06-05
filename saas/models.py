@@ -262,7 +262,7 @@ class Organization(models.Model):
     def has_bank_account(self):
         return self.processor_recipient_id
 
-    def _add_relation(self, user, model):
+    def _add_relation(self, user, model, role, reason=None):
         # Implementation Note:
         # Django get_or_create will call router.db_for_write without
         # an instance so the using database will be lost. The following
@@ -273,22 +273,26 @@ class Organization(models.Model):
         if not queryset.exists():
             m2m = model(organization=self, user=user)
             m2m.save(using=self._state.db, force_insert=True)
+            signals.user_relation_added.send(sender=__name__,
+                organization=self, user=user, role=role, reason=reason)
             return True
         return False
 
-    def add_contributor(self, user, at_time=None):
+    def add_contributor(self, user, at_time=None, reason=None):
         """
         Add user as a contributor to organization.
         """
         #pylint: disable=unused-argument
-        return self._add_relation(user, get_contributor_relation_model())
+        return self._add_relation(user, get_contributor_relation_model(),
+            'contributor', reason=reason)
 
-    def add_manager(self, user, at_time=None):
+    def add_manager(self, user, at_time=None, reason=None):
         """
         Add user as a manager to organization.
         """
         #pylint: disable=unused-argument
-        return self._add_relation(user, get_manager_relation_model())
+        return self._add_relation(user, get_manager_relation_model(),
+            'manager', reason=reason)
 
     def update_bank(self, bank_token):
         PROCESSOR_BACKEND.create_or_update_bank(self, bank_token)

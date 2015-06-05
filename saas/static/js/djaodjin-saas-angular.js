@@ -27,10 +27,8 @@ angular.module('revenueFilters', [])
 
 angular.module('couponApp', ['ui.bootstrap', 'ngRoute',
     'couponControllers', 'couponServices']);
-angular.module('contributorApp', ['ui.bootstrap', 'ngRoute',
-    'contributorControllers', 'contributorServices']);
-angular.module('managerApp', ['ui.bootstrap', 'ngRoute',
-    'managerControllers', 'managerServices']);
+angular.module('userRelationApp', ['ui.bootstrap', 'ngRoute',
+    'userRelationControllers', 'userRelationServices']);
 angular.module('subscriptionApp', ['ui.bootstrap', 'ngRoute',
     'subscriptionControllers', 'subscriptionServices']);
 angular.module('subscriberApp', ['ui.bootstrap', 'ngRoute',
@@ -46,8 +44,7 @@ angular.module('revenueApp', ['ui.bootstrap', 'ngRoute', 'revenueControllers', '
   ============================================================================*/
 
 var couponServices = angular.module('couponServices', ['ngResource']);
-var contributorServices = angular.module('contributorServices', ['ngResource']);
-var managerServices = angular.module('managerServices', ['ngResource']);
+var userRelationServices = angular.module('userRelationServices', ['ngResource']);
 var subscriptionServices = angular.module('subscriptionServices', [
     'ngResource']);
 var transactionServices = angular.module('transactionServices', ['ngResource']);
@@ -63,18 +60,12 @@ couponServices.factory('Coupon', ['$resource', 'urls',
              update: {method:'PUT', isArray:false}});
   }]);
 
-contributorServices.factory('Contributor', ['$resource', 'urls',
+userRelationServices.factory('UserRelation', ['$resource', 'urls',
   function($resource, urls){
     "use strict";
     return $resource(
-        urls.saas_api_contributor_url + '/:user', {'user':'@user'});
-  }]);
-
-managerServices.factory('Manager', ['$resource', 'urls',
-  function($resource, urls){
-    "use strict";
-    return $resource(
-        urls.saas_api_manager_url + '/:user', {'user':'@user'});
+        urls.saas_api_user_relation_url + '/:user', {'user':'@user'},
+        {force: {method:'POST', params: {force:true}}});
   }]);
 
 subscriptionServices.factory('Subscription', ['$resource', 'urls',
@@ -98,8 +89,7 @@ transactionServices.factory('Transaction', ['$resource', 'urls',
   ============================================================================*/
 
 var couponControllers = angular.module('couponControllers', []);
-var contributorControllers = angular.module('contributorControllers', []);
-var managerControllers = angular.module('managerControllers', []);
+var userRelationControllers = angular.module('userRelationControllers', []);
 var subscriptionControllers = angular.module('subscriptionControllers', []);
 var subscriberControllers = angular.module('subscriberControllers', []);
 var transactionControllers = angular.module('transactionControllers', []);
@@ -249,66 +239,51 @@ couponControllers.controller('CouponListCtrl',
 }]);
 
 
-contributorControllers.controller('contributorListCtrl',
-    ['$scope', '$http', 'Contributor', 'urls',
-    function($scope, $http, Contributor, urls) {
+userRelationControllers.controller('userRelationListCtrl',
+    ['$scope', '$http', 'UserRelation', 'urls',
+    function($scope, $http, UserRelation, urls) {
     "use strict";
-    $scope.users = Contributor.query();
-
+    $scope.users = UserRelation.query();
     $scope.user = null;
 
-    $scope.remove = function (idx) {
-        Contributor.remove({ user: $scope.users[idx].username },
-        function (success) {
-            $scope.users.splice(idx, 1);
-        });
-    };
-
-    $scope.save = function() {
-        (new Contributor($scope.user)).$save(
+    $scope.create = function() {
+        $scope.user.invite = $("#new-user-relation [name='message']").val();
+        (new UserRelation($scope.user)).$force(
             function(success) {
                 /* XXX Couldn't figure out how to get the status code
                    here so we just reload the list. */
-                $scope.users = Contributor.query();
-            },
-            function(error) {});
-    };
-
-    $scope.getUsers = function(val) {
-        return $http.get(urls.saas_api_user_url, {
-            params: {q: val}
-        }).then(function(res){
-            return res.data;
-        });
-    };
-
-}]);
-
-
-managerControllers.controller('managerListCtrl',
-    ['$scope', '$http', 'Manager', 'urls',
-    function($scope, $http, Manager, urls) {
-    "use strict";
-    $scope.users = Manager.query();
-
-    $scope.user = null;
-
-    $scope.remove = function (idx) {
-        Manager.remove({ user: $scope.users[idx].username },
-        function (success) {
-            $scope.users.splice(idx, 1);
-        });
-    };
-
-    $scope.save = function() {
-        (new Manager($scope.user)).$save(
-            function(success) {
-                /* XXX Couldn't figure out how to get the status code
-                   here so we just reload the list. */
-                $scope.users = Manager.query();
+                $scope.users = UserRelation.query();
                 $scope.user = null;
             },
-            function(error) {});
+            function(error) {
+                var errMsg = error.statusText;
+                if( error.data && error.data.detail ) {
+                    errMsg = error.data.detail;
+                }
+                showMessages([errMsg], 'danger');
+            });
+    };
+
+    $scope.save = function() {
+        (new UserRelation($scope.user)).$save(
+            function(success) {
+                /* XXX Couldn't figure out how to get the status code
+                   here so we just reload the list. */
+                $scope.users = UserRelation.query();
+                $scope.user = null;
+            },
+            function(error) {
+                if( error.status == 404 ) {
+                    $scope.user.email = $scope.user.username;
+                    $("#new-user-relation").modal('show');
+                } else {
+                    var errMsg = error.statusText;
+                    if( error.data && error.data.detail ) {
+                        errMsg = error.data.detail;
+                    }
+                    showMessages([errMsg], 'danger');
+                }
+            });
     };
 
     $scope.getUsers = function(val) {
@@ -319,6 +294,12 @@ managerControllers.controller('managerListCtrl',
         });
     };
 
+    $scope.remove = function (idx) {
+        UserRelation.remove({ user: $scope.users[idx].username },
+        function (success) {
+            $scope.users.splice(idx, 1);
+        });
+    };
 }]);
 
 

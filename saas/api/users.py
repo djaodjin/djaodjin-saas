@@ -23,7 +23,8 @@
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 from django.core import validators
-from django.shortcuts import get_object_or_404
+from django.http import Http404
+from django.utils.encoding import force_text
 from django.utils.translation import ugettext_lazy as _
 from rest_framework import serializers, status
 from rest_framework.generics import (DestroyAPIView, ListCreateAPIView)
@@ -54,7 +55,7 @@ class RelationListAPIView(OrganizationMixin, ListCreateAPIView):
     queryset = User.objects.all()
     serializer_class = UserSerializer
 
-    def add_relation(self, user):
+    def add_relation(self, user, reason=None):
         raise NotImplementedError(
             "add_relation should be overriden in derived classes.")
 
@@ -62,25 +63,49 @@ class RelationListAPIView(OrganizationMixin, ListCreateAPIView):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         try:
-            user = User.objects.get(username=serializer.data['username'])
+            user = User.objects.get(
+                username=serializer.validated_data['username'])
         except User.DoesNotExist:
-            user = get_object_or_404(User, email=serializer.data['username'])
+            try:
+                # The following SQL query is not folded into the previous
+                # one so we can have a priority of username over email.
+                user = User.objects.get(
+                    email=serializer.validated_data['username'])
+            except User.DoesNotExist:
+                if not request.GET.get('force', False):
+                    raise Http404("%s not found"
+                        % serializer.validated_data['username'])
+                full_name = serializer.validated_data.get('full_name', '')
+                name_parts = full_name.split(' ')
+                if len(name_parts) > 0:
+                    first_name = name_parts[0]
+                    last_name = ' '.join(name_parts[1:])
+                else:
+                    first_name = full_name
+                    last_name = ''
+                #pylint: disable=no-member
+                user = User.objects.create_inactive_user(
+                    serializer.validated_data['email'],
+                    username=serializer.validated_data['username'],
+                    first_name=first_name, last_name=last_name)
+
         self.organization = self.get_organization()
-        if self.add_relation(user):
+        if self.add_relation(user,
+                reason=force_text(request.DATA.get('invite', None))):
             resp_status = status.HTTP_201_CREATED
         else:
             resp_status = status.HTTP_200_OK
         # We were going to return the list of managers here but
         # angularjs complains about deserialization of a list
         # while expecting a single object.
-        return Response(serializer.data, status=resp_status,
-            headers=self.get_success_headers(serializer.data))
+        return Response(serializer.validated_data, status=resp_status,
+            headers=self.get_success_headers(serializer.validated_data))
 
 
 class ContributorListAPIView(RelationListAPIView):
 
-    def add_relation(self, user):
-        return self.organization.add_contributor(user)
+    def add_relation(self, user, reason=None):
+        return self.organization.add_contributor(user, reason=reason)
 
     def get_queryset(self):
         queryset = super(ContributorListAPIView, self).get_queryset()
@@ -95,8 +120,8 @@ class ContributorDetailAPIView(RelationMixin, DestroyAPIView):
 
 class ManagerListAPIView(RelationListAPIView):
 
-    def add_relation(self, user):
-        return self.organization.add_manager(user)
+    def add_relation(self, user, reason=None):
+        return self.organization.add_manager(user, reason=reason)
 
     def get_queryset(self):
         queryset = super(ManagerListAPIView, self).get_queryset()

@@ -31,3 +31,4 @@ charge_updated = Signal(providing_args=["charge", "user"])
 order_executed = Signal(providing_args=["invoiced_items", "user"])
 one_time_coupon_generated = Signal(providing_args=[
         "subscriber", "coupon", "user"])
+user_relation_added = Signal(providing_args=["organization", "user"])

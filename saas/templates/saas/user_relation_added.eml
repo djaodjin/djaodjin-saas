@@ -1,0 +1,24 @@
+{% load assets %}
+{% load currency %}
+{% load saas_tags %}
+
+{% block subject %}
+You were added as a {{role}} to {{organization.printable_name}}
+{% endblock %}
+
+{% block html_content %}
+<html>
+<head>
+</head>
+<body>
+<div>
+<pre>
+{{reason}}
+</pre>
+<p>
+You were added as a {{role}} to {{organization.printable_name}}
+and can access the <a href="{{request.build_absolute_uri}}{% url 'saas_metrics_summary' %}">Dashboard</a> now.
+</p>
+</body>
+</html>
+{% endblock %}

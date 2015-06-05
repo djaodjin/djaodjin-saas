@@ -9,7 +9,7 @@
 /* Implementation Note: Not including a list of dependent modules
    (2nd parameter to `module`) "re-opens" the module for additional
    configuration. */
-var app = angular.module('contributorApp');
+var app = angular.module('userRelationApp');
 /* Add the CSRF Token: */
 app.config(['$interpolateProvider', '$httpProvider',
            function($interpolateProvider, $httpProvider) {
@@ -19,7 +19,7 @@ app.config(['$interpolateProvider', '$httpProvider',
     $interpolateProvider.endSymbol(']]');
 }]);
 app.constant('urls', {
-    saas_api_contributor_url: "{% url 'saas_api_contributor_list' organization %}",
+    saas_api_user_relation_url: "{% url 'saas_api_contributor_list' organization %}",
 });
 </script>
 {% endblock %}
