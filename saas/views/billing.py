@@ -35,10 +35,9 @@ policy.
 2. ``BalanceView`` for subscriptions with balance dues
 """
 
-import copy, csv, logging
+import copy, logging
 from datetime import datetime
 from decimal import Decimal
-from StringIO import StringIO
 
 from django import http
 from django.contrib.auth import REDIRECT_FIELD_NAME
@@ -46,10 +45,8 @@ from django.core.urlresolvers import reverse
 from django.db import IntegrityError
 from django.db.models import Q
 from django.contrib import messages
-from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
-from django.views.generic import (DetailView, FormView, ListView,
-    TemplateView, View)
+from django.views.generic import DetailView, FormView, ListView, TemplateView
 
 from saas.api.transactions import (SmartTransactionListMixin,
     TransactionQuerysetMixin, TransferQuerysetMixin)
@@ -366,7 +363,7 @@ class TransactionDownloadView(SmartTransactionListMixin,
 
     def get_filename(self):
         return datetime.now().strftime('transactions-%Y%m%d.csv')
-    
+
     def queryrow_to_columns(self, transaction):
         org = self.get_organization()
         return [

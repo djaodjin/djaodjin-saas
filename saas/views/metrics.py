@@ -22,23 +22,20 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-import csv, json
+import json
 from datetime import datetime, date, timedelta
-from StringIO import StringIO
-from types import MethodType
 
 from django.db.models import Min, Sum, Max
-from django.http import HttpResponse
 from django.utils.datastructures import SortedDict
 from django.utils.dateparse import parse_datetime
 from django.utils.timezone import utc
-from django.views.generic import ListView, TemplateView, View
+from django.views.generic import ListView, TemplateView
 from django.core.serializers.json import DjangoJSONEncoder
 
 from saas.api.coupons import SmartCouponListMixin
 # NB: there is another CouponMixin
 from saas.api.coupons import CouponMixin as CouponAPIMixin
-from saas.api.metrics import (RegisteredQuerysetMixin, SubscribedQuerysetMixin, 
+from saas.api.metrics import (RegisteredQuerysetMixin, SubscribedQuerysetMixin,
     ChurnedQuerysetMixin)
 from saas.mixins import CouponMixin, ProviderMixin, MetricsMixin
 from saas.views.auth import valid_manager_for_organization
@@ -186,7 +183,8 @@ class BalancesDownloadView(MetricsMixin, CSVDownloadView):
         return '{}.csv'.format(self.queryname)
 
     def get(self, request, *args, **kwargs): #pylint: disable=unused-argument
-        # cache_fields sets attributes like 'starts_at', required by other methods
+        # cache_fields sets attributes like 'starts_at',
+        # required by other methods
         self.cache_fields(request)
         return super(BalancesDownloadView, self).get(request, *args, **kwargs)
 
@@ -204,6 +202,8 @@ class SubscriberPipelineView(ProviderMixin, TemplateView):
 
 class AbstractSubscriberPipelineDownloadView(ProviderMixin, CSVDownloadView):
 
+    subscriber_type = None
+
     def get(self, request, *args, **kwargs):
         self.provider = self.get_organization()
         self.start_date = datetime_or_now(
@@ -213,6 +213,9 @@ class AbstractSubscriberPipelineDownloadView(ProviderMixin, CSVDownloadView):
 
         return super(AbstractSubscriberPipelineDownloadView, self).get(
             request, *args, **kwargs)
+
+    def get_range_queryset(self, start_date, end_date):
+        raise NotImplementedError()
 
     def get_queryset(self):
         return self.get_range_queryset(self.start_date, self.end_date)
