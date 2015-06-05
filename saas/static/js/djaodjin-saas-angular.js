@@ -589,14 +589,26 @@ transactionControllers.controller('transactionListCtrl',
     $scope.dir = {};
     $scope.totalItems = 0;
     $scope.dir[defaultSortByField] = 'desc';
-    $scope.params = {o: defaultSortByField, ot: $scope.dir[defaultSortByField]};
-    $scope.transactions = Transaction.query($scope.params, function() {
-        /* We cannot watch transactions.count otherwise things start
-           to snowball. We must update totalItems only when it truly changed.*/
-        if( $scope.transactions.count != $scope.totalItems ) {
-            $scope.totalItems = $scope.transactions.count;
-        }
-    });
+    $scope.opened = { 'start_at': false, 'ends_at': false };
+    $scope.start_at = moment().subtract(1, 'months').startOf('day').toDate();
+    $scope.ends_at = moment().endOf('day').toDate();
+    $scope.params = {
+        o: defaultSortByField,
+        ot: $scope.dir[defaultSortByField],
+        start_at: $scope.start_at,
+        ends_at: $scope.ends_at
+    };
+
+    $scope.refresh = function() {
+        $scope.transactions = Transaction.query($scope.params, function() {
+            /* We cannot watch transactions.count otherwise things start
+               to snowball. We must update totalItems only when it truly changed.*/
+            if( $scope.transactions.count != $scope.totalItems ) {
+                $scope.totalItems = $scope.transactions.count;
+            }
+        });
+    };
+    $scope.refresh();
 
     $scope.filterExpr = '';
     $scope.itemsPerPage = 25; // Must match on the server-side.
@@ -604,16 +616,34 @@ transactionControllers.controller('transactionListCtrl',
     $scope.currentPage = 1;
     /* currentPage will be saturated at maxSize when maxSize is defined. */
 
-    $scope.dateOptions = {
-        formatYear: 'yy',
-        startingDay: 1
-    };
-
-    $scope.initDate = new Date('2016-15-20');
-    $scope.minDate = new Date();
-    $scope.maxDate = new Date('2016-01-01');
     $scope.formats = ['dd-MMMM-yyyy', 'yyyy/MM/dd', 'dd.MM.yyyy', 'shortDate'];
     $scope.format = $scope.formats[0];
+
+    // calendar for start_at and ends_at
+    $scope.open = function($event, date_at) {
+        $event.preventDefault();
+        $event.stopPropagation();
+        $scope.opened[date_at] = true;
+    };
+
+    // XXX start_at and ends_at will be both updated on reload
+    //     which will lead to two calls to the backend instead of one.
+    $scope.$watch('start_at', function(newVal, oldVal, scope) {
+        if( $scope.ends_at < newVal ) {
+            $scope.ends_at = newVal;
+        }
+        $scope.params.start_at = moment(newVal).startOf('day').toDate();
+        $scope.refresh();
+    }, true);
+
+    $scope.$watch('ends_at', function(newVal, oldVal, scope) {
+        if( $scope.start_at > newVal ) {
+            $scope.start_at = newVal;
+        }
+        $scope.params.ends_at = moment(newVal).endOf('day').toDate(0);
+        $scope.refresh();
+    }, true);
+
 
     $scope.filterList = function(regex) {
         if( regex ) {

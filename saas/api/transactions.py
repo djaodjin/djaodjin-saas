@@ -25,10 +25,12 @@
 from rest_framework import serializers
 from rest_framework.generics import ListAPIView
 from extra_views.contrib.mixins import SearchableListMixin, SortableListMixin
+from django.utils.dateparse import parse_datetime
 
 from saas.humanize import as_html_description, as_money
 from saas.models import Transaction
 from saas.mixins import OrganizationMixin, ProviderMixin
+from saas.utils import datetime_or_now
 
 #pylint: disable=no-init
 #pylint: disable=old-style-class
@@ -73,14 +75,23 @@ class SmartTransactionListMixin(SearchableListMixin, SortableListMixin):
     """
     Subscriber list which is also searchable and sortable.
     """
-    search_fields = ['created_at',
-                     'descr',
+    search_fields = ['descr',
                      'orig_organization__full_name',
                      'dest_organization__full_name']
 
-    sort_fields_aliases = [('created_at', 'date'),
-                           ('descr', 'description'),
+    sort_fields_aliases = [('descr', 'description'),
                            ('dest_amount', 'amount')]
+
+    def get_queryset(self):
+        '''
+        Implement date range filtering
+        '''
+        qs = super(SmartTransactionListMixin, self).get_queryset()
+        start = datetime_or_now(
+            parse_datetime(self.request.GET.get('start_at', '').strip('"')))
+        end = datetime_or_now(
+            parse_datetime(self.request.GET.get('ends_at', '').strip('"')))
+        return qs.filter(created_at__gte=start, created_at__lte=end)
 
 
 class TransactionQuerysetMixin(OrganizationMixin):
