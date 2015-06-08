@@ -1354,6 +1354,12 @@ class Subscription(models.Model):
     ``Subscription`` represent a service contract (``Plan``) between
     two ``Organization``, a subscriber and a provider, that is paid
     by the subscriber to the provider over the lifetime of the subscription.
+
+    Implementation Note:
+    Even through (organization, plan) should be unique at any point in time,
+    it is a little much to implement with PostgreSQL that for each
+    (organization, plan), there should not be overlapping timeframe
+    [created_at, ends_at[.
     """
     objects = SubscriptionManager()
 
@@ -1362,9 +1368,6 @@ class Subscription(models.Model):
     description = models.TextField(null=True, blank=True)
     organization = models.ForeignKey(Organization)
     plan = models.ForeignKey(Plan)
-
-    class Meta:
-        unique_together = ('organization', 'plan')
 
     def __unicode__(self):
         return '%s-%s' % (unicode(self.organization), unicode(self.plan))
