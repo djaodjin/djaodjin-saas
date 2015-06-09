@@ -1782,6 +1782,7 @@ def sum_dest_amount(transactions):
     """
     Return the sum of the amount in the *transactions* set.
     """
+    query_result = []
     if isinstance(transactions, QuerySet):
         if transactions.exists():
             query_result = transactions.values(
@@ -1792,7 +1793,6 @@ def sum_dest_amount(transactions):
             if not item.dest_unit in group_by:
                 group_by[item.dest_unit] = 0
             group_by[item.dest_unit] += item.dest_amount
-        query_result = []
         for unit, amount in group_by.iteritems():
             query_result += [{'dest_unit': unit, 'dest_amount__sum': amount}]
     if len(query_result) > 0:
@@ -1812,6 +1812,7 @@ def sum_orig_amount(transactions):
     """
     Return the sum of the amount in the *transactions* set.
     """
+    query_result = []
     if isinstance(transactions, QuerySet):
         if transactions.exists():
             query_result = transactions.values(
@@ -1822,7 +1823,6 @@ def sum_orig_amount(transactions):
             if not item.orig_unit in group_by:
                 group_by[item.orig_unit] = 0
             group_by[item.orig_unit] += item.orig_amount
-        query_result = []
         for unit, amount in group_by.iteritems():
             query_result += [{'orig_unit': unit, 'orig_amount__sum': amount}]
     if len(query_result) > 0:
