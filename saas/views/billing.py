@@ -557,6 +557,10 @@ class CartBaseView(InvoicablesFormMixin, FormView):
                 organization = self.customer
             try:
                 # If we can extend a current ``Subscription`` we will.
+                # XXX For each (organization, plan) there should not
+                #     be overlapping timeframe [created_at, ends_at[,
+                #     None-the-less, it might be a good idea to catch
+                #     and throw a nice error message in case.
                 subscription = Subscription.objects.get(
                     organization=organization, plan=cart_item.plan,
                     ends_at__gt=datetime_or_now())

@@ -713,7 +713,6 @@ revenueControllers.controller('revenueCtrl',
         mode: 'month',
         minMode: 'month'
     };
-    $scope.maxDate = $scope.endOfMonth(new Date());
 
     $scope.opened = false;
 
@@ -739,7 +738,7 @@ revenueControllers.controller('revenueCtrl',
                         cells: rawRow.values.map(function(rawCell) {
                             return rawCell[1];
                         })
-                    }
+                    };
                 };
 
                 // add "extra" rows at the end
@@ -762,7 +761,7 @@ revenueControllers.controller('revenueCtrl',
 
     $scope.formatCell = function(cell) {
         var value = cell * $scope.scale;
-        if($scope.scale) {
+        if($scope.unit) {
             return $filter('currency')(value);
         } else {
             return $filter('number')(value);
