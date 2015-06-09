@@ -1782,42 +1782,57 @@ def sum_dest_amount(transactions):
     """
     Return the sum of the amount in the *transactions* set.
     """
-    amount = 0
-    unit = None
     if isinstance(transactions, QuerySet):
         if transactions.exists():
-            queryset_unit = transactions.values('dest_unit').distinct()
-            if queryset_unit.count() > 1:
-                raise ValueError('Trying to sum amounts with different units %s'
-                    % queryset_unit)
-            unit = queryset_unit.first()['dest_unit']
-            queryset_amount = transactions.aggregate(Sum('dest_amount'))
-            amount = queryset_amount['dest_amount__sum']
+            query_result = transactions.values(
+                'dest_unit').annotate(Sum('dest_amount'))
     else:
+        group_by = {}
         for item in transactions:
-            amount += item.dest_amount
-            unit = item.dest_unit      # Only works because transactions were
-                                       # previously filtered by ``dest_unit``.
-    return amount, unit
+            if not item.dest_unit in group_by:
+                group_by[item.dest_unit] = 0
+            group_by[item.dest_unit] += item.dest_amount
+        query_result = []
+        for unit, amount in group_by.iteritems():
+            query_result += [{'dest_unit': unit, 'dest_amount__sum': amount}]
+    if len(query_result) > 0:
+        if len(query_result) > 1:
+            try:
+                raise ValueError("sum accross %d units (%s)" %
+                    (len(query_result), ','.join(
+                        [res['dest_unit'] for res in query_result])))
+            except ValueError as err:
+                LOGGER.exception(err)
+        # XXX Hack: until we change the function signature
+        return query_result[0]['dest_amount__sum'], query_result[0]['dest_unit']
+    return 0, None
+
 
 def sum_orig_amount(transactions):
     """
     Return the sum of the amount in the *transactions* set.
     """
-    amount = 0
-    unit = None
     if isinstance(transactions, QuerySet):
         if transactions.exists():
-            queryset_unit = transactions.values('orig_unit').distinct()
-            if queryset_unit.count() > 1:
-                raise ValueError('Trying to sum amounts with different units %s'
-                    % queryset_unit)
-            unit = queryset_unit.first()['orig_unit']
-            queryset_amount = transactions.aggregate(Sum('orig_amount'))
-            amount = queryset_amount['orig_amount__sum']
+            query_result = transactions.values(
+                'orig_unit').annotate(Sum('orig_amount'))
     else:
+        group_by = {}
         for item in transactions:
-            amount += item.orig_amount
-            unit = item.orig_unit      # Only works because transactions were
-                                       # previously filtered by ``orig_unit``.
-    return amount, unit
+            if not item.orig_unit in group_by:
+                group_by[item.orig_unit] = 0
+            group_by[item.orig_unit] += item.orig_amount
+        query_result = []
+        for unit, amount in group_by.iteritems():
+            query_result += [{'orig_unit': unit, 'orig_amount__sum': amount}]
+    if len(query_result) > 0:
+        if len(query_result) > 1:
+            try:
+                raise ValueError("sum accross %d units (%s)" %
+                    (len(query_result), ', '.join(
+                        [res['orig_unit'] for res in query_result])))
+            except ValueError as err:
+                LOGGER.exception(err)
+        # XXX Hack: until we change the function signature
+        return query_result[0]['orig_amount__sum'], query_result[0]['orig_unit']
+    return 0, None
