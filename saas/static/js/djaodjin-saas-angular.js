@@ -3,16 +3,11 @@
   ============================================================================*/
 angular.module('revenueFilters', [])
     .filter('monthHeading', function() {
-        var current = new Date();
-        var endOfCurMonth = moment(new Date(
-            current.getFullYear(),
-            current.getMonth() + 1,
-            0
-        ));
+        var current = moment();
         return function(datestr) {
             var date = moment(datestr);
             var heading = date.format('MMM\'YY');
-            if( endOfCurMonth.diff(date, 'months') < 1 ) {
+            if( date > current ) {
                 // add incomplete month marker
                 heading += '*';
             }
@@ -759,10 +754,14 @@ revenueControllers.controller('revenueCtrl',
     };
     $scope.refreshTable();
 
-    $scope.formatCell = function(cell) {
+    $scope.formatCell = function(cell, simplifiedValue) {
         var value = cell * $scope.scale;
         if($scope.unit) {
-            return $filter('currency')(value);
+            if(parseInt(value) > 1000 && simplifiedValue){
+                return $filter("currency")((parseInt(value) / 1000).toFixed(), $scope.unit, 0) + "K";
+            }else{
+                return $filter("currency")(value, $scope.unit);
+            }
         } else {
             return $filter('number')(value);
         }
