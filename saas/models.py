@@ -205,7 +205,7 @@ class Organization(models.Model):
     postal_code = models.CharField(max_length=50)
     country = CountryField()
 
-    belongs = models.ForeignKey('Organization',
+    belongs = models.ForeignKey('Organization', # XXX deprecated (avoid cycle).
         related_name='owner', null=True)
     managers = models.ManyToManyField(settings.AUTH_USER_MODEL,
         related_name='manages', through=settings.MANAGER_RELATION)

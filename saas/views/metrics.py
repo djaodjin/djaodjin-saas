@@ -38,7 +38,6 @@ from saas.api.coupons import CouponMixin as CouponAPIMixin
 from saas.api.metrics import (RegisteredQuerysetMixin, SubscribedQuerysetMixin,
     ChurnedQuerysetMixin)
 from saas.mixins import CouponMixin, ProviderMixin, MetricsMixin
-from saas.views.auth import valid_manager_for_organization
 from saas.views.download import CSVDownloadView
 from saas.managers.metrics import (active_subscribers, churn_subscribers,
     monthly_balances, month_periods)
@@ -289,12 +288,8 @@ class OverallMetricsView(TemplateView):
     template_name = "saas/general_chart.html"
 
     def get_context_data(self, **kwargs):
-        organizations = Organization.objects.all()
         all_values = []
-
-        for organization_all in organizations:
-            organization = valid_manager_for_organization(
-                self.request.user, organization_all)
+        for organization in self.request.user.manages.all():
             values = []
             today = date.today()
             end = datetime(day=today.day, month=today.month, year=today.year,
