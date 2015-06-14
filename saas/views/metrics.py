@@ -41,7 +41,7 @@ from saas.mixins import CouponMixin, ProviderMixin, MetricsMixin
 from saas.views.download import CSVDownloadView
 from saas.managers.metrics import (active_subscribers, churn_subscribers,
     monthly_balances, month_periods)
-from saas.models import (CartItem, Organization, Plan, Transaction,
+from saas.models import (CartItem, Plan, Transaction,
     NewVisitors)
 from saas.compat import User
 from saas.utils import datetime_or_now
@@ -308,7 +308,7 @@ class OverallMetricsView(TemplateView):
                             "y": amount}]
                 end = first - timedelta(days=1)
             all_values += [{
-                "key": str(organization_all.slug), "values": values}]
+                "key": str(organization.slug), "values": values}]
         context = {'data' : all_values}
         return context
 
