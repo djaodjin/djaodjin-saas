@@ -28,7 +28,8 @@ URLs responding to GET requests with billing history.
 
 from django.conf.urls import patterns, url
 
-from saas.views.billing import ChargeReceiptView, TransactionListView
+from saas.views.billing import (ChargeReceiptView, TransactionListView,
+    TransactionDownloadView)
 from saas.settings import ACCT_REGEX
 
 try:
@@ -44,5 +45,7 @@ except ImportError:
 urlpatterns += patterns('',
     url(r'^receipt/(?P<charge>[a-zA-Z0-9_]+)',
         ChargeReceiptView.as_view(), name='saas_charge_receipt'),
+    url(r'^download/transactions/',
+        TransactionDownloadView.as_view(), name='saas_transactions_download'),
     url(r'^$', TransactionListView.as_view(), name='saas_billing_info'),
 )

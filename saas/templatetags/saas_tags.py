@@ -69,7 +69,9 @@ def is_incomplete_month(date):
 
 
 @register.filter
-def is_direct(request, organization):
+def is_direct(request, organization=None):
+    if organization is None:
+        organization = get_current_provider()
     return pass_direct(request, organization=organization)
 
 
