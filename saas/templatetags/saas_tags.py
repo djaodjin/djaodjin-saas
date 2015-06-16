@@ -180,7 +180,8 @@ def active_with_provider(organization, provider):
 
 @register.filter(needs_autoescape=False)
 def describe(transaction):
-    return mark_safe(as_html_description(transaction))
+    return mark_safe(as_html_description(
+        transaction, provider=get_current_provider()))
 
 
 @register.filter(needs_autoescape=False)

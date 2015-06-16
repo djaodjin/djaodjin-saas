@@ -28,7 +28,7 @@ from extra_views.contrib.mixins import SearchableListMixin, SortableListMixin
 from django.utils.dateparse import parse_datetime
 
 from saas.humanize import as_html_description, as_money
-from saas.models import Transaction
+from saas.models import Transaction, get_current_provider
 from saas.mixins import OrganizationMixin, ProviderMixin
 from saas.utils import datetime_or_now
 
@@ -58,7 +58,8 @@ class TransactionSerializer(serializers.ModelSerializer):
     def to_representation(self, obj):
         ret = super(TransactionSerializer, self).to_representation(obj)
         ret.update({
-            'description': as_html_description(obj),
+            'description': as_html_description(
+                obj, provider=get_current_provider()),
             'is_debit': self._is_debit(obj),
             'amount': as_money(obj.dest_amount, '-%s' % obj.dest_unit
                         if self._is_debit(obj) else obj.dest_unit)})
