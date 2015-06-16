@@ -1,4 +1,4 @@
-# Copyright (c) 2014, DjaoDjin inc.
+# Copyright (c) 2015, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -27,13 +27,11 @@ URLs API for profile resources (contributors, managers and subscriptions)
 """
 
 from django.conf.urls import patterns, url
-from django.views.generic import TemplateView
 
 from saas.settings import ACCT_REGEX
 from saas.api.organizations import OrganizationDetailAPIView
 from saas.api.subscriptions import (SubscriptionDetailAPIView,
     SubscriptionListAPIView)
-from saas.api.transactions import TransactionListAPIView
 from saas.api.users import (ContributorListAPIView, ContributorDetailAPIView,
     ManagerListAPIView, ManagerDetailAPIView)
 
@@ -55,11 +53,6 @@ urlpatterns = patterns('saas.api',
     url(r'^(?P<organization>%s)/subscriptions/?' % ACCT_REGEX,
         SubscriptionListAPIView.as_view(),
         name='saas_api_subscription_list'),
-    url(r'^(?P<organization>%s)/transactions/?' % ACCT_REGEX,
-        TransactionListAPIView.as_view(),
-        name='saas_api_transaction_list'),
     url(r'^(?P<organization>%s)/?$' % ACCT_REGEX,
         OrganizationDetailAPIView.as_view(), name='saas_api_organization'),
-    url(r'^$', # used to build API urls
-        TemplateView.as_view(template_name='index.html'), name='saas_api'),
 )
