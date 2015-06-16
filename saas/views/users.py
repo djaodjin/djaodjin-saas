@@ -25,7 +25,7 @@
 from django.views.generic import ListView
 
 from saas.compat import User
-from saas.views.auth import managed_organizations
+
 
 class ProductListView(ListView):
     """List of organizations the request.user is a manager
@@ -42,7 +42,7 @@ class ProductListView(ListView):
                 username=self.kwargs.get(self.slug_url_kwarg))
         except User.DoesNotExist:
             self.user = self.request.user
-        return managed_organizations(self.user)
+        return self.user.manages.all()
 
     def get_context_data(self, **kwargs):
         context = super(ProductListView, self).get_context_data(**kwargs)
