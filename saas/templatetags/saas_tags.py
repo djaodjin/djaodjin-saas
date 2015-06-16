@@ -45,9 +45,10 @@ def is_current_provider(organization):
     # We do a string compare here because both ``Organization`` might come
     # from a different db. That is if the organization parameter is not
     # a unicode string itself.
+    slug = ''
     if isinstance(organization, basestring):
         slug = organization
-    else:
+    elif organization:
         slug = organization.slug
     return slug == get_current_provider().slug
 
