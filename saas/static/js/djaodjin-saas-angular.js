@@ -748,7 +748,7 @@ revenueControllers.controller('revenueCtrl',
                 }
                 // manual binding - trigger updates to the graph
                 updateChart('#metrics-table svg',
-                    data.table, data.unit, $scope.scale);
+                    data.table, data.unit, $scope.scale, extra);
             }
         );
     };
