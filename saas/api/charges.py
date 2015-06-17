@@ -106,4 +106,4 @@ class EmailChargeReceiptAPIView(RetrieveChargeMixin, GenericAPIView):
             sender=__name__, charge=self.object, user=request.user)
         return Response({
             "charge_id": self.object.processor_id,
-            "email": charge.customer.email})
+            "email": self.object.customer.email})
