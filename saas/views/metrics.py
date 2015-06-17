@@ -110,27 +110,17 @@ class PlansMetricsView(ProviderMixin, TemplateView):
     (as a count of subscribers per plan per month)
     """
 
-    template_name = 'saas/plan_metrics.html'
+    template_name = 'saas/revenue_metrics.html'
 
     def get_context_data(self, **kwargs):
         context = super(PlansMetricsView, self).get_context_data(**kwargs)
-        organization = self.get_organization()
-        table = []
-        for plan in Plan.objects.filter(organization=organization):
-            values = active_subscribers(
-                plan, from_date=self.kwargs.get('from_date'))
-            # XXX The template relies on "key" being plan.slug
-            table.append({"key": plan.slug, "values": values,
-                          "is_active": plan.is_active})
-        extra = [{"key": "churn",
-            "values": churn_subscribers(
-                from_date=self.kwargs.get('from_date'))}]
-        data = SortedDict()
-        data['subscribers'] = {"title": "Active Subscribers",
-                               "table": table, "extra": extra}
-        context.update({'title': "Plans",
-            "data": data,
-            "data_json": json.dumps(data, cls=DjangoJSONEncoder)})
+        tables = [
+            {"title": "Active subscribers", "key": "plan", "active": True},
+        ]
+        context.update({
+            "title": "Plans",
+            "tables" : json.dumps(tables),
+        })
         return context
 
 
@@ -144,13 +134,12 @@ class RevenueMetricsView(MetricsMixin, TemplateView):
     def get_context_data(self, **kwargs):
         context = super(RevenueMetricsView, self).get_context_data(**kwargs)
         tables = [
-            {"title": "Amount", "key": "amount", "active": True},
-            {"title": "Customers", "key": "customers"},
+            {"title": "Amount", "key": "revenue", "active": True},
+            {"title": "Customers", "key": "customer"},
         ]
         context.update({
-            "title": "Revenue Metrics",
-            "tables": tables,
-            "tables_json": json.dumps(tables),
+            "title": "Revenue",
+            "tables": json.dumps(tables)
         })
         return context
 
