@@ -26,11 +26,9 @@ import json
 from datetime import datetime, date, timedelta
 
 from django.db.models import Min, Sum, Max
-from django.utils.datastructures import SortedDict
 from django.utils.dateparse import parse_datetime
 from django.utils.timezone import utc
 from django.views.generic import ListView, TemplateView
-from django.core.serializers.json import DjangoJSONEncoder
 
 from saas.api.coupons import SmartCouponListMixin
 # NB: there is another CouponMixin
@@ -39,8 +37,7 @@ from saas.api.metrics import (RegisteredQuerysetMixin, SubscribedQuerysetMixin,
     ChurnedQuerysetMixin)
 from saas.mixins import CouponMixin, ProviderMixin, MetricsMixin
 from saas.views.download import CSVDownloadView
-from saas.managers.metrics import (active_subscribers, churn_subscribers,
-    monthly_balances, month_periods)
+from saas.managers.metrics import monthly_balances, month_periods
 from saas.models import (CartItem, Plan, Transaction,
     NewVisitors)
 from saas.compat import User
