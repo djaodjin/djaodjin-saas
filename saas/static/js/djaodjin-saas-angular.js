@@ -693,7 +693,7 @@ metricsControllers.controller('metricsCtrl',
         )
     };
 
-    $scope.ends_at = $scope.endOfMonth(new Date());
+    $scope.ends_at = null;
 
     $scope.tabs = tables;
     $scope.activeTab = $scope.tabs[0].key;

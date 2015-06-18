@@ -40,10 +40,11 @@ def month_periods(nb_months=12, from_date=None):
     if not from_date:
         # By default, we pick tomorrow so that income from Today shows up.
         from_date = datetime.utcnow().replace(tzinfo=utc) + timedelta(days=1)
-    if isinstance(from_date, basestring):
-        from_date = datetime.strptime(from_date, '%Y-%m')
-    from_date = datetime(day=from_date.day, month=from_date.month,
-        year=from_date.year, tzinfo=utc)
+    else:
+      if isinstance(from_date, basestring):
+          from_date = datetime.strptime(from_date, '%Y-%m')
+      from_date = datetime(day=from_date.day, month=from_date.month,
+          year=from_date.year, tzinfo=utc)
     last = from_date
     dates.append(last)
     if last.day != 1:
