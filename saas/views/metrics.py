@@ -110,7 +110,7 @@ class PlansMetricsView(ProviderMixin, TemplateView):
     (as a count of subscribers per plan per month)
     """
 
-    template_name = 'saas/revenue_metrics.html'
+    template_name = 'saas/plan_metrics.html'
 
     def get_context_data(self, **kwargs):
         context = super(PlansMetricsView, self).get_context_data(**kwargs)
@@ -121,6 +121,9 @@ class PlansMetricsView(ProviderMixin, TemplateView):
             "title": "Plans",
             "tables" : json.dumps(tables),
         })
+
+        plans = Plan.objects.filter(organization=self.get_organization())
+        context.update({"plans": plans})
         return context
 
 
@@ -129,7 +132,7 @@ class RevenueMetricsView(MetricsMixin, TemplateView):
     Generate a table of revenue (rows) per months (columns).
     """
 
-    template_name = 'saas/revenue_metrics.html'
+    template_name = 'saas/metrics_base.html'
 
     def get_context_data(self, **kwargs):
         context = super(RevenueMetricsView, self).get_context_data(**kwargs)
