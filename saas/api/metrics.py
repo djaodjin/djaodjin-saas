@@ -23,19 +23,20 @@
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 from django.db.models import Q
-from django.utils.datastructures import SortedDict
 from django.utils.dateparse import parse_datetime
 from rest_framework.views import APIView
 from rest_framework.generics import GenericAPIView
 from rest_framework.response import Response
 
 from saas import settings
-from saas.managers.metrics import aggregate_monthly_transactions
 from saas.mixins import ProviderMixin
-from saas.models import Transaction, Organization
+from saas.models import Transaction, Organization, Plan
 from saas.utils import datetime_or_now
 from saas.managers.metrics import monthly_balances
 from saas.api.serializers import OrganizationSerializer
+from saas.managers.metrics import (
+    aggregate_monthly_transactions,
+    active_subscribers, churn_subscribers)
 
 
 class BalancesAPIView(ProviderMixin, APIView):
@@ -62,11 +63,11 @@ class BalancesAPIView(ProviderMixin, APIView):
         return Response(result)
 
 
-class RevenueAPIView(ProviderMixin, APIView):
+class RevenueMetricAPIView(ProviderMixin, APIView):
     """
     Produce revenue stats
     """
-    def get(self, request, table_key, *args, **kwargs):
+    def get(self, request, *args, **kwargs):
         ends_at = request.GET.get('ends_at', None)
         if ends_at:
             ends_at = parse_datetime(ends_at)
@@ -79,22 +80,64 @@ class RevenueAPIView(ProviderMixin, APIView):
         # TODO: refactor to only build the table (customer or amount)
         # relevant to the request
 
-        account_table, customer_table, customer_extra = \
+        account_table, _, _ = \
             aggregate_monthly_transactions(self.get_organization(), account,
                 account_title=account_title,
                 from_date=ends_at,
                 reverse=reverse)
-        data = SortedDict()
-        # By convention, if we have a ``unit``, the table contains
-        # amounts in cents. We thus scale by 0.01 to get a human
-        # readable 'whole dollar' amounts.
-        data['amount'] = {"title": "Amount",
-                          "unit": "$", "scale": 0.01, "table": account_table}
-        data['customers'] = {"title": "Customers",
-                             "table": customer_table, "extra": customer_extra}
+
         return Response(
-            {"title": "Revenue Metrics",
-            "data": data[table_key]})
+            {"title": "Amount",
+            "unit": "$", "scale": 0.01, "table": account_table})
+
+class CustomerMetricAPIView(ProviderMixin, APIView):
+    """
+    Produce Customer stats
+    """
+    def get(self, request, *args, **kwargs):
+        ends_at = request.GET.get('ends_at', None)
+        if ends_at:
+            ends_at = parse_datetime(ends_at)
+        ends_at = datetime_or_now(ends_at)
+
+        reverse = True
+        account_title = 'Payments'
+        account = Transaction.FUNDS
+
+        _, customer_table, customer_extra = \
+            aggregate_monthly_transactions(self.get_organization(), account,
+                account_title=account_title,
+                from_date=ends_at,
+                reverse=reverse)
+
+        return Response(
+            {"title": "Customers",
+                "table": customer_table, "extra": customer_extra})
+
+class PlanMetricAPIView(ProviderMixin, APIView):
+    """
+    Produce Customer stats
+    """
+
+    def get(self, request, *args, **kwargs):
+        ends_at = request.GET.get('ends_at', None)
+        if ends_at:
+            ends_at = parse_datetime(ends_at)
+        ends_at = datetime_or_now(ends_at)
+        organization = self.get_organization()
+        table = []
+        for plan in Plan.objects.filter(organization=organization):
+            values = active_subscribers(
+                plan, from_date=self.kwargs.get('from_date'))
+            table.append({"key": plan.slug, "values": values,
+                          "is_active": plan.is_active})
+        extra = [{"key": "churn",
+            "values": churn_subscribers(
+                from_date=self.kwargs.get('from_date'))}]
+
+        return Response(
+            {"title": "Active Subscribers",
+                "table": table, "extra": extra})
 
 
 class OrganizationListAPIView(ProviderMixin, GenericAPIView):

@@ -31,7 +31,7 @@ angular.module('subscriberApp', ['ui.bootstrap', 'ngRoute',
 angular.module('transactionApp', ['ui.bootstrap', 'ngRoute',
     'transactionControllers', 'transactionServices']);
 angular.module('metricApp', ['ui.bootstrap', 'ngRoute', 'metricControllers']);
-angular.module('revenueApp', ['ui.bootstrap', 'ngRoute', 'revenueControllers', 'revenueFilters']);
+angular.module('metricsApp', ['ui.bootstrap', 'ngRoute', 'metricsControllers', 'revenueFilters']);
 
 
 /*=============================================================================
@@ -89,7 +89,7 @@ var subscriptionControllers = angular.module('subscriptionControllers', []);
 var subscriberControllers = angular.module('subscriberControllers', []);
 var transactionControllers = angular.module('transactionControllers', []);
 var metricControllers = angular.module('metricControllers', []);
-var revenueControllers = angular.module('revenueControllers', []);
+var metricsControllers = angular.module('metricsControllers', []);
 
 couponControllers.controller('CouponListCtrl',
     ['$scope', '$http', '$timeout', 'Coupon', 'urls',
@@ -681,7 +681,7 @@ metricControllers.controller('metricCtrl',
     });
 }]);
 
-revenueControllers.controller('revenueCtrl',
+metricsControllers.controller('metricsCtrl',
     ['$scope', '$http', '$filter', 'urls', 'tables',
     function($scope, $http, $filter, urls, tables) {
 
@@ -696,17 +696,17 @@ revenueControllers.controller('revenueCtrl',
     $scope.ends_at = $scope.endOfMonth(new Date());
 
     $scope.tabs = tables;
-    $scope.activeTab = 'amount';
+    $scope.activeTab = $scope.tabs[0].key;
 
     // these aren't documented; do they do anything?
-    $scope.formats = ['MM-yyyy', 'yyyy/MM', 'MM.yyyy'];
+    $scope.formats = ["MM-yyyy", "yyyy/MM", "MM.yyyy"];
     $scope.format = $scope.formats[0];
 
     $scope.dateOptions = {
-        formatYear: 'yyyy',
+        formatYear: "yyyy",
         startingDay: 1,
-        mode: 'month',
-        minMode: 'month'
+        mode: "month",
+        minMode: "month"
     };
 
     $scope.opened = false;
@@ -717,29 +717,16 @@ revenueControllers.controller('revenueCtrl',
     $scope.tableMonths = null;
     $scope.tableRows = null;
     $scope.refreshTable = function() {
-        $http.get(
-            urls.saas_api_revenue.replace('_TABLEKEY', $scope.activeTab),
-            {params: {'ends_at': $scope.ends_at}}
-        ).success(
-            function(response) {
-                var data = response.data;
 
-                $scope.tableMonths = data.table[0].values.map(function(valueElem) { 
-                    return valueElem[0];
-                });
-                var tableMapper = function(rawRow) {
-                    return {
-                        heading: rawRow.key,
-                        cells: rawRow.values.map(function(rawCell) {
-                            return rawCell[1];
-                        })
-                    };
-                };
+        $http.get(
+            urls[$scope.activeTab],
+            // urls.saas_api_revenue.replace('_TABLEKEY', $scope.activeTab),
+            {params: {"ends_at": $scope.ends_at}}
+        ).success(
+            function(data) {
 
                 // add "extra" rows at the end
                 var extra = data.extra || [];
-                $scope.tableRows = data.table.map(tableMapper).concat(
-                    extra.map(tableMapper));
 
                 $scope.unit = data.unit;
                 $scope.scale = parseFloat(data.scale);
@@ -747,7 +734,7 @@ revenueControllers.controller('revenueCtrl',
                     $scope.scale = 1.0;
                 }
                 // manual binding - trigger updates to the graph
-                updateChart('#metrics-table svg',
+                updateChart("#metrics-table svg",
                     data.table, data.unit, $scope.scale, extra);
             }
         );
@@ -763,13 +750,13 @@ revenueControllers.controller('revenueCtrl',
                 return $filter("currency")(value, $scope.unit);
             }
         } else {
-            return $filter('number')(value);
+            return $filter("number")(value);
         }
-    }
+    };
 
     // change the selected tab
     $scope.tabClicked = function($event) {
-        $scope.activeTab = $event.target.getAttribute('href').replace(/^#/, '');
+        $scope.activeTab = $event.target.getAttribute("href").replace(/^#/, "");
         $scope.refreshTable();
     };
 
@@ -780,8 +767,10 @@ revenueControllers.controller('revenueCtrl',
         $scope.opened = true;
     };
 
-    $scope.$watch('ends_at', function(newVal, oldVal, scope) {
-        $scope.ends_at = $scope.endOfMonth(newVal);
-        $scope.refreshTable();
+    $scope.$watch("ends_at", function(newVal, oldVal, scope) {
+        if (newVal !== oldVal) {
+            $scope.ends_at = $scope.endOfMonth(newVal);
+            $scope.refreshTable();
+        }
     }, true);
 }]);
