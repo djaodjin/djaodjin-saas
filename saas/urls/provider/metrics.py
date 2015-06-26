@@ -31,7 +31,7 @@ from saas.views import ProviderRedirectView
 from saas.views.profile import DashboardView
 from saas.views.metrics import (BalancesMetricsView,
     CouponMetricsView, PlansMetricsView, RevenueMetricsView,
-    SubscriberPipelineView, UsageMetricsView)
+    SubscriberPipelineView)
 
 urlpatterns = patterns(
     'saas.views.metrics',

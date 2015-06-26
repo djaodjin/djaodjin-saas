@@ -65,8 +65,8 @@ class CouponMetricsView(CouponMixin, ListView):
         return context
 
 
-class CouponMetricsDownloadView(
-        SmartCouponListMixin, CouponAPIMixin, OrganizationMixin, CSVDownloadView):
+class CouponMetricsDownloadView(SmartCouponListMixin, CouponAPIMixin,
+                                OrganizationMixin, CSVDownloadView):
 
     headings = [
         'Code',
@@ -189,7 +189,8 @@ class SubscriberPipelineView(OrganizationMixin, TemplateView):
     template_name = "saas/subscriber_pipeline.html"
 
 
-class AbstractSubscriberPipelineDownloadView(OrganizationMixin, CSVDownloadView):
+class AbstractSubscriberPipelineDownloadView(OrganizationMixin,
+                                             CSVDownloadView):
 
     subscriber_type = None
 

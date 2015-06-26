@@ -32,7 +32,6 @@ from saas.settings import ACCT_REGEX
 from saas.views import ProviderRedirectView
 from saas.views.metrics import (BalancesDownloadView,
     CouponMetricsDownloadView, SubscriberPipelineSubscribedDownloadView,
-    SubscriberPipelineRegisteredDownloadView,
     SubscriberPipelineChurnedDownloadView)
 from saas.views.billing import TransferDownloadView
 

@@ -41,7 +41,8 @@ urlpatterns = patterns('',
     url(r'^billing/transfers/', ProviderRedirectView.as_view(
         pattern_name='saas_transfer_info'), name='saas_provider_transfer_info'),
     url(r'^billing/withdraw/', ProviderRedirectView.as_view(
-        pattern_name='saas_withdraw_funds'), name='saas_provider_withdraw_funds'),
+        pattern_name='saas_withdraw_funds'),
+        name='saas_provider_withdraw_funds'),
     url(r'^billing/(?P<organization>%s)/bank/' % ACCT_REGEX,
         BankUpdateView.as_view(), name='saas_update_bank'),
     url(r'^billing/(?P<organization>%s)/coupons/' % ACCT_REGEX,
