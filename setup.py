@@ -48,7 +48,6 @@ setup(
               'saas.urls.api',
               'saas.urls.api.provider',
               'saas.urls.api.subscriber',
-              'saas.urls.billing',
               'saas.urls.provider',
               'saas.urls.subscriber',
               'saas.managers',
