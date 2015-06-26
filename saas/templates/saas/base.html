@@ -6,7 +6,7 @@
 <div>
   <div>
     {% block sidebar %}
-    {% if organization|is_site_owner %}
+    {% if organization|is_current_provider %}
     {% comment %}
     We are dealing with the site owner.
     {% endcomment %}

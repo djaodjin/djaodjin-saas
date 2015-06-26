@@ -23,25 +23,29 @@
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 """
-URLs updating processing information and inserting transactions
-through POST requests.
+URLs responding to GET requests with billing history.
 """
 
 from django.conf.urls import patterns, url
 
 from saas.settings import ACCT_REGEX
-from saas.views.billing import (CartPeriodsView, CartSeatsView,
-    CardUpdateView, CartView, BalanceView)
+from saas.views.billing import ChargeReceiptView, TransactionListView
 
-urlpatterns = patterns(
-    'saas.views.billing',
-    url(r'^cart-seats/', CartSeatsView.as_view(), name='saas_cart_seats'),
-    url(r'^cart-periods/', CartPeriodsView.as_view(), name='saas_cart_periods'),
-    url(r'^cart/', CartView.as_view(), name='saas_organization_cart'),
-    url(r'^card/', CardUpdateView.as_view(), name='saas_update_card'),
-    # Implementation Note: <subscribed_plan> (not <plan>) such that
-    # the required_manager decorator does not raise a PermissionDenied
-    # for a plan <organization> is subscribed to.
-    url(r'^balance/((?P<subscribed_plan>%s)/)?' % ACCT_REGEX,
-        BalanceView.as_view(), name='saas_organization_balance'),
+try:
+    from saas.views.extra import PrintableChargeReceiptView
+    urlpatterns = patterns('',
+        url(r'^billing/(?P<organization>%s)/'\
+'receipt/(?P<charge>[a-zA-Z0-9_]+)/printable/' % ACCT_REGEX,
+            PrintableChargeReceiptView.as_view(),
+            name='saas_printable_charge_receipt'),
+        )
+except ImportError:
+    urlpatterns = patterns('saas.views.billing')
+
+urlpatterns += patterns('',
+    url(r'^billing/(?P<organization>%s)/receipt/(?P<charge>[a-zA-Z0-9_]+)'
+        % ACCT_REGEX,
+        ChargeReceiptView.as_view(), name='saas_charge_receipt'),
+    url(r'^billing/(?P<organization>%s)/$' % ACCT_REGEX,
+        TransactionListView.as_view(), name='saas_billing_info'),
 )

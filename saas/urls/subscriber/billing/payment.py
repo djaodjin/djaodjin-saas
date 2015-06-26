@@ -22,28 +22,26 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-'''Urls'''
+"""
+URLs updating processing information and inserting transactions
+through POST requests.
+"""
 
 from django.conf.urls import patterns, url
 
 from saas.settings import ACCT_REGEX
-from saas.views import OrganizationRedirectView
-from saas.views.profile import (
-    ContributorListView, ManagerListView,
-    OrganizationProfileView, SubscriptionListView)
+from saas.views.billing import (CartPeriodsView, CartSeatsView,
+    CardUpdateView, CartView, BalanceView)
 
 urlpatterns = patterns(
-    'saas.views.profile',
-    url(r'^(?P<organization>%s)/contributors/' % ACCT_REGEX,
-        ContributorListView.as_view(), name='saas_contributor_list'),
-    url(r'^(?P<organization>%s)/managers/' % ACCT_REGEX,
-        ManagerListView.as_view(), name='saas_manager_list'),
-    url(r'^(?P<organization>%s)/subscriptions/' % ACCT_REGEX,
-        SubscriptionListView.as_view(), name='saas_subscription_list'),
-    url(r'^(?P<organization>%s)/' % ACCT_REGEX,
-        OrganizationProfileView.as_view(), name='saas_organization_profile'),
-    url(r'^$', OrganizationRedirectView.as_view(
-            pattern_name='saas_organization_profile'),
-        name='saas_profile'),
+    'saas.views.billing',
+    url(r'^billing/(?P<organization>%s)/cart-seats/' % ACCT_REGEX, CartSeatsView.as_view(), name='saas_cart_seats'),
+    url(r'^billing/(?P<organization>%s)/cart-periods/' % ACCT_REGEX, CartPeriodsView.as_view(), name='saas_cart_periods'),
+    url(r'^billing/(?P<organization>%s)/cart/' % ACCT_REGEX, CartView.as_view(), name='saas_organization_cart'),
+    url(r'^billing/(?P<organization>%s)/card/' % ACCT_REGEX, CardUpdateView.as_view(), name='saas_update_card'),
+    # Implementation Note: <subscribed_plan> (not <plan>) such that
+    # the required_manager decorator does not raise a PermissionDenied
+    # for a plan <organization> is subscribed to.
+    url(r'^billing/(?P<organization>%s)/balance/((?P<subscribed_plan>%s)/)?' % (ACCT_REGEX, ACCT_REGEX),
+        BalanceView.as_view(), name='saas_organization_balance'),
 )
-

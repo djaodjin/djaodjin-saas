@@ -31,7 +31,8 @@ from django.core.urlresolvers import reverse
 from django.views.generic import RedirectView
 from django.views.generic.base import TemplateResponseMixin
 
-from saas.models import Organization
+from saas.decorators import pass_direct
+from saas.models import Organization, get_current_provider
 
 
 class OrganizationRedirectView(TemplateResponseMixin, RedirectView):
@@ -64,6 +65,21 @@ class OrganizationRedirectView(TemplateResponseMixin, RedirectView):
             redirects += [(url, organization.printable_name)]
         context = {'redirects': redirects}
         return self.render_to_response(context)
+
+
+class ProviderRedirectView(OrganizationRedirectView):
+    """
+    If the request user passes the direct relationship test
+    (see ``saas.decorators.pass_direct``) with the site
+    hosting provider, then redirect to it, otherwise follow
+    the ``OrganizationRedirectView`` logic.
+    """
+    def get(self, request, *args, **kwargs):
+        provider = get_current_provider()
+        if pass_direct(request, organization=provider):
+            kwargs.update({self.slug_url_kwarg: provider})
+            return RedirectView.get(self, request, *args, **kwargs)
+        return super(ProviderRedirectView, self).get(request, *args, **kwargs)
 
 
 class UserRedirectView(RedirectView):

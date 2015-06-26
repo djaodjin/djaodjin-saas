@@ -32,7 +32,7 @@ from saas.settings import ACCT_REGEX
 from saas.api.charges import ChargeRefundAPIView
 
 urlpatterns = patterns('',
-    url(r'^charges/(?P<charge>%s)/refund/' % ACCT_REGEX,
+    url(r'^billing/charges/(?P<charge>%s)/refund/' % ACCT_REGEX,
         ChargeRefundAPIView.as_view(),
         name='saas_api_charge_refund'),
 )

@@ -30,7 +30,7 @@ from extra_views.contrib.mixins import SearchableListMixin, SortableListMixin
 
 from saas.utils import datetime_or_now
 from saas.models import Organization, Subscription
-from saas.mixins import ProviderMixin, SubscriptionMixin
+from saas.mixins import OrganizationMixin, SubscriptionMixin
 from saas.api.serializers import PlanSerializer
 
 #pylint: disable=no-init,old-style-class
@@ -73,7 +73,7 @@ class SubscriptionDetailAPIView(SubscriptionMixin,
         return Response(serializer.data) #pylint: disable=no-member
 
 
-class ActiveSubscriptionBaseAPIView(ProviderMixin, ListAPIView):
+class ActiveSubscriptionBaseAPIView(OrganizationMixin, ListAPIView):
 
     model = Subscription
 

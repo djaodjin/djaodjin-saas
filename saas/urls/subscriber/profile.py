@@ -1,4 +1,4 @@
-# Copyright (c) 2015, DjaoDjin inc.
+# Copyright (c) 2014, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -22,32 +22,28 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-"""
-URLs related to provider bank account information.
-"""
+'''Urls'''
 
 from django.conf.urls import patterns, url
 
 from saas.settings import ACCT_REGEX
-from saas.views import ProviderRedirectView
-from saas.views.billing import (BankUpdateView, TransferListView, WithdrawView,
-    CouponListView)
+from saas.views import OrganizationRedirectView
+from saas.views.profile import (
+    ContributorListView, ManagerListView,
+    OrganizationProfileView, SubscriptionListView)
 
-urlpatterns = patterns('',
-    url(r'^billing/bank/', ProviderRedirectView.as_view(
-        pattern_name='saas_update_bank'), name='saas_provider_update_bank'),
-    url(r'^billing/coupons/', ProviderRedirectView.as_view(
-        pattern_name='saas_coupon_list'), name='saas_provider_coupon_list'),
-    url(r'^billing/transfers/', ProviderRedirectView.as_view(
-        pattern_name='saas_transfer_info'), name='saas_provider_transfer_info'),
-    url(r'^billing/withdraw/', ProviderRedirectView.as_view(
-        pattern_name='saas_withdraw_funds'), name='saas_provider_withdraw_funds'),
-    url(r'^billing/(?P<organization>%s)/bank/' % ACCT_REGEX,
-        BankUpdateView.as_view(), name='saas_update_bank'),
-    url(r'^billing/(?P<organization>%s)/coupons/' % ACCT_REGEX,
-        CouponListView.as_view(), name='saas_coupon_list'),
-    url(r'^billing/(?P<organization>%s)/transfers/' % ACCT_REGEX,
-        TransferListView.as_view(), name='saas_transfer_info'),
-    url(r'^billing/(?P<organization>%s)/withdraw/' % ACCT_REGEX,
-        WithdrawView.as_view(), name='saas_withdraw_funds'),
+urlpatterns = patterns(
+    'saas.views.profile',
+    url(r'^profile/(?P<organization>%s)/contributors/' % ACCT_REGEX,
+        ContributorListView.as_view(), name='saas_contributor_list'),
+    url(r'^profile/(?P<organization>%s)/managers/' % ACCT_REGEX,
+        ManagerListView.as_view(), name='saas_manager_list'),
+    url(r'^profile/(?P<organization>%s)/subscriptions/' % ACCT_REGEX,
+        SubscriptionListView.as_view(), name='saas_subscription_list'),
+    url(r'^profile/(?P<organization>%s)/$' % ACCT_REGEX,
+        OrganizationProfileView.as_view(), name='saas_organization_profile'),
+    url(r'^profile/?$', OrganizationRedirectView.as_view(
+            pattern_name='saas_organization_profile'),
+        name='saas_profile'),
 )
+

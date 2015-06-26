@@ -29,7 +29,6 @@ URLs for the saas django app
 from django.conf.urls import patterns, include, url
 
 from saas.views import OrganizationRedirectView
-from saas.views.billing import TransactionDownloadView
 from saas.views.profile import OrganizationCreateView
 from saas.settings import ACCT_REGEX
 
@@ -37,14 +36,7 @@ from saas.settings import ACCT_REGEX
 urlpatterns = patterns('',
     url(r'^app/new/', OrganizationCreateView.as_view(),
         name='saas_organization_create'),
-    url(r'^billing/cart/',
-        OrganizationRedirectView.as_view(pattern_name='saas_organization_cart'),
-        name='saas_cart'),
-    url(r'^billing/(?P<organization>%s)/download/transactions/' % ACCT_REGEX,
-        TransactionDownloadView.as_view(), name='saas_transactions_download'),
-    url(r'^billing/(?P<organization>%s)/' % ACCT_REGEX,
-        include('saas.urls.billing')),
-    url(r'^profile/', include('saas.urls.profile')),
-    url(r'^users/(?P<user>%s)/' % ACCT_REGEX,
-        include('saas.urls.users')),
+    url(r'^', include('saas.urls.subscriber.billing')),
+    url(r'^', include('saas.urls.subscriber.profile')),
+    url(r'^users/(?P<user>%s)/' % ACCT_REGEX, include('saas.urls.users')),
 )

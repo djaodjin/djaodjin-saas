@@ -54,7 +54,7 @@ from saas.backends import PROCESSOR_BACKEND, ProcessorError
 from saas.utils import validate_redirect_url, datetime_or_now
 from saas.forms import (BankForm, CartPeriodsForm, CreditCardForm,
     RedeemCouponForm, WithdrawForm)
-from saas.mixins import ChargeMixin, OrganizationMixin, ProviderMixin
+from saas.mixins import ChargeMixin, OrganizationMixin
 from saas.models import (Organization, CartItem, Coupon, Plan, Transaction,
     Subscription, get_current_provider)
 from saas.humanize import (as_money, describe_buy_periods, match_unlock,
@@ -85,7 +85,7 @@ def _session_cart_to_database(request):
         del request.session['cart_items']
 
 
-class BankMixin(ProviderMixin):
+class BankMixin(OrganizationMixin):
     """
     Adds bank information to the context.
     """
@@ -704,7 +704,7 @@ class ChargeReceiptView(ChargeMixin, DetailView):
     template_name = 'billing/receipt.html'
 
 
-class CouponListView(ProviderMixin, ListView):
+class CouponListView(OrganizationMixin, ListView):
     """
     View to manage coupons
     """

@@ -28,28 +28,42 @@ URLs related to provider bank account information.
 
 from django.conf.urls import patterns, url
 
-from saas.views.profile import (ProviderDashboardView,
-    ProviderManagerListView, ProviderContributorListView, ProviderProfileView,
-    SubscriberListView)
-from saas.views.plans import PlanCreateView, PlanUpdateView, PlanDeleteView
 from saas.settings import ACCT_REGEX
+from saas.views import ProviderRedirectView
+from saas.views.profile import SubscriberListView
+from saas.views.plans import PlanCreateView, PlanUpdateView, PlanDeleteView
 
 urlpatterns = patterns('',
-    url(r'^subscribers/',
-        SubscriberListView.as_view(), name='saas_subscriber_list'),
-    url(r'^plans/(?P<plan>%s)/delete/$' % ACCT_REGEX,
-        PlanDeleteView.as_view(), name='saas_plan_delete'),
-    url(r'^plans/(?P<plan>%s)/$' % ACCT_REGEX,
-        PlanUpdateView.as_view(), name='saas_plan_edit'),
-    url(r'^plans/',
-        PlanCreateView.as_view(), name='saas_plan_new'),
-    url(r'^contributors/',
-        ProviderContributorListView.as_view(),
+    url(r'^profile/contributors/',
+        ProviderRedirectView.as_view(pattern_name='saas_contributor_list'),
         name='saas_provider_contributor_list'),
-    url(r'^managers/',
-        ProviderManagerListView.as_view(), name='saas_provider_manager_list'),
-    url(r'^dashboard/',
-        ProviderDashboardView.as_view(), name='saas_provider_dashboard'),
-    url(r'^$',
-        ProviderProfileView.as_view(), name='saas_provider_profile'),
+    url(r'^profile/managers/',
+        ProviderRedirectView.as_view(pattern_name='saas_manager_list'),
+        name='saas_provider_manager_list'),
+    url(r'^provider/plans/(?P<plan>%s)/delete/$' % ACCT_REGEX,
+        ProviderRedirectView.as_view(pattern_name='saas_plan_delete'),
+        name='saas_provider_plan_delete'),
+    url(r'^provider/plans/(?P<plan>%s)/$' % ACCT_REGEX,
+        ProviderRedirectView.as_view(pattern_name='saas_plan_edit'),
+        name='saas_provider_plan_edit'),
+    url(r'^provider/plans/',
+        ProviderRedirectView.as_view(pattern_name='saas_plan_new'),
+        name='saas_provider_plan_new'),
+    url(r'^provider/subscribers/',
+        ProviderRedirectView.as_view(pattern_name='saas_subscriber_list'),
+        name='saas_provider_subscriber_list'),
+    url(r'^provider/$',
+        ProviderRedirectView.as_view(pattern_name='saas_organization_profile'),
+        name='saas_provider_profile'),
+
+    url(r'^provider/(?P<organization>%s)/plans/(?P<plan>%s)/delete/$'
+        % (ACCT_REGEX, ACCT_REGEX),
+        PlanDeleteView.as_view(), name='saas_plan_delete'),
+    url(r'^provider/(?P<organization>%s)/plans/(?P<plan>%s)/?'
+        % (ACCT_REGEX, ACCT_REGEX),
+        PlanUpdateView.as_view(), name='saas_plan_edit'),
+    url(r'^provider/(?P<organization>%s)/plans/' % ACCT_REGEX,
+        PlanCreateView.as_view(), name='saas_plan_new'),
+    url(r'^provider/(?P<organization>%s)/subscribers/' % ACCT_REGEX,
+        SubscriberListView.as_view(), name='saas_subscriber_list'),
 )

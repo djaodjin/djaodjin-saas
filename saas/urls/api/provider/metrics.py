@@ -28,26 +28,28 @@ URLs API for provider resources related to billing
 
 from django.conf.urls import patterns, url
 
+from saas.settings import ACCT_REGEX
 from saas.api.metrics import (BalancesAPIView, ChurnedAPIView,
     RegisteredAPIView, SubscribedAPIView, RevenueMetricAPIView,
     CustomerMetricAPIView, PlanMetricAPIView)
 from saas.api.subscriptions import ActiveSubscriptionAPIView
 
 urlpatterns = patterns('',
-    url(r'^metrics/churned/?',
-        ChurnedAPIView.as_view(), name='saas_api_churned'),
-    url(r'^metrics/registered/?',
-        RegisteredAPIView.as_view(), name='saas_api_registered'),
-    url(r'^metrics/subscribed/?',
-        SubscribedAPIView.as_view(), name='saas_api_subscribed'),
-    url(r'^metrics/balances/?',
+    url(r'^metrics/(?P<organization>%s)/balances/?' % ACCT_REGEX,
         BalancesAPIView.as_view(), name='saas_api_balances'),
-    url(r'^subscriptions/active/?',
-      ActiveSubscriptionAPIView.as_view(), name='saas_api_active_subscription'),
-    url(r'^metrics/plan/?',
+    url(r'^metrics/(?P<organization>%s)/plans/?' % ACCT_REGEX,
         PlanMetricAPIView.as_view(), name='saas_api_plan'),
-    url(r'^metrics/customer/?',
+    url(r'^metrics/(?P<organization>%s)/customers/?' % ACCT_REGEX,
         CustomerMetricAPIView.as_view(), name='saas_api_customer'),
-    url(r'^metrics/revenue/?',
+    url(r'^metrics/(?P<organization>%s)/revenue/?' % ACCT_REGEX,
         RevenueMetricAPIView.as_view(), name='saas_api_revenue'),
+
+    url(r'^registered/?',
+        RegisteredAPIView.as_view(), name='saas_api_registered'),
+    url(r'^subscriptions/(?P<organization>%s)/churned/?' % ACCT_REGEX,
+        ChurnedAPIView.as_view(), name='saas_api_churned'),
+    url(r'^subscriptions/(?P<organization>%s)/subscribed/?' % ACCT_REGEX,
+        SubscribedAPIView.as_view(), name='saas_api_subscribed'),
+    url(r'^subscriptions/(?P<organization>%s)/active/?' % ACCT_REGEX,
+      ActiveSubscriptionAPIView.as_view(), name='saas_api_active_subscription'),
 )

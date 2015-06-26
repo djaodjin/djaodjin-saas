@@ -23,29 +23,22 @@
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 """
-URLs responding to GET requests with billing history.
+URLs related to billing.
 """
 
-from django.conf.urls import patterns, url
+from django.conf.urls import patterns, url, include
 
-from saas.views.billing import (ChargeReceiptView, TransactionListView,
-    TransactionDownloadView)
+from saas.views import OrganizationRedirectView
+from saas.views.billing import TransactionDownloadView
 from saas.settings import ACCT_REGEX
 
-try:
-    from saas.views.extra import PrintableChargeReceiptView
-    urlpatterns = patterns('',
-        url(r'^receipt/(?P<charge>%s)/printable/' % ACCT_REGEX,
-            PrintableChargeReceiptView.as_view(),
-            name='saas_printable_charge_receipt'),
-        )
-except ImportError:
-    urlpatterns = patterns('saas.views.billing')
 
-urlpatterns += patterns('',
-    url(r'^receipt/(?P<charge>[a-zA-Z0-9_]+)',
-        ChargeReceiptView.as_view(), name='saas_charge_receipt'),
-    url(r'^download/transactions/',
+urlpatterns = patterns('saas.views.billing',
+    url(r'^billing/cart/',
+        OrganizationRedirectView.as_view(pattern_name='saas_organization_cart'),
+        name='saas_cart'),
+    url(r'^', include('saas.urls.subscriber.billing.payment')),
+    url(r'^', include('saas.urls.subscriber.billing.info')),
+    url(r'^download/(?P<organization>%s)/transactions/' % ACCT_REGEX,
         TransactionDownloadView.as_view(), name='saas_transactions_download'),
-    url(r'^$', TransactionListView.as_view(), name='saas_billing_info'),
 )

@@ -31,7 +31,7 @@ from rest_framework.response import Response
 from extra_views.contrib.mixins import SearchableListMixin, SortableListMixin
 
 from saas.models import CartItem, Coupon
-from saas.mixins import ProviderMixin
+from saas.mixins import OrganizationMixin
 from saas.utils import datetime_or_now
 
 #pylint: disable=no-init
@@ -59,7 +59,7 @@ class RedeemCouponSerializer(serializers.Serializer):
         raise RuntimeError('`update()` should not have been called.')
 
 
-class CouponMixin(ProviderMixin):
+class CouponMixin(OrganizationMixin):
 
     model = Coupon
     serializer_class = CouponSerializer

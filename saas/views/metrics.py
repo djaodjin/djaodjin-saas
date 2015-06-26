@@ -35,7 +35,7 @@ from saas.api.coupons import SmartCouponListMixin
 from saas.api.coupons import CouponMixin as CouponAPIMixin
 from saas.api.metrics import (RegisteredQuerysetMixin, SubscribedQuerysetMixin,
     ChurnedQuerysetMixin)
-from saas.mixins import CouponMixin, ProviderMixin, MetricsMixin
+from saas.mixins import CouponMixin, OrganizationMixin, MetricsMixin
 from saas.views.download import CSVDownloadView
 from saas.managers.metrics import monthly_balances, month_periods
 from saas.models import (CartItem, Plan, Transaction,
@@ -66,7 +66,7 @@ class CouponMetricsView(CouponMixin, ListView):
 
 
 class CouponMetricsDownloadView(
-        SmartCouponListMixin, CouponAPIMixin, ProviderMixin, CSVDownloadView):
+        SmartCouponListMixin, CouponAPIMixin, OrganizationMixin, CSVDownloadView):
 
     headings = [
         'Code',
@@ -101,7 +101,8 @@ class CouponMetricsDownloadView(
             cartitem.plan.slug.encode('utf-8'),
         ]
 
-class PlansMetricsView(ProviderMixin, TemplateView):
+
+class PlansMetricsView(OrganizationMixin, TemplateView):
     """
     Performance of Plans for a time period
     (as a count of subscribers per plan per month)
@@ -183,12 +184,12 @@ class BalancesDownloadView(MetricsMixin, CSVDownloadView):
         return [account] + [item[1] for item in monthly_balances(
             self.organization, account, self.ends_at)]
 
-class SubscriberPipelineView(ProviderMixin, TemplateView):
+class SubscriberPipelineView(OrganizationMixin, TemplateView):
 
     template_name = "saas/subscriber_pipeline.html"
 
 
-class AbstractSubscriberPipelineDownloadView(ProviderMixin, CSVDownloadView):
+class AbstractSubscriberPipelineDownloadView(OrganizationMixin, CSVDownloadView):
 
     subscriber_type = None
 
@@ -241,7 +242,7 @@ class SubscriberPipelineChurnedDownloadView(
     subscriber_type = 'churned'
 
 
-class UsageMetricsView(ProviderMixin, TemplateView):
+class UsageMetricsView(OrganizationMixin, TemplateView):
 
     template_name = "saas/usage_chart.html"
 

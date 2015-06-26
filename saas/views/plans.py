@@ -31,12 +31,12 @@ from django.views.generic import CreateView, ListView, UpdateView, DeleteView
 from django.views.generic.detail import SingleObjectMixin
 
 from saas.forms import PlanForm
-from saas.mixins import CartMixin, ProviderMixin
+from saas.mixins import CartMixin, OrganizationMixin
 from saas.models import CartItem, Plan
 from saas.utils import validate_redirect_url
 
 
-class PlanFormMixin(ProviderMixin, SingleObjectMixin):
+class PlanFormMixin(OrganizationMixin, SingleObjectMixin):
 
     model = Plan
     form_class = PlanForm
@@ -56,7 +56,7 @@ class PlanFormMixin(ProviderMixin, SingleObjectMixin):
         return context
 
 
-class CartPlanListView(ProviderMixin, CartMixin, ListView):
+class CartPlanListView(OrganizationMixin, CartMixin, ListView):
     """
     List of plans available for subscription.
     """
@@ -134,7 +134,7 @@ class PlanUpdateView(PlanFormMixin, UpdateView):
         return context
 
 
-class PlanDeleteView(ProviderMixin, DeleteView):
+class PlanDeleteView(OrganizationMixin, DeleteView):
     '''
     Delete a plan
     '''

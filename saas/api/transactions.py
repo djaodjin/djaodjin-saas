@@ -29,7 +29,7 @@ from django.utils.dateparse import parse_datetime
 
 from saas.humanize import as_html_description, as_money
 from saas.models import Transaction, get_current_provider
-from saas.mixins import OrganizationMixin, ProviderMixin
+from saas.mixins import OrganizationMixin
 from saas.utils import datetime_or_now
 
 #pylint: disable=no-init
@@ -112,7 +112,7 @@ class TransactionListAPIView(SmartTransactionListMixin,
     paginate_by = 25
 
 
-class TransferQuerysetMixin(ProviderMixin):
+class TransferQuerysetMixin(OrganizationMixin):
 
     def get_queryset(self):
         """

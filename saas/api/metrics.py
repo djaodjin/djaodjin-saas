@@ -29,7 +29,7 @@ from rest_framework.generics import GenericAPIView
 from rest_framework.response import Response
 
 from saas import settings
-from saas.mixins import ProviderMixin
+from saas.mixins import OrganizationMixin
 from saas.models import Transaction, Organization, Plan
 from saas.utils import datetime_or_now
 from saas.managers.metrics import monthly_balances
@@ -39,7 +39,7 @@ from saas.managers.metrics import (
     active_subscribers, churn_subscribers)
 
 
-class BalancesAPIView(ProviderMixin, APIView):
+class BalancesAPIView(OrganizationMixin, APIView):
     """
     Generate a table of revenue (rows) per months (columns).
     """
@@ -63,7 +63,7 @@ class BalancesAPIView(ProviderMixin, APIView):
         return Response(result)
 
 
-class RevenueMetricAPIView(ProviderMixin, APIView):
+class RevenueMetricAPIView(OrganizationMixin, APIView):
     """
     Produce revenue stats
     """
@@ -90,7 +90,8 @@ class RevenueMetricAPIView(ProviderMixin, APIView):
             {"title": "Amount",
             "unit": "$", "scale": 0.01, "table": account_table})
 
-class CustomerMetricAPIView(ProviderMixin, APIView):
+
+class CustomerMetricAPIView(OrganizationMixin, APIView):
     """
     Produce Customer stats
     """
@@ -114,7 +115,7 @@ class CustomerMetricAPIView(ProviderMixin, APIView):
             {"title": "Customers",
                 "table": customer_table, "extra": customer_extra})
 
-class PlanMetricAPIView(ProviderMixin, APIView):
+class PlanMetricAPIView(OrganizationMixin, APIView):
     """
     Produce Customer stats
     """
@@ -140,7 +141,7 @@ class PlanMetricAPIView(ProviderMixin, APIView):
                 "table": table, "extra": extra})
 
 
-class OrganizationListAPIView(ProviderMixin, GenericAPIView):
+class OrganizationListAPIView(OrganizationMixin, GenericAPIView):
 
     model = Organization
     serializer_class = OrganizationSerializer

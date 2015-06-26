@@ -30,7 +30,6 @@ from django.template.defaultfilters import stringfilter
 from django.utils.safestring import mark_safe
 from django.utils.timezone import utc
 
-from saas import settings
 from saas.compat import User
 from saas.humanize import as_html_description
 from saas.models import Organization, Subscription, get_current_provider
@@ -85,11 +84,6 @@ def is_manager(request, organization):
 @register.filter
 def is_provider(organization):
     return organization.plans.exists()
-
-
-@register.filter
-def is_site_owner(organization):
-    return organization.pk == settings.PROVIDER_ID
 
 
 @register.filter()

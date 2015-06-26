@@ -27,21 +27,45 @@
 from django.conf.urls import patterns, url
 
 from saas.settings import ACCT_REGEX
+from saas.views import ProviderRedirectView
+from saas.views.profile import DashboardView
 from saas.views.metrics import (BalancesMetricsView,
     CouponMetricsView, PlansMetricsView, RevenueMetricsView,
     SubscriberPipelineView, UsageMetricsView)
 
 urlpatterns = patterns(
     'saas.views.metrics',
-    url(r'^usage/', UsageMetricsView.as_view(), name='saas_organization_usage'),
-    url(r'^pipeline/$',
+    url(r'^metrics/dashboard/',
+        ProviderRedirectView.as_view(pattern_name='saas_dashboard'),
+        name='saas_provider_dashboard'),
+    url(r'^metrics/pipeline/',
+        ProviderRedirectView.as_view(pattern_name='saas_subscriber_pipeline'),
+        name='saas_provider_subscriber_pipeline'),
+    url(r'^metrics/plans/',
+        ProviderRedirectView.as_view(pattern_name='saas_metrics_plans'),
+        name='saas_provider_metrics_plans'),
+    url(r'^metrics/coupons/((?P<coupon>%s)/)?' % ACCT_REGEX,
+        ProviderRedirectView.as_view(pattern_name='saas_metrics_coupons'),
+        name='saas_provider_metrics_coupons'),
+    url(r'^metrics/balances/',
+        ProviderRedirectView.as_view(pattern_name='saas_metrics_balances'),
+        name='saas_provider_metrics_balances'),
+
+    url(r'^metrics/(?P<organization>%s)/dashboard/' % ACCT_REGEX,
+        DashboardView.as_view(), name='saas_dashboard'),
+    url(r'^metrics/(?P<organization>%s)/pipeline/' % ACCT_REGEX,
         SubscriberPipelineView.as_view(), name='saas_subscriber_pipeline'),
-    url(r'^plans/((?P<from_date>\d\d\d\d-\d\d)/)?',
+    url(r'^metrics/(?P<organization>%s)/plans/' % ACCT_REGEX,
         PlansMetricsView.as_view(), name='saas_metrics_plans'),
-    url(r'^coupons/((?P<coupon>%s)/)?' % ACCT_REGEX,
+    url(r'^metrics/(?P<organization>%s)/coupons/((?P<coupon>%s)/)?'
+        % (ACCT_REGEX, ACCT_REGEX),
         CouponMetricsView.as_view(), name='saas_metrics_coupons'),
-    url(r'^balances/',
+    url(r'^metrics/(?P<organization>%s)/balances/' % ACCT_REGEX,
         BalancesMetricsView.as_view(), name='saas_metrics_balances'),
-    url(r'^',
+    url(r'^metrics/(?P<organization>%s)/' % ACCT_REGEX,
         RevenueMetricsView.as_view(), name='saas_metrics_summary'),
+
+    url(r'^metrics/',
+        ProviderRedirectView.as_view(pattern_name='saas_metrics_summary'),
+        name='saas_provider_metrics_summary'),
 )

@@ -26,6 +26,7 @@
 
 import logging
 
+from django.conf import settings as django_settings
 from django.contrib import messages
 from django.core.urlresolvers import reverse
 from django.db import transaction
@@ -38,59 +39,27 @@ from django.utils.decorators import method_decorator
 
 from saas.forms import (OrganizationForm, OrganizationCreateForm,
     ManagerAndOrganizationForm)
-from saas.mixins import OrganizationMixin, ProviderMixin
+from saas.mixins import OrganizationMixin
 from saas.models import Organization, Subscription
 
 LOGGER = logging.getLogger(__name__)
 
 
-class ContributorListBaseView(TemplateView):
+class ContributorListView(OrganizationMixin, TemplateView):
     """
     List of contributors for an organization.
-
-    Must be used with an OrganizationMixin or a ProviderMixin.
     """
     template_name = 'saas/contributor_list.html'
 
 
-class ProviderContributorListView(ProviderMixin, ContributorListBaseView):
-    """
-    List of contributors for the site provider.
-    """
-    pass
-
-
-class ContributorListView(OrganizationMixin, ContributorListBaseView):
-    """
-    List of contributors for an organization.
-    """
-    pass
-
-
-class ManagerListBaseView(TemplateView):
+class ManagerListView(OrganizationMixin, TemplateView):
     """
     List of managers for an organization.
-
-    Must be used with an OrganizationMixin or a ProviderMixin.
     """
     template_name = 'saas/manager_list.html'
 
 
-class ProviderManagerListView(ProviderMixin, ManagerListBaseView):
-    """
-    List of managers for the site provider.
-    """
-    pass
-
-
-class ManagerListView(OrganizationMixin, ManagerListBaseView):
-    """
-    List of managers for an organization.
-    """
-    pass
-
-
-class SubscriberListView(ProviderMixin, TemplateView):
+class SubscriberListView(OrganizationMixin, TemplateView):
     """
     List of organizations subscribed to a plan provided by the organization.
     """
@@ -139,7 +108,7 @@ class OrganizationCreateView(CreateView):
         return reverse(self.pattern_name, args=(self.object,))
 
 
-class ProviderDashboardView(ProviderMixin, DetailView):
+class DashboardView(OrganizationMixin, DetailView):
 
     model = Organization
     slug_url_kwarg = 'organization'
@@ -170,7 +139,7 @@ class ProviderDashboardView(ProviderMixin, DetailView):
 
     def get_context_data(self, **kwargs):
         context = super(
-            ProviderDashboardView, self).get_context_data(**kwargs)
+            DashboardView, self).get_context_data(**kwargs)
         organization = self.get_organization()
         progress = 0
         next_steps = []
@@ -186,6 +155,13 @@ class ProviderDashboardView(ProviderMixin, DetailView):
             'next_steps':next_steps
             })
         return context
+
+    def get(self, request, *args, **kwargs):
+        if (hasattr(django_settings, 'FEATURES_DEBUG')
+            and django_settings.FEATURES_DEBUG):
+            return super(DashboardView, self).get(request, *args, **kwargs)
+        return HttpResponseRedirect(
+            reverse('saas_metrics_summary', args=(self.get_organization(),)))
 
 
 class OrganizationProfileView(OrganizationMixin, UpdateView):
@@ -241,11 +217,3 @@ class OrganizationProfileView(OrganizationMixin, UpdateView):
         return reverse('saas_organization_profile', args=(self.object,))
 
 
-class ProviderProfileView(ProviderMixin, OrganizationProfileView):
-
-    def get_object(self, queryset=None):
-        return self.get_organization()
-
-    def get_success_url(self):
-        messages.info(self.request, 'Profile Updated.')
-        return reverse('saas_provider_profile',)

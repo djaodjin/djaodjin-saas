@@ -36,17 +36,21 @@ from saas.api.plans import (PlanActivateAPIView, PlanCreateAPIView,
 from saas.api.transactions import TransferListAPIView
 
 urlpatterns = patterns('',
-    url(r'^bank/?', RetrieveBankAPIView.as_view(), name='saas_api_bank'),
-    url(r'^coupons/(?P<coupon>%s)/?' % ACCT_REGEX,
+    url(r'^billing/(?P<organization>%s)/bank/?' % ACCT_REGEX,
+        RetrieveBankAPIView.as_view(), name='saas_api_bank'),
+    url(r'^billing/(?P<organization>%s)/coupons/(?P<coupon>%s)/?'
+        % (ACCT_REGEX, ACCT_REGEX),
         CouponDetailAPIView.as_view(), name='saas_api_coupon_detail'),
-    url(r'^coupons/?',
+    url(r'^billing/(?P<organization>%s)/coupons/?'  % ACCT_REGEX,
         CouponListAPIView.as_view(), name='saas_api_coupon_list'),
-    url(r'^plans/(?P<plan>%s)/activate/' % ACCT_REGEX,
+    url(r'^billing/(?P<organization>%s)/plans/(?P<plan>%s)/activate/'
+        % (ACCT_REGEX, ACCT_REGEX),
         PlanActivateAPIView.as_view(), name='saas_api_plan_activate'),
-    url(r'^plans/(?P<plan>%s)/?' % ACCT_REGEX,
+    url(r'^billing/(?P<organization>%s)/plans/(?P<plan>%s)/?'
+        % (ACCT_REGEX, ACCT_REGEX),
         PlanResourceView.as_view(), name='saas_api_plan'),
-    url(r'^plans/?',
+    url(r'^billing/(?P<organization>%s)/plans/?' % ACCT_REGEX,
         PlanCreateAPIView.as_view(), name='saas_api_plan_new'),
-    url(r'^transfers/?',
+    url(r'^billing/(?P<organization>%s)/transfers/?' % ACCT_REGEX,
         TransferListAPIView.as_view(), name='saas_api_transfer_list'),
 )

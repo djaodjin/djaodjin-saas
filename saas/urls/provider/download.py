@@ -22,31 +22,53 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-'''Urls to provider downloads'''
+"""
+Urls to download records
+"""
 
 from django.conf.urls import patterns, url
 
+from saas.settings import ACCT_REGEX
+from saas.views import ProviderRedirectView
 from saas.views.metrics import (BalancesDownloadView,
     CouponMetricsDownloadView, SubscriberPipelineSubscribedDownloadView,
     SubscriberPipelineRegisteredDownloadView,
     SubscriberPipelineChurnedDownloadView)
 from saas.views.billing import TransferDownloadView
 
+
 urlpatterns = patterns(
-    'saas.views.metrics',
-    url(r'^pipeline/registered/?',
-        SubscriberPipelineRegisteredDownloadView.as_view(),
-        name='saas_subscriber_pipeline_download_registered'),
-    url(r'^pipeline/subscribed/?',
+    'saas.views.downloads',
+    url(r'^download/subscribers/active/?',
+        ProviderRedirectView.as_view(
+            pattern_name='saas_subscriber_pipeline_download_subscribed'),
+        name='saas_provider_subscriber_pipeline_download_subscribed'),
+    url(r'^download/subscribers/churned/?',
+        ProviderRedirectView.as_view(
+            pattern_name='saas_subscriber_pipeline_download_churned'),
+        name='saas_provider_subscriber_pipeline_download_churned'),
+    url(r'^download/coupons/',
+        ProviderRedirectView.as_view(
+            pattern_name='saas_metrics_coupons_download'),
+        name='saas_provider_metrics_coupons_download'),
+    url(r'^download/balances/?',
+        ProviderRedirectView.as_view(pattern_name='saas_balances_download'),
+        name='saas_provider_balances_download'),
+    url(r'^download/transfers/?',
+        ProviderRedirectView.as_view(pattern_name='saas_transfers_download'),
+        name='saas_provider_transfers_download'),
+
+    url(r'^download/(?P<organization>%s)/subscribers/active/?' % ACCT_REGEX,
         SubscriberPipelineSubscribedDownloadView.as_view(),
         name='saas_subscriber_pipeline_download_subscribed'),
-    url(r'^pipeline/churned/?',
+    url(r'download/^(?P<organization>%s)/subscribers/churned/?' % ACCT_REGEX,
         SubscriberPipelineChurnedDownloadView.as_view(),
         name='saas_subscriber_pipeline_download_churned'),
-    url(r'^coupons/', CouponMetricsDownloadView.as_view(),
+    url(r'^download/(?P<organization>%s)/coupons/' % ACCT_REGEX,
+        CouponMetricsDownloadView.as_view(),
         name='saas_metrics_coupons_download'),
-    url(r'^balances/',
+    url(r'^download/(?P<organization>%s)/balances/?' % ACCT_REGEX,
         BalancesDownloadView.as_view(), name='saas_balances_download'),
-    url(r'^transfers',
+    url(r'^download/(?P<organization>%s)/transfers/?' % ACCT_REGEX,
         TransferDownloadView.as_view(), name='saas_transfers_download'),
 )

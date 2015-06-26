@@ -29,12 +29,8 @@ URLs related to provider pages
 from django.conf.urls import patterns, include, url
 
 urlpatterns = patterns('',
-    url(r'^billing/',
-        include('saas.urls.provider.billing')),
-    url(r'^metrics/',
-        include('saas.urls.provider.metrics')),
-    url(r'^download/',
-        include('saas.urls.provider.download')),
-    url(r'^',
-        include('saas.urls.provider.profile')),
+    url(r'^', include('saas.urls.provider.billing')),
+    url(r'^', include('saas.urls.provider.metrics')),
+    url(r'^', include('saas.urls.provider.download')),
+    url(r'^', include('saas.urls.provider.profile')),
 )

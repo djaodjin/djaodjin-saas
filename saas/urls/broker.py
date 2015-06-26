@@ -1,4 +1,4 @@
-# Copyright (c) 2014, DjaoDjin inc.
+# Copyright (c) 2015, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -23,13 +23,16 @@
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 """
-URLs related to billing.
+Urls specific to the hosting site (i.e. broker).
 """
 
-from django.conf.urls import patterns, url, include
+from django.conf.urls import patterns, url
+
+from saas.views.metrics import SubscriberPipelineRegisteredDownloadView
 
 urlpatterns = patterns(
-    'saas.views.billing',
-    url(r'^', include('saas.urls.billing.payment')),
-    url(r'^', include('saas.urls.billing.info')),
+    'saas.views.downloads',
+    url(r'^download/registered/?',
+        SubscriberPipelineRegisteredDownloadView.as_view(),
+        name='saas_subscriber_pipeline_download_registered'),
 )

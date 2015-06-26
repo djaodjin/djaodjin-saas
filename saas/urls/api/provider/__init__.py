@@ -1,4 +1,4 @@
-# Copyright (c) 2014, DjaoDjin inc.
+# Copyright (c) 2015, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -26,8 +26,10 @@
 
 from django.conf.urls import patterns, include, url
 
+from saas.settings import ACCT_REGEX
+
 urlpatterns = patterns('',
-    url(r'^', include('saas.urls.api.provider.billing')),
     url(r'^', include('saas.urls.api.provider.charges')),
+    url(r'^', include('saas.urls.api.provider.billing')),
     url(r'^', include('saas.urls.api.provider.metrics')),
 )
