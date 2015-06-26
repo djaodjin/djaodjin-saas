@@ -106,7 +106,6 @@ class CartItemAPIView(CartMixin, CreateAPIView):
     # authentication_classes = []
 
     def post(self, request, *args, **kwargs):
-        print "XXX WTH?"
         serializer = self.get_serializer(data=request.DATA)
         if serializer.is_valid():
             cart_item, created = self.insert_item(request, **serializer.data)

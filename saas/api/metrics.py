@@ -29,7 +29,7 @@ from rest_framework.generics import GenericAPIView
 from rest_framework.response import Response
 
 from saas import settings
-from saas.mixins import OrganizationMixin
+from saas.mixins import OrganizationMixin, ProviderMixin
 from saas.models import Transaction, Organization, Plan
 from saas.utils import datetime_or_now
 from saas.managers.metrics import monthly_balances
@@ -185,7 +185,7 @@ class ChurnedAPIView(ChurnedQuerysetMixin, OrganizationListAPIView):
     queryset_name = 'churned'
 
 
-class RegisteredQuerysetMixin(object):
+class RegisteredQuerysetMixin(ProviderMixin):
 
     def get_range_queryset(self, start_time, end_time):
         #pylint: disable=unused-argument

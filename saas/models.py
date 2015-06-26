@@ -191,6 +191,8 @@ class Organization(models.Model):
     is_bulk_buyer = models.BooleanField(default=False,
         help_text=_("Enable this organization to pay subscriptions on behalf"\
 " of others."))
+    is_provider = models.BooleanField(default=False,
+        help_text=_("Can fulfill the provider side of a subscription."))
     full_name = models.CharField(_('full name'), max_length=60, blank=True)
     # contact by e-mail
     email = models.EmailField(# XXX if we use unique=True here, the project
@@ -205,8 +207,6 @@ class Organization(models.Model):
     postal_code = models.CharField(max_length=50)
     country = CountryField()
 
-    belongs = models.ForeignKey('Organization', # XXX deprecated (avoid cycle).
-        related_name='owner', null=True)
     managers = models.ManyToManyField(settings.AUTH_USER_MODEL,
         related_name='manages', through=settings.MANAGER_RELATION)
 

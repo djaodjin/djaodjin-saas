@@ -60,7 +60,7 @@ urlpatterns = patterns(
     url(r'^download/(?P<organization>%s)/subscribers/active/?' % ACCT_REGEX,
         SubscriberPipelineSubscribedDownloadView.as_view(),
         name='saas_subscriber_pipeline_download_subscribed'),
-    url(r'download/^(?P<organization>%s)/subscribers/churned/?' % ACCT_REGEX,
+    url(r'download/(?P<organization>%s)/subscribers/churned/?' % ACCT_REGEX,
         SubscriberPipelineChurnedDownloadView.as_view(),
         name='saas_subscriber_pipeline_download_churned'),
     url(r'^download/(?P<organization>%s)/coupons/' % ACCT_REGEX,
