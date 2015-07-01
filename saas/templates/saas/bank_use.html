@@ -3,7 +3,7 @@
 <form method="post" id="bank-form" action=".{% if next %}/?next={{ next }}{% endif %}">
       {% csrf_token %}
       <fieldset>
-      <legend>Bank Information {% if last4 and not update_mode %}<a href="{% url 'saas_update_bank' %}">Update</a>{% endif %}
+      <legend>Bank Information {% if last4 and not update_mode %}<a href="{% url 'saas_update_bank' organization %}">Update</a>{% endif %}
       </legend>
       {% if last4 %}
       <div>
