@@ -1175,9 +1175,6 @@ class Plan(models.Model):
             result += relativedelta(years=1 * nb_periods)
         return result
 
-    def get_absolute_url(self):
-        return reverse('saas_plan_edit', args=(self,))
-
     def get_title(self):
         """
         Returns a printable human-readable title for the plan.

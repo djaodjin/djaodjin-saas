@@ -55,6 +55,14 @@ class PlanFormMixin(OrganizationMixin, SingleObjectMixin):
         context.update({'organization': self.organization})
         return context
 
+    def get_url_kwargs(self):
+        """
+        Rebuilds the ``kwargs`` to pass to ``reverse()``.
+        """
+        url_kwargs = super(PlanFormMixin, self).get_url_kwargs()
+        url_kwargs.update({'plan': self.kwargs['plan']})
+        return url_kwargs
+
 
 class CartPlanListView(ProviderMixin, CartMixin, ListView):
     """
@@ -125,7 +133,7 @@ class PlanUpdateView(PlanFormMixin, UpdateView):
 
     def get_success_url(self):
         messages.success(self.request, 'Plan successfully updated.')
-        return super(PlanUpdateView, self).get_success_url()
+        return reverse('saas_plan_edit', kwargs=self.get_url_kwargs())
 
     def get_context_data(self, **kwargs):
         context = super(PlanUpdateView, self).get_context_data(**kwargs)
