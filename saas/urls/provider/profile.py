@@ -59,7 +59,7 @@ urlpatterns = patterns('',
     url(r'^provider/(?P<organization>%s)/plans/(?P<plan>%s)/delete/$'
         % (ACCT_REGEX, ACCT_REGEX),
         PlanDeleteView.as_view(), name='saas_plan_delete'),
-    url(r'^provider/(?P<organization>%s)/plans/(?P<plan>%s)/?'
+    url(r'^provider/(?P<organization>%s)/plans/(?P<plan>%s)/'
         % (ACCT_REGEX, ACCT_REGEX),
         PlanUpdateView.as_view(), name='saas_plan_edit'),
     url(r'^provider/(?P<organization>%s)/plans/' % ACCT_REGEX,
