@@ -36,12 +36,15 @@ from functools import wraps
 from django.core.exceptions import PermissionDenied
 from django.core.urlresolvers import reverse
 from django.contrib.auth import REDIRECT_FIELD_NAME
+from django.http import Http404
 from django.shortcuts import get_object_or_404
 from django.utils.decorators import available_attrs
 
+from saas import settings
 from saas.models import (Charge, Organization, Plan, Signature, Subscription,
     get_current_provider)
-from saas import settings
+from saas.utils import datetime_or_now
+
 
 LOGGER = logging.getLogger(__name__)
 
@@ -180,9 +183,15 @@ def pass_paid_subscription(request, organization=None, plan=None):
         organization = get_object_or_404(Organization, slug=organization)
     if plan and not isinstance(plan, Plan):
         plan = get_object_or_404(Plan, slug=plan)
-    subscription = get_object_or_404(
-        Subscription, organization=organization, plan=plan)
-    return not subscription.is_locked
+    subscribed_at = datetime_or_now()
+    subscriptions = Subscription.objects.filter(
+        organization=organization, plan=plan,
+        ends_at__gt=subscribed_at)
+    if not subscriptions.exists():
+        raise Http404("%(organization)s has no subscription to %(plan)s'\
+' as of %(date)s" % {'organization': organization,
+                     'plan': plan, 'date': subscribed_at})
+    return not subscriptions.first().is_locked
 
 
 def pass_direct(request, charge=None, organization=None, strength=NORMAL):
