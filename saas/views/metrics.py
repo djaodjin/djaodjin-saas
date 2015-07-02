@@ -182,7 +182,7 @@ class BalancesDownloadView(MetricsMixin, CSVDownloadView):
 
     def queryrow_to_columns(self, account):
         return [account] + [item[1] for item in monthly_balances(
-            self.organization, account, self.ends_at)]
+            self.organization, account, self.ends_at.date())]
 
 class SubscriberPipelineView(OrganizationMixin, TemplateView):
 
@@ -221,7 +221,7 @@ class AbstractSubscriberPipelineDownloadView(OrganizationMixin,
         return [
             org.full_name.encode('utf-8'),
             org.email.encode('utf-8'),
-            org.created_at,
+            org.created_at.date(),
         ]
 
 

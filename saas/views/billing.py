@@ -367,7 +367,7 @@ class TransactionDownloadView(SmartTransactionListMixin,
     def queryrow_to_columns(self, transaction):
         org = self.get_organization()
         return [
-            transaction.created_at,
+            transaction.created_at.date(),
             '{:.2f}'.format((-1 if transaction.is_debit(org) else 1) *
                 Decimal(transaction.dest_amount) / 100),
             transaction.dest_unit.encode('utf-8'),
@@ -416,7 +416,7 @@ class TransferDownloadView(SmartTransactionListMixin,
     def queryrow_to_columns(self, transaction):
         org = self.get_organization()
         return [
-            transaction.created_at,
+            transaction.created_at.date(),
             '{:.2f}'.format((-1 if transaction.is_debit(org) else 1) *
                 Decimal(transaction.dest_amount) / 100),
             transaction.dest_unit.encode('utf-8'),
