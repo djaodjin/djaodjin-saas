@@ -45,7 +45,6 @@ Two sets or relations are supported: managers and contributors (for details see
 import datetime, logging, re
 
 from dateutil.relativedelta import relativedelta
-from django.core.urlresolvers import reverse
 from django.core.validators import MaxValueValidator
 from django.db import IntegrityError, models, transaction
 from django.db.models import Q, Sum
