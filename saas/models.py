@@ -332,8 +332,7 @@ class Organization(models.Model):
 
             # If the invoicable we are checking out is somehow related to
             # a user shopping cart, we mark that cart item as recorded.
-            cart_items = CartItem.objects.filter(
-                user=user, plan=subscription.plan, recorded=False)
+            cart_items = CartItem.objects.get_cart(user, plan=subscription.plan)
             if cart_items.exists():
                 bulk_items = cart_items.filter(
                     email=subscription.organization.email)

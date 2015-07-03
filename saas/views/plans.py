@@ -87,7 +87,7 @@ class CartPlanListView(ProviderMixin, CartMixin, ListView):
         items_selected = []
         if self.request.user.is_authenticated():
             items_selected += [item.plan.slug
-                for item in CartItem.objects.filter(user=self.request.user)]
+                for item in CartItem.objects.get_cart(self.request.user)]
         if self.request.session.has_key('cart_items'):
             items_selected += [item['plan']
                 for item in self.request.session['cart_items']]
