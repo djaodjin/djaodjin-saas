@@ -205,10 +205,12 @@ def pass_direct(request, charge=None, organization=None, strength=NORMAL):
     .. image:: perms-contrib.*
     """
     if charge:
-        charge = get_object_or_404(Charge, processor_id=charge)
+        if not isinstance(charge, Charge):
+            charge = get_object_or_404(Charge, processor_id=charge)
         organization = charge.customer
-    elif organization and not isinstance(organization, Organization):
-        organization = get_object_or_404(Organization, slug=organization)
+    elif organization:
+        if not isinstance(organization, Organization):
+            organization = get_object_or_404(Organization, slug=organization)
     else:
         organization = get_current_provider()
     return organization and _has_valid_access(request, [organization], strength)
