@@ -58,13 +58,14 @@ from django_countries.fields import CountryField
 from saas import settings
 from saas import signals
 from saas import get_manager_relation_model, get_contributor_relation_model
-from saas.backends import PROCESSOR_BACKEND, ProcessorError, CardError
+from saas.backends import get_processor_backend, ProcessorError, CardError
 from saas.utils import datetime_or_now, generate_random_slug
 
 from saas.humanize import (as_money, describe_buy_periods,
-    DESCRIBE_BALANCE, DESCRIBE_BUY_PERIODS,
+    DESCRIBE_BUY_PERIODS, DESCRIBE_BALANCE,
     DESCRIBE_CHARGED_CARD, DESCRIBE_CHARGED_CARD_PROCESSOR,
-    DESCRIBE_CHARGED_CARD_PROVIDER, DESCRIBE_CHARGED_CARD_REFUND)
+    DESCRIBE_CHARGED_CARD_PROVIDER, DESCRIBE_CHARGED_CARD_REFUND,
+    DESCRIBE_DOUBLE_ENTRY_MATCH, DESCRIBE_LIABILITY_START_PERIOD)
 
 LOGGER = logging.getLogger(__name__)
 
@@ -261,6 +262,14 @@ class Organization(models.Model):
     def has_bank_account(self):
         return self.processor_recipient_id
 
+    @property
+    def natural_interval(self):
+        plan_periods = self.plans.values('interval').distinct()
+        interval = Plan.MONTHLY
+        if len(plan_periods) == 1:
+            interval = plan_periods[0]['interval']
+        return interval
+
     def _add_relation(self, user, model, role, reason=None):
         # Implementation Note:
         # Django get_or_create will call router.db_for_write without
@@ -294,13 +303,15 @@ class Organization(models.Model):
             'manager', reason=reason)
 
     def update_bank(self, bank_token):
-        PROCESSOR_BACKEND.create_or_update_bank(self, bank_token)
+        processor_backend = get_processor_backend()
+        processor_backend.create_or_update_bank(self, bank_token)
         LOGGER.info('Updated bank information for %s on processor '\
             '{"recipient_id": %s}', self, self.processor_recipient_id)
         signals.bank_updated.send(self)
 
     def update_card(self, card_token, user):
-        PROCESSOR_BACKEND.create_or_update_card(self, card_token, user)
+        processor_backend = get_processor_backend()
+        processor_backend.create_or_update_card(self, card_token, user)
         LOGGER.info('Updated card information for %s on processor '\
             '{"processor_id": %s}', self, self.processor_id)
 
@@ -411,7 +422,26 @@ class Organization(models.Model):
         """
         Returns associated bank account as a dictionnary.
         """
-        return PROCESSOR_BACKEND.retrieve_bank(self)
+        processor_backend = get_processor_backend()
+        return processor_backend.retrieve_bank(self)
+
+    def retrieve_card(self):
+        """
+        Returns associated credit card.
+        """
+        processor_backend = get_processor_backend()
+        return processor_backend.retrieve_card(self)
+
+    def withdraw_available(self):
+        available_amount, available_unit \
+            = Transaction.objects.get_organization_balance(self)
+        processor_backend = get_processor_backend()
+        transfer_fee = processor_backend.prorate_transfer(available_amount)
+        if available_amount > transfer_fee:
+            available_amount -= transfer_fee
+        else:
+            available_amount = 0
+        return (available_amount, available_unit)
 
     @method_decorator(transaction.atomic)
     def withdraw_funds(self, amount, user, created_at=None):
@@ -439,6 +469,7 @@ class Organization(models.Model):
                 stripe:Funds                               $0.25
                 cowork:Funds
         """
+        processor_backend = get_processor_backend()
         funds_unit = 'usd' # XXX currency on receipient bank account
         created_at = datetime_or_now(created_at)
         descr = "withdraw from %s" % self.printable_name
@@ -447,7 +478,7 @@ class Organization(models.Model):
         # Execute transaction on processor first such that any processor
         # exception will be raised before we attempt to store
         # the ``Transaction``.
-        processor_transfer_id, _ = PROCESSOR_BACKEND.create_transfer(
+        processor_transfer_id, _ = processor_backend.create_transfer(
             self, amount, descr)
         processor = Charge.get_processor()
         Transaction.objects.create(
@@ -462,22 +493,37 @@ class Organization(models.Model):
             orig_amount=amount,
             orig_account=Transaction.FUNDS,
             orig_organization=self)
-        transfer_fee = PROCESSOR_BACKEND.prorate_transfer(amount)
-        if transfer_fee:
-            # Add processor fee for transfer.
+        # Add processor fee for transfer.
+        transfer_fee = processor_backend.prorate_transfer(amount)
+        self.create_processor_fee(transfer_fee, Transaction.FUNDS,
+            event_id=processor_transfer_id, created_at=created_at)
+        self.funds_balance -= amount
+        self.save()
+
+    def create_processor_fee(self, fee_amount, processor_account,
+                             event_id=None, created_at=None, descr=None):
+        #pylint: disable=too-many-arguments
+        if fee_amount:
+            funds_unit = 'usd' # XXX currency on receipient bank account
+            created_at = datetime_or_now(created_at)
+            processor = Charge.get_processor()
+            if not descr:
+                descr = 'Processor fee'
+            if event_id:
+                descr += ' for %s' % str(event_id)
             Transaction.objects.create(
-                event_id=processor_transfer_id,
-                descr='Transfer fee for %s' % processor_transfer_id,
+                event_id=event_id,
+                descr=descr,
                 created_at=created_at,
                 dest_unit=funds_unit,
-                dest_amount=transfer_fee,
-                dest_account=Transaction.FUNDS,
+                dest_amount=fee_amount,
+                dest_account=processor_account,
                 dest_organization=processor,
                 orig_unit=funds_unit,
-                orig_amount=transfer_fee,
+                orig_amount=fee_amount,
                 orig_account=Transaction.FUNDS,
                 orig_organization=self)
-        self.funds_balance -= (amount + transfer_fee)
+        self.funds_balance -= fee_amount
         self.save()
 
 
@@ -536,13 +582,32 @@ class Signature(models.Model):
 
 class ChargeManager(models.Manager):
 
+    def create_charge(self, customer, transactions,
+                      amount, unit, processor_charge_id, last4, exp_date,
+                      descr=None, created_at=None):
+        #pylint: disable=too-many-arguments
+        created_at = datetime_or_now(created_at)
+        with transaction.atomic():
+            charge = self.create(
+                processor_id=processor_charge_id, amount=amount, unit=unit,
+                created_at=created_at, description=descr,
+                customer=customer, last4=last4, exp_date=exp_date)
+            for invoiced in transactions:
+                ChargeItem.objects.create(invoiced=invoiced, charge=charge)
+            LOGGER.info('Created charge #%s of %d cents to %s',
+                        charge.processor_id, charge.amount, customer)
+        return charge
+
+
     def charge_card(self, customer, transactions, descr=None,
                     user=None, token=None, remember_card=True):
         #pylint: disable=too-many-arguments,too-many-locals
         """
         Create a charge on a customer card.
+
+        Be careful, Stripe will not processed charges less than 50 cents.
         """
-        # Be careful, stripe will not processed charges less than 50 cents.
+        processor_backend = get_processor_backend()
         amount, unit = sum_dest_amount(transactions)
         if amount == 0:
             return None
@@ -556,29 +621,25 @@ class ChargeManager(models.Manager):
                 if remember_card:
                     customer.update_card(card_token=token, user=user)
                     (processor_charge_id, created_at,
-                     last4, exp_date) = PROCESSOR_BACKEND.create_charge(
+                     last4, exp_date) = processor_backend.create_charge(
                         customer, amount, unit, descr, stmt_descr)
                 else:
                     (processor_charge_id, created_at,
-                     last4, exp_date) = PROCESSOR_BACKEND.create_charge_on_card(
+                     last4, exp_date) = processor_backend.create_charge_on_card(
                         token, amount, unit, descr, stmt_descr)
             else:
+                # XXX A card must already be attached to the customer.
                 (processor_charge_id, created_at,
-                 last4, exp_date) = PROCESSOR_BACKEND.create_charge(
+                 last4, exp_date) = processor_backend.create_charge(
                     customer, amount, unit, descr, stmt_descr)
             # Create record of the charge in our database
             descr = DESCRIBE_CHARGED_CARD % {'charge': processor_charge_id,
                 'organization': customer.printable_name}
             if user:
                 descr += ' (%s)' % user.username
-            charge = self.create(
-                processor_id=processor_charge_id, amount=amount, unit=unit,
-                created_at=created_at, description=descr,
-                customer=customer, last4=last4, exp_date=exp_date)
-            for invoiced in transactions:
-                ChargeItem.objects.create(invoiced=invoiced, charge=charge)
-            LOGGER.info('Created charge #%s of %d cents to %s',
-                        charge.processor_id, charge.amount, customer)
+            charge = self.create_charge(customer, transactions,
+                amount, unit, processor_charge_id, last4, exp_date,
+                descr=descr, created_at=created_at)
         except CardError as err:
             # Expected runtime error. We just log that the charge was declined.
             LOGGER.info('CardError for charge of %d cents to %s: %s',
@@ -676,8 +737,41 @@ class Charge(models.Model):
         signals.charge_updated.send(sender=__name__, charge=self, user=None)
 
     def dispute_created(self):
+        #pylint: disable=too-many-locals
         self.state = self.DISPUTED
-        self.save()
+        created_at = datetime_or_now()
+        processor_backend = get_processor_backend()
+        previously_refunded, _ = sum_orig_amount(
+            Transaction.objects.by_charge(self).filter(
+                orig_account=Transaction.REFUNDED))
+        refund_available = self.amount - previously_refunded
+        charge_available_amount, provider_unit, \
+            charge_fee_amount, processor_unit \
+            = processor_backend.charge_distribution(self)
+        corrected_available_amount = charge_available_amount
+        corrected_fee_amount = charge_fee_amount
+        with transaction.atomic():
+            providers = set([])
+            for charge_item in self.line_items:
+                refunded_amount = min(refund_available,
+                    charge_item.invoiced_item.dest_amount)
+                provider = charge_item.invoiced_item.orig_organization
+                if not provider in providers:
+                    provider.create_processor_fee(
+                        processor_backend.dispute_fee(self.amount),
+                        Transaction.CHARGEBACK,
+                        event_id=self.id, created_at=created_at)
+                    providers |= set([provider])
+                self.create_refund_transactions(
+                    charge_item.invoiced_item, charge_item.invoiced_fee,
+                    refunded_amount,
+                    charge_available_amount, charge_fee_amount,
+                    corrected_available_amount, corrected_fee_amount,
+                    created_at=created_at, provider_unit=provider_unit,
+                    processor_unit=processor_unit,
+                    refund_type=Transaction.CHARGEBACK)
+                refund_available -= refunded_amount
+            self.save()
         signals.charge_updated.send(sender=__name__, charge=self, user=None)
 
     def dispute_updated(self):
@@ -685,9 +779,29 @@ class Charge(models.Model):
         self.save()
         signals.charge_updated.send(sender=__name__, charge=self, user=None)
 
-    def dispute_closed(self):
+    def dispute_lost(self):
         self.state = self.DONE
         self.save()
+        signals.charge_updated.send(sender=__name__, charge=self, user=None)
+
+    def dispute_won(self):
+        self.state = self.DONE
+        with transaction.atomic():
+            for reverted in Transaction.objects.by_charge(self).filter(
+                    dest_account=Transaction.CHARGEBACK):
+                Transaction.objects.create(
+                    event_id=reverted.event_id,
+                    descr='%s - reverted' % reverted.descr,
+                    created_at=reverted.created_at,
+                    dest_unit=reverted.orig_unit,
+                    dest_amount=reverted.orig_amount,
+                    dest_account=reverted.orig_account,
+                    dest_organization=reverted.orig_organization,
+                    orig_unit=reverted.dest_unit,
+                    orig_amount=reverted.dest_amount,
+                    orig_account=reverted.dest_account,
+                    orig_organization=reverted.dest_organization)
+            self.save()
         signals.charge_updated.send(sender=__name__, charge=self, user=None)
 
     def failed(self):
@@ -700,69 +814,112 @@ class Charge(models.Model):
     def payment_successful(self):
         """
         When a charge through the payment processor is sucessful,
-        a ``Transaction`` records the charge from as a subscriber's expense
-        and a processor's income. The amount of the charge is then
-        redistributed to the providers (minus processor fee)::
+        a unique ``Transaction`` records the charge through the processor.
+        The amount of the charge is then redistributed to the providers
+        (minus processor fee)::
 
             ; Record the charge
 
             yyyy/mm/dd processor event
-                subscriber:Expenses                      charge_amount
-                processor:Income
+                processor:Funds                          charge_amount
+                subscriber:Liability
+
+            ; Compensate for atomicity of charge record (when necessary)
+
+            yyyy/mm/dd processor event (compensate when necessary)
+                subscriber:Liability                     charge_amount
+                subscriber:Payable
 
             ; Distribute processor fee and funds to the provider
 
             yyyy/mm/dd processor fee paid by provider
-                processor:Funds                          processor_fee
-                subscriber:Payable
+                provider:Receivable                      processor_fee
+                processor:Backlog
+
+            yyyy/mm/dd distribution to provider (backlog acounting)
+                provider:Receivable                      distribute_amount
+                provider:Backlog
 
             yyyy/mm/dd distribution to provider
                 provider:Funds                           distribute_amount
-                subscriber:Payable
+                processor:Funds
 
         Example::
 
             2014/09/10 Charge ch_ABC123 on credit card of xia
-                xia:Expenses                             $179.99
-                stripe:Income
+                stripe:Funds                           $179.99
+                xia:Liability
+
+            2014/09/10 Charge ch_ABC123 on credit card of xia
+                xia:Liability                          $179.99
+                xia:Payable
 
             2014/09/10 Charge ch_ABC123 processor fee for open-space
-                stripe:Funds                               $5.22
-                xia:Payable
+                cowork:Receivable                       $5.22
+                stripe:Backlog
 
             2014/09/10 Charge ch_ABC123 distribution for open-space
-                cowork:Funds                             $174.77
-                xia:Payable
+                cowork:Receivable                     $174.77
+                cowork:Backlog
+
+            2014/09/10 Charge ch_ABC123 distribution for open-space
+                cowork:Funds                          $174.77
+                stripe:Funds
         """
         #pylint: disable=too-many-locals
         assert self.state == self.CREATED
 
         # Example:
         # 2014/01/15 charge on xia card
-        #     xia:Expenses                                 15800
-        #     djaodjin:Income
+        #     stripe:Funds                                 15800
+        #     xia:Liability
         processor = self.get_processor()
+        processor_backend = get_processor_backend()
         total_distribute_amount, \
             funds_unit, \
             total_fee_amount, \
-            processor_funds_unit = PROCESSOR_BACKEND.charge_distribution(self)
+            processor_funds_unit = processor_backend.charge_distribution(self)
 
         charge_transaction = Transaction.objects.create(
             event_id=self.id,
             descr=self.description,
             created_at=self.created_at,
-            dest_unit=self.unit,
-            dest_amount=self.amount,
-            dest_account=Transaction.EXPENSES,
-            dest_organization=self.customer,
-            orig_unit=processor_funds_unit,
-            orig_amount=total_distribute_amount,
-            orig_account=Transaction.INCOME,
-            orig_organization=processor)
+            dest_unit=processor_funds_unit,
+            # XXX provider and processor must have same units.
+            dest_amount=total_distribute_amount + total_fee_amount,
+            dest_account=Transaction.FUNDS,
+            dest_organization=processor,
+            orig_unit=self.unit,
+            orig_amount=self.amount,
+            orig_account=Transaction.LIABILITY,
+            orig_organization=self.customer)
         # Once we have created a transaction for the charge, let's
-        # redistribute the money to the rightful owners.
+        # redistribute the funds to their rightful owners.
         for charge_item in self.charge_items.all(): #pylint: disable=no-member
             invoiced_item = charge_item.invoiced
+
+            # If there is still an amount on the ``Payable`` account,
+            # we create Payable to Liability transaction in order to correct
+            # the accounts amounts. This is a side effect of the atomicity
+            # requirement for a ``Transaction`` associated to a ``Charge``.
+            balance_payable, _ = \
+                Transaction.objects.get_subscription_balance(
+                    invoiced_item.get_event(), Transaction.PAYABLE)
+            if balance_payable > 0:
+                available = min(invoiced_item.dest_amount, balance_payable)
+                Transaction.objects.create(
+                    event_id=invoiced_item.event_id,
+                    created_at=self.created_at,
+                    descr=DESCRIBE_DOUBLE_ENTRY_MATCH,
+                    dest_unit=invoiced_item.dest_unit,
+                    dest_amount=available,
+                    dest_account=Transaction.LIABILITY,
+                    dest_organization=invoiced_item.dest_organization,
+                    orig_unit=invoiced_item.dest_unit,
+                    orig_amount=available,
+                    orig_account=Transaction.PAYABLE,
+                    orig_organization=invoiced_item.dest_organization)
+
             event = invoiced_item.get_event()
             provider = event.provider
             charge_item_amount = invoiced_item.dest_amount
@@ -779,42 +936,60 @@ class Charge(models.Model):
             if fee_amount > 0:
                 # Example:
                 # 2014/01/15 fee to cowork
-                #     djaodjin:Funds                               900
-                #     xia:Payable:desk
+                #     cowork:Receivable                             900
+                #     stripe:Backlog
                 charge_item.invoiced_fee = Transaction.objects.create(
-                    event_id=invoiced_item.event_id,
+                    created_at=self.created_at,
                     descr=DESCRIBE_CHARGED_CARD_PROCESSOR % {
                         'charge': self.processor_id, 'event': event},
-                    created_at=self.created_at,
-                    dest_unit=processor_funds_unit,
-                    dest_amount=fee_amount,
-                    dest_account=Transaction.FUNDS,
-                    dest_organization=processor,
-                    orig_unit=self.unit,
-                    orig_amount=orig_fee_amount,
-                    orig_account=Transaction.PAYABLE,
-                    orig_organization=self.customer)
+                    event_id=self.id,
+                    dest_unit=self.unit,
+                    dest_amount=orig_fee_amount,
+                    dest_account=Transaction.RECEIVABLE,
+                    dest_organization=provider,
+                    orig_unit=processor_funds_unit,
+                    orig_amount=fee_amount,
+                    orig_account=Transaction.BACKLOG,
+                    orig_organization=processor)
                 charge_item.save()
                 processor.funds_balance += fee_amount
                 processor.save()
 
             # Example:
             # 2014/01/15 distribution due to cowork
+            #     cowork:Receivable                             8000
+            #     cowork:Backlog
+            #
+            # 2014/01/15 distribution due to cowork
             #     cowork:Funds                                  8000
-            #     xia:Payable:desk
+            #     stripe:Funds
             Transaction.objects.create(
-                event_id=invoiced_item.event_id,
+                event_id=self.id,
+                created_at=self.created_at,
                 descr=DESCRIBE_CHARGED_CARD_PROVIDER % {
                         'charge': self.processor_id, 'event': event},
+                dest_unit=self.unit,
+                dest_amount=orig_distribute_amount,
+                dest_account=Transaction.RECEIVABLE,
+                dest_organization=provider,
+                orig_unit=funds_unit,
+                orig_amount=distribute_amount,
+                orig_account=Transaction.BACKLOG,
+                orig_organization=provider)
+
+            Transaction.objects.create(
+                event_id=self.id,
                 created_at=self.created_at,
+                descr=DESCRIBE_CHARGED_CARD_PROVIDER % {
+                        'charge': self.processor_id, 'event': event},
                 dest_unit=funds_unit,
                 dest_amount=distribute_amount,
                 dest_account=Transaction.FUNDS,
                 dest_organization=provider,
                 orig_unit=self.unit,
                 orig_amount=orig_distribute_amount,
-                orig_account=Transaction.PAYABLE,
-                orig_organization=self.customer)
+                orig_account=Transaction.FUNDS,
+                orig_organization=processor)
             provider.funds_balance += distribute_amount
             provider.save()
 
@@ -847,7 +1022,7 @@ class Charge(models.Model):
         Each ``ChargeItem`` as referenced by *linenum* can be partially
         refunded::
 
-            yyyy/mm/dd refund to subscriber
+            yyyy/mm/dd refund to subscriber (XXX with processor event id)
                 provider:Refund                          refunded_amount
                 subscriber:Refunded
 
@@ -876,103 +1051,135 @@ class Charge(models.Model):
         Note: The system does not currently support more than one refund
         per ``ChargeItem``.
         """
-        #pylint: disable=too-many-locals
+        #pylint:disable=too-many-locals
         assert self.state == self.DONE
 
         # We do all computation and checks before starting to modify
         # the database to minimize the chances of getting into
         # an inconsistent state.
-        created_at = datetime_or_now(created_at)
-        processor = self.get_processor()
+        processor_backend = get_processor_backend()
         #pylint: disable=no-member
         charge_item = self.line_items[linenum]
-        if charge_item.refunded:
-            # Implementation Note: Currently we can only refund the line
-            # item once (either partial or full).
-            raise InsufficientFunds("Charge %s was already refunded %s" %
-                (self.processor_id, as_money(charge_item.refunded.dest_amount)))
-
         invoiced_item = charge_item.invoiced
-        customer = invoiced_item.dest_organization
-        provider = invoiced_item.orig_organization
+        invoiced_fee = charge_item.invoiced_fee
         if refunded_amount is None:
             refunded_amount = invoiced_item.dest_amount
 
         previously_refunded, _ = sum_orig_amount(
             Transaction.objects.by_charge(self).filter(
                 orig_account=Transaction.REFUNDED))
-        total_distribute_amount, funds_unit, \
-            total_fee_amount, processor_funds_unit \
-            = PROCESSOR_BACKEND.charge_distribution(
-                self, refunded=previously_refunded + refunded_amount)
-        corrected_distribute_amount = (total_distribute_amount
-            * invoiced_item.dest_amount / self.amount)
-        # refunded_distribute_amount
-        #     = distribute_amount - corrected_distribute_amount
-        refunded_distribute_amount = (invoiced_item.orig_amount
-            - charge_item.invoiced_fee.dest_amount
-            - corrected_distribute_amount)
+        refund_available = invoiced_item.dest_amount - previously_refunded
+        if refunded_amount > refund_available:
+            raise InsufficientFunds("Cannot refund %(refund_required)s"\
+" while there is only %(refund_available)s available on the line item."
+% {'refund_available': as_money(abs(refund_available), self.unit),
+   'refund_required': as_money(abs(refunded_amount), self.unit)})
 
+        charge_available_amount, provider_unit, \
+            charge_fee_amount, processor_unit \
+            = processor_backend.charge_distribution(self)
+
+        # We execute the refund on the processor backend here such that
+        # the following call to ``processor_backend.charge_distribution``
+        # returns the correct ``corrected_available_amount`` and
+        # ``corrected_fee_amount``.
+        processor_backend.refund_charge(self, refunded_amount)
+
+        corrected_available_amount, provider_unit, \
+            corrected_fee_amount, processor_unit \
+            = processor_backend.charge_distribution(
+                self, refunded=previously_refunded + refunded_amount)
+
+        self.create_refund_transactions(invoiced_item, invoiced_fee,
+            refunded_amount, charge_available_amount, charge_fee_amount,
+            corrected_available_amount, corrected_fee_amount,
+            created_at=created_at,
+            provider_unit=provider_unit, processor_unit=processor_unit)
+        signals.charge_updated.send(sender=__name__, charge=self, user=None)
+
+    def create_refund_transactions(self, invoiced_item, invoiced_fee,
+        refunded_amount, charge_available_amount, charge_fee_amount,
+        corrected_available_amount, corrected_fee_amount,
+        created_at=None, provider_unit=None, processor_unit=None,
+        refund_type=None):
+        #pylint:disable=too-many-locals,too-many-arguments
+        """
+        Create ``Transaction`` to record a refund.
+        """
+        created_at = datetime_or_now(created_at)
+        if not refund_type:
+            refund_type = Transaction.REFUND
+        processor = self.get_processor()
+        provider = invoiced_item.orig_organization
+        customer = invoiced_item.dest_organization
+        if not processor_unit:
+            processor_unit = 'usd' # XXX
+        if not provider_unit:
+            provider_unit = 'usd' # XXX
         refunded_fee_amount = 0
-        if charge_item.invoiced_fee:
+        if invoiced_fee:
             # Implementation Note: There is a fixed 30 cents component
             # to the processor fee. We must recompute the corrected
             # fee on the total amount left over after the refund.
-            corrected_fee_amount = (
-                total_fee_amount * invoiced_item.dest_amount / self.amount)
-            if charge_item.invoiced_fee.dest_amount > corrected_fee_amount:
-                refunded_fee_amount = (charge_item.invoiced_fee.dest_amount
-                    - corrected_fee_amount)
-        LOGGER.info("Refund charge %s for %d cents"\
-            " (distributed: %d cents, processor fee: %d cents)",
-            self.processor_id, refunded_amount,
-            refunded_distribute_amount, refunded_fee_amount)
+            refunded_fee_amount = (
+                (charge_fee_amount - corrected_fee_amount)
+                * invoiced_item.dest_amount / self.amount)
+        # ``corrected_available_amount`` is in provider unit,
+        # ``invoiced_item.dest_amount`` and ``self.amount`` are in subscriber
+        # unit, thus ``refunded_distribute_amount`` is the actual amount
+        # that should be given back from the distribution to the provider
+        # once the refund is processed.
+        refunded_distribute_amount = (
+            (charge_available_amount - corrected_available_amount)
+            * invoiced_item.dest_amount / self.amount)
 
-        if refunded_amount > invoiced_item.dest_amount:
-            raise InsufficientFunds("Cannot refund %(funds_required)s"\
-" while there is only %(funds_available)s available on the line item."
-% {'funds_available': as_money(abs(invoiced_item.dest_amount), self.unit),
-   'funds_required': as_money(abs(refunded_amount), self.unit)})
+        LOGGER.info("Refund charge %s for %d (%s)"\
+            " (distributed: %d (%s), processor fee: %d (%s))",
+            self.processor_id, refunded_amount, self.unit,
+            refunded_distribute_amount, provider_unit,
+            refunded_fee_amount, processor_unit)
+
         if refunded_distribute_amount > provider.funds_balance:
             raise InsufficientFunds(
                 '%(provider)s has %(funds_available)s of funds available.'\
 ' %(funds_required)s are required to refund "%(descr)s"' % {
     'provider': provider,
-    'funds_available': as_money(abs(provider.funds_balance), self.unit),
-    'funds_required': as_money(abs(refunded_distribute_amount), self.unit),
+    'funds_available': as_money(abs(provider.funds_balance), provider_unit),
+    'funds_required': as_money(abs(refunded_distribute_amount), provider_unit),
     'descr': invoiced_item.descr})
 
         with transaction.atomic():
             # Record the refund from provider to subscriber
             descr = DESCRIBE_CHARGED_CARD_REFUND % {
-                'charge': self.processor_id, 'descr': invoiced_item.descr}
-            charge_item.refunded = Transaction.objects.create(
+                'charge': self.processor_id,
+                'refund_type': refund_type.lower(),
+                'descr': invoiced_item.descr}
+            Transaction.objects.create(
                 event_id=self.id,
                 descr=descr,
                 created_at=created_at,
-                dest_unit=funds_unit,
+                dest_unit=provider_unit,
                 dest_amount=refunded_distribute_amount + refunded_fee_amount,
-                dest_account=Transaction.REFUND,
+                dest_account=refund_type,
                 dest_organization=provider,
                 orig_unit=self.unit,
                 orig_amount=refunded_amount,
                 orig_account=Transaction.REFUNDED,
                 orig_organization=customer)
-            charge_item.save()
 
-            if charge_item.invoiced_fee:
+            if invoiced_fee:
                 # Refund the processor fee (if exists)
                 Transaction.objects.create(
                     event_id=self.id,
                     # The Charge id is already included in the description here.
-                    descr=charge_item.invoiced_fee.descr.replace(
+                    descr=invoiced_fee.descr.replace(
                         'processor fee', 'refund processor fee'),
                     created_at=created_at,
-                    dest_unit=processor_funds_unit,
+                    dest_unit=processor_unit,
                     dest_amount=refunded_fee_amount,
-                    dest_account=Transaction.REFUND,
+                    dest_account=refund_type,
                     dest_organization=processor,
-                    orig_unit=processor_funds_unit,
+                    orig_unit=processor_unit,
                     orig_amount=refunded_fee_amount,
                     orig_account=Transaction.FUNDS,
                     orig_organization=processor)
@@ -984,27 +1191,23 @@ class Charge(models.Model):
                 event_id=self.id,
                 descr=descr,
                 created_at=created_at,
-                dest_unit=processor_funds_unit,
+                dest_unit=processor_unit,
                 dest_amount=refunded_distribute_amount,
-                dest_account=Transaction.REFUND,
+                dest_account=refund_type,
                 dest_organization=processor,
-                orig_unit=funds_unit,
+                orig_unit=provider_unit,
                 orig_amount=refunded_distribute_amount,
                 orig_account=Transaction.FUNDS,
                 orig_organization=provider)
             provider.funds_balance -= refunded_distribute_amount
             provider.save()
 
-            # Note: On Stripe refunded the total amount that was charged
-            # has the effect of refunding both the distributed and fee amounts.
-            PROCESSOR_BACKEND.refund_charge(self, refunded_amount)
-        signals.charge_updated.send(sender=__name__, charge=self, user=None)
-
     def retrieve(self):
         """
         Retrieve the state of charge from the processor.
         """
-        PROCESSOR_BACKEND.retrieve_charge(self)
+        processor_backend = get_processor_backend()
+        processor_backend.retrieve_charge(self)
         return self
 
 class ChargeItem(models.Model):
@@ -1012,14 +1215,13 @@ class ChargeItem(models.Model):
     Keep track of each item invoiced within a ``Charge``.
     """
     charge = models.ForeignKey(Charge, related_name='charge_items')
+    # XXX could be a ``Subscription`` or a balance.
     invoiced = models.ForeignKey('Transaction', related_name='invoiced_item',
         help_text="transaction invoiced through this charge")
     invoiced_fee = models.ForeignKey('Transaction', null=True,
         related_name='invoiced_fee_item',
         help_text="fee transaction to process the transaction invoiced"\
 " through this charge")
-    refunded = models.ForeignKey('Transaction', related_name='refunded_item',
-        null=True, help_text="transaction for the refund of the charge item")
 
     class Meta:
         unique_together = ('charge', 'invoiced')
@@ -1159,19 +1361,26 @@ class Plan(models.Model):
 
     def end_of_period(self, start_time, nb_periods=1):
         result = start_time
-        if self.interval == self.HOURLY:
-            result += datetime.timedelta(hours=1 * nb_periods)
-        elif self.interval == self.DAILY:
-            result += datetime.timedelta(days=1 * nb_periods)
-        elif self.interval == self.WEEKLY:
-            result += datetime.timedelta(days=7 * nb_periods)
-        elif self.interval == self.MONTHLY:
-            result += relativedelta(months=1 * nb_periods)
-        elif self.interval == self.QUATERLY:
-            result += relativedelta(months=3 * nb_periods)
-        elif self.interval == self.YEARLY:
-            result += relativedelta(years=1 * nb_periods)
+        if nb_periods:
+            # In case of a ``SETTLED``, *nb_periods* will be ``None``
+            # since the description does not (should not) allow us to
+            # extend the subscription length.
+            if self.interval == self.HOURLY:
+                result += datetime.timedelta(hours=1 * nb_periods)
+            elif self.interval == self.DAILY:
+                result += datetime.timedelta(days=1 * nb_periods)
+            elif self.interval == self.WEEKLY:
+                result += datetime.timedelta(days=7 * nb_periods)
+            elif self.interval == self.MONTHLY:
+                result += relativedelta(months=1 * nb_periods)
+            elif self.interval == self.QUATERLY:
+                result += relativedelta(months=3 * nb_periods)
+            elif self.interval == self.YEARLY:
+                result += relativedelta(years=1 * nb_periods)
         return result
+
+    def start_of_period(self, end_time, nb_periods=1):
+        return self.end_of_period(end_time, nb_periods=-nb_periods)
 
     def get_title(self):
         """
@@ -1199,6 +1408,35 @@ class Plan(models.Model):
             result += 's'
         return result
 
+    def period_number(self, text):
+        """
+        This method is the reverse of ``humanize_period``. It will extract
+        a number of periods from a text.
+        """
+        result = None
+        if self.interval == self.HOURLY:
+            pat = r'(\d+) hour'
+        elif self.interval == self.DAILY:
+            pat = r'(\d+) day'
+        elif self.interval == self.WEEKLY:
+            pat = r'(\d+) week'
+        elif self.interval == self.MONTHLY:
+            pat = r'(\d+) month'
+        elif self.interval == self.QUATERLY:
+            pat = r'(\d+) months'
+        elif self.interval == self.YEARLY:
+            pat = r'(\d+) year'
+        else:
+            raise ValueError("period type %d is not defined."
+                % self.interval)
+        look = re.search(pat, text)
+        if look:
+            try:
+                result = int(look.group(1))
+            except ValueError:
+                pass
+        return result
+
     def prorate_transaction(self, amount):
         """
         Hosting service paid through a transaction fee.
@@ -1213,22 +1451,22 @@ class Plan(models.Model):
         If end_time - start_time >= interval period, the value
         returned is undefined.
         """
-        if self.interval == 1:
+        if self.interval == self.HOURLY:
             # Hourly: fractional period is in minutes.
             fraction = (end_time - start_time).seconds / 3600
-        elif self.interval == 2:
+        elif self.interval == self.DAILY:
             # Daily: fractional period is in hours.
             fraction = ((end_time - start_time).seconds
                         / (3600 * 24))
-        elif self.interval == 3:
+        elif self.interval == self.WEEKLY:
             # Weekly, fractional period is in days.
             fraction = (end_time.date() - start_time.date()).days / 7
-        elif self.interval in [4, 5]:
+        elif self.interval in [self.MONTHLY, self.QUATERLY]:
             # Monthly and Quaterly: fractional period is in days.
             # We divide by the maximum number of days in a month to
             # the advantage of a customer.
             fraction = (end_time.date() - start_time.date()).days / 31
-        elif self.interval == 7:
+        elif self.interval == self.YEARLY:
             # Yearly: fractional period is in days.
             # We divide by the maximum number of days in a year to
             # the advantage of a customer.
@@ -1369,12 +1607,90 @@ class Subscription(models.Model):
 
     @property
     def is_locked(self):
-        balance, _ = Transaction.objects.get_subscription_balance(self)
+        balance, _ = \
+            Transaction.objects.get_subscription_statement_balance(self)
         return balance > 0
 
     @property
     def provider(self):
         return self.plan.organization
+
+    def period_for(self, at_time=None):
+        """
+        Returns the period [beg,end[ which includes ``at_time``.
+        """
+        at_time = datetime_or_now(at_time)
+        delta = at_time - self.created_at
+        if self.plan.interval == Plan.HOURLY:
+            estimated = relativedelta(hours=delta.total_seconds() / 3600)
+            period = relativedelta(hours=1)
+        elif self.plan.interval == Plan.DAILY:
+            estimated = relativedelta(days=delta.days)
+            period = relativedelta(days=1)
+        elif self.plan.interval == Plan.WEEKLY:
+            estimated = relativedelta(days=delta.days / 7)
+            period = relativedelta(days=7)
+        elif self.plan.interval == Plan.MONTHLY:
+            estimated = relativedelta(months=delta.days / 30)
+            period = relativedelta(months=1)
+        elif self.plan.interval == Plan.YEARLY:
+            estimated = relativedelta(years=delta.days / 365)
+            period = relativedelta(years=1)
+        else:
+            raise ValueError("period type %d is not defined."
+                % self.plan.interval)
+        lower = self.created_at + estimated # rough estimate to start
+        upper = lower + period
+        while not (lower <= at_time and at_time < upper):
+            if at_time < lower:
+                upper = lower
+                lower = lower - period
+            elif at_time >= upper:
+                lower = upper
+                upper = upper + period
+        # Both lower and upper fall on an exact period multiple
+        # from ``created_at``. This might not be the case for ``ends_at``.
+        return (lower, min(upper, self.ends_at))
+
+
+    def nb_periods(self, start=None, until=None):
+        """
+        Returns the number of completed periods at datetime ``until``
+        since the subscription was created.
+        """
+        if start is None:
+            start = self.created_at
+        until = datetime_or_now(until)
+        assert start < until
+        start_lower, start_upper = self.period_for(start)
+        until_lower, until_upper = self.period_for(until)
+        if start_upper < until_lower:
+            delta = until_lower - start_upper
+            if self.plan.interval == Plan.HOURLY:
+                estimated = delta.total_seconds() / 3600
+            elif self.plan.interval == Plan.DAILY:
+                estimated = delta.days
+            elif self.plan.interval == Plan.WEEKLY:
+                estimated = delta.days / 7
+            elif self.plan.interval == Plan.MONTHLY:
+                estimated = delta.days / 30
+            elif self.plan.interval == Plan.QUATERLY:
+                estimated = delta.days / (30 + 31 + 30)
+            elif self.plan.interval == Plan.YEARLY:
+                estimated = delta.days / 365
+            upper = self.plan.end_of_period(start_upper, nb_periods=estimated)
+            if upper < until_lower:
+                full_periods = estimated + 1
+            else:
+                full_periods = estimated
+        else:
+            full_periods = 0
+        # partial-at-start + full periods + partial-at-end
+        return ((start_upper - start).total_seconds()
+                / (start_upper - start_lower).total_seconds()
+                + full_periods
+                + (until - until_lower).total_seconds()
+                / (until_upper - until_lower).total_seconds())
 
     def charge_in_progress(self):
         queryset = Charge.objects.filter(
@@ -1387,64 +1703,46 @@ class Subscription(models.Model):
         self.ends_at = datetime_or_now()
         self.save()
 
-    def create_order(self, nb_periods, prorated_amount=0,
-        created_at=None, descr=None, discount_percent=0,
-        descr_suffix=None):
-        #pylint: disable=too-many-arguments
-        """
-        Each time a subscriber places an order through
-        the /billing/:organization/cart/ page, a ``Transaction``
-        is recorded as follow::
-
-            yyyy/mm/dd description
-                subscriber:Payable                       amount
-                provider:Income
-
-        Example::
-
-            2014/09/10 subscribe to open-space plan
-                xia:Payable                             $179.99
-                cowork:Income
-
-        At first, ``nb_periods``, the number of period paid in advance,
-        is stored in the ``Transaction.orig_amount``. The ``Transaction``
-        is created in ``Subscription.create_order``, then only later saved
-        when ``TransactionManager.execute_order`` is called through
-        ``Organization.checkout``. ``execute_order`` will replace
-        ``orig_amount`` by the correct amount in the expected currency.
-        """
-        if not descr:
-            amount = int(
-                (prorated_amount + (self.plan.period_amount * nb_periods))
-                * (100 - discount_percent) / 100)
-            ends_at = self.plan.end_of_period(self.ends_at, nb_periods)
-            descr = describe_buy_periods(self.plan, ends_at, nb_periods,
-                discount_percent=discount_percent, descr_suffix=descr_suffix)
-        else:
-            # If we already have a description, all bets are off on
-            # what the amount represents (see unlock_event).
-            amount = prorated_amount
-        created_at = datetime_or_now(created_at)
-        return Transaction(
-            created_at=created_at,
-            descr=descr,
-            orig_amount=nb_periods,
-            orig_unit=Transaction.PLAN_UNIT,
-            orig_account=Transaction.INCOME, # XXX Receivable
-            orig_organization=self.plan.organization,
-            dest_amount=amount,
-            dest_unit=self.plan.unit,
-            dest_account=Transaction.PAYABLE,
-            dest_organization=self.organization,
-            event_id=self.id)
-
 
 class TransactionManager(models.Manager):
 
     def by_charge(self, charge):
-        #select * from transactions inner join charge_items on
-        #transaction.id=charge_items.invoiced and charge_items.charge=charge;
+        """
+        Returns all transactions associated to a charge.
+        """
         return self.filter(invoiced_item__charge=charge)
+
+    def by_customer(self, organization):
+        """
+        Return transactions related to this organization, as a customer.
+        """
+        # If we include ``dest_account=Transaction.LIABILITY``, the entries
+        # used to balance the ledger will also appear. We exclude all
+        # entries with ``orig_account=Transaction.PAYABLE`` to compensate.
+        return self.filter(
+            (Q(dest_organization=organization)
+             & (Q(dest_account=Transaction.PAYABLE)
+                |Q(dest_account=Transaction.LIABILITY)))
+            |(Q(orig_organization=organization)
+              & (Q(orig_account=Transaction.LIABILITY)
+                 | Q(orig_account=Transaction.REFUNDED)))).exclude(
+                     orig_account=Transaction.PAYABLE).order_by(
+                     '-created_at')
+
+    def by_organization(self, organization, account=None):
+        """
+        Returns all ``Transaction`` going in or out of an *account*
+        for an *organization*.
+        """
+        if not account:
+            account = Transaction.FUNDS
+        return self.filter(
+            # All transactions involving Funds
+            ((Q(orig_organization=organization)
+              & Q(orig_account=account))
+            | (Q(dest_organization=organization)
+              & Q(dest_account=account)))) \
+            .order_by('-created_at')
 
     def by_subsciptions(self, subscriptions, at_time=None):
         """
@@ -1452,22 +1750,11 @@ class TransactionManager(models.Manager):
         of subscriptions.
         """
         queryset = self.filter(
-            models.Q(dest_account=Transaction.PAYABLE)
-            | models.Q(dest_account=Transaction.REDEEM),
+            dest_account=Transaction.PAYABLE,
             event_id__in=subscriptions)
         if at_time:
             queryset = queryset.filter(created_at=at_time)
         return queryset.order_by('created_at')
-
-    def create_credit(self, customer, amount):
-        credit = self.create(
-            orig_organization=get_current_provider(), # XXX move to Organization
-            dest_organization=customer,
-            orig_account='Incentive', dest_account='Balance',
-            amount=amount,
-            descr='Credit for creating an organization')
-        credit.save()
-        return credit
 
     def distinct_accounts(self):
         return (set([val['orig_account']
@@ -1490,45 +1777,63 @@ class TransactionManager(models.Manager):
             # which does not exist in the database, we cannot create
             # a ``Subscription`` since we don't have an ``Organization`` yet.
             pay_now = True
-            try:
-                subscription = Subscription.objects.filter(
-                    pk=invoiced_item.event_id).first()
-            except ValueError:
-                subscription = None
-            if subscription:
-                if invoiced_item.orig_unit == Transaction.PLAN_UNIT:
-                    subscription.ends_at = subscription.plan.end_of_period(
-                        subscription.ends_at, invoiced_item.orig_amount)
+            subscription = invoiced_item.get_event()
+            if subscription and isinstance(subscription, Subscription):
+                subscription.ends_at = subscription.plan.end_of_period(
+                    subscription.ends_at,
+                    subscription.plan.period_number(invoiced_item.descr))
                 subscription.save()
                 if (subscription.plan.unlock_event
                     and invoiced_item.dest_amount == 0):
                     # We are dealing with access now, pay later, orders.
                     invoiced_item.dest_amount = subscription.plan.period_amount
                     pay_now = False
-            invoiced_item.orig_amount = invoiced_item.dest_amount
-            invoiced_item.orig_unit = invoiced_item.dest_unit
-            invoiced_item.save()
             if pay_now:
+                invoiced_item.save()
                 invoiced_items_ids += [invoiced_item.id]
         if len(invoiced_items_ids) > 0:
             signals.order_executed.send(
                 sender=__name__, invoiced_items=invoiced_items_ids, user=user)
         return self.filter(id__in=invoiced_items_ids)
 
-    def get_organization_balance(self, organization, account=None, until=None):
+    def get_invoiceables(self, organization, until=None):
         """
-        Returns the balance on an organization's account
-        (by default: ``Payable``).
+        Returns a set of payable or liability ``Transaction`` since
+        the last successful payment by an ``organization``.
+        """
+        until = datetime_or_now(until)
+        last_payment = self.filter(
+            Q(orig_account=Transaction.PAYABLE)
+            | Q(orig_account=Transaction.LIABILITY),
+            orig_organization=organization,
+            dest_account=Transaction.FUNDS,
+            created_at__lt=until).order_by('created_at').first()
+        if last_payment:
+            # Use ``created_at`` strictly greater than last payment date
+            # otherwise we pick up the last payment itself.
+            kwargs = {'created_at__gt':last_payment.created_at}
+        else:
+            kwargs = {}
+        return self.filter(
+            Q(dest_account=Transaction.PAYABLE)
+            | Q(dest_account=Transaction.LIABILITY),
+            dest_organization=organization, **kwargs)
+
+    def get_organization_balance(self, organization,
+                                 account=None, until=None, **kwargs):
+        """
+        Returns the balance on an organization's account (by default:
+        ``FUNDS``).
         """
         until = datetime_or_now(until)
         if not account:
-            account = Transaction.PAYABLE
+            account = Transaction.FUNDS
         dest_amount, dest_unit = sum_dest_amount(self.filter(
             dest_organization=organization, dest_account__startswith=account,
-            created_at__lt=until))
+            created_at__lt=until, **kwargs))
         orig_amount, orig_unit = sum_orig_amount(self.filter(
             orig_organization=organization, orig_account__startswith=account,
-            created_at__lt=until))
+            created_at__lt=until, **kwargs))
         if dest_unit is None:
             unit = orig_unit
         elif orig_unit is None:
@@ -1541,43 +1846,46 @@ class TransactionManager(models.Manager):
             unit = dest_unit
         return dest_amount - orig_amount, unit
 
-    def get_organization_payable(self, organization,
-                                 until=None, created_at=None):
-        """
-        Returns a ``Transaction`` for the organization balance.
-        """
+    def get_statement_balance(self, organization, until=None):
         until = datetime_or_now(until)
-        if not created_at:
-            # Use *until* to avoid being off by a few microseconds.
-            created_at = datetime_or_now(until)
-        balance, unit = self.get_organization_balance(organization)
-        return Transaction(
-            created_at=created_at,
-            # Re-use Description template here:
-            descr=DESCRIBE_BALANCE % {'plan': organization},
-            orig_unit=unit,
-            orig_amount=balance,
-            orig_account=Transaction.PAYABLE,
+        dest_amount, dest_unit = sum_dest_amount(self.filter(
+            Q(dest_account=Transaction.PAYABLE)
+            | Q(dest_account=Transaction.LIABILITY),
+            dest_organization=organization,
+            created_at__lt=until))
+        orig_amount, orig_unit = sum_orig_amount(self.filter(
+            Q(orig_account=Transaction.PAYABLE)
+            | Q(orig_account=Transaction.LIABILITY),
             orig_organization=organization,
-            dest_unit=unit,
-            dest_amount=balance,
-            dest_account=Transaction.PAYABLE,
-            dest_organization=organization)
+            created_at__lt=until))
+        if dest_unit is None:
+            unit = orig_unit
+        elif orig_unit is None:
+            unit = dest_unit
+        elif dest_unit != orig_unit:
+            raise ValueError('orig and dest balances until %s for statement'\
+' of %s have different unit (%s vs. %s).' % (until, organization,
+                orig_unit, dest_unit))
+        else:
+            unit = dest_unit
+        return dest_amount - orig_amount, unit
 
-    def get_subscription_balance(self, subscription):
+    def get_subscription_statement_balance(self, subscription):
+        # XXX A little long but no better so far.
+        #pylint:disable=invalid-name
         """
-        Returns the ``Payable`` balance on a subscription.
+        Returns the ``Payable`` and ``Liability`` balance on a subscription.
 
         The balance on a subscription is used to determine when
         a subscription is locked (balance due) or unlocked (no balance).
         """
         dest_amount, dest_unit = sum_dest_amount(self.filter(
-            dest_organization=subscription.organization,
-            dest_account=Transaction.PAYABLE,
+            Q(dest_account=Transaction.PAYABLE)
+            | Q(dest_account=Transaction.LIABILITY),
             event_id=subscription.id))
         orig_amount, orig_unit = sum_orig_amount(self.filter(
-            orig_organization=subscription.organization,
-            orig_account=Transaction.PAYABLE,
+            Q(orig_account=Transaction.PAYABLE)
+            | Q(orig_account=Transaction.LIABILITY),
             event_id=subscription.id))
         if dest_unit is None:
             unit = orig_unit
@@ -1590,42 +1898,265 @@ class TransactionManager(models.Manager):
             unit = dest_unit
         return dest_amount - orig_amount, unit
 
-    def get_subscription_payable(self, subscription, created_at=None):
+    def get_subscription_balance(self, subscription, account,
+                                 starts_at=None, ends_at=None):
         """
-        Returns a ``Transaction`` for the subscription balance.
+        Returns the balance for an *account* on a *subscription*.
         """
+        kwargs = {}
+        if starts_at:
+            kwargs.update({'created_at__gte': starts_at})
+        if ends_at:
+            kwargs.update({'created_at__lt': ends_at})
+        dest_amount, dest_unit = sum_dest_amount(self.filter(
+            dest_account=account, event_id=subscription.id, **kwargs))
+        orig_amount, orig_unit = sum_orig_amount(self.filter(
+            orig_account=account, event_id=subscription.id, **kwargs))
+        if dest_unit is None:
+            unit = orig_unit
+        elif orig_unit is None:
+            unit = dest_unit
+        elif dest_unit != orig_unit:
+            raise ValueError('orig and dest balances for subscription %s'\
+' have different unit (%s vs. %s).' % (subscription, orig_unit, dest_unit))
+        else:
+            unit = dest_unit
+        return dest_amount - orig_amount, unit
+
+    def get_subscription_income_balance(self, subscription,
+                                        starts_at=None, ends_at=None):
+        """
+        Returns the recognized income balance on a subscription
+        for the period [starts_at, ends_at[ as a tuple (amount, unit).
+        """
+        return self.get_subscription_balance(
+            subscription, Transaction.INCOME,
+            starts_at=starts_at,
+            ends_at=ends_at)
+
+    def get_subscription_invoiceables(self, subscription, until=None):
+        """
+        Returns a set of payable or liability ``Transaction`` since
+        the last successful payment on a subscription.
+        """
+        until = datetime_or_now(until)
+        last_payment = self.filter(
+            Q(orig_account=Transaction.PAYABLE)
+            | Q(orig_account=Transaction.LIABILITY),
+            event_id=subscription.id,
+            orig_organization=subscription.organization,
+            dest_account=Transaction.FUNDS,
+            created_at__lt=until).order_by('created_at').first()
+        if last_payment:
+            # Use ``created_at`` strictly greater than last payment date
+            # otherwise we pick up the last payment itself.
+            kwargs = {'created_at__gt':last_payment.created_at}
+        else:
+            kwargs = {}
+        return self.filter(
+            Q(dest_account=Transaction.PAYABLE)
+            | Q(dest_account=Transaction.LIABILITY),
+            event_id=subscription.id,
+            dest_organization=subscription.organization, **kwargs)
+
+    def get_subscription_receivable(self, subscription,
+                                    starts_at=None, until=None):
+        """
+        Returns the receivable transactions on a subscription
+        in the period [starts_at, ends_at[.
+        """
+        kwargs = {}
+        if starts_at:
+            kwargs.update({'created_at__gte': starts_at})
+        until = datetime_or_now(until)
+        return self.filter(
+            orig_account=Transaction.RECEIVABLE,
+            event_id=subscription.id,
+            created_at__lt=until, **kwargs).order_by('created_at')
+
+    @staticmethod
+    def new_subscription_order(subscription, nb_periods, prorated_amount=0,
+        created_at=None, descr=None, discount_percent=0,
+        descr_suffix=None):
+        #pylint: disable=too-many-arguments
+        """
+        Each time a subscriber places an order through
+        the /billing/:organization/cart/ page, a ``Transaction``
+        is recorded as follow::
+
+            yyyy/mm/dd description
+                subscriber:Payable                       amount
+                provider:Receivable                      nb_periods
+
+        Example::
+
+            2014/09/10 subscribe to open-space plan
+                xia:Payable                             $179.99
+                cowork:Receivable                       1 month
+
+        At first, ``nb_periods``, the number of period paid in advance,
+        is stored in the ``Transaction.orig_amount``. The ``Transaction``
+        is created in ``TransactionManager.new_subscription_order``, then only
+        later saved when ``TransactionManager.execute_order`` is called through
+        ``Organization.checkout``. ``execute_order`` will replace
+        ``orig_amount`` by the correct amount in the expected currency.
+        """
+        if not descr:
+            amount = int((prorated_amount
+                + (subscription.plan.period_amount * nb_periods))
+                * (100 - discount_percent) / 100)
+            ends_at = subscription.plan.end_of_period(
+                subscription.ends_at, nb_periods)
+            descr = describe_buy_periods(subscription.plan, ends_at, nb_periods,
+                discount_percent=discount_percent, descr_suffix=descr_suffix)
+        else:
+            # If we already have a description, all bets are off on
+            # what the amount represents (see unlock_event).
+            amount = prorated_amount
         created_at = datetime_or_now(created_at)
-        balance, unit = self.get_subscription_balance(subscription)
         return Transaction(
             created_at=created_at,
-            descr=DESCRIBE_BALANCE % {'plan': subscription.plan},
-            orig_unit=unit,
-            orig_amount=balance,
-            orig_account=Transaction.PAYABLE,
-            orig_organization=subscription.organization,
-            dest_unit=unit,
-            dest_amount=balance,
+            descr=descr,
+            event_id=subscription.id,
+            dest_amount=amount,
+            dest_unit=subscription.plan.unit,
             dest_account=Transaction.PAYABLE,
-            dest_organization=subscription.organization)
+            dest_organization=subscription.organization,
+            orig_amount=amount,
+            orig_unit=subscription.plan.unit,
+            orig_account=Transaction.RECEIVABLE,
+            orig_organization=subscription.plan.organization)
 
-    def get_subscription_later(self, subscription, created_at=None):
+    def new_subscription_later(self, subscription, created_at=None):
         """
-        Returns a ``Transaction`` for the subscription balance to be paid later.
+        Returns a ``Transaction`` for the subscription balance
+        to be paid later.
         """
         created_at = datetime_or_now(created_at)
-        balance, unit = self.get_subscription_balance(subscription)
+        balance, unit = self.get_subscription_statement_balance(subscription)
         return Transaction(
+            event_id=subscription.id,
             created_at=created_at,
             descr=('Pay balance of %s on %s later'
                    % (as_money(balance, unit), subscription.plan)),
-            orig_unit=unit,
-            orig_amount=balance,
-            orig_account=Transaction.PAYABLE,
-            orig_organization=subscription.organization,
             dest_unit=unit,
             dest_amount=0,
-            dest_account=Transaction.PAYABLE,
-            dest_organization=subscription.organization)
+            dest_account=Transaction.SETTLED,
+            dest_organization=subscription.organization,
+            orig_unit=unit,
+            orig_amount=0,
+            orig_account=Transaction.SETTLED,
+            orig_organization=subscription.plan.organization)
+
+    def new_subscription_statement(self, subscription, created_at=None):
+        """
+        Returns a ``Transaction`` for the balance due on a subscription.
+        """
+        created_at = datetime_or_now(created_at)
+        balance, unit = self.get_subscription_statement_balance(subscription)
+        return Transaction(
+            event_id=subscription.id,
+            created_at=created_at,
+            descr=DESCRIBE_BALANCE % {'plan': subscription.plan},
+            dest_unit=unit,
+            dest_amount=balance,
+            dest_account=Transaction.SETTLED,
+            dest_organization=subscription.organization,
+            orig_unit=unit,
+            orig_amount=balance,
+            orig_account=Transaction.SETTLED,
+            orig_organization=subscription.plan.organization)
+
+    def create_period_started(self, subscription, created_at=None):
+        """
+        When a period starts and we have Payable for that Subscription,
+        the started period becomes a Liability to the subscriber,
+        recorded as follow::
+
+            yyyy/mm/dd description
+                subscriber:Liability                     period_amount
+                subscriber:Payable
+
+        Example::
+
+            2014/09/10 past due for period 2014/09/10 to 2014/10/10
+                xia:Liability                             $179.99
+                xia:Payable
+        """
+        created_at = datetime_or_now(created_at)
+        amount = subscription.plan.period_amount
+        return self.create(
+            created_at=created_at,
+            descr=DESCRIBE_LIABILITY_START_PERIOD,
+            dest_amount=amount,
+            dest_unit=subscription.plan.unit,
+            dest_account=Transaction.LIABILITY,
+            dest_organization=subscription.organization,
+            orig_amount=amount,
+            orig_unit=subscription.plan.unit,
+            orig_account=Transaction.PAYABLE,
+            orig_organization=subscription.organization,
+            event_id=subscription.id)
+
+    def create_income_recognized(self, subscription,
+                                 amount=None, at_time=None, descr=None):
+        """
+        When a period ends and we have Receivable for that Subscription,
+        we create a XXX
+        the started period becomes a Liability to the subscriber,
+        recorded as follow::
+
+            yyyy/mm/dd description
+                provider:Backlog                         amount
+                provider:Income
+
+        Example::
+
+            2014/09/10 past due for period 2014/09/10 to 2014/10/10
+                cowork:Backlog                         $179.99
+                cowork:Income
+        """
+        created_transactions = []
+        created_at = datetime_or_now(at_time)
+        backlog_amount, _ = self.get_organization_balance(
+            subscription.plan.organization, account=Transaction.BACKLOG,
+            event_id=subscription.id)
+        receivable_amount, _ = self.get_organization_balance(
+            subscription.plan.organization, account=Transaction.RECEIVABLE,
+            event_id=subscription.id)
+        receivable_amount = abs(receivable_amount) # direction
+        if backlog_amount > 0:
+            available = min(amount, backlog_amount)
+            created_transactions += [self.create(
+                created_at=created_at,
+                descr=descr,
+                event_id=subscription.id,
+                dest_amount=available,
+                dest_unit=subscription.plan.unit,
+                dest_account=Transaction.BACKLOG,
+                dest_organization=subscription.plan.organization,
+                orig_amount=available,
+                orig_unit=subscription.plan.unit,
+                orig_account=Transaction.INCOME,
+                orig_organization=subscription.plan.organization)]
+            amount -= backlog_amount
+        if receivable_amount > 0:
+            available = min(amount, receivable_amount)
+            created_transactions += [self.create(
+                created_at=created_at,
+                descr=descr,
+                event_id=subscription.id,
+                dest_amount=available,
+                dest_unit=subscription.plan.unit,
+                dest_account=Transaction.RECEIVABLE,
+                dest_organization=subscription.plan.organization,
+                orig_amount=available,
+                orig_unit=subscription.plan.unit,
+                orig_account=Transaction.INCOME,
+                orig_organization=subscription.plan.organization)]
+            amount -= available
+        assert amount == 0
+        return created_transactions
 
     @staticmethod
     def provider(invoiced_items):
@@ -1646,31 +2177,10 @@ class TransactionManager(models.Manager):
             result = get_current_provider()
         return result
 
-    def by_organization(self, organization, transaction_type):
-        return self.filter(
-            # All transactions involving Funds
-            ((Q(orig_organization=organization)
-              & Q(orig_account=transaction_type))
-            | (Q(dest_organization=organization)
-              & Q(dest_account=transaction_type)))) \
-            .order_by('-created_at')
-
-
-    def by_customer(self, organization):
-        """
-        Return transactions related to this organization, as a customer.
-        """
-        return self.filter(
-            (Q(dest_organization=organization)
-             & (Q(dest_account=Transaction.PAYABLE) # Only customer side
-                | Q(dest_account=Transaction.EXPENSES)))
-            |(Q(orig_organization=organization)
-              & Q(orig_account=Transaction.REFUNDED))) \
-            .order_by('-created_at')
-
 
 class Transaction(models.Model):
-    '''The Transaction table stores entries in the double-entry bookkeeping
+    """
+    The Transaction table stores entries in the double-entry bookkeeping
     ledger.
 
     'Invoiced' comes from the service. We use for acrual tax reporting.
@@ -1679,27 +2189,26 @@ class Transaction(models.Model):
     'Balance' is amount due.
 
     use 'ledger register' for tax acrual tax reporting.
-    '''
-    PLAN_UNIT = '___'
-
+    """
     # provider side
-    BACKLOG = 'Backlog'
-    FUNDS = 'Funds'           # <= 0 receipient side
-    INCOME = 'Income'         # <= 0 receipient side
-    RECEIVABLE = 'Receivable'
-    REFUND = 'Refund'         # >= 0 receipient side
-    WITHDRAW = 'Withdraw'
-
-    # customer side
-    EXPENSES = 'Expenses'   # >= 0 billing side
-    PAYABLE = 'Payable'     # >= 0 billing side
-    LIABILITY = 'Liability'
-    REFUNDED = 'Refunded'   # <= 0 billing side
-
+    FUNDS = 'Funds'           # "Cash" account.
+    WITHDRAW = 'Withdraw'     # >= 0
+    REFUND = 'Refund'         # >= 0
     CHARGEBACK = 'Chargeback'
-    REDEEM = 'Redeem'
-    WRITEOFF = 'Writeoff'
-    SETTLED = 'Settled'
+    WRITEOFF = 'Writeoff'      # unused
+    RECEIVABLE = 'Receivable' # always <= 0
+    BACKLOG = 'Backlog'       # always <= 0
+    INCOME = 'Income'         # always <= 0
+
+    # subscriber side
+    PAYABLE = 'Payable'       # always >= 0
+    LIABILITY = 'Liability'   # always >= 0
+    REFUNDED = 'Refunded'     # always <= 0
+
+    # ``Transaction`` that can be referenced as an invoiced item
+    # when we can attempt to charge a balance due.
+    SETTLED = 'settled'
+
 
     objects = TransactionManager()
 
@@ -1735,8 +2244,8 @@ class Transaction(models.Model):
         '''
         Return True if this transaction is a debit (negative ledger entry).
         '''
-        return ((self.dest_organization == organization       # customer
-                 and self.dest_account == Transaction.EXPENSES)
+        return ((self.orig_organization == organization       # customer
+                 and self.dest_account == Transaction.FUNDS)
                 or (self.orig_organization == organization    # provider
                  and self.orig_account == Transaction.FUNDS))
 

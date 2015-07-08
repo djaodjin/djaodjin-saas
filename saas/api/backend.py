@@ -26,7 +26,6 @@ from rest_framework import status
 from rest_framework.generics import GenericAPIView
 from rest_framework.response import Response
 
-from saas.backends import PROCESSOR_BACKEND
 from saas.mixins import OrganizationMixin
 
 #pylint: disable=no-init
@@ -36,7 +35,7 @@ class RetrieveBankAPIView(OrganizationMixin, GenericAPIView):
 
     def get(self, request, *args, **kwargs): #pylint: disable=unused-argument
         return Response(
-            PROCESSOR_BACKEND.retrieve_bank(self.get_organization()),
+            self.get_organization().retrieve_bank(),
             status=status.HTTP_200_OK)
 
 
@@ -44,7 +43,7 @@ class RetrieveCardAPIView(OrganizationMixin, GenericAPIView):
 
     def get(self, request, *args, **kwargs): #pylint: disable=unused-argument
         return Response(
-            PROCESSOR_BACKEND.retrieve_card(self.get_organization()),
+            self.get_organization().retrieve_card(),
             status=status.HTTP_200_OK)
 
 

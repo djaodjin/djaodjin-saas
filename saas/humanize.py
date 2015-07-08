@@ -45,7 +45,16 @@ DESCRIBE_CHARGED_CARD_PROVIDER = \
     "Charge %(charge)s distribution for %(event)s"
 
 DESCRIBE_CHARGED_CARD_REFUND = \
-    "Charge %(charge)s refund for %(descr)s"
+    "Charge %(charge)s %(refund_type)s for %(descr)s"
+
+DESCRIBE_DOUBLE_ENTRY_MATCH = \
+    "Keep a balanced ledger"
+
+DESCRIBE_LIABILITY_START_PERIOD = \
+    "Past due"
+
+DESCRIBE_RECOGNIZE_INCOME = \
+    "Recognize income from %(period_start)s to %(period_end)s"
 
 DESCRIBE_UNLOCK_NOW = \
     "Unlock %(plan)s now. Don't worry later to %(unlock_event)s."

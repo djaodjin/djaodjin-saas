@@ -27,13 +27,12 @@ import datetime, logging
 from django.db import connection
 
 from saas.humanize import as_money
-from saas.models import Transaction
 
 
 LOGGER = logging.getLogger(__name__)
 
 
-def read_balances(until=datetime.datetime.now()):
+def read_balances(account, until=datetime.datetime.now()):
     """Balances associated to customer accounts.
 
     We are executing the following SQL to find the balance
@@ -46,7 +45,6 @@ def read_balances(until=datetime.datetime.now()):
         (3, 1100)
 
     """
-    account = Transaction.FUNDS
     cursor = connection.cursor()
     cursor.execute(
 """select t1.dest_organization_id,

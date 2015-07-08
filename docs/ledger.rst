@@ -119,6 +119,12 @@ such::
                 processor:Funds                          chargeback_fee
                 provider:Funds
 
+Period started
+^^^^^^^^^^^^^^
+
+.. automethod:: saas.models.Transaction.create_period_started
+
+
 Withdrawal
 ^^^^^^^^^^
 

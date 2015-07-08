@@ -28,7 +28,8 @@ import datetime
 
 from django.core.management.base import NoArgsCommand
 
-from saas.charge import create_charges_for_balance
+from saas.charge import extend_subscriptions, create_charges_for_balance
+
 
 class Command(NoArgsCommand):
     """Charges for due balance"""
@@ -37,4 +38,5 @@ class Command(NoArgsCommand):
 
     def handle_noargs(self, **options):
         end_period = datetime.datetime.now()
+        extend_subscriptions(end_period)
         create_charges_for_balance(end_period)

@@ -22,30 +22,29 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from datetime import datetime, timedelta
+from datetime import datetime
 
 from django.db import router
 from django.db.models.sql.query import RawQuery
 from django.db.models import Count, Sum
+from django.utils.dateparse import parse_datetime
 from django.utils.timezone import utc
 
 from saas.models import Plan, Subscription, Transaction
-
+from saas.utils import datetime_or_now
 
 def month_periods(nb_months=12, from_date=None):
     """constructs a list of (nb_months + 1) dates in the past that fall
     on the first of each month until *from_date* which is the last entry
     of the list returned."""
     dates = []
-    if not from_date:
-        # By default, we pick tomorrow so that income from Today shows up.
-        from_date = datetime.utcnow().replace(tzinfo=utc) + timedelta(days=1)
-    if isinstance(from_date, basestring):
-        from_date = datetime.strptime(from_date, '%Y-%m')
-    from_date = datetime(day=from_date.day, month=from_date.month,
-        year=from_date.year, tzinfo=utc)
-    last = from_date
-    dates.append(last)
+    if from_date and isinstance(from_date, basestring):
+        from_date = parse_datetime(from_date)
+    from_date = datetime_or_now(from_date)
+    dates.append(from_date)
+    last = datetime(
+        day=from_date.day, month=from_date.month, year=from_date.year,
+        tzinfo=utc)
     if last.day != 1:
         last = datetime(day=1, month=last.month, year=last.year, tzinfo=utc)
         dates.append(last)
@@ -62,8 +61,40 @@ def month_periods(nb_months=12, from_date=None):
     return dates
 
 
-def aggregate_monthly(organization, account, interval,
-                      from_date=None, reverse=False):
+def aggregate_monthly(organization, account,
+                      from_date=None, backward=False):
+    # pylint: disable=too-many-locals
+    counts = []
+    amounts = []
+    orig = 'orig'
+    dest = 'dest'
+    if backward:
+        orig = 'dest'
+        dest = 'orig'
+    # We want to be able to compare *last* to *from_date* and not get django
+    # warnings because timezones are not specified.
+    dates = month_periods(13, from_date)
+    period_start = dates[1]
+    for period_end in dates[2:]:
+        # A bit ugly but it does the job ...
+        kwargs = {'%s_organization' % orig: organization,
+            '%s_account' % orig: account}
+        query_result = Transaction.objects.filter(
+            created_at__gte=period_start,
+            created_at__lt=period_end, **kwargs).aggregate(
+            Count('%s_organization' % dest, distinct=True),
+            Sum('%s_amount' % dest))
+        count = query_result['%s_organization__count' % dest]
+        amount = query_result['%s_amount__sum' % dest]
+        period = period_end
+        counts += [(period, count)]
+        amounts += [(period, int(amount or 0))]
+        period_start = period_end
+    return (counts, amounts)
+
+
+def aggregate_monthly_churn(organization, account, interval,
+                            from_date=None, reverse=False):
     """
     Returns a table of records over a period of 12 months *from_date*.
     """
@@ -182,11 +213,8 @@ def aggregate_monthly_transactions(organization, account,
     #pylint: disable=too-many-locals
     if not account_title:
         account_title = str(account)
-    plan_periods = organization.plans.values('interval').distinct()
-    interval = Plan.MONTHLY
-    if len(plan_periods) == 1:
-        interval = plan_periods[0]['interval']
-    customers, account_totals = aggregate_monthly(
+    interval = organization.natural_interval
+    customers, account_totals = aggregate_monthly_churn(
         organization, account, interval, from_date=from_date, reverse=reverse)
     churned_custs, total_custs, new_custs = customers
     churned_account, total_account, new_account = account_totals

@@ -38,7 +38,7 @@ LOGGER = logging.getLogger('django.request') # We want ADMINS to about this.
 
 @api_view(['POST'])
 def processor_hook(request):
-    stripe.api_key = StripeBackend.priv_key
+    stripe.api_key = StripeBackend().priv_key
     # Attempt to validate the event by posting it back to Stripe.
     if django_settings.DEBUG:
         event = stripe.Event.construct_from(request.DATA, stripe.api_key)
@@ -67,6 +67,9 @@ def processor_hook(request):
     elif event.type == 'charge.dispute.updated':
         charge.dispute_updated()
     elif event.type == 'charge.dispute.closed':
-        charge.dispute_closed()
+        if event.data.object.status == 'won':
+            charge.dispute_won()
+        elif event.data.object.status == 'lost':
+            charge.dispute_lost()
 
     return Response("OK")

@@ -35,7 +35,7 @@ from saas.utils import datetime_or_now
 from saas.managers.metrics import monthly_balances
 from saas.api.serializers import OrganizationSerializer
 from saas.managers.metrics import (
-    aggregate_monthly_transactions,
+    aggregate_monthly, aggregate_monthly_transactions,
     active_subscribers, churn_subscribers)
 
 
@@ -55,7 +55,8 @@ class BalancesAPIView(OrganizationMixin, APIView):
             ends_at = parse_datetime(ends_at)
         ends_at = datetime_or_now(ends_at)
         result = []
-        for key in Transaction.objects.distinct_accounts():
+        for key in [Transaction.INCOME, Transaction.BACKLOG,
+                    Transaction.RECEIVABLE]:
             result += [{
                 'key': key,
                 'values': monthly_balances(organization, key, ends_at)
@@ -73,18 +74,17 @@ class RevenueMetricAPIView(OrganizationMixin, APIView):
             ends_at = parse_datetime(ends_at)
         ends_at = datetime_or_now(ends_at)
 
-        reverse = True
-        account_title = 'Payments'
-        account = Transaction.FUNDS
-
-        # TODO: refactor to only build the table (customer or amount)
-        # relevant to the request
-
         account_table, _, _ = \
-            aggregate_monthly_transactions(self.get_organization(), account,
-                account_title=account_title,
-                from_date=ends_at,
-                reverse=reverse)
+            aggregate_monthly_transactions(self.get_organization(),
+                Transaction.FUNDS, account_title='Payments',
+                from_date=ends_at, reverse=True)
+
+        _, refund_amount = aggregate_monthly(
+            self.get_organization(), Transaction.REFUND,
+            from_date=ends_at, backward=True)
+
+        account_table += [{"key": "Refunds",
+                           "values": refund_amount}]
 
         return Response(
             {"title": "Amount",
