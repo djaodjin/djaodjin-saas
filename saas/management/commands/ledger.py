@@ -30,12 +30,15 @@ from django.utils.timezone import utc
 
 # We need this import to avoid getting an exception importing 'saas.models'
 from saas.utils import datetime_or_now #pylint: disable=unused-import
+from saas.ledger import export
 from saas.models import Organization, Transaction, get_current_provider
-
 
 class Command(BaseCommand):
     help = 'Manage ledger.'
     option_list = BaseCommand.option_list + (
+        make_option('--database', action='store',
+            dest='database', default='default',
+            help='connect to database specified.'),
         make_option('--account-first', action='store_true',
             dest='account_first', default=False,
             help='Interpret the item before the first ":" '\
@@ -51,25 +54,9 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         #pylint: disable=too-many-locals
         subcommand = args[0]
+        using = options['database']
         if subcommand == 'export':
-            for transaction in Transaction.objects.all():
-                dest = ("\t\t%(dest_organization)s:%(dest_account)s"
-                    % {'dest_organization': transaction.dest_organization,
-                       'dest_account': transaction.dest_account})
-                amount_str = ('%s' % transaction.dest_amount).rjust(
-                    60 - len(dest))
-                sys.stdout.write("""
-%(date)s #%(reference)s - %(description)s
-%(dest)s%(amount)s
-\t\t%(orig_organization)s:%(orig_account)s
-""" % {'date': datetime.datetime.strftime(
-            transaction.created_at, '%Y/%m/%d %H:%M:%S'),
-        'reference': transaction.event_id,
-        'description': transaction.descr,
-        'dest': dest,
-        'amount': amount_str,
-        'orig_organization': transaction.orig_organization,
-        'orig_account': transaction.orig_account})
+            export(sys.stdout, Transaction.objects.using(using).all())
 
         elif subcommand == 'import':
             account_first = options.get('account_first', False)
@@ -104,7 +91,7 @@ r'\s+(#(?P<reference>\S+) -)?(?P<descr>.*)', line)
                     if dest_organization and orig_organization:
                         # Assuming no errors, at this point we have
                         # a full transaction.
-                        Transaction.objects.create(
+                        Transaction.objects.using(using).create(
                             created_at=created_at,
                             descr=descr,
                             dest_unit='usd',

@@ -1686,17 +1686,20 @@ class Transaction(models.Model):
     BACKLOG = 'Backlog'
     FUNDS = 'Funds'           # <= 0 receipient side
     INCOME = 'Income'         # <= 0 receipient side
+    RECEIVABLE = 'Receivable'
     REFUND = 'Refund'         # >= 0 receipient side
     WITHDRAW = 'Withdraw'
 
     # customer side
     EXPENSES = 'Expenses'   # >= 0 billing side
     PAYABLE = 'Payable'     # >= 0 billing side
+    LIABILITY = 'Liability'
     REFUNDED = 'Refunded'   # <= 0 billing side
 
     CHARGEBACK = 'Chargeback'
     REDEEM = 'Redeem'
     WRITEOFF = 'Writeoff'
+    SETTLED = 'Settled'
 
     objects = TransactionManager()
 
