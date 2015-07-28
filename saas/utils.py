@@ -62,7 +62,9 @@ def generate_random_slug(prefix=None):
     does not yet exist in the database.
     """
     suffix = "".join([random.choice("abcdefghijklmnopqrstuvwxyz0123456789-")
-                      for _ in range(50)])
+                      for _ in range(40)]) # Generated coupon codes are stored
+                             # as ``Transaction.event_id`` we a 'cpn_' prefix.
+                             # The total event_id must be less than 50 chars.
     if prefix:
         return str(prefix) + suffix
     return suffix
