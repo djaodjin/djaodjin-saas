@@ -13,6 +13,19 @@ angular.module('revenueFilters', [])
             }
             return heading;
         };
+    })
+    .filter('humanizeCell', function(currencyFilter, numberFilter) {
+        return function(cell, unit, scale) {
+            scale = scale || 1;
+            var value = cell * scale;
+            if(unit) {
+                if(parseInt(value) > 1000){
+                    return currencyFilter((parseInt(value) / 1000).toFixed(), unit, 0) + "K";
+                }
+                return currencyFilter(value, unit);
+            }
+            return numberFilter(value);
+        }
     });
 
 
@@ -682,8 +695,16 @@ metricControllers.controller('metricCtrl',
 }]);
 
 metricsControllers.controller('metricsCtrl',
-    ['$scope', '$http', '$filter', 'urls', 'tables',
-    function($scope, $http, $filter, urls, tables) {
+    ['$scope', '$http', 'urls', 'tables',
+    function($scope, $http, urls, tables) {
+
+    $scope.tables = tables;
+
+    $scope.tabs = [];
+    for( var i = 0; i < $scope.tables.length; ++i ) {
+        $scope.tabs.push($scope.tables[i].key);
+    }
+    $scope.activeTab = $scope.tabs[0];
 
     $scope.endOfMonth = function(date) {
         return new Date(
@@ -692,67 +713,61 @@ metricsControllers.controller('metricsCtrl',
             0
         )
     };
-
     $scope.ends_at = new Date();
-
-    $scope.tabs = tables;
-    $scope.activeTab = $scope.tabs[0].key;
 
     // these aren't documented; do they do anything?
     $scope.formats = ["MM-yyyy", "yyyy/MM", "MM.yyyy"];
     $scope.format = $scope.formats[0];
-
     $scope.dateOptions = {
         formatYear: "yyyy",
         startingDay: 1,
         mode: "month",
         minMode: "month"
     };
-
     $scope.opened = false;
 
-    // forward declarations for computed properties extracted from JSON API
-    $scope.unit = null;
-    $scope.scale = null;
-    $scope.tableMonths = null;
-    $scope.tableRows = null;
-    $scope.refreshTable = function() {
+    $scope.getTable = function(key) {
+        for( var i = 0; i < $scope.tables.length; ++i ) {
+            if( $scope.tables[i].key === key ) {
+                return $scope.tables[i];
+            }
+        }
+        return null;
+    }
 
+    $scope.refreshTable = function() {
         $http.get(
-            urls[$scope.activeTab],
-            // urls.saas_api_revenue.replace('_TABLEKEY', $scope.activeTab),
+            $scope.getTable($scope.activeTab).location,
             {params: {"ends_at": $scope.ends_at}}
         ).success(
             function(data) {
-
+                var unit = data.unit;
+                var scale = data.scale;
+                scale = parseFloat(scale);
+                if( isNaN(scale) ) {
+                    scale = 1.0;
+                }
                 // add "extra" rows at the end
                 var extra = data.extra || [];
 
-                $scope.unit = data.unit;
-                $scope.scale = parseFloat(data.scale);
-                if( isNaN($scope.scale) ) {
-                    $scope.scale = 1.0;
-                }
+                var table = $scope.getTable($scope.activeTab);
+                table.unit = unit;
+                table.scale = scale;
+                table.data = data.table;
+
                 // manual binding - trigger updates to the graph
-                updateChart("#metrics-table svg",
-                    data.table, data.unit, $scope.scale, extra);
+                if( table.key == "balances") {
+                    // XXX Hard-coded.
+                    updateBarChart("#metrics-table svg",
+                        data.table, unit, scale, extra);
+                } else {
+                    updateChart("#metrics-table svg",
+                        data.table, unit, scale, extra);
+                }
             }
         );
     };
     $scope.refreshTable();
-
-    $scope.formatCell = function(cell, simplifiedValue) {
-        var value = cell * $scope.scale;
-        if($scope.unit) {
-            if(parseInt(value) > 1000 && simplifiedValue){
-                return $filter("currency")((parseInt(value) / 1000).toFixed(), $scope.unit, 0) + "K";
-            }else{
-                return $filter("currency")(value, $scope.unit);
-            }
-        } else {
-            return $filter("number")(value);
-        }
-    };
 
     // change the selected tab
     $scope.tabClicked = function($event) {

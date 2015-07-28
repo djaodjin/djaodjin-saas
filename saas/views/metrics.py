@@ -25,6 +25,7 @@
 import json
 from datetime import datetime, date, timedelta
 
+from django.core.urlresolvers import reverse
 from django.db.models import Min, Sum, Max
 from django.utils.dateparse import parse_datetime
 from django.utils.timezone import utc
@@ -134,27 +135,22 @@ class RevenueMetricsView(MetricsMixin, TemplateView):
 
     def get_context_data(self, **kwargs):
         context = super(RevenueMetricsView, self).get_context_data(**kwargs)
-        tables = [
-            {"title": "Amount", "key": "revenue", "active": True},
-            {"title": "Customers", "key": "customer"},
-        ]
         context.update({
             "title": "Revenue",
-            "tables": json.dumps(tables)
-        })
-        return context
-
-
-class BalancesMetricsView(MetricsMixin, TemplateView):
-    """
-    Display balances.
-    """
-
-    template_name = 'saas/metrics_balances.html'
-
-    def get_context_data(self, **kwargs):
-        context = super(BalancesMetricsView, self).get_context_data(**kwargs)
-        context.update({'title': 'Balances'})
+            "tables": [{"key": "cash",
+                        "title": "Cash flow",
+                        "unit": "$",
+                        "location": reverse('saas_api_revenue',
+                            args=(self.organization,))},
+                       {"key": "balances",
+                        "title": "Balances",
+                        "unit": "$",
+                        "location": reverse('saas_api_balances',
+                            args=(self.organization,))},
+                       {"key": "customer",
+                        "title": "Customers",
+                        "location": reverse('saas_api_customer',
+                            args=(self.organization,))}]})
         return context
 
 

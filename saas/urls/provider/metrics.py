@@ -29,9 +29,8 @@ from django.conf.urls import patterns, url
 from saas.settings import ACCT_REGEX
 from saas.views import ProviderRedirectView
 from saas.views.profile import DashboardView
-from saas.views.metrics import (BalancesMetricsView,
-    CouponMetricsView, PlansMetricsView, RevenueMetricsView,
-    SubscriberPipelineView)
+from saas.views.metrics import (CouponMetricsView, PlansMetricsView,
+    RevenueMetricsView, SubscriberPipelineView)
 
 urlpatterns = patterns(
     'saas.views.metrics',
@@ -47,9 +46,6 @@ urlpatterns = patterns(
     url(r'^metrics/coupons/((?P<coupon>%s)/)?' % ACCT_REGEX,
         ProviderRedirectView.as_view(pattern_name='saas_metrics_coupons'),
         name='saas_provider_metrics_coupons'),
-    url(r'^metrics/balances/',
-        ProviderRedirectView.as_view(pattern_name='saas_metrics_balances'),
-        name='saas_provider_metrics_balances'),
 
     url(r'^metrics/(?P<organization>%s)/dashboard/' % ACCT_REGEX,
         DashboardView.as_view(), name='saas_dashboard'),
@@ -60,8 +56,6 @@ urlpatterns = patterns(
     url(r'^metrics/(?P<organization>%s)/coupons/((?P<coupon>%s)/)?'
         % (ACCT_REGEX, ACCT_REGEX),
         CouponMetricsView.as_view(), name='saas_metrics_coupons'),
-    url(r'^metrics/(?P<organization>%s)/balances/' % ACCT_REGEX,
-        BalancesMetricsView.as_view(), name='saas_metrics_balances'),
     url(r'^metrics/(?P<organization>%s)/' % ACCT_REGEX,
         RevenueMetricsView.as_view(), name='saas_metrics_summary'),
 
