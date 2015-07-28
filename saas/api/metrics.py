@@ -61,7 +61,8 @@ class BalancesAPIView(OrganizationMixin, APIView):
                 'key': key,
                 'values': monthly_balances(organization, key, ends_at)
             }]
-        return Response(result)
+        return Response({'title': "Balances",
+            'unit': "$", 'scale': 0.01, 'table': result})
 
 
 class RevenueMetricAPIView(OrganizationMixin, APIView):
@@ -101,9 +102,11 @@ class CustomerMetricAPIView(OrganizationMixin, APIView):
             ends_at = parse_datetime(ends_at)
         ends_at = datetime_or_now(ends_at)
 
-        reverse = True
+        reverse = False
         account_title = 'Payments'
-        account = Transaction.FUNDS
+        account = Transaction.RECEIVABLE
+        # We use ``Transaction.RECEIVABLE`` which technically counts the number
+        # or orders, not the number of payments.
 
         _, customer_table, customer_extra = \
             aggregate_monthly_transactions(self.get_organization(), account,
