@@ -22,11 +22,30 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+from django.core.exceptions import ImproperlyConfigured
+from django.utils.importlib import import_module
+from stripe.error import APIConnectionError as ProcessorConnectionError
 from stripe.error import StripeError as ProcessorError
 from stripe.error import CardError as CardError
 
 from saas import settings
-from saas.backends.stripe_processor import StripeBackend
 
-PROCESSOR_BACKEND = StripeBackend(
-    settings.STRIPE_PUB_KEY, settings.STRIPE_PRIV_KEY)
+
+def _load_backend(path):
+    dot_pos = path.rfind('.')
+    module, attr = path[:dot_pos], path[dot_pos + 1:]
+    try:
+        mod = import_module(module)
+    except (ImportError, ValueError)  as err:
+        raise ImproperlyConfigured(
+            'Error importing backend %s: "%s"' % (path, err))
+    try:
+        cls = getattr(mod, attr)
+    except AttributeError:
+        raise ImproperlyConfigured('Module "%s" does not define a "%s"'\
+' backend' % (module, attr))
+    return cls()
+
+
+def get_processor_backend():
+    return _load_backend(settings.PROCESSOR_BACKEND)

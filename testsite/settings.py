@@ -41,12 +41,6 @@ load_config(os.path.join(BASE_DIR, 'credentials'))
 DEBUG = True
 TEMPLATE_DEBUG = DEBUG
 
-ADMINS = (
-    # ('Your Name', 'your_email@example.com'),
-)
-
-MANAGERS = ADMINS
-
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
@@ -67,8 +61,6 @@ TIME_ZONE = 'America/Chicago'
 # Language code for this installation. All choices can be found here:
 # http://www.i18nguy.com/unicode/language-identifiers.html
 LANGUAGE_CODE = 'en-us'
-
-SITE_ID = 2
 
 # If you set this to False, Django will make some optimizations so as not
 # to load the internationalization machinery.
@@ -118,13 +110,6 @@ STATICFILES_FINDERS = (
 # Make this unique, and don't share it with anybody.
 SECRET_KEY = 'q%cn)2_5&amp;jkbxxi!qo0o@7i^j-zpk0oje(++#0se@5c38p4e-7'
 
-# List of callables that know how to import templates from various sources.
-TEMPLATE_LOADERS = (
-    'django.template.loaders.filesystem.Loader',
-    'django.template.loaders.app_directories.Loader',
-#     'django.template.loaders.eggs.Loader',
-)
-
 TEMPLATE_CONTEXT_PROCESSORS = (
     'django.contrib.auth.context_processors.auth',
     'django.contrib.messages.context_processors.messages',
@@ -138,8 +123,7 @@ MIDDLEWARE_CLASSES = (
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
-    # Uncomment the next line for simple clickjacking protection:
-    # 'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'django.middleware.clickjacking.XFrameOptionsMiddleware'
 )
 
 ROOT_URLCONF = 'testsite.urls'
@@ -148,9 +132,6 @@ ROOT_URLCONF = 'testsite.urls'
 WSGI_APPLICATION = 'testsite.wsgi.application'
 
 TEMPLATE_DIRS = ()
-
-# django-app-metrics (not installing celery)
-CELERY_ALWAYS_EAGER = True
 
 INSTALLED_APPS = (
     'django.contrib.auth',
@@ -172,6 +153,11 @@ LOGIN_REDIRECT_URL = '/profile/'
 
 # Allow user to enter month in durationfield
 DURATIONFIELD_ALLOW_MONTHS = True
+
+# Configuration of djaodjin-saas
+SAAS = {
+  'PROVIDER_ID': 2
+}
 
 # A sample logging configuration. The only tangible logging
 # performed by this configuration is to send an email to

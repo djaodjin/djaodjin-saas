@@ -24,23 +24,18 @@
 
 import datetime, logging, re
 
-from django.db import IntegrityError
 import stripe
 
-from saas import signals
-
+from saas import settings, signals
 
 LOGGER = logging.getLogger('django.request') # We want ADMINS to about this.
 
 
 class StripeBackend(object):
 
-    pub_key = None
-    priv_key = None
-
-    def __init__(self, pub_key, priv_key):
-        self.pub_key = pub_key
-        self.priv_key = priv_key
+    def __init__(self):
+        self.pub_key = settings.STRIPE_PUB_KEY
+        self.priv_key = settings.STRIPE_PRIV_KEY
 
     def list_customers(self, org_pat=r'.*'):
         """
@@ -80,8 +75,12 @@ class StripeBackend(object):
             # Stripe rounds up so we do the same here. Be careful Python 3.x
             # semantics are broken and will return a float instead of a int.
             fee_unit = charge.unit
-            fee_amount = ((charge.amount - refunded) * 290 + 5000) / 10000 + 30
-            distribute_amount = charge.amount - refunded - fee_amount
+            available_amount = charge.amount - refunded
+            if available_amount > 0:
+                fee_amount = (available_amount * 290 + 5000) / 10000 + 30
+            else:
+                fee_amount = 0
+            distribute_amount = available_amount - fee_amount
             distribute_unit = charge.unit
         return distribute_amount, distribute_unit, fee_amount, fee_unit
 
@@ -105,7 +104,6 @@ class StripeBackend(object):
                 datetime.date(processor_charge.card.exp_year,
                               processor_charge.card.exp_month, 1))
 
-
     def refund_charge(self, charge, amount):
         """
         Refund a charge on the associated card.
@@ -113,7 +111,6 @@ class StripeBackend(object):
         stripe.api_key = self.priv_key
         processor_charge = stripe.Charge.retrieve(charge.processor_id)
         processor_charge.refund(amount=amount)
-
 
     def create_charge_on_card(self, card, amount, unit,
         descr=None, stmt_descr=None):
@@ -132,7 +129,6 @@ class StripeBackend(object):
                 processor_charge.card.last4,
                 datetime.date(processor_charge.card.exp_year,
                               processor_charge.card.exp_month, 1))
-
 
     def create_transfer(self, organization, amount, descr=None):
         """
@@ -224,9 +220,8 @@ class StripeBackend(object):
                 p_customer = stripe.Customer.retrieve(
                     organization.processor_id, expand=['default_card'])
             except stripe.error.StripeError as err:
-                #pylint: disable=nonstandard-exception
                 LOGGER.exception(err)
-                raise IntegrityError(str(err))
+                raise
             if p_customer.default_card:
                 last4 = '***-%s' % str(p_customer.default_card.last4)
                 exp_date = "%02d/%04d" % (
@@ -245,9 +240,15 @@ class StripeBackend(object):
         return charge
 
     @staticmethod
+    def dispute_fee(amount): #pylint: disable=unused-argument
+        """
+        Return Stripe processing fee associated to a chargeback (i.e. $15).
+        """
+        return 1500
+
+    @staticmethod
     def prorate_transfer(amount): #pylint: disable=unused-argument
         """
-        Return Stripe processing fee associated to a transfer
-        (i.e. 25 cents).
+        Return Stripe processing fee associated to a transfer (i.e. 25 cents).
         """
         return 25

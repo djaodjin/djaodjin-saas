@@ -50,7 +50,7 @@ from django.views.generic import DetailView, FormView, ListView, TemplateView
 
 from saas.api.transactions import (SmartTransactionListMixin,
     TransactionQuerysetMixin, TransferQuerysetMixin)
-from saas.backends import PROCESSOR_BACKEND, ProcessorError
+from saas.backends import ProcessorError, ProcessorConnectionError
 from saas.utils import validate_redirect_url, datetime_or_now
 from saas.forms import (BankForm, CartPeriodsForm, CreditCardForm,
     RedeemCouponForm, WithdrawForm)
@@ -92,7 +92,7 @@ class BankMixin(OrganizationMixin):
 
     def get_context_data(self, **kwargs):
         context = super(BankMixin, self).get_context_data(**kwargs)
-        context.update(PROCESSOR_BACKEND.retrieve_bank(self.get_organization()))
+        context.update(self.get_organization().retrieve_bank())
         return context
 
 
@@ -127,10 +127,11 @@ class CardFormMixin(OrganizationMixin):
 
     def get_context_data(self, **kwargs):
         context = super(CardFormMixin, self).get_context_data(**kwargs)
-        context.update(PROCESSOR_BACKEND.retrieve_card(self.customer))
-        if not context['STRIPE_PUB_KEY']:
-            # XXX helpful for debugging test infrastructure.
-            messages.error(self.request, "STRIPE_PUB_KEY is not defined.")
+        try:
+            context.update(self.customer.retrieve_card())
+        except ProcessorConnectionError:
+            messages.error(self.request, "The payment processor is "\
+                "currently unreachable. Sorry for the inconvienience.")
         return context
 
 
@@ -146,12 +147,12 @@ class BankUpdateView(BankMixin, FormView):
     def form_valid(self, form):
         self.organization = self.get_organization()
         stripe_token = form.cleaned_data['stripeToken']
-        if stripe_token:
-            # Since all fields are optional, we cannot assume the card token
-            # will be present (i.e. in case of erroneous POST request).
-            self.organization.update_bank(stripe_token)
-            messages.success(self.request,
-                "Your bank on file was sucessfully updated")
+        if not stripe_token:
+            messages.error(self.request, "Missing processor token.")
+            return self.form_invalid(form)
+        # Since all fields are optional, we cannot assume the card token
+        # will be present (i.e. in case of erroneous POST request).
+        self.organization.update_bank(stripe_token)
         return super(BankUpdateView, self).form_valid(form)
 
     def get_success_url(self):
@@ -159,6 +160,8 @@ class BankUpdateView(BankMixin, FormView):
             self.request.GET.get(REDIRECT_FIELD_NAME, None))
         if redirect_path:
             return redirect_path
+        messages.success(self.request,
+                         "Your bank on file was sucessfully updated")
         return reverse('saas_transfer_info', kwargs=self.get_url_kwargs())
 
 
@@ -166,6 +169,17 @@ class InvoicablesFormMixin(OrganizationMixin):
     """
     Mixin a list of invoicables
     """
+
+    @staticmethod
+    def with_options(invoicables):
+        """
+        Returns ``True`` if any of the invoicables has at least two options
+        available for the user.
+        """
+        for invoicable in invoicables:
+            if len(invoicable['options']) > 1:
+                return True
+        return False
 
     def get_initial(self):
         kwargs = super(InvoicablesFormMixin, self).get_initial()
@@ -221,7 +235,13 @@ class CardInvoicablesFormMixin(CardFormMixin, InvoicablesFormMixin):
         """
         # We remember the card by default. ``stripeToken`` is not present
         # when we are creating charges on a card already on file.
-        remember_card = form.cleaned_data.get('remember_card', True)
+        if 'remember_card' in self.request.POST:
+            # Workaround: Django does not take into account the value
+            # of Field.initial anymore. Worse, it will defaults to False
+            # when the field is not present in the POST.
+            remember_card = form.cleaned_data['remember_card']
+        else:
+            remember_card = form.fields['remember_card'].initial
         stripe_token = form.cleaned_data['stripeToken']
 
         # deep copy the invoicables because we are updating the list in place
@@ -247,10 +267,10 @@ class CardInvoicablesFormMixin(CardFormMixin, InvoicablesFormMixin):
                         # Normalize unlock line description to
                         # "subscribe <plan> until ..."
                         if match_unlock(line.descr):
-                            line.descr = describe_buy_periods(
-                                plan, plan.end_of_period(
-                                    line.created_at, line.orig_amount),
-                                line.orig_amount)
+                            nb_periods = plan.period_number(line.descr)
+                            line.descr = describe_buy_periods(plan,
+                                plan.end_of_period(line.created_at, nb_periods),
+                                nb_periods)
                         invoicable['lines'] += [line]
 
         try:
@@ -322,7 +342,7 @@ class CardUpdateView(CardFormMixin, FormView):
         return reverse('saas_billing_info', args=(self.customer,))
 
 
-class TransactionListView(OrganizationMixin, TemplateView):
+class TransactionListView(CardFormMixin, TemplateView):
     """
     This page shows the subscriptions an Organization paid for
     as well as payment refunded.
@@ -334,7 +354,7 @@ class TransactionListView(OrganizationMixin, TemplateView):
         self.customer = self.get_organization()
         context = super(TransactionListView, self).get_context_data(**kwargs)
         balance_amount, balance_unit \
-            = Transaction.objects.get_organization_balance(self.customer)
+            = Transaction.objects.get_statement_balance(self.customer)
         if balance_amount < 0:
             # It is not straightforward to inverse a number in Django templates
             # so we do it with a convention on the ``humanize_money`` filter.
@@ -385,12 +405,11 @@ class TransferListView(BankMixin, TemplateView):
     def get_context_data(self, **kwargs):
         self.organization = self.get_organization()
         context = super(TransferListView, self).get_context_data(**kwargs)
-        balance_amount, balance_unit \
-            = Transaction.objects.get_organization_balance(
-            self.organization, Transaction.FUNDS)
+        available_amount, available_unit \
+            = self.organization.withdraw_available()
         context.update({
-            'balance_amount': balance_amount,
-            'balance_unit': balance_unit,
+            'balance_amount': available_amount,
+            'balance_unit': available_unit,
             'download_url': reverse(
                 'saas_transfers_download', kwargs=self.get_url_kwargs())})
         return context
@@ -493,18 +512,20 @@ class CartBaseView(InvoicablesFormMixin, FormView):
 
         if plan.period_amount == 0:
             # We are having a freemium business models, no discounts.
-            option_items += [subscription.create_order(1, prorated_amount,
-                created_at, "free")]
+            option_items += [Transaction.objects.new_subscription_order(
+                subscription, 1, prorated_amount, created_at, "free")]
 
         elif plan.unlock_event:
             # Locked plans are free until an event.
-            option_items += [subscription.create_order(1, plan.period_amount,
-               created_at, DESCRIBE_UNLOCK_NOW % {
-                        'plan': plan, 'unlock_event': plan.unlock_event},
+            option_items += [Transaction.objects.new_subscription_order(
+                subscription, 1, plan.period_amount, created_at,
+                DESCRIBE_UNLOCK_NOW % {
+                    'plan': plan, 'unlock_event': plan.unlock_event},
                discount_percent=discount_percent,
                descr_suffix=descr_suffix)]
-            option_items += [subscription.create_order(1, 0,
-               created_at, DESCRIBE_UNLOCK_LATER % {
+            option_items += [Transaction.objects.new_subscription_order(
+                subscription, 1, 0, created_at,
+                DESCRIBE_UNLOCK_LATER % {
                         'amount': as_money(plan.period_amount, plan.unit),
                         'plan': plan, 'unlock_event': plan.unlock_event})]
 
@@ -518,17 +539,18 @@ class CartBaseView(InvoicablesFormMixin, FormView):
                     natural_periods = [1, 2, 3]
 
             for nb_periods in natural_periods:
-                option_items += [subscription.create_order(
-                    nb_periods, prorated_amount, created_at,
+                option_items += [Transaction.objects.new_subscription_order(
+                    subscription, nb_periods, prorated_amount, created_at,
                     discount_percent=discount_percent,
                     descr_suffix=descr_suffix)]
                 discount_percent += plan.advance_discount
                 if discount_percent >= 100:
-                    discount_percent = 100
+                    break # never allow to be completely free here.
 
         return option_items
 
     def get_queryset(self):
+        #pylint: disable=too-many-locals
         self.customer = self.get_organization()
         created_at = datetime_or_now()
         prorate_to_billing = False
@@ -577,9 +599,12 @@ class CartBaseView(InvoicablesFormMixin, FormView):
                 # The number of periods was already selected so we generate
                 # a line instead.
                 for line in options:
-                    if line.orig_amount == cart_item.nb_periods:
-                        # ``Subscription.create_order`` will have created
-                        # a ``Transaction`` with the ultimate subscriber
+                    plan = subscription.plan
+                    nb_periods = plan.period_number(line.descr)
+                    if nb_periods == cart_item.nb_periods:
+                        # ``TransactionManager.new_subscription_order``
+                        # will have created a ``Transaction``
+                        # with the ultimate subscriber
                         # as payee. Overriding ``dest_organization`` here
                         # insures in all cases (bulk and direct buying),
                         # the transaction is recorded (in ``execute_order``)
@@ -632,7 +657,8 @@ class CartPeriodsView(CartBaseView):
                         queryset = CartItem.objects.get_cart(
                             user=self.request.user).filter(plan=plan)
                         for cart_item in queryset:
-                            cart_item.nb_periods = line.orig_amount
+                            cart_item.nb_periods \
+                                = plan.period_number(line.descr)
                             cart_item.save()
         return super(CartPeriodsView, self).form_valid(form)
 
@@ -660,6 +686,10 @@ class CartSeatsView(CartPeriodsView):
     def get(self, request, *args, **kwargs):
         self.customer = self.get_organization()
         if self.cart_items.filter(nb_periods=0).exists():
+            # If nb_periods == 0, we will present multiple options
+            # to the user. We also rely on discount_percent
+            # to be positive, otherwise it looks really weird
+            # (i.e. one option).
             return http.HttpResponseRedirect(
                 reverse('saas_cart_periods', args=(self.customer,)))
         return super(CartSeatsView, self).get(request, *args, **kwargs)
@@ -736,10 +766,10 @@ class BalanceView(CardInvoicablesFormMixin, FormView):
     @staticmethod
     def get_invoicable_options(subscription, created_at=None, prorate_to=None):
         #pylint: disable=unused-argument
-        payable = Transaction.objects.get_subscription_payable(
+        payable = Transaction.objects.new_subscription_statement(
             subscription, created_at)
         if payable.dest_amount > 0:
-            later = Transaction.objects.get_subscription_later(
+            later = Transaction.objects.new_subscription_later(
                 subscription, created_at)
             return [payable, later]
         return []
@@ -772,9 +802,8 @@ class WithdrawView(BankMixin, FormView):
     def get_initial(self):
         self.organization = self.get_organization()
         kwargs = super(WithdrawView, self).get_initial()
-        balance, _ = Transaction.objects.get_organization_balance(
-            self.organization, Transaction.FUNDS)
-        kwargs.update({'amount': (- balance / 100.0) if balance < 0 else 0})
+        balance, _ = self.organization.withdraw_available()
+        kwargs.update({'amount': (balance / 100.0) if balance > 0 else 0})
         return kwargs
 
     def form_valid(self, form):

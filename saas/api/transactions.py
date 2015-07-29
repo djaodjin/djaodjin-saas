@@ -57,12 +57,16 @@ class TransactionSerializer(serializers.ModelSerializer):
 
     def to_representation(self, obj):
         ret = super(TransactionSerializer, self).to_representation(obj)
+        is_debit = self._is_debit(obj)
+        if is_debit:
+            amount = as_money(obj.orig_amount, '-%s' % obj.orig_unit)
+        else:
+            amount = as_money(obj.dest_amount, obj.dest_unit)
         ret.update({
             'description': as_html_description(
                 obj, provider=get_current_provider()),
-            'is_debit': self._is_debit(obj),
-            'amount': as_money(obj.dest_amount, '-%s' % obj.dest_unit
-                        if self._is_debit(obj) else obj.dest_unit)})
+            'is_debit': is_debit,
+            'amount': amount})
         return ret
 
     class Meta:
@@ -119,8 +123,7 @@ class TransferQuerysetMixin(OrganizationMixin):
         Get the list of transactions for this organization.
         """
         self.organization = self.get_organization()
-        return Transaction.objects.by_organization(
-            self.organization, Transaction.FUNDS)
+        return Transaction.objects.by_organization(self.organization)
 
 
 class TransferListAPIView(SmartTransactionListMixin, TransferQuerysetMixin,

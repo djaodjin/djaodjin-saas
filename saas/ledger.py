@@ -26,12 +26,13 @@ import datetime, logging
 
 from django.db import connection
 
-from saas.models import Transaction
+from saas.humanize import as_money
+
 
 LOGGER = logging.getLogger(__name__)
 
 
-def read_balances(until=datetime.datetime.now()):
+def read_balances(account, until=datetime.datetime.now()):
     """Balances associated to customer accounts.
 
     We are executing the following SQL to find the balance
@@ -44,7 +45,6 @@ def read_balances(until=datetime.datetime.now()):
         (3, 1100)
 
     """
-    account = Transaction.FUNDS
     cursor = connection.cursor()
     cursor.execute(
 """select t1.dest_organization_id,
@@ -56,3 +56,33 @@ where t1.dest_account = '%s' and t1.created_at < '%s' and t2.created_at < '%s'
 group by t1.dest_organization_id
 """ % (account, until, until))
     return cursor.fetchall()
+
+
+def export(output, transactions):
+    """
+    Export a set of Transaction in ledger format.
+    """
+    for transaction in transactions:
+        dest = ("\t\t%(dest_organization)s:%(dest_account)s"
+                % {'dest_organization': transaction.dest_organization,
+                   'dest_account': transaction.dest_account})
+        dest_amount = as_money(transaction.dest_amount,
+            transaction.dest_unit).rjust(60 - len(dest))
+        orig = ("\t\t%(orig_organization)s:%(orig_account)s"
+                % {'orig_organization': transaction.orig_organization,
+                   'orig_account': transaction.orig_account})
+        if transaction.dest_unit != transaction.orig_unit:
+            orig_amount = as_money(transaction.orig_amount,
+                transaction.orig_unit).rjust(60 - len(orig))
+        else:
+            orig_amount = ''
+        output.write("""
+%(date)s #%(reference)s - %(description)s
+%(dest)s%(dest_amount)s
+%(orig)s%(orig_amount)s
+""" % {'date': datetime.datetime.strftime(
+            transaction.created_at, '%Y/%m/%d %H:%M:%S'),
+        'reference': '%s' % transaction.event_id,
+        'description': transaction.descr,
+        'dest': dest, 'dest_amount': dest_amount,
+        'orig': orig, 'orig_amount': orig_amount})
