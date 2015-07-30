@@ -73,9 +73,10 @@ class UserSerializer(serializers.ModelSerializer):
     username = serializers.CharField(validators=[
         validators.RegexValidator(r'^[\w.@+-]+$', _('Enter a valid username.'),
             'invalid')])
-    created_at = serializers.DateTimeField(source='date_joined')
+    created_at = serializers.DateTimeField(source='date_joined', required=False)
 
     class Meta:
         model = User
         fields = ('username', 'email', 'first_name', 'last_name', 'created_at')
+        read_only = ('first_name', 'last_name', 'created_at',)
 
