@@ -22,7 +22,11 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+from django.core import validators
+from django.utils.translation import ugettext_lazy as _
 from rest_framework import serializers
+
+from saas.compat import User
 from saas.models import Organization, Plan, Subscription
 
 #pylint: disable=no-init,old-style-class
@@ -33,7 +37,7 @@ class SubscriptionSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Subscription
-        fields = ('created_at', 'ends_at', 'plan', )
+        fields = ('created_at', 'ends_at', 'plan', 'auto_extend')
 
 
 class OrganizationSerializer(serializers.ModelSerializer):
@@ -49,10 +53,29 @@ class OrganizationSerializer(serializers.ModelSerializer):
 
 class PlanSerializer(serializers.ModelSerializer):
 
+    app_url = serializers.SerializerMethodField()
+
     class Meta:
         model = Plan
         fields = ('slug', 'title', 'description', 'is_active',
-                  'setup_amount', 'period_amount', 'interval')
-        read_only_fields = ('slug',)
+                  'setup_amount', 'period_amount', 'interval', 'app_url')
+        read_only_fields = ('slug', 'app_url')
 
+    def get_app_url(self, obj):
+        #pylint: disable=unused-argument
+        return self.context['request'].build_absolute_uri('/app')
+
+
+class UserSerializer(serializers.ModelSerializer):
+
+    # Only way I found out to remove the ``UniqueValidator``. We are not
+    # interested to create new instances here.
+    username = serializers.CharField(validators=[
+        validators.RegexValidator(r'^[\w.@+-]+$', _('Enter a valid username.'),
+            'invalid')])
+    created_at = serializers.DateTimeField(source='date_joined')
+
+    class Meta:
+        model = User
+        fields = ('username', 'email', 'first_name', 'last_name', 'created_at')
 

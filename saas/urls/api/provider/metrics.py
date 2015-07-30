@@ -29,10 +29,10 @@ URLs API for provider resources related to billing
 from django.conf.urls import patterns, url
 
 from saas.settings import ACCT_REGEX
-from saas.api.metrics import (BalancesAPIView, ChurnedAPIView,
-    RegisteredAPIView, SubscribedAPIView, RevenueMetricAPIView,
-    CustomerMetricAPIView, PlanMetricAPIView)
-from saas.api.subscriptions import ActiveSubscriptionAPIView
+from saas.api.metrics import (BalancesAPIView, RegisteredAPIView,
+    RevenueMetricAPIView, CustomerMetricAPIView, PlanMetricAPIView)
+from saas.api.subscriptions import (ActiveSubscriptionAPIView,
+    ChurnedSubscriptionAPIView)
 
 urlpatterns = patterns('',
     url(r'^metrics/(?P<organization>%s)/balances/?' % ACCT_REGEX,
@@ -47,9 +47,7 @@ urlpatterns = patterns('',
     url(r'^registered/?',
         RegisteredAPIView.as_view(), name='saas_api_registered'),
     url(r'^subscriptions/(?P<organization>%s)/churned/?' % ACCT_REGEX,
-        ChurnedAPIView.as_view(), name='saas_api_churned'),
-    url(r'^subscriptions/(?P<organization>%s)/subscribed/?' % ACCT_REGEX,
-        SubscribedAPIView.as_view(), name='saas_api_subscribed'),
+        ChurnedSubscriptionAPIView.as_view(), name='saas_api_churned'),
     url(r'^subscriptions/(?P<organization>%s)/active/?' % ACCT_REGEX,
-      ActiveSubscriptionAPIView.as_view(), name='saas_api_active_subscription'),
+        ActiveSubscriptionAPIView.as_view(), name='saas_api_subscribed'),
 )

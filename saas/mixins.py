@@ -26,6 +26,7 @@ from django.shortcuts import get_object_or_404
 from django.utils.dateparse import parse_datetime
 from django.views.generic.base import ContextMixin
 from django.views.generic.detail import SingleObjectMixin
+from extra_views.contrib.mixins import SearchableListMixin, SortableListMixin
 
 from saas.compat import User
 from saas.models import (CartItem, Charge, Coupon, Organization, Plan,
@@ -261,8 +262,18 @@ class SubscriptionMixin(object):
     model = Subscription
 
     def get_queryset(self):
+        kwargs = {}
+        start_at = self.request.GET.get('start_at', None)
+        if start_at:
+            start_at = datetime_or_now(parse_datetime(start_at))
+            kwargs.update({'created_at__lt': start_at})
+        ends_at = self.request.GET.get('ends_at', None)
+        if ends_at:
+            ends_at = parse_datetime(ends_at)
+        ends_at = datetime_or_now(ends_at)
         return Subscription.objects.filter(
-            organization__slug=self.kwargs.get('organization'))
+            organization__slug=self.kwargs.get('organization'),
+            ends_at__gte=ends_at, **kwargs)
 
     def get_object(self):
         queryset = self.get_queryset()
@@ -271,6 +282,84 @@ class SubscriptionMixin(object):
         else:
             plan = self.kwargs.get('subscribed_plan')
         return queryset.filter(plan__slug=plan).get()
+
+
+class SubscriptionSmartListMixin(SearchableListMixin, SortableListMixin):
+    """
+    ``Subscription`` list which is also searchable and sortable.
+    """
+    search_fields = ['organization__slug',
+                     'organization__full_name',
+                     'organization__email',
+                     'organization__phone',
+                     'organization__street_address',
+                     'organization__locality',
+                     'organization__region',
+                     'organization__postal_code',
+                     'organization__country',
+                     'plan__title']
+
+    sort_fields_aliases = [('organization__full_name', 'organization'),
+                           ('plan__title', 'plan'),
+                           ('created_at', 'created_at'),
+                           ('ends_at', 'ends_at')]
+
+
+class UserSmartListMixin(SearchableListMixin, SortableListMixin):
+    """
+    ``User`` list which is also searchable and sortable.
+    """
+    search_fields = ['first_name',
+                     'last_name',
+                     'email']
+
+    sort_fields_aliases = [('first_name', 'first_name'),
+                           ('last_name', 'last_name'),
+                           ('email', 'email')]
+
+
+class ChurnedQuerysetMixin(OrganizationMixin):
+    """
+    ``QuerySet`` of ``Subscription`` which are no longer active.
+    """
+
+    model = Subscription
+
+    def get_queryset(self):
+        kwargs = {}
+        start_at = self.request.GET.get('start_at', None)
+        if start_at:
+            start_at = datetime_or_now(parse_datetime(start_at))
+            kwargs.update({'ends_at__gte': start_at})
+        ends_at = self.request.GET.get('ends_at', None)
+        if ends_at:
+            ends_at = parse_datetime(ends_at)
+        ends_at = datetime_or_now(ends_at)
+        return Subscription.objects.filter(
+            plan__organization=self.get_organization(),
+            ends_at__lt=ends_at, **kwargs).order_by('-ends_at')
+
+
+class SubscribedQuerysetMixin(OrganizationMixin):
+    """
+    ``QuerySet`` of ``Subscription`` which are currently active.
+    """
+
+    model = Subscription
+
+    def get_queryset(self):
+        kwargs = {}
+        start_at = self.request.GET.get('start_at', None)
+        if start_at:
+            start_at = datetime_or_now(parse_datetime(start_at))
+            kwargs.update({'created_at__lt': start_at})
+        ends_at = self.request.GET.get('ends_at', None)
+        if ends_at:
+            ends_at = parse_datetime(ends_at)
+        ends_at = datetime_or_now(ends_at)
+        return Subscription.objects.filter(
+            plan__organization=self.get_organization(),
+            ends_at__gte=ends_at, **kwargs).order_by('-ends_at')
 
 
 class UserMixin(ContextMixin):

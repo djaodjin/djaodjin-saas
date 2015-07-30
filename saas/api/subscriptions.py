@@ -26,11 +26,10 @@ from rest_framework.generics import (ListAPIView,
     ListCreateAPIView, RetrieveUpdateDestroyAPIView)
 from rest_framework.response import Response
 from rest_framework import serializers
-from extra_views.contrib.mixins import SearchableListMixin, SortableListMixin
 
-from saas.utils import datetime_or_now
 from saas.models import Organization, Subscription
-from saas.mixins import OrganizationMixin, SubscriptionMixin
+from saas.mixins import (ChurnedQuerysetMixin, SubscriptionMixin,
+    SubscriptionSmartListMixin, SubscribedQuerysetMixin)
 from saas.api.serializers import PlanSerializer
 
 #pylint: disable=no-init,old-style-class
@@ -53,12 +52,19 @@ class SubscriptionSerializer(serializers.ModelSerializer):
     class Meta:
         model = Subscription
         fields = ('created_at', 'ends_at', 'description',
-                  'organization', 'plan',)
+                  'organization', 'plan', 'auto_extend')
 
 
-class SubscriptionListAPIView(SubscriptionMixin, ListCreateAPIView):
+class SubscriptionBaseListAPIView(SubscriptionMixin, ListCreateAPIView):
+
+    pass
+
+
+class SubscriptionListAPIView(SubscriptionSmartListMixin,
+                              SubscriptionBaseListAPIView):
 
     serializer_class = SubscriptionSerializer
+    paginate_by = 25
 
 
 class SubscriptionDetailAPIView(SubscriptionMixin,
@@ -73,40 +79,25 @@ class SubscriptionDetailAPIView(SubscriptionMixin,
         return Response(serializer.data) #pylint: disable=no-member
 
 
-class ActiveSubscriptionBaseAPIView(OrganizationMixin, ListAPIView):
+class ActiveSubscriptionBaseAPIView(SubscribedQuerysetMixin, ListAPIView):
 
-    model = Subscription
-
-    def get_queryset(self):
-        self.organization = self.get_organization()
-        return Subscription.objects.filter(
-            ends_at__gte=datetime_or_now(),
-            plan__organization=self.organization).distinct()
+    pass
 
 
-class SmartListMixin(SearchableListMixin, SortableListMixin):
-    """
-    Subscriber list which is also searchable and sortable.
-    """
-    search_fields = ['organization__slug',
-                     'organization__full_name',
-                     'organization__email',
-                     'organization__phone',
-                     'organization__street_address',
-                     'organization__locality',
-                     'organization__region',
-                     'organization__postal_code',
-                     'organization__country',
-                     'plan__title']
-
-    sort_fields_aliases = [('organization__full_name', 'organization'),
-                           ('plan__title', 'plan'),
-                           ('created_at', 'created_at'),
-                           ('ends_at', 'ends_at')]
-
-
-class ActiveSubscriptionAPIView(SmartListMixin, ActiveSubscriptionBaseAPIView):
+class ActiveSubscriptionAPIView(SubscriptionSmartListMixin,
+                                ActiveSubscriptionBaseAPIView):
 
     serializer_class = SubscriptionSerializer
     paginate_by = 25
 
+
+class ChurnedSubscriptionBaseAPIView(ChurnedQuerysetMixin, ListAPIView):
+
+    pass
+
+
+class ChurnedSubscriptionAPIView(SubscriptionSmartListMixin,
+                                 ChurnedSubscriptionBaseAPIView):
+
+    serializer_class = SubscriptionSerializer
+    paginate_by = 25

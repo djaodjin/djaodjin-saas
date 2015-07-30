@@ -27,7 +27,6 @@ from django.core.urlresolvers import reverse_lazy
 from django.views.generic import TemplateView
 from urldecorators import patterns, include, url
 
-from saas.settings import ACCT_REGEX
 from saas.views import OrganizationRedirectView
 from saas.views.plans import CartPlanListView
 from testsite.views.organization import OrganizationListView, UserProfileView
@@ -65,8 +64,9 @@ urlpatterns = patterns('',
     url(r'^api/', include('saas.urls.api.subscriber'),
         decorators=['saas.decorators.requires_provider']),
     url(r'^pricing/', CartPlanListView.as_view(), name='saas_cart_plan_list'),
-    url(r'^provider/(?P<organization>%s)/' % ACCT_REGEX,
-        include('saas.urls.provider'),
+    url(r'^provider/', include('saas.urls.provider'),
+        decorators=['saas.decorators.requires_direct']),
+    url(r'^', include('saas.urls.broker'),
         decorators=['saas.decorators.requires_direct']),
     url(r'^', include('saas.urls.subscriber'),
         decorators=['saas.decorators.requires_direct']),

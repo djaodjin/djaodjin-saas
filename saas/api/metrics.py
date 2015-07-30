@@ -25,15 +25,15 @@
 from django.db.models import Q
 from django.utils.dateparse import parse_datetime
 from rest_framework.views import APIView
-from rest_framework.generics import GenericAPIView
+from rest_framework.generics import GenericAPIView, ListAPIView
 from rest_framework.response import Response
 
-from saas import settings
-from saas.mixins import OrganizationMixin, ProviderMixin
+from saas.compat import User
+from saas.mixins import OrganizationMixin, UserSmartListMixin
 from saas.models import Transaction, Organization, Plan
 from saas.utils import datetime_or_now
 from saas.managers.metrics import monthly_balances
-from saas.api.serializers import OrganizationSerializer
+from saas.api.serializers import OrganizationSerializer, UserSerializer
 from saas.managers.metrics import (
     aggregate_monthly, aggregate_monthly_transactions,
     active_subscribers, churn_subscribers)
@@ -173,48 +173,39 @@ class OrganizationListAPIView(OrganizationMixin, GenericAPIView):
             })
 
 
-class ChurnedQuerysetMixin(object):
+class RegisteredQuerysetMixin(OrganizationMixin):
+    """
+    All ``User`` that have registered, and who are not associated
+    to an ``Organization``, or whose ``Organization`` they are associated
+    with has no ``Subscription``.
+    """
 
-    def get_range_queryset(self, start_time, end_time):
-        return Organization.objects.filter(
-            subscription__plan__organization=self.provider,
-            subscription__ends_at__gte=start_time,
-            subscription__ends_at__lt=end_time).order_by(
-                '-subscription__ends_at', 'full_name').distinct()
+    model = User
 
-
-class ChurnedAPIView(ChurnedQuerysetMixin, OrganizationListAPIView):
-
-    queryset_name = 'churned'
-
-
-class RegisteredQuerysetMixin(ProviderMixin):
-
-    def get_range_queryset(self, start_time, end_time):
-        #pylint: disable=unused-argument
-        return Organization.objects.filter(
-            Q(subscription__isnull=True) |
-            Q(subscription__created_at__gte=end_time), created_at__lt=end_time
-            ).exclude(pk__in=[self.provider.pk, settings.PROCESSOR_ID]
-            ).order_by('-created_at', 'full_name').distinct()
-
-
-class RegisteredAPIView(RegisteredQuerysetMixin, OrganizationListAPIView):
-
-    queryset_name = 'registered'
+    def get_queryset(self):
+        kwargs = {}
+        start_at = self.request.GET.get('start_at', None)
+        if start_at:
+            start_at = datetime_or_now(parse_datetime(start_at))
+            kwargs.update({'created_at__lt': start_at})
+        ends_at = self.request.GET.get('ends_at', None)
+        if ends_at:
+            ends_at = parse_datetime(ends_at)
+        ends_at = datetime_or_now(ends_at)
+        return User.objects.filter(
+            Q(manages__subscription__isnull=True) |
+            Q(manages__subscription__created_at__gte=ends_at) |
+            Q(contributes__subscription__isnull=True) |
+            Q(contributes__subscription__created_at__gte=ends_at)).order_by(
+                '-date_joined', 'last_name').distinct()
 
 
-class SubscribedQuerysetMixin(object):
+class RegisteredBaseAPIView(RegisteredQuerysetMixin, ListAPIView):
 
-    def get_range_queryset(self, start_time, end_time):
-        #pylint: disable=unused-argument
-        return Organization.objects.filter(
-            subscription__plan__organization=self.provider,
-            subscription__created_at__lt=end_time,
-            subscription__ends_at__gte=end_time).order_by(
-            'subscription__ends_at', 'full_name').distinct()
+    pass
 
 
-class SubscribedAPIView(SubscribedQuerysetMixin, OrganizationListAPIView):
+class RegisteredAPIView(UserSmartListMixin, RegisteredBaseAPIView):
 
-    queryset_name = 'subscribed'
+    serializer_class = UserSerializer
+    paginate_by = 25

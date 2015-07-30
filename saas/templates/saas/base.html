@@ -18,14 +18,13 @@
       | <a id="saas_metrics_summary" href="{% url 'saas_metrics_summary' organization %}">revenue</a>
       | <a id="saas_metrics_plans" href="{% url 'saas_metrics_plans' organization %}">plans</a>
       | <a id="saas_subscriber_list" href="{% url 'saas_subscriber_list' organization %}">subscribers</a></li>
-      | <a id="saas_subscriber_pipeline" href="{% url 'saas_subscriber_pipeline' organization %}">retention</a>
     </div>
     {% endif %}
     {% comment %}
     Subscriptions for the organization
     {% endcomment %}
     <div>
-      <a id="saas_organization_dashboard" href="{% url 'saas_organization_dashboard' organization %}">Dashboard</a>
+      <a id="saas_dashboard" href="{% url 'saas_dashboard' organization %}">Dashboard</a>
       | <a id="saas_organization_profile" href="{% url 'saas_organization_profile' organization %}">profile</a>
       | <a id="saas_billing_info" href="{% url 'saas_billing_info' organization %}">billing</a>
       | <a id="saas_subscription_list" href="{% url 'saas_subscription_list' organization %}">subscriptions</a>
@@ -39,6 +38,7 @@
 {% endblock %}
 
 {% block bodyscripts %}
+<script type="text/javascript" charset="utf-8" src="{% static 'vendor/js/moment.js' %}"></script>
 <script type="text/javascript" charset="utf-8" src="{% static 'vendor/js/angular.js' %}"></script>
 <script type="text/javascript" charset="utf-8" src="{% static 'vendor/js/angular-touch.js' %}"></script>
 <script type="text/javascript" charset="utf-8" src="{% static 'vendor/js/angular-animate.js' %}"></script>

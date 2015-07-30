@@ -31,8 +31,8 @@ from django.conf.urls import patterns, url
 from saas.settings import ACCT_REGEX
 from saas.views import ProviderRedirectView
 from saas.views.metrics import (BalancesDownloadView,
-    CouponMetricsDownloadView, SubscriberPipelineSubscribedDownloadView,
-    SubscriberPipelineChurnedDownloadView)
+    CouponMetricsDownloadView, ActiveSubscriptionDownloadView,
+    ChurnedSubscriptionDownloadView)
 from saas.views.billing import TransferDownloadView
 
 
@@ -58,10 +58,10 @@ urlpatterns = patterns(
         name='saas_provider_transfers_download'),
 
     url(r'^download/(?P<organization>%s)/subscribers/active/?' % ACCT_REGEX,
-        SubscriberPipelineSubscribedDownloadView.as_view(),
+        ActiveSubscriptionDownloadView.as_view(),
         name='saas_subscriber_pipeline_download_subscribed'),
     url(r'download/(?P<organization>%s)/subscribers/churned/?' % ACCT_REGEX,
-        SubscriberPipelineChurnedDownloadView.as_view(),
+        ChurnedSubscriptionDownloadView.as_view(),
         name='saas_subscriber_pipeline_download_churned'),
     url(r'^download/(?P<organization>%s)/coupons/' % ACCT_REGEX,
         CouponMetricsDownloadView.as_view(),

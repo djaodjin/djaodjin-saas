@@ -34,6 +34,8 @@ from saas.api.subscriptions import (SubscriptionDetailAPIView,
     SubscriptionListAPIView)
 from saas.api.users import (ContributorListAPIView, ContributorDetailAPIView,
     ManagerListAPIView, ManagerDetailAPIView)
+from saas.views import OrganizationRedirectView
+
 
 urlpatterns = patterns('saas.api',
     url(r'^(?P<organization>%s)/contributors/(?P<user>%s)/?'
@@ -55,4 +57,7 @@ urlpatterns = patterns('saas.api',
         name='saas_api_subscription_list'),
     url(r'^(?P<organization>%s)/?$' % ACCT_REGEX,
         OrganizationDetailAPIView.as_view(), name='saas_api_organization'),
+    url(r'^$',
+        OrganizationRedirectView.as_view(pattern_name='saas_api_organization'),
+        name='saas_api_profile'),
 )

@@ -28,11 +28,11 @@ Urls specific to the hosting site (i.e. broker).
 
 from django.conf.urls import patterns, url
 
-from saas.views.metrics import SubscriberPipelineRegisteredDownloadView
+from saas.views.metrics import RegisteredDownloadView
 
 urlpatterns = patterns(
     'saas.views.downloads',
     url(r'^download/registered/?',
-        SubscriberPipelineRegisteredDownloadView.as_view(),
+        RegisteredDownloadView.as_view(),
         name='saas_subscriber_pipeline_download_registered'),
 )

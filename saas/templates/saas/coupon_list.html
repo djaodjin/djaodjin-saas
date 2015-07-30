@@ -5,10 +5,8 @@
 <div ng-app="couponApp">
     <h1>Coupons</h1>
     <div ng-controller="CouponListCtrl">
-        
-    
-    <h1 ng-hide="coupons.$resolved" class="text-center">Please wait...</h1>
-    <h2 ng-show="coupons.$resolved && coupons.results.length == 0" class="text-center"><em>No Coupons yet</em></h2>
+    <h1 ng-hide="coupons.$resolved">Please wait...</h1>
+    <h2 ng-show="coupons.$resolved && coupons.results.length == 0">No Coupons yet</h2>
         <table ng-show="coupons.$resolved && coupons.results.length > 0">
             <thead>
                 <tr>
@@ -61,7 +59,7 @@ app.config(['$interpolateProvider', '$httpProvider',
     $interpolateProvider.endSymbol(']]');
 }]);
 app.constant('urls', {
-    saas_api_coupon_url: "{% url 'saas_api_coupon_list' %}",
+    saas_api_coupon_url: "{% url 'saas_api_coupon_list' organization %}",
     saas_metrics_coupons_url: "{% url 'saas_metrics_coupons' organization %}",
 });
 </script>
