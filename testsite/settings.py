@@ -39,6 +39,7 @@ def load_config(confpath):
 load_config(os.path.join(BASE_DIR, 'credentials'))
 
 DEBUG = True
+FEATURES_DEBUG = True
 TEMPLATE_DEBUG = DEBUG
 
 DATABASES = {

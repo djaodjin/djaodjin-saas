@@ -22,32 +22,19 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from django.core import validators
 from django.http import Http404
 from django.utils.encoding import force_text
-from django.utils.translation import ugettext_lazy as _
-from rest_framework import serializers, status
+from rest_framework import status
 from rest_framework.generics import (DestroyAPIView, ListCreateAPIView)
 from rest_framework.response import Response
 
 from saas import get_contributor_relation_model, get_manager_relation_model
 from saas.compat import User
 from saas.mixins import OrganizationMixin, RelationMixin
+from saas.api.serializers import UserSerializer
 
 #pylint: disable=no-init
 #pylint: disable=old-style-class
-
-class UserSerializer(serializers.ModelSerializer):
-
-    # Only way I found out to remove the ``UniqueValidator``. We are not
-    # interested to create new instances here.
-    username = serializers.CharField(validators=[
-        validators.RegexValidator(r'^[\w.@+-]+$', _('Enter a valid username.'),
-            'invalid')])
-
-    class Meta:
-        model = User
-        fields = ('username', 'email', 'first_name', 'last_name')
 
 
 class RelationListAPIView(OrganizationMixin, ListCreateAPIView):

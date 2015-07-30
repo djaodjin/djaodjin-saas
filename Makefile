@@ -14,10 +14,11 @@ install::
 		build -b $(CURDIR)/build install
 
 initdb:
-	-rm -f saas_testsite.sqlite
+	-rm -f $(srcDir)/saas_testsite.sqlite
 	cd $(srcDir) && $(PYTHON) ./manage.py syncdb --noinput
 	cd $(srcDir) && $(PYTHON) ./manage.py loaddata \
 						testsite/fixtures/test_data.json
+	cd $(srcDir) && $(PYTHON) ./manage.py load_test_transactions
 
 doc:
 	$(installDirs) docs

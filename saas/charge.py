@@ -107,7 +107,7 @@ def extend_subscriptions(at_time=None):
     Extend active subscriptions
     """
     for subscription in Subscription.objects.filter(
-            created_at__lte=at_time, ends_at__gt=at_time):
+            auto_extend=True, created_at__lte=at_time, ends_at__gt=at_time):
         _, upper = subscription.period_for(at_time)
         if upper == subscription.ends_at:
             # We are in the last period

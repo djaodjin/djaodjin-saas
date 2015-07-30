@@ -1588,6 +1588,10 @@ class Subscription(models.Model):
     two ``Organization``, a subscriber and a provider, that is paid
     by the subscriber to the provider over the lifetime of the subscription.
 
+    When ``auto_extend`` is True, ``extend_subscriptions`` (usually called
+    from a cron job) will invoice the organization for an additional period
+    once the date reaches currenct end of subscription.
+
     Implementation Note:
     Even through (organization, plan) should be unique at any point in time,
     it is a little much to implement with PostgreSQL that for each
@@ -1596,6 +1600,7 @@ class Subscription(models.Model):
     """
     objects = SubscriptionManager()
 
+    auto_extend = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     ends_at = models.DateTimeField()
     description = models.TextField(null=True, blank=True)
@@ -1701,6 +1706,7 @@ class Subscription(models.Model):
 
     def unsubscribe_now(self):
         self.ends_at = datetime_or_now()
+        self.auto_extend = False
         self.save()
 
 

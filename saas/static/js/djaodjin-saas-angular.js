@@ -38,9 +38,7 @@ angular.module('couponApp', ['ui.bootstrap', 'ngRoute',
 angular.module('userRelationApp', ['ui.bootstrap', 'ngRoute',
     'userRelationControllers', 'userRelationServices']);
 angular.module('subscriptionApp', ['ui.bootstrap', 'ngRoute',
-    'subscriptionControllers', 'subscriptionServices']);
-angular.module('subscriberApp', ['ui.bootstrap', 'ngRoute',
-    'subscriberControllers']);
+    'subscriptionControllers']);
 angular.module('transactionApp', ['ui.bootstrap', 'ngRoute',
     'transactionControllers', 'transactionServices']);
 angular.module('metricApp', ['ui.bootstrap', 'ngRoute', 'metricControllers']);
@@ -53,8 +51,6 @@ angular.module('metricsApp', ['ui.bootstrap', 'ngRoute', 'metricsControllers', '
 
 var couponServices = angular.module('couponServices', ['ngResource']);
 var userRelationServices = angular.module('userRelationServices', ['ngResource']);
-var subscriptionServices = angular.module('subscriptionServices', [
-    'ngResource']);
 var transactionServices = angular.module('transactionServices', ['ngResource']);
 
 
@@ -76,14 +72,6 @@ userRelationServices.factory('UserRelation', ['$resource', 'urls',
         {force: {method:'POST', params: {force:true}}});
   }]);
 
-subscriptionServices.factory('Subscription', ['$resource', 'urls',
-  function($resource, urls){
-    "use strict";
-    return $resource(
-        urls.saas_api_subscription_url + '/:plan', {plan:'@plan'},
-            {query: {method:'GET'}});
-  }]);
-
 transactionServices.factory('Transaction', ['$resource', 'urls',
   function($resource, urls){
     "use strict";
@@ -99,7 +87,6 @@ transactionServices.factory('Transaction', ['$resource', 'urls',
 var couponControllers = angular.module('couponControllers', []);
 var userRelationControllers = angular.module('userRelationControllers', []);
 var subscriptionControllers = angular.module('subscriptionControllers', []);
-var subscriberControllers = angular.module('subscriberControllers', []);
 var transactionControllers = angular.module('transactionControllers', []);
 var metricControllers = angular.module('metricControllers', []);
 var metricsControllers = angular.module('metricsControllers', []);
@@ -312,21 +299,13 @@ userRelationControllers.controller('userRelationListCtrl',
 
 
 subscriptionControllers.controller('subscriptionListCtrl',
-    ['$scope', '$http', '$timeout', 'Subscription', 'urls',
-    function($scope, $http, $timeout, Subscription, urls) {
+    ['$scope', '$http', '$timeout', 'urls',
+    function($scope, $http, $timeout, urls) {
     "use strict";
     var defaultSortByField = 'created_at';
     $scope.dir = {};
-    $scope.totalItems = 0;
     $scope.dir[defaultSortByField] = 'desc';
     $scope.params = {o: defaultSortByField, ot: $scope.dir[defaultSortByField]};
-    $scope.subscriptions = Subscription.query($scope.params, function() {
-        /* We cannot watch subscriptions.count otherwise things start
-           to snowball. We must update totalItems only when it truly changed.*/
-        if( $scope.subscriptions.count != $scope.totalItems ) {
-            $scope.totalItems = $scope.subscriptions.count;
-        }
-    });
 
     $scope.filterExpr = '';
     $scope.itemsPerPage = 25; // Must match on the server-side.
@@ -343,6 +322,45 @@ subscriptionControllers.controller('subscriptionListCtrl',
     $scope.maxDate = new Date('2016-01-01');
     $scope.formats = ['dd-MMMM-yyyy', 'yyyy/MM/dd', 'dd.MM.yyyy', 'shortDate'];
     $scope.format = $scope.formats[0];
+    $scope.ends_at = moment().endOf('day').toDate();
+
+    $scope.registered = {
+        $resolved: false, location: urls.saas_api_registered, count: 0};
+    $scope.subscribed = {
+        $resolved: false, location: urls.saas_api_subscriptions, count: 0};
+    $scope.churned = {
+        $resolved: false, location: urls.saas_api_churned, count: 0};
+
+    $scope.active = $scope.subscribed;
+
+    /** Returns ends-soon when the subscription is about to end. */
+    $scope.endsSoon = function(subscription) {
+        var cutOff = new Date($scope.ends_at);
+        cutOff.setDate($scope.ends_at.getDate() + 5);
+        var subEndsAt = new Date(subscription.ends_at);
+        if( subEndsAt < cutOff ) {
+            return "ends-soon";
+        }
+        return "";
+    };
+
+    $scope.query = function(queryset) {
+        queryset.$resolved = false;
+        queryset.results = []
+        $http.get(queryset.location,
+            {params: $scope.params}).success(function(data) {
+                queryset.results = data.results;
+                queryset.count = data.count;
+                /* We cannot watch active.count otherwise things start
+                   to snowball. We must update totalItems only when it truly
+                   changed.
+                if( queryset.count != $scope.totalItems ) {
+                    $scope.totalItems = queryset.count;
+                }
+                */
+                queryset.$resolved = true;
+        });
+    };
 
     $scope.editDescription = function (event, entry) {
         var input = angular.element(event.target).parent().find('input');
@@ -355,7 +373,7 @@ subscriptionControllers.controller('subscriptionListCtrl',
     $scope.saveDescription = function(event, entry){
         if (event.which === 13 || event.type == 'blur' ){
             delete entry.editDescription;
-            $http.patch(urls.saas_api + entry.organization.slug +
+            $http.patch(urls.saas_api_profile + entry.organization.slug +
                 "/subscriptions/" + entry.plan.slug,
                 {description: entry.description}).then(
                 function(data){
@@ -370,24 +388,33 @@ subscriptionControllers.controller('subscriptionListCtrl',
         } else {
             delete $scope.params.q;
         }
-        $scope.subscriptions = Subscription.query($scope.params, function() {
-            if( $scope.subscriptions.count != $scope.totalItems ) {
-                $scope.totalItems = $scope.subscriptions.count;
-            }
-        });
+        $scope.query($scope.active);
     };
 
-    $scope.pageChanged = function() {
+    $scope.pageChanged = function(queryset) {
         if( $scope.currentPage > 1 ) {
             $scope.params.page = $scope.currentPage;
         } else {
             delete $scope.params.page;
         }
-        $scope.subscriptions = Subscription.query($scope.params, function () {
-            if( $scope.subscriptions.count != $scope.totalItems ) {
-                $scope.totalItems = $scope.subscriptions.count;
-            }
-        });
+        $scope.query(queryset);
+    };
+
+    $scope.prefetch = function() {
+      $scope.query($scope.registered);
+      $scope.query($scope.churned);
+    };
+
+    /** Generate a relative date for an instance with a ``created_at`` field.
+     */
+    $scope.relativeDate = function(at_time) {
+        var cutOff = new Date($scope.ends_at);
+        var dateTime = new Date(at_time);
+        if( dateTime <= cutOff ) {
+            return moment.duration(cutOff - dateTime).humanize() + ' ago';
+        } else {
+            return moment.duration(dateTime - cutOff).humanize() + ' left';
+        }
     };
 
     $scope.sortBy = function(fieldName) {
@@ -403,170 +430,44 @@ subscriptionControllers.controller('subscriptionListCtrl',
         $scope.currentPage = 1;
         // pageChanged only called on click?
         delete $scope.paramspage;
-        $scope.subscriptions = Subscription.query($scope.params, function () {
-            if( $scope.subscriptions.count != $scope.totalItems ) {
-                $scope.totalItems = $scope.subscriptions.count;
+        $scope.query($scope.active);
+    };
+
+    /** Change the active tab.
+
+        XXX We need this method because filters are "global" accross all tabs.
+     */
+    $scope.tabClicked = function($event) {
+        var newActiveTab = $event.target.getAttribute("href").replace(/^#/, "");
+        if( newActiveTab === "registered-users" ) {
+            if( !$scope.registered.hasOwnProperty('results') ) {
+                $scope.query($scope.registered);
             }
-        });
+            $scope.active = $scope.registered;
+        } else if( newActiveTab === "active-subscriptions" ) {
+            if( !$scope.subscribed.hasOwnProperty('results') ) {
+                $scope.query($scope.subscribed);
+            }
+            $scope.active = $scope.subscribed;
+        } else if( newActiveTab === "churned-subscriptions" ) {
+            if( !$scope.churned.hasOwnProperty('results') ) {
+                $scope.query($scope.churned);
+            }
+            $scope.active = $scope.churned;
+        }
     };
 
     $scope.unsubscribe = function(organization, plan) {
         if( confirm("Are you sure?") ) {
-            $http.delete(
-                urls.saas_api + organization + "/subscriptions/" + plan).then(
+            $http.delete(urls.saas_api_profile
+                + organization + "/subscriptions/" + plan).then(
             function() {
-                $scope.subscriptions = Subscription.query($scope.params,
-            function() {
-                if( $scope.subscriptions.count != $scope.totalItems ) {
-                    $scope.totalItems = $scope.subscriptions.count;
-                }
-            });
-            });
-        }
-    };
-}]);
-
-
-subscriberControllers.controller('subscriberCtrl',
-    ['$scope', '$http', 'urls',
-    function($scope, $http, urls) {
-    "use strict";
-    $scope.opened = { 'start_at': false, 'ends_at': false };
-    $scope.start_at = new Date();
-    $scope.ends_at = new Date();
-    $scope.registered_loading = false;
-    $scope.subscribed_loading = false;
-    $scope.churned_loading = false;
-
-    $scope.minDate = new Date('2014-01-01');
-    $scope.maxDate = new Date('2016-01-01');
-    $scope.dateOptions = {formatYear: 'yy', startingDay: 1};
-    $scope.formats = ['dd-MMMM-yyyy', 'yyyy/MM/dd', 'dd.MM.yyyy', 'shortDate'];
-    $scope.format = $scope.formats[0];
-
-    // initialized with *maxSize* empty items for layout during first load.
-    $scope.registered = [{}, {}, {}, {}, {}, {}, {}, {}, {}, {}];
-    $scope.subscribed = [{}, {}, {}, {}, {}, {}, {}, {}, {}, {}];
-    $scope.churned = [{}, {}, {}, {}, {}, {}, {}, {}, {}, {}];
-
-    $scope.maxSize = 5;  // Total number of pages to display
-    $scope.itemsPerPage = 25; // Must match on the server-side.
-    $scope.currentPage = {churned: 1, registered: 1, subscribed: 1};
-
-    // calendar for start_at and ends_at
-    $scope.open = function($event, date_at) {
-        $event.preventDefault();
-        $event.stopPropagation();
-        $scope.opened[date_at] = true;
-    };
-
-    // XXX start_at and ends_at will be both updated on reload
-    //     which will lead to two calls to the backend instead of one.
-    $scope.$watch('start_at', function(newVal, oldVal, scope) {
-        if( $scope.ends_at < newVal ) {
-            $scope.ends_at = newVal;
-        }
-        $scope.refresh();
-    }, true);
-
-    $scope.$watch('ends_at', function(newVal, oldVal, scope) {
-        if( $scope.start_at > newVal ) {
-            $scope.start_at = newVal;
-        }
-        $scope.refresh();
-    }, true);
-
-    $scope.pageChanged = function(dataset) {
-        $scope.refresh(dataset);
-    };
-
-    $scope.refresh = function(dataset) {
-        $scope.registered_loading = true;
-        $scope.subscribed_loading = true;
-        $scope.churned_loading = true;
-        if( typeof dataset === "undefined" || dataset == 'churned' ) {
-            var params = {start_at: $scope.start_at, ends_at: $scope.ends_at};
-            if( $scope.currentPage.churned > 1 ) {
-                params.page = $scope.currentPage.churned;
-            }
-            $http.get(urls.saas_api_churned, {
-                params: params
-            }).success(function(data) {
-                $scope.churned_loading = false;
-                $scope.churned = data;
-                for( var i = $scope.churned.churned.length;
-                     i < $scope.itemsPerPage; ++i ) {
-                    $scope.churned.churned.push({});
-                }
-            });
-        }
-        if( typeof dataset === "undefined" || dataset == 'registered' ) {
-            params = {start_at: $scope.start_at, ends_at: $scope.ends_at};
-            if( $scope.currentPage.registered > 1 ) {
-                params.page = $scope.currentPage.registered;
-            }
-            $http.get(urls.saas_api_registered, {
-                params: params
-            }).success(function(data) {
-                $scope.registered_loading = false;
-                $scope.registered = data;
-                for( var i = $scope.registered.registered.length;
-                     i < $scope.itemsPerPage; ++i ) {
-                    $scope.registered.registered.push({});
-                }
-            });
-        }
-        if( typeof dataset === "undefined" || dataset == 'subscribed' ) {
-            params = {start_at: $scope.start_at, ends_at: $scope.ends_at};
-            if( $scope.currentPage.subscribed > 1 ) {
-                params.page = $scope.currentPage.subscribed;
-            }
-            $http.get(urls.saas_api_subscribed, {
-                params: params
-            }).success(function(data) {
-                $scope.subscribed_loading = false;
-                $scope.subscribed = data;
-                for( var i = $scope.subscribed.subscribed.length;
-                     i < $scope.itemsPerPage; ++i ) {
-                    $scope.subscribed.subscribed.push({});
-                }
+                $scope.query($scope.active);
             });
         }
     };
 
-    $scope.endsSoon = function(organization) {
-        var cutOff = new Date($scope.ends_at);
-        cutOff.setDate($scope.ends_at.getDate() + 5);
-        for( var i = 0; i < organization.subscriptions.length; ++i ) {
-            var sub = organization.subscriptions[i];
-            var subEndsAt = new Date(sub.ends_at);
-            if( subEndsAt < cutOff ) {
-                return "ends-soon";
-            }
-        }
-        return "";
-    };
-
-    $scope.relativeDate = function(organization, future) {
-        var cutOff = new Date($scope.ends_at);
-        var dateTime = new Date(organization.created_at);
-        for( var i = 0; i < organization.subscriptions.length; ++i ) {
-            var sub = organization.subscriptions[i];
-            var subEndsAt = new Date(sub.ends_at);
-            if( future ) {
-                if( dateTime < cutOff ||
-                    (subEndsAt > cutOff && subEndsAt < dateTime) ) {
-                    dateTime = subEndsAt;
-                }
-            }
-        }
-        if( dateTime <= cutOff ) {
-            return moment.duration(cutOff - dateTime).humanize() + ' ago';
-        } else {
-            return 'for ' + moment.duration(dateTime - cutOff).humanize();
-        }
-    };
-
+    $scope.query($scope.subscribed);
 }]);
 
 
@@ -735,9 +636,15 @@ metricsControllers.controller('metricsCtrl',
         return null;
     }
 
-    $scope.refreshTable = function() {
+    $scope.prefetch = function() {
+        for( var i = 0; i < $scope.tables.length; ++i ) {
+            $scope.query($scope.tables[i]);
+        }
+    };
+
+    $scope.query = function(queryset) {
         $http.get(
-            $scope.getTable($scope.activeTab).location,
+            queryset.location,
             {params: {"ends_at": $scope.ends_at}}
         ).success(
             function(data) {
@@ -750,13 +657,12 @@ metricsControllers.controller('metricsCtrl',
                 // add "extra" rows at the end
                 var extra = data.extra || [];
 
-                var table = $scope.getTable($scope.activeTab);
-                table.unit = unit;
-                table.scale = scale;
-                table.data = data.table;
+                queryset.unit = unit;
+                queryset.scale = scale;
+                queryset.data = data.table;
 
                 // manual binding - trigger updates to the graph
-                if( table.key == "balances") {
+                if( queryset.key == "balances") {
                     // XXX Hard-coded.
                     updateBarChart("#metrics-table svg",
                         data.table, unit, scale, extra);
@@ -767,7 +673,10 @@ metricsControllers.controller('metricsCtrl',
             }
         );
     };
-    $scope.refreshTable();
+
+    $scope.refreshTable = function() {
+        $scope.query($scope.getTable($scope.activeTab));
+    };
 
     // change the selected tab
     $scope.tabClicked = function($event) {
@@ -788,4 +697,7 @@ metricsControllers.controller('metricsCtrl',
             $scope.refreshTable();
         }
     }, true);
+
+    $scope.refreshTable();
+
 }]);

@@ -27,16 +27,16 @@ from datetime import datetime, date, timedelta
 
 from django.core.urlresolvers import reverse
 from django.db.models import Min, Sum, Max
-from django.utils.dateparse import parse_datetime
 from django.utils.timezone import utc
 from django.views.generic import ListView, TemplateView
 
 from saas.api.coupons import SmartCouponListMixin
 # NB: there is another CouponMixin
 from saas.api.coupons import CouponMixin as CouponAPIMixin
-from saas.api.metrics import (RegisteredQuerysetMixin, SubscribedQuerysetMixin,
-    ChurnedQuerysetMixin)
-from saas.mixins import CouponMixin, OrganizationMixin, MetricsMixin
+from saas.api.metrics import RegisteredQuerysetMixin
+from saas.mixins import (CouponMixin, OrganizationMixin, MetricsMixin,
+    ChurnedQuerysetMixin, SubscriptionSmartListMixin, SubscribedQuerysetMixin,
+    UserSmartListMixin)
 from saas.views.download import CSVDownloadView
 from saas.managers.metrics import monthly_balances, month_periods
 from saas.models import (CartItem, Plan, Transaction,
@@ -180,63 +180,74 @@ class BalancesDownloadView(MetricsMixin, CSVDownloadView):
         return [account] + [item[1] for item in monthly_balances(
             self.organization, account, self.ends_at.date())]
 
-class SubscriberPipelineView(OrganizationMixin, TemplateView):
 
-    template_name = "saas/subscriber_pipeline.html"
-
-
-class AbstractSubscriberPipelineDownloadView(OrganizationMixin,
-                                             CSVDownloadView):
-
-    subscriber_type = None
-
-    def get(self, request, *args, **kwargs):
-        self.provider = self.get_organization()
-        self.start_date = datetime_or_now(
-            parse_datetime(request.GET.get('start_date', None).strip('"')))
-        self.end_date = datetime_or_now(
-            parse_datetime(request.GET.get('end_date', None).strip('"')))
-
-        return super(AbstractSubscriberPipelineDownloadView, self).get(
-            request, *args, **kwargs)
-
-    def get_range_queryset(self, start_date, end_date):
-        raise NotImplementedError()
-
-    def get_queryset(self):
-        return self.get_range_queryset(self.start_date, self.end_date)
+class RegisteredBaseDownloadView(RegisteredQuerysetMixin, CSVDownloadView):
 
     def get_headings(self):
-        return ['Name', 'Email', 'Registration Date']
+        return ['First name', 'Last name', 'Email', 'Registration Date']
 
     def get_filename(self):
-        return 'subscribers-{}-{}.csv'.format(
-            self.subscriber_type, datetime.now().strftime('%Y%m%d'))
+        return 'registered-{}.csv'.format(datetime_or_now().strftime('%Y%m%d'))
 
-    def queryrow_to_columns(self, org):
+    def queryrow_to_columns(self, instance):
         return [
-            org.full_name.encode('utf-8'),
-            org.email.encode('utf-8'),
-            org.created_at.date(),
+            instance.first_name.encode('utf-8'),
+            instance.last_name.encode('utf-8'),
+            instance.email.encode('utf-8'),
+            instance.date_joined.date(),
         ]
 
 
-class SubscriberPipelineRegisteredDownloadView(
-        RegisteredQuerysetMixin, AbstractSubscriberPipelineDownloadView):
+class RegisteredDownloadView(UserSmartListMixin, RegisteredBaseDownloadView):
 
-    subscriber_type = 'registered'
-
-
-class SubscriberPipelineSubscribedDownloadView(
-        SubscribedQuerysetMixin, AbstractSubscriberPipelineDownloadView):
-
-    subscriber_type = 'subscribed'
+    pass
 
 
-class SubscriberPipelineChurnedDownloadView(
-        ChurnedQuerysetMixin, AbstractSubscriberPipelineDownloadView):
+class SubscriptionBaseDownloadView(CSVDownloadView):
+
+    subscriber_type = None
+
+    def get_queryset(self):
+        raise NotImplementedError()
+
+    def get_headings(self):
+        return ['Name', 'Email', 'Plan', 'Since', 'Until']
+
+    def get_filename(self):
+        return 'subscribers-{}-{}.csv'.format(
+            self.subscriber_type, datetime_or_now().strftime('%Y%m%d'))
+
+    def queryrow_to_columns(self, instance):
+        return [
+            instance.organization.full_name.encode('utf-8'),
+            instance.organization.email.encode('utf-8'),
+            instance.plan.title.encode('utf-8'),
+            instance.created_at.date(),
+            instance.ends_at.date(),
+        ]
+
+
+class ActiveSubscriptionBaseDownloadView(SubscribedQuerysetMixin,
+                                         SubscriptionBaseDownloadView):
+
+    subscriber_type = 'active'
+
+class ActiveSubscriptionDownloadView(SubscriptionSmartListMixin,
+                                     ActiveSubscriptionBaseDownloadView):
+
+    pass
+
+
+class ChurnedSubscriptionBaseDownloadView(ChurnedQuerysetMixin,
+                                         SubscriptionBaseDownloadView):
 
     subscriber_type = 'churned'
+
+
+class ChurnedSubscriptionDownloadView(SubscriptionSmartListMixin,
+                                      ChurnedSubscriptionBaseDownloadView):
+
+    pass
 
 
 class UsageMetricsView(OrganizationMixin, TemplateView):

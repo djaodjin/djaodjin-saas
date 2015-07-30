@@ -30,16 +30,13 @@ from saas.settings import ACCT_REGEX
 from saas.views import ProviderRedirectView
 from saas.views.profile import DashboardView
 from saas.views.metrics import (CouponMetricsView, PlansMetricsView,
-    RevenueMetricsView, SubscriberPipelineView)
+    RevenueMetricsView)
 
 urlpatterns = patterns(
     'saas.views.metrics',
     url(r'^metrics/dashboard/',
         ProviderRedirectView.as_view(pattern_name='saas_dashboard'),
         name='saas_provider_dashboard'),
-    url(r'^metrics/pipeline/',
-        ProviderRedirectView.as_view(pattern_name='saas_subscriber_pipeline'),
-        name='saas_provider_subscriber_pipeline'),
     url(r'^metrics/plans/',
         ProviderRedirectView.as_view(pattern_name='saas_metrics_plans'),
         name='saas_provider_metrics_plans'),
@@ -49,8 +46,6 @@ urlpatterns = patterns(
 
     url(r'^metrics/(?P<organization>%s)/dashboard/' % ACCT_REGEX,
         DashboardView.as_view(), name='saas_dashboard'),
-    url(r'^metrics/(?P<organization>%s)/pipeline/' % ACCT_REGEX,
-        SubscriberPipelineView.as_view(), name='saas_subscriber_pipeline'),
     url(r'^metrics/(?P<organization>%s)/plans/' % ACCT_REGEX,
         PlansMetricsView.as_view(), name='saas_metrics_plans'),
     url(r'^metrics/(?P<organization>%s)/coupons/((?P<coupon>%s)/)?'

@@ -1,44 +1,92 @@
 {% extends "saas/base.html" %}
 
 {% block saas_content %}
-  <table>
-    <thead>
-      <tr>
-        <th>Subscribed to</th>
-        <th>Until</th>
-        <th></th>
-        <th></th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for subscription in object_list %}
-      <tr>
-        <td>
-          {{ subscription.plan.organization}}'s {{subscription.plan.slug}}
-        </td>
-        <td>{{subscription.ends_at}}</td>
-        <td>
-          {% if subscription.is_locked %}
-          {% with subscription.charge_in_progress as charge %}
-          {% if charge %}
-          <a href="{% url 'saas_charge_receipt' subscription.organization charge %}">Charge in progress</a>
-          {% else %}
-          <a href="{% url 'saas_organization_balance' subscription.organization subscription %}">Unlock</a>
-          {% endif %}
-          {% endwith %}
-          {% endif %}
-        </td>
-        <td>
-          <!-- XXX Cancel Subscription -->
-        </td>
-      </tr>
-      {% empty %}
-      <tr>
-        <td colspan="3">
-          <em>No Subscriptions</em>
-        </td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
+<section id="subscriptions" ng-app="subscriptionApp" ng-cloak>
+  <div ng-controller="subscriptionListCtrl">
+    <table>
+      <thead>
+        <tr>
+          <th>Subscribed to</th>
+          <th>Until</th>
+          <th></th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr ng-hide="subscribed.$resolved">
+          <td colspan="4">
+            <h4>Loading ...</h4>
+          </td>
+        </tr>
+        <tr ng-show="subscribed.$resolved && subscribed.count == 0">
+          <td colspan="4">
+            <h4>No subcriptions<span ng-show="filterExpr"> [[filterExpr]]</span></h4>
+          </td>
+        </tr>
+      </tbody>
+      <tbody ng-repeat="entry in subscribed.results" ng-cloak ng-show="subscribed.$resolved && subscribed.results.length > 0">
+        <tr ng-class="endsSoon(entry)">
+          {% comment %}
+See comment in saas/utils.py.
+This href code could only be:
+{% url 'product_default_start' entry.plan.organization organization %}
+under 2 conditions:
+  - the reversed-URL is fully qualified (but here ``product_default_start``
+    is always part of the proxy logic.)
+  - we are running a marketplace for Apps
+          {% endcomment %}
+          <td>
+            <a href="[[entry.plan.app_url]]/[[entry.organization.slug]]/">[[entry.plan.title]]</a>
+          </td>
+          <td>
+            [[entry.ends_at|date: mediumDate]]
+          </td>
+          <td>
+            [[relativeDate(entry.ends_at)]]
+          </td>
+          <td>
+            <button ng-click="unsubscribe(entry.organization.slug, entry.plan.slug)"
+                    ng-show="entry.auto_extend">
+              Unsubscribe Now
+            </button>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <div>
+      <pagination ng-model="currentPage"
+                  total-items="subscribed.count"
+                  items-per-page="itemsPerPage"
+                  boundary-links="true"
+                  max-size="maxSize"
+                  previous-text="&lsaquo;"
+                  next-text="&rsaquo;"
+                  first-text="&laquo;"
+                  last-text="&raquo;"
+                  ng-change="pageChanged(subscribed)"
+                  ng-show="subscribed.$resolved && subscribed.results.length > 0"></pagination>
+    </div>
+  </div>
+</section>
+{% endblock %}
+
+{% block saas_bodyscripts %}
+<script type="text/javascript">
+/* Implementation Note: Not including a list of dependent modules
+   (2nd parameter to `module`) "re-opens" the module for additional
+   configuration. */
+var app = angular.module('subscriptionApp');
+/* Add the CSRF Token: */
+app.config(['$interpolateProvider', '$httpProvider',
+           function($interpolateProvider, $httpProvider) {
+    $httpProvider.defaults.headers.common['X-CSRFToken'] = '{{csrf_token|escapejs}}';
+    /* Makes it easier to separate between django and angularjs templates */
+    $interpolateProvider.startSymbol('[[');
+    $interpolateProvider.endSymbol(']]');
+}]);
+app.constant('urls', {
+    saas_api_profile: "{% url 'saas_api_profile' %}",
+    saas_api_subscriptions: "{% url 'saas_api_subscription_list' organization %}",
+});
+</script>
 {% endblock %}

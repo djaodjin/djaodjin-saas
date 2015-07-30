@@ -1,1 +1,32 @@
 {% extends "saas/metrics_base.html" %}
+
+{% block metrics_extra_data %}
+<h3>Plans list</h3>
+<table>
+    <thead>
+        <tr>
+            <th>
+                Plan
+            </th>
+            <th>
+                Is Active?
+            </th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for plan in plans %}
+            <tr>
+                <td>
+                    <a href="{% url 'saas_plan_edit' organization plan %}" title="Edit plan">{{plan.slug}}</a>
+                </td>
+                <td>
+                    {% if plan.is_active %}active{% else %}inactive{% endif %}
+                </td>
+            </tr>
+        {% endfor %}
+        <tr>
+            <td colspan="2"><a href="{% url 'saas_plan_new' organization %}" title="Create plan">Add Plan ...</a></td>
+        </tr>
+    </tbody>
+</table>
+{% endblock metrics_extra_data %}
