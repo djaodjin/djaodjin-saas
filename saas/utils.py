@@ -24,9 +24,11 @@
 
 import datetime, random, urlparse
 
-from django.conf import settings
+from django.conf import settings as django_settings
 from django.http.request import split_domain_port, validate_host
 from django.utils.timezone import utc
+
+from . import settings
 
 
 def datetime_or_now(dtime_at=None):
@@ -49,7 +51,8 @@ def validate_redirect_url(next_url):
     parts = urlparse.urlparse(next_url)
     if parts.netloc:
         domain, _ = split_domain_port(parts.netloc)
-        allowed_hosts = ['*'] if settings.DEBUG else settings.ALLOWED_HOSTS
+        allowed_hosts = ['*'] if django_settings.DEBUG \
+            else django_settings.ALLOWED_HOSTS
         if not (domain and validate_host(domain, allowed_hosts)):
             return None
     return parts.path
@@ -70,13 +73,23 @@ def generate_random_slug(prefix=None):
     return suffix
 
 
-def product_url(organization, subscriber=None):
+def product_url(provider, subscriber=None):
     """
     We cannot use a basic ``reverse('product_default_start')`` here because
     *organization* and ``get_current_provider`` might be different.
     """
+    current_uri = ''
+    if settings.PROVIDER_SITE_CALLABLE:
+        from saas.compat import import_string
+        site = import_string(settings.PROVIDER_SITE_CALLABLE)(str(provider))
+        if site.domain:
+            scheme = 'https' # Defaults to secure connection.
+            current_uri += '%s://%s/' % (scheme, site.domain)
+        else:
+            current_uri += '%s/' % provider
+    else:
+        current_uri += '%s/' % provider
+    current_uri += 'app/'
     if subscriber:
-        return '/%(organization)s/app/%(subscriber)s/' % {
-            'organization': organization,
-            'subscriber': subscriber}
-    return '/%(organization)s/app/' % {'organization': organization}
+        current_uri += '%s/' % subscriber
+    return current_uri
