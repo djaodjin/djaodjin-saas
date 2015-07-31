@@ -114,7 +114,11 @@ class PlansMetricsView(OrganizationMixin, TemplateView):
     def get_context_data(self, **kwargs):
         context = super(PlansMetricsView, self).get_context_data(**kwargs)
         tables = [
-            {"title": "Active subscribers", "key": "plan", "active": True},
+            {"title": "Active subscribers",
+            "key": "plan",
+            "active": True,
+            "location": reverse('saas_api_plan',
+                            args=(self.get_organization(),))},
         ]
         context.update({
             "title": "Plans",

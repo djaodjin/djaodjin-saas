@@ -662,12 +662,12 @@ metricsControllers.controller('metricsCtrl',
                 queryset.data = data.table;
 
                 // manual binding - trigger updates to the graph
-                if( queryset.key == "balances") {
+                if( queryset.key === "balances") {
                     // XXX Hard-coded.
-                    updateBarChart("#metrics-table svg",
+                    updateBarChart("#metrics-chart",
                         data.table, unit, scale, extra);
                 } else {
-                    updateChart("#metrics-table svg",
+                    updateChart("#metrics-chart",
                         data.table, unit, scale, extra);
                 }
             }
