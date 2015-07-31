@@ -67,17 +67,21 @@ display:none;
           <td>{{line.invoiced.dest_amount|humanize_money:line.invoiced.dest_unit}}</td>
           <td>{{line.invoiced|describe}}</td>
           <td>
-            {% if line.refunded %}
-            <em>Refunded</em>
-            {% else %}
             {% if line.invoiced|refund_enable:user %}
             <button class="charge-refund"
                     data-toggle="modal" data-target="#charge-refund"
                     data-linenum="{{forloop.counter0}}">Refund</button>
             {% endif %}
-            {% endif %}
           </td>
         </tr>
+        {% for refund in line.refunded %}
+        <tr>
+          <td>{{refund.dest_amount|humanize_money:refund.dest_unit}}</td>
+          <td>{{refund|describe}}</td>
+          <td>
+          </td>
+        </tr>
+        {% endfor %}
         {% endfor %}
       </tbody>
     </table>

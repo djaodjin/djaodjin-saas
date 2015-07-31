@@ -712,8 +712,8 @@ class Charge(models.Model):
         """
         Returns the total amount of all invoiced items.
         """
-        # XXX changed interface of invoiced_total_amount
-        amount, unit = sum_dest_amount(Transaction.objects.by_charge(self))
+        amount, unit = sum_dest_amount(Transaction.objects.filter(
+            invoiced_item__charge=self))
         return amount, unit
 
     @property
@@ -732,6 +732,14 @@ class Charge(models.Model):
     def is_progress(self):
         return self.state == self.CREATED
 
+    @property
+    def refunded(self):
+        """
+        All ``Transaction`` which are part of a refund for this ``Charge``.
+        """
+        return Transaction.objects.by_charge(self).filter(
+            orig_account=Transaction.REFUNDED)
+
     def capture(self):
         # XXX Create transaction
         signals.charge_updated.send(sender=__name__, charge=self, user=None)
@@ -741,9 +749,7 @@ class Charge(models.Model):
         self.state = self.DISPUTED
         created_at = datetime_or_now()
         processor_backend = get_processor_backend()
-        previously_refunded, _ = sum_orig_amount(
-            Transaction.objects.by_charge(self).filter(
-                orig_account=Transaction.REFUNDED))
+        previously_refunded, _ = sum_orig_amount(self.refunded)
         refund_available = self.amount - previously_refunded
         charge_available_amount, provider_unit, \
             charge_fee_amount, processor_unit \
@@ -762,8 +768,7 @@ class Charge(models.Model):
                         Transaction.CHARGEBACK,
                         event_id=self.id, created_at=created_at)
                     providers |= set([provider])
-                self.create_refund_transactions(
-                    charge_item.invoiced_item, charge_item.invoiced_fee,
+                charge_item.create_refund_transactions(
                     refunded_amount,
                     charge_available_amount, charge_fee_amount,
                     corrected_available_amount, corrected_fee_amount,
@@ -897,6 +902,7 @@ class Charge(models.Model):
         # redistribute the funds to their rightful owners.
         for charge_item in self.charge_items.all(): #pylint: disable=no-member
             invoiced_item = charge_item.invoiced
+            event = invoiced_item.get_event()
 
             # If there is still an amount on the ``Payable`` account,
             # we create Payable to Liability transaction in order to correct
@@ -904,7 +910,7 @@ class Charge(models.Model):
             # requirement for a ``Transaction`` associated to a ``Charge``.
             balance_payable, _ = \
                 Transaction.objects.get_subscription_balance(
-                    invoiced_item.get_event(), Transaction.PAYABLE)
+                    event, Transaction.PAYABLE)
             if balance_payable > 0:
                 available = min(invoiced_item.dest_amount, balance_payable)
                 Transaction.objects.create(
@@ -920,7 +926,6 @@ class Charge(models.Model):
                     orig_account=Transaction.PAYABLE,
                     orig_organization=invoiced_item.dest_organization)
 
-            event = invoiced_item.get_event()
             provider = event.provider
             charge_item_amount = invoiced_item.dest_amount
             # Has long as we have only one item and charge/funds are using
@@ -1061,13 +1066,10 @@ class Charge(models.Model):
         #pylint: disable=no-member
         charge_item = self.line_items[linenum]
         invoiced_item = charge_item.invoiced
-        invoiced_fee = charge_item.invoiced_fee
         if refunded_amount is None:
             refunded_amount = invoiced_item.dest_amount
 
-        previously_refunded, _ = sum_orig_amount(
-            Transaction.objects.by_charge(self).filter(
-                orig_account=Transaction.REFUNDED))
+        previously_refunded, _ = sum_orig_amount(self.refunded)
         refund_available = invoiced_item.dest_amount - previously_refunded
         if refunded_amount > refund_available:
             raise InsufficientFunds("Cannot refund %(refund_required)s"\
@@ -1090,26 +1092,64 @@ class Charge(models.Model):
             = processor_backend.charge_distribution(
                 self, refunded=previously_refunded + refunded_amount)
 
-        self.create_refund_transactions(invoiced_item, invoiced_fee,
+        charge_item.create_refund_transactions(
             refunded_amount, charge_available_amount, charge_fee_amount,
             corrected_available_amount, corrected_fee_amount,
             created_at=created_at,
             provider_unit=provider_unit, processor_unit=processor_unit)
         signals.charge_updated.send(sender=__name__, charge=self, user=None)
 
-    def create_refund_transactions(self, invoiced_item, invoiced_fee,
-        refunded_amount, charge_available_amount, charge_fee_amount,
+    def retrieve(self):
+        """
+        Retrieve the state of charge from the processor.
+        """
+        processor_backend = get_processor_backend()
+        processor_backend.retrieve_charge(self)
+        return self
+
+class ChargeItem(models.Model):
+    """
+    Keep track of each item invoiced within a ``Charge``.
+    """
+    charge = models.ForeignKey(Charge, related_name='charge_items')
+    # XXX could be a ``Subscription`` or a balance.
+    invoiced = models.ForeignKey('Transaction', related_name='invoiced_item',
+        help_text="transaction invoiced through this charge")
+    invoiced_fee = models.ForeignKey('Transaction', null=True,
+        related_name='invoiced_fee_item',
+        help_text="fee transaction to process the transaction invoiced"\
+" through this charge")
+
+    class Meta:
+        unique_together = ('charge', 'invoiced')
+
+    def __unicode__(self):
+        return '%s-%s' % (unicode(self.charge), unicode(self.invoiced))
+
+    @property
+    def refunded(self):
+        """
+        All ``Transaction`` which are part of a refund for this ``ChargeItem``.
+        """
+        return Transaction.objects.filter(
+            event_id=self.id, orig_account=Transaction.REFUNDED)
+
+    def create_refund_transactions(self, refunded_amount,
+        charge_available_amount, charge_fee_amount,
         corrected_available_amount, corrected_fee_amount,
         created_at=None, provider_unit=None, processor_unit=None,
         refund_type=None):
-        #pylint:disable=too-many-locals,too-many-arguments
+        #pylint:disable=too-many-locals,too-many-arguments,no-member
         """
         Create ``Transaction`` to record a refund.
         """
         created_at = datetime_or_now(created_at)
         if not refund_type:
             refund_type = Transaction.REFUND
-        processor = self.get_processor()
+        charge = self.charge
+        invoiced_item = self.invoiced
+        invoiced_fee = self.invoiced_fee
+        processor = charge.processor
         provider = invoiced_item.orig_organization
         customer = invoiced_item.dest_organization
         if not processor_unit:
@@ -1123,7 +1163,7 @@ class Charge(models.Model):
             # fee on the total amount left over after the refund.
             refunded_fee_amount = (
                 (charge_fee_amount - corrected_fee_amount)
-                * invoiced_item.dest_amount / self.amount)
+                * invoiced_item.dest_amount / charge.amount)
         # ``corrected_available_amount`` is in provider unit,
         # ``invoiced_item.dest_amount`` and ``self.amount`` are in subscriber
         # unit, thus ``refunded_distribute_amount`` is the actual amount
@@ -1131,11 +1171,11 @@ class Charge(models.Model):
         # once the refund is processed.
         refunded_distribute_amount = (
             (charge_available_amount - corrected_available_amount)
-            * invoiced_item.dest_amount / self.amount)
+            * invoiced_item.dest_amount / charge.amount)
 
         LOGGER.info("Refund charge %s for %d (%s)"\
             " (distributed: %d (%s), processor fee: %d (%s))",
-            self.processor_id, refunded_amount, self.unit,
+            charge.processor_id, refunded_amount, charge.unit,
             refunded_distribute_amount, provider_unit,
             refunded_fee_amount, processor_unit)
 
@@ -1151,7 +1191,7 @@ class Charge(models.Model):
         with transaction.atomic():
             # Record the refund from provider to subscriber
             descr = DESCRIBE_CHARGED_CARD_REFUND % {
-                'charge': self.processor_id,
+                'charge': charge.processor_id,
                 'refund_type': refund_type.lower(),
                 'descr': invoiced_item.descr}
             Transaction.objects.create(
@@ -1162,7 +1202,7 @@ class Charge(models.Model):
                 dest_amount=refunded_distribute_amount + refunded_fee_amount,
                 dest_account=refund_type,
                 dest_organization=provider,
-                orig_unit=self.unit,
+                orig_unit=charge.unit,
                 orig_amount=refunded_amount,
                 orig_account=Transaction.REFUNDED,
                 orig_organization=customer)
@@ -1201,33 +1241,6 @@ class Charge(models.Model):
                 orig_organization=provider)
             provider.funds_balance -= refunded_distribute_amount
             provider.save()
-
-    def retrieve(self):
-        """
-        Retrieve the state of charge from the processor.
-        """
-        processor_backend = get_processor_backend()
-        processor_backend.retrieve_charge(self)
-        return self
-
-class ChargeItem(models.Model):
-    """
-    Keep track of each item invoiced within a ``Charge``.
-    """
-    charge = models.ForeignKey(Charge, related_name='charge_items')
-    # XXX could be a ``Subscription`` or a balance.
-    invoiced = models.ForeignKey('Transaction', related_name='invoiced_item',
-        help_text="transaction invoiced through this charge")
-    invoiced_fee = models.ForeignKey('Transaction', null=True,
-        related_name='invoiced_fee_item',
-        help_text="fee transaction to process the transaction invoiced"\
-" through this charge")
-
-    class Meta:
-        unique_together = ('charge', 'invoiced')
-
-    def __unicode__(self):
-        return '%s-%s' % (unicode(self.charge), unicode(self.invoiced))
 
 
 class Coupon(models.Model):
@@ -1579,8 +1592,7 @@ class SubscriptionManager(models.Manager):
         """
         New ``Subscription`` instance which is explicitely not in the db.
         """
-        return Subscription(
-            organization=organization, plan=plan,
+        return Subscription(organization=organization, plan=plan,
             auto_renew=plan.auto_renew, ends_at=ends_at)
 
 
@@ -1718,7 +1730,11 @@ class TransactionManager(models.Manager):
         """
         Returns all transactions associated to a charge.
         """
-        return self.filter(invoiced_item__charge=charge)
+        # XXX This might return ``Subscription`` but it is OK because
+        # we later filter for movement on specific accounts
+        # a ``Subscription`` cannot create.
+        return self.filter(
+            Q(event_id=charge) | Q(event_id__in=charge.charge_items))
 
     def by_customer(self, organization):
         """

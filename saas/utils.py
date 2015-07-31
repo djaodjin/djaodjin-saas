@@ -78,13 +78,13 @@ def product_url(provider, subscriber=None):
     We cannot use a basic ``reverse('product_default_start')`` here because
     *organization* and ``get_current_provider`` might be different.
     """
-    current_uri = ''
+    current_uri = '/'
     if settings.PROVIDER_SITE_CALLABLE:
         from saas.compat import import_string
         site = import_string(settings.PROVIDER_SITE_CALLABLE)(str(provider))
         if site.domain:
             scheme = 'https' # Defaults to secure connection.
-            current_uri += '%s://%s/' % (scheme, site.domain)
+            current_uri = '%s://%s/' % (scheme, site.domain)
         else:
             current_uri += '%s/' % provider
     else:
