@@ -1906,7 +1906,9 @@ class TransactionManager(models.Manager):
         dest_amount, dest_unit = sum_dest_amount(self.filter(
             Q(dest_account=Transaction.PAYABLE)
             | Q(dest_account=Transaction.LIABILITY),
-            event_id=subscription.id))
+            event_id=subscription.id).exclude(orig_account=Transaction.PAYABLE))
+        # If we don't exclude PAYABLE to LIABILITY, they will be counted
+        # twice (as dest_amout and orig_amount).
         orig_amount, orig_unit = sum_orig_amount(self.filter(
             Q(orig_account=Transaction.PAYABLE)
             | Q(orig_account=Transaction.LIABILITY),
