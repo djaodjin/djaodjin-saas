@@ -37,7 +37,7 @@ class SubscriptionSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Subscription
-        fields = ('created_at', 'ends_at', 'plan', 'auto_extend')
+        fields = ('created_at', 'ends_at', 'plan', 'auto_renew')
 
 
 class OrganizationSerializer(serializers.ModelSerializer):

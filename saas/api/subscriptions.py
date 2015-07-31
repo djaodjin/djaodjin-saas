@@ -52,7 +52,7 @@ class SubscriptionSerializer(serializers.ModelSerializer):
     class Meta:
         model = Subscription
         fields = ('created_at', 'ends_at', 'description',
-                  'organization', 'plan', 'auto_extend')
+                  'organization', 'plan', 'auto_renew')
 
 
 class SubscriptionBaseListAPIView(SubscriptionMixin, ListCreateAPIView):

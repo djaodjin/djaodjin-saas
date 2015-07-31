@@ -186,9 +186,9 @@ class Command(BaseCommand):
                          'impossible to create a new customer after 10 trials.')
                 Organization.objects.filter(pk=customer.id).update(
                     created_at=end_period)
-                subscription = Subscription.objects.create(
-                    organization=customer, plan=plan,
-                    ends_at=now + datetime.timedelta(days=31))
+                subscription = Subscription.objects.new_instance(
+                    customer, plan, ends_at=now + datetime.timedelta(days=31))
+                subscription.save()
                 Subscription.objects.filter(
                     pk=subscription.id).update(created_at=end_period)
             # Insert some churn in %

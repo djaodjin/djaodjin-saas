@@ -1350,6 +1350,7 @@ class Plan(models.Model):
     # end game
     length = models.PositiveSmallIntegerField(null=True, blank=True,
         help_text=_('Number of intervals the plan before the plan ends.'))
+    auto_renew = models.BooleanField(default=True)
     # Pb with next : maybe create an other model for it
     next_plan = models.ForeignKey("Plan", null=True)
 
@@ -1579,7 +1580,8 @@ class SubscriptionManager(models.Manager):
         New ``Subscription`` instance which is explicitely not in the db.
         """
         return Subscription(
-            organization=organization, plan=plan, ends_at=ends_at)
+            organization=organization, plan=plan,
+            auto_renew=plan.auto_renew, ends_at=ends_at)
 
 
 class Subscription(models.Model):
@@ -1588,7 +1590,7 @@ class Subscription(models.Model):
     two ``Organization``, a subscriber and a provider, that is paid
     by the subscriber to the provider over the lifetime of the subscription.
 
-    When ``auto_extend`` is True, ``extend_subscriptions`` (usually called
+    When ``auto_renew`` is True, ``extend_subscriptions`` (usually called
     from a cron job) will invoice the organization for an additional period
     once the date reaches currenct end of subscription.
 
@@ -1600,7 +1602,7 @@ class Subscription(models.Model):
     """
     objects = SubscriptionManager()
 
-    auto_extend = models.BooleanField(default=True)
+    auto_renew = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     ends_at = models.DateTimeField()
     description = models.TextField(null=True, blank=True)
@@ -1706,7 +1708,7 @@ class Subscription(models.Model):
 
     def unsubscribe_now(self):
         self.ends_at = datetime_or_now()
-        self.auto_extend = False
+        self.auto_renew = False
         self.save()
 
 
