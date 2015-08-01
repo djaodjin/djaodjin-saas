@@ -192,11 +192,9 @@ class RegisteredQuerysetMixin(OrganizationMixin):
         if ends_at:
             ends_at = parse_datetime(ends_at)
         ends_at = datetime_or_now(ends_at)
-        return User.objects.filter(
-            Q(manages__subscription__isnull=True) |
-            Q(manages__subscription__created_at__gte=ends_at) |
-            Q(contributes__subscription__isnull=True) |
-            Q(contributes__subscription__created_at__gte=ends_at)).order_by(
+        return User.objects.exclude(
+            Q(manages__subscription__created_at__lt=ends_at) |
+            Q(contributes__subscription__created_at__lt=ends_at)).order_by(
                 '-date_joined', 'last_name').distinct()
 
 
