@@ -446,7 +446,7 @@ class Organization(models.Model):
     @method_decorator(transaction.atomic)
     def withdraw_funds(self, amount, user, created_at=None):
         """
-        Withdraw funds from the site into the organization's bank account.
+        Withdraw funds from the site into the provider's bank account.
 
         We record one straightforward ``Transaction`` for the withdrawal
         and an additional one in case there is a processor transfer fee::
@@ -825,15 +825,15 @@ class Charge(models.Model):
 
             ; Record the charge
 
-            yyyy/mm/dd processor event
+            yyyy/mm/dd charge event
                 processor:Funds                          charge_amount
                 subscriber:Liability
 
             ; Compensate for atomicity of charge record (when necessary)
 
-            yyyy/mm/dd processor event (compensate when necessary)
-                subscriber:Liability                     charge_amount
-                subscriber:Payable
+            yyyy/mm/dd invoiced-item event
+                subscriber:Liability           min(invoiced_item_amount,
+                subscriber:Payable                      balance_payable)
 
             ; Distribute processor fee and funds to the provider
 
@@ -841,7 +841,7 @@ class Charge(models.Model):
                 provider:Receivable                      processor_fee
                 processor:Backlog
 
-            yyyy/mm/dd distribution to provider (backlog acounting)
+            yyyy/mm/dd distribution to provider (backlog accounting)
                 provider:Receivable                      distribute_amount
                 provider:Backlog
 
@@ -855,7 +855,7 @@ class Charge(models.Model):
                 stripe:Funds                           $179.99
                 xia:Liability
 
-            2014/09/10 Charge ch_ABC123 on credit card of xia
+            2014/09/10 Keep a balanced ledger
                 xia:Liability                          $179.99
                 xia:Payable
 
@@ -913,6 +913,10 @@ class Charge(models.Model):
                     event, Transaction.PAYABLE)
             if balance_payable > 0:
                 available = min(invoiced_item.dest_amount, balance_payable)
+                # Example:
+                # 2014/01/15 keep a balanced ledger
+                #     xia:Liability                                 15800
+                #     xia:Payable
                 Transaction.objects.create(
                     event_id=invoiced_item.event_id,
                     created_at=self.created_at,
@@ -1023,39 +1027,6 @@ class Charge(models.Model):
 
     def refund(self, linenum, refunded_amount=None, created_at=None):
         # XXX We donot currently supply a *description* for the refund.
-        """
-        Each ``ChargeItem`` as referenced by *linenum* can be partially
-        refunded::
-
-            yyyy/mm/dd refund to subscriber (XXX with processor event id)
-                provider:Refund                          refunded_amount
-                subscriber:Refunded
-
-            yyyy/mm/dd refund of processor fee
-                processor:Refund                         processor_fee
-                processor:Funds
-
-            yyyy/mm/dd refund of processor fee
-                processor:Refund                         distribute_amount
-                provider:Funds
-
-        Example::
-
-            2014/09/10 Charge ch_ABC123 refund for subscribe to open-space plan
-                cowork:Refund                            $179.99
-                xia:Refunded
-
-            2014/09/10 Charge ch_ABC123 refund processor fee
-                stripe:Refund                              $5.22
-                stripe:Funds
-
-            2014/09/10 Charge ch_ABC123 cancel distribution
-                stripe:Refund                            $174.77
-                cowork:Funds
-
-        Note: The system does not currently support more than one refund
-        per ``ChargeItem``.
-        """
         #pylint:disable=too-many-locals
         assert self.state == self.DONE
 
@@ -1139,10 +1110,39 @@ class ChargeItem(models.Model):
         corrected_available_amount, corrected_fee_amount,
         created_at=None, provider_unit=None, processor_unit=None,
         refund_type=None):
+        """
+        Each ``ChargeItem`` can be partially refunded::
+
+            yyyy/mm/dd refund to subscriber
+                provider:Refund                          refunded_amount
+                subscriber:Refunded
+
+            yyyy/mm/dd refund of processor fee
+                processor:Refund                         processor_fee
+                processor:Funds
+
+            yyyy/mm/dd refund of processor fee
+                processor:Refund                         distribute_amount
+                provider:Funds
+
+        ``Refund`` is replaced by ``Chargeback`` if the refund was initiated
+        by a chargeback event.
+
+        Example::
+
+            2014/09/10 Charge ch_ABC123 refund for subscribe to open-space plan
+                cowork:Refund                            $179.99
+                xia:Refunded
+
+            2014/09/10 Charge ch_ABC123 refund processor fee
+                stripe:Refund                              $5.22
+                stripe:Funds
+
+            2014/09/10 Charge ch_ABC123 cancel distribution
+                stripe:Refund                            $174.77
+                cowork:Funds
+        """
         #pylint:disable=too-many-locals,too-many-arguments,no-member
-        """
-        Create ``Transaction`` to record a refund.
-        """
         created_at = datetime_or_now(created_at)
         if not refund_type:
             refund_type = Transaction.REFUND
@@ -2003,13 +2003,13 @@ class TransactionManager(models.Manager):
 
             yyyy/mm/dd description
                 subscriber:Payable                       amount
-                provider:Receivable                      nb_periods
+                provider:Receivable
 
         Example::
 
             2014/09/10 subscribe to open-space plan
                 xia:Payable                             $179.99
-                cowork:Receivable                       1 month
+                cowork:Receivable
 
         At first, ``nb_periods``, the number of period paid in advance,
         is stored in the ``Transaction.orig_amount``. The ``Transaction``
@@ -2056,7 +2056,20 @@ class TransactionManager(models.Manager):
     def new_subscription_statement(self, subscription, created_at=None,
                                    descr_pat=None, balance_now=None):
         """
-        Returns a ``Transaction`` for the balance due on a subscription.
+        Since the ordering system is tightly coupled to the ``Transaction``
+        ledger, we create special "none" transaction that are referenced
+        when a ``Charge`` is created for payment of a balance due
+        by a subcriber::
+
+            yyyy/mm/dd description
+                subscriber:Settled                        amount
+                provider:Settled
+
+        Example::
+
+            2014/09/10 balance due
+                xia:Settled                             $179.99
+                cowork:Settled
         """
         created_at = datetime_or_now(created_at)
         balance, unit = self.get_subscription_statement_balance(subscription)
@@ -2080,9 +2093,9 @@ class TransactionManager(models.Manager):
 
     def create_period_started(self, subscription, created_at=None):
         """
-        When a period starts and we have Payable for that Subscription,
-        the started period becomes a Liability to the subscriber,
-        recorded as follow::
+        When a period starts and we have a payable balance
+        for a subscription, we transfer it to a ``Liability``
+        account, recorded as follow::
 
             yyyy/mm/dd description
                 subscriber:Liability                     period_amount
@@ -2112,18 +2125,22 @@ class TransactionManager(models.Manager):
     def create_income_recognized(self, subscription,
                                  amount=None, at_time=None, descr=None):
         """
-        When a period ends and we have Receivable for that Subscription,
-        we create a XXX
-        the started period becomes a Liability to the subscriber,
-        recorded as follow::
+        When a period ends and we either have a ``Backlog`` (payment
+        was made before the period starts) or a ``Receivable`` (invoice
+        is submitted after the period ends). Either way we must recognize
+        income for that period since the subscription was serviced::
 
-            yyyy/mm/dd description
-                provider:Backlog                         amount
+            yyyy/mm/dd When payment was made at begining of period
+                provider:Backlog                   period_amount
+                provider:Income
+
+            yyyy/mm/dd When service is invoiced after period ends
+                provider:Backlog                   period_amount
                 provider:Income
 
         Example::
 
-            2014/09/10 past due for period 2014/09/10 to 2014/10/10
+            2014/09/10 recognized income for period 2014/09/10 to 2014/10/10
                 cowork:Backlog                         $179.99
                 cowork:Income
         """
