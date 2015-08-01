@@ -1898,36 +1898,27 @@ class TransactionManager(models.Manager):
         # XXX A little long but no better so far.
         #pylint:disable=invalid-name
         """
-        Returns the ``Payable`` and ``Liability`` balance on a subscription.
+        Returns the balance of ``Payable`` and ``Liability`` treated
+        as a single account for a subscription.
 
         The balance on a subscription is used to determine when
         a subscription is locked (balance due) or unlocked (no balance).
         """
-        dest_amount, dest_unit = sum_dest_amount(self.filter(
-            Q(dest_account=Transaction.PAYABLE)
-            | Q(dest_account=Transaction.LIABILITY),
-            event_id=subscription.id).exclude(orig_account=Transaction.PAYABLE))
-        # If we don't exclude PAYABLE to LIABILITY, they will be counted
-        # twice (as dest_amout and orig_amount).
-        orig_amount, orig_unit = sum_orig_amount(self.filter(
-            Q(orig_account=Transaction.PAYABLE)
-            | Q(orig_account=Transaction.LIABILITY),
-            event_id=subscription.id))
-        if dest_unit is None:
-            unit = orig_unit
-        elif orig_unit is None:
-            unit = dest_unit
-        elif dest_unit != orig_unit:
-            raise ValueError('orig and dest balances for subscription %s'\
-' have different unit (%s vs. %s).' % (subscription, orig_unit, dest_unit))
-        else:
-            unit = dest_unit
-        return dest_amount - orig_amount, unit
+        # Implementation Note:
+        # The ``event_id`` associated to the unique ``Transaction` recording
+        # a ``Charge`` will be the ``Charge.id``. As a result, getting the
+        # amount due on a subscription by itself is more complicated than
+        # just filtering by account and event_id.
+        dest_amount, dest_unit = sum_dest_amount(
+            self.get_invoiceables(subscription.organization).filter(
+                event_id=subscription.id))
+        return dest_amount, dest_unit
 
     def get_subscription_balance(self, subscription, account,
                                  starts_at=None, ends_at=None):
         """
-        Returns the balance for an *account* on a *subscription*.
+        Returns the balance on a *subscription* for an *account*
+        for the period [*starts_at*, *ends_at*[ as a tuple (amount, unit).
         """
         kwargs = {}
         if starts_at:
@@ -2058,38 +2049,32 @@ class TransactionManager(models.Manager):
         Returns a ``Transaction`` for the subscription balance
         to be paid later.
         """
-        created_at = datetime_or_now(created_at)
-        balance, unit = self.get_subscription_statement_balance(subscription)
-        return Transaction(
-            event_id=subscription.id,
-            created_at=created_at,
-            descr=('Pay balance of %s on %s later'
-                   % (as_money(balance, unit), subscription.plan)),
-            dest_unit=unit,
-            dest_amount=0,
-            dest_account=Transaction.SETTLED,
-            dest_organization=subscription.organization,
-            orig_unit=unit,
-            orig_amount=0,
-            orig_account=Transaction.SETTLED,
-            orig_organization=subscription.plan.organization)
+        return self.new_subscription_statement(subscription,
+            created_at=created_at, descr_pat=DESCRIBE_BALANCE + '- Pay later',
+            balance_now=0)
 
-    def new_subscription_statement(self, subscription, created_at=None):
+    def new_subscription_statement(self, subscription, created_at=None,
+                                   descr_pat=None, balance_now=None):
         """
         Returns a ``Transaction`` for the balance due on a subscription.
         """
         created_at = datetime_or_now(created_at)
         balance, unit = self.get_subscription_statement_balance(subscription)
+        if balance_now is None:
+            balance_now = balance
+        if descr_pat is None:
+            descr_pat = DESCRIBE_BALANCE
         return Transaction(
             event_id=subscription.id,
             created_at=created_at,
-            descr=DESCRIBE_BALANCE % {'plan': subscription.plan},
+            descr=descr_pat % {'amount': as_money(balance, unit),
+                'plan': subscription.plan},
             dest_unit=unit,
-            dest_amount=balance,
+            dest_amount=balance_now,
             dest_account=Transaction.SETTLED,
             dest_organization=subscription.organization,
             orig_unit=unit,
-            orig_amount=balance,
+            orig_amount=balance_now,
             orig_account=Transaction.SETTLED,
             orig_organization=subscription.plan.organization)
 

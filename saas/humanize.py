@@ -30,7 +30,7 @@ from saas.utils import product_url
 
 
 DESCRIBE_BALANCE = \
-    "Balance on %(plan)s"
+    "Balance due of %(amount)s on %(plan)s"
 
 DESCRIBE_BUY_PERIODS = \
     "Subscription to %(plan)s until %(ends_at)s (%(humanized_periods)s)"
