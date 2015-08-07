@@ -1,0 +1,51 @@
+{% extends "saas/base.html" %}
+
+{% block saas_content %}
+<section id="{{role}}" ng-app="userRelationApp">
+  <h1>{{role|capitalize}}</h1>
+  <div ng-controller="userRelationListCtrl">
+    <form>
+      <input type="text" ng-model="user.username" placeholder="Username or Email" />
+      <input type="submit" ng-click="save()" />
+    </form>
+    <h2 ng-hide="users.$resolved">Please wait...</h2>
+    <h2 ng-show="users.$resolved && users.length == 0"><em>No {{role}} yet</em></h2>
+    <table ng-show="users.$resolved && users.length > 0">
+      <thead>
+        <tr>
+          <th>Username</th>
+          <th>Email</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr ng-repeat="user in users" ng-cloak>
+          <td>[[user.username]]</td>
+          <td>[[user.email]]</td>
+          <td><button ng-click="remove($index)">Remove</button></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}
+
+{% block saas_bodyscripts %}
+<script>
+/* Implementation Note: Not including a list of dependent modules
+   (2nd parameter to `module`) "re-opens" the module for additional
+   configuration. */
+var app = angular.module('userRelationApp');
+/* Add the CSRF Token: */
+app.config(['$interpolateProvider', '$httpProvider',
+           function($interpolateProvider, $httpProvider) {
+    $httpProvider.defaults.headers.common['X-CSRFToken'] = '{{csrf_token|escapejs}}';
+    /* Makes it easier to separate between django and angularjs templates */
+    $interpolateProvider.startSymbol('[[');
+    $interpolateProvider.endSymbol(']]');
+}]);
+app.constant('urls', {
+    saas_api_user_relation_url: "{% url 'saas_api_role_list' organization role %}",
+});
+</script>
+{% endblock %}

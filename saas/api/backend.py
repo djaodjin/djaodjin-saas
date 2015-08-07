@@ -32,6 +32,20 @@ from saas.mixins import OrganizationMixin
 #pylint: disable=old-style-class
 
 class RetrieveBankAPIView(OrganizationMixin, GenericAPIView):
+    """
+    Pass through to the processor to retrieve some details about
+    the bank account associated to an ``Organization``.
+
+    **Example response**:
+
+    .. sourcecode:: http
+
+        {
+          "bank_name": "Stripe Test Bank",
+          "last4": "1234",
+          "currency": "usd"
+        }
+    """
 
     def get(self, request, *args, **kwargs): #pylint: disable=unused-argument
         return Response(
@@ -40,6 +54,19 @@ class RetrieveBankAPIView(OrganizationMixin, GenericAPIView):
 
 
 class RetrieveCardAPIView(OrganizationMixin, GenericAPIView):
+    """
+    Pass through to the processor to retrieve some details about
+    the card associated to an ``Organization``.
+
+    **Example response**:
+
+    .. sourcecode:: http
+
+        {
+          "last4": "1234",
+          "exp_date": "12/2015"
+        }
+    """
 
     def get(self, request, *args, **kwargs): #pylint: disable=unused-argument
         return Response(

@@ -137,12 +137,21 @@ class CardFormMixin(OrganizationMixin):
 
 class BankUpdateView(BankMixin, FormView):
     """
-    The bank information is used to transfer funds to those organization
-    who are providers on the marketplace.
-    """
+    The bank information is used to transfer funds to the provider.
 
+    Template:
+
+    To edit the layout of this page, create a local \
+    ``saas/billing/bank.html`` (`example <https://github.com/djaodjin/\
+djaodjin-saas/tree/master/saas/templates/saas/billing/bank.html>`__).
+
+    Template context:
+      - csrf_token
+      - organization
+      - request
+    """
     form_class = BankForm
-    template_name = 'saas/bank_update.html'
+    template_name = 'saas/billing/bank.html'
 
     def form_valid(self, form):
         self.organization = self.get_organization()
@@ -305,8 +314,21 @@ class CardInvoicablesFormMixin(CardFormMixin, InvoicablesFormMixin):
 
 
 class CardUpdateView(CardFormMixin, FormView):
+    """
+    Page to update the Credit Card information associated to a subscriber.
 
-    template_name = 'billing/card.html'
+    Template:
+
+    To edit the layout of this page, create a local \
+    ``saas/billing/card.html`` (`example <https://github.com/djaodjin\
+/djaodjin-saas/tree/master/saas/templates/saas/billing/card.html>`__).
+
+    Template context:
+      - organization
+      - request
+    """
+
+    template_name = 'saas/billing/card.html'
 
     def form_valid(self, form):
         stripe_token = form.cleaned_data['stripeToken']
@@ -344,11 +366,24 @@ class CardUpdateView(CardFormMixin, FormView):
 
 class TransactionListView(CardFormMixin, TemplateView):
     """
-    This page shows the subscriptions an Organization paid for
-    as well as payment refunded.
+    This page shows a statement of ``Subscription`` orders, ``Charge``
+    created and payment refunded.
+
+    Template:
+
+    To edit the layout of this page, create a local \
+    ``saas/billing/index.html`` (`example <https://github.com/djaodjin\
+/djaodjin-saas/tree/master/saas/templates/saas/billing/index.html>`__).
+    You should insure the page will call back the
+    :ref:`/api/billing/:organization/payments/ <api_billing_payments>`
+    API end point to fetch the set of transactions.
+
+    Template context:
+      - organization
+      - request
     """
 
-    template_name = 'billing/index.html'
+    template_name = 'saas/billing/index.html'
 
     def get_context_data(self, **kwargs):
         self.customer = self.get_organization()
@@ -397,10 +432,23 @@ class TransactionDownloadView(SmartTransactionListMixin,
 
 class TransferListView(BankMixin, TemplateView):
     """
-    List of transfers from processor to an organization bank account.
-    """
+    List of payments made to a provider or funds transfered out of the platform
+    to the provider bank account.
 
-    template_name = 'saas/transfer_list.html'
+    Template:
+
+    To edit the layout of this page, create a local \
+    ``saas/billing/transfers.html`` (`example <https://github.com/djaodjin/\
+djaodjin-saas/tree/master/saas/templates/saas/billing/transfers.html>`__).
+    You should insure the page will call back the
+    :ref:`/api/billing/:organization/transfers/ <api_billing_transfers>`
+    API end point to fetch the set of transactions.
+
+    Template context:
+      - organization
+      - request
+    """
+    template_name = 'saas/billing/transfers.html'
 
     def get_context_data(self, **kwargs):
         self.organization = self.get_organization()
@@ -448,13 +496,14 @@ class CartBaseView(InvoicablesFormMixin, FormView):
     The main pupose of ``CartBaseView`` is generate an list of invoicables
     from ``CartItem`` records associated to a ``request.user``.
 
-    The invoicables list is generated from the following schema:
+    The invoicables list is generated from the following schema::
 
         invoicables = [
                 { "subscription": Subscription,
                   "lines": [Transaction, ...],
                   "options": [Transaction, ...],
                 }, ...]
+
 
     Each subscription is either an actual record in the database (paying
     more periods on a subscription) or ``Subscription`` instance that only
@@ -633,9 +682,19 @@ class CartBaseView(InvoicablesFormMixin, FormView):
 class CartPeriodsView(CartBaseView):
     """
     Optional page to pay multiple periods in advance.
+
+    Template:
+
+    To edit the layout of this page, create a local \
+    ``saas/billing/cart-periods.html`` (`example <https://github.com/djaodjin\
+/djaodjin-saas/tree/master/saas/templates/saas/billing/cart-periods.html>`__).
+
+    Template context:
+      - organization
+      - request
     """
     form_class = CartPeriodsForm
-    template_name = 'saas/cart_periods.html'
+    template_name = 'saas/billing/cart-periods.html'
 
     def form_valid(self, form):
         """
@@ -679,9 +738,19 @@ class CartSeatsView(CartPeriodsView):
     """
     Optional page to subcribe multiple organizations to a ``Plan`` while paying
     through through a third-party ``Organization`` (i.e. self.customer).
+
+    Template:
+
+    To edit the layout of this page, create a local \
+    ``saas/billing/cart-seats.html`` (`example <https://github.com/djaodjin\
+/djaodjin-saas/tree/master/saas/templates/saas/billing/cart-seats.html>`__).
+
+    Template context:
+      - organization
+      - request
     """
     form_class = CartPeriodsForm # XXX
-    template_name = 'saas/cart_seats.html'
+    template_name = 'saas/billing/cart-seats.html'
 
     def get(self, request, *args, **kwargs):
         self.customer = self.get_organization()
@@ -709,9 +778,25 @@ class CartView(CardInvoicablesFormMixin, CartSeatsView):
     point.
     """
 
-    template_name = 'billing/cart.html'
+    template_name = 'saas/billing/cart.html'
 
     def get(self, request, *args, **kwargs):
+        """
+        Prompt the user to enter her credit card and place an order.
+
+        On POST, the credit card will be charged and the organization
+        subscribed to the plans ordered.
+
+        Template:
+
+        To edit the layout of this page, create a local \
+        ``saas/billing/cart.html`` (`example <https://github.com/djaodjin/\
+djaodjin-saas/tree/master/saas/templates/saas/billing/cart.html>`__).
+
+        Template context:
+          - organization
+          - request
+        """
         self.customer = self.get_organization()
         if (self.customer.is_bulk_buyer and
             self.cart_items.filter(
@@ -729,16 +814,48 @@ class CartView(CardInvoicablesFormMixin, CartSeatsView):
 
 class ChargeReceiptView(ChargeMixin, DetailView):
     """
-    Display a receipt for a created charge.
+    Display a receipt for a ``Charge``.
+
+    Template:
+
+    To edit the layout of this page, create a local \
+    ``saas/billing/receipt.html`` (`example <https://github.com/djaodjin/\
+djaodjin-saas/tree/master/saas/templates/saas/billing/receipt.html>`__).
+
+    Template context:
+      - organization
+      - request
+
+    This page will be accessible in the payment flow as well as through
+    a subscriber profile interface.
+
+    XXX It is important the template takes both usage into account.
+    XXX We might want to pass a url get parameter to distinguish here.
     """
-    template_name = 'billing/receipt.html'
+    template_name = 'saas/billing/receipt.html'
 
 
 class CouponListView(OrganizationMixin, ListView):
     """
-    View to manage coupons
+    View to manage discounts (i.e. ``Coupon``)
+
+    Template:
+
+    To edit the layout of this page, create a local \
+    ``saas/billing/coupons.html`` (`example <https://github.com/\
+djaodjin/djaodjin-saas/tree/master/saas/templates/saas/billing/\
+coupons.html>`__).
+    You should insure the page will call back the
+    :ref:`/api/billing/:organization/coupons/ <api_billing_coupons>`
+    API end point to fetch the set of coupons for the provider organization.
+
+
+    Template context:
+      - organization
+      - request
     """
     model = Coupon
+    template_name = 'saas/billing/coupons.html'
 
 
 class BalanceView(CardInvoicablesFormMixin, FormView):
@@ -749,7 +866,7 @@ class BalanceView(CardInvoicablesFormMixin, FormView):
     model, ``BalanceView`` generates the invoicables from ``Subscription``
     for which the amount payable by the customer is positive.
 
-    The invoicables list is generated from the following schema:
+    The invoicables list is generated from the following schema::
 
         invoicables = [
                 { "subscription": Subscription,
@@ -759,9 +876,8 @@ class BalanceView(CardInvoicablesFormMixin, FormView):
                   "options": [Transaction, ...],
                 }, ...]
     """
-
     plan_url_kwarg = 'subscribed_plan'
-    template_name = 'billing/balance.html'
+    template_name = 'saas/billing/balance.html'
 
     @staticmethod
     def get_invoicable_options(subscription, created_at=None, prorate_to=None):
@@ -775,6 +891,21 @@ class BalanceView(CardInvoicablesFormMixin, FormView):
         return []
 
     def get_queryset(self):
+        """
+        GET displays the balance due by a subscriber.
+
+        Template:
+
+        To edit the layout of this page, create a local \
+        ``saas/billing/balance.html`` (`example <https://github.com/djaodjin\
+/djaodjin-saas/tree/master/saas/templates/saas/billing/balance.html>`__).
+
+        Template context:
+          - organization
+          - request
+
+        POST attempts to charge the card for the balance due.
+        """
         self.customer = self.get_organization()
         invoicables = []
         created_at = datetime_or_now()
@@ -795,9 +926,22 @@ class BalanceView(CardInvoicablesFormMixin, FormView):
 
 
 class WithdrawView(BankMixin, FormView):
+    """
+    Initiate the transfer of funds from the platform to a provider bank account.
+
+    Template:
+
+    To edit the layout of this page, create a local \
+    ``saas/billing/withdraw.html`` (`example <https://github.com/djaodjin/\
+djaodjin-saas/tree/master/saas/templates/saas/billing/withdraw.html>`__).
+
+    Template context:
+      - organization
+      - request
+    """
 
     form_class = WithdrawForm
-    template_name = 'saas/withdraw_form.html'
+    template_name = 'saas/billing/withdraw.html'
 
     def get_initial(self):
         self.organization = self.get_organization()

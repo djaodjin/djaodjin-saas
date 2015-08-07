@@ -24,7 +24,6 @@
 
 from rest_framework.generics import (ListAPIView,
     ListCreateAPIView, RetrieveUpdateDestroyAPIView)
-from rest_framework.response import Response
 from rest_framework import serializers
 
 from saas.models import Organization, Subscription
@@ -62,6 +61,74 @@ class SubscriptionBaseListAPIView(SubscriptionMixin, ListCreateAPIView):
 
 class SubscriptionListAPIView(SubscriptionSmartListMixin,
                               SubscriptionBaseListAPIView):
+    """
+    GET queries all ``Subscription`` of an ``Organization``. The queryset
+    can be further refined to match a search filter (``q``) and sorted
+    on a specific field. The returned queryset is always paginated.
+
+    The value passed in the ``q`` parameter will be matched against:
+
+      - Subscription.organization.slug
+      - Subscription.organization.full_name
+      - Subscription.organization.email
+      - Subscription.organization.phone
+      - Subscription.organization.street_address
+      - Subscription.organization.locality
+      - Subscription.organization.region
+      - Subscription.organization.postal_code
+      - Subscription.organization.country
+      - Subscription.plan.title
+
+    The result queryset can be ordered by:
+
+      - Subscription.created_at
+      - Subscription.ends_at
+      - Subscription.organization.full_name
+      - Subscription.plan.title
+
+    **Example request**:
+
+    .. sourcecode:: http
+
+        GET /api/profile/:organization/subscriptions/?o=created_at&ot=desc
+
+    **Example response**:
+
+    .. sourcecode:: http
+
+        {
+            "count": 1,
+            "next": null,
+            "previous": null,
+            "results": [
+                {
+                    "created_at": "2015-01-14T23:16:55Z",
+                    "ends_at": "2016-01-14T23:16:55Z",
+                    "description": null,
+                    "organization": {
+                        "slug": "xia",
+                        "printable_name": "Xia Lee"
+                    },
+                    "plan": {
+                        "slug": "open-space",
+                        "title": "Open Space",
+                        "description": "open space desk, High speed internet
+                                      - Ethernet or WiFi, Unlimited printing,
+                                      Unlimited scanning, Unlimited fax service
+                                      (send and receive)",
+                        "is_active": true,
+                        "setup_amount": 0,
+                        "period_amount": 17999,
+                        "interval": 4,
+                        "app_url": "http://localhost:8020/app"
+                    },
+                    "auto_renew": true
+                }
+            ]
+        }
+
+    POST subscribes the organization to a plan.
+    """
 
     serializer_class = SubscriptionSerializer
     paginate_by = 25
@@ -69,14 +136,14 @@ class SubscriptionListAPIView(SubscriptionSmartListMixin,
 
 class SubscriptionDetailAPIView(SubscriptionMixin,
                                 RetrieveUpdateDestroyAPIView):
+    """
+    Unsubscribe an organization from a plan.
+    """
 
     serializer_class = SubscriptionSerializer
 
-    def delete(self, request, *args, **kwargs):
-        self.object = self.get_object()
-        self.object.unsubscribe_now()
-        serializer = self.get_serializer(self.object)
-        return Response(serializer.data) #pylint: disable=no-member
+    def perform_destroy(self, instance):
+        instance.unsubscribe_now()
 
 
 class ActiveSubscriptionBaseAPIView(SubscribedQuerysetMixin, ListAPIView):
@@ -86,7 +153,75 @@ class ActiveSubscriptionBaseAPIView(SubscribedQuerysetMixin, ListAPIView):
 
 class ActiveSubscriptionAPIView(SubscriptionSmartListMixin,
                                 ActiveSubscriptionBaseAPIView):
+    """
+    GET queries all ``Subscription`` to a plan whose provider is
+    ``:organization`` which are currently in progress.
 
+    The queryset can be further filtered to a range of dates between
+    ``start_at`` and ``ends_at``.
+
+    The queryset can be further filtered by passing a ``q`` parameter.
+    The value in ``q`` will be matched against:
+
+      - Subscription.organization.slug
+      - Subscription.organization.full_name
+      - Subscription.organization.email
+      - Subscription.organization.phone
+      - Subscription.organization.street_address
+      - Subscription.organization.locality
+      - Subscription.organization.region
+      - Subscription.organization.postal_code
+      - Subscription.organization.country
+      - Subscription.plan.title
+
+    The result queryset can be ordered by:
+
+      - Subscription.created_at
+      - Subscription.ends_at
+      - Subscription.organization.full_name
+      - Subscription.plan.title
+
+    **Example request**:
+
+    .. sourcecode:: http
+
+        GET /api/metrics/cowork/active?o=created_at&ot=desc
+
+    **Example response**:
+
+    .. sourcecode:: http
+
+        {
+            "count": 1,
+            "next": null,
+            "previous": null,
+            "results": [
+                {
+                    "created_at": "2015-01-14T23:16:55Z",
+                    "ends_at": "2016-01-14T23:16:55Z",
+                    "description": null,
+                    "organization": {
+                        "slug": "xia",
+                        "printable_name": "Xia Lee"
+                    },
+                    "plan": {
+                        "slug": "open-space",
+                        "title": "Open Space",
+                        "description": "open space desk, High speed internet
+                                    - Ethernet or WiFi, Unlimited printing,
+                                    Unlimited scanning, Unlimited fax service
+                                    (send and receive)",
+                        "is_active": true,
+                        "setup_amount": 0,
+                        "period_amount": 17999,
+                        "interval": 4,
+                        "app_url": "http://localhost:8020/app"
+                    },
+                    "auto_renew": true
+                }
+            ]
+        }
+    """
     serializer_class = SubscriptionSerializer
     paginate_by = 25
 
@@ -98,6 +233,74 @@ class ChurnedSubscriptionBaseAPIView(ChurnedQuerysetMixin, ListAPIView):
 
 class ChurnedSubscriptionAPIView(SubscriptionSmartListMixin,
                                  ChurnedSubscriptionBaseAPIView):
+    """
+    GET queries all ``Subscription`` to a plan whose provider is
+    ``:organization`` which have ended already.
 
+    The queryset can be further filtered to a range of dates between
+    ``start_at`` and ``ends_at``.
+
+    The queryset can be further filtered by passing a ``q`` parameter.
+    The value in ``q`` will be matched against:
+
+      - Subscription.organization.slug
+      - Subscription.organization.full_name
+      - Subscription.organization.email
+      - Subscription.organization.phone
+      - Subscription.organization.street_address
+      - Subscription.organization.locality
+      - Subscription.organization.region
+      - Subscription.organization.postal_code
+      - Subscription.organization.country
+      - Subscription.plan.title
+
+    The result queryset can be ordered by:
+
+      - Subscription.created_at
+      - Subscription.ends_at
+      - Subscription.organization.full_name
+      - Subscription.plan.title
+
+    **Example request**:
+
+    .. sourcecode:: http
+
+        GET /api/metrics/cowork/churned?o=created_at&ot=desc
+
+    **Example response**:
+
+    .. sourcecode:: http
+
+        {
+            "count": 1,
+            "next": null,
+            "previous": null,
+            "results": [
+                {
+                    "created_at": "2015-01-14T23:16:55Z",
+                    "ends_at": "2016-01-14T23:16:55Z",
+                    "description": null,
+                    "organization": {
+                        "slug": "xia",
+                        "printable_name": "Xia Lee"
+                    },
+                    "plan": {
+                        "slug": "open-space",
+                        "title": "Open Space",
+                        "description": "open space desk, High speed internet
+                                    - Ethernet or WiFi, Unlimited printing,
+                                    Unlimited scanning, Unlimited fax service
+                                    (send and receive)",
+                        "is_active": true,
+                        "setup_amount": 0,
+                        "period_amount": 17999,
+                        "interval": 4,
+                        "app_url": "http://localhost:8020/app"
+                    },
+                    "auto_renew": true
+                }
+            ]
+        }
+    """
     serializer_class = SubscriptionSerializer
     paginate_by = 25

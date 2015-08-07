@@ -63,20 +63,70 @@ class ChargeSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Charge
-        fields = ('created_at', 'amount', 'description', 'last4', 'exp_date',
-                  'processor_id', 'state')
+        fields = ('created_at', 'amount', 'unit', 'description',
+                  'last4', 'exp_date', 'processor_id', 'state')
 
 
 class ChargeResourceView(RetrieveChargeMixin, RetrieveAPIView):
+    """
+    Pass through to the processor and returns details about a ``Charge``.
 
+    **Example response**:
+
+    .. sourcecode:: http
+
+        {
+            "created_at": "2015-08-01T00:00:00Z",
+            "amount": 112120,
+            "unit": "usd",
+            "description": "Charge for subscription to cowork open-space",
+            "last4": "1234",
+            "exp_date"" "12/2015",
+            "processor_id": "ch_XAb124EF",
+            "state": "DONE"
+        }
+    """
     serializer_class = ChargeSerializer
 
 
 class ChargeRefundAPIView(RetrieveChargeMixin, RetrieveAPIView):
     """
-    Refund part of a ``Charge``.
-    """
+    Partially or totally refund all or a subset of line items on a ``Charge``.
 
+    **Example request**:
+
+    .. sourcecode:: http
+
+        POST /api/billing/charges/ch_XAb124EF/refund/
+
+        {
+            "lines": [
+              {
+                  "num": 0,
+                  "refunded_amount": 4000,
+              },
+              {
+                  "num": 1,
+                  "refunded_amount": 82120,
+              }
+          ]
+        }
+
+    **Example response**:
+
+    .. sourcecode:: http
+
+        {
+            "created_at": "2015-08-01T00:00:00Z",
+            "amount": 112120,
+            "unit": "usd",
+            "description": "Charge for subscription to cowork open-space",
+            "last4": "1234",
+            "exp_date"" "12/2015",
+            "processor_id": "ch_XAb124EF",
+            "state": "DONE"
+        }
+    """
     serializer_class = ChargeSerializer
 
     def post(self, request, *args, **kwargs): #pylint: disable=unused-argument
@@ -98,7 +148,16 @@ class ChargeRefundAPIView(RetrieveChargeMixin, RetrieveAPIView):
 
 class EmailChargeReceiptAPIView(RetrieveChargeMixin, GenericAPIView):
     """
-    Email the charge receipt to the request user.
+    Email the charge receipt to the customer email address on file.
+
+    **Example response**:
+
+    .. sourcecode:: http
+
+        {
+            "charge_id": "ch_XAb124EF",
+            "email": "info@djaodjin.com"
+        }
     """
     def post(self, request, *args, **kwargs): #pylint: disable=unused-argument
         self.object = self.get_object()

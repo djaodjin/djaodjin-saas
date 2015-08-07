@@ -31,8 +31,6 @@ from django.conf.urls import patterns, url
 from saas.settings import ACCT_REGEX
 from saas.api.backend import RetrieveBankAPIView
 from saas.api.coupons import CouponListAPIView, CouponDetailAPIView
-from saas.api.plans import (PlanActivateAPIView, PlanCreateAPIView,
-    PlanResourceView)
 from saas.api.transactions import TransferListAPIView
 
 urlpatterns = patterns('',
@@ -43,14 +41,6 @@ urlpatterns = patterns('',
         CouponDetailAPIView.as_view(), name='saas_api_coupon_detail'),
     url(r'^billing/(?P<organization>%s)/coupons/?'  % ACCT_REGEX,
         CouponListAPIView.as_view(), name='saas_api_coupon_list'),
-    url(r'^billing/(?P<organization>%s)/plans/(?P<plan>%s)/activate/'
-        % (ACCT_REGEX, ACCT_REGEX),
-        PlanActivateAPIView.as_view(), name='saas_api_plan_activate'),
-    url(r'^billing/(?P<organization>%s)/plans/(?P<plan>%s)/?'
-        % (ACCT_REGEX, ACCT_REGEX),
-        PlanResourceView.as_view(), name='saas_api_plan'),
-    url(r'^billing/(?P<organization>%s)/plans/?' % ACCT_REGEX,
-        PlanCreateAPIView.as_view(), name='saas_api_plan_new'),
     url(r'^billing/(?P<organization>%s)/transfers/?' % ACCT_REGEX,
         TransferListAPIView.as_view(), name='saas_api_transfer_list'),
 )

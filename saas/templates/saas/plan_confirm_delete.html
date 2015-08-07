@@ -1,9 +1,0 @@
-{% extends "saas/base.html" %}
-
-{% block saas_content %}
-<form action="" method="post">
-    {% csrf_token %}
-    <p>Are you sure you want to delete the plan "{{ object }}"?</p>
-    <button type="submit">Confirm</button>
-</form>
-{% endblock %}

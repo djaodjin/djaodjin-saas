@@ -81,16 +81,85 @@ class PlanMixin(OrganizationMixin):
 
 
 class PlanActivateAPIView(PlanMixin, UpdateAPIView):
+    """
+    Activate a plan, enabling users to subscribe to it, or deactivate
+    a plan, disabling users from subscribing to it. Activation or
+    deactivation is toggled based on the ``is_active`` field passed
+    in the PUT request.
 
+    **Example request**:
+
+    .. sourcecode:: http
+
+        PUT /api/profile/cowork/plans/activate
+
+        {
+            "is_active": true
+        }
+    """
     serializer_class = PlanActivateSerializer
 
 
 class PlanCreateAPIView(PlanMixin, CreateAPIView):
+    """
+    Create a ``Plan`` for a provider.
+
+    **Example request**:
+
+    .. sourcecode:: http
+
+        POST /api/profile/cowork/plans
+
+        {
+            "title": "Open Space",
+            "description": "A desk in our coworking space",
+            "is_active": false,
+            "period_amount": 12000,
+            "interval": 1
+        }
+
+    **Example response**:
+
+    .. sourcecode:: http
+
+        {
+            "title": "Open Space",
+            "description": "A desk in our coworking space",
+            "is_active": false,
+            "period_amount": 12000,
+            "interval": 1
+        }
+    """
 
     serializer_class = PlanSerializer
 
 
 class PlanResourceView(PlanMixin, RetrieveUpdateDestroyAPIView):
+    """
+    Retrieve, update or delete a ``Plan``.
+
+    **Example response**:
+
+    .. sourcecode:: http
+
+        {
+            "title": "Open Space",
+            "description": "A desk in our coworking space",
+            "is_active": false,
+            "period_amount": 12000,
+            "interval": 1
+        }
+    """
 
     serializer_class = PlanSerializer
 
+    def perform_destroy(self, instance):
+        '''
+        Override to provide some validation.
+
+        Without this, users could subvert the "no deleting plans with
+        subscribers" rule via URL manipulation.
+        '''
+        if instance.subscription_set.count() != 0:
+            raise Exception('cannot delete a plan with subscribers')
+        return super(PlanResourceView, self).perform_destroy(instance)

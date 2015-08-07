@@ -40,9 +40,37 @@ from saas.models import Organization
 
 class OrganizationDetailAPIView(OrganizationMixin,
                                 RetrieveUpdateDestroyAPIView):
+    """
+    Retrieve, update or delete an ``Organization``.
+
+    **Example response**:
+
+    .. sourcecode:: http
+
+        {
+            "slug": "xia",
+            "full_name": "Xia Lee",
+            "created_at": "2012-09-14T23:16:55Z",
+            "subscriptions": [
+                {
+                    "created_at": "2015-01-14T23:16:55Z",
+                    "ends_at": "2016-01-14T23:16:55Z",
+                    "plan": "open-space",
+                    "auto_renew": true
+                }
+            ]
+        }
+
+    On ``DELETE``, we anonymize the organization instead of purely deleting
+    it from the database because we don't want to loose history on subscriptions
+    and transactions.
+    """
 
     queryset = Organization.objects.all()
     serializer_class = OrganizationSerializer
+
+    def get_object(self):
+        return self.get_organization()
 
     def destroy(self, request, *args, **kwargs):
         """

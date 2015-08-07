@@ -26,9 +26,13 @@
 
 from django.conf.urls import patterns, url
 
+from saas.settings import ACCT_REGEX
+from saas.views.legal import AgreementSignView
 from saas.views.users import ProductListView
 
 urlpatterns = patterns('saas.views.users',
+    url(r'^legal/(?P<agreement>%s)/sign$' % ACCT_REGEX,
+        AgreementSignView.as_view(), name='legal_sign_agreement'),
     url(r'^products/',
         ProductListView.as_view(), name='saas_user_product_list'),
 )

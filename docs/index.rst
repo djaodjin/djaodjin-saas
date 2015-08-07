@@ -25,6 +25,9 @@ Contents:
    ledger
    models
    security
+   pages
+   api
+
 
 Indices and tables
 ==================

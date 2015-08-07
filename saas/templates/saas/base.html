@@ -11,8 +11,8 @@
     We are dealing with the site owner.
     {% endcomment %}
     <div>
-      <a id="saas_manager_list" href="{% url 'saas_manager_list' organization %}">managers</a>
-      | <a id="saas_contributor_list" href="{% url 'saas_contributor_list' organization %}">contributors</a>
+      <a id="saas_manager_list" href="{% url 'saas_role_list' organization 'managers' %}">managers</a>
+      | <a id="saas_contributor_list" href="{% url 'saas_role_list' organization 'contributors' %}">contributors</a>
       | <a id="saas_coupon_list" href="{% url 'saas_coupon_list' organization %}">coupons</a>
       | <a id="saas_transfer_info" href="{% url 'saas_transfer_info' organization %}">funds</a>
       | <a id="saas_metrics_summary" href="{% url 'saas_metrics_summary' organization %}">revenue</a>

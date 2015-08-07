@@ -39,6 +39,6 @@ urlpatterns = patterns('saas.views.billing',
         name='saas_cart'),
     url(r'^', include('saas.urls.subscriber.billing.payment')),
     url(r'^', include('saas.urls.subscriber.billing.info')),
-    url(r'^download/(?P<organization>%s)/transactions/' % ACCT_REGEX,
+    url(r'^download/(?P<organization>%s)/payments/' % ACCT_REGEX,
         TransactionDownloadView.as_view(), name='saas_transactions_download'),
 )

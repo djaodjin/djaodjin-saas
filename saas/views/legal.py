@@ -31,20 +31,34 @@ from django.conf import settings
 from django.template import loader
 from django.template.base import Context
 from django.forms.widgets import CheckboxInput
-from django.core.context_processors import csrf
 from django.contrib.auth import REDIRECT_FIELD_NAME
-from django.contrib.auth.decorators import login_required
-from django.shortcuts import render
 from django.http import HttpResponseRedirect
-from django.views.generic.list import ListView
-from django.views.generic.detail import DetailView
+from django.views.generic import CreateView, DetailView, ListView
 
 from saas.mixins import ProviderMixin
 from saas.models import (Agreement, Signature, get_current_provider)
 
+
 class AgreementDetailView(DetailView):
+    """
+    Show a single agreement (or policy) document. The content of the agreement
+    is read from saas/agreements/<slug>.md.
+
+    Template:
+
+    To edit the layout of this page, create a local \
+    ``saas/legal/agreement.html`` (`example <https://github.com/djaodjin/\
+djaodjin-saas/tree/master/saas/templates/saas/legal/agreement.html>`__).
+
+    Template context:
+      - page
+      - organization
+      - request
+    """
 
     model = Agreement
+    slug_url_kwarg = 'agreement'
+    template_name = 'saas/legal/agreement.html'
 
     def get_context_data(self, **kwargs):
         context = super(AgreementDetailView, self).get_context_data(**kwargs)
@@ -54,8 +68,25 @@ class AgreementDetailView(DetailView):
 
 
 class AgreementListView(ProviderMixin, ListView):
+    """
+    List all agreements and policies for a provider site. This typically
+    include terms of service, security policies, etc.
+
+    Template:
+
+    To edit the layout of this page, create a local ``saas/legal/index.html``
+    (`example <https://github.com/djaodjin/djaodjin-saas/tree/master/saas/\
+templates/saas/legal/index.html>`__).
+
+    Template context:
+      - agreement_list
+      - organization
+      - request
+    """
 
     model = Agreement
+    slug_url_kwarg = 'agreement'
+    template_name = 'saas/legal/index.html'
 
 
 class SignatureForm(forms.Form):
@@ -77,35 +108,50 @@ def _read_agreement_file(slug, context=None):
     source, _ = loader.find_template('saas/agreements/legal_%s.md' % slug)
     return markdown.markdown(source.render(Context(context)))
 
-@login_required
-def sign_agreement(request, slug,
-                   redirect_field_name=REDIRECT_FIELD_NAME):
-    '''Request signature of a legal agreement.'''
-    context = {'user': request.user}
-    context.update(csrf(request))
-    if request.method == 'POST':
-        form = SignatureForm(request.POST)
-        if form.is_valid():
-            if form.cleaned_data['read_terms']:
-                Signature.objects.create_signature(slug, request.user)
 
-                # Use default setting if redirect_to is empty
-                redirect_to = request.REQUEST.get(redirect_field_name,
-                                              settings.LOGIN_REDIRECT_URL)
-                # Heavier security check -- don't allow redirection to
-                # a different host.
-                netloc = urlparse.urlparse(redirect_to)[1]
-                if netloc and netloc != request.get_host():
-                    redirect_to = settings.LOGIN_REDIRECT_URL
+class AgreementSignView(CreateView):
+    """
+    For a the request user to sign a legal agreement.
 
-                return HttpResponseRedirect(redirect_to)
-        # In all other cases:
-        context.update({'errmsg':
-            'You must read and understand the terms and conditions.'})
-    form = SignatureForm()
-    context.update({
-            redirect_field_name: request.REQUEST.get(redirect_field_name,
-                                     settings.LOGIN_REDIRECT_URL)})
-    context.update({'page': _read_agreement_file(slug), 'form': form})
-    return render(request, "saas/agreement_sign.html", context)
+    Template:
+
+    To edit the layout of this page, create a local \
+    ``saas/legal/sign.html`` (`example <https://github.com/djaodjin/\
+djaodjin-saas/tree/master/saas/templates/saas/legal/sign.html>`__).
+
+    Template context:
+        - page
+        - organization
+        - request
+    """
+
+    model = Agreement
+    slug_url_kwarg = 'agreement'
+    template_name = 'saas/legal/sign.html'
+    form_class = SignatureForm
+    redirect_field_name = REDIRECT_FIELD_NAME
+
+    def form_valid(self, form):
+        if form.cleaned_data['read_terms']:
+            Signature.objects.create_signature(
+                self.kwargs.get(self.slug_url_kwarg), self.request.user)
+            return HttpResponseRedirect(self.get_success_url())
+        return self.form_invalid(form)
+
+    def get_success_url(self):
+        # Use default setting if redirect_to is empty
+        redirect_to = self.request.REQUEST.get(
+            self.redirect_field_name, settings.LOGIN_REDIRECT_URL)
+        # Heavier security check -- don't allow redirection to
+        # a different host.
+        netloc = urlparse.urlparse(redirect_to)[1]
+        if netloc and netloc != self.request.get_host():
+            redirect_to = settings.LOGIN_REDIRECT_URL
+        return redirect_to
+
+    def get_context_data(self, **kwargs):
+        context = super(AgreementSignView, self).get_context_data(**kwargs)
+        context.update({
+                'page': _read_agreement_file(context['agreement'].slug)})
+        return context
 

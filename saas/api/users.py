@@ -89,35 +89,74 @@ class RelationListAPIView(OrganizationMixin, ListCreateAPIView):
             headers=self.get_success_headers(serializer.validated_data))
 
 
-class ContributorListAPIView(RelationListAPIView):
+# XXX Using ugly ``if role ==`` here until we refactor the contributors/managers
+# models. First we deal with documentation of the interface.
+
+class RoleListAPIView(RelationListAPIView):
+    """
+    ``GET`` lists all users with a specified role with regards
+    to an organization.
+
+    ``POST`` attaches a user to a role on an organization, typically granting
+    permissions to the user with regards to managing an organization profile
+    (see :doc:`Flexible Security Framework <security>`).
+
+    **Example request**:
+
+    .. sourcecode:: http
+
+        GET /api/profile/cowork/roles/managers/
+
+    **Example response**:
+
+    .. sourcecode:: http
+
+        [
+            {
+                "username": "alice",
+                "email": "alice@djaodjin.com",
+                "first_name": "Alice",
+                "last_name": "Cooper",
+                "created_at": "2014-01-01T00:00:00Z"
+            },
+            {
+                "username": "xia",
+                "email": "xia@djaodjin.com",
+                "first_name": "Xia",
+                "last_name": "Lee",
+                "created_at": "2014-01-01T00:00:00Z"
+            }
+        ]
+    """
 
     def add_relation(self, user, reason=None):
-        return self.organization.add_contributor(user, reason=reason)
+        if self.kwargs.get('role') == 'contributors':
+            return self.organization.add_contributor(user, reason=reason)
+        elif self.kwargs.get('role') == 'managers':
+            return self.organization.add_manager(user, reason=reason)
+        raise Http404("No role named '%s'" % self.kwargs.get('role'))
 
     def get_queryset(self):
-        queryset = super(ContributorListAPIView, self).get_queryset()
-        return queryset.filter(contributes__slug=self.kwargs.get(
+        queryset = super(RoleListAPIView, self).get_queryset()
+        if self.kwargs.get('role') == 'contributors':
+            return queryset.filter(contributes__slug=self.kwargs.get(
                 self.organization_url_kwarg))
-
-
-class ContributorDetailAPIView(RelationMixin, DestroyAPIView):
-
-    model = get_contributor_relation_model()
-
-
-class ManagerListAPIView(RelationListAPIView):
-
-    def add_relation(self, user, reason=None):
-        return self.organization.add_manager(user, reason=reason)
-
-    def get_queryset(self):
-        queryset = super(ManagerListAPIView, self).get_queryset()
-        return queryset.filter(manages__slug=self.kwargs.get(
+        elif self.kwargs.get('role') == 'managers':
+            return queryset.filter(manages__slug=self.kwargs.get(
                 self.organization_url_kwarg))
+        return queryset.none()
 
 
-class ManagerDetailAPIView(RelationMixin, DestroyAPIView):
+class RoleDetailAPIView(RelationMixin, DestroyAPIView):
+    """
+    Dettach a user from a role with regards to an organization, typically
+    resulting in revoking permissions  from this user to manage part of an
+    organization profile.
+    """
 
-    model = get_manager_relation_model()
-
-
+    def get_model(self):
+        if self.kwargs.get('role') == 'contributors':
+            return get_contributor_relation_model()
+        elif self.kwargs.get('role') == 'managers':
+            return get_manager_relation_model()
+        raise Http404("No role named '%s'" % self.kwargs.get('role'))

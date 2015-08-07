@@ -1,13 +1,18 @@
 {% extends "saas/base.html" %}
 
 {% block saas_content %}
-{% if form.instance %}
 <div>
+    {% if form.instance %}
     <div>
         <button class="activate {% if form.instance.is_active %}activated{% endif %}">{% if form.instance.is_active %}Deactivate{% else %}Activate{% endif %}</button>
     </div>
+    {% endif %}
+    {% if show_delete %}
+    <div>
+        <button class="delete">Delete</button>
+    </div>
+    {% endif %}
 </div>
-{% endif %}
 <form method="post" action=".">
     {% csrf_token %}
     {{ form }}
@@ -22,7 +27,16 @@ $(document).ready(function(){
         var self = $(this);
         event.preventDefault();
         toggleActivatePlan(self,
-            {'saas_api_plan': "{% url 'saas_api_plan_new' %}" });
+            {'saas_api_plan': "{% url 'saas_api_plan_new' organization %}" });
+    });
+    $(".delete").click(function(event) {
+        var self = $(this);
+        event.preventDefault();
+        var plan = new Plan(self.attr("data-plan"),
+            {'saas_api_plan': "{% url 'saas_api_plan_new' organization %}" });
+        plan.destroy(function() {
+            window.location.href = "{% url 'saas_metrics_plans' organization %}" ;
+        });
     });
 });
 </script>

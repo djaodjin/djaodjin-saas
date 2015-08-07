@@ -11,7 +11,7 @@
     <form method="post" id="payment-form"
           action=".{% if next %}/?next={{ next }}{% endif %}">
         {% csrf_token %}
-        {% include "saas/card_use.html" with title="Update" update_mode=True %}
+        {% include "saas/_card_use.html" with title="Update" update_mode=True %}
     </form>
 </section>
 {% endblock %}

@@ -23,36 +23,42 @@
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import json
-from datetime import datetime, date, timedelta
+from datetime import datetime
 
 from django.core.urlresolvers import reverse
-from django.db.models import Min, Sum, Max
-from django.utils.timezone import utc
 from django.views.generic import ListView, TemplateView
 
 from saas.api.coupons import SmartCouponListMixin
 # NB: there is another CouponMixin
 from saas.api.coupons import CouponMixin as CouponAPIMixin
 from saas.api.metrics import RegisteredQuerysetMixin
+from saas.managers.metrics import monthly_balances, month_periods
 from saas.mixins import (CouponMixin, OrganizationMixin, MetricsMixin,
     ChurnedQuerysetMixin, SubscriptionSmartListMixin, SubscribedQuerysetMixin,
     UserSmartListMixin)
+from saas.models import CartItem, Plan, Transaction
 from saas.views.download import CSVDownloadView
-from saas.managers.metrics import monthly_balances, month_periods
-from saas.models import (CartItem, Plan, Transaction,
-    NewVisitors)
-from saas.compat import User
 from saas.utils import datetime_or_now
 
 
 class CouponMetricsView(CouponMixin, ListView):
     """
     Performance of Coupon based on CartItem.
+
+    Template:
+
+    To edit the layout of this page, create a local \
+    ``saas/metrics/coupons.html`` (`example <https://github.com/djaodjin\
+/djaodjin-saas/tree/master/saas/templates/saas/metrics/coupons.html>`__).
+
+    Template context:
+      - organization
+      - request
     """
 
     model = CartItem
     paginate_by = 10
-    template_name = 'saas/coupon_metrics.html'
+    template_name = 'saas/metrics/coupons.html'
 
     def get_queryset(self):
         queryset = super(CouponMetricsView, self).get_queryset().filter(
@@ -107,9 +113,23 @@ class PlansMetricsView(OrganizationMixin, TemplateView):
     """
     Performance of Plans for a time period
     (as a count of subscribers per plan per month)
+
+    Template:
+
+    To edit the layout of this page, create a local \
+    ``saas/metrics/plans.html`` (`example <https://github.com/djaodjin\
+/djaodjin-saas/tree/master/saas/templates/saas/metrics/plans.html>`__).
+    The page will typically call back
+    :ref:`/api/metrics/:organization/plans/ <api_metrics_plans>`
+    to fetch the 12 month trailing performance in terms of subscribers
+    of the plans of a provider.
+
+    Template context:
+      - organization
+      - request
     """
 
-    template_name = 'saas/plan_metrics.html'
+    template_name = 'saas/metrics/plans.html'
 
     def get_context_data(self, **kwargs):
         context = super(PlansMetricsView, self).get_context_data(**kwargs)
@@ -132,10 +152,31 @@ class PlansMetricsView(OrganizationMixin, TemplateView):
 
 class RevenueMetricsView(MetricsMixin, TemplateView):
     """
-    Generate a table of revenue (rows) per months (columns).
+    Reports cash flow and revenue in currency units.
+
+    Template:
+
+    To edit the layout of this page, create a local \
+    ``saas/metrics/base.html`` (`example <https://github.com/djaodjin\
+/djaodjin-saas/tree/master/saas/templates/saas/metrics/base.html>`__).
+
+    The page will typically call back
+    :ref:`/api/metrics/:organization/funds/ <api_metrics_funds>`
+    to fetch the 12 month trailing cash flow table, and/or
+    :ref:`/api/metrics/:organization/balances/ <api_metrics_balances>`
+    to fetch the 12 month trailing receivable/backlog/income revenue.
+
+    The example page also calls back
+    :ref:`/api/metrics/:organization/customers/ <api_metrics_customers>`
+    to fetch the distinct number of customers that generated the cash
+    transactions.
+
+    Template context:
+      - organization
+      - request
     """
 
-    template_name = 'saas/metrics_base.html'
+    template_name = 'saas/metrics/base.html'
 
     def get_context_data(self, **kwargs):
         context = super(RevenueMetricsView, self).get_context_data(**kwargs)
@@ -252,149 +293,3 @@ class ChurnedSubscriptionDownloadView(SubscriptionSmartListMixin,
                                       ChurnedSubscriptionBaseDownloadView):
 
     pass
-
-
-class UsageMetricsView(OrganizationMixin, TemplateView):
-
-    template_name = "saas/usage_chart.html"
-
-    def get_context_data(self, **kwargs):
-        context = super(UsageMetricsView, self).get_context_data(**kwargs)
-        organization = self.get_organization()
-        # Note: There is a way to get the result in a single SQL statement
-        # but that requires to deal with differences in databases
-        # (MySQL: date_format, SQLite: strftime) and get around the
-        # "Raw query must include the primary key" constraint.
-        values = []
-        today = date.today()
-        end = datetime(day=today.day, month=today.month, year=today.year,
-                                tzinfo=utc)
-        for _ in range(0, 12):
-            first = datetime(day=1, month=end.month, year=end.year,
-                                      tzinfo=utc)
-            usages = Transaction.objects.filter(
-                orig_organization=organization, orig_account='Usage',
-                created_at__lt=first).aggregate(Sum('amount'))
-            amount = usages.get('amount__sum', 0)
-            if not amount:
-                # The key could be associated with a "None".
-                amount = 0
-            values += [{"x": date.strftime(first, "%Y/%m/%d"), "y": amount}]
-            end = first - timedelta(days=1)
-        context.update({'data': [{"key": "Usage", "values": values}]})
-        return context
-
-
-class OverallMetricsView(TemplateView):
-
-    template_name = "saas/general_chart.html"
-
-    def get_context_data(self, **kwargs):
-        all_values = []
-        for organization in self.request.user.manages.all():
-            values = []
-            today = date.today()
-            end = datetime(day=today.day, month=today.month, year=today.year,
-                                    tzinfo=utc)
-            for _ in range(0, 12):
-                first = datetime(day=1, month=end.month, year=end.year,
-                                          tzinfo=utc)
-                usages = Transaction.objects.filter(
-                    orig_organization=organization, orig_account='Usage',
-                    created_at__lt=first).aggregate(Sum('amount'))
-                amount = usages.get('amount__sum', 0)
-                if not amount:
-                    # The key could be associated with a "None".
-                    amount = 0
-                values += [{"x": date.strftime(first, "%Y/%m/%d"),
-                            "y": amount}]
-                end = first - timedelta(days=1)
-            all_values += [{
-                "key": str(organization.slug), "values": values}]
-        context = {'data' : all_values}
-        return context
-
-
-class VisitorsView(TemplateView):
-    """
-    Number of visitors as measured by the website logs.
-    """
-
-    template_name = 'saas/stat.html'
-
-    def get_context_data(self, **kwargs):
-        #pylint: disable=too-many-locals
-        context = super(VisitorsView, self).get_context_data(**kwargs)
-        min_date = NewVisitors.objects.all().aggregate(Min('date'))
-        max_date = NewVisitors.objects.all().aggregate(Max('date'))
-        min_date = min_date.get('date__min', 0)
-        max_date = max_date.get('date__max', 0)
-        date_tabl = [{"x": datetime.strftime(new.date, "%Y/%m/%d"),
-                      "y": new.visitors_number / 5}
-                     for new in NewVisitors.objects.all()]
-        current_date = min_date
-        delta = timedelta(days=1)
-        while current_date <= max_date:
-            j = len(date_tabl)
-            tbl = []
-            for i in range(j):
-                if date_tabl[i]["x"] == datetime.strftime(
-                    current_date, "%Y/%m/%d"):
-                    tbl += [i]
-            if len(tbl) == 0:
-                date_tabl += [{
-                    "x": datetime.strftime(current_date, "%Y/%m/%d"), "y": 0}]
-            current_date += delta
-
-        date_tabl.sort()
-
-        ########################################################
-        # Conversion visitors to trial
-        date_joined_username = []
-        for user in User.objects.all():
-            if (datetime.strftime(user.date_joined, "%Y/%m/%d")
-                > datetime.strftime(min_date, "%Y/%m/%d") and
-                datetime.strftime(user.date_joined, "%Y/%m/%d")
-                < datetime.strftime(max_date, "%Y/%m/%d")):
-                date_joined_username += [{
-                        "date": user.date_joined, "user": str(user.username)}]
-
-        user_per_joined_date = {}
-        for datas in date_joined_username:
-            key = datas["date"]
-            if not key in user_per_joined_date:
-                user_per_joined_date[key] = []
-            user_per_joined_date[key] += [datas["user"]]
-
-        trial = []
-        for joined_at in user_per_joined_date.keys():
-            trial += [{
-                "x": joined_at, "y": len(user_per_joined_date[joined_at])}]
-
-        min_date_trial = User.objects.all().aggregate(Min('date_joined'))
-        max_date_trial = User.objects.all().aggregate(Max('date_joined'))
-        min_date_trial = min_date_trial.get('date_joined__min', 0)
-        max_date_trial = max_date_trial.get('date_joined__max', 0)
-
-        for item in trial:
-            item["x"] = datetime.strftime(item["x"], "%Y/%m/%d")
-        curr_date = min_date
-        delta = timedelta(days=1)
-        while curr_date <= max_date:
-            j = len(trial)
-            count = 0
-            for i in range(j):
-                if trial[i]["x"] == datetime.strftime(curr_date, "%Y/%m/%d"):
-                    count += 1
-            if count == 0:
-                trial += [{
-                    "x": datetime.strftime(curr_date, "%Y/%m/%d"), "y": 0}]
-            curr_date += delta
-        trial.sort()
-
-        context = {'data' : [{"key": "Signup number",
-                              "color": "#d62728",
-                              "values": trial},
-                             {"key": "New visitor number",
-                              "values": date_tabl}]}
-        return context

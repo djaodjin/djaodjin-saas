@@ -95,6 +95,35 @@ class CartItemSerializer(serializers.ModelSerializer):
 
 
 class CartItemAPIView(CartMixin, CreateAPIView):
+    """
+    Add a plan into the cart of the request user.
+
+    **Example request**:
+
+    .. sourcecode:: http
+
+        POST /api/cart/
+
+        {
+            "plan": "open-space",
+            "nb_periods": 1,
+            "first_name": "",
+            "last_name": "",
+            "email": ""
+        }
+
+    **Example response**:
+
+    .. sourcecode:: http
+
+        {
+            "plan": "open-space",
+            "nb_periods": 1,
+            "first_name": "",
+            "last_name": "",
+            "email": ""
+        }
+    """
     #pylint: disable=no-member
 
     model = CartItem
@@ -126,7 +155,7 @@ class CartItemAPIView(CartMixin, CreateAPIView):
 
 class CartItemDestroyAPIView(DestroyAPIView):
     """
-    Remove a ``Plan`` into the subscription cart of a ``User``.
+    Remove a ``Plan`` from the subscription cart of the request user.
     """
 
     model = CartItem

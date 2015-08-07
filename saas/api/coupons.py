@@ -99,37 +99,104 @@ class SmartCouponListMixin(SearchableListMixin, SortableListMixin):
 
 
 class CouponListAPIView(SmartCouponListMixin, CouponMixin, ListCreateAPIView):
+    """
+    ``GET`` queries all ``Coupon`` associated to a provider.
+
+    The queryset can be further filtered by passing a ``q`` parameter.
+    The value in ``q`` will be matched against:
+
+      - Coupon.code
+      - Coupon.description
+      - Coupon.percent
+      - Coupon.organization.full_name
+
+    The result queryset can be ordered by:
+
+      - Coupon.code
+      - Coupon.created_at
+      - Coupon.description
+      - Coupon.ends_at
+      - Coupon.percent
+
+    **Example request**:
+
+    .. sourcecode:: http
+
+        GET /api/billing/cowork/coupons?o=code&ot=asc&q=DIS
+
+    **Example response**:
+
+    .. sourcecode:: http
+
+        {
+            "count": 2,
+            "next": null,
+            "previous": null,
+            "results": [
+                {
+                    "code": "DIS100",
+                    "percent": 100,
+                    "created_at": "2014-01-01T09:00:00Z",
+                    "ends_at": null,
+                    "description": null
+                },
+                {
+                    "code": "DIS50",
+                    "percent": 50,
+                    "created_at": "2014-01-01T09:00:00Z",
+                    "ends_at": null,
+                    "description": null
+                }
+            ]
+        }
+
+    ``POST`` creates a ``Coupon`` (see
+    ``/api/billing/:organization/coupons/:coupon/`` for an example of JSON
+    data).
+    """
 
     paginate_by = 25
 
 
 class CouponDetailAPIView(CouponMixin, RetrieveUpdateDestroyAPIView):
+    """
+    Retrieve, update or delete a ``Coupon``.
 
+    **Example response**:
+
+    .. sourcecode:: http
+
+        {
+            "code": "DIS100",
+            "percent": 100,
+            "created_at": "2014-01-01T09:00:00Z",
+            "ends_at": null,
+            "description": null
+       }
+    """
     pass
 
 
 class CouponRedeemAPIView(GenericAPIView):
     """
-.. http:post:: /api/cart/redeem/
-
     Redeem a ``Coupon`` and apply the discount to the eligible items
     in the cart.
 
-   **Example request**:
+    **Example request**:
 
-   .. sourcecode:: http
+    .. sourcecode:: http
 
-    {
-        "code": "LABORDAY"
-    }
+        {
+            "code": "LABORDAY"
+        }
 
-   **Example response**:
+    **Example response**:
 
-   .. sourcecode:: http
+    .. sourcecode:: http
 
-    {
-        "details": "Coupon 'LABORDAY' was successfully applied."
-    }
+        {
+            "details": "Coupon 'LABORDAY' was successfully applied."
+        }
     """
     serializer_class = RedeemCouponSerializer
 

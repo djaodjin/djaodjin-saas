@@ -28,7 +28,9 @@ from saas.views.billing import ChargeReceiptView
 
 class PrintableChargeReceiptView(ChargeReceiptView):
     """
-    Charge receipt as printable PDF format.
+    ``Charge`` receipt as printable PDF format.
+
+    template: saas/printable_charge_receipt.html
     """
     template_name = 'saas/printable_charge_receipt.html'
     response_class = PdfTemplateResponse

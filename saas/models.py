@@ -2290,17 +2290,6 @@ class Transaction(models.Model):
         return None
 
 
-class NewVisitors(models.Model):
-    """
-    New Visitors metrics populated by reading the web server logs.
-    """
-    date = models.DateField(unique=True)
-    visitors_number = models.PositiveIntegerField(default=0)
-
-    def __unicode__(self):
-        return unicode(self.id)
-
-
 def get_current_provider():
     """
     Returns the site-wide provider from a request.

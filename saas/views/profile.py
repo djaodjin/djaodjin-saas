@@ -31,10 +31,8 @@ from django.contrib import messages
 from django.core.urlresolvers import reverse
 from django.db import transaction
 from django.http import HttpResponseRedirect
-from django.views.generic import (
-    CreateView, ListView,
-    TemplateView, UpdateView,
-    DetailView)
+from django.views.generic import (CreateView, DetailView, ListView,
+    TemplateView, UpdateView)
 from django.utils.decorators import method_decorator
 
 from saas.forms import (OrganizationForm, OrganizationCreateForm,
@@ -45,36 +43,78 @@ from saas.models import Organization, Subscription
 LOGGER = logging.getLogger(__name__)
 
 
-class ContributorListView(OrganizationMixin, TemplateView):
+class RoleListView(OrganizationMixin, TemplateView):
     """
-    List of contributors for an organization.
-    """
-    template_name = 'saas/contributor_list.html'
+    List of managers (or contributors) for an organization.
 
+    Template:
 
-class ManagerListView(OrganizationMixin, TemplateView):
+    To edit the layout of this page, create a local \
+    ``saas/profile/roles.html`` (`example <https://github.com/djaodjin\
+/djaodjin-saas/tree/master/saas/templates/saas/profile/roles.html>`__).
+    You should insure the page will call back the
+    :ref:`/api/profile/:organization/roles/:role/ <api_role>`
+    API end point to fetch the set of users with the specified role.
+
+    Template context:
+      - role
+      - organization
+      - request
     """
-    List of managers for an organization.
-    """
-    template_name = 'saas/manager_list.html'
+    template_name = 'saas/profile/roles.html'
+
+    def get_context_data(self, **kwargs):
+        context = super(RoleListView, self).get_context_data(**kwargs)
+        context.update({'role': self.kwargs.get('role', None)})
+        return context
 
 
 class SubscriberListView(OrganizationMixin, TemplateView):
     """
     List of organizations subscribed to a plan provided by the organization.
+
+    Template:
+
+    To edit the layout of this page, create a local \
+    ``saas/profile/subscribers.html`` (`example <https://github.com/djaodjin/\
+djaodjin-saas/tree/master/saas/templates/saas/profile/subscribers.html>`__).
+
+    This page will typically call back
+    :ref:`/api/metrics/:organization/active/ <api_metrics_subscribers_active>`
+    and/or :ref:`/api/metrics/:organization/churned/\
+ <api_metrics_subscribers_churned>`
+    to fetch the set of active and/or churned subscribers for a provider
+    plans.
+
+    Template context:
+      - organization
+      - request
     """
 
-    template_name = 'saas/subscriber_list.html'
+    template_name = 'saas/profile/subscribers.html'
 
 
 class SubscriptionListView(OrganizationMixin, ListView):
     """
     List of Plans this organization is subscribed to.
+
+    Template:
+
+    To edit the layout of this page, create a local \
+    ``saas/profile/subscriptions.html`` (`example <https://github.com/djaodjin\
+/djaodjin-saas/tree/master/saas/templates/saas/profile/subscriptions.html>`__).
+    You should insure the page will call back the
+    :ref:`/api/profile/:organization/subscriptions/ <api_subscriptions>`
+    API end point to fetch the set of subscriptions for the organization.
+
+    Template context:
+      - organization
+      - request
     """
 
     model = Subscription
     paginate_by = 10
-    template_name = 'saas/subscription_list.html'
+    template_name = 'saas/profile/subscriptions.html'
 
     def get_queryset(self):
         self.organization = self.get_organization()
@@ -87,11 +127,36 @@ class SubscriptionListView(OrganizationMixin, ListView):
 
 
 class OrganizationCreateView(CreateView):
+    """
+    This page helps ``User`` create a new ``Organization``. By default,
+    the request user becomes a manager of the newly created entity.
+
+    ``User`` and ``Organization`` are separate concepts links together
+    by manager and contributor relationship.
+
+    The complete ``User``, ``Organization`` and relationship might be exposed
+    right away to the person registering to the site. This is very usual
+    in Enterprise software.
+
+    On the hand, a site might decide to keep the complexity hidden by
+    enforcing a one-to-one manager relationship between a ``User`` (login)
+    and an ``Organization`` (payment profile).
+
+    Template:
+
+    To edit the layout of this page, create a local \
+    ``saas/app/new.html`` (`example <https://github.com/djaodjin\
+/djaodjin-saas/tree/master/saas/templates/saas/app/new.html>`__).
+
+    Template context:
+      - organization
+      - request
+    """
 
     model = Organization
     form_class = OrganizationCreateForm
     pattern_name = 'saas_organization_cart'
-    template_name = "saas/organization_create.html"
+    template_name = "saas/app/new.html"
 
     def form_valid(self, form):
         with transaction.atomic():
@@ -109,10 +174,23 @@ class OrganizationCreateView(CreateView):
 
 
 class DashboardView(OrganizationMixin, DetailView):
+    """
+    High-level dashboard for a quick glance of the business in real-time.
+
+    Template:
+
+    To edit the layout of this page, create a local \
+    ``saas/metrics/dashboard.html`` (`example <https://github.com/djaodjin\
+/djaodjin-saas/tree/master/saas/templates/saas/metrics/dashboard.html>`__).
+
+    Template context:
+      - organization
+      - request
+    """
 
     model = Organization
     slug_url_kwarg = 'organization'
-    template_name = "saas/provider/dashboard.html"
+    template_name = 'saas/metrics/dashboard.html'
     steps = [
         {
             'test': 'has_profile_completed',
@@ -165,11 +243,24 @@ class DashboardView(OrganizationMixin, DetailView):
 
 
 class OrganizationProfileView(OrganizationMixin, UpdateView):
+    """
+    Page to update contact information of an ``Organization``.
+
+    Template:
+
+    To edit the layout of this page, create a local \
+    ``saas/profile/index.html`` (`example <https://github.com/djaodjin\
+/djaodjin-saas/tree/master/saas/templates/saas/profile/index.html>`__).
+
+    Template context:
+      - organization
+      - request
+    """
 
     model = Organization
     slug_field = 'slug'
     slug_url_kwarg = 'organization'
-    template_name = "saas/organization_profile.html"
+    template_name = "saas/profile/index.html"
 
     @method_decorator(transaction.atomic)
     def form_valid(self, form):

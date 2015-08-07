@@ -32,22 +32,17 @@ from saas.settings import ACCT_REGEX
 from saas.api.organizations import OrganizationDetailAPIView
 from saas.api.subscriptions import (SubscriptionDetailAPIView,
     SubscriptionListAPIView)
-from saas.api.users import (ContributorListAPIView, ContributorDetailAPIView,
-    ManagerListAPIView, ManagerDetailAPIView)
+from saas.api.users import (RoleListAPIView, RoleDetailAPIView)
 from saas.views import OrganizationRedirectView
 
 
 urlpatterns = patterns('saas.api',
-    url(r'^(?P<organization>%s)/contributors/(?P<user>%s)/?'
+    url(r'^(?P<organization>%s)/roles/(?P<role>%s)/(?P<user>%s)/?'
+        % (ACCT_REGEX, ACCT_REGEX, ACCT_REGEX),
+        RoleDetailAPIView.as_view(), name='saas_api_role_detail'),
+    url(r'^(?P<organization>%s)/roles/(?P<role>%s)/?'
         % (ACCT_REGEX, ACCT_REGEX),
-        ContributorDetailAPIView.as_view(), name='saas_api_contributor_detail'),
-    url(r'^(?P<organization>%s)/contributors/?' % ACCT_REGEX,
-        ContributorListAPIView.as_view(), name='saas_api_contributor_list'),
-    url(r'^(?P<organization>%s)/managers/(?P<user>%s)/?'
-        % (ACCT_REGEX, ACCT_REGEX),
-        ManagerDetailAPIView.as_view(), name='saas_api_manager_detail'),
-    url(r'^(?P<organization>%s)/managers/?' % ACCT_REGEX,
-        ManagerListAPIView.as_view(), name='saas_api_manager_list'),
+        RoleListAPIView.as_view(), name='saas_api_role_list'),
     url(r'^(?P<organization>%s)/subscriptions/(?P<subscribed_plan>%s)/?'
         % (ACCT_REGEX, ACCT_REGEX),
         SubscriptionDetailAPIView.as_view(),

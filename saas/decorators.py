@@ -302,9 +302,10 @@ def pass_provider_only(request,
         organization = charge.customer
     elif organization:
         organization = get_object_or_404(Organization, slug=organization)
-    return organization and _has_valid_access(request,
-            list(Organization.objects.providers_to(organization)),
-            strength)
+    if organization:
+        return _has_valid_access(request,
+            list(Organization.objects.providers_to(organization)), strength)
+    return  _has_valid_access(request, [get_current_provider()])
 
 
 def pass_provider_only_weak(request, charge=None, organization=None):

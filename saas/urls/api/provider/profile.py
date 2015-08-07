@@ -22,15 +22,24 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-'''API URLs typically associated with the provider.'''
+"""
+API URLs for profile resources typically associated to a provider
+(i.e. ``Plan``).
+"""
 
-from django.conf.urls import patterns, include, url
+from django.conf.urls import patterns, url
 
 from saas.settings import ACCT_REGEX
+from saas.api.plans import (PlanActivateAPIView, PlanCreateAPIView,
+    PlanResourceView)
 
-urlpatterns = patterns('',
-    url(r'^', include('saas.urls.api.provider.charges')),
-    url(r'^', include('saas.urls.api.provider.billing')),
-    url(r'^', include('saas.urls.api.provider.profile')),
-    url(r'^', include('saas.urls.api.provider.metrics')),
+urlpatterns = patterns('saas.api',
+    url(r'^profile/(?P<organization>%s)/plans/(?P<plan>%s)/activate/'
+        % (ACCT_REGEX, ACCT_REGEX),
+        PlanActivateAPIView.as_view(), name='saas_api_plan_activate'),
+    url(r'^profile/(?P<organization>%s)/plans/(?P<plan>%s)/?'
+        % (ACCT_REGEX, ACCT_REGEX),
+        PlanResourceView.as_view(), name='saas_api_plan'),
+    url(r'^profile/(?P<organization>%s)/plans/?' % ACCT_REGEX,
+        PlanCreateAPIView.as_view(), name='saas_api_plan_new'),
 )

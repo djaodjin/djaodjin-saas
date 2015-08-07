@@ -28,16 +28,14 @@ from django.conf.urls import patterns, url
 
 from saas.settings import ACCT_REGEX
 from saas.views import OrganizationRedirectView
-from saas.views.profile import (
-    ContributorListView, ManagerListView,
-    OrganizationProfileView, SubscriptionListView)
+from saas.views.profile import (RoleListView, OrganizationProfileView,
+    SubscriptionListView)
 
 urlpatterns = patterns(
     'saas.views.profile',
-    url(r'^profile/(?P<organization>%s)/contributors/' % ACCT_REGEX,
-        ContributorListView.as_view(), name='saas_contributor_list'),
-    url(r'^profile/(?P<organization>%s)/managers/' % ACCT_REGEX,
-        ManagerListView.as_view(), name='saas_manager_list'),
+    url(r'^profile/(?P<organization>%s)/roles/(?P<role>%s)/'
+        % (ACCT_REGEX, ACCT_REGEX),
+        RoleListView.as_view(), name='saas_role_list'),
     url(r'^profile/(?P<organization>%s)/subscriptions/' % ACCT_REGEX,
         SubscriptionListView.as_view(), name='saas_subscription_list'),
     url(r'^profile/(?P<organization>%s)/$' % ACCT_REGEX,

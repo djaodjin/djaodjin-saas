@@ -27,7 +27,7 @@ from django.contrib.auth import REDIRECT_FIELD_NAME
 from django.core.context_processors import csrf
 from django.core.urlresolvers import reverse
 from django.http import HttpResponseRedirect
-from django.views.generic import CreateView, ListView, UpdateView, DeleteView
+from django.views.generic import CreateView, ListView, UpdateView
 from django.views.generic.detail import SingleObjectMixin
 
 from saas.forms import PlanForm
@@ -66,11 +66,26 @@ class PlanFormMixin(OrganizationMixin, SingleObjectMixin):
 
 class CartPlanListView(ProviderMixin, CartMixin, ListView):
     """
-    List of plans available for subscription.
+    GET displays the active plans available for subscription.
+
+    Template:
+
+    To edit the layout of this page, create a local \
+    ``saas/pricing.html`` (`example <https://github.com/djaodjin/\
+djaodjin-saas/tree/master/saas/templates/saas/pricing.html>`__).
+
+    Template context:
+      - plan_list
+      - items_selected
+      - csrf_token
+      - organization
+      - request
+
+    POST adds the selected plan into the request user cart.
     """
 
     model = Plan
-    template_name = 'saas/cart_plan_list.html'
+    template_name = 'saas/pricing.html'
     redirect_url = 'saas_cart'
 
     def get_queryset(self):
@@ -119,20 +134,48 @@ class CartPlanListView(ProviderMixin, CartMixin, ListView):
 class PlanCreateView(PlanFormMixin, CreateView):
     """
     Create a new ``Plan`` for an ``Organization``.
+
+    Template:
+
+    To edit the layout of this page, create a local \
+    ``saas/profile/plans.html`` (`example <https://github.com/djaodjin/\
+djaodjin-saas/tree/master/saas/templates/saas/profile/plans.html>`__).
+
+    Template context:
+      - csrf_token
+      - organization
+      - request
     """
+    template_name = 'saas/profile/plans.html'
 
     def get_success_url(self):
+        messages.success(
+            self.request, "Successfully created '%s' plan." % self.object)
         return reverse('saas_metrics_plans', args=(self.organization,))
 
 
 class PlanUpdateView(PlanFormMixin, UpdateView):
     """
-    Update a new ``Plan``.
+    Update information about a ``Plan``.
+
+    Template:
+
+    To edit the layout of this page, create a local \
+    ``saas/profile/plans.html`` (`example <https://github.com/djaodjin/\
+djaodjin-saas/tree/master/saas/templates/saas/profile/plans.html>`__).
+
+    Template context:
+      - csrf_token
+      - organization
+      - request
     """
+    template_name = 'saas/profile/plans.html'
+
     slug_url_kwarg = 'plan'
 
     def get_success_url(self):
-        messages.success(self.request, 'Plan successfully updated.')
+        messages.success(
+            self.request, "Successfully update '%s' plan." % self.object)
         return reverse('saas_plan_edit', kwargs=self.get_url_kwargs())
 
     def get_context_data(self, **kwargs):
@@ -140,25 +183,3 @@ class PlanUpdateView(PlanFormMixin, UpdateView):
         plan = self.get_object()
         context['show_delete'] = plan.subscription_set.count() == 0
         return context
-
-
-class PlanDeleteView(OrganizationMixin, DeleteView):
-    '''
-    Delete a plan
-    '''
-    model = Plan
-    slug_url_kwarg = 'plan'
-
-    def delete(self, *args, **kwargs):
-        '''
-        Override to provide some validation.
-
-        Without this, users could subvert the "no deleting plans with
-        subscribers" rule via URL manipulation.
-        '''
-        if self.get_object().subscription_set.count() != 0:
-            raise Exception('cannot delete a plan with subscribers')
-        return super(PlanDeleteView, self).delete(*args, **kwargs)
-
-    def get_success_url(self):
-        return reverse('saas_metrics_plans', args=(self.get_organization(),))

@@ -37,6 +37,12 @@ To test payment through [Stripe](https://stripe.com/):
     STRIPE_PUB_KEY = "_your_stripe_public_api_key_"
     STRIPE_PRIV_KEY = "_your_stripe_private_api_key_"
 
+3. This Django App does not send notification e-mails itself. All major
+updates that would result in a e-mail sent trigger signals though. It is
+straightforward to send e-mails on a signal trigger in the main
+Django project. We provide sample e-mail templates here in the
+saas/templates/notification/ directory.
+
 Release Notes
 =============
 

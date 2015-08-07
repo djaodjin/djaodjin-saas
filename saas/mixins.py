@@ -380,6 +380,6 @@ class RelationMixin(OrganizationMixin, UserMixin):
     """
 
     def get_object(self):
-        return get_object_or_404(self.model,
+        return get_object_or_404(self.get_model(),
             organization=self.get_organization(), user=self.get_user())
 

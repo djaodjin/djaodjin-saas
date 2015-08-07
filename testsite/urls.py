@@ -59,6 +59,8 @@ urlpatterns = patterns('',
         name='saas_cart'),
     # saas urls with provider key to implement marketplace.
     url(r'^api/', include('saas.urls.api.cart')),
+    url(r'^api/', include('saas.urls.api.broker'),
+        decorators=['saas.decorators.requires_direct']),
     url(r'^api/', include('saas.urls.api.provider'),
         decorators=['saas.decorators.requires_direct']),
     url(r'^api/', include('saas.urls.api.subscriber'),
