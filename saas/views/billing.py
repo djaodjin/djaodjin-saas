@@ -562,7 +562,8 @@ class CartBaseView(InvoicablesFormMixin, FormView):
         if plan.period_amount == 0:
             # We are having a freemium business models, no discounts.
             option_items += [Transaction.objects.new_subscription_order(
-                subscription, 1, prorated_amount, created_at, "free")]
+                subscription, 1, prorated_amount, created_at,
+                descr_suffix="free")]
 
         elif plan.unlock_event:
             # Locked plans are free until an event.
