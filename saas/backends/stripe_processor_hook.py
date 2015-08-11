@@ -48,7 +48,7 @@ def processor_hook(request):
         LOGGER.error("Posted stripe event %s FAIL", request.DATA['id'])
         raise Http404
     LOGGER.info("Posted stripe event %s PASS", event.id)
-    charge = get_object_or_404(Charge, processor_id=event.data.object.id)
+    charge = get_object_or_404(Charge, processor_key=event.data.object.id)
 
     if event.type == 'charge.succeeded':
         if charge.state != charge.DONE:

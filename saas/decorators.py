@@ -206,7 +206,7 @@ def pass_direct(request, charge=None, organization=None, strength=NORMAL):
     """
     if charge:
         if not isinstance(charge, Charge):
-            charge = get_object_or_404(Charge, processor_id=charge)
+            charge = get_object_or_404(Charge, processor_key=charge)
         organization = charge.customer
     elif organization:
         if not isinstance(organization, Organization):
@@ -251,7 +251,7 @@ def pass_provider(request, charge=None, organization=None, strength=NORMAL):
     .. image:: perms-contrib-subscribes.*
     """
     if charge and not isinstance(charge, Charge):
-        charge = get_object_or_404(Charge, processor_id=charge)
+        charge = get_object_or_404(Charge, processor_key=charge)
         organization = charge.customer
     elif organization and not isinstance(organization, Organization):
         organization = get_object_or_404(Organization, slug=organization)
@@ -298,7 +298,7 @@ def pass_provider_only(request,
     .. image:: perms-contrib-provider-only.*
     """
     if charge:
-        charge = get_object_or_404(Charge, processor_id=charge)
+        charge = get_object_or_404(Charge, processor_key=charge)
         organization = charge.customer
     elif organization:
         organization = get_object_or_404(Organization, slug=organization)

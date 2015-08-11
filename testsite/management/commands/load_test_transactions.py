@@ -213,7 +213,7 @@ class Command(BaseCommand):
                     description='Charge for %d periods' % nb_periods,
                     last4=1241,
                     exp_date=datetime_or_now(),
-                    processor_id=transaction_item.pk,
+                    processor_key=transaction_item.pk,
 # XXX We can't do that yet because of
 # ``PROCESSOR_BACKEND.charge_distribution(self)``
 #                    unit=transaction_item.dest_unit,

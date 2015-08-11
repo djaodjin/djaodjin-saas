@@ -48,7 +48,7 @@ class RetrieveChargeMixin(ChargeMixin):
     from the processor.
     """
     model = Charge
-    slug_field = 'processor_id'
+    slug_field = 'processor_key'
     slug_url_kwarg = 'charge'
 
     def get_object(self, queryset=None):
@@ -64,7 +64,7 @@ class ChargeSerializer(serializers.ModelSerializer):
     class Meta:
         model = Charge
         fields = ('created_at', 'amount', 'unit', 'description',
-                  'last4', 'exp_date', 'processor_id', 'state')
+                  'last4', 'exp_date', 'processor_key', 'state')
 
 
 class ChargeResourceView(RetrieveChargeMixin, RetrieveAPIView):
@@ -82,7 +82,7 @@ class ChargeResourceView(RetrieveChargeMixin, RetrieveAPIView):
             "description": "Charge for subscription to cowork open-space",
             "last4": "1234",
             "exp_date"" "12/2015",
-            "processor_id": "ch_XAb124EF",
+            "processor_key": "ch_XAb124EF",
             "state": "DONE"
         }
     """
@@ -123,7 +123,7 @@ class ChargeRefundAPIView(RetrieveChargeMixin, RetrieveAPIView):
             "description": "Charge for subscription to cowork open-space",
             "last4": "1234",
             "exp_date"" "12/2015",
-            "processor_id": "ch_XAb124EF",
+            "processor_key": "ch_XAb124EF",
             "state": "DONE"
         }
     """
@@ -164,5 +164,5 @@ class EmailChargeReceiptAPIView(RetrieveChargeMixin, GenericAPIView):
         signals.charge_updated.send(
             sender=__name__, charge=self.object, user=request.user)
         return Response({
-            "charge_id": self.object.processor_id,
+            "charge_id": self.object.processor_key,
             "email": self.object.customer.email})

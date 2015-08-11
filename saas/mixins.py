@@ -151,7 +151,7 @@ class ChargeMixin(SingleObjectMixin):
     Mixin for a ``Charge`` object.
     """
     model = Charge
-    slug_field = 'processor_id'
+    slug_field = 'processor_key'
     slug_url_kwarg = 'charge'
 
     def get_context_data(self, **kwargs):

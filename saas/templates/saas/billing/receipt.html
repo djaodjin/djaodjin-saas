@@ -37,7 +37,7 @@ display:none;
   <section id="info">
     <dl>
       <dt>REFERENCE</dt>
-      <dd>#{{ charge.processor_id }}</dd>
+      <dd>#{{ charge.processor_key }}</dd>
     </dl>
     <dl>
       <dt>amount</dt>
@@ -76,7 +76,7 @@ display:none;
         </tr>
         {% for refund in line.refunded %}
         <tr>
-          <td>{{refund.dest_amount|humanize_money:refund.dest_unit}}</td>
+          <td>{{refund.orig_amount|humanize_money:refund.orig_unit}}</td>
           <td>{{refund|describe}}</td>
           <td>
           </td>
@@ -141,7 +141,7 @@ var urls = {
         "{% url 'saas_api_charge_refund' charge %}",
 }
 $(document).ready(function() {
-    var thisCharge = new Charge("{{charge.processor_id}}", urls);
+    var thisCharge = new Charge("{{charge.processor_key}}", urls);
     $(".charge-refund").click(function () {
         var self = $(this);
         var availableAmount = self.attr("data-available-amount");

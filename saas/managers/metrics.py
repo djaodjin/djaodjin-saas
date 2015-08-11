@@ -62,15 +62,10 @@ def month_periods(nb_months=12, from_date=None):
 
 
 def aggregate_monthly(organization, account,
-                      from_date=None, backward=False):
+                      from_date=None, orig='orig', dest='dest'):
     # pylint: disable=too-many-locals
     counts = []
     amounts = []
-    orig = 'orig'
-    dest = 'dest'
-    if backward:
-        orig = 'dest'
-        dest = 'orig'
     # We want to be able to compare *last* to *from_date* and not get django
     # warnings because timezones are not specified.
     dates = month_periods(13, from_date)
@@ -94,16 +89,11 @@ def aggregate_monthly(organization, account,
 
 
 def aggregate_monthly_churn(organization, account, interval,
-                            from_date=None, reverse=False):
+                            from_date=None, orig='orig', dest='dest'):
     """
     Returns a table of records over a period of 12 months *from_date*.
     """
     #pylint: disable=too-many-locals
-    orig = 'orig'
-    dest = 'dest'
-    if reverse:
-        orig = 'dest'
-        dest = 'orig'
     customers = []
     receivables = []
     new_customers = []
@@ -205,7 +195,7 @@ def aggregate_monthly_churn(organization, account, interval,
 
 
 def aggregate_monthly_transactions(organization, account,
-    account_title=None, from_date=None, reverse=False):
+    account_title=None, from_date=None, orig='orig', dest='dest'):
     """
     12 months of total/new/churn into or out of (see *reverse*) *account*
     and associated distinct customers as extracted from Transactions.
@@ -214,8 +204,8 @@ def aggregate_monthly_transactions(organization, account,
     if not account_title:
         account_title = str(account)
     interval = organization.natural_interval
-    customers, account_totals = aggregate_monthly_churn(
-        organization, account, interval, from_date=from_date, reverse=reverse)
+    customers, account_totals = aggregate_monthly_churn(organization, account,
+        interval, from_date=from_date, orig=orig, dest=dest)
     churned_custs, total_custs, new_custs = customers
     churned_account, total_account, new_account = account_totals
     net_new_custs = []

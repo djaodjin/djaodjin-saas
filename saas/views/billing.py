@@ -302,10 +302,10 @@ class CardInvoicablesFormMixin(CardFormMixin, InvoicablesFormMixin):
             if redirect_path:
                 return '%s?%s=%s' % (
                     reverse('saas_charge_receipt',
-                        args=(self.charge.customer, self.charge.processor_id)),
+                        args=(self.charge.customer, self.charge.processor_key)),
                     REDIRECT_FIELD_NAME, redirect_path)
             return reverse('saas_charge_receipt',
-                        args=(self.charge.customer, self.charge.processor_id))
+                        args=(self.charge.customer, self.charge.processor_key))
         if redirect_path:
             return redirect_path
         if self.sole_provider:

@@ -63,12 +63,21 @@ class StripeBackend(object):
             # Avoids an HTTP request to Stripe API when we can compute it.
             stripe.api_key = self.priv_key
             balance_transactions = stripe.BalanceTransaction.all(
-                source=charge.processor_id)
+                source=charge.processor_key)
+            # You would think to get all BalanceTransaction related to
+            # the charge here but it is incorrect. You only get
+            # the BalanceTransaction related to the original Charge.
             assert len(balance_transactions.data) == 1
             fee_unit = balance_transactions.data[0].currency
             fee_amount = balance_transactions.data[0].fee
             distribute_unit = balance_transactions.data[0].currency
             distribute_amount = balance_transactions.data[0].amount
+            for refunds in stripe.Charge.retrieve(charge.processor_key).refunds:
+                balance_transaction = stripe.BalanceTransaction.retrieve(
+                    refunds.balance_transaction)
+                # fee and amount are negative
+                fee_amount += balance_transaction.fee
+                distribute_amount += balance_transaction.amount
         else:
             # Stripe processing fee associated to a transaction
             # is 2.9% + 30 cents.
@@ -95,7 +104,7 @@ class StripeBackend(object):
         stripe.api_key = self.priv_key
         processor_charge = stripe.Charge.create(
             amount=amount, currency=unit,
-            customer=organization.processor_id,
+            customer=organization.processor_card_key,
             description=descr,
             statement_description=stmt_descr[:15])
         created_at = datetime.datetime.fromtimestamp(processor_charge.created)
@@ -109,7 +118,7 @@ class StripeBackend(object):
         Refund a charge on the associated card.
         """
         stripe.api_key = self.priv_key
-        processor_charge = stripe.Charge.retrieve(charge.processor_id)
+        processor_charge = stripe.Charge.retrieve(charge.processor_key)
         processor_charge.refund(amount=amount)
 
     def create_charge_on_card(self, card, amount, unit,
@@ -175,9 +184,10 @@ class StripeBackend(object):
         """
         stripe.api_key = self.priv_key
         p_customer = None
-        if organization.processor_id:
+        if organization.processor_card_key:
             try:
-                p_customer = stripe.Customer.retrieve(organization.processor_id)
+                p_customer = stripe.Customer.retrieve(
+                    organization.processor_card_key)
                 p_customer.card = card_token
                 p_customer.save()
                 signals.card_updated.send(
@@ -187,13 +197,13 @@ class StripeBackend(object):
                 # a switch from using devel to production keys.
                 # We will seamlessly create a new customer on Stripe.
                 LOGGER.warning("Retrieve customer %s on Stripe for %s",
-                    organization.processor_id, organization)
+                    organization.processor_card_key, organization)
         if not p_customer:
             p_customer = stripe.Customer.create(
                 email=organization.email,
                 description=organization.slug,
                 card=card_token)
-            organization.processor_id = p_customer.id
+            organization.processor_card_key = p_customer.id
             organization.save()
 
     def retrieve_bank(self, organization):
@@ -215,10 +225,10 @@ class StripeBackend(object):
     def retrieve_card(self, organization):
         stripe.api_key = self.priv_key
         context = {'STRIPE_PUB_KEY': self.pub_key}
-        if organization.processor_id:
+        if organization.processor_card_key:
             try:
                 p_customer = stripe.Customer.retrieve(
-                    organization.processor_id, expand=['default_card'])
+                    organization.processor_card_key, expand=['default_card'])
             except stripe.error.StripeError as err:
                 LOGGER.exception(err)
                 raise
@@ -234,7 +244,7 @@ class StripeBackend(object):
         # XXX make sure to avoid race condition.
         stripe.api_key = self.priv_key
         if charge.is_progress:
-            stripe_charge = stripe.Charge.retrieve(charge.processor_id)
+            stripe_charge = stripe.Charge.retrieve(charge.processor_key)
             if stripe_charge.paid:
                 charge.payment_successful()
         return charge

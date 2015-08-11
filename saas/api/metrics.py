@@ -233,14 +233,15 @@ class RevenueMetricAPIView(OrganizationMixin, APIView):
             ends_at = parse_datetime(ends_at)
         ends_at = datetime_or_now(ends_at)
 
+        # XXX to fix: returns payments in customer currency
         account_table, _, _ = \
             aggregate_monthly_transactions(self.get_organization(),
                 Transaction.FUNDS, account_title='Payments',
-                from_date=ends_at, reverse=True)
+                from_date=ends_at, orig='dest', dest='orig')
 
         _, refund_amount = aggregate_monthly(
             self.get_organization(), Transaction.REFUND,
-            from_date=ends_at, backward=True)
+            from_date=ends_at, orig='dest', dest='dest')
 
         account_table += [{"key": "Refunds",
                            "values": refund_amount}]
@@ -363,7 +364,6 @@ class CustomerMetricAPIView(OrganizationMixin, APIView):
             ends_at = parse_datetime(ends_at)
         ends_at = datetime_or_now(ends_at)
 
-        reverse = False
         account_title = 'Payments'
         account = Transaction.RECEIVABLE
         # We use ``Transaction.RECEIVABLE`` which technically counts the number
@@ -372,8 +372,7 @@ class CustomerMetricAPIView(OrganizationMixin, APIView):
         _, customer_table, customer_extra = \
             aggregate_monthly_transactions(self.get_organization(), account,
                 account_title=account_title,
-                from_date=ends_at,
-                reverse=reverse)
+                from_date=ends_at)
 
         return Response(
             {"title": "Customers",

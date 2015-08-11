@@ -47,5 +47,6 @@ def _load_backend(path):
     return cls()
 
 
-def get_processor_backend():
+def get_processor_backend(processor):
+    #pylint:disable=unused-argument
     return _load_backend(settings.PROCESSOR_BACKEND)
