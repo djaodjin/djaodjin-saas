@@ -964,6 +964,7 @@ class Charge(models.Model):
                     orig_account=Transaction.BACKLOG,
                     orig_organization=self.processor)
                 charge_item.save()
+                # pylint:disable=no-member
                 self.processor.funds_balance += fee_amount
                 self.processor.save()
 

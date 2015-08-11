@@ -93,7 +93,7 @@ def aggregate_monthly_churn(organization, account, interval,
     """
     Returns a table of records over a period of 12 months *from_date*.
     """
-    #pylint: disable=too-many-locals
+    #pylint: disable=too-many-locals,too-many-arguments
     customers = []
     receivables = []
     new_customers = []
@@ -200,7 +200,7 @@ def aggregate_monthly_transactions(organization, account,
     12 months of total/new/churn into or out of (see *reverse*) *account*
     and associated distinct customers as extracted from Transactions.
     """
-    #pylint: disable=too-many-locals
+    #pylint: disable=too-many-locals,too-many-arguments
     if not account_title:
         account_title = str(account)
     interval = organization.natural_interval
