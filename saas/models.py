@@ -1107,7 +1107,7 @@ class ChargeItem(models.Model):
         All ``Transaction`` which are part of a refund for this ``ChargeItem``.
         """
         return Transaction.objects.filter(
-            event_id=self.id, orig_account=Transaction.REFUNDED)
+            event_id=str(self.id), orig_account=Transaction.REFUNDED)
 
     def create_refund_transactions(self, refunded_amount,
         charge_available_amount, charge_fee_amount,
