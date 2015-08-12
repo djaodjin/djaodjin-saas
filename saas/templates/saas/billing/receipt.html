@@ -76,7 +76,7 @@ display:none;
         </tr>
         {% for refund in line.refunded %}
         <tr>
-          <td>{{refund.orig_amount|humanize_money:refund.orig_unit}}</td>
+          <td>-{{refund.orig_amount|humanize_money:refund.orig_unit}}</td>
           <td>{{refund|describe}}</td>
           <td>
           </td>
