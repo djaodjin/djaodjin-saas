@@ -57,9 +57,10 @@ class RoleListView(OrganizationMixin, TemplateView):
     API end point to fetch the set of users with the specified role.
 
     Template context:
-      - role
-      - organization
-      - request
+      - ``role`` The name of role that defines the permissions of users
+        on an organization
+      - ``organization`` The organization object users have permissions to.
+      - ``request`` The HTTP request object
     """
     template_name = 'saas/profile/roles.html'
 
@@ -87,8 +88,8 @@ djaodjin-saas/tree/master/saas/templates/saas/profile/subscribers.html>`__).
     plans.
 
     Template context:
-      - organization
-      - request
+      - ``organization`` The provider object
+      - ``request`` The HTTP request object
     """
 
     template_name = 'saas/profile/subscribers.html'
@@ -108,8 +109,8 @@ class SubscriptionListView(OrganizationMixin, ListView):
     API end point to fetch the set of subscriptions for the organization.
 
     Template context:
-      - organization
-      - request
+      - ``organization`` The subscriber object
+      - ``request`` The HTTP request object
     """
 
     model = Subscription
@@ -149,8 +150,7 @@ class OrganizationCreateView(CreateView):
 /djaodjin-saas/tree/master/saas/templates/saas/app/new.html>`__).
 
     Template context:
-      - organization
-      - request
+      - ``request`` The HTTP request object
     """
 
     model = Organization
@@ -184,8 +184,8 @@ class DashboardView(OrganizationMixin, DetailView):
 /djaodjin-saas/tree/master/saas/templates/saas/metrics/dashboard.html>`__).
 
     Template context:
-      - organization
-      - request
+      - ``organization`` The provider object
+      - ``request`` The HTTP request object
     """
 
     model = Organization
@@ -253,8 +253,9 @@ class OrganizationProfileView(OrganizationMixin, UpdateView):
 /djaodjin-saas/tree/master/saas/templates/saas/profile/index.html>`__).
 
     Template context:
-      - organization
-      - request
+      - ``attached_manager`` The sole manager of this organization if exists.
+      - ``organization`` The organization object
+      - ``request`` The HTTP request object
     """
 
     model = Organization

@@ -146,9 +146,9 @@ class BankUpdateView(BankMixin, FormView):
 djaodjin-saas/tree/master/saas/templates/saas/billing/bank.html>`__).
 
     Template context:
-      - csrf_token
-      - organization
-      - request
+      - ``STRIPE_PUB_KEY`` Public key to send to stripe.com
+      - ``organization`` The provider of the plan
+      - ``request`` The HTTP request object
     """
     form_class = BankForm
     template_name = 'saas/billing/bank.html'
@@ -324,8 +324,9 @@ class CardUpdateView(CardFormMixin, FormView):
 /djaodjin-saas/tree/master/saas/templates/saas/billing/card.html>`__).
 
     Template context:
-      - organization
-      - request
+      - ``STRIPE_PUB_KEY`` Public key to send to stripe.com
+      - ``organization`` The subscriber object
+      - ``request`` The HTTP request object
     """
 
     template_name = 'saas/billing/card.html'
@@ -379,8 +380,10 @@ class TransactionListView(CardFormMixin, TemplateView):
     API end point to fetch the set of transactions.
 
     Template context:
-      - organization
-      - request
+      - ``balance_amount`` Amount due by the subscriber
+      - ``balance_unit`` Unit the balance is expressed in (ex: usd)
+      - ``organization`` The subscriber object
+      - ``request`` The HTTP request object
     """
 
     template_name = 'saas/billing/index.html'
@@ -445,8 +448,10 @@ djaodjin-saas/tree/master/saas/templates/saas/billing/transfers.html>`__).
     API end point to fetch the set of transactions.
 
     Template context:
-      - organization
-      - request
+      - ``balance_amount`` Amount available to transfer to the provider bank
+      - ``balance_unit`` Unit of the available balance (ex: usd)
+      - ``organization`` The provider transactions refer to
+      - ``request`` The HTTP request object
     """
     template_name = 'saas/billing/transfers.html'
 
@@ -691,8 +696,9 @@ class CartPeriodsView(CartBaseView):
 /djaodjin-saas/tree/master/saas/templates/saas/billing/cart-periods.html>`__).
 
     Template context:
-      - organization
-      - request
+      - ``invoicables`` List of items to be invoiced (with options)
+      - ``organization`` The provider of the product
+      - ``request`` The HTTP request object
     """
     form_class = CartPeriodsForm
     template_name = 'saas/billing/cart-periods.html'
@@ -747,8 +753,9 @@ class CartSeatsView(CartPeriodsView):
 /djaodjin-saas/tree/master/saas/templates/saas/billing/cart-seats.html>`__).
 
     Template context:
-      - organization
-      - request
+      - ``invoicables`` List of items to be invoiced (with options)
+      - ``organization`` The provider of the product
+      - ``request`` The HTTP request object
     """
     form_class = CartPeriodsForm # XXX
     template_name = 'saas/billing/cart-seats.html'
@@ -793,10 +800,14 @@ class CartView(CardInvoicablesFormMixin, CartSeatsView):
         To edit the layout of this page, create a local \
         ``saas/billing/cart.html`` (`example <https://github.com/djaodjin/\
 djaodjin-saas/tree/master/saas/templates/saas/billing/cart.html>`__).
+        This template is responsible to create a token on Stripe that will
+        then be posted back to the site.
 
         Template context:
-          - organization
-          - request
+          - ``STRIPE_PUB_KEY`` Public key to send to stripe.com
+          - ``invoicables`` List of items to be invoiced (with options)
+          - ``organization`` The provider of the product
+          - ``request`` The HTTP request object
         """
         self.customer = self.get_organization()
         if (self.customer.is_bulk_buyer and
@@ -824,15 +835,17 @@ class ChargeReceiptView(ChargeMixin, DetailView):
 djaodjin-saas/tree/master/saas/templates/saas/billing/receipt.html>`__).
 
     Template context:
-      - organization
-      - request
+      - ``charge`` The charge object
+      - ``organization`` The provider of the product
+      - ``request`` The HTTP request object
 
     This page will be accessible in the payment flow as well as through
-    a subscriber profile interface.
-
-    XXX It is important the template takes both usage into account.
-    XXX We might want to pass a url get parameter to distinguish here.
+    a subscriber profile interface. The template should take both usage
+    under consideration.
     """
+    # XXX We might want to pass a url get parameter to distinguish here
+    # between access through profile or not.
+
     template_name = 'saas/billing/receipt.html'
 
 
@@ -852,8 +865,8 @@ coupons.html>`__).
 
 
     Template context:
-      - organization
-      - request
+      - ``organization`` The provider for the coupons
+      - ``request`` The HTTP request object
     """
     model = Coupon
     template_name = 'saas/billing/coupons.html'
@@ -902,8 +915,10 @@ class BalanceView(CardInvoicablesFormMixin, FormView):
 /djaodjin-saas/tree/master/saas/templates/saas/billing/balance.html>`__).
 
         Template context:
-          - organization
-          - request
+          - ``STRIPE_PUB_KEY`` Public key to send to stripe.com
+          - ``invoicables`` List of items to be invoiced (with options)
+          - ``organization`` The provider of the product
+          - ``request`` The HTTP request object
 
         POST attempts to charge the card for the balance due.
         """
@@ -937,8 +952,9 @@ class WithdrawView(BankMixin, FormView):
 djaodjin-saas/tree/master/saas/templates/saas/billing/withdraw.html>`__).
 
     Template context:
-      - organization
-      - request
+      - ``STRIPE_PUB_KEY`` Public key to send to stripe.com
+      - ``organization`` The subscriber object
+      - ``request`` The HTTP request object
     """
 
     form_class = WithdrawForm

@@ -52,8 +52,9 @@ class CouponMetricsView(CouponMixin, ListView):
 /djaodjin-saas/tree/master/saas/templates/saas/metrics/coupons.html>`__).
 
     Template context:
-      - organization
-      - request
+      - ``coupon`` The coupon the list of uses refers to
+      - ``organization`` The provider object
+      - ``request`` The HTTP request object
     """
 
     model = CartItem
@@ -125,8 +126,8 @@ class PlansMetricsView(OrganizationMixin, TemplateView):
     of the plans of a provider.
 
     Template context:
-      - organization
-      - request
+      - ``organization`` The provider object
+      - ``request`` The HTTP request object
     """
 
     template_name = 'saas/metrics/plans.html'
@@ -172,8 +173,8 @@ class RevenueMetricsView(MetricsMixin, TemplateView):
     transactions.
 
     Template context:
-      - organization
-      - request
+      - ``organization`` The provider object
+      - ``request`` The HTTP request object
     """
 
     template_name = 'saas/metrics/base.html'

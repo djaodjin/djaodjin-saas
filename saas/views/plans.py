@@ -75,11 +75,10 @@ class CartPlanListView(ProviderMixin, CartMixin, ListView):
 djaodjin-saas/tree/master/saas/templates/saas/pricing.html>`__).
 
     Template context:
-      - plan_list
-      - items_selected
-      - csrf_token
-      - organization
-      - request
+      - ``plan_list`` List of plans a customer can subscribed to
+      - ``items_selected`` List of items currently in the request user cart.
+      - ``organization`` The provider of the product
+      - ``request`` The HTTP request object
 
     POST adds the selected plan into the request user cart.
     """
@@ -142,9 +141,8 @@ class PlanCreateView(PlanFormMixin, CreateView):
 djaodjin-saas/tree/master/saas/templates/saas/profile/plans.html>`__).
 
     Template context:
-      - csrf_token
-      - organization
-      - request
+      - ``organization`` The provider for the plans
+      - ``request`` The HTTP request object
     """
     template_name = 'saas/profile/plans.html'
 
@@ -165,9 +163,10 @@ class PlanUpdateView(PlanFormMixin, UpdateView):
 djaodjin-saas/tree/master/saas/templates/saas/profile/plans.html>`__).
 
     Template context:
-      - csrf_token
-      - organization
-      - request
+      - ``plan`` The plan to update
+      - ``show_delete`` True if there never were subscriber to the plan
+      - ``organization`` The provider of the plan
+      - ``request`` The HTTP request object
     """
     template_name = 'saas/profile/plans.html'
 

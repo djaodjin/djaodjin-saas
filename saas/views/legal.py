@@ -51,9 +51,9 @@ class AgreementDetailView(DetailView):
 djaodjin-saas/tree/master/saas/templates/saas/legal/agreement.html>`__).
 
     Template context:
-      - page
-      - organization
-      - request
+      - ``page`` The content of the agreement formatted as HTML.
+      - ``organization`` The provider of the product
+      - ``request`` The HTTP request object
     """
 
     model = Agreement
@@ -79,9 +79,9 @@ class AgreementListView(ProviderMixin, ListView):
 templates/saas/legal/index.html>`__).
 
     Template context:
-      - agreement_list
-      - organization
-      - request
+      - ``agreement_list`` List of agreements published by the provider
+      - ``organization`` The provider of the product
+      - ``request`` The HTTP request object
     """
 
     model = Agreement
@@ -120,9 +120,9 @@ class AgreementSignView(CreateView):
 djaodjin-saas/tree/master/saas/templates/saas/legal/sign.html>`__).
 
     Template context:
-        - page
-        - organization
-        - request
+      - ``page`` The content of the agreement formatted as HTML.
+      - ``organization`` The provider of the product
+      - ``request`` The HTTP request object
     """
 
     model = Agreement
