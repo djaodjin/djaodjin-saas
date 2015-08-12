@@ -234,7 +234,7 @@ class Organization(models.Model):
 
     def save(self, force_insert=False, force_update=False, using=None,
              update_fields=None):
-        if not self.processor:
+        if not self.processor_id: #pylint:disable=no-member
             self.processor = Organization.objects.get(pk=settings.PROCESSOR_ID)
         super(Organization, self).save(force_insert=force_insert,
              force_update=force_update, using=using,
