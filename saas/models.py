@@ -1737,8 +1737,12 @@ class TransactionManager(models.Manager):
         # XXX This might return ``Subscription`` but it is OK because
         # we later filter for movement on specific accounts
         # a ``Subscription`` cannot create.
-        return self.filter(
-            Q(event_id=charge) | Q(event_id__in=charge.charge_items.all()))
+        #
+        # Implementation Note:
+        # We have to explicitely cast item.pk here otherwise PostgreSQL
+        # is not happy.
+        return self.filter(Q(event_id=charge) | Q(
+            event_id__in=[str(item.pk) for item in charge.charge_items.all()]))
 
     def by_customer(self, organization):
         """
