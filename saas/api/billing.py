@@ -178,8 +178,8 @@ class CartItemDestroyAPIView(DestroyAPIView):
         return found
 
     def get_object(self):
-        return get_object_or_404(CartItem,
-            plan__slug=self.kwargs.get('plan'), user=self.request.user)
+        return get_object_or_404(CartItem, plan__slug=self.kwargs.get('plan'),
+            user=self.request.user, recorded=False)
 
     def delete(self, request, *args, **kwargs):
         destroyed = self.destroy_in_session(request, *args, **kwargs)
