@@ -33,7 +33,6 @@ To test payment through [Stripe](https://stripe.com/):
 
 2. Add your Stripe keys in the credentials file.
 
-    # Authentication with payment provider
     STRIPE_PUB_KEY = "_your_stripe_public_api_key_"
     STRIPE_PRIV_KEY = "_your_stripe_private_api_key_"
 
@@ -46,5 +45,6 @@ saas/templates/notification/ directory.
 Release Notes
 =============
 
+- version 0.1.8 refactor ledger to fully support backlog accounting
 - version 0.1.7 supports Django 1.7 and django-restframework 3.1
 
