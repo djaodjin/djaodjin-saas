@@ -1,9 +1,9 @@
-{% extends "saas/base.html" %}
+{% extends "saas/transaction_base.html" %}
 {% load static from staticfiles %}
 {% load currency %}
 {% load saas_tags %}
 
-{% block saas_content %}
+{% block saas_transaction_content %}
 <section id="info">
   <h1>Credit Card</h1>
   <a href="{% url 'saas_update_card' organization %}">Update</a>
@@ -28,22 +28,25 @@
     {% endif %}
   </dl>
 </section>
-{% include "saas/_transaction_list.html" %}
-</div>
 {% endblock %}
 
-{% block bodyscripts %}
-<script type="text/javascript" src="{% static 'js/djaodjin-saas.js' %}"></script>
-<script type="text/javascript" src="{% static 'js/djaodjin-stripe.js' %}"></script>
+{% block saas_bodyscripts %}
+{{block.super}}
+<script type="text/javascript" charset="utf-8" src="{% static 'js/djaodjin-stripe.js' %}"></script>
 <script type="text/javascript">
-/* XXX Temporarly disabled
-{% if STRIPE_PUB_KEY %}
+/* Implementation Note: Not including a list of dependent modules
+   (3rd parameter to `module`) "re-opens" the module for additional
+   configuration. */
+var app = angular.module('transactionApp');
+app.constant('urls', {
+    saas_api_transaction_url: "{% url 'saas_api_transaction_list' organization %}",
+});
+</script>
+<script type="text/javascript">
 $(document).ready(function() {
     var thisCard = new Card({'saas_api_card':
         "{% url 'saas_api_card' organization %}"});
     thisCard.query();
 });
-{% endif %}
-*/
 </script>
 {% endblock %}

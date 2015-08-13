@@ -28,8 +28,10 @@ from django.core.management.base import BaseCommand
 from django.db.utils import IntegrityError
 from django.template.defaultfilters import slugify
 from django.utils.timezone import utc
+
 from saas.models import Transaction
 from saas.utils import datetime_or_now
+from saas.settings import PROCESSOR_ID
 
 
 LOGGER = logging.getLogger(__name__)
@@ -146,7 +148,7 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
-        #pylint: disable=too-many-locals
+        #pylint: disable=too-many-locals,too-many-statements
         from saas.managers.metrics import month_periods # avoid import loop
         from saas.models import (Charge, ChargeItem, Organization, Plan,
             Subscription)
@@ -160,6 +162,7 @@ class Command(BaseCommand):
                 args[0], '%Y-%m-%d')
         # Create Income transactions that represents a growing bussiness.
         provider = Organization.objects.get(pk=2)
+        processor = Organization.objects.get(pk=PROCESSOR_ID)
         for end_period in month_periods(from_date=from_date):
             nb_new_customers = random.randint(0, 9)
             for _ in range(nb_new_customers):
@@ -213,6 +216,7 @@ class Command(BaseCommand):
                     description='Charge for %d periods' % nb_periods,
                     last4=1241,
                     exp_date=datetime_or_now(),
+                    processor=processor,
                     processor_key=transaction_item.pk,
 # XXX We can't do that yet because of
 # ``PROCESSOR_BACKEND.charge_distribution(self)``

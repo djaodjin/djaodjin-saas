@@ -1,0 +1,52 @@
+{% extends "saas/base.html" %}
+{% load currency %}
+{% load saas_tags %}
+
+{% block saas_content %}
+{% block saas_transaction_content %}
+{% endblock %}
+<section id="transactions" ng-app="transactionApp">
+  <h1>Transactions</h1>
+  <div ng-controller="transactionListCtrl">
+  <table>
+    <thead>
+      <tr>
+        <th>Date</th>
+        <th>Amount</button></th>
+        <th>Description</th>
+        <th><label>Filter</label> <input type="text" ng-model="filterExpr" ng-change="filterList(filterExpr)" /></th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr ng-repeat="entry in transactions.results" ng-show="transactions.$resolved && transactions.results.length > 0">
+        <td>[[entry.created_at | date : mediumDate]]</td>
+        <td class="[[ entry.is_debit ? 'text-danger' : '']]">[[entry.amount]]</td>
+        <td colspan="2" ng-bind-html="entry.description | unsafe"></td>
+      </tr>
+    </tbody>
+  </table>
+  </div>
+</section>
+{% endblock %}
+
+{% block saas_bodyscripts %}
+<script type="text/javascript">
+/* Implementation Note: Not including a list of dependent modules
+   (2nd parameter to `module`) "re-opens" the module for additional
+   configuration. */
+var app = angular.module('transactionApp');
+/* Add the CSRF Token: */
+app.config(['$interpolateProvider', '$httpProvider',
+           function($interpolateProvider, $httpProvider) {
+    $httpProvider.defaults.headers.common['X-CSRFToken'] = '{{ csrf_token|escapejs }}';
+    /* Makes it easier to separate between django and angularjs templates */
+    $interpolateProvider.startSymbol('[[');
+    $interpolateProvider.endSymbol(']]');
+}]);
+app.filter('unsafe', function($sce) {
+    return function(val) {
+        return $sce.trustAsHtml(val);
+    };
+});
+</script>
+{% endblock %}

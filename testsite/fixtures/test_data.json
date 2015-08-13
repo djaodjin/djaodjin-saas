@@ -4,6 +4,7 @@
       "slug": "stripe",
       "full_name": "Stripe",
       "created_at": "2012-08-14T14:16:55-09:00",
+      "processor": 1,
       "is_active": 1
     },
     "model": "saas.Organization", "pk": 1
@@ -36,6 +37,7 @@
       "region": "CA",
       "postal_code": "94102",
       "country": "US",
+      "processor": 1,
       "is_active": 1
     },
     "model": "saas.Organization", "pk": 2

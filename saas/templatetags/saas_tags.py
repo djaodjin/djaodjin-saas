@@ -152,6 +152,8 @@ def top_managed_organizations(user):
     Returns a queryset of the 8 most important organizations the user
     is a manager for.
     """
+    if isinstance(user, basestring):
+        user = User.objects.get(username=user)
     return user.manages.filter(is_active=True)[:8]
 
 
@@ -160,6 +162,8 @@ def more_managed_organizations(user):
     """
     Returns True if the user manages more than 8 organizations.
     """
+    if isinstance(user, basestring):
+        user = User.objects.get(username=user)
     return user.manages.filter(is_active=True).count() >= 8
 
 

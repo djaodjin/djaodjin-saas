@@ -2,7 +2,7 @@
 
 {% block saas_content %}
 <section id="{{role}}" ng-app="userRelationApp">
-  <h1>{{role|capitalize}}</h1>
+  <h1>{{role|capfirst}}</h1>
   <div ng-controller="userRelationListCtrl">
     <form>
       <input type="text" ng-model="user.username" placeholder="Username or Email" />

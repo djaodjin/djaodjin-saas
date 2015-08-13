@@ -1,8 +1,8 @@
-{% extends "saas/base.html" %}
+{% extends "saas/transaction_base.html" %}
 {% load currency %}
 {% load saas_tags %}
 
-{% block saas_content %}
+{% block saas_transaction_content %}
 <section id="info">
   <h1>Bank Information <a href="{% url 'saas_update_bank' organization %}">Update</a></h1>
   <div>
@@ -28,5 +28,17 @@
     {% endif %}
   </dl>
 </section>
-{% include "saas/_transaction_list.html" %}
+{% endblock %}
+
+{% block saas_bodyscripts %}
+{{block.super}}
+<script type="text/javascript">
+/* Implementation Note: Not including a list of dependent modules
+   (3rd parameter to `module`) "re-opens" the module for additional
+   configuration. */
+var app = angular.module('transactionApp');
+app.constant('urls', {
+    saas_api_transaction_url: "{% url 'saas_api_transfer_list' organization %}",
+});
+</script>
 {% endblock %}
