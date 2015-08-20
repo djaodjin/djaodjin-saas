@@ -54,7 +54,7 @@ from saas.backends import ProcessorError, ProcessorConnectionError
 from saas.utils import validate_redirect_url, datetime_or_now
 from saas.forms import (BankForm, CartPeriodsForm, CreditCardForm,
     RedeemCouponForm, WithdrawForm)
-from saas.mixins import ChargeMixin, OrganizationMixin
+from saas.mixins import ChargeMixin, DateRangeMixin, OrganizationMixin
 from saas.models import (Organization, CartItem, Coupon, Plan, Transaction,
     Subscription, get_current_provider)
 from saas.humanize import (as_money, describe_buy_periods, match_unlock,
@@ -365,7 +365,11 @@ class CardUpdateView(CardFormMixin, FormView):
         return reverse('saas_billing_info', args=(self.customer,))
 
 
-class TransactionListView(CardFormMixin, TemplateView):
+class TransactionBaseView(DateRangeMixin, TemplateView):
+
+    pass
+
+class TransactionListView(CardFormMixin, TransactionBaseView):
     """
     This page shows a statement of ``Subscription`` orders, ``Charge``
     created and payment refunded.
@@ -388,8 +392,14 @@ class TransactionListView(CardFormMixin, TemplateView):
 
     template_name = 'saas/billing/index.html'
 
-    def get_context_data(self, **kwargs):
+    def cache_fields(self, request):
+        super(TransactionListView, self).cache_fields(request)
         self.customer = self.get_organization()
+        if not request.GET.has_key('start_at'):
+            self.start_at = (self.ends_at
+                - self.customer.natural_subscription_period)
+
+    def get_context_data(self, **kwargs):
         context = super(TransactionListView, self).get_context_data(**kwargs)
         balance_amount, balance_unit \
             = Transaction.objects.get_statement_balance(self.customer)
@@ -433,7 +443,7 @@ class TransactionDownloadView(SmartTransactionListMixin,
         ]
 
 
-class TransferListView(BankMixin, TemplateView):
+class TransferListView(BankMixin, TransactionBaseView):
     """
     List of payments made to a provider or funds transfered out of the platform
     to the provider bank account.

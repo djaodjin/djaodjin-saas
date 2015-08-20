@@ -22,6 +22,7 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+import dateutil
 from django.shortcuts import get_object_or_404
 from django.utils.dateparse import parse_datetime
 from django.views.generic.base import ContextMixin
@@ -191,6 +192,30 @@ class OrganizationMixin(ContextMixin):
     def get_context_data(self, **kwargs):
         context = super(OrganizationMixin, self).get_context_data(**kwargs)
         context.update({'organization': self.get_organization()})
+        return context
+
+
+class DateRangeMixin(OrganizationMixin):
+
+    def cache_fields(self, request):
+        self.ends_at = datetime_or_now(
+            parse_datetime(request.GET.get('ends_at', '').strip('"')))
+        self.start_at = request.GET.get('start_at', None)
+        if self.start_at:
+            self.start_at = datetime_or_now(parse_datetime(
+                self.start_at.strip('"')))
+        else:
+            self.start_at = (self.ends_at
+                + dateutil.relativedelta.relativedelta(months=-1))
+
+    def get(self, request, *args, **kwargs): #pylint: disable=unused-argument
+        self.cache_fields(request)
+        return super(DateRangeMixin, self).get(request, *args, **kwargs)
+
+    def get_context_data(self, **kwargs):
+        context = super(DateRangeMixin, self).get_context_data(**kwargs)
+        context.update({'start_at': self.start_at.isoformat(),
+            'ends_at': self.ends_at.isoformat()})
         return context
 
 

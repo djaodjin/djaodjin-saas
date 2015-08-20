@@ -41,6 +41,7 @@ var app = angular.module('transactionApp');
 app.constant('urls', {
     saas_api_transaction_url: "{% url 'saas_api_transaction_list' organization %}",
 });
+app.constant('date_range', { start_at: "{{start_at}}", ends_at: "{{ends_at}}" });
 </script>
 <script type="text/javascript">
 $(document).ready(function() {

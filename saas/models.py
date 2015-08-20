@@ -273,9 +273,21 @@ class Organization(models.Model):
     def natural_interval(self):
         plan_periods = self.plans.values('interval').distinct()
         interval = Plan.MONTHLY
-        if len(plan_periods) == 1:
-            interval = plan_periods[0]['interval']
+        if len(plan_periods) > 0:
+            interval = Plan.YEARLY
+            for period in plan_periods:
+                interval = min(interval, period['interval'])
         return interval
+
+    @property
+    def natural_subscription_period(self):
+        plan_periods = self.subscriptions.values('interval').distinct()
+        interval = Plan.MONTHLY
+        if len(plan_periods) > 0:
+            interval = Plan.YEARLY
+            for period in plan_periods:
+                interval = min(interval, period['interval'])
+        return Plan.get_natural_period(1, interval)
 
     @property
     def processor_backend(self):
@@ -1377,24 +1389,35 @@ class Plan(models.Model):
     def __unicode__(self):
         return unicode(self.slug)
 
+    @staticmethod
+    def get_natural_period(nb_periods, interval):
+        result = None
+        if interval == Plan.HOURLY:
+            result = datetime.timedelta(hours=1 * nb_periods)
+        elif interval == Plan.DAILY:
+            result = datetime.timedelta(days=1 * nb_periods)
+        elif interval == Plan.WEEKLY:
+            result = datetime.timedelta(days=7 * nb_periods)
+        elif interval == Plan.MONTHLY:
+            result = relativedelta(months=1 * nb_periods)
+        elif interval == Plan.QUATERLY:
+            result = relativedelta(months=3 * nb_periods)
+        elif interval == Plan.YEARLY:
+            result = relativedelta(years=1 * nb_periods)
+        return result
+
+    def natural_period(self, nb_periods=1):
+        return self.get_natural_period(nb_periods, self.interval)
+
     def end_of_period(self, start_time, nb_periods=1):
         result = start_time
         if nb_periods:
             # In case of a ``SETTLED``, *nb_periods* will be ``None``
             # since the description does not (should not) allow us to
             # extend the subscription length.
-            if self.interval == self.HOURLY:
-                result += datetime.timedelta(hours=1 * nb_periods)
-            elif self.interval == self.DAILY:
-                result += datetime.timedelta(days=1 * nb_periods)
-            elif self.interval == self.WEEKLY:
-                result += datetime.timedelta(days=7 * nb_periods)
-            elif self.interval == self.MONTHLY:
-                result += relativedelta(months=1 * nb_periods)
-            elif self.interval == self.QUATERLY:
-                result += relativedelta(months=3 * nb_periods)
-            elif self.interval == self.YEARLY:
-                result += relativedelta(years=1 * nb_periods)
+            natural = self.natural_period(nb_periods)
+            if natural:
+                result += natural
         return result
 
     def start_of_period(self, end_time, nb_periods=1):

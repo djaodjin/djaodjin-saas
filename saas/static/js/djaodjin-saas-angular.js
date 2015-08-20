@@ -472,16 +472,16 @@ subscriptionControllers.controller('subscriptionListCtrl',
 
 
 transactionControllers.controller('transactionListCtrl',
-    ['$scope', '$http', '$timeout', 'Transaction',
-     function($scope, $http, $timeout, Transaction) {
+    ['$scope', '$http', '$timeout', 'date_range', 'Transaction',
+     function($scope, $http, $timeout, date_range, Transaction) {
     "use strict";
     var defaultSortByField = 'date';
     $scope.dir = {};
     $scope.totalItems = 0;
     $scope.dir[defaultSortByField] = 'desc';
     $scope.opened = { 'start_at': false, 'ends_at': false };
-    $scope.start_at = moment().subtract(1, 'months').startOf('day').toDate();
-    $scope.ends_at = moment().endOf('day').toDate();
+    $scope.start_at = moment(date_range.start_at).toDate();
+    $scope.ends_at = moment(date_range.ends_at).toDate();
     $scope.params = {
         o: defaultSortByField,
         ot: $scope.dir[defaultSortByField],
