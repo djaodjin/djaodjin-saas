@@ -32,7 +32,7 @@ from django.utils.timezone import utc
 
 from saas.compat import User
 from saas.humanize import as_html_description
-from saas.models import Organization, Subscription, get_current_provider
+from saas.models import Organization, Subscription, get_broker
 from saas.decorators import pass_direct, _valid_manager
 from saas.utils import product_url as utils_product_url
 
@@ -49,7 +49,7 @@ def is_current_provider(organization):
         slug = organization
     elif organization:
         slug = organization.slug
-    return slug == get_current_provider().slug
+    return slug == get_broker().slug
 
 
 @register.filter()
@@ -71,7 +71,7 @@ def is_incomplete_month(date):
 @register.filter
 def is_direct(request, organization=None):
     if organization is None:
-        organization = get_current_provider()
+        organization = get_broker()
     return pass_direct(request, organization=organization)
 
 
@@ -82,7 +82,7 @@ def is_manager(request, organization):
 
 
 @register.filter
-def is_provider(organization):
+def is_provider(organization): # XXX There is a field now.
     return organization.plans.exists()
 
 
@@ -178,8 +178,7 @@ def active_with_provider(organization, provider):
 
 @register.filter(needs_autoescape=False)
 def describe(transaction):
-    return mark_safe(as_html_description(
-        transaction, provider=get_current_provider()))
+    return mark_safe(as_html_description(transaction))
 
 
 @register.filter(needs_autoescape=False)

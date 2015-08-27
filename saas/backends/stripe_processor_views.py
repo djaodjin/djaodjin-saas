@@ -22,17 +22,33 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from django.conf.urls import patterns, url
+from django.views.generic import RedirectView
+#pylint:disable=no-name-in-module,import-error
+from django.utils.six.moves.urllib.parse import urljoin
 
-from saas.backends.stripe_processor_hook import processor_hook
-from saas.backends.stripe_processor_views import StripeProcessorRedirectView
-from saas.settings import PROCESSOR_HOOK_URL
+from saas import settings
 
-urlpatterns = patterns('saas.backends',
-    url(r'^billing/connected/',
-        StripeProcessorRedirectView.as_view(
-            pattern_name='saas_update_bank'),
-        name='saas_processor_connected_hook'),
-    url(r'^%s' % PROCESSOR_HOOK_URL,
-        processor_hook, name='saas_processor_hook')
-)
+
+class StripeProcessorRedirectView(RedirectView):
+    """
+    Stripe will call an hard-coded URL hook. We normalize the ``state``
+    parameter into a actual slug part of the URL and redirect there.
+    """
+    slug_url_kwarg = 'organization'
+    query_string = True
+
+    def get_redirect_url(self, *args, **kwargs):
+        url = super(StripeProcessorRedirectView, self).get_redirect_url(
+            *args, **kwargs)
+        if settings.PROCESSOR_REDIRECT_CALLABLE:
+            from saas.compat import import_string
+            func = import_string(settings.PROCESSOR_REDIRECT_CALLABLE)
+            redirect_url_end_point = func(kwargs.get(self.slug_url_kwarg))
+            url = urljoin(redirect_url_end_point, url)
+        return url
+
+    def get(self, request, *args, **kwargs):
+        provider = request.GET.get('state', None)
+        kwargs.update({self.slug_url_kwarg: provider})
+        return super(StripeProcessorRedirectView, self).get(
+            request, *args, **kwargs)

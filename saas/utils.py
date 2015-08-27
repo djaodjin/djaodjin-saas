@@ -1,4 +1,4 @@
-# Copyright (c) 2014, DjaoDjin inc.
+# Copyright (c) 2015, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -76,7 +76,7 @@ def generate_random_slug(prefix=None):
 def product_url(provider, subscriber=None):
     """
     We cannot use a basic ``reverse('product_default_start')`` here because
-    *organization* and ``get_current_provider`` might be different.
+    *organization* and ``get_broker`` might be different.
     """
     current_uri = '/'
     if settings.PROVIDER_SITE_CALLABLE:

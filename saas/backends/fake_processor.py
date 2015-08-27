@@ -69,12 +69,13 @@ class FakeProcessorBackend(object):
             '1234', created_at + datetime.timedelta(days=365))
 
     @staticmethod
-    def create_transfer(organization, amount, descr=None):
+    def create_transfer(provider, amount, unit, descr=None):
         """
         Transfer *amount* into the organization bank account.
         """
-        LOGGER.debug('create_transfer(organization=%s, amount=%s, descr=%s)',
-            organization, amount, descr)
+        LOGGER.debug(
+            "create_transfer(provider=%s, amount=%s, unit=%s, descr=%s)",
+            provider, amount, unit, descr)
         created_at = datetime_or_now()
         return (generate_random_slug(), created_at)
 

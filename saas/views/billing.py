@@ -34,6 +34,7 @@ policy.
 
 2. ``BalanceView`` for subscriptions with balance dues
 """
+#pylint:disable=too-many-lines
 
 import copy, logging
 from datetime import datetime
@@ -46,8 +47,10 @@ from django.db import IntegrityError
 from django.db.models import Q
 from django.contrib import messages
 from django.shortcuts import get_object_or_404
-from django.views.generic import DetailView, FormView, ListView, TemplateView
+from django.views.generic import (DetailView, FormView, ListView, TemplateView,
+    UpdateView)
 
+from saas import settings
 from saas.api.transactions import (SmartTransactionListMixin,
     TransactionQuerysetMixin, TransferQuerysetMixin)
 from saas.backends import ProcessorError, ProcessorConnectionError
@@ -56,7 +59,7 @@ from saas.forms import (BankForm, CartPeriodsForm, CreditCardForm,
     RedeemCouponForm, WithdrawForm)
 from saas.mixins import ChargeMixin, DateRangeMixin, OrganizationMixin
 from saas.models import (Organization, CartItem, Coupon, Plan, Transaction,
-    Subscription, get_current_provider)
+    Subscription, get_broker)
 from saas.humanize import (as_money, describe_buy_periods, match_unlock,
     DESCRIBE_UNLOCK_NOW, DESCRIBE_UNLOCK_LATER)
 from saas.utils import product_url
@@ -108,7 +111,7 @@ class CardFormMixin(OrganizationMixin):
         """
         self.customer = self.get_organization()
         kwargs = super(CardFormMixin, self).get_initial()
-        provider = get_current_provider()
+        provider = get_broker()
         if self.customer.country:
             country = self.customer.country
         else:
@@ -135,9 +138,11 @@ class CardFormMixin(OrganizationMixin):
         return context
 
 
-class BankUpdateView(BankMixin, FormView):
+class BankUpdateView(BankMixin, UpdateView):
     """
-    The bank information is used to transfer funds to the provider.
+    Update the authentication tokens to connect to the deposit account
+    handled by the processor or bank information used to transfer funds
+    to the provider.
 
     Template:
 
@@ -146,6 +151,7 @@ class BankUpdateView(BankMixin, FormView):
 djaodjin-saas/tree/master/saas/templates/saas/billing/bank.html>`__).
 
     Template context:
+      - ``STRIPE_CLIENT_ID`` client_id to send to stripe.com
       - ``STRIPE_PUB_KEY`` Public key to send to stripe.com
       - ``organization`` The provider of the plan
       - ``request`` The HTTP request object
@@ -153,15 +159,22 @@ djaodjin-saas/tree/master/saas/templates/saas/billing/bank.html>`__).
     form_class = BankForm
     template_name = 'saas/billing/bank.html'
 
+    def get_context_data(self, **kwargs):
+        context = super(BankUpdateView, self).get_context_data(**kwargs)
+        context.update({'STRIPE_CLIENT_ID': settings.STRIPE_CLIENT_ID})
+        return context
+
+    def get_object(self, queryset=None):
+        return self.get_organization()
+
     def form_valid(self, form):
-        self.organization = self.get_organization()
         stripe_token = form.cleaned_data['stripeToken']
         if not stripe_token:
             messages.error(self.request, "Missing processor token.")
             return self.form_invalid(form)
         # Since all fields are optional, we cannot assume the card token
         # will be present (i.e. in case of erroneous POST request).
-        self.organization.update_bank(stripe_token)
+        self.object.update_bank(stripe_token)
         return super(BankUpdateView, self).form_valid(form)
 
     def get_success_url(self):
@@ -170,8 +183,22 @@ djaodjin-saas/tree/master/saas/templates/saas/billing/bank.html>`__).
         if redirect_path:
             return redirect_path
         messages.success(self.request,
-                         "Your bank on file was sucessfully updated")
+            "Connection to your deposit account was successfully updated")
         return reverse('saas_transfer_info', kwargs=self.get_url_kwargs())
+
+    def get(self, request, *args, **kwargs):
+        error = self.request.GET.get('error', None)
+        if error:
+            messages.error(self.request, "%s: %s" % (
+                error, self.request.GET.get('error_description', "")))
+        else:
+            auth_code = request.GET.get('code', None)
+            if auth_code:
+                self.object.processor_backend.connect_auth(
+                    self.object, auth_code)
+                messages.success(self.request,
+                  "Connection to your deposit account was successfully updated")
+        return super(BankUpdateView, self).get(request, *args, **kwargs)
 
 
 class InvoicablesFormMixin(OrganizationMixin):

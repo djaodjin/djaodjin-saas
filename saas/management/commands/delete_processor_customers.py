@@ -49,7 +49,7 @@ from the payment processor service."""
         if len(args) > 0:
             pat = args[0]
         for cust in get_processor_backend(
-                processor=Organization.objects.get(pk=settings.PROCESSOR_ID
+                provider=Organization.objects.get(pk=settings.PROCESSOR_ID
                 )).list_customers(pat):
             sys.stdout.write('%s %s\n' % (str(cust.id), str(cust.description)))
             if not options['no_execute']:

@@ -31,7 +31,7 @@ from extra_views.contrib.mixins import SearchableListMixin, SortableListMixin
 
 from saas.compat import User
 from saas.models import (CartItem, Charge, Coupon, Organization, Plan,
-    Subscription, get_current_provider)
+    Subscription, get_broker)
 from saas.utils import datetime_or_now
 
 
@@ -230,11 +230,11 @@ class ProviderMixin(OrganizationMixin):
                 slug=self.kwargs.get(self.organization_url_kwarg))
             if queryset.exists():
                 return queryset.get()
-        return get_current_provider()
+        return get_broker()
 
     @staticmethod
     def get_provider():
-        return get_current_provider()
+        return get_broker()
 
 
 class CouponMixin(ProviderMixin):

@@ -30,8 +30,8 @@ from django.conf.urls import patterns, url
 
 from saas.settings import ACCT_REGEX
 from saas.views import ProviderRedirectView
-from saas.views.billing import (BankUpdateView, TransferListView, WithdrawView,
-    CouponListView)
+from saas.views.billing import (BankUpdateView,
+    CouponListView, TransferListView, WithdrawView)
 
 urlpatterns = patterns('',
     url(r'^billing/bank/', ProviderRedirectView.as_view(

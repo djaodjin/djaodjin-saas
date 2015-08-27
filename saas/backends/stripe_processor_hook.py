@@ -1,4 +1,4 @@
-# Copyright (c) 2014, DjaoDjin inc.
+# Copyright (c) 2015, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -34,7 +34,7 @@ from rest_framework.response import Response
 from saas.backends.stripe_processor import StripeBackend
 from saas.models import Charge
 
-LOGGER = logging.getLogger('django.request') # We want ADMINS to about this.
+LOGGER = logging.getLogger(__name__)
 
 @api_view(['POST'])
 def processor_hook(request):
@@ -45,11 +45,11 @@ def processor_hook(request):
     else:
         event = stripe.Event.retrieve(request.DATA['id'])
     if not event:
-        LOGGER.error("Posted stripe event %s FAIL", request.DATA['id'])
+        LOGGER.error("Posted stripe '%s' event %s FAIL",
+            event.type, request.DATA['id'])
         raise Http404
-    LOGGER.info("Posted stripe event %s PASS", event.id)
+    LOGGER.info("Posted stripe '%s' event %s PASS", event.type, event.id)
     charge = get_object_or_404(Charge, processor_key=event.data.object.id)
-
     if event.type == 'charge.succeeded':
         if charge.state != charge.DONE:
             charge.payment_successful()

@@ -31,7 +31,7 @@ from stripe.error import CardError as CardError
 from saas import settings
 
 
-def _load_backend(path):
+def load_backend(path):
     dot_pos = path.rfind('.')
     module, attr = path[:dot_pos], path[dot_pos + 1:]
     try:
@@ -47,6 +47,12 @@ def _load_backend(path):
     return cls()
 
 
-def get_processor_backend(processor):
-    #pylint:disable=unused-argument
-    return _load_backend(settings.PROCESSOR_BACKEND)
+def get_processor_backend(provider):
+    if settings.PROCESSOR_BACKEND_CALLABLE:
+        from saas.compat import import_string
+        func = import_string(settings.PROCESSOR_BACKEND_CALLABLE)
+        processor_backend = func(provider)
+    else:
+        processor_backend = load_backend(
+            'saas.backends.stripe_processor.StripeBackend')
+    return processor_backend

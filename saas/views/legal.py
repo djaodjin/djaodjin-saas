@@ -1,4 +1,4 @@
-# Copyright (c) 2014, DjaoDjin inc.
+# Copyright (c) 2015, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -36,7 +36,7 @@ from django.http import HttpResponseRedirect
 from django.views.generic import CreateView, DetailView, ListView
 
 from saas.mixins import ProviderMixin
-from saas.models import (Agreement, Signature, get_current_provider)
+from saas.models import (Agreement, Signature, get_broker)
 
 
 class AgreementDetailView(DetailView):
@@ -103,8 +103,7 @@ class SignatureForm(forms.Form):
 def _read_agreement_file(slug, context=None):
     import markdown
     if not context:
-        context = {
-            'organization': get_current_provider()}
+        context = {'organization': get_broker()}
     source, _ = loader.find_template('saas/agreements/legal_%s.md' % slug)
     return markdown.markdown(source.render(Context(context)))
 

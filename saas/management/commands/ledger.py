@@ -1,4 +1,4 @@
-# Copyright (c) 2014, DjaoDjin inc.
+# Copyright (c) 2015, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -31,7 +31,7 @@ from django.utils.timezone import utc
 # We need this import to avoid getting an exception importing 'saas.models'
 from saas.utils import datetime_or_now #pylint: disable=unused-import
 from saas.ledger import export
-from saas.models import Organization, Transaction, get_current_provider
+from saas.models import Organization, Transaction, get_broker
 
 class Command(BaseCommand):
     help = 'Manage ledger.'
@@ -134,7 +134,7 @@ r'(\s+(?P<amount>.+))?', line)
             else:
                 organization = Organization.objects.get(slug=organization_slug)
             if account_first:
-                organization = get_current_provider()
+                organization = get_broker()
             return (organization, account, amount)
         except Organization.DoesNotExist:
             print "Cannot find Organization '%s'" % organization_slug

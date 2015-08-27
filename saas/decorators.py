@@ -42,7 +42,7 @@ from django.utils.decorators import available_attrs
 
 from saas import settings
 from saas.models import (Charge, Organization, Plan, Signature, Subscription,
-    get_current_provider)
+    get_broker)
 from saas.utils import datetime_or_now
 
 
@@ -212,7 +212,7 @@ def pass_direct(request, charge=None, organization=None, strength=NORMAL):
         if not isinstance(organization, Organization):
             organization = get_object_or_404(Organization, slug=organization)
     else:
-        organization = get_current_provider()
+        organization = get_broker()
     return organization and _has_valid_access(request, [organization], strength)
 
 
@@ -305,7 +305,7 @@ def pass_provider_only(request,
     if organization:
         return _has_valid_access(request,
             list(Organization.objects.providers_to(organization)), strength)
-    return  _has_valid_access(request, [get_current_provider()])
+    return  _has_valid_access(request, [get_broker()])
 
 
 def pass_provider_only_weak(request, charge=None, organization=None):

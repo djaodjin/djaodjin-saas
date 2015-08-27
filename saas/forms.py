@@ -38,11 +38,15 @@ from saas.models import Organization, Plan
 #pylint: disable=super-on-old-class,no-member
 #pylint: disable=old-style-class,no-init
 
-class BankForm(forms.Form):
+class BankForm(forms.ModelForm):
     """
     Update Bank Information
     """
     stripeToken = forms.CharField(required=False)
+
+    class Meta:
+        model = Organization
+        fields = tuple([])
 
 
 class PostalFormMixin(object):

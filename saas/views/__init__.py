@@ -32,7 +32,7 @@ from django.views.generic import RedirectView
 from django.views.generic.base import TemplateResponseMixin
 
 from saas.decorators import pass_direct
-from saas.models import Organization, get_current_provider
+from saas.models import Organization, get_broker
 
 
 class OrganizationRedirectView(TemplateResponseMixin, RedirectView):
@@ -75,7 +75,7 @@ class ProviderRedirectView(OrganizationRedirectView):
     the ``OrganizationRedirectView`` logic.
     """
     def get(self, request, *args, **kwargs):
-        provider = get_current_provider()
+        provider = get_broker()
         if pass_direct(request, organization=provider):
             kwargs.update({self.slug_url_kwarg: provider})
             return RedirectView.get(self, request, *args, **kwargs)

@@ -225,9 +225,13 @@ class Organization(models.Model):
         help_text="Funds escrowed in cents")
     processor = models.ForeignKey('Organization', related_name='processes')
     processor_card_key = models.CharField(null=True, blank=True, max_length=20)
-    processor_recipient_id = models.CharField(
-        null=True, blank=True, max_length=40,
+    processor_deposit_key = models.CharField(max_length=40, null=True,
+        blank=True,
         help_text=_("Used to deposit funds to the organization bank account"))
+    processor_priv_key = models.CharField(max_length=40, null=True, blank=True)
+    processor_pub_key = models.CharField(max_length=40, null=True, blank=True)
+    processor_refresh_token = models.CharField(max_length=40, null=True,
+        blank=True)
 
     def __unicode__(self):
         return unicode(self.slug)
@@ -267,7 +271,7 @@ class Organization(models.Model):
 
     @property
     def has_bank_account(self):
-        return self.processor_recipient_id
+        return self.processor_deposit_key
 
     @property
     def natural_interval(self):
@@ -292,7 +296,7 @@ class Organization(models.Model):
     @property
     def processor_backend(self):
         if not hasattr(self, '_processor_backend'):
-            self._processor_backend = get_processor_backend(self.processor)
+            self._processor_backend = get_processor_backend(self)
         return self._processor_backend
 
     def _add_relation(self, user, model, role, reason=None):
@@ -330,7 +334,7 @@ class Organization(models.Model):
     def update_bank(self, bank_token):
         self.processor_backend.create_or_update_bank(self, bank_token)
         LOGGER.info('Updated bank information for %s on processor '\
-            '{"recipient_id": %s}', self, self.processor_recipient_id)
+            '{"processor_deposit_key": %s}', self, self.processor_deposit_key)
         signals.bank_updated.send(self)
 
     def update_card(self, card_token, user):
@@ -498,7 +502,7 @@ class Organization(models.Model):
         # exception will be raised before we attempt to store
         # the ``Transaction``.
         processor_transfer_id, _ = self.processor_backend.create_transfer(
-            self, amount, descr)
+            self, amount, funds_unit, descr)
         Transaction.objects.create(
             event_id=processor_transfer_id,
             descr=descr,
@@ -616,8 +620,23 @@ class ChargeManager(models.Manager):
                         charge.processor_key, charge.amount, customer)
         return charge
 
-
     def charge_card(self, customer, transactions, descr=None,
+                    user=None, token=None, remember_card=True):
+        #pylint: disable=too-many-arguments
+        charge = None
+        amount, _ = sum_dest_amount(transactions)
+        if amount == 0:
+            return charge
+        for invoice_items in Transaction.objects.by_processor_key(
+                transactions).values():
+            # XXX This is only working if all line items use the same
+            # provider keys to record the charge.
+            charge = self.charge_card_one_processor(
+                customer, invoice_items, descr=descr,
+                user=user, token=token, remember_card=remember_card)
+        return charge
+
+    def charge_card_one_processor(self, customer, transactions, descr=None,
                     user=None, token=None, remember_card=True):
         #pylint: disable=too-many-arguments,too-many-locals
         """
@@ -630,8 +649,7 @@ class ChargeManager(models.Manager):
             return None
         provider = Transaction.objects.provider(transactions)
         processor = provider.processor
-        processor_backend = get_processor_backend(processor)
-        stmt_descr = provider.printable_name
+        processor_backend = provider.processor_backend
         descr = DESCRIBE_CHARGED_CARD % {
             'charge': '', 'organization': customer.printable_name}
         if user:
@@ -642,16 +660,16 @@ class ChargeManager(models.Manager):
                     customer.update_card(card_token=token, user=user)
                     (processor_charge_id, created_at,
                      last4, exp_date) = processor_backend.create_charge(
-                        customer, amount, unit, descr, stmt_descr)
+                         customer, amount, unit, provider=provider, descr=descr)
                 else:
                     (processor_charge_id, created_at,
                      last4, exp_date) = processor_backend.create_charge_on_card(
-                        token, amount, unit, descr, stmt_descr)
+                        token, amount, unit, provider=provider, descr=descr)
             else:
                 # XXX A card must already be attached to the customer.
                 (processor_charge_id, created_at,
                  last4, exp_date) = processor_backend.create_charge(
-                    customer, amount, unit, descr, stmt_descr)
+                     customer, amount, unit, provider=provider, descr=descr)
             # Create record of the charge in our database
             descr = DESCRIBE_CHARGED_CARD % {'charge': processor_charge_id,
                 'organization': customer.printable_name}
@@ -724,6 +742,12 @@ class Charge(models.Model):
         return self.charge_items.order_by('id')
 
     @property
+    def processor_backend(self):
+        if not hasattr(self, '_processor_backend'):
+            self._processor_backend = self.provider.processor_backend
+        return self._processor_backend
+
+    @property
     def invoiced_total_amount(self):
         """
         Returns the total amount of all invoiced items.
@@ -764,12 +788,11 @@ class Charge(models.Model):
         #pylint: disable=too-many-locals
         self.state = self.DISPUTED
         created_at = datetime_or_now()
-        processor_backend = get_processor_backend(self.processor)
         previously_refunded, _ = sum_orig_amount(self.refunded)
         refund_available = self.amount - previously_refunded
         charge_available_amount, provider_unit, \
             charge_fee_amount, processor_unit \
-            = processor_backend.charge_distribution(self)
+            = self.processor_backend.charge_distribution(self)
         corrected_available_amount = charge_available_amount
         corrected_fee_amount = charge_fee_amount
         with transaction.atomic():
@@ -780,7 +803,7 @@ class Charge(models.Model):
                 provider = charge_item.invoiced_item.orig_organization
                 if not provider in providers:
                     provider.create_processor_fee(
-                        processor_backend.dispute_fee(self.amount),
+                        self.processor_backend.dispute_fee(self.amount),
                         Transaction.CHARGEBACK,
                         event_id=self.id, created_at=created_at)
                     providers |= set([provider])
@@ -894,11 +917,9 @@ class Charge(models.Model):
         # 2014/01/15 charge on xia card
         #     stripe:Funds                                 15800
         #     xia:Liability
-        processor_backend = get_processor_backend(self.processor)
-        total_distribute_amount, \
-            funds_unit, \
-            total_fee_amount, \
-            processor_funds_unit = processor_backend.charge_distribution(self)
+        total_distribute_amount, funds_unit, \
+            total_fee_amount, processor_funds_unit \
+            = self.processor_backend.charge_distribution(self)
 
         charge_transaction = Transaction.objects.create(
             event_id=self.id,
@@ -1049,7 +1070,6 @@ class Charge(models.Model):
         # We do all computation and checks before starting to modify
         # the database to minimize the chances of getting into
         # an inconsistent state.
-        processor_backend = get_processor_backend(self.processor)
         #pylint: disable=no-member
         charge_item = self.line_items[linenum]
         invoiced_item = charge_item.invoiced
@@ -1066,17 +1086,17 @@ class Charge(models.Model):
 
         charge_available_amount, provider_unit, \
             charge_fee_amount, processor_unit \
-            = processor_backend.charge_distribution(self)
+            = self.processor_backend.charge_distribution(self)
 
         # We execute the refund on the processor backend here such that
         # the following call to ``processor_backend.charge_distribution``
         # returns the correct ``corrected_available_amount`` and
         # ``corrected_fee_amount``.
-        processor_backend.refund_charge(self, refunded_amount)
+        self.processor_backend.refund_charge(self, refunded_amount)
 
         corrected_available_amount, provider_unit, \
             corrected_fee_amount, processor_unit \
-            = processor_backend.charge_distribution(
+            = self.processor_backend.charge_distribution(
                 self, refunded=previously_refunded + refunded_amount)
 
         charge_item.create_refund_transactions(
@@ -1090,8 +1110,7 @@ class Charge(models.Model):
         """
         Retrieve the state of charge from the processor.
         """
-        processor_backend = get_processor_backend(self.processor)
-        processor_backend.retrieve_charge(self)
+        self.processor_backend.retrieve_charge(self)
         return self
 
 class ChargeItem(models.Model):
@@ -2230,11 +2249,32 @@ class TransactionManager(models.Manager):
                 if not result:
                     result = event.provider
                 elif result != event.provider:
-                    result = get_current_provider()
+                    result = get_broker()
                     break
         if not result:
-            result = get_current_provider()
+            result = get_broker()
         return result
+
+    @staticmethod
+    def by_processor_key(invoiced_items):
+        """
+        Returns a dictionnary {processor_key: [invoiced_item ...]}
+        such that all invoiced_items appear under a processor_key.
+        """
+        results = {}
+        default_processor_key = get_broker().processor_backend.pub_key
+        for invoiced_item in invoiced_items:
+            event = invoiced_item.get_event()
+            if event:
+                processor_key = event.provider.processor_backend.pub_key
+                if not processor_key:
+                    processor_key = default_processor_key
+            else:
+                processor_key = default_processor_key
+            if not processor_key in results:
+                results[processor_key] = []
+            results[processor_key] += [invoiced_item]
+        return results
 
 
 class Transaction(models.Model):
@@ -2321,14 +2361,14 @@ class Transaction(models.Model):
         return None
 
 
-def get_current_provider():
+def get_broker():
     """
     Returns the site-wide provider from a request.
     """
     if settings.PROVIDER_CALLABLE:
         from saas.compat import import_string
         provider_slug = str(import_string(settings.PROVIDER_CALLABLE)())
-        LOGGER.debug("saas: get_current_provider('%s')", provider_slug)
+        LOGGER.debug("saas: get_broker('%s')", provider_slug)
         return Organization.objects.get(slug=provider_slug)
     return Organization.objects.get(pk=settings.PROVIDER_ID)
 

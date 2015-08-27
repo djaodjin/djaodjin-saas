@@ -101,15 +101,11 @@ def match_unlock(descr):
     return True
 
 
-def as_html_description(transaction, provider=None):
+def as_html_description(transaction):
     """
-    ``DESCRIBE_BALANCE`` transactions contain subscriber on both sides
-    (orig_organization and dest_organization). We thus pass provider
-    as an extra parameter to create URLs.
+    Add hyperlinks into a transaction description.
     """
-
-    if provider is None:
-        provider = transaction.orig_organization
+    provider = transaction.orig_organization
     subscriber = transaction.dest_organization
     look = re.match(DESCRIBE_BUY_PERIODS % {
         'plan': r'(?P<plan>\S+)', 'ends_at': r'.*', 'humanized_periods': r'.*'},

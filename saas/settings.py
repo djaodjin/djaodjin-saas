@@ -33,14 +33,18 @@ _SETTINGS = {
     'CREDIT_ON_CREATE': 1000,
     'CONTRIBUTOR_RELATION': 'saas.Organization_Contributors',
     'MANAGER_RELATION': 'saas.Organization_Managers',
-    'PROCESSOR_BACKEND': 'saas.backends.stripe_processor.StripeBackend',
-    'PROCESSOR_HOOK_URL': 'postevent',
+    'PROCESSOR_BACKEND_CALLABLE': None,
+    'PROCESSOR_HOOK_URL': 'api/postevent',
+    'PROCESSOR_REDIRECT_CALLABLE': None,
     'PROVIDER_CALLABLE': None,
     'PROVIDER_SITE_CALLABLE': None,
     'SKIP_PERMISSION_CHECK': False,
     'PROVIDER_ID': getattr(settings, 'SITE_ID', 1),
     'PROCESSOR_ID': 1,
-    'BYPASS_AUTH': []   # organizations for which ``pass*`` are not checked.
+    'BYPASS_AUTH': [],   # organizations for which ``pass*`` are not checked.
+    'STRIPE_CLIENT_ID': None,
+    'STRIPE_PRIV_KEY': None,
+    'STRIPE_PUB_KEY': None,
 }
 _SETTINGS.update(getattr(settings, 'SAAS', {}))
 
@@ -53,19 +57,20 @@ BYPASS_AUTH = _SETTINGS.get('BYPASS_AUTH')
 CREDIT_ON_CREATE = _SETTINGS.get('CREDIT_ON_CREATE')
 CONTRIBUTOR_RELATION = _SETTINGS.get('CONTRIBUTOR_RELATION')
 MANAGER_RELATION = _SETTINGS.get('MANAGER_RELATION')
-PROCESSOR_BACKEND = _SETTINGS.get('PROCESSOR_BACKEND')
+PROCESSOR_BACKEND_CALLABLE = _SETTINGS.get('PROCESSOR_BACKEND_CALLABLE')
 PROCESSOR_HOOK_URL = _SETTINGS.get('PROCESSOR_HOOK_URL')
+PROCESSOR_REDIRECT_CALLABLE = _SETTINGS.get('PROCESSOR_REDIRECT_CALLABLE')
 PROVIDER_CALLABLE = _SETTINGS.get('PROVIDER_CALLABLE')
 PROVIDER_SITE_CALLABLE = _SETTINGS.get('PROVIDER_SITE_CALLABLE')
 PROVIDER_ID = _SETTINGS.get('PROVIDER_ID')
 PROCESSOR_ID = _SETTINGS.get('PROCESSOR_ID')
+STRIPE_CLIENT_ID = _SETTINGS.get('STRIPE_CLIENT_ID')
+STRIPE_PRIV_KEY = _SETTINGS.get('STRIPE_PRIV_KEY')
+STRIPE_PUB_KEY = _SETTINGS.get('STRIPE_PUB_KEY')
 
 # BE EXTRA CAREFUL! This variable is used to bypass PermissionDenied
 # exceptions. It is solely intended as a debug flexibility nob.
 SKIP_PERMISSION_CHECK = _SETTINGS.get('SKIP_PERMISSION_CHECK')
-
-STRIPE_PRIV_KEY = getattr(settings, 'STRIPE_PRIV_KEY', "Undefined")
-STRIPE_PUB_KEY = getattr(settings, 'STRIPE_PUB_KEY', "Undefined")
 
 LOGIN_URL = getattr(settings, 'LOGIN_URL')
 TERMS_OF_USE = getattr(settings, 'TERMS_OF_USE', 'terms_of_use')

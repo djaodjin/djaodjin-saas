@@ -24,11 +24,11 @@
 
 import datetime, logging, re
 
-import stripe
+import requests, stripe
 
 from saas import settings, signals
 
-LOGGER = logging.getLogger('django.request') # We want ADMINS to about this.
+LOGGER = logging.getLogger(__name__)
 
 
 class StripeBackend(object):
@@ -36,16 +36,35 @@ class StripeBackend(object):
     def __init__(self):
         self.pub_key = settings.STRIPE_PUB_KEY
         self.priv_key = settings.STRIPE_PRIV_KEY
+        self.client_id = settings.STRIPE_CLIENT_ID
+
+    def _prepare_request(self, provider):
+        stripe.api_key = self.priv_key
+        if provider and provider.processor_pub_key:
+            kwargs = {'stripe_account': provider.processor_deposit_key}
+        else:
+            kwargs = {}
+        return kwargs
+
+    @staticmethod
+    def _charge_result(processor_charge):
+        created_at = datetime.datetime.fromtimestamp(processor_charge.created)
+        last4 = processor_charge.source.last4
+        exp_year = processor_charge.source.exp_year
+        exp_month = processor_charge.source.exp_month
+        return (processor_charge.id, created_at, last4,
+                datetime.date(exp_year, exp_month, 1))
 
     def list_customers(self, org_pat=r'.*'):
         """
         Returns a list of Stripe.Customer objects whose description field
         matches *org_pat*.
         """
-        stripe.api_key = self.priv_key
+        kwargs = self._prepare_request(provider=None)
+        # customers are stored on the platform itself.
         customers = []
         nb_customers_listed = 0
-        response = stripe.Customer.all()
+        response = stripe.Customer.all(**kwargs)
         all_custs = response['data']
         while len(all_custs) > 0:
             for cust in all_custs:
@@ -54,16 +73,16 @@ class StripeBackend(object):
                 if re.match(org_pat, cust.description):
                     customers.append(cust)
             nb_customers_listed = nb_customers_listed + len(all_custs)
-            response = stripe.Customer.all(offset=nb_customers_listed)
+            response = stripe.Customer.all(offset=nb_customers_listed, **kwargs)
             all_custs = response['data']
         return customers
 
     def charge_distribution(self, charge, refunded=0, unit='usd'):
         if charge.unit != unit:
             # Avoids an HTTP request to Stripe API when we can compute it.
-            stripe.api_key = self.priv_key
+            kwargs = self._prepare_request(charge.provider)
             balance_transactions = stripe.BalanceTransaction.all(
-                source=charge.processor_key)
+                source=charge.processor_key, **kwargs)
             # You would think to get all BalanceTransaction related to
             # the charge here but it is incorrect. You only get
             # the BalanceTransaction related to the original Charge.
@@ -72,9 +91,10 @@ class StripeBackend(object):
             fee_amount = balance_transactions.data[0].fee
             distribute_unit = balance_transactions.data[0].currency
             distribute_amount = balance_transactions.data[0].amount
-            for refunds in stripe.Charge.retrieve(charge.processor_key).refunds:
+            for refunds in stripe.Charge.retrieve(
+                    charge.processor_key, **kwargs).refunds:
                 balance_transaction = stripe.BalanceTransaction.retrieve(
-                    refunds.balance_transaction)
+                    refunds.balance_transaction, **kwargs)
                 # fee and amount are negative
                 fee_amount += balance_transaction.fee
                 distribute_amount += balance_transaction.amount
@@ -93,102 +113,114 @@ class StripeBackend(object):
             distribute_unit = charge.unit
         return distribute_amount, distribute_unit, fee_amount, fee_unit
 
-    def create_charge(self, organization, amount, unit,
-        descr=None, stmt_descr=None):
+    def connect_auth(self, organization, code):
+        data = {'grant_type': 'authorization_code',
+                'client_id': self.client_id,
+                'client_secret': self.priv_key,
+                'code': code}
+        # Make /oauth/token endpoint POST request (XXX not available in stripe
+        # library code?)
+        resp = requests.post('https://connect.stripe.com/oauth/token',
+            params=data)
+        # Grab access_token (use this as your user's API key)
+        data = resp.json()
+        if resp.status_code != 200:
+            raise stripe.error.AuthenticationError(
+                message="%s: %s" % (data['error'], data['error_description']),
+                http_body=resp.content, http_status=resp.status_code,
+                json_body=data, headers=resp.headers)
+        LOGGER.info("%s authorized. %s", organization, data)
+        organization.processor_pub_key = data.get('stripe_publishable_key')
+        organization.processor_priv_key = data.get('access_token')
+        organization.processor_transfer_key = data.get('stripe_user_id')
+        organization.processor_refresh_token = data.get('refresh_token')
+
+    def create_charge(self, customer, amount, unit,
+                      provider=None, descr=None, stmt_descr=None):
         #pylint: disable=too-many-arguments
         """
-        Create a charge on the default card associated to the organization.
+        Create a charge on the default card associated to the customer.
 
         *stmt_descr* can only be 15 characters maximum.
         """
-        stripe.api_key = self.priv_key
+        kwargs = self._prepare_request(provider)
+        if stmt_descr is None and provider is not None:
+            stmt_descr = provider.printable_name
         processor_charge = stripe.Charge.create(
-            amount=amount, currency=unit,
-            customer=organization.processor_card_key,
-            description=descr,
-            statement_description=stmt_descr[:15])
-        created_at = datetime.datetime.fromtimestamp(processor_charge.created)
-        return (processor_charge.id, created_at,
-                processor_charge.card.last4,
-                datetime.date(processor_charge.card.exp_year,
-                              processor_charge.card.exp_month, 1))
-
-    def refund_charge(self, charge, amount):
-        """
-        Refund a charge on the associated card.
-        """
-        stripe.api_key = self.priv_key
-        processor_charge = stripe.Charge.retrieve(charge.processor_key)
-        processor_charge.refund(amount=amount)
+            amount=amount, currency=unit, customer=customer.processor_card_key,
+            description=descr, statement_description=stmt_descr[:15], **kwargs)
+        return self._charge_result(processor_charge)
 
     def create_charge_on_card(self, card, amount, unit,
-        descr=None, stmt_descr=None):
+                              provider=None, descr=None, stmt_descr=None):
         #pylint: disable=too-many-arguments
         """
         Create a charge on a specified card.
 
         *stmt_descr* can only be 15 characters maximum.
         """
-        stripe.api_key = self.priv_key
+        kwargs = self._prepare_request(provider)
+        if stmt_descr is None and provider is not None:
+            stmt_descr = provider.printable_name
         processor_charge = stripe.Charge.create(
-            amount=amount, currency=unit,
-            card=card, description=descr, statement_description=stmt_descr[:15])
-        created_at = datetime.datetime.fromtimestamp(processor_charge.created)
-        return (processor_charge.id, created_at,
-                processor_charge.card.last4,
-                datetime.date(processor_charge.card.exp_year,
-                              processor_charge.card.exp_month, 1))
+            amount=amount, currency=unit, card=card,
+            description=descr, statement_description=stmt_descr[:15], **kwargs)
+        return self._charge_result(processor_charge)
 
-    def create_transfer(self, organization, amount, descr=None):
+    def create_transfer(self, provider, amount, unit, descr=None):
         """
         Transfer *amount* into the organization bank account.
         """
-        stripe.api_key = self.priv_key
+        kwargs = self._prepare_request(provider)
         transfer = stripe.Transfer.create(
             amount=amount,
-            currency='usd', # XXX should be derived from organization bank
-            recipient=organization.processor_recipient_id,
+            currency=unit, # XXX should be derived from organization bank
+            recipient=provider.processor_deposit_key,
             description=descr,
-            statement_description=organization.printable_name)
+            statement_description=provider.printable_name,
+            **kwargs)
         created_at = datetime.datetime.fromtimestamp(transfer.created)
         return (transfer.id, created_at)
 
-    def create_or_update_bank(self, organization, bank_token):
+    def create_or_update_bank(self, provider, bank_token):
         """
-        Create or update a bank account associated to an organization on Stripe.
+        Create or update a bank account associated to a provider on Stripe.
         """
-        stripe.api_key = self.priv_key
+        kwargs = self._prepare_request(provider)
+        # XXX recipient on platform itself?
         rcp = None
-        if organization.processor_recipient_id:
+        if provider.processor_deposit_key:
             try:
                 rcp = stripe.Recipient.retrieve(
-                    organization.processor_recipient_id)
+                    provider.processor_deposit_key, **kwargs)
                 rcp.bank_account = bank_token
                 rcp.save()
             except stripe.error.InvalidRequestError:
                 LOGGER.error("Retrieve recipient %s",
-                             organization.processor_recipient_id)
+                             provider.processor_deposit_key)
         if not rcp:
             rcp = stripe.Recipient.create(
-                name=organization.printable_name,
+                name=provider.printable_name,
                 type="corporation",
                 # XXX add tax id.
-                email=organization.email,
-                bank_account=bank_token)
-            organization.processor_recipient_id = rcp.id
-            organization.save()
+                email=provider.email,
+                bank_account=bank_token,
+                **kwargs)
+            provider.processor_deposit_key = rcp.id
+            provider.save()
 
     def create_or_update_card(self, organization, card_token, user=None):
         """
         Create or update a card associated to an organization on Stripe.
         """
-        stripe.api_key = self.priv_key
+        kwargs = self._prepare_request(provider=None)
+        # Save customer on the platform
         p_customer = None
         if organization.processor_card_key:
             try:
                 p_customer = stripe.Customer.retrieve(
-                    organization.processor_card_key)
-                p_customer.card = card_token
+                    organization.processor_card_key, **kwargs)
+                p_customer.source = card_token
                 p_customer.save()
                 signals.card_updated.send(
                     sender=__name__, organization=organization, user=user)
@@ -202,17 +234,27 @@ class StripeBackend(object):
             p_customer = stripe.Customer.create(
                 email=organization.email,
                 description=organization.slug,
-                card=card_token)
+                card=card_token,
+                **kwargs)
             organization.processor_card_key = p_customer.id
             organization.save()
 
-    def retrieve_bank(self, organization):
-        stripe.api_key = self.priv_key
+    def refund_charge(self, charge, amount):
+        """
+        Refund a charge on the associated card.
+        """
+        kwargs = self._prepare_request(charge.provider)
+        processor_charge = stripe.Charge.retrieve(
+            charge.processor_key, **kwargs)
+        processor_charge.refund(amount=amount)
+
+    def retrieve_bank(self, provider):
+        kwargs = self._prepare_request(provider)
         context = {'STRIPE_PUB_KEY': self.pub_key}
-        if organization.processor_recipient_id:
+        if provider.processor_deposit_key:
             try:
                 rcp = stripe.Recipient.retrieve(
-                    organization.processor_recipient_id)
+                    provider.processor_deposit_key, **kwargs)
                 context.update({
                     'bank_name': rcp.active_account.bank_name,
                     'last4': '***-%s' % rcp.active_account.last4,
@@ -223,28 +265,32 @@ class StripeBackend(object):
         return context
 
     def retrieve_card(self, organization):
-        stripe.api_key = self.priv_key
+        kwargs = self._prepare_request(provider=None)
+        # Customer is saved on the platform
         context = {'STRIPE_PUB_KEY': self.pub_key}
         if organization.processor_card_key:
             try:
                 p_customer = stripe.Customer.retrieve(
-                    organization.processor_card_key, expand=['default_card'])
+                    organization.processor_card_key,
+                    expand=['default_source'],
+                    **kwargs)
             except stripe.error.StripeError as err:
                 LOGGER.exception(err)
                 raise
-            if p_customer.default_card:
-                last4 = '***-%s' % str(p_customer.default_card.last4)
+            if p_customer.default_source:
+                last4 = '***-%s' % str(p_customer.default_source.last4)
                 exp_date = "%02d/%04d" % (
-                    p_customer.default_card.exp_month,
-                    p_customer.default_card.exp_year)
+                    p_customer.default_source.exp_month,
+                    p_customer.default_source.exp_year)
                 context.update({'last4': last4, 'exp_date': exp_date})
         return context
 
     def retrieve_charge(self, charge):
         # XXX make sure to avoid race condition.
-        stripe.api_key = self.priv_key
+        kwargs = self._prepare_request(charge.provider)
         if charge.is_progress:
-            stripe_charge = stripe.Charge.retrieve(charge.processor_key)
+            stripe_charge = stripe.Charge.retrieve(
+                charge.processor_key, **kwargs)
             if stripe_charge.paid:
                 charge.payment_successful()
         return charge
