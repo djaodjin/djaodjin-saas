@@ -22,18 +22,16 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-"""
-URLs for a user's products.
-"""
+'''URL for the request user to sign legal agreements.'''
 
 from django.conf.urls import patterns, url
 
 from saas.settings import ACCT_REGEX
-from saas.views.users import ProductListView
+from saas.views.legal import AgreementSignView
 
-urlpatterns = patterns('saas.views.users',
-    url(r'^(?P<user>%s)/products/' % ACCT_REGEX,
-        ProductListView.as_view(), name='saas_user_product_list'),
+urlpatterns = patterns('saas.views.legal',
+    url(r'^legal/(?P<agreement>%s)/sign/' % ACCT_REGEX,
+        AgreementSignView.as_view(), name='legal_sign_agreement'),
 )
 
 

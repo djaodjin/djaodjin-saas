@@ -38,5 +38,5 @@ urlpatterns = patterns('',
         name='saas_organization_create'),
     url(r'^', include('saas.urls.subscriber.billing')),
     url(r'^', include('saas.urls.subscriber.profile')),
-    url(r'^users/(?P<user>%s)/' % ACCT_REGEX, include('saas.urls.users')),
+    url(r'^users/', include('saas.urls.users')),
 )
