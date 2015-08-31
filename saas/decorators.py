@@ -404,7 +404,7 @@ def requires_agreement(function=None,
                     return view_func(request, *args, **kwargs)
                 return _insert_url(request, redirect_field_name,
                                    reverse('legal_sign_agreement',
-                                           kwargs={'slug': agreement}))
+                                           kwargs={'agreement': agreement}))
             return _insert_url(request, redirect_field_name,
                 login_url or settings.LOGIN_URL)
         return _wrapped_view
