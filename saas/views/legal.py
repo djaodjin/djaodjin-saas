@@ -22,12 +22,11 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-'''Dynamic pages dealing with legal agreements.'''
-
-import urlparse
+"""
+Dynamic pages dealing with legal agreements.
+"""
 
 from django import forms
-from django.conf import settings
 from django.template.loader import render_to_string
 from django.forms.widgets import CheckboxInput
 from django.contrib.auth import REDIRECT_FIELD_NAME
@@ -136,7 +135,6 @@ djaodjin-saas/tree/master/saas/templates/saas/legal/sign.html>`__).
     redirect_field_name = REDIRECT_FIELD_NAME
 
     def form_valid(self, form):
-        print "XXX form_valid %s" % str(form.cleaned_data['read_terms'])
         if form.cleaned_data['read_terms']:
             Signature.objects.create_signature(
                 self.kwargs.get(self.slug_url_kwarg), self.request.user)
