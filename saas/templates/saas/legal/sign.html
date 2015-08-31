@@ -8,7 +8,7 @@
              It is ok to use a safe here. We load the .md file from disk.
              {% endcomment %}
 
-<form method="post" action="sign?next={{ next }}">
+<form method="post" action=".{% if next %}?next={{ next }}{% endif %}">
   {{ form.as_ul }}
   {% csrf_token %}
   <input type="submit" value="I Agree" />

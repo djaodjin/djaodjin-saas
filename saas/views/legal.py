@@ -36,6 +36,7 @@ from django.views.generic import CreateView, DetailView, ListView
 
 from saas.mixins import ProviderMixin
 from saas.models import (Agreement, Signature, get_broker)
+from saas.utils import validate_redirect_url
 
 
 class AgreementDetailView(DetailView):
@@ -88,15 +89,18 @@ templates/saas/legal/index.html>`__).
     template_name = 'saas/legal/index.html'
 
 
-class SignatureForm(forms.Form):
-    '''Base form to sign legal agreements.'''
+class SignatureForm(forms.ModelForm):
+    """
+    Base form to sign legal agreements.
+    """
 
     read_terms = forms.fields.BooleanField(
         label='I have read and understand these terms and conditions',
         widget=CheckboxInput)
 
-    def __init__(self, data=None):
-        super(SignatureForm, self).__init__(data=data, label_suffix='')
+    class Meta:
+        model = Signature
+        fields = ('read_terms',)
 
 
 def _read_agreement_file(slug, context=None):
@@ -107,6 +111,7 @@ def _read_agreement_file(slug, context=None):
     # such that the code is compatible with Django 1.7 and Django 1.8
     return markdown.markdown(
         render_to_string('saas/agreements/legal_%s.md' % slug, context))
+
 
 class AgreementSignView(CreateView):
     """
@@ -131,6 +136,7 @@ djaodjin-saas/tree/master/saas/templates/saas/legal/sign.html>`__).
     redirect_field_name = REDIRECT_FIELD_NAME
 
     def form_valid(self, form):
+        print "XXX form_valid %s" % str(form.cleaned_data['read_terms'])
         if form.cleaned_data['read_terms']:
             Signature.objects.create_signature(
                 self.kwargs.get(self.slug_url_kwarg), self.request.user)
@@ -138,19 +144,19 @@ djaodjin-saas/tree/master/saas/templates/saas/legal/sign.html>`__).
         return self.form_invalid(form)
 
     def get_success_url(self):
-        # Use default setting if redirect_to is empty
-        redirect_to = self.request.REQUEST.get(
-            self.redirect_field_name, settings.LOGIN_REDIRECT_URL)
-        # Heavier security check -- don't allow redirection to
-        # a different host.
-        netloc = urlparse.urlparse(redirect_to)[1]
-        if netloc and netloc != self.request.get_host():
-            redirect_to = settings.LOGIN_REDIRECT_URL
-        return redirect_to
+        redirect_path = validate_redirect_url(
+            self.request.GET.get(REDIRECT_FIELD_NAME, None))
+        if redirect_path:
+            return redirect_path
+        return '/'
 
     def get_context_data(self, **kwargs):
         context = super(AgreementSignView, self).get_context_data(**kwargs)
+        redirect_path = validate_redirect_url(
+            self.request.GET.get(REDIRECT_FIELD_NAME, None))
+        if redirect_path:
+            context.update({REDIRECT_FIELD_NAME: redirect_path})
         context.update({
-                'page': _read_agreement_file(context['agreement'].slug)})
+                'page': _read_agreement_file(self.kwargs.get('agreement'))})
         return context
 
