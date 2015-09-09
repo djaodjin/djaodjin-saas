@@ -43,7 +43,6 @@ from decimal import Decimal
 from django import http
 from django.contrib.auth import REDIRECT_FIELD_NAME
 from django.core.urlresolvers import reverse
-from django.db import IntegrityError
 from django.db.models import Q
 from django.contrib import messages
 from django.shortcuts import get_object_or_404
@@ -63,29 +62,11 @@ from saas.models import (Organization, CartItem, Coupon, Plan, Transaction,
 from saas.humanize import (as_money, describe_buy_periods, match_unlock,
     DESCRIBE_UNLOCK_NOW, DESCRIBE_UNLOCK_LATER)
 from saas.utils import product_url
+from saas.views import session_cart_to_database
 from saas.views.download import CSVDownloadView
 
 
 LOGGER = logging.getLogger(__name__)
-
-def _session_cart_to_database(request):
-    """
-    Transfer all the items in the cart stored in the session into proper
-    records in the database.
-    """
-    if request.session.has_key('cart_items'):
-        for item in request.session['cart_items']:
-            item['plan'] = Plan.objects.get(slug=item['plan'])
-            item['user'] = request.user
-            try:
-                CartItem.objects.create(**item)
-            except IntegrityError: #pylint: disable=catching-non-exception
-                # This might happen during testing of the place order
-                # through the test driver. Either way, if the item is
-                # already in the cart, it is OK to forget about this
-                # exception.
-                LOGGER.warning('%s is already in cart db.', item)
-        del request.session['cart_items']
 
 
 class BankMixin(OrganizationMixin):
@@ -567,7 +548,7 @@ class CartBaseView(InvoicablesFormMixin, FormView):
     def dispatch(self, *args, **kwargs):
         # We are not getting here without an authenticated user. It is time
         # to store the cart into the database.
-        _session_cart_to_database(self.request)
+        session_cart_to_database(self.request)
         return super(CartBaseView, self).dispatch(*args, **kwargs)
 
     def get_context_data(self, **kwargs):
@@ -576,8 +557,8 @@ class CartBaseView(InvoicablesFormMixin, FormView):
         return context
 
     @staticmethod
-    def get_invoicable_options(subscription,
-        created_at=None, prorate_to=None, coupon=None):
+    def get_invoicable_options(subscription, created_at=None,
+                               prorate_to=None, cart_item=None):
         """
         Return a set of lines that must charged Today and a set of choices
         based on current subscriptions that the user might be willing
@@ -597,9 +578,14 @@ class CartBaseView(InvoicablesFormMixin, FormView):
 
         discount_percent = 0
         descr_suffix = None
-        if coupon:
-            discount_percent = coupon.percent
-            descr_suffix = '(code: %s)' % coupon.code
+        if cart_item:
+            coupon = cart_item.coupon
+            if coupon:
+                discount_percent = coupon.percent
+                if coupon.code.startswith('cpn_'):
+                    descr_suffix = ', complimentary of %s' % cart_item.last_name
+                else:
+                    descr_suffix = '(code: %s)' % coupon.code
 
         if plan.period_amount == 0:
             # We are having a freemium business models, no discounts.
@@ -685,8 +671,9 @@ class CartBaseView(InvoicablesFormMixin, FormView):
                 subscription = Subscription.objects.new_instance(
                     organization, cart_item.plan, ends_at=ends_at)
             lines = []
-            options = self.get_invoicable_options(subscription, created_at,
-                prorate_to=prorate_to, coupon=cart_item.coupon)
+            options = self.get_invoicable_options(subscription,
+                created_at=created_at, prorate_to=prorate_to,
+                cart_item=cart_item)
             if cart_item.nb_periods > 0:
                 # The number of periods was already selected so we generate
                 # a line instead.
@@ -931,7 +918,8 @@ class BalanceView(CardInvoicablesFormMixin, FormView):
     template_name = 'saas/billing/balance.html'
 
     @staticmethod
-    def get_invoicable_options(subscription, created_at=None, prorate_to=None):
+    def get_invoicable_options(subscription, created_at=None,
+                               prorate_to=None, cart_item=None):
         #pylint: disable=unused-argument
         payable = Transaction.objects.new_subscription_statement(
             subscription, created_at)
@@ -963,7 +951,8 @@ class BalanceView(CardInvoicablesFormMixin, FormView):
         invoicables = []
         created_at = datetime_or_now()
         for subscription in Subscription.objects.active_for(self.customer):
-            options = self.get_invoicable_options(subscription, created_at)
+            options = self.get_invoicable_options(subscription,
+                created_at=created_at)
             if len(options) > 0:
                 invoicables += [{
                     'subscription': subscription,

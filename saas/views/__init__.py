@@ -25,14 +25,45 @@
 """
 Helpers to redirect based on session.
 """
+import logging
 
 from django import http
 from django.core.urlresolvers import reverse
+from django.db import IntegrityError, transaction
 from django.views.generic import RedirectView
 from django.views.generic.base import TemplateResponseMixin
 
 from saas.decorators import pass_direct
-from saas.models import Organization, get_broker
+from saas.models import CartItem, Plan, Organization, get_broker
+
+LOGGER = logging.getLogger(__name__)
+
+
+def session_cart_to_database(request):
+    """
+    Transfer all the items in the cart stored in the session into proper
+    records in the database.
+    """
+    with transaction.atomic():
+        claim_code = request.GET.get('code', None)
+        if claim_code:
+            cart_items = CartItem.objects.by_claim_code(claim_code)
+            for cart_item in cart_items:
+                cart_item.user = request.user
+                cart_item.save()
+        if request.session.has_key('cart_items'):
+            for item in request.session['cart_items']:
+                item['plan'] = Plan.objects.get(slug=item['plan'])
+                item['user'] = request.user
+                try:
+                    CartItem.objects.create(**item)
+                except IntegrityError: #pylint: disable=catching-non-exception
+                    # This might happen during testing of the place order
+                    # through the test driver. Either way, if the item is
+                    # already in the cart, it is OK to forget about this
+                    # exception.
+                    LOGGER.warning('%s is already in cart db.', item)
+            del request.session['cart_items']
 
 
 class OrganizationRedirectView(TemplateResponseMixin, RedirectView):
@@ -44,8 +75,10 @@ class OrganizationRedirectView(TemplateResponseMixin, RedirectView):
 
     template_name = 'saas/organization_redirects.html'
     slug_url_kwarg = 'organization'
+    permanent = False
 
     def get(self, request, *args, **kwargs):
+        session_cart_to_database(request)
         managed = Organization.objects.find_managed(request.user)
         count = managed.count()
         if count == 0:
@@ -86,6 +119,7 @@ class UserRedirectView(RedirectView):
 
     slug_url_kwarg = 'user'
     pattern_name = 'users_profile'
+    permanent = False
 
     def get_redirect_url(self, *args, **kwargs):
         """

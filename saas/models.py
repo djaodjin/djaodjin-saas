@@ -349,27 +349,18 @@ class Organization(models.Model):
         in the ledger. Associated subscriptions will be updated such that
         the ends_at is extended in the future.
         """
-        #pylint: disable=too-many-locals
+        #pylint: disable=too-many-locals, too-many-statements
+        claim_carts = {}
         invoiced_items = []
-        new_organizations = {}
+        new_organizations = []
+        coupon_providers = set([])
         for invoicable in invoicables:
             subscription = invoicable['subscription']
-            if not subscription.organization.id:
-                # When the organization does not exist into the database,
-                # we will create a random (i.e. hard to guess) one-time
-                # 100% discount coupon that will be emailed to the expected
-                # subscriber.
-                if not subscription.plan in new_organizations:
-                    new_organizations[subscription.plan] = []
-                new_organizations[subscription.plan] += [
-                    subscription.organization]
-            else:
-                LOGGER.info("[checkout] save subscription of %s to %s",
-                    subscription.organization, subscription.plan)
-                subscription.save()
-
             # If the invoicable we are checking out is somehow related to
-            # a user shopping cart, we mark that cart item as recorded.
+            # a user shopping cart, we mark that cart item as recorded
+            # unless the organization does not exist in the database,
+            # in which case we will create a claim_code for it.
+            cart_item = None
             cart_items = CartItem.objects.get_cart(user, plan=subscription.plan)
             if cart_items.exists():
                 bulk_items = cart_items.filter(
@@ -378,26 +369,57 @@ class Organization(models.Model):
                     cart_item = bulk_items.get()
                 else:
                     cart_item = cart_items.get()
-                cart_item.recorded = True
-                cart_item.save()
+
+            if not subscription.organization.id:
+                # When the organization does not exist into the database,
+                # we will create a random (i.e. hard to guess) claim code
+                # that will be emailed to the expected subscriber.
+                key = subscription.organization.email
+                if not key in new_organizations:
+                    claim_carts[key] = []
+                    new_organizations += [subscription.organization]
+                    coupon_providers |= set([subscription.provider])
+                assert cart_item is not None
+                claim_carts[key] += [cart_item]
+            else:
+                LOGGER.info("[checkout] save subscription of %s to %s",
+                    subscription.organization, subscription.plan)
+                subscription.save()
+                if cart_item:
+                    cart_item.recorded = True
+                    cart_item.save()
 
         # At this point we have gathered all the ``Organization``
         # which have yet to be registered. For these no ``Subscription``
-        # has been created yet. We create a 100% discount coupon that will
-        # be emailed to the expected subscribers. We record the coupon
-        # code as an event_id.
+        # has been created yet. We create a claim_code that will
+        # be emailed to the expected subscribers such that it will populate
+        # their cart automatically.
         coupons = {}
-        for plan, absentees in new_organizations.iteritems():
+        claim_codes = {}
+        for provider in coupon_providers:
             coupon = Coupon.objects.create(
-                code=generate_random_slug(),
-                organization=plan.organization,
-                plan=plan,
-                percent=100, nb_attempts=len(absentees),
-                description='Bulk buying from %s (%s)' % (
-                    self.printable_name, user))
-            LOGGER.info('Auto-generated Coupon %s for %d subscriptions to %s',
-                coupon.code, len(absentees), plan)
-            coupons.update({plan: coupon})
+                code='cpn_%s' % generate_random_slug(),
+                organization=provider,
+                percent=100, nb_attempts=0,
+                description=('Auto-generated after payment by %s'
+                    % self.printable_name))
+            LOGGER.info('Auto-generated Coupon %s for %s',
+                coupon.code, provider)
+            coupons.update({provider.id: coupon})
+        for key, cart_items in claim_carts.iteritems():
+            claim_code = generate_random_slug()
+            provider = CartItem.objects.provider(cart_items)
+            for cart_item in cart_items:
+                cart_item.email = ''
+                cart_item.user = None
+                cart_item.first_name = ''
+                cart_item.claim_code = claim_code
+                cart_item.last_name = self.printable_name
+                cart_item.coupon = coupons[cart_item.plan.organization.id]
+                cart_item.save()
+            LOGGER.info("Generated claim code '%s' for %d cart items",
+                claim_code, len(cart_items))
+            claim_codes.update({key: claim_code})
 
         # We now either have a ``subscription.id`` (subscriber present
         # in the database) or a ``Coupon`` (subscriber absent from
@@ -409,7 +431,8 @@ class Organization(models.Model):
             else:
                 # We do not use id's here. Integers are reserved
                 # to match ``Subscription.id``.
-                event_id = 'cpn_%s' % coupons[subscription.plan].code
+                coupon = coupons[subscription.provider.id]
+                event_id = coupon.code
             for invoiced_item in invoicable['lines']:
                 invoiced_item.event_id = event_id
                 invoiced_items += [invoiced_item]
@@ -421,11 +444,10 @@ class Organization(models.Model):
         # We email users which have yet to be registerd after the charge
         # is created, just that we don't inadvertently email new subscribers
         # in case something goes wrong.
-        for plan, absentees in new_organizations.iteritems():
-            for organization in absentees:
-                signals.one_time_coupon_generated.send(
-                    sender=__name__, subscriber=organization,
-                    coupon=coupons[plan], user=user)
+        for organization in new_organizations:
+            signals.claim_code_generated.send(
+                sender=__name__, subscriber=organization,
+                claim_code=claim_codes[organization.email], user=user)
 
         return charge
 
@@ -938,15 +960,14 @@ class Charge(models.Model):
         # redistribute the funds to their rightful owners.
         for charge_item in self.charge_items.all(): #pylint: disable=no-member
             invoiced_item = charge_item.invoiced
-            event = invoiced_item.get_event()
 
             # If there is still an amount on the ``Payable`` account,
             # we create Payable to Liability transaction in order to correct
             # the accounts amounts. This is a side effect of the atomicity
             # requirement for a ``Transaction`` associated to a ``Charge``.
             balance_payable, _ = \
-                Transaction.objects.get_subscription_balance(
-                    event, Transaction.PAYABLE)
+                Transaction.objects.get_event_balance(
+                    invoiced_item.event_id, Transaction.PAYABLE)
             if balance_payable > 0:
                 available = min(invoiced_item.dest_amount, balance_payable)
                 # Example:
@@ -966,6 +987,8 @@ class Charge(models.Model):
                     orig_account=Transaction.PAYABLE,
                     orig_organization=invoiced_item.dest_organization)
 
+            # XXX used for provider and in description.
+            event = invoiced_item.get_event()
             provider = event.provider
             charge_item_amount = invoiced_item.dest_amount
             # Has long as we have only one item and charge/funds are using
@@ -1351,6 +1374,23 @@ class PlanManager(models.Manager):
             nb_periods = int(look.group('nb_periods'))
         return (plan, ends_at, nb_periods)
 
+    @staticmethod
+    def provider(plans):
+        """
+        If all plans are from the same provider, return it otherwise
+        return the site broker.
+        """
+        result = None
+        for plan in plans:
+            if not result:
+                result = plan.organization
+            elif result != plan.organization:
+                result = get_broker()
+                break
+        if not result:
+            result = get_broker()
+        return result
+
 
 class Plan(models.Model):
     """
@@ -1543,6 +1583,36 @@ class CartItemManager(models.Manager):
         return self.filter(user=user, recorded=False,
             *args, **kwargs).order_by('plan', 'id')
 
+    def by_claim_code(self, claim_code, *args, **kwargs):
+        # Order by plan then id so the order is consistent between
+        # billing/cart(-.*)/ pages.
+        return self.filter(claim_code=claim_code, recorded=False,
+            user__isnull=True, *args, **kwargs).order_by('plan', 'id')
+
+    @staticmethod
+    def provider(cart_items):
+        return Plan.objects.provider(
+            [cart_item.plan for cart_item in cart_items])
+
+    def redeem(self, user, coupon_code, created_at=None):
+        """
+        Apply a *coupon* to all items in a cart that accept it.
+        """
+        created_at = datetime_or_now(created_at)
+        coupon_applied = False
+        for item in self.get_cart(user):
+            coupon = Coupon.objects.filter(
+                Q(ends_at__isnull=True) | Q(ends_at__gt=created_at),
+                code__iexact=coupon_code, # case incensitive search.
+                organization=item.plan.organization).first()
+            if coupon and (not coupon.plan or (coupon.plan == item.plan)):
+                # Coupon can be restricted to a plan or apply to all plans
+                # of an organization.
+                coupon_applied = True
+                item.coupon = coupon
+                item.save()
+        return coupon_applied
+
 
 class CartItem(models.Model):
     """
@@ -1567,8 +1637,9 @@ class CartItem(models.Model):
     created_at = models.DateTimeField(auto_now_add=True,
         help_text=_("date/time at which the item was added to the cart."))
     user = models.ForeignKey(settings.AUTH_USER_MODEL, db_column='user_id',
-        related_name='cart_items',
-        help_text=_("user who added the item to the cart."))
+        null=True, related_name='cart_items',
+        help_text=_("user who added the item to the cart. ``None`` means"\
+" the item could be claimed."))
     plan = models.ForeignKey(Plan, null=True,
         help_text=_("item added to the cart."))
     coupon = models.ForeignKey(Coupon, null=True,
@@ -1585,6 +1656,10 @@ class CartItem(models.Model):
     first_name = models.CharField(_('first name'), max_length=30, blank=True)
     last_name = models.CharField(_('last name'), max_length=30, blank=True)
     email = models.EmailField(_('email address'), blank=True)
+
+    # Items paid by user on behalf of a subscriber, that might or might not
+    # already exist in the database, can be redeemed through a claim_code.
+    claim_code = models.SlugField(null=True, blank=True)
 
     def __unicode__(self):
         return '%s-%s' % (self.user, self.plan)
@@ -1964,10 +2039,10 @@ class TransactionManager(models.Manager):
                 event_id=subscription.id))
         return dest_amount, dest_unit
 
-    def get_subscription_balance(self, subscription, account,
-                                 starts_at=None, ends_at=None):
+    def get_event_balance(self, event_id, account,
+                          starts_at=None, ends_at=None):
         """
-        Returns the balance on a *subscription* for an *account*
+        Returns the balance on a *event_id* for an *account*
         for the period [*starts_at*, *ends_at*[ as a tuple (amount, unit).
         """
         kwargs = {}
@@ -1976,16 +2051,16 @@ class TransactionManager(models.Manager):
         if ends_at:
             kwargs.update({'created_at__lt': ends_at})
         dest_amount, dest_unit = sum_dest_amount(self.filter(
-            dest_account=account, event_id=subscription.id, **kwargs))
+            dest_account=account, event_id=event_id, **kwargs))
         orig_amount, orig_unit = sum_orig_amount(self.filter(
-            orig_account=account, event_id=subscription.id, **kwargs))
+            orig_account=account, event_id=event_id, **kwargs))
         if dest_unit is None:
             unit = orig_unit
         elif orig_unit is None:
             unit = dest_unit
         elif dest_unit != orig_unit:
-            raise ValueError('orig and dest balances for subscription %s'\
-' have different unit (%s vs. %s).' % (subscription, orig_unit, dest_unit))
+            raise ValueError('orig and dest balances for event %s'\
+' have different unit (%s vs. %s).' % (event_id, orig_unit, dest_unit))
         else:
             unit = dest_unit
         return dest_amount - orig_amount, unit
@@ -1996,10 +2071,8 @@ class TransactionManager(models.Manager):
         Returns the recognized income balance on a subscription
         for the period [starts_at, ends_at[ as a tuple (amount, unit).
         """
-        return self.get_subscription_balance(
-            subscription, Transaction.INCOME,
-            starts_at=starts_at,
-            ends_at=ends_at)
+        return self.get_event_balance(subscription.id, Transaction.INCOME,
+            starts_at=starts_at, ends_at=ends_at)
 
     def get_subscription_invoiceables(self, subscription, until=None):
         """
@@ -2357,7 +2430,7 @@ class Transaction(models.Model):
             return Subscription.objects.get(id=self.event_id)
         except ValueError:
             if self.event_id.startswith('cpn_'):
-                return Coupon.objects.get(code=self.event_id[4:])
+                return Coupon.objects.get(code=self.event_id)
         return None
 
 

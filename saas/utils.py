@@ -82,7 +82,7 @@ def product_url(provider, subscriber=None):
     if settings.PROVIDER_SITE_CALLABLE:
         from saas.compat import import_string
         site = import_string(settings.PROVIDER_SITE_CALLABLE)(str(provider))
-        if site.domain:
+        if site and site.domain:
             scheme = 'https' # Defaults to secure connection.
             current_uri = '%s://%s/' % (scheme, site.domain)
         else:

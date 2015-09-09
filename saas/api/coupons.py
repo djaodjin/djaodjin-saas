@@ -23,7 +23,6 @@
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 from django.contrib import messages
-from django.db.models import Q
 from rest_framework import serializers, status
 from rest_framework.generics import (GenericAPIView,
     ListCreateAPIView, RetrieveUpdateDestroyAPIView)
@@ -32,7 +31,6 @@ from extra_views.contrib.mixins import SearchableListMixin, SortableListMixin
 
 from saas.models import CartItem, Coupon
 from saas.mixins import OrganizationMixin
-from saas.utils import datetime_or_now
 
 #pylint: disable=no-init
 #pylint: disable=old-style-class
@@ -200,28 +198,11 @@ class CouponRedeemAPIView(GenericAPIView):
     """
     serializer_class = RedeemCouponSerializer
 
-    @staticmethod
-    def redeem(request, coupon_code):
-        now = datetime_or_now()
-        coupon_applied = False
-        for item in CartItem.objects.get_cart(request.user):
-            coupon = Coupon.objects.filter(
-                Q(ends_at__isnull=True) | Q(ends_at__gt=now),
-                code__iexact=coupon_code, # case incensitive search.
-                organization=item.plan.organization).first()
-            if coupon and (not coupon.plan or (coupon.plan == item.plan)):
-                # Coupon can be restricted to a plan or apply to all plans
-                # of an organization.
-                coupon_applied = True
-                item.coupon = coupon
-                item.save()
-        return coupon_applied
-
     def post(self, request, *args, **kwargs): #pylint: disable=unused-argument
         serializer = self.get_serializer(data=request.DATA)
         if serializer.is_valid():
             coupon_code = serializer.data['code']
-            if self.redeem(request, coupon_code):
+            if CartItem.objects.redeem(request.user, coupon_code):
                 details = {"details": (
                         "Coupon '%s' was successfully applied." % coupon_code)}
                 headers = {}
