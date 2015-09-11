@@ -1,21 +1,9 @@
 function showMessages(messages, style) {
     "use strict";
-    var messageBlock = "<div class=\"alert alert-block";
-    if( style ) {
-        messageBlock += " alert-" + style;
-    }
-    messageBlock += "\"><button type=\"button\" class=\"close\" data-dismiss=\"alert\">&times;</button>";
+
     for( var i = 0; i < messages.length; ++i ) {
-        messageBlock += "<p>" + messages[i] + "</p>";
+        toastr[style](messages[i]);
     }
-    messageBlock += "</div>";
-    $("#messages").removeClass("hidden");
-    $("#messages-content").append(messageBlock);
-    $("html, body").animate({
-        // scrollTop: $("#messages").offset().top - 50
-        // avoid weird animation when messages at the top:
-        scrollTop: $("body").offset().top
-    }, 500);
 }
 
 
