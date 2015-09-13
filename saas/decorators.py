@@ -75,8 +75,7 @@ def _valid_manager(user, candidates):
             return candidates.filter(managers__id=user.id)
         except AttributeError:
             for candidate in candidates:
-                if (candidate.slug in settings.BYPASS_AUTH
-                    or candidate.managers.filter(id=user.id).exists()):
+                if candidate.managers.filter(id=user.id).exists():
                     results += [candidate]
     return results
 
@@ -98,7 +97,7 @@ def _valid_contributor(user, candidates):
             for candidate in candidates:
                 if candidate in managed:
                     continue
-                if (candidate.slug in settings.BYPASS_AUTH
+                if (candidate.slug in settings.BYPASS_CONTRIBUTOR_CHECK
                     or candidate.contributors.filter(id=user.id).exists()):
                     contributed += [candidate]
     return (managed, contributed)

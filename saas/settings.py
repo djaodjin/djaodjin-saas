@@ -41,7 +41,8 @@ _SETTINGS = {
     'SKIP_PERMISSION_CHECK': False,
     'PROVIDER_ID': getattr(settings, 'SITE_ID', 1),
     'PROCESSOR_ID': 1,
-    'BYPASS_AUTH': [],   # organizations for which ``pass*`` are not checked.
+    # Organization for which pass_contributor is always True.
+    'BYPASS_CONTRIBUTOR_CHECK': [],
     'STRIPE_CLIENT_ID': None,
     'STRIPE_PRIV_KEY': None,
     'STRIPE_PUB_KEY': None,
@@ -53,7 +54,7 @@ ACCT_REGEX = r'[a-zA-Z0-9_\-]+'
 AUTH_USER_MODEL = getattr(
     settings, 'AUTH_USER_MODEL', 'django.contrib.auth.models.User')
 
-BYPASS_AUTH = _SETTINGS.get('BYPASS_AUTH')
+BYPASS_CONTRIBUTOR_CHECK = _SETTINGS.get('BYPASS_CONTRIBUTOR_CHECK')
 CREDIT_ON_CREATE = _SETTINGS.get('CREDIT_ON_CREATE')
 CONTRIBUTOR_RELATION = _SETTINGS.get('CONTRIBUTOR_RELATION')
 MANAGER_RELATION = _SETTINGS.get('MANAGER_RELATION')
