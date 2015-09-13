@@ -58,7 +58,7 @@
                     if( (msgs.length <= 0) ) {
                         msgs = ['ERROR ' + result.status + ': ' + result.statusText];
                     }
-                    showMessages(msgs, 'danger');
+                    showMessages(msgs, 'error');
                 });
                 return false;
             });
@@ -144,10 +144,10 @@
                  }).fail(function(data) {
                      if('details' in data.responseJSON) {
                           showMessages(
-                            [data.responseJSON.details], "danger");
+                            [data.responseJSON.details], "error");
                      } else {
                           showMessages(["Error " + data.status + ": " + 
-                            data.responseText + ". Please accept our apologies."], "danger");
+                            data.responseText + ". Please accept our apologies."], "error");
                      }
                  });
           return false;

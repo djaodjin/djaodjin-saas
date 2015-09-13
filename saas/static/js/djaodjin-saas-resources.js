@@ -33,7 +33,7 @@ Plan.prototype = {
                  error: function(data) {
                      showMessages(["An error occurred while creating the plan (" +
                                    data.status + " " + data.statusText +
-                                   "). Please accept our apologies."], "danger");
+                                   "). Please accept our apologies."], "error");
                  }
                });
     },
@@ -166,7 +166,7 @@ Charge.prototype = {
                      showMessages(["A copy of the receipt was sent to " + data.email + "."], "info");
                  },
                  error: function(data) {
-                     showMessages(["An error occurred while emailing a copy of the receipt (" + data.status + " " + data.statusText + "). Please accept our apologies."], "danger");
+                     showMessages(["An error occurred while emailing a copy of the receipt (" + data.status + " " + data.statusText + "). Please accept our apologies."], "error");
                  }
                });
     },
@@ -197,7 +197,7 @@ Charge.prototype = {
                      }
                      showMessages([
                         "An error occurred while refunding the charge (" + data.status + " - " + 
-                        message + "). Please accept our apologies."], "danger");
+                        message + "). Please accept our apologies."], "error");
                      refundButton.removeAttr("disabled");
                  }
                });

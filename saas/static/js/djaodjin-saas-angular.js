@@ -255,7 +255,7 @@ userRelationControllers.controller('userRelationListCtrl',
                 if( error.data && error.data.detail ) {
                     errMsg = error.data.detail;
                 }
-                showMessages([errMsg], 'danger');
+                showMessages([errMsg], 'error');
             });
     };
 
@@ -276,7 +276,7 @@ userRelationControllers.controller('userRelationListCtrl',
                     if( error.data && error.data.detail ) {
                         errMsg = error.data.detail;
                     }
-                    showMessages([errMsg], 'danger');
+                    showMessages([errMsg], 'error');
                 }
             });
     };

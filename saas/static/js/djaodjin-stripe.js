@@ -10,7 +10,7 @@ function initBankProcessor(bankForm, stripePubKey) {
 	function stripeResponseHandler(status, response) {
 		if (response.error) {
 			// show the errors on the form
-			showMessages([response.error.message], "danger");
+			showMessages([response.error.message], "error");
 			submitButton.removeAttr("disabled");
 		} else {
 			// token contains id, etc.
@@ -65,7 +65,7 @@ function initBankProcessor(bankForm, stripePubKey) {
 				accountNumber: accountNumber
 			}, stripeResponseHandler);
 		} else {
-			showMessages([error_messages], "danger");
+			showMessages([error_messages], "error");
 			submitButton.removeAttr("disabled");
 		}
 		// prevent the form from submitting with the default action
@@ -106,7 +106,7 @@ function initCardProcessor(cardForm, stripePubKey) {
 	function stripeResponseHandler(status, response) {
 		if (response.error) {
 			// show the errors on the form
-			showMessages([response.error.message], "danger");
+			showMessages([response.error.message], "error");
 			submitButton.removeAttr("disabled");
 		} else {
 			// token contains id, last4, and card type
@@ -216,7 +216,7 @@ function initCardProcessor(cardForm, stripePubKey) {
 				address_country: address_country
 			}, stripeResponseHandler);
 		} else {
-			showMessages([error_messages], "danger");
+			showMessages([error_messages], "error");
 			submitButton.removeAttr("disabled");
 		}
 		// prevent the form from submitting with the default action
