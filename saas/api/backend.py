@@ -36,6 +36,9 @@ class RetrieveBankAPIView(OrganizationMixin, GenericAPIView):
     Pass through to the processor to retrieve some details about
     the bank account associated to an ``Organization``.
 
+    - ``balance_amount`` Amount available to transfer to the provider bank
+    - ``balance_unit`` Unit of the available balance (ex: usd)
+
     **Example response**:
 
     .. sourcecode:: http
@@ -43,7 +46,8 @@ class RetrieveBankAPIView(OrganizationMixin, GenericAPIView):
         {
           "bank_name": "Stripe Test Bank",
           "last4": "1234",
-          "currency": "usd"
+          "balance_amount": 0,
+          "balance_unit": "usd"
         }
     """
 

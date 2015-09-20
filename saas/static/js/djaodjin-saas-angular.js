@@ -40,9 +40,10 @@ angular.module('userRelationApp', ['ui.bootstrap', 'ngRoute',
 angular.module('subscriptionApp', ['ui.bootstrap', 'ngRoute',
     'subscriptionControllers']);
 angular.module('transactionApp', ['ui.bootstrap', 'ngRoute',
-    'transactionControllers', 'transactionServices']);
+    'transactionControllers', 'transactionServices', 'revenueFilters']);
 angular.module('metricApp', ['ui.bootstrap', 'ngRoute', 'metricControllers']);
-angular.module('metricsApp', ['ui.bootstrap', 'ngRoute', 'metricsControllers', 'revenueFilters']);
+angular.module('metricsApp', ['ui.bootstrap', 'ngRoute', 'metricsControllers',
+    'revenueFilters']);
 
 
 /*=============================================================================
@@ -472,8 +473,8 @@ subscriptionControllers.controller('subscriptionListCtrl',
 
 
 transactionControllers.controller('transactionListCtrl',
-    ['$scope', '$http', '$timeout', 'date_range', 'Transaction',
-     function($scope, $http, $timeout, date_range, Transaction) {
+    ['$scope', '$http', '$timeout', 'urls', 'date_range', 'Transaction',
+     function($scope, $http, $timeout, urls, date_range, Transaction) {
     "use strict";
     var defaultSortByField = 'date';
     $scope.dir = {};
@@ -488,6 +489,10 @@ transactionControllers.controller('transactionListCtrl',
         start_at: $scope.start_at,
         ends_at: $scope.ends_at
     };
+
+    $scope.last4 = "N/A";
+    $scope.bank_name = "N/A";
+    $scope.balance_amount = "N/A";
 
     $scope.refresh = function() {
         $scope.transactions = Transaction.query($scope.params, function() {
@@ -580,6 +585,14 @@ transactionControllers.controller('transactionListCtrl',
             }
         });
     };
+
+    if( urls.saas_api_bank ) {
+        $http.get(urls.saas_api_bank).success(function(data) {
+            $scope.last4 = data.last4;
+            $scope.bank_name = data.bank_name;
+            $scope.balance_amount = data.balance_amount;
+        });
+    }
 
 }]);
 

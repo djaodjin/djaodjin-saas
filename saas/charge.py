@@ -129,7 +129,8 @@ def create_charges_for_balance(until=None):
         if not charges.exists():
             invoiceables = Transaction.objects.get_invoiceables(
                 organization, until=until)
-            invoiceable_amount, _ = sum_dest_amount(invoiceables)
+            balance = sum_dest_amount(invoiceables)
+            invoiceable_amount = balance['amount']
             if invoiceable_amount > 50:
                 # Stripe will not processed charges less than 50 cents.
                 LOGGER.info('CHARGE %dc to %s', invoiceable_amount,

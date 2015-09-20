@@ -24,9 +24,11 @@
 
 import datetime, logging, re
 
+from django.db import transaction
 import requests, stripe
 
 from saas import settings, signals
+from saas.utils import datetime_or_now, datetime_to_timestamp
 
 LOGGER = logging.getLogger(__name__)
 
@@ -258,10 +260,13 @@ class StripeBackend(object):
                 context.update({
                     'bank_name': rcp.active_account.bank_name,
                     'last4': '***-%s' % rcp.active_account.last4,
-                    'currency': rcp.active_account.currency})
+                    'balance_unit': rcp.active_account.currency})
             except stripe.error.InvalidRequestError:
                 context.update({'bank_name': 'Unaccessible',
-                    'last4': 'Unaccessible', 'currency': 'Unaccessible'})
+                    'last4': 'Unaccessible', 'balance_unit': 'Unaccessible'})
+        balance = stripe.Balance.retrieve(**kwargs)
+        # XXX available is a list, ordered by currency?
+        context.update({'balance_amount': balance.available[0].amount})
         return context
 
     def retrieve_card(self, organization):
@@ -294,6 +299,25 @@ class StripeBackend(object):
             if stripe_charge.paid:
                 charge.payment_successful()
         return charge
+
+    def reconcile_transfers(self, provider):
+        if provider.processor_deposit_key:
+            balance = provider.withdraw_available()
+            timestamp = datetime_to_timestamp(balance['created_at'])
+            try:
+                kwargs = self._prepare_request(provider=None)
+                transfers = stripe.Transfer.all(created={'gt': timestamp},
+                    recipient=provider.processor_deposit_key,
+                    **kwargs)
+                with transaction.atomic():
+                    for transfer in transfers.data:
+                        created_at = datetime_or_now(
+                            datetime.datetime.fromtimestamp(transfer.created))
+                        provider.create_withdraw_transactions(
+                            transfer.id, transfer.amount, transfer.currency,
+                            transfer.description, created_at=created_at)
+            except stripe.error.InvalidRequestError as err:
+                LOGGER.exception(err)
 
     @staticmethod
     def dispute_fee(amount): #pylint: disable=unused-argument

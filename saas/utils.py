@@ -38,6 +38,12 @@ def datetime_or_now(dtime_at=None):
         dtime_at = dtime_at.replace(tzinfo=utc)
     return dtime_at
 
+def datetime_to_timestamp(dtime_at, epoch=None):
+    if epoch is None:
+        epoch = datetime.datetime(1970, 1, 1).replace(tzinfo=utc)
+    diff = dtime_at - epoch
+    return int(diff.total_seconds())
+
 
 def validate_redirect_url(next_url):
     """

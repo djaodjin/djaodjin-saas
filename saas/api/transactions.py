@@ -176,7 +176,7 @@ class TransferQuerysetMixin(OrganizationMixin):
         Get the list of transactions for this organization.
         """
         self.organization = self.get_organization()
-        return Transaction.objects.by_organization(self.organization)
+        return self.organization.get_transfers()
 
 
 class TransferListAPIView(SmartTransactionListMixin, TransferQuerysetMixin,

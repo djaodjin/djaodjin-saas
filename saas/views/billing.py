@@ -466,8 +466,6 @@ djaodjin-saas/tree/master/saas/templates/saas/billing/transfers.html>`__).
     API end point to fetch the set of transactions.
 
     Template context:
-      - ``balance_amount`` Amount available to transfer to the provider bank
-      - ``balance_unit`` Unit of the available balance (ex: usd)
       - ``organization`` The provider transactions refer to
       - ``request`` The HTTP request object
     """
@@ -476,12 +474,7 @@ djaodjin-saas/tree/master/saas/templates/saas/billing/transfers.html>`__).
     def get_context_data(self, **kwargs):
         self.organization = self.get_organization()
         context = super(TransferListView, self).get_context_data(**kwargs)
-        available_amount, available_unit \
-            = self.organization.withdraw_available()
-        context.update({
-            'balance_amount': available_amount,
-            'balance_unit': available_unit,
-            'download_url': reverse(
+        context.update({'download_url': reverse(
                 'saas_transfers_download', kwargs=self.get_url_kwargs())})
         return context
 
@@ -989,8 +982,10 @@ djaodjin-saas/tree/master/saas/templates/saas/billing/withdraw.html>`__).
     def get_initial(self):
         self.organization = self.get_organization()
         kwargs = super(WithdrawView, self).get_initial()
-        balance, _ = self.organization.withdraw_available()
-        kwargs.update({'amount': (balance / 100.0) if balance > 0 else 0})
+        balance = self.organization.withdraw_available()
+        available_amount = balance['amount']
+        kwargs.update({
+            'amount': (available_amount / 100.0) if balance > 0 else 0})
         return kwargs
 
     def form_valid(self, form):

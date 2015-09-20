@@ -47,7 +47,7 @@ import datetime, logging, re
 from dateutil.relativedelta import relativedelta
 from django.core.validators import MaxValueValidator
 from django.db import IntegrityError, models, transaction
-from django.db.models import Q, Sum
+from django.db.models import Max, Q, Sum
 from django.db.models.query import QuerySet
 from django.utils.http import quote
 from django.utils.decorators import method_decorator
@@ -471,7 +471,15 @@ class Organization(models.Model):
         """
         Returns associated bank account as a dictionnary.
         """
-        return self.processor_backend.retrieve_bank(self)
+        context = self.processor_backend.retrieve_bank(self)
+        processor_amount = context['balance_amount']
+        transfer_fee = self.processor_backend.prorate_transfer(processor_amount)
+        processor_amount -= transfer_fee
+        balance = self.withdraw_available()
+        context.update({
+            'balance_amount': min(balance['amount'], processor_amount)
+        })
+        return context
 
     def retrieve_card(self):
         """
@@ -480,16 +488,25 @@ class Organization(models.Model):
         return self.processor_backend.retrieve_card(self)
 
     def withdraw_available(self):
-        available_amount, available_unit \
-            = Transaction.objects.get_organization_balance(self)
+        balance = Transaction.objects.get_organization_balance(self)
+        available_amount = balance['amount']
         transfer_fee = self.processor_backend.prorate_transfer(available_amount)
         if available_amount > transfer_fee:
             available_amount -= transfer_fee
         else:
             available_amount = 0
-        return (available_amount, available_unit)
+        return {'amount': available_amount, 'unit': balance['unit'],
+            'created_at': balance['created_at']}
 
-    @method_decorator(transaction.atomic)
+    def get_transfers(self):
+        """
+        Returns a ``QuerySet`` of ``Transaction`` after it has been
+        reconcile with the withdrawals that happened in the processor
+        backend.
+        """
+        self.processor_backend.reconcile_transfers(self)
+        return Transaction.objects.by_organization(self)
+
     def withdraw_funds(self, amount, user, created_at=None):
         """
         Withdraw funds from the site into the provider's bank account.
@@ -525,23 +542,34 @@ class Organization(models.Model):
         # the ``Transaction``.
         processor_transfer_id, _ = self.processor_backend.create_transfer(
             self, amount, funds_unit, descr)
-        Transaction.objects.create(
-            event_id=processor_transfer_id,
+        self.create_withdraw_transactions(
+            processor_transfer_id, amount, funds_unit, descr,
+            created_at=created_at)
+
+    @method_decorator(transaction.atomic)
+    def create_withdraw_transactions(self, event_id, amount, unit, descr,
+                                     created_at=None):
+        #pylint:disable=too-many-arguments
+        # We use ``get_or_create`` here because the method is also called
+        # when transfers are reconciled with the payment processor.
+        _, created = Transaction.objects.get_or_create(
+            event_id=event_id,
             descr=descr,
             created_at=created_at,
-            dest_unit=funds_unit,
+            dest_unit=unit,
             dest_amount=amount,
             dest_account=Transaction.WITHDRAW,
             dest_organization=self.processor,
-            orig_unit=funds_unit,
+            orig_unit=unit,
             orig_amount=amount,
             orig_account=Transaction.FUNDS,
             orig_organization=self)
-        # Add processor fee for transfer.
-        transfer_fee = self.processor_backend.prorate_transfer(amount)
-        self.create_processor_fee(transfer_fee, Transaction.FUNDS,
-            event_id=processor_transfer_id, created_at=created_at)
-        self.funds_balance -= amount
+        if created:
+            # Add processor fee for transfer.
+            transfer_fee = self.processor_backend.prorate_transfer(amount)
+            self.create_processor_fee(transfer_fee, Transaction.FUNDS,
+                event_id=event_id, created_at=created_at)
+            self.funds_balance -= amount
         self.save()
 
     def create_processor_fee(self, fee_amount, processor_account,
@@ -646,7 +674,8 @@ class ChargeManager(models.Manager):
                     user=None, token=None, remember_card=True):
         #pylint: disable=too-many-arguments
         charge = None
-        amount, _ = sum_dest_amount(transactions)
+        balance = sum_dest_amount(transactions)
+        amount = balance['amount']
         if amount == 0:
             return charge
         for invoice_items in Transaction.objects.by_processor_key(
@@ -666,7 +695,9 @@ class ChargeManager(models.Manager):
 
         Be careful, Stripe will not processed charges less than 50 cents.
         """
-        amount, unit = sum_dest_amount(transactions)
+        balance = sum_dest_amount(transactions)
+        amount = balance['amount']
+        unit = balance['unit']
         if amount == 0:
             return None
         provider = Transaction.objects.provider(transactions)
@@ -774,8 +805,10 @@ class Charge(models.Model):
         """
         Returns the total amount of all invoiced items.
         """
-        amount, unit = sum_dest_amount(Transaction.objects.filter(
+        balance = sum_dest_amount(Transaction.objects.filter(
             invoiced_item__charge=self))
+        amount = balance['amount']
+        unit = balance['unit']
         return amount, unit
 
     @property
@@ -810,7 +843,8 @@ class Charge(models.Model):
         #pylint: disable=too-many-locals
         self.state = self.DISPUTED
         created_at = datetime_or_now()
-        previously_refunded, _ = sum_orig_amount(self.refunded)
+        balance = sum_orig_amount(self.refunded)
+        previously_refunded = balance['amount']
         refund_available = self.amount - previously_refunded
         charge_available_amount, provider_unit, \
             charge_fee_amount, processor_unit \
@@ -1099,7 +1133,8 @@ class Charge(models.Model):
         if refunded_amount is None:
             refunded_amount = invoiced_item.dest_amount
 
-        previously_refunded, _ = sum_orig_amount(self.refunded)
+        balance = sum_orig_amount(self.refunded)
+        previously_refunded = balance['amount']
         refund_available = invoiced_item.dest_amount - previously_refunded
         if refunded_amount > refund_available:
             raise InsufficientFunds("Cannot refund %(refund_required)s"\
@@ -1977,12 +2012,18 @@ class TransactionManager(models.Manager):
         until = datetime_or_now(until)
         if not account:
             account = Transaction.FUNDS
-        dest_amount, dest_unit = sum_dest_amount(self.filter(
+        balance = sum_dest_amount(self.filter(
             dest_organization=organization, dest_account__startswith=account,
             created_at__lt=until, **kwargs))
-        orig_amount, orig_unit = sum_orig_amount(self.filter(
+        dest_amount = balance['amount']
+        dest_unit = balance['unit']
+        dest_created_at = balance['created_at']
+        balance = sum_orig_amount(self.filter(
             orig_organization=organization, orig_account__startswith=account,
             created_at__lt=until, **kwargs))
+        orig_amount = balance['amount']
+        orig_unit = balance['unit']
+        orig_created_at = balance['created_at']
         if dest_unit is None:
             unit = orig_unit
         elif orig_unit is None:
@@ -1993,20 +2034,25 @@ class TransactionManager(models.Manager):
                 orig_unit, dest_unit))
         else:
             unit = dest_unit
-        return dest_amount - orig_amount, unit
+        return {'amount': dest_amount - orig_amount, 'unit': unit,
+            'created_at': max(dest_created_at, orig_created_at)}
 
     def get_statement_balance(self, organization, until=None):
         until = datetime_or_now(until)
-        dest_amount, dest_unit = sum_dest_amount(self.filter(
+        balance = sum_dest_amount(self.filter(
             Q(dest_account=Transaction.PAYABLE)
             | Q(dest_account=Transaction.LIABILITY),
             dest_organization=organization,
             created_at__lt=until))
-        orig_amount, orig_unit = sum_orig_amount(self.filter(
+        dest_amount = balance['amount']
+        dest_unit = balance['unit']
+        balance = sum_orig_amount(self.filter(
             Q(orig_account=Transaction.PAYABLE)
             | Q(orig_account=Transaction.LIABILITY),
             orig_organization=organization,
             created_at__lt=until))
+        orig_amount = balance['amount']
+        orig_unit = balance['unit']
         if dest_unit is None:
             unit = orig_unit
         elif orig_unit is None:
@@ -2034,9 +2080,11 @@ class TransactionManager(models.Manager):
         # a ``Charge`` will be the ``Charge.id``. As a result, getting the
         # amount due on a subscription by itself is more complicated than
         # just filtering by account and event_id.
-        dest_amount, dest_unit = sum_dest_amount(
+        balance = sum_dest_amount(
             self.get_invoiceables(subscription.organization).filter(
                 event_id=subscription.id))
+        dest_amount = balance['amount']
+        dest_unit = balance['unit']
         return dest_amount, dest_unit
 
     def get_event_balance(self, event_id, account,
@@ -2050,10 +2098,14 @@ class TransactionManager(models.Manager):
             kwargs.update({'created_at__gte': starts_at})
         if ends_at:
             kwargs.update({'created_at__lt': ends_at})
-        dest_amount, dest_unit = sum_dest_amount(self.filter(
+        balance = sum_dest_amount(self.filter(
             dest_account=account, event_id=event_id, **kwargs))
-        orig_amount, orig_unit = sum_orig_amount(self.filter(
+        dest_amount = balance['amount']
+        dest_unit = balance['unit']
+        balance = sum_orig_amount(self.filter(
             orig_account=account, event_id=event_id, **kwargs))
+        orig_amount = balance['amount']
+        orig_unit = balance['unit']
         if dest_unit is None:
             unit = orig_unit
         elif orig_unit is None:
@@ -2269,12 +2321,14 @@ class TransactionManager(models.Manager):
         """
         created_transactions = []
         created_at = datetime_or_now(at_time)
-        backlog_amount, _ = self.get_organization_balance(
+        balance = self.get_organization_balance(
             subscription.plan.organization, account=Transaction.BACKLOG,
             event_id=subscription.id)
-        receivable_amount, _ = self.get_organization_balance(
+        backlog_amount = balance['amount']
+        balance = self.get_organization_balance(
             subscription.plan.organization, account=Transaction.RECEIVABLE,
             event_id=subscription.id)
+        receivable_amount = balance['amount']
         receivable_amount = abs(receivable_amount) # direction
         if backlog_amount > 0:
             available = min(amount, backlog_amount)
@@ -2454,15 +2508,19 @@ def sum_dest_amount(transactions):
     if isinstance(transactions, QuerySet):
         if transactions.exists():
             query_result = transactions.values(
-                'dest_unit').annotate(Sum('dest_amount'))
+                'dest_unit').annotate(Sum('dest_amount'), Max('created_at'))
     else:
         group_by = {}
+        most_recent = None
         for item in transactions:
+            if not most_recent or item.created_at < most_recent:
+                most_recent = item.created_at
             if not item.dest_unit in group_by:
                 group_by[item.dest_unit] = 0
             group_by[item.dest_unit] += item.dest_amount
         for unit, amount in group_by.iteritems():
-            query_result += [{'dest_unit': unit, 'dest_amount__sum': amount}]
+            query_result += [{'dest_unit': unit, 'dest_amount__sum': amount,
+                'created_at__max': most_recent}]
     if len(query_result) > 0:
         if len(query_result) > 1:
             try:
@@ -2472,8 +2530,10 @@ def sum_dest_amount(transactions):
             except ValueError as err:
                 LOGGER.exception(err)
         # XXX Hack: until we change the function signature
-        return query_result[0]['dest_amount__sum'], query_result[0]['dest_unit']
-    return 0, None
+        return {'amount': query_result[0]['dest_amount__sum'],
+                'unit': query_result[0]['dest_unit'],
+                'created_at': query_result[0]['created_at__max']}
+    return {'amount': 0, 'unit': None, 'created_at': datetime_or_now()}
 
 
 def sum_orig_amount(transactions):
@@ -2484,15 +2544,19 @@ def sum_orig_amount(transactions):
     if isinstance(transactions, QuerySet):
         if transactions.exists():
             query_result = transactions.values(
-                'orig_unit').annotate(Sum('orig_amount'))
+                'orig_unit').annotate(Sum('orig_amount'), Max('created_at'))
     else:
         group_by = {}
+        most_recent = None
         for item in transactions:
+            if not most_recent or item.created_at < most_recent:
+                most_recent = item.created_at
             if not item.orig_unit in group_by:
                 group_by[item.orig_unit] = 0
             group_by[item.orig_unit] += item.orig_amount
         for unit, amount in group_by.iteritems():
-            query_result += [{'orig_unit': unit, 'orig_amount__sum': amount}]
+            query_result += [{'orig_unit': unit, 'orig_amount__sum': amount,
+                'created_at__max': most_recent}]
     if len(query_result) > 0:
         if len(query_result) > 1:
             try:
@@ -2502,5 +2566,7 @@ def sum_orig_amount(transactions):
             except ValueError as err:
                 LOGGER.exception(err)
         # XXX Hack: until we change the function signature
-        return query_result[0]['orig_amount__sum'], query_result[0]['orig_unit']
-    return 0, None
+        return {'amount': query_result[0]['orig_amount__sum'],
+                'unit': query_result[0]['orig_unit'],
+                'created_at': query_result[0]['created_at__max']}
+    return {'amount': 0, 'unit': None, 'created_at': datetime_or_now()}

@@ -8,24 +8,19 @@
   <div>
     <dl>
       <dt>Bank</dt>
-      <dd>{{bank_name}}</dd>
+      <dd>[[bank_name]]</dd>
     </dl>
     <dl>
       <dt>Account Number</dt>
-      <dd>{{last4}}</dd>
+      <dd>[[last4]]</dd>
     </dl>
   </div>
 </section>
 <section id="funds">
   <h1>Funds</h1>
   <dl>
-    {% if balance_amount >= 0 %}
-    <dt>{{balance_amount|humanize_money:balance_unit}}</dt>
-    <dd>Available {% if balance_amount > 0 %}(<a href="{% url 'saas_withdraw_funds' organization %}">withdraw</a>){% endif %}</dd>
-    {% else %}
-    <dt>{{balance_amount|humanize_money:balance_unit}}</dt>
-    <dd>Balance due</dd>
-    {% endif %}
+    <dt>[[balance_amount|humanizeCell : balance_unit : 0.01]]</dt>
+    <dd>Available (<a href="{% url 'saas_withdraw_funds' organization %}">withdraw</a>)</dd>
   </dl>
 </section>
 {% endblock %}
@@ -38,6 +33,7 @@
    configuration. */
 var app = angular.module('transactionApp');
 app.constant('urls', {
+    saas_api_bank: "{% url 'saas_api_bank' organization %}",
     saas_api_transaction_url: "{% url 'saas_api_transfer_list' organization %}",
 });
 app.constant('date_range', { start_at: "{{start_at}}", ends_at: "{{ends_at}}" });
