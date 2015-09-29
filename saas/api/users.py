@@ -77,8 +77,11 @@ class RelationListAPIView(OrganizationMixin, ListCreateAPIView):
                     first_name=first_name, last_name=last_name)
 
         self.organization = self.get_organization()
+        reason = request.DATA.get('invite', None)
+        if reason:
+            reason = force_text(reason)
         if self.add_relation(user,
-                reason=force_text(request.DATA.get('invite', None))):
+                reason=reason):
             resp_status = status.HTTP_201_CREATED
         else:
             resp_status = status.HTTP_200_OK
