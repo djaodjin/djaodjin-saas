@@ -222,10 +222,21 @@ class StripeBackend(object):
             try:
                 p_customer = stripe.Customer.retrieve(
                     organization.processor_card_key, **kwargs)
+                old_card = {'last4':p_customer.cards.data[0].last4,
+                    'exp':"%d/%d" % (
+                        p_customer.cards.data[0].exp_month,
+                        p_customer.cards.data[0].exp_year)
+                }
                 p_customer.source = card_token
                 p_customer.save()
+                new_card = {'last4':p_customer.cards.data[0].last4,
+                    'exp':"%d/%d" % (
+                        p_customer.cards.data[0].exp_month,
+                        p_customer.cards.data[0].exp_year)
+                }
                 signals.card_updated.send(
-                    sender=__name__, organization=organization, user=user)
+                    sender=__name__, organization=organization,
+                    user=user, old_card=old_card, new_card=new_card)
             except stripe.error.InvalidRequestError:
                 # Can't find the customer on Stripe. This can be related to
                 # a switch from using devel to production keys.
