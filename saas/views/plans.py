@@ -60,7 +60,11 @@ class PlanFormMixin(OrganizationMixin, SingleObjectMixin):
         Rebuilds the ``kwargs`` to pass to ``reverse()``.
         """
         url_kwargs = super(PlanFormMixin, self).get_url_kwargs()
-        url_kwargs.update({'plan': self.kwargs['plan']})
+        if hasattr(self, 'object'):
+            plan_kwarg = self.object.slug
+        else:
+            plan_kwarg = self.kwargs['plan']
+        url_kwargs.update({'plan': plan_kwarg})
         return url_kwargs
 
 
@@ -174,7 +178,7 @@ djaodjin-saas/tree/master/saas/templates/saas/profile/plans.html>`__).
 
     def get_success_url(self):
         messages.success(
-            self.request, "Successfully update '%s' plan." % self.object)
+            self.request, "Successfully updated '%s' plan." % self.object)
         return reverse('saas_plan_edit', kwargs=self.get_url_kwargs())
 
     def get_context_data(self, **kwargs):

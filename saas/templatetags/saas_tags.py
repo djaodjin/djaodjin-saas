@@ -147,24 +147,22 @@ def products(subscriptions):
 
 
 @register.filter()
-def top_managed_organizations(user):
+def top_accessible_organizations(user):
     """
     Returns a queryset of the 8 most important organizations the user
     is a manager for.
     """
-    if isinstance(user, basestring):
-        user = User.objects.get(username=user)
-    return user.manages.filter(is_active=True)[:8]
+    return Organization.objects.accessible_by(user).filter(
+        is_active=True)[:8]
 
 
 @register.filter()
-def more_managed_organizations(user):
+def more_accessible_organizations(user):
     """
     Returns True if the user manages more than 8 organizations.
     """
-    if isinstance(user, basestring):
-        user = User.objects.get(username=user)
-    return user.manages.filter(is_active=True).count() >= 8
+    return Organization.objects.accessible_by(user).filter(
+        is_active=True).count() >= 8
 
 
 @register.filter
