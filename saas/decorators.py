@@ -112,6 +112,15 @@ def has_contributor_level(user, candidates):
     return len(managed + contributed) > 0
 
 
+def has_manager_level(user, candidates):
+    """
+    Returns True if *user* is manager to any ``Organization``
+    in *candidates*.
+    """
+    managed = _valid_manager(user, candidates)
+    return len(managed) > 0
+
+
 def _filter_valid_access(request, candidates, strength=NORMAL):
     """
     Returns a tuple made of two lists of ``Organization`` from *candidates*.
