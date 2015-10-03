@@ -175,6 +175,9 @@ couponControllers.controller('CouponListCtrl',
             $scope.coupons.results.push(new Coupon(result));
             // Reset our editor to a new blank post
             $scope.newCoupon = new Coupon();
+        }).error(
+        function(data){
+            showMessages(["Coupon code is required"], "error");
         });
     };
 
