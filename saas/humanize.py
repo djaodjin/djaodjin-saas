@@ -22,7 +22,7 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-import datetime, re
+import datetime, locale, re
 
 from django.core.urlresolvers import reverse
 
@@ -69,11 +69,15 @@ def as_money(value, currency='usd'):
     if currency.startswith('-'):
         value = - value
         currency = currency[1:]
+    prev = locale.getlocale()
     currency = currency.lower()
     if currency == 'cad':
-        return '$%.2f CAD' % (float(value) / 100)
-    return '$%.2f' % (float(value) / 100)
-    # XXX return locale.currency(value, grouping=True)
+        result = '$%.2f CAD' % (float(value) / 100)
+    else:
+        locale.setlocale(locale.LC_ALL, 'en_US.UTF-8')
+        result = locale.currency(float(value) / 100)
+    locale.setlocale(locale.LC_ALL, prev)
+    return result
 
 
 def describe_buy_periods(plan, ends_at, nb_periods,
