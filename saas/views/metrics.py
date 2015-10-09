@@ -100,14 +100,22 @@ class CouponMetricsDownloadView(SmartCouponListMixin, CouponAPIMixin,
         return CartItem.objects.filter(coupon__in=coupons)
 
     def queryrow_to_columns(self, cartitem):
+        if cartitem.user:
+            claim_code = 'CLAIMED'
+            email = cartitem.user.email
+            full_name = ' '.join([
+                cartitem.user.first_name, cartitem.user.last_name])
+        else:
+            claim_code = cartitem.claim_code
+            full_name = ' '.join([cartitem.first_name, cartitem.last_name])
+            email = cartitem.email
         return [
             cartitem.coupon.code.encode('utf-8'),
             cartitem.coupon.percent,
-            ' '.join([cartitem.user.first_name, cartitem.user.last_name]).\
-                encode('utf-8'),
-            cartitem.user.email.encode('utf-8'),
+            full_name.encode('utf-8'),
+            email.encode('utf-8'),
             cartitem.plan.slug.encode('utf-8'),
-        ]
+            claim_code.encode('utf-8')]
 
 
 class PlansMetricsView(OrganizationMixin, TemplateView):
