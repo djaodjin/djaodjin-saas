@@ -1438,7 +1438,6 @@ class Plan(models.Model):
     DAILY = 2
     WEEKLY = 3
     MONTHLY = 4
-    QUATERLY = 5
     YEARLY = 7
 
     INTERVAL_CHOICES = [
@@ -1446,7 +1445,6 @@ class Plan(models.Model):
         (DAILY, "DAILY"),
         (WEEKLY, "WEEKLY"),
         (MONTHLY, "MONTHLY"),
-        (QUATERLY, "QUATERLY"),
         (YEARLY, "YEARLY"),
         ]
 
@@ -1466,6 +1464,8 @@ class Plan(models.Model):
         help_text=_('Fee per transaction (in per 10000).'))
     interval = models.PositiveSmallIntegerField(
         choices=INTERVAL_CHOICES, default=YEARLY)
+    period_length = models.PositiveSmallIntegerField(default=1,
+        help_text=_('Natural number of months/years/etc. before the plan ends'))
     unlock_event = models.CharField(max_length=128, null=True, blank=True,
         help_text=_('Payment required to access full service'))
     advance_discount = models.PositiveIntegerField(default=0,
@@ -1494,8 +1494,6 @@ class Plan(models.Model):
             result = datetime.timedelta(days=7 * nb_periods)
         elif interval == Plan.MONTHLY:
             result = relativedelta(months=1 * nb_periods)
-        elif interval == Plan.QUATERLY:
-            result = relativedelta(months=3 * nb_periods)
         elif interval == Plan.YEARLY:
             result = relativedelta(years=1 * nb_periods)
         return result
@@ -1535,8 +1533,6 @@ class Plan(models.Model):
             result = '%d week' % nb_periods
         elif self.interval == self.MONTHLY:
             result = '%d month' % nb_periods
-        elif self.interval == self.QUATERLY:
-            result = '%d months' % (3 * nb_periods)
         elif self.interval == self.YEARLY:
             result = '%d year' % nb_periods
         if nb_periods > 1:
@@ -1557,8 +1553,6 @@ class Plan(models.Model):
             pat = r'(\d+) week'
         elif self.interval == self.MONTHLY:
             pat = r'(\d+) month'
-        elif self.interval == self.QUATERLY:
-            pat = r'(\d+) months'
         elif self.interval == self.YEARLY:
             pat = r'(\d+) year'
         else:
@@ -1596,8 +1590,8 @@ class Plan(models.Model):
         elif self.interval == self.WEEKLY:
             # Weekly, fractional period is in days.
             fraction = (end_time.date() - start_time.date()).days / 7
-        elif self.interval in [self.MONTHLY, self.QUATERLY]:
-            # Monthly and Quaterly: fractional period is in days.
+        elif self.interval == self.MONTHLY:
+            # Monthly: fractional period is in days.
             # We divide by the maximum number of days in a month to
             # the advantage of a customer.
             fraction = (end_time.date() - start_time.date()).days / 31
@@ -1849,8 +1843,6 @@ class Subscription(models.Model):
                 estimated = delta.days / 7
             elif self.plan.interval == Plan.MONTHLY:
                 estimated = delta.days / 30
-            elif self.plan.interval == Plan.QUATERLY:
-                estimated = delta.days / (30 + 31 + 30)
             elif self.plan.interval == Plan.YEARLY:
                 estimated = delta.days / 365
             upper = self.plan.end_of_period(start_upper, nb_periods=estimated)
@@ -2167,8 +2159,8 @@ class TransactionManager(models.Manager):
             created_at__lt=until, **kwargs).order_by('created_at')
 
     @staticmethod
-    def new_subscription_order(subscription, nb_periods, prorated_amount=0,
-        created_at=None, descr=None, discount_percent=0,
+    def new_subscription_order(subscription, nb_natural_periods,
+        prorated_amount=0, created_at=None, descr=None, discount_percent=0,
         descr_suffix=None):
         #pylint: disable=too-many-arguments
         """
@@ -2193,13 +2185,18 @@ class TransactionManager(models.Manager):
         ``Organization.checkout``. ``execute_order`` will replace
         ``orig_amount`` by the correct amount in the expected currency.
         """
+        nb_periods = nb_natural_periods * subscription.plan.period_length
         if not descr:
             amount = int((prorated_amount
-                + (subscription.plan.period_amount * nb_periods))
+                + (subscription.plan.period_amount * nb_natural_periods))
                 * (100 - discount_percent) / 100)
             ends_at = subscription.plan.end_of_period(
                 subscription.ends_at, nb_periods)
-            descr = describe_buy_periods(subscription.plan, ends_at, nb_periods,
+            # descr will later be use to recover the ``period_number``,
+            # so we need to use The true ``nb_periods`` and not the number
+            # of natural periods.
+            descr = describe_buy_periods(
+                subscription.plan, ends_at, nb_periods,
                 discount_percent=discount_percent, descr_suffix=descr_suffix)
         else:
             # If we already have a description, all bets are off on

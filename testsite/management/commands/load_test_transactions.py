@@ -205,7 +205,8 @@ class Command(BaseCommand):
             for subscription in subscriptions:
                 nb_periods = random.randint(1, 6)
                 transaction_item = Transaction.objects.new_subscription_order(
-                    subscription, nb_periods=nb_periods, created_at=end_period)
+                    subscription, nb_natural_periods=nb_periods,
+                    created_at=end_period)
                 transaction_item.orig_amount = transaction_item.dest_amount
                 transaction_item.orig_unit = transaction_item.dest_unit
                 transaction_item.save()

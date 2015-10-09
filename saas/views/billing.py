@@ -605,9 +605,14 @@ class CartBaseView(InvoicablesFormMixin, FormView):
             if plan.advance_discount > 0:
                 # Give a chance for discount when paying periods in advance
                 if plan.interval == Plan.MONTHLY:
-                    natural_periods = [1, 3, 6, 12]
-                elif plan.interval == Plan.YEARLY:
-                    natural_periods = [1, 2, 3]
+                    if plan.period_length == 1:
+                        natural_periods = [1, 3, 6, 12]
+                    elif plan.period_length == 4:
+                        natural_periods = [1, 2, 3]
+                    else:
+                        natural_periods = [1, 2, 3, 4]
+                else:
+                    natural_periods = [1, 2, 3, 4]
 
             for nb_periods in natural_periods:
                 option_items += [Transaction.objects.new_subscription_order(
