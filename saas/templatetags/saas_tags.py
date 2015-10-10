@@ -32,11 +32,46 @@ from django.utils.timezone import utc
 
 from saas.compat import User
 from saas.humanize import as_html_description
-from saas.models import Organization, Subscription, get_broker
+from saas.models import Organization, Subscription, Plan, as_money, get_broker
 from saas.decorators import pass_direct, _valid_manager
 from saas.utils import product_url as utils_product_url
 
 register = template.Library()
+
+
+@register.filter()
+def humanize_money(value, currency):
+    return as_money(value, currency)
+
+
+@register.filter()
+def humanize_balance(value, currency_unit):
+    return humanize_money(abs(value), currency_unit)
+
+
+@register.filter()
+def percentage(value):
+    if not value:
+        return '0 %%'
+    return '%.1f %%' % (float(value) / 100)
+
+
+@register.filter()
+def humanize_period(period):
+    result = "per ?"
+    if period == Plan.INTERVAL_CHOICES[0][0]:
+        result = "per hour"
+    elif period == Plan.INTERVAL_CHOICES[1][0]:
+        result = "per day"
+    elif period == Plan.INTERVAL_CHOICES[2][0]:
+        result = "per week"
+    elif period == Plan.INTERVAL_CHOICES[3][0]:
+        result = "per month"
+    elif period == Plan.INTERVAL_CHOICES[4][0]:
+        result = "per quarter"
+    elif period == Plan.INTERVAL_CHOICES[5][0]:
+        result = "per year"
+    return result
 
 
 @register.filter()

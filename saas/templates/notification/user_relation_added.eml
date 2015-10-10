@@ -1,7 +1,3 @@
-{% load assets %}
-{% load currency %}
-{% load saas_tags %}
-
 {% block subject %}
 You were added as a {{role}} to {{organization.printable_name}}
 {% endblock %}

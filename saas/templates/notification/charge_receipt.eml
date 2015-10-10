@@ -1,4 +1,4 @@
-{% load currency %}
+{% load saas_tags %}
 
 {% block subject %}
 Charge Receipt from {{site.name}}
