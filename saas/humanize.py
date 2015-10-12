@@ -22,7 +22,7 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-import datetime, locale, re
+import datetime, re
 
 from django.core.urlresolvers import reverse
 
@@ -64,19 +64,31 @@ DESCRIBE_UNLOCK_LATER = \
 
 
 def as_money(value, currency='usd'):
-    if value == 0:
-        return '0.00'
+    unit_prefix = ''
+    unit_suffix = ''
+    currency = currency.lower()
+    if currency in ['usd', 'cad']:
+        unit_prefix = '$'
+        if currency != 'usd':
+            unit_suffix = currency
+    else:
+        unit_suffix = currency
+
     if currency.startswith('-'):
         value = - value
         currency = currency[1:]
-    prev = locale.getlocale()
-    currency = currency.lower()
-    if currency == 'cad':
-        result = '$%.2f CAD' % (float(value) / 100)
-    else:
-        locale.setlocale(locale.LC_ALL, 'en_US.UTF-8')
-        result = locale.currency(float(value) / 100)
-    locale.setlocale(locale.LC_ALL, prev)
+
+    text = '%d' % value
+    int_part = text[:-2]
+    frac_part = text[-2:]
+    grouped = ""
+    idx = len(int_part)
+    while idx > 3:
+        grouped += ',' + int_part[idx - 3:idx]
+        idx -= 3
+
+    result = (unit_prefix + int_part[0:idx] + grouped + '.' + frac_part
+        + unit_suffix)
     return result
 
 

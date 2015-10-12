@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 # Copyright (c) 2015, DjaoDjin inc.
 # All rights reserved.
 #
@@ -23,6 +24,7 @@
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 from datetime import datetime, timedelta
+import re
 
 import markdown
 from django import template
@@ -31,13 +33,32 @@ from django.utils.safestring import mark_safe
 from django.utils.timezone import utc
 
 from saas.compat import User
-from saas.humanize import as_html_description
-from saas.models import Organization, Subscription, Plan, as_money, get_broker
+from saas.humanize import  as_money, as_html_description
+from saas.models import Organization, Subscription, Plan, get_broker
 from saas.decorators import pass_direct, _valid_manager
 from saas.utils import product_url as utils_product_url
 
 register = template.Library()
 
+
+@register.filter()
+def htmlize_money(value, currency='usd'):
+    text = as_money(value, currency)
+    look = re.match(r'(\$|€|£)?(\d(\d|,)*)(\.\d+)?(.*)', text)
+    if look:
+        unit_prefix = '<span class="unit-prefix">%s</span>' % look.group(1)
+        int_amount = look.group(2)
+        frac_amount = look.group(4)
+        unit_suffx = '<span class="unit-suffix">%s</span>' % look.group(5)
+        if frac_amount == '.00':
+            frac_amount = (
+                '<span class="frac-digits zero-frac-digits">%s</span>'
+                % frac_amount)
+        else:
+            frac_amount = ('<span class="frac-digits">%s</span>' % frac_amount)
+        html = unit_prefix + int_amount + frac_amount + unit_suffx
+        return  mark_safe(html)
+    return text
 
 @register.filter()
 def humanize_money(value, currency):
