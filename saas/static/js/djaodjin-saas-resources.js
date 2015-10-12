@@ -88,13 +88,14 @@ Plan.prototype = {
                });
     },
 
-    destroy: function(successFunction) {
+    destroy: function(successFunction, errorFunction) {
         "use strict";
         var self = this;
         $.ajax({ type: "DELETE",
                  url: this.urls.saas_api_plan + "/" + self.id + "/",
                  async: false,
-                 success: successFunction
+                 success: successFunction,
+                 error: errorFunction
                });
     },
 
