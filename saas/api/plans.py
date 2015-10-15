@@ -165,7 +165,7 @@ class PlanResourceView(PlanMixin, RetrieveUpdateDestroyAPIView):
         instance = self.get_object()
         if instance.subscription_set.count() != 0:
             return Response(
-                {'error':'Cannot delete a plan with subscribers'},
+                {'detail':'Cannot delete a plan with subscribers'},
                 status=status.HTTP_403_FORBIDDEN)
         self.perform_destroy(instance)
         return Response(status=status.HTTP_204_NO_CONTENT)
