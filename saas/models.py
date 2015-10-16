@@ -1448,6 +1448,10 @@ class Plan(models.Model):
         (YEARLY, "YEARLY"),
         ]
 
+    PRICE_ROUND_NONE = 0
+    PRICE_ROUND_WHOLE = 1
+    PRICE_ROUND_99 = 2
+
     slug = models.SlugField(unique=True)
     title = models.CharField(max_length=50, null=True)
     description = models.TextField()
@@ -1469,6 +1473,7 @@ class Plan(models.Model):
     unlock_event = models.CharField(max_length=128, null=True, blank=True,
         help_text=_('Payment required to access full service'))
     advance_discount = models.PositiveIntegerField(default=0,
+        validators=[MaxValueValidator(10000)], # 100.00%
         help_text=_('incr discount for payment of multiple periods (in %%).'))
     # end game
     length = models.PositiveSmallIntegerField(null=True, blank=True,
@@ -1482,6 +1487,35 @@ class Plan(models.Model):
 
     def __unicode__(self):
         return unicode(self.slug)
+
+    @property
+    def yearly_amount(self):
+        if self.interval == Plan.HOURLY:
+            amount, _ = self.advance_period_amount(365 * 24)
+        elif self.interval == Plan.DAILY:
+            amount, _ = self.advance_period_amount(365)
+        elif self.interval == Plan.WEEKLY:
+            amount, _ = self.advance_period_amount(52)
+        elif self.interval == Plan.MONTHLY:
+            amount, _ = self.advance_period_amount(12)
+        elif self.interval == Plan.YEARLY:
+            amount, _ = self.advance_period_amount(1)
+        return amount
+
+    def advance_period_amount(self, nb_periods, rounding=PRICE_ROUND_WHOLE):
+        assert nb_periods > 0
+        discount_percent = self.advance_discount * (nb_periods - 1)
+        if discount_percent >= 9999:
+            # Hardcode to a maximum of 99.99% discount
+            discount_percent = 9999
+            return -1, discount_percent / 100
+        discount_amount = (self.period_amount * nb_periods
+                * (10000 - discount_percent) / 10000)
+        if rounding == self.PRICE_ROUND_WHOLE:
+            discount_amount += 100 - discount_amount % 100
+        elif rounding == self.PRICE_ROUND_99:
+            discount_amount += 99 - discount_amount % 100
+        return discount_amount, discount_percent / 100
 
     @staticmethod
     def get_natural_period(nb_periods, interval):

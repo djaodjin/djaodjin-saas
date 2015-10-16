@@ -615,13 +615,15 @@ class CartBaseView(InvoicablesFormMixin, FormView):
                     natural_periods = [1, 2, 3, 4]
 
             for nb_periods in natural_periods:
+                if nb_periods > 1:
+                    amount, discount_percent \
+                        = subscription.plan.advance_period_amount(nb_periods)
+                    if amount < 0:
+                        break # never allow to be completely free here.
                 option_items += [Transaction.objects.new_subscription_order(
                     subscription, nb_periods, prorated_amount, created_at,
                     discount_percent=discount_percent,
                     descr_suffix=descr_suffix)]
-                discount_percent += plan.advance_discount
-                if discount_percent >= 100:
-                    break # never allow to be completely free here.
 
         return option_items
 
