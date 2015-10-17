@@ -127,6 +127,9 @@ couponControllers.controller('CouponListCtrl',
 
     $scope.filterList = function(regex) {
         if( regex ) {
+            if ("page" in $scope.params){
+                delete $scope.params.page;
+            }
             $scope.params.q = regex;
         } else {
             delete $scope.params.q;
@@ -350,7 +353,7 @@ subscriptionControllers.controller('subscriptionListCtrl',
 
     $scope.query = function(queryset) {
         queryset.$resolved = false;
-        queryset.results = []
+        queryset.results = [];
         $http.get(queryset.location,
             {params: $scope.params}).success(function(data) {
                 queryset.results = data.results;
@@ -388,6 +391,9 @@ subscriptionControllers.controller('subscriptionListCtrl',
 
     $scope.filterList = function(regex) {
         if( regex ) {
+            if ("page" in $scope.params){
+                delete $scope.params.page;
+            }
             $scope.params.q = regex;
         } else {
             delete $scope.params.q;
@@ -545,6 +551,9 @@ transactionControllers.controller('transactionListCtrl',
 
     $scope.filterList = function(regex) {
         if( regex ) {
+            if ("page" in $scope.params){
+                delete $scope.params.page;
+            }
             $scope.params.q = regex;
         } else {
             delete $scope.params.q;

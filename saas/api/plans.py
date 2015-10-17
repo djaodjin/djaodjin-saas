@@ -26,6 +26,8 @@ from django.template.defaultfilters import slugify
 from rest_framework.generics import (CreateAPIView,
     RetrieveUpdateDestroyAPIView, UpdateAPIView)
 from rest_framework import serializers
+from rest_framework import status
+from rest_framework.response import Response
 
 from saas.models import Plan, Subscription
 from saas.mixins import OrganizationMixin
@@ -153,13 +155,24 @@ class PlanResourceView(PlanMixin, RetrieveUpdateDestroyAPIView):
 
     serializer_class = PlanSerializer
 
-    def perform_destroy(self, instance):
+    def destroy(self, request, *args, **kwargs):
         '''
         Override to provide some validation.
 
         Without this, users could subvert the "no deleting plans with
         subscribers" rule via URL manipulation.
+
+        Override destroy() instead of perform_destroy() to 
+        return a custom 403 response.
+        By using PermissionDenied django exception
+        django rest framework return a default 403 with
+        {'detail': 'permission denied'}
+        https://github.com/tomchristie/django-rest-framework/blob/master/rest_framework/views.py#L55
         '''
+        instance = self.get_object()
         if instance.subscription_set.count() != 0:
-            raise Exception('cannot delete a plan with subscribers')
-        return super(PlanResourceView, self).perform_destroy(instance)
+            return Response(
+                {'detail':'Cannot delete a plan with subscribers'},
+                status=status.HTTP_403_FORBIDDEN)
+        self.perform_destroy(instance)
+        return Response(status=status.HTTP_204_NO_CONTENT)
