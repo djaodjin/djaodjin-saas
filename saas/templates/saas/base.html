@@ -49,11 +49,6 @@
 <script type="text/javascript" charset="utf-8" src="{% static 'js/djaodjin-saas.js'%}"></script>
 <script type="text/javascript" charset="utf-8" src="{% static 'js/djaodjin-saas-resources.js'%}"></script>
 <script type="text/javascript" charset="utf-8" src="{% static 'js/djaodjin-postal.js' %}"></script>
-<script type="text/javascript">
-$(document).ready(function(){
-    $("[name='region']").region({country:$("[name='country']")});
-});
-</script>
 {% block saas_bodyscripts %}
 {% endblock %}
 {% endblock %}

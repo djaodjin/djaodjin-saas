@@ -66,28 +66,33 @@ DESCRIBE_UNLOCK_LATER = \
 def as_money(value, currency='usd'):
     unit_prefix = ''
     unit_suffix = ''
-    currency = currency.lower()
-    if currency in ['usd', 'cad']:
-        unit_prefix = '$'
-        if currency != 'usd':
+    if currency:
+        currency = currency.lower()
+        if currency in ['usd', 'cad']:
+            unit_prefix = '$'
+            if currency != 'usd':
+                unit_suffix = currency
+        else:
             unit_suffix = currency
-    else:
-        unit_suffix = currency
 
-    if currency.startswith('-'):
-        value = - value
-        currency = currency[1:]
+        if currency.startswith('-'):
+            value = - value
+            currency = currency[1:]
 
-    text = '%d' % value
-    int_part = text[:-2]
-    frac_part = text[-2:]
     grouped = ""
-    idx = len(int_part)
-    while idx > 3:
-        grouped += ',' + int_part[idx - 3:idx]
-        idx -= 3
-
-    result = (unit_prefix + int_part[0:idx] + grouped + '.' + frac_part
+    text = '%d' % value
+    if len(text) > 2:
+        int_part = text[:-2]
+        frac_part = text[-2:]
+        idx = len(int_part)
+        while idx > 3:
+            grouped += ',' + int_part[idx - 3:idx]
+            idx -= 3
+        int_part = int_part[0:idx]
+    else:
+        int_part = '0'
+        frac_part = '00'
+    result = (unit_prefix + int_part + grouped + '.' + frac_part
         + unit_suffix)
     return result
 

@@ -162,7 +162,7 @@ class PlanResourceView(PlanMixin, RetrieveUpdateDestroyAPIView):
         Without this, users could subvert the "no deleting plans with
         subscribers" rule via URL manipulation.
 
-        Override destroy() instead of perform_destroy() to 
+        Override destroy() instead of perform_destroy() to
         return a custom 403 response.
         By using PermissionDenied django exception
         django rest framework return a default 403 with

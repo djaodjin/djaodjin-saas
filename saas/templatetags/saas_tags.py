@@ -61,7 +61,7 @@ def htmlize_money(value, currency='usd'):
     return text
 
 @register.filter()
-def humanize_money(value, currency):
+def humanize_money(value, currency='usd'):
     return as_money(value, currency)
 
 

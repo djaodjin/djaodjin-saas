@@ -1,8 +1,46 @@
-{% extends "saas/cart_base.html" %}
+{% extends "base.html" %}
 {% load saas_tags %}
 
-{% block order_title %}Place order{% endblock %}
+{% block localheader %}
+{{block.super}}
+{% include "saas/_payment_head.html" %}
+{% endblock %}
 
-{% block order_card %}
-{% include "saas/_card_use.html" with title="Subscribe" %}
+{% block content %}
+<h1>{% block order_title %}Place Order{% endblock %}</h1>
+{% block order_head %}
+<div>
+    <form method="post" id="redeem-form">
+        {% csrf_token %}
+        <div>
+            <label>
+If you have a coupon code, it is time to redeem it now!
+            </label>
+            <div>
+                {% comment %}{{coupon_form.code}}{% endcomment %}
+                <input id="id_code" name="code" type="text" placeholder="Coupon code">
+                <button type="submit" class="btn btn-primary">Redeem</button>
+            </div>
+        </div>
+    </form>
+</div>
+{% endblock %}
+<div>
+    <form method="post" id="payment-form" action=".{% if next %}/?next={{ next }}{% endif %}">
+        {% csrf_token %}
+        {% if invoicables %}
+        {% include "saas/_invoiceables.html" %}
+        {% else %}
+        Your subscription cart is empty.
+        {% endif %}
+        {% block order_card %}
+        {% include "saas/_card_use.html" with title="Subscribe" %}
+        {% endblock %}
+    </form>
+</div>
+{% endblock %}
+
+{% block bodyscripts %}
+{{block.super}}
+{% include "saas/_payment_body.html" %}
 {% endblock %}

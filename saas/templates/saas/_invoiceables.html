@@ -2,7 +2,7 @@
 
 {% regroup invoicables by subscription.plan as invoicables_by_plan %}
 
-<fieldset>
+<fieldset id="invoicables">
   <table>
     {% for plan_group in invoicables_by_plan %}
     <tbody data-plan="{{plan_group.grouper}}">
