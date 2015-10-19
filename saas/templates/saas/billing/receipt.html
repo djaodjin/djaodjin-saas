@@ -11,27 +11,25 @@ display:none;
 <div>
   <h1>Charge Receipt</h1>
   <section id="status">
-    {% comment %}
-        The following paragraphs are specially crafted such that only
-        one appears at any one time and ``waitForChargeCompleted``
-        can easily toggle between them.
-    {% endcomment %}
-    <p class="done {% if not charge.is_paid %}hidden{% endif %}">
-      On {{charge.created_at}}, the credit card has been charged for an amount
-      of {{charge.amount|humanize_money:charge.unit}}. Payment Information:
-    </p>
-    <p class="failed {% if not charge.is_failed %}hidden{% endif %}">
-    On {{charge.created_at}}, we attempted to charge your card for
-    {{charge.amount|humanize_money:charge.unit}}. The charge failed.
-    </p>
-    <p class="disputed {% if not charge.is_disputed %}hidden{% endif %}">
-    On {{charge.created_at}}, we attempted to charge your card for
-    {{charge.amount|humanize_money:charge.unit}}. The charge was disputed.
-    </p>
-    <p class="created {% if not charge.is_progress %}hidden{% endif %}">
-    On {{charge.created_at}}, we attempted to charge your card for
-    {{charge.amount|humanize_money:charge.unit}}. The charge is in progres...
-    </p>
+      <p>
+        On {{charge.created_at}}, we attempted to charge your card for
+        the amount of {{charge.amount|humanize_money:charge.unit}}.
+      </p>
+      <p class="charge-status"
+         data-charge-done="The charge succeeded."
+         data-charge-failed="The charge failed."
+         data-charge-disputed="The charge was disputed."
+         data-charge-created="The charge is in progress...">
+        {% if charge.is_paid %}
+        The charge succeeded.
+        {% elif charge.is_failed %}
+        The charge failed.
+        {% elif charge.is_disputed %}
+        The charge was disputed.
+        {% elif charge.is_progress %}
+        The charge is in progress... <i class="fa fa-spin"></i>
+        {% endif %}
+      </p>
   </section>
   <section id="info">
     <dl>
@@ -130,43 +128,30 @@ Please specify the amount you would like refunded.
 {% endblock %}
 
 {% block bodyscripts %}
+<script type="text/javascript" src="{% static 'js/djaodjin-saas-resources.js' %}"></script>
 <script type="text/javascript" src="{% static 'js/djaodjin-saas.js' %}"></script>
 <script type="text/javascript" src="{% static 'js/djaodjin-stripe.js' %}"></script>
 <script type="text/javascript">
-var urls = {
-    'saas_api_charge':
-        "{% url 'saas_api_charge' charge %}",
-    'saas_api_charge_refund':
-        "{% url 'saas_api_charge_refund' charge %}",
-}
 $(document).ready(function() {
-    var thisCharge = new Charge("{{charge.processor_key}}", urls);
     $(".charge-refund").click(function () {
         var self = $(this);
-        var availableAmount = self.attr("data-available-amount");
-        var refundedInput = $("#charge-refund [name='amount']");
-        refundedInput.attr("max", availableAmount);
-        refundedInput.attr("data-linenum", self.attr("data-linenum"));
-        refundedInput.val(availableAmount);
+        $("#charge-refund").refund({
+            availableAmount: self.attr("data-available-amount"),
+            linenum: self.attr("data-linenum"),
+            saas_api_charge_refund: "{% url 'saas_api_charge_refund' charge %}",
+            refundButton: self
+        });
     });
-    $("#charge-refund .submit-refund").click(function () {
-        var refundedInput = $("#charge-refund [name='amount']");
-        var availableAmount = refundedInput.attr("max");
-        var linenum = refundedInput.attr("data-linenum");
-        var refundedAmount = refundedInput.val();
-        if( refundedAmount > availableAmount ) {
-            refundedAmount = availableAmount;
-        }
-        if( refundedAmount > 0 ) {
-            thisCharge.refund(linenum, refundedAmount,
-                // refundButton
-                $('.charge-refund[data-linenum="' + linenum + '"]'));
-        }
+    $("#email-charge-receipt").chargeEmailReceipt({
+        initialState: "{{charge.get_state_display}}",
+        saas_api_email_charge_receipt:
+            "{% url 'saas_api_email_charge_receipt' charge %}"
     });
 
-{% if charge.is_progress %}
-    thisCharge.waitForCompletion();
-{% endif %}
+    $("#{{charge}}").chargeMonitor({
+       initialState: "{{charge.get_state_display}}",
+       saas_api_charge: "{% url 'saas_api_charge' charge %}"
+    });
 });
 </script>
 {% endblock %}

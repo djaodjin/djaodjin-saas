@@ -66,7 +66,11 @@ DESCRIBE_UNLOCK_LATER = \
 def as_money(value, currency='usd'):
     unit_prefix = ''
     unit_suffix = ''
+    negative = False
     if currency:
+        if currency.startswith('-'):
+            negative = True
+            currency = currency[1:]
         currency = currency.lower()
         if currency in ['usd', 'cad']:
             unit_prefix = '$'
@@ -74,11 +78,6 @@ def as_money(value, currency='usd'):
                 unit_suffix = currency
         else:
             unit_suffix = currency
-
-        if currency.startswith('-'):
-            value = - value
-            currency = currency[1:]
-
     grouped = ""
     text = '%d' % value
     if len(text) > 2:
@@ -94,6 +93,8 @@ def as_money(value, currency='usd'):
         frac_part = '00'
     result = (unit_prefix + int_part + grouped + '.' + frac_part
         + unit_suffix)
+    if negative:
+        result = "(%s)" % result
     return result
 
 
