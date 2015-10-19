@@ -395,8 +395,12 @@ class UserMixin(ContextMixin):
     user_url_kwarg = 'user'
 
     def get_user(self):
-        return get_object_or_404(User,
-            username=self.kwargs.get(self.user_url_kwarg))
+        if self.request.data['user']:
+            return get_object_or_404(User,
+                username=self.request.data['user'])
+        else:
+            return get_object_or_404(User,
+                username=self.kwargs.get(self.user_url_kwarg))
 
 
 class RelationMixin(OrganizationMixin, UserMixin):

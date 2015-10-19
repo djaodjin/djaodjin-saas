@@ -32,14 +32,11 @@ from saas.settings import ACCT_REGEX
 from saas.api.organizations import OrganizationDetailAPIView
 from saas.api.subscriptions import (SubscriptionDetailAPIView,
     SubscriptionListAPIView)
-from saas.api.users import (RoleListAPIView, RoleDetailAPIView)
+from saas.api.users import RoleListAPIView
 from saas.views import OrganizationRedirectView
 
 
 urlpatterns = patterns('saas.api',
-    url(r'^(?P<organization>%s)/roles/(?P<role>%s)/(?P<user>%s)/?'
-        % (ACCT_REGEX, ACCT_REGEX, ACCT_REGEX),
-        RoleDetailAPIView.as_view(), name='saas_api_role_detail'),
     url(r'^(?P<organization>%s)/roles/(?P<role>%s)/?'
         % (ACCT_REGEX, ACCT_REGEX),
         RoleListAPIView.as_view(), name='saas_api_role_list'),

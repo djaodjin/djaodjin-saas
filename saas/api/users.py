@@ -25,7 +25,8 @@
 from django.http import Http404
 from django.utils.encoding import force_text
 from rest_framework import status
-from rest_framework.generics import (DestroyAPIView, ListCreateAPIView)
+from rest_framework.generics import ListCreateAPIView
+from rest_framework.mixins import DestroyModelMixin
 from rest_framework.response import Response
 
 from saas import get_contributor_relation_model, get_manager_relation_model
@@ -95,14 +96,15 @@ class RelationListAPIView(OrganizationMixin, ListCreateAPIView):
 # XXX Using ugly ``if role ==`` here until we refactor the contributors/managers
 # models. First we deal with documentation of the interface.
 
-class RoleListAPIView(RelationListAPIView):
+class RoleListAPIView(RelationMixin, DestroyModelMixin, RelationListAPIView):
     """
     ``GET`` lists all users with a specified role with regards
     to an organization.
 
-    ``POST`` attaches a user to a role on an organization, typically granting
+    ``POST`` attaches/Detaches a user to a role on an organization, typically granting
     permissions to the user with regards to managing an organization profile
     (see :doc:`Flexible Security Framework <security>`).
+    To detach need to pass a ``delete`` params.
 
     **Example request**:
 
@@ -149,17 +151,23 @@ class RoleListAPIView(RelationListAPIView):
                 self.organization_url_kwarg))
         return queryset.none()
 
-
-class RoleDetailAPIView(RelationMixin, DestroyAPIView):
-    """
-    Dettach a user from a role with regards to an organization, typically
-    resulting in revoking permissions  from this user to manage part of an
-    organization profile.
-    """
-
     def get_model(self):
         if self.kwargs.get('role') == 'contributors':
             return get_contributor_relation_model()
         elif self.kwargs.get('role') == 'managers':
             return get_manager_relation_model()
         raise Http404("No role named '%s'" % self.kwargs.get('role'))
+
+    def post(self, request, *args, **kwargs):
+        """
+        Use a post to delete a relation entry to be able
+        to pass non-slug parameters ex: email address
+
+        Use case: an inactive user is created with his
+        email as username. Can't pass email as url parameters
+        of an angular DELETE request.
+        """
+        if request.GET.get('delete', False):
+            return self.destroy(request, *args, **kwargs)
+        else:
+            return self.create(request, *args, **kwargs)
