@@ -1,20 +1,24 @@
 /*=============================================================================
   Filters
   ============================================================================*/
-angular.module('revenueFilters', [])
-    .filter('monthHeading', function() {
+angular.module("revenueFilters", [])
+    .filter("monthHeading", function() {
+        "use strict";
+
         var current = moment();
         return function(datestr) {
             var date = moment(datestr);
-            var heading = date.format('MMM\'YY');
+            var heading = date.format("MMM'YY");
             if( date > current ) {
                 // add incomplete month marker
-                heading += '*';
+                heading += "*";
             }
             return heading;
         };
     })
-    .filter('humanizeCell', function(currencyFilter, numberFilter) {
+    .filter("humanizeCell", function(currencyFilter, numberFilter) {
+        "use strict";
+
         return function(cell, unit, scale) {
             scale = scale || 1;
             var value = cell * scale;
@@ -25,7 +29,7 @@ angular.module('revenueFilters', [])
                 return currencyFilter(value, unit);
             }
             return numberFilter(value);
-        }
+        };
     });
 
 
@@ -33,39 +37,39 @@ angular.module('revenueFilters', [])
   Apps
   ============================================================================*/
 
-angular.module('couponApp', ['ui.bootstrap', 'ngRoute',
-    'couponControllers', 'couponServices']);
-angular.module('userRelationApp', ['ui.bootstrap', 'ngRoute',
-    'userRelationControllers', 'userRelationServices']);
-angular.module('subscriptionApp', ['ui.bootstrap', 'ngRoute',
-    'subscriptionControllers']);
-angular.module('transactionApp', ['ui.bootstrap', 'ngRoute',
-    'transactionControllers', 'transactionServices', 'revenueFilters']);
-angular.module('metricApp', ['ui.bootstrap', 'ngRoute', 'metricControllers']);
-angular.module('metricsApp', ['ui.bootstrap', 'ngRoute', 'metricsControllers',
-    'revenueFilters']);
+angular.module("couponApp", ["ui.bootstrap", "ngRoute",
+    "couponControllers", "couponServices"]);
+angular.module("userRelationApp", ["ui.bootstrap", "ngRoute",
+    "userRelationControllers", "userRelationServices"]);
+angular.module("subscriptionApp", ["ui.bootstrap", "ngRoute",
+    "subscriptionControllers"]);
+angular.module("transactionApp", ["ui.bootstrap", "ngRoute",
+    "transactionControllers", "transactionServices", "revenueFilters"]);
+angular.module("metricApp", ["ui.bootstrap", "ngRoute", "metricControllers"]);
+angular.module("metricsApp", ["ui.bootstrap", "ngRoute", "metricsControllers",
+    "revenueFilters"]);
 
 
 /*=============================================================================
   Services
   ============================================================================*/
 
-var couponServices = angular.module('couponServices', ['ngResource']);
-var userRelationServices = angular.module('userRelationServices', ['ngResource']);
-var transactionServices = angular.module('transactionServices', ['ngResource']);
+var couponServices = angular.module("couponServices", ["ngResource"]);
+var userRelationServices = angular.module("userRelationServices", ["ngResource"]);
+var transactionServices = angular.module("transactionServices", ["ngResource"]);
 
 
-couponServices.factory('Coupon', ['$resource', 'urls',
+couponServices.factory("Coupon", ["$resource", "urls",
   function($resource, urls){
     "use strict";
     return $resource(
-        urls.saas_api_coupon_url + '/:coupon', {'coupon':'@code'},
-            {query: {method:'GET'},
-             create: {method:'POST'},
-             update: {method:'PUT', isArray:false}});
+        urls.saas_api_coupon_url + "/:coupon", {coupon: "@code"},
+            {query: {method: "GET"},
+             create: {method: "POST"},
+             update: {method: "PUT", isArray: false}});
   }]);
 
-userRelationServices.factory('UserRelation', ['$resource', 'urls',
+userRelationServices.factory("UserRelation", ["$resource", "urls",
   function($resource, urls){
     "use strict";
     return $resource(
@@ -76,56 +80,56 @@ userRelationServices.factory('UserRelation', ['$resource', 'urls',
         });
   }]);
 
-transactionServices.factory('Transaction', ['$resource', 'urls',
+transactionServices.factory("Transaction", ["$resource", "urls",
   function($resource, urls){
     "use strict";
     return $resource(
-        urls.saas_api_transaction_url + '/:id', {id:'@id'},
-            {query: {method:'GET'}});
+        urls.saas_api_transaction_url + "/:id", {id: "@id"},
+            {query: {method: "GET"}});
   }]);
 
 /*=============================================================================
   Controllers
   ============================================================================*/
 
-var couponControllers = angular.module('couponControllers', []);
-var userRelationControllers = angular.module('userRelationControllers', []);
-var subscriptionControllers = angular.module('subscriptionControllers', []);
-var transactionControllers = angular.module('transactionControllers', []);
-var metricControllers = angular.module('metricControllers', []);
-var metricsControllers = angular.module('metricsControllers', []);
+var couponControllers = angular.module("couponControllers", []);
+var userRelationControllers = angular.module("userRelationControllers", []);
+var subscriptionControllers = angular.module("subscriptionControllers", []);
+var transactionControllers = angular.module("transactionControllers", []);
+var metricControllers = angular.module("metricControllers", []);
+var metricsControllers = angular.module("metricsControllers", []);
 
-couponControllers.controller('CouponListCtrl',
-    ['$scope', '$http', '$timeout', 'Coupon', 'urls',
+couponControllers.controller("CouponListCtrl",
+    ["$scope", "$http", "$timeout", "Coupon", "urls",
      function($scope, $http, $timeout, Coupon, urls) {
     "use strict";
     $scope.urls = urls;
     $scope.totalItems = 0;
-    $scope.dir = {code: 'asc'};
-    $scope.params = {o: 'code', ot: $scope.dir.code};
+    $scope.dir = {code: "asc"};
+    $scope.params = {o: "code", ot: $scope.dir.code};
     $scope.coupons = Coupon.query($scope.params, function() {
         /* We cannot watch coupons.count otherwise things start
            to snowball. We must update totalItems only when it truly changed.*/
-        if( $scope.coupons.count != $scope.totalItems ) {
+        if( $scope.coupons.count !== $scope.totalItems ) {
             $scope.totalItems = $scope.coupons.count;
         }
     });
     $scope.newCoupon = new Coupon();
 
-    $scope.filterExpr = '';
+    $scope.filterExpr = "";
     $scope.itemsPerPage = 25; // Must match on the server-side.
     $scope.maxSize = 5;      // Total number of pages to display
     $scope.currentPage = 1;
 
     $scope.dateOptions = {
-        formatYear: 'yy',
+        formatYear: "yy",
         startingDay: 1
     };
 
-    $scope.initDate = new Date('2016-15-20');
+    $scope.initDate = new Date("2016-15-20");
     $scope.minDate = new Date();
-    $scope.maxDate = new Date('2016-01-01');
-    $scope.formats = ['dd-MMMM-yyyy', 'yyyy/MM/dd', 'dd.MM.yyyy', 'shortDate'];
+    $scope.maxDate = new Date("2016-01-01");
+    $scope.formats = ["dd-MMMM-yyyy", "yyyy/MM/dd", "dd.MM.yyyy", "shortDate"];
     $scope.format = $scope.formats[0];
 
     $scope.filterList = function(regex) {
@@ -138,7 +142,7 @@ couponControllers.controller('CouponListCtrl',
             delete $scope.params.q;
         }
         $scope.coupons = Coupon.query($scope.params, function() {
-            if( $scope.coupons.count != $scope.totalItems ) {
+            if( $scope.coupons.count !== $scope.totalItems ) {
                 $scope.totalItems = $scope.coupons.count;
             }
         });
@@ -158,7 +162,7 @@ couponControllers.controller('CouponListCtrl',
             delete $scope.params.page;
         }
         $scope.coupons = Coupon.query($scope.params, function() {
-            if( $scope.coupons.count != $scope.totalItems ) {
+            if( $scope.coupons.count !== $scope.totalItems ) {
                 $scope.totalItems = $scope.coupons.count;
             }
         });
@@ -168,7 +172,7 @@ couponControllers.controller('CouponListCtrl',
         Coupon.remove({ coupon: $scope.coupons.results[idx].code },
         function (success) {
             $scope.coupons = Coupon.query($scope.params, function() {
-                if( $scope.coupons.count != $scope.totalItems ) {
+                if( $scope.coupons.count !== $scope.totalItems ) {
                     $scope.totalItems = $scope.coupons.count;
                 }
             });
@@ -188,12 +192,12 @@ couponControllers.controller('CouponListCtrl',
     };
 
     $scope.sortBy = function(fieldName) {
-        if( $scope.dir[fieldName] == 'asc' ) {
+        if( $scope.dir[fieldName] === "asc" ) {
             $scope.dir = {};
-            $scope.dir[fieldName] = 'desc';
+            $scope.dir[fieldName] = "desc";
         } else {
             $scope.dir = {};
-            $scope.dir[fieldName] = 'asc';
+            $scope.dir[fieldName] = "asc";
         }
         $scope.params.o = fieldName;
         $scope.params.ot = $scope.dir[fieldName];
@@ -201,24 +205,25 @@ couponControllers.controller('CouponListCtrl',
         // pageChanged only called on click?
         delete $scope.params.page;
         $scope.coupons = Coupon.query($scope.params, function() {
-            if( $scope.coupons.count != $scope.totalItems ) {
+            if( $scope.coupons.count !== $scope.totalItems ) {
                 $scope.totalItems = $scope.coupons.count;
             }
         });
     };
 
-    $scope.$watch('coupons', function(newVal, oldVal, scope) {
-        if( newVal.hasOwnProperty('results') &&
-            oldVal.hasOwnProperty('results') ) {
+    $scope.$watch("coupons", function(newVal, oldVal, scope) {
+        if( newVal.hasOwnProperty("results") &&
+            oldVal.hasOwnProperty("results") ) {
             var length = ( oldVal.results.length < newVal.results.length ) ?
                 oldVal.results.length : newVal.results.length;
             for( var i = 0; i < length; ++i ) {
-                if( (oldVal.results[i].ends_at != newVal.results[i].ends_at) || (oldVal.results[i].description != newVal.results[i].description)) {
+                if( (oldVal.results[i].ends_at !== newVal.results[i].ends_at)
+                    || (oldVal.results[i].description !== newVal.results[i].description)) {
                     Coupon.update(newVal.results[i], function(result) {
                         // XXX We don't show messages here because it becomes
                         // quickly annoying if they do not disappear
                         // automatically.
-                        // showMessages(["Coupon was successfully updated."], 'success');
+                        // showMessages(["Coupon was successfully updated."], "success");
                     });
                 }
             }
@@ -232,20 +237,20 @@ couponControllers.controller('CouponListCtrl',
         });
         $scope.edit_description[idx] = true;
         $timeout(function(){
-            angular.element('#input_description').focus();
+            angular.element("#input_description").focus();
         }, 100);
     };
 
     $scope.saveDescription = function(event, coupon, idx){
-        if (event.which === 13 || event.type == 'blur' ){
+        if (event.which === 13 || event.type === "blur" ){
             $scope.edit_description[idx] = false;
         }
     };
 }]);
 
 
-userRelationControllers.controller('userRelationListCtrl',
-    ['$scope', '$http', 'UserRelation', 'urls',
+userRelationControllers.controller("userRelationListCtrl",
+    ["$scope", "$http", "UserRelation", "urls",
     function($scope, $http, UserRelation, urls) {
     "use strict";
     $scope.users = UserRelation.query();
@@ -273,7 +278,7 @@ userRelationControllers.controller('userRelationListCtrl',
                 if( error.data && error.data.detail ) {
                     errMsg = error.data.detail;
                 }
-                showMessages([errMsg], 'error');
+                showMessages([errMsg], "error");
             });
     };
 
@@ -286,15 +291,15 @@ userRelationControllers.controller('userRelationListCtrl',
                 $scope.user = null;
             },
             function(error) {
-                if( error.status == 404 ) {
+                if( error.status === 404 ) {
                     $scope.user.email = $scope.user.username;
-                    $("#new-user-relation").modal('show');
+                    $("#new-user-relation").modal("show");
                 } else {
                     var errMsg = error.statusText;
                     if( error.data && error.data.detail ) {
                         errMsg = error.data.detail;
                     }
-                    showMessages([errMsg], 'error');
+                    showMessages([errMsg], "error");
                 }
             });
     };
@@ -317,31 +322,31 @@ userRelationControllers.controller('userRelationListCtrl',
 }]);
 
 
-subscriptionControllers.controller('subscriptionListCtrl',
-    ['$scope', '$http', '$timeout', 'urls',
+subscriptionControllers.controller("subscriptionListCtrl",
+    ["$scope", "$http", "$timeout", "urls",
     function($scope, $http, $timeout, urls) {
     "use strict";
-    var defaultSortByField = 'created_at';
+    var defaultSortByField = "created_at";
     $scope.dir = {};
-    $scope.dir[defaultSortByField] = 'desc';
+    $scope.dir[defaultSortByField] = "desc";
     $scope.params = {o: defaultSortByField, ot: $scope.dir[defaultSortByField]};
 
-    $scope.filterExpr = '';
+    $scope.filterExpr = "";
     $scope.itemsPerPage = 25; // Must match on the server-side.
     $scope.maxSize = 5;      // Total number of pages to display
     $scope.currentPage = 1;
 
     $scope.dateOptions = {
-        formatYear: 'yy',
+        formatYear: "yy",
         startingDay: 1
     };
 
-    $scope.initDate = new Date('2016-15-20');
+    $scope.initDate = new Date("2016-15-20");
     $scope.minDate = new Date();
-    $scope.maxDate = new Date('2016-01-01');
-    $scope.formats = ['dd-MMMM-yyyy', 'yyyy/MM/dd', 'dd.MM.yyyy', 'shortDate'];
+    $scope.maxDate = new Date("2016-01-01");
+    $scope.formats = ["dd-MMMM-yyyy", "yyyy/MM/dd", "dd.MM.yyyy", "shortDate"];
     $scope.format = $scope.formats[0];
-    $scope.ends_at = moment().endOf('day').toDate();
+    $scope.ends_at = moment().endOf("day").toDate();
 
     $scope.registered = {
         $resolved: false, location: urls.saas_api_registered, count: 0};
@@ -382,7 +387,7 @@ subscriptionControllers.controller('subscriptionListCtrl',
     };
 
     $scope.editDescription = function (event, entry) {
-        var input = angular.element(event.target).parent().find('input');
+        var input = angular.element(event.target).parent().find("input");
         entry.editDescription = true;
         $timeout(function() {
             input.focus();
@@ -390,7 +395,7 @@ subscriptionControllers.controller('subscriptionListCtrl',
     };
 
     $scope.saveDescription = function(event, entry){
-        if (event.which === 13 || event.type == 'blur' ){
+        if (event.which === 13 || event.type === "blur" ){
             delete entry.editDescription;
             $http.patch(urls.saas_api_profile + entry.organization.slug +
                 "/subscriptions/" + entry.plan.slug,
@@ -433,19 +438,19 @@ subscriptionControllers.controller('subscriptionListCtrl',
         var cutOff = new Date($scope.ends_at);
         var dateTime = new Date(at_time);
         if( dateTime <= cutOff ) {
-            return moment.duration(cutOff - dateTime).humanize() + ' ago';
+            return moment.duration(cutOff - dateTime).humanize() + " ago";
         } else {
-            return moment.duration(dateTime - cutOff).humanize() + ' left';
+            return moment.duration(dateTime - cutOff).humanize() + " left";
         }
     };
 
     $scope.sortBy = function(fieldName) {
-        if( $scope.dir[fieldName] == 'asc' ) {
+        if( $scope.dir[fieldName] === "asc" ) {
             $scope.dir = {};
-            $scope.dir[fieldName] = 'desc';
+            $scope.dir[fieldName] = "desc";
         } else {
             $scope.dir = {};
-            $scope.dir[fieldName] = 'asc';
+            $scope.dir[fieldName] = "asc";
         }
         $scope.params.o = fieldName;
         $scope.params.ot = $scope.dir[fieldName];
@@ -462,17 +467,17 @@ subscriptionControllers.controller('subscriptionListCtrl',
     $scope.tabClicked = function($event) {
         var newActiveTab = $event.target.getAttribute("href").replace(/^#/, "");
         if( newActiveTab === "registered-users" ) {
-            if( !$scope.registered.hasOwnProperty('results') ) {
+            if( !$scope.registered.hasOwnProperty("results") ) {
                 $scope.query($scope.registered);
             }
             $scope.active = $scope.registered;
         } else if( newActiveTab === "active-subscriptions" ) {
-            if( !$scope.subscribed.hasOwnProperty('results') ) {
+            if( !$scope.subscribed.hasOwnProperty("results") ) {
                 $scope.query($scope.subscribed);
             }
             $scope.active = $scope.subscribed;
         } else if( newActiveTab === "churned-subscriptions" ) {
-            if( !$scope.churned.hasOwnProperty('results') ) {
+            if( !$scope.churned.hasOwnProperty("results") ) {
                 $scope.query($scope.churned);
             }
             $scope.active = $scope.churned;
@@ -493,15 +498,15 @@ subscriptionControllers.controller('subscriptionListCtrl',
 }]);
 
 
-transactionControllers.controller('transactionListCtrl',
-    ['$scope', '$http', '$timeout', 'urls', 'date_range', 'Transaction',
+transactionControllers.controller("transactionListCtrl",
+    ["$scope", "$http", "$timeout", "urls", "date_range", "Transaction",
      function($scope, $http, $timeout, urls, date_range, Transaction) {
     "use strict";
-    var defaultSortByField = 'date';
+    var defaultSortByField = "date";
     $scope.dir = {};
     $scope.totalItems = 0;
-    $scope.dir[defaultSortByField] = 'desc';
-    $scope.opened = { 'start_at': false, 'ends_at': false };
+    $scope.dir[defaultSortByField] = "desc";
+    $scope.opened = { "start_at": false, "ends_at": false };
     $scope.start_at = moment(date_range.start_at).toDate();
     $scope.ends_at = moment(date_range.ends_at).toDate();
     $scope.params = {
@@ -526,13 +531,13 @@ transactionControllers.controller('transactionListCtrl',
     };
     $scope.refresh();
 
-    $scope.filterExpr = '';
+    $scope.filterExpr = "";
     $scope.itemsPerPage = 25; // Must match on the server-side.
     $scope.maxSize = 5;      // Total number of pages to display
     $scope.currentPage = 1;
     /* currentPage will be saturated at maxSize when maxSize is defined. */
 
-    $scope.formats = ['dd-MMMM-yyyy', 'yyyy/MM/dd', 'dd.MM.yyyy', 'shortDate'];
+    $scope.formats = ["dd-MMMM-yyyy", "yyyy/MM/dd", "dd.MM.yyyy", "shortDate"];
     $scope.format = $scope.formats[0];
 
     // calendar for start_at and ends_at
@@ -544,19 +549,19 @@ transactionControllers.controller('transactionListCtrl',
 
     // XXX start_at and ends_at will be both updated on reload
     //     which will lead to two calls to the backend instead of one.
-    $scope.$watch('start_at', function(newVal, oldVal, scope) {
+    $scope.$watch("start_at", function(newVal, oldVal, scope) {
         if( $scope.ends_at < newVal ) {
             $scope.ends_at = newVal;
         }
-        $scope.params.start_at = moment(newVal).startOf('day').toDate();
+        $scope.params.start_at = moment(newVal).startOf("day").toDate();
         $scope.refresh();
     }, true);
 
-    $scope.$watch('ends_at', function(newVal, oldVal, scope) {
+    $scope.$watch("ends_at", function(newVal, oldVal, scope) {
         if( $scope.start_at > newVal ) {
             $scope.start_at = newVal;
         }
-        $scope.params.ends_at = moment(newVal).endOf('day').toDate(0);
+        $scope.params.ends_at = moment(newVal).endOf("day").toDate(0);
         $scope.refresh();
     }, true);
 
@@ -571,7 +576,7 @@ transactionControllers.controller('transactionListCtrl',
             delete $scope.params.q;
         }
         $scope.transactions = Transaction.query($scope.params, function() {
-            if( $scope.transactions.count != $scope.totalItems ) {
+            if( $scope.transactions.count !== $scope.totalItems ) {
                 $scope.totalItems = $scope.transactions.count;
             }
         });
@@ -584,19 +589,19 @@ transactionControllers.controller('transactionListCtrl',
             delete $scope.params.page;
         }
         $scope.transactions = Transaction.query($scope.params, function() {
-            if( $scope.transactions.count != $scope.totalItems ) {
+            if( $scope.transactions.count !== $scope.totalItems ) {
                 $scope.totalItems = $scope.transactions.count;
             }
         });
     };
 
     $scope.sortBy = function(fieldName) {
-        if( $scope.dir[fieldName] == 'asc' ) {
+        if( $scope.dir[fieldName] == "asc" ) {
             $scope.dir = {};
-            $scope.dir[fieldName] = 'desc';
+            $scope.dir[fieldName] = "desc";
         } else {
             $scope.dir = {};
-            $scope.dir[fieldName] = 'asc';
+            $scope.dir[fieldName] = "asc";
         }
         $scope.params.o = fieldName;
         $scope.params.ot = $scope.dir[fieldName];
@@ -621,8 +626,8 @@ transactionControllers.controller('transactionListCtrl',
 }]);
 
 
-metricControllers.controller('metricCtrl',
-    ['$scope', '$http', 'urls',
+metricControllers.controller("metricCtrl",
+    ["$scope", "$http", "urls",
      function($scope, $http, urls) {
     "use strict";
     $scope.balances = [];
@@ -632,9 +637,10 @@ metricControllers.controller('metricCtrl',
     });
 }]);
 
-metricsControllers.controller('metricsCtrl',
-    ['$scope', '$http', 'urls', 'tables',
+metricsControllers.controller("metricsCtrl",
+    ["$scope", "$http", "urls", "tables",
     function($scope, $http, urls, tables) {
+    "use strict";
 
     $scope.tables = tables;
 
@@ -649,7 +655,7 @@ metricsControllers.controller('metricsCtrl',
             date.getFullYear(),
             date.getMonth() + 1,
             0
-        )
+        );
     };
     $scope.ends_at = new Date();
 
@@ -671,7 +677,7 @@ metricsControllers.controller('metricsCtrl',
             }
         }
         return null;
-    }
+    };
 
     $scope.prefetch = function() {
         for( var i = 0; i < $scope.tables.length; ++i ) {

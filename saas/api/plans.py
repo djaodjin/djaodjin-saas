@@ -156,19 +156,18 @@ class PlanResourceView(PlanMixin, RetrieveUpdateDestroyAPIView):
     serializer_class = PlanSerializer
 
     def destroy(self, request, *args, **kwargs):
-        '''
-        Override to provide some validation.
-
-        Without this, users could subvert the "no deleting plans with
-        subscribers" rule via URL manipulation.
-
-        Override destroy() instead of perform_destroy() to 
-        return a custom 403 response.
-        By using PermissionDenied django exception
-        django rest framework return a default 403 with
-        {'detail': 'permission denied'}
-        https://github.com/tomchristie/django-rest-framework/blob/master/rest_framework/views.py#L55
-        '''
+#        Override to provide some validation.
+#
+#        Without this, users could subvert the "no deleting plans with
+#        subscribers" rule via URL manipulation.
+#
+#        Override destroy() instead of perform_destroy() to
+#        return a custom 403 response.
+#        By using PermissionDenied django exception
+#        django rest framework return a default 403 with
+#        {'detail': 'permission denied'}
+#        https://github.com/tomchristie/django-rest-framework\
+#          /blob/master/rest_framework/views.py#L55
         instance = self.get_object()
         if instance.subscription_set.count() != 0:
             return Response(

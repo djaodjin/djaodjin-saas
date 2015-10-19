@@ -130,6 +130,10 @@ a :doc:`Flexible Security Framework <security>`.
 Provider facing pages
 ---------------------
 
+Provider facing pages are only accessible to managers and contributors
+of a site. They are used to assess the performance of the business,
+set pricing strategy, and help with customer support.
+
 Pricing strategy
 ^^^^^^^^^^^^^^^^
 

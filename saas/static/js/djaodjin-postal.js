@@ -4,17 +4,18 @@
    function Region(el, options){
       this.element = $(el);
       this.options = options;
-      this._init();
+      this.init();
    }
 
    Region.prototype = {
-      _init: function () {
-          var regionSel = this;
-          var coutrySel = $(this.options.country);
+      init: function () {
+          var self = this;
+          var coutrySel = self.options.country ? $(self.options.country)
+              : self.element.parents("form").find("[name='country']");
           coutrySel.change(function() {
-              regionSel._country(this.value);
+              self._country(this.value);
           });
-          regionSel._country(coutrySel.val());
+          self._country(coutrySel.val());
       },
 
       _country: function (country) {
@@ -129,11 +130,15 @@
 
    $.fn.region = function(options) {
       var opts = $.extend( {}, $.fn.region.defaults, options );
-      var region = new Region($(this), opts);
+      return new Region($(this), opts);
    };
 
    $.fn.region.defaults = {
       country: null
    };
+
+   $(document).ready(function(){
+      $("[name='region']").region();
+   });
 
 })(jQuery);

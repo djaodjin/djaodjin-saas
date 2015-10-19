@@ -27,6 +27,42 @@ function showMessages(messages, style) {
     }
 }
 
+/** Retrieves the csrf-token from a <head> meta tag.
+
+    <meta name="csrf-token" content="{{csrf_token}}">
+*/
+function getMetaCSRFToken() {
+    "use strict";
+    var metas = document.getElementsByTagName('meta');
+    for( var i = 0; i < metas.length; i++) {
+        if (metas[i].getAttribute("name") == "csrf-token") {
+            return metas[i].getAttribute("content");
+        }
+    }
+    return "";
+}
+
+
+function Card(urls) {
+    "use strict";
+    this.urls = urls;
+};
+
+
+Card.prototype = {
+    query: function() {
+        "use strict";
+        var self = this;
+        $.get(self.urls.saas_api_card, function(data) {
+            $("#last4").text(data.last4);
+            $("#exp_date").text(data.exp_date);
+        }).fail(function() {
+            $("#last4").text("Err");
+            $("#exp_date").text("Err");
+        });
+    }
+};
+
 
 function Plan(id, urls) {
     "use strict";
@@ -43,6 +79,9 @@ Plan.prototype = {
         var self = this;
         $.ajax({ type: "POST",
                  url: self.urls.saas_api_plan + "/",
+                 beforeSend: function(xhr) {
+                     xhr.setRequestHeader("X-CSRFToken", getMetaCSRFToken());
+                 },
                  data: JSON.stringify({
                      "title": "New Plan",
                      "description": "Write the description of the plan here.",
@@ -66,6 +105,9 @@ Plan.prototype = {
         var self = this;
         $.ajax({ type: "PATCH",
                  url: this.urls.saas_api_plan + "/" + self.id + "/activate/",
+                 beforeSend: function(xhr) {
+                     xhr.setRequestHeader("X-CSRFToken", getMetaCSRFToken());
+                 },
                  data: JSON.stringify({ "is_active": isActive }),
                  datatype: "json",
                  contentType: "application/json; charset=utf-8",
@@ -80,6 +122,9 @@ Plan.prototype = {
         var self = this;
         $.ajax({ type: "PATCH",
                  url: this.urls.saas_api_plan + "/" + self.id + "/",
+                 beforeSend: function(xhr) {
+                     xhr.setRequestHeader("X-CSRFToken", getMetaCSRFToken());
+                 },
                  async: false,
                  data: JSON.stringify(data),
                  datatype: "json",
@@ -149,6 +194,9 @@ CartItem.prototype = {
         var self = this;
         $.ajax({ type: "POST", // XXX Might still prefer to do PUT on list.
                  url: self.urls.saas_api_cart,
+                 beforeSend: function(xhr) {
+                     xhr.setRequestHeader("X-CSRFToken", getMetaCSRFToken());
+                 },
                  data: JSON.stringify(self.item),
                  datatype: "json",
                  contentType: "application/json; charset=utf-8",
@@ -162,84 +210,10 @@ CartItem.prototype = {
         var self = this;
         $.ajax({ type: "DELETE",
                  url: self.urls.saas_api_cart + self.item.plan + "/",
+                 beforeSend: function(xhr) {
+                     xhr.setRequestHeader("X-CSRFToken", getMetaCSRFToken());
+                 },
                  success: successFunction
-               });
-    }
-};
-
-
-function Charge(chargeId, urls) {
-    "use strict";
-    this.chargeId = chargeId;
-    this.urls = urls;
-}
-
-
-Charge.prototype = {
-
-    emailReceipt: function() {
-        "use strict";
-        var self = this;
-        $.ajax({ type: "POST",
-                 url: self.urls.saas_api_email_charge_receipt,
-                 datatype: "json",
-                 contentType: "application/json; charset=utf-8",
-                 success: function(data) {
-                     showMessages(["A copy of the receipt was sent to " + data.email + "."], "info");
-                 },
-                 error: function(data) {
-                     showMessages(["An error occurred while emailing a copy of the receipt (" + data.status + " " + data.statusText + "). Please accept our apologies."], "error");
-                 }
-               });
-    },
-
-    refund: function(event, linenum, refundedAmount, refundButton) {
-        "use strict";
-        var self = this;
-        event.preventDefault();
-        refundButton.attr("disabled", "disabled");
-        $.ajax({ type: "POST",
-                 url: self.urls.saas_api_charge_refund,
-                 data: JSON.stringify({"lines":
-                     [{"num": linenum, "refunded_amount": refundedAmount}]}),
-                 datatype: "json",
-                 contentType: "application/json; charset=utf-8",
-                 success: function(data) {
-                     var message = "Amount refunded.";
-                     if( data.responseJSON ) {
-                         message = data.responseJSON.detail;
-                     }
-                     showMessages([message], "info");
-                     refundButton.replaceWith("<em>Refunded</em>");
-                 },
-                 error: function(data) {
-                     var message = data.statusText;
-                     if( data.responseJSON ) {
-                         message = data.responseJSON.detail;
-                     }
-                     showMessages([
-                        "An error occurred while refunding the charge (" + data.status + " - " + 
-                        message + "). Please accept our apologies."], "error");
-                     refundButton.removeAttr("disabled");
-                 }
-               });
-    },
-
-    waitForCompletion: function() {
-        "use strict";
-        var self = this;
-        $.ajax({ type: "GET",
-                 url: self.urls.saas_api_charge,
-                 datatype: "json",
-                 contentType: "application/json; charset=utf-8",
-                 success: function(data) {
-                     if( data.state == "created" ) {
-                         setTimeout(function() { self.waitForCompletion(); }, 1000);
-                     } else {
-                         $(".created").addClass("hidden");
-                         $("." + data.state).removeClass("hidden");
-                     }
-                 }
                });
     }
 };

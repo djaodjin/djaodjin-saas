@@ -1,7 +1,8 @@
 {% extends "saas/base.html" %}
 
 {% block localheader %}
-<script type="text/javascript" src="https://js.stripe.com/v2/"></script>
+{{block.super}}
+{% include "saas/_payment_head.html" %}
 {% endblock %}
 
 {% block saas_content %}

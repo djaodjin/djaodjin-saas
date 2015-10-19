@@ -18,20 +18,20 @@
       {% if not last4 or update_mode %}
       <!-- BE CAREFULL: Do not add name="" to these <input> nodes, else
            values will hit the server and break PCI compliance. -->
-      <div id="row-number">
+      <div class="form-group">
             <label for="card-number">Card Number</label>
             <input id="card-number"
                    type="text" size="16" placeholder="Card number"
                    autocomplete="off" />
       </div>
-      <div id="row-exp">
+      <div class="form-group">
             <label>Expiration</label>
             <input id="card-exp-month"
                    type="text" maxlength="2" size="2" placeholder="MM" />
             <input id="card-exp-year"
                    type="text" maxlength="4" size="4" placeholder="YYYY" />
       </div>
-      <div id="row-cvc">
+      <div class="form-group">
             <label>Security Code</label>
             <input id="card-cvc"
                    type="text" maxlength="4" size="3" placeholder="CVC"
@@ -56,12 +56,3 @@
 <div>
       <button type="submit">{{title}}</button>
 </div>
-<script type="text/javascript" src="{% static 'js/djaodjin-saas.js' %}"></script>
-<script type="text/javascript" src="{% static 'js/djaodjin-stripe.js' %}"></script>
-<script type="text/javascript">
-{% if not last4 or update_mode %}
-$(document).ready(function() {
-    initCardProcessor($("#payment-form"), "{{STRIPE_PUB_KEY}}");
-});
-{% endif %}
-</script>

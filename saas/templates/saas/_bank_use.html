@@ -18,32 +18,24 @@
       </div>
       {% endif %}
       {% if not last4 or update_mode %}
-      <!-- BE CAREFULL: Do not add name="" to these <input> nodes, else
-           values will hit the server and break PCI compliance. -->
-      <div id="row-account-number">
+      <!-- BE CAREFULL: Do not add name="" to the account-number
+           and routing-number input nodes, else values will hit
+           the server and break PCI compliance. -->
+      <div class="form-group">
             <label for="account-number">Account Number</label>
             <input id="account-number"
                    type="text" size="16" autocomplete="off" />
       </div>
-      <div id="row-routing-number">
+      <div class="form-group">
             <label for="routing-number">Routing Number</label>
             <input id="routing-number"
                    type="text" size="16" autocomplete="off" />
       </div>
-      <div id="row-country">
+      <div class="form-group">
             <label for="country">Country</label>
-            <input id="country"
+            <input id="country" name="country"
                    type="text" size="16" autocomplete="off" />
       </div>
       {% endif %}
       <button type="submit">{{title}}</button>
 </form>
-<script type="text/javascript" src="{% static 'js/djaodjin-saas.js' %}"></script>
-<script type="text/javascript" src="{% static 'js/djaodjin-stripe.js' %}"></script>
-<script type="text/javascript">
-{% if not last4 or update_mode %}
-$(document).ready(function() {
-    initBankProcessor($("#bank-form"), "{{STRIPE_PUB_KEY}}");
-});
-{% endif %}
-</script>
