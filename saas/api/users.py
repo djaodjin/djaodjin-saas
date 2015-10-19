@@ -159,14 +159,12 @@ class RoleListAPIView(RelationMixin, DestroyModelMixin, RelationListAPIView):
         raise Http404("No role named '%s'" % self.kwargs.get('role'))
 
     def post(self, request, *args, **kwargs):
-        """
-        Use a post to delete a relation entry to be able
-        to pass non-slug parameters ex: email address
-
-        Use case: an inactive user is created with his
-        email as username. Can't pass email as url parameters
-        of an angular DELETE request.
-        """
+        # Use a post to delete a relation entry to be able
+        # to pass non-slug parameters ex: email address
+        # 
+        # Use case: an inactive user is created with his
+        # email as username. Can't pass email as url parameters
+        # of an angular DELETE request.
         if request.GET.get('delete', False):
             return self.destroy(request, *args, **kwargs)
         else:
