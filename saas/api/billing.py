@@ -59,7 +59,9 @@ Add and remove plans from a user subscription cart.
 
    OK
 """
+import logging
 
+from django.core.exceptions import MultipleObjectsReturned
 from django.shortcuts import get_object_or_404
 from rest_framework.generics import CreateAPIView, DestroyAPIView
 from rest_framework.response import Response
@@ -69,6 +71,7 @@ from saas.models import CartItem, Plan
 from saas.mixins import CartMixin
 
 #pylint: disable=no-init,old-style-class
+LOGGER = logging.getLogger(__name__)
 
 
 class PlanRelatedField(serializers.RelatedField):
@@ -178,8 +181,19 @@ class CartItemDestroyAPIView(DestroyAPIView):
         return found
 
     def get_object(self):
-        return get_object_or_404(CartItem, plan__slug=self.kwargs.get('plan'),
-            user=self.request.user, recorded=False)
+        result = None
+        try:
+            result = get_object_or_404(CartItem,
+                plan__slug=self.kwargs.get('plan'),
+                user=self.request.user, recorded=False)
+        except MultipleObjectsReturned as err:
+            # This should not happen but in case the db is corrupted,
+            # we want to do something acceptable to the user.
+            LOGGER.exception(err)
+            result = CartItem.objects.filter(
+                plan__slug=self.kwargs.get('plan'),
+                user=self.request.user, recorded=False).first()
+        return result
 
     def delete(self, request, *args, **kwargs):
         destroyed = self.destroy_in_session(request, *args, **kwargs)
