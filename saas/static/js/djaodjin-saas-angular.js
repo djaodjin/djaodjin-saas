@@ -73,8 +73,11 @@ userRelationServices.factory("UserRelation", ["$resource", "urls",
   function($resource, urls){
     "use strict";
     return $resource(
-        urls.saas_api_user_relation_url + "/:user", {user: "@user"},
-        {force: {method: "POST", params: {force: true}}});
+        urls.saas_api_user_relation_url, {},
+        {
+            force: {method: "POST", params: {force: true}},
+            remove: {method: "POST", params: {delete: true}}
+        });
   }]);
 
 transactionServices.factory("Transaction", ["$resource", "urls",
@@ -253,6 +256,14 @@ userRelationControllers.controller("userRelationListCtrl",
     $scope.users = UserRelation.query();
     $scope.user = null;
 
+    // On hide modal need to clear $scope.user to avoid 400
+    // when trying to enter an other relation.
+    $("#new-user-relation").on("hide.bs.modal", function(){
+        $scope.$apply(function () {
+            $scope.user = null;
+        });
+    });
+
     $scope.create = function() {
         $scope.user.invite = $("#new-user-relation [name='message']").val();
         (new UserRelation($scope.user)).$force(
@@ -302,11 +313,12 @@ userRelationControllers.controller("userRelationListCtrl",
     };
 
     $scope.remove = function (idx) {
-        UserRelation.remove({ user: $scope.users[idx].username },
+        UserRelation.remove({user: $scope.users[idx].username },
         function (success) {
             $scope.users.splice(idx, 1);
         });
     };
+
 }]);
 
 

@@ -389,14 +389,14 @@ class SubscribedQuerysetMixin(OrganizationMixin):
 
 class UserMixin(ContextMixin):
     """
-    Returns an ``User`` from a URL.
+    Returns an ``User`` from a Request.
     """
 
-    user_url_kwarg = 'user'
+    user_data_key = 'user'
 
     def get_user(self):
         return get_object_or_404(User,
-            username=self.kwargs.get(self.user_url_kwarg))
+            username=self.request.data[self.user_data_key])
 
 
 class RelationMixin(OrganizationMixin, UserMixin):
