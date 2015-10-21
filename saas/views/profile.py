@@ -166,7 +166,9 @@ class OrganizationCreateView(CreateView):
 
     def get_initial(self):
         kwargs = super(OrganizationCreateView, self).get_initial()
-        kwargs.update({'email': self.request.user.email})
+        kwargs.update({'slug': self.request.user.username,
+                       'full_name': self.request.user.get_full_name(),
+                       'email': self.request.user.email})
         return kwargs
 
     def get_success_url(self):

@@ -184,12 +184,12 @@ class Organization(models.Model):
 
     objects = OrganizationManager()
     slug = models.SlugField(unique=True,
-        help_text=_("Name of the organization as shown in the url bar."))
+        help_text=_("Unique identifier shown in the URL bar."))
 
     created_at = models.DateTimeField(auto_now_add=True)
     is_active = models.BooleanField(default=True)
     is_bulk_buyer = models.BooleanField(default=False,
-        help_text=_("Enable this organization to pay subscriptions on behalf"\
+        help_text=_("Enable this profile to pay subscriptions on behalf"\
 " of others."))
     is_provider = models.BooleanField(default=False,
         help_text=_("Can fulfill the provider side of a subscription."))
@@ -197,7 +197,8 @@ class Organization(models.Model):
     # contact by e-mail
     email = models.EmailField(# XXX if we use unique=True here, the project
                               #     wizard must be changed.
-        )
+    )
+
     # contact by phone
     phone = models.CharField(max_length=50)
     # contact by physical mail
@@ -1472,7 +1473,7 @@ class Plan(models.Model):
         help_text=_('Natural number of months/years/etc. before the plan ends'))
     unlock_event = models.CharField(max_length=128, null=True, blank=True,
         help_text=_('Payment required to access full service'))
-    advance_discount = models.PositiveIntegerField(default=0,
+    advance_discount = models.PositiveIntegerField(default=333,
         validators=[MaxValueValidator(10000)], # 100.00%
         help_text=_('incr discount for payment of multiple periods (in %%).'))
     # end game

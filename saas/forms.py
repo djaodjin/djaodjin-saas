@@ -135,6 +135,9 @@ class OrganizationForm(PostalFormMixin, forms.ModelForm):
 
 class OrganizationCreateForm(OrganizationForm):
 
+    slug = forms.SlugField(label="ShortID",
+        help_text=_("Unique identifier shown in the URL bar."))
+
     class Meta:
         model = Organization
         fields = ('slug', 'full_name', 'email')

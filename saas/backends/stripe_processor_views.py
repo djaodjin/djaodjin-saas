@@ -43,7 +43,8 @@ class StripeProcessorRedirectView(RedirectView):
         if settings.PROCESSOR_REDIRECT_CALLABLE:
             from saas.compat import import_string
             func = import_string(settings.PROCESSOR_REDIRECT_CALLABLE)
-            redirect_url_end_point = func(kwargs.get(self.slug_url_kwarg))
+            redirect_url_end_point = func(self.request,
+                location='', site=kwargs.get(self.slug_url_kwarg))
             url = urljoin(redirect_url_end_point, url)
         return url
 
