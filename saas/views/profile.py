@@ -39,6 +39,8 @@ from saas.forms import (OrganizationForm, OrganizationCreateForm,
     ManagerAndOrganizationForm)
 from saas.mixins import OrganizationMixin
 from saas.models import Organization, Subscription
+from saas.views import RedirectFormMixin
+
 
 LOGGER = logging.getLogger(__name__)
 
@@ -127,7 +129,7 @@ class SubscriptionListView(OrganizationMixin, ListView):
         return context
 
 
-class OrganizationCreateView(CreateView):
+class OrganizationCreateView(RedirectFormMixin, CreateView):
     """
     This page helps ``User`` create a new ``Organization``. By default,
     the request user becomes a manager of the newly created entity.
@@ -172,7 +174,9 @@ class OrganizationCreateView(CreateView):
         return kwargs
 
     def get_success_url(self):
-        return reverse(self.pattern_name, args=(self.object,))
+        self.kwargs.update({'organization': self.object})
+        self.success_url = reverse(self.pattern_name, args=(self.object,))
+        return super(OrganizationCreateView, self).get_success_url()
 
 
 class DashboardView(OrganizationMixin, DetailView):

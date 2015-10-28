@@ -25,13 +25,17 @@
 """
 Helpers to redirect based on session.
 """
-import logging
+import logging, re, urlparse
 
 from django import http
+from django.conf import settings as django_settings
 from django.core.urlresolvers import reverse
+from django.contrib.auth import REDIRECT_FIELD_NAME
 from django.db import IntegrityError, transaction
+from django.http.request import split_domain_port, validate_host
 from django.views.generic import RedirectView
 from django.views.generic.base import TemplateResponseMixin
+from django.views.generic.edit import FormMixin, ProcessFormView
 
 from saas.decorators import pass_direct
 from saas.models import CartItem, Plan, Organization, get_broker
@@ -64,6 +68,56 @@ def session_cart_to_database(request):
                     # exception.
                     LOGGER.warning('%s is already in cart db.', item)
             del request.session['cart_items']
+
+
+class RedirectFormMixin(FormMixin):
+    """
+    Mixin to use a redirect (i.e. ``REDIRECT_FIELD_NAME``) url when
+    the form completed successfully.
+    """
+
+    success_url = django_settings.LOGIN_REDIRECT_URL
+
+    def validate_redirect_url(self, sub=False):
+        """
+        Returns the next_url path if next_url matches allowed hosts.
+        """
+        next_url = self.request.GET.get(REDIRECT_FIELD_NAME, None)
+        if not next_url:
+            return None
+        if sub:
+            try:
+                # We replace all ':slug/' by '%(slug)s/' so that we can further
+                # create an instantiated url through Python string expansion.
+                next_url = re.sub(r':(\S+)/', r'%(\1)s/', next_url)
+                next_url = next_url % self.kwargs
+            except KeyError:
+                # We don't have all keys necessary. A safe defaults is to remove
+                # them. Most likely a redirect URL is present to pick between
+                # multiple choices.
+                next_url = re.sub(r'%(\S+)s/', '', next_url)
+        parts = urlparse.urlparse(next_url)
+        if parts.netloc:
+            domain, _ = split_domain_port(parts.netloc)
+            allowed_hosts = (['*'] if django_settings.DEBUG
+                else django_settings.ALLOWED_HOSTS)
+            if not (domain and validate_host(domain, allowed_hosts)):
+                return None
+        return urlparse.urlunparse((None, '', parts.path,
+            parts.params, parts.query, parts.fragment))
+
+    def get_success_url(self):
+        next_url = self.validate_redirect_url(sub=True)
+        if not next_url:
+            next_url = super(RedirectFormMixin, self).get_success_url()
+        return next_url
+
+    def get_context_data(self, **kwargs):
+        context = super(RedirectFormMixin, self).get_context_data(**kwargs)
+        next_url = self.validate_redirect_url()
+        if next_url:
+            context.update({REDIRECT_FIELD_NAME: next_url})
+        return context
 
 
 class OrganizationRedirectView(TemplateResponseMixin, RedirectView):
