@@ -51,6 +51,7 @@ from django.db.models import Max, Q, Sum
 from django.db.models.query import QuerySet
 from django.utils.http import quote
 from django.utils.decorators import method_decorator
+from django.utils.safestring import mark_safe
 from django.utils.timezone import utc
 from django.utils.translation import ugettext_lazy as _
 from django_countries.fields import CountryField
@@ -189,8 +190,8 @@ class Organization(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     is_active = models.BooleanField(default=True)
     is_bulk_buyer = models.BooleanField(default=False,
-        help_text=_("Enable this profile to pay subscriptions on behalf"\
-" of others."))
+        help_text=mark_safe('Enable GroupBuy (<a href="/docs/#group-billing"'\
+' target="_blank">what is it?</a>)'))
     is_provider = models.BooleanField(default=False,
         help_text=_("Can fulfill the provider side of a subscription."))
     full_name = models.CharField(_('full name'), max_length=60, blank=True)

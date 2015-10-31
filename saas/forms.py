@@ -28,6 +28,7 @@ Forms shown by the saas application
 
 from django import forms
 from django.template.defaultfilters import slugify
+from django.utils.safestring import mark_safe
 from django.utils.translation import ugettext_lazy as _
 from django_countries import countries
 from django_countries.fields import Country
@@ -130,7 +131,8 @@ class OrganizationForm(PostalFormMixin, forms.ModelForm):
                 initial = self.instance.is_bulk_buyer
             self.fields['is_bulk_buyer'] = forms.BooleanField(required=False,
                 initial=initial,
-                label="I want to buy in bulk on behalf of others.")
+                label=mark_safe('Enable GroupBuy '\
+'(<a href="/docs/#group-billing" target="_blank">what is it?</a>)'))
 
 
 class OrganizationCreateForm(OrganizationForm):
