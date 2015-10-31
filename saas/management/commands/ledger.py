@@ -56,7 +56,8 @@ class Command(BaseCommand):
         subcommand = args[0]
         using = options['database']
         if subcommand == 'export':
-            export(sys.stdout, Transaction.objects.using(using).all())
+            export(sys.stdout, Transaction.objects.using(using).all().order_by(
+                'created_at'))
 
         elif subcommand == 'import':
             account_first = options.get('account_first', False)
