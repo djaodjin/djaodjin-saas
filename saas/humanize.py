@@ -90,7 +90,7 @@ def as_money(value, currency='usd'):
         int_part = int_part[0:idx]
     else:
         int_part = '0'
-        frac_part = '00'
+        frac_part = '%02d' % value
     result = (unit_prefix + int_part + grouped + '.' + frac_part
         + unit_suffix)
     if negative:
