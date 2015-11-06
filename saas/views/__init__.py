@@ -37,7 +37,7 @@ from django.views.generic import RedirectView
 from django.views.generic.base import TemplateResponseMixin
 from django.views.generic.edit import FormMixin, ProcessFormView
 
-from saas.decorators import pass_direct
+from saas.decorators import fail_direct
 from saas.models import CartItem, Plan, Organization, get_broker
 
 LOGGER = logging.getLogger(__name__)
@@ -157,16 +157,17 @@ class OrganizationRedirectView(TemplateResponseMixin, RedirectView):
 class ProviderRedirectView(OrganizationRedirectView):
     """
     If the request user passes the direct relationship test
-    (see ``saas.decorators.pass_direct``) with the site
+    (see ``saas.decorators.fail_direct``) with the site
     hosting provider, then redirect to it, otherwise follow
     the ``OrganizationRedirectView`` logic.
     """
     def get(self, request, *args, **kwargs):
         provider = get_broker()
-        if pass_direct(request, organization=provider):
-            kwargs.update({self.slug_url_kwarg: provider})
-            return RedirectView.get(self, request, *args, **kwargs)
-        return super(ProviderRedirectView, self).get(request, *args, **kwargs)
+        if fail_direct(request, organization=provider):
+            return super(ProviderRedirectView, self).get(
+                request, *args, **kwargs)
+        kwargs.update({self.slug_url_kwarg: provider})
+        return RedirectView.get(self, request, *args, **kwargs)
 
 
 class UserRedirectView(RedirectView):

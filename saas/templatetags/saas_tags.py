@@ -35,7 +35,7 @@ from django.utils.timezone import utc
 from saas.compat import User
 from saas.humanize import  as_money, as_html_description
 from saas.models import Organization, Subscription, Plan, get_broker
-from saas.decorators import pass_direct, _valid_manager
+from saas.decorators import fail_direct, _valid_manager
 from saas.utils import product_url as utils_product_url
 
 register = template.Library()
@@ -128,7 +128,7 @@ def is_incomplete_month(date):
 def is_direct(request, organization=None):
     if organization is None:
         organization = get_broker()
-    return pass_direct(request, organization=organization)
+    return not fail_direct(request, organization=organization)
 
 
 @register.filter
