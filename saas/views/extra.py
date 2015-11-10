@@ -22,7 +22,7 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from extended_templates.pdf import PdfTemplateResponse
+from extended_templates.backends.pdf import PdfTemplateResponse
 from saas.views.billing import ChargeReceiptView
 
 
