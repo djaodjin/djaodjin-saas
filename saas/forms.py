@@ -175,7 +175,7 @@ class RedeemCouponForm(forms.Form):
     Form used to redeem a coupon.
     """
 
-    code = forms.CharField()
+    code = forms.CharField(label="Registration code")
 
 
 class UserRelationForm(forms.Form):

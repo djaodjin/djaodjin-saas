@@ -56,7 +56,8 @@ from saas.backends import ProcessorError, ProcessorConnectionError
 from saas.utils import validate_redirect_url, datetime_or_now
 from saas.forms import (BankForm, CartPeriodsForm, CreditCardForm,
     RedeemCouponForm, WithdrawForm)
-from saas.mixins import ChargeMixin, DateRangeMixin, OrganizationMixin
+from saas.mixins import (ChargeMixin, DateRangeMixin, OrganizationMixin,
+    ProviderMixin)
 from saas.models import (Organization, CartItem, Coupon, Plan, Transaction,
     Subscription, get_broker)
 from saas.humanize import (as_money, describe_buy_periods, match_unlock,
@@ -580,11 +581,18 @@ class CartBaseView(InvoicablesFormMixin, FormView):
                 else:
                     descr_suffix = '(code: %s)' % coupon.code
 
-        if plan.period_amount == 0:
+        first_periods_amount = plan.first_periods_amount(
+            discount_percent=discount_percent,
+            prorated_amount=prorated_amount)
+
+        if first_periods_amount == 0:
             # We are having a freemium business models, no discounts.
+            if not descr_suffix:
+                descr_suffix = "free"
             option_items += [Transaction.objects.new_subscription_order(
                 subscription, 1, prorated_amount, created_at,
-                descr_suffix="free")]
+                discount_percent=discount_percent,
+                descr_suffix=descr_suffix)]
 
         elif plan.unlock_event:
             # Locked plans are free until an event.
@@ -616,9 +624,10 @@ class CartBaseView(InvoicablesFormMixin, FormView):
 
             for nb_periods in natural_periods:
                 if nb_periods > 1:
+                    descr_suffix = ""
                     amount, discount_percent \
                         = subscription.plan.advance_period_amount(nb_periods)
-                    if amount < 0:
+                    if amount <= 0:
                         break # never allow to be completely free here.
                 option_items += [Transaction.objects.new_subscription_order(
                     subscription, nb_periods, prorated_amount, created_at,
@@ -894,6 +903,33 @@ coupons.html>`__).
     """
     model = Coupon
     template_name = 'saas/billing/coupons.html'
+
+
+class RedeemCouponView(ProviderMixin, FormView):
+    """
+    Stores a ``Coupon`` into the session for further use in the checkout
+    pipeline.
+    """
+    template_name = 'saas/redeem.html'
+    form_class = RedeemCouponForm
+
+    def form_valid(self, form):
+        redeemed = Coupon.objects.active(
+            self.get_organization(), form.cleaned_data['code']).first()
+        if redeemed is None:
+            form.add_error('code', 'Invalid code')
+            return super(RedeemCouponView, self).form_invalid(form)
+        self.request.session['redeemed'] = redeemed.code
+        return super(RedeemCouponView, self).form_valid(form)
+
+    def get_success_url(self):
+        redirect_path = validate_redirect_url(
+            self.request.GET.get(REDIRECT_FIELD_NAME, None))
+        if redirect_path:
+            return redirect_path
+        if self.request.user.is_authenticated():
+            return reverse('saas_cart')
+        return reverse('saas_cart_plan_list')
 
 
 class BalanceView(CardInvoicablesFormMixin, FormView):

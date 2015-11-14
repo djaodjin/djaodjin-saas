@@ -40,6 +40,16 @@ from saas.utils import product_url as utils_product_url
 
 register = template.Library()
 
+@register.filter()
+def discounted_period(plan, coupon):
+    """
+    Returns the discounted amount once the ``Coupon`` is applied
+    or ``plan.period_amount`` otherwise.
+    """
+    if coupon and coupon.is_valid(plan):
+        return plan.period_amount * (100 - coupon.percent) / 100
+    return plan.period_amount
+
 
 @register.filter()
 def htmlize_money(value, currency='usd'):

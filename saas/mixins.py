@@ -58,8 +58,9 @@ class CartMixin(object):
         if request.user.is_authenticated():
             # If the user is authenticated, we just create the cart items
             # into the database.
+            plan = get_object_or_404(Plan, slug=kwargs['plan'])
             queryset = CartItem.objects.get_cart(
-                request.user, plan__slug=kwargs['plan']).order_by('-email')
+                request.user, plan=plan).order_by('-email')
             if queryset.exists():
                 template_item = queryset.first()
             if template_item:
@@ -77,8 +78,7 @@ class CartMixin(object):
                                 nb_periods=template_item.nb_periods,
                                 first_name=kwargs.get('first_name', ''),
                                 last_name=kwargs.get('last_name', ''),
-                                email=email,
-                                user=request.user)
+                                email=email, user=request.user)
                     else:
                         # Use template CartItem
                         inserted_item.first_name = kwargs.get('first_name', '')
@@ -89,14 +89,17 @@ class CartMixin(object):
                 # New CartItem
                 created = True
                 item_queryset = CartItem.objects.get_cart(user=request.user,
-                    plan=get_object_or_404(Plan, slug=kwargs['plan']),
-                    email=email)
+                    plan=plan, email=email)
                 if item_queryset.exists():
                     inserted_item = item_queryset.get()
                 else:
+                    redeemed = request.session.get('redeemed', None)
+                    if redeemed:
+                        redeemed = Coupon.objects.active(
+                            plan.organization, redeemed).first()
                     inserted_item = CartItem.objects.create(
+                        plan=plan, coupon=redeemed,
                         email=email, user=request.user,
-                        plan=get_object_or_404(Plan, slug=kwargs['plan']),
                         nb_periods=kwargs.get('nb_periods', 0),
                         first_name=kwargs.get('first_name', ''),
                         last_name=kwargs.get('last_name', ''))

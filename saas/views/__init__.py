@@ -38,7 +38,7 @@ from django.views.generic.base import TemplateResponseMixin
 from django.views.generic.edit import FormMixin, ProcessFormView
 
 from saas.decorators import fail_direct
-from saas.models import CartItem, Plan, Organization, get_broker
+from saas.models import CartItem, Coupon, Plan, Organization, get_broker
 
 LOGGER = logging.getLogger(__name__)
 
@@ -48,16 +48,18 @@ def session_cart_to_database(request):
     Transfer all the items in the cart stored in the session into proper
     records in the database.
     """
-    with transaction.atomic():
-        claim_code = request.GET.get('code', None)
-        if claim_code:
+    claim_code = request.GET.get('code', None)
+    if claim_code:
+        with transaction.atomic():
             cart_items = CartItem.objects.by_claim_code(claim_code)
             for cart_item in cart_items:
                 cart_item.user = request.user
                 cart_item.save()
-        if request.session.has_key('cart_items'):
+    if request.session.has_key('cart_items'):
+        with transaction.atomic():
             for item in request.session['cart_items']:
-                item['plan'] = Plan.objects.get(slug=item['plan'])
+                plan = Plan.objects.get(slug=item['plan'])
+                item['plan'] = plan
                 item['user'] = request.user
                 try:
                     CartItem.objects.create(**item)
@@ -68,7 +70,15 @@ def session_cart_to_database(request):
                     # exception.
                     LOGGER.warning('%s is already in cart db.', item)
             del request.session['cart_items']
-
+    redeemed = request.session.get('redeemed', None)
+    if redeemed:
+        # When the user has selected items while anonymous, this step
+        # could be folded into the previous transaction. None-the-less
+        # plain and stupid is best here. We apply redeemed coupons
+        # either way (anonymous or not).
+        with transaction.atomic():
+            CartItem.objects.redeem(request.user, redeemed)
+            del request.session['redeemed']
 
 class RedirectFormMixin(FormMixin):
     """

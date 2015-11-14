@@ -1338,11 +1338,23 @@ class ChargeItem(models.Model):
             provider.save()
 
 
+class CouponManager(models.Manager):
+
+    def active(self, organization, code, at_time=None):
+        at_time = datetime_or_now(at_time)
+        return self.filter(
+            Q(ends_at__isnull=True) | Q(ends_at__gt=at_time),
+            code__iexact=code, # case incensitive search.
+            organization=organization)
+
+
 class Coupon(models.Model):
     """
     Coupons are used on invoiced to give a rebate to a customer.
     """
     #pylint: disable=super-on-old-class
+    objects = CouponManager()
+
     created_at = models.DateTimeField(auto_now_add=True)
     code = models.SlugField()
     description = models.TextField(null=True, blank=True)
@@ -1366,6 +1378,19 @@ class Coupon(models.Model):
     @property
     def provider(self):
         return self.organization
+
+    def is_valid(self, plan, at_time=None):
+        """
+        Returns ``True`` if the ``Coupon`` can sucessfuly be applied
+        to purchase this plan.
+        """
+        at_time = datetime_or_now(at_time)
+        valid_plan = (not self.plan or self.plan == plan)
+        valid_time = (not self.ends_at or self.ends_at < at_time)
+        valid_attempts = (self.nb_attempts is None or self.nb_attempts > 0)
+        valid_organization = (self.organization == plan.organization)
+        return (valid_plan or valid_time or valid_attempts
+            or valid_organization)
 
     def save(self, force_insert=False, force_update=False, using=None,
              update_fields=None):
@@ -1519,6 +1544,12 @@ class Plan(models.Model):
             discount_amount += 99 - discount_amount % 100
         return discount_amount, discount_percent / 100
 
+    def first_periods_amount(self, discount_percent=0, nb_natural_periods=1,
+                              prorated_amount=0):
+        return int((prorated_amount
+            + (self.period_amount * nb_natural_periods))
+            * (100 - discount_percent) / 100)
+
     @staticmethod
     def get_natural_period(nb_periods, interval):
         result = None
@@ -1663,16 +1694,12 @@ class CartItemManager(models.Manager):
         """
         Apply a *coupon* to all items in a cart that accept it.
         """
-        created_at = datetime_or_now(created_at)
+        at_time = datetime_or_now(created_at)
         coupon_applied = False
         for item in self.get_cart(user):
-            coupon = Coupon.objects.filter(
-                Q(ends_at__isnull=True) | Q(ends_at__gt=created_at),
-                code__iexact=coupon_code, # case incensitive search.
-                organization=item.plan.organization).first()
-            if coupon and (not coupon.plan or (coupon.plan == item.plan)):
-                # Coupon can be restricted to a plan or apply to all plans
-                # of an organization.
+            coupon = Coupon.objects.active(item.plan.organization, coupon_code,
+                at_time=at_time).first()
+            if coupon and coupon.is_valid(item.plan, at_time=at_time):
                 coupon_applied = True
                 item.coupon = coupon
                 item.save()
@@ -2223,9 +2250,10 @@ class TransactionManager(models.Manager):
         """
         nb_periods = nb_natural_periods * subscription.plan.period_length
         if not descr:
-            amount = int((prorated_amount
-                + (subscription.plan.period_amount * nb_natural_periods))
-                * (100 - discount_percent) / 100)
+            amount = subscription.plan.first_periods_amount(
+                discount_percent=discount_percent,
+                nb_natural_periods=nb_natural_periods,
+                prorated_amount=prorated_amount)
             ends_at = subscription.plan.end_of_period(
                 subscription.ends_at, nb_periods)
             # descr will later be use to recover the ``period_number``,

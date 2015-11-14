@@ -32,7 +32,7 @@ from django.views.generic.detail import SingleObjectMixin
 
 from saas.forms import PlanForm
 from saas.mixins import CartMixin, OrganizationMixin, ProviderMixin
-from saas.models import CartItem, Plan
+from saas.models import CartItem, Coupon, Plan
 from saas.utils import validate_redirect_url
 
 
@@ -113,7 +113,13 @@ djaodjin-saas/tree/master/saas/templates/saas/pricing.html>`__).
             redirect_url = self.redirect_url
         else:
             redirect_url = reverse(self.redirect_url)
-        context.update({'items_selected': items_selected,
+        redeemed = self.request.session.get('redeemed', None)
+        if redeemed is not None:
+            redeemed = Coupon.objects.active(
+                self.get_organization(), redeemed).first()
+        context.update({
+            'items_selected': items_selected,
+            'redeemed': redeemed,
             REDIRECT_FIELD_NAME: redirect_url})
         return context
 

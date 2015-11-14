@@ -25,6 +25,7 @@
 from django.conf.urls import patterns, url
 
 from saas.settings import ACCT_REGEX
+from saas.views.billing import RedeemCouponView
 from saas.views.plans import CartPlanListView
 from saas.views.legal import AgreementDetailView, AgreementListView
 
@@ -33,4 +34,6 @@ urlpatterns = patterns('',
         AgreementDetailView.as_view(), name='legal_agreement'),
     url(r'^legal/$', AgreementListView.as_view(), name='legal_agreement_list'),
     url(r'^pricing/', CartPlanListView.as_view(), name='saas_cart_plan_list'),
+    url(r'^redeem/', RedeemCouponView.as_view(),
+        name='saas_redeem_coupon'),
 )
