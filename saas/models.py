@@ -1137,12 +1137,13 @@ class Charge(models.Model):
 
         balance = sum_orig_amount(self.refunded)
         previously_refunded = balance['amount']
-        refund_available = invoiced_item.dest_amount - previously_refunded
+        refund_available = min(invoiced_item.dest_amount,
+                               self.amount - previously_refunded)
         if refunded_amount > refund_available:
             raise InsufficientFunds("Cannot refund %(refund_required)s"\
 " while there is only %(refund_available)s available on the line item."
-% {'refund_available': as_money(abs(refund_available), self.unit),
-   'refund_required': as_money(abs(refunded_amount), self.unit)})
+% {'refund_available': as_money(refund_available, self.unit),
+   'refund_required': as_money(refunded_amount, self.unit)})
 
         charge_available_amount, provider_unit, \
             charge_fee_amount, processor_unit \
