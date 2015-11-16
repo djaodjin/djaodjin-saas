@@ -37,6 +37,7 @@ from django.views.generic import RedirectView
 from django.views.generic.base import TemplateResponseMixin
 from django.views.generic.edit import FormMixin, ProcessFormView
 
+from saas.settings import ACCT_REGEX
 from saas.decorators import fail_direct
 from saas.models import CartItem, Coupon, Plan, Organization, get_broker
 
@@ -99,7 +100,8 @@ class RedirectFormMixin(FormMixin):
             try:
                 # We replace all ':slug/' by '%(slug)s/' so that we can further
                 # create an instantiated url through Python string expansion.
-                next_url = re.sub(r':(\S+)/', r'%(\1)s/', next_url)
+                next_url = re.sub(r':(%s)/' % ACCT_REGEX, r'%(\1)s/', next_url)
+                print "XXX next_url=%s, kwargs=%s" % (next_url, self.kwargs)
                 next_url = next_url % self.kwargs
             except KeyError:
                 # We don't have all keys necessary. A safe defaults is to remove
