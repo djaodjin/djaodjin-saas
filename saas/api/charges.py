@@ -1,4 +1,4 @@
-# Copyright (c) 2014, DjaoDjin inc.
+# Copyright (c) 2015, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -133,7 +133,7 @@ class ChargeRefundAPIView(RetrieveChargeMixin, RetrieveAPIView):
         self.object = self.get_object()
         with transaction.atomic():
             try:
-                for line in request.DATA.get('lines', []):
+                for line in request.data.get('lines', []):
                     try:
                         self.object.refund(int(line['num']),
                             refunded_amount=int(line.get('refunded_amount', 0)))

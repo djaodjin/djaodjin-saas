@@ -77,7 +77,7 @@ class RelationListAPIView(OrganizationMixin, ListCreateAPIView):
                     first_name=first_name, last_name=last_name)
 
         self.organization = self.get_organization()
-        reason = request.DATA.get('invite', None)
+        reason = request.data.get('invite', None)
         if reason:
             reason = force_text(reason)
         if self.add_relation(user,

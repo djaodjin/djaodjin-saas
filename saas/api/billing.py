@@ -138,7 +138,7 @@ class CartItemAPIView(CartMixin, CreateAPIView):
     # authentication_classes = []
 
     def post(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.DATA)
+        serializer = self.get_serializer(data=request.data)
         if serializer.is_valid():
             cart_item, created = self.insert_item(request, **serializer.data)
             # insert_item will either return a dict or a CartItem instance
