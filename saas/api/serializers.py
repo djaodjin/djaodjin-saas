@@ -28,6 +28,7 @@ from rest_framework import serializers
 
 from saas.compat import User
 from saas.models import Organization, Plan, Subscription
+from saas.utils import product_url
 
 #pylint: disable=no-init,old-style-class
 
@@ -61,9 +62,9 @@ class PlanSerializer(serializers.ModelSerializer):
                   'setup_amount', 'period_amount', 'interval', 'app_url')
         read_only_fields = ('slug', 'app_url')
 
-    def get_app_url(self, obj):
-        #pylint: disable=unused-argument
-        return self.context['request'].build_absolute_uri('/app')
+    @staticmethod
+    def get_app_url(obj):
+        return product_url(obj.organization)
 
 
 class UserSerializer(serializers.ModelSerializer):
