@@ -105,11 +105,17 @@ class OrganizationManager(models.Manager):
         be interpreted as a username.
         """
         if isinstance(user, basestring):
-            return self.filter(Q(managers__username=user)
+            results = self.filter(Q(managers__username=user)
                 | Q(contributors__username=user))
-        return self.filter(Q(managers__pk=user.pk)
+        else:
+            results = self.filter(Q(managers__pk=user.pk)
                 | Q(contributors__pk=user.pk))
-
+        # Django will generate a SQL query that looks like:
+        # FROM saas_organization
+        #   LEFT OUTER JOIN saas_organization_managers
+        #   LEFT OUTER JOIN saas_organization_contributors
+        # Hence we need the ``distinct`` here.
+        return results.distinct()
 
     def find_contributed(self, user):
         """
