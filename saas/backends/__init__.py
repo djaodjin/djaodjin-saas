@@ -22,8 +22,9 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+from importlib import import_module
+
 from django.core.exceptions import ImproperlyConfigured
-from django.utils.importlib import import_module
 from stripe.error import APIConnectionError as ProcessorConnectionError
 from stripe.error import StripeError as ProcessorError
 from stripe.error import CardError as CardError
