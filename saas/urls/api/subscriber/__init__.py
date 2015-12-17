@@ -24,10 +24,10 @@
 
 '''API URLs typically associated with the subscriber.'''
 
-from django.conf.urls import patterns, include, url
+from django.conf.urls import include, url
 
-urlpatterns = patterns('',
+urlpatterns = [
     url(r'^billing/', include('saas.urls.api.subscriber.charges')),
     url(r'^billing/', include('saas.urls.api.subscriber.billing')),
     url(r'^profile/', include('saas.urls.api.subscriber.profile')),
-)
+]

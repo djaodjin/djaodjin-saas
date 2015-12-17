@@ -27,13 +27,13 @@ API URLs for profile resources typically associated to a provider
 (i.e. ``Plan``).
 """
 
-from django.conf.urls import patterns, url
+from django.conf.urls import url
 
 from saas.settings import ACCT_REGEX
 from saas.api.plans import (PlanActivateAPIView, PlanCreateAPIView,
     PlanResourceView)
 
-urlpatterns = patterns('saas.api',
+urlpatterns = [
     url(r'^profile/(?P<organization>%s)/plans/(?P<plan>%s)/activate/'
         % (ACCT_REGEX, ACCT_REGEX),
         PlanActivateAPIView.as_view(), name='saas_api_plan_activate'),
@@ -42,4 +42,4 @@ urlpatterns = patterns('saas.api',
         PlanResourceView.as_view(), name='saas_api_plan'),
     url(r'^profile/(?P<organization>%s)/plans/?' % ACCT_REGEX,
         PlanCreateAPIView.as_view(), name='saas_api_plan_new'),
-)
+]

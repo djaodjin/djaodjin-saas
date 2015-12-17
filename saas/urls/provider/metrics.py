@@ -24,7 +24,7 @@
 
 '''Urls to metrics'''
 
-from django.conf.urls import patterns, url
+from django.conf.urls import url
 
 from saas.settings import ACCT_REGEX
 from saas.views import ProviderRedirectView
@@ -32,8 +32,7 @@ from saas.views.profile import DashboardView
 from saas.views.metrics import (CouponMetricsView, PlansMetricsView,
     RevenueMetricsView)
 
-urlpatterns = patterns(
-    'saas.views.metrics',
+urlpatterns = [
     url(r'^metrics/dashboard/',
         ProviderRedirectView.as_view(pattern_name='saas_dashboard'),
         name='saas_provider_dashboard'),
@@ -60,4 +59,4 @@ urlpatterns = patterns(
     url(r'^metrics/',
         ProviderRedirectView.as_view(pattern_name='saas_metrics_summary'),
         name='saas_provider_metrics_summary'),
-)
+]

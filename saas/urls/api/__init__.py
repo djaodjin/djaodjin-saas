@@ -24,11 +24,11 @@
 
 '''API URLs for the saas application'''
 
-from django.conf.urls import patterns, include, url
+from django.conf.urls import include, url
 
-urlpatterns = patterns('',
+urlpatterns = [
     url(r'^', include('saas.urls.api.cart')),
     url(r'^', include('saas.urls.api.broker')),
     url(r'^', include('saas.urls.api.provider')),
     url(r'^', include('saas.urls.api.subscriber')),
-)
+]

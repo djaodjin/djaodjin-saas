@@ -26,17 +26,17 @@
 URLs API for resources
 """
 
-from django.conf.urls import patterns, url
+from django.conf.urls import url
 
 from saas.settings import ACCT_REGEX
 from saas.api.backend import RetrieveCardAPIView
 from saas.api.transactions import TransactionListAPIView
 
-urlpatterns = patterns('saas.api',
+urlpatterns = [
     url(r'^(?P<organization>%s)/payments/?' % ACCT_REGEX,
         TransactionListAPIView.as_view(),
         name='saas_api_transaction_list'),
     url(r'^(?P<organization>%s)/card/?' % ACCT_REGEX,
         RetrieveCardAPIView.as_view(), name='saas_api_card'),
-)
+]
 

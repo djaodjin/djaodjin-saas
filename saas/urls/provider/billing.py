@@ -26,14 +26,14 @@
 URLs related to provider bank account information.
 """
 
-from django.conf.urls import patterns, url
+from django.conf.urls import url
 
 from saas.settings import ACCT_REGEX
 from saas.views import ProviderRedirectView
 from saas.views.billing import (BankUpdateView,
     CouponListView, TransferListView, WithdrawView)
 
-urlpatterns = patterns('',
+urlpatterns = [
     url(r'^billing/bank/', ProviderRedirectView.as_view(
         pattern_name='saas_update_bank'), name='saas_provider_update_bank'),
     url(r'^billing/coupons/', ProviderRedirectView.as_view(
@@ -51,4 +51,4 @@ urlpatterns = patterns('',
         TransferListView.as_view(), name='saas_transfer_info'),
     url(r'^billing/(?P<organization>%s)/withdraw/' % ACCT_REGEX,
         WithdrawView.as_view(), name='saas_withdraw_funds'),
-)
+]

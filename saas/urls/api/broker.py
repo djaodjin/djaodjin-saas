@@ -26,14 +26,14 @@
 URLs API for resources available typically only to the broker platform.
 """
 
-from django.conf.urls import patterns, url
+from django.conf.urls import url
 
 from saas.api.metrics import RegisteredAPIView
 
 
-urlpatterns = patterns('',
+urlpatterns = [
     url(r'^metrics/registered/?',
         RegisteredAPIView.as_view(), name='saas_api_registered'),
-)
+]
 
 

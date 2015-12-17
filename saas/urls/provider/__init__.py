@@ -26,11 +26,11 @@
 URLs related to provider pages
 """
 
-from django.conf.urls import patterns, include, url
+from django.conf.urls import include, url
 
-urlpatterns = patterns('',
+urlpatterns = [
     url(r'^', include('saas.urls.provider.billing')),
     url(r'^', include('saas.urls.provider.metrics')),
     url(r'^', include('saas.urls.provider.download')),
     url(r'^', include('saas.urls.provider.profile')),
-)
+]
