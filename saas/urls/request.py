@@ -24,15 +24,14 @@
 
 '''URL for the request user to sign legal agreements.'''
 
-from django.conf.urls import patterns, url
+from django.conf.urls import url
 
 from saas.settings import ACCT_REGEX
 from saas.views.legal import AgreementSignView
 
-urlpatterns = patterns('saas.views.legal',
+urlpatterns = [
     url(r'^legal/(?P<agreement>%s)/sign/' % ACCT_REGEX,
         AgreementSignView.as_view(), name='legal_sign_agreement'),
-)
-
+]
 
 

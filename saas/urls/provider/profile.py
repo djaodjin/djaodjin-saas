@@ -26,7 +26,7 @@
 URLs related to provider bank account information.
 """
 
-from django.conf.urls import patterns, url
+from django.conf.urls import url
 from django.views.generic import TemplateView
 
 from saas.settings import ACCT_REGEX
@@ -35,7 +35,7 @@ from saas.views.profile import SubscriberListView
 from saas.views.plans import PlanCreateView, PlanUpdateView
 
 
-urlpatterns = patterns('',
+urlpatterns = [
     url(r'^profile/roles/(?P<role>%s)/' % ACCT_REGEX,
         ProviderRedirectView.as_view(pattern_name='saas_role_list'),
         name='saas_provider_role_list'),
@@ -64,4 +64,4 @@ urlpatterns = patterns('',
         TemplateView.as_view(), name='saas_plan_base'),
     url(r'^profile/(?P<organization>%s)/subscribers/' % ACCT_REGEX,
         SubscriberListView.as_view(), name='saas_subscriber_list'),
-)
+]

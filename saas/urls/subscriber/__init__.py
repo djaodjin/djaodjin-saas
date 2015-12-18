@@ -26,17 +26,17 @@
 URLs for the saas django app
 """
 
-from django.conf.urls import patterns, include, url
+from django.conf.urls import include, url
 
 from saas.views import OrganizationRedirectView
 from saas.views.profile import OrganizationCreateView
 from saas.settings import ACCT_REGEX
 
 
-urlpatterns = patterns('',
+urlpatterns = [
     url(r'^app/new/', OrganizationCreateView.as_view(),
         name='saas_organization_create'),
     url(r'^', include('saas.urls.subscriber.billing')),
     url(r'^', include('saas.urls.subscriber.profile')),
     url(r'^users/', include('saas.urls.users')),
-)
+]

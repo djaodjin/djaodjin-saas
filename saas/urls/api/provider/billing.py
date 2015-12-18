@@ -26,14 +26,14 @@
 URLs API for provider resources related to billing
 """
 
-from django.conf.urls import patterns, url
+from django.conf.urls import url
 
 from saas.settings import ACCT_REGEX
 from saas.api.backend import RetrieveBankAPIView
 from saas.api.coupons import CouponListAPIView, CouponDetailAPIView
 from saas.api.transactions import TransferListAPIView
 
-urlpatterns = patterns('',
+urlpatterns = [
     url(r'^billing/(?P<organization>%s)/bank/?' % ACCT_REGEX,
         RetrieveBankAPIView.as_view(), name='saas_api_bank'),
     url(r'^billing/(?P<organization>%s)/coupons/(?P<coupon>%s)/?'
@@ -43,4 +43,4 @@ urlpatterns = patterns('',
         CouponListAPIView.as_view(), name='saas_api_coupon_list'),
     url(r'^billing/(?P<organization>%s)/transfers/?' % ACCT_REGEX,
         TransferListAPIView.as_view(), name='saas_api_transfer_list'),
-)
+]

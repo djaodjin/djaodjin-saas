@@ -26,15 +26,13 @@
 URLs for a user's products.
 """
 
-from django.conf.urls import patterns, url
+from django.conf.urls import url
 
 from saas.settings import ACCT_REGEX
 from saas.views.users import ProductListView
 
-urlpatterns = patterns('saas.views.users',
+urlpatterns = [
     url(r'^(?P<user>%s)/products/' % ACCT_REGEX,
         ProductListView.as_view(), name='saas_user_product_list'),
-)
-
-
+]
 

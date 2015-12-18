@@ -34,7 +34,7 @@ from saas.api.metrics import (BalancesAPIView,
 from saas.api.subscriptions import (ActiveSubscriptionAPIView,
     ChurnedSubscriptionAPIView)
 
-urlpatterns = patterns('',
+urlpatterns = [
     url(r'^metrics/(?P<organization>%s)/active/?' % ACCT_REGEX,
         ActiveSubscriptionAPIView.as_view(), name='saas_api_subscribed'),
     url(r'^metrics/(?P<organization>%s)/balances/?' % ACCT_REGEX,
@@ -47,4 +47,4 @@ urlpatterns = patterns('',
         PlanMetricAPIView.as_view(), name='saas_api_plan'),
     url(r'^metrics/(?P<organization>%s)/funds/?' % ACCT_REGEX,
         RevenueMetricAPIView.as_view(), name='saas_api_revenue'),
-)
+]

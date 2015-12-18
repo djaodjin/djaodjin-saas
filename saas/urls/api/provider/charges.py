@@ -26,13 +26,13 @@
 URLs API for charges that can only be accessed by a provider.
 """
 
-from django.conf.urls import patterns, url
+from django.conf.urls import url
 
 from saas.settings import ACCT_REGEX
 from saas.api.charges import ChargeRefundAPIView
 
-urlpatterns = patterns('',
+urlpatterns = [
     url(r'^billing/charges/(?P<charge>%s)/refund/' % ACCT_REGEX,
         ChargeRefundAPIView.as_view(),
         name='saas_api_charge_refund'),
-)
+]

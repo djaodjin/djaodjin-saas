@@ -26,7 +26,7 @@
 Urls to download records
 """
 
-from django.conf.urls import patterns, url
+from django.conf.urls import url
 
 from saas.settings import ACCT_REGEX
 from saas.views import ProviderRedirectView
@@ -36,8 +36,7 @@ from saas.views.metrics import (BalancesDownloadView,
 from saas.views.billing import TransferDownloadView
 
 
-urlpatterns = patterns(
-    'saas.views.downloads',
+urlpatterns = [
     url(r'^download/subscribers/active/?',
         ProviderRedirectView.as_view(
             pattern_name='saas_subscriber_pipeline_download_subscribed'),
@@ -70,4 +69,4 @@ urlpatterns = patterns(
         BalancesDownloadView.as_view(), name='saas_balances_download'),
     url(r'^download/(?P<organization>%s)/transfers/?' % ACCT_REGEX,
         TransferDownloadView.as_view(), name='saas_transfers_download'),
-)
+]

@@ -27,14 +27,13 @@ URLs updating processing information and inserting transactions
 through POST requests.
 """
 
-from django.conf.urls import patterns, url
+from django.conf.urls import url
 
 from saas.settings import ACCT_REGEX
 from saas.views.billing import (CartPeriodsView, CartSeatsView,
     CardUpdateView, CartView, BalanceView)
 
-urlpatterns = patterns(
-    'saas.views.billing',
+urlpatterns = [
     url(r'^billing/(?P<organization>%s)/cart-seats/' % ACCT_REGEX,
         CartSeatsView.as_view(), name='saas_cart_seats'),
     url(r'^billing/(?P<organization>%s)/cart-periods/' % ACCT_REGEX,
@@ -49,4 +48,4 @@ urlpatterns = patterns(
     url(r'^billing/(?P<organization>%s)/balance/((?P<subscribed_plan>%s)/)?'
         % (ACCT_REGEX, ACCT_REGEX),
         BalanceView.as_view(), name='saas_organization_balance'),
-)
+]

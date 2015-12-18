@@ -24,13 +24,13 @@
 
 '''API URLs typically associated with the provider.'''
 
-from django.conf.urls import patterns, include, url
+from django.conf.urls import include, url
 
 from saas.settings import ACCT_REGEX
 
-urlpatterns = patterns('',
+urlpatterns = [
     url(r'^', include('saas.urls.api.provider.charges')),
     url(r'^', include('saas.urls.api.provider.billing')),
     url(r'^', include('saas.urls.api.provider.profile')),
     url(r'^', include('saas.urls.api.provider.metrics')),
-)
+]

@@ -26,14 +26,14 @@
 URLs related to billing.
 """
 
-from django.conf.urls import patterns, url, include
+from django.conf.urls import url, include
 
 from saas.views import OrganizationRedirectView
 from saas.views.billing import TransactionDownloadView
 from saas.settings import ACCT_REGEX
 
 
-urlpatterns = patterns('saas.views.billing',
+urlpatterns = [
     url(r'^billing/cart/',
         OrganizationRedirectView.as_view(pattern_name='saas_organization_cart'),
         name='saas_cart'),
@@ -41,4 +41,4 @@ urlpatterns = patterns('saas.views.billing',
     url(r'^', include('saas.urls.subscriber.billing.info')),
     url(r'^download/(?P<organization>%s)/payments/' % ACCT_REGEX,
         TransactionDownloadView.as_view(), name='saas_transactions_download'),
-)
+]

@@ -24,15 +24,14 @@
 
 '''Urls'''
 
-from django.conf.urls import patterns, url
+from django.conf.urls import url
 
 from saas.settings import ACCT_REGEX
 from saas.views import OrganizationRedirectView
 from saas.views.profile import (RoleListView, OrganizationProfileView,
     SubscriptionListView)
 
-urlpatterns = patterns(
-    'saas.views.profile',
+urlpatterns = [
     url(r'^profile/(?P<organization>%s)/roles/(?P<role>%s)/'
         % (ACCT_REGEX, ACCT_REGEX),
         RoleListView.as_view(), name='saas_role_list'),
@@ -43,5 +42,5 @@ urlpatterns = patterns(
     url(r'^profile/$', OrganizationRedirectView.as_view(
             pattern_name='saas_organization_profile'),
         name='saas_profile'),
-)
+]
 
