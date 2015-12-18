@@ -74,7 +74,8 @@ userRelationServices.factory("UserRelation", ["$resource", "urls",
     "use strict";
     return $resource(
         urls.saas_api_user_relation_url + "/:user", {user: "@user"},
-        {force: {method: "POST", params: {force: true}}});
+        {query: {method: "GET"},
+         force: {method: "POST", params: {force: true}}});
   }]);
 
 transactionServices.factory("Transaction", ["$resource", "urls",
@@ -250,8 +251,33 @@ userRelationControllers.controller("userRelationListCtrl",
     ["$scope", "$http", "UserRelation", "urls",
     function($scope, $http, UserRelation, urls) {
     "use strict";
-    $scope.users = UserRelation.query();
+    $scope.params = {};
+    $scope.itemsPerPage = 25; // Must match on the server-side.
+    $scope.maxSize = 5;      // Total number of pages to display
+    $scope.currentPage = 1;
+    $scope.totalItems = 0;
     $scope.user = null;
+
+    $scope.refresh = function() {
+        $scope.users = UserRelation.query($scope.params, function() {
+            /* We cannot watch users.count otherwise things start
+               to snowball. We must update totalItems only when
+               it truly changed. */
+            if( $scope.users.count != $scope.totalItems ) {
+                $scope.totalItems = $scope.users.count;
+            }
+        });
+    };
+    $scope.refresh();
+
+    $scope.pageChanged = function() {
+        if( $scope.currentPage > 1 ) {
+            $scope.params.page = $scope.currentPage;
+        } else {
+            delete $scope.params.page;
+        }
+        $scope.refresh();
+    };
 
     $scope.create = function() {
         $scope.user.invite = $("#new-user-relation [name='message']").val();
@@ -259,7 +285,7 @@ userRelationControllers.controller("userRelationListCtrl",
             function(success) {
                 /* XXX Couldn't figure out how to get the status code
                    here so we just reload the list. */
-                $scope.users = UserRelation.query();
+                $scope.refresh();
                 $scope.user = null;
             },
             function(error) {
@@ -276,7 +302,7 @@ userRelationControllers.controller("userRelationListCtrl",
             function(success) {
                 /* XXX Couldn't figure out how to get the status code
                    here so we just reload the list. */
-                $scope.users = UserRelation.query();
+                $scope.refresh();
                 $scope.user = null;
             },
             function(error) {
@@ -297,14 +323,14 @@ userRelationControllers.controller("userRelationListCtrl",
         return $http.get(urls.saas_api_user_url, {
             params: {q: val}
         }).then(function(res){
-            return res.data;
+            return res.data.results;
         });
     };
 
     $scope.remove = function (idx) {
-        UserRelation.remove({ user: $scope.users[idx].username },
+        UserRelation.remove({ user: $scope.users.results[idx].username },
         function (success) {
-            $scope.users.splice(idx, 1);
+            $scope.users.results.splice(idx, 1);
         });
     };
 }]);
@@ -563,11 +589,7 @@ transactionControllers.controller("transactionListCtrl",
         } else {
             delete $scope.params.q;
         }
-        $scope.transactions = Transaction.query($scope.params, function() {
-            if( $scope.transactions.count !== $scope.totalItems ) {
-                $scope.totalItems = $scope.transactions.count;
-            }
-        });
+        $scope.refresh();
     };
 
     $scope.pageChanged = function() {
@@ -576,11 +598,7 @@ transactionControllers.controller("transactionListCtrl",
         } else {
             delete $scope.params.page;
         }
-        $scope.transactions = Transaction.query($scope.params, function() {
-            if( $scope.transactions.count !== $scope.totalItems ) {
-                $scope.totalItems = $scope.transactions.count;
-            }
-        });
+        $scope.refresh();
     };
 
     $scope.sortBy = function(fieldName) {
@@ -596,11 +614,7 @@ transactionControllers.controller("transactionListCtrl",
         $scope.currentPage = 1;
         // pageChanged only called on click?
         delete $scope.params.page;
-        $scope.transactions = Transaction.query($scope.params, function() {
-            if( $scope.transactions.count != $scope.totalItems ) {
-                $scope.totalItems = $scope.transactions.count;
-            }
-        });
+        $scope.refresh();
     };
 
     if( urls.saas_api_bank ) {

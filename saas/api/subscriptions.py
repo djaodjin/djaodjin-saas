@@ -131,7 +131,6 @@ class SubscriptionListAPIView(SubscriptionSmartListMixin,
     """
 
     serializer_class = SubscriptionSerializer
-    paginate_by = 25
 
 
 class SubscriptionDetailAPIView(SubscriptionMixin,
@@ -223,7 +222,6 @@ class ActiveSubscriptionAPIView(SubscriptionSmartListMixin,
         }
     """
     serializer_class = SubscriptionSerializer
-    paginate_by = 25
 
 
 class ChurnedSubscriptionBaseAPIView(ChurnedQuerysetMixin, ListAPIView):
@@ -303,4 +301,3 @@ class ChurnedSubscriptionAPIView(SubscriptionSmartListMixin,
         }
     """
     serializer_class = SubscriptionSerializer
-    paginate_by = 25

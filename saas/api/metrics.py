@@ -501,7 +501,6 @@ class OrganizationListAPIView(OrganizationMixin, GenericAPIView):
 
     model = Organization
     serializer_class = OrganizationSerializer
-    paginate_by = 25
 
     def get(self, request, *args, **kwargs):
         #pylint: disable=no-member,unused-argument
@@ -605,4 +604,3 @@ class RegisteredAPIView(UserSmartListMixin, RegisteredBaseAPIView):
     """
 
     serializer_class = UserSerializer
-    paginate_by = 25

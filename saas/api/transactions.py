@@ -166,7 +166,6 @@ class TransactionListAPIView(SmartTransactionListMixin,
     """
 
     serializer_class = TransactionSerializer
-    paginate_by = 25
 
 
 class TransferQuerysetMixin(OrganizationMixin):
@@ -236,4 +235,3 @@ class TransferListAPIView(SmartTransactionListMixin, TransferQuerysetMixin,
         }
     """
     serializer_class = TransactionSerializer
-    paginate_by = 25

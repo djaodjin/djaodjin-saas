@@ -42,6 +42,16 @@ straightforward to send e-mails on a signal trigger in the main
 Django project. We provide sample e-mail templates here in the
 saas/templates/notification/ directory.
 
+The latest versions of django-restframework implement paginators disconnected
+from parameters in  views (i.e. no more paginate_by). You will thus need
+to define ``PAGE_SIZE`` in your settings.py
+
+    $ diff testsite/settings.py
+    +REST_FRAMEWORK = {
+    +    'PAGE_SIZE': 25,
+    +}
+
+
 Release Notes
 =============
 

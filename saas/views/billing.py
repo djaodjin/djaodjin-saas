@@ -206,7 +206,7 @@ class InvoicablesFormMixin(OrganizationMixin):
                 kwargs.update({invoicable['name']: ""})
         return kwargs
 
-    def get_form(self, form_class):
+    def get_form(self, form_class=None):
         self.invoicables = self.get_queryset()
         return super(InvoicablesFormMixin, self).get_form(form_class)
 

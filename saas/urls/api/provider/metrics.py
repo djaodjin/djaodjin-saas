@@ -26,7 +26,7 @@
 URLs API for provider resources related to billing
 """
 
-from django.conf.urls import patterns, url
+from django.conf.urls import url
 
 from saas.settings import ACCT_REGEX
 from saas.api.metrics import (BalancesAPIView,

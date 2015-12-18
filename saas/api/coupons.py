@@ -152,8 +152,7 @@ class CouponListAPIView(SmartCouponListMixin, CouponMixin, ListCreateAPIView):
     ``/api/billing/:organization/coupons/:coupon/`` for an example of JSON
     data).
     """
-
-    paginate_by = 25
+    pass
 
 
 class CouponDetailAPIView(CouponMixin, RetrieveUpdateDestroyAPIView):
