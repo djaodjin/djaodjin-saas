@@ -55,7 +55,7 @@ from saas.api.transactions import (SmartTransactionListMixin,
 from saas.backends import ProcessorError, ProcessorConnectionError
 from saas.utils import validate_redirect_url, datetime_or_now
 from saas.forms import (BankForm, CartPeriodsForm, CreditCardForm,
-    RedeemCouponForm, WithdrawForm)
+    ImportTransactionForm, RedeemCouponForm, WithdrawForm)
 from saas.mixins import (ChargeMixin, DateRangeMixin, OrganizationMixin,
     ProviderMixin)
 from saas.models import (Organization, CartItem, Coupon, Plan, Transaction,
@@ -1048,5 +1048,48 @@ djaodjin-saas/tree/master/saas/templates/saas/billing/withdraw.html>`__).
             self.request.GET.get(REDIRECT_FIELD_NAME, None))
         if redirect_path:
             return redirect_path
+        return reverse('saas_transfer_info', kwargs=self.get_url_kwargs())
+
+
+class ImportTransactionsView(ProviderMixin, FormView):
+    """
+    Insert transactions that were done offline for the purpose of computing
+    accurate metrics.
+
+    Template:
+
+    To edit the layout of this page, create a local \
+    ``saas/billing/import.html`` (`example <https://github.com/djaodjin/\
+djaodjin-saas/tree/master/saas/templates/saas/billing/import.html>`__).
+
+    Template context:
+      - ``organization`` The provider object
+      - ``request`` The HTTP request object
+    """
+
+    form_class = ImportTransactionForm
+    template_name = 'saas/billing/import.html'
+
+    def form_valid(self, form):
+        subscriber, plan = form.cleaned_data['subscription'].split(
+            Subscription.SEP)
+        subscriber = Organization.objects.filter(slug=subscriber).first()
+        if subscriber is None:
+            form.add_error(None, "Invalid subscriber")
+        plan = Plan.objects.filter(
+            slug=plan, organization=self.get_organization()).first()
+        if plan is None:
+            form.add_error(None, "Invalid plan")
+        if form.errors:
+            # We haven't found either the subscriber or the plan.
+            return self.form_invalid(form)
+        subscription = Subscription.objects.active_for(
+            organization=subscriber).filter(plan=plan).first()
+        Transaction.objects.offline_payment(
+            subscription, form.cleaned_data['amount'],
+            descr=form.cleaned_data['descr'], user=self.request.user)
+        return super(ImportTransactionsView, self).form_valid(form)
+
+    def get_success_url(self):
         return reverse('saas_transfer_info', kwargs=self.get_url_kwargs())
 

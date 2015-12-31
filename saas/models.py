@@ -66,7 +66,8 @@ from saas.humanize import (as_money, describe_buy_periods,
     DESCRIBE_BUY_PERIODS, DESCRIBE_BALANCE,
     DESCRIBE_CHARGED_CARD, DESCRIBE_CHARGED_CARD_PROCESSOR,
     DESCRIBE_CHARGED_CARD_PROVIDER, DESCRIBE_CHARGED_CARD_REFUND,
-    DESCRIBE_DOUBLE_ENTRY_MATCH, DESCRIBE_LIABILITY_START_PERIOD)
+    DESCRIBE_DOUBLE_ENTRY_MATCH, DESCRIBE_LIABILITY_START_PERIOD,
+    DESCRIBE_OFFLINE_PAYMENT)
 
 LOGGER = logging.getLogger(__name__)
 
@@ -1260,20 +1261,11 @@ class ChargeItem(models.Model):
             provider_unit = 'usd' # XXX
         refunded_fee_amount = 0
         if invoiced_fee:
-            # Implementation Note: There is a fixed 30 cents component
-            # to the processor fee. We must recompute the corrected
-            # fee on the total amount left over after the refund.
-            refunded_fee_amount = (
-                (charge_fee_amount - corrected_fee_amount)
-                * invoiced_item.dest_amount / charge.amount)
-        # ``corrected_available_amount`` is in provider unit,
-        # ``invoiced_item.dest_amount`` and ``self.amount`` are in subscriber
-        # unit, thus ``refunded_distribute_amount`` is the actual amount
-        # that should be given back from the distribution to the provider
-        # once the refund is processed.
-        refunded_distribute_amount = (
-            (charge_available_amount - corrected_available_amount)
-            * invoiced_item.dest_amount / charge.amount)
+            refunded_fee_amount = (charge_fee_amount - corrected_fee_amount)
+        refunded_distribute_amount = (charge_available_amount
+                                      - corrected_available_amount)
+        # Implementation Note:
+        # refunded_amount = refunded_distribute_amount + refunded_fee_amount
 
         LOGGER.info("Refund charge %s for %d (%s)"\
             " (distributed: %d (%s), processor fee: %d (%s))",
@@ -1832,6 +1824,8 @@ class Subscription(models.Model):
     (organization, plan), there should not be overlapping timeframe
     [created_at, ends_at[.
     """
+    SEP = ':' # The separator must be a character which cannot be used in slugs.
+
     objects = SubscriptionManager()
 
     auto_renew = models.BooleanField(default=True)
@@ -1842,7 +1836,8 @@ class Subscription(models.Model):
     plan = models.ForeignKey(Plan)
 
     def __unicode__(self):
-        return '%s-%s' % (unicode(self.organization), unicode(self.plan))
+        return '%s%s%s' % (unicode(self.organization), Subscription.SEP,
+            unicode(self.plan))
 
     @property
     def is_locked(self):
@@ -2001,6 +1996,146 @@ class TransactionManager(models.Manager):
         if at_time:
             queryset = queryset.filter(created_at=at_time)
         return queryset.order_by('created_at')
+
+    def offline_payment(self, subscription, amount,
+                        descr=None, user=None, created_at=None):
+        #pylint: disable=too-many-arguments
+        """
+        For an offline payment, we will record a sequence of ``Transaction``
+        as if we went through a ``new_subscription_order`` followed by
+        ``payment_successful`` and ``withdraw_funds`` while bypassing
+        the processor.
+
+        Thus an offline payment is recorded as follow::
+
+            ; Record an order
+
+            yyyy/mm/dd description
+                subscriber:Payable                       amount
+                provider:Receivable
+
+            ; Record the off-line payment
+
+            yyyy/mm/dd charge event
+                provider:Funds                           amount
+                subscriber:Liability
+
+            ; Compensate for atomicity of charge record (when necessary)
+
+            yyyy/mm/dd invoiced-item event
+                subscriber:Liability           min(invoiced_item_amount,
+                subscriber:Payable                      balance_payable)
+
+            ; Distribute funds to the provider
+
+            yyyy/mm/dd distribution to provider (backlog accounting)
+                provider:Receivable                      amount
+                provider:Backlog
+
+            yyyy/mm/dd mark the amount as offline payment
+                provider:Offline                         amount
+                provider:Funds
+
+        Example::
+
+            2014/09/10 subscribe to open-space plan
+                xia:Payable                             $179.99
+                cowork:Receivable
+
+            2014/09/10 Check received off-line
+                cowork:Funds                            $179.99
+                xia:Liability
+
+            2014/09/10 Keep a balanced ledger
+                xia:Liability                           $179.99
+                xia:Payable
+
+            2014/09/10 backlog accounting
+                cowork:Receivable                       $179.99
+                cowork:Backlog
+
+            2014/09/10 mark payment as processed off-line
+                cowork:Offline                          $179.99
+                cowork:Funds
+        """
+        if descr is None:
+            descr = DESCRIBE_OFFLINE_PAYMENT
+        if user:
+            descr += ' (%s)' % user.username
+        created_at = datetime_or_now(created_at)
+        with transaction.atomic():
+            self.create(
+                created_at=created_at,
+                descr=descr,
+                event_id=subscription.id,
+                dest_amount=amount,
+                dest_unit=subscription.plan.unit,
+                dest_account=Transaction.PAYABLE,
+                dest_organization=subscription.organization,
+                orig_amount=amount,
+                orig_unit=subscription.plan.unit,
+                orig_account=Transaction.RECEIVABLE,
+                orig_organization=subscription.plan.organization)
+
+            self.create(
+                created_at=created_at,
+                descr=descr,
+                dest_amount=amount,
+                dest_unit=subscription.plan.unit,
+                dest_account=Transaction.FUNDS,
+                dest_organization=subscription.plan.organization,
+                orig_amount=amount,
+                orig_unit=subscription.plan.unit,
+                orig_account=Transaction.LIABILITY,
+                orig_organization=subscription.organization)
+
+            # If there is still an amount on the ``Payable`` account,
+            # we create Payable to Liability transaction in order to correct
+            # the accounts amounts. This is a side effect of the atomicity
+            # requirement for a ``Transaction`` associated to offline payment.
+            balance_payable, _ = \
+                self.get_event_balance(subscription.id, Transaction.PAYABLE)
+            if balance_payable > 0:
+                available = min(amount, balance_payable)
+                Transaction.objects.create(
+                    event_id=subscription.id,
+                    created_at=created_at,
+                    descr=DESCRIBE_DOUBLE_ENTRY_MATCH,
+                    dest_amount=available,
+                    dest_unit=subscription.plan.unit,
+                    dest_account=Transaction.LIABILITY,
+                    dest_organization=subscription.organization,
+                    orig_amount=available,
+                    orig_unit=subscription.plan.unit,
+                    orig_account=Transaction.PAYABLE,
+                    orig_organization=subscription.organization)
+
+            self.create(
+                created_at=created_at,
+                descr=descr,
+                event_id=subscription.id,
+                dest_amount=amount,
+                dest_unit=subscription.plan.unit,
+                dest_account=Transaction.RECEIVABLE,
+                dest_organization=subscription.plan.organization,
+                orig_amount=amount,
+                orig_unit=subscription.plan.unit,
+                orig_account=Transaction.BACKLOG,
+                orig_organization=subscription.plan.organization)
+
+            self.create(
+                created_at=created_at,
+                descr="%s - %s" % (descr, DESCRIBE_DOUBLE_ENTRY_MATCH),
+                event_id=subscription.id,
+                dest_amount=amount,
+                dest_unit=subscription.plan.unit,
+                dest_account=Transaction.OFFLINE,
+                dest_organization=subscription.plan.organization,
+                orig_amount=amount,
+                orig_unit=subscription.plan.unit,
+                orig_account=Transaction.FUNDS,
+                orig_organization=subscription.plan.organization)
+
 
     def distinct_accounts(self):
         return (set([val['orig_account']
@@ -2493,6 +2628,7 @@ class Transaction(models.Model):
     RECEIVABLE = 'Receivable' # always <= 0
     BACKLOG = 'Backlog'       # always <= 0
     INCOME = 'Income'         # always <= 0
+    OFFLINE = 'Offline'
 
     # subscriber side
     PAYABLE = 'Payable'       # always >= 0

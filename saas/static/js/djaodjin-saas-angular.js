@@ -48,6 +48,8 @@ angular.module("transactionApp", ["ui.bootstrap", "ngRoute",
 angular.module("metricApp", ["ui.bootstrap", "ngRoute", "metricControllers"]);
 angular.module("metricsApp", ["ui.bootstrap", "ngRoute", "metricsControllers",
     "revenueFilters"]);
+angular.module("importTransactionsApp", ["ui.bootstrap", "ngRoute",
+    "importTransactionsControllers"]);
 
 
 /*=============================================================================
@@ -96,6 +98,7 @@ var subscriptionControllers = angular.module("subscriptionControllers", []);
 var transactionControllers = angular.module("transactionControllers", []);
 var metricControllers = angular.module("metricControllers", []);
 var metricsControllers = angular.module("metricsControllers", []);
+var importTransactionsControllers = angular.module("importTransactionsControllers", []);
 
 couponControllers.controller("CouponListCtrl",
     ["$scope", "$http", "$timeout", "Coupon", "urls",
@@ -745,4 +748,20 @@ metricsControllers.controller("metricsCtrl",
 
     $scope.refreshTable();
 
+}]);
+
+
+importTransactionsControllers.controller("importTransactionsCtrl",
+    ["$scope", "$http", "urls",
+    function($scope, $http, urls) {
+    "use strict";
+    $scope.subscription = null; // XXX really a subscription so far.
+
+    $scope.getSubscriptions = function(val) {
+        return $http.get(urls.saas_api_subscriptions_url, {
+            params: {q: val}
+        }).then(function(res){
+            return res.data.results;
+        });
+    };
 }]);

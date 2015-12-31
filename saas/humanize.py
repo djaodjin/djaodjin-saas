@@ -53,6 +53,9 @@ DESCRIBE_DOUBLE_ENTRY_MATCH = \
 DESCRIBE_LIABILITY_START_PERIOD = \
     "Past due"
 
+DESCRIBE_OFFLINE_PAYMENT = \
+    "Off-line payment"
+
 DESCRIBE_RECOGNIZE_INCOME = \
     "Recognize income from %(period_start)s to %(period_end)s"
 

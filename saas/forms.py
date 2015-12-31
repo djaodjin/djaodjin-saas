@@ -27,6 +27,7 @@ Forms shown by the saas application
 """
 
 from django import forms
+from django.core.exceptions import ValidationError
 from django.template.defaultfilters import slugify
 from django.utils.safestring import mark_safe
 from django.utils.translation import ugettext_lazy as _
@@ -101,6 +102,22 @@ class CartPeriodsForm(forms.Form):
         for item in self.initial:
             if item.startswith('cart-'):
                 self.fields[item] = forms.CharField(required=True)
+
+
+class ImportTransactionForm(forms.Form):
+
+    subscription = forms.CharField()
+    amount = forms.DecimalField()
+    descr = forms.CharField(required=False)
+
+    def clean_amount(self):
+        amount = self.cleaned_data['amount']
+        try:
+            self.cleaned_data['amount'] = int(amount * 100)
+        except (TypeError, ValueError):
+            raise ValidationError("invalid amount")
+        return self.cleaned_data['amount']
+
 
 
 class OrganizationForm(PostalFormMixin, forms.ModelForm):

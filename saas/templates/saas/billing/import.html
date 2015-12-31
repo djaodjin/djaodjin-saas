@@ -1,0 +1,76 @@
+{% extends "saas/base.html" %}
+{% load saas_tags %}
+
+{% block saas_title %}Add offline transaction{% endblock %}
+
+{% block saas_content %}
+<section ng-app="importTransactionsApp" ng-cloak>
+  <script type="text/ng-template" id="customTemplate.html">
+    <a><span bind-html-unsafe="match.model.organization.printable_name + ' - ' + match.model.plan.title | typeaheadHighlight:query"></span></a>
+  </script>
+<div ng-controller="importTransactionsCtrl">
+<form action="." method="post">
+   {% csrf_token %}
+    <fieldset>
+        <div class="{% if form.subscription.errors %} has-error{% endif %}">
+            <label for="subscription">
+                Subscription
+            </label>
+            <div>
+                <input id="subscription" name="subscription"
+                       placeholder="Subscriber name or email" type="text"
+                       autocomplete="off"
+                       ng-model="subscription"
+                       typeahead="subscription as subscription.organization.slug + ':' + subscription.plan.slug for subscription in getSubscriptions($viewValue)"
+                       typeahead-loading="loadingSubscriptions"
+                       typeahead-template-url="customTemplate.html">
+                <div ng-show="loadingSubscriptions">
+                    <i>loading ...</i>
+                </div>
+            </div>
+        </div>
+        <div class="{% if form.amount.errors %} has-error{% endif %}">
+            <label for="amount">
+                Amount
+            </label>
+            <div>
+                <input name="amount" type="number" min="0" step="any" placeholder="amount">
+            </div>
+        </div>
+        <div class="{% if form.descr.errors %} has-error{% endif %}">
+            <label for="descr">
+                Description
+            </label>
+            <div>
+                <input name="descr" type="text" placeholder="description">
+            </div>
+        </div>
+    </fieldset>
+    <div>
+        <button type="submit">Add Off-line Payment</button>
+    </div>
+</form>
+</div>
+</section>
+{% endblock %}
+
+{% block saas_bodyscripts %}
+<script>
+/* Implementation Note: Not including a list of dependent modules
+   (2nd parameter to `module`) "re-opens" the module for additional
+   configuration. */
+var app = angular.module('importTransactionsApp');
+app.config(['$interpolateProvider', '$httpProvider',
+           function($interpolateProvider, $httpProvider) {
+    /* Add the CSRF Token: */
+    $httpProvider.defaults.headers.common['X-CSRFToken'] = '{{csrf_token|escapejs}}';
+    /* Makes it easier to separate between django and angularjs templates */
+    $interpolateProvider.startSymbol('[[');
+    $interpolateProvider.endSymbol(']]');
+}]);
+
+app.constant('urls', {
+    saas_api_subscriptions_url: "{% url 'saas_api_subscribed' organization %}",
+});
+</script>
+{% endblock %}
