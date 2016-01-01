@@ -23,17 +23,16 @@
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 from django.contrib import messages
-from django.contrib.auth import REDIRECT_FIELD_NAME
 from django.core.context_processors import csrf
 from django.core.urlresolvers import reverse
 from django.http import HttpResponseRedirect
 from django.views.generic import CreateView, ListView, UpdateView
 from django.views.generic.detail import SingleObjectMixin
 
-from saas.forms import PlanForm
-from saas.mixins import CartMixin, OrganizationMixin, ProviderMixin
-from saas.models import CartItem, Coupon, Plan
-from saas.utils import validate_redirect_url
+from . import RedirectFormMixin
+from ..forms import PlanForm
+from ..mixins import CartMixin, OrganizationMixin, ProviderMixin
+from ..models import CartItem, Coupon, Plan
 
 
 class PlanFormMixin(OrganizationMixin, SingleObjectMixin):
@@ -68,7 +67,7 @@ class PlanFormMixin(OrganizationMixin, SingleObjectMixin):
         return url_kwargs
 
 
-class CartPlanListView(ProviderMixin, CartMixin, ListView):
+class CartPlanListView(ProviderMixin, CartMixin, RedirectFormMixin, ListView):
     """
     GET displays the active plans available for subscription.
 
@@ -89,7 +88,7 @@ djaodjin-saas/tree/master/saas/templates/saas/pricing.html>`__).
 
     model = Plan
     template_name = 'saas/pricing.html'
-    redirect_url = 'saas_cart'
+    success_url = 'saas_cart'
 
     def get_queryset(self):
         queryset = Plan.objects.filter(
@@ -109,18 +108,12 @@ djaodjin-saas/tree/master/saas/templates/saas/pricing.html>`__).
         if self.request.session.has_key('cart_items'):
             items_selected += [item['plan']
                 for item in self.request.session['cart_items']]
-        if self.redirect_url.startswith('/'):
-            redirect_url = self.redirect_url
-        else:
-            redirect_url = reverse(self.redirect_url)
         redeemed = self.request.session.get('redeemed', None)
         if redeemed is not None:
             redeemed = Coupon.objects.active(
                 self.get_organization(), redeemed).first()
         context.update({
-            'items_selected': items_selected,
-            'redeemed': redeemed,
-            REDIRECT_FIELD_NAME: redirect_url})
+            'items_selected': items_selected, 'redeemed': redeemed})
         return context
 
     def post(self, request, *args, **kwargs):
@@ -131,13 +124,6 @@ djaodjin-saas/tree/master/saas/templates/saas/pricing.html>`__).
             self.insert_item(request, plan=request.POST['submit'])
             return HttpResponseRedirect(self.get_success_url())
         return self.get(request, *args, **kwargs)
-
-    def get_success_url(self):
-        redirect_path = validate_redirect_url(
-            self.request.GET.get(REDIRECT_FIELD_NAME, None))
-        if redirect_path:
-            return redirect_path
-        return reverse(self.redirect_url)
 
 
 class PlanCreateView(PlanFormMixin, CreateView):
