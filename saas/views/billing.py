@@ -1087,7 +1087,8 @@ djaodjin-saas/tree/master/saas/templates/saas/billing/import.html>`__).
             organization=subscriber).filter(plan=plan).first()
         Transaction.objects.offline_payment(
             subscription, form.cleaned_data['amount'],
-            descr=form.cleaned_data['descr'], user=self.request.user)
+            descr=form.cleaned_data['descr'], user=self.request.user,
+            created_at=form.cleaned_data['created_at'])
         return super(ImportTransactionsView, self).form_valid(form)
 
     def get_success_url(self):

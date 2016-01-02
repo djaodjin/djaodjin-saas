@@ -107,6 +107,7 @@ class CartPeriodsForm(forms.Form):
 class ImportTransactionForm(forms.Form):
 
     subscription = forms.CharField()
+    created_at = forms.DateTimeField()
     amount = forms.DecimalField()
     descr = forms.CharField(required=False)
 

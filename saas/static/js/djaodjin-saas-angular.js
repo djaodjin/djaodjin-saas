@@ -127,9 +127,9 @@ couponControllers.controller("CouponListCtrl",
         startingDay: 1
     };
 
-    $scope.initDate = new Date("2016-15-20");
+    $scope.initDate = new Date("2017-15-20");
     $scope.minDate = new Date();
-    $scope.maxDate = new Date("2016-01-01");
+    $scope.maxDate = new Date("2017-01-01");
     $scope.formats = ["dd-MMMM-yyyy", "yyyy/MM/dd", "dd.MM.yyyy", "shortDate"];
     $scope.format = $scope.formats[0];
 
@@ -358,9 +358,9 @@ subscriptionControllers.controller("subscriptionListCtrl",
         startingDay: 1
     };
 
-    $scope.initDate = new Date("2016-15-20");
+    $scope.initDate = new Date("2017-15-20");
     $scope.minDate = new Date();
-    $scope.maxDate = new Date("2016-01-01");
+    $scope.maxDate = new Date("2017-01-01");
     $scope.formats = ["dd-MMMM-yyyy", "yyyy/MM/dd", "dd.MM.yyyy", "shortDate"];
     $scope.format = $scope.formats[0];
     $scope.ends_at = moment().endOf("day").toDate();
@@ -755,7 +755,26 @@ importTransactionsControllers.controller("importTransactionsCtrl",
     ["$scope", "$http", "urls",
     function($scope, $http, urls) {
     "use strict";
+
+    // these aren't documented; do they do anything?
+    $scope.formats = ["yyyy-MM-dd", "shortDate"];
+    $scope.format = $scope.formats[0];
+    $scope.dateOptions = {
+        formatYear: "yyyy",
+        startingDay: 1
+    };
+    $scope.minDate = new Date('2015-01-01');
+    $scope.maxDate = new Date('2017-01-01');
+    $scope.opened = {};
+
     $scope.subscription = null; // XXX really a subscription so far.
+    $scope.createdAt = moment().format("YYYY-MM-DD");
+
+    $scope.open = function($event, datePicker) {
+        $event.preventDefault();
+        $event.stopPropagation();
+        $scope.opened[datePicker] = true;
+    };
 
     $scope.getSubscriptions = function(val) {
         return $http.get(urls.saas_api_subscriptions_url, {
