@@ -2188,7 +2188,7 @@ class TransactionManager(models.Manager):
             | Q(orig_account=Transaction.LIABILITY),
             orig_organization=organization,
             dest_account=Transaction.FUNDS,
-            created_at__lt=until).order_by('created_at').first()
+            created_at__lt=until).order_by('-created_at').first()
         if last_payment:
             # Use ``created_at`` strictly greater than last payment date
             # otherwise we pick up the last payment itself.
