@@ -22,9 +22,10 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+from django import forms
 from django.contrib import messages
 from django.core.context_processors import csrf
-from django.core.urlresolvers import reverse
+from django.core.urlresolvers import reverse, reverse_lazy
 from django.http import HttpResponseRedirect
 from django.views.generic import CreateView, ListView, UpdateView
 from django.views.generic.detail import SingleObjectMixin
@@ -88,7 +89,8 @@ djaodjin-saas/tree/master/saas/templates/saas/pricing.html>`__).
 
     model = Plan
     template_name = 'saas/pricing.html'
-    success_url = 'saas_cart'
+    success_url = reverse_lazy('saas_cart')
+    form_class = forms.Form # Solely to avoid errors on Django 1.9.1
 
     def get_queryset(self):
         queryset = Plan.objects.filter(
