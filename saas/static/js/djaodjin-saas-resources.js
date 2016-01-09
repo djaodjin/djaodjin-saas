@@ -9,6 +9,9 @@ function showMessages(messages, style) {
     } else {
         var messageBlock = "<div class=\"alert alert-block";
         if( style ) {
+            if( style === "error" ) {
+                style = "danger";
+            }
             messageBlock += " alert-" + style;
         }
         messageBlock += "\"><button type=\"button\" class=\"close\" data-dismiss=\"alert\">&times;</button>";

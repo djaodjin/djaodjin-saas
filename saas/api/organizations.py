@@ -94,6 +94,7 @@ class OrganizationDetailAPIView(OrganizationMixin,
             obj.email = email
             obj.is_active = False
             obj.save()
-        auth_logout(request)
+            if request.user == manager:
+                auth_logout(request)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
