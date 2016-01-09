@@ -196,8 +196,8 @@ class PersonalRegistrationView(FormView):
             username=username, password=password, email=cleaned_data['email'],
             first_name=first_name, last_name=last_name)
 
-        terms_of_service = 'terms_of_use'
-        Signature.objects.create_signature(terms_of_service, user)
+        terms_of_use = 'terms-of-use'
+        Signature.objects.create_signature(terms_of_use, user)
 
         # Create a 'personal' ``Organization`` to associate the user
         # to a billing account.

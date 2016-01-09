@@ -109,7 +109,7 @@ def _read_agreement_file(slug, context=None):
     # We use context and not context=context in the following statement
     # such that the code is compatible with Django 1.7 and Django 1.8
     return markdown.markdown(
-        render_to_string('saas/agreements/legal_%s.md' % slug, context))
+        render_to_string('saas/agreements/%s.md' % slug, context))
 
 
 class AgreementSignView(CreateView):

@@ -47,6 +47,7 @@ _SETTINGS = {
     'STRIPE_CLIENT_ID': None,
     'STRIPE_PRIV_KEY': None,
     'STRIPE_PUB_KEY': None,
+    'TERMS_OF_USE': 'terms-of-use'
 }
 _SETTINGS.update(getattr(settings, 'SAAS', {}))
 
@@ -70,10 +71,10 @@ PROCESSOR_ID = _SETTINGS.get('PROCESSOR_ID')
 STRIPE_CLIENT_ID = _SETTINGS.get('STRIPE_CLIENT_ID')
 STRIPE_PRIV_KEY = _SETTINGS.get('STRIPE_PRIV_KEY')
 STRIPE_PUB_KEY = _SETTINGS.get('STRIPE_PUB_KEY')
+TERMS_OF_USE = _SETTINGS.get('TERMS_OF_USE')
 
 # BE EXTRA CAREFUL! This variable is used to bypass PermissionDenied
 # exceptions. It is solely intended as a debug flexibility nob.
 SKIP_PERMISSION_CHECK = _SETTINGS.get('SKIP_PERMISSION_CHECK')
 
 LOGIN_URL = getattr(settings, 'LOGIN_URL')
-TERMS_OF_USE = getattr(settings, 'TERMS_OF_USE', 'terms_of_use')

@@ -77,7 +77,7 @@ class OrganizationDetailAPIView(OrganizationMixin,
         Archive the organization. We don't to loose the subscriptions
         and transactions history.
         """
-        obj = self.get_organization()
+        obj = self.get_object()
         manager = self.attached_manager(obj)
         email = obj.email
         slug = '_archive_%d' % obj.id
