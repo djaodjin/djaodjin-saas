@@ -17,7 +17,7 @@
         {% for plan in plans %}
             <tr>
                 <td>
-                    <a href="{% url 'saas_plan_edit' organization plan %}" title="Edit plan">{{plan.slug}}</a>
+                    <a id="{{plan}}" href="{% url 'saas_plan_edit' organization plan %}" title="Edit plan">{{plan.slug}}</a>
                 </td>
                 <td>
                     {% if plan.is_active %}active{% else %}inactive{% endif %}
@@ -25,7 +25,9 @@
             </tr>
         {% endfor %}
         <tr>
-            <td colspan="2"><a href="{% url 'saas_plan_new' organization %}" title="Create plan">Add Plan ...</a></td>
+            <td colspan="2">
+                <a id="plan-new" href="{% url 'saas_plan_new' organization %}" title="Create plan">Add Plan ...</a>
+            </td>
         </tr>
     </tbody>
 </table>

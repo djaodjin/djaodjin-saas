@@ -4,12 +4,12 @@
 <div>
     {% if form.instance %}
     <div>
-        <button class="activate {% if form.instance.is_active %}activated{% endif %}">{% if form.instance.is_active %}Deactivate{% else %}Activate{% endif %}</button>
+        <button id="activate-plan" class="activate {% if form.instance.is_active %}active-plan{% endif %}">{% if form.instance.is_active %}Deactivate{% else %}Activate{% endif %}</button>
     </div>
     {% endif %}
     {% if show_delete %}
     <div>
-        <button class="delete">Delete</button>
+        <button id="delete-plan" class="delete">Delete</button>
     </div>
     {% endif %}
 </div>

@@ -106,7 +106,7 @@ Plan.prototype = {
     activate: function(isActive, successFunction) {
         "use strict";
         var self = this;
-        $.ajax({ type: "PATCH",
+        $.ajax({type: "PUT",
                  url: this.urls.saas_api_plan + "/" + self.id + "/activate/",
                  beforeSend: function(xhr) {
                      xhr.setRequestHeader("X-CSRFToken", getMetaCSRFToken());
@@ -123,7 +123,7 @@ Plan.prototype = {
     update: function(data, successFunction) {
         "use strict";
         var self = this;
-        $.ajax({ type: "PATCH",
+        $.ajax({ type: "PUT",
                  url: this.urls.saas_api_plan + "/" + self.id + "/",
                  beforeSend: function(xhr) {
                      xhr.setRequestHeader("X-CSRFToken", getMetaCSRFToken());
