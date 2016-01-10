@@ -1,4 +1,4 @@
-# Copyright (c) 2014, DjaoDjin inc.
+# Copyright (c) 2016, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -25,6 +25,7 @@
 from django.views.generic import ListView
 
 from saas.compat import User
+from saas.models import Organization
 
 
 class ProductListView(ListView):
@@ -38,11 +39,11 @@ class ProductListView(ListView):
 
     def get_queryset(self):
         try:
-            self.user = User.objects.get(
+            user = User.objects.get(
                 username=self.kwargs.get(self.slug_url_kwarg))
         except User.DoesNotExist:
-            self.user = self.request.user
-        return self.user.manages.all()
+            user = self.request.user
+        return Organization.objects.accessible_by(user)
 
     def get_context_data(self, **kwargs):
         context = super(ProductListView, self).get_context_data(**kwargs)

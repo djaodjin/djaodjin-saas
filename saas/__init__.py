@@ -27,21 +27,3 @@ PEP 386-compliant version number for the saas django app.
 """
 
 __version__ = '0.1.9-dev'
-
-def get_manager_relation_model():
-    """
-    Returns the manager relation model that is active in this project.
-    """
-    from . import settings
-    from .compat import get_model_class
-    return get_model_class(settings.MANAGER_RELATION, 'MANAGER_RELATION')
-
-
-def get_contributor_relation_model():
-    """
-    Returns the contributor relation model that is active in this project.
-    """
-    from . import settings
-    from .compat import get_model_class
-    return get_model_class(
-        settings.CONTRIBUTOR_RELATION, 'CONTRIBUTOR_RELATION')

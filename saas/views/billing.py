@@ -1,4 +1,4 @@
-# Copyright (c) 2015, DjaoDjin inc.
+# Copyright (c) 2016, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -49,22 +49,22 @@ from django.shortcuts import get_object_or_404
 from django.views.generic import (DetailView, FormView, ListView, TemplateView,
     UpdateView)
 
-from saas import settings
-from saas.api.transactions import (SmartTransactionListMixin,
+from .. import settings
+from ..api.transactions import (SmartTransactionListMixin,
     TransactionQuerysetMixin, TransferQuerysetMixin)
-from saas.backends import ProcessorError, ProcessorConnectionError
-from saas.utils import validate_redirect_url, datetime_or_now
-from saas.forms import (BankForm, CartPeriodsForm, CreditCardForm,
+from ..backends import ProcessorError, ProcessorConnectionError
+from ..utils import validate_redirect_url, datetime_or_now
+from ..forms import (BankForm, CartPeriodsForm, CreditCardForm,
     ImportTransactionForm, RedeemCouponForm, WithdrawForm)
-from saas.mixins import (ChargeMixin, DateRangeMixin, OrganizationMixin,
+from ..mixins import (ChargeMixin, DateRangeMixin, OrganizationMixin,
     ProviderMixin)
-from saas.models import (Organization, CartItem, Coupon, Plan, Transaction,
+from ..models import (Organization, CartItem, Coupon, Plan, Transaction,
     Subscription, get_broker)
-from saas.humanize import (as_money, describe_buy_periods, match_unlock,
+from ..humanize import (as_money, describe_buy_periods, match_unlock,
     DESCRIBE_UNLOCK_NOW, DESCRIBE_UNLOCK_LATER)
-from saas.utils import product_url
-from saas.views import session_cart_to_database
-from saas.views.download import CSVDownloadView
+from ..utils import product_url
+from ..views import session_cart_to_database
+from ..views.download import CSVDownloadView
 
 
 LOGGER = logging.getLogger(__name__)
@@ -77,7 +77,13 @@ class BankMixin(OrganizationMixin):
 
     def get_context_data(self, **kwargs):
         context = super(BankMixin, self).get_context_data(**kwargs)
-        context.update(self.get_organization().retrieve_bank())
+        try:
+            context.update(self.get_organization().retrieve_bank())
+        except ProcessorConnectionError, err:
+            LOGGER.exception(err)
+            messages.error(self.request,
+                "Unable to communicate with Payment Processor. We are aware\
+                of the issue and working on it. Thank you for your patience.")
         return context
 
 

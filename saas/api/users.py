@@ -28,10 +28,9 @@ from rest_framework import status
 from rest_framework.generics import (DestroyAPIView, ListCreateAPIView)
 from rest_framework.response import Response
 
-from saas import get_contributor_relation_model, get_manager_relation_model
+from saas.api.serializers import UserSerializer
 from saas.compat import User
 from saas.mixins import OrganizationMixin, RelationMixin
-from saas.api.serializers import UserSerializer
 
 #pylint: disable=no-init
 #pylint: disable=old-style-class
@@ -92,9 +91,6 @@ class RelationListAPIView(OrganizationMixin, ListCreateAPIView):
             headers=self.get_success_headers(serializer.validated_data))
 
 
-# XXX Using ugly ``if role ==`` here until we refactor the contributors/managers
-# models. First we deal with documentation of the interface.
-
 class RoleListAPIView(RelationListAPIView):
     """
     ``GET`` lists all users with a specified role with regards
@@ -133,21 +129,14 @@ class RoleListAPIView(RelationListAPIView):
     """
 
     def add_relation(self, user, reason=None):
-        if self.kwargs.get('role') == 'contributors':
-            return self.organization.add_contributor(user, reason=reason)
-        elif self.kwargs.get('role') == 'managers':
-            return self.organization.add_manager(user, reason=reason)
-        raise Http404("No role named '%s'" % self.kwargs.get('role'))
+        role_name = self.kwargs.get('role')
+        try:
+            return self.organization.add_role(user, role_name, reason=reason)
+        except ValueError:
+            raise Http404("No role named '%s'" % role_name)
 
     def get_queryset(self):
-        queryset = super(RoleListAPIView, self).get_queryset()
-        if self.kwargs.get('role') == 'contributors':
-            return queryset.filter(contributes__slug=self.kwargs.get(
-                self.organization_url_kwarg))
-        elif self.kwargs.get('role') == 'managers':
-            return queryset.filter(manages__slug=self.kwargs.get(
-                self.organization_url_kwarg))
-        return queryset.none()
+        return self.get_organization().with_role(self.kwargs.get('role'))
 
 
 class RoleDetailAPIView(RelationMixin, DestroyAPIView):
@@ -156,10 +145,4 @@ class RoleDetailAPIView(RelationMixin, DestroyAPIView):
     resulting in revoking permissions  from this user to manage part of an
     organization profile.
     """
-
-    def get_model(self):
-        if self.kwargs.get('role') == 'contributors':
-            return get_contributor_relation_model()
-        elif self.kwargs.get('role') == 'managers':
-            return get_manager_relation_model()
-        raise Http404("No role named '%s'" % self.kwargs.get('role'))
+    pass

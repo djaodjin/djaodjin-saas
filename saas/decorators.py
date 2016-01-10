@@ -1,4 +1,4 @@
-# Copyright (c) 2015, DjaoDjin inc.
+# Copyright (c) 2016, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -40,10 +40,10 @@ from django.http import Http404
 from django.shortcuts import get_object_or_404
 from django.utils.decorators import available_attrs
 
-from saas import settings
-from saas.models import (Charge, Organization, Plan, Signature, Subscription,
+from . import settings
+from .models import (Charge, Organization, Plan, Signature, Subscription,
     get_broker)
-from saas.utils import datetime_or_now
+from .utils import datetime_or_now, get_roles
 
 
 LOGGER = logging.getLogger(__name__)
@@ -56,10 +56,10 @@ WEAK = 0
 NORMAL = 1
 STRONG = 2
 
-def _valid_manager(user, candidates):
+def _valid_role(user, candidates, role=settings.MANAGER):
     """
-    Returns the subset of a queryset of ``Organization``, *candidates*
-    which have *user* as a manager.
+    Returns the subset of a set of ``Organization`` *candidates*
+    which have *user* listed with a role.
     """
     results = []
     if settings.SKIP_PERMISSION_CHECK:
@@ -71,13 +71,19 @@ def _valid_manager(user, candidates):
                        username, candidates)
         return candidates
     if user and user.is_authenticated():
-        try:
-            return candidates.filter(managers__id=user.id)
-        except AttributeError:
-            for candidate in candidates:
-                if candidate.managers.filter(id=user.id).exists():
-                    results += [candidate]
+        results = Organization.objects.filter(
+            pk__in=get_roles(role).filter(
+                user=user, organization__in=candidates).values(
+                'organization')).values('slug')
     return results
+
+
+def _valid_manager(user, candidates):
+    """
+    Returns the subset of a queryset of ``Organization``, *candidates*
+    which have *user* as a manager.
+    """
+    return _valid_role(user, candidates, role=settings.MANAGER)
 
 
 def _valid_contributor(user, candidates):
@@ -87,19 +93,8 @@ def _valid_contributor(user, candidates):
     as a manager. The second element contains organizations which have *user*
     as a contributor.
     """
-    contributed = []
     managed = _valid_manager(user, candidates)
-    if user and user.is_authenticated():
-        try:
-            contributed = candidates.exclude(managed).filter(
-                contributors__id=user.id)
-        except AttributeError:
-            for candidate in candidates:
-                if candidate in managed:
-                    continue
-                if (candidate.slug in settings.BYPASS_CONTRIBUTOR_CHECK
-                    or candidate.contributors.filter(id=user.id).exists()):
-                    contributed += [candidate]
+    contributed = _valid_role(user, candidates, role=settings.CONTRIBUTOR)
     return (managed, contributed)
 
 
@@ -134,7 +129,7 @@ def _has_valid_access(request, candidates, strength=NORMAL):
     Returns True if any candidate is accessible to the request user.
     """
     managed, contributed = _filter_valid_access(request, candidates, strength)
-    return len(managed + contributed) > 0
+    return len(managed) + len(contributed) > 0
 
 
 def _insert_url(request, redirect_field_name=REDIRECT_FIELD_NAME,

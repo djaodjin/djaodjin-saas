@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# Copyright (c) 2015, DjaoDjin inc.
+# Copyright (c) 2016, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -32,13 +32,15 @@ from django.template.defaultfilters import stringfilter
 from django.utils.safestring import mark_safe
 from django.utils.timezone import utc
 
-from saas.compat import User
-from saas.humanize import  as_money, as_html_description
-from saas.models import Organization, Subscription, Plan, get_broker
-from saas.decorators import fail_direct, _valid_manager
-from saas.utils import product_url as utils_product_url
+from .. import settings
+from ..humanize import  as_money, as_html_description
+from ..models import Organization, Subscription, Plan, get_broker
+from ..decorators import fail_direct, _valid_manager
+from ..utils import get_roles, product_url as utils_product_url
+
 
 register = template.Library()
+
 
 @register.filter()
 def discounted_period(plan, coupon):
@@ -147,19 +149,16 @@ def is_manager(request, organization):
         request.user, Organization.objects.filter(slug=organization))
 
 
-@register.filter
-def is_provider(organization): # XXX There is a field now.
-    return organization.plans.exists()
-
-
 @register.filter()
 def manages_subscriber_to(user, plan):
     """
     Returns ``True`` if the user is a manager for an organization
     subscribed to plan.
     """
-    return (user.is_authenticated()
-            and user.manages.filter(subscriptions__plan=plan).exists())
+    if not user.is_authenticated():
+        return False
+    return get_roles(settings.MANAGER).filter(
+        user=user, organization__subscriptions__plan=plan).exists()
 
 
 @register.filter(needs_autoescape=False)
@@ -182,21 +181,13 @@ def monthly_caption(last_date):
 
 
 @register.filter()
-def attached_manager(user):
+def attached_organization(user):
     """
     Returns the person ``Organization`` associated to the user or None
     in none can be reliably found.
     """
-    if isinstance(user, User):
-        username = user.username
-    elif isinstance(user, basestring):
-        username = user
-    else:
-        return None
-    queryset = Organization.objects.filter(slug=username)
-    if queryset.exists():
-        return queryset.get()
-    return None
+    return Organization.objects.attached(user)
+
 
 @register.filter()
 def products(subscriptions):
@@ -216,7 +207,7 @@ def products(subscriptions):
 def top_accessible_organizations(user):
     """
     Returns a queryset of the 8 most important organizations the user
-    is a manager for.
+    is a manager or contributor for.
     """
     return Organization.objects.accessible_by(user).filter(
         is_active=True)[:8]

@@ -1,4 +1,4 @@
-# Copyright (c) 2014, DjaoDjin inc.
+# Copyright (c) 2016, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -22,20 +22,19 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+#pylint: disable=no-name-in-module,unused-import
 
 try:
     from django.contrib.auth import get_user_model
 except ImportError: # django < 1.5
-    from django.contrib.auth.models import User #pylint: disable=unused-import
+    from django.contrib.auth.models import User
 else:
     User = get_user_model()                     #pylint: disable=invalid-name
 
 
 try:
-    #pylint: disable=no-name-in-module, unused-import
     from django.utils.module_loading import import_string
 except ImportError: # django < 1.7
-    #pylint: disable=unused-import
     from django.utils.module_loading import import_by_path as import_string
 
 
@@ -57,7 +56,6 @@ def get_model_class(full_name, settings_meta):
         from django.apps import apps
         model_class = apps.get_model(app_label, model_name)
     except ImportError: # django < 1.7
-        #pylint: disable=no-name-in-module
         from django.db.models import get_model
         model_class = get_model(app_label, model_name)
 

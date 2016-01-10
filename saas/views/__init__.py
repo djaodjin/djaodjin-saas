@@ -1,4 +1,4 @@
-# Copyright (c) 2015, DjaoDjin inc.
+# Copyright (c) 2016, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -37,9 +37,9 @@ from django.views.generic import RedirectView
 from django.views.generic.base import TemplateResponseMixin
 from django.views.generic.edit import FormMixin, ProcessFormView
 
-from saas.settings import ACCT_REGEX
-from saas.decorators import fail_direct
-from saas.models import CartItem, Coupon, Plan, Organization, get_broker
+from .. import settings
+from ..decorators import fail_direct
+from ..models import CartItem, Coupon, Plan, Organization, get_broker
 
 LOGGER = logging.getLogger(__name__)
 
@@ -100,7 +100,8 @@ class RedirectFormMixin(FormMixin):
             try:
                 # We replace all ':slug/' by '%(slug)s/' so that we can further
                 # create an instantiated url through Python string expansion.
-                next_url = re.sub(r':(%s)/' % ACCT_REGEX, r'%(\1)s/', next_url)
+                next_url = re.sub(r':(%s)/' % settings.ACCT_REGEX,
+                    r'%(\1)s/', next_url)
                 next_url = next_url % self.kwargs
             except KeyError:
                 # We don't have all keys necessary. A safe defaults is to remove
@@ -144,7 +145,7 @@ class OrganizationRedirectView(TemplateResponseMixin, RedirectView):
 
     def get(self, request, *args, **kwargs):
         session_cart_to_database(request)
-        managed = Organization.objects.find_managed(request.user)
+        managed = Organization.objects.with_role(request.user, settings.MANAGER)
         count = managed.count()
         if count == 0:
             return http.HttpResponseRedirect(

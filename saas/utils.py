@@ -1,4 +1,4 @@
-# Copyright (c) 2015, DjaoDjin inc.
+# Copyright (c) 2016, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -38,11 +38,28 @@ def datetime_or_now(dtime_at=None):
         dtime_at = dtime_at.replace(tzinfo=utc)
     return dtime_at
 
+
 def datetime_to_timestamp(dtime_at, epoch=None):
     if epoch is None:
         epoch = datetime.datetime(1970, 1, 1).replace(tzinfo=utc)
     diff = dtime_at - epoch
     return int(diff.total_seconds())
+
+
+def get_role_model(role_name):
+    from .compat import get_model_class
+    if role_name.endswith('s'):
+        role_name = role_name[:-1]
+    if role_name == settings.MANAGER:
+        return get_model_class(settings.MANAGER_RELATION, 'MANAGER_RELATION')
+    elif role_name == settings.CONTRIBUTOR:
+        return get_model_class(
+            settings.CONTRIBUTOR_RELATION, 'CONTRIBUTOR_RELATION')
+    raise ValueError("invalid role '%s'" % role_name)
+
+
+def get_roles(role_model, using=None):
+    return get_role_model(role_model).objects.db_manager(using=using).all()
 
 
 def validate_redirect_url(next_url):

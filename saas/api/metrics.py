@@ -1,4 +1,4 @@
-# Copyright (c) 2015, DjaoDjin inc.
+# Copyright (c) 2016, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -22,21 +22,20 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from django.db.models import Q
 from django.utils.dateparse import parse_datetime
 from rest_framework.views import APIView
 from rest_framework.generics import GenericAPIView, ListAPIView
 from rest_framework.response import Response
 
-from saas.compat import User
-from saas.mixins import OrganizationMixin, UserSmartListMixin
-from saas.models import Transaction, Organization, Plan
-from saas.utils import datetime_or_now
-from saas.managers.metrics import monthly_balances
-from saas.api.serializers import OrganizationSerializer, UserSerializer
-from saas.managers.metrics import (
-    aggregate_monthly, aggregate_monthly_transactions,
-    active_subscribers, churn_subscribers)
+from .. import settings
+from ..compat import User
+from ..mixins import OrganizationMixin, UserSmartListMixin
+from ..models import Transaction, Organization, Plan
+from ..utils import datetime_or_now, get_roles
+from ..managers.metrics import monthly_balances
+from .serializers import OrganizationSerializer, UserSerializer
+from ..managers.metrics import (active_subscribers, aggregate_monthly,
+    aggregate_monthly_transactions, active_subscribers, churn_subscribers)
 
 
 class BalancesAPIView(OrganizationMixin, APIView):
@@ -544,10 +543,21 @@ class RegisteredQuerysetMixin(OrganizationMixin):
         if ends_at:
             ends_at = parse_datetime(ends_at)
         ends_at = datetime_or_now(ends_at)
+        # We would really like to generate this SQL but Django
+        # and LEFT OUTER JOIN is a "complicated" relationship ...
+        #   SELECT DISTINCT * FROM User LEFT OUTER JOIN (
+        #     SELECT user_id FROM Role INNER JOIN Subscription
+        #       ON Role.organization_id = Subscription.organization_id
+        #       WHERE created_at < ends_at) AS RoleSubSet
+        #     ON User.id = RoleSubSet.user_id
+        #     WHERE user_id IS NULL;
         return User.objects.exclude(
-            Q(manages__subscription__created_at__lt=ends_at) |
-            Q(contributes__subscription__created_at__lt=ends_at)).order_by(
-                '-date_joined', 'last_name').distinct()
+            pk__in=get_roles(settings.MANAGER).filter(
+            organization__subscription__created_at__lt=ends_at).values(
+            'user')).exclude(
+            pk__in=get_roles(settings.CONTRIBUTOR).filter(
+            organization__subscription__created_at__lt=ends_at).values(
+            'user')).order_by('-date_joined', 'last_name').distinct()
 
 
 class RegisteredBaseAPIView(RegisteredQuerysetMixin, ListAPIView):

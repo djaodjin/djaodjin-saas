@@ -1,6 +1,6 @@
 #pylint: disable=too-many-lines
 
-# Copyright (c) 2015, DjaoDjin inc.
+# Copyright (c) 2016, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -56,13 +56,12 @@ from django.utils.timezone import utc
 from django.utils.translation import ugettext_lazy as _
 from django_countries.fields import CountryField
 
-from saas import settings
-from saas import signals
-from saas import get_manager_relation_model, get_contributor_relation_model
-from saas.backends import get_processor_backend, ProcessorError, CardError
-from saas.utils import datetime_or_now, generate_random_slug
+from . import settings, signals
+from .backends import get_processor_backend, ProcessorError, CardError
+from .utils import (datetime_or_now, get_roles, get_role_model,
+    generate_random_slug)
 
-from saas.humanize import (as_money, describe_buy_periods,
+from .humanize import (as_money, describe_buy_periods,
     DESCRIBE_BUY_PERIODS, DESCRIBE_BALANCE,
     DESCRIBE_CHARGED_CARD, DESCRIBE_CHARGED_CARD_PROCESSOR,
     DESCRIBE_CHARGED_CARD_PROVIDER, DESCRIBE_CHARGED_CARD_REFUND,
@@ -97,6 +96,23 @@ class OrganizationManager(models.Manager):
             slug=name, billing_start=billing_start)
         return customer
 
+    def attached(self, user):
+        """
+        Returns the person ``Organization`` associated to the user or None
+        in none can be reliably found.
+        """
+        from .compat import User
+        if isinstance(user, User):
+            username = user.username
+        elif isinstance(user, basestring):
+            username = user
+        else:
+            return None
+        queryset = self.filter(slug=username)
+        if queryset.exists():
+            return queryset.get()
+        return None
+
     def accessible_by(self, user):
         """
         Returns a QuerySet of Organziation which *user* either has
@@ -105,12 +121,11 @@ class OrganizationManager(models.Manager):
         When *user* is a string instead of a ``User`` instance, it will
         be interpreted as a username.
         """
-        if isinstance(user, basestring):
-            results = self.filter(Q(managers__username=user)
-                | Q(contributors__username=user))
-        else:
-            results = self.filter(Q(managers__pk=user.pk)
-                | Q(contributors__pk=user.pk))
+        # Two ``with_role`` in sequence.
+        # XXX should move to a custom queryset.
+        results = self.with_role(user, settings.MANAGER).filter(
+            pk__in=get_roles(settings.CONTRIBUTOR).filter(
+            user=user).values('organization').distinct())
         # Django will generate a SQL query that looks like:
         # FROM saas_organization
         #   LEFT OUTER JOIN saas_organization_managers
@@ -118,22 +133,16 @@ class OrganizationManager(models.Manager):
         # Hence we need the ``distinct`` here.
         return results.distinct()
 
-    def find_contributed(self, user):
+    def with_role(self, user, role_name):
         """
-        Returns a QuerySet of Organziation for which the user is a contributor.
+        Returns a QuerySet of Organziation for which *user* has a *role_name*.
         """
-        return self.filter(contributors__id=user.id)
-
-    def find_managed(self, user):
-        """
-        Returns a QuerySet of Organziation for which *user* is a manager.
-
-        When *user* is a string instead of a ``User`` instance, it will
-        be interpreted as a username.
-        """
-        if isinstance(user, str):
-            return self.filter(managers__username=user)
-        return self.filter(managers__pk=user.pk)
+        from .compat import User
+        if not isinstance(user, User):
+            user = User.objects.get(username=user)
+        return self.filter(
+            pk__in=get_roles(role_name).filter(user=user).values(
+                'organization').distinct())
 
     def providers(self, subscriptions):
         """
@@ -158,25 +167,26 @@ class OrganizationManager(models.Manager):
             organization=organization))
 
 
-class Organization_Managers(models.Model): #pylint: disable=invalid-name
+class OrganizationRole(models.Model):
 
     organization = models.ForeignKey('Organization')
     user = models.ForeignKey(settings.AUTH_USER_MODEL, db_column='user_id')
 
     class Meta:
         unique_together = ('organization', 'user')
+        abstract = True
 
     def __unicode__(self):
         return '%s-%s' % (unicode(self.organization), unicode(self.user))
 
 
-class Organization_Contributors(models.Model): #pylint: disable=invalid-name
+class Organization_Managers(OrganizationRole): #pylint: disable=invalid-name
 
-    organization = models.ForeignKey('Organization')
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, db_column='user_id')
+    def __unicode__(self):
+        return '%s-%s' % (unicode(self.organization), unicode(self.user))
 
-    class Meta:
-        unique_together = ('organization', 'user')
+
+class Organization_Contributors(OrganizationRole): #pylint: disable=invalid-name
 
     def __unicode__(self):
         return '%s-%s' % (unicode(self.organization), unicode(self.user))
@@ -206,7 +216,6 @@ class Organization(models.Model):
     email = models.EmailField(# XXX if we use unique=True here, the project
                               #     wizard must be changed.
     )
-
     # contact by phone
     phone = models.CharField(max_length=50)
     # contact by physical mail
@@ -215,12 +224,6 @@ class Organization(models.Model):
     region = models.CharField(max_length=50)
     postal_code = models.CharField(max_length=50)
     country = CountryField()
-
-    managers = models.ManyToManyField(settings.AUTH_USER_MODEL,
-        related_name='manages', through=settings.MANAGER_RELATION)
-
-    contributors = models.ManyToManyField(settings.AUTH_USER_MODEL,
-        related_name='contributes', through=settings.CONTRIBUTOR_RELATION)
 
     # Payment Processing
     # We could support multiple payment processors at the same time by
@@ -308,37 +311,49 @@ class Organization(models.Model):
             self._processor_backend = get_processor_backend(self)
         return self._processor_backend
 
-    def _add_relation(self, user, model, role, reason=None):
+    def add_role(self, user, role_name, at_time=None, reason=None):
+        """
+        Add user with a role to organization.
+        """
+        #pylint:disable=unused-argument
         # Implementation Note:
         # Django get_or_create will call router.db_for_write without
         # an instance so the using database will be lost. The following
         # code saves the relation in the correct database associated
         # with the organization.
-        queryset = model.objects.db_manager(using=self._state.db).filter(
+        queryset = get_roles(role_name, using=self._state.db).filter(
             organization=self, user=user)
         if not queryset.exists():
-            m2m = model(organization=self, user=user)
+            m2m = get_role_model(role_name)(organization=self, user=user)
             m2m.save(using=self._state.db, force_insert=True)
             signals.user_relation_added.send(sender=__name__,
-                organization=self, user=user, role=role, reason=reason)
+                organization=self, user=user, role=role_name, reason=reason)
             return True
         return False
-
-    def add_contributor(self, user, at_time=None, reason=None):
-        """
-        Add user as a contributor to organization.
-        """
-        #pylint: disable=unused-argument
-        return self._add_relation(user, get_contributor_relation_model(),
-            'contributor', reason=reason)
 
     def add_manager(self, user, at_time=None, reason=None):
         """
         Add user as a manager to organization.
         """
         #pylint: disable=unused-argument
-        return self._add_relation(user, get_manager_relation_model(),
-            'manager', reason=reason)
+        return self.add_role(user, settings.MANAGER,
+            at_time=at_time, reason=reason)
+
+    def remove_role(self, user, role_name):
+        """
+        Remove user as a *role_name* (ex: manager, contributor) to organization.
+        """
+        relation = get_roles(role_name).get(organization=self, user=user)
+        relation.delete()
+
+    def with_role(self, role_name):
+        """
+        Returns all users with a *role_name* to organization.
+        """
+        from .compat import User
+        return User.objects.filter(
+            pk__in=get_roles(role_name).filter(organization=self).values(
+                'user')).distinct()
 
     def update_bank(self, bank_token):
         self.processor_backend.create_or_update_bank(self, bank_token)
@@ -459,22 +474,6 @@ class Organization(models.Model):
                 claim_code=claim_codes[organization.email], user=user)
 
         return charge
-
-    def remove_contributor(self, user):
-        """
-        Remove user as a contributor to organization.
-        """
-        relation = get_contributor_relation_model().objects.get(
-            organization=self, user=user)
-        relation.delete()
-
-    def remove_manager(self, user):
-        """
-        Add user as a manager to organization.
-        """
-        relation = get_manager_relation_model().objects.get(
-            organization=self, user=user)
-        relation.delete()
 
     def retrieve_bank(self):
         """

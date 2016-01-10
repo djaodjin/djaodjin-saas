@@ -1,4 +1,4 @@
-# Copyright (c) 2015, DjaoDjin inc.
+# Copyright (c) 2016, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -29,10 +29,11 @@ from django.views.generic.base import ContextMixin
 from django.views.generic.detail import SingleObjectMixin
 from extra_views.contrib.mixins import SearchableListMixin, SortableListMixin
 
-from saas.compat import User
-from saas.models import (CartItem, Charge, Coupon, Organization, Plan,
+from . import settings
+from .compat import User
+from .models import (CartItem, Charge, Coupon, Organization, Plan,
     Subscription, get_broker)
-from saas.utils import datetime_or_now
+from .utils import datetime_or_now, get_roles
 
 
 def get_charge_context(charge):
@@ -173,8 +174,11 @@ class OrganizationMixin(ContextMixin):
 
     @staticmethod
     def attached_manager(organization):
-        if organization.managers.count() == 1:
-            manager = organization.managers.first()
+        managers = User.objects.filter(
+            pk__in=get_roles(settings.MANAGER).filter(
+            organization=organization).values('user'))
+        if managers.count() == 1:
+            manager = managers.get()
             if organization.slug == manager.username:
                 return manager
         return None
@@ -407,7 +411,7 @@ class RelationMixin(OrganizationMixin, UserMixin):
     Returns a User-Organization relation from a URL.
     """
 
-    def get_object(self):
-        return get_object_or_404(self.get_model(),
+    def get_queryset(self):
+        return get_roles(self.kwargs.get('role')).filter(
             organization=self.get_organization(), user=self.get_user())
 
