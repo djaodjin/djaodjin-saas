@@ -23,6 +23,7 @@
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import dateutil
+from django.http import Http404
 from django.shortcuts import get_object_or_404
 from django.utils.dateparse import parse_datetime
 from django.views.generic.base import ContextMixin
@@ -415,3 +416,13 @@ class RelationMixin(OrganizationMixin, UserMixin):
         return get_roles(self.kwargs.get('role')).filter(
             organization=self.get_organization(), user=self.get_user())
 
+    def get_object(self):
+        # Since there is no lookup_field for relations, we must override
+        # ``get_object``.
+        queryset = self.get_queryset()
+        try:
+            return queryset.get()
+        except queryset.model.DoesNotExist:
+            #pylint:disable=protected-access
+            raise Http404('No %s matches the given query.'
+                % queryset.model._meta.object_name)
