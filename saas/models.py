@@ -124,7 +124,7 @@ class OrganizationManager(models.Manager):
         from .compat import User
         if not isinstance(user, User):
             user = User.objects.get(username=user)
-        return self.filter(pk__in=get_role_model().filter(
+        return self.filter(pk__in=get_role_model().objects.filter(
             user=user).values('organization')).distinct()
 
     def with_role(self, user, role_name):
