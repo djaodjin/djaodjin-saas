@@ -46,20 +46,16 @@ def datetime_to_timestamp(dtime_at, epoch=None):
     return int(diff.total_seconds())
 
 
-def get_role_model(role_name):
+def get_role_model():
     from .compat import get_model_class
+    return get_model_class(settings.ROLE_RELATION, 'ROLE_RELATION')
+
+
+def get_roles(role_name, using=None):
     if role_name.endswith('s'):
         role_name = role_name[:-1]
-    if role_name == settings.MANAGER:
-        return get_model_class(settings.MANAGER_RELATION, 'MANAGER_RELATION')
-    elif role_name == settings.CONTRIBUTOR:
-        return get_model_class(
-            settings.CONTRIBUTOR_RELATION, 'CONTRIBUTOR_RELATION')
-    raise ValueError("invalid role '%s'" % role_name)
-
-
-def get_roles(role_model, using=None):
-    return get_role_model(role_model).objects.db_manager(using=using).all()
+    return get_role_model().objects.db_manager(using=using).filter(
+        name=role_name)
 
 
 def validate_redirect_url(next_url):

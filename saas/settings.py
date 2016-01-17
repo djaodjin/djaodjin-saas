@@ -1,4 +1,4 @@
-# Copyright (c) 2015, DjaoDjin inc.
+# Copyright (c) 2016, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -31,8 +31,7 @@ from django.conf import settings
 
 _SETTINGS = {
     'CREDIT_ON_CREATE': 1000,
-    'CONTRIBUTOR_RELATION': 'saas.Organization_Contributors',
-    'MANAGER_RELATION': 'saas.Organization_Managers',
+    'ROLE_RELATION': 'saas.OrganizationRole',
     'PAGE_SIZE': 25,
     'PROCESSOR_BACKEND_CALLABLE': None,
     'PROCESSOR_HOOK_URL': 'api/postevent',
@@ -58,8 +57,7 @@ AUTH_USER_MODEL = getattr(
 
 BYPASS_CONTRIBUTOR_CHECK = _SETTINGS.get('BYPASS_CONTRIBUTOR_CHECK')
 CREDIT_ON_CREATE = _SETTINGS.get('CREDIT_ON_CREATE')
-CONTRIBUTOR_RELATION = _SETTINGS.get('CONTRIBUTOR_RELATION')
-MANAGER_RELATION = _SETTINGS.get('MANAGER_RELATION')
+ROLE_RELATION = _SETTINGS.get('ROLE_RELATION')
 PAGE_SIZE = _SETTINGS.get('PAGE_SIZE')
 PROCESSOR_BACKEND_CALLABLE = _SETTINGS.get('PROCESSOR_BACKEND_CALLABLE')
 PROCESSOR_HOOK_URL = _SETTINGS.get('PROCESSOR_HOOK_URL')

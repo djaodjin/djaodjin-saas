@@ -115,23 +115,17 @@ class OrganizationManager(models.Manager):
 
     def accessible_by(self, user):
         """
-        Returns a QuerySet of Organziation which *user* either has
-        a manager or contributor relation to.
+        Returns a QuerySet of Organziation which *user* has an associated
+        role with.
 
         When *user* is a string instead of a ``User`` instance, it will
         be interpreted as a username.
         """
-        # Two ``with_role`` in sequence.
-        # XXX should move to a custom queryset.
-        results = self.with_role(user, settings.MANAGER).filter(
-            pk__in=get_roles(settings.CONTRIBUTOR).filter(
-            user=user).values('organization').distinct())
-        # Django will generate a SQL query that looks like:
-        # FROM saas_organization
-        #   LEFT OUTER JOIN saas_organization_managers
-        #   LEFT OUTER JOIN saas_organization_contributors
-        # Hence we need the ``distinct`` here.
-        return results.distinct()
+        from .compat import User
+        if not isinstance(user, User):
+            user = User.objects.get(username=user)
+        return self.filter(pk__in=get_role_model().filter(
+            user=user).values('organization')).distinct()
 
     def with_role(self, user, role_name):
         """
@@ -171,25 +165,14 @@ class OrganizationRole(models.Model):
 
     organization = models.ForeignKey('Organization')
     user = models.ForeignKey(settings.AUTH_USER_MODEL, db_column='user_id')
+    name = models.CharField(max_length=20)
 
     class Meta:
-        unique_together = ('organization', 'user')
-        abstract = True
+        unique_together = ('name', 'organization', 'user')
 
     def __unicode__(self):
-        return '%s-%s' % (unicode(self.organization), unicode(self.user))
-
-
-class Organization_Managers(OrganizationRole): #pylint: disable=invalid-name
-
-    def __unicode__(self):
-        return '%s-%s' % (unicode(self.organization), unicode(self.user))
-
-
-class Organization_Contributors(OrganizationRole): #pylint: disable=invalid-name
-
-    def __unicode__(self):
-        return '%s-%s' % (unicode(self.organization), unicode(self.user))
+        return '%s-%s-%s' % (
+            self.name, unicode(self.organization), unicode(self.user))
 
 
 class Organization(models.Model):
@@ -321,10 +304,12 @@ class Organization(models.Model):
         # an instance so the using database will be lost. The following
         # code saves the relation in the correct database associated
         # with the organization.
+        if role_name.endswith('s'):
+            role_name = role_name[:-1]
         queryset = get_roles(role_name, using=self._state.db).filter(
             organization=self, user=user)
         if not queryset.exists():
-            m2m = get_role_model(role_name)(organization=self, user=user)
+            m2m = get_role_model()(organization=self, user=user, name=role_name)
             m2m.save(using=self._state.db, force_insert=True)
             signals.user_relation_added.send(sender=__name__,
                 organization=self, user=user, role=role_name, reason=reason)
@@ -1179,6 +1164,7 @@ class Charge(models.Model):
         """
         self.processor_backend.retrieve_charge(self)
         return self
+
 
 class ChargeItem(models.Model):
     """

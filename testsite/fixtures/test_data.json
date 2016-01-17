@@ -101,10 +101,11 @@
 },
 {
     "fields":{
+      "name": "manager",
       "organization": 2,
       "user": 2
     },
-    "model": "saas.organization_managers", "pk": 2
+    "model": "saas.OrganizationRole", "pk": 2
 },
 {
     "fields": {

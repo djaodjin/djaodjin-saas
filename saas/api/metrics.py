@@ -27,11 +27,10 @@ from rest_framework.views import APIView
 from rest_framework.generics import GenericAPIView, ListAPIView
 from rest_framework.response import Response
 
-from .. import settings
 from ..compat import User
 from ..mixins import OrganizationMixin, UserSmartListMixin
 from ..models import Transaction, Organization, Plan
-from ..utils import datetime_or_now, get_roles
+from ..utils import datetime_or_now, get_role_model
 from ..managers.metrics import monthly_balances
 from .serializers import OrganizationSerializer, UserSerializer
 from ..managers.metrics import (active_subscribers, aggregate_monthly,
@@ -551,11 +550,7 @@ class RegisteredQuerysetMixin(OrganizationMixin):
         #       WHERE created_at < ends_at) AS RoleSubSet
         #     ON User.id = RoleSubSet.user_id
         #     WHERE user_id IS NULL;
-        return User.objects.exclude(
-            pk__in=get_roles(settings.MANAGER).filter(
-            organization__subscription__created_at__lt=ends_at).values(
-            'user')).exclude(
-            pk__in=get_roles(settings.CONTRIBUTOR).filter(
+        return User.objects.exclude(pk__in=get_role_model().objects.filter(
             organization__subscription__created_at__lt=ends_at).values(
             'user')).order_by('-date_joined', 'last_name').distinct()
 

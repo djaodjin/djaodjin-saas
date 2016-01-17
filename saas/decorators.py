@@ -93,9 +93,7 @@ def _valid_contributor(user, candidates):
     as a manager. The second element contains organizations which have *user*
     as a contributor.
     """
-    managed = _valid_manager(user, candidates)
-    contributed = _valid_role(user, candidates, role=settings.CONTRIBUTOR)
-    return (managed, contributed)
+    return _valid_role(user, candidates, role=settings.CONTRIBUTOR)
 
 
 def _filter_valid_access(request, candidates, strength=NORMAL):
@@ -111,16 +109,13 @@ def _filter_valid_access(request, candidates, strength=NORMAL):
     """
     managed = []
     contributed = []
+    managed = _valid_manager(request.user, candidates)
     if request.method == "GET":
-        if strength == STRONG:
-            managed = _valid_manager(request.user, candidates)
-        else:
-            managed, contributed = _valid_contributor(request.user, candidates)
+        if strength != STRONG:
+            contributed = _valid_contributor(request.user, candidates)
     else:
         if strength == WEAK:
-            managed, contributed = _valid_contributor(request.user, candidates)
-        else:
-            managed = _valid_manager(request.user, candidates)
+            contributed = _valid_contributor(request.user, candidates)
     return managed, contributed
 
 
