@@ -31,7 +31,7 @@ from django.conf import settings
 
 _SETTINGS = {
     'CREDIT_ON_CREATE': 1000,
-    'ROLE_RELATION': 'saas.OrganizationRole',
+    'ROLE_RELATION': 'saas.Role',
     'PAGE_SIZE': 25,
     'PROCESSOR_BACKEND_CALLABLE': None,
     'PROCESSOR_HOOK_URL': 'api/postevent',

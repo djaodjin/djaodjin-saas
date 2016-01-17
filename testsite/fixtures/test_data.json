@@ -105,7 +105,7 @@
       "organization": 2,
       "user": 2
     },
-    "model": "saas.OrganizationRole", "pk": 2
+    "model": "saas.Role", "pk": 2
 },
 {
     "fields": {

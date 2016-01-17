@@ -161,20 +161,6 @@ class OrganizationManager(models.Manager):
             organization=organization))
 
 
-class OrganizationRole(models.Model):
-
-    organization = models.ForeignKey('Organization')
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, db_column='user_id')
-    name = models.CharField(max_length=20)
-
-    class Meta:
-        unique_together = ('name', 'organization', 'user')
-
-    def __unicode__(self):
-        return '%s-%s-%s' % (
-            self.name, unicode(self.organization), unicode(self.user))
-
-
 class Organization(models.Model):
     """
     The Organization table stores information about who gets
@@ -589,6 +575,20 @@ class Organization(models.Model):
                 orig_organization=self)
         self.funds_balance -= fee_amount
         self.save()
+
+
+class Role(models.Model):
+
+    organization = models.ForeignKey(Organization)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, db_column='user_id')
+    name = models.CharField(max_length=20)
+
+    class Meta:
+        unique_together = ('name', 'organization', 'user')
+
+    def __unicode__(self):
+        return '%s-%s-%s' % (
+            self.name, unicode(self.organization), unicode(self.user))
 
 
 class Agreement(models.Model):
