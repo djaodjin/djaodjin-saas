@@ -31,11 +31,15 @@ except ImportError: # django < 1.5
 else:
     User = get_user_model()                     #pylint: disable=invalid-name
 
-
 try:
     from django.utils.module_loading import import_string
 except ImportError: # django < 1.7
     from django.utils.module_loading import import_by_path as import_string
+
+try:
+    from django.template.context_processors import csrf
+except ImportError: # django < 1.8
+    from django.core.context_processors import csrf
 
 
 def get_model_class(full_name, settings_meta):

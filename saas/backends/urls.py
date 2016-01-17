@@ -1,4 +1,4 @@
-# Copyright (c) 2015, DjaoDjin inc.
+# Copyright (c) 2016, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -22,17 +22,17 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from django.conf.urls import patterns, url
+from django.conf.urls import url
 
 from saas.backends.stripe_processor_hook import processor_hook
 from saas.backends.stripe_processor_views import StripeProcessorRedirectView
 from saas.settings import PROCESSOR_HOOK_URL
 
-urlpatterns = patterns('saas.backends',
+urlpatterns = [
     url(r'^billing/connected/',
         StripeProcessorRedirectView.as_view(
             pattern_name='saas_update_bank'),
         name='saas_processor_connected_hook'),
     url(r'^%s' % PROCESSOR_HOOK_URL,
         processor_hook, name='saas_processor_hook')
-)
+]

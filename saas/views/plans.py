@@ -24,13 +24,13 @@
 
 from django import forms
 from django.contrib import messages
-from django.core.context_processors import csrf
 from django.core.urlresolvers import reverse, reverse_lazy
 from django.http import HttpResponseRedirect
 from django.views.generic import CreateView, ListView, UpdateView
 from django.views.generic.detail import SingleObjectMixin
 
 from . import RedirectFormMixin
+from ..compat import csrf
 from ..forms import PlanForm
 from ..mixins import CartMixin, OrganizationMixin, ProviderMixin
 from ..models import CartItem, Coupon, Plan
