@@ -30,8 +30,8 @@ from django.conf.urls import url
 
 from saas.settings import ACCT_REGEX
 from saas.views import ProviderRedirectView
-from saas.views.billing import (BankUpdateView, CouponListView,
-    ImportTransactionsView, TransferListView, WithdrawView)
+from saas.views.billing import (BankAuthorizeView, BankDeAuthorizeView,
+    CouponListView, ImportTransactionsView, TransferListView, WithdrawView)
 
 urlpatterns = [
     url(r'^billing/bank/', ProviderRedirectView.as_view(
@@ -46,8 +46,10 @@ urlpatterns = [
     url(r'^billing/withdraw/', ProviderRedirectView.as_view(
         pattern_name='saas_withdraw_funds'),
         name='saas_provider_withdraw_funds'),
+    url(r'^billing/(?P<organization>%s)/bank/deauthorize/' % ACCT_REGEX,
+        BankDeAuthorizeView.as_view(), name='saas_deauthorize_bank'),
     url(r'^billing/(?P<organization>%s)/bank/' % ACCT_REGEX,
-        BankUpdateView.as_view(), name='saas_update_bank'),
+        BankAuthorizeView.as_view(), name='saas_update_bank'),
     url(r'^billing/(?P<organization>%s)/coupons/' % ACCT_REGEX,
         CouponListView.as_view(), name='saas_coupon_list'),
     url(r'^billing/(?P<organization>%s)/import/' % ACCT_REGEX,

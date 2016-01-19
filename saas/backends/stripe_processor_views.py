@@ -23,8 +23,6 @@
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 from django.views.generic import RedirectView
-#pylint:disable=no-name-in-module,import-error
-from django.utils.six.moves.urllib.parse import urljoin
 
 from saas import settings
 
@@ -38,17 +36,20 @@ class StripeProcessorRedirectView(RedirectView):
     query_string = True
 
     def get_redirect_url(self, *args, **kwargs):
-        url = super(StripeProcessorRedirectView, self).get_redirect_url(
-            *args, **kwargs)
         if settings.PROCESSOR_REDIRECT_CALLABLE:
             from saas.compat import import_string
             func = import_string(settings.PROCESSOR_REDIRECT_CALLABLE)
-            redirect_url_end_point = func(self.request,
-                location='', site=kwargs.get(self.slug_url_kwarg))
-            url = urljoin(redirect_url_end_point, url)
+            url = func(self.request, site=kwargs.get(self.slug_url_kwarg))
+            args = self.request.META.get('QUERY_STRING', '')
+            if args and self.query_string:
+                url = "%s?%s" % (url, args)
+        else:
+            url = super(StripeProcessorRedirectView, self).get_redirect_url(
+                *args, **kwargs)
         return url
 
     def get(self, request, *args, **kwargs):
+        self.permanent = False # XXX seems necessary...
         provider = request.GET.get('state', None)
         kwargs.update({self.slug_url_kwarg: provider})
         return super(StripeProcessorRedirectView, self).get(

@@ -58,6 +58,7 @@
         },
 
         stripeCreateToken: function(event) {
+            event.preventDefault();
             var self = this;
             var submitButton = self.element.find("[type='submit']");
             // disable the submit button to prevent repeated clicks
@@ -65,7 +66,7 @@
             var valid = true;
             var errorMessages = "";
 
-            var countryElement = self.element.find("name=['country']");
+            var countryElement = self.element.find("[name='country']");
             var country = countryElement.val();
             if( country === "" ) {
                 if( errorMessages ) { errorMessages += ", "; }
@@ -73,7 +74,6 @@
                 countryElement.parents(".form-group").addClass("has-error");
                 valid = false;
             }
-
             /* BE CAREFULL: Do not add name="" to these <input> nodes,
                else they will hit our server and break PCI compliance. */
             var accountNumberElement = self.element.find("#account-number");

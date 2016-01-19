@@ -127,6 +127,38 @@ class CardFormMixin(OrganizationMixin):
 
 
 class BankUpdateView(BankMixin, UpdateView):
+
+    form_class = BankForm
+    template_name = 'saas/billing/bank.html'
+
+    def get_context_data(self, **kwargs):
+        context = super(BankUpdateView, self).get_context_data(**kwargs)
+        context.update({'STRIPE_CLIENT_ID': settings.STRIPE_CLIENT_ID})
+        return context
+
+    def get_object(self, queryset=None):
+        return self.get_organization()
+
+    def get_success_url(self):
+        messages.success(self.request,
+            "Connection to your deposit account was successfully updated.")
+        redirect_path = validate_redirect_url(
+            self.request.GET.get(REDIRECT_FIELD_NAME, None))
+        if redirect_path:
+            return redirect_path
+        return reverse('saas_transfer_info', kwargs=self.get_url_kwargs())
+
+
+class BankDeAuthorizeView(BankUpdateView):
+    """
+    Removes access to deposit funds into the bank account.
+    """
+    def form_valid(self, form):
+        self.object.update_bank(None)
+        return super(BankDeAuthorizeView, self).form_valid(form)
+
+
+class BankAuthorizeView(BankUpdateView):
     """
     Update the authentication tokens to connect to the deposit account
     handled by the processor or bank information used to transfer funds
@@ -144,16 +176,6 @@ djaodjin-saas/tree/master/saas/templates/saas/billing/bank.html>`__).
       - ``organization`` The provider of the plan
       - ``request`` The HTTP request object
     """
-    form_class = BankForm
-    template_name = 'saas/billing/bank.html'
-
-    def get_context_data(self, **kwargs):
-        context = super(BankUpdateView, self).get_context_data(**kwargs)
-        context.update({'STRIPE_CLIENT_ID': settings.STRIPE_CLIENT_ID})
-        return context
-
-    def get_object(self, queryset=None):
-        return self.get_organization()
 
     def form_valid(self, form):
         stripe_token = form.cleaned_data['stripeToken']
@@ -163,16 +185,8 @@ djaodjin-saas/tree/master/saas/templates/saas/billing/bank.html>`__).
         # Since all fields are optional, we cannot assume the card token
         # will be present (i.e. in case of erroneous POST request).
         self.object.update_bank(stripe_token)
-        return super(BankUpdateView, self).form_valid(form)
+        return super(BankAuthorizeView, self).form_valid(form)
 
-    def get_success_url(self):
-        redirect_path = validate_redirect_url(
-            self.request.GET.get(REDIRECT_FIELD_NAME, None))
-        if redirect_path:
-            return redirect_path
-        messages.success(self.request,
-            "Connection to your deposit account was successfully updated")
-        return reverse('saas_transfer_info', kwargs=self.get_url_kwargs())
 
     def get(self, request, *args, **kwargs):
         error = self.request.GET.get('error', None)
@@ -182,11 +196,14 @@ djaodjin-saas/tree/master/saas/templates/saas/billing/bank.html>`__).
         else:
             auth_code = request.GET.get('code', None)
             if auth_code:
+                self.object = self.get_object()
                 self.object.processor_backend.connect_auth(
                     self.object, auth_code)
+                self.object.save()
                 messages.success(self.request,
                   "Connection to your deposit account was successfully updated")
-        return super(BankUpdateView, self).get(request, *args, **kwargs)
+                # XXX maybe redirect to same page here to remove query params.
+        return super(BankAuthorizeView, self).get(request, *args, **kwargs)
 
 
 class InvoicablesFormMixin(OrganizationMixin):

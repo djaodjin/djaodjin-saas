@@ -44,7 +44,7 @@ def get_charge_context(charge):
     context = {'charge': charge,
                'charge_items': charge.line_items,
                'organization': charge.customer,
-               'provider': charge.provider}
+               'provider': charge.broker} # XXX update templates
     return context
 
 

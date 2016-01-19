@@ -206,12 +206,12 @@ class Organization(models.Model):
         help_text="Funds escrowed in cents")
     processor = models.ForeignKey('Organization', related_name='processes')
     processor_card_key = models.CharField(null=True, blank=True, max_length=20)
-    processor_deposit_key = models.CharField(max_length=40, null=True,
+    processor_deposit_key = models.CharField(max_length=60, null=True,
         blank=True,
         help_text=_("Used to deposit funds to the organization bank account"))
-    processor_priv_key = models.CharField(max_length=40, null=True, blank=True)
-    processor_pub_key = models.CharField(max_length=40, null=True, blank=True)
-    processor_refresh_token = models.CharField(max_length=40, null=True,
+    processor_priv_key = models.CharField(max_length=60, null=True, blank=True)
+    processor_pub_key = models.CharField(max_length=60, null=True, blank=True)
+    processor_refresh_token = models.CharField(max_length=60, null=True,
         blank=True)
 
     def __unicode__(self):
@@ -327,13 +327,22 @@ class Organization(models.Model):
                 'user')).distinct()
 
     def update_bank(self, bank_token):
-        self.processor_backend.create_or_update_bank(self, bank_token)
-        LOGGER.info('Updated bank information for %s on processor '\
-            '{"processor_deposit_key": %s}', self, self.processor_deposit_key)
+        if bank_token is None:
+            self.processor_deposit_key = None
+            self.processor_priv_key = None
+            self.processor_pub_key = None
+            self.processor_refresh_token = None
+            self.save()
+        else:
+            self.processor_backend.update_bank(self, bank_token)
+            LOGGER.info('Updated bank information for %s on processor '\
+                '{"processor_deposit_key": %s}',
+                self, self.processor_deposit_key)
         signals.bank_updated.send(self)
 
     def update_card(self, card_token, user):
-        self.processor_backend.create_or_update_card(self, card_token, user)
+        self.processor_backend.create_or_update_card(
+            self, card_token, user=user, broker=get_broker())
         LOGGER.info('Updated card information for %s on processor '\
             '{"processor_card_key": %s}', self, self.processor_card_key)
 
@@ -464,7 +473,7 @@ class Organization(models.Model):
         """
         Returns associated credit card.
         """
-        return self.processor_backend.retrieve_card(self)
+        return self.processor_backend.retrieve_card(self, broker=get_broker())
 
     def withdraw_available(self):
         balance = Transaction.objects.get_organization_balance(self)
@@ -483,7 +492,7 @@ class Organization(models.Model):
         reconcile with the withdrawals that happened in the processor
         backend.
         """
-        self.processor_backend.reconcile_transfers(self)
+        self.processor_backend.reconcile_transfers(get_broker(), self)
         return Transaction.objects.by_organization(self)
 
     def withdraw_funds(self, amount, user, created_at=None):
@@ -520,7 +529,7 @@ class Organization(models.Model):
         # exception will be raised before we attempt to store
         # the ``Transaction``.
         processor_transfer_id, _ = self.processor_backend.create_transfer(
-            self, amount, funds_unit, descr)
+            get_broker(), self, amount, funds_unit, descr)
         self.create_withdraw_transactions(
             processor_transfer_id, amount, funds_unit, descr,
             created_at=created_at)
@@ -648,13 +657,13 @@ class ChargeManager(models.Manager):
 
     def create_charge(self, customer, transactions, amount, unit,
                       processor, processor_charge_id, last4, exp_date,
-                      descr=None, created_at=None):
+                      broker, descr=None, created_at=None):
         #pylint: disable=too-many-arguments
         created_at = datetime_or_now(created_at)
         with transaction.atomic():
             charge = self.create(
                 processor=processor, processor_key=processor_charge_id,
-                amount=amount, unit=unit,
+                broker=broker, amount=amount, unit=unit,
                 created_at=created_at, description=descr,
                 customer=customer, last4=last4, exp_date=exp_date)
             for invoiced in transactions:
@@ -693,7 +702,8 @@ class ChargeManager(models.Manager):
         unit = balance['unit']
         if amount == 0:
             return None
-        provider = Transaction.objects.provider(transactions)
+        broker = get_broker()
+        provider = broker # XXX Do not support marketplaces for now.
         processor = provider.processor
         processor_backend = provider.processor_backend
         descr = DESCRIBE_CHARGED_CARD % {
@@ -703,26 +713,29 @@ class ChargeManager(models.Manager):
         try:
             if token:
                 if remember_card:
-                    customer.update_card(card_token=token, user=user)
+                    customer.update_card(token, user)
                     (processor_charge_id, created_at,
                      last4, exp_date) = processor_backend.create_charge(
-                         customer, amount, unit, provider=provider, descr=descr)
+                         customer, amount, unit,
+                         broker=broker, provider=provider, descr=descr)
                 else:
                     (processor_charge_id, created_at,
                      last4, exp_date) = processor_backend.create_charge_on_card(
-                        token, amount, unit, provider=provider, descr=descr)
+                         token, amount, unit,
+                         broker=broker, provider=provider, descr=descr)
             else:
                 # XXX A card must already be attached to the customer.
                 (processor_charge_id, created_at,
                  last4, exp_date) = processor_backend.create_charge(
-                     customer, amount, unit, provider=provider, descr=descr)
+                     customer, amount, unit,
+                     broker=broker, provider=provider, descr=descr)
             # Create record of the charge in our database
             descr = DESCRIBE_CHARGED_CARD % {'charge': processor_charge_id,
                 'organization': customer.printable_name}
             if user:
                 descr += ' (%s)' % user.username
-            charge = self.create_charge(customer, transactions,
-                amount, unit, processor, processor_charge_id, last4, exp_date,
+            charge = self.create_charge(customer, transactions, amount, unit,
+                processor, processor_charge_id, last4, exp_date, broker,
                 descr=descr, created_at=created_at)
         except CardError as err:
             # Expected runtime error. We just log that the charge was declined.
@@ -767,6 +780,7 @@ class Charge(models.Model):
     last4 = models.PositiveSmallIntegerField()
     exp_date = models.DateField()
     processor = models.ForeignKey('Organization', related_name='charges')
+    broker = models.ForeignKey('Organization')
     processor_key = models.SlugField(unique=True, db_index=True)
     state = models.PositiveSmallIntegerField(
         choices=CHARGE_STATES, default=CREATED)
@@ -790,7 +804,8 @@ class Charge(models.Model):
     @property
     def processor_backend(self):
         if not hasattr(self, '_processor_backend'):
-            self._processor_backend = self.provider.processor_backend
+            #pylint:disable=no-member
+            self._processor_backend = self.broker.processor_backend
         return self._processor_backend
 
     @property
@@ -1100,17 +1115,6 @@ class Charge(models.Model):
 
         signals.charge_updated.send(sender=__name__, charge=self, user=None)
         return charge_transaction
-
-    @property
-    def provider(self):
-        """
-        If all the invoiced items on this charge are related to the same
-        provider, returns that ``Organization`` otherwise returns the site
-        owner.
-        """
-        #pylint: disable=no-member
-        return Transaction.objects.provider([charge_item.invoiced
-                         for charge_item in self.charge_items.all()])
 
     def refund(self, linenum, refunded_amount=None, created_at=None):
         # XXX We donot currently supply a *description* for the refund.
