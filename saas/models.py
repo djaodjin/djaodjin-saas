@@ -704,7 +704,7 @@ class ChargeManager(models.Manager):
             return None
         providers = Transaction.objects.providers(transactions)
         if len(providers) == 1:
-            broker = providers[1]
+            broker = providers[0]
         else:
             broker = get_broker()
         processor = broker.processor
@@ -859,7 +859,9 @@ class Charge(models.Model):
         providers = Transaction.objects.providers([charge_item.invoiced
             for charge_item in self.charge_items.all()])
         assert len(providers) <= 1
-        return providers[1]
+        if len(providers) == 0:
+            return []
+        return providers[0]
 
     def dispute_created(self):
         #pylint: disable=too-many-locals
@@ -2580,7 +2582,7 @@ class TransactionManager(models.Manager):
             event = invoiced_item.get_event()
             if event:
                 results |= set([event.provider])
-        return results
+        return list(results)
 
     @staticmethod
     def by_processor_key(invoiced_items):
