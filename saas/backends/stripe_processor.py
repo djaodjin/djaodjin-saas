@@ -23,7 +23,24 @@
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 """
-To configure the Stripe backend, follow the instructions
+The Stripe backend works in 3 different modes:
+
+  - ``LOCAL``
+  - ``FORMWARD``
+  - ``REMOTE``
+
+In LOCAL mode, Stripe Customer and Charge objects are created on the Stripe
+Account identified by settings.STRIPE_PRIV_KEY. All transfers are made to
+the bank account associated to that account.
+
+In FORWARD mode, Stripe Customer and Charge objects are also created on
+the Stripe Account identified by settings.STRIPE_PRIV_KEY but each
+Charge is tied automatically to a Stripe Transfer to a Stripe Connect Account.
+
+In REMOTE mode, Stripe Customer and Charge objects are created on
+the Stripe Connect Account.
+
+To configure Stripe Connect, follow the instructions
 at https://stripe.com/docs/connect,
 
 Go to "Account Settings" > "Connect"
@@ -50,15 +67,19 @@ LOGGER = logging.getLogger(__name__)
 
 class StripeBackend(object):
 
+    LOCAL = 0
+    FORWARD = 1
+    REMOTE = 2
+
     def __init__(self):
-        self.standalone = True
+        self.mode = self.LOCAL
         self.pub_key = settings.STRIPE_PUB_KEY
         self.priv_key = settings.STRIPE_PRIV_KEY
         self.client_id = settings.STRIPE_CLIENT_ID
 
     def _prepare_request(self, broker):
         stripe.api_key = self.priv_key
-        if self.standalone and broker and broker.processor_priv_key:
+        if self.mode == self.REMOTE:
             # We have a Standalone account.
             kwargs = {'stripe_account': broker.processor_deposit_key}
         else:
@@ -152,12 +173,12 @@ class StripeBackend(object):
         #pylint: disable=too-many-arguments
         assert customer is not None or card is not None
         kwargs = self._prepare_request(broker)
+        if self.mode == self.FORWARD:
+            kwargs.update({'destination': broker.processor_deposit_key})
         if customer is not None:
             kwargs.update({'customer': customer})
         elif card is not None:
             kwargs.update({'card': card})
-        if not broker.processor_priv_key:
-            kwargs.update({'destination': broker.processor_deposit_key})
         if stmt_descr is None and broker is not None:
             stmt_descr = broker.printable_name
         processor_charge = stripe.Charge.create(amount=amount, currency=unit,
@@ -195,12 +216,10 @@ class StripeBackend(object):
 
     def create_transfer(self, provider, amount, unit, descr=None):
         """
-        Transfer *amount* into the organization bank account.
+        Transfer *amount* from the platform into a provider bank account.
         """
-        # pylint:disable=too-many-arguments
-        # XXX Cannot create transfer anymore if not a platform?
-        # Work same as charge with destination?
-        kwargs = self._prepare_request(provider)
+        kwargs = self._prepare_request(None) # ``None`` because we can only
+                              # transfer from the platform to the provider.
         if not provider.processor_priv_key:
             # We have a deprecated recipient key.
             kwargs.update({'recipient': provider.processor_deposit_key})
@@ -217,8 +236,8 @@ class StripeBackend(object):
         """
         Create or update a bank account associated to a provider on Stripe.
         """
-        # XXX Can't do that without a recipient
-        kwargs = self._prepare_request(provider)
+        kwargs = self._prepare_request(None) # ``None`` because we can only
+                                  # edit bank details on a managed account.
         if not provider.processor_deposit_key:
             raise ValueError(
                 "%s is not connected to a Stripe Account." % provider)
@@ -289,7 +308,8 @@ class StripeBackend(object):
         processor_charge.refund(amount=amount)
 
     def retrieve_bank(self, provider):
-        kwargs = self._prepare_request(provider)
+        kwargs = self._prepare_request(None) # ``None`` because we can only
+                              # retrieve bank details on a managed account.
         context = {'STRIPE_PUB_KEY': self.pub_key}
         try:
             if provider.processor_deposit_key:
