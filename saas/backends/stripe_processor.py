@@ -147,7 +147,7 @@ class StripeBackend(object):
         organization.processor_refresh_token = data.get('refresh_token')
 
     def _create_charge(self, amount, unit,
-            broker=None, provider=None, descr=None, stmt_descr=None,
+            broker=None, descr=None, stmt_descr=None,
             customer=None, card=None):
         #pylint: disable=too-many-arguments
         assert customer is not None or card is not None
@@ -156,8 +156,8 @@ class StripeBackend(object):
             kwargs.update({'customer': customer})
         elif card is not None:
             kwargs.update({'card': card})
-        if broker != provider:
-            kwargs.update({'destination': provider.processor_deposit_key})
+        if not broker.processor_priv_key:
+            kwargs.update({'destination': broker.processor_deposit_key})
         if stmt_descr is None and broker is not None:
             stmt_descr = broker.printable_name
         processor_charge = stripe.Charge.create(amount=amount, currency=unit,
@@ -170,7 +170,7 @@ class StripeBackend(object):
                 datetime.date(exp_year, exp_month, 1))
 
     def create_charge(self, customer, amount, unit,
-                    broker=None, provider=None, descr=None, stmt_descr=None):
+                    broker=None, descr=None, stmt_descr=None):
         #pylint: disable=too-many-arguments
         """
         Create a charge on the default card associated to the customer.
@@ -178,12 +178,11 @@ class StripeBackend(object):
         *stmt_descr* can only be 15 characters maximum.
         """
         return self._create_charge(amount, unit,
-            broker=broker, provider=provider,
-            descr=descr, stmt_descr=stmt_descr,
+            broker=broker, descr=descr, stmt_descr=stmt_descr,
             customer=customer.processor_card_key)
 
     def create_charge_on_card(self, card, amount, unit,
-                    broker=None, provider=None, descr=None, stmt_descr=None):
+                    broker=None, descr=None, stmt_descr=None):
         #pylint: disable=too-many-arguments
         """
         Create a charge on a specified card.
@@ -191,18 +190,17 @@ class StripeBackend(object):
         *stmt_descr* can only be 15 characters maximum.
         """
         return self._create_charge(amount, unit,
-            broker=broker, provider=provider,
-            descr=descr, stmt_descr=stmt_descr,
+            broker=broker, descr=descr, stmt_descr=stmt_descr,
             card=card)
 
-    def create_transfer(self, broker, provider, amount, unit, descr=None):
+    def create_transfer(self, provider, amount, unit, descr=None):
         """
         Transfer *amount* into the organization bank account.
         """
         # pylint:disable=too-many-arguments
         # XXX Cannot create transfer anymore if not a platform?
         # Work same as charge with destination?
-        kwargs = self._prepare_request(broker)
+        kwargs = self._prepare_request(provider)
         if not provider.processor_priv_key:
             # We have a deprecated recipient key.
             kwargs.update({'recipient': provider.processor_deposit_key})
@@ -239,18 +237,18 @@ class StripeBackend(object):
         except stripe.error.InvalidRequestError:
             LOGGER.error("update_bank(%s, %s)", provider, bank_token)
 
-    def create_or_update_card(self, organization, card_token,
+    def create_or_update_card(self, subscriber, card_token,
                               user=None, broker=None):
         """
-        Create or update a card associated to an organization on Stripe.
+        Create or update a card associated to an subscriber on Stripe.
         """
         kwargs = self._prepare_request(broker)
         # Save customer on the platform
         p_customer = None
-        if organization.processor_card_key:
+        if subscriber.processor_card_key:
             try:
                 p_customer = stripe.Customer.retrieve(
-                    organization.processor_card_key, **kwargs)
+                    subscriber.processor_card_key, **kwargs)
                 old_card = {'last4':p_customer.cards.data[0].last4,
                     'exp':"%d/%d" % (
                         p_customer.cards.data[0].exp_month,
@@ -264,22 +262,22 @@ class StripeBackend(object):
                         p_customer.cards.data[0].exp_year)
                 }
                 signals.card_updated.send(
-                    sender=__name__, organization=organization,
+                    sender=__name__, organization=subscriber,
                     user=user, old_card=old_card, new_card=new_card)
             except stripe.error.InvalidRequestError:
                 # Can't find the customer on Stripe. This can be related to
                 # a switch from using devel to production keys.
                 # We will seamlessly create a new customer on Stripe.
                 LOGGER.warning("Retrieve customer %s on Stripe for %s",
-                    organization.processor_card_key, organization)
+                    subscriber.processor_card_key, subscriber)
         if not p_customer:
             p_customer = stripe.Customer.create(
-                email=organization.email,
-                description=organization.slug,
+                email=subscriber.email,
+                description=subscriber.slug,
                 card=card_token,
                 **kwargs)
-            organization.processor_card_key = p_customer.id
-            organization.save()
+            subscriber.processor_card_key = p_customer.id
+            subscriber.save()
 
     def refund_charge(self, charge, amount):
         """
@@ -321,14 +319,14 @@ class StripeBackend(object):
         context.update({'balance_amount': balance.available[0].amount})
         return context
 
-    def retrieve_card(self, organization, broker=None):
+    def retrieve_card(self, subscriber, broker=None):
         kwargs = self._prepare_request(broker)
         # Customer is saved on the platform
         context = {'STRIPE_PUB_KEY': self.pub_key}
-        if organization.processor_card_key:
+        if subscriber.processor_card_key:
             try:
                 p_customer = stripe.Customer.retrieve(
-                    organization.processor_card_key,
+                    subscriber.processor_card_key,
                     expand=['default_source'],
                     **kwargs)
             except stripe.error.StripeError as err:
@@ -352,12 +350,12 @@ class StripeBackend(object):
                 charge.payment_successful()
         return charge
 
-    def reconcile_transfers(self, broker, provider):
+    def reconcile_transfers(self, provider):
         if provider.processor_deposit_key:
             balance = provider.withdraw_available()
             timestamp = datetime_to_timestamp(balance['created_at'])
             try:
-                kwargs = self._prepare_request(broker)
+                kwargs = self._prepare_request(provider)
                 if not provider.processor_priv_key:
                     # We have a deprecated recipient key.
                     kwargs.update({'recipient': provider.processor_deposit_key})

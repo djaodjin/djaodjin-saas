@@ -492,7 +492,7 @@ class Organization(models.Model):
         reconcile with the withdrawals that happened in the processor
         backend.
         """
-        self.processor_backend.reconcile_transfers(get_broker(), self)
+        self.processor_backend.reconcile_transfers(self)
         return Transaction.objects.by_organization(self)
 
     def withdraw_funds(self, amount, user, created_at=None):
@@ -529,7 +529,7 @@ class Organization(models.Model):
         # exception will be raised before we attempt to store
         # the ``Transaction``.
         processor_transfer_id, _ = self.processor_backend.create_transfer(
-            get_broker(), self, amount, funds_unit, descr)
+            self, amount, funds_unit, descr)
         self.create_withdraw_transactions(
             processor_transfer_id, amount, funds_unit, descr,
             created_at=created_at)
@@ -657,13 +657,13 @@ class ChargeManager(models.Manager):
 
     def create_charge(self, customer, transactions, amount, unit,
                       processor, processor_charge_id, last4, exp_date,
-                      broker, descr=None, created_at=None):
+                      descr=None, created_at=None):
         #pylint: disable=too-many-arguments
         created_at = datetime_or_now(created_at)
         with transaction.atomic():
             charge = self.create(
                 processor=processor, processor_key=processor_charge_id,
-                broker=broker, amount=amount, unit=unit,
+                amount=amount, unit=unit,
                 created_at=created_at, description=descr,
                 customer=customer, last4=last4, exp_date=exp_date)
             for invoiced in transactions:
@@ -702,10 +702,13 @@ class ChargeManager(models.Manager):
         unit = balance['unit']
         if amount == 0:
             return None
-        broker = get_broker()
-        provider = broker # XXX Do not support marketplaces for now.
-        processor = provider.processor
-        processor_backend = provider.processor_backend
+        providers = Transaction.objects.providers(transactions)
+        if len(providers) == 1:
+            broker = providers[1]
+        else:
+            broker = get_broker()
+        processor = broker.processor
+        processor_backend = broker.processor_backend
         descr = DESCRIBE_CHARGED_CARD % {
             'charge': '', 'organization': customer.printable_name}
         if user:
@@ -717,25 +720,25 @@ class ChargeManager(models.Manager):
                     (processor_charge_id, created_at,
                      last4, exp_date) = processor_backend.create_charge(
                          customer, amount, unit,
-                         broker=broker, provider=provider, descr=descr)
+                         broker=broker, descr=descr)
                 else:
                     (processor_charge_id, created_at,
                      last4, exp_date) = processor_backend.create_charge_on_card(
                          token, amount, unit,
-                         broker=broker, provider=provider, descr=descr)
+                         broker=broker, descr=descr)
             else:
                 # XXX A card must already be attached to the customer.
                 (processor_charge_id, created_at,
                  last4, exp_date) = processor_backend.create_charge(
                      customer, amount, unit,
-                     broker=broker, provider=provider, descr=descr)
+                     broker=broker, descr=descr)
             # Create record of the charge in our database
             descr = DESCRIBE_CHARGED_CARD % {'charge': processor_charge_id,
                 'organization': customer.printable_name}
             if user:
                 descr += ' (%s)' % user.username
             charge = self.create_charge(customer, transactions, amount, unit,
-                processor, processor_charge_id, last4, exp_date, broker,
+                processor, processor_charge_id, last4, exp_date,
                 descr=descr, created_at=created_at)
         except CardError as err:
             # Expected runtime error. We just log that the charge was declined.
@@ -780,7 +783,6 @@ class Charge(models.Model):
     last4 = models.PositiveSmallIntegerField()
     exp_date = models.DateField()
     processor = models.ForeignKey('Organization', related_name='charges')
-    broker = models.ForeignKey('Organization')
     processor_key = models.SlugField(unique=True, db_index=True)
     state = models.PositiveSmallIntegerField(
         choices=CHARGE_STATES, default=CREATED)
@@ -846,6 +848,18 @@ class Charge(models.Model):
     def capture(self):
         # XXX Create transaction
         signals.charge_updated.send(sender=__name__, charge=self, user=None)
+
+    @property
+    def broker(self):
+        """
+        All the invoiced items on this charge must be related to the same
+        broker ``Organization``.
+        """
+        #pylint: disable=no-member
+        providers = Transaction.objects.providers([charge_item.invoiced
+            for charge_item in self.charge_items.all()])
+        assert len(providers) <= 1
+        return providers[1]
 
     def dispute_created(self):
         #pylint: disable=too-many-locals
@@ -2556,23 +2570,17 @@ class TransactionManager(models.Manager):
         return created_transactions
 
     @staticmethod
-    def provider(invoiced_items):
+    def providers(invoiced_items):
         """
         If all subscriptions referenced by *invoiced_items* are to the same
         provider, return it otherwise return the site owner.
         """
-        result = None
+        results = set([])
         for invoiced_item in invoiced_items:
             event = invoiced_item.get_event()
             if event:
-                if not result:
-                    result = event.provider
-                elif result != event.provider:
-                    result = get_broker()
-                    break
-        if not result:
-            result = get_broker()
-        return result
+                results |= set([event.provider])
+        return results
 
     @staticmethod
     def by_processor_key(invoiced_items):
