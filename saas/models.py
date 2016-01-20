@@ -2683,11 +2683,15 @@ class Transaction(models.Model):
         Returns the associated 'event' (Subscription, Coupon, etc)
         if available.
         """
-        try:
-            return Subscription.objects.get(id=self.event_id)
-        except ValueError:
-            if self.event_id.startswith('cpn_'):
+        if self.event_id:
+            try:
+                return Subscription.objects.get(id=self.event_id)
+            except (Subscription.DoesNotExist, ValueError):
+                pass
+            try:
                 return Coupon.objects.get(code=self.event_id)
+            except (Coupon.DoesNotExist, ValueError):
+                pass
         return None
 
 
