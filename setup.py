@@ -41,6 +41,7 @@ setup(
     install_requires=requirements,
     packages=['saas',
               'saas.backends',
+              'saas.backends.stripe_processor',
               'saas.management', # otherwise __init__.py is not installed
               'saas.management.commands',
               'saas.templatetags',
