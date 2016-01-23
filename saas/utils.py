@@ -39,9 +39,15 @@ def datetime_or_now(dtime_at=None):
     return dtime_at
 
 
-def datetime_to_timestamp(dtime_at, epoch=None):
+def utctimestamp_to_datetime(timestamp):
+    return datetime_or_now(datetime.datetime.utcfromtimestamp(timestamp))
+
+
+def datetime_to_utctimestamp(dtime_at, epoch=None):
     if epoch is None:
         epoch = datetime.datetime(1970, 1, 1).replace(tzinfo=utc)
+    if dtime_at is None:
+        dtime_at = epoch
     diff = dtime_at - epoch
     return int(diff.total_seconds())
 

@@ -460,13 +460,16 @@ class Organization(models.Model):
         Returns associated bank account as a dictionnary.
         """
         context = self.processor_backend.retrieve_bank(self)
-        processor_amount = context['balance_amount']
-        transfer_fee = self.processor_backend.prorate_transfer(processor_amount)
-        processor_amount -= transfer_fee
-        balance = self.withdraw_available()
-        context.update({
-            'balance_amount': min(balance['amount'], processor_amount)
-        })
+        processor_amount = context.get('balance_amount', 0)
+        balance = Transaction.objects.get_organization_balance(self)
+        available_amount = min(balance['amount'], processor_amount)
+        transfer_fee = self.processor_backend.prorate_transfer(
+            processor_amount, self)
+        if available_amount > transfer_fee:
+            available_amount -= transfer_fee
+        else:
+            available_amount = 0
+        context.update({'balance_amount': available_amount})
         return context
 
     def retrieve_card(self):
@@ -475,27 +478,36 @@ class Organization(models.Model):
         """
         return self.processor_backend.retrieve_card(self, broker=get_broker())
 
-    def withdraw_available(self):
-        balance = Transaction.objects.get_organization_balance(self)
-        available_amount = balance['amount']
-        transfer_fee = self.processor_backend.prorate_transfer(available_amount)
-        if available_amount > transfer_fee:
-            available_amount -= transfer_fee
-        else:
-            available_amount = 0
-        return {'amount': available_amount, 'unit': balance['unit'],
-            'created_at': balance['created_at']}
-
     def get_transfers(self):
         """
         Returns a ``QuerySet`` of ``Transaction`` after it has been
         reconcile with the withdrawals that happened in the processor
         backend.
         """
-        self.processor_backend.reconcile_transfers(self)
+        queryset = Transaction.objects.filter(
+            orig_organization=self,
+            orig_account=Transaction.FUNDS,
+            dest_account__startswith=Transaction.WITHDRAW).order_by(
+                'created_at')
+        created_at = queryset.values('created_at').first()
+        if isinstance(created_at, dict):
+            created_at = created_at.get('created_at', None)
+        else:
+            created_at = None
+        self.processor_backend.reconcile_transfers(self, created_at)
         return Transaction.objects.by_organization(self)
 
-    def withdraw_funds(self, amount, user, created_at=None):
+    def withdraw_funds(self, amount, user):
+        descr = "withdraw from %s" % self.printable_name
+        if user:
+            descr += ' (%s)' % user.username
+        self.processor_backend.create_transfer(
+            self, amount, currency='usd', descr=descr)
+        # We will wait on a call to ``reconcile_transfers`` to create
+        # those ``Trnansaction`` in the database.
+
+    def create_withdraw_transactions(self, event_id, amount, unit, descr,
+                                     created_at=None):
         """
         Withdraw funds from the site into the provider's bank account.
 
@@ -520,45 +532,30 @@ class Organization(models.Model):
                 stripe:Funds                               $0.25
                 cowork:Funds
         """
-        funds_unit = 'usd' # XXX currency on receipient bank account
-        created_at = datetime_or_now(created_at)
-        descr = "withdraw from %s" % self.printable_name
-        if user:
-            descr += ' (%s)' % user.username
-        # Execute transaction on processor first such that any processor
-        # exception will be raised before we attempt to store
-        # the ``Transaction``.
-        processor_transfer_id, _ = self.processor_backend.create_transfer(
-            self, amount, funds_unit, descr)
-        self.create_withdraw_transactions(
-            processor_transfer_id, amount, funds_unit, descr,
-            created_at=created_at)
-
-    @method_decorator(transaction.atomic)
-    def create_withdraw_transactions(self, event_id, amount, unit, descr,
-                                     created_at=None):
         #pylint:disable=too-many-arguments
         # We use ``get_or_create`` here because the method is also called
         # when transfers are reconciled with the payment processor.
-        _, created = Transaction.objects.get_or_create(
-            event_id=event_id,
-            descr=descr,
-            created_at=created_at,
-            dest_unit=unit,
-            dest_amount=amount,
-            dest_account=Transaction.WITHDRAW,
-            dest_organization=self.processor,
-            orig_unit=unit,
-            orig_amount=amount,
-            orig_account=Transaction.FUNDS,
-            orig_organization=self)
-        if created:
-            # Add processor fee for transfer.
-            transfer_fee = self.processor_backend.prorate_transfer(amount)
-            self.create_processor_fee(transfer_fee, Transaction.FUNDS,
-                event_id=event_id, created_at=created_at)
-            self.funds_balance -= amount
-        self.save()
+        with transaction.atomic():
+            _, created = Transaction.objects.get_or_create(
+                event_id=event_id,
+                descr=descr,
+                created_at=created_at,
+                dest_unit=unit,
+                dest_amount=amount,
+                dest_account=Transaction.WITHDRAW,
+                dest_organization=self.processor,
+                orig_unit=unit,
+                orig_amount=amount,
+                orig_account=Transaction.FUNDS,
+                orig_organization=self)
+            if created:
+                # Add processor fee for transfer.
+                transfer_fee = self.processor_backend.prorate_transfer(
+                    amount, self)
+                self.create_processor_fee(transfer_fee, Transaction.FUNDS,
+                    event_id=event_id, created_at=created_at)
+                self.funds_balance -= amount
+                self.save()
 
     def create_processor_fee(self, fee_amount, processor_account,
                              event_id=None, created_at=None, descr=None):

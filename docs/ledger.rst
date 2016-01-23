@@ -127,7 +127,7 @@ such::
 Withdrawal
 ^^^^^^^^^^
 
-.. automethod:: saas.models.Organization.withdraw_funds
+.. automethod:: saas.models.Organization.create_withdraw_transactions
 
 
 ``new_subscription_order`` and ``payment_successful`` generates a seemingly

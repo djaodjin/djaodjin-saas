@@ -524,13 +524,11 @@ transactionControllers.controller("transactionListCtrl",
     $scope.totalItems = 0;
     $scope.dir[defaultSortByField] = "desc";
     $scope.opened = { "start_at": false, "ends_at": false };
-    $scope.start_at = moment(date_range.start_at).toDate();
-    $scope.ends_at = moment(date_range.ends_at).toDate();
     $scope.params = {
         o: defaultSortByField,
         ot: $scope.dir[defaultSortByField],
-        start_at: $scope.start_at,
-        ends_at: $scope.ends_at
+        start_at: moment(date_range.start_at).toDate(),
+        ends_at: moment(date_range.ends_at).toDate()
     };
 
     $scope.last4 = "N/A";
@@ -540,13 +538,13 @@ transactionControllers.controller("transactionListCtrl",
     $scope.refresh = function() {
         $scope.transactions = Transaction.query($scope.params, function() {
             /* We cannot watch transactions.count otherwise things start
-               to snowball. We must update totalItems only when it truly changed.*/
+               to snowball. We must update totalItems only when it truly
+               changed. */
             if( $scope.transactions.count != $scope.totalItems ) {
                 $scope.totalItems = $scope.transactions.count;
             }
         });
     };
-    $scope.refresh();
 
     $scope.filterExpr = "";
     $scope.itemsPerPage = 25; // Must match on the server-side.
@@ -564,24 +562,20 @@ transactionControllers.controller("transactionListCtrl",
         $scope.opened[date_at] = true;
     };
 
-    // XXX start_at and ends_at will be both updated on reload
-    //     which will lead to two calls to the backend instead of one.
-    $scope.$watch("start_at", function(newVal, oldVal, scope) {
-        if( $scope.ends_at < newVal ) {
-            $scope.ends_at = newVal;
+    $scope.$watch("params", function(newVal, oldVal, scope) {
+        if( newVal.start_at !== oldVal.start_at
+            && newVal.ends_at === oldVal.ends_at ) {
+            if( $scope.params.ends_at < newVal.start_at ) {
+                $scope.params.ends_at = newVal.start_at;
+            }
+        } else if( newVal.start_at === oldVal.start_at
+            && newVal.ends_at !== oldVal.ends_at ) {
+            if( $scope.params.start_at > newVal.ends_at ) {
+                $scope.params.start_at = newVal.ends_at;
+            }
         }
-        $scope.params.start_at = moment(newVal).startOf("day").toDate();
         $scope.refresh();
     }, true);
-
-    $scope.$watch("ends_at", function(newVal, oldVal, scope) {
-        if( $scope.start_at > newVal ) {
-            $scope.start_at = newVal;
-        }
-        $scope.params.ends_at = moment(newVal).endOf("day").toDate(0);
-        $scope.refresh();
-    }, true);
-
 
     $scope.filterList = function(regex) {
         if( regex ) {
@@ -592,7 +586,6 @@ transactionControllers.controller("transactionListCtrl",
         } else {
             delete $scope.params.q;
         }
-        $scope.refresh();
     };
 
     $scope.pageChanged = function() {
@@ -601,7 +594,6 @@ transactionControllers.controller("transactionListCtrl",
         } else {
             delete $scope.params.page;
         }
-        $scope.refresh();
     };
 
     $scope.sortBy = function(fieldName) {
@@ -617,7 +609,6 @@ transactionControllers.controller("transactionListCtrl",
         $scope.currentPage = 1;
         // pageChanged only called on click?
         delete $scope.params.page;
-        $scope.refresh();
     };
 
     if( urls.saas_api_bank ) {

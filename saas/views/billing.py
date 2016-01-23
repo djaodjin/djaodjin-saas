@@ -53,16 +53,16 @@ from .. import settings
 from ..api.transactions import (SmartTransactionListMixin,
     TransactionQuerysetMixin, TransferQuerysetMixin)
 from ..backends import ProcessorError, ProcessorConnectionError
-from ..utils import validate_redirect_url, datetime_or_now
+from ..decorators import _insert_url
 from ..forms import (BankForm, CartPeriodsForm, CreditCardForm,
     ImportTransactionForm, RedeemCouponForm, WithdrawForm)
+from ..humanize import (as_money, describe_buy_periods, match_unlock,
+    DESCRIBE_UNLOCK_NOW, DESCRIBE_UNLOCK_LATER)
 from ..mixins import (ChargeMixin, DateRangeMixin, OrganizationMixin,
     ProviderMixin)
 from ..models import (Organization, CartItem, Coupon, Plan, Transaction,
     Subscription, get_broker)
-from ..humanize import (as_money, describe_buy_periods, match_unlock,
-    DESCRIBE_UNLOCK_NOW, DESCRIBE_UNLOCK_LATER)
-from ..utils import product_url
+from ..utils import datetime_or_now, product_url, validate_redirect_url
 from ..views import session_cart_to_database
 from ..views.download import CSVDownloadView
 
@@ -130,11 +130,6 @@ class BankUpdateView(BankMixin, UpdateView):
 
     form_class = BankForm
     template_name = 'saas/billing/bank.html'
-
-    def get_context_data(self, **kwargs):
-        context = super(BankUpdateView, self).get_context_data(**kwargs)
-        context.update({'STRIPE_CLIENT_ID': settings.STRIPE_CLIENT_ID})
-        return context
 
     def get_object(self, queryset=None):
         return self.get_organization()
@@ -1026,7 +1021,7 @@ class BalanceView(CardInvoicablesFormMixin, FormView):
             plan__slug=self.kwargs.get(self.plan_url_kwarg))
 
 
-class WithdrawView(BankMixin, FormView):
+class WithdrawView(ProviderMixin, FormView):
     """
     Initiate the transfer of funds from the platform to a provider bank account.
 
@@ -1037,8 +1032,7 @@ class WithdrawView(BankMixin, FormView):
 djaodjin-saas/tree/master/saas/templates/saas/billing/withdraw.html>`__).
 
     Template context:
-      - ``STRIPE_PUB_KEY`` Public key to send to stripe.com
-      - ``organization`` The subscriber object
+      - ``organization`` The provider object
       - ``request`` The HTTP request object
     """
 
@@ -1048,20 +1042,13 @@ djaodjin-saas/tree/master/saas/templates/saas/billing/withdraw.html>`__).
     def get_initial(self):
         self.organization = self.get_organization()
         kwargs = super(WithdrawView, self).get_initial()
-        balance = self.organization.withdraw_available()
-        available_amount = balance['amount']
+        balance = self.organization.retrieve_bank()
+        available_amount = balance['balance_amount']
         kwargs.update({
             'amount': (available_amount / 100.0) if balance > 0 else 0})
         return kwargs
 
     def form_valid(self, form):
-        stripe_token = form.cleaned_data['stripeToken']
-        if stripe_token:
-            # Since all fields are optional, we cannot assume the card token
-            # will be present (i.e. in case of erroneous POST request).
-            self.organization.update_bank(stripe_token)
-            messages.success(self.request,
-                "Your bank on file was sucessfully updated")
         amount_withdrawn = int(float(form.cleaned_data['amount']) * 100)
         self.organization.withdraw_funds(amount_withdrawn, self.request.user)
         return super(WithdrawView, self).form_valid(form)
@@ -1072,6 +1059,14 @@ djaodjin-saas/tree/master/saas/templates/saas/billing/withdraw.html>`__).
         if redirect_path:
             return redirect_path
         return reverse('saas_transfer_info', kwargs=self.get_url_kwargs())
+
+    def get(self, request, *args, **kwargs):
+        self.organization = self.get_organization()
+        if not (self.organization.processor_deposit_key
+                or self.organization.slug == settings.PLATFORM):
+            return _insert_url(request, inserted_url=reverse('saas_update_bank',
+                args=(self.organization,)))
+        return super(WithdrawView, self).get(request, *args, **kwargs)
 
 
 class ImportTransactionsView(ProviderMixin, FormView):

@@ -89,13 +89,13 @@ class FakeProcessorBackend(object):
     @staticmethod
     def dispute_fee(amount): #pylint: disable=unused-argument
         """
-        Return Stripe processing fee associated to a chargeback (i.e. $15).
+        Return processing fee associated to a chargeback (i.e. $15).
         """
         return 1500
 
     @staticmethod
-    def prorate_transfer(amount): #pylint: disable=unused-argument
+    def prorate_transfer(amount, provider): #pylint: disable=unused-argument
         """
-        Return Stripe processing fee associated to a transfer (i.e. 25 cents).
+        Return processing fee associated to a transfer (i.e. nothing here).
         """
-        return 25
+        return 0

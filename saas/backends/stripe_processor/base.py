@@ -56,11 +56,16 @@ Edit the redirect_url and copy/paste the keys into your project settings.py:
 
 import datetime, logging, re
 
-from django.db import transaction
+from django.conf import settings as django_settings
+from django.http import Http404
+from django.shortcuts import get_object_or_404
+from rest_framework.decorators import api_view
+from rest_framework.response import Response
 import requests, stripe
+from stripe.error import StripeError as ProcessorError
 
 from saas import settings, signals
-from saas.utils import datetime_or_now, datetime_to_timestamp
+from saas.utils import datetime_to_utctimestamp, utctimestamp_to_datetime
 
 LOGGER = logging.getLogger(__name__)
 
@@ -72,27 +77,44 @@ class StripeBackend(object):
     REMOTE = 2
 
     def __init__(self):
-        self.mode = self.LOCAL
+        self.mode = settings.STRIPE_MODE
         self.pub_key = settings.STRIPE_PUB_KEY
         self.priv_key = settings.STRIPE_PRIV_KEY
         self.client_id = settings.STRIPE_CLIENT_ID
 
-    def _prepare_request(self, broker):
+    def _prepare_request(self):
+        stripe.api_version = '2015-10-16'
         stripe.api_key = self.priv_key
-        if self.mode == self.REMOTE:
-            # We have a Standalone account.
-            kwargs = {'stripe_account': broker.processor_deposit_key}
-        else:
-            kwargs = {}
+        return {}
+
+    def _prepare_charge_request(self, broker):
+        kwargs = self._prepare_request()
+        if self.mode == self.REMOTE and broker.slug != settings.PLATFORM:
+            # We generate Stripe data into the StripeConnect account.
+            if not broker.processor_deposit_key:
+                raise ProcessorError(
+                    "%s is not connected to a Stripe Account." % broker)
+            kwargs.update({'stripe_account': broker.processor_deposit_key})
         return kwargs
+
+    def _prepare_transfer_request(self, provider):
+        kwargs = self._prepare_request()
+        if (self.mode in (self.FORWARD, self.REMOTE)
+            and provider.slug != settings.PLATFORM):
+            # We generate Stripe data into the StripeConnect account.
+            if not provider.processor_deposit_key:
+                raise ProcessorError(
+                    "%s is not connected to a Stripe Account." % provider)
+            kwargs.update({'stripe_account': provider.processor_deposit_key})
+        return kwargs
+
 
     def list_customers(self, org_pat=r'.*', broker=None):
         """
         Returns a list of Stripe.Customer objects whose description field
         matches *org_pat*.
         """
-        kwargs = self._prepare_request(broker)
-        # customers are stored on the platform itself.
+        kwargs = self._prepare_charge_request(broker)
         customers = []
         nb_customers_listed = 0
         response = stripe.Customer.all(**kwargs)
@@ -111,7 +133,7 @@ class StripeBackend(object):
     def charge_distribution(self, charge, refunded=0, unit='usd'):
         if charge.unit != unit:
             # Avoids an HTTP request to Stripe API when we can compute it.
-            kwargs = self._prepare_request(charge.broker)
+            kwargs = self._prepare_charge_request(charge.broker)
             balance_transactions = stripe.BalanceTransaction.all(
                 source=charge.processor_key, **kwargs)
             # You would think to get all BalanceTransaction related to
@@ -172,8 +194,12 @@ class StripeBackend(object):
             customer=None, card=None):
         #pylint: disable=too-many-arguments
         assert customer is not None or card is not None
-        kwargs = self._prepare_request(broker)
-        if self.mode == self.FORWARD:
+        kwargs = self._prepare_charge_request(broker)
+        if self.mode == self.FORWARD and broker.slug != settings.PLATFORM:
+            # We generate Stripe data into the StripeConnect account.
+            if not broker.processor_deposit_key:
+                raise ProcessorError(
+                    "%s is not connected to a Stripe Account." % broker)
             kwargs.update({'destination': broker.processor_deposit_key})
         if customer is not None:
             kwargs.update({'customer': customer})
@@ -182,8 +208,8 @@ class StripeBackend(object):
         if stmt_descr is None and broker is not None:
             stmt_descr = broker.printable_name
         processor_charge = stripe.Charge.create(amount=amount, currency=unit,
-            description=descr, statement_description=stmt_descr[:15], **kwargs)
-        created_at = datetime.datetime.fromtimestamp(processor_charge.created)
+            description=descr, statement_descriptor=stmt_descr[:15], **kwargs)
+        created_at = utctimestamp_to_datetime(processor_charge.created)
         last4 = processor_charge.source.last4
         exp_year = processor_charge.source.exp_year
         exp_month = processor_charge.source.exp_month
@@ -214,54 +240,43 @@ class StripeBackend(object):
             broker=broker, descr=descr, stmt_descr=stmt_descr,
             card=card)
 
-    def create_transfer(self, provider, amount, unit, descr=None):
+    def create_transfer(self, provider, amount, currency, descr=None):
         """
-        Transfer *amount* from the platform into a provider bank account.
+        Manually transfer *amount* from the provider Stripe account
+        into the provider bank account.
         """
-        kwargs = self._prepare_request(None) # ``None`` because we can only
-                              # transfer from the platform to the provider.
-        if not provider.processor_priv_key:
-            # We have a deprecated recipient key.
-            kwargs.update({'recipient': provider.processor_deposit_key})
+        # XXX Stripe won't allow a Transfer to a Connect account.
+        #     "Cannot create transfers with an OAuth key."
+        kwargs = self._prepare_transfer_request(provider)
         transfer = stripe.Transfer.create(
             amount=amount,
-            currency=unit, # XXX should be derived from organization bank
+            currency=currency, destination='default_for_currency',
             description=descr,
-            statement_description=provider.printable_name,
+            statement_descriptor=provider.printable_name[:15],
             **kwargs)
-        created_at = datetime.datetime.fromtimestamp(transfer.created)
+        created_at = utctimestamp_to_datetime(transfer.created)
         return (transfer.id, created_at)
 
     def update_bank(self, provider, bank_token):
         """
         Create or update a bank account associated to a provider on Stripe.
         """
-        kwargs = self._prepare_request(None) # ``None`` because we can only
-                                  # edit bank details on a managed account.
-        if not provider.processor_deposit_key:
-            raise ValueError(
-                "%s is not connected to a Stripe Account." % provider)
+        kwargs = self._prepare_transfer_request(provider)
         try:
-            if provider.processor_priv_key:
-                # We have a Standalone account.
-                rcp = stripe.Account.retrieve(**kwargs)
-                rcp.bank_account = bank_token
-                rcp.save()
-            else:
-                # We have a deprecated recipient key.
-                rcp = stripe.Recipient.retrieve(
-                    provider.processor_deposit_key, **kwargs)
-                rcp.bank_account = bank_token
-                rcp.save()
+            rcp = stripe.Account.retrieve(**kwargs)
+            # This will only work on "Managed" StripeConnect accounts.
+            rcp.external_account = bank_token
+            rcp.save()
         except stripe.error.InvalidRequestError:
-            LOGGER.error("update_bank(%s, %s)", provider, bank_token)
+            LOGGER.exception("update_bank(%s, %s)", provider, bank_token)
+            raise
 
     def create_or_update_card(self, subscriber, card_token,
                               user=None, broker=None):
         """
         Create or update a card associated to an subscriber on Stripe.
         """
-        kwargs = self._prepare_request(broker)
+        kwargs = self._prepare_charge_request(broker)
         # Save customer on the platform
         p_customer = None
         if subscriber.processor_card_key:
@@ -302,46 +317,37 @@ class StripeBackend(object):
         """
         Refund a charge on the associated card.
         """
-        kwargs = self._prepare_request(charge.broker)
+        kwargs = self._prepare_charge_request(charge.broker)
         processor_charge = stripe.Charge.retrieve(
             charge.processor_key, **kwargs)
         processor_charge.refund(amount=amount)
 
     def retrieve_bank(self, provider):
-        kwargs = self._prepare_request(None) # ``None`` because we can only
-                              # retrieve bank details on a managed account.
-        context = {'STRIPE_PUB_KEY': self.pub_key}
         try:
+            kwargs = self._prepare_transfer_request(provider)
+        except ProcessorError:
+            pass # OK here. We just want to display the bank page.
+        # ``STRIPE_CLIENT_ID`` here because serves page with Connect button.
+        context = {
+            'STRIPE_PUB_KEY': self.pub_key, 'STRIPE_CLIENT_ID': self.client_id}
+        # The ``PLATFORM`` provider is always connected to a Stripe Account
+        if (provider.processor_deposit_key
+            or provider.slug == settings.PLATFORM):
             if provider.processor_deposit_key:
-                if provider.processor_priv_key:
-                    # We have a Standalone account.
-                    # XXX Apparently it is impossible to get the bank name
-                    # nor the last4 of the bank account with this new feature.
-                    rcp = stripe.Account.retrieve(**kwargs)
-                    context.update({
-                            'bank_name': 'See Stripe',
-                            'last4': 'See Stripe',
-                            'balance_unit': rcp.default_currency})
-                else:
-                    # We have a deprecated recipient key.
-                    rcp = stripe.Recipient.retrieve(
-                        provider.processor_deposit_key, **kwargs)
-                    if rcp and rcp.active_account:
-                        context.update({
-                            'bank_name': rcp.active_account.bank_name,
-                            'last4': '***-%s' % rcp.active_account.last4,
-                            'balance_unit': rcp.active_account.currency})
-        except stripe.error.InvalidRequestError:
-            context.update({'bank_name': 'Unaccessible',
-                'last4': 'Unaccessible', 'balance_unit': 'Unaccessible'})
-        balance = stripe.Balance.retrieve(**kwargs)
-        # XXX available is a list, ordered by currency?
-        context.update({'balance_amount': balance.available[0].amount})
+                last4 = provider.processor_deposit_key[-4:]
+            else:
+                last4 = self.client_id[-4:]
+            context.update({'bank_name': 'Stripe', 'last4': '***-%s' % last4})
+            try:
+                balance = stripe.Balance.retrieve(**kwargs)
+                # XXX available is a list, ordered by currency?
+                context.update({'balance_amount': balance.available[0].amount})
+            except stripe.error.InvalidRequestError:
+                context.update({'balance_unit': 'Unaccessible'})
         return context
 
     def retrieve_card(self, subscriber, broker=None):
-        kwargs = self._prepare_request(broker)
-        # Customer is saved on the platform
+        kwargs = self._prepare_charge_request(broker)
         context = {'STRIPE_PUB_KEY': self.pub_key}
         if subscriber.processor_card_key:
             try:
@@ -362,7 +368,7 @@ class StripeBackend(object):
 
     def retrieve_charge(self, charge):
         # XXX make sure to avoid race condition.
-        kwargs = self._prepare_request(charge.broker)
+        kwargs = self._prepare_charge_request(charge.broker)
         if charge.is_progress:
             stripe_charge = stripe.Charge.retrieve(
                 charge.processor_key, **kwargs)
@@ -370,26 +376,19 @@ class StripeBackend(object):
                 charge.payment_successful()
         return charge
 
-    def reconcile_transfers(self, provider):
-        if provider.processor_deposit_key:
-            balance = provider.withdraw_available()
-            timestamp = datetime_to_timestamp(balance['created_at'])
-            try:
-                kwargs = self._prepare_request(provider)
-                if not provider.processor_priv_key:
-                    # We have a deprecated recipient key.
-                    kwargs.update({'recipient': provider.processor_deposit_key})
-                transfers = stripe.Transfer.all(
-                    created={'gt': timestamp}, **kwargs)
-                with transaction.atomic():
-                    for transfer in transfers.data:
-                        created_at = datetime_or_now(
-                            datetime.datetime.fromtimestamp(transfer.created))
-                        provider.create_withdraw_transactions(
-                            transfer.id, transfer.amount, transfer.currency,
-                            transfer.description, created_at=created_at)
-            except stripe.error.InvalidRequestError as err:
-                LOGGER.exception(err)
+    def reconcile_transfers(self, provider, created_at):
+        kwargs = self._prepare_transfer_request(provider)
+        timestamp = datetime_to_utctimestamp(created_at)
+        try:
+            transfers = stripe.Transfer.all(
+                created={'gt': timestamp}, status='paid', **kwargs)
+            for transfer in transfers.data:
+                created_at = utctimestamp_to_datetime(transfer.created)
+                provider.create_withdraw_transactions(
+                    transfer.id, transfer.amount, transfer.currency,
+                    transfer.description, created_at=created_at)
+        except stripe.error.InvalidRequestError as err:
+            LOGGER.exception(err)
 
     @staticmethod
     def dispute_fee(amount): #pylint: disable=unused-argument
@@ -398,9 +397,56 @@ class StripeBackend(object):
         """
         return 1500
 
-    @staticmethod
-    def prorate_transfer(amount): #pylint: disable=unused-argument
+    def prorate_transfer(self, amount, provider):
+        #pylint: disable=unused-argument
         """
-        Return Stripe processing fee associated to a transfer (i.e. 25 cents).
+        Return Stripe processing fee associated to a transfer, i.e.
+        0% for Stand-Alone Stripe accounts and 0.5% for managed accounts.
         """
-        return 25
+        if False:
+            # XXX Enable when using managed accounts.
+            kwargs = self._prepare_transfer_request(provider)
+            rcp = stripe.Account.retrieve(**kwargs)
+            if rcp.managed:
+                return (amount * 50 + 5000) / 10000
+        return 0
+
+
+@api_view(['POST'])
+def processor_hook(request):
+    from saas.models import Charge
+    stripe.api_key = StripeBackend().priv_key
+    # Attempt to validate the event by posting it back to Stripe.
+    if django_settings.DEBUG:
+        event = stripe.Event.construct_from(request.DATA, stripe.api_key)
+    else:
+        event = stripe.Event.retrieve(request.DATA['id'])
+    if not event:
+        LOGGER.error("Posted stripe '%s' event %s FAIL",
+            event.type, request.DATA['id'])
+        raise Http404
+    LOGGER.info("Posted stripe '%s' event %s PASS", event.type, event.id)
+    charge = get_object_or_404(Charge, processor_key=event.data.object.id)
+    if event.type == 'charge.succeeded':
+        if charge.state != charge.DONE:
+            charge.payment_successful()
+        else:
+            LOGGER.warning(
+                "Already received a charge.succeeded event for %s", charge)
+    elif event.type == 'charge.failed':
+        charge.failed()
+    elif event.type == 'charge.refunded':
+        charge.refund()
+    elif event.type == 'charge.captured':
+        charge.capture()
+    elif event.type == 'charge.dispute.created':
+        charge.dispute_created()
+    elif event.type == 'charge.dispute.updated':
+        charge.dispute_updated()
+    elif event.type == 'charge.dispute.closed':
+        if event.data.object.status == 'won':
+            charge.dispute_won()
+        elif event.data.object.status == 'lost':
+            charge.dispute_lost()
+
+    return Response("OK")
