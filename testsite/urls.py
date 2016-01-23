@@ -25,7 +25,7 @@
 from django.contrib.auth.decorators import login_required
 from django.core.urlresolvers import reverse_lazy
 from django.views.generic import TemplateView
-from urldecorators import patterns, include, url
+from urldecorators import include, url
 
 from saas.views import OrganizationRedirectView
 from saas.views.plans import CartPlanListView
@@ -36,7 +36,7 @@ from testsite.views.registration import PersonalRegistrationView
 from django.contrib import admin
 admin.autodiscover()
 
-urlpatterns = patterns('',
+urlpatterns = [
     # admin doc and panel
     url(r'^admin/doc/', include('django.contrib.admindocs.urls')),
     url(r'^admin/', include(admin.site.urls)),
@@ -74,4 +74,4 @@ urlpatterns = patterns('',
         decorators=['saas.decorators.requires_direct']),
     url(r'^(?P<provider>[\w.@+-]+)/app/',
         TemplateView.as_view(template_name='app.html'), name='app'),
-)
+]

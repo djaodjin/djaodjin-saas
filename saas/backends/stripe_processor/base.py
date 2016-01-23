@@ -282,18 +282,24 @@ class StripeBackend(object):
         if subscriber.processor_card_key:
             try:
                 p_customer = stripe.Customer.retrieve(
-                    subscriber.processor_card_key, **kwargs)
-                old_card = {'last4':p_customer.cards.data[0].last4,
+                    subscriber.processor_card_key,
+                    expand=['default_source'],
+                    **kwargs)
+                old_card = {'last4':p_customer.default_source.last4,
                     'exp':"%d/%d" % (
-                        p_customer.cards.data[0].exp_month,
-                        p_customer.cards.data[0].exp_year)
+                        p_customer.default_source.exp_month,
+                        p_customer.default_source.exp_year)
                 }
                 p_customer.source = card_token
                 p_customer.save()
-                new_card = {'last4':p_customer.cards.data[0].last4,
+                p_customer = stripe.Customer.retrieve(
+                    subscriber.processor_card_key,
+                    expand=['default_source'],
+                    **kwargs)
+                new_card = {'last4':p_customer.default_source.last4,
                     'exp':"%d/%d" % (
-                        p_customer.cards.data[0].exp_month,
-                        p_customer.cards.data[0].exp_year)
+                        p_customer.default_source.exp_month,
+                        p_customer.default_source.exp_year)
                 }
                 signals.card_updated.send(
                     sender=__name__, organization=subscriber,
