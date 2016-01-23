@@ -323,47 +323,52 @@ class StripeBackend(object):
         processor_charge.refund(amount=amount)
 
     def retrieve_bank(self, provider):
-        try:
-            kwargs = self._prepare_transfer_request(provider)
-        except ProcessorError:
-            pass # OK here. We just want to display the bank page.
         # ``STRIPE_CLIENT_ID`` here because serves page with Connect button.
         context = {
             'STRIPE_PUB_KEY': self.pub_key, 'STRIPE_CLIENT_ID': self.client_id}
-        # The ``PLATFORM`` provider is always connected to a Stripe Account
-        if (provider.processor_deposit_key
-            or provider.slug == settings.PLATFORM):
-            if provider.processor_deposit_key:
-                last4 = provider.processor_deposit_key[-4:]
-            else:
-                last4 = self.client_id[-4:]
-            context.update({'bank_name': 'Stripe', 'last4': '***-%s' % last4})
-            try:
-                balance = stripe.Balance.retrieve(**kwargs)
-                # XXX available is a list, ordered by currency?
-                context.update({'balance_amount': balance.available[0].amount})
-            except stripe.error.InvalidRequestError:
-                context.update({'balance_unit': 'Unaccessible'})
+        try:
+            kwargs = self._prepare_transfer_request(provider)
+            # The ``PLATFORM`` provider is always connected to a Stripe Account
+            if (provider.processor_deposit_key
+                or provider.slug == settings.PLATFORM):
+                if provider.processor_deposit_key:
+                    last4 = provider.processor_deposit_key[-4:]
+                else:
+                    last4 = self.client_id[-4:]
+                context.update({
+                    'bank_name': 'Stripe', 'last4': '***-%s' % last4})
+                try:
+                    balance = stripe.Balance.retrieve(**kwargs)
+                    # XXX available is a list, ordered by currency?
+                    context.update({
+                        'balance_amount': balance.available[0].amount})
+                except stripe.error.InvalidRequestError:
+                    context.update({'balance_unit': 'Unaccessible'})
+        except ProcessorError:
+            pass # OK here. We don't have a connected Stripe account.
         return context
 
     def retrieve_card(self, subscriber, broker=None):
-        kwargs = self._prepare_charge_request(broker)
         context = {'STRIPE_PUB_KEY': self.pub_key}
-        if subscriber.processor_card_key:
-            try:
-                p_customer = stripe.Customer.retrieve(
-                    subscriber.processor_card_key,
-                    expand=['default_source'],
-                    **kwargs)
-            except stripe.error.StripeError as err:
-                LOGGER.exception(err)
-                raise
-            if p_customer.default_source:
-                last4 = '***-%s' % str(p_customer.default_source.last4)
-                exp_date = "%02d/%04d" % (
-                    p_customer.default_source.exp_month,
-                    p_customer.default_source.exp_year)
-                context.update({'last4': last4, 'exp_date': exp_date})
+        try:
+            kwargs = self._prepare_charge_request(broker)
+            if subscriber.processor_card_key:
+                try:
+                    p_customer = stripe.Customer.retrieve(
+                        subscriber.processor_card_key,
+                        expand=['default_source'],
+                        **kwargs)
+                except stripe.error.StripeError as err:
+                    LOGGER.exception(err)
+                    raise
+                if p_customer.default_source:
+                    last4 = '***-%s' % str(p_customer.default_source.last4)
+                    exp_date = "%02d/%04d" % (
+                        p_customer.default_source.exp_month,
+                        p_customer.default_source.exp_year)
+                    context.update({'last4': last4, 'exp_date': exp_date})
+        except ProcessorError:
+            pass # OK here. We don't have a connected Stripe account.
         return context
 
     def retrieve_charge(self, charge):
@@ -377,18 +382,21 @@ class StripeBackend(object):
         return charge
 
     def reconcile_transfers(self, provider, created_at):
-        kwargs = self._prepare_transfer_request(provider)
-        timestamp = datetime_to_utctimestamp(created_at)
         try:
-            transfers = stripe.Transfer.all(
-                created={'gt': timestamp}, status='paid', **kwargs)
-            for transfer in transfers.data:
-                created_at = utctimestamp_to_datetime(transfer.created)
-                provider.create_withdraw_transactions(
-                    transfer.id, transfer.amount, transfer.currency,
-                    transfer.description, created_at=created_at)
-        except stripe.error.InvalidRequestError as err:
-            LOGGER.exception(err)
+            kwargs = self._prepare_transfer_request(provider)
+            timestamp = datetime_to_utctimestamp(created_at)
+            try:
+                transfers = stripe.Transfer.all(
+                    created={'gt': timestamp}, status='paid', **kwargs)
+                for transfer in transfers.data:
+                    created_at = utctimestamp_to_datetime(transfer.created)
+                    provider.create_withdraw_transactions(
+                        transfer.id, transfer.amount, transfer.currency,
+                        transfer.description, created_at=created_at)
+            except stripe.error.InvalidRequestError as err:
+                LOGGER.exception(err)
+        except ProcessorError:
+            pass # OK here. We don't have a connected Stripe account.
 
     @staticmethod
     def dispute_fee(amount): #pylint: disable=unused-argument
