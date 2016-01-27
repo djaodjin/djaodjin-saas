@@ -101,8 +101,6 @@ def humanize_period(period):
     elif period == Plan.INTERVAL_CHOICES[3][0]:
         result = "per month"
     elif period == Plan.INTERVAL_CHOICES[4][0]:
-        result = "per quarter"
-    elif period == Plan.INTERVAL_CHOICES[5][0]:
         result = "per year"
     return result
 
