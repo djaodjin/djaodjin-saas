@@ -12,19 +12,21 @@
             <th>Description</th>
         </tr>
     </thead>
-    <tbody>
-        <tr ng-hide="{{subscriptions}}.$resolved">
+    <tbody ng-hide="{{subscriptions}}.$resolved">
+        <tr>
             <td colspan="5">
                 <h4>Loading ...</h4>
             </td>
         </tr>
-        <tr ng-show="{{subscriptions}}.$resolved && {{subscriptions}}.results.length == 0">
+    </tbody>
+    <tbody class="has-no-results" ng-show="{{subscriptions}}.$resolved && {{subscriptions}}.results.length == 0">
+        <tr>
             <td colspan="5">
                 <h4>No subscribers<span ng-show="filterExpr"> with filter: '[[filterExpr]]'</span></h4>
             </td>
         </tr>
     </tbody>
-    <tbody ng-repeat="entry in {{subscriptions}}.results" ng-show="{{subscriptions}}.$resolved && {{subscriptions}}.results.length > 0">
+    <tbody class="has-results" ng-repeat="entry in {{subscriptions}}.results" ng-show="{{subscriptions}}.$resolved && {{subscriptions}}.results.length > 0">
         <tr ng-class="endsSoon(entry)">
             <td>
                 <a id="[[entry.organization.slug]]" href="{% url 'saas_profile' %}[[entry.organization.slug]]/subscriptions/">[[entry.organization.printable_name]]</a>

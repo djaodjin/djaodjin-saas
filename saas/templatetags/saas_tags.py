@@ -33,11 +33,11 @@ from django.utils.safestring import mark_safe
 from django.utils.timezone import utc
 
 from .. import settings
-from ..humanize import  as_money, as_html_description
-from ..models import Organization, Subscription, Plan, get_broker
 from ..decorators import fail_direct, _valid_manager
-from ..utils import get_roles, product_url as utils_product_url
-
+from ..humanize import as_money
+from ..mixins import as_html_description, product_url as utils_product_url
+from ..models import Organization, Subscription, Plan, get_broker
+from ..utils import get_roles
 
 register = template.Library()
 

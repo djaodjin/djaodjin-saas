@@ -8,4 +8,36 @@
         <input type="submit" name="submit" value="Update Profile">
     </div>
 </form>
+<div id="delete-action">
+<button id="delete-action-open">Delete</button>
+<button type="button" id="delete-action-btn">Delete</button>
+</div>
 {% endblock %}
+
+{% block saas_bodyscripts %}
+<script type="text/javascript">
+$(document).ready(function(){
+    $("#delete-action-btn").click(function (event) {
+        $.ajax({ type: "DELETE",
+                 url: "{% url 'saas_api_organization' organization %}",
+                 dataType: "json",
+                 contentType: "application/json; charset=utf-8",
+        }).done(function(data) {
+            /* When we DELETE the request.user profile, it will lead
+               to a logout. When we delete a different profile, a reload
+               of the page leads to a 404. In either cases, moving on
+               to the redirect_to_profile page is a safe bet. */
+            window.location = "{% url 'accounts_profile' %}";
+        }).fail(function(data) {
+            if('details' in data.responseJSON) {
+                showMessages([data.responseJSON['details']], "error");
+            } else {
+                showMessages(["Error " + data.status + ": "
++ data.responseText + ". Please accept our apologies."], "error");
+            }
+        });
+    });
+});
+</script>
+{% endblock %}
+

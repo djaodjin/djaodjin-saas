@@ -5,12 +5,12 @@
   <h1>{{role|capfirst}}</h1>
   <div ng-controller="userRelationListCtrl">
     <form>
-      <input type="text" ng-model="user.username" placeholder="Username or Email" />
-      <input type="submit" ng-click="save()" />
+      <input name="user" type="text" ng-model="user.username" placeholder="Username or Email" />
+      <input type="submit" ng-click="save($event)" />
     </form>
     <h2 ng-hide="users.$resolved">Please wait...</h2>
-    <h2 ng-show="users.$resolved && users.length == 0"><em>No {{role}} yet</em></h2>
-    <table ng-show="users.$resolved && users.length > 0">
+    <h2 ng-show="users.$resolved && users.results.length == 0"><em>No {{role}} yet</em></h2>
+    <table ng-show="users.$resolved && users.results.length > 0">
       <thead>
         <tr>
           <th>Username</th>
@@ -19,13 +19,32 @@
         </tr>
       </thead>
       <tbody>
-        <tr ng-repeat="user in users" ng-cloak>
+        <tr id="[[user.username]]" ng-repeat="user in users.results" ng-cloak>
           <td>[[user.username]]</td>
           <td>[[user.email]]</td>
           <td><button ng-click="remove($index)">Remove</button></td>
         </tr>
       </tbody>
     </table>
+    <!-- modal -->
+    <div id="new-user-relation">
+      <p>
+If the user couldn't be found in the system, it is a great occasion to invite
+them.
+      </p>
+      <label>The following invite message will be sent:</label>
+      <textarea class="form-control form-control"
+                name="message" maxlength="255" type="text" rows="10">
+Hello,
+
+I am adding you as a {{role}} to {{organization.printable_name}}.
+
+Thank you,
+- {{request.user.first_name}}
+      </textarea>
+      <button id="new-rule-submit" ng-click="create()"
+              type="button">Invite {{role}}</button>
+    </div>
   </div>
 </section>
 {% endblock %}

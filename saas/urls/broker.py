@@ -1,4 +1,4 @@
-# Copyright (c) 2015, DjaoDjin inc.
+# Copyright (c) 2016, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -28,7 +28,8 @@ Urls specific to the hosting site (i.e. broker).
 
 from django.conf.urls import url
 
-from saas.views.metrics import RegisteredDownloadView
+from ..views.metrics import RegisteredDownloadView
+
 
 urlpatterns = [
     url(r'^download/registered/?',

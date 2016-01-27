@@ -4,10 +4,10 @@
 {% block sidebar %}
 <div>
   <a id="users_profile" href="{% url 'users_profile' user %}">profile</a>
-  {% for organization in user|top_managed_organizations %}
+  {% for organization in user|top_accessible_organizations %}
   | <a href="{% url 'saas_organization_profile' organization %}">{{organization.printable_name}}</a>
   {% endfor %}
-  {% if user|more_managed_organizations %}
+  {% if user|more_accessible_organizations %}
   | <a id="saas_user_product_list" href="{% url 'saas_user_product_list' user %}">products</a>
   {% endif %}
 </div>

@@ -1,4 +1,4 @@
-# Copyright (c) 2015, DjaoDjin inc.
+# Copyright (c) 2016, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -28,7 +28,7 @@ URLs API for resources available typically only to the broker platform.
 
 from django.conf.urls import url
 
-from saas.api.metrics import RegisteredAPIView
+from ...api.metrics import RegisteredAPIView
 
 
 urlpatterns = [

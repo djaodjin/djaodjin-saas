@@ -1,4 +1,4 @@
-# Copyright (c) 2015, DjaoDjin inc.
+# Copyright (c) 2016, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -28,9 +28,9 @@ from rest_framework import status
 from rest_framework.generics import (DestroyAPIView, ListCreateAPIView)
 from rest_framework.response import Response
 
-from saas.api.serializers import UserSerializer
-from saas.compat import User
-from saas.mixins import OrganizationMixin, RelationMixin
+from .serializers import UserSerializer
+from ..compat import User
+from ..mixins import OrganizationMixin, RelationMixin
 
 #pylint: disable=no-init
 #pylint: disable=old-style-class
@@ -70,10 +70,11 @@ class RelationListAPIView(OrganizationMixin, ListCreateAPIView):
                     first_name = full_name
                     last_name = ''
                 #pylint: disable=no-member
-                user = User.objects.create_inactive_user(
-                    serializer.validated_data['email'],
-                    username=serializer.validated_data['username'],
-                    first_name=first_name, last_name=last_name)
+                user = User.objects.create_user(
+                    serializer.validated_data['username'],
+                    email=serializer.validated_data['email'],
+                    first_name=first_name, last_name=last_name,
+                    is_active=False)
 
         self.organization = self.get_organization()
         reason = request.data.get('invite', None)

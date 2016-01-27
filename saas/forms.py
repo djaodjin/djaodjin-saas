@@ -35,7 +35,7 @@ from django_countries import countries
 from django_countries.fields import Country
 import localflavor.us.forms as us_forms
 
-from saas.models import Organization, Plan
+from .models import Organization, Plan
 
 #pylint: disable=super-on-old-class,no-member
 #pylint: disable=old-style-class,no-init

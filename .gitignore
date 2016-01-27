@@ -2,4 +2,4 @@
 *.pyc
 .DS_Store
 credentials
-saas_testsite.sqlite
+db.sqlite

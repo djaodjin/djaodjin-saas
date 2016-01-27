@@ -1,4 +1,4 @@
-# Copyright (c) 2014, DjaoDjin inc.
+# Copyright (c) 2016, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -28,11 +28,11 @@ URLs responding to GET requests with billing history.
 
 from django.conf.urls import url
 
-from saas.settings import ACCT_REGEX
-from saas.views.billing import ChargeReceiptView, TransactionListView
+from ....settings import ACCT_REGEX
+from ....views.billing import ChargeReceiptView, TransactionListView
 
 try:
-    from saas.views.extra import PrintableChargeReceiptView
+    from ....views.extra import PrintableChargeReceiptView
     urlpatterns = [
         url(r'^billing/(?P<organization>%s)/'\
 'receipt/(?P<charge>[a-zA-Z0-9_]+)/printable/' % ACCT_REGEX,

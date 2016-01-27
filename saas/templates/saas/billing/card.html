@@ -18,5 +18,5 @@
 
 {% block bodyscripts %}
 {{block.super}}
-{% include "saas/_payment_body.html" update_mode=True %}
+{% include "saas/_payment_body.html" with update_mode=True %}
 {% endblock %}

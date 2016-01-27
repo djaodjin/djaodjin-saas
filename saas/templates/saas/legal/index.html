@@ -10,7 +10,7 @@
   {% if agreement_list %}
   <ul>
     {% for agreement in agreement_list %}
-    <li><a href="{% url 'legal_agreement' agreement.slug %}">{{agreement.title}}</a>
+    <li><a id="{{agreement}}" href="{% url 'legal_agreement' agreement.slug %}">{{agreement.title}}</a>
       {% endfor %}
   </ul>
   {% else %}

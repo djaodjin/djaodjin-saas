@@ -1,4 +1,4 @@
-# Copyright (c) 2014, DjaoDjin inc.
+# Copyright (c) 2016, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -30,8 +30,9 @@ from django.db.models import Count, Sum
 from django.utils.dateparse import parse_datetime
 from django.utils.timezone import utc
 
-from saas.models import Plan, Subscription, Transaction
-from saas.utils import datetime_or_now
+from ..models import Plan, Subscription, Transaction
+from ..utils import datetime_or_now
+
 
 def month_periods(nb_months=12, from_date=None):
     """constructs a list of (nb_months + 1) dates in the past that fall

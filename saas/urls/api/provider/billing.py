@@ -1,4 +1,4 @@
-# Copyright (c) 2015, DjaoDjin inc.
+# Copyright (c) 2016, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -28,10 +28,10 @@ URLs API for provider resources related to billing
 
 from django.conf.urls import url
 
-from saas.settings import ACCT_REGEX
-from saas.api.backend import RetrieveBankAPIView
-from saas.api.coupons import CouponListAPIView, CouponDetailAPIView
-from saas.api.transactions import TransferListAPIView
+from ....settings import ACCT_REGEX
+from ....api.backend import RetrieveBankAPIView
+from ....api.coupons import CouponListAPIView, CouponDetailAPIView
+from ....api.transactions import TransferListAPIView
 
 urlpatterns = [
     url(r'^billing/(?P<organization>%s)/bank/?' % ACCT_REGEX,

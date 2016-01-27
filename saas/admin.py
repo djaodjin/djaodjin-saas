@@ -24,7 +24,7 @@
 
 from django.contrib import admin
 
-from saas.models import (Agreement, CartItem, Charge, ChargeItem, Coupon,
+from .models import (Agreement, CartItem, Charge, ChargeItem, Coupon,
     Organization, Role, Plan, Signature, Subscription, Transaction)
 
 admin.site.register(Agreement)

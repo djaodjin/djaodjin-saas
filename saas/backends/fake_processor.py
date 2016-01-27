@@ -1,4 +1,4 @@
-# Copyright (c) 2015, DjaoDjin inc.
+# Copyright (c) 2016, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -24,7 +24,7 @@
 
 import datetime, logging
 
-from saas.utils import datetime_or_now, generate_random_slug
+from ..utils import datetime_or_now, generate_random_slug
 
 
 LOGGER = logging.getLogger(__name__)

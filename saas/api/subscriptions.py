@@ -1,4 +1,4 @@
-# Copyright (c) 2015, DjaoDjin inc.
+# Copyright (c) 2016, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -22,14 +22,14 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+from rest_framework import serializers
 from rest_framework.generics import (ListAPIView,
     ListCreateAPIView, RetrieveUpdateDestroyAPIView)
-from rest_framework import serializers
 
-from saas.models import Organization, Subscription
-from saas.mixins import (ChurnedQuerysetMixin, SubscriptionMixin,
+from .serializers import PlanSerializer
+from ..mixins import (ChurnedQuerysetMixin, SubscriptionMixin,
     SubscriptionSmartListMixin, SubscribedQuerysetMixin)
-from saas.api.serializers import PlanSerializer
+from ..models import Organization, Subscription
 
 #pylint: disable=no-init,old-style-class
 
@@ -102,8 +102,8 @@ class SubscriptionListAPIView(SubscriptionSmartListMixin,
             "previous": null,
             "results": [
                 {
-                    "created_at": "2015-01-14T23:16:55Z",
-                    "ends_at": "2016-01-14T23:16:55Z",
+                    "created_at": "2016-01-14T23:16:55Z",
+                    "ends_at": "2017-01-14T23:16:55Z",
                     "description": null,
                     "organization": {
                         "slug": "xia",
@@ -196,8 +196,8 @@ class ActiveSubscriptionAPIView(SubscriptionSmartListMixin,
             "previous": null,
             "results": [
                 {
-                    "created_at": "2015-01-14T23:16:55Z",
-                    "ends_at": "2016-01-14T23:16:55Z",
+                    "created_at": "2016-01-14T23:16:55Z",
+                    "ends_at": "2017-01-14T23:16:55Z",
                     "description": null,
                     "organization": {
                         "slug": "xia",
@@ -275,8 +275,8 @@ class ChurnedSubscriptionAPIView(SubscriptionSmartListMixin,
             "previous": null,
             "results": [
                 {
-                    "created_at": "2015-01-14T23:16:55Z",
-                    "ends_at": "2016-01-14T23:16:55Z",
+                    "created_at": "2016-01-14T23:16:55Z",
+                    "ends_at": "2017-01-14T23:16:55Z",
                     "description": null,
                     "organization": {
                         "slug": "xia",

@@ -1,4 +1,4 @@
-# Copyright (c) 2014, DjaoDjin inc.
+# Copyright (c) 2016, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -28,8 +28,8 @@ URLs API for charges that can only be accessed by a provider.
 
 from django.conf.urls import url
 
-from saas.settings import ACCT_REGEX
-from saas.api.charges import ChargeRefundAPIView
+from ....settings import ACCT_REGEX
+from ....api.charges import ChargeRefundAPIView
 
 urlpatterns = [
     url(r'^billing/charges/(?P<charge>%s)/refund/' % ACCT_REGEX,

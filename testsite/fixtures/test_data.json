@@ -27,10 +27,10 @@
 },
 {
     "fields": {
-      "slug": "abc",
+      "slug": "cowork",
       "full_name": "ABC Corp.",
       "created_at": "2012-08-14T14:16:55-09:00",
-      "email": "support@example.com",
+      "email": "support@localhost.localdomain",
       "phone": "555-555-5555",
       "street_address": "1 ABC loop",
       "locality":  "San Francisco",
@@ -58,11 +58,11 @@
 },
 {
   "fields": {
-    "slug": "medium",
+    "slug": "mallspace",
     "title": "Medium",
     "created_at":"2013-08-30T14:16:55-09:00",
-    "setup_amount": 2000,
-    "period_amount": 3000,
+    "setup_amount": 0,
+    "period_amount": 6900,
     "interval": 4,
     "description": "Medium Plan",
     "organization" : 2,
@@ -72,11 +72,11 @@
 },
 {
   "fields": {
-    "slug": "premium",
+    "slug": "streetside",
     "title": "Premium",
     "created_at": "2013-08-30T14:16:55-09:00",
-    "setup_amount": 1000,
-    "period_amount": 4000,
+    "setup_amount": 0,
+    "period_amount": 8900,
     "interval": 4,
     "description": "Premium Plan",
     "organization" : 2,
@@ -87,15 +87,15 @@
 {
     "fields": {
       "date_joined": "2012-09-14T14:16:55-09:00",
-      "email": "donny@localhost.localdomain",
-      "first_name": "Donny",
+      "email": "alice@localhost.localdomain",
+      "first_name": "Alice",
       "is_active": true,
       "is_staff": true,
       "is_superuser": true,
       "last_login": "2012-09-14T14:57:48-09:00",
       "last_name": "Doe",
       "password": "pbkdf2_sha256$10000$z0MBiWn0Rlem$iZdC6uHomlE07qGK/TqfcfxNzKJtFp03c0JILF1frRc=", 
-      "username": "donny"
+      "username": "alice"
     },
     "model": "auth.User", "pk": 2
 },
@@ -109,9 +109,48 @@
 },
 {
     "fields": {
+      "last_signed": "2014-01-01T00:00:00-00:00",
+      "agreement": 1,
+      "user": 2
+    },
+    "model": "saas.signature", "pk": 2
+},
+{
+    "fields": {
       "date_joined": "2012-09-14T14:16:55-09:00",
-      "email": "scott@localhost.localdomain",
-      "first_name": "Scott",
+      "email": "donny@localhost.localdomain",
+      "first_name": "Donny",
+      "is_active": true,
+      "is_staff": true,
+      "is_superuser": true,
+      "last_login": "2012-09-14T14:57:48-09:00",
+      "last_name": "Manager",
+      "password": "pbkdf2_sha256$10000$z0MBiWn0Rlem$iZdC6uHomlE07qGK/TqfcfxNzKJtFp03c0JILF1frRc=", 
+      "username": "donny"
+    },
+    "model": "auth.User", "pk": 3
+},
+{
+    "fields":{
+      "name": "manager",
+      "organization": 2,
+      "user": 3
+    },
+    "model": "saas.Role", "pk": 3
+},
+{
+    "fields": {
+      "last_signed": "2014-01-01T00:00:00-00:00",
+      "agreement": 1,
+      "user": 3
+    },
+    "model": "saas.signature", "pk": 3
+},
+{
+    "fields": {
+      "date_joined": "2012-09-14T14:16:55-09:00",
+      "email": "xia@localhost.localdomain",
+      "first_name": "Xia",
       "groups": [],
       "is_active": true,
       "is_staff": true,
@@ -120,24 +159,231 @@
       "last_name": "Doe",
       "password": "pbkdf2_sha256$10000$z0MBiWn0Rlem$iZdC6uHomlE07qGK/TqfcfxNzKJtFp03c0JILF1frRc=", 
       "user_permissions": [],
-      "username": "scott"
+      "username": "xia"
     },
-    "model": "auth.User", "pk": 3
+    "model": "auth.User", "pk": 4
+},
+{
+    "fields": {
+      "slug": "xia",
+      "full_name": "Xia",
+      "created_at": "2012-08-14T14:16:55-09:00",
+      "email": "xia@localhost.localdomain",
+      "phone": "555-555-5555",
+      "street_address": "1 ABC loop",
+      "locality":  "San Francisco",
+      "region": "CA",
+      "postal_code": "94102",
+      "country": "US",
+      "processor": 1,
+      "is_active": 1
+    },
+    "model": "saas.Organization", "pk": 4
+},
+{
+    "fields":{
+      "name": "manager",
+      "organization": 4,
+      "user": 4
+    },
+    "model": "saas.Role", "pk": 4
+},
+{
+    "fields": {
+      "last_signed": "2014-01-01T00:00:00-00:00",
+      "agreement": 1,
+      "user": 4
+    },
+    "model": "saas.signature", "pk": 4
+},
+{
+    "fields": {
+      "created_at": "2014-01-14T14:16:55-09:00",
+      "ends_at": "2016-12-01T00:00:00-09:00",
+      "organization": 4,
+      "plan": 3
+    },
+    "model": "saas.subscription", "pk": 4
 },
 {
     "fields": {
       "created_at": "2012-08-14T14:16:55-09:00",
-      "plan": 1,
-      "user": 2
-    },
-    "model": "saas.CartItem", "pk": 1
-},
-{
-    "fields": {
-      "created_at": "2012-08-14T14:16:55-09:00",
-      "code": "AAA",
+      "code": "HALLOWEEN",
       "organization": 2,
       "percent": 20
     },
     "model": "saas.Coupon", "pk": 1
+},
+{
+    "fields": {
+      "created_at": "2012-08-14T14:16:55-09:00",
+      "code": "DIS100",
+      "organization": 2,
+      "percent": 100
+    },
+    "model": "saas.Coupon", "pk": 2
+},
+{
+    "fields": {
+      "slug": "stephanie",
+      "full_name": "Stephanie DuJardin",
+      "created_at": "2015-01-01T00:00:00-09:00",
+      "email": "stephanie@localhost.localdomain",
+      "phone": "555-555-5555",
+      "street_address": "588 Sutter St. #237A",
+      "locality":  "San Francisco",
+      "region": "CA",
+      "postal_code": "94102",
+      "country": "US",
+      "processor": 1,
+      "is_active": 1
+    },
+    "model": "saas.Organization", "pk": 5
+},
+{
+    "fields": {
+      "date_joined": "2015-01-01T00:00:00-09:00",
+      "email": "stephanie@localhost.localdomain",
+      "first_name": "Stephanie",
+      "groups": [],
+      "is_active": true,
+      "is_staff": false,
+      "is_superuser": false,
+      "last_login": "2015-02-01T00:00:00-09:00",
+      "last_name": "DuJardin",
+      "password": "pbkdf2_sha256$10000$z0MBiWn0Rlem$iZdC6uHomlE07qGK/TqfcfxNzKJtFp03c0JILF1frRc=", 
+      "username": "stephanie"
+    },
+    "model": "auth.User", "pk": 5
+},
+{
+    "fields": {
+      "last_signed": "2014-01-01T00:00:00-00:00",
+      "agreement": 1,
+      "user": 5
+    },
+    "model": "saas.signature", "pk": 5
+},
+{
+    "fields": {
+      "name": "manager",
+      "organization": 5,
+      "user": 5
+    },
+    "model": "saas.Role", "pk": 5
+},
+{
+    "fields": {
+      "date_joined": "2014-01-01T00:00:00-00:00",
+      "email": "joe@localhost.localdomain",
+      "first_name": "Joe",
+      "last_name": "Smith",
+      "is_active": true,
+      "is_staff": false,
+      "is_superuser": false,
+      "last_login": "2014-01-01T00:00:00-00:00",
+      "password": "pbkdf2_sha256$10000$z0MBiWn0Rlem$iZdC6uHomlE07qGK/TqfcfxNzKJtFp03c0JILF1frRc=", 
+      "username": "joe"
+    },
+    "model": "auth.User", "pk": 6
+},
+{
+    "fields": {
+      "last_signed": "2014-01-01T00:00:00-00:00",
+      "agreement": 1,
+      "user": 6
+    },
+    "model": "saas.signature", "pk": 6
+},
+{
+    "fields": {
+      "slug": "joe-bulk",
+      "full_name": "Joe Bulk Buying",
+      "created_at": "2012-09-14T14:16:55-09:00",
+      "email": "joe@localhost.localdomain",
+      "phone": "555-555-5555",
+      "street_address": "588 Sutter St. #237A",
+      "locality":  "San Francisco",
+      "region": "CA",
+      "postal_code": "94102",
+      "country": "US",
+      "processor": 1,
+      "is_active": 1,
+      "is_bulk_buyer": 1
+    },
+    "model": "saas.Organization", "pk": 6
+},
+{
+    "fields": {
+      "name": "manager",
+      "organization": 6,
+      "user": 6
+    },
+    "model": "saas.Role", "pk": 6
+},
+{
+    "fields": {
+      "slug": "to-be-deleted-1",
+      "full_name": "Subscriber ToBeDeleted",
+      "created_at": "2012-09-14T14:16:55-09:00",
+      "email": "to-be-deleted-1@localhost.localdomain",
+      "phone": "555-555-5555",
+      "street_address": "588 Sutter St. #237A",
+      "locality":  "San Francisco",
+      "region": "CA",
+      "postal_code": "94102",
+      "country": "US",
+      "processor": 1,
+      "is_active": 1
+    },
+    "model": "saas.Organization", "pk": 8
+},
+{
+    "fields": {
+      "created_at": "2015-01-14T14:16:55-09:00",
+      "ends_at": "2017-01-14T14:16:55-09:00",
+      "organization": 8,
+      "plan": 1
+    },
+    "model": "saas.subscription", "pk": 2
+},
+{
+    "fields": {
+      "username": "to-be-deleted-2",
+      "date_joined": "2014-01-01T00:00:00-00:00",
+      "email": "to-be-deleted-2@localhost.localdomain",
+      "first_name": "Xia",
+      "last_name": "Lee",
+      "is_active": true,
+      "is_staff": false,
+      "is_superuser": false,
+      "last_login": "2014-01-01T00:00:00-00:00",
+      "password": "pbkdf2_sha256$10000$z0MBiWn0Rlem$iZdC6uHomlE07qGK/TqfcfxNzKJtFp03c0JILF1frRc="
+    },
+    "model": "auth.User", "pk": 9
+},
+{
+    "fields": {
+      "slug": "to-be-deleted-2",
+      "full_name": "Subscriber ToBeDeleted",
+      "created_at": "2012-09-14T14:16:55-09:00",
+      "email": "to-be-deleted-2@localhost.localdomain",
+      "phone": "555-555-5555",
+      "street_address": "588 Sutter St. #237A",
+      "locality":  "San Francisco",
+      "region": "CA",
+      "postal_code": "94102",
+      "country": "US",
+      "processor": 1,
+      "is_active": 1
+    },
+    "model": "saas.Organization", "pk": 9
+},
+{
+    "fields": {
+      "name": "manager",
+      "organization": 9,
+      "user": 9
+    },
+    "model": "saas.Role", "pk": 9
 }]

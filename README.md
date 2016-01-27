@@ -27,16 +27,12 @@ run the testsite webapp.
 
 To test payment through [Stripe](https://stripe.com/):
 
-1. Verify the Stripe API version you are using in the Stripe dashboard.
-
-    API Version: 2014-03-28
-
-2. Add your Stripe keys in the credentials file.
+1. Add your Stripe keys in the credentials file.
 
     STRIPE_PUB_KEY = "_your_stripe_public_api_key_"
     STRIPE_PRIV_KEY = "_your_stripe_private_api_key_"
 
-3. This Django App does not send notification e-mails itself. All major
+2. This Django App does not send notification e-mails itself. All major
 updates that would result in a e-mail sent trigger signals though. It is
 straightforward to send e-mails on a signal trigger in the main
 Django project. We provide sample e-mail templates here in the
@@ -55,6 +51,6 @@ to define ``PAGE_SIZE`` in your settings.py
 Release Notes
 =============
 
+- version 0.2.0 generic role, replaced Stripe Recipients by use of StripeConnect
 - version 0.1.8 refactor ledger to fully support backlog accounting
 - version 0.1.7 supports Django 1.7 and django-restframework 3.1
-

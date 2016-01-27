@@ -1,4 +1,4 @@
-# Copyright (c) 2014, DjaoDjin inc.
+# Copyright (c) 2016, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -28,8 +28,8 @@ import datetime, sys
 
 from django.core.management.base import NoArgsCommand
 
-from saas.models import Organization
-from saas.compat import User
+from ...compat import User
+from ...models import Organization
 
 class Command(NoArgsCommand):
     """Daily usage for the service"""

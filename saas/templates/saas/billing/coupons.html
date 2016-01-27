@@ -5,6 +5,7 @@
 <div ng-app="couponApp">
     <h1>Coupons</h1>
     <div ng-controller="CouponListCtrl">
+        <a id="download" href="{% url 'saas_metrics_coupons_download' organization %}?q=[[filterExpr]]" role="button">CSV Download</a>
     <h1 ng-hide="coupons.$resolved">Please wait...</h1>
     <h2 ng-show="coupons.$resolved && coupons.results.length == 0">No Coupons yet</h2>
         <table ng-show="coupons.$resolved && coupons.results.length > 0">
@@ -32,7 +33,7 @@
                 </form>
             </tr>
             <tr ng-repeat="coupon in coupons.results" ng-cloak>
-                <td><a href="[[urls.saas_metrics_coupons_url]][[coupon.code]]/">[[coupon.code]]</a></td>
+            <td><a id="[[coupon.code]]" href="[[urls.saas_metrics_coupons_url]][[coupon.code]]/">[[coupon.code]]</a></td>
                 <td>[[coupon.percent]]</td>
                 <td>[[coupon.ends_at ? (coupon.ends_at | date : mediumDate) : "Never"]]</td>
                 <td>[[coupon.description]]</td>

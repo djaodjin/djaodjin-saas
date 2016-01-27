@@ -22,7 +22,10 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+import re
+
 import dateutil
+from django.core.urlresolvers import reverse
 from django.http import Http404
 from django.shortcuts import get_object_or_404
 from django.utils.dateparse import parse_datetime
@@ -32,20 +35,11 @@ from extra_views.contrib.mixins import SearchableListMixin, SortableListMixin
 
 from . import settings
 from .compat import User
-from .models import (CartItem, Charge, Coupon, Organization, Plan,
-    Subscription, get_broker)
+from .humanize import (DESCRIBE_BUY_PERIODS, DESCRIBE_UNLOCK_NOW,
+    DESCRIBE_UNLOCK_LATER, DESCRIBE_BALANCE)
+from .models import (CartItem, Charge, Coupon, Organization, Plan, Subscription,
+    get_broker)
 from .utils import datetime_or_now, get_roles
-
-
-def get_charge_context(charge):
-    """
-    Return a dictionnary useful to populate charge receipt templates.
-    """
-    context = {'charge': charge,
-               'charge_items': charge.line_items,
-               'organization': charge.customer,
-               'provider': charge.broker} # XXX update templates
-    return context
 
 
 class CartMixin(object):
@@ -426,3 +420,73 @@ class RelationMixin(OrganizationMixin, UserMixin):
             #pylint:disable=protected-access
             raise Http404('No %s matches the given query.'
                 % queryset.model._meta.object_name)
+
+
+def as_html_description(transaction):
+    """
+    Add hyperlinks into a transaction description.
+    """
+    provider = transaction.orig_organization
+    subscriber = transaction.dest_organization
+    look = re.match(DESCRIBE_BUY_PERIODS % {
+        'plan': r'(?P<plan>\S+)', 'ends_at': r'.*', 'humanized_periods': r'.*'},
+        transaction.descr)
+    if not look:
+        look = re.match(DESCRIBE_UNLOCK_NOW % {
+            'plan': r'(?P<plan>\S+)', 'unlock_event': r'.*'},
+            transaction.descr)
+    if not look:
+        look = re.match(DESCRIBE_UNLOCK_LATER % {
+            'plan': r'(?P<plan>\S+)', 'unlock_event': r'.*',
+            'amount': r'.*'}, transaction.descr)
+    if not look:
+        look = re.match(DESCRIBE_BALANCE % {
+            'plan': r'(?P<plan>\S+)'}, transaction.descr)
+    if not look:
+        # DESCRIBE_CHARGED_CARD, DESCRIBE_CHARGED_CARD_PROCESSOR
+        # and DESCRIBE_CHARGED_CARD_PROVIDER.
+        # are specially crafted to start with "Charge ..."
+        look = re.match(r'Charge (?P<charge>\S+)', transaction.descr)
+        if look:
+            link = '<a href="%s">%s</a>' % (reverse('saas_charge_receipt',
+                args=(subscriber, look.group('charge'),)), look.group('charge'))
+            return transaction.descr.replace(look.group('charge'), link)
+        return transaction.descr
+
+    plan_link = ('<a href="%s%s/">%s</a>' % (
+        product_url(provider, subscriber),
+        look.group('plan'), look.group('plan')))
+    return transaction.descr.replace(look.group('plan'), plan_link)
+
+
+def get_charge_context(charge):
+    """
+    Return a dictionnary useful to populate charge receipt templates.
+    """
+    context = {'charge': charge,
+               'charge_items': charge.line_items,
+               'organization': charge.customer,
+               'provider': charge.broker} # XXX update templates
+    return context
+
+
+def product_url(provider, subscriber=None):
+    """
+    We cannot use a basic ``reverse('product_default_start')`` here because
+    *organization* and ``get_broker`` might be different.
+    """
+    current_uri = '/'
+    if settings.PROVIDER_SITE_CALLABLE:
+        from .compat import import_string
+        site = import_string(settings.PROVIDER_SITE_CALLABLE)(str(provider))
+        if site and site.domain:
+            scheme = 'https' # Defaults to secure connection.
+            current_uri = '%s://%s/' % (scheme, site.domain)
+        else:
+            current_uri += '%s/' % provider
+    elif provider != get_broker():
+        current_uri += '%s/' % provider
+    current_uri += 'app/'
+    if subscriber:
+        current_uri += '%s/' % subscriber
+    return current_uri

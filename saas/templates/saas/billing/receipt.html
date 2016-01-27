@@ -8,7 +8,7 @@
 display:none;
 }
 </style>
-<div>
+<div id="{{charge}}">
   <h1>Charge Receipt</h1>
   <section id="status">
       <p>
@@ -38,7 +38,7 @@ display:none;
     </dl>
     <dl>
       <dt>amount</dt>
-      <dd>{{charge.amount|humanize_money:charge.unit}}</dd>
+      <dd id="amount-info">{{charge.amount|humanize_money:charge.unit}}</dd>
     </dl>
     <dl>
       <dt>card</dt>
@@ -67,6 +67,7 @@ display:none;
             {% if line.invoiced|refund_enable:user %}
             <button class="charge-refund"
                     data-toggle="modal" data-target="#charge-refund"
+                    data-available-amount="{{line.invoiced.dest_amount}}"
                     data-linenum="{{forloop.counter0}}">Refund</button>
             {% endif %}
           </td>
@@ -91,38 +92,14 @@ display:none;
   {% endif %}
 </div>
 <!-- modal dialog for Refunds -->
-<div class="modal fade"
-     id="charge-refund" tabindex="-1" role="dialog"
-     aria-labelledby="Refund" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <button type="button" class="close"
-                        data-dismiss="modal" aria-hidden="true">&times;</button>
-                <h4 class="modal-title">Refund</h4>
-            </div>
-            <div class="modal-body">
-                <div class="form-group">
-                    <div class="controls">
-                        <input class="form-control form-control"
-                               name="amount" maxlength="32" type="text"
-                               value="0" />
-                    </div>
-                </div>
-                <div>
-                    <p>
+<div id="charge-refund">
+  <h4>Refund</h4>
+  <input class="form-control form-control" name="amount" maxlength="32"
+         type="text" value="0" />
+  <p>
 Please specify the amount you would like refunded.
-                    </p>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-default"
-                        data-dismiss="modal">Cancel</button>
-                <button type="button" class="submit-refund btn btn-primary"
-                        data-dismiss="modal">OK</button>
-            </div>
-        </div>
-    </div>
+  </p>
+  <button type="submit" class="submit-refund">OK</button>
 </div>
 <!-- end of modal dialog for Refunds -->
 {% endblock %}

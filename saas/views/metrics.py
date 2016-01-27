@@ -1,4 +1,4 @@
-# Copyright (c) 2015, DjaoDjin inc.
+# Copyright (c) 2016, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -28,17 +28,17 @@ from datetime import datetime
 from django.core.urlresolvers import reverse
 from django.views.generic import ListView, TemplateView
 
-from saas.api.coupons import SmartCouponListMixin
+from .download import CSVDownloadView
+from ..api.coupons import SmartCouponListMixin
 # NB: there is another CouponMixin
-from saas.api.coupons import CouponMixin as CouponAPIMixin
-from saas.api.metrics import RegisteredQuerysetMixin
-from saas.managers.metrics import monthly_balances, month_periods
-from saas.mixins import (CouponMixin, OrganizationMixin, MetricsMixin,
+from ..api.coupons import CouponMixin as CouponAPIMixin
+from ..api.metrics import RegisteredQuerysetMixin
+from ..managers.metrics import monthly_balances, month_periods
+from ..mixins import (CouponMixin, OrganizationMixin, MetricsMixin,
     ChurnedQuerysetMixin, SubscriptionSmartListMixin, SubscribedQuerysetMixin,
     UserSmartListMixin)
-from saas.models import CartItem, Plan, Transaction
-from saas.views.download import CSVDownloadView
-from saas.utils import datetime_or_now
+from ..models import CartItem, Plan, Transaction
+from ..utils import datetime_or_now
 
 
 class CouponMetricsView(CouponMixin, ListView):

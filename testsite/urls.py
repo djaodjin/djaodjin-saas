@@ -1,4 +1,4 @@
-# Copyright (c) 2015, DjaoDjin inc.
+# Copyright (c) 2016, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -25,10 +25,10 @@
 from django.contrib.auth.decorators import login_required
 from django.core.urlresolvers import reverse_lazy
 from django.views.generic import TemplateView
+from saas.views import OrganizationRedirectView, UserRedirectView
+from saas.views.plans import CartPlanListView
 from urldecorators import include, url
 
-from saas.views import OrganizationRedirectView
-from saas.views.plans import CartPlanListView
 from testsite.views.organization import OrganizationListView, UserProfileView
 from testsite.views.registration import PersonalRegistrationView
 
@@ -36,42 +36,67 @@ from testsite.views.registration import PersonalRegistrationView
 from django.contrib import admin
 admin.autodiscover()
 
+def url_prefixed(regex, view, name=None, decorators=None):
+    """
+    Returns a urlpattern for public pages.
+    """
+    return url(r'^' + regex, view, name=name, decorators=decorators)
+
 urlpatterns = [
     # admin doc and panel
     url(r'^admin/doc/', include('django.contrib.admindocs.urls')),
     url(r'^admin/', include(admin.site.urls)),
-    url(r'^accounts/register/$',
+    url_prefixed(r'register/$',
         PersonalRegistrationView.as_view(
             success_url=reverse_lazy('home')),
         name='registration_register'),
-    url(r'^users/(?P<user>[\w.@+-]+)/',
+    url_prefixed(r'users/(?P<user>[\w.@+-]+)/',
         UserProfileView.as_view(), name='users_profile'),
-    url(r'^accounts/', include('django.contrib.auth.urls')),
-    url(r'^saas/$',
+    url_prefixed(r'', include('django.contrib.auth.urls')),
+    url_prefixed(r'saas/$',
         OrganizationListView.as_view(), name='saas_organization_list',
         decorators=['django.contrib.auth.decorators.login_required']),
-    url(r'^', include('saas.urls.noauth')),
-    url(r'^$', TemplateView.as_view(template_name='index.html'), name='home'),
-    url(r'^billing/cart/',
+    url_prefixed(r'$', TemplateView.as_view(template_name='index.html'),
+        name='home'),
+    url_prefixed(r'billing/cart/',
         login_required(OrganizationRedirectView.as_view(
                 pattern_name='saas_organization_cart'),
                        login_url=reverse_lazy('registration_register')),
         name='saas_cart'),
     # saas urls with provider key to implement marketplace.
-    url(r'^api/', include('saas.urls.api.cart')),
-    url(r'^api/', include('saas.urls.api.broker'),
+    url_prefixed(r'api/', include('saas.urls.api.cart')),
+    url_prefixed(r'api/', include('saas.urls.api.broker'),
         decorators=['saas.decorators.requires_direct']),
-    url(r'^api/', include('saas.urls.api.provider'),
+    # api/charges/:charge/refund must be before api/charges/
+    url_prefixed(r'api/',
+        include('saas.urls.api.provider.charges'),
+        decorators=['saas.decorators.requires_provider_only']),
+    url_prefixed(r'api/',
+        include('saas.urls.api.provider.billing'),
         decorators=['saas.decorators.requires_direct']),
-    url(r'^api/', include('saas.urls.api.subscriber'),
+    url_prefixed(r'api/',
+        include('saas.urls.api.provider.profile'),
+        decorators=['saas.decorators.requires_direct']),
+    url_prefixed(r'api/',
+        include('saas.urls.api.provider.metrics'),
+        decorators=['saas.decorators.requires_direct']),
+    url_prefixed(r'api/', include('saas.urls.api.subscriber'),
         decorators=['saas.decorators.requires_provider']),
-    url(r'^pricing/', CartPlanListView.as_view(), name='saas_cart_plan_list'),
-    url(r'^provider/', include('saas.urls.provider'),
+    url_prefixed(r'pricing/', CartPlanListView.as_view(),
+        name='saas_cart_plan_list'),
+    url_prefixed(r'users/$',
+        UserRedirectView.as_view(), name='accounts_profile',
+        decorators=['django.contrib.auth.decorators.login_required']),
+    url_prefixed(r'', include('saas.urls.request'),
+        decorators=['django.contrib.auth.decorators.login_required']),
+    url_prefixed(r'', include('saas.urls.noauth')),
+    url_prefixed(r'', include('saas.urls.provider'),
         decorators=['saas.decorators.requires_direct']),
-    url(r'^', include('saas.urls.broker'),
+    url_prefixed(r'', include('saas.urls.broker'),
         decorators=['saas.decorators.requires_direct']),
-    url(r'^', include('saas.urls.subscriber'),
-        decorators=['saas.decorators.requires_direct']),
-    url(r'^(?P<provider>[\w.@+-]+)/app/',
+    url_prefixed(r'', include('saas.urls.subscriber'),
+        decorators=['saas.decorators.requires_provider',
+                    'saas.decorators.requires_agreement']),
+    url_prefixed(r'app/',
         TemplateView.as_view(template_name='app.html'), name='app'),
 ]

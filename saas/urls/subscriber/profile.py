@@ -1,4 +1,4 @@
-# Copyright (c) 2014, DjaoDjin inc.
+# Copyright (c) 2016, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -26,9 +26,9 @@
 
 from django.conf.urls import url
 
-from saas.settings import ACCT_REGEX
-from saas.views import OrganizationRedirectView
-from saas.views.profile import (RoleListView, OrganizationProfileView,
+from ...settings import ACCT_REGEX
+from ...views import OrganizationRedirectView
+from ...views.profile import (RoleListView, OrganizationProfileView,
     SubscriptionListView)
 
 urlpatterns = [

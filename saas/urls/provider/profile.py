@@ -1,4 +1,4 @@
-# Copyright (c) 2015, DjaoDjin inc.
+# Copyright (c) 2016, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -29,10 +29,10 @@ URLs related to provider bank account information.
 from django.conf.urls import url
 from django.views.generic import TemplateView
 
-from saas.settings import ACCT_REGEX
-from saas.views import ProviderRedirectView
-from saas.views.profile import SubscriberListView
-from saas.views.plans import PlanCreateView, PlanUpdateView
+from ...settings import ACCT_REGEX
+from ...views import ProviderRedirectView
+from ...views.plans import PlanCreateView, PlanUpdateView
+from ...views.profile import SubscriberListView
 
 
 urlpatterns = [

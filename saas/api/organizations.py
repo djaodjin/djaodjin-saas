@@ -24,16 +24,16 @@
 
 import re
 
-from django.conf import settings
+from django.conf import settings as django_settings
 from django.contrib.auth import logout as auth_logout
 from django.db import transaction
 from rest_framework import status
 from rest_framework.generics import RetrieveUpdateDestroyAPIView
 from rest_framework.response import Response
 
-from saas.api.serializers import OrganizationSerializer
-from saas.mixins import OrganizationMixin
-from saas.models import Organization
+from .serializers import OrganizationSerializer
+from ..mixins import OrganizationMixin
+from ..models import Organization
 
 #pylint: disable=no-init
 #pylint: disable=old-style-class
@@ -50,11 +50,11 @@ class OrganizationDetailAPIView(OrganizationMixin,
         {
             "slug": "xia",
             "full_name": "Xia Lee",
-            "created_at": "2012-09-14T23:16:55Z",
+            "created_at": "2016-01-14T23:16:55Z",
             "subscriptions": [
                 {
-                    "created_at": "2015-01-14T23:16:55Z",
-                    "ends_at": "2016-01-14T23:16:55Z",
+                    "created_at": "2016-01-14T23:16:55Z",
+                    "ends_at": "2017-01-14T23:16:55Z",
                     "plan": "open-space",
                     "auto_renew": true
                 }
@@ -81,7 +81,7 @@ class OrganizationDetailAPIView(OrganizationMixin,
         manager = self.attached_manager(obj)
         email = obj.email
         slug = '_archive_%d' % obj.id
-        look = re.match(r'.*(@\S+)', settings.ADMINS[0][1])
+        look = re.match(r'.*(@\S+)', django_settings.DEFAULT_FROM_EMAIL)
         if look:
             email = '%s+%d%s' % (obj.slug, obj.id, look.group(1))
         with transaction.atomic():

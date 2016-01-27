@@ -1,4 +1,4 @@
-# Copyright (c) 2015, DjaoDjin inc.
+# Copyright (c) 2016, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -28,10 +28,8 @@ from optparse import make_option
 from django.core.management.base import BaseCommand
 from django.utils.timezone import utc
 
-# We need this import to avoid getting an exception importing 'saas.models'
-from saas.utils import datetime_or_now #pylint: disable=unused-import
-from saas.ledger import export
-from saas.models import Organization, Transaction, get_broker
+from ...ledger import export
+from ...models import Organization, Transaction, get_broker
 
 class Command(BaseCommand):
     help = 'Manage ledger.'

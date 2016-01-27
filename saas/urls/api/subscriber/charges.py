@@ -1,4 +1,4 @@
-# Copyright (c) 2014, DjaoDjin inc.
+# Copyright (c) 2016, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -28,8 +28,9 @@ URLs API for resources
 
 from django.conf.urls import url
 
-from saas.settings import ACCT_REGEX
-from saas.api.charges import ChargeResourceView, EmailChargeReceiptAPIView
+from ....api.charges import ChargeResourceView, EmailChargeReceiptAPIView
+from ....settings import ACCT_REGEX
+
 
 urlpatterns = [
     url(r'^charges/(?P<charge>%s)/email/' % ACCT_REGEX,

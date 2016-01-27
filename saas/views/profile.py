@@ -1,4 +1,4 @@
-# Copyright (c) 2015, DjaoDjin inc.
+# Copyright (c) 2016, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -35,11 +35,11 @@ from django.views.generic import (CreateView, DetailView, ListView,
     TemplateView, UpdateView)
 from django.utils.decorators import method_decorator
 
-from saas.forms import (OrganizationForm, OrganizationCreateForm,
+from . import RedirectFormMixin
+from ..forms import (OrganizationForm, OrganizationCreateForm,
     ManagerAndOrganizationForm)
-from saas.mixins import OrganizationMixin
-from saas.models import Organization, Subscription
-from saas.views import RedirectFormMixin
+from ..mixins import OrganizationMixin
+from ..models import Organization, Subscription
 
 
 LOGGER = logging.getLogger(__name__)

@@ -1,4 +1,4 @@
-# Copyright (c) 2015, DjaoDjin inc.
+# Copyright (c) 2016, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -67,8 +67,8 @@ from rest_framework.generics import CreateAPIView, DestroyAPIView
 from rest_framework.response import Response
 from rest_framework import serializers, status
 
-from saas.models import CartItem, Plan
-from saas.mixins import CartMixin
+from ..models import CartItem, Plan
+from ..mixins import CartMixin
 
 #pylint: disable=no-init,old-style-class
 LOGGER = logging.getLogger(__name__)

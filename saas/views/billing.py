@@ -59,10 +59,10 @@ from ..forms import (BankForm, CartPeriodsForm, CreditCardForm,
 from ..humanize import (as_money, describe_buy_periods, match_unlock,
     DESCRIBE_UNLOCK_NOW, DESCRIBE_UNLOCK_LATER)
 from ..mixins import (ChargeMixin, DateRangeMixin, OrganizationMixin,
-    ProviderMixin)
+    ProviderMixin, product_url)
 from ..models import (Organization, CartItem, Coupon, Plan, Transaction,
     Subscription, get_broker)
-from ..utils import datetime_or_now, product_url, validate_redirect_url
+from ..utils import datetime_or_now, validate_redirect_url
 from ..views import session_cart_to_database
 from ..views.download import CSVDownloadView
 
@@ -552,9 +552,9 @@ class CartBaseView(InvoicablesFormMixin, FormView):
     the user can choose from. Options usually include various number of periods
     that can be pre-paid now for a discount. ex:
 
-        $189.00 Subscription to streetside until 2014/11/07 (1 month)
-        $510.30 Subscription to streetside until 2015/01/07 (3 months, 10% off)
-        $907.20 Subscription to streetside until 2015/04/07 (6 months, 20% off)
+        $189.00 Subscription to streetside until 2015/11/07 (1 month)
+        $510.30 Subscription to streetside until 2016/01/07 (3 months, 10% off)
+        $907.20 Subscription to streetside until 2016/04/07 (6 months, 20% off)
     """
 
     def dispatch(self, *args, **kwargs):

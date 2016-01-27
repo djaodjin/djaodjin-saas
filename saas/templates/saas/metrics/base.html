@@ -4,28 +4,24 @@
 {% block saas_content %}
 <section id="metrics_table" ng-app="metricsApp" ng-cloak>
   <div ng-controller="metricsCtrl" ng-init="prefetch()">
-      <div ng-repeat="table in tables">
-      {% comment %}
-      Unfortunately, date pickers can't be right-aligned.
-      See: https://github.com/angular-ui/bootstrap/issues/1012
-      Until that's fixed, or we integrate one of the hacky work-arounds, we will need to 
-      keep this on the left side of the screen.
-      {% endcomment %}
-        <div>
-          <span>To</span>
-          <span>[[ends_at | date : mediumDate]]</span>
-        </div>
-        <table>
-          <tr>
-            <td></td>
-            <td ng-repeat="col in table.data[0].values">[[col[0] | monthHeading]]</td>
-          </tr>
-          <tr ng-repeat="row in table.data">
-            <td>[[row.key]]</td>
-            <td ng-repeat="col in row.values">[[col[1]|humanizeCell : table.unit : table.scale]]</td>
-          </tr>
-        </table>
-      </div>
+    <div>
+      <span>To</span>
+      <span>[[ends_at | date : mediumDate]]</span>
+    </div>
+    <div ng-repeat="table in tables">
+      <a href="#[[table.key]]" ng-click="tabClicked($event)"><h2>[[table.key]]</h2></a>
+      <table>
+        <tr>
+          <td></td>
+          <td ng-repeat="col in table.data[0].values">[[col[0] | monthHeading]]</td>
+        </tr>
+        <tr ng-repeat="row in table.data">
+          <td>[[row.key]]</td>
+          <td ng-repeat="col in row.values">[[col[1]|humanizeCell : table.unit : table.scale]]</td>
+        </tr>
+      </table>
+    </div>
+    <div id="metrics-chart">
     </div>
   </div>
   {% block metrics_extra_data %}
@@ -35,18 +31,13 @@
 
 {% block saas_bodyscripts %}
 <script type="text/javascript">
-$(document).ready(function(){
-    $("#export-csv").click(exportCSV);
+function updateChart(container, data, unit, dataScale, extra) {
+    $(container).text(JSON.stringify(data));
+}
 
-    // Copy/Paste from vendor/js/bootstrap.js and inserted
-    // a forced trigger of 'resize' for NVD3 to redraw the chart
-    // using correct dimensions.
-
-        $(document).on('shown.bs.tab',
-        '[data-toggle="tab"], [data-toggle="pill"]', function (e) {
-        window.dispatchEvent(new Event('resize'));
-    });
-});
+function updateBarChart(container, data, unit, dataScale, extra) {
+    $(container).text(JSON.stringify(data));
+}
 
 var app = angular.module('metricsApp');
 app.config(['$interpolateProvider', '$httpProvider',

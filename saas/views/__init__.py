@@ -41,6 +41,7 @@ from .. import settings
 from ..decorators import fail_direct
 from ..models import CartItem, Coupon, Plan, Organization, get_broker
 
+
 LOGGER = logging.getLogger(__name__)
 
 

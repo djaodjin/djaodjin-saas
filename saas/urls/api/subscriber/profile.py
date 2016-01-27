@@ -1,4 +1,4 @@
-# Copyright (c) 2015, DjaoDjin inc.
+# Copyright (c) 2016, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -28,12 +28,12 @@ URLs API for profile resources (contributors, managers and subscriptions)
 
 from django.conf.urls import url
 
-from saas.settings import ACCT_REGEX
-from saas.api.organizations import OrganizationDetailAPIView
-from saas.api.subscriptions import (SubscriptionDetailAPIView,
+from ....api.organizations import OrganizationDetailAPIView
+from ....api.subscriptions import (SubscriptionDetailAPIView,
     SubscriptionListAPIView)
-from saas.api.users import (RoleListAPIView, RoleDetailAPIView)
-from saas.views import OrganizationRedirectView
+from ....api.users import (RoleListAPIView, RoleDetailAPIView)
+from ....settings import ACCT_REGEX
+from ....views import OrganizationRedirectView
 
 
 urlpatterns = [

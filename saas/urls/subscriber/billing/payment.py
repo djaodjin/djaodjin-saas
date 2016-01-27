@@ -1,4 +1,4 @@
-# Copyright (c) 2014, DjaoDjin inc.
+# Copyright (c) 2016, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -29,9 +29,10 @@ through POST requests.
 
 from django.conf.urls import url
 
-from saas.settings import ACCT_REGEX
-from saas.views.billing import (CartPeriodsView, CartSeatsView,
+from ....settings import ACCT_REGEX
+from ....views.billing import (CartPeriodsView, CartSeatsView,
     CardUpdateView, CartView, BalanceView)
+
 
 urlpatterns = [
     url(r'^billing/(?P<organization>%s)/cart-seats/' % ACCT_REGEX,

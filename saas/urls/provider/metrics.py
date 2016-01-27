@@ -1,4 +1,4 @@
-# Copyright (c) 2015, DjaoDjin inc.
+# Copyright (c) 2016, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -26,11 +26,12 @@
 
 from django.conf.urls import url
 
-from saas.settings import ACCT_REGEX
-from saas.views import ProviderRedirectView
-from saas.views.profile import DashboardView
-from saas.views.metrics import (CouponMetricsView, PlansMetricsView,
+from ...settings import ACCT_REGEX
+from ...views import ProviderRedirectView
+from ...views.profile import DashboardView
+from ...views.metrics import (CouponMetricsView, PlansMetricsView,
     RevenueMetricsView)
+
 
 urlpatterns = [
     url(r'^metrics/dashboard/',

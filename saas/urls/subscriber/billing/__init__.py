@@ -1,4 +1,4 @@
-# Copyright (c) 2014, DjaoDjin inc.
+# Copyright (c) 2016, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -28,9 +28,9 @@ URLs related to billing.
 
 from django.conf.urls import url, include
 
-from saas.views import OrganizationRedirectView
-from saas.views.billing import TransactionDownloadView
-from saas.settings import ACCT_REGEX
+from ....views import OrganizationRedirectView
+from ....views.billing import TransactionDownloadView
+from ....settings import ACCT_REGEX
 
 
 urlpatterns = [

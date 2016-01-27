@@ -1,4 +1,4 @@
-# Copyright (c) 2015, DjaoDjin inc.
+# Copyright (c) 2016, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -28,11 +28,12 @@ URLs API for provider resources related to billing
 
 from django.conf.urls import url
 
-from saas.settings import ACCT_REGEX
-from saas.api.metrics import (BalancesAPIView,
+from ....api.metrics import (BalancesAPIView,
     RevenueMetricAPIView, CustomerMetricAPIView, PlanMetricAPIView)
-from saas.api.subscriptions import (ActiveSubscriptionAPIView,
+from ....api.subscriptions import (ActiveSubscriptionAPIView,
     ChurnedSubscriptionAPIView)
+from ....settings import ACCT_REGEX
+
 
 urlpatterns = [
     url(r'^metrics/(?P<organization>%s)/active/?' % ACCT_REGEX,

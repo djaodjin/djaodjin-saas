@@ -1,4 +1,4 @@
-# Copyright (c) 2015, DjaoDjin inc.
+# Copyright (c) 2016, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -28,8 +28,8 @@ URLs for a user's products.
 
 from django.conf.urls import url
 
-from saas.settings import ACCT_REGEX
-from saas.views.users import ProductListView
+from ..settings import ACCT_REGEX
+from ..views.users import ProductListView
 
 urlpatterns = [
     url(r'^(?P<user>%s)/products/' % ACCT_REGEX,

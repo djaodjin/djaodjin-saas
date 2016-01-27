@@ -1,4 +1,4 @@
-# Copyright (c) 2014, DjaoDjin inc.
+# Copyright (c) 2016, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -23,7 +23,8 @@
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 from extended_templates.backends.pdf import PdfTemplateResponse
-from saas.views.billing import ChargeReceiptView
+
+from .billing import ChargeReceiptView
 
 
 class PrintableChargeReceiptView(ChargeReceiptView):

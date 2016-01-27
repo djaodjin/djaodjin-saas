@@ -5,6 +5,7 @@
 <section id="subscribers" ng-app="subscriptionApp" ng-cloak>
   <div ng-controller="subscriptionListCtrl" ng-init="prefetch()">
     <div id="registered-users">
+      <a href="#registered-users"><h2>Registered</h2></a>
       <div>
         <label>Filter</label> <input type="text" ng-model="filterExpr" ng-change="filterList(filterExpr)" />
         <a id="download-registered" href="{% url 'saas_subscriber_pipeline_download_registered' %}?q=[[filterExpr]]">CSV Download</a>
@@ -16,19 +17,21 @@
             <th></th>
           </tr>
         </thead>
-        <tbody>
-          <tr ng-hide="registered.$resolved">
+        <tbody ng-hide="registered.$resolved">
+          <tr>
             <td colspan="2">
               <h4>Loading ...</h4>
             </td>
           </tr>
-          <tr ng-show="registered.$resolved && registered.count == 0">
+        </tbody>
+        <tbody ng-show="registered.$resolved && registered.count == 0">
+          <tr>
             <td colspan="2">
               <h4>No registered users<span ng-show="filterExpr">with filter '[[filterExpr]]'</span></h4>
             </td>
           </tr>
         </tbody>
-        <tbody ng-repeat="entry in registered.results" ng-cloak ng-show="registered.$resolved && registered.results.length > 0">
+        <tbody class="has-results" ng-repeat="entry in registered.results" ng-cloak ng-show="registered.$resolved && registered.results.length > 0">
           <tr>
             <td>
               [[entry.first_name]] [[entry.last_name]]
@@ -54,9 +57,11 @@
       </div>
     </div>
     <div id="active-subscriptions">
+      <a href="#active-subscriptions"><h2>Active</h2></a>
       {% include "saas/_subscriptions.html" with subscriptions="subscribed" %}
     </div>
     <div id="churned-subscriptions">
+      <a href="#churned-subscriptions"><h2>Churned</h2></a>
       {% include "saas/_subscriptions.html" with subscriptions="churned" %}
     </div>
   </div>

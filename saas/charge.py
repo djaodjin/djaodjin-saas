@@ -1,4 +1,4 @@
-# Copyright (c) 2015, DjaoDjin inc.
+# Copyright (c) 2016, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -31,10 +31,10 @@ import logging
 from dateutil.relativedelta import relativedelta
 from django.db import transaction
 
-from saas.humanize import DESCRIBE_RECOGNIZE_INCOME
-from saas.models import (Charge, Organization, Transaction, Subscription,
+from .humanize import DESCRIBE_RECOGNIZE_INCOME
+from .models import (Charge, Organization, Transaction, Subscription,
     sum_dest_amount)
-from saas.utils import datetime_or_now
+from .utils import datetime_or_now
 
 LOGGER = logging.getLogger(__name__)
 

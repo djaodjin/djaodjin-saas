@@ -308,7 +308,8 @@ userRelationControllers.controller("userRelationListCtrl",
             });
     };
 
-    $scope.save = function() {
+    $scope.save = function($event) {
+        $event.preventDefault();
         (new UserRelation($scope.user)).$save(
             function(success) {
                 /* XXX Couldn't figure out how to get the status code

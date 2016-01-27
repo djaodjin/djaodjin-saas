@@ -6,6 +6,7 @@
   <title>SaaS Testsite</title>
   <script type="text/javascript" src="{% static 'vendor/js/jquery.js' %}"></script>
   {% if csrf_token %}
+  <meta name="csrf-token" content="{{csrf_token}}">
   <script type="text/javascript">
     function csrfSafeMethod(method) {
         // these HTTP methods do not require CSRF protection

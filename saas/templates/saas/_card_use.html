@@ -2,7 +2,7 @@
 
 <div id="card-use">
 <fieldset>
-      <legend>Credit Card Information{% if last4 and not update_mode %}<a href="{% url 'saas_update_card' organization %}">Update</a>{% endif %}</legend>
+      <legend>Credit Card Information{% if last4 and not update_mode %}<a id="card-update" href="{% url 'saas_update_card' organization %}">Update</a>{% endif %}</legend>
       {% if last4 %}
       <div>
             <dl>
@@ -54,5 +54,5 @@
 </fieldset>
 </div> <!-- #card-use -->
 <div>
-      <button type="submit">{{title}}</button>
+      <button type="submit" class="payment-submit">{{title}}</button>
 </div>

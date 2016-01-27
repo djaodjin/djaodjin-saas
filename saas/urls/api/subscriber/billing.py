@@ -1,4 +1,4 @@
-# Copyright (c) 2015, DjaoDjin inc.
+# Copyright (c) 2016, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -28,9 +28,10 @@ URLs API for resources
 
 from django.conf.urls import url
 
-from saas.settings import ACCT_REGEX
-from saas.api.backend import RetrieveCardAPIView
-from saas.api.transactions import TransactionListAPIView
+from ....api.backend import RetrieveCardAPIView
+from ....api.transactions import TransactionListAPIView
+from ....settings import ACCT_REGEX
+
 
 urlpatterns = [
     url(r'^(?P<organization>%s)/payments/?' % ACCT_REGEX,

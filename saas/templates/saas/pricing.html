@@ -42,19 +42,4 @@
 {% block bodyscripts %}
 <script type="text/javascript" src="{% static 'js/djaodjin-saas.js' %}"></script>
 <script type="text/javascript" src="{% static 'js/djaodjin-saas-resources.js' %}"></script>
-<script type="text/javascript">
-$(document).ready(function() {
-    /* Select Plan and move to cart page. */
-    $(".plan-short").click(function (event) {
-        var self = $(this);
-        event.preventDefault();
-        var thisCartItem = new CartItem({
-            'plan': self.attr('id'),
-            'urls': {'saas_api_cart': "{% url 'saas_api_cart' %}"}});
-        thisCartItem.add(function(data) {
-            window.location = "{% url 'saas_cart' %}";
-        });
-    });
-});
-</script>
 {% endblock %}

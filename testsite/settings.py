@@ -1,6 +1,9 @@
 # Django settings for testsite project.
 
-import os.path
+import os.path, sys
+
+from django.core.urlresolvers import reverse_lazy
+
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -11,7 +14,7 @@ def load_config(confpath):
     '''
     # todo: consider using something like ConfigObj for this:
     # http://www.voidspace.org.uk/python/configobj.html
-    import re, sys
+    import re
     if os.path.isfile(confpath):
         sys.stderr.write('config loaded from %s\n' % confpath)
         with open(confpath) as conffile:
@@ -45,7 +48,7 @@ TEMPLATE_DEBUG = DEBUG
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': os.path.join(os.getcwd(), 'saas_testsite.sqlite'),
+        'NAME': os.path.join(os.getcwd(), 'db.sqlite'),
         'USER': '',
         'PASSWORD': '',
         'HOST': '',
@@ -151,14 +154,17 @@ INSTALLED_APPS = (
     'testsite'
 )
 
-LOGIN_REDIRECT_URL = '/profile/'
+LOGIN_URL = reverse_lazy('login')
+LOGIN_REDIRECT_URL = reverse_lazy('app')
 
 # Allow user to enter month in durationfield
 DURATIONFIELD_ALLOW_MONTHS = True
 
 # Configuration of djaodjin-saas
 SAAS = {
-  'PROVIDER_ID': 2
+  'PLATFORM': 'cowork',
+  'STRIPE_PRIV_KEY': getattr(sys.modules[__name__], "STRIPE_PRIV_KEY", None),
+  'STRIPE_PUB_KEY': getattr(sys.modules[__name__], "STRIPE_PUB_KEY", None)
 }
 
 # A sample logging configuration. The only tangible logging

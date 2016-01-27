@@ -64,8 +64,8 @@ from rest_framework.response import Response
 import requests, stripe
 from stripe.error import StripeError as ProcessorError
 
-from saas import settings, signals
-from saas.utils import datetime_to_utctimestamp, utctimestamp_to_datetime
+from ... import settings, signals
+from ...utils import datetime_to_utctimestamp, utctimestamp_to_datetime
 
 LOGGER = logging.getLogger(__name__)
 
@@ -329,7 +329,7 @@ class StripeBackend(object):
         processor_charge.refund(amount=amount)
 
     def retrieve_bank(self, provider):
-        # ``STRIPE_CLIENT_ID`` here because serves page with Connect button.
+        # XXX ``STRIPE_CLIENT_ID`` here because serves page with Connect button.
         context = {
             'STRIPE_PUB_KEY': self.pub_key, 'STRIPE_CLIENT_ID': self.client_id}
         try:
@@ -340,7 +340,7 @@ class StripeBackend(object):
                 if provider.processor_deposit_key:
                     last4 = provider.processor_deposit_key[-4:]
                 else:
-                    last4 = self.client_id[-4:]
+                    last4 = self.pub_key[-4:]
                 context.update({
                     'bank_name': 'Stripe', 'last4': '***-%s' % last4})
                 try:

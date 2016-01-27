@@ -1,4 +1,4 @@
-# Copyright (c) 2015, DjaoDjin inc.
+# Copyright (c) 2016, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -30,9 +30,9 @@ from rest_framework.response import Response
 from rest_framework.generics import RetrieveAPIView
 from rest_framework import serializers
 
-from saas import signals
-from saas.models import Charge, InsufficientFunds
-from saas.mixins import ChargeMixin
+from .. import signals
+from ..models import Charge, InsufficientFunds
+from ..mixins import ChargeMixin
 
 #pylint: disable=no-init
 #pylint: disable=old-style-class
@@ -76,12 +76,12 @@ class ChargeResourceView(RetrieveChargeMixin, RetrieveAPIView):
     .. sourcecode:: http
 
         {
-            "created_at": "2015-08-01T00:00:00Z",
+            "created_at": "2016-01-01T00:00:00Z",
             "amount": 112120,
             "unit": "usd",
             "description": "Charge for subscription to cowork open-space",
             "last4": "1234",
-            "exp_date"" "12/2015",
+            "exp_date"" "12/2016",
             "processor_key": "ch_XAb124EF",
             "state": "DONE"
         }
@@ -117,12 +117,12 @@ class ChargeRefundAPIView(RetrieveChargeMixin, RetrieveAPIView):
     .. sourcecode:: http
 
         {
-            "created_at": "2015-08-01T00:00:00Z",
+            "created_at": "2016-01-01T00:00:00Z",
             "amount": 112120,
             "unit": "usd",
             "description": "Charge for subscription to cowork open-space",
             "last4": "1234",
-            "exp_date"" "12/2015",
+            "exp_date"" "12/2016",
             "processor_key": "ch_XAb124EF",
             "state": "DONE"
         }

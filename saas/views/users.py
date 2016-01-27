@@ -24,8 +24,8 @@
 
 from django.views.generic import ListView
 
-from saas.compat import User
-from saas.models import Organization
+from ..compat import User
+from ..models import Organization
 
 
 class ProductListView(ListView):

@@ -1,12 +1,12 @@
-{% extends "saas/transaction_base.html" %}
+{% extends "saas/transactions_base.html" %}
 {% load saas_tags %}
 
 {% block saas_transaction_content %}
 <section id="info">
-  <h1>Bank Information <a href="{% url 'saas_update_bank' organization %}">Update</a></h1>
+  <h1>Deposit Information <a id="update_bank" href="{% url 'saas_update_bank' organization %}">Update</a></h1>
   <div>
     <dl>
-      <dt>Bank</dt>
+      <dt>Institution</dt>
       <dd>[[bank_name]]</dd>
     </dl>
     <dl>
@@ -18,7 +18,7 @@
 <section id="funds">
   <h1>Funds</h1>
   <dl>
-    <dt>[[balance_amount|humanizeCell : balance_unit : 0.01]]</dt>
+    <dt id="balance-amount">[[balance_amount|humanizeCell : balance_unit : 0.01]]</dt>
     <dd>Available (<a href="{% url 'saas_withdraw_funds' organization %}">withdraw</a>)</dd>
   </dl>
 </section>

@@ -97,24 +97,3 @@ def generate_random_slug(prefix=None):
         return str(prefix) + suffix
     return suffix
 
-
-def product_url(provider, subscriber=None):
-    """
-    We cannot use a basic ``reverse('product_default_start')`` here because
-    *organization* and ``get_broker`` might be different.
-    """
-    current_uri = '/'
-    if settings.PROVIDER_SITE_CALLABLE:
-        from saas.compat import import_string
-        site = import_string(settings.PROVIDER_SITE_CALLABLE)(str(provider))
-        if site and site.domain:
-            scheme = 'https' # Defaults to secure connection.
-            current_uri = '%s://%s/' % (scheme, site.domain)
-        else:
-            current_uri += '%s/' % provider
-    else:
-        current_uri += '%s/' % provider
-    current_uri += 'app/'
-    if subscriber:
-        current_uri += '%s/' % subscriber
-    return current_uri

@@ -1,4 +1,4 @@
-# Copyright (c) 2015, DjaoDjin inc.
+# Copyright (c) 2016, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -29,9 +29,9 @@ from rest_framework import serializers
 from rest_framework import status
 from rest_framework.response import Response
 
-from saas.models import Plan, Subscription
-from saas.mixins import OrganizationMixin
-from saas.api.serializers import PlanSerializer
+from .serializers import PlanSerializer
+from ..mixins import OrganizationMixin
+from ..models import Plan, Subscription
 
 #pylint: disable=no-init
 #pylint: disable=old-style-class

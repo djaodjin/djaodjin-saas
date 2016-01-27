@@ -2701,7 +2701,7 @@ def get_broker():
         provider_slug = str(import_string(settings.PROVIDER_CALLABLE)())
         LOGGER.debug("saas: get_broker('%s')", provider_slug)
         return Organization.objects.get(slug=provider_slug)
-    return Organization.objects.get(pk=settings.PROVIDER_ID)
+    return Organization.objects.get(slug=settings.PLATFORM)
 
 
 def sum_dest_amount(transactions):

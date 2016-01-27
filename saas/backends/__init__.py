@@ -29,7 +29,7 @@ from stripe.error import APIConnectionError as ProcessorConnectionError
 from stripe.error import StripeError as ProcessorError
 from stripe.error import CardError as CardError
 
-from saas import settings
+from .. import settings
 
 
 def load_backend(path):

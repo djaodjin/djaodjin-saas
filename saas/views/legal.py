@@ -1,4 +1,4 @@
-# Copyright (c) 2015, DjaoDjin inc.
+# Copyright (c) 2016, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -33,9 +33,9 @@ from django.contrib.auth import REDIRECT_FIELD_NAME
 from django.http import HttpResponseRedirect
 from django.views.generic import CreateView, DetailView, ListView
 
-from saas.mixins import ProviderMixin
-from saas.models import (Agreement, Signature, get_broker)
-from saas.utils import validate_redirect_url
+from ..mixins import ProviderMixin
+from ..models import Agreement, Signature, get_broker
+from ..utils import validate_redirect_url
 
 
 class AgreementDetailView(DetailView):

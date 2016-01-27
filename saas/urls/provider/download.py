@@ -1,4 +1,4 @@
-# Copyright (c) 2015, DjaoDjin inc.
+# Copyright (c) 2016, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -28,12 +28,12 @@ Urls to download records
 
 from django.conf.urls import url
 
-from saas.settings import ACCT_REGEX
-from saas.views import ProviderRedirectView
-from saas.views.metrics import (BalancesDownloadView,
+from ...settings import ACCT_REGEX
+from ...views import ProviderRedirectView
+from ...views.billing import TransferDownloadView
+from ...views.metrics import (BalancesDownloadView,
     CouponMetricsDownloadView, ActiveSubscriptionDownloadView,
     ChurnedSubscriptionDownloadView)
-from saas.views.billing import TransferDownloadView
 
 
 urlpatterns = [

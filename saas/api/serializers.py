@@ -1,4 +1,4 @@
-# Copyright (c) 2015, DjaoDjin inc.
+# Copyright (c) 2016, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -26,9 +26,9 @@ from django.core import validators
 from django.utils.translation import ugettext_lazy as _
 from rest_framework import serializers
 
-from saas.compat import User
-from saas.models import Organization, Plan, Subscription
-from saas.utils import product_url
+from ..compat import User
+from ..mixins import product_url
+from ..models import Organization, Plan, Subscription
 
 #pylint: disable=no-init,old-style-class
 

@@ -1,4 +1,4 @@
-# Copyright (c) 2015, DjaoDjin inc.
+# Copyright (c) 2016, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -28,10 +28,11 @@ URLs related to provider bank account information.
 
 from django.conf.urls import url
 
-from saas.settings import ACCT_REGEX
-from saas.views import ProviderRedirectView
-from saas.views.billing import (BankAuthorizeView, BankDeAuthorizeView,
+from ...settings import ACCT_REGEX
+from ...views import ProviderRedirectView
+from ...views.billing import (BankAuthorizeView, BankDeAuthorizeView,
     CouponListView, ImportTransactionsView, TransferListView, WithdrawView)
+
 
 urlpatterns = [
     url(r'^billing/bank/', ProviderRedirectView.as_view(

@@ -1,4 +1,4 @@
-# Copyright (c) 2014, DjaoDjin inc.
+# Copyright (c) 2016, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -27,9 +27,9 @@ from optparse import make_option
 
 from django.core.management.base import BaseCommand
 
-from saas.backends import get_processor_backend
-from saas.models import Organization
-from saas import settings
+from ... import settings
+from ...backends import get_processor_backend
+from ...models import Organization
 
 
 class Command(BaseCommand):

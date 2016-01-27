@@ -1,4 +1,4 @@
-# Copyright (c) 2014, DjaoDjin inc.
+# Copyright (c) 2016, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -26,7 +26,7 @@ import datetime, logging
 
 from django.db import connection
 
-from saas.humanize import as_money
+from .humanize import as_money
 
 
 LOGGER = logging.getLogger(__name__)
