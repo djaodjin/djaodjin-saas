@@ -1466,7 +1466,7 @@ class Plan(models.Model):
     DAILY = 2
     WEEKLY = 3
     MONTHLY = 4
-    YEARLY = 7
+    YEARLY = 5
 
     INTERVAL_CHOICES = [
         (HOURLY, "HOURLY"),
