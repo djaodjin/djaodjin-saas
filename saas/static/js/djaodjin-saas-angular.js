@@ -19,14 +19,22 @@ angular.module("revenueFilters", [])
     .filter("humanizeCell", function(currencyFilter, numberFilter) {
         "use strict";
 
-        return function(cell, unit, scale) {
+        return function(cell, unit, scale, abbreviate) {
+            if(typeof abbreviate === "undefined"){
+                abbreviate = true;
+            }
             scale = scale || 1;
             var value = cell * scale;
             if(unit) {
-                if(parseInt(value) > 1000){
-                    return currencyFilter((parseInt(value) / 1000).toFixed(), unit, 0) + "K";
+                if (parseFloat(value) > 1000000 && abbreviate){
+                    return currencyFilter(
+                        (parseFloat(value) / 1000000).toFixed(2), unit, 2) + "M";
+                }else if (parseFloat(value) > 1000 && abbreviate){
+                    return currencyFilter(
+                        (parseFloat(value) / 1000).toFixed(2), unit, 2) + "K";
+                }else{
+                    return currencyFilter(value, unit, 2);
                 }
-                return currencyFilter(value, unit);
             }
             return numberFilter(value);
         };
