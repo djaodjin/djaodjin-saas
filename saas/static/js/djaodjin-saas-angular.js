@@ -291,7 +291,8 @@ userRelationControllers.controller("userRelationListCtrl",
     };
 
     $scope.create = function() {
-        $scope.user.invite = $("#new-user-relation [name='message']").val();
+        $scope.user.invite = angular.element(
+            "#new-user-relation [name='message']").val();
         (new UserRelation($scope.user)).$force(
             function(success) {
                 /* XXX Couldn't figure out how to get the status code
@@ -320,7 +321,7 @@ userRelationControllers.controller("userRelationListCtrl",
             function(error) {
                 if( error.status === 404 ) {
                     $scope.user.email = $scope.user.username;
-                    $("#new-user-relation").modal("show");
+                    angular.element("#new-user-relation").modal("show");
                 } else {
                     var errMsg = error.statusText;
                     if( error.data && error.data.detail ) {
