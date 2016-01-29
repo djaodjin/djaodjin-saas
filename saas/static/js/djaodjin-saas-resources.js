@@ -17,17 +17,17 @@ function showMessages(messages, style) {
         messageBlock += "\"><button type=\"button\" class=\"close\" data-dismiss=\"alert\">&times;</button>";
 
         for( var i = 0; i < messages.length; ++i ) {
-            messageBlock += "<p>" + messages[i] + "</p>";
+            messageBlock += "<div>" + messages[i] + "</div>";
          }
          messageBlock += "</div>";
-         $("#messages").removeClass("hidden");
          $("#messages-content").append(messageBlock);
-         $("html, body").animate({
-             // scrollTop: $("#messages").offset().top - 50
-             // avoid weird animation when messages at the top:
-             scrollTop: $("body").offset().top
-         }, 500);
     }
+    $("#messages").removeClass("hidden");
+    $("html, body").animate({
+        // scrollTop: $("#messages").offset().top - 50
+        // avoid weird animation when messages at the top:
+        scrollTop: $("body").offset().top
+    }, 500);
 }
 
 /** Retrieves the csrf-token from a <head> meta tag.

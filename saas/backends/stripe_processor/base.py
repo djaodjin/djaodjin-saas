@@ -62,8 +62,8 @@ from django.shortcuts import get_object_or_404
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 import requests, stripe
-from stripe.error import StripeError as ProcessorError
 
+from .. import CardError, ProcessorError
 from ... import settings, signals
 from ...utils import datetime_to_utctimestamp, utctimestamp_to_datetime
 
@@ -207,8 +207,15 @@ class StripeBackend(object):
             kwargs.update({'card': card})
         if stmt_descr is None and broker is not None:
             stmt_descr = broker.printable_name
-        processor_charge = stripe.Charge.create(amount=amount, currency=unit,
-            description=descr, statement_descriptor=stmt_descr[:15], **kwargs)
+        try:
+            processor_charge = stripe.Charge.create(
+                amount=amount, currency=unit,
+                description=descr, statement_descriptor=stmt_descr[:15],
+                **kwargs)
+        except stripe.error.CardError, err:
+            raise CardError(err.message, err.param, err.code,
+                http_body=err.http_body, http_status=err.http_status,
+                json_body=err.json_body, headers=err.headers)
         created_at = utctimestamp_to_datetime(processor_charge.created)
         last4 = processor_charge.source.last4
         exp_year = processor_charge.source.exp_year

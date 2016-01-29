@@ -739,8 +739,9 @@ class ChargeManager(models.Manager):
                 descr=descr, created_at=created_at)
         except CardError as err:
             # Expected runtime error. We just log that the charge was declined.
-            LOGGER.info('CardError for charge of %d cents to %s: %s',
-                        amount, customer, err)
+            LOGGER.info('{"event": "CardError",'\
+                ' "amount": %d, "customer": "%s", "msg": "%s"}',
+                amount, customer, err.processor_details())
             raise
         except ProcessorError as err:
             # An error from the processor which indicates the logic might be
@@ -2698,12 +2699,12 @@ def get_broker():
     """
     Returns the site-wide provider from a request.
     """
+    broker_slug = settings.PLATFORM
     if settings.PROVIDER_CALLABLE:
         from saas.compat import import_string
-        provider_slug = str(import_string(settings.PROVIDER_CALLABLE)())
-        LOGGER.debug("saas: get_broker('%s')", provider_slug)
-        return Organization.objects.get(slug=provider_slug)
-    return Organization.objects.get(slug=settings.PLATFORM)
+        broker_slug = str(import_string(settings.PROVIDER_CALLABLE)())
+    LOGGER.debug("get_broker('%s')", broker_slug)
+    return Organization.objects.get(slug=broker_slug)
 
 
 def sum_dest_amount(transactions):

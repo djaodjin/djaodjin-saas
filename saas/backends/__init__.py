@@ -27,9 +27,24 @@ from importlib import import_module
 from django.core.exceptions import ImproperlyConfigured
 from stripe.error import APIConnectionError as ProcessorConnectionError
 from stripe.error import StripeError as ProcessorError
-from stripe.error import CardError as CardError
+from stripe.error import CardError as BaseCardError
 
 from .. import settings
+
+
+class CardError(BaseCardError):
+
+    def __unicode__(self):
+        if self.code == 'card_declined':
+            return "Your card was declined. We are taking your security"\
+" seriously. When we submit a charge to your bank, they have automated"\
+" systems that determine whether or not to accept the charge. Check you"\
+" entered the card  number, expiration date, CVC and address correctly."\
+" If problems persist, please contact your bank."
+        return self._message
+
+    def processor_details(self):
+        return super(CardError, self).__unicode__()
 
 
 def load_backend(path):
