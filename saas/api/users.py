@@ -73,8 +73,7 @@ class RelationListAPIView(OrganizationMixin, ListCreateAPIView):
                 user = User.objects.create_user(
                     serializer.validated_data['username'],
                     email=serializer.validated_data['email'],
-                    first_name=first_name, last_name=last_name,
-                    is_active=False)
+                    first_name=first_name, last_name=last_name)
 
         self.organization = self.get_organization()
         reason = request.data.get('invite', None)
