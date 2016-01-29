@@ -36,7 +36,6 @@ from functools import wraps
 from django.core.exceptions import PermissionDenied
 from django.core.urlresolvers import reverse
 from django.contrib.auth import REDIRECT_FIELD_NAME
-from django.http import Http404
 from django.shortcuts import get_object_or_404
 from django.utils.decorators import available_attrs
 
@@ -161,7 +160,9 @@ def fail_agreement(request, agreement=settings.TERMS_OF_USE):
 
 
 def fail_paid_subscription(request, organization=None, plan=None):
-    #pylint: disable=unused-argument
+    if _has_valid_access(request, [get_broker()]):
+        # Bypass if a manager for the broker.
+        return False
     if organization and not isinstance(organization, Organization):
         organization = get_object_or_404(Organization, slug=organization)
     if plan and not isinstance(plan, Plan):
@@ -171,9 +172,7 @@ def fail_paid_subscription(request, organization=None, plan=None):
         organization=organization, plan=plan,
         ends_at__gt=subscribed_at)
     if not subscriptions.exists():
-        raise Http404("%(organization)s has no subscription to %(plan)s'\
-' as of %(date)s" % {'organization': organization, 'plan': plan,
-            'date': subscribed_at})
+        return reverse('saas_cart_plan_list')
     if subscriptions.first().is_locked:
         return reverse(
             'saas_organization_balance', args=(organization.slug, plan.slug))
