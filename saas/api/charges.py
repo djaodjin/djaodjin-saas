@@ -136,7 +136,8 @@ class ChargeRefundAPIView(RetrieveChargeMixin, RetrieveAPIView):
                 for line in request.data.get('lines', []):
                     try:
                         self.object.refund(int(line['num']),
-                            refunded_amount=int(line.get('refunded_amount', 0)))
+                            refunded_amount=int(line.get('refunded_amount', 0)),
+                            user=request.user)
                     except ValueError:
                         raise Http404("Unable to retrieve line '%s' in %s"
                             % (line, self.object))

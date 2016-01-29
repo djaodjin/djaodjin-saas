@@ -1129,7 +1129,7 @@ class Charge(models.Model):
         signals.charge_updated.send(sender=__name__, charge=self, user=None)
         return charge_transaction
 
-    def refund(self, linenum, refunded_amount=None, created_at=None):
+    def refund(self, linenum, refunded_amount=None, created_at=None, user=None):
         # XXX We donot currently supply a *description* for the refund.
         #pylint:disable=too-many-locals
         assert self.state == self.DONE
@@ -1173,7 +1173,9 @@ class Charge(models.Model):
             corrected_available_amount, corrected_fee_amount,
             created_at=created_at,
             provider_unit=provider_unit, processor_unit=processor_unit)
-        signals.charge_updated.send(sender=__name__, charge=self, user=None)
+        LOGGER.info('refund {"charge": "%s", "linenum": "%s", "amount": "%d"}',
+            self, linenum, refunded_amount)
+        signals.charge_updated.send(sender=__name__, charge=self, user=user)
 
     def retrieve(self):
         """
