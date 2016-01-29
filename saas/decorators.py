@@ -92,7 +92,17 @@ def _valid_contributor(user, candidates):
     as a manager. The second element contains organizations which have *user*
     as a contributor.
     """
-    return _valid_role(user, candidates, role=settings.CONTRIBUTOR)
+    results = _valid_role(user, candidates, role=settings.CONTRIBUTOR)
+    if settings.BYPASS_CONTRIBUTOR_CHECK:
+        # So we can do live demos.
+        for candidate in candidates:
+            if str(candidate) in settings.BYPASS_CONTRIBUTOR_CHECK:
+                if not isinstance(candidate, Organization):
+                    candidate = get_object_or_404(Organization, slug=candidate)
+                if not isinstance(results, list):
+                    results = list(results)
+                results += [candidate]
+    return results
 
 
 def _filter_valid_access(request, candidates, strength=NORMAL):
