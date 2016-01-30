@@ -164,6 +164,11 @@ class StripeBackend(object):
                 fee_amount = 0
             distribute_amount = available_amount - fee_amount
             distribute_unit = charge.unit
+        LOGGER.debug("charge_distribution(charge=%s, amount=%d %s)"\
+            "distribute: %d %s, fee: %d %s",
+            charge.processor_key, refunded, unit,
+            distribute_amount, distribute_unit,
+            fee_amount, fee_unit)
         return distribute_amount, distribute_unit, fee_amount, fee_unit
 
     def connect_auth(self, organization, code):

@@ -665,8 +665,9 @@ class ChargeManager(models.Manager):
                 customer=customer, last4=last4, exp_date=exp_date)
             for invoiced in transactions:
                 ChargeItem.objects.create(invoiced=invoiced, charge=charge)
-            LOGGER.info('Created charge #%s of %d cents to %s',
-                        charge.processor_key, charge.amount, customer)
+            LOGGER.info('{"event": "charge_created", "charge": "%s",'\
+                ' "organization": "%s", "amount": %d, "unit": "%s"}',
+                charge.processor_key, customer, charge.amount, charge.unit)
         return charge
 
     def charge_card(self, customer, transactions, descr=None,
@@ -1057,6 +1058,12 @@ class Charge(models.Model):
             fee_amount = ((total_fee_amount * charge_item_amount / self.amount))
             distribute_amount = (
                 total_distribute_amount * charge_item_amount / self.amount)
+            LOGGER.debug("payment_successful(charge=%s) distribute: %d %s, "\
+                "fee: %d %s out of total distribute: %d %s, total fee: %d %s",
+                self.processor_key, distribute_amount, funds_unit,
+                fee_amount, processor_funds_unit,
+                total_distribute_amount, funds_unit,
+                total_fee_amount, processor_funds_unit)
             if fee_amount > 0:
                 # Example:
                 # 2014/01/15 fee to cowork
@@ -1075,7 +1082,6 @@ class Charge(models.Model):
                     orig_amount=fee_amount,
                     orig_account=Transaction.BACKLOG,
                     orig_organization=self.processor)
-                charge_item.save()
                 # pylint:disable=no-member
                 self.processor.funds_balance += fee_amount
                 self.processor.save()
@@ -1102,7 +1108,7 @@ class Charge(models.Model):
                 orig_account=Transaction.BACKLOG,
                 orig_organization=provider)
 
-            Transaction.objects.create(
+            charge_item.invoiced_distribute = Transaction.objects.create(
                 event_id=self.id,
                 created_at=self.created_at,
                 descr=DESCRIBE_CHARGED_CARD_PROVIDER % {
@@ -1115,6 +1121,7 @@ class Charge(models.Model):
                 orig_amount=orig_distribute_amount,
                 orig_account=Transaction.FUNDS,
                 orig_organization=self.processor)
+            charge_item.save()
             provider.funds_balance += distribute_amount
             provider.save()
 
@@ -1156,7 +1163,8 @@ class Charge(models.Model):
 
         charge_available_amount, provider_unit, \
             charge_fee_amount, processor_unit \
-            = self.processor_backend.charge_distribution(self)
+            = self.processor_backend.charge_distribution(
+                self, refunded=previously_refunded)
 
         # We execute the refund on the processor backend here such that
         # the following call to ``processor_backend.charge_distribution``
@@ -1169,8 +1177,8 @@ class Charge(models.Model):
             = self.processor_backend.charge_distribution(
                 self, refunded=previously_refunded + refunded_amount)
 
-        charge_item.create_refund_transactions(
-            refunded_amount, charge_available_amount, charge_fee_amount,
+        charge_item.create_refund_transactions(refunded_amount,
+            charge_available_amount, charge_fee_amount,
             corrected_available_amount, corrected_fee_amount,
             created_at=created_at,
             provider_unit=provider_unit, processor_unit=processor_unit)
@@ -1198,6 +1206,10 @@ class ChargeItem(models.Model):
         related_name='invoiced_fee_item',
         help_text="fee transaction to process the transaction invoiced"\
 " through this charge")
+    invoiced_distribute = models.ForeignKey('Transaction', null=True,
+        related_name='invoiced_distribute',
+        help_text="transaction recording the distribution from processor"\
+" to provider.")
 
     class Meta:
         unique_together = ('charge', 'invoiced')
@@ -1260,23 +1272,37 @@ class ChargeItem(models.Model):
         invoiced_fee = self.invoiced_fee
         provider = invoiced_item.orig_organization
         customer = invoiced_item.dest_organization
+        invoiced_distribute = self.invoiced_distribute
         if not processor_unit:
             processor_unit = 'usd' # XXX
         if not provider_unit:
             provider_unit = 'usd' # XXX
         refunded_fee_amount = 0
         if invoiced_fee:
-            refunded_fee_amount = (charge_fee_amount - corrected_fee_amount)
-        refunded_distribute_amount = (charge_available_amount
-                                      - corrected_available_amount)
+            refunded_fee_amount = min(
+                charge_fee_amount - corrected_fee_amount,
+                invoiced_fee.orig_amount)
+        refunded_distribute_amount = \
+            charge_available_amount - corrected_available_amount
+        if invoiced_distribute:
+            orig_distribute = "%d %s" % (invoiced_distribute.dest_amount,
+                invoiced_distribute.dest_unit)
+            refunded_distribute_amount = min(refunded_distribute_amount,
+                invoiced_distribute.dest_amount)
+        else:
+            orig_distribute = 'N/A'
         # Implementation Note:
         # refunded_amount = refunded_distribute_amount + refunded_fee_amount
 
-        LOGGER.info("Refund charge %s for %d (%s)"\
-            " (distributed: %d (%s), processor fee: %d (%s))",
+        LOGGER.debug(
+            "create_refund_transactions(charge=%s, refund_amount=%d %s)"\
+            " distribute: %d %s, fee: %d %s, available: %d %s, "\
+            " orig_distribute: %s",
             charge.processor_key, refunded_amount, charge.unit,
             refunded_distribute_amount, provider_unit,
-            refunded_fee_amount, processor_unit)
+            refunded_fee_amount, processor_unit,
+            charge_available_amount, charge.unit,
+            orig_distribute)
 
         if refunded_distribute_amount > provider.funds_balance:
             raise InsufficientFunds(
