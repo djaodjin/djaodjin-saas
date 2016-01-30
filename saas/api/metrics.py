@@ -137,7 +137,7 @@ class BalancesAPIView(OrganizationMixin, APIView):
 
 class RevenueMetricAPIView(OrganizationMixin, APIView):
     """
-    Produce revenue stats
+    Produce The sales, payments and refunds over a period of time.
 
     **Example request**:
 
@@ -155,7 +155,7 @@ class RevenueMetricAPIView(OrganizationMixin, APIView):
             "unit": "$",
             "table": [
                 {
-                    "key": "Total Payments",
+                    "key": "Total Sales",
                     "values": [
                         ["2014-10-01T00:00:00Z", 1985716],
                         ["2014-11-01T00:00:00Z", 3516430],
@@ -172,7 +172,7 @@ class RevenueMetricAPIView(OrganizationMixin, APIView):
                     ]
                 },
                 {
-                    "key": "Payments from new Customers",
+                    "key": "New Sales",
                     "values": [
                         ["2014-10-01T00:00:00Z", 0],
                         ["2014-11-01T00:00:00Z", 0],
@@ -189,7 +189,7 @@ class RevenueMetricAPIView(OrganizationMixin, APIView):
                     ]
                 },
                 {
-                    "key": "Payments lost from churned Customers",
+                    "key": "Churned Sales",
                     "values": [
                         ["2014-10-01T00:00:00Z", 0],
                         ["2014-11-01T00:00:00Z", 0],
@@ -203,6 +203,23 @@ class RevenueMetricAPIView(OrganizationMixin, APIView):
                         ["2015-07-01T00:00:00Z", 0],
                         ["2015-08-01T00:00:00Z", 0],
                         ["2015-08-06T04:59:14.721Z", 0]
+                    ]
+                },
+                {
+                    "key": "Payments",
+                    "values": [
+                        ["2014-10-01T00:00:00Z", 1787144],
+                        ["2014-11-01T00:00:00Z", 3164787],
+                        ["2014-12-01T00:00:00Z", 2951505],
+                        ["2015-01-01T00:00:00Z", 3408974],
+                        ["2015-02-01T00:00:00Z", 4032787],
+                        ["2015-03-01T00:00:00Z", 4946328],
+                        ["2015-04-01T00:00:00Z", 6911079],
+                        ["2015-05-01T00:00:00Z", 9958194],
+                        ["2015-06-01T00:00:00Z", 9296138],
+                        ["2015-07-01T00:00:00Z", 10299759],
+                        ["2015-08-01T00:00:00Z", 9246970],
+                        ["2015-08-06T04:59:14.721Z", 12695659]
                     ]
                 },
                 {
@@ -231,18 +248,25 @@ class RevenueMetricAPIView(OrganizationMixin, APIView):
             ends_at = parse_datetime(ends_at)
         ends_at = datetime_or_now(ends_at)
 
-        # XXX to fix: returns payments in customer currency
+        # All amounts are in the customer currency.
         account_table, _, _ = \
             aggregate_monthly_transactions(self.get_organization(),
-                Transaction.FUNDS, account_title='Payments',
-                from_date=ends_at, orig='dest', dest='orig')
+                Transaction.RECEIVABLE, account_title='Sales',
+                from_date=ends_at, orig='orig', dest='dest')
 
-        _, refund_amount = aggregate_monthly(
+        _, payment_amounts = aggregate_monthly(
+            self.get_organization(), Transaction.RECEIVABLE,
+            from_date=ends_at, orig='dest', dest='dest',
+            orig_account=Transaction.BACKLOG,
+            orig_organization=self.get_organization())
+
+        _, refund_amounts = aggregate_monthly(
             self.get_organization(), Transaction.REFUND,
             from_date=ends_at, orig='dest', dest='dest')
 
-        account_table += [{"key": "Refunds",
-                           "values": refund_amount}]
+        account_table += [
+            {"key": "Payments", "values": payment_amounts},
+            {"key": "Refunds", "values": refund_amounts}]
 
         return Response(
             {"title": "Amount",

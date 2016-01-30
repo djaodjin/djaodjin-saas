@@ -190,21 +190,21 @@ class RevenueMetricsView(MetricsMixin, TemplateView):
     def get_context_data(self, **kwargs):
         context = super(RevenueMetricsView, self).get_context_data(**kwargs)
         context.update({
-            "title": "Revenue",
+            "title": "Sales",
             "tables": json.dumps(
                 [{"key": "cash",
-                        "title": "Cash flow",
+                        "title": "Amounts",
                         "unit": "$",
                         "location": reverse('saas_api_revenue',
+                            args=(self.organization,))},
+                       {"key": "customer",
+                        "title": "Customers",
+                        "location": reverse('saas_api_customer',
                             args=(self.organization,))},
                        {"key": "balances",
                         "title": "Balances",
                         "unit": "$",
                         "location": reverse('saas_api_balances',
-                            args=(self.organization,))},
-                       {"key": "customer",
-                        "title": "Customers",
-                        "location": reverse('saas_api_customer',
                             args=(self.organization,))}])})
         return context
 

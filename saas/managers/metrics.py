@@ -63,7 +63,7 @@ def month_periods(nb_months=12, from_date=None):
 
 
 def aggregate_monthly(organization, account,
-                      from_date=None, orig='orig', dest='dest'):
+                      from_date=None, orig='orig', dest='dest', **kwargs):
     # pylint: disable=too-many-locals
     counts = []
     amounts = []
@@ -73,8 +73,8 @@ def aggregate_monthly(organization, account,
     period_start = dates[1]
     for period_end in dates[2:]:
         # A bit ugly but it does the job ...
-        kwargs = {'%s_organization' % orig: organization,
-            '%s_account' % orig: account}
+        kwargs.update({'%s_organization' % orig: organization,
+            '%s_account' % orig: account})
         query_result = Transaction.objects.filter(
             created_at__gte=period_start,
             created_at__lt=period_end, **kwargs).aggregate(
@@ -226,10 +226,10 @@ def aggregate_monthly_transactions(organization, account,
     account_table = [{"key": "Total %s" % account_title,
                      "values": total_account
                      },
-                    {"key": "%s from new Customers" % account_title,
+                    {"key": "New %s" % account_title,
                      "values": new_account
                      },
-                    {"key": "%s lost from churned Customers" % account_title,
+                    {"key": "Churned %s" % account_title,
                      "values": churned_account
                      },
                     ]
