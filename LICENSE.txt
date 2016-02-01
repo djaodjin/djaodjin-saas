@@ -1,4 +1,4 @@
-Copyright (c) 2015, DjaoDjin inc.
+Copyright (c) 2016, DjaoDjin inc.
 All rights reserved.
 
  Redistribution and use in source and binary forms, with or without
@@ -26,11 +26,18 @@ The following files are copyright of their respective owners and are included
 in the repo purely for convienience:
 
 - From http://jquery.com/
-  - static/vendor/js/jquery.js
+  - testsite/static/vendor/js/jquery.js
 
-- From http://d3js.org/
-  - static/vendor/js/d3.v3.js
+- From http://momentjs.com/
+  - testsite/static/vendor/js/moment.js
 
-- From http://nvd3.org/
-  - static/vendor/js/nv.d3.js
-  - static/vendor/css/nv.d3.css
+- From https://angular-ui.github.io/bootstrap/
+  - testsite/static/vendor/js/ui-bootstrap-tpls-0.11.0.js
+
+- From https://angularjs.org/
+  - testsite/static/vendor/js/angular-animate.js
+  - testsite/static/vendor/js/angular-resource.js
+  - testsite/static/vendor/js/angular-route.js
+  - testsite/static/vendor/js/angular-touch.js
+  - testsite/static/vendor/js/angular.js
+

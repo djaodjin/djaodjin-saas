@@ -1,4 +1,4 @@
-# Copyright (c) 2014, DjaoDjin inc.
+# Copyright (c) 2016, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -59,7 +59,12 @@ setup(
     package_data={'saas': ['fixtures/*',
                            'static/js/*.js',
                            'templates/saas/*.html',
-                           'templates/saas/agreements/*']},
+                           'templates/saas/agreements/*.md',
+                           'templates/saas/app/*.html',
+                           'templates/saas/billing/*.html',
+                           'templates/saas/legal/*.html',
+                           'templates/saas/metrics/*.html',
+                           'templates/saas/profile/*.html']},
     url='https://github.com/djaodjin/djaodjin-saas/',
     download_url='https://github.com/djaodjin/djaodjin-saas/tarball/%s' \
         % saas.__version__,

@@ -49,7 +49,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = u'djaodjin-saas'
-copyright = u'2014, DjaoDjin inc.'
+copyright = u'2016, DjaoDjin inc.'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the

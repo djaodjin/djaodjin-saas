@@ -3,6 +3,7 @@
 import os.path, sys
 
 from django.core.urlresolvers import reverse_lazy
+from django.contrib.messages import constants as messages
 
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -58,6 +59,10 @@ DATABASES = {
 
 REST_FRAMEWORK = {
     'PAGE_SIZE': 25,
+}
+
+MESSAGE_TAGS = {
+    messages.ERROR: 'danger'
 }
 
 # Local time zone for this installation. Choices can be found here:

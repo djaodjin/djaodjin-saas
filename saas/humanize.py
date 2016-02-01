@@ -78,6 +78,9 @@ def as_money(value, currency='usd'):
         else:
             unit_suffix = currency
     grouped = ""
+    if value < 0:
+        value = - value
+        negative = True
     text = '%d' % value
     if len(text) > 2:
         int_part = text[:-2]
@@ -90,8 +93,7 @@ def as_money(value, currency='usd'):
     else:
         int_part = '0'
         frac_part = '%02d' % value
-    result = (unit_prefix + int_part + grouped + '.' + frac_part
-        + unit_suffix)
+    result = (unit_prefix + int_part + grouped + '.' + frac_part + unit_suffix)
     if negative:
         result = "(%s)" % result
     return result

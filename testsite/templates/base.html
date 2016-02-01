@@ -42,11 +42,7 @@
       {% for message in messages %}
       <div class="alert{% if message.tags %} alert-{{message.tags}}{% endif %}">
         <button type="button" class="close" data-dismiss="alert">&times;</button>
-        {% if 'safe' in message.tags %}
-        <p>{{ message|safe }}</p>
-        {% else %}
-        <p>{{ message }}</p>
-        {% endif %}
+        <div>{% if 'safe' in message.tags %}{{message|safe}}{% else %}{{message}}{% endif %}</div>
       </div>
       {% endfor %}
       {% for message in form.non_field_errors %}
