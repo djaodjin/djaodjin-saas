@@ -37,13 +37,16 @@ class Command(BaseCommand):
 
     help = "Recognized backlog and charge due balance on credit cards"
     option_list = BaseCommand.option_list + (
-        make_option('--dry_run', action='store_true',
+        make_option('--dry-run', action='store_true',
             dest='dry_run', default=False,
-            help='Do not commit execution'),)
+            help='Do not commit execution'),
+        make_option('--at-time', action='store',
+            dest='at_time', default=None,
+            help='Specifies the time at which the command runs'))
 
     def handle(self, *args, **options):
         dry_run = options['dry_run']
-        end_period = datetime_or_now()
+        end_period = datetime_or_now(options['at_time'])
         recognize_income(end_period, dry_run=dry_run)
         extend_subscriptions(end_period, dry_run=dry_run)
         create_charges_for_balance(end_period, dry_run=dry_run)
