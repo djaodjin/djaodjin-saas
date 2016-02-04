@@ -39,7 +39,7 @@ class Command(BaseCommand):
     option_list = BaseCommand.option_list + (
         make_option('--dry_run', action='store',
             dest='dry_run', default=False,
-            help='Do not commit execution'))
+            help='Do not commit execution'),)
 
     def handle(self, *args, **options):
         dry_run = options['dry_run']
