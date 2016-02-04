@@ -24,19 +24,26 @@
 
 """Command for the cron job. Create credit card charges"""
 
-import datetime
+from optparse import make_option
 
-from django.core.management.base import NoArgsCommand
+from django.core.management.base import BaseCommand
 
-from ...charge import extend_subscriptions, create_charges_for_balance
+from ...charge import (recognize_income, extend_subscriptions,
+    create_charges_for_balance)
+from ...utils import datetime_or_now
 
-
-class Command(NoArgsCommand):
+class Command(BaseCommand):
     """Charges for due balance"""
 
-    help = 'Charges Credit Cards for due balance'
+    help = "Recognized backlog and charge due balance on credit cards"
+    option_list = BaseCommand.option_list + (
+        make_option('--dry_run', action='store',
+            dest='dry_run', default=False,
+            help='Do not commit execution'))
 
-    def handle_noargs(self, **options):
-        end_period = datetime.datetime.now()
-        extend_subscriptions(end_period)
-        create_charges_for_balance(end_period)
+    def handle(self, *args, **options):
+        dry_run = options['dry_run']
+        end_period = datetime_or_now()
+        recognize_income(end_period, dry_run=dry_run)
+        extend_subscriptions(end_period, dry_run=dry_run)
+        create_charges_for_balance(end_period, dry_run=dry_run)

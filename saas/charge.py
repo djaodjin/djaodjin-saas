@@ -39,11 +39,12 @@ from .utils import datetime_or_now
 LOGGER = logging.getLogger(__name__)
 
 
-def recognize_income(until=None):
+def recognize_income(until=None, dry_run=False):
     """
     Create all ``Transaction`` necessary to recognize revenue
     on each ``Subscription`` until date specified.
     """
+    #pylint:disable=too-many-locals
     until = datetime_or_now(until)
     for subscription in Subscription.objects.filter(
             created_at__lte=until, ends_at__gt=until):
@@ -88,13 +89,18 @@ def recognize_income(until=None):
                         # ``at_time`` is set just before ``recognize_end``
                         # so we do not include the newly created transaction
                         # in the subsequent period.
-                        Transaction.objects.create_income_recognized(
-                            subscription,
-                            amount=to_recognize_amount - recognized_amount,
-                            at_time=recognize_end - relativedelta(seconds=1),
-                            descr=DESCRIBE_RECOGNIZE_INCOME % {
-                            'period_start': recognize_start,
-                            'period_end': recognize_end})
+                        amount = to_recognize_amount - recognized_amount
+                        at_time = recognize_end - relativedelta(seconds=1)
+                        LOGGER.info(
+                            'RECOGNIZE %dc for subscription of %s to %s',
+                            amount, subscription.organization,
+                            subscription.plan)
+                        if not dry_run:
+                            Transaction.objects.create_income_recognized(
+                                subscription, amount=amount, at_time=at_time,
+                                descr=DESCRIBE_RECOGNIZE_INCOME % {
+                                    'period_start': recognize_start,
+                                    'period_end': recognize_end})
                     recognize_start = recognize_end
                     recognize_end += recognize_period
                 order_subscribe_beg = order_subscribe_end
@@ -102,7 +108,7 @@ def recognize_income(until=None):
                     break
 
 
-def extend_subscriptions(at_time=None):
+def extend_subscriptions(at_time=None, dry_run=False):
     """
     Extend active subscriptions
     """
@@ -111,13 +117,16 @@ def extend_subscriptions(at_time=None):
         _, upper = subscription.period_for(at_time)
         if upper == subscription.ends_at:
             # We are in the last period
-            with transaction.atomic():
-                _ = Transaction.objects.execute_order([
-                    Transaction.objects.new_subscription_order(
-                        subscription, 1, created_at=at_time)])
+            LOGGER.info('EXTENDS subscription of %s to %s',
+                subscription.organization, subscription.plan)
+            if not dry_run:
+                with transaction.atomic():
+                    _ = Transaction.objects.execute_order([
+                        Transaction.objects.new_subscription_order(
+                            subscription, 1, created_at=at_time)])
 
 
-def create_charges_for_balance(until=None):
+def create_charges_for_balance(until=None, dry_run=False):
     """
     Create charges for all accounts payable.
     """
@@ -136,7 +145,8 @@ def create_charges_for_balance(until=None):
                 LOGGER.info('CHARGE %dc to %s', invoiceable_amount,
                     organization)
                 try:
-                    Charge.objects.charge_card(organization, invoiceables)
+                    if not dry_run:
+                        Charge.objects.charge_card(organization, invoiceables)
                 except:
                     raise
             else:
