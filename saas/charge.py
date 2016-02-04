@@ -149,8 +149,9 @@ def create_charges_for_balance(until=None, dry_run=False):
                         Charge.objects.charge_card(organization, invoiceables)
                 except:
                     raise
-            else:
-                LOGGER.info('SKIP   %s (less than 50c)', organization)
+            elif invoiceable_amount > 0:
+                LOGGER.info('SKIP   %dc to %s (less than 50c)',
+                    invoiceable_amount, organization)
         else:
             LOGGER.info('SKIP   %s (one charge already in flight)',
                 organization)

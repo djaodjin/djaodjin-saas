@@ -37,7 +37,7 @@ class Command(BaseCommand):
 
     help = "Recognized backlog and charge due balance on credit cards"
     option_list = BaseCommand.option_list + (
-        make_option('--dry_run', action='store',
+        make_option('--dry_run', action='store_true',
             dest='dry_run', default=False,
             help='Do not commit execution'),)
 
