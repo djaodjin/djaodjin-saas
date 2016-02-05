@@ -1632,7 +1632,7 @@ class Plan(models.Model):
             result = '%d month' % nb_periods
         elif self.interval == self.YEARLY:
             result = '%d year' % nb_periods
-        if nb_periods > 1:
+        if result and nb_periods > 1:
             result += 's'
         return result
 
