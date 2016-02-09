@@ -24,6 +24,7 @@
 
 import datetime, re
 
+HOURLY = 1 # XXX to avoid import loop
 
 DESCRIBE_BALANCE = \
     "Balance on %(plan)s"
@@ -54,6 +55,9 @@ DESCRIBE_OFFLINE_PAYMENT = \
 
 DESCRIBE_RECOGNIZE_INCOME = \
     "Recognize income from %(period_start)s to %(period_end)s"
+
+DESCRIBE_RETAINER_PERIODS = \
+    "Retainer for services (%(humanized_periods)s)"
 
 DESCRIBE_UNLOCK_NOW = \
     "Unlock %(plan)s now. Don't worry later to %(unlock_event)s."
@@ -101,10 +105,16 @@ def as_money(value, currency='usd'):
 
 def describe_buy_periods(plan, ends_at, nb_periods,
     discount_percent=0, descr_suffix=None):
-    descr = (DESCRIBE_BUY_PERIODS %
-        {'plan': plan,
-         'ends_at': datetime.datetime.strftime(ends_at, '%Y/%m/%d'),
-         'humanized_periods': plan.humanize_period(nb_periods)})
+    if plan.interval == HOURLY:
+        descr = (DESCRIBE_RETAINER_PERIODS %
+            {'plan': plan,
+             'ends_at': datetime.datetime.strftime(ends_at, '%Y/%m/%d'),
+             'humanized_periods': plan.humanize_period(nb_periods)})
+    else:
+        descr = (DESCRIBE_BUY_PERIODS %
+            {'plan': plan,
+             'ends_at': datetime.datetime.strftime(ends_at, '%Y/%m/%d'),
+             'humanized_periods': plan.humanize_period(nb_periods)})
     if discount_percent:
         descr += ' - a %d%% discount' % discount_percent
     if descr_suffix:

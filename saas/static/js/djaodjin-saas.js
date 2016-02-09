@@ -299,20 +299,30 @@
             }
             candidates = self.element.find(".invoice-item td:nth-child(2)");
             for( i = 0; i < candidates.length; ++i ) {
-                var lineAmountText = $(candidates[i]).text();
+                var lineAmountText = $(candidates[i]).text().replace(',','');
                 var first = lineAmountText.search("[0-9]");
                 if( first > 0 ) {
                     var lineAmount = parseFloat(lineAmountText.substring(first)) * 100;
                     totalAmount += lineAmount;
                 }
             }
+            var grouped = "$";
             var totalAmountText = "" + (totalAmount / 100).toFixed(2);
             if( self.options.currency_unit === "cad" ) {
-                totalAmountText = "$" + totalAmountText + " CAD";
+                grouped = "$";
             } else {
                 totalAmountText = "$" + totalAmountText;
             }
-            totalAmountNode.text(totalAmountText);
+            var grouped = "";
+            for( var idx = totalAmountText.length - 3 ; idx > 3; idx -= 3 ) {
+                grouped += ',' + totalAmountText.substring(idx - 3, idx)
+            }
+            grouped = (totalAmountText.substring(0, idx) + grouped
+                       + totalAmountText.substring(totalAmountText.length - 3));
+            if( self.options.currency_unit === "cad" ) {
+                grouped = grouped + " CAD";
+            }
+            totalAmountNode.text(grouped);
             var cardUse = self.element.parents("form").find("#card-use");
             if( totalAmount > 0 ) {
                 if( !cardUse.is(":visible") ) { cardUse.slideDown(); }

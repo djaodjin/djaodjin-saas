@@ -1576,9 +1576,12 @@ class Plan(models.Model):
 
     def first_periods_amount(self, discount_percent=0, nb_natural_periods=1,
                               prorated_amount=0):
-        return int((prorated_amount
+        amount = int((prorated_amount
             + (self.period_amount * nb_natural_periods))
             * (100 - discount_percent) / 100)
+        if amount % 100 != 0:
+            amount = amount - (amount % 100)
+        return amount
 
     @staticmethod
     def get_natural_period(nb_periods, interval):
