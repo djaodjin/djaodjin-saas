@@ -1579,8 +1579,6 @@ class Plan(models.Model):
         amount = int((prorated_amount
             + (self.period_amount * nb_natural_periods))
             * (100 - discount_percent) / 100)
-        if amount % 100 != 0:
-            amount = amount - (amount % 100)
         return amount
 
     @staticmethod
