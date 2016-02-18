@@ -1,8 +1,8 @@
-{% extends "saas/base.html" %}
+{% extends "saas/base_dashboard.html" %}
 {% load saas_tags %}
 
 {% block saas_content %}
-<section id="metrics_table" ng-app="metricsApp" ng-cloak>
+<section id="metrics_table" ng-app="saasApp" ng-cloak>
   <div ng-controller="metricsCtrl" ng-init="prefetch()">
     <div>
       <span>To</span>
@@ -38,20 +38,5 @@ function updateChart(container, data, unit, dataScale, extra) {
 function updateBarChart(container, data, unit, dataScale, extra) {
     $(container).text(JSON.stringify(data));
 }
-
-var app = angular.module('metricsApp');
-app.config(['$interpolateProvider', '$httpProvider',
-           function($interpolateProvider, $httpProvider) {
-    /* Makes it easier to separate between django and angularjs templates */
-    $interpolateProvider.startSymbol('[[');
-    $interpolateProvider.endSymbol(']]');
-}]);
-app.constant('urls', {
-    plan: "{% url 'saas_api_plan' organization %}"
-});
-
-{% autoescape off %}
-app.constant('tables', {{tables}});
-{% endautoescape %}
 </script>
 {% endblock %}

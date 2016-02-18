@@ -1,10 +1,10 @@
-{% extends "saas/base.html" %}
+{% extends "saas/base_dashboard.html" %}
 {% load saas_tags %}
 
 {% block saas_title %}Add offline transaction{% endblock %}
 
 {% block saas_content %}
-<section ng-app="importTransactionsApp" ng-cloak>
+<section ng-app="saasApp" ng-cloak>
   <script type="text/ng-template" id="customTemplate.html">
     <a><span bind-html-unsafe="match.model.organization.printable_name + ' - ' + match.model.plan.title | typeaheadHighlight:query"></span></a>
   </script>
@@ -52,25 +52,4 @@
 </form>
 </div>
 </section>
-{% endblock %}
-
-{% block saas_bodyscripts %}
-<script>
-/* Implementation Note: Not including a list of dependent modules
-   (2nd parameter to `module`) "re-opens" the module for additional
-   configuration. */
-var app = angular.module('importTransactionsApp');
-app.config(['$interpolateProvider', '$httpProvider',
-           function($interpolateProvider, $httpProvider) {
-    /* Add the CSRF Token: */
-    $httpProvider.defaults.headers.common['X-CSRFToken'] = '{{csrf_token|escapejs}}';
-    /* Makes it easier to separate between django and angularjs templates */
-    $interpolateProvider.startSymbol('[[');
-    $interpolateProvider.endSymbol(']]');
-}]);
-
-app.constant('urls', {
-    saas_api_subscriptions_url: "{% url 'saas_api_subscribed' organization %}",
-});
-</script>
 {% endblock %}

@@ -1,4 +1,4 @@
-{% extends "saas/base.html" %}
+{% extends "saas/base_dashboard.html" %}
 
 {% block localheader %}
 {{block.super}}
@@ -14,9 +14,4 @@
         {% include "saas/_card_use.html" with title="Update" update_mode=True %}
     </form>
 </section>
-{% endblock %}
-
-{% block bodyscripts %}
-{{block.super}}
-{% include "saas/_payment_body.html" with update_mode=True %}
 {% endblock %}

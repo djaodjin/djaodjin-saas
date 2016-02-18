@@ -95,7 +95,7 @@ djaodjin-saas/tree/master/saas/templates/saas/pricing.html>`__).
     def get_queryset(self):
         queryset = Plan.objects.filter(
             organization=self.get_organization(),
-            is_active=True).order_by('period_amount')
+            is_active=True).order_by('is_not_priced', 'period_amount')
         return queryset
 
     def get_context_data(self, **kwargs):
@@ -171,8 +171,8 @@ djaodjin-saas/tree/master/saas/templates/saas/profile/plans.html>`__).
     slug_url_kwarg = 'plan'
 
     def get_success_url(self):
-        messages.success(
-            self.request, "Successfully updated '%s' plan." % self.object)
+        messages.success(self.request,
+            "Successfully updated plan titled '%s'." % self.object.title)
         return reverse('saas_plan_edit', kwargs=self.get_url_kwargs())
 
     def get_context_data(self, **kwargs):

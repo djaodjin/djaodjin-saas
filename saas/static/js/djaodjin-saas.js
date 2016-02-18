@@ -395,4 +395,212 @@
        saas_api_redeem_coupon: "/api/cart/redeem/"
    };
 
+   /** Decorate an HTML controller to delete ``Organization``s.
+    */
+   function Profile(el, options){
+      this.element = $(el);
+      this.options = options;
+      this.init();
+   }
+
+   Profile.prototype = {
+      init: function () {
+          var self = this;
+          this.element.click(function() {
+              self.deleteProfile();
+              // prevent the form from submitting with the default action
+              return false;
+          });
+      },
+
+      deleteProfile: function() {
+          var self = this;
+          $.ajax({ type: "DELETE",
+                 url: self.options.saas_api_organization,
+                 dataType: "json",
+                 contentType: "application/json; charset=utf-8",
+          }).done(function(data) {
+            /* When we DELETE the request.user profile, it will lead
+               to a logout. When we delete a different profile, a reload
+               of the page leads to a 404. In either cases, moving on
+               to the redirect_to_profile page is a safe bet. */
+            window.location = self.options.saas_organization_profile;
+          }).fail(function(data) {
+            if('details' in data.responseJSON) {
+                showMessages([data.responseJSON['details']], "error");
+            } else {
+                showMessages(["Error " + data.status + ": "
++ data.responseText + ". Please accept our apologies."], "error");
+            }
+          });
+      }
+   };
+
+   $.fn.profile = function(options) {
+      var opts = $.extend( {}, $.fn.profile.defaults, options );
+      return new Profile($(this), opts);
+   };
+
+   $.fn.profile.defaults = {
+       saas_api_organization: "/api/profile",
+       saas_organization_profile: "/profile"
+   };
+
+   /** Decorate an HTML controller to trigger AJAX requests to create,
+       activate and delete ``Plan``s.
+
+       HTML requirements:
+
+       <div data-plan="_plan-slug_">
+         <button class="activate"></button>
+         <button class="delete"></button>
+       </div>
+    */
+   function Plan(el, options){
+      this.element = $(el);
+      this.options = options;
+      this.init();
+   }
+
+   Plan.prototype = {
+      init: function () {
+          var self = this;
+          self.id = self.element.attr("data-plan");
+          self.element.find(".activate").click(function() {
+              self.toggleActivatePlan();
+              // prevent the form from submitting with the default action
+              return false;
+          });
+          var deleteBtn = self.element.find(".delete");
+          if( deleteBtn ) {
+              var target = deleteBtn.data("target");
+              if( target !== undefined ) {
+                  deleteBtn = $(target).find(".delete");
+              }
+          }
+          deleteBtn.click(function() {
+              self.destroy();
+          });
+      },
+
+      create: function(reload) {
+        "use strict";
+        var self = this;
+        $.ajax({ type: "POST",
+                 url: self.options.saas_api_plan + "/",
+                 beforeSend: function(xhr) {
+                     xhr.setRequestHeader("X-CSRFToken", getMetaCSRFToken());
+                 },
+                 data: JSON.stringify({
+                     "title": "New Plan",
+                     "description": "Write the description of the plan here.",
+                     "interval": 4,
+                     "is_active": 1}),
+                 datatype: "json",
+                 contentType: "application/json; charset=utf-8",
+                 success: function(data) {
+                     showMessages([
+                         "Plan was created successfully."], "success");
+                     if( reload ) { location.reload(true); }
+                 },
+                 error: function(data) {
+                     showMessages([
+                         "An error occurred while creating the plan (" +
+                         data.status + " " + data.statusText +
+                         "). Please accept our apologies."], "error");
+                 }
+               });
+      },
+
+      /** Update fields in a ``Plan`` by executing an AJAX request
+          to the service. */
+      update: function(data, successFunction) {
+        "use strict";
+        var self = this;
+        $.ajax({ type: "PUT",
+                 url: self.options.saas_api_plan + "/" + self.id + "/",
+                 beforeSend: function(xhr) {
+                     xhr.setRequestHeader("X-CSRFToken", getMetaCSRFToken());
+                 },
+                 async: false,
+                 data: JSON.stringify(data),
+                 datatype: "json",
+                 contentType: "application/json; charset=utf-8",
+                 success: successFunction
+               });
+      },
+
+      destroy: function() {
+        "use strict";
+        var self = this;
+        $.ajax({ type: "DELETE",
+                 url: self.options.saas_api_plan + "/" + self.id + "/",
+                 async: false,
+                 success: function(data) {
+                     window.location.href = self.options.saas_metrics_plans;
+                     showMessages([
+                         "Plan was successfully deleted."], "success");
+                 },
+                 error: function(data) {
+                     showMessages([
+                         "An error occurred while deleting the plan (" +
+                         data.status + " " + data.statusText +
+                         "). Please accept our apologies."], "error");
+                 }
+               });
+      },
+
+      get: function(successFunction) {
+        "use strict";
+        var self = this;
+        $.ajax({ type: "GET",
+                 url: self.options.saas_api_plan + "/" + self.id + "/",
+                 success: successFunction
+               });
+      },
+
+      /** Toggle a ``Plan`` from active to inactive and vise-versa
+          by executing an AJAX request to the service. */
+      toggleActivatePlan: function() {
+          "use strict";
+          var self = this;
+          var button = self.element.find(".activate");
+          $.ajax({type: "PUT",
+                 url: self.options.saas_api_plan + "/" + self.id + "/activate/",
+                 beforeSend: function(xhr) {
+                     xhr.setRequestHeader("X-CSRFToken", getMetaCSRFToken());
+                 },
+                 data: JSON.stringify({
+                     "is_active": !button.hasClass("activated")}),
+                 datatype: "json",
+                 contentType: "application/json; charset=utf-8",
+                 success: function(data) {
+                     if( data.is_active ) {
+                         button.addClass("activated");
+                         button.text("Deactivate");
+                     } else {
+                         button.removeClass("activated");
+                         button.text("Activate");
+                     }
+                 },
+                 error: function(data) {
+                     showMessages([
+                         "An error occurred while creating the plan (" +
+                         data.status + " " + data.statusText +
+                         "). Please accept our apologies."], "error");
+                 },
+          });
+      }
+   };
+
+   $.fn.plan = function(options) {
+      var opts = $.extend( {}, $.fn.plan.defaults, options );
+      return new Plan($(this), opts);
+   };
+
+   $.fn.plan.defaults = {
+       saas_api_plan: "/api/plan",
+       saas_metrics_plans: "/plan"
+   };
+
 })(jQuery);

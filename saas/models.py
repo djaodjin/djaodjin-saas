@@ -498,6 +498,9 @@ class Organization(models.Model):
         return Transaction.objects.by_organization(self)
 
     def withdraw_funds(self, amount, user):
+        if amount == 0:
+            # Nothing to do.
+            return
         descr = "withdraw from %s" % self.printable_name
         if user:
             descr += ' (%s)' % user.username
@@ -1513,6 +1516,7 @@ class Plan(models.Model):
     title = models.CharField(max_length=50, null=True)
     description = models.TextField()
     is_active = models.BooleanField(default=False)
+    is_not_priced = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     discontinued_at = models.DateTimeField(null=True, blank=True)
     organization = models.ForeignKey(Organization, related_name='plans')

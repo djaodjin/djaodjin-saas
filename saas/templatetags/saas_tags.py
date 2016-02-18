@@ -48,6 +48,8 @@ def discounted_period(plan, coupon):
     Returns the discounted amount once the ``Coupon`` is applied
     or ``plan.period_amount`` otherwise.
     """
+    if not plan:
+        return None # will happen on "Add Plan" template
     if coupon and coupon.is_valid(plan):
         return plan.period_amount * (100 - coupon.percent) / 100
     return plan.period_amount

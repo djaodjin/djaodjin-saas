@@ -55,6 +55,8 @@ class OrganizationSerializer(serializers.ModelSerializer):
 class PlanSerializer(serializers.ModelSerializer):
 
     app_url = serializers.SerializerMethodField()
+    description = serializers.CharField(required=False)
+    is_active = serializers.BooleanField(required=False)
 
     class Meta:
         model = Plan

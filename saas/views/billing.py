@@ -75,10 +75,15 @@ class BankMixin(OrganizationMixin):
     Adds bank information to the context.
     """
 
+    def bank_context(self):
+        if not hasattr(self, "_bank_context"):
+            self._bank_context = self.get_organization().retrieve_bank()
+        return self._bank_context
+
     def get_context_data(self, **kwargs):
         context = super(BankMixin, self).get_context_data(**kwargs)
         try:
-            context.update(self.get_organization().retrieve_bank())
+            context.update(self.bank_context())
         except ProcessorConnectionError, err:
             LOGGER.exception(err)
             messages.error(self.request,
@@ -1023,7 +1028,7 @@ class BalanceView(CardInvoicablesFormMixin, FormView):
             plan__slug=self.kwargs.get(self.plan_url_kwarg))
 
 
-class WithdrawView(ProviderMixin, FormView):
+class WithdrawView(BankMixin, FormView):
     """
     Initiate the transfer of funds from the platform to a provider bank account.
 
@@ -1042,17 +1047,16 @@ djaodjin-saas/tree/master/saas/templates/saas/billing/withdraw.html>`__).
     template_name = 'saas/billing/withdraw.html'
 
     def get_initial(self):
-        self.organization = self.get_organization()
         kwargs = super(WithdrawView, self).get_initial()
-        balance = self.organization.retrieve_bank()
-        available_amount = balance['balance_amount']
+        available_amount = self.bank_context()['balance_amount']
         kwargs.update({
-            'amount': (available_amount / 100.0) if balance > 0 else 0})
+          'amount': (available_amount / 100.0) if available_amount > 0 else 0})
         return kwargs
 
     def form_valid(self, form):
         amount_withdrawn = int(float(form.cleaned_data['amount']) * 100)
-        self.organization.withdraw_funds(amount_withdrawn, self.request.user)
+        self.get_organization().withdraw_funds(
+            amount_withdrawn, self.request.user)
         return super(WithdrawView, self).form_valid(form)
 
     def get_success_url(self):

@@ -1,15 +1,15 @@
-{% extends "saas/base.html" %}
+{% extends "saas/base_dashboard.html" %}
 
 {% block saas_content %}
 <div>
     {% if form.instance %}
-    <div>
-        <button id="activate-plan" data-plan="{{form.instance.slug}}" class="activate {% if form.instance.is_active %}activated{% endif %}">{% if form.instance.is_active %}Deactivate{% else %}Activate{% endif %}</button>
+    <div data-plan="{{form.instance.slug}}">
+        <button id="activate-plan" class="activate {% if form.instance.is_active %}activated{% endif %}">{% if form.instance.is_active %}Deactivate{% else %}Activate{% endif %}</button>
     </div>
     {% endif %}
     {% if show_delete %}
     <div>
-        <button id="delete-plan" data-plan="{{form.instance.slug}}">Delete</button>
+        <button id="delete-plan">Delete</button>
     </div>
     {% endif %}
 </div>
@@ -18,30 +18,7 @@
     {{ form }}
     <input type="submit" name="submit" value="Submit">
 </form>
-<div id="confirm-delete">
-<button id="delete-action-btn" class="delete" data-plan="{{form.instance.slug}}">Confirmed Delete</button>
+<div id="confirm-delete" data-plan="{{form.instance.slug}}">
+<button id="delete-action-btn" class="delete">Confirmed Delete</button>
 </div>
-{% endblock %}
-
-{% block bodyscripts %}
-{{block.super}}
-<script type="text/javascript">
-$(document).ready(function(){
-    $(".activate").click(function(event) {
-        var self = $(this);
-        event.preventDefault();
-        toggleActivatePlan(self,
-            {'saas_api_plan': "{% url 'saas_api_plan_new' organization %}" });
-    });
-    $(".delete").click(function(event) {
-        var self = $(this);
-        event.preventDefault();
-        var plan = new Plan(self.attr("data-plan"),
-            {'saas_api_plan': "{% url 'saas_api_plan_new' organization %}" });
-        plan.destroy(function() {
-            window.location.href = "{% url 'saas_metrics_plans' organization %}" ;
-        });
-    });
-});
-</script>
 {% endblock %}

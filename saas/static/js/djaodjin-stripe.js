@@ -34,8 +34,11 @@
     Bank.prototype = {
         init: function () {
             var self = this;
-            self.element.submit(
-                function (event) { return self.stripeCreateToken(event); });
+            var accountNumberElement = self.element.find("#account-number");
+            if( accountNumberElement.length > 0 ) {
+                self.element.submit(
+                    function (event) { return self.stripeCreateToken(event); });
+            }
         },
 
         stripeResponseHandler: function(status, response) {
@@ -132,6 +135,8 @@
 
         HTML requirements:
             <form>
+              <div class="last4"></div>
+              <div class="exp_date"></div>
               <div id="card-use">
               <!-- BE CAREFULL: Do not add name="" to the #card-number,
                    #card-cvc, #card-exp-month, #card-exp-year input nodes,
@@ -178,8 +183,52 @@
     Card.prototype = {
         init: function () {
             var self = this;
-            self.element.submit(
-                function (event) { return self.stripeCreateToken(event); });
+        },
+    };
+
+    Card.prototype = {
+        init: function () {
+            var self = this;
+            var cardNumber = self.element.find("#card-number");
+            if( cardNumber.length > 0 ) {
+                /* Only attach ``stripeCreateToken`` if we don't have
+                   a card on file already. */
+                self.element.submit(
+                    function (event) { return self.stripeCreateToken(event); });
+                cardNumber.find("#card-number").payment('formatCardNumber');
+                cardNumber.keyup(function(){
+                    var cc_type = $.payment.cardType(
+                        self.element.find("#card-number").val());
+                    if (cc_type == 'visa'){
+                        self.element.find('#visa').css( "opacity", "1" );
+                    } else if (cc_type == 'mastercard'){
+                        self.element.find('#mastercard').css( "opacity", "1" );
+                    } else if (cc_type == 'amex'){
+                        self.element.find('#amex').css( "opacity", "1" );
+                    } else if (cc_type == 'discover'){
+                        self.element.find('#discover').css( "opacity", "1" );
+                    } else {
+                       self.element.find('#visa').css( "opacity","0.1");
+                       self.element.find('#mastercard').css( "opacity", "0.1" );
+                       self.element.find('#amex').css( "opacity", "0.1" );
+                       self.element.find('#discover').css( "opacity", "0.1" );
+                    }
+                });
+            } else if( self.element.find(".last4").length > 0 ) {
+                self.query();
+            }
+        },
+
+        query: function() {
+            "use strict";
+            var self = this;
+            $.get(self.options.saas_api_card, function(data) {
+                self.element.find(".last4").text(data.last4);
+                self.element.find(".exp_date").text(data.exp_date);
+            }).fail(function() {
+                self.element.find(".last4").text("Err");
+                self.element.find(".exp_date").text("Err");
+            });
         },
 
         stripeResponseHandler: function(status, response) {
@@ -330,7 +379,8 @@
     };
 
     $.fn.card.defaults = {
-        stripePubKey: null
+        stripePubKey: null,
+        saas_api_card: null
     };
 
 

@@ -1,9 +1,9 @@
-{% extends "saas/base.html" %}
+{% extends "saas/base_dashboard.html" %}
 {% load saas_tags %}
 
 {% block saas_content %}
-<section id="subscribers" ng-app="subscriptionApp" ng-cloak>
-  <div ng-controller="subscriptionListCtrl" ng-init="prefetch()">
+<section id="subscribers" ng-app="saasApp" ng-cloak>
+  <div ng-controller="subscriberListCtrl" ng-init="prefetch()">
     <div id="registered-users">
       <a href="#registered-users"><h2>Registered</h2></a>
       <div>
@@ -66,27 +66,4 @@
     </div>
   </div>
 </section>
-{% endblock %}
-
-{% block saas_bodyscripts %}
-<script type="text/javascript">
-/* Implementation Note: Not including a list of dependent modules
-   (2nd parameter to `module`) "re-opens" the module for additional
-   configuration. */
-var app = angular.module('subscriptionApp');
-/* Add the CSRF Token: */
-app.config(['$interpolateProvider', '$httpProvider',
-           function($interpolateProvider, $httpProvider) {
-    $httpProvider.defaults.headers.common['X-CSRFToken'] = '{{ csrf_token|escapejs }}';
-    /* Makes it easier to separate between django and angularjs templates */
-    $interpolateProvider.startSymbol('[[');
-    $interpolateProvider.endSymbol(']]');
-}]);
-app.constant('urls', {
-    saas_api_profile: "{% url 'saas_api_profile' %}",
-    saas_api_registered: "{% url 'saas_api_registered' %}",
-    saas_api_churned: "{% url 'saas_api_churned' organization %}",
-    saas_api_subscriptions: "{% url 'saas_api_subscribed' organization %}",
-});
-</script>
 {% endblock %}

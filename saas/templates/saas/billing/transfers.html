@@ -1,40 +1,35 @@
-{% extends "saas/transactions_base.html" %}
+{% extends "saas/base_dashboard.html" %}
 {% load saas_tags %}
 
-{% block saas_transaction_content %}
-<section id="info">
-  <h1>Deposit Information <a id="update_bank" href="{% url 'saas_update_bank' organization %}">Update</a></h1>
-  <div>
-    <dl>
-      <dt>Institution</dt>
-      <dd>[[bank_name]]</dd>
-    </dl>
-    <dl>
-      <dt>Account Number</dt>
-      <dd>[[last4]]</dd>
-    </dl>
+{% block saas_content %}
+<div ng-app="saasApp">
+  <div ng-controller="transferListCtrl">
+    <section id="info">
+      <h1>Deposit Information <a id="update_bank" href="{% url 'saas_update_bank' organization %}">Update</a></h1>
+      <div>
+        <dl>
+          <dt>Institution</dt>
+          <dd>[[bank_name]]</dd>
+        </dl>
+        <dl>
+          <dt>Account Number</dt>
+          <dd>[[last4]]</dd>
+        </dl>
+      </div>
+    </section>
+    <section id="funds">
+      <h1>Funds</h1>
+      <dl>
+        <dt id="balance-amount">[[balance_amount|humanizeCell : balance_unit : 0.01]]</dt>
+        <dd>Available (<a href="{% url 'saas_withdraw_funds' organization %}">withdraw</a>)</dd>
+      </dl>
+    </section>
+    {% include "saas/_transactions.html" %}
+    <section>
+      <div>
+        <a href="{% url 'saas_import_transactions' organization %}">Add offline transaction</a>
+      </div>
+    </section>
   </div>
-</section>
-<section id="funds">
-  <h1>Funds</h1>
-  <dl>
-    <dt id="balance-amount">[[balance_amount|humanizeCell : balance_unit : 0.01]]</dt>
-    <dd>Available (<a href="{% url 'saas_withdraw_funds' organization %}">withdraw</a>)</dd>
-  </dl>
-</section>
-{% endblock %}
-
-{% block saas_bodyscripts %}
-{{block.super}}
-<script type="text/javascript">
-/* Implementation Note: Not including a list of dependent modules
-   (3rd parameter to `module`) "re-opens" the module for additional
-   configuration. */
-var app = angular.module('transactionApp');
-app.constant('urls', {
-    saas_api_bank: "{% url 'saas_api_bank' organization %}",
-    saas_api_transaction_url: "{% url 'saas_api_transfer_list' organization %}",
-});
-app.constant('date_range', { start_at: "{{start_at}}", ends_at: "{{ends_at}}" });
-</script>
+</div>
 {% endblock %}

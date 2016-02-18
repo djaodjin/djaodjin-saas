@@ -51,8 +51,3 @@ Please enter a valid credit card. A new charge of
 </section>
 {% include "saas/_card_use.html" with title="Pay Now" %}
 {% endblock %}
-
-{% block bodyscripts %}
-{{block.super}}
-{% include "saas/_payment_body.html" %}
-{% endblock %}

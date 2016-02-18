@@ -1,52 +1,34 @@
-{% extends "saas/transactions_base.html" %}
-{% load static from staticfiles %}
+{% extends "saas/base_dashboard.html" %}
 {% load saas_tags %}
 
-{% block saas_transaction_content %}
-<section id="info">
-  <h1>Credit Card</h1>
-  <a href="{% url 'saas_update_card' organization %}">Update</a>
-  <dl>
-    <dt>card</dt>
-    <dd id="last4">{% if last4 %}{{last4}}{% else %}N/A{% endif %}</dd>
-  </dl>
-  <dl>
-    <dt>expires</dt>
-    <dd id="exp_date">{% if exp_date %}{{exp_date}}{% else %}N/A{% endif %}</dd>
-  </dl>
-</section>
-<section id="balance">
-  <h1>Balance</h1>
-  <dl>
-    {% if balance_amount >= 0 %}
-    <dt>{{balance_amount|humanize_money:balance_unit}}</dt>
-    <dd>Balance due {% if balance_amount > 0 %}(<a href="{% url 'saas_organization_balance' organization %}">pay now</a>){% endif %}</dd>
-    {% else %}
-    <dt>{{balance_amount|humanize_money:balance_unit}}</dt>
-    <dd>Balance Credits</dd>
-    {% endif %}
-  </dl>
-</section>
-{% endblock %}
-
-{% block saas_bodyscripts %}
-{{block.super}}
-<script type="text/javascript" charset="utf-8" src="{% static 'js/djaodjin-stripe.js' %}"></script>
-<script type="text/javascript">
-/* Implementation Note: Not including a list of dependent modules
-   (3rd parameter to `module`) "re-opens" the module for additional
-   configuration. */
-var app = angular.module('transactionApp');
-app.constant('urls', {
-    saas_api_transaction_url: "{% url 'saas_api_transaction_list' organization %}",
-});
-app.constant('date_range', { start_at: "{{start_at}}", ends_at: "{{ends_at}}" });
-</script>
-<script type="text/javascript">
-$(document).ready(function() {
-    var thisCard = new Card({'saas_api_card':
-        "{% url 'saas_api_card' organization %}"});
-    thisCard.query();
-});
-</script>
+{% block saas_content %}
+<div ng-app="saasApp">
+  <div ng-controller="transactionListCtrl">
+    <section id="info">
+      <h1>Credit Card</h1>
+      <a href="{% url 'saas_update_card' organization %}">Update</a>
+      <dl>
+        <dt>card</dt>
+        <dd id="last4">{% if last4 %}{{last4}}{% else %}N/A{% endif %}</dd>
+      </dl>
+      <dl>
+        <dt>expires</dt>
+        <dd id="exp_date">{% if exp_date %}{{exp_date}}{% else %}N/A{% endif %}</dd>
+      </dl>
+    </section>
+    <section id="balance">
+      <h1>Balance</h1>
+      <dl>
+        {% if balance_amount >= 0 %}
+        <dt>{{balance_amount|humanize_money:balance_unit}}</dt>
+        <dd>Balance due {% if balance_amount > 0 %}(<a href="{% url 'saas_organization_balance' organization %}">pay now</a>){% endif %}</dd>
+        {% else %}
+        <dt>{{balance_amount|humanize_money:balance_unit}}</dt>
+        <dd>Balance Credits</dd>
+        {% endif %}
+      </dl>
+    </section>
+    {% include "saas/_transactions.html" %}
+  </div>
+</div>
 {% endblock %}

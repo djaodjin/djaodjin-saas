@@ -1,7 +1,7 @@
-{% extends "saas/base.html" %}
+{% extends "saas/base_dashboard.html" %}
 
 {% block saas_content %}
-<section id="{{role}}" ng-app="userRelationApp">
+<section id="{{role}}" ng-app="saasApp">
   <h1>{{role|capfirst}}</h1>
   <div ng-controller="userRelationListCtrl">
     <form>
@@ -47,24 +47,4 @@ Thank you,
     </div>
   </div>
 </section>
-{% endblock %}
-
-{% block saas_bodyscripts %}
-<script>
-/* Implementation Note: Not including a list of dependent modules
-   (2nd parameter to `module`) "re-opens" the module for additional
-   configuration. */
-var app = angular.module('userRelationApp');
-/* Add the CSRF Token: */
-app.config(['$interpolateProvider', '$httpProvider',
-           function($interpolateProvider, $httpProvider) {
-    $httpProvider.defaults.headers.common['X-CSRFToken'] = '{{csrf_token|escapejs}}';
-    /* Makes it easier to separate between django and angularjs templates */
-    $interpolateProvider.startSymbol('[[');
-    $interpolateProvider.endSymbol(']]');
-}]);
-app.constant('urls', {
-    saas_api_user_relation_url: "{% url 'saas_api_role_list' organization role %}",
-});
-</script>
 {% endblock %}

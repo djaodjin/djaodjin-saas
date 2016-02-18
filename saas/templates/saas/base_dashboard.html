@@ -1,0 +1,62 @@
+{% extends "saas/base.html" %}
+{% load saas_tags %}
+{% load static from staticfiles %}
+
+{% block bodyscripts %}
+{{block.super}}
+<script type="text/javascript" charset="utf-8" src="{% static 'vendor/js/angular.js' %}"></script>
+<script type="text/javascript" charset="utf-8" src="{% static 'vendor/js/angular-touch.js' %}"></script>
+<script type="text/javascript" charset="utf-8" src="{% static 'vendor/js/angular-animate.js' %}"></script>
+<script type="text/javascript" charset="utf-8" src="{% static 'vendor/js/angular-resource.js' %}"></script>
+<script type="text/javascript" charset="utf-8" src="{% static 'vendor/js/angular-route.js' %}"></script>
+<script type="text/javascript" charset="utf-8" src="{% static 'vendor/js/ui-bootstrap-tpls-0.11.0.js' %}"></script>
+<script type="text/javascript" charset="utf-8" src="{% static 'js/djaodjin-saas-angular.js' %}"></script>
+
+{% if organization %}
+{% comment %}
+    XXX /users/alice/products/ page does not define ``organization``.
+{% endcomment %}
+<script type="text/javascript">
+/* Implementation Note: Not including a list of dependent modules
+   (2nd parameter to `module`) "re-opens" the module for additional
+   configuration.
+   - We add the CSRF token for as an HTTP header on API calls.
+   - We make it easier to separate between django and angularjs templates
+     by changing Angular defaults to [[ and ]] characters. */
+var reopenSaasApp = angular.module('saasApp');
+reopenSaasApp.config(['$interpolateProvider', '$httpProvider',
+           function($interpolateProvider, $httpProvider) {
+    $httpProvider.defaults.headers.common['X-CSRFToken'] = '{{csrf_token|escapejs}}';
+    $interpolateProvider.startSymbol('[[');
+    $interpolateProvider.endSymbol(']]');
+}]);
+reopenSaasApp.constant('urls', {
+    saas_api_coupon_url: "{% url 'saas_api_coupon_list' organization %}",
+    saas_metrics_coupons_url: "{% url 'saas_metrics_coupons' organization %}",
+    saas_api_subscriptions_url: "{% url 'saas_api_subscribed' organization %}",
+    plan: "{% url 'saas_api_plan' organization %}",
+{% if role %}
+    saas_api_user_relation_url: "{% url 'saas_api_role_list' organization role %}",
+{% endif %}
+    /* subscriptions */
+    saas_api_profile: "{% url 'saas_api_profile' %}",
+    saas_api_subscriptions: "{% url 'saas_api_subscription_list' organization %}",
+    /* subscribers */
+    saas_api_registered: "{% url 'saas_api_registered' %}",
+    saas_api_churned: "{% url 'saas_api_churned' organization %}",
+    saas_api_active_subscribers: "{% url 'saas_api_subscribed' organization %}",
+    /* transactions */
+    saas_api_bank: "{% url 'saas_api_bank' organization %}",
+    saas_api_transfers_url: "{% url 'saas_api_transfer_list' organization %}",
+    saas_api_transaction_url: "{% url 'saas_api_transaction_list' organization %}",
+});
+{% autoescape off %}
+reopenSaasApp.constant(
+  "tables", {% if tables %}{{tables}}{% else %}{}{% endif %}); // XXX
+{% endautoescape %}
+reopenSaasApp.constant('date_range', {
+    start_at: "{{start_at}}", ends_at: "{{ends_at}}"
+});
+</script>
+{% endif %}
+{% endblock %}

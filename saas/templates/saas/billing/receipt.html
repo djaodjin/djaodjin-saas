@@ -1,6 +1,5 @@
-{% extends "saas/base.html" %}
+{% extends "saas/base_dashboard.html" %}
 {% load saas_tags %}
-{% load static from staticfiles %}
 
 {% block saas_content %}
 <style>
@@ -102,33 +101,4 @@ Please specify the amount you would like refunded.
   <button type="submit" class="submit-refund">OK</button>
 </div>
 <!-- end of modal dialog for Refunds -->
-{% endblock %}
-
-{% block bodyscripts %}
-<script type="text/javascript" src="{% static 'js/djaodjin-saas-resources.js' %}"></script>
-<script type="text/javascript" src="{% static 'js/djaodjin-saas.js' %}"></script>
-<script type="text/javascript" src="{% static 'js/djaodjin-stripe.js' %}"></script>
-<script type="text/javascript">
-$(document).ready(function() {
-    $(".charge-refund").click(function () {
-        var self = $(this);
-        $("#charge-refund").refund({
-            availableAmount: self.attr("data-available-amount"),
-            linenum: self.attr("data-linenum"),
-            saas_api_charge_refund: "{% url 'saas_api_charge_refund' charge %}",
-            refundButton: self
-        });
-    });
-    $("#email-charge-receipt").chargeEmailReceipt({
-        initialState: "{{charge.get_state_display}}",
-        saas_api_email_charge_receipt:
-            "{% url 'saas_api_email_charge_receipt' charge %}"
-    });
-
-    $("#{{charge}}").chargeMonitor({
-       initialState: "{{charge.get_state_display}}",
-       saas_api_charge: "{% url 'saas_api_charge' charge %}"
-    });
-});
-</script>
 {% endblock %}

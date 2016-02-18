@@ -26,6 +26,8 @@
 Forms shown by the saas application
 """
 
+from decimal import Decimal
+
 from django import forms
 from django.core.exceptions import ValidationError
 from django.template.defaultfilters import slugify
@@ -176,10 +178,46 @@ class PlanForm(forms.ModelForm):
     """
     Form to create or update a ``Plan``.
     """
+    unit = forms.ChoiceField(choices=(('usd', 'usd'), ('cad', 'cad')))
+    period_amount = forms.DecimalField(max_digits=7, decimal_places=2)
+    advance_discount = forms.DecimalField(max_digits=5, decimal_places=2)
+
     class Meta:
         model = Plan
-        exclude = ['discontinued_at', 'is_active', 'length', 'next_plan',
-                   'organization', 'setup_amount', 'slug', 'transaction_fee']
+        fields = ('title', 'description', 'period_amount', 'unit', 'interval',
+                  'period_length', 'advance_discount',
+                  'auto_renew', 'is_not_priced')
+
+    def __init__(self, initial=None, instance=None, *args, **kwargs):
+        if initial:
+            period_amount = initial.get('period_amount', 0)
+            advance_discount = initial.get('advance_discount', 0)
+        if instance:
+            period_amount = instance.period_amount
+            advance_discount = instance.advance_discount
+        period_amount = Decimal(period_amount).scaleb(-2)
+        advance_discount = Decimal(advance_discount).scaleb(-2)
+        initial.update({
+            'period_amount':period_amount,
+            'advance_discount': advance_discount})
+        super(PlanForm, self).__init__(
+            initial=initial, instance=instance, *args, **kwargs)
+
+    def clean_period_amount(self):
+        try:
+            self.cleaned_data['period_amount'] = \
+              int(self.cleaned_data['period_amount'].scaleb(2))
+        except (TypeError, ValueError):
+            self.cleaned_data['period_amount'] = 0
+        return self.cleaned_data['period_amount']
+
+    def clean_advance_discount(self):
+        try:
+            self.cleaned_data['advance_discount'] = \
+              int(self.cleaned_data['advance_discount'].scaleb(2))
+        except (TypeError, ValueError):
+            self.cleaned_data['advance_discount'] = 0
+        return self.cleaned_data['advance_discount']
 
     def save(self, commit=True):
         if self.initial.has_key('organization'):

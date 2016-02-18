@@ -54,8 +54,16 @@ class PlanMixin(OrganizationMixin):
         return Plan.objects.filter(organization=self.get_organization())
 
     def perform_create(self, serializer):
+        unit = serializer.validated_data.get('unit', None)
+        if unit is None:
+            first_plan = self.get_queryset().first()
+            if first_plan:
+                unit = first_plan.unit
+            else:
+                unit = 'usd'
         serializer.save(organization=self.get_organization(),
-            slug=self.slugify(serializer.validated_data['title']))
+            slug=self.slugify(serializer.validated_data['title']),
+            unit=unit)
 
     def perform_update(self, serializer):
         organization = self.get_organization()
@@ -69,7 +77,11 @@ class PlanMixin(OrganizationMixin):
             # pylint: disable=protected-access
             serializer._validated_data['slug'] \
                 = self.slugify(serializer.validated_data['title'])
-        serializer.save(organization=organization)
+        # We use PUT instead of PATCH otherwise we cannot run test units
+        # on phantomjs. PUT would override the is_active if not present.
+        serializer.save(organization=organization,
+            is_active=serializer.validated_data.get('is_active',
+                serializer.instance.is_active))
 
     @staticmethod
     def slugify(title):

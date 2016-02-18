@@ -1,8 +1,25 @@
 /*=============================================================================
+  Apps
+  ============================================================================*/
+
+var saasApp = angular.module("saasApp", ["ui.bootstrap", "ngRoute",
+    "couponControllers",
+    "metricsControllers",
+    "importTransactionsControllers",
+    "subscriptionControllers", "transactionControllers",
+    "userRelationControllers",
+    "couponServices", "transactionServices", "userRelationServices",
+    "saasFilters"]);
+
+/*=============================================================================
   Filters
   ============================================================================*/
-angular.module("revenueFilters", [])
-    .filter("monthHeading", function() {
+angular.module("saasFilters", [])
+    .filter('unsafe', function($sce) {
+      return function(val) {
+        return $sce.trustAsHtml(val);
+      };
+    }).filter("monthHeading", function() {
         "use strict";
 
         var current = moment();
@@ -38,27 +55,60 @@ angular.module("revenueFilters", [])
             }
             return numberFilter(value);
         };
-    });
+
+    }).filter('groupBy', ['$parse', function ($parse) {
+    //http://stackoverflow.com/questions/19992090/angularjs-group-by-directive
+    return function (list, group_by) {
+
+        var filtered = [];
+        var prev_item = null;
+        var group_changed = false;
+        // this is a new field which is added to each item where we append
+        // "_CHANGED" to indicate a field change in the list
+        // force group_by into Array
+        group_by = angular.isArray(group_by) ? group_by : [group_by];
+
+        var new_field = group_by.join('_').replace('.', '_') + '_CHANGED';
+
+        // loop through each item in the list
+        angular.forEach(list, function (item) {
+
+            group_changed = false;
+
+            // if not the first item
+            if (prev_item !== null) {
+
+                // check if any of the group by field changed
+
+                //check each group by parameter
+                for (var i = 0, len = group_by.length; i < len; i++) {
+                    if ($parse(group_by[i])(prev_item) !== $parse(group_by[i])(item)) {
+                        group_changed = true;
+                    }
+                }
 
 
-/*=============================================================================
-  Apps
-  ============================================================================*/
+            }// otherwise we have the first item in the list which is new
+            else {
+                group_changed = true;
+            }
 
-angular.module("couponApp", ["ui.bootstrap", "ngRoute",
-    "couponControllers", "couponServices"]);
-angular.module("userRelationApp", ["ui.bootstrap", "ngRoute",
-    "userRelationControllers", "userRelationServices"]);
-angular.module("subscriptionApp", ["ui.bootstrap", "ngRoute",
-    "subscriptionControllers"]);
-angular.module("transactionApp", ["ui.bootstrap", "ngRoute",
-    "transactionControllers", "transactionServices", "revenueFilters"]);
-angular.module("metricApp", ["ui.bootstrap", "ngRoute", "metricControllers"]);
-angular.module("metricsApp", ["ui.bootstrap", "ngRoute", "metricsControllers",
-    "revenueFilters"]);
-angular.module("importTransactionsApp", ["ui.bootstrap", "ngRoute",
-    "importTransactionsControllers"]);
+            // if the group changed, then add a new field to the item
+            // to indicate this
+            if (group_changed) {
+                item[new_field] = true;
+            } else {
+                item[new_field] = false;
+            }
 
+            filtered.push(item);
+            prev_item = item;
+
+        });
+
+        return filtered;
+    };
+}]);
 
 /*=============================================================================
   Services
@@ -94,6 +144,13 @@ transactionServices.factory("Transaction", ["$resource", "urls",
     return $resource(
         urls.saas_api_transaction_url + "/:id", {id: "@id"},
             {query: {method: "GET"}});
+
+  }]).factory("Transfer", ["$resource", "urls",
+  function($resource, urls){
+    "use strict";
+    return $resource(
+        urls.saas_api_transfers_url + "/:id", {id: "@id"},
+            {query: {method: "GET"}});
   }]);
 
 /*=============================================================================
@@ -104,7 +161,6 @@ var couponControllers = angular.module("couponControllers", []);
 var userRelationControllers = angular.module("userRelationControllers", []);
 var subscriptionControllers = angular.module("subscriptionControllers", []);
 var transactionControllers = angular.module("transactionControllers", []);
-var metricControllers = angular.module("metricControllers", []);
 var metricsControllers = angular.module("metricsControllers", []);
 var importTransactionsControllers = angular.module("importTransactionsControllers", []);
 
@@ -524,6 +580,15 @@ subscriptionControllers.controller("subscriptionListCtrl",
     $scope.query($scope.subscribed);
 }]);
 
+subscriptionControllers.controller("subscriberListCtrl",
+    ["$scope", "$controller", "$http", "$timeout", "urls",
+    function($scope, $controller, $http, $timeout, urls) {
+    urls.saas_api_subscriptions = urls.saas_api_active_subscribers;
+    $controller('subscriptionListCtrl', {
+        $scope: $scope, $http: $http, $timeout:$timeout,
+        urls: urls});
+}]);
+
 
 transactionControllers.controller("transactionListCtrl",
     ["$scope", "$http", "$timeout", "urls", "date_range", "Transaction",
@@ -631,17 +696,16 @@ transactionControllers.controller("transactionListCtrl",
 
 }]);
 
-
-metricControllers.controller("metricCtrl",
-    ["$scope", "$http", "urls",
-     function($scope, $http, urls) {
-    "use strict";
-    $scope.balances = [];
-    $http.get(urls.saas_api_metrics_balance).success(
-        function(data) {
-            $scope.balances = data;
-    });
+transactionControllers.controller("transferListCtrl",
+    ["$scope", "$controller", "$http", "$timeout",
+     "urls", "date_range", "Transfer",
+     function($scope, $controller, $http, $timeout,
+        urls, date_range, Transfer) {
+    $controller('transactionListCtrl', {
+        $scope: $scope, $http: $http, $timeout:$timeout,
+        urls: urls, date_range: date_range, Transaction: Transfer});
 }]);
+
 
 metricsControllers.controller("metricsCtrl",
     ["$scope", "$http", "urls", "tables",
@@ -785,3 +849,4 @@ importTransactionsControllers.controller("importTransactionsCtrl",
         });
     };
 }]);
+

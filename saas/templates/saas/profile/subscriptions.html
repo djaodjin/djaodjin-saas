@@ -1,7 +1,7 @@
-{% extends "saas/base.html" %}
+{% extends "saas/base_dashboard.html" %}
 
 {% block saas_content %}
-<section id="subscriptions" ng-app="subscriptionApp" ng-cloak>
+<section id="subscriptions" ng-app="saasApp" ng-cloak>
   <div ng-controller="subscriptionListCtrl">
     <table>
       <thead>
@@ -68,25 +68,4 @@ under 2 conditions:
     </div>
   </div>
 </section>
-{% endblock %}
-
-{% block saas_bodyscripts %}
-<script type="text/javascript">
-/* Implementation Note: Not including a list of dependent modules
-   (2nd parameter to `module`) "re-opens" the module for additional
-   configuration. */
-var app = angular.module('subscriptionApp');
-/* Add the CSRF Token: */
-app.config(['$interpolateProvider', '$httpProvider',
-           function($interpolateProvider, $httpProvider) {
-    $httpProvider.defaults.headers.common['X-CSRFToken'] = '{{csrf_token|escapejs}}';
-    /* Makes it easier to separate between django and angularjs templates */
-    $interpolateProvider.startSymbol('[[');
-    $interpolateProvider.endSymbol(']]');
-}]);
-app.constant('urls', {
-    saas_api_profile: "{% url 'saas_api_profile' %}",
-    saas_api_subscriptions: "{% url 'saas_api_subscription_list' organization %}",
-});
-</script>
 {% endblock %}
