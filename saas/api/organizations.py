@@ -72,7 +72,7 @@ class OrganizationDetailAPIView(OrganizationMixin,
     def get_object(self):
         return self.get_organization()
 
-    def destroy(self, request, *args, **kwargs):
+    def destroy(self, request, *args, **kwargs): #pylint:disable=unused-argument
         """
         Archive the organization. We don't to loose the subscriptions
         and transactions history.

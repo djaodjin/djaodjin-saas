@@ -322,12 +322,17 @@ class StripeBackend(object):
                 # We will seamlessly create a new customer on Stripe.
                 LOGGER.warning("Retrieve customer %s on Stripe for %s",
                     subscriber.processor_card_key, subscriber)
-        if not p_customer:
-            p_customer = stripe.Customer.create(
-                email=subscriber.email,
-                description=subscriber.slug,
-                card=card_token,
-                **kwargs)
+        if p_customer is None:
+            try:
+                # XXX Seems either pylint or Stripe is wrong here...
+                #pylint:disable=redefined-variable-type
+                p_customer = stripe.Customer.create(
+                    email=subscriber.email, description=subscriber.slug,
+                    card=card_token, **kwargs)
+            except stripe.error.CardError, err:
+                raise CardError(err.message, err.param, err.code,
+                    http_body=err.http_body, http_status=err.http_status,
+                    json_body=err.json_body, headers=err.headers)
             subscriber.processor_card_key = p_customer.id
             subscriber.save()
 
@@ -429,7 +434,7 @@ class StripeBackend(object):
         Return Stripe processing fee associated to a transfer, i.e.
         0% for Stand-Alone Stripe accounts and 0.5% for managed accounts.
         """
-        if False:
+        if False: #pylint:disable=using-constant-test
             # XXX Enable when using managed accounts.
             kwargs = self._prepare_transfer_request(provider)
             rcp = stripe.Account.retrieve(**kwargs)

@@ -45,7 +45,7 @@ class RelationListAPIView(OrganizationMixin, ListCreateAPIView):
         raise NotImplementedError(
             "add_relation should be overriden in derived classes.")
 
-    def create(self, request, *args, **kwargs):
+    def create(self, request, *args, **kwargs): #pylint:disable=unused-argument
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         try:

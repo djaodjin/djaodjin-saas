@@ -167,7 +167,7 @@ class PlanResourceView(PlanMixin, RetrieveUpdateDestroyAPIView):
 
     serializer_class = PlanSerializer
 
-    def destroy(self, request, *args, **kwargs):
+    def destroy(self, request, *args, **kwargs): #pylint:disable=unused-argument
 #        Override to provide some validation.
 #
 #        Without this, users could subvert the "no deleting plans with

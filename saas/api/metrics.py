@@ -34,7 +34,7 @@ from ..utils import datetime_or_now, get_role_model
 from ..managers.metrics import monthly_balances
 from .serializers import OrganizationSerializer, UserSerializer
 from ..managers.metrics import (active_subscribers, aggregate_monthly,
-    aggregate_monthly_transactions, active_subscribers, churn_subscribers)
+    aggregate_monthly_transactions, churn_subscribers)
 
 
 class BalancesAPIView(OrganizationMixin, APIView):

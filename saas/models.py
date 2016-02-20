@@ -1589,11 +1589,11 @@ class Plan(models.Model):
     def get_natural_period(nb_periods, interval):
         result = None
         if interval == Plan.HOURLY:
-            result = datetime.timedelta(hours=1 * nb_periods)
+            result = relativedelta(hours=1 * nb_periods)
         elif interval == Plan.DAILY:
-            result = datetime.timedelta(days=1 * nb_periods)
+            result = relativedelta(days=1 * nb_periods)
         elif interval == Plan.WEEKLY:
-            result = datetime.timedelta(days=7 * nb_periods)
+            result = relativedelta(days=7 * nb_periods)
         elif interval == Plan.MONTHLY:
             result = relativedelta(months=1 * nb_periods)
         elif interval == Plan.YEARLY:
