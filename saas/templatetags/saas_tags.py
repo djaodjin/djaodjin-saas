@@ -108,7 +108,7 @@ def humanize_period(period):
 
 
 @register.filter()
-def is_current_provider(organization):
+def is_broker(organization):
     # We do a string compare here because both ``Organization`` might come
     # from a different db. That is if the organization parameter is not
     # a unicode string itself.
@@ -201,25 +201,6 @@ def products(subscriptions):
         return subscriptions.values(
             'organization__slug', 'organization__full_name').distinct()
     return []
-
-
-@register.filter()
-def top_accessible_organizations(user):
-    """
-    Returns a queryset of the 8 most important organizations the user
-    is a manager or contributor for.
-    """
-    return Organization.objects.accessible_by(user).filter(
-        is_active=True)[:8]
-
-
-@register.filter()
-def more_accessible_organizations(user):
-    """
-    Returns True if the user manages more than 8 organizations.
-    """
-    return Organization.objects.accessible_by(user).filter(
-        is_active=True).count() >= 8
 
 
 @register.filter

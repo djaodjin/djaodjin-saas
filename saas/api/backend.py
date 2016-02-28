@@ -53,8 +53,7 @@ class RetrieveBankAPIView(OrganizationMixin, GenericAPIView):
 
     def get(self, request, *args, **kwargs): #pylint: disable=unused-argument
         return Response(
-            self.get_organization().retrieve_bank(),
-            status=status.HTTP_200_OK)
+            self.organization.retrieve_bank(), status=status.HTTP_200_OK)
 
 
 class RetrieveCardAPIView(OrganizationMixin, GenericAPIView):
@@ -74,7 +73,4 @@ class RetrieveCardAPIView(OrganizationMixin, GenericAPIView):
 
     def get(self, request, *args, **kwargs): #pylint: disable=unused-argument
         return Response(
-            self.get_organization().retrieve_card(),
-            status=status.HTTP_200_OK)
-
-
+            self.organization.retrieve_card(), status=status.HTTP_200_OK)

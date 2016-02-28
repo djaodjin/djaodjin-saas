@@ -1,5 +1,3 @@
-{% load static from staticfiles %}
-
 <div id="card-use">
 <fieldset>
       <legend>Credit Card Information{% if last4 and not update_mode %}<a id="card-update" href="{% url 'saas_update_card' organization %}">Update</a>{% endif %}</legend>
@@ -47,10 +45,10 @@
       {{form.card_address_zip}}
       {{form.country}}
 {% endif %}
-{% comment %}
+{##
   Previous endif before fieldset closing tag so the "Credit Card Information"
   fieldset is closed correctly both ways.
-{% endcomment %}
+##}
 </fieldset>
 </div> <!-- #card-use -->
 <div>

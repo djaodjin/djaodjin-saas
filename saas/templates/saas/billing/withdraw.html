@@ -10,7 +10,7 @@
 
 <form method="post" id="bank-form"
       action=".{% if next %}/?next={{ next }}{% endif %}">
-      {% csrf_token %}
+      <input type="hidden" name="csrfmiddlewaretoken" value="{{csrf_token}}">
       <fieldset>
         <legend>Amount to transfer</legend>
         {{form.as_p}}

@@ -42,5 +42,5 @@ urlpatterns = [
         % (ACCT_REGEX, ACCT_REGEX),
         PlanResourceView.as_view(), name='saas_api_plan'),
     url(r'^profile/(?P<organization>%s)/plans/?' % ACCT_REGEX,
-        PlanCreateAPIView.as_view(), name='saas_api_plan_new'),
+        PlanCreateAPIView.as_view(), name='saas_api_plans'),
 ]

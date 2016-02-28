@@ -46,7 +46,6 @@ class PlanFormMixin(OrganizationMixin, SingleObjectMixin):
         Returns the initial data to use for forms on this view.
         """
         kwargs = super(PlanFormMixin, self).get_initial()
-        self.organization = self.get_organization()
         kwargs.update({'organization': self.organization})
         return kwargs
 
@@ -93,8 +92,7 @@ djaodjin-saas/tree/master/saas/templates/saas/pricing.html>`__).
     form_class = forms.Form # Solely to avoid errors on Django 1.9.1
 
     def get_queryset(self):
-        queryset = Plan.objects.filter(
-            organization=self.get_organization(),
+        queryset = Plan.objects.filter(organization=self.provider,
             is_active=True).order_by('is_not_priced', 'period_amount')
         return queryset
 
@@ -112,8 +110,7 @@ djaodjin-saas/tree/master/saas/templates/saas/pricing.html>`__).
                 for item in self.request.session['cart_items']]
         redeemed = self.request.session.get('redeemed', None)
         if redeemed is not None:
-            redeemed = Coupon.objects.active(
-                self.get_organization(), redeemed).first()
+            redeemed = Coupon.objects.active(self.provider, redeemed).first()
         context.update({
             'items_selected': items_selected, 'redeemed': redeemed})
         return context

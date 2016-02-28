@@ -424,7 +424,7 @@
                to a logout. When we delete a different profile, a reload
                of the page leads to a 404. In either cases, moving on
                to the redirect_to_profile page is a safe bet. */
-            window.location = self.options.saas_organization_profile;
+            window.location = self.options.user_profile_redirect;
           }).fail(function(data) {
             if('details' in data.responseJSON) {
                 showMessages([data.responseJSON['details']], "error");
@@ -443,7 +443,7 @@
 
    $.fn.profile.defaults = {
        saas_api_organization: "/api/profile",
-       saas_organization_profile: "/profile"
+       user_profile_redirect: "/users/"
    };
 
    /** Decorate an HTML controller to trigger AJAX requests to create,

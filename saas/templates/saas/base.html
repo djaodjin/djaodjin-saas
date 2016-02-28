@@ -6,7 +6,7 @@
 <div>
   <div>
     {% block sidebar %}
-    {% if organization|is_current_provider %}
+    {% if organization|is_broker %}
     {% comment %}
     We are dealing with the site owner.
     {% endcomment %}
@@ -46,28 +46,31 @@
 <script type="text/javascript" charset="utf-8" src="{% static 'js/djaodjin-stripe.js'%}"></script>
 <script type="text/javascript">
 jQuery(document).ready(function($) {
-{% if organization %}
+{% if urls.provider %}
     $("[data-plan]").plan({
-        saas_api_plan: "{% url 'saas_api_plan_new' organization %}",
-        saas_metrics_plans: "{% url 'saas_metrics_plans' organization %}"
+        saas_api_plan: "{{ urls.provider.api_plans }}",
+        saas_metrics_plans: "{{ urls.provider.metrics_plans }}"
     });
-
+{% endif %}
+{% if urls.organization %}
     $("#delete-organization-btn").profile({
-        saas_api_organization: "{% url 'saas_api_organization' organization %}",
-        saas_organization_profile: "{% url 'accounts_profile' %}"
+        saas_api_organization: "{{ urls.organization.api_base }}",
+        user_profile_redirect: "{{ request.user.urls.profile_redirect }}"
     });
-
+{% endif %}
+{% if urls.api_redeem %}
     $("#redeem-form").redeem(
-        {'saas_api_redeem_coupon': "{% url 'saas_api_redeem_coupon' %}" });
+        {'saas_api_redeem_coupon': "{{ urls.api_redeem }}" });
+{% endif %}
+{% if STRIPE_PUB_KEY %}
     var cardForm = $("#payment-form");
     cardForm.find("#invoicables").invoice(
-       {currency_unit: '{{lines_unit}}',
-        saas_api_cart: "{% url 'saas_api_cart' %}" });
+       {currency_unit: "{{lines_unit}}",
+        saas_api_cart: "{{ urls.api_cart }}" });
     cardForm.card({
-        stripePubKey: "{{STRIPE_PUB_KEY}}",
-        saas_api_card: "{% url 'saas_api_card' organization %}"
+        stripePubKey: "{{ STRIPE_PUB_KEY }}",
+        saas_api_card: "{{ urls.organization.api_card }}"
     });
-
     $("#bank-form").bank({stripePubKey: "{{STRIPE_PUB_KEY}}"});
 {% endif %}
 {% if charge %}
@@ -76,19 +79,18 @@ jQuery(document).ready(function($) {
         $("#charge-refund").refund({
             availableAmount: self.attr("data-available-amount"),
             linenum: self.attr("data-linenum"),
-            saas_api_charge_refund: "{% url 'saas_api_charge_refund' charge %}",
+            saas_api_charge_refund: "{{ urls.charge.api_refund }}",
             refundButton: self
         });
     });
     $("#email-charge-receipt").chargeEmailReceipt({
         initialState: "{{charge.get_state_display}}",
-        saas_api_email_charge_receipt:
-            "{% url 'saas_api_email_charge_receipt' charge %}"
+        saas_api_email_charge_receipt: "{{ urls.charge.email_receipt }}"
     });
 
     $("#{{charge}}").chargeMonitor({
        initialState: "{{charge.get_state_display}}",
-       saas_api_charge: "{% url 'saas_api_charge' charge %}"
+       saas_api_charge: "{{ urls.charge.api_base }}"
     });
 {% endif %}
 });

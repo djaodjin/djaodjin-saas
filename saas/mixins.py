@@ -29,7 +29,6 @@ from django.core.urlresolvers import reverse
 from django.http import Http404
 from django.shortcuts import get_object_or_404
 from django.utils.dateparse import parse_datetime
-from django.views.generic.base import ContextMixin
 from django.views.generic.detail import SingleObjectMixin
 from extra_views.contrib.mixins import SearchableListMixin, SortableListMixin
 
@@ -156,11 +155,25 @@ class ChargeMixin(SingleObjectMixin):
 
     def get_context_data(self, **kwargs):
         context = super(ChargeMixin, self).get_context_data(**kwargs)
-        context.update(get_charge_context(self.object))
+        charge = self.object
+        context.update(get_charge_context(charge))
+        urls_charge = {
+            'api_base': reverse('saas_api_charge', args=(charge,)),
+            'api_refund': reverse('saas_api_charge_refund', args=(charge,)),
+            'api_email_receipt': reverse(
+                'saas_api_email_charge_receipt', args=(charge,)),
+        }
+        if 'urls' in context:
+            if 'charge' in context['urls']:
+                context['urls']['charge'].update(urls_charge)
+            else:
+                context['urls'].update({'charge': urls_charge})
+        else:
+            context.update({'urls': {'charge': urls_charge}})
         return context
 
 
-class OrganizationMixin(ContextMixin):
+class OrganizationMixin(object):
     """
     Returns an ``Organization`` from a URL.
     """
@@ -193,8 +206,99 @@ class OrganizationMixin(ContextMixin):
 
     def get_context_data(self, **kwargs):
         context = super(OrganizationMixin, self).get_context_data(**kwargs)
-        context.update({'organization': self.get_organization()})
+        organization = self.organization
+        context.update({'organization': organization})
+        # XXX These might be moved to a higher-level
+        urls_default = {
+            'api_cart': reverse('saas_api_cart'),
+            'api_redeem': reverse('saas_api_redeem_coupon'),
+            'pricing': reverse('saas_cart_plan_list'),
+        }
+        if 'urls' in context:
+            context['urls'].update(urls_default)
+        else:
+            context.update({'urls': urls_default})
+
+        # URLs for both sides (subscriber and provider).
+        urls_organization = {
+            'api_base': reverse('saas_api_organization', args=(organization,)),
+            'api_card': reverse('saas_api_card', args=(organization,)),
+            'api_profile_base': reverse('saas_api_profile'),
+            'api_subscriptions': reverse(
+                'saas_api_subscription_list', args=(organization,)),
+            'api_transactions': reverse(
+                'saas_api_transaction_list', args=(organization,)),
+            'profile_base': reverse('saas_profile'),
+            'profile': reverse(
+                'saas_organization_profile', args=(organization,)),
+            'billing': reverse('saas_billing_info', args=(organization,)),
+            'subscriptions': reverse(
+                'saas_subscription_list', args=(organization,)),
+        }
+        if self.attached_manager(self.organization):
+            urls_organization.update({
+                'password_change': reverse(
+                    'password_change', args=(organization.slug,))})
+        else:
+            urls_organization.update({
+                'managers': reverse('saas_role_list',
+                    args=(organization, 'managers')),
+                'contributors': reverse('saas_role_list',
+                    args=(organization, 'contributors'))})
+        if 'urls' in context:
+            if 'organization' in context['urls']:
+                context['urls']['organization'].update(urls_organization)
+            else:
+                context['urls'].update({'organization': urls_organization})
+        else:
+            context.update({'urls': {'organization': urls_organization}})
+
+        if organization.is_provider:
+            provider = organization
+            urls_provider = {
+                'api_bank': reverse('saas_api_bank', args=(provider,)),
+                'api_coupons': reverse(
+                    'saas_api_coupon_list', args=(provider,)),
+                'api_metrics_coupons': reverse(
+                    'saas_metrics_coupons', args=(provider,)),
+                'api_metrics_plans': reverse(
+                    'saas_api_metrics_plans', args=(provider,)),
+                'api_plans': reverse('saas_api_plans', args=(provider,)),
+                'api_subscribers_active': reverse(
+                    'saas_api_subscribed', args=(provider,)),
+                'api_subscribers_churned': reverse(
+                    'saas_api_churned', args=(provider,)),
+                'api_transfers': reverse(
+                    'saas_api_transfer_list', args=(provider,)),
+                'api_users': reverse('saas_api_user_list'),
+                'api_users_registered': reverse('saas_api_registered'),
+                'profile': reverse('saas_provider_profile'),
+                'coupons': reverse('saas_coupon_list', args=(provider,)),
+                'dashboard': reverse('saas_dashboard', args=(provider,)),
+                'metrics_sales': reverse(
+                    'saas_metrics_summary', args=(provider,)),
+                'metrics_plans': reverse(
+                    'saas_metrics_plans', args=(provider,)),
+                'subscribers': reverse(
+                    'saas_subscriber_list', args=(provider,)),
+                'transfers': reverse(
+                    'saas_transfer_info', args=(provider,)),
+            }
+            if 'urls' in context:
+                if 'provider' in context['urls']:
+                    context['urls']['provider'].update(urls_provider)
+                else:
+                    context['urls'].update({'provider': urls_provider})
+            else:
+                context.update({'urls': {'provider': urls_provider}})
+
         return context
+
+    @property
+    def organization(self):
+        if not hasattr(self, '_organization'):
+            self._organization = self.get_organization()
+        return self._organization
 
 
 class DateRangeMixin(OrganizationMixin):
@@ -216,7 +320,8 @@ class DateRangeMixin(OrganizationMixin):
 
     def get_context_data(self, **kwargs):
         context = super(DateRangeMixin, self).get_context_data(**kwargs)
-        context.update({'start_at': self.start_at.isoformat(),
+        context.update({
+            'start_at': self.start_at.isoformat(),
             'ends_at': self.ends_at.isoformat()})
         return context
 
@@ -238,6 +343,12 @@ class ProviderMixin(OrganizationMixin):
     def get_provider():
         return get_broker()
 
+    @property
+    def provider(self):
+        if not hasattr(self, '_provider'):
+            self._provider = self.get_organization()
+        return self._provider
+
 
 class CouponMixin(ProviderMixin):
     """
@@ -249,7 +360,7 @@ class CouponMixin(ProviderMixin):
     def get_coupon(self):
         return get_object_or_404(Coupon,
             code=self.kwargs.get(self.coupon_url_kwarg),
-            organization=self.get_organization())
+            organization=self.provider)
 
     def get_context_data(self, **kwargs):
         context = super(CouponMixin, self).get_context_data(**kwargs)
@@ -263,7 +374,6 @@ class MetricsMixin(ProviderMixin):
     """
 
     def cache_fields(self, request): #pylint: disable=unused-argument
-        self.organization = self.get_organization()
         self.start_at = self.request.GET.get('start_at', None)
         if self.start_at:
             self.start_at = parse_datetime(self.start_at)
@@ -345,7 +455,7 @@ class UserSmartListMixin(SearchableListMixin, SortableListMixin):
                            ('email', 'email')]
 
 
-class ChurnedQuerysetMixin(OrganizationMixin):
+class ChurnedQuerysetMixin(ProviderMixin):
     """
     ``QuerySet`` of ``Subscription`` which are no longer active.
     """
@@ -363,11 +473,11 @@ class ChurnedQuerysetMixin(OrganizationMixin):
             ends_at = parse_datetime(ends_at)
         ends_at = datetime_or_now(ends_at)
         return Subscription.objects.filter(
-            plan__organization=self.get_organization(),
+            plan__organization=self.provider,
             ends_at__lt=ends_at, **kwargs).order_by('-ends_at')
 
 
-class SubscribedQuerysetMixin(OrganizationMixin):
+class SubscribedQuerysetMixin(ProviderMixin):
     """
     ``QuerySet`` of ``Subscription`` which are currently active.
     """
@@ -385,20 +495,42 @@ class SubscribedQuerysetMixin(OrganizationMixin):
             ends_at = parse_datetime(ends_at)
         ends_at = datetime_or_now(ends_at)
         return Subscription.objects.filter(
-            plan__organization=self.get_organization(),
+            plan__organization=self.provider,
             ends_at__gte=ends_at, **kwargs).order_by('-ends_at')
 
 
-class UserMixin(ContextMixin):
+class UserMixin(object):
     """
     Returns an ``User`` from a URL.
     """
-
+    SHORT_LIST_CUT_OFF = 8
     user_url_kwarg = 'user'
 
-    def get_user(self):
-        return get_object_or_404(User,
-            username=self.kwargs.get(self.user_url_kwarg))
+    @property
+    def user(self):
+        if not hasattr(self, "_user"):
+            try:
+                self._user = User.objects.get(
+                    username=self.kwargs.get(self.user_url_kwarg))
+            except User.DoesNotExist:
+                self._user = self.request.user
+        return self._user
+
+    def get_context_data(self, **kwargs):
+        context = super(UserMixin, self).get_context_data(**kwargs)
+        user = self.user
+        top_accessibles = []
+        queryset = Organization.objects.accessible_by(
+            user).filter(is_active=True)[:self.SHORT_LIST_CUT_OFF + 1]
+        for organization in queryset:
+            top_accessibles += [{'printable_name': organization.printable_name,
+                'location': reverse('saas_dashboard', args=(organization,))}]
+        if len(queryset) > self.SHORT_LIST_CUT_OFF:
+            top_accessibles += [{'printable_name': "More ...",
+                'location': reverse(
+                    'saas_user_product_list', args=(user,))}]
+        context.update({'top_accessibles': top_accessibles})
+        return context
 
 
 class RelationMixin(OrganizationMixin, UserMixin):
@@ -408,7 +540,7 @@ class RelationMixin(OrganizationMixin, UserMixin):
 
     def get_queryset(self):
         return get_roles(self.kwargs.get('role')).filter(
-            organization=self.get_organization(), user=self.get_user())
+            organization=self.organization, user=self.user)
 
     def get_object(self):
         # Since there is no lookup_field for relations, we must override

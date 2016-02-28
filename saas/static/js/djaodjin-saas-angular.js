@@ -842,7 +842,7 @@ importTransactionsControllers.controller("importTransactionsCtrl",
     };
 
     $scope.getSubscriptions = function(val) {
-        return $http.get(urls.saas_api_subscriptions_url, {
+        return $http.get(urls.saas_api_subscriptions, {
             params: {q: val}
         }).then(function(res){
             return res.data.results;

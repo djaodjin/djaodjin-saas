@@ -38,7 +38,7 @@ from django.utils.decorators import method_decorator
 from . import RedirectFormMixin
 from ..forms import (OrganizationForm, OrganizationCreateForm,
     ManagerAndOrganizationForm)
-from ..mixins import OrganizationMixin
+from ..mixins import OrganizationMixin, ProviderMixin
 from ..models import Organization, Subscription
 
 
@@ -68,11 +68,23 @@ class RoleListView(OrganizationMixin, TemplateView):
 
     def get_context_data(self, **kwargs):
         context = super(RoleListView, self).get_context_data(**kwargs)
-        context.update({'role': self.kwargs.get('role', None)})
+        role = self.kwargs.get('role', None)
+        context.update({'role': role})
+        urls_organization = {
+            'api_roles': reverse(
+                'saas_api_role_list', args=(self.organization, role)),
+        }
+        if 'urls' in context:
+            if 'organization' in context['urls']:
+                context['urls']['organization'].update(urls_organization)
+            else:
+                context['urls'].update({'organization': urls_organization})
+        else:
+            context.update({'urls': {'organization': urls_organization}})
         return context
 
 
-class SubscriberListView(OrganizationMixin, TemplateView):
+class SubscriberListView(ProviderMixin, TemplateView):
     """
     List of organizations subscribed to a plan provided by the organization.
 
@@ -95,6 +107,26 @@ djaodjin-saas/tree/master/saas/templates/saas/profile/subscribers.html>`__).
     """
 
     template_name = 'saas/profile/subscribers.html'
+
+    def get_context_data(self, **kwargs):
+        context = super(SubscriberListView, self).get_context_data(**kwargs)
+        provider = self.provider
+        urls_provider = {
+            'download_subscribers_active': reverse(
+              'saas_subscriber_pipeline_download_subscribed', args=(provider,)),
+            'download_subscribers_churned': reverse(
+              'saas_subscriber_pipeline_download_churned', args=(provider,)),
+            'download_users_registered': reverse(
+                'saas_subscriber_pipeline_download_registered'),
+        }
+        if 'urls' in context:
+            if 'provider' in context['urls']:
+                context['urls']['provider'].update(urls_provider)
+            else:
+                context['urls'].update({'provider': urls_provider})
+        else:
+            context.update({'urls': {'provider': urls_provider}})
+        return context
 
 
 class SubscriptionListView(OrganizationMixin, ListView):
@@ -120,7 +152,6 @@ class SubscriptionListView(OrganizationMixin, ListView):
     template_name = 'saas/profile/subscriptions.html'
 
     def get_queryset(self):
-        self.organization = self.get_organization()
         return Subscription.objects.active_for(self.organization)
 
     def get_context_data(self, **kwargs):
@@ -216,7 +247,7 @@ class DashboardView(OrganizationMixin, DetailView):
     ]
 
     def get_object(self, queryset=None):
-        return self.get_organization()
+        return self.organization
 
     def get_steps(self):
         return self.steps
@@ -224,12 +255,11 @@ class DashboardView(OrganizationMixin, DetailView):
     def get_context_data(self, **kwargs):
         context = super(
             DashboardView, self).get_context_data(**kwargs)
-        organization = self.get_organization()
         progress = 0
         next_steps = []
         steps = self.get_steps()
         for step in steps:
-            if not getattr(organization, step['test']):
+            if not getattr(self.organization, step['test']):
                 step['url'] = reverse(
                     step['url_name'], kwargs=self.get_url_kwargs())
                 next_steps += [step]
@@ -245,7 +275,7 @@ class DashboardView(OrganizationMixin, DetailView):
             and django_settings.FEATURES_DEBUG):
             return super(DashboardView, self).get(request, *args, **kwargs)
         return HttpResponseRedirect(
-            reverse('saas_metrics_summary', args=(self.get_organization(),)))
+            reverse('saas_metrics_summary', args=(self.organization,)))
 
 
 class OrganizationProfileView(OrganizationMixin, UpdateView):
@@ -259,7 +289,7 @@ class OrganizationProfileView(OrganizationMixin, UpdateView):
 /djaodjin-saas/tree/master/saas/templates/saas/profile/index.html>`__).
 
     Template context:
-      - ``attached_manager`` The sole manager of this organization if exists.
+      - ``urls.organization.password_chage`` URL to update user password.
       - ``organization`` The organization object
       - ``request`` The HTTP request object
     """
@@ -291,12 +321,6 @@ class OrganizationProfileView(OrganizationMixin, UpdateView):
                 manager.email = form.cleaned_data['email']
             manager.save()
         return super(OrganizationProfileView, self).form_valid(form)
-
-    def get_context_data(self, **kwargs):
-        context = super(
-            OrganizationProfileView, self).get_context_data(**kwargs)
-        context.update({"attached_manager": self.attached_manager(self.object)})
-        return context
 
     def get_form_class(self):
         if self.attached_manager(self.object):

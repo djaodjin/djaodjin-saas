@@ -5,7 +5,7 @@
 {% block content %}
 <section>
     <form method="post" action=".">
-        {% csrf_token %}
+        <input type="hidden" name="csrfmiddlewaretoken" value="{{csrf_token}}">
         {% for plan in plan_list %}
         <div id="{{plan.slug}}" class="plan-short">
             {% if plan.created_at|date_in_future %}

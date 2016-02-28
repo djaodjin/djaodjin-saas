@@ -45,7 +45,7 @@ urlpatterns = [
     url(r'^metrics/(?P<organization>%s)/customers/?' % ACCT_REGEX,
         CustomerMetricAPIView.as_view(), name='saas_api_customer'),
     url(r'^metrics/(?P<organization>%s)/plans/?' % ACCT_REGEX,
-        PlanMetricAPIView.as_view(), name='saas_api_plan'),
+        PlanMetricAPIView.as_view(), name='saas_api_metrics_plans'),
     url(r'^metrics/(?P<organization>%s)/funds/?' % ACCT_REGEX,
         RevenueMetricAPIView.as_view(), name='saas_api_revenue'),
 ]

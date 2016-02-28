@@ -70,14 +70,14 @@ from ..views.download import CSVDownloadView
 LOGGER = logging.getLogger(__name__)
 
 
-class BankMixin(OrganizationMixin):
+class BankMixin(ProviderMixin):
     """
     Adds bank information to the context.
     """
 
     def bank_context(self):
         if not hasattr(self, "_bank_context"):
-            self._bank_context = self.get_organization().retrieve_bank()
+            self._bank_context = self.provider.retrieve_bank()
         return self._bank_context
 
     def get_context_data(self, **kwargs):
@@ -102,29 +102,28 @@ class CardFormMixin(OrganizationMixin):
         Populates place order forms with the organization address
         whenever possible.
         """
-        self.customer = self.get_organization()
         kwargs = super(CardFormMixin, self).get_initial()
         provider = get_broker()
-        if self.customer.country:
-            country = self.customer.country
+        if self.organization.country:
+            country = self.organization.country
         else:
             country = provider.country
-        if self.customer.region:
-            region = self.customer.region
+        if self.organization.region:
+            region = self.organization.region
         else:
             region = provider.region
-        kwargs.update({'card_name': self.customer.full_name,
-                       'card_city': self.customer.locality,
-                       'card_address_line1': self.customer.street_address,
+        kwargs.update({'card_name': self.organization.full_name,
+                       'card_city': self.organization.locality,
+                       'card_address_line1': self.organization.street_address,
                        'country': country,
                        'region': region,
-                       'card_address_zip': self.customer.postal_code})
+                       'card_address_zip': self.organization.postal_code})
         return kwargs
 
     def get_context_data(self, **kwargs):
         context = super(CardFormMixin, self).get_context_data(**kwargs)
         try:
-            context.update(self.customer.retrieve_card())
+            context.update(self.organization.retrieve_card())
         except ProcessorConnectionError:
             messages.error(self.request, "The payment processor is "\
                 "currently unreachable. Sorry for the inconvienience.")
@@ -136,8 +135,22 @@ class BankUpdateView(BankMixin, UpdateView):
     form_class = BankForm
     template_name = 'saas/billing/bank.html'
 
+    def get_context_data(self, **kwargs):
+        context = super(BankUpdateView, self).get_context_data(**kwargs)
+        context.update({'force_update': True})
+        urls_provider = {'deauthorize_bank': reverse(
+            'saas_deauthorize_bank', args=(self.provider,))}
+        if 'urls' in context:
+            if 'provider' in context['urls']:
+                context['urls']['provider'].update(urls_provider)
+            else:
+                context['urls'].update({'provider': urls_provider})
+        else:
+            context.update({'urls': {'provider': urls_provider}})
+        return context
+
     def get_object(self, queryset=None):
-        return self.get_organization()
+        return self.provider
 
     def get_success_url(self):
         messages.success(self.request,
@@ -235,6 +248,7 @@ class InvoicablesFormMixin(OrganizationMixin):
 
     def get_context_data(self, **kwargs):
         context = super(InvoicablesFormMixin, self).get_context_data(**kwargs)
+        context.update(self.get_redirect_path())
         lines_amount = 0
         lines_unit = 'usd'
         for invoicable in self.invoicables:
@@ -244,8 +258,13 @@ class InvoicablesFormMixin(OrganizationMixin):
             for line in invoicable['lines']:
                 lines_amount += line.dest_amount
                 lines_unit = line.dest_unit
-        context.update(self.get_redirect_path())
-        context.update({'invoicables': self.invoicables,
+        grouped_by_plan = {}
+        for invoicable in self.invoicables:
+            plan = invoicable['subscription'].plan
+            if not plan in grouped_by_plan:
+                grouped_by_plan[plan] = []
+            grouped_by_plan[plan].append(invoicable)
+        context.update({'invoicables_by_plan': grouped_by_plan,
                         "lines_amount": lines_amount,
                         "lines_unit": lines_unit})
         return context
@@ -315,13 +334,13 @@ class CardInvoicablesFormMixin(CardFormMixin, InvoicablesFormMixin):
                         invoicable['lines'] += [line]
 
         try:
-            self.charge = self.customer.checkout(
+            self.charge = self.organization.checkout(
                 invoicables, self.request.user,
                 token=stripe_token, remember_card=remember_card)
             if self.charge and self.charge.invoiced_total_amount > 0:
                 messages.info(self.request, "A receipt will be sent to"\
 " %(email)s once the charge has been processed. Thank you."
-                          % {'email': self.customer.email})
+                          % {'email': self.organization.email})
         except ProcessorError as err:
             messages.error(self.request, err)
             return self.form_invalid(form)
@@ -341,8 +360,8 @@ class CardInvoicablesFormMixin(CardFormMixin, InvoicablesFormMixin):
         if redirect_path:
             return redirect_path
         if self.sole_provider:
-            return product_url(self.sole_provider, self.customer)
-        return reverse('saas_organization_profile', args=(self.customer,))
+            return product_url(self.sole_provider, self.organization)
+        return reverse('saas_organization_profile', args=(self.organization,))
 
 
 class CardUpdateView(CardFormMixin, FormView):
@@ -368,7 +387,7 @@ class CardUpdateView(CardFormMixin, FormView):
         if stripe_token:
             # Since all fields are optional, we cannot assume the card token
             # will be present (i.e. in case of erroneous POST request).
-            self.customer.update_card(stripe_token, self.request.user)
+            self.organization.update_card(stripe_token, self.request.user)
             messages.success(self.request,
                 "Your credit card on file was sucessfully updated")
         return super(CardUpdateView, self).form_valid(form)
@@ -376,6 +395,7 @@ class CardUpdateView(CardFormMixin, FormView):
     def get_context_data(self, **kwargs):
         context = super(CardUpdateView, self).get_context_data(**kwargs)
         context.update(self.get_redirect_path())
+        context.update({'force_update': True})
         return context
 
     def get_redirect_path(self, **kwargs): #pylint: disable=unused-argument
@@ -394,7 +414,7 @@ class CardUpdateView(CardFormMixin, FormView):
             self.request.GET.get(REDIRECT_FIELD_NAME, None))
         if redirect_path:
             return redirect_path
-        return reverse('saas_billing_info', args=(self.customer,))
+        return reverse('saas_billing_info', args=(self.organization,))
 
 
 class TransactionBaseView(DateRangeMixin, TemplateView):
@@ -426,25 +446,36 @@ class TransactionListView(CardFormMixin, TransactionBaseView):
 
     def cache_fields(self, request):
         super(TransactionListView, self).cache_fields(request)
-        self.customer = self.get_organization()
         if not request.GET.has_key('start_at'):
             self.start_at = (self.ends_at
-                - self.customer.natural_subscription_period)
+                - self.organization.natural_subscription_period)
 
     def get_context_data(self, **kwargs):
         context = super(TransactionListView, self).get_context_data(**kwargs)
         balance_amount, balance_unit \
-            = Transaction.objects.get_statement_balance(self.customer)
+            = Transaction.objects.get_statement_balance(self.organization)
         if balance_amount < 0:
             # It is not straightforward to inverse a number in Django templates
             # so we do it with a convention on the ``humanize_money`` filter.
             balance_unit = '-%s' % balance_unit
         context.update({
-            'organization': self.customer,
+            'organization': self.organization,
             'balance_amount': balance_amount,
             'balance_unit': balance_unit,
             'download_url': reverse(
                 'saas_transactions_download', kwargs=self.get_url_kwargs())})
+        urls_organization = {
+            'balance': reverse(
+                'saas_organization_balance', args=(self.organization,)),
+            'update_card': reverse(
+                'saas_update_card', args=(self.organization,))}
+        if 'urls' in context:
+            if 'organization' in context['urls']:
+                context['urls']['organization'].update(urls_organization)
+            else:
+                context['urls'].update({'organization': urls_organization})
+        else:
+            context.update({'urls': {'organization': urls_organization}})
         return context
 
 
@@ -465,10 +496,10 @@ class TransactionDownloadView(SmartTransactionListMixin,
         return datetime.now().strftime('transactions-%Y%m%d.csv')
 
     def queryrow_to_columns(self, transaction):
-        org = self.get_organization()
         return [
             transaction.created_at.date(),
-            '{:.2f}'.format((-1 if transaction.is_debit(org) else 1) *
+            '{:.2f}'.format(
+                (-1 if transaction.is_debit(self.organization) else 1) *
                 Decimal(transaction.dest_amount) / 100),
             transaction.dest_unit.encode('utf-8'),
             transaction.descr.encode('utf-8'),
@@ -496,10 +527,23 @@ djaodjin-saas/tree/master/saas/templates/saas/billing/transfers.html>`__).
     template_name = 'saas/billing/transfers.html'
 
     def get_context_data(self, **kwargs):
-        self.organization = self.get_organization()
         context = super(TransferListView, self).get_context_data(**kwargs)
         context.update({'download_url': reverse(
                 'saas_transfers_download', kwargs=self.get_url_kwargs())})
+        urls_provider = {
+            'bank': reverse('saas_update_bank', args=(self.provider,)),
+            'import_transactions': reverse(
+                'saas_import_transactions', args=(self.provider,)),
+            'withdraw_funds': reverse(
+                'saas_withdraw_funds', args=(self.provider,)),
+        }
+        if 'urls' in context:
+            if 'provider' in context['urls']:
+                context['urls']['provider'].update(urls_provider)
+            else:
+                context['urls'].update({'provider': urls_provider})
+        else:
+            context.update({'urls': {'provider': urls_provider}})
         return context
 
 
@@ -521,10 +565,10 @@ class TransferDownloadView(SmartTransactionListMixin,
         return self.headings
 
     def queryrow_to_columns(self, transaction):
-        org = self.get_organization()
         return [
             transaction.created_at.date(),
-            '{:.2f}'.format((-1 if transaction.is_debit(org) else 1) *
+            '{:.2f}'.format(
+                (-1 if transaction.is_debit(self.organization) else 1) *
                 Decimal(transaction.dest_amount) / 100),
             transaction.dest_unit.encode('utf-8'),
             transaction.descr.encode('utf-8'),
@@ -570,7 +614,8 @@ class CartBaseView(InvoicablesFormMixin, FormView):
 
     def get_context_data(self, **kwargs):
         context = super(CartBaseView, self).get_context_data(**kwargs)
-        context.update({'coupon_form': RedeemCouponForm()})
+        context.update({'coupon_form': RedeemCouponForm(),
+            'submit_title': "Subscribe"})
         return context
 
     @staticmethod
@@ -663,14 +708,13 @@ class CartBaseView(InvoicablesFormMixin, FormView):
 
     def get_queryset(self):
         #pylint: disable=too-many-locals
-        self.customer = self.get_organization()
         created_at = datetime_or_now()
         prorate_to_billing = False
         prorate_to = None
         if prorate_to_billing:
             # XXX First we add enough periods to get the next billing date later
             # than created_at but no more than one period in the future.
-            prorate_to = self.customer.billing_start
+            prorate_to = self.organization.billing_start
         invoicables = []
         for cart_item in CartItem.objects.get_cart(user=self.request.user):
             if cart_item.email:
@@ -688,7 +732,7 @@ class CartBaseView(InvoicablesFormMixin, FormView):
                         email=cart_item.email)
             else:
                 for_descr = ''
-                organization = self.customer
+                organization = self.organization
             try:
                 # If we can extend a current ``Subscription`` we will.
                 # XXX For each (organization, plan) there should not
@@ -722,7 +766,7 @@ class CartBaseView(InvoicablesFormMixin, FormView):
                         # insures in all cases (bulk and direct buying),
                         # the transaction is recorded (in ``execute_order``)
                         # on behalf of the customer on the checkout page.
-                        line.dest_organization = self.customer
+                        line.dest_organization = self.organization
                         line.descr += for_descr
                         lines += [line]
                         options = []
@@ -738,9 +782,9 @@ class CartBaseView(InvoicablesFormMixin, FormView):
             self.request.GET.get(REDIRECT_FIELD_NAME, None))
         if redirect_path:
             return '%s?%s=%s' % (
-                reverse('saas_organization_cart', args=(self.customer,)),
+                reverse('saas_organization_cart', args=(self.organization,)),
                 REDIRECT_FIELD_NAME, redirect_path)
-        return reverse('saas_organization_cart', args=(self.customer,))
+        return reverse('saas_organization_cart', args=(self.organization,))
 
 
 class CartPeriodsView(CartBaseView):
@@ -802,7 +846,7 @@ class CartPeriodsView(CartBaseView):
 class CartSeatsView(CartPeriodsView):
     """
     Optional page to subcribe multiple organizations to a ``Plan`` while paying
-    through through a third-party ``Organization`` (i.e. self.customer).
+    through through a third-party ``Organization`` (i.e. self.organization).
 
     Template:
 
@@ -819,20 +863,18 @@ class CartSeatsView(CartPeriodsView):
     template_name = 'saas/billing/cart-seats.html'
 
     def get(self, request, *args, **kwargs):
-        self.customer = self.get_organization()
         if self.cart_items.filter(nb_periods=0).exists():
             # If nb_periods == 0, we will present multiple options
             # to the user. We also rely on discount_percent
             # to be positive, otherwise it looks really weird
             # (i.e. one option).
             return http.HttpResponseRedirect(
-                reverse('saas_cart_periods', args=(self.customer,)))
+                reverse('saas_cart_periods', args=(self.organization,)))
         return super(CartSeatsView, self).get(request, *args, **kwargs)
 
     def get_context_data(self, **kwargs):
         context = super(CartSeatsView, self).get_context_data(**kwargs)
-        context.update({
-                'is_bulk_buyer': self.get_organization().is_bulk_buyer})
+        context.update({'is_bulk_buyer': self.organization.is_bulk_buyer})
         return context
 
 
@@ -867,13 +909,12 @@ djaodjin-saas/tree/master/saas/templates/saas/billing/cart.html>`__).
           - ``organization`` The provider of the product
           - ``request`` The HTTP request object
         """
-        self.customer = self.get_organization()
-        if (self.customer.is_bulk_buyer and
+        if (self.organization.is_bulk_buyer and
             self.cart_items.filter(
                 Q(email__isnull=True) | Q(email='')).exists()):
             # A bulk buyer customer can buy subscriptions for other people.
             return http.HttpResponseRedirect(
-                reverse('saas_cart_seats', args=(self.customer,)))
+                reverse('saas_cart_seats', args=(self.organization,)))
         return super(CartView, self).get(request, *args, **kwargs)
 
     def get_context_data(self, **kwargs):
@@ -907,7 +948,7 @@ djaodjin-saas/tree/master/saas/templates/saas/billing/receipt.html>`__).
     template_name = 'saas/billing/receipt.html'
 
 
-class CouponListView(OrganizationMixin, ListView):
+class CouponListView(ProviderMixin, ListView):
     """
     View to manage discounts (i.e. ``Coupon``)
 
@@ -929,6 +970,21 @@ coupons.html>`__).
     model = Coupon
     template_name = 'saas/billing/coupons.html'
 
+    def get_context_data(self, **kwargs):
+        context = super(CouponListView, self).get_context_data(**kwargs)
+        urls_provider = {
+            'download_coupons': reverse(
+                'saas_metrics_coupons_download', args=(self.provider,))
+        }
+        if 'urls' in context:
+            if 'provider' in context['urls']:
+                context['urls']['provider'].update(urls_provider)
+            else:
+                context['urls'].update({'provider': urls_provider})
+        else:
+            context.update({'urls': {'provider': urls_provider}})
+        return context
+
 
 class RedeemCouponView(ProviderMixin, FormView):
     """
@@ -940,7 +996,7 @@ class RedeemCouponView(ProviderMixin, FormView):
 
     def form_valid(self, form):
         redeemed = Coupon.objects.active(
-            self.get_organization(), form.cleaned_data['code']).first()
+            self.organization, form.cleaned_data['code']).first()
         if redeemed is None:
             form.add_error('code', 'Invalid code')
             return super(RedeemCouponView, self).form_invalid(form)
@@ -1008,10 +1064,9 @@ class BalanceView(CardInvoicablesFormMixin, FormView):
 
         POST attempts to charge the card for the balance due.
         """
-        self.customer = self.get_organization()
         invoicables = []
         created_at = datetime_or_now()
-        for subscription in Subscription.objects.active_for(self.customer):
+        for subscription in Subscription.objects.active_for(self.organization):
             options = self.get_invoicable_options(subscription,
                 created_at=created_at)
             if len(options) > 0:
@@ -1024,7 +1079,7 @@ class BalanceView(CardInvoicablesFormMixin, FormView):
 
     def get_subscription(self):
         return get_object_or_404(Subscription,
-            organization=self.get_organization(),
+            organization=self.organization,
             plan__slug=self.kwargs.get(self.plan_url_kwarg))
 
 
@@ -1055,8 +1110,7 @@ djaodjin-saas/tree/master/saas/templates/saas/billing/withdraw.html>`__).
 
     def form_valid(self, form):
         amount_withdrawn = int(float(form.cleaned_data['amount']) * 100)
-        self.get_organization().withdraw_funds(
-            amount_withdrawn, self.request.user)
+        self.provider.withdraw_funds(amount_withdrawn, self.request.user)
         return super(WithdrawView, self).form_valid(form)
 
     def get_success_url(self):
@@ -1067,7 +1121,6 @@ djaodjin-saas/tree/master/saas/templates/saas/billing/withdraw.html>`__).
         return reverse('saas_transfer_info', kwargs=self.get_url_kwargs())
 
     def get(self, request, *args, **kwargs):
-        self.organization = self.get_organization()
         if not (self.organization.processor_deposit_key
                 or self.organization.slug == settings.PLATFORM):
             return _insert_url(request, inserted_url=reverse('saas_update_bank',
@@ -1101,7 +1154,7 @@ djaodjin-saas/tree/master/saas/templates/saas/billing/import.html>`__).
         if subscriber is None:
             form.add_error(None, "Invalid subscriber")
         plan = Plan.objects.filter(
-            slug=plan, organization=self.get_organization()).first()
+            slug=plan, organization=self.organization).first()
         if plan is None:
             form.add_error(None, "Invalid plan")
         if form.errors:

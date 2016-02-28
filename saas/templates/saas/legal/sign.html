@@ -9,8 +9,8 @@
              {% endcomment %}
 
 <form method="post" action=".{% if next %}?next={{ next }}{% endif %}">
+  <input type="hidden" name="csrfmiddlewaretoken" value="{{csrf_token}}">
   {{ form.as_ul }}
-  {% csrf_token %}
   <input type="submit" value="I Agree" />
 </form>
 {% endblock %}

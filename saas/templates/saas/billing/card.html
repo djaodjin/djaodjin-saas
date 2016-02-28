@@ -10,7 +10,7 @@
     <h1>Update Card for {{ organization }}</h1>
     <form method="post" id="payment-form"
           action=".{% if next %}/?next={{ next }}{% endif %}">
-        {% csrf_token %}
+        <input type="hidden" name="csrfmiddlewaretoken" value="{{csrf_token}}">
         {% include "saas/_card_use.html" with title="Update" update_mode=True %}
     </form>
 </section>

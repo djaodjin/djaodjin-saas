@@ -22,34 +22,39 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+from django.core.urlresolvers import reverse
 from django.views.generic import ListView
 
-from ..compat import User
 from ..models import Organization
+from ..mixins import UserMixin, ProviderMixin
 
 
-class ProductListView(ListView):
+class ProductListView(UserMixin, ProviderMixin, ListView):
     """List of organizations the request.user is a manager
     or contributor for."""
+    # XXX We use ``OrganizationMixin`` so that urls.pricing is defined.
 
     paginate_by = 10
-    slug_url_kwarg = 'user'
-    slug_field = 'username'
     template_name = 'saas/managed_list.html'
 
     def get_queryset(self):
-        try:
-            user = User.objects.get(
-                username=self.kwargs.get(self.slug_url_kwarg))
-        except User.DoesNotExist:
-            user = self.request.user
-        return Organization.objects.accessible_by(user)
+        return Organization.objects.accessible_by(self.user)
 
     def get_context_data(self, **kwargs):
         context = super(ProductListView, self).get_context_data(**kwargs)
         context.update({'organizations': context['object_list'],
                         # XXX include users/base.html
-                        'object': self.request.user})
+                        'object': self.user})
+        user_urls = {
+            'products': reverse('saas_user_product_list', args=(self.user,)),
+        }
+        if 'urls' in context:
+            if 'user' in context['urls']:
+                context['urls']['user'].update(user_urls)
+            else:
+                context['urls'].update({'user': user_urls})
+        else:
+            context.update({'urls': {'user': user_urls}})
         return context
 
 

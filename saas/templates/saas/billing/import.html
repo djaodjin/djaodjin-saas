@@ -10,8 +10,8 @@
   </script>
 <div ng-controller="importTransactionsCtrl">
 <form action="." method="post">
-   {% csrf_token %}
-    <fieldset>
+  <input type="hidden" name="csrfmiddlewaretoken" value="{{csrf_token}}">
+  <fieldset>
         <div class="{% if form.subscription.errors %} has-error{% endif %}">
             <label for="subscription">
                 Subscription

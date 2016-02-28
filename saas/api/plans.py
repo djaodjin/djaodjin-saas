@@ -30,7 +30,7 @@ from rest_framework import status
 from rest_framework.response import Response
 
 from .serializers import PlanSerializer
-from ..mixins import OrganizationMixin
+from ..mixins import ProviderMixin
 from ..models import Plan, Subscription
 
 #pylint: disable=no-init
@@ -44,14 +44,14 @@ class PlanActivateSerializer(serializers.ModelSerializer):
         fields = ('is_active',)
 
 
-class PlanMixin(OrganizationMixin):
+class PlanMixin(ProviderMixin):
 
     model = Plan
     lookup_field = 'slug'
     lookup_url_kwarg = 'plan'
 
     def get_queryset(self):
-        return Plan.objects.filter(organization=self.get_organization())
+        return Plan.objects.filter(organization=self.provider)
 
     def perform_create(self, serializer):
         unit = serializer.validated_data.get('unit', None)
@@ -61,12 +61,11 @@ class PlanMixin(OrganizationMixin):
                 unit = first_plan.unit
             else:
                 unit = 'usd'
-        serializer.save(organization=self.get_organization(),
+        serializer.save(organization=self.provider,
             slug=self.slugify(serializer.validated_data['title']),
             unit=unit)
 
     def perform_update(self, serializer):
-        organization = self.get_organization()
         if ('title' in serializer.validated_data and
             not Subscription.objects.filter(plan=self.get_object()).exists()):
             # In case no subscription has ever been created for this ``Plan``
@@ -79,7 +78,7 @@ class PlanMixin(OrganizationMixin):
                 = self.slugify(serializer.validated_data['title'])
         # We use PUT instead of PATCH otherwise we cannot run test units
         # on phantomjs. PUT would override the is_active if not present.
-        serializer.save(organization=organization,
+        serializer.save(organization=self.provider,
             is_active=serializer.validated_data.get('is_active',
                 serializer.instance.is_active))
 

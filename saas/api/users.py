@@ -75,7 +75,6 @@ class RelationListAPIView(OrganizationMixin, ListCreateAPIView):
                     email=serializer.validated_data['email'],
                     first_name=first_name, last_name=last_name)
 
-        self.organization = self.get_organization()
         reason = request.data.get('invite', None)
         if reason:
             reason = force_text(reason)
@@ -136,7 +135,7 @@ class RoleListAPIView(RelationListAPIView):
             raise Http404("No role named '%s'" % role_name)
 
     def get_queryset(self):
-        return self.get_organization().with_role(self.kwargs.get('role'))
+        return self.organization.with_role(self.kwargs.get('role'))
 
 
 class RoleDetailAPIView(RelationMixin, DestroyAPIView):

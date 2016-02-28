@@ -31,29 +31,30 @@ reopenSaasApp.config(['$interpolateProvider', '$httpProvider',
     $interpolateProvider.endSymbol(']]');
 }]);
 reopenSaasApp.constant('urls', {
-    saas_api_coupon_url: "{% url 'saas_api_coupon_list' organization %}",
-    saas_metrics_coupons_url: "{% url 'saas_metrics_coupons' organization %}",
-    saas_api_subscriptions_url: "{% url 'saas_api_subscribed' organization %}",
-    plan: "{% url 'saas_api_plan' organization %}",
-{% if role %}
-    saas_api_user_relation_url: "{% url 'saas_api_role_list' organization role %}",
+{% if urls.organization %}
+{% if urls.organization.api_roles %}
+    saas_api_user_relation_url: "{{ urls.organization.api_roles }}",
 {% endif %}
     /* subscriptions */
-    saas_api_profile: "{% url 'saas_api_profile' %}",
-    saas_api_subscriptions: "{% url 'saas_api_subscription_list' organization %}",
+    saas_api_profile: "{{ urls.organization.api_profile_base }}",
+    saas_api_subscriptions: "{{ urls.organization.api_subscriptions }}",
+{% endif %}
+{% if urls.provider %}
+    saas_api_coupon_url: "{{ urls.provider.api_coupons }}",
+    saas_metrics_coupons_url: "{{ urls.provider.coupons }}",
     /* subscribers */
-    saas_api_registered: "{% url 'saas_api_registered' %}",
-    saas_api_churned: "{% url 'saas_api_churned' organization %}",
-    saas_api_active_subscribers: "{% url 'saas_api_subscribed' organization %}",
+    saas_api_registered: "{{ urls.provider.api_users_registered }}",
+    saas_api_churned: "{{ urls.provider.api_subscribers_churned }}",
+    saas_api_active_subscribers: "{{ urls.provider.api_subscribers_active }}",
     /* transactions */
-    saas_api_bank: "{% url 'saas_api_bank' organization %}",
-    saas_api_transfers_url: "{% url 'saas_api_transfer_list' organization %}",
-    saas_api_transaction_url: "{% url 'saas_api_transaction_list' organization %}",
+    saas_api_user_url: "{{ urls.provider.api_users }}",
+    saas_api_bank: "{{ urls.provider.api_bank }}",
+    saas_api_transfers_url: "{{  urls.provider.api_transfers }}",
+    saas_api_transaction_url: "{{ urls.provider.api_transactions }}",
+{% endif %}
 });
-{% autoescape off %}
 reopenSaasApp.constant(
-  "tables", {% if tables %}{{tables}}{% else %}{}{% endif %}); // XXX
-{% endautoescape %}
+  "tables", {% if tables %}{{tables|safe}}{% else %}{}{% endif %}); // XXX
 reopenSaasApp.constant('date_range', {
     start_at: "{{start_at}}", ends_at: "{{ends_at}}"
 });

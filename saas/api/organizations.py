@@ -70,7 +70,7 @@ class OrganizationDetailAPIView(OrganizationMixin,
     serializer_class = OrganizationSerializer
 
     def get_object(self):
-        return self.get_organization()
+        return self.organization
 
     def destroy(self, request, *args, **kwargs): #pylint:disable=unused-argument
         """

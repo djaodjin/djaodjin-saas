@@ -28,7 +28,7 @@ from rest_framework import serializers
 from rest_framework.generics import ListAPIView
 
 from ..humanize import as_money
-from ..mixins import OrganizationMixin, as_html_description
+from ..mixins import OrganizationMixin, ProviderMixin, as_html_description
 from ..models import Transaction
 from ..utils import datetime_or_now
 
@@ -104,7 +104,6 @@ class TransactionQuerysetMixin(OrganizationMixin):
         """
         Get the list of transactions for this organization.
         """
-        self.organization = self.get_organization()
         return Transaction.objects.by_customer(self.organization)
 
 
@@ -168,13 +167,12 @@ class TransactionListAPIView(SmartTransactionListMixin,
     serializer_class = TransactionSerializer
 
 
-class TransferQuerysetMixin(OrganizationMixin):
+class TransferQuerysetMixin(ProviderMixin):
 
     def get_queryset(self):
         """
         Get the list of transactions for this organization.
         """
-        self.organization = self.get_organization()
         return self.organization.get_transfers()
 
 

@@ -5,7 +5,7 @@
 <h1>Redeem Code</h1>
 <div>
     <form method="post" id="redeem-form">
-        {% csrf_token %}
+        <input type="hidden" name="csrfmiddlewaretoken" value="{{csrf_token}}">
         {{form}}
         <button type="submit">Redeem</button>
     </form>

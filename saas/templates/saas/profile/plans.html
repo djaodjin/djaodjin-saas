@@ -14,7 +14,7 @@
     {% endif %}
 </div>
 <form method="post" action=".">
-    {% csrf_token %}
+    <input type="hidden" name="csrfmiddlewaretoken" value="{{csrf_token}}">
     {{ form }}
     <input type="submit" name="submit" value="Submit">
 </form>

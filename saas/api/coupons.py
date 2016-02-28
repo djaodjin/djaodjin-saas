@@ -65,17 +65,16 @@ class CouponMixin(OrganizationMixin):
     lookup_url_kwarg = 'coupon'
 
     def get_queryset(self):
-        return Coupon.objects.filter(organization=self.get_organization())
+        return Coupon.objects.filter(organization=self.organization)
 
     def perform_create(self, serializer):
-        serializer.save(organization=self.get_organization())
+        serializer.save(organization=self.organization)
 
     def perform_update(self, serializer):
         if 'ends_at' in serializer.validated_data:
-            serializer.save(organization=self.get_organization())
+            serializer.save(organization=self.organization)
         else:
-            serializer.save(organization=self.get_organization(),
-                ends_at='never')
+            serializer.save(organization=self.organization, ends_at='never')
 
 
 class SmartCouponListMixin(SearchableListMixin, SortableListMixin):

@@ -34,7 +34,7 @@ from ..api.coupons import SmartCouponListMixin
 from ..api.coupons import CouponMixin as CouponAPIMixin
 from ..api.metrics import RegisteredQuerysetMixin
 from ..managers.metrics import monthly_balances, month_periods
-from ..mixins import (CouponMixin, OrganizationMixin, MetricsMixin,
+from ..mixins import (CouponMixin, ProviderMixin, MetricsMixin,
     ChurnedQuerysetMixin, SubscriptionSmartListMixin, SubscribedQuerysetMixin,
     UserSmartListMixin)
 from ..models import CartItem, Plan, Transaction
@@ -74,7 +74,7 @@ class CouponMetricsView(CouponMixin, ListView):
 
 
 class CouponMetricsDownloadView(SmartCouponListMixin, CouponAPIMixin,
-                                OrganizationMixin, CSVDownloadView):
+                                ProviderMixin, CSVDownloadView):
 
     headings = [
         'Code',
@@ -118,7 +118,7 @@ class CouponMetricsDownloadView(SmartCouponListMixin, CouponAPIMixin,
             claim_code.encode('utf-8')]
 
 
-class PlansMetricsView(OrganizationMixin, TemplateView):
+class PlansMetricsView(ProviderMixin, TemplateView):
     """
     Performance of Plans for a time period
     (as a count of subscribers per plan per month)
@@ -142,20 +142,25 @@ class PlansMetricsView(OrganizationMixin, TemplateView):
 
     def get_context_data(self, **kwargs):
         context = super(PlansMetricsView, self).get_context_data(**kwargs)
-        tables = [
-            {"title": "Active subscribers",
-            "key": "plan",
-            "active": True,
-            "location": reverse('saas_api_plan',
-                            args=(self.get_organization(),))},
-        ]
         context.update({
             "title": "Plans",
-            "tables" : json.dumps(tables),
-        })
-
-        plans = Plan.objects.filter(organization=self.get_organization())
-        context.update({"plans": plans})
+            "tables" : json.dumps([{
+                "title": "Active subscribers",
+                "key": "plan",
+                "active": True,
+                "location": reverse(
+                    'saas_api_metrics_plans', args=(self.provider,))},
+            ]),
+            "plans": Plan.objects.filter(organization=self.provider)})
+        urls_provider = {
+            'plan_new': reverse('saas_plan_new', args=(self.provider,))}
+        if 'urls' in context:
+            if 'provider' in context['urls']:
+                context['urls']['provider'].update(urls_provider)
+            else:
+                context['urls'].update({'provider': urls_provider})
+        else:
+            context.update({'urls': {'provider': urls_provider}})
         return context
 
 

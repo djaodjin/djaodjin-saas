@@ -22,13 +22,14 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+from django.core.urlresolvers import reverse
 from django.utils.dateparse import parse_datetime
 from rest_framework.views import APIView
 from rest_framework.generics import GenericAPIView, ListAPIView
 from rest_framework.response import Response
 
 from ..compat import User
-from ..mixins import OrganizationMixin, UserSmartListMixin
+from ..mixins import ProviderMixin, UserSmartListMixin
 from ..models import Transaction, Organization, Plan
 from ..utils import datetime_or_now, get_role_model
 from ..managers.metrics import monthly_balances
@@ -37,7 +38,7 @@ from ..managers.metrics import (active_subscribers, aggregate_monthly,
     aggregate_monthly_transactions, churn_subscribers)
 
 
-class BalancesAPIView(OrganizationMixin, APIView):
+class BalancesAPIView(ProviderMixin, APIView):
     """
     Generate a table of revenue (rows) per months (columns).
 
@@ -115,7 +116,6 @@ class BalancesAPIView(OrganizationMixin, APIView):
     """
 
     def get(self, request, *args, **kwargs): #pylint: disable=unused-argument
-        organization = self.get_organization()
         start_at = request.GET.get('start_at', None)
         if start_at:
             start_at = parse_datetime(start_at)
@@ -129,13 +129,13 @@ class BalancesAPIView(OrganizationMixin, APIView):
                     Transaction.RECEIVABLE]:
             result += [{
                 'key': key,
-                'values': monthly_balances(organization, key, ends_at)
+                'values': monthly_balances(self.provider, key, ends_at)
             }]
         return Response({'title': "Balances",
             'unit': "$", 'scale': 0.01, 'table': result})
 
 
-class RevenueMetricAPIView(OrganizationMixin, APIView):
+class RevenueMetricAPIView(ProviderMixin, APIView):
     """
     Produce The sales, payments and refunds over a period of time.
 
@@ -250,18 +250,18 @@ class RevenueMetricAPIView(OrganizationMixin, APIView):
 
         # All amounts are in the customer currency.
         account_table, _, _ = \
-            aggregate_monthly_transactions(self.get_organization(),
+            aggregate_monthly_transactions(self.provider,
                 Transaction.RECEIVABLE, account_title='Sales',
                 from_date=ends_at, orig='orig', dest='dest')
 
         _, payment_amounts = aggregate_monthly(
-            self.get_organization(), Transaction.RECEIVABLE,
+            self.provider, Transaction.RECEIVABLE,
             from_date=ends_at, orig='dest', dest='dest',
             orig_account=Transaction.BACKLOG,
-            orig_organization=self.get_organization())
+            orig_organization=self.provider)
 
         _, refund_amounts = aggregate_monthly(
-            self.get_organization(), Transaction.REFUND,
+            self.provider, Transaction.REFUND,
             from_date=ends_at, orig='dest', dest='dest')
 
         account_table += [
@@ -273,7 +273,7 @@ class RevenueMetricAPIView(OrganizationMixin, APIView):
             "unit": "$", "scale": 0.01, "table": account_table})
 
 
-class CustomerMetricAPIView(OrganizationMixin, APIView):
+class CustomerMetricAPIView(ProviderMixin, APIView):
     """
     Produce revenue stats
 
@@ -392,7 +392,7 @@ class CustomerMetricAPIView(OrganizationMixin, APIView):
         # or orders, not the number of payments.
 
         _, customer_table, customer_extra = \
-            aggregate_monthly_transactions(self.get_organization(), account,
+            aggregate_monthly_transactions(self.provider, account,
                 account_title=account_title,
                 from_date=ends_at)
 
@@ -401,7 +401,7 @@ class CustomerMetricAPIView(OrganizationMixin, APIView):
                 "table": customer_table, "extra": customer_extra})
 
 
-class PlanMetricAPIView(OrganizationMixin, APIView):
+class PlanMetricAPIView(ProviderMixin, APIView):
     """
     Produce plan stats
 
@@ -421,6 +421,7 @@ class PlanMetricAPIView(OrganizationMixin, APIView):
                 {
                     "is_active": true,
                     "key": "open-space",
+                    "location": "/profile/plan/open-space/",
                     "values": [
                         ["2014-09-01T00:00:00Z", 4],
                         ["2014-10-01T00:00:00Z", 5],
@@ -440,6 +441,7 @@ class PlanMetricAPIView(OrganizationMixin, APIView):
                 {
                     "is_active": true,
                     "key": "open-plus",
+                    "location": "/profile/plan/open-plus/",
                     "values": [
                         ["2014-09-01T00:00:00Z", 7],
                         ["2014-10-01T00:00:00Z", 8],
@@ -459,6 +461,7 @@ class PlanMetricAPIView(OrganizationMixin, APIView):
                 {
                     "is_active": true,
                     "key": "private",
+                    "location": "/profile/plan/private/",
                     "values": [
                         ["2014-09-01T00:00:00Z", 3],
                         ["2014-10-01T00:00:00Z", 3],
@@ -503,13 +506,16 @@ class PlanMetricAPIView(OrganizationMixin, APIView):
         if ends_at:
             ends_at = parse_datetime(ends_at)
         ends_at = datetime_or_now(ends_at)
-        organization = self.get_organization()
         table = []
-        for plan in Plan.objects.filter(organization=organization):
+        for plan in Plan.objects.filter(organization=self.provider):
             values = active_subscribers(
                 plan, from_date=self.kwargs.get('from_date'))
-            table.append({"key": plan.slug, "values": values,
-                          "is_active": plan.is_active})
+            table.append({
+                "key": plan.slug,
+                "values": values,
+                "location": reverse(
+                    'saas_plan_edit', args=(self.provider, plan)),
+                "is_active": plan.is_active})
         extra = [{"key": "churn",
             "values": churn_subscribers(
                 from_date=self.kwargs.get('from_date'))}]
@@ -519,14 +525,13 @@ class PlanMetricAPIView(OrganizationMixin, APIView):
                 "table": table, "extra": extra})
 
 
-class OrganizationListAPIView(OrganizationMixin, GenericAPIView):
+class OrganizationListAPIView(ProviderMixin, GenericAPIView):
 
     model = Organization
     serializer_class = OrganizationSerializer
 
     def get(self, request, *args, **kwargs):
         #pylint: disable=no-member,unused-argument
-        self.provider = self.get_organization()
         start_at = request.GET.get('start_at', None)
         if start_at:
             start_at = parse_datetime(start_at)
@@ -547,7 +552,7 @@ class OrganizationListAPIView(OrganizationMixin, GenericAPIView):
             })
 
 
-class RegisteredQuerysetMixin(OrganizationMixin):
+class RegisteredQuerysetMixin(ProviderMixin):
     """
     All ``User`` that have registered, and who are not associated
     to an ``Organization``, or whose ``Organization`` they are associated

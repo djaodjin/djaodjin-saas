@@ -11,7 +11,7 @@
 {% block order_head %}
 <div>
     <form method="post" id="redeem-form">
-        {% csrf_token %}
+        <input type="hidden" name="csrfmiddlewaretoken" value="{{csrf_token}}">
         <div>
             <label>
 If you have a coupon code, it is time to redeem it now!
@@ -27,7 +27,7 @@ If you have a coupon code, it is time to redeem it now!
 {% endblock %}
 <div>
     <form method="post" id="payment-form" action=".{% if next %}/?next={{ next }}{% endif %}">
-        {% csrf_token %}
+        <input type="hidden" name="csrfmiddlewaretoken" value="{{csrf_token}}">
         {% if invoicables %}
         {% include "saas/_invoiceables.html" %}
         {% else %}
