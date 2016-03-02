@@ -127,6 +127,16 @@ class CardFormMixin(OrganizationMixin):
         except ProcessorConnectionError:
             messages.error(self.request, "The payment processor is "\
                 "currently unreachable. Sorry for the inconvienience.")
+        urls_organization = {
+            'update_card': reverse(
+                'saas_update_card', args=(self.organization,))}
+        if 'urls' in context:
+            if 'organization' in context['urls']:
+                context['urls']['organization'].update(urls_organization)
+            else:
+                context['urls'].update({'organization': urls_organization})
+        else:
+            context.update({'urls': {'organization': urls_organization}})
         return context
 
 
@@ -466,9 +476,7 @@ class TransactionListView(CardFormMixin, TransactionBaseView):
                 'saas_transactions_download', kwargs=self.get_url_kwargs())})
         urls_organization = {
             'balance': reverse(
-                'saas_organization_balance', args=(self.organization,)),
-            'update_card': reverse(
-                'saas_update_card', args=(self.organization,))}
+                'saas_organization_balance', args=(self.organization,))}
         if 'urls' in context:
             if 'organization' in context['urls']:
                 context['urls']['organization'].update(urls_organization)
@@ -923,7 +931,8 @@ djaodjin-saas/tree/master/saas/templates/saas/billing/cart.html>`__).
         return context
 
 
-class ChargeReceiptView(ChargeMixin, DetailView):
+class ChargeReceiptView(ChargeMixin, ProviderMixin, DetailView):
+                        # ``ProviderMixin`` to include menubar urls.
     """
     Display a receipt for a ``Charge``.
 

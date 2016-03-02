@@ -25,7 +25,7 @@
 import re
 
 import dateutil
-from django.core.urlresolvers import reverse
+from django.core.urlresolvers import NoReverseMatch, reverse
 from django.http import Http404
 from django.shortcuts import get_object_or_404
 from django.utils.dateparse import parse_datetime
@@ -163,6 +163,12 @@ class ChargeMixin(SingleObjectMixin):
             'api_email_receipt': reverse(
                 'saas_api_email_charge_receipt', args=(charge,)),
         }
+        try:
+            # optional
+            urls_charge = {'printable_receipt': reverse(
+                'saas_printable_charge_receipt', args=(charge,))}
+        except NoReverseMatch:
+            pass
         if 'urls' in context:
             if 'charge' in context['urls']:
                 context['urls']['charge'].update(urls_charge)
@@ -212,7 +218,6 @@ class OrganizationMixin(object):
         urls_default = {
             'api_cart': reverse('saas_api_cart'),
             'api_redeem': reverse('saas_api_redeem_coupon'),
-            'pricing': reverse('saas_cart_plan_list'),
         }
         if 'urls' in context:
             context['urls'].update(urls_default)
