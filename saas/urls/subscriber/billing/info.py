@@ -29,7 +29,7 @@ URLs responding to GET requests with billing history.
 from django.conf.urls import url
 
 from ....settings import ACCT_REGEX
-from ....views.billing import ChargeReceiptView, TransactionListView
+from ....views.billing import ChargeReceiptView, BillingStatementView
 
 try:
     from ....views.extra import PrintableChargeReceiptView
@@ -47,5 +47,5 @@ urlpatterns += [
         % ACCT_REGEX,
         ChargeReceiptView.as_view(), name='saas_charge_receipt'),
     url(r'^billing/(?P<organization>%s)/$' % ACCT_REGEX,
-        TransactionListView.as_view(), name='saas_billing_info'),
+        BillingStatementView.as_view(), name='saas_billing_info'),
 ]

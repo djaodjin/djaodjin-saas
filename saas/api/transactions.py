@@ -22,15 +22,19 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from django.utils.dateparse import parse_datetime
+from collections import OrderedDict
+
+from django.db.models import Q
 from extra_views.contrib.mixins import SearchableListMixin, SortableListMixin
 from rest_framework import serializers
 from rest_framework.generics import ListAPIView
+from rest_framework.pagination import PageNumberPagination
+from rest_framework.response import Response
 
 from ..humanize import as_money
-from ..mixins import OrganizationMixin, ProviderMixin, as_html_description
-from ..models import Transaction
-from ..utils import datetime_or_now
+from ..mixins import (DateRangeMixin, OrganizationMixin, ProviderMixin,
+    as_html_description)
+from ..models import Transaction, sum_dest_amount, sum_orig_amount
 
 #pylint: disable=no-init
 #pylint: disable=old-style-class
@@ -53,7 +57,9 @@ class TransactionSerializer(serializers.ModelSerializer):
         moves from a Funds account to the organization's Expenses account.
         """
         #pylint: disable=no-member
-        return transaction.is_debit(self.context['view'].organization)
+        if hasattr(self.context['view'], 'organization'):
+            return transaction.is_debit(self.context['view'].organization)
+        return False
 
     def to_representation(self, obj):
         ret = super(TransactionSerializer, self).to_representation(obj)
@@ -75,7 +81,33 @@ class TransactionSerializer(serializers.ModelSerializer):
             'dest_account', 'dest_organization', 'dest_amount', 'dest_unit')
 
 
-class SmartTransactionListMixin(SearchableListMixin, SortableListMixin):
+class BalancePagination(PageNumberPagination):
+
+    def paginate_queryset(self, queryset, request, view=None):
+        if view.selector is not None:
+            dest_totals = sum_dest_amount(queryset.filter(
+                dest_account__icontains=view.selector))
+            orig_totals = sum_orig_amount(queryset.filter(
+                orig_account__icontains=view.selector))
+        else:
+            dest_totals = sum_dest_amount(queryset)
+            orig_totals = sum_orig_amount(queryset)
+        self.balance = dest_totals['amount'] - orig_totals['amount']
+        return super(BalancePagination, self).paginate_queryset(
+            queryset, request, view=view)
+
+    def get_paginated_response(self, data):
+        return Response(OrderedDict([
+            ('balance', self.balance),
+            ('count', self.page.paginator.count),
+            ('next', self.get_next_link()),
+            ('previous', self.get_previous_link()),
+            ('results', data)
+        ]))
+
+
+class SmartTransactionListMixin(DateRangeMixin,
+                                SearchableListMixin, SortableListMixin):
     """
     Subscriber list which is also searchable and sortable.
     """
@@ -84,21 +116,40 @@ class SmartTransactionListMixin(SearchableListMixin, SortableListMixin):
                      'dest_organization__full_name']
 
     sort_fields_aliases = [('descr', 'description'),
-                           ('dest_amount', 'amount')]
+                           ('dest_amount', 'amount'),
+                           ('dest_organization__slug', 'dest_organization'),
+                           ('dest_account', 'dest_account'),
+                           ('orig_organization__slug', 'orig_organization'),
+                           ('orig_account', 'orig_account')]
 
     def get_queryset(self):
-        '''
+        """
         Implement date range filtering
-        '''
-        qs = super(SmartTransactionListMixin, self).get_queryset()
-        start = datetime_or_now(
-            parse_datetime(self.request.GET.get('start_at', '').strip('"')))
-        end = datetime_or_now(
-            parse_datetime(self.request.GET.get('ends_at', '').strip('"')))
-        return qs.filter(created_at__gte=start, created_at__lte=end)
+        """
+        self.cache_fields(self.request)
+        return super(SmartTransactionListMixin, self).get_queryset().filter(
+            created_at__gte=self.start_at, created_at__lt=self.ends_at)
 
 
-class TransactionQuerysetMixin(OrganizationMixin):
+class TransactionQuerysetMixin(object):
+
+    def get_queryset(self):
+        self.selector = self.kwargs.get('selector', None)
+        if self.selector is not None:
+            return Transaction.objects.filter(
+                Q(dest_account__icontains=self.selector)
+                | Q(orig_account__icontains=self.selector))
+        return Transaction.objects.all()
+
+
+class TransactionListAPIView(SmartTransactionListMixin,
+                             TransactionQuerysetMixin, ListAPIView):
+
+    serializer_class = TransactionSerializer
+    pagination_class = BalancePagination
+
+
+class BillingsQuerysetMixin(OrganizationMixin):
 
     def get_queryset(self):
         """
@@ -107,8 +158,8 @@ class TransactionQuerysetMixin(OrganizationMixin):
         return Transaction.objects.by_customer(self.organization)
 
 
-class TransactionListAPIView(SmartTransactionListMixin,
-                             TransactionQuerysetMixin, ListAPIView):
+class BillingsAPIView(SmartTransactionListMixin,
+                      BillingsQuerysetMixin, ListAPIView):
     """
     GET queries all ``Transaction`` associated to ``:organization`` while
     the organization acts as a subscriber in the relation.

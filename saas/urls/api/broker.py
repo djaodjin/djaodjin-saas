@@ -28,10 +28,18 @@ URLs API for resources available typically only to the broker platform.
 
 from django.conf.urls import url
 
+from ... import settings
+from ...api.balances import BalanceLineListAPIView, BrokerBalancesAPIView
 from ...api.metrics import RegisteredAPIView
-
+from ...api.transactions import TransactionListAPIView
 
 urlpatterns = [
+    url(r'^billing/transactions/(?P<selector>%s)?' % settings.ACCT_REGEX,
+        TransactionListAPIView.as_view(), name='saas_api_transactions'),
+    url(r'^metrics/balances/(?P<report>%s)/?' % settings.ACCT_REGEX,
+        BrokerBalancesAPIView.as_view(), name='saas_api_broker_balances'),
+    url(r'^metrics/lines/(?P<report>%s)/?' % settings.ACCT_REGEX,
+        BalanceLineListAPIView.as_view(), name='saas_api_balance_lines'),
     url(r'^metrics/registered/?',
         RegisteredAPIView.as_view(), name='saas_api_registered'),
 ]

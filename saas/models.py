@@ -461,7 +461,8 @@ class Organization(models.Model):
         """
         context = self.processor_backend.retrieve_bank(self)
         processor_amount = context.get('balance_amount', 0)
-        balance = Transaction.objects.get_organization_balance(self)
+        balance = Transaction.objects.get_balance(
+            organization=self, account=Transaction.FUNDS)
         available_amount = min(balance['amount'], processor_amount)
         transfer_fee = self.processor_backend.prorate_transfer(
             processor_amount, self)
@@ -2236,24 +2237,36 @@ class TransactionManager(models.Manager):
             | Q(dest_account=Transaction.LIABILITY),
             dest_organization=organization, **kwargs)
 
-    def get_organization_balance(self, organization,
-                                 account=None, until=None, **kwargs):
+    def get_balance(self, organization=None, account=None, like_account=None,
+                    until=None, **kwargs):
         """
-        Returns the balance on an organization's account (by default:
-        ``FUNDS``).
+        Returns the balance ``until`` a certain date (Today by default).
+        The balance can be constraint to a single organization and/or
+        for a specific account. The account can be fully qualified or
+        a selector pattern.
         """
+        #pylint:disable=too-many-locals
         until = datetime_or_now(until)
-        if not account:
-            account = Transaction.FUNDS
-        balance = sum_dest_amount(self.filter(
-            dest_organization=organization, dest_account__startswith=account,
-            created_at__lt=until, **kwargs))
+        dest_params = {}
+        orig_params = {}
+        dest_params.update(kwargs)
+        orig_params.update(kwargs)
+        if organization is not None:
+            dest_params.update({'dest_organization': organization})
+            orig_params.update({'orig_organization': organization})
+        if account is not None:
+            dest_params.update({'dest_account': account})
+            orig_params.update({'orig_account': account})
+        elif like_account is not None:
+            dest_params.update({'dest_account__icontains': like_account})
+            orig_params.update({'orig_account__icontains': like_account})
+        balance = sum_dest_amount(
+            self.filter(created_at__lt=until, **dest_params))
         dest_amount = balance['amount']
         dest_unit = balance['unit']
         dest_created_at = balance['created_at']
-        balance = sum_orig_amount(self.filter(
-            orig_organization=organization, orig_account__startswith=account,
-            created_at__lt=until, **kwargs))
+        balance = sum_orig_amount(
+            self.filter(created_at__lt=until, **orig_params))
         orig_amount = balance['amount']
         orig_unit = balance['unit']
         orig_created_at = balance['created_at']
@@ -2560,12 +2573,14 @@ class TransactionManager(models.Manager):
         """
         created_transactions = []
         created_at = datetime_or_now(at_time)
-        balance = self.get_organization_balance(
-            subscription.plan.organization, account=Transaction.BACKLOG,
+        balance = self.get_balance(
+            organization=subscription.plan.organization,
+            account=Transaction.BACKLOG,
             event_id=subscription.id)
         backlog_amount = balance['amount']
-        balance = self.get_organization_balance(
-            subscription.plan.organization, account=Transaction.RECEIVABLE,
+        balance = self.get_balance(
+            organization=subscription.plan.organization,
+            account=Transaction.RECEIVABLE,
             event_id=subscription.id)
         receivable_amount = balance['amount']
         receivable_amount = abs(receivable_amount) # direction
@@ -2724,6 +2739,21 @@ class Transaction(models.Model):
             except (Coupon.DoesNotExist, ValueError):
                 pass
         return None
+
+
+class BalanceLine(models.Model):
+    """
+    Defines a line in a balance sheet. All ``Transaction`` account matching
+    ``selector`` will be aggregated over a period of time.
+    """
+    balance_sheet = models.SlugField()
+    title = models.CharField(max_length=255)
+    selector = models.CharField(max_length=255)
+    rank = models.IntegerField()
+    moved = models.BooleanField(default=False)
+
+    def __unicode__(self):
+        return '%s/%d' % (self.balance_sheet, self.rank)
 
 
 def get_broker():

@@ -28,9 +28,16 @@ from rest_framework import serializers
 
 from ..compat import User
 from ..mixins import product_url
-from ..models import Organization, Plan, Subscription
+from ..models import BalanceLine, Organization, Plan, Subscription
 
 #pylint: disable=no-init,old-style-class
+
+class BalanceLineSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = BalanceLine
+        fields = ('title', 'selector', 'rank')
+
 
 class SubscriptionSerializer(serializers.ModelSerializer):
 

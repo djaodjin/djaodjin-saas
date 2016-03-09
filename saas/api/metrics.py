@@ -129,7 +129,8 @@ class BalancesAPIView(ProviderMixin, APIView):
                     Transaction.RECEIVABLE]:
             result += [{
                 'key': key,
-                'values': monthly_balances(self.provider, key, ends_at)
+                'values': monthly_balances(
+                    organization=self.provider, account=key, until=ends_at)
             }]
         return Response({'title': "Balances",
             'unit': "$", 'scale': 0.01, 'table': result})

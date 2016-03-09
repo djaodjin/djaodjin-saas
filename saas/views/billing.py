@@ -429,9 +429,23 @@ class CardUpdateView(CardFormMixin, FormView):
 
 class TransactionBaseView(DateRangeMixin, TemplateView):
 
-    pass
+    template_name = 'saas/billing/transactions.html'
 
-class TransactionListView(CardFormMixin, TransactionBaseView):
+    def get_context_data(self, **kwargs):
+        context = super(TransactionBaseView, self).get_context_data(**kwargs)
+        self.selector = self.kwargs.get('selector', None)
+        if self.selector is None:
+            api_location = reverse('saas_api_transactions')
+        else:
+            api_location = reverse(
+                'saas_api_transactions', kwargs={'selector': self.selector})
+        context.update({
+            'organization': get_broker(),
+            'saas_api_transactions': api_location})
+        return context
+
+
+class BillingStatementView(CardFormMixin, TransactionBaseView):
     """
     This page shows a statement of ``Subscription`` orders, ``Charge``
     created and payment refunded.
@@ -451,17 +465,16 @@ class TransactionListView(CardFormMixin, TransactionBaseView):
       - ``organization`` The subscriber object
       - ``request`` The HTTP request object
     """
-
     template_name = 'saas/billing/index.html'
 
     def cache_fields(self, request):
-        super(TransactionListView, self).cache_fields(request)
+        super(BillingStatementView, self).cache_fields(request)
         if not request.GET.has_key('start_at'):
             self.start_at = (self.ends_at
                 - self.organization.natural_subscription_period)
 
     def get_context_data(self, **kwargs):
-        context = super(TransactionListView, self).get_context_data(**kwargs)
+        context = super(BillingStatementView, self).get_context_data(**kwargs)
         balance_amount, balance_unit \
             = Transaction.objects.get_statement_balance(self.organization)
         if balance_amount < 0:
@@ -472,6 +485,8 @@ class TransactionListView(CardFormMixin, TransactionBaseView):
             'organization': self.organization,
             'balance_amount': balance_amount,
             'balance_unit': balance_unit,
+            'saas_api_transactions': reverse(
+                'saas_api_billings', args=(self.organization,)),
             'download_url': reverse(
                 'saas_transactions_download', kwargs=self.get_url_kwargs())})
         urls_organization = {
@@ -536,7 +551,10 @@ djaodjin-saas/tree/master/saas/templates/saas/billing/transfers.html>`__).
 
     def get_context_data(self, **kwargs):
         context = super(TransferListView, self).get_context_data(**kwargs)
-        context.update({'download_url': reverse(
+        context.update({
+            'saas_api_transactions': reverse(
+                'saas_api_transfer_list', args=(self.provider,)),
+            'download_url': reverse(
                 'saas_transfers_download', kwargs=self.get_url_kwargs())})
         urls_provider = {
             'bank': reverse('saas_update_bank', args=(self.provider,)),

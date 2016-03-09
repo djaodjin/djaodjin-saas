@@ -29,14 +29,13 @@ URLs API for resources
 from django.conf.urls import url
 
 from ....api.backend import RetrieveCardAPIView
-from ....api.transactions import TransactionListAPIView
+from ....api.transactions import BillingsAPIView
 from ....settings import ACCT_REGEX
 
 
 urlpatterns = [
-    url(r'^(?P<organization>%s)/payments/?' % ACCT_REGEX,
-        TransactionListAPIView.as_view(),
-        name='saas_api_transaction_list'),
+    url(r'^(?P<organization>%s)/billings/?' % ACCT_REGEX,
+        BillingsAPIView.as_view(), name='saas_api_billings'),
     url(r'^(?P<organization>%s)/card/?' % ACCT_REGEX,
         RetrieveCardAPIView.as_view(), name='saas_api_card'),
 ]

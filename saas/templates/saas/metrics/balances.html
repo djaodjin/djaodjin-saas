@@ -1,0 +1,54 @@
+{% extends "saas/base_dashboard.html" %}
+
+{% block saas_content %}
+<div ng-app="saasApp" ng-cloak>
+    <div ng-controller="BalanceListCtrl">
+        <div>
+          <span>To</span>
+          <span datepicker-popup="[[format]]" ng-model="ends_at" is-open="opened" datepicker-options="dateOptions" ng-required="true" close-text="Close" datepicker-mode="'month'" max-date="maxDate" show-button-bar="false">[[ends_at | date : mediumDate]]</span>
+          <span>
+            <button type="button" ng-click="open($event, 'ends_at')">Calendar</button>
+          </span>
+        </div>
+        <table>
+            <thead>
+                <tr>
+                    <th>Rank</th>
+                    <th>Delete</th>
+                    <th>Title</th>
+                    <td ng-repeat="col in balances.table[0].values" ng-cloak>
+                        [[col[0] | monthHeading]]
+                    </td>
+                </tr>
+            </thead>
+            <tbody saas-dnd-list="balances">
+                <tr id="balance-[[row.rank]]" ng-repeat="row in balances.table" ng-cloak>
+                    <td>
+                        <div>Move</div>
+                    </td>
+                    <td>
+                        <button ng-click="remove($index)">Delete</button>
+                    </td>
+                    <td>[[row.key]]</td>
+                    <td ng-repeat="col in row.values">
+                        <a href="{% url 'saas_broker_transactions' %}[[row.key]]/?start_at=[[startPeriod]]&ends_at=[[col[0] ]]">
+                        [[col[1]|humanizeCell : balances.unit : balances.scale]]
+                        </a>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+        <div>
+            <div>
+                <input type="text" ng-model="newBalanceLine.title" placeholder="Title">
+            </div>
+            <div>
+                <input type="text" ng-model="newBalanceLine.selector" placeholder="Selector">
+            </div>
+            <div>
+                <button ng-click="create()">Add Line</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

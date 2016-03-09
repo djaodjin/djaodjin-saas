@@ -22,14 +22,15 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-import datetime, locale, re, sys
+import datetime, re, sys
 from optparse import make_option
 
 from django.core.management.base import BaseCommand
+from django.db import transaction
 from django.utils.timezone import utc
 
 from ...ledger import export
-from ...models import Organization, Transaction, get_broker
+from ...models import Organization, Transaction
 
 class Command(BaseCommand):
     help = 'Manage ledger.'
@@ -37,16 +38,14 @@ class Command(BaseCommand):
         make_option('--database', action='store',
             dest='database', default='default',
             help='connect to database specified.'),
-        make_option('--account-first', action='store_true',
-            dest='account_first', default=False,
-            help='Interpret the item before the first ":" '\
-'separator as the account name'),
+        make_option('--broker', action='store',
+            dest='broker', default='default',
+            help='broker for the site'),
        make_option('--create-organizations', action='store_true',
             dest='create_organizations', default=False,
             help='Create organization if it does not exist.'),
         )
 
-    args = 'subcommand [--account-first]'
     requires_model_validation = False
 
     def handle(self, *args, **options):
@@ -58,83 +57,116 @@ class Command(BaseCommand):
                 'created_at'))
 
         elif subcommand == 'import':
-            account_first = options.get('account_first', False)
+            broker = options.get('broker', None)
             create_organizations = options.get('create_organizations', False)
-            filedesc = sys.stdin
-            line = filedesc.readline()
-            while line != '':
-                look = re.match(
-                    r'(?P<created_at>\d\d\d\d/\d\d/\d\d( \d\d:\d\d:\d\d)?)'\
-r'\s+(#(?P<reference>\S+) -)?(?P<descr>.*)', line)
-                if look:
-                    # Start of a transaction
-                    try:
-                        created_at = datetime.datetime.strptime(
-                            look.group('created_at'),
-                            '%Y/%m/%d %H:%M:%S').replace(tzinfo=utc)
-                    except ValueError:
-                        created_at = datetime.datetime.strptime(
-                            look.group('created_at'),
-                            '%Y/%m/%d').replace(tzinfo=utc)
-                    if look.group('reference'):
-                        reference = look.group('reference').strip()
-                    else:
-                        reference = None
-                    descr = look.group('descr').strip()
-                    line = filedesc.readline()
-                    dest_organization, dest_account, dest_amount \
-                        = parse_line(line, account_first, create_organizations)
-                    line = filedesc.readline()
-                    orig_organization, orig_account, _ \
-                        = parse_line(line, account_first, create_organizations)
-                    if dest_organization and orig_organization:
-                        # Assuming no errors, at this point we have
-                        # a full transaction.
-                        Transaction.objects.using(using).create(
-                            created_at=created_at,
-                            descr=descr,
-                            dest_unit='usd',
-                            dest_amount=dest_amount,
-                            dest_organization=dest_organization,
-                            dest_account=dest_account,
-                            orig_amount=dest_amount,
-                            orig_unit='usd',
-                            orig_organization=orig_organization,
-                            orig_account=orig_account,
-                            event_id=reference)
+            for arg in args[1:]:
+                if arg == '-':
+                    import_transactions(sys.stdin,
+                        create_organizations, broker, using=using)
+                else:
+                    with open(arg) as filedesc:
+                        import_transactions(filedesc,
+                            create_organizations, broker, using=using)
+
+
+def import_transactions(filedesc, create_organizations=False, broker=None,
+                        using='default'):
+    #pylint:disable=too-many-locals
+    with transaction.atomic():
+        line = filedesc.readline()
+        while line != '':
+            look = re.match(
+                r'(?P<created_at>\d\d\d\d/\d\d/\d\d( \d\d:\d\d:\d\d)?)'\
+                r'\s+(#(?P<reference>\S+) -)?(?P<descr>.*)', line)
+            if look:
+                # Start of a transaction
+                try:
+                    created_at = datetime.datetime.strptime(
+                        look.group('created_at'),
+                        '%Y/%m/%d %H:%M:%S').replace(tzinfo=utc)
+                except ValueError:
+                    created_at = datetime.datetime.strptime(
+                        look.group('created_at'),
+                        '%Y/%m/%d').replace(tzinfo=utc)
+                if look.group('reference'):
+                    reference = look.group('reference').strip()
+                else:
+                    reference = None
+                descr = look.group('descr').strip()
                 line = filedesc.readline()
+                dest_organization, dest_account, dest_amount, dest_unit \
+                    = parse_line(line, create_organizations,
+                        broker=broker, using=using)
+                line = filedesc.readline()
+                orig_organization, orig_account, orig_amount, orig_unit \
+                    = parse_line(line, create_organizations,
+                        broker=broker, using=using)
+                if dest_unit != 'usd' and orig_unit == 'usd':
+                    dest_amount = orig_amount
+                    dest_unit = orig_unit
+                if not orig_amount:
+                    orig_amount = dest_amount
+                if not orig_unit:
+                    orig_unit = dest_unit
+                if dest_organization and orig_organization:
+                    # Assuming no errors, at this point we have
+                    # a full transaction.
+                    Transaction.objects.using(using).create(
+                        created_at=created_at,
+                        descr=descr,
+                        dest_unit=dest_unit,
+                        dest_amount=dest_amount,
+                        dest_organization=dest_organization,
+                        dest_account=dest_account,
+                        orig_amount=dest_amount,
+                        orig_unit=orig_unit,
+                        orig_organization=orig_organization,
+                        orig_account=orig_account,
+                        event_id=reference)
+            line = filedesc.readline()
 
 
-def parse_line(line, account_first=False, create_organizations=False):
+MONEY_PAT = r'(?P<prefix>\$?)(?P<value>-?((\d|,)+(.\d+)?))\s*(?P<suffix>(\w+)?)'
+
+
+def parse_line(line, create_organizations=False, broker=None, using='default'):
     """
     Parse an (organization, account, amount) triplet.
     """
-    if account_first:
-        look = re.match(r'\s+(?P<account>(\w+:)+)(?P<organization>\w+)'\
-r'(\s+(?P<amount>.+))?', line)
-    else:
-        look = re.match(r'\s+(?P<organization>\w+)(?P<account>(:(\w+))+)'\
-r'(\s+(?P<amount>.+))?', line)
+    unit = None
+    amount = None
+    look = re.match(r'\s+(?P<tags>\w(\w|:)+)(\s+(?P<amount>.+))?', line)
     if look:
-        organization_slug = look.group('organization')
-        account = look.group('account')
-        if account.startswith(':'):
-            account = account[1:]
-        if account.endswith(':'):
-            account = account[:-1]
-        amount = look.group('amount')
-        if amount and amount.startswith('$'):
-            locale.setlocale(locale.LC_ALL, 'en_US')
-            amount = long(locale.atof(amount[1:]) * 100)
+        organization_slug = broker
+        account_parts = []
+        for tag in look.group('tags').split(':'):
+            if tag[0].islower():
+                organization_slug = tag
+            else:
+                account_parts += [tag]
+        account = ':'.join(account_parts)
+        if look.group('amount'):
+            look = re.match(MONEY_PAT, look.group('amount'))
+            if look:
+                unit = look.group('prefix')
+                if unit is None:
+                    unit = look.group('suffix')
+                elif unit == '$':
+                    unit = 'usd'
+                value = look.group('value').replace(',', '')
+                if '.' in value:
+                    amount = abs(long(float(value) * 100))
+                else:
+                    amount = abs(long(value))
         try:
             if create_organizations:
-                organization, _ = Organization.objects.get_or_create(
-                    slug=organization_slug)
+                organization, _ = Organization.objects.using(
+                    using).get_or_create(slug=organization_slug)
             else:
-                organization = Organization.objects.get(slug=organization_slug)
-            if account_first:
-                organization = get_broker()
-            return (organization, account, amount)
+                organization = Organization.objects.using(using).get(
+                    slug=organization_slug)
+            return (organization, account, amount, unit)
         except Organization.DoesNotExist:
-            print "Cannot find Organization '%s'" % organization_slug
+            sys.stderr.write("error: Cannot find Organization '%s'\n"
+                % organization_slug)
     return (None, None, None)

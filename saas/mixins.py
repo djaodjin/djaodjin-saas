@@ -231,8 +231,6 @@ class OrganizationMixin(object):
             'api_profile_base': reverse('saas_api_profile'),
             'api_subscriptions': reverse(
                 'saas_api_subscription_list', args=(organization,)),
-            'api_transactions': reverse(
-                'saas_api_transaction_list', args=(organization,)),
             'profile_base': reverse('saas_profile'),
             'profile': reverse(
                 'saas_organization_profile', args=(organization,)),
@@ -273,8 +271,6 @@ class OrganizationMixin(object):
                     'saas_api_subscribed', args=(provider,)),
                 'api_subscribers_churned': reverse(
                     'saas_api_churned', args=(provider,)),
-                'api_transfers': reverse(
-                    'saas_api_transfer_list', args=(provider,)),
                 'api_users': reverse('saas_api_user_list'),
                 'api_users_registered': reverse('saas_api_registered'),
                 'profile': reverse('saas_provider_profile'),
@@ -306,7 +302,7 @@ class OrganizationMixin(object):
         return self._organization
 
 
-class DateRangeMixin(OrganizationMixin):
+class DateRangeMixin(object):
 
     def cache_fields(self, request):
         self.ends_at = datetime_or_now(

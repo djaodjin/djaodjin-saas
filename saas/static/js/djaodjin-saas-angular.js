@@ -2,13 +2,15 @@
   Apps
   ============================================================================*/
 
-var saasApp = angular.module("saasApp", ["ui.bootstrap", "ngRoute",
-    "couponControllers",
+var saasApp = angular.module("saasApp", [
+    "ui.bootstrap", "ngDragDrop", "ngRoute",
+    "balanceControllers", "balanceServices",
+    "couponControllers", "couponServices",
     "metricsControllers",
     "importTransactionsControllers",
-    "subscriptionControllers", "transactionControllers",
-    "userRelationControllers",
-    "couponServices", "transactionServices", "userRelationServices",
+    "subscriptionControllers",
+    "transactionControllers", "transactionServices",
+    "userRelationControllers", "userRelationServices",
     "saasFilters"]);
 
 /*=============================================================================
@@ -43,15 +45,7 @@ angular.module("saasFilters", [])
             scale = scale || 1;
             var value = cell * scale;
             if(unit) {
-                if (parseFloat(value) > 1000000 && abbreviate){
-                    return currencyFilter(
-                        (parseFloat(value) / 1000000).toFixed(2), unit, 2) + "M";
-                }else if (parseFloat(value) > 1000 && abbreviate){
-                    return currencyFilter(
-                        (parseFloat(value) / 1000).toFixed(2), unit, 2) + "K";
-                }else{
-                    return currencyFilter(value, unit, 2);
-                }
+                return currencyFilter(value, unit, 2);
             }
             return numberFilter(value);
         };
@@ -113,7 +107,6 @@ angular.module("saasFilters", [])
 /*=============================================================================
   Services
   ============================================================================*/
-
 var couponServices = angular.module("couponServices", ["ngResource"]);
 var userRelationServices = angular.module("userRelationServices", ["ngResource"]);
 var transactionServices = angular.module("transactionServices", ["ngResource"]);
@@ -142,20 +135,13 @@ transactionServices.factory("Transaction", ["$resource", "urls",
   function($resource, urls){
     "use strict";
     return $resource(
-        urls.saas_api_transaction_url + "/:id", {id: "@id"},
-            {query: {method: "GET"}});
-
-  }]).factory("Transfer", ["$resource", "urls",
-  function($resource, urls){
-    "use strict";
-    return $resource(
-        urls.saas_api_transfers_url + "/:id", {id: "@id"},
+        urls.api_transactions + "/:id", {id: "@id"},
             {query: {method: "GET"}});
   }]);
 
-/*=============================================================================
-  Controllers
-  ============================================================================*/
+//=============================================================================
+// Controllers
+//============================================================================
 
 var couponControllers = angular.module("couponControllers", []);
 var userRelationControllers = angular.module("userRelationControllers", []);
@@ -173,8 +159,8 @@ couponControllers.controller("CouponListCtrl",
     $scope.dir = {code: "asc"};
     $scope.params = {o: "code", ot: $scope.dir.code};
     $scope.coupons = Coupon.query($scope.params, function() {
-        /* We cannot watch coupons.count otherwise things start
-           to snowball. We must update totalItems only when it truly changed.*/
+        // We cannot watch coupons.count otherwise things start
+        // to snowball. We must update totalItems only when it truly changed.
         if( $scope.coupons.count !== $scope.totalItems ) {
             $scope.totalItems = $scope.coupons.count;
         }
@@ -327,9 +313,9 @@ userRelationControllers.controller("userRelationListCtrl",
 
     $scope.refresh = function() {
         $scope.users = UserRelation.query($scope.params, function() {
-            /* We cannot watch users.count otherwise things start
-               to snowball. We must update totalItems only when
-               it truly changed. */
+            // We cannot watch users.count otherwise things start
+            // to snowball. We must update totalItems only when
+            // it truly changed.
             if( $scope.users.count != $scope.totalItems ) {
                 $scope.totalItems = $scope.users.count;
             }
@@ -351,8 +337,8 @@ userRelationControllers.controller("userRelationListCtrl",
             "#new-user-relation [name='message']").val();
         (new UserRelation($scope.user)).$force(
             function(success) {
-                /* XXX Couldn't figure out how to get the status code
-                   here so we just reload the list. */
+                // XXX Couldn't figure out how to get the status code
+                //   here so we just reload the list.
                 $scope.refresh();
                 $scope.user = null;
             },
@@ -369,8 +355,8 @@ userRelationControllers.controller("userRelationListCtrl",
         $event.preventDefault();
         (new UserRelation($scope.user)).$save(
             function(success) {
-                /* XXX Couldn't figure out how to get the status code
-                   here so we just reload the list. */
+                // XXX Couldn't figure out how to get the status code
+                // here so we just reload the list.
                 $scope.refresh();
                 $scope.user = null;
             },
@@ -440,7 +426,7 @@ subscriptionControllers.controller("subscriptionListCtrl",
 
     $scope.active = $scope.subscribed;
 
-    /** Returns ends-soon when the subscription is about to end. */
+    // Returns ends-soon when the subscription is about to end.
     $scope.endsSoon = function(subscription) {
         var cutOff = new Date($scope.ends_at);
         cutOff.setDate($scope.ends_at.getDate() + 5);
@@ -458,13 +444,6 @@ subscriptionControllers.controller("subscriptionListCtrl",
             {params: $scope.params}).success(function(data) {
                 queryset.results = data.results;
                 queryset.count = data.count;
-                /* We cannot watch active.count otherwise things start
-                   to snowball. We must update totalItems only when it truly
-                   changed.
-                if( queryset.count != $scope.totalItems ) {
-                    $scope.totalItems = queryset.count;
-                }
-                */
                 queryset.$resolved = true;
         });
     };
@@ -515,8 +494,7 @@ subscriptionControllers.controller("subscriptionListCtrl",
       $scope.query($scope.churned);
     };
 
-    /** Generate a relative date for an instance with a ``created_at`` field.
-     */
+    // Generate a relative date for an instance with a ``created_at`` field.
     $scope.relativeDate = function(at_time) {
         var cutOff = new Date($scope.ends_at);
         var dateTime = new Date(at_time);
@@ -543,10 +521,8 @@ subscriptionControllers.controller("subscriptionListCtrl",
         $scope.query($scope.active);
     };
 
-    /** Change the active tab.
-
-        XXX We need this method because filters are "global" accross all tabs.
-     */
+    // Change the active tab.
+    // XXX We need this method because filters are "global" accross all tabs.
     $scope.tabClicked = function($event) {
         var newActiveTab = $event.target.getAttribute("href").replace(/^#/, "");
         if( newActiveTab === "registered-users" ) {
@@ -612,9 +588,9 @@ transactionControllers.controller("transactionListCtrl",
 
     $scope.refresh = function() {
         $scope.transactions = Transaction.query($scope.params, function() {
-            /* We cannot watch transactions.count otherwise things start
-               to snowball. We must update totalItems only when it truly
-               changed. */
+            // We cannot watch transactions.count otherwise things start
+            // to snowball. We must update totalItems only when it truly
+            // changed.
             if( $scope.transactions.count != $scope.totalItems ) {
                 $scope.totalItems = $scope.transactions.count;
             }
@@ -625,8 +601,7 @@ transactionControllers.controller("transactionListCtrl",
     $scope.itemsPerPage = 25; // Must match on the server-side.
     $scope.maxSize = 5;      // Total number of pages to display
     $scope.currentPage = 1;
-    /* currentPage will be saturated at maxSize when maxSize is defined. */
-
+    // currentPage will be saturated at maxSize when maxSize is defined.
     $scope.formats = ["dd-MMMM-yyyy", "yyyy/MM/dd", "dd.MM.yyyy", "shortDate"];
     $scope.format = $scope.formats[0];
 
@@ -694,16 +669,6 @@ transactionControllers.controller("transactionListCtrl",
         });
     }
 
-}]);
-
-transactionControllers.controller("transferListCtrl",
-    ["$scope", "$controller", "$http", "$timeout",
-     "urls", "date_range", "Transfer",
-     function($scope, $controller, $http, $timeout,
-        urls, date_range, Transfer) {
-    $controller('transactionListCtrl', {
-        $scope: $scope, $http: $http, $timeout:$timeout,
-        urls: urls, date_range: date_range, Transaction: Transfer});
 }]);
 
 
@@ -850,3 +815,204 @@ importTransactionsControllers.controller("importTransactionsCtrl",
     };
 }]);
 
+/*=============================================================================
+  Controller for balance reports
+  ============================================================================*/
+
+// directive for a single list
+saasApp.directive("saasDndList", function() {
+    "use strict";
+
+    return function(scope, element, attrs) {
+
+        // variables used for dnd
+        var toUpdate;
+        var startIndex = -1;
+
+        // watch the model, so we always know what element
+        // is at a specific position
+        scope.$watch(attrs.dndList, function(value) {
+            toUpdate = value;
+        }, true);
+
+        // use jquery to make the element sortable (dnd). This is called
+        // when the element is rendered
+        $(element[0]).sortable({
+            items: "tr",
+            start: function (event, ui) {
+                // on start we define where the item is dragged from
+                startIndex = ($(ui.item).index());
+            },
+            stop: function (event, ui) {
+                // on stop we determine the new index of the
+                // item and store it there
+                var newIndex = ($(ui.item).index());
+                var oldRank = toUpdate[startIndex].rank;
+                var newRank = toUpdate[newIndex].rank;
+                scope.saveOrder(oldRank, newRank);
+            },
+            axis: "y"
+        });
+    };
+});
+
+
+// extension to AngularJS to send a PUT request on update instead of a POST.
+var balanceResources = angular.module( "balanceResources", [ "ngResource" ] );
+balanceResources.factory( "BalanceResource", [ "$resource", function( $resource ) {
+    "use strict";
+    return function( url, params, methods, options ) {
+        var defaults = {
+            query: { method: "GET", isArray: false },
+            update: { method: "put", isArray: false },
+            create: { method: "post" }
+        };
+
+        methods = angular.extend( defaults, methods );
+
+        var resource = $resource( url, params, methods, options );
+
+        resource.prototype.$save = function() {
+            if ( !this.rank ) {
+                this.rank = 0;
+                return this.$create();
+            }
+            else {
+                return this.$update();
+            }
+        };
+
+        return resource;
+    };
+}]);
+
+var balanceServices = angular.module("balanceServices", ["balanceResources"]);
+balanceServices.factory("BalanceLine", ["BalanceResource", "urls",
+  function($resource, urls){
+    "use strict";
+    return $resource(
+        // No slash, it is already part of @path.
+        urls.api_balance_lines, {},
+        {saveData: {method: "PATCH", isArray: true},
+         update: { method: "put", isArray: false,
+                   url: urls.api_balance_lines + ":balance",
+                   params: {"balance": "@path"}},
+         remove: { method: "delete", isArray: false,
+                   url: urls.api_balance_lines + ":balance",
+                   params: {"balance": "@path"}},
+         create: { method: "POST" }});
+  }]);
+
+
+/*=============================================================================
+  Controllers
+  ============================================================================*/
+var balanceControllers = angular.module("balanceControllers", []);
+balanceControllers.controller("BalanceListCtrl",
+    ["$scope", "$http", "BalanceLine", "urls",
+     function($scope, $http, BalanceLine, urls) {
+    "use strict";
+
+    $scope.params = {};
+    $scope.ends_at = new Date();
+
+    // these aren't documented; do they do anything?
+    $scope.formats = ["MM-yyyy", "yyyy/MM", "MM.yyyy"];
+    $scope.format = $scope.formats[0];
+    $scope.dateOptions = {
+        formatYear: "yyyy",
+        startingDay: 1,
+        mode: "month",
+        minMode: "month"
+    };
+    $scope.opened = false;
+
+    $scope.open = function($event) {
+        $event.preventDefault();
+        $event.stopPropagation();
+        $scope.opened = true;
+    };
+
+    $scope.newBalanceLine = new BalanceLine();
+
+    $scope.endOfMonth = function(date) {
+        return new Date(
+            date.getFullYear(),
+            date.getMonth() + 1,
+            0
+        );
+    };
+
+    $scope.$watch("ends_at", function(newVal, oldVal, scope) {
+        if (newVal !== oldVal) {
+            $scope.ends_at = $scope.endOfMonth(newVal);
+            $scope.refresh();
+        }
+    }, true);
+
+    $scope.refresh = function() {
+        $http.get(urls.api_broker_balances, {
+            params: {"ends_at": $scope.ends_at}}).then(
+            function success(resp) {
+                $scope.balances = resp.data;
+                $scope.startPeriod = moment(resp.data.table[0].values[0][0]).subtract(1, 'months');
+            },
+            function error(resp) {
+                showMessages(["An error occurred while updating a balance (" +
+                              resp.status + " " + resp.statusText +
+                              "). Please accept our apologies."], "error");
+            });
+    };
+    $scope.refresh();
+
+    $scope.startPeriod = function(date) {
+        return moment.subtract(1, 'months');
+    }
+
+    $scope.save = function(balance, success) {
+        if ( !balance.rank ) {
+            balance.rank = 0;
+            return BalanceLine.create($scope.params, balance, success, function(data) {
+                // error
+                showMessages(["An error occurred while creating a balance (" +
+                  data.status + " " + data.statusText +
+                  "). Please accept our apologies."], "error");
+            });
+        }
+        else {
+            return BalanceLine.update($scope.params, balance, success, function(data) {
+                // error
+                showMessages(["An error occurred while updating a balance (" +
+                  data.status + " " + data.statusText +
+                  "). Please accept our apologies."], "error");
+            });
+        }
+    };
+
+    $scope.remove = function (idx) {
+        BalanceLine.remove({balance: $scope.balances.results[idx].path}, function (success) {
+            $scope.balances.results.splice(idx, 1);
+        });
+    };
+
+    $scope.create = function() {
+        $scope.save($scope.newBalanceLine, function(result) {
+            // success: insert new balance in the list and reset our editor
+            // to a new blank.
+            $scope.newBalanceLine = new BalanceLine();
+            $scope.refresh();
+        });
+    };
+
+    $scope.saveOrder = function(startIndex, newIndex) {
+        BalanceLine.saveData([{oldpos: startIndex, newpos: newIndex}],
+            function success(data) {
+                $scope.balances = data;
+            }, function err(data) {
+                // error
+                showMessages(["An error occurred while updating a balance (" +
+                  data.status + " " + data.statusText +
+                  "). Please accept our apologies."], "error");
+            });
+    };
+}]);

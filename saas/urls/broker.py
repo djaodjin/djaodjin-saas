@@ -28,10 +28,15 @@ Urls specific to the hosting site (i.e. broker).
 
 from django.conf.urls import url
 
-from ..views.metrics import RegisteredDownloadView
-
+from .. import settings
+from ..views.metrics import BalanceView, RegisteredDownloadView
+from ..views.billing import TransactionBaseView
 
 urlpatterns = [
+    url(r'^billing/transactions/(?P<selector>%s/)?' % settings.ACCT_REGEX,
+        TransactionBaseView.as_view(), name='saas_broker_transactions'),
+    url(r'^metrics/balances/(?P<report>%s)/' % settings.ACCT_REGEX,
+        BalanceView.as_view(), name='saas_balance'),
     url(r'^download/registered/?',
         RegisteredDownloadView.as_view(),
         name='saas_subscriber_pipeline_download_registered'),

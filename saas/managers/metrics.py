@@ -265,11 +265,12 @@ def active_subscribers(plan, from_date=None):
     return values
 
 
-def monthly_balances(organization, account=None, until=None):
+def monthly_balances(organization=None, account=None, like_account=None,
+                     until=None):
     values = []
     for end_period in month_periods(from_date=until):
-        balance = Transaction.objects.get_organization_balance(
-            organization, account=account, until=end_period)
+        balance = Transaction.objects.get_balance(organization=organization,
+            account=account, like_account=like_account, until=end_period)
         values.append([end_period, abs(balance['amount'])])
     return values
 

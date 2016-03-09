@@ -41,6 +41,11 @@ from ..models import CartItem, Plan, Transaction
 from ..utils import datetime_or_now
 
 
+class BalanceView(ProviderMixin, TemplateView):
+
+    template_name = 'saas/metrics/balances.html'
+
+
 class CouponMetricsView(CouponMixin, ListView):
     """
     Performance of Coupon based on CartItem.
@@ -238,7 +243,8 @@ class BalancesDownloadView(MetricsMixin, CSVDownloadView):
 
     def queryrow_to_columns(self, account):
         return [account] + [item[1] for item in monthly_balances(
-            self.organization, account, self.ends_at.date())]
+            organization=self.organization, account=account,
+            until=self.ends_at.date())]
 
 
 class RegisteredBaseDownloadView(RegisteredQuerysetMixin, CSVDownloadView):
