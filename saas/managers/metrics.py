@@ -34,7 +34,7 @@ from ..models import Plan, Subscription, Transaction
 from ..utils import datetime_or_now
 
 
-def month_periods(nb_months=12, from_date=None):
+def month_periods(nb_months=12, from_date=None, step_months=1):
     """constructs a list of (nb_months + 1) dates in the past that fall
     on the first of each month until *from_date* which is the last entry
     of the list returned."""
@@ -50,12 +50,16 @@ def month_periods(nb_months=12, from_date=None):
         last = datetime(day=1, month=last.month, year=last.year, tzinfo=utc)
         dates.append(last)
         nb_months = nb_months - 1
-    for _ in range(0, nb_months):
+    for _ in range(0, nb_months, step_months):
         year = last.year
-        month = last.month - 1
+        month = last.month - step_months
         if month < 1:
-            year = last.year - month / 12 - 1
-            month = 12 - (month % 12)
+            if month % 12 == 0:
+                year = last.year + month / 12 - 1
+                month = 12
+            else:
+                year = last.year + month / 12
+                month = month % 12
         last = datetime(day=1, month=month, year=year, tzinfo=utc)
         dates.append(last)
     dates.reverse()
@@ -269,6 +273,16 @@ def monthly_balances(organization=None, account=None, like_account=None,
                      until=None):
     values = []
     for end_period in month_periods(from_date=until):
+        balance = Transaction.objects.get_balance(organization=organization,
+            account=account, like_account=like_account, until=end_period)
+        values.append([end_period, abs(balance['amount'])])
+    return values
+
+
+def quaterly_balances(organization=None, account=None, like_account=None,
+                     until=None):
+    values = []
+    for end_period in month_periods(from_date=until, step_months=3):
         balance = Transaction.objects.get_balance(organization=organization,
             account=account, like_account=like_account, until=end_period)
         values.append([end_period, abs(balance['amount'])])

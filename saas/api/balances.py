@@ -30,7 +30,7 @@ from rest_framework.generics import (
 from rest_framework.response import Response
 
 from ..mixins import DateRangeMixin
-from ..managers.metrics import monthly_balances
+from ..managers.metrics import quaterly_balances
 from ..models import BalanceLine
 from .serializers import BalanceLineSerializer
 
@@ -47,7 +47,7 @@ class BrokerBalancesAPIView(DateRangeMixin, APIView):
             result += [{
                 'key': line.title,
                 'selector': line.selector,
-                'values': monthly_balances(
+                'values': quaterly_balances(
                     like_account=line.selector, until=self.ends_at)
             }]
         return Response({'title': "Balances: %s" % report,
