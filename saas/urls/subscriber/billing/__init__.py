@@ -28,9 +28,9 @@ URLs related to billing.
 
 from django.conf.urls import url, include
 
-from ....views import OrganizationRedirectView
-from ....views.billing import TransactionDownloadView
 from ....settings import ACCT_REGEX
+from ....views import OrganizationRedirectView
+from ....views.download import BillingStatementDownloadView
 
 
 urlpatterns = [
@@ -40,5 +40,6 @@ urlpatterns = [
     url(r'^', include('saas.urls.subscriber.billing.payment')),
     url(r'^', include('saas.urls.subscriber.billing.info')),
     url(r'^download/(?P<organization>%s)/payments/' % ACCT_REGEX,
-        TransactionDownloadView.as_view(), name='saas_transactions_download'),
+        BillingStatementDownloadView.as_view(),
+        name='saas_transactions_download'),
 ]

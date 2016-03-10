@@ -37,8 +37,6 @@ policy.
 #pylint:disable=too-many-lines
 
 import copy, logging
-from datetime import datetime
-from decimal import Decimal
 
 from django import http
 from django.contrib.auth import REDIRECT_FIELD_NAME
@@ -51,8 +49,6 @@ from django.views.generic import (DetailView, FormView, ListView, TemplateView,
 from django.utils.http import urlencode
 
 from .. import settings
-from ..api.transactions import (SmartTransactionListMixin,
-    TransactionQuerysetMixin, TransferQuerysetMixin)
 from ..backends import ProcessorError, ProcessorConnectionError
 from ..decorators import _insert_url
 from ..forms import (BankForm, CartPeriodsForm, CreditCardForm,
@@ -65,7 +61,6 @@ from ..models import (Organization, CartItem, Coupon, Plan, Transaction,
     Subscription, get_broker)
 from ..utils import datetime_or_now, validate_redirect_url
 from ..views import session_cart_to_database
-from ..views.download import CSVDownloadView
 
 
 LOGGER = logging.getLogger(__name__)
@@ -487,7 +482,7 @@ class BillingStatementView(CardFormMixin, TransactionBaseView):
             'saas_api_transactions': reverse(
                 'saas_api_billings', args=(self.organization,)),
             'download_url': reverse(
-                'saas_transactions_download', kwargs=self.get_url_kwargs())})
+                'saas_statement_download', kwargs=self.get_url_kwargs())})
         urls_organization = {
             'balance': reverse(
                 'saas_organization_balance', args=(self.organization,))}
@@ -499,33 +494,6 @@ class BillingStatementView(CardFormMixin, TransactionBaseView):
         else:
             context.update({'urls': {'organization': urls_organization}})
         return context
-
-
-class TransactionDownloadView(SmartTransactionListMixin,
-                              TransactionQuerysetMixin, CSVDownloadView):
-
-    headings = [
-        'Created At',
-        'Amount',
-        'Unit',
-        'Description'
-    ]
-
-    def get_headings(self):
-        return self.headings
-
-    def get_filename(self):
-        return datetime.now().strftime('transactions-%Y%m%d.csv')
-
-    def queryrow_to_columns(self, transaction):
-        return [
-            transaction.created_at.date(),
-            '{:.2f}'.format(
-                (-1 if transaction.is_debit(self.organization) else 1) *
-                Decimal(transaction.dest_amount) / 100),
-            transaction.dest_unit.encode('utf-8'),
-            transaction.descr.encode('utf-8'),
-        ]
 
 
 class TransferListView(BankMixin, TransactionBaseView):
@@ -570,34 +538,6 @@ djaodjin-saas/tree/master/saas/templates/saas/billing/transfers.html>`__).
         else:
             context.update({'urls': {'provider': urls_provider}})
         return context
-
-
-class TransferDownloadView(SmartTransactionListMixin,
-                           TransferQuerysetMixin,
-                           CSVDownloadView):
-
-    headings = [
-        'Created At',
-        'Amount',
-        'Unit',
-        'Description'
-    ]
-
-    def get_filename(self):
-        return datetime.now().strftime('funds-%Y%m%d.csv')
-
-    def get_headings(self):
-        return self.headings
-
-    def queryrow_to_columns(self, transaction):
-        return [
-            transaction.created_at.date(),
-            '{:.2f}'.format(
-                (-1 if transaction.is_debit(self.organization) else 1) *
-                Decimal(transaction.dest_amount) / 100),
-            transaction.dest_unit.encode('utf-8'),
-            transaction.descr.encode('utf-8'),
-        ]
 
 
 class CartBaseView(InvoicablesFormMixin, FormView):

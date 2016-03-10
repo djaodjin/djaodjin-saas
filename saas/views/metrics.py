@@ -58,7 +58,8 @@ class BalanceView(ProviderMixin, TemplateView):
                 'saas_api_balance_lines', kwargs={'report': report}),
             'api_broker_balances': reverse(
                 'saas_api_broker_balances', kwargs={'report': report}),
-        }
+            'download_transactions': reverse(
+                'saas_transactions_download', kwargs=self.get_url_kwargs())}
         if 'urls' in context:
             context['urls'].update(urls)
         else:

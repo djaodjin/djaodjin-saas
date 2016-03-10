@@ -31,8 +31,12 @@ from django.conf.urls import url
 from .. import settings
 from ..views.metrics import BalanceView, RegisteredDownloadView
 from ..views.billing import TransactionBaseView
+from ..views.download import TransactionDownloadView
 
 urlpatterns = [
+    url(r'^download/transactions/?',
+        TransactionDownloadView.as_view(),
+        name='saas_transactions_download'),
     url(r'^billing/transactions/((?P<selector>%s)/)?' % settings.SELECTOR_RE,
         TransactionBaseView.as_view(), name='saas_broker_transactions'),
     url(r'^metrics/balances/(?P<report>%s)/((?P<year>\d\d\d\d)/)?'

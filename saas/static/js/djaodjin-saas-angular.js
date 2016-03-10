@@ -919,12 +919,15 @@ balanceControllers.controller("BalanceListCtrl",
      function($scope, $http, BalanceLine, date_range, urls) {
     "use strict";
 
-    $scope.params = {};
-    $scope.ends_at = moment(date_range.ends_at);
-    if( $scope.ends_at.isValid() ) {
-        $scope.ends_at = $scope.ends_at.toDate();
-    } else {
-        $scope.ends_at = moment().toDate();
+    $scope.params = {
+        ends_at: moment(date_range.ends_at).toDate(),
+        start_at: moment(date_range.start_at).toDate()
+    };
+    if( !moment($scope.params.ends_at).isValid() ) {
+        $scope.params.ends_at = moment().toDate();
+    }
+    if( !moment($scope.params.start_at).isValid() ) {
+        $scope.params.start_at = moment($scope.params.ends_at).subtract(1, "years").toDate();
     }
 
     // these aren't documented; do they do anything?
@@ -936,15 +939,7 @@ balanceControllers.controller("BalanceListCtrl",
         mode: "month",
         minMode: "month"
     };
-    $scope.opened = false;
-
-    $scope.open = function($event) {
-        $event.preventDefault();
-        $event.stopPropagation();
-        $scope.opened = true;
-    };
-
-    $scope.newBalanceLine = new BalanceLine();
+    $scope.opened = { "start_at": false, "ends_at": false };
 
     $scope.endOfMonth = function(date) {
         return new Date(
@@ -954,16 +949,31 @@ balanceControllers.controller("BalanceListCtrl",
         );
     };
 
-    $scope.$watch("ends_at", function(newVal, oldVal, scope) {
-        if (newVal !== oldVal) {
-            $scope.ends_at = $scope.endOfMonth(newVal);
-            $scope.refresh();
+    $scope.open = function($event, datePicker) {
+        $event.preventDefault();
+        $event.stopPropagation();
+        $scope.opened[datePicker] = true;
+    };
+
+    $scope.$watch("params", function(newVal, oldVal, scope) {
+        if( newVal.start_at !== oldVal.start_at
+            && newVal.ends_at === oldVal.ends_at ) {
+            if( $scope.params.ends_at < newVal.start_at ) {
+                $scope.params.ends_at = newVal.start_at;
+            }
+        } else if( newVal.start_at === oldVal.start_at
+            && newVal.ends_at !== oldVal.ends_at ) {
+            if( $scope.params.start_at > newVal.ends_at ) {
+                $scope.params.start_at = newVal.ends_at;
+            }
         }
+        $scope.refresh();
     }, true);
 
+    $scope.newBalanceLine = new BalanceLine();
+
     $scope.refresh = function() {
-        $http.get(urls.api_broker_balances, {
-            params: {"ends_at": $scope.ends_at}}).then(
+        $http.get(urls.api_broker_balances, {params: $scope.params}).then(
             function success(resp) {
                 $scope.balances = resp.data;
                 $scope.balances.$resolved = true;

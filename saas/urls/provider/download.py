@@ -30,7 +30,7 @@ from django.conf.urls import url
 
 from ...settings import ACCT_REGEX
 from ...views import ProviderRedirectView
-from ...views.billing import TransferDownloadView
+from ...views.download import TransferDownloadView
 from ...views.metrics import (BalancesDownloadView,
     CouponMetricsDownloadView, ActiveSubscriptionDownloadView,
     ChurnedSubscriptionDownloadView)
