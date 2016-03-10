@@ -88,6 +88,10 @@ class TransactionDownloadView(SmartTransactionListMixin,
         'description'
     ]
 
+    def get_queryset(self):
+        return super(TransactionDownloadView, self).get_queryset().order_by(
+            '-created_at')
+
     def queryrow_to_columns(self, transaction):
         return [
             transaction.created_at.date(),
