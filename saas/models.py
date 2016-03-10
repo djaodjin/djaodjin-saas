@@ -2691,7 +2691,7 @@ class Transaction(models.Model):
     # An exact created_at is to important to let auto_now_add mess with it.
     created_at = models.DateTimeField()
 
-    orig_account = models.CharField(max_length=30, default="unknown")
+    orig_account = models.CharField(max_length=255, default="unknown")
     orig_organization = models.ForeignKey(Organization,
         related_name="outgoing")
     orig_amount = models.PositiveIntegerField(default=0,
@@ -2699,7 +2699,7 @@ class Transaction(models.Model):
     orig_unit = models.CharField(max_length=3, default="usd",
         help_text=_('Measure of units on origin account'))
 
-    dest_account = models.CharField(max_length=30, default="unknown")
+    dest_account = models.CharField(max_length=255, default="unknown")
     dest_organization = models.ForeignKey(Organization,
         related_name="incoming")
     dest_amount = models.PositiveIntegerField(default=0,
