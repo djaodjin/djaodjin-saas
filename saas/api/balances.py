@@ -22,7 +22,7 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from django.db.models import F, Q
+from django.db.models import F, Q, Max
 from django.db import transaction
 from rest_framework.views import APIView
 from rest_framework.generics import (
@@ -63,7 +63,11 @@ class BalanceLineListAPIView(ListCreateAPIView):
             report=self.kwargs.get('report')).order_by('rank')
 
     def perform_create(self, serializer):
-        serializer.save(report=self.kwargs.get('report'))
+        last_rank = self.get_queryset().aggregate(
+            Max('rank')).get('rank__max', 0)
+        # If the key exists and return None the default value is not applied
+        last_rank = last_rank + 1 if last_rank is not None else 1
+        serializer.save(report=self.kwargs.get('report'), rank=last_rank)
 
     def patch(self, request, *args, **kwargs):
         """
