@@ -41,5 +41,5 @@ urlpatterns = [
     url(r'^', include('saas.urls.subscriber.billing.info')),
     url(r'^download/(?P<organization>%s)/payments/' % ACCT_REGEX,
         BillingStatementDownloadView.as_view(),
-        name='saas_transactions_download'),
+        name='saas_statement_download'),
 ]
