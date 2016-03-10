@@ -48,6 +48,7 @@ from django.contrib import messages
 from django.shortcuts import get_object_or_404
 from django.views.generic import (DetailView, FormView, ListView, TemplateView,
     UpdateView)
+from django.utils.http import urlencode
 
 from .. import settings
 from ..api.transactions import (SmartTransactionListMixin,
@@ -434,11 +435,9 @@ class TransactionBaseView(DateRangeMixin, TemplateView):
     def get_context_data(self, **kwargs):
         context = super(TransactionBaseView, self).get_context_data(**kwargs)
         self.selector = self.kwargs.get('selector', None)
-        if self.selector is None:
-            api_location = reverse('saas_api_transactions')
-        else:
-            api_location = reverse(
-                'saas_api_transactions', kwargs={'selector': self.selector})
+        api_location = reverse('saas_api_transactions')
+        if self.selector:
+            api_location += '?%s' % urlencode({'selector': self.selector})
         context.update({
             'organization': get_broker(),
             'saas_api_transactions': api_location})

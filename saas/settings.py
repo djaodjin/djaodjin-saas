@@ -53,6 +53,7 @@ _SETTINGS.update(getattr(settings, 'SAAS', {}))
 
 
 ACCT_REGEX = r'[a-zA-Z0-9_\-]+'
+SELECTOR_RE = r'[a-zA-Z0-9_\-\:]+'
 AUTH_USER_MODEL = getattr(
     settings, 'AUTH_USER_MODEL', 'django.contrib.auth.models.User')
 

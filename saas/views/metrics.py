@@ -45,6 +45,26 @@ class BalanceView(ProviderMixin, TemplateView):
 
     template_name = 'saas/metrics/balances.html'
 
+    def get_context_data(self, **kwargs):
+        context = super(BalanceView, self).get_context_data(**kwargs)
+        report = self.kwargs.get('report')
+        year = self.kwargs.get('year')
+        if year:
+            year = int(year)
+            ends_at = datetime_or_now(datetime(year=year + 1, month=1, day=1))
+            context.update({'ends_at': ends_at.isoformat()})
+        urls = {
+            'api_balance_lines': reverse(
+                'saas_api_balance_lines', kwargs={'report': report}),
+            'api_broker_balances': reverse(
+                'saas_api_broker_balances', kwargs={'report': report}),
+        }
+        if 'urls' in context:
+            context['urls'].update(urls)
+        else:
+            context.update({'urls': urls})
+        return context
+
 
 class CouponMetricsView(CouponMixin, ListView):
     """

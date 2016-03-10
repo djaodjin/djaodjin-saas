@@ -2746,14 +2746,17 @@ class BalanceLine(models.Model):
     Defines a line in a balance sheet. All ``Transaction`` account matching
     ``selector`` will be aggregated over a period of time.
     """
-    balance_sheet = models.SlugField()
+    report = models.SlugField()
     title = models.CharField(max_length=255)
     selector = models.CharField(max_length=255)
     rank = models.IntegerField()
     moved = models.BooleanField(default=False)
 
+    class Meta:
+        unique_together = ('report', 'rank', 'moved')
+
     def __unicode__(self):
-        return '%s/%d' % (self.balance_sheet, self.rank)
+        return '%s/%d' % (self.report, self.rank)
 
 
 def get_broker():

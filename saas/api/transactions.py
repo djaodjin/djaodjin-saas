@@ -134,7 +134,7 @@ class SmartTransactionListMixin(DateRangeMixin,
 class TransactionQuerysetMixin(object):
 
     def get_queryset(self):
-        self.selector = self.kwargs.get('selector', None)
+        self.selector = self.request.GET.get('selector', None)
         if self.selector is not None:
             return Transaction.objects.filter(
                 Q(dest_account__icontains=self.selector)

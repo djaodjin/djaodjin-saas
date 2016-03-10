@@ -102,7 +102,7 @@ def import_transactions(filedesc, create_organizations=False, broker=None,
                     = parse_line(line, create_organizations,
                         broker=broker, using=using)
                 if dest_unit != 'usd' and orig_unit == 'usd':
-                    dest_amount = orig_amount
+                    dest_amount = - orig_amount
                     dest_unit = orig_unit
                 if not orig_amount:
                     orig_amount = dest_amount
@@ -155,9 +155,9 @@ def parse_line(line, create_organizations=False, broker=None, using='default'):
                     unit = 'usd'
                 value = look.group('value').replace(',', '')
                 if '.' in value:
-                    amount = abs(long(float(value) * 100))
+                    amount = long(float(value) * 100)
                 else:
-                    amount = abs(long(value))
+                    amount = long(value)
         try:
             if create_organizations:
                 organization, _ = Organization.objects.using(

@@ -135,7 +135,7 @@ transactionServices.factory("Transaction", ["$resource", "urls",
   function($resource, urls){
     "use strict";
     return $resource(
-        urls.api_transactions + "/:id", {id: "@id"},
+        urls.api_transactions, {},
             {query: {method: "GET"}});
   }]);
 
@@ -673,8 +673,8 @@ transactionControllers.controller("transactionListCtrl",
 
 
 metricsControllers.controller("metricsCtrl",
-    ["$scope", "$http", "urls", "tables",
-    function($scope, $http, urls, tables) {
+    ["$scope", "$http", "date_range", "urls", "tables",
+    function($scope, $http, date_range, urls, tables) {
     "use strict";
 
     $scope.tables = tables;
@@ -692,7 +692,13 @@ metricsControllers.controller("metricsCtrl",
             0
         );
     };
-    $scope.ends_at = new Date();
+
+    $scope.ends_at = moment(date_range.ends_at);
+    if( $scope.ends_at.isValid() ) {
+        $scope.ends_at = $scope.ends_at.toDate();
+    } else {
+        $scope.ends_at = moment().toDate();
+    }
 
     // these aren't documented; do they do anything?
     $scope.formats = ["MM-yyyy", "yyyy/MM", "MM.yyyy"];
@@ -909,12 +915,17 @@ balanceServices.factory("BalanceLine", ["BalanceResource", "urls",
   ============================================================================*/
 var balanceControllers = angular.module("balanceControllers", []);
 balanceControllers.controller("BalanceListCtrl",
-    ["$scope", "$http", "BalanceLine", "urls",
-     function($scope, $http, BalanceLine, urls) {
+    ["$scope", "$http", "BalanceLine", "date_range", "urls",
+     function($scope, $http, BalanceLine, date_range, urls) {
     "use strict";
 
     $scope.params = {};
-    $scope.ends_at = new Date();
+    $scope.ends_at = moment(date_range.ends_at);
+    if( $scope.ends_at.isValid() ) {
+        $scope.ends_at = $scope.ends_at.toDate();
+    } else {
+        $scope.ends_at = moment().toDate();
+    }
 
     // these aren't documented; do they do anything?
     $scope.formats = ["MM-yyyy", "yyyy/MM", "MM.yyyy"];
@@ -955,6 +966,7 @@ balanceControllers.controller("BalanceListCtrl",
             params: {"ends_at": $scope.ends_at}}).then(
             function success(resp) {
                 $scope.balances = resp.data;
+                $scope.balances.$resolved = true;
                 $scope.startPeriod = moment(resp.data.table[0].values[0][0]).subtract(1, 'months');
             },
             function error(resp) {

@@ -31,6 +31,9 @@ reopenSaasApp.config(['$interpolateProvider', '$httpProvider',
     $interpolateProvider.endSymbol(']]');
 }]);
 reopenSaasApp.constant('urls', {
+    api_balance_lines: "{{urls.api_balance_lines}}",
+    api_broker_balances: "{{urls.api_broker_balances}}",
+    api_transactions: "{{saas_api_transactions}}",
 {% if urls.organization %}
 {% if urls.organization.api_roles %}
     saas_api_user_relation_url: "{{ urls.organization.api_roles }}",
@@ -49,7 +52,6 @@ reopenSaasApp.constant('urls', {
     /* transactions */
     saas_api_user_url: "{{ urls.provider.api_users }}",
     saas_api_bank: "{{ urls.provider.api_bank }}",
-    saas_api_transfers_url: "{{  urls.provider.api_transfers }}",
     saas_api_transaction_url: "{{ urls.provider.api_transactions }}",
 {% endif %}
 });

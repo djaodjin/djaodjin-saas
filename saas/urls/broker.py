@@ -33,9 +33,10 @@ from ..views.metrics import BalanceView, RegisteredDownloadView
 from ..views.billing import TransactionBaseView
 
 urlpatterns = [
-    url(r'^billing/transactions/(?P<selector>%s/)?' % settings.ACCT_REGEX,
+    url(r'^billing/transactions/((?P<selector>%s)/)?' % settings.SELECTOR_RE,
         TransactionBaseView.as_view(), name='saas_broker_transactions'),
-    url(r'^metrics/balances/(?P<report>%s)/' % settings.ACCT_REGEX,
+    url(r'^metrics/balances/(?P<report>%s)/((?P<year>\d\d\d\d)/)?'
+        % settings.ACCT_REGEX,
         BalanceView.as_view(), name='saas_balance'),
     url(r'^download/registered/?',
         RegisteredDownloadView.as_view(),

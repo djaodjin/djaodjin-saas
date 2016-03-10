@@ -34,7 +34,7 @@ from ...api.metrics import RegisteredAPIView
 from ...api.transactions import TransactionListAPIView
 
 urlpatterns = [
-    url(r'^billing/transactions/(?P<selector>%s)?' % settings.ACCT_REGEX,
+    url(r'^billing/transactions/?',
         TransactionListAPIView.as_view(), name='saas_api_transactions'),
     url(r'^metrics/balances/(?P<report>%s)/?' % settings.ACCT_REGEX,
         BrokerBalancesAPIView.as_view(), name='saas_api_broker_balances'),

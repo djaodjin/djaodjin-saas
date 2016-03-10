@@ -43,9 +43,10 @@ class BrokerBalancesAPIView(DateRangeMixin, APIView):
         result = []
         report = self.kwargs.get('report')
         for line in BalanceLine.objects.filter(
-                balance_sheet=report).order_by('rank'):
+                report=report).order_by('rank'):
             result += [{
                 'key': line.title,
+                'selector': line.selector,
                 'values': monthly_balances(
                     like_account=line.selector, until=self.ends_at)
             }]
@@ -59,10 +60,10 @@ class BalanceLineListAPIView(ListCreateAPIView):
 
     def get_queryset(self):
         return BalanceLine.objects.filter(
-            balance_sheet=self.kwargs.get('report')).order_by('rank')
+            report=self.kwargs.get('report')).order_by('rank')
 
     def perform_create(self, serializer):
-        serializer.save(balance_sheet=self.kwargs.get('report'))
+        serializer.save(report=self.kwargs.get('report'))
 
     def patch(self, request, *args, **kwargs):
         """
