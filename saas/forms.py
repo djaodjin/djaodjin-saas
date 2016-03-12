@@ -46,7 +46,9 @@ class BankForm(forms.ModelForm):
     """
     Update Bank Information
     """
-    stripeToken = forms.CharField(required=False)
+    form_id = 'bank-form'
+    stripeToken = forms.CharField(
+        required=False, widget=forms.widgets.HiddenInput())
 
     class Meta:
         model = Organization
@@ -243,4 +245,5 @@ class WithdrawForm(BankForm):
     """
     Withdraw amount from ``Funds`` to a bank account
     """
-    amount = forms.FloatField(label="Amount (in $)", required=False)
+    submit_title = 'Withdraw'
+    amount = forms.DecimalField(label="Amount (in $)", required=False)

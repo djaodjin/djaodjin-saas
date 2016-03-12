@@ -1075,7 +1075,7 @@ djaodjin-saas/tree/master/saas/templates/saas/billing/withdraw.html>`__).
         return kwargs
 
     def form_valid(self, form):
-        amount_withdrawn = int(float(form.cleaned_data['amount']) * 100)
+        amount_withdrawn = int(form.cleaned_data['amount'] * 100)
         self.provider.withdraw_funds(amount_withdrawn, self.request.user)
         return super(WithdrawView, self).form_valid(form)
 
