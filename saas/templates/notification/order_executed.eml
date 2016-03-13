@@ -8,7 +8,7 @@
 {{provider.printable_name}} Order Confirmation
 
 {% for line in invoiced_items %}
-    {{line.dest_amount|humanize_money:line.dest_unit}}
+    {{line.dest_price|humanize_money}}
     {{line.descr}}
 {% endfor %}
 

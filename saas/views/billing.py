@@ -50,7 +50,7 @@ from django.utils.http import urlencode
 
 from .. import settings
 from ..backends import ProcessorError, ProcessorConnectionError
-from ..decorators import _insert_url
+from ..decorators import _insert_url, _valid_manager
 from ..forms import (BankForm, CartPeriodsForm, CreditCardForm,
     ImportTransactionForm, RedeemCouponForm, WithdrawForm)
 from ..humanize import (as_money, describe_buy_periods, match_unlock,
@@ -58,7 +58,7 @@ from ..humanize import (as_money, describe_buy_periods, match_unlock,
 from ..mixins import (ChargeMixin, DateRangeMixin, OrganizationMixin,
     ProviderMixin, product_url)
 from ..models import (Organization, CartItem, Coupon, Plan, Transaction,
-    Subscription, get_broker)
+    Subscription, get_broker, Price)
 from ..utils import datetime_or_now, validate_redirect_url
 from ..views import session_cart_to_database
 
@@ -271,8 +271,7 @@ class InvoicablesFormMixin(OrganizationMixin):
                 grouped_by_plan[plan] = []
             grouped_by_plan[plan].append(invoicable)
         context.update({'invoicables_by_plan': grouped_by_plan,
-                        "lines_amount": lines_amount,
-                        "lines_unit": lines_unit})
+                        "lines_price": Price(lines_amount, lines_unit)})
         return context
 
     def get_redirect_path(self, **kwargs): #pylint: disable=unused-argument
@@ -454,8 +453,8 @@ class BillingStatementView(CardFormMixin, TransactionBaseView):
     API end point to fetch the set of transactions.
 
     Template context:
-      - ``balance_amount`` Amount due by the subscriber
-      - ``balance_unit`` Unit the balance is expressed in (ex: usd)
+      - ``balance_price`` A tuple of the balance amount due by the subscriber
+            and unit this balance is expressed in (ex: usd).
       - ``organization`` The subscriber object
       - ``request`` The HTTP request object
     """
@@ -476,9 +475,8 @@ class BillingStatementView(CardFormMixin, TransactionBaseView):
             # so we do it with a convention on the ``humanize_money`` filter.
             balance_unit = '-%s' % balance_unit
         context.update({
+            'balance_price': Price(balance_amount, balance_unit),
             'organization': self.organization,
-            'balance_amount': balance_amount,
-            'balance_unit': balance_unit,
             'saas_api_transactions': reverse(
                 'saas_api_billings', args=(self.organization,)),
             'download_url': reverse(
@@ -912,6 +910,14 @@ djaodjin-saas/tree/master/saas/templates/saas/billing/receipt.html>`__).
     # between access through profile or not.
 
     template_name = 'saas/billing/receipt.html'
+
+    def get_context_data(self, **kwargs):
+        context = super(ChargeReceiptView, self).get_context_data(**kwargs)
+        for line in context['charge_items']:
+            event = line.invoiced.get_event()
+            setattr(line, 'refundable',
+                event and _valid_manager(self.request.user, [event.provider]))
+        return context
 
 
 class CouponListView(ProviderMixin, ListView):

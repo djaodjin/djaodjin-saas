@@ -43,21 +43,8 @@ register = template.Library()
 
 
 @register.filter()
-def discounted_period(plan, coupon):
-    """
-    Returns the discounted amount once the ``Coupon`` is applied
-    or ``plan.period_amount`` otherwise.
-    """
-    if not plan:
-        return None # will happen on "Add Plan" template
-    if coupon and coupon.is_valid(plan):
-        return plan.period_amount * (100 - coupon.percent) / 100
-    return plan.period_amount
-
-
-@register.filter()
-def htmlize_money(value, currency='usd'):
-    text = as_money(value, currency)
+def htmlize_money(amount_unit_tuple):
+    text = as_money(amount_unit_tuple.amount, amount_unit_tuple.unit)
     look = re.match(r'(\$|€|£)?(\d(\d|,)*)(\.\d+)?(.*)', text)
     if look:
         unit_prefix = '<span class="unit-prefix">%s</span>' % look.group(1)
@@ -74,21 +61,10 @@ def htmlize_money(value, currency='usd'):
         return  mark_safe(html)
     return text
 
-@register.filter()
-def humanize_money(value, currency='usd'):
-    return as_money(value, currency)
-
 
 @register.filter()
-def humanize_balance(value, currency_unit):
-    return humanize_money(abs(value), currency_unit)
-
-
-@register.filter()
-def percentage(value):
-    if not value:
-        return '0 %%'
-    return '%.1f %%' % (float(value) / 100)
+def humanize_money(amount_unit_tuple):
+    return as_money(amount_unit_tuple.amount, amount_unit_tuple.unit)
 
 
 @register.filter()
@@ -105,6 +81,13 @@ def humanize_period(period):
     elif period == Plan.INTERVAL_CHOICES[4][0]:
         result = "per year"
     return result
+
+
+@register.filter()
+def percentage(value):
+    if not value:
+        return '0 %%'
+    return '%.1f %%' % (float(value) / 100)
 
 
 @register.filter()
@@ -215,17 +198,6 @@ def active_with_provider(organization, provider):
 @register.filter(needs_autoescape=False)
 def describe(transaction):
     return mark_safe(as_html_description(transaction))
-
-
-@register.filter(needs_autoescape=False)
-def refund_enable(transaction, user):
-    """
-    Returns True if *user* is able to trigger a refund on *transaction*.
-    """
-    event = transaction.get_event()
-    if event:
-        return _valid_manager(user, [event.provider])
-    return False
 
 
 @register.filter()

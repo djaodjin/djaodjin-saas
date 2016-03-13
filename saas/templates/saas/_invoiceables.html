@@ -15,7 +15,7 @@
       {% for line in entry.lines %}
       <tr class="invoice-item">
         <td></td>
-        <td>{{line.dest_amount|humanize_money:line.dest_unit}}</td>
+        <td>{{line.dest_price|humanize_money}}</td>
         <td>{{line.descr}}
         </td>
       </tr>
@@ -23,7 +23,7 @@
       {% for line in entry.options %}
       <tr>
         <td><input type="radio" name="{{entry.name}}" value="{{line.dest_amount}}" {% if forloop.first %}checked="1"{% endif %}></input></td>
-        <td>{{line.dest_amount|humanize_money:line.dest_unit}}</td>
+        <td>{{line.dest_price|humanize_money}}</td>
         <td>{{line.descr}}
         </td>
       </tr>
@@ -48,7 +48,7 @@
     <tfooter>
       <tr>
         <th></th>
-        <th class="total-amount">{{lines_amount|humanize_money:lines_unit}}</th>
+        <th class="total-amount">{{lines_price|humanize_money}}</th>
         <th>Charged Today</th>
       </tr>
     </tfooter>

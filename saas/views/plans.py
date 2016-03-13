@@ -33,7 +33,7 @@ from . import RedirectFormMixin
 from ..compat import csrf
 from ..forms import PlanForm
 from ..mixins import CartMixin, OrganizationMixin, ProviderMixin
-from ..models import CartItem, Coupon, Plan
+from ..models import CartItem, Coupon, Plan, Price
 
 
 class PlanFormMixin(OrganizationMixin, SingleObjectMixin):
@@ -85,8 +85,8 @@ djaodjin-saas/tree/master/saas/templates/saas/pricing.html>`__).
 
     POST adds the selected plan into the request user cart.
     """
-
     model = Plan
+    line_break = 3
     template_name = 'saas/pricing.html'
     success_url = reverse_lazy('saas_cart')
     form_class = forms.Form # Solely to avoid errors on Django 1.9.1
@@ -111,6 +111,15 @@ djaodjin-saas/tree/master/saas/templates/saas/pricing.html>`__).
         redeemed = self.request.session.get('redeemed', None)
         if redeemed is not None:
             redeemed = Coupon.objects.active(self.provider, redeemed).first()
+        for index, plan in enumerate(context['plan_list']):
+            if index % self.line_break == 0:
+                setattr(plan, 'is_line_break', True)
+            if redeemed and redeemed.is_valid(plan):
+                setattr(plan, 'discounted_period_price',
+                    Price((plan.period_amount * (100 - redeemed.percent) / 100),
+                     plan.unit))
+        if len(context['plan_list']) % self.line_break == 0:
+            setattr(context['plan_list'], 'is_line_break', True)
         context.update({
             'items_selected': items_selected, 'redeemed': redeemed})
         return context

@@ -12,7 +12,7 @@ display:none;
   <section id="status">
       <p>
         On {{charge.created_at}}, we attempted to charge your card for
-        the amount of {{charge.amount|humanize_money:charge.unit}}.
+        the amount of {{charge.price|humanize_money}}.
       </p>
       <p class="charge-status"
          data-charge-done="The charge succeeded."
@@ -37,7 +37,7 @@ display:none;
     </dl>
     <dl>
       <dt>amount</dt>
-      <dd id="amount-info">{{charge.amount|humanize_money:charge.unit}}</dd>
+      <dd id="amount-info">{{charge.price|humanize_money}}</dd>
     </dl>
     <dl>
       <dt>card</dt>
@@ -60,7 +60,7 @@ display:none;
       <tbody>
         {% for line in charge_items %}
         <tr>
-          <td>{{line.invoiced.dest_amount|humanize_money:line.invoiced.dest_unit}}</td>
+          <td>{{line.invoiced.dest_price|humanize_money}}</td>
           <td>{{line.invoiced|describe}}</td>
           <td>
             {% if line.invoiced|refund_enable:user %}
@@ -73,7 +73,7 @@ display:none;
         </tr>
         {% for refund in line.refunded %}
         <tr>
-          <td>-{{refund.orig_amount|humanize_money:refund.orig_unit}}</td>
+          <td>-{{refund.orig_price|humanize_money}}</td>
           <td>{{refund|describe}}</td>
           <td>
           </td>

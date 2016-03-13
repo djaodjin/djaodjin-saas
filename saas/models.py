@@ -78,6 +78,13 @@ class InsufficientFunds(Exception):
     pass
 
 
+class Price(object):
+
+    def __init__(self, amount, unit):
+        self.amount = amount
+        self.unit = unit
+
+
 class OrganizationManager(models.Manager):
 
     def create_organization(self, name, creation_time):
@@ -795,6 +802,14 @@ class Charge(models.Model):
 
     def __unicode__(self):
         return unicode(self.processor_key)
+
+    @property
+    def price(self):
+        return Price(self.amount, self.unit)
+
+    @property
+    def state_string(self):
+        return self.get_state_display()
 
     @property
     def line_items(self):
@@ -1549,6 +1564,14 @@ class Plan(models.Model):
 
     def __unicode__(self):
         return unicode(self.slug)
+
+    @property
+    def period_price(self):
+        return Price(self.period_amount, self.unit)
+
+    @property
+    def setup_price(self):
+        return Price(self.setup_amount, self.unit)
 
     @property
     def yearly_amount(self):
@@ -2714,6 +2737,14 @@ class Transaction(models.Model):
 
     def __unicode__(self):
         return unicode(self.id)
+
+    @property
+    def dest_price(self):
+        return Price(self.dest_amount, self.dest_unit)
+
+    @property
+    def orig_price(self):
+        return Price(self.orig_amount, self.orig_unit)
 
     def is_debit(self, organization):
         '''

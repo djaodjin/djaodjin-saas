@@ -39,7 +39,7 @@ from . import RedirectFormMixin
 from ..forms import (OrganizationForm, OrganizationCreateForm,
     ManagerAndOrganizationForm)
 from ..mixins import OrganizationMixin, ProviderMixin
-from ..models import Organization, Subscription
+from ..models import Organization, Subscription, get_broker
 
 
 LOGGER = logging.getLogger(__name__)
@@ -116,9 +116,12 @@ djaodjin-saas/tree/master/saas/templates/saas/profile/subscribers.html>`__).
               'saas_subscriber_pipeline_download_subscribed', args=(provider,)),
             'download_subscribers_churned': reverse(
               'saas_subscriber_pipeline_download_churned', args=(provider,)),
-            'download_users_registered': reverse(
-                'saas_subscriber_pipeline_download_registered'),
         }
+        if provider == get_broker():
+            urls_provider.update({
+                'download_users_registered': reverse(
+                    'saas_subscriber_pipeline_download_registered'),
+            })
         if 'urls' in context:
             if 'provider' in context['urls']:
                 context['urls']['provider'].update(urls_provider)

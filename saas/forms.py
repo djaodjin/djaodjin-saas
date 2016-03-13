@@ -127,6 +127,8 @@ class ImportTransactionForm(forms.Form):
 
 class OrganizationForm(PostalFormMixin, forms.ModelForm):
 
+    submit_title = 'Update'
+
     class Meta:
         model = Organization
         fields = ('full_name', 'email', 'phone', 'street_address',
@@ -135,6 +137,8 @@ class OrganizationForm(PostalFormMixin, forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super(OrganizationForm, self).__init__(*args, **kwargs)
+        if kwargs.get('instance', None) is None:
+            self.submit_title = 'Create'
         if self.fields.has_key('country'):
             # Country field is optional. We won't add a State/Province
             # in case it is omitted.
@@ -180,6 +184,8 @@ class PlanForm(forms.ModelForm):
     """
     Form to create or update a ``Plan``.
     """
+    submit_title = 'Update'
+
     unit = forms.ChoiceField(choices=(('usd', 'usd'), ('cad', 'cad')))
     period_amount = forms.DecimalField(max_digits=7, decimal_places=2)
     advance_discount = forms.DecimalField(max_digits=5, decimal_places=2)
@@ -197,6 +203,8 @@ class PlanForm(forms.ModelForm):
         if instance:
             period_amount = instance.period_amount
             advance_discount = instance.advance_discount
+        else:
+            self.submit_title = 'Create'
         period_amount = Decimal(period_amount).scaleb(-2)
         advance_discount = Decimal(advance_discount).scaleb(-2)
         initial.update({
@@ -232,6 +240,7 @@ class RedeemCouponForm(forms.Form):
     """
     Form used to redeem a coupon.
     """
+    submit_title = 'Redeem'
 
     code = forms.CharField(label="Registration code")
 
