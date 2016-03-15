@@ -28,8 +28,6 @@ from django.conf import settings as django_settings
 from django.http.request import split_domain_port, validate_host
 from django.utils.timezone import utc
 
-from . import settings
-
 
 def datetime_or_now(dtime_at=None):
     if not dtime_at:
@@ -53,8 +51,15 @@ def datetime_to_utctimestamp(dtime_at, epoch=None):
     diff = dtime_at - epoch
     return int(diff.total_seconds())
 
+def get_organization_model():
+    # delayed import so we can load ``OrganizationMixinBase`` in django.conf
+    from . import settings
+    from .compat import get_model_class
+    return get_model_class(settings.ORGANIZATION_MODEL, 'ORGANIZATION_MODEL')
 
 def get_role_model():
+    # delayed import so we can load ``OrganizationMixinBase`` in django.conf
+    from . import settings
     from .compat import get_model_class
     return get_model_class(settings.ROLE_RELATION, 'ROLE_RELATION')
 
