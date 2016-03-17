@@ -111,24 +111,22 @@ djaodjin-saas/tree/master/saas/templates/saas/profile/subscribers.html>`__).
     def get_context_data(self, **kwargs):
         context = super(SubscriberListView, self).get_context_data(**kwargs)
         provider = self.provider
-        urls_provider = {
-            'download_subscribers_active': reverse(
-              'saas_subscriber_pipeline_download_subscribed', args=(provider,)),
-            'download_subscribers_churned': reverse(
-              'saas_subscriber_pipeline_download_churned', args=(provider,)),
-        }
+        tabs = [{
+            "slug": "subscribed",
+            "title": "Active",
+            "urls": {"download": reverse(
+              'saas_subscriber_pipeline_download_subscribed', args=(provider,))
+            }},
+                {
+            "slug": "churned",
+            "title": "Churned",
+            "urls": {"download": reverse(
+              'saas_subscriber_pipeline_download_churned', args=(provider,))
+            }}]
+        context.update({'tabs': tabs})
         if provider == get_broker():
-            urls_provider.update({
-                'download_users_registered': reverse(
-                    'saas_subscriber_pipeline_download_registered'),
-            })
-        if 'urls' in context:
-            if 'provider' in context['urls']:
-                context['urls']['provider'].update(urls_provider)
-            else:
-                context['urls'].update({'provider': urls_provider})
-        else:
-            context.update({'urls': {'provider': urls_provider}})
+            context.update({'registered': {'urls': {'download': reverse(
+                'saas_subscriber_pipeline_download_registered')}}})
         return context
 
 

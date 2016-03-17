@@ -530,12 +530,12 @@ subscriptionControllers.controller("subscriptionListCtrl",
                 $scope.query($scope.registered);
             }
             $scope.active = $scope.registered;
-        } else if( newActiveTab === "active-subscriptions" ) {
+        } else if( newActiveTab === "subscribed" ) {
             if( !$scope.subscribed.hasOwnProperty("results") ) {
                 $scope.query($scope.subscribed);
             }
             $scope.active = $scope.subscribed;
-        } else if( newActiveTab === "churned-subscriptions" ) {
+        } else if( newActiveTab === "churned" ) {
             if( !$scope.churned.hasOwnProperty("results") ) {
                 $scope.query($scope.churned);
             }
