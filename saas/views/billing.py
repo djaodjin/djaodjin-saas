@@ -266,14 +266,15 @@ class InvoicablesFormMixin(OrganizationMixin):
             for line in invoicable['lines']:
                 lines_amount += line.dest_amount
                 lines_unit = line.dest_unit
-        grouped_by_plan = {}
+        current_plan = None
+        self.invoicables.sort(
+            key=lambda invoicable: invoicable['subscription'].plan)
         for invoicable in self.invoicables:
             plan = invoicable['subscription'].plan
-            if not plan in grouped_by_plan:
-                grouped_by_plan[plan] = []
-            grouped_by_plan[plan].append(invoicable)
-        context.update({'invoicables_by_plan': grouped_by_plan,
-                        "lines_price": Price(lines_amount, lines_unit)})
+            invoicable['is_changed'] = (plan != current_plan)
+            current_plan = plan
+        context.update({'invoicables': self.invoicables,
+            'lines_price': Price(lines_amount, lines_unit)})
         return context
 
     def get_redirect_path(self, **kwargs): #pylint: disable=unused-argument
@@ -915,8 +916,9 @@ djaodjin-saas/tree/master/saas/templates/saas/billing/receipt.html>`__).
 
     def get_context_data(self, **kwargs):
         context = super(ChargeReceiptView, self).get_context_data(**kwargs)
-        for line in context['charge_items']:
+        for rank, line in enumerate(context['charge_items']):
             event = line.invoiced.get_event()
+            setattr(line, 'rank', rank)
             setattr(line, 'refundable',
                 event and _valid_manager(self.request.user, [event.provider]))
         return context
