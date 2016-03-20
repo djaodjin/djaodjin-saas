@@ -112,6 +112,7 @@ djaodjin-saas/tree/master/saas/templates/saas/profile/subscribers.html>`__).
         context = super(SubscriberListView, self).get_context_data(**kwargs)
         provider = self.provider
         tabs = [{
+            "is_active": True,
             "slug": "subscribed",
             "title": "Active",
             "urls": {"download": reverse(

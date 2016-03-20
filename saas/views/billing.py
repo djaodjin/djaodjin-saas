@@ -261,6 +261,8 @@ class InvoicablesFormMixin(OrganizationMixin):
             if len(invoicable['options']) > 0:
                 # In case it is pure options, no lines.
                 lines_unit = invoicable['options'][0].dest_unit
+                invoicable['selected_amount'] \
+                    = invoicable['options'][0].dest_amount
             for line in invoicable['lines']:
                 lines_amount += line.dest_amount
                 lines_unit = line.dest_unit

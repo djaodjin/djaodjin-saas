@@ -30,6 +30,37 @@ function showMessages(messages, style) {
     }, 500);
 }
 
+
+function showErrorMessages(resp) {
+    var messages = [];
+    if( typeof resp === "string" ) {
+        messages = [resp];
+    } else if( resp.data ) {
+        for (var key in resp.data) {
+            if (resp.data.hasOwnProperty(key)) {
+                var message = "";
+                var sep = "";
+                for( var i = 0; i < resp.data[key].length; ++i ) {
+                    var messagePart = resp.data[key][i];
+                    if( typeof resp.data[key][i] !== 'string' ) {
+                        messagePart = JSON.stringify(resp.data[key][i]);
+                    }
+                    message += sep + messagePart;
+                    sep = ", ";
+                }
+                messages.push(key + ": " + message);
+                $("#" + key).addClass("has-error");
+                }
+        }
+    } else if( resp.detail ) {
+        messages = [resp.detail];
+    } else {
+        messages = ["Error " + resp.status + ": " + resp.statusText];
+    }
+    showMessages(messages, "error");
+};
+
+
 /** Retrieves the csrf-token from a <head> meta tag.
 
     <meta name="csrf-token" content="{{csrf_token}}">
@@ -44,48 +75,3 @@ function getMetaCSRFToken() {
     }
     return "";
 }
-
-
-function CartItem(options) {
-    "use strict";
-    this.item = {};
-    var restricted = ["plan", "nb_periods", "first_name", "last_name", "email"];
-    for(var i = 0; i < restricted.length; ++i ){
-        var key = restricted[i];
-        if( key in options ) {
-            this.item[key] = options[key];
-        }
-    }
-    this.urls = options.urls;
-}
-
-
-CartItem.prototype = {
-    add: function(successFunc, errorFunc) {
-        "use strict";
-        var self = this;
-        $.ajax({ type: "POST", // XXX Might still prefer to do PUT on list.
-                 url: self.urls.saas_api_cart,
-                 beforeSend: function(xhr) {
-                     xhr.setRequestHeader("X-CSRFToken", getMetaCSRFToken());
-                 },
-                 data: JSON.stringify(self.item),
-                 datatype: "json",
-                 contentType: "application/json; charset=utf-8",
-                 success: successFunc,
-                 error: errorFunc
-               });
-    },
-
-    remove: function(successFunction) {
-        "use strict";
-        var self = this;
-        $.ajax({ type: "DELETE",
-                 url: self.urls.saas_api_cart + self.item.plan + "/",
-                 beforeSend: function(xhr) {
-                     xhr.setRequestHeader("X-CSRFToken", getMetaCSRFToken());
-                 },
-                 success: successFunction
-               });
-    }
-};
