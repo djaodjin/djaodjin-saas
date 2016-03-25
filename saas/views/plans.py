@@ -30,10 +30,12 @@ from django.views.generic import CreateView, ListView, UpdateView
 from django.views.generic.detail import SingleObjectMixin
 
 from . import RedirectFormMixin
+from .. import settings
 from ..compat import csrf
 from ..forms import PlanForm
 from ..mixins import CartMixin, OrganizationMixin, ProviderMixin
 from ..models import CartItem, Coupon, Plan, Price
+from ..utils import get_roles
 
 
 class PlanFormMixin(OrganizationMixin, SingleObjectMixin):
@@ -118,6 +120,11 @@ djaodjin-saas/tree/master/saas/templates/saas/pricing.html>`__).
                 setattr(plan, 'discounted_period_price',
                     Price((plan.period_amount * (100 - redeemed.percent) / 100),
                      plan.unit))
+            if self.request.user.is_authenticated():
+                setattr(plan, 'managed_subscribers',
+                    get_roles(settings.MANAGER).filter(
+                        user=self.request.user,
+                        organization__subscriptions__plan=plan))
         if len(context['plan_list']) % self.line_break == 0:
             setattr(context['plan_list'], 'is_line_break', True)
         context.update({
