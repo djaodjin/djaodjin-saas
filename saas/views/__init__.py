@@ -162,7 +162,7 @@ class OrganizationRedirectView(TemplateResponseMixin, RedirectView):
             kwargs.update({self.slug_url_kwarg: organization})
             url = super(OrganizationRedirectView, self).get_redirect_url(
                 *args, **kwargs)
-            redirects += [(url, organization.printable_name)]
+            redirects += [(url, organization.printable_name, organization.slug)]
         context = {'redirects': redirects}
         urls = {
             'organization_create': reverse('saas_organization_create')
