@@ -251,12 +251,12 @@ def fail_provider(request, charge=None, organization=None, strength=NORMAL):
         organization = charge.customer
     elif organization and not isinstance(organization, Organization):
         organization = get_object_or_404(Organization, slug=organization)
-    providers = [get_broker()]
+    candidates = [get_broker()]
     if organization:
-        providers.insert(
-            0, [organization] + list(Organization.objects.providers_to(
-            organization)))
-    return not _has_valid_access(request, providers, strength=strength)
+        candidates = ([organization]
+            + list(Organization.objects.providers_to(organization))
+            + candidates)
+    return not _has_valid_access(request, candidates, strength=strength)
 
 
 def fail_provider_weak(request, charge=None, organization=None):
@@ -301,11 +301,11 @@ def fail_provider_only(request,
         organization = charge.customer
     elif organization:
         organization = get_object_or_404(Organization, slug=organization)
-    providers = [get_broker()]
+    candidates = [get_broker()]
     if organization:
-        providers.insert(
-            0, list(Organization.objects.providers_to(organization)))
-    return not _has_valid_access(request, providers, strength=strength)
+        candidates = (list(Organization.objects.providers_to(organization))
+            + candidates)
+    return not _has_valid_access(request, candidates, strength=strength)
 
 
 def fail_provider_only_weak(request, charge=None, organization=None):
@@ -351,8 +351,8 @@ def fail_self_provider(request, user=None, strength=NORMAL):
         directs = Organization.objects.accessible_by(user)
         providers = Organization.objects.providers(
             Subscription.objects.filter(organization__in=directs))
-        return not(_has_valid_access(request,
-            list(directs) + list(providers), strength))
+        candidates = list(directs) + list(providers) + [get_broker()]
+        return not _has_valid_access(request, candidates, strength)
     return False
 
 
