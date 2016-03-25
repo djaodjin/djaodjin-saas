@@ -251,10 +251,12 @@ def fail_provider(request, charge=None, organization=None, strength=NORMAL):
         organization = charge.customer
     elif organization and not isinstance(organization, Organization):
         organization = get_object_or_404(Organization, slug=organization)
+    providers = [get_broker()]
     if organization:
-        return not(_has_valid_access(request, [organization] +
-            list(Organization.objects.providers_to(organization)), strength))
-    return not _has_valid_access(request, [get_broker()], strength=strength)
+        providers.insert(
+            0, [organization] + list(Organization.objects.providers_to(
+            organization)))
+    return not _has_valid_access(request, providers, strength=strength)
 
 
 def fail_provider_weak(request, charge=None, organization=None):
@@ -299,10 +301,11 @@ def fail_provider_only(request,
         organization = charge.customer
     elif organization:
         organization = get_object_or_404(Organization, slug=organization)
+    providers = [get_broker()]
     if organization:
-        return not(_has_valid_access(request,
-            list(Organization.objects.providers_to(organization)), strength))
-    return not _has_valid_access(request, [get_broker()], strength=strength)
+        providers.insert(
+            0, list(Organization.objects.providers_to(organization)))
+    return not _has_valid_access(request, providers, strength=strength)
 
 
 def fail_provider_only_weak(request, charge=None, organization=None):

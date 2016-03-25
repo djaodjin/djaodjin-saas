@@ -122,6 +122,11 @@ djaodjin-saas/tree/master/saas/templates/saas/pricing.html>`__).
             setattr(context['plan_list'], 'is_line_break', True)
         context.update({
             'items_selected': items_selected, 'redeemed': redeemed})
+        urls = {'cart': reverse('saas_cart')}
+        if 'urls' in context:
+            context['urls'].update(urls)
+        else:
+            context.update({'urls': urls})
         return context
 
     def post(self, request, *args, **kwargs):
