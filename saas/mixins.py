@@ -167,7 +167,8 @@ class ChargeMixin(SingleObjectMixin):
         try:
             # optional
             urls_charge = {'printable_receipt': reverse(
-                'saas_printable_charge_receipt', args=(charge,))}
+                'saas_printable_charge_receipt',
+                args=(charge.customer, charge,))}
         except NoReverseMatch:
             pass
         if 'urls' in context:
