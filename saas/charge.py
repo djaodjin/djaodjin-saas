@@ -46,36 +46,35 @@ def recognize_income(until=None, dry_run=False):
     """
     #pylint:disable=too-many-locals
     until = datetime_or_now(until)
+    recognize_period = relativedelta(months=1)
     LOGGER.info("recognize income until %s ...", until)
     for subscription in Subscription.objects.filter(created_at__lte=until):
         # We need to pass through subscriptions otherwise we won't recognize
-        # income on the ones that were just cancelled.
+        # income on subscription that were just cancelled.
         with transaction.atomic():
             # [``recognize_start``, ``recognize_end``[ is one period over which
             # revenue is recognized. It will slide over the subscription
             # lifetime from ``created_at`` to ``until``.
-            to_recognize_amount = 0
-            recognize_period = relativedelta(months=1)
             order_subscribe_beg = subscription.created_at
             recognize_start = subscription.created_at
             recognize_end = recognize_start + recognize_period
-            LOGGER.debug('process %s (%d transactions)',
-                subscription, Transaction.objects.get_subscription_receivable(
-                    subscription, until=until).count())
+            LOGGER.debug('process %s', subscription)
             for order in Transaction.objects.get_subscription_receivable(
                     subscription, until=until):
                 # [``order_subscribe_beg``, ``order_subscribe_end``[ is
                 # the subset of the subscription lifetime the order paid for.
-                # It covers ``total_periods`` plan periods.
-                total_periods = order.get_event().plan.period_number(
+                # It covers ``order_periods`` plan periods.
+                order_amount = order.dest_amount
+                order_periods = order.get_event().plan.period_number(
                     order.descr)
                 order_subscribe_end = subscription.plan.end_of_period(
-                    order_subscribe_beg, nb_periods=total_periods)
+                    order_subscribe_beg, nb_periods=order_periods)
                 min_end = min(order_subscribe_end, until)
-                LOGGER.debug('\tprocess order %d of %dc covering [%s, %s['\
-                    ' (%s periods) until %s', order.id, order.dest_amount,
+                LOGGER.debug('\tprocess order %d %s of %dc covering [%s, %s['\
+                    ' (%s periods) until %s', order.id,
+                    subscription, order.dest_amount,
                     order_subscribe_beg, order_subscribe_end,
-                    total_periods, min_end)
+                    order_periods, min_end)
                 while recognize_end <= min_end:
                     # we use ``<=`` here because we compare that bounds
                     # are equal instead of searching for points within
@@ -83,38 +82,32 @@ def recognize_income(until=None, dry_run=False):
                     nb_periods = subscription.nb_periods(
                         recognize_start, recognize_end)
                     to_recognize_amount = (
-                        nb_periods * order.dest_amount) / total_periods
-                    recognized_amount, _ = \
+                        nb_periods * order_amount) / order_periods
+                    balance = \
                         Transaction.objects.get_subscription_income_balance(
                             subscription,
-                            starts_at=recognize_start,
-                            ends_at=recognize_end)
+                            starts_at=recognize_start, ends_at=recognize_end)
+                    recognized_amount = balance['amount']
                     # We are not computing a balance sheet here but looking for
                     # a positive amount to compare with the revenue that should
                     # have been recognized.
                     recognized_amount = abs(recognized_amount)
-                    LOGGER.debug("%dc to recognize vs. %dc recognized in "\
-                        "[%s, %s[", to_recognize_amount, recognized_amount,
-                        recognize_start, recognize_end)
+                    LOGGER.debug("%dc (%d * %dc / %d) to recognize"\
+                        " vs. %dc recognized in [%s, %s[", to_recognize_amount,
+                        nb_periods, order_amount, order_periods,
+                        recognized_amount, recognize_start, recognize_end)
                     if to_recognize_amount > recognized_amount:
                         # We have some amount of revenue to recognize here.
-                        # ``at_time`` is set just before ``recognize_end``
-                        # so we do not include the newly created transaction
-                        # in the subsequent period.
                         amount = to_recognize_amount - recognized_amount
-                        at_time = recognize_end - relativedelta(seconds=1)
-                        LOGGER.info(
-                            'RECOGNIZE %dc for %s:%s in [%s, %s[',
-                            amount, subscription.organization,
-                            subscription.plan, recognize_start, recognize_end)
-                        if not dry_run:
-                            Transaction.objects.create_income_recognized(
-                                subscription, amount=amount, at_time=at_time,
-                                descr=DESCRIBE_RECOGNIZE_INCOME % {
-                                    'subscription': subscription,
-                                    'nb_periods': nb_periods,
-                                    'period_start': recognize_start,
-                                    'period_end': recognize_end})
+                        Transaction.objects.create_income_recognized(
+                            subscription, amount=amount,
+                            starts_at=recognize_start, ends_at=recognize_end,
+                            descr=DESCRIBE_RECOGNIZE_INCOME % {
+                                'subscription': subscription,
+                                'nb_periods': nb_periods,
+                                'period_start': recognize_start,
+                                'period_end': recognize_end},
+                            dry_run=dry_run)
                     recognize_start = recognize_end
                     recognize_end += recognize_period
                 order_subscribe_beg = order_subscribe_end
@@ -130,12 +123,15 @@ def extend_subscriptions(at_time=None, dry_run=False):
     LOGGER.info("extend subscriptions at %s ...", at_time)
     for subscription in Subscription.objects.filter(
             auto_renew=True, created_at__lte=at_time, ends_at__gt=at_time):
-        _, upper = subscription.period_for(at_time)
-        if upper == subscription.ends_at:
-            # We are in the last period
-            LOGGER.info('EXTENDS subscription of %s to %s at %s for 1 period',
-                subscription.organization, subscription.plan,
-                subscription.ends_at)
+        lower, upper = subscription.period_for(at_time)
+        LOGGER.info("at_time (%s) in period [%s, %s[ of %s ending at %s",
+            at_time, lower, upper, subscription, subscription.ends_at)
+        days_from_end = relativedelta(subscription.ends_at, at_time).days
+        if (upper == subscription.ends_at
+            and (days_from_end >= 0 and days_from_end < 1)):
+            # We are in the last day of the last period.
+            LOGGER.info("EXTENDS subscription %s ending at %s for 1 period",
+                subscription, subscription.ends_at)
             if not dry_run:
                 with transaction.atomic():
                     _ = Transaction.objects.execute_order([

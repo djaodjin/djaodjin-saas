@@ -975,11 +975,11 @@ class Charge(models.Model):
             ; Distribute processor fee and funds to the provider
 
             yyyy/mm/dd processor fee paid by provider
-                provider:Receivable                      processor_fee
+                provider:Expenses                        processor_fee
                 processor:Backlog
 
             yyyy/mm/dd distribution to provider (backlog accounting)
-                provider:Receivable                      distribute_amount
+                provider:Receivable                      plan_amount
                 provider:Backlog
 
             yyyy/mm/dd distribution to provider
@@ -997,11 +997,11 @@ class Charge(models.Model):
                 xia:Payable
 
             2014/09/10 Charge ch_ABC123 processor fee for open-space
-                cowork:Receivable                       $5.22
+                cowork:Expenses                         $5.22
                 stripe:Backlog
 
             2014/09/10 Charge ch_ABC123 distribution for open-space
-                cowork:Receivable                     $174.77
+                cowork:Receivable                     $189.00
                 cowork:Backlog
 
             2014/09/10 Charge ch_ABC123 distribution for open-space
@@ -1041,9 +1041,9 @@ class Charge(models.Model):
             # we create Payable to Liability transaction in order to correct
             # the accounts amounts. This is a side effect of the atomicity
             # requirement for a ``Transaction`` associated to a ``Charge``.
-            balance_payable, _ = \
-                Transaction.objects.get_event_balance(
-                    invoiced_item.event_id, Transaction.PAYABLE)
+            balance = Transaction.objects.get_event_balance(
+                invoiced_item.event_id, account=Transaction.PAYABLE)
+            balance_payable = balance['amount']
             if balance_payable > 0:
                 available = min(invoiced_item.dest_amount, balance_payable)
                 # Example:
@@ -1066,17 +1066,17 @@ class Charge(models.Model):
             # XXX used for provider and in description.
             event = invoiced_item.get_event()
             provider = event.provider
-            charge_item_amount = invoiced_item.dest_amount
+            orig_item_amount = invoiced_item.dest_amount
             # Has long as we have only one item and charge/funds are using
             # same unit, multiplication and division are carefully crafted
             # to keep full precision.
             # XXX to check with transfer btw currencies and multiple items.
-            orig_fee_amount = (charge_item_amount *
+            orig_fee_amount = (orig_item_amount *
                 total_fee_amount / (total_distribute_amount + total_fee_amount))
-            orig_distribute_amount = charge_item_amount - orig_fee_amount
-            fee_amount = ((total_fee_amount * charge_item_amount / self.amount))
+            orig_distribute_amount = orig_item_amount - orig_fee_amount
+            fee_amount = ((total_fee_amount * orig_item_amount / self.amount))
             distribute_amount = (
-                total_distribute_amount * charge_item_amount / self.amount)
+                total_distribute_amount * orig_item_amount / self.amount)
             LOGGER.debug("payment_successful(charge=%s) distribute: %d %s, "\
                 "fee: %d %s out of total distribute: %d %s, total fee: %d %s",
                 self.processor_key, distribute_amount, funds_unit,
@@ -1086,7 +1086,7 @@ class Charge(models.Model):
             if fee_amount > 0:
                 # Example:
                 # 2014/01/15 fee to cowork
-                #     cowork:Receivable                             900
+                #     cowork:Expenses                             900
                 #     stripe:Backlog
                 charge_item.invoiced_fee = Transaction.objects.create(
                     created_at=self.created_at,
@@ -1095,7 +1095,7 @@ class Charge(models.Model):
                     event_id=self.id,
                     dest_unit=self.unit,
                     dest_amount=orig_fee_amount,
-                    dest_account=Transaction.RECEIVABLE,
+                    dest_account=Transaction.EXPENSES,
                     dest_organization=provider,
                     orig_unit=processor_funds_unit,
                     orig_amount=fee_amount,
@@ -1111,19 +1111,19 @@ class Charge(models.Model):
             #     cowork:Backlog
             #
             # 2014/01/15 distribution due to cowork
-            #     cowork:Funds                                  8000
+            #     cowork:Funds                                  7000
             #     stripe:Funds
             Transaction.objects.create(
-                event_id=self.id,
+                event_id=event.id,
                 created_at=self.created_at,
                 descr=DESCRIBE_CHARGED_CARD_PROVIDER % {
                         'charge': self.processor_key, 'event': event},
                 dest_unit=self.unit,
-                dest_amount=orig_distribute_amount,
+                dest_amount=orig_item_amount,
                 dest_account=Transaction.RECEIVABLE,
                 dest_organization=provider,
                 orig_unit=funds_unit,
-                orig_amount=distribute_amount,
+                orig_amount=orig_item_amount,
                 orig_account=Transaction.BACKLOG,
                 orig_organization=provider)
 
@@ -2163,8 +2163,9 @@ class TransactionManager(models.Manager):
             # we create Payable to Liability transaction in order to correct
             # the accounts amounts. This is a side effect of the atomicity
             # requirement for a ``Transaction`` associated to offline payment.
-            balance_payable, _ = \
-                self.get_event_balance(subscription.id, Transaction.PAYABLE)
+            balance = self.get_event_balance(subscription.id,
+                account=Transaction.PAYABLE)
+            balance_payable = balance['amount']
             if balance_payable > 0:
                 available = min(amount, balance_payable)
                 Transaction.objects.create(
@@ -2270,20 +2271,35 @@ class TransactionManager(models.Manager):
             | Q(dest_account=Transaction.LIABILITY),
             dest_organization=organization, **kwargs)
 
+    def get_capture(self, order):
+        """
+        Returns ``Transaction`` that corresponds to the capture
+        of the Receivable generated by *order*.
+        """
+        return self.filter(event_id=order.event_id,
+            orig_account=Transaction.BACKLOG,
+            dest_account=Transaction.RECEIVABLE,
+            created_at__gte=order.created_at).order_by('created_at').first()
+
     def get_balance(self, organization=None, account=None, like_account=None,
-                    until=None, **kwargs):
+                    starts_at=None, ends_at=None, **kwargs):
         """
         Returns the balance ``until`` a certain date (Today by default).
         The balance can be constraint to a single organization and/or
         for a specific account. The account can be fully qualified or
         a selector pattern.
         """
-        #pylint:disable=too-many-locals
-        until = datetime_or_now(until)
+        #pylint:disable=too-many-locals,too-many-arguments
         dest_params = {}
         orig_params = {}
         dest_params.update(kwargs)
         orig_params.update(kwargs)
+        if starts_at:
+            dest_params.update({'created_at__gte': starts_at})
+            orig_params.update({'created_at__gte': starts_at})
+        if ends_at:
+            dest_params.update({'created_at__lt': ends_at})
+            orig_params.update({'created_at__lt': ends_at})
         if organization is not None:
             dest_params.update({'dest_organization': organization})
             orig_params.update({'orig_organization': organization})
@@ -2293,13 +2309,11 @@ class TransactionManager(models.Manager):
         elif like_account is not None:
             dest_params.update({'dest_account__icontains': like_account})
             orig_params.update({'orig_account__icontains': like_account})
-        balance = sum_dest_amount(
-            self.filter(created_at__lt=until, **dest_params))
+        balance = sum_dest_amount(self.filter(**dest_params))
         dest_amount = balance['amount']
         dest_unit = balance['unit']
         dest_created_at = balance['created_at']
-        balance = sum_orig_amount(
-            self.filter(created_at__lt=until, **orig_params))
+        balance = sum_orig_amount(self.filter(**orig_params))
         orig_amount = balance['amount']
         orig_unit = balance['unit']
         orig_created_at = balance['created_at']
@@ -2309,8 +2323,8 @@ class TransactionManager(models.Manager):
             unit = dest_unit
         elif dest_unit != orig_unit:
             raise ValueError('orig and dest balances until %s for account'\
-' %s of %s have different unit (%s vs. %s).' % (until, account, organization,
-                orig_unit, dest_unit))
+' %s of %s have different unit (%s vs. %s).' % (datetime_or_now(ends_at),
+                account, organization, orig_unit, dest_unit))
         else:
             unit = dest_unit
         return {'amount': dest_amount - orig_amount, 'unit': unit,
@@ -2366,35 +2380,14 @@ class TransactionManager(models.Manager):
         dest_unit = balance['unit']
         return dest_amount, dest_unit
 
-    def get_event_balance(self, event_id, account,
-                          starts_at=None, ends_at=None):
+    def get_event_balance(self, event_id,
+                          account=None, starts_at=None, ends_at=None):
         """
         Returns the balance on a *event_id* for an *account*
         for the period [*starts_at*, *ends_at*[ as a tuple (amount, unit).
         """
-        kwargs = {}
-        if starts_at:
-            kwargs.update({'created_at__gte': starts_at})
-        if ends_at:
-            kwargs.update({'created_at__lt': ends_at})
-        balance = sum_dest_amount(self.filter(
-            dest_account=account, event_id=event_id, **kwargs))
-        dest_amount = balance['amount']
-        dest_unit = balance['unit']
-        balance = sum_orig_amount(self.filter(
-            orig_account=account, event_id=event_id, **kwargs))
-        orig_amount = balance['amount']
-        orig_unit = balance['unit']
-        if dest_unit is None:
-            unit = orig_unit
-        elif orig_unit is None:
-            unit = dest_unit
-        elif dest_unit != orig_unit:
-            raise ValueError('orig and dest balances for event %s'\
-' have different unit (%s vs. %s).' % (event_id, orig_unit, dest_unit))
-        else:
-            unit = dest_unit
-        return dest_amount - orig_amount, unit
+        return self.get_balance(event_id=event_id, account=account,
+            starts_at=starts_at, ends_at=ends_at)
 
     def get_subscription_income_balance(self, subscription,
                                         starts_at=None, ends_at=None):
@@ -2402,8 +2395,8 @@ class TransactionManager(models.Manager):
         Returns the recognized income balance on a subscription
         for the period [starts_at, ends_at[ as a tuple (amount, unit).
         """
-        return self.get_event_balance(subscription.id, Transaction.INCOME,
-            starts_at=starts_at, ends_at=ends_at)
+        return self.get_event_balance(subscription.id,
+            account=Transaction.INCOME, starts_at=starts_at, ends_at=ends_at)
 
     def get_subscription_invoiceables(self, subscription, until=None):
         """
@@ -2583,7 +2576,7 @@ class TransactionManager(models.Manager):
             event_id=subscription.id)
 
     def create_income_recognized(self, subscription,
-                                 amount=None, at_time=None, descr=None):
+        amount=0, starts_at=None, ends_at=None, descr=None, dry_run=False):
         """
         When a period ends and we either have a ``Backlog`` (payment
         was made before the period starts) or a ``Receivable`` (invoice
@@ -2604,22 +2597,29 @@ class TransactionManager(models.Manager):
                 cowork:Backlog                         $179.99
                 cowork:Income
         """
+        #pylint:disable=unused-argument,too-many-arguments
         created_transactions = []
-        created_at = datetime_or_now(at_time)
-        balance = self.get_balance(
-            organization=subscription.plan.organization,
-            account=Transaction.BACKLOG,
-            event_id=subscription.id)
-        backlog_amount = balance['amount']
-        balance = self.get_balance(
-            organization=subscription.plan.organization,
-            account=Transaction.RECEIVABLE,
-            event_id=subscription.id)
-        receivable_amount = balance['amount']
-        receivable_amount = abs(receivable_amount) # direction
-        if backlog_amount > 0:
+        ends_at = datetime_or_now(ends_at)
+        # ``created_at`` is set just before ``ends_at``
+        # so we do not include the newly created transaction
+        # in the subsequent period.
+        created_at = ends_at - relativedelta(seconds=1)
+        balance = self.get_event_balance(subscription.id,
+            account=Transaction.BACKLOG, ends_at=ends_at)
+        backlog_amount = - balance['amount'] # def. balance must be negative
+        balance = self.get_event_balance(subscription.id,
+            account=Transaction.RECEIVABLE, ends_at=ends_at)
+        receivable_amount = - balance['amount'] # def. balance must be negative
+        LOGGER.debug("recognize %dc with %dc backlog available,"\
+            " %dc receivable available at %s",
+            amount, backlog_amount, receivable_amount, ends_at)
+        assert backlog_amount >= 0 or receivable_amount >= 0
+        if amount > 0 and backlog_amount > 0:
             available = min(amount, backlog_amount)
-            created_transactions += [self.create(
+            LOGGER.info(
+                'RECOGNIZE BACKLOG %dc for %s at %s',
+                available, subscription, created_at)
+            recognized = Transaction(
                 created_at=created_at,
                 descr=descr,
                 event_id=subscription.id,
@@ -2630,11 +2630,17 @@ class TransactionManager(models.Manager):
                 orig_amount=available,
                 orig_unit=subscription.plan.unit,
                 orig_account=Transaction.INCOME,
-                orig_organization=subscription.plan.organization)]
-            amount -= backlog_amount
-        if receivable_amount > 0:
+                orig_organization=subscription.plan.organization)
+            if not dry_run:
+                recognized.save()
+            created_transactions += [recognized]
+            amount -= available
+        if amount > 0 and receivable_amount > 0:
             available = min(amount, receivable_amount)
-            created_transactions += [self.create(
+            LOGGER.info(
+                'RECOGNIZE RECEIVABLE %dc for %s at %s',
+                available, subscription, created_at)
+            recognized = Transaction(
                 created_at=created_at,
                 descr=descr,
                 event_id=subscription.id,
@@ -2645,7 +2651,10 @@ class TransactionManager(models.Manager):
                 orig_amount=available,
                 orig_unit=subscription.plan.unit,
                 orig_account=Transaction.INCOME,
-                orig_organization=subscription.plan.organization)]
+                orig_organization=subscription.plan.organization)
+            if not dry_run:
+                recognized.save()
+            created_transactions += [recognized]
             amount -= available
         assert amount == 0
         return created_transactions

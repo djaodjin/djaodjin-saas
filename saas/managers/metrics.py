@@ -274,7 +274,7 @@ def monthly_balances(organization=None, account=None, like_account=None,
     values = []
     for end_period in month_periods(from_date=until):
         balance = Transaction.objects.get_balance(organization=organization,
-            account=account, like_account=like_account, until=end_period)
+            account=account, like_account=like_account, ends_at=end_period)
         values.append([end_period, abs(balance['amount'])])
     return values
 
@@ -284,7 +284,7 @@ def quaterly_balances(organization=None, account=None, like_account=None,
     values = []
     for end_period in month_periods(from_date=until, step_months=3):
         balance = Transaction.objects.get_balance(organization=organization,
-            account=account, like_account=like_account, until=end_period)
+            account=account, like_account=like_account, ends_at=end_period)
         values.append([end_period, abs(balance['amount'])])
     return values
 
