@@ -1672,15 +1672,15 @@ class Plan(models.Model):
         """
         result = None
         if self.interval == self.HOURLY:
-            pat = r'(\d+) hour'
+            pat = r'(\d+)(\s|-)hour'
         elif self.interval == self.DAILY:
-            pat = r'(\d+) day'
+            pat = r'(\d+)(\s|-)day'
         elif self.interval == self.WEEKLY:
-            pat = r'(\d+) week'
+            pat = r'(\d+)(\s|-)week'
         elif self.interval == self.MONTHLY:
-            pat = r'(\d+) month'
+            pat = r'(\d+)(\s|-)month'
         elif self.interval == self.YEARLY:
-            pat = r'(\d+) year'
+            pat = r'(\d+)(\s|-)year'
         else:
             raise ValueError("period type %d is not defined."
                 % self.interval)
@@ -1944,7 +1944,7 @@ class Subscription(models.Model):
                 upper = upper + period
         # Both lower and upper fall on an exact period multiple
         # from ``created_at``. This might not be the case for ``ends_at``.
-        return (lower, min(upper, self.ends_at))
+        return (min(lower, self.ends_at), min(upper, self.ends_at))
 
 
     def nb_periods(self, start=None, until=None):
@@ -1967,10 +1967,12 @@ class Subscription(models.Model):
             elif self.plan.interval == Plan.WEEKLY:
                 estimated = delta.days / 7
             elif self.plan.interval == Plan.MONTHLY:
-                estimated = delta.days / 30
+                estimated = relativedelta(until_lower, start_upper).months
             elif self.plan.interval == Plan.YEARLY:
                 estimated = delta.days / 365
             upper = self.plan.end_of_period(start_upper, nb_periods=estimated)
+#            LOGGER.debug("end of %d %s periods from %s => %s",
+#               estimated, self.plan.get_interval_display(), start_upper, upper)
             if upper < until_lower:
                 full_periods = estimated + 1
             else:
@@ -1978,11 +1980,19 @@ class Subscription(models.Model):
         else:
             full_periods = 0
         # partial-at-start + full periods + partial-at-end
-        return ((start_upper - start).total_seconds()
-                / (start_upper - start_lower).total_seconds()
-                + full_periods
-                + (until - until_lower).total_seconds()
-                / (until_upper - until_lower).total_seconds())
+        start_period_total_seconds = (start_upper - start_lower).total_seconds()
+        if start_period_total_seconds > 0:
+            partial_start_period = ((start_upper - start).total_seconds()
+                / start_period_total_seconds)
+        else:
+            partial_start_period = 0
+        end_period_total_seconds = (until_upper - until_lower).total_seconds()
+        if end_period_total_seconds > 0:
+            partial_end_period = ((until - until_lower).total_seconds()
+                / end_period_total_seconds)
+        else:
+            partial_end_period = 0
+        return partial_start_period + full_periods + partial_end_period
 
     def charge_in_progress(self):
         queryset = Charge.objects.filter(

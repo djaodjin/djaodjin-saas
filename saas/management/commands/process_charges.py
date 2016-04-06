@@ -24,13 +24,18 @@
 
 """Command for the cron job. Create credit card charges"""
 
+import logging, time
 from optparse import make_option
 
 from django.core.management.base import BaseCommand
 
 from ...charge import (recognize_income, extend_subscriptions,
-    create_charges_for_balance)
+    create_charges_for_balance, complete_charges)
 from ...utils import datetime_or_now
+
+
+LOGGER = logging.getLogger(__name__)
+
 
 class Command(BaseCommand):
     """Charges for due balance"""
@@ -39,14 +44,27 @@ class Command(BaseCommand):
     option_list = BaseCommand.option_list + (
         make_option('--dry-run', action='store_true',
             dest='dry_run', default=False,
-            help='Do not commit execution'),
+            help='Do not commit transactions nor submit charges to processor'),
+        make_option('--no-charges', action='store_true',
+            dest='no_charges', default=False,
+            help='Do not submit charges to processor'),
         make_option('--at-time', action='store',
             dest='at_time', default=None,
             help='Specifies the time at which the command runs'))
 
     def handle(self, *args, **options):
         dry_run = options['dry_run']
+        no_charges = options['no_charges']
         end_period = datetime_or_now(options['at_time'])
+        if dry_run:
+            LOGGER.warning("dry_run: no changes will be committed.")
+        if no_charges:
+            LOGGER.warning("no_charges: no charges will be submitted.")
         recognize_income(end_period, dry_run=dry_run)
         extend_subscriptions(end_period, dry_run=dry_run)
-        create_charges_for_balance(end_period, dry_run=dry_run)
+        create_charges_for_balance(end_period, dry_run=dry_run or no_charges)
+        if not (dry_run or no_charges):
+            # Let's complete the in flight charges after we have given
+            # them time to settle.
+            time.sleep(30)
+            complete_charges()
