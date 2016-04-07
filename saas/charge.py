@@ -124,7 +124,7 @@ def extend_subscriptions(at_time=None, dry_run=False):
     for subscription in Subscription.objects.filter(
             auto_renew=True, created_at__lte=at_time, ends_at__gt=at_time):
         lower, upper = subscription.period_for(at_time)
-        LOGGER.info("at_time (%s) in period [%s, %s[ of %s ending at %s",
+        LOGGER.debug("at_time (%s) in period [%s, %s[ of %s ending at %s",
             at_time, lower, upper, subscription, subscription.ends_at)
         days_from_end = relativedelta(subscription.ends_at, at_time).days
         if (upper == subscription.ends_at

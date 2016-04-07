@@ -2716,6 +2716,7 @@ class Transaction(models.Model):
     BACKLOG = 'Backlog'       # always <= 0
     INCOME = 'Income'         # always <= 0
     OFFLINE = 'Offline'
+    EXPENSES = 'Expenses'
 
     # subscriber side
     PAYABLE = 'Payable'       # always >= 0
