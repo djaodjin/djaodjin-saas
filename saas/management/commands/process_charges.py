@@ -25,7 +25,6 @@
 """Command for the cron job. Create credit card charges"""
 
 import logging, time
-from optparse import make_option
 
 from django.core.management.base import BaseCommand
 
@@ -38,19 +37,19 @@ LOGGER = logging.getLogger(__name__)
 
 
 class Command(BaseCommand):
-    """Charges for due balance"""
+    help = """Recognized backlog, extends subscription and charge due balance
+on credit cards"""
 
-    help = "Recognized backlog and charge due balance on credit cards"
-    option_list = BaseCommand.option_list + (
-        make_option('--dry-run', action='store_true',
+    def add_arguments(self, parser):
+        parser.add_argument('--dry-run', action='store_true',
             dest='dry_run', default=False,
-            help='Do not commit transactions nor submit charges to processor'),
-        make_option('--no-charges', action='store_true',
+            help='Do not commit transactions nor submit charges to processor')
+        parser.add_argument('--no-charges', action='store_true',
             dest='no_charges', default=False,
-            help='Do not submit charges to processor'),
-        make_option('--at-time', action='store',
+            help='Do not submit charges to processor')
+        parser.add_argument('--at-time', action='store',
             dest='at_time', default=None,
-            help='Specifies the time at which the command runs'))
+            help='Specifies the time at which the command runs')
 
     def handle(self, *args, **options):
         dry_run = options['dry_run']

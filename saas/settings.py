@@ -32,6 +32,9 @@ from django.conf import settings
 _SETTINGS = {
     # Organization for which pass_contributor is always True.
     'BYPASS_CONTRIBUTOR_CHECK': [],
+    # Do not check the auth token against the processor to set processor keys.
+    # (useful while testing).
+    'BYPASS_PROCESSOR_AUTH': False,
     'CREDIT_ON_CREATE': 1000,
     'EXTRA_MIXIN': object,
     'ORGANIZATION_MODEL': 'saas.Organization',
@@ -60,6 +63,7 @@ AUTH_USER_MODEL = getattr(
     settings, 'AUTH_USER_MODEL', 'django.contrib.auth.models.User')
 
 BYPASS_CONTRIBUTOR_CHECK = _SETTINGS.get('BYPASS_CONTRIBUTOR_CHECK')
+BYPASS_PROCESSOR_AUTH = _SETTINGS.get('BYPASS_PROCESSOR_AUTH')
 CREDIT_ON_CREATE = _SETTINGS.get('CREDIT_ON_CREATE')
 EXTRA_MIXIN = _SETTINGS.get('EXTRA_MIXIN')
 ORGANIZATION_MODEL = _SETTINGS.get('ORGANIZATION_MODEL')

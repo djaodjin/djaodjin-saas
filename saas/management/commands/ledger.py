@@ -23,7 +23,6 @@
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import datetime, re, sys
-from optparse import make_option
 
 from django.core.management.base import BaseCommand
 from django.db import transaction
@@ -33,27 +32,27 @@ from ...ledger import export
 from ...models import Organization, Transaction
 
 class Command(BaseCommand):
-    help = 'Manage ledger.'
-    option_list = BaseCommand.option_list + (
-        make_option('--database', action='store',
-            dest='database', default='default',
-            help='connect to database specified.'),
-        make_option('--broker', action='store',
-            dest='broker', default='default',
-            help='broker for the site'),
-       make_option('--create-organizations', action='store_true',
-            dest='create_organizations', default=False,
-            help='Create organization if it does not exist.'),
-        )
+    help = 'Import/export transactions in ledger format.'
 
     requires_model_validation = False
+
+    def add_arguments(self, parser):
+        parser.add_argument('--database', action='store',
+            dest='database', default='default',
+            help='connect to database specified.')
+        parser.add_argument('--broker', action='store',
+            dest='broker', default='default',
+            help='broker for the site')
+        parser.add_argument('--create-organizations', action='store_true',
+            dest='create_organizations', default=False,
+            help='Create organization if it does not exist.')
 
     def handle(self, *args, **options):
         #pylint: disable=too-many-locals
         subcommand = args[0]
         using = options['database']
         if subcommand == 'export':
-            export(sys.stdout, Transaction.objects.using(using).all().order_by(
+            export(self.stdout, Transaction.objects.using(using).all().order_by(
                 'created_at'))
 
         elif subcommand == 'import':

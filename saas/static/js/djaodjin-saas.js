@@ -359,8 +359,10 @@ CartItem.prototype = {
                 totalAmountText = "$" + totalAmountText;
             }
             var grouped = "";
+            var sep = "";
             for( var idx = totalAmountText.length - 3 ; idx > 3; idx -= 3 ) {
-                grouped += ',' + totalAmountText.substring(idx - 3, idx)
+                grouped += totalAmountText.substring(idx - 3, idx) + sep;
+                sep = ",";
             }
             grouped = (totalAmountText.substring(0, idx) + grouped
                        + totalAmountText.substring(totalAmountText.length - 3));

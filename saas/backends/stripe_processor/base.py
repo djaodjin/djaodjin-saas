@@ -176,10 +176,20 @@ class StripeBackend(object):
                 'client_id': self.client_id,
                 'client_secret': self.priv_key,
                 'code': code}
-        # Make /oauth/token endpoint POST request (XXX not available in stripe
-        # library code?)
-        resp = requests.post('https://connect.stripe.com/oauth/token',
-            params=data)
+        if not settings.BYPASS_PROCESSOR_AUTH:
+            # Make /oauth/token endpoint POST request
+            # (XXX not available in stripe library code?)
+            resp = requests.post('https://connect.stripe.com/oauth/token',
+                params=data)
+        else:
+            # Use mockup bogus data
+            resp = requests.Response()
+            resp.status_code = 200
+            #pylint:disable=protected-access
+            resp._content = '{"stripe_publishable_key": "123456789",'\
+                '"access_token": "123456789",'\
+                '"stripe_user_id": "123456789",'\
+                '"refresh_token": "123456789"}'
         # Grab access_token (use this as your user's API key)
         data = resp.json()
         if resp.status_code != 200:

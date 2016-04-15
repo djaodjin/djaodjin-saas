@@ -23,7 +23,6 @@
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import sys
-from optparse import make_option
 
 from django.core.management.base import BaseCommand
 
@@ -33,16 +32,13 @@ from ...models import Organization
 
 
 class Command(BaseCommand):
-    option_list = BaseCommand.option_list + (
-        make_option('-n',
-            action='store_true',
-            dest='no_execute',
-            default=False,
-            help='Print but do not execute'),
-        )
     help = """Delete the (customer) account associated with an organization
 from the payment processor service."""
     args = 'regex'
+
+    def add_arguments(self, parser):
+        parser.add_argument('-n', action='store_true', dest='no_execute',
+            default=False, help='Print but do not execute')
 
     def handle(self, *args, **options):
         pat = r'.*'

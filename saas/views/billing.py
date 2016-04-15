@@ -567,9 +567,9 @@ class CartBaseView(InvoicablesFormMixin, FormView):
     the user can choose from. Options usually include various number of periods
     that can be pre-paid now for a discount. ex:
 
-        $189.00 Subscription to streetside until 2015/11/07 (1 month)
-        $510.30 Subscription to streetside until 2016/01/07 (3 months, 10% off)
-        $907.20 Subscription to streetside until 2016/04/07 (6 months, 20% off)
+        $189.00 Subscription to medium-plan until 2015/11/07 (1 month)
+        $510.30 Subscription to medium-plan until 2016/01/07 (3 months, 10% off)
+        $907.20 Subscription to medium-plan until 2016/04/07 (6 months, 20% off)
     """
 
     def dispatch(self, *args, **kwargs):

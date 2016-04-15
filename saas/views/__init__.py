@@ -60,17 +60,45 @@ def session_cart_to_database(request):
     if request.session.has_key('cart_items'):
         with transaction.atomic():
             for item in request.session['cart_items']:
-                plan = Plan.objects.get(slug=item['plan'])
-                item['plan'] = plan
-                item['user'] = request.user
-                try:
-                    CartItem.objects.create(**item)
-                except IntegrityError: #pylint: disable=catching-non-exception
-                    # This might happen during testing of the place order
-                    # through the test driver. Either way, if the item is
-                    # already in the cart, it is OK to forget about this
-                    # exception.
-                    LOGGER.warning('%s is already in cart db.', item)
+                coupon = item.get('coupon', None)
+                nb_periods = item.get('nb_periods', 0)
+                first_name = item.get('first_name', '')
+                last_name = item.get('last_name', '')
+                email = item.get('email', '')
+                # We use ``filter(...).first()`` instead of ``get_or_create()``
+                # here just in case the database is inconsistent and multiple
+                # ``CartItem`` are already present.
+                cart_item = CartItem.objects.get_cart(
+                    user=request.user, plan__slug=item['plan']).filter(
+                    first_name=first_name, last_name=last_name,
+                    email=email).first()
+                # if the item is already in the cart, it is OK to forget about
+                # any additional count of it. We are just going to constraint
+                # the available one further.
+                if cart_item:
+                    updated = False
+                    if coupon and not cart_item.coupon:
+                        cart_item.coupon = coupon
+                        updated = True
+                    if nb_periods and not cart_item.nb_periods:
+                        cart_item.nb_periods = nb_periods
+                        updated = True
+                    if first_name and not cart_item.first_name:
+                        cart_item.first_name = first_name
+                        updated = True
+                    if last_name and not cart_item.last_name:
+                        cart_item.last_name = last_name
+                        updated = True
+                    if email and not cart_item.email:
+                        cart_item.email = email
+                        updated = True
+                    if updated:
+                        cart_item.save()
+                else:
+                    CartItem.objects.create(
+                        user=request.user, plan__slug=item['plan'],
+                        first_name=first_name, last_name=last_name, email=email,
+                        coupon=coupon, nb_periods=nb_periods)
             del request.session['cart_items']
     redeemed = request.session.get('redeemed', None)
     if redeemed:

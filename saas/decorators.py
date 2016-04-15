@@ -182,10 +182,12 @@ def fail_paid_subscription(request, organization=None, plan=None):
         organization=organization, plan=plan,
         ends_at__gt=subscribed_at)
     if not subscriptions.exists():
-        return reverse('saas_cart_plan_list')
+        return "%s?%s=%s" % (
+            reverse('saas_cart_plan_list'), REDIRECT_FIELD_NAME,
+            reverse('saas_organization_cart', args=(organization,)))
     if subscriptions.first().is_locked:
         return reverse(
-            'saas_organization_balance', args=(organization.slug, plan.slug))
+            'saas_organization_balance', args=(organization, plan))
     return False
 
 
