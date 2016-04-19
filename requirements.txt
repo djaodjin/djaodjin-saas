@@ -4,7 +4,7 @@ djangorestframework>=3.3.1
 django-extra-views>=0.6.5
 django-countries>=2.1.2
 django-localflavor>=1.0
-djaodjin-deployutils>=0.2.7
+djaodjin-deployutils>=0.2.8
 # We need Python Markdown for django.contrib.markup. markdown2 is not enough.
 Markdown>=2.4
 python-dateutil>=2.2
