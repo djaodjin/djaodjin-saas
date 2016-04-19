@@ -31,7 +31,7 @@ from django.conf.urls import url
 from ....settings import ACCT_REGEX
 from ....api.backend import RetrieveBankAPIView
 from ....api.coupons import CouponListAPIView, CouponDetailAPIView
-from ....api.transactions import TransferListAPIView
+from ....api.transactions import ReceivablesListAPIView, TransferListAPIView
 
 urlpatterns = [
     url(r'^billing/(?P<organization>%s)/bank/?' % ACCT_REGEX,
@@ -41,6 +41,8 @@ urlpatterns = [
         CouponDetailAPIView.as_view(), name='saas_api_coupon_detail'),
     url(r'^billing/(?P<organization>%s)/coupons/?'  % ACCT_REGEX,
         CouponListAPIView.as_view(), name='saas_api_coupon_list'),
+    url(r'^billing/(?P<organization>%s)/receivables/?' % ACCT_REGEX,
+        ReceivablesListAPIView.as_view(), name='saas_api_receivables'),
     url(r'^billing/(?P<organization>%s)/transfers/?' % ACCT_REGEX,
         TransferListAPIView.as_view(), name='saas_api_transfer_list'),
 ]

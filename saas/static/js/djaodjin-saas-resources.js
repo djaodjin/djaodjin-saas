@@ -1,6 +1,5 @@
 function showMessages(messages, style) {
     "use strict";
-
     if( typeof toastr !== 'undefined' ) {
         for( var i = 0; i < messages.length; ++i ) {
             toastr[style](messages[i]);
@@ -35,27 +34,28 @@ function showErrorMessages(resp) {
     var messages = [];
     if( typeof resp === "string" ) {
         messages = [resp];
-    } else if( resp.data ) {
-        for (var key in resp.data) {
-            if (resp.data.hasOwnProperty(key)) {
-                var message = "";
-                var sep = "";
-                for( var i = 0; i < resp.data[key].length; ++i ) {
-                    var messagePart = resp.data[key][i];
-                    if( typeof resp.data[key][i] !== 'string' ) {
-                        messagePart = JSON.stringify(resp.data[key][i]);
-                    }
-                    message += sep + messagePart;
-                    sep = ", ";
-                }
-                messages.push(key + ": " + message);
-                $("#" + key).addClass("has-error");
-                }
-        }
-    } else if( resp.detail ) {
-        messages = [resp.detail];
     } else {
         messages = ["Error " + resp.status + ": " + resp.statusText];
+        if( resp.data && typeof resp.data === "object" ) {
+            for( var key in resp.data ) {
+                if (resp.data.hasOwnProperty(key)) {
+                    var message = "";
+                    var sep = "";
+                    for( var i = 0; i < resp.data[key].length; ++i ) {
+                        var messagePart = resp.data[key][i];
+                        if( typeof resp.data[key][i] !== 'string' ) {
+                            messagePart = JSON.stringify(resp.data[key][i]);
+                        }
+                        message += sep + messagePart;
+                        sep = ", ";
+                    }
+                    messages.push(key + ": " + message);
+                    $("#" + key).addClass("has-error");
+                }
+            }
+        } else if( resp.detail ) {
+            messages = [resp.detail];
+        }
     }
     showMessages(messages, "error");
 };

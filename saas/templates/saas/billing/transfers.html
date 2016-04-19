@@ -1,11 +1,10 @@
 {% extends "saas/base_dashboard.html" %}
-{% load saas_tags %}
 
 {% block saas_content %}
 <div ng-app="saasApp">
   <div ng-controller="transactionListCtrl">
     <section id="info">
-      <h1>Deposit Information <a id="update_bank" href="{% url 'saas_update_bank' organization %}">Update</a></h1>
+      <h1>Deposit Information <a id="update_bank" href="{{urls.provider.bank}}">Update</a></h1>
       <div>
         <dl>
           <dt>Institution</dt>
@@ -21,13 +20,13 @@
       <h1>Funds</h1>
       <dl>
         <dt id="balance-amount">[[balance_amount|humanizeCell : balance_unit : 0.01]]</dt>
-        <dd>Available (<a href="{% url 'saas_withdraw_funds' organization %}">withdraw</a>)</dd>
+        <dd>Available (<a href="{{urls.provider.withdraw_funds}}">withdraw</a>)</dd>
       </dl>
     </section>
     {% include "saas/_transactions.html" %}
     <section>
       <div>
-        <a href="{% url 'saas_import_transactions' organization %}">Add offline transaction</a>
+        <a href="{{urls.provider.import_transactions}}">Add offline transaction</a>
       </div>
     </section>
   </div>

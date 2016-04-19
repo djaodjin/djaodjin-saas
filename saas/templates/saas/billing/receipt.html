@@ -1,5 +1,4 @@
 {% extends "saas/base_dashboard.html" %}
-{% load saas_tags %}
 
 {% block saas_content %}
 <style>
@@ -9,6 +8,11 @@ display:none;
 </style>
 <div id="{{charge}}">
   <h1>Charge Receipt</h1>
+  <div>
+    <a id="email-charge-receipt" href="">Email Again</a>
+    <a id="charge-printable" target="_blank"
+   href="{% if urls.charge.printable_receipt %}{{urls.charge.printable_receipt}}{% endif %}">Printable</a>
+  </div>
   <section id="status">
       <p>
         On {{charge.created_at}}, we attempted to charge your card for
@@ -63,11 +67,11 @@ display:none;
           <td>{{line.invoiced.dest_price|humanize_money}}</td>
           <td>{{line.invoiced|describe}}</td>
           <td>
-            {% if line.invoiced|refund_enable:user %}
-            <button class="charge-refund"
+            {% if line.refundable %}
+            <button class="charge-refund btn btn-default"
                     data-toggle="modal" data-target="#charge-refund"
                     data-available-amount="{{line.invoiced.dest_amount}}"
-                    data-linenum="{{forloop.counter0}}">Refund</button>
+                    data-linenum="{{line.rank}}">Refund</button>
             {% endif %}
           </td>
         </tr>

@@ -326,7 +326,8 @@ class SubscriptionSmartListMixin(SearchableListMixin, SortableListMixin):
                            ('ends_at', 'ends_at')]
 
 
-class UserSmartListMixin(SearchableListMixin, SortableListMixin):
+class UserSmartListMixin(DateRangeMixin, SearchableListMixin,
+                         SortableListMixin):
     """
     ``User`` list which is also searchable and sortable.
     """

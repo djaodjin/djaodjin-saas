@@ -106,6 +106,24 @@ class BalancePagination(PageNumberPagination):
         ]))
 
 
+class TotalPagination(PageNumberPagination):
+
+    def paginate_queryset(self, queryset, request, view=None):
+        self.totals = sum_orig_amount(queryset)
+        return super(TotalPagination, self).paginate_queryset(
+            queryset, request, view=view)
+
+    def get_paginated_response(self, data):
+        return Response(OrderedDict([
+            ('total', self.totals['amount']),
+            ('unit', self.totals['unit']),
+            ('count', self.page.paginator.count),
+            ('next', self.get_next_link()),
+            ('previous', self.get_previous_link()),
+            ('results', data)
+        ]))
+
+
 class SmartTransactionListMixin(DateRangeMixin,
                                 SearchableListMixin, SortableListMixin):
     """
@@ -216,6 +234,76 @@ class BillingsAPIView(SmartTransactionListMixin,
     """
 
     serializer_class = TransactionSerializer
+
+
+class ReceivablesQuerysetMixin(ProviderMixin):
+
+    def get_queryset(self):
+        """
+        Get the list of transactions for this organization.
+        """
+        return self.provider.receivables().filter(orig_amount__gt=0)
+
+
+class ReceivablesListAPIView(SmartTransactionListMixin,
+                             ReceivablesQuerysetMixin, ListAPIView):
+    """
+    GET queries all receivables for a provider.
+
+    The queryset can be further filtered to a range of dates between
+    ``start_at`` and ``ends_at``.
+
+    The queryset can be further filtered by passing a ``q`` parameter.
+    The value in ``q`` will be matched against:
+
+      - Transaction.descr
+      - Transaction.orig_organization.full_name
+      - Transaction.dest_organization.full_name
+
+    The result queryset can be ordered by:
+
+      - Transaction.created_at
+      - Transaction.descr
+      - Transaction.dest_amount
+
+    **Example request**:
+
+    .. sourcecode:: http
+
+        GET /api/billing/cowork/receivables?start_at=2015-07-05T07:00:00.000Z\
+&o=date&ot=desc
+
+    **Example response**:
+
+    .. sourcecode:: http
+
+        {
+            "count": 1,
+            "total": "112120",
+            "unit": "usd",
+            "next": null,
+            "previous": null,
+            "results": [
+                {
+                    "created_at": "2015-08-01T00:00:00Z",
+                    "description": "Charge <a href=\"/billing/cowork/receipt/\
+1123\">1123</a> distribution for demo562-open-plus",
+                    "amount": "112120",
+                    "is_debit": false,
+                    "orig_account": "Funds",
+                    "orig_organization": "stripe",
+                    "orig_amount": 112120,
+                    "orig_unit": "usd",
+                    "dest_account": "Funds",
+                    "dest_organization": "cowork",
+                    "dest_amount": 112120,
+                    "dest_unit": "usd"
+                }
+            ]
+        }
+    """
+    serializer_class = TransactionSerializer
+    pagination_class = TotalPagination
 
 
 class TransferQuerysetMixin(ProviderMixin):

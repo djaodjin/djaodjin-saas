@@ -1,8 +1,9 @@
 {% extends "saas/base_dashboard.html" %}
 
+{% block saas_title %}{{role|capitalize}}{% endblock %}
+
 {% block saas_content %}
 <section id="{{role}}" ng-app="saasApp">
-  <h1>{{role|capfirst}}</h1>
   <div ng-controller="userRelationListCtrl">
     <form>
       <input name="user" type="text" ng-model="user.username" placeholder="Username or Email" />

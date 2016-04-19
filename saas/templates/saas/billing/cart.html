@@ -1,10 +1,4 @@
 {% extends "saas/base.html" %}
-{% load saas_tags %}
-
-{% block localheader %}
-{{block.super}}
-{% include "saas/_payment_head.html" %}
-{% endblock %}
 
 {% block content %}
 <h1>{% block order_title %}Place Order{% endblock %}</h1>
@@ -17,7 +11,6 @@
 If you have a coupon code, it is time to redeem it now!
             </label>
             <div>
-                {% comment %}{{coupon_form.code}}{% endcomment %}
                 <input id="id_code" name="code" type="text" placeholder="Coupon code">
                 <button type="submit" class="btn btn-primary">Redeem</button>
             </div>
@@ -34,7 +27,7 @@ If you have a coupon code, it is time to redeem it now!
         Your subscription cart is empty.
         {% endif %}
         {% block order_card %}
-        {% include "saas/_card_use.html" with title="Subscribe" %}
+        {% include "saas/_card_use.html" %}
         {% endblock %}
     </form>
 </div>

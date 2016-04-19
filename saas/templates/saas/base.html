@@ -1,34 +1,38 @@
 {% extends "base.html" %}
-{% load saas_tags %}
-{% load static from staticfiles %}
+
+{% block localheader %}
+{% if STRIPE_PUB_KEY %}
+<script type="text/javascript" src="https://js.stripe.com/v2/"></script>
+{% endif %}
+{% endblock %}
 
 {% block content %}
 <div>
   <div>
     {% block sidebar %}
-    {% if organization|is_broker %}
-    {% comment %}
-    We are dealing with the site owner.
-    {% endcomment %}
+    {# Subscriptions for the organization #}
     <div>
-      <a id="saas_manager_list" href="{% url 'saas_role_list' organization 'managers' %}">managers</a>
-      | <a id="saas_contributor_list" href="{% url 'saas_role_list' organization 'contributors' %}">contributors</a>
-      | <a id="saas_coupon_list" href="{% url 'saas_coupon_list' organization %}">coupons</a>
-      | <a id="saas_transfer_info" href="{% url 'saas_transfer_info' organization %}">funds</a>
-      | <a id="saas_metrics_summary" href="{% url 'saas_metrics_summary' organization %}">revenue</a>
-      | <a id="saas_metrics_plans" href="{% url 'saas_metrics_plans' organization %}">plans</a>
-      | <a id="saas_subscriber_list" href="{% url 'saas_subscriber_list' organization %}">subscribers</a></li>
+      <a id="saas_provider_profile" href="{{urls.organization.profile}}">profile</a>
+      | <a id="saas_billing_info" href="{{urls.organization.billing}}">billing</a>
+      | <a id="saas_subscription_list" href="{{urls.organization.subscriptions}}">subscriptions</a>
+      {% if urls and urls.organization and urls.organization.managers %}
+      | <a id="saas_manager_list" href="{{urls.organization.managers}}">managers</a>
+      {% endif %}
+      {% if urls and urls.organization and urls.organization.contributors %}
+      | <a id="saas_contributor_list" href="{{urls.organization.contributors}}">contributors</a>
+      {% endif %}
+    </div>
+    {% if organization.is_provider %}
+    <div>
+      {# We are dealing with the site owner. #}
+      <a id="saas_dashboard" href="{{urls.provider.dashboard}}">Dashboard</a>
+      | <a id="saas_coupon_list" href="{{urls.provider.coupons}}">Coupons</a>
+      | <a id="saas_transfer_info" href="{{urls.provider.transfers}}">Funds</a>
+      | <a id="saas_metrics_summary" href="{{urls.provider.metrics_sales}}">Revenue</a>
+      | <a id="saas_metrics_plans" href="{{urls.provider.metrics_plans}}">Plans</a>
+      | <a id="saas_subscriber_list" href="{{urls.provider.subscribers}}">Subscribers</a></li>
     </div>
     {% endif %}
-    {% comment %}
-    Subscriptions for the organization
-    {% endcomment %}
-    <div>
-      <a id="saas_dashboard" href="{% url 'saas_dashboard' organization %}">Dashboard</a>
-      | <a id="saas_provider_profile" href="{% url 'saas_organization_profile' organization %}">profile</a>
-      | <a id="saas_billing_info" href="{% url 'saas_billing_info' organization %}">billing</a>
-      | <a id="saas_subscription_list" href="{% url 'saas_subscription_list' organization %}">subscriptions</a>
-    </div>
     {% endblock %}
   </div>
   <div>
@@ -38,35 +42,38 @@
 {% endblock %}
 
 {% block bodyscripts %}
-{{block.super}}
-<script type="text/javascript" charset="utf-8" src="{% static 'vendor/js/moment.js' %}"></script>
-<script type="text/javascript" charset="utf-8" src="{% static 'js/djaodjin-saas.js'%}"></script>
-<script type="text/javascript" charset="utf-8" src="{% static 'js/djaodjin-saas-resources.js'%}"></script>
-<script type="text/javascript" charset="utf-8" src="{% static 'js/djaodjin-postal.js' %}"></script>
-<script type="text/javascript" charset="utf-8" src="{% static 'js/djaodjin-stripe.js'%}"></script>
+<script type="text/javascript" charset="utf-8" src="{{'static/vendor/js/moment.js'|asset}}"></script>
+<script type="text/javascript" charset="utf-8" src="{{'static/js/djaodjin-saas.js'|asset}}"></script>
+<script type="text/javascript" charset="utf-8" src="{{'static/js/djaodjin-saas-resources.js'|asset}}"></script>
+<script type="text/javascript" charset="utf-8" src="{{'static/js/djaodjin-postal.js'|asset}}"></script>
+<script type="text/javascript" charset="utf-8" src="{{'static/js/djaodjin-stripe.js'|asset}}"></script>
 <script type="text/javascript">
 jQuery(document).ready(function($) {
-{% if urls.provider %}
+{% if urls and urls.provider %}
     $("[data-plan]").plan({
         saas_api_plan: "{{ urls.provider.api_plans }}",
         saas_metrics_plans: "{{ urls.provider.metrics_plans }}"
     });
 {% endif %}
-{% if urls.organization %}
+{% if request|is_authenticated %}
     $("#delete-organization-btn").profile({
-        saas_api_organization: "{{ urls.organization.api_base }}",
-        user_profile_redirect: "{{ request.user.urls.profile_redirect }}"
+        saas_api_organization: "{% if urls and urls.organization %}{{ urls.organization.api_base }}{% endif %}",
+        user_profile_redirect: "{{'users/'|site_prefixed}}"
     });
 {% endif %}
-{% if urls.api_redeem %}
+{% if urls and urls.api_redeem %}
     $("#redeem-form").redeem(
         {'saas_api_redeem_coupon': "{{ urls.api_redeem }}" });
 {% endif %}
-{% if STRIPE_PUB_KEY %}
     var cardForm = $("#payment-form");
-    cardForm.find("#invoicables").invoice(
-       {currency_unit: "{{lines_unit}}",
-        saas_api_cart: "{{ urls.api_cart }}" });
+{% if urls and urls.api_cart %}
+    if( cardForm.length > 0 ) {
+        cardForm.find("#invoicables").invoice(
+            {currency_unit: '{{lines_unit}}',
+             saas_api_cart: "{{ urls.api_cart }}" });
+    }
+{% endif %}
+{% if STRIPE_PUB_KEY %}
     cardForm.card({
         stripePubKey: "{{ STRIPE_PUB_KEY }}",
         saas_api_card: "{{ urls.organization.api_card }}"
@@ -84,16 +91,18 @@ jQuery(document).ready(function($) {
         });
     });
     $("#email-charge-receipt").chargeEmailReceipt({
-        initialState: "{{charge.get_state_display}}",
-        saas_api_email_charge_receipt: "{{ urls.charge.email_receipt }}"
+        initialState: "{{charge.state_string}}",
+        saas_api_email_charge_receipt:
+            "{{ urls.charge.api_email_receipt }}"
     });
 
     $("#{{charge}}").chargeMonitor({
-       initialState: "{{charge.get_state_display}}",
+       initialState: "{{charge.state_string}}",
        saas_api_charge: "{{ urls.charge.api_base }}"
     });
 {% endif %}
 });
 </script>
+{% block saas_bodyscripts %}{% endblock %}
 {% endblock %}
 

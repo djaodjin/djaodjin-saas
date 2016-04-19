@@ -32,7 +32,7 @@ from .download import CSVDownloadView
 from ..api.coupons import SmartCouponListMixin
 # NB: there is another CouponMixin
 from ..api.coupons import CouponMixin as CouponAPIMixin
-from ..api.metrics import RegisteredQuerysetMixin
+from ..api.users import RegisteredQuerysetMixin
 from ..managers.metrics import monthly_balances, month_periods
 from ..mixins import (CouponMixin, ProviderMixin, MetricsMixin,
     ChurnedQuerysetMixin, SubscriptionSmartListMixin, SubscribedQuerysetMixin,

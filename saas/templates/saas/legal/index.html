@@ -7,10 +7,10 @@
     You will find here all the legal documents that keeps us out of trouble
     while providing you the best possible service.
   </p>
-  {% if agreement_list %}
+  {% if agreements %}
   <ul>
-    {% for agreement in agreement_list %}
-    <li><a id="{{agreement}}" href="{% url 'legal_agreement' agreement.slug %}">{{agreement.title}}</a>
+    {% for agreement in agreements %}
+    <li><a id="{{agreement.slug}}" href="{{agreement.location}}">{{agreement.title}}</a>
       {% endfor %}
   </ul>
   {% else %}

@@ -1,10 +1,8 @@
-{% load static from staticfiles %}
-{% load saas_tags %}
 <!DOCTYPE html>
 <html>
 <head>
   <title>SaaS Testsite</title>
-  <script type="text/javascript" src="{% static 'vendor/js/jquery.js' %}"></script>
+  <script type="text/javascript" src="{{'static/vendor/js/jquery.js'|asset}}"></script>
   {% if csrf_token %}
   <meta name="csrf-token" content="{{csrf_token}}">
   <script type="text/javascript">
@@ -28,29 +26,31 @@
   {% block menubar %}
   <div>
   <a href="/">Home</a>
-  | <a href="{% url 'saas_cart_plan_list' %}">Pricing</a>
-  {% if user.is_authenticated %}
-  | <a href="{% url 'users_profile' user %}">{{user.username}}</a>
-  | <a href="{% url 'logout' %}?next=/">Sign Out</a>
+  | <a href="{{'pricing/'|site_prefixed}}">Pricing</a>
+  {% if request|is_authenticated %}
+  | <a id="authenticated-user" href="{{request|url_profile}}">{{request.user.username}}</a>
+  | <a href="{{'logout/'|site_prefixed}}?next=/">Sign Out</a>
   {% else %}
-  | <a href="{% url 'login' %}">Sign In</a>
+  | <a href="{{'login/'|site_prefixed}}">Sign In</a>
   {% endif %}
   </div>
   {% endblock %}
-  <div id="messages" class="{% if not messages and not form.non_field_errors %}hidden{% endif %}">
+  <div id="messages">
     <div id="messages-content">
-      {% for message in messages %}
+      {% for message in request|messages %}
       <div class="alert{% if message.tags %} alert-{{message.tags}}{% endif %}">
         <button type="button" class="close" data-dismiss="alert">&times;</button>
-        <div>{% if 'safe' in message.tags %}{{message|safe}}{% else %}{{message}}{% endif %}</div>
+        <div>{{message|safe}}</div>
       </div>
       {% endfor %}
-      {% for message in form.non_field_errors %}
+      {% if form %}
+      {% for message in form|messages %}
       <div class="alert alert-danger">
         <button type="button" class="close" data-dismiss="alert">&times;</button>
-        <p>{{message}}</p>
+        <div>{{message}}</div>
       </div>
       {% endfor %}
+      {% endif %}
     </div>
   </div>
   {% block content %}{% endblock %}

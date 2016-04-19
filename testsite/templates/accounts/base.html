@@ -1,11 +1,7 @@
 {% extends "saas/base.html" %}
-{% load saas_tags %}
 
 {% block sidebar %}
-{% with object|attached_organization as organization %}
-<a id="users_profile" href="{% url 'users_profile' user %}">profile</a>
 {% for organization in top_accessibles %}
   <a href="{{organization.location}}">{{organization.printable_name}}</a>
 {% endfor %}
-{% endwith %}
 {% endblock %}

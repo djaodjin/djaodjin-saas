@@ -23,7 +23,7 @@
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 from django.contrib.auth import get_user_model
-from django.core.urlresolvers import reverse
+from django.core.urlresolvers import NoReverseMatch, reverse
 from django.shortcuts import get_object_or_404
 
 from .utils import get_roles, get_organization_model
@@ -68,17 +68,13 @@ class OrganizationMixinBase(object):
         organization = self.organization
         context.update({'organization': organization})
         # XXX These might be moved to a higher-level
-        urls_default = {
+        urls = {
             'api_cart': reverse('saas_api_cart'),
             'api_redeem': reverse('saas_api_redeem_coupon'),
         }
-        if 'urls' in context:
-            context['urls'].update(urls_default)
-        else:
-            context.update({'urls': urls_default})
 
         # URLs for both sides (subscriber and provider).
-        urls_organization = {
+        urls.update({'organization': {
             'api_base': reverse('saas_api_organization', args=(organization,)),
             'api_card': reverse('saas_api_card', args=(organization,)),
             'api_profile_base': reverse('saas_api_profile'),
@@ -90,62 +86,64 @@ class OrganizationMixinBase(object):
             'billing': reverse('saas_billing_info', args=(organization,)),
             'subscriptions': reverse(
                 'saas_subscription_list', args=(organization,)),
-        }
+        }})
         if self.attached_manager(self.organization):
-            urls_organization.update({
-                'password_change': reverse(
-                    'password_change', args=(organization.slug,))})
+            try:
+                urls['organization'].update({
+                    'password_change': reverse(
+                        'password_change', args=(organization.slug,))})
+            except NoReverseMatch:
+                # With django.contrib.auth we cannot trigger password_change
+                # for a different user than the one associated to the request.
+                # It is OK. We will just not resolve the link.
+                pass
         else:
-            urls_organization.update({
+            urls['organization'].update({
                 'managers': reverse('saas_role_list',
                     args=(organization, 'managers')),
                 'contributors': reverse('saas_role_list',
                     args=(organization, 'contributors'))})
-        if 'urls' in context:
-            if 'organization' in context['urls']:
-                context['urls']['organization'].update(urls_organization)
-            else:
-                context['urls'].update({'organization': urls_organization})
-        else:
-            context.update({'urls': {'organization': urls_organization}})
 
         if organization.is_provider:
             provider = organization
-            urls_provider = {
+            urls.update({'provider': {
                 'api_bank': reverse('saas_api_bank', args=(provider,)),
                 'api_coupons': reverse(
                     'saas_api_coupon_list', args=(provider,)),
-                'api_metrics_coupons': reverse(
-                    'saas_metrics_coupons', args=(provider,)),
                 'api_metrics_plans': reverse(
                     'saas_api_metrics_plans', args=(provider,)),
                 'api_plans': reverse('saas_api_plans', args=(provider,)),
+                'api_receivables': reverse(
+                    'saas_api_receivables', args=(provider,)),
                 'api_subscribers_active': reverse(
                     'saas_api_subscribed', args=(provider,)),
                 'api_subscribers_churned': reverse(
                     'saas_api_churned', args=(provider,)),
-                'api_users': reverse('saas_api_user_list'),
+                'api_users': reverse('saas_api_users'),
                 'api_users_registered': reverse('saas_api_registered'),
-                'profile': reverse('saas_provider_profile'),
                 'coupons': reverse('saas_coupon_list', args=(provider,)),
                 'dashboard': reverse('saas_dashboard', args=(provider,)),
-                'metrics_sales': reverse(
-                    'saas_metrics_summary', args=(provider,)),
+                'metrics_coupons': reverse(
+                    'saas_metrics_coupons', args=(provider,)),
                 'metrics_plans': reverse(
                     'saas_metrics_plans', args=(provider,)),
+                'metrics_sales': reverse(
+                    'saas_metrics_summary', args=(provider,)),
+                'profile': reverse('saas_provider_profile'),
                 'subscribers': reverse(
                     'saas_subscriber_list', args=(provider,)),
                 'transfers': reverse(
                     'saas_transfer_info', args=(provider,)),
-            }
-            if 'urls' in context:
-                if 'provider' in context['urls']:
-                    context['urls']['provider'].update(urls_provider)
-                else:
-                    context['urls'].update({'provider': urls_provider})
-            else:
-                context.update({'urls': {'provider': urls_provider}})
+            }})
 
+        if 'urls' in context:
+            for key, val in urls.iteritems():
+                if key in context['urls']:
+                    context['urls'][key].update(val)
+                else:
+                    context['urls'].update({key: val})
+        else:
+            context.update({'urls': urls})
         return context
 
     @property

@@ -1,18 +1,17 @@
 {% extends "base.html" %}
-{% load static from staticfiles %}
-{% load saas_tags %}
 
 {% block content %}
 <section>
     <form method="post" action=".">
         <input type="hidden" name="csrfmiddlewaretoken" value="{{csrf_token}}">
+        {% if plan_list %}
         {% for plan in plan_list %}
         <div id="{{plan.slug}}" class="plan-short">
             {% if plan.created_at|date_in_future %}
             <p>Avalaible soon!</p>
             {% endif %}
             <h2>{{plan.title}}</h2>
-            {% if plan.period_amount > 0 %}
+            {% if plan.period_price.amount > 0 %}
             <p>
             {{plan.period_price|humanize_money}} {{plan.interval|humanize_period}}
             </p>
@@ -22,7 +21,7 @@
             {% endif %}
             {% if plan.transaction_fee > 0 %}
             <p>
-            {{plan.transaction_fee|percentage}} + 30c per transaction
+                (+Stripe per transaction costs)
             </p>
             {% endif %}
             <div>
@@ -32,9 +31,10 @@
             </div>
             <button type="submit" name="submit" value="{{plan.slug}}">Subscribe</button>
         </div>
-        {% empty %}
-        <em>No Plans yet</em>
         {% endfor %}
+        {% else %}
+        <em>No Plans yet</em>
+        {% endif %}
     </form>
 </section>
 {% endblock %}

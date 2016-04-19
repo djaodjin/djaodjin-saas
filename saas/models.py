@@ -333,6 +333,15 @@ class Organization(models.Model):
             pk__in=get_roles(role_name).filter(organization=self).values(
                 'user')).distinct()
 
+    def receivables(self):
+        """
+        Returns all ``Transaction`` for a *provider* whose *orig_account*
+        is ``RECEIVABLE``.
+        """
+        return Transaction.objects.filter(
+            orig_organization=self,
+            orig_account=Transaction.RECEIVABLE)
+
     def update_bank(self, bank_token):
         if bank_token is None:
             self.processor_deposit_key = None

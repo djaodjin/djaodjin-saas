@@ -1,13 +1,47 @@
 {% extends "saas/base.html" %}
 
-{% block localheader %}
-{{block.super}}
-{% include "saas/_payment_head.html" %}
+{% block saas_title %}
+<i class="fa fa-money"></i> Update {{organization.printable_name}} Deposit Information
 {% endblock %}
 
 {% block saas_content %}
-<section id="bank_update">
-    <h1>Update Bank for {{ organization }}</h1>
-    {% include "saas/_bank_use.html" with title="Update" %}
-</section>
+{% if organization.processor_deposit_key %}
+  {% if organization.processor_pub_key %}
+  <!-- We have a ``standalone`` account. -->
+  <p>
+  Connected to a Stripe account.
+  </p>
+  <p>
+      <button id="de-authorize-btn" data-toggle="modal" data-target="#de-authorize">De-authorize</button>
+  </p>
+  {% else %}
+  <!-- We have a ``managed`` account. -->
+  {% include "saas/_bank_use.html" %}
+  {% endif %}
+{% else %}
+<p>
+<a href="https://connect.stripe.com/oauth/authorize?response_type=code&client_id={%if STRIPE_CLIENT_ID %}{{STRIPE_CLIENT_ID}}{% else %}undefined{% endif %}&scope=read_write&state={{state}}"><img src="{{'static/img/stripe-connect.png'|asset}}" /></a>
+</p>
+{% endif %}
+<div id="de-authorize">
+    <div>
+        <div>
+            <div>
+                De-authorize ...
+            </div>
+            <div>
+                Please confirm you want to de-authorize access
+                to your Stripe account.
+            </div>
+            <div>
+                <button type="button" data-dismiss="modal">Cancel</button>
+                <form method="post" action="{{urls.provider.deauthorize_bank}}">
+                  <input type="hidden" name="csrfmiddlewaretoken" value="{{csrf_token}}">
+                  <input type="hidden" name="stripeToken" value="OOPS" />
+                  <button id="de-authorize-action-btn" type="submit">De-authorize</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}

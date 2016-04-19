@@ -1,9 +1,7 @@
-{% load static from staticfiles %}
-
 <form method="post" id="bank-form" action=".{% if next %}/?next={{ next }}{% endif %}">
       <input type="hidden" name="csrfmiddlewaretoken" value="{{csrf_token}}">
       <fieldset>
-      <legend>Bank Information {% if last4 and not update_mode %}<a href="{% url 'saas_update_bank' organization %}">Update</a>{% endif %}
+      <legend>Bank Information {% if last4 and not force_update %}<a href="{{urls.provider.bank}}">Update</a>{% endif %}
       </legend>
       {% if last4 %}
       <div>
@@ -17,7 +15,7 @@
             </dl>
       </div>
       {% endif %}
-      {% if not last4 or update_mode %}
+      {% if not last4 or force_update %}
       <!-- BE CAREFULL: Do not add name="" to the account-number
            and routing-number input nodes, else values will hit
            the server and break PCI compliance. -->
@@ -37,5 +35,5 @@
                    type="text" size="16" autocomplete="off" />
       </div>
       {% endif %}
-      <button type="submit">{{title}}</button>
+      <button type="submit">{% if force_update %}Update{% else %}Withdraw{% endif %}</button>
 </form>

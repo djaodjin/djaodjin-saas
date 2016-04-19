@@ -30,8 +30,8 @@ from django.conf.urls import url
 
 from ... import settings
 from ...api.balances import BalanceLineListAPIView, BrokerBalancesAPIView
-from ...api.metrics import RegisteredAPIView
 from ...api.transactions import TransactionListAPIView
+from ...api.users import RegisteredAPIView, UserListAPIView
 
 urlpatterns = [
     url(r'^billing/transactions/?',
@@ -42,6 +42,8 @@ urlpatterns = [
         BalanceLineListAPIView.as_view(), name='saas_api_balance_lines'),
     url(r'^metrics/registered/?',
         RegisteredAPIView.as_view(), name='saas_api_registered'),
+    url(r'^users/?',
+        UserListAPIView.as_view(), name='saas_api_users'),
 ]
 
 

@@ -1,17 +1,14 @@
-{% load saas_tags %}
-
-{% regroup invoicables by subscription.plan as invoicables_by_plan %}
-
 <fieldset id="invoicables">
   <table>
-    {% for plan_group in invoicables_by_plan %}
-    <tbody data-plan="{{plan_group.grouper}}">
+    {% for entry in invoicables %}
+    {% if entry.is_changed %}
+    <tbody data-plan="{{entry.subscription.plan}}">
       <tr>
         <td colspan="3">
-          <em>{{plan_group.grouper.title}} from {{plan_group.grouper.organization.printable_name}}</em>
+          <em>{{entry.subscription.plan.title}} from {{entry.subscription.plan.organization.printable_name}}</em>
         </td>
       </tr>
-      {% for entry in plan_group.list %}
+    {% endif %}
       {% for line in entry.lines %}
       <tr class="invoice-item">
         <td></td>
@@ -22,18 +19,13 @@
       {% endfor %}
       {% for line in entry.options %}
       <tr>
-        <td><input type="radio" name="{{entry.name}}" value="{{line.dest_amount}}" {% if forloop.first %}checked="1"{% endif %}></input></td>
+        <td><input type="radio" name="{{entry.name}}" value="{{line.dest_amount}}" {% if line.dest_amount == entry.selected_amount %}checked="1"{% endif %}></input></td>
         <td>{{line.dest_price|humanize_money}}</td>
         <td>{{line.descr}}
         </td>
       </tr>
       {% endfor %}
-      {% endfor %}
       {% if is_bulk_buyer %}
-      {% comment %}
-      XXX We rely on the code in views/billing.py to insure there are lines
-      and no options when bulk_buyer is ``True``.
-      {% endcomment %}
       <tr class="seat">
         <td colspan="3">
           <input class="seat-first-name" type="text" placeholder="First Name" />
@@ -43,7 +35,9 @@
         </td>
       </tr>
       {% endif %}
+    {% if entry.is_changed %}
     </tbody>
+    {% endif %}
     {% endfor %}
     <tfooter>
       <tr>

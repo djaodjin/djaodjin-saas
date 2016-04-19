@@ -1,5 +1,4 @@
 {% extends "saas/base_dashboard.html" %}
-{% load saas_tags %}
 
 {% block saas_content %}
 <section id="subscribers" ng-app="saasApp" ng-cloak>
@@ -8,7 +7,7 @@
       <a href="#registered-users"><h2>Registered</h2></a>
       <div>
         <label>Filter</label> <input type="text" ng-model="filterExpr" ng-change="filterList(filterExpr)" />
-        <a id="download-registered" href="{% url 'saas_subscriber_pipeline_download_registered' %}?q=[[filterExpr]]">CSV Download</a>
+        <a id="download-registered" href="{{registered.urls.download}}?q=[[filterExpr]]">CSV Download</a>
       </div>
       <table>
         <thead>
@@ -90,7 +89,7 @@
         <tbody class="has-results" ng-repeat="entry in {{tab.slug}}.results" ng-show="{{tab.slug}}.$resolved && {{tab.slug}}.results.length > 0">
           <tr ng-class="endsSoon(entry)">
             <td>
-              <a id="[[entry.organization.slug]]" href="{% url 'saas_profile' %}[[entry.organization.slug]]/tab.slug/">[[entry.organization.printable_name]]</a>
+              <a id="[[entry.organization.slug]]" href="{{urls.organization.profile_base}}[[entry.organization.slug]]/subscriptions/">[[entry.organization.printable_name]]</a>
             </td>
             <td>[[entry.plan.title]]</td>
             <td>[[entry.created_at | date: mediumDate]]</td>

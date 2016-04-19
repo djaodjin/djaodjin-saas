@@ -1,12 +1,11 @@
 {% extends "base.html" %}
-{% load saas_tags %}
 
 {% block content %}
 <h1>Redeem Code</h1>
 <div>
     <form method="post" id="redeem-form">
         <input type="hidden" name="csrfmiddlewaretoken" value="{{csrf_token}}">
-        {{form}}
+        {{form|as_html}}
         <button type="submit">Redeem</button>
     </form>
 </div>

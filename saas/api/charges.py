@@ -22,17 +22,19 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+from collections import OrderedDict
+
 from django.http import Http404
 from django.db import transaction
-from rest_framework import status
-from rest_framework.generics import GenericAPIView
+from extra_views.contrib.mixins import SearchableListMixin, SortableListMixin
+from rest_framework import status, serializers
+from rest_framework.generics import ListAPIView, GenericAPIView, RetrieveAPIView
+from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
-from rest_framework.generics import RetrieveAPIView
-from rest_framework import serializers
 
 from .. import signals
 from ..models import Charge, InsufficientFunds
-from ..mixins import ChargeMixin
+from ..mixins import ChargeMixin, DateRangeMixin
 
 #pylint: disable=no-init
 #pylint: disable=old-style-class
@@ -87,6 +89,92 @@ class ChargeResourceView(RetrieveChargeMixin, RetrieveAPIView):
         }
     """
     serializer_class = ChargeSerializer
+
+
+class TotalPagination(PageNumberPagination):
+
+    def paginate_queryset(self, queryset, request, view=None):
+        self.total = 0
+        for charge in queryset:
+            self.total += charge.amount
+        return super(TotalPagination, self).paginate_queryset(
+            queryset, request, view=view)
+
+    def get_paginated_response(self, data):
+        return Response(OrderedDict([
+            ('total', self.total),
+            ('count', self.page.paginator.count),
+            ('next', self.get_next_link()),
+            ('previous', self.get_previous_link()),
+            ('results', data)
+        ]))
+
+
+class SmartChargeListMixin(DateRangeMixin,
+                                SearchableListMixin, SortableListMixin):
+    """
+    Subscriber list which is also searchable and sortable.
+    """
+    search_fields = ['descr',
+                     'processor_key',
+                     'customer__full_name']
+
+    sort_fields_aliases = [('descr', 'description'),
+                           ('amount', 'amount'),
+                           ('customer__full_name', 'Full name')]
+
+    def get_queryset(self):
+        """
+        Implement date range filtering
+        """
+        self.cache_fields(self.request)
+        return super(SmartChargeListMixin, self).get_queryset().filter(
+            created_at__gte=self.start_at, created_at__lt=self.ends_at)
+
+
+class ChargeQuerysetMixin(object):
+
+    @staticmethod
+    def get_queryset():
+        return Charge.objects.all()
+
+
+class ChargeListAPIView(SmartChargeListMixin,
+                        ChargeQuerysetMixin, ListAPIView):
+
+    """
+    List of ``Charge``.
+
+    **Example request**:
+
+    .. sourcecode:: http
+
+        GET /api/charges?start_at=2015-07-05T07:00:00.000Z\
+&o=date&ot=desc
+
+    **Example response**:
+
+    .. sourcecode:: http
+
+        {
+            "count": 1,
+            "unit": "usd",
+            "total": "112120",
+            "next": null,
+            "previous": null,
+            "results": [{
+                "created_at": "2016-01-01T00:00:00Z",
+                "amount": 112120,
+                "unit": "usd",
+                "description": "Charge for subscription to cowork open-space",
+                "last4": "1234",
+                "exp_date"" "12/2016",
+                "processor_key": "ch_XAb124EF",
+                "state": "DONE"
+            } ...]
+    """
+    serializer_class = ChargeSerializer
+    pagination_class = TotalPagination
 
 
 class ChargeRefundAPIView(RetrieveChargeMixin, RetrieveAPIView):

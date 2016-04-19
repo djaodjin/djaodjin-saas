@@ -26,15 +26,6 @@
       </tbody>
       <tbody ng-repeat="entry in subscribed.results" ng-cloak ng-show="subscribed.$resolved && subscribed.results.length > 0">
         <tr ng-class="endsSoon(entry)">
-          {% comment %}
-See comment in saas/utils.py.
-This href code could only be:
-{% url 'product_default_start' entry.plan.organization organization %}
-under 2 conditions:
-  - the reversed-URL is fully qualified (but here ``product_default_start``
-    is always part of the proxy logic.)
-  - we are running a marketplace for Apps
-          {% endcomment %}
           <td>
             <a href="[[entry.plan.app_url]]/[[entry.organization.slug]]/">[[entry.plan.title]]</a>
           </td>

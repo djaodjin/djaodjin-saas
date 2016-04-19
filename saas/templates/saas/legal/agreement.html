@@ -1,8 +1,5 @@
 {% extends "base.html" %}
-{% load i18n %}
 
 {% block content %}
-{{page|safe}}{% comment %}
-                 It is ok to use a safe here. We load the .md file from disk.
-             {% endcomment %}
+{{page|safe}}{# OK to use a safe here. We load a committed source .md file #}
 {% endblock %}

@@ -1,10 +1,4 @@
 {% extends "base.html" %}
-{% load saas_tags %}
-
-{% block localheader %}
-{{block.super}}
-{% include "saas/_payment_head.html" %}
-{% endblock %}
 
 {% block content %}
 {% if invoicables %}
@@ -49,5 +43,5 @@ Please enter a valid credit card. A new charge of
 {% endwith %}
 {% endif %}
 </section>
-{% include "saas/_card_use.html" with title="Pay Now" %}
+{% include "saas/_card_use.html" %}
 {% endblock %}

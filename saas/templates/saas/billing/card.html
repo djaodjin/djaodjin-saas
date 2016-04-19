@@ -1,17 +1,12 @@
 {% extends "saas/base_dashboard.html" %}
 
-{% block localheader %}
-{{block.super}}
-{% include "saas/_payment_head.html" %}
-{% endblock %}
-
 {% block saas_content %}
 <section id="update_card">
     <h1>Update Card for {{ organization }}</h1>
     <form method="post" id="payment-form"
           action=".{% if next %}/?next={{ next }}{% endif %}">
         <input type="hidden" name="csrfmiddlewaretoken" value="{{csrf_token}}">
-        {% include "saas/_card_use.html" with title="Update" update_mode=True %}
+        {% include "saas/_card_use.html" %}
     </form>
 </section>
 {% endblock %}

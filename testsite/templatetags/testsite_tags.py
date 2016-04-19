@@ -22,18 +22,35 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from django.views.generic import ListView, TemplateView
-
-from saas.mixins import UserMixin
-from saas.models import Organization
-
-
-class OrganizationListView(ListView):
-
-    model = Organization
-    template_name = 'organization_list_index.html'
+from django import template
+from django.core.urlresolvers import reverse
+from django.utils.text import capfirst
+from saas.templatetags.saas_tags import attached_organization
 
 
-class UserProfileView(UserMixin, TemplateView):
+register = template.Library()
 
-    template_name = 'accounts/profile.html'
+
+@register.filter()
+def as_html(form):
+    return form.as_ul()
+
+
+@register.filter()
+def capitalize(name):
+    return capfirst(name)
+
+
+@register.filter()
+def is_authenticated(request):
+    return request.user.is_authenticated()
+
+
+@register.filter()
+def url_profile(request): #pylint:disable=unused-argument
+    if request.user.is_authenticated():
+        organization = attached_organization(request.user)
+        if organization:
+            return reverse('saas_organization_profile', args=(organization,))
+        return reverse('users_profile', args=(request.user,))
+    return None

@@ -210,8 +210,9 @@ def fail_direct(request, charge=None, organization=None, strength=NORMAL):
             organization = get_object_or_404(Organization, slug=organization)
     else:
         organization = get_broker()
-    return not(organization and _has_valid_access(
+    result = not(organization and _has_valid_access(
         request, [organization], strength))
+    return result
 
 
 def fail_direct_weak(request, charge=None, organization=None):

@@ -153,6 +153,7 @@ class BankUpdateView(BankMixin, UpdateView):
                 context['urls'].update({'provider': urls_provider})
         else:
             context.update({'urls': {'provider': urls_provider}})
+        context.update({'state': self.provider})
         return context
 
     def get_object(self, queryset=None):

@@ -1,11 +1,10 @@
 {% extends "saas/base_dashboard.html" %}
-{% load saas_tags %}
 
 {% block saas_content %}
 <section id="coupon_metrics">
   <h1>{{coupon.code}} Performance</h1>
   <p>
-{{coupon.code}} was used {{coupon_performance_count}} time{{coupon_performance_count|pluralize}}.
+{{coupon.code}} was used {{coupon_performance_count}} time{% if coupon_performance_count > 0 %}s{% endif %}.
   </p>
   <table>
     <thead>
@@ -16,15 +15,17 @@
       </tr>
     </thead>
     <tbody>
+      {% if cartitem_list %}
       {% for cartitem in cartitem_list %}
       <tr>
-        <td><a href="{% url 'users_profile' cartitem.user %}">{{cartitem.user.get_full_name}}</a></td>
+        <td><a href="{{'users/'|site_prefixed}}{{cartitem.user}}/">{{cartitem.user.get_full_name}}</a></td>
         <td>{{cartitem.plan}}</td>
         <td>{{cartitem.created_at}}</td>
       </tr>
-      {% empty %}
-      <tr><td colspan="3"><em>No Item</em></td></tr>
       {% endfor %}
+      {% else %}
+      <tr><td colspan="3"><em>No Item</em></td></tr>
+      {% endif %}
     </tbody>
   </table>
   {% include "paginator.html" %}

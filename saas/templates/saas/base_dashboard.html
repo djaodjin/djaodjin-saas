@@ -1,21 +1,16 @@
 {% extends "saas/base.html" %}
-{% load saas_tags %}
-{% load static from staticfiles %}
 
-{% block bodyscripts %}
-{{block.super}}
-<script type="text/javascript" charset="utf-8" src="{% static 'vendor/js/angular.js' %}"></script>
-<script type="text/javascript" charset="utf-8" src="{% static 'vendor/js/angular-touch.js' %}"></script>
-<script type="text/javascript" charset="utf-8" src="{% static 'vendor/js/angular-animate.js' %}"></script>
-<script type="text/javascript" charset="utf-8" src="{% static 'vendor/js/angular-resource.js' %}"></script>
-<script type="text/javascript" charset="utf-8" src="{% static 'vendor/js/angular-route.js' %}"></script>
-<script type="text/javascript" charset="utf-8" src="{% static 'vendor/js/ui-bootstrap-tpls-0.11.0.js' %}"></script>
-<script type="text/javascript" charset="utf-8" src="{% static 'js/djaodjin-saas-angular.js' %}"></script>
-
+{% block saas_bodyscripts %}
+<script type="text/javascript" charset="utf-8" src="{{'static/vendor/js/angular.js'|asset}}"></script>
+<script type="text/javascript" charset="utf-8" src="{{'static/vendor/js/angular-touch.js'|asset}}"></script>
+<script type="text/javascript" charset="utf-8" src="{{'static/vendor/js/angular-animate.js'|asset}}"></script>
+<script type="text/javascript" charset="utf-8" src="{{'static/vendor/js/angular-resource.js'|asset}}"></script>
+<script type="text/javascript" charset="utf-8" src="{{'static/vendor/js/angular-route.js'|asset}}"></script>
+<script type="text/javascript" charset="utf-8" src="{{'static/vendor/js/angular-dragdrop.js'|asset}}"></script>
+<script type="text/javascript" charset="utf-8" src="{{'static/vendor/js/ui-bootstrap-tpls.js'|asset}}"></script>
+<script type="text/javascript" charset="utf-8" src="{{'static/js/djaodjin-saas-angular.js'|asset}}"></script>
 {% if organization %}
-{% comment %}
-    XXX /users/alice/products/ page does not define ``organization``.
-{% endcomment %}
+{# XXX /users/:user/products/ page does not define ``organization``. #}
 <script type="text/javascript">
 /* Implementation Note: Not including a list of dependent modules
    (2nd parameter to `module`) "re-opens" the module for additional
@@ -26,11 +21,12 @@
 var reopenSaasApp = angular.module('saasApp');
 reopenSaasApp.config(['$interpolateProvider', '$httpProvider',
            function($interpolateProvider, $httpProvider) {
-    $httpProvider.defaults.headers.common['X-CSRFToken'] = '{{csrf_token|escapejs}}';
+    $httpProvider.defaults.headers.common['X-CSRFToken'] = '{{csrf_token}}';
     $interpolateProvider.startSymbol('[[');
     $interpolateProvider.endSymbol(']]');
 }]);
-reopenSaasApp.constant('urls', {
+reopenSaasApp.constant('settings', {
+urls: {
     api_balance_lines: "{{urls.api_balance_lines}}",
     api_broker_balances: "{{urls.api_broker_balances}}",
     api_transactions: "{{saas_api_transactions}}",
@@ -50,16 +46,18 @@ reopenSaasApp.constant('urls', {
     saas_api_churned: "{{ urls.provider.api_subscribers_churned }}",
     saas_api_active_subscribers: "{{ urls.provider.api_subscribers_active }}",
     /* transactions */
-    saas_api_user_url: "{{ urls.provider.api_users }}",
+    api_receivables: "{{urls.provider.api_receivables}}",
     saas_api_bank: "{{ urls.provider.api_bank }}",
-    saas_api_transaction_url: "{{ urls.provider.api_transactions }}",
+    /* users */
+    api_users: "{{ urls.provider.api_users }}"
 {% endif %}
-});
-reopenSaasApp.constant(
-  "tables", {% if tables %}{{tables|safe}}{% else %}{}{% endif %}); // XXX
-reopenSaasApp.constant('date_range', {
-    start_at: "{{start_at}}", ends_at: "{{ends_at}}"
-});
+},
+tables: {% if tables %}{{tables|safe}}{% else %}{}{% endif %}, // XXX
+date_range: {
+    start_at: {% if start_at %}"{{start_at}}"{% else %}""{% endif %},
+    ends_at: {% if ends_at %}"{{ends_at}}"{% else %}""{% endif %}
+}});
 </script>
 {% endif %}
+{% block dashboard_bodyscripts %}{% endblock %}
 {% endblock %}

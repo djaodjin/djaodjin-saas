@@ -1,8 +1,9 @@
-Django==1.9.1
+Django==1.9.5
 django-countries==3.4.1
 django-durationfield==0.5.2
 django-extra-views==0.7.1
 djangorestframework==3.3.2
+djaodjin-deployutils==0.2.7
 # We need Python Markdown for django.contrib.markup. markdown2 is not enough.
 Markdown==2.6.5
 python-dateutil==2.4.2

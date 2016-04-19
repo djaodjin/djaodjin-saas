@@ -1,27 +1,77 @@
 {% extends "saas/base_dashboard.html" %}
+
+{% block saas_title %}
+Provider Dashboard
+{% endblock %}
+
 {% block saas_content %}
-<section>
-    <h3>Overview</h3>
-
-    <h4>Site setup : {{progress}}%</h4>
-
-    <h4>Next steps</h4>
-    <ul>
-        {% for step in next_steps %}
-            <li>{{step.verbose_name}} <a href="{{step.url}}">Go &raquo;</a></li>
-        {% endfor %}
-    </ul>
-
-    {% comment %}
-    XXX - Improvment of root view
-    <h4>Today revenue</h4>
-    
-    <h4>Recent payments</h4>
-
-    <h4>Balance</h4>
-
-    <h4>Recent registrants</h4>
-    {% endcomment %}
-
-</section>
+<div ng-app="saasApp">
+<div>
+    <div ng-controller="searchListCtrl">
+        <div>
+            <input type="text" placeholder="Search..." ng-model="filterExpr" ng-change="filterList(filterExpr)" />
+        </div>
+        <table>
+            <tbody id="has-registered" ng-cloak ng-show="items.$resolved && items.results.length > 0">
+                <tr ng-repeat="entry in items.results">
+                    <td><a href="{{'users/'|site_prefixed}}[[entry.username]]/">[[entry.username]]</td>
+                    <td>[[entry.first_name]] [[entry.last_name]]</td>
+                    <td>[[entry.email]]</td>
+                    <td>[[relativeDate(entry.created_at)]]</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+<div>
+    <div>
+        <div>
+            <h4>Todos</h4>
+        </div>
+        <p>
+No items to take care of Today.
+        </p>
+    </div>
+    <div ng-controller="userListCtrl">
+        <div>
+            <h4>Recently registered</h4>
+        </div>
+        <table>
+            <tbody ng-hide="items.$resolved">
+                <tr>
+                    <td colspan="2">
+                        <h3>Loading ...</h3>
+                    </td>
+                </tr>
+            </tbody>
+            <tbody id="has-registered" ng-cloak ng-show="items.$resolved && items.results.length > 0">
+                <tr ng-repeat="entry in items.results">
+                    <td><a href="{{'users/'|site_prefixed}}[[entry.username]]/">[[entry.username]]</td>
+                    <td>[[relativeDate(entry.created_at)]]</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    <div ng-controller="receivableListCtrl">
+        <div>
+            <h4>Today's Sales<span ng-show="items.$resolved">: [[items.total|humanizeCell : items.unit]]</span></h4>
+        </div>
+        <table>
+            <tbody ng-hide="items.$resolved">
+                <tr>
+                    <td colspan="2">
+                        <h3>Loading ...</h3>
+                    </td>
+                </tr>
+            </tbody>
+            <tbody id="has-items" ng-cloak ng-show="items.$resolved && items.results.length > 0">
+                <tr ng-repeat="entry in items.results">
+                    <td>[[entry.amount]]</td>
+                    <td>[[relativeDate(entry.created_at)]]</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+</div>
 {% endblock %}

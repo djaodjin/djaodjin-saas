@@ -45,6 +45,7 @@ angular.module("saasFilters", [])
             scale = scale || 1;
             var value = cell * scale;
             if(unit) {
+                if( unit === 'usd' ) { unit = '$' }
                 return currencyFilter(value, unit, 2);
             }
             return numberFilter(value);
@@ -112,30 +113,30 @@ var userRelationServices = angular.module("userRelationServices", ["ngResource"]
 var transactionServices = angular.module("transactionServices", ["ngResource"]);
 
 
-couponServices.factory("Coupon", ["$resource", "urls",
-  function($resource, urls){
+couponServices.factory("Coupon", ["$resource", "settings",
+  function($resource, settings){
     "use strict";
     return $resource(
-        urls.saas_api_coupon_url + "/:coupon", {coupon: "@code"},
+        settings.urls.saas_api_coupon_url + "/:coupon", {coupon: "@code"},
             {query: {method: "GET"},
              create: {method: "POST"},
              update: {method: "PUT", isArray: false}});
   }]);
 
-userRelationServices.factory("UserRelation", ["$resource", "urls",
-  function($resource, urls){
+userRelationServices.factory("UserRelation", ["$resource", "settings",
+  function($resource, settings){
     "use strict";
     return $resource(
-        urls.saas_api_user_relation_url + "/:user", {user: "@user"},
+        settings.urls.saas_api_user_relation_url + "/:user", {user: "@user"},
         {query: {method: "GET"},
          force: {method: "POST", params: {force: true}}});
   }]);
 
-transactionServices.factory("Transaction", ["$resource", "urls",
-  function($resource, urls){
+transactionServices.factory("Transaction", ["$resource", "settings",
+  function($resource, settings){
     "use strict";
     return $resource(
-        urls.api_transactions, {},
+        settings.urls.api_transactions, {},
             {query: {method: "GET"}});
   }]);
 
@@ -150,11 +151,140 @@ var transactionControllers = angular.module("transactionControllers", []);
 var metricsControllers = angular.module("metricsControllers", []);
 var importTransactionsControllers = angular.module("importTransactionsControllers", []);
 
-couponControllers.controller("CouponListCtrl",
-    ["$scope", "$http", "$timeout", "Coupon", "urls",
-     function($scope, $http, $timeout, Coupon, urls) {
+
+transactionControllers.controller("itemsListCtrl",
+    ["$scope", "$http", "$timeout", "settings",
+     function($scope, $http, $timeout, settings) {
     "use strict";
-    $scope.urls = urls;
+    var defaultSortByField = "date";
+    $scope.dir = {};
+    $scope.totalItems = 0;
+    $scope.dir[defaultSortByField] = "desc";
+    $scope.opened = { "start_at": false, "ends_at": false };
+    $scope.params = {
+        o: defaultSortByField,
+        ot: $scope.dir[defaultSortByField],
+    }
+    if( settings.date_range.start_at ) {
+        $scope.params['start_at'] = moment(settings.date_range.start_at).toDate();
+    }
+    if( settings.date_range.ends_at ) {
+        $scope.params['ends_at'] = moment(settings.date_range.ends_at).toDate()
+    };
+
+    $scope.filterExpr = "";
+    $scope.itemsPerPage = 25; // Must match on the server-side.
+    $scope.maxSize = 5;      // Total number of pages to display
+    $scope.currentPage = 1;
+    // currentPage will be saturated at maxSize when maxSize is defined.
+    $scope.formats = ["dd-MMMM-yyyy", "yyyy/MM/dd", "dd.MM.yyyy", "shortDate"];
+    $scope.format = $scope.formats[0];
+
+    // calendar for start_at and ends_at
+    $scope.open = function($event, date_at) {
+        $event.preventDefault();
+        $event.stopPropagation();
+        $scope.opened[date_at] = true;
+    };
+
+    // Generate a relative date for an instance with a ``created_at`` field.
+    $scope.relativeDate = function(at_time) {
+        var cutOff = new Date();
+        if( $scope.params.ends_at ) {
+            cutOff = new Date($scope.params.ends_at);
+        }
+        var dateTime = new Date(at_time);
+        if( dateTime <= cutOff ) {
+            return moment.duration(cutOff - dateTime).humanize() + " ago";
+        } else {
+            return moment.duration(dateTime - cutOff).humanize() + " left";
+        }
+    };
+
+    $scope.$watch("params", function(newVal, oldVal, scope) {
+        var updated = (newVal.o !== oldVal.o || newVal.ot !== oldVal.ot
+            || newVal.q !== oldVal.q || newVal.page !== oldVal.page );
+        if( newVal.start_at !== oldVal.start_at
+            && newVal.ends_at === oldVal.ends_at ) {
+            updated = true;
+            if( $scope.params.ends_at < newVal.start_at ) {
+                $scope.params.ends_at = newVal.start_at;
+            }
+        } else if( newVal.start_at === oldVal.start_at
+            && newVal.ends_at !== oldVal.ends_at ) {
+            updated = true;
+            if( $scope.params.start_at > newVal.ends_at ) {
+                $scope.params.start_at = newVal.ends_at;
+            }
+        }
+        if( updated ) {
+            $scope.refresh();
+        }
+    }, true);
+
+    $scope.filterList = function(regex) {
+        if( regex ) {
+            if ("page" in $scope.params){
+                delete $scope.params.page;
+            }
+            $scope.params.q = regex;
+        } else {
+            delete $scope.params.q;
+        }
+    };
+
+    $scope.pageChanged = function() {
+        if( $scope.currentPage > 1 ) {
+            $scope.params.page = $scope.currentPage;
+        } else {
+            delete $scope.params.page;
+        }
+    };
+
+    $scope.sortBy = function(fieldName) {
+        if( $scope.dir[fieldName] == "asc" ) {
+            $scope.dir = {};
+            $scope.dir[fieldName] = "desc";
+        } else {
+            $scope.dir = {};
+            $scope.dir[fieldName] = "asc";
+        }
+        $scope.params.o = fieldName;
+        $scope.params.ot = $scope.dir[fieldName];
+        $scope.currentPage = 1;
+        // pageChanged only called on click?
+        delete $scope.params.page;
+    };
+
+    $scope.refresh = function() {
+        $http.get(settings.urls.api_items,
+            {params: $scope.params}).then(
+            function(resp) {
+                // We cannot watch items.count otherwise things start
+                // to snowball. We must update totalItems only when it truly
+                // changed.
+                if( resp.data.count != $scope.totalItems ) {
+                    $scope.totalItems = resp.data.count;
+                }
+                $scope.items = resp.data;
+                $scope.items.$resolved = true;
+            }, function(resp) {
+                $scope.items = {};
+                $scope.items.$resolved = false;
+                showErrorMessages(resp);
+            });
+    };
+
+    if( settings.autoload ) {
+        $scope.refresh();
+    }
+}]);
+
+
+couponControllers.controller("CouponListCtrl",
+    ["$scope", "$http", "$timeout", "Coupon", "settings",
+     function($scope, $http, $timeout, Coupon, settings) {
+    "use strict";
     $scope.totalItems = 0;
     $scope.dir = {code: "asc"};
     $scope.params = {o: "code", ot: $scope.dir.code};
@@ -231,14 +361,14 @@ couponControllers.controller("CouponListCtrl",
     };
 
     $scope.save = function() {
-        $http.post(urls.saas_api_coupon_url, $scope.newCoupon).success(
+        $http.post(settings.urls.saas_api_coupon_url, $scope.newCoupon).success(
         function(result) {
             $scope.coupons.results.push(new Coupon(result));
             // Reset our editor to a new blank post
             $scope.newCoupon = new Coupon();
         }).error(
-        function(data){
-            showMessages(["Coupon code is required"], "error");
+        function(resp){
+            showErrorMessages(resp);
         });
     };
 
@@ -301,8 +431,8 @@ couponControllers.controller("CouponListCtrl",
 
 
 userRelationControllers.controller("userRelationListCtrl",
-    ["$scope", "$http", "UserRelation", "urls",
-    function($scope, $http, UserRelation, urls) {
+    ["$scope", "$http", "UserRelation", "settings",
+    function($scope, $http, UserRelation, settings) {
     "use strict";
     $scope.params = {};
     $scope.itemsPerPage = 25; // Must match on the server-side.
@@ -342,12 +472,8 @@ userRelationControllers.controller("userRelationListCtrl",
                 $scope.refresh();
                 $scope.user = null;
             },
-            function(error) {
-                var errMsg = error.statusText;
-                if( error.data && error.data.detail ) {
-                    errMsg = error.data.detail;
-                }
-                showMessages([errMsg], "error");
+            function(resp) {
+                showErrorMessages(resp);
             });
     };
 
@@ -360,22 +486,18 @@ userRelationControllers.controller("userRelationListCtrl",
                 $scope.refresh();
                 $scope.user = null;
             },
-            function(error) {
-                if( error.status === 404 ) {
+            function(resp) {
+                if( resp.status === 404 ) {
                     $scope.user.email = $scope.user.username;
                     angular.element("#new-user-relation").modal("show");
                 } else {
-                    var errMsg = error.statusText;
-                    if( error.data && error.data.detail ) {
-                        errMsg = error.data.detail;
-                    }
-                    showMessages([errMsg], "error");
+                    showErrorMessages(resp);
                 }
             });
     };
 
     $scope.getUsers = function(val) {
-        return $http.get(urls.saas_api_user_url, {
+        return $http.get(settings.urls.api_users, {
             params: {q: val}
         }).then(function(res){
             return res.data.results;
@@ -392,8 +514,8 @@ userRelationControllers.controller("userRelationListCtrl",
 
 
 subscriptionControllers.controller("subscriptionListCtrl",
-    ["$scope", "$http", "$timeout", "urls",
-    function($scope, $http, $timeout, urls) {
+    ["$scope", "$http", "$timeout", "settings",
+    function($scope, $http, $timeout, settings) {
     "use strict";
     var defaultSortByField = "created_at";
     $scope.dir = {};
@@ -418,11 +540,14 @@ subscriptionControllers.controller("subscriptionListCtrl",
     $scope.ends_at = moment().endOf("day").toDate();
 
     $scope.registered = {
-        $resolved: false, location: urls.saas_api_registered, count: 0};
+        $resolved: false, count: 0,
+        location: settings.urls.saas_api_registered};
     $scope.subscribed = {
-        $resolved: false, location: urls.saas_api_subscriptions, count: 0};
+        $resolved: false, count: 0,
+        location: settings.urls.saas_api_subscriptions};
     $scope.churned = {
-        $resolved: false, location: urls.saas_api_churned, count: 0};
+        $resolved: false, count: 0,
+        location: settings.urls.saas_api_churned};
 
     $scope.active = $scope.subscribed;
 
@@ -459,8 +584,8 @@ subscriptionControllers.controller("subscriptionListCtrl",
     $scope.saveDescription = function(event, entry){
         if (event.which === 13 || event.type === "blur" ){
             delete entry.editDescription;
-            $http.patch(urls.saas_api_profile + entry.organization.slug +
-                "/subscriptions/" + entry.plan.slug,
+            $http.patch(settings.urls.saas_api_profile
+                + entry.organization.slug + "/subscriptions/" + entry.plan.slug,
                 {description: entry.description}).then(
                 function(data){
                     // XXX message expiration date was updated.
@@ -545,7 +670,7 @@ subscriptionControllers.controller("subscriptionListCtrl",
 
     $scope.unsubscribe = function(organization, plan) {
         if( confirm("Are you sure?") ) {
-            $http.delete(urls.saas_api_profile
+            $http.delete(settings.urls.saas_api_profile
                 + organization + "/subscriptions/" + plan).then(
             function() {
                 $scope.query($scope.active);
@@ -557,18 +682,18 @@ subscriptionControllers.controller("subscriptionListCtrl",
 }]);
 
 subscriptionControllers.controller("subscriberListCtrl",
-    ["$scope", "$controller", "$http", "$timeout", "urls",
-    function($scope, $controller, $http, $timeout, urls) {
-    urls.saas_api_subscriptions = urls.saas_api_active_subscribers;
+    ["$scope", "$controller", "$http", "$timeout", "settings",
+    function($scope, $controller, $http, $timeout, settings) {
+    settings.urls.saas_api_subscriptions = settings.urls.saas_api_active_subscribers;
     $controller('subscriptionListCtrl', {
         $scope: $scope, $http: $http, $timeout:$timeout,
-        urls: urls});
+        settings: settings});
 }]);
 
 
 transactionControllers.controller("transactionListCtrl",
-    ["$scope", "$http", "$timeout", "urls", "date_range", "Transaction",
-     function($scope, $http, $timeout, urls, date_range, Transaction) {
+    ["$scope", "$http", "$timeout", "settings", "Transaction",
+     function($scope, $http, $timeout, settings, Transaction) {
     "use strict";
     var defaultSortByField = "date";
     $scope.dir = {};
@@ -578,8 +703,8 @@ transactionControllers.controller("transactionListCtrl",
     $scope.params = {
         o: defaultSortByField,
         ot: $scope.dir[defaultSortByField],
-        start_at: moment(date_range.start_at).toDate(),
-        ends_at: moment(date_range.ends_at).toDate()
+        start_at: moment(settings.date_range.start_at).toDate(),
+        ends_at: moment(settings.date_range.ends_at).toDate()
     };
 
     $scope.last4 = "N/A";
@@ -661,8 +786,8 @@ transactionControllers.controller("transactionListCtrl",
         delete $scope.params.page;
     };
 
-    if( urls.saas_api_bank ) {
-        $http.get(urls.saas_api_bank).success(function(data) {
+    if( settings.urls.saas_api_bank ) {
+        $http.get(settings.urls.saas_api_bank).success(function(data) {
             $scope.last4 = data.last4;
             $scope.bank_name = data.bank_name;
             $scope.balance_amount = data.balance_amount;
@@ -673,12 +798,11 @@ transactionControllers.controller("transactionListCtrl",
 
 
 metricsControllers.controller("metricsCtrl",
-    ["$scope", "$http", "date_range", "urls", "tables",
-    function($scope, $http, date_range, urls, tables) {
+    ["$scope", "$http", "settings",
+    function($scope, $http, settings) {
     "use strict";
 
-    $scope.tables = tables;
-
+    $scope.tables = settings.tables;
     $scope.tabs = [];
     for( var i = 0; i < $scope.tables.length; ++i ) {
         $scope.tabs.push($scope.tables[i].key);
@@ -693,7 +817,7 @@ metricsControllers.controller("metricsCtrl",
         );
     };
 
-    $scope.ends_at = moment(date_range.ends_at);
+    $scope.ends_at = moment(settings.date_range.ends_at);
     if( $scope.ends_at.isValid() ) {
         $scope.ends_at = $scope.ends_at.toDate();
     } else {
@@ -788,8 +912,8 @@ metricsControllers.controller("metricsCtrl",
 
 
 importTransactionsControllers.controller("importTransactionsCtrl",
-    ["$scope", "$http", "urls",
-    function($scope, $http, urls) {
+    ["$scope", "$http", "settings",
+    function($scope, $http, settings) {
     "use strict";
 
     // these aren't documented; do they do anything?
@@ -813,7 +937,7 @@ importTransactionsControllers.controller("importTransactionsCtrl",
     };
 
     $scope.getSubscriptions = function(val) {
-        return $http.get(urls.saas_api_subscriptions, {
+        return $http.get(settings.urls.saas_api_subscriptions, {
             params: {q: val}
         }).then(function(res){
             return res.data.results;
@@ -893,18 +1017,18 @@ balanceResources.factory( "BalanceResource", [ "$resource", function( $resource 
 }]);
 
 var balanceServices = angular.module("balanceServices", ["balanceResources"]);
-balanceServices.factory("BalanceLine", ["BalanceResource", "urls",
-  function($resource, urls){
+balanceServices.factory("BalanceLine", ["BalanceResource", "settings",
+  function($resource, settings) {
     "use strict";
     return $resource(
         // No slash, it is already part of @path.
-        urls.api_balance_lines, {},
+        settings.urls.api_balance_lines, {},
         {saveData: {method: "PATCH", isArray: true},
          update: { method: "put", isArray: false,
-                   url: urls.api_balance_lines + ":balance",
+                   url: settings.urls.api_balance_lines + ":balance",
                    params: {"balance": "@path"}},
          remove: { method: "delete", isArray: false,
-                   url: urls.api_balance_lines + ":balance",
+                   url: settings.urls.api_balance_lines + ":balance",
                    params: {"balance": "@path"}},
          create: { method: "POST" }});
   }]);
@@ -915,13 +1039,13 @@ balanceServices.factory("BalanceLine", ["BalanceResource", "urls",
   ============================================================================*/
 var balanceControllers = angular.module("balanceControllers", []);
 balanceControllers.controller("BalanceListCtrl",
-    ["$scope", "$http", "BalanceLine", "date_range", "urls",
-     function($scope, $http, BalanceLine, date_range, urls) {
+    ["$scope", "$http", "BalanceLine", "settings",
+     function($scope, $http, BalanceLine, settings) {
     "use strict";
 
     $scope.params = {
-        ends_at: moment(date_range.ends_at).toDate(),
-        start_at: moment(date_range.start_at).toDate()
+        ends_at: moment(settings.date_range.ends_at).toDate(),
+        start_at: moment(settings.date_range.start_at).toDate()
     };
     if( !moment($scope.params.ends_at).isValid() ) {
         $scope.params.ends_at = moment().toDate();
@@ -973,16 +1097,15 @@ balanceControllers.controller("BalanceListCtrl",
     $scope.newBalanceLine = new BalanceLine();
 
     $scope.refresh = function() {
-        $http.get(urls.api_broker_balances, {params: $scope.params}).then(
+        $http.get(settings.urls.api_broker_balances,
+            {params: $scope.params}).then(
             function success(resp) {
                 $scope.balances = resp.data;
                 $scope.balances.$resolved = true;
                 $scope.startPeriod = moment(resp.data.table[0].values[0][0]).subtract(1, 'months');
             },
             function error(resp) {
-                showMessages(["An error occurred while updating a balance (" +
-                              resp.status + " " + resp.statusText +
-                              "). Please accept our apologies."], "error");
+                showErrorMessages(resp);
             });
     };
     $scope.refresh();
@@ -994,27 +1117,23 @@ balanceControllers.controller("BalanceListCtrl",
     $scope.save = function(balance, success) {
         if ( !balance.rank ) {
             balance.rank = 0;
-            return BalanceLine.create($scope.params, balance, success, function(data) {
-                // error
-                showMessages(["An error occurred while creating a balance (" +
-                  data.status + " " + data.statusText +
-                  "). Please accept our apologies."], "error");
-            });
-        }
-        else {
-            return BalanceLine.update($scope.params, balance, success, function(data) {
-                // error
-                showMessages(["An error occurred while updating a balance (" +
-                  data.status + " " + data.statusText +
-                  "). Please accept our apologies."], "error");
-            });
+            return BalanceLine.create($scope.params, balance, success,
+                function(reps) {
+                    showErrorMessages(resp);
+                });
+        } else {
+            return BalanceLine.update(
+                $scope.params, balance, success, function(resp) {
+                     showErrorMessages(resp);
+                });
         }
     };
 
     $scope.remove = function (idx) {
-        BalanceLine.remove({balance: $scope.balances.results[idx].path}, function (success) {
-            $scope.balances.results.splice(idx, 1);
-        });
+        BalanceLine.remove({
+            balance: $scope.balances.results[idx].path}, function (success) {
+                $scope.balances.results.splice(idx, 1);
+            });
     };
 
     $scope.create = function() {
@@ -1030,11 +1149,44 @@ balanceControllers.controller("BalanceListCtrl",
         BalanceLine.saveData([{oldpos: startIndex, newpos: newIndex}],
             function success(data) {
                 $scope.balances = data;
-            }, function err(data) {
-                // error
-                showMessages(["An error occurred while updating a balance (" +
-                  data.status + " " + data.statusText +
-                  "). Please accept our apologies."], "error");
+            }, function err(resp) {
+                showErrorMessages(resp);
             });
     };
 }]);
+
+
+transactionControllers.controller("receivableListCtrl",
+    ["$scope", "$controller", "$http", "$timeout", "settings",
+    function($scope, $controller, $http, $timeout, settings) {
+    var opts = angular.merge({
+        autoload: true,
+        urls: {api_items: settings.urls.api_receivables}}, settings);
+    $controller("itemsListCtrl", {
+        $scope: $scope, $http: $http, $timeout:$timeout,
+        settings: opts});
+}]);
+
+
+transactionControllers.controller("searchListCtrl",
+    ["$scope", "$controller", "$http", "$timeout", "settings",
+    function($scope, $controller, $http, $timeout, settings) {
+    var opts = angular.merge({
+        urls: {api_items: settings.urls.api_users}}, settings);
+    $controller("itemsListCtrl", {
+        $scope: $scope, $http: $http, $timeout:$timeout,
+        settings: opts});
+}]);
+
+
+transactionControllers.controller("userListCtrl",
+    ["$scope", "$controller", "$http", "$timeout", "settings",
+    function($scope, $controller, $http, $timeout, settings) {
+    var opts = angular.merge({
+        autoload: true,
+        urls: {api_items: settings.urls.api_users}}, settings);
+    $controller("itemsListCtrl", {
+        $scope: $scope, $http: $http, $timeout:$timeout,
+        settings: opts});
+}]);
+

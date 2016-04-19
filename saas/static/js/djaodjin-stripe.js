@@ -195,25 +195,28 @@
                    a card on file already. */
                 self.element.submit(
                     function (event) { return self.stripeCreateToken(event); });
-                cardNumber.find("#card-number").payment('formatCardNumber');
-                cardNumber.keyup(function(){
-                    var ccType = $.payment.cardType(
-                        self.element.find("#card-number").val());
-                    if( ccType === "visa" ) {
-                        self.element.find("#visa").css("opacity", "1");
-                    } else if( ccType === "mastercard" ){
-                        self.element.find("#mastercard").css("opacity", "1");
-                    } else if( ccType === "amex"){
-                        self.element.find("#amex").css("opacity", "1");
-                    } else if( ccType === "discover" ){
-                        self.element.find("#discover").css("opacity", "1");
-                    } else {
-                     self.element.find("#visa").removeAttr("style");
-                     self.element.find("#mastercard").removeAttr("style");
-                     self.element.find("#amex").removeAttr("style");
-                     self.element.find("#discover").removeAttr("style");
-                    }
-                });
+                if( typeof $.payment !== 'undefined' ) {
+                    /* Optional use of jquery.payment */
+                    cardNumber.find("#card-number").payment('formatCardNumber');
+                    cardNumber.keyup(function(){
+                        var ccType = $.payment.cardType(
+                            self.element.find("#card-number").val());
+                        if( ccType === "visa" ) {
+                            self.element.find("#visa").css("opacity", "1");
+                        } else if( ccType === "mastercard" ){
+                            self.element.find("#mastercard").css("opacity", "1");
+                        } else if( ccType === "amex"){
+                            self.element.find("#amex").css("opacity", "1");
+                        } else if( ccType === "discover" ){
+                            self.element.find("#discover").css("opacity", "1");
+                        } else {
+                            self.element.find("#visa").removeAttr("style");
+                            self.element.find("#mastercard").removeAttr("style");
+                            self.element.find("#amex").removeAttr("style");
+                            self.element.find("#discover").removeAttr("style");
+                        }
+                    });
+                }
             } else if( self.element.find(".last4").length > 0 ) {
                 self.query();
             }

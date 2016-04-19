@@ -32,7 +32,7 @@ in the repo purely for convienience:
   - testsite/static/vendor/js/moment.js
 
 - From https://angular-ui.github.io/bootstrap/
-  - testsite/static/vendor/js/ui-bootstrap-tpls-0.11.0.js
+  - testsite/static/vendor/js/ui-bootstrap-tpls.js
 
 - From https://angularjs.org/
   - testsite/static/vendor/js/angular-animate.js

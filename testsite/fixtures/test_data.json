@@ -38,6 +38,7 @@
       "postal_code": "94102",
       "country": "US",
       "processor": 1,
+      "is_provider": 1,
       "is_active": 1
     },
     "model": "saas.Organization", "pk": 2

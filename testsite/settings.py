@@ -44,7 +44,6 @@ load_config(os.path.join(BASE_DIR, 'credentials'))
 
 DEBUG = True
 FEATURES_DEBUG = True
-TEMPLATE_DEBUG = DEBUG
 
 DATABASES = {
     'default': {
@@ -120,11 +119,6 @@ STATICFILES_FINDERS = (
 #    'django.contrib.staticfiles.finders.DefaultStorageFinder',
 )
 
-TEMPLATE_CONTEXT_PROCESSORS = (
-    'django.contrib.auth.context_processors.auth',
-    'django.contrib.messages.context_processors.messages',
-)
-
 MESSAGE_STORAGE = 'django.contrib.messages.storage.session.SessionStorage'
 
 MIDDLEWARE_CLASSES = (
@@ -140,8 +134,6 @@ ROOT_URLCONF = 'testsite.urls'
 
 # Python dotted path to the WSGI application used by Django's runserver.
 WSGI_APPLICATION = 'testsite.wsgi.application'
-
-TEMPLATE_DIRS = ()
 
 INSTALLED_APPS = (
     'django.contrib.auth',
@@ -214,3 +206,44 @@ LOGGING = {
 #        },
     }
 }
+
+# Templates (Django 1.8+)
+# ----------------------
+TEMPLATE_DEBUG = DEBUG
+TEMPLATE_REVERT_TO_DJANGO = False
+
+if TEMPLATE_REVERT_TO_DJANGO:
+    sys.stderr.write("Use Django templates engine.\n")
+    TEMPLATES = [
+    {
+        'BACKEND': 'django.template.backends.django.DjangoTemplates',
+        'DIRS': [],
+        'OPTIONS': {
+            'context_processors': [
+    'django.contrib.auth.context_processors.auth', # because of admin/
+    'django.template.context_processors.request',
+    'django.template.context_processors.media',
+            ],
+            'loaders': [
+                'django.template.loaders.filesystem.Loader',
+                'django.template.loaders.app_directories.Loader'],
+            'libraries': {},
+            'builtins': [
+                'deployutils.templatetags.deployutils_tags',
+                'saas.templatetags.saas_tags',
+                'testsite.templatetags.testsite_tags']
+        }
+    }
+    ]
+else:
+    sys.stderr.write("Use Jinja2 templates engine.\n")
+    TEMPLATES = [
+    {
+        'BACKEND': 'django.template.backends.jinja2.Jinja2',
+        'DIRS': (os.path.join(BASE_DIR, 'testsite', 'templates', 'jinja2'),
+                 os.path.join(BASE_DIR, 'testsite', 'templates'),
+                 os.path.join(BASE_DIR, 'saas', 'templates')),
+        'OPTIONS': {
+            'environment': 'testsite.jinja2.environment'
+        }
+    }]

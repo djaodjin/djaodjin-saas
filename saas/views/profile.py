@@ -26,7 +26,6 @@
 
 import logging
 
-from django.conf import settings as django_settings
 from django.contrib import messages
 from django.core.urlresolvers import reverse
 from django.db import transaction
@@ -230,54 +229,12 @@ class DashboardView(OrganizationMixin, DetailView):
     model = Organization
     slug_url_kwarg = 'organization'
     template_name = 'saas/metrics/dashboard.html'
-    steps = [
-        {
-            'test': 'has_profile_completed',
-            'verbose_name': 'Edit profile',
-            'url_name': 'saas_organization_profile'
-        },
-        {
-            'test': 'has_plan',
-            'verbose_name': 'Configure plan',
-            'url_name': 'saas_plan_new'
-        },
-        {
-            'test': 'has_bank_account',
-            'verbose_name': 'Configure Bank account',
-            'url_name': 'saas_update_bank'
-        }
-    ]
 
     def get_object(self, queryset=None):
         return self.organization
 
-    def get_steps(self):
-        return self.steps
-
-    def get_context_data(self, **kwargs):
-        context = super(
-            DashboardView, self).get_context_data(**kwargs)
-        progress = 0
-        next_steps = []
-        steps = self.get_steps()
-        for step in steps:
-            if not getattr(self.organization, step['test']):
-                step['url'] = reverse(
-                    step['url_name'], kwargs=self.get_url_kwargs())
-                next_steps += [step]
-        progress = (len(steps) - len(next_steps)) * 100/len(steps)
-        context.update({
-            'progress':progress,
-            'next_steps':next_steps
-            })
-        return context
-
     def get(self, request, *args, **kwargs):
-        if (hasattr(django_settings, 'FEATURES_DEBUG')
-            and django_settings.FEATURES_DEBUG):
-            return super(DashboardView, self).get(request, *args, **kwargs)
-        return HttpResponseRedirect(
-            reverse('saas_metrics_summary', args=(self.organization,)))
+        return super(DashboardView, self).get(request, *args, **kwargs)
 
 
 class OrganizationProfileView(OrganizationMixin, UpdateView):
