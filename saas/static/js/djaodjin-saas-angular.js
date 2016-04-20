@@ -156,14 +156,14 @@ transactionControllers.controller("itemsListCtrl",
     ["$scope", "$http", "$timeout", "settings",
      function($scope, $http, $timeout, settings) {
     "use strict";
-    var defaultSortByField = "date";
     $scope.dir = {};
     $scope.totalItems = 0;
-    $scope.dir[defaultSortByField] = "desc";
     $scope.opened = { "start_at": false, "ends_at": false };
-    $scope.params = {
-        o: defaultSortByField,
-        ot: $scope.dir[defaultSortByField],
+    $scope.params = {};
+    if( settings.sortByField ) {
+        $scope.params['o'] = settings.sortByField;
+        $scope.params['ot'] = settings.sortDirection || "desc";
+        $scope.dir[settings.sortByField] = $scope.params['ot'];
     }
     if( settings.date_range.start_at ) {
         $scope.params['start_at'] = moment(settings.date_range.start_at).toDate();
@@ -1161,6 +1161,8 @@ transactionControllers.controller("receivableListCtrl",
     function($scope, $controller, $http, $timeout, settings) {
     var opts = angular.merge({
         autoload: true,
+        sortByField: "date",
+        sortDirection: "asc",
         urls: {api_items: settings.urls.api_receivables}}, settings);
     $controller("itemsListCtrl", {
         $scope: $scope, $http: $http, $timeout:$timeout,
@@ -1184,6 +1186,8 @@ transactionControllers.controller("userListCtrl",
     function($scope, $controller, $http, $timeout, settings) {
     var opts = angular.merge({
         autoload: true,
+        sortByField: "date",
+        sortDirection: "asc",
         urls: {api_items: settings.urls.api_users}}, settings);
     $controller("itemsListCtrl", {
         $scope: $scope, $http: $http, $timeout:$timeout,
