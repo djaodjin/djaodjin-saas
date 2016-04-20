@@ -38,6 +38,11 @@ def datetime_or_now(dtime_at=None):
         dtime_at = dtime_at.replace(tzinfo=utc)
     return dtime_at
 
+def start_of_day(dtime_at=None):
+    dtime_at = datetime_or_now(dtime_at)
+    return datetime.datetime(dtime_at.year, dtime_at.month,
+        dtime_at.day, tzinfo=dtime_at.tzinfo)
+
 
 def utctimestamp_to_datetime(timestamp):
     return datetime_or_now(datetime.datetime.utcfromtimestamp(timestamp))

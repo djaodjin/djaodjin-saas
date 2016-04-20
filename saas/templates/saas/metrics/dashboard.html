@@ -54,7 +54,7 @@ No items to take care of Today.
     </div>
     <div ng-controller="receivableListCtrl">
         <div>
-            <h4>Today's Sales<span ng-show="items.$resolved">: [[items.total|humanizeCell : items.unit]]</span></h4>
+            <h4>Today Sales<span ng-show="items.$resolved">: [[items.total|humanizeCell : items.unit : 0.01]]</span></h4>
         </div>
         <table>
             <tbody ng-hide="items.$resolved">
@@ -66,7 +66,7 @@ No items to take care of Today.
             </tbody>
             <tbody id="has-items" ng-cloak ng-show="items.$resolved && items.results.length > 0">
                 <tr ng-repeat="entry in items.results">
-                    <td>[[entry.amount]]</td>
+                    <td><a href="{{urls.organization.profile_base}}[[entry.dest_organization]]/billing/">[[entry.amount]]</a></td>
                     <td>[[relativeDate(entry.created_at)]]</td>
                 </tr>
             </tbody>

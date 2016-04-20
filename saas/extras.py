@@ -119,8 +119,6 @@ class OrganizationMixinBase(object):
                     'saas_api_subscribed', args=(provider,)),
                 'api_subscribers_churned': reverse(
                     'saas_api_churned', args=(provider,)),
-                'api_users': reverse('saas_api_users'),
-                'api_users_registered': reverse('saas_api_registered'),
                 'coupons': reverse('saas_coupon_list', args=(provider,)),
                 'dashboard': reverse('saas_dashboard', args=(provider,)),
                 'metrics_coupons': reverse(
@@ -135,7 +133,11 @@ class OrganizationMixinBase(object):
                 'transfers': reverse(
                     'saas_transfer_info', args=(provider,)),
             }})
-
+            # These might lead to 403 if provider is not broker.
+            urls.update({'broker': {
+                'api_users': reverse('saas_api_users'),
+                'api_users_registered': reverse('saas_api_registered'),
+            }})
         if 'urls' in context:
             for key, val in urls.iteritems():
                 if key in context['urls']:

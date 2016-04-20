@@ -24,6 +24,7 @@
 
 from collections import OrderedDict
 
+import dateutil
 from django.db.models import Q
 from extra_views.contrib.mixins import SearchableListMixin, SortableListMixin
 from rest_framework import serializers
@@ -302,6 +303,7 @@ class ReceivablesListAPIView(SmartTransactionListMixin,
             ]
         }
     """
+    natural_period = dateutil.relativedelta.relativedelta(days=-1)
     serializer_class = TransactionSerializer
     pagination_class = TotalPagination
 

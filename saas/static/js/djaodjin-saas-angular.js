@@ -541,7 +541,7 @@ subscriptionControllers.controller("subscriptionListCtrl",
 
     $scope.registered = {
         $resolved: false, count: 0,
-        location: settings.urls.saas_api_registered};
+        location: settings.urls.api_registered};
     $scope.subscribed = {
         $resolved: false, count: 0,
         location: settings.urls.saas_api_subscriptions};

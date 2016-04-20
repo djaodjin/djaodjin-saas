@@ -38,7 +38,7 @@ from .humanize import (DESCRIBE_BUY_PERIODS, DESCRIBE_UNLOCK_NOW,
     DESCRIBE_UNLOCK_LATER, DESCRIBE_BALANCE)
 from .models import (CartItem, Charge, Coupon, Organization, Plan,
     Subscription, get_broker)
-from .utils import datetime_or_now, get_roles
+from .utils import datetime_or_now, get_roles, start_of_day
 from .extras import OrganizationMixinBase
 
 
@@ -187,6 +187,8 @@ class OrganizationMixin(OrganizationMixinBase, settings.EXTRA_MIXIN):
 
 class DateRangeMixin(object):
 
+    natural_period = dateutil.relativedelta.relativedelta(months=-1)
+
     def cache_fields(self, request):
         self.ends_at = datetime_or_now(
             parse_datetime(request.GET.get('ends_at', '').strip('"')))
@@ -195,8 +197,9 @@ class DateRangeMixin(object):
             self.start_at = datetime_or_now(parse_datetime(
                 self.start_at.strip('"')))
         else:
-            self.start_at = (self.ends_at
-                + dateutil.relativedelta.relativedelta(months=-1))
+            self.start_at = start_of_day(self.ends_at
+                + self.natural_period) + dateutil.relativedelta.relativedelta(
+                    days=1)
 
     def get(self, request, *args, **kwargs): #pylint: disable=unused-argument
         self.cache_fields(request)

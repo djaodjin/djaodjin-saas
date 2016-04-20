@@ -42,14 +42,14 @@ urls: {
     saas_api_coupon_url: "{{ urls.provider.api_coupons }}",
     saas_metrics_coupons_url: "{{ urls.provider.coupons }}",
     /* subscribers */
-    saas_api_registered: "{{ urls.provider.api_users_registered }}",
     saas_api_churned: "{{ urls.provider.api_subscribers_churned }}",
     saas_api_active_subscribers: "{{ urls.provider.api_subscribers_active }}",
     /* transactions */
     api_receivables: "{{urls.provider.api_receivables}}",
     saas_api_bank: "{{ urls.provider.api_bank }}",
     /* users */
-    api_users: "{{ urls.provider.api_users }}"
+    api_registered: "{{ urls.broker.api_users_registered }}",
+    api_users: "{{ urls.broker.api_users }}"
 {% endif %}
 },
 tables: {% if tables %}{{tables|safe}}{% else %}{}{% endif %}, // XXX
