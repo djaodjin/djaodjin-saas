@@ -139,7 +139,8 @@ class SmartTransactionListMixin(DateRangeMixin,
                            ('dest_organization__slug', 'dest_organization'),
                            ('dest_account', 'dest_account'),
                            ('orig_organization__slug', 'orig_organization'),
-                           ('orig_account', 'orig_account')]
+                           ('orig_account', 'orig_account'),
+                           ('created_at', 'created_at')]
 
     def get_queryset(self):
         """

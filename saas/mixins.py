@@ -340,7 +340,8 @@ class UserSmartListMixin(DateRangeMixin, SearchableListMixin,
 
     sort_fields_aliases = [('first_name', 'first_name'),
                            ('last_name', 'last_name'),
-                           ('email', 'email')]
+                           ('email', 'email'),
+                           ('date_joined', 'created_at')]
 
 
 class ChurnedQuerysetMixin(ProviderMixin):

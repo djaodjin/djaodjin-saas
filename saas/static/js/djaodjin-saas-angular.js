@@ -1161,8 +1161,8 @@ transactionControllers.controller("receivableListCtrl",
     function($scope, $controller, $http, $timeout, settings) {
     var opts = angular.merge({
         autoload: true,
-        sortByField: "date",
-        sortDirection: "asc",
+        sortByField: "created_at",
+        sortDirection: "desc",
         urls: {api_items: settings.urls.api_receivables}}, settings);
     $controller("itemsListCtrl", {
         $scope: $scope, $http: $http, $timeout:$timeout,
@@ -1186,8 +1186,8 @@ transactionControllers.controller("userListCtrl",
     function($scope, $controller, $http, $timeout, settings) {
     var opts = angular.merge({
         autoload: true,
-        sortByField: "date",
-        sortDirection: "asc",
+        sortByField: "created_at",
+        sortDirection: "desc",
         urls: {api_items: settings.urls.api_users}}, settings);
     $controller("itemsListCtrl", {
         $scope: $scope, $http: $http, $timeout:$timeout,
