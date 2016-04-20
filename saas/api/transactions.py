@@ -133,8 +133,8 @@ class TotalAnnotateMixin(object):
         return queryset
 
 
-class SmartTransactionListMixin(DateRangeMixin, SortableListMixin,
-                                TotalAnnotateMixin, SearchableListMixin):
+class SmartTransactionListMixin(SortableListMixin, TotalAnnotateMixin,
+                                DateRangeMixin, SearchableListMixin):
     """
     Subscriber list which is also searchable and sortable.
     """
