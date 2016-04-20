@@ -110,7 +110,7 @@ class BalancePagination(PageNumberPagination):
 class TotalPagination(PageNumberPagination):
 
     def paginate_queryset(self, queryset, request, view=None):
-        self.totals = sum_orig_amount(queryset)
+        self.totals = view.totals
         return super(TotalPagination, self).paginate_queryset(
             queryset, request, view=view)
 
@@ -125,8 +125,16 @@ class TotalPagination(PageNumberPagination):
         ]))
 
 
-class SmartTransactionListMixin(DateRangeMixin,
-                                SearchableListMixin, SortableListMixin):
+class TotalAnnotateMixin(object):
+
+    def get_queryset(self):
+        queryset = super(TotalAnnotateMixin, self).get_queryset()
+        self.totals = sum_orig_amount(queryset)
+        return queryset
+
+
+class SmartTransactionListMixin(DateRangeMixin, SortableListMixin,
+                                TotalAnnotateMixin, SearchableListMixin):
     """
     Subscriber list which is also searchable and sortable.
     """
