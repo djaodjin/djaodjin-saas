@@ -129,6 +129,9 @@ class TotalAnnotateMixin(object):
 
     def get_queryset(self):
         queryset = super(TotalAnnotateMixin, self).get_queryset()
+        # XXX Hack! should be moved to ``DateRangeMixin``.
+        queryset = queryset.filter(
+            created_at__gte=self.start_at, created_at__lt=self.ends_at)
         self.totals = sum_orig_amount(queryset)
         return queryset
 
@@ -149,14 +152,6 @@ class SmartTransactionListMixin(SortableListMixin, TotalAnnotateMixin,
                            ('orig_organization__slug', 'orig_organization'),
                            ('orig_account', 'orig_account'),
                            ('created_at', 'created_at')]
-
-    def get_queryset(self):
-        """
-        Implement date range filtering
-        """
-        self.cache_fields(self.request)
-        return super(SmartTransactionListMixin, self).get_queryset().filter(
-            created_at__gte=self.start_at, created_at__lt=self.ends_at)
 
 
 class TransactionQuerysetMixin(object):
