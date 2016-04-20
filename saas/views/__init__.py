@@ -125,18 +125,6 @@ class RedirectFormMixin(FormMixin):
         next_url = self.request.GET.get(REDIRECT_FIELD_NAME, None)
         if not next_url:
             return None
-        if sub:
-            try:
-                # We replace all ':slug/' by '%(slug)s/' so that we can further
-                # create an instantiated url through Python string expansion.
-                next_url = re.sub(r':(%s)/' % settings.ACCT_REGEX,
-                    r'%(\1)s/', next_url)
-                next_url = next_url % self.kwargs
-            except KeyError:
-                # We don't have all keys necessary. A safe defaults is to remove
-                # them. Most likely a redirect URL is present to pick between
-                # multiple choices.
-                next_url = re.sub(r'%(\S+)s/', '', next_url)
         parts = urlparse.urlparse(next_url)
         if parts.netloc:
             domain, _ = split_domain_port(parts.netloc)
@@ -144,7 +132,19 @@ class RedirectFormMixin(FormMixin):
                 else django_settings.ALLOWED_HOSTS)
             if not (domain and validate_host(domain, allowed_hosts)):
                 return None
-        return urlparse.urlunparse((None, '', parts.path,
+        path = parts.path
+        if sub:
+            try:
+                # We replace all ':slug/' by '%(slug)s/' so that we can further
+                # create an instantiated url through Python string expansion.
+                path = re.sub(r':(%s)/' % settings.ACCT_REGEX,
+                    r'%(\1)s/', path) % self.kwargs
+            except KeyError:
+                # We don't have all keys necessary. A safe defaults is to remove
+                # them. Most likely a redirect URL is present to pick between
+                # multiple choices.
+                path = re.sub(r'%(\S+)s/', '', path)
+        return urlparse.urlunparse((None, '', path,
             parts.params, parts.query, parts.fragment))
 
     def get_success_url(self):
