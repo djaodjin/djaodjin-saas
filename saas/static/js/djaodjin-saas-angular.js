@@ -1174,7 +1174,7 @@ transactionControllers.controller("searchListCtrl",
     ["$scope", "$controller", "$http", "$timeout", "settings",
     function($scope, $controller, $http, $timeout, settings) {
     var opts = angular.merge({
-        urls: {api_items: settings.urls.api_users}}, settings);
+        urls: {api_items: settings.urls.api_accounts}}, settings);
     $controller("itemsListCtrl", {
         $scope: $scope, $http: $http, $timeout:$timeout,
         settings: opts});
@@ -1188,9 +1188,8 @@ transactionControllers.controller("userListCtrl",
         autoload: true,
         sortByField: "created_at",
         sortDirection: "desc",
-        urls: {api_items: settings.urls.api_users}}, settings);
+        urls: {api_items: settings.urls.api_accounts}}, settings);
     $controller("itemsListCtrl", {
         $scope: $scope, $http: $http, $timeout:$timeout,
         settings: opts});
 }]);
-

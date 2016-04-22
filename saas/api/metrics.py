@@ -32,7 +32,7 @@ from ..mixins import ProviderMixin
 from ..models import Transaction, Organization, Plan
 from ..utils import datetime_or_now
 from ..managers.metrics import monthly_balances
-from .serializers import OrganizationSerializer
+from .serializers import OrganizationWithSubscriptionsSerializer
 from ..managers.metrics import (active_subscribers, aggregate_monthly,
     aggregate_monthly_transactions, churn_subscribers)
 
@@ -528,7 +528,7 @@ class PlanMetricAPIView(ProviderMixin, APIView):
 class OrganizationListAPIView(ProviderMixin, GenericAPIView):
 
     model = Organization
-    serializer_class = OrganizationSerializer
+    serializer_class = OrganizationWithSubscriptionsSerializer
 
     def get(self, request, *args, **kwargs):
         #pylint: disable=no-member,unused-argument

@@ -31,6 +31,7 @@ from django.conf.urls import url
 
 from ....api.plans import (PlanActivateAPIView, PlanCreateAPIView,
     PlanResourceView)
+from ....api.organizations import SubscribersAPIView
 from ....settings import ACCT_REGEX
 
 
@@ -43,4 +44,6 @@ urlpatterns = [
         PlanResourceView.as_view(), name='saas_api_plan'),
     url(r'^profile/(?P<organization>%s)/plans/?' % ACCT_REGEX,
         PlanCreateAPIView.as_view(), name='saas_api_plans'),
+    url(r'^profile/(?P<organization>%s)/subscribers/?' % ACCT_REGEX,
+        SubscribersAPIView.as_view(), name='saas_api_subscribers'),
 ]

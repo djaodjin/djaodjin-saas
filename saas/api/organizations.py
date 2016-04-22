@@ -27,12 +27,15 @@ import re
 from django.conf import settings as django_settings
 from django.contrib.auth import logout as auth_logout
 from django.db import transaction
+from extra_views.contrib.mixins import SortableListMixin
 from rest_framework import status
-from rest_framework.generics import RetrieveUpdateDestroyAPIView
+from rest_framework.generics import ListAPIView, RetrieveUpdateDestroyAPIView
 from rest_framework.response import Response
 
-from .serializers import OrganizationSerializer
-from ..mixins import OrganizationMixin
+from .serializers import (
+    OrganizationSerializer, OrganizationWithSubscriptionsSerializer)
+from ..mixins import (OrganizationMixin, OrganizationSmartListMixin,
+    ProviderMixin)
 from ..models import Organization
 
 #pylint: disable=no-init
@@ -67,7 +70,7 @@ class OrganizationDetailAPIView(OrganizationMixin,
     """
 
     queryset = Organization.objects.all()
-    serializer_class = OrganizationSerializer
+    serializer_class = OrganizationWithSubscriptionsSerializer
 
     def get_object(self):
         return self.organization
@@ -97,4 +100,63 @@ class OrganizationDetailAPIView(OrganizationMixin,
             if request.user == manager:
                 auth_logout(request)
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class SubscribersQueryAPIView(ProviderMixin):
+
+    def get_queryset(self):
+        queryset = Organization.objects.filter(
+            subscriptions__organization=self.provider)
+        # XXX Hack! should be moved to ``DateRangeMixin``.
+        queryset = queryset.filter(
+            created_at__gte=self.start_at, created_at__lt=self.ends_at)
+        return queryset
+
+
+class SubscribersAPIView(SortableListMixin, OrganizationSmartListMixin,
+                         SubscribersQueryAPIView, ListAPIView):
+    """
+    List active and churned subscribers of a provider.
+
+    The value passed in the ``q`` parameter will be matched against:
+
+      - Organization.slug
+      - Organization.full_name
+      - Organization.email
+      - Organization.phone
+      - Organization.street_address
+      - Organization.locality
+      - Organization.region
+      - Organization.postal_code
+      - Organization.country
+
+    The result queryset can be ordered by:
+
+      - Organization.created_at
+      - Organization.full_name
+
+    **Example request**:
+
+    .. sourcecode:: http
+
+        GET /api/profile/:organization/subscribers/?o=created_at&ot=desc
+
+    **Example response**:
+
+    .. sourcecode:: http
+
+        {
+            "count": 1,
+            "next": null,
+            "previous": null,
+            "results": [
+                {
+                "slug": "xia",
+                "full_name": "Xia Lee",
+                "created_at": "2016-01-14T23:16:55Z"
+                }
+            ]
+        }
+    """
+    serializer_class = OrganizationSerializer
 

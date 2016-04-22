@@ -308,6 +308,21 @@ class SubscriptionMixin(object):
         return queryset.filter(plan__slug=plan).get()
 
 
+class OrganizationSmartListMixin(DateRangeMixin, SearchableListMixin):
+    """
+    ``Organization`` list which is also searchable.
+    """
+    search_fields = ['slug',
+                     'full_name',
+                     'email',
+                     'phone',
+                     'street_address',
+                     'locality',
+                     'region',
+                     'postal_code',
+                     'country']
+
+
 class SubscriptionSmartListMixin(SearchableListMixin, SortableListMixin):
     """
     ``Subscription`` list which is also searchable and sortable.
@@ -329,8 +344,8 @@ class SubscriptionSmartListMixin(SearchableListMixin, SortableListMixin):
                            ('ends_at', 'ends_at')]
 
 
-class UserSmartListMixin(DateRangeMixin, SearchableListMixin,
-                         SortableListMixin):
+class UserSmartListMixin(SortableListMixin,
+                         DateRangeMixin, SearchableListMixin):
     """
     ``User`` list which is also searchable and sortable.
     """

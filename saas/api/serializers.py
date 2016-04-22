@@ -39,7 +39,17 @@ class BalanceLineSerializer(serializers.ModelSerializer):
         fields = ('title', 'selector', 'rank')
 
 
-class SubscriptionSerializer(serializers.ModelSerializer):
+class OrganizationSerializer(serializers.ModelSerializer):
+
+    printable_name = serializers.CharField(read_only=True)
+
+    class Meta:
+        model = Organization
+        fields = ('slug', 'full_name', 'printable_name', 'created_at', 'email')
+        read_only_fields = ('slug',)
+
+
+class WithSubscriptionSerializer(serializers.ModelSerializer):
 
     plan = serializers.SlugRelatedField(read_only=True, slug_field='slug')
 
@@ -48,14 +58,15 @@ class SubscriptionSerializer(serializers.ModelSerializer):
         fields = ('created_at', 'ends_at', 'plan', 'auto_renew')
 
 
-class OrganizationSerializer(serializers.ModelSerializer):
+class OrganizationWithSubscriptionsSerializer(serializers.ModelSerializer):
 
-    subscriptions = SubscriptionSerializer(
+    subscriptions = WithSubscriptionSerializer(
         source='subscription_set', many=True, read_only=True)
 
     class Meta:
         model = Organization
-        fields = ('slug', 'full_name', 'created_at', 'email', 'subscriptions', )
+        fields = ('slug', 'full_name', 'printable_name', 'created_at',
+            'email', 'subscriptions', )
         read_only_fields = ('slug', )
 
 
@@ -76,17 +87,32 @@ class PlanSerializer(serializers.ModelSerializer):
         return product_url(obj.organization)
 
 
+class SubscriptionSerializer(serializers.ModelSerializer):
+
+    organization = OrganizationSerializer(read_only=True)
+    plan = PlanSerializer(read_only=True)
+
+    class Meta:
+        model = Subscription
+        fields = ('created_at', 'ends_at', 'description',
+                  'organization', 'plan', 'auto_renew')
+
+
 class UserSerializer(serializers.ModelSerializer):
 
     # Only way I found out to remove the ``UniqueValidator``. We are not
     # interested to create new instances here.
-    username = serializers.CharField(validators=[
+    slug = serializers.CharField(source='username', validators=[
         validators.RegexValidator(r'^[\w.@+-]+$', _('Enter a valid username.'),
             'invalid')])
     created_at = serializers.DateTimeField(source='date_joined', required=False)
+    full_name = serializers.SerializerMethodField()
 
     class Meta:
         model = User
-        fields = ('username', 'email', 'first_name', 'last_name', 'created_at')
-        read_only = ('first_name', 'last_name', 'created_at',)
+        fields = ('slug', 'email', 'full_name', 'created_at')
+        read_only = ('full_name', 'created_at',)
 
+    @staticmethod
+    def get_full_name(obj):
+        return obj.get_full_name()

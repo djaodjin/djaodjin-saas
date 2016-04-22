@@ -22,36 +22,14 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from rest_framework import serializers
 from rest_framework.generics import (ListAPIView,
     ListCreateAPIView, RetrieveUpdateDestroyAPIView)
 
-from .serializers import PlanSerializer
 from ..mixins import (ChurnedQuerysetMixin, SubscriptionMixin,
     SubscriptionSmartListMixin, SubscribedQuerysetMixin)
-from ..models import Organization, Subscription
+from .serializers import SubscriptionSerializer
 
 #pylint: disable=no-init,old-style-class
-
-
-class OrganizationSerializer(serializers.ModelSerializer):
-
-    printable_name = serializers.CharField(read_only=True)
-
-    class Meta:
-        model = Organization
-        fields = ('slug', 'printable_name', )
-
-
-class SubscriptionSerializer(serializers.ModelSerializer):
-
-    organization = OrganizationSerializer(read_only=True)
-    plan = PlanSerializer(read_only=True)
-
-    class Meta:
-        model = Subscription
-        fields = ('created_at', 'ends_at', 'description',
-                  'organization', 'plan', 'auto_renew')
 
 
 class SubscriptionBaseListAPIView(SubscriptionMixin, ListCreateAPIView):

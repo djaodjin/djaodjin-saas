@@ -107,8 +107,7 @@ class RegisteredAPIView(UserSmartListMixin, RegisteredBaseAPIView):
                 {
                     "username": "alice",
                     "email": "alice@djaodjin.com",
-                    "first_name": "Alice",
-                    "last_name": "Cooper",
+                    "full_name": "Alice Cooper",
                     "created_at": "2014-01-01T00:00:00Z"
                 }
             ]
@@ -194,15 +193,13 @@ class RoleListAPIView(RelationListAPIView):
             {
                 "username": "alice",
                 "email": "alice@djaodjin.com",
-                "first_name": "Alice",
-                "last_name": "Cooper",
+                "full_name": "Alice Cooper",
                 "created_at": "2014-01-01T00:00:00Z"
             },
             {
                 "username": "xia",
                 "email": "xia@djaodjin.com",
-                "first_name": "Xia",
-                "last_name": "Lee",
+                "full_name": "Xia Lee",
                 "created_at": "2014-01-01T00:00:00Z"
             }
         ]
@@ -277,8 +274,7 @@ class UserListAPIView(UserSmartListMixin, UserQuerysetMixin, ListAPIView):
                 {
                     "username": "alice",
                     "email": "alice@djaodjin.com",
-                    "first_name": "Alice",
-                    "last_name": "Cooper",
+                    "full_name": "Alice Cooper",
                     "created_at": "2014-01-01T00:00:00Z"
                 }
             ]
