@@ -33,6 +33,7 @@ from django.core.urlresolvers import reverse
 from django.contrib.auth import REDIRECT_FIELD_NAME
 from django.db import IntegrityError, transaction
 from django.http.request import split_domain_port, validate_host
+from django.shortcuts import get_object_or_404
 from django.views.generic import RedirectView
 from django.views.generic.base import TemplateResponseMixin
 from django.views.generic.edit import FormMixin, ProcessFormView
@@ -95,8 +96,9 @@ def session_cart_to_database(request):
                     if updated:
                         cart_item.save()
                 else:
+                    plan = get_object_or_404(Plan, slug=item['plan'])
                     CartItem.objects.create(
-                        user=request.user, plan__slug=item['plan'],
+                        user=request.user, plan=plan,
                         first_name=first_name, last_name=last_name, email=email,
                         coupon=coupon, nb_periods=nb_periods)
             del request.session['cart_items']
