@@ -105,7 +105,7 @@ class RegisteredAPIView(UserSmartListMixin, RegisteredBaseAPIView):
             "previous": null,
             "results": [
                 {
-                    "username": "alice",
+                    "slug": "alice",
                     "email": "alice@djaodjin.com",
                     "full_name": "Alice Cooper",
                     "created_at": "2014-01-01T00:00:00Z"
@@ -128,6 +128,8 @@ class RelationListAPIView(OrganizationMixin, ListCreateAPIView):
     def create(self, request, *args, **kwargs): #pylint:disable=unused-argument
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
+        # From that point on, even though we passed "slug" in the json
+        # for the API request, we end up with a validated_data['username'].
         try:
             user = User.objects.get(
                 username=serializer.validated_data['username'])
@@ -191,13 +193,13 @@ class RoleListAPIView(RelationListAPIView):
 
         [
             {
-                "username": "alice",
+                "slug": "alice",
                 "email": "alice@djaodjin.com",
                 "full_name": "Alice Cooper",
                 "created_at": "2014-01-01T00:00:00Z"
             },
             {
-                "username": "xia",
+                "slug": "xia",
                 "email": "xia@djaodjin.com",
                 "full_name": "Xia Lee",
                 "created_at": "2014-01-01T00:00:00Z"
@@ -272,7 +274,7 @@ class UserListAPIView(UserSmartListMixin, UserQuerysetMixin, ListAPIView):
             "previous": null,
             "results": [
                 {
-                    "username": "alice",
+                    "slug": "alice",
                     "email": "alice@djaodjin.com",
                     "full_name": "Alice Cooper",
                     "created_at": "2014-01-01T00:00:00Z"

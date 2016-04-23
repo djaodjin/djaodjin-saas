@@ -488,7 +488,7 @@ userRelationControllers.controller("userRelationListCtrl",
             },
             function(resp) {
                 if( resp.status === 404 ) {
-                    $scope.user.email = $scope.user.username;
+                    $scope.user.email = $scope.user.slug;
                     angular.element("#new-user-relation").modal("show");
                 } else {
                     showErrorMessages(resp);
@@ -505,7 +505,7 @@ userRelationControllers.controller("userRelationListCtrl",
     };
 
     $scope.remove = function (idx) {
-        UserRelation.remove({ user: $scope.users.results[idx].username },
+        UserRelation.remove({ user: $scope.users.results[idx].slug },
         function (success) {
             $scope.users.results.splice(idx, 1);
         });
