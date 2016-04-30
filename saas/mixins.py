@@ -337,23 +337,6 @@ class SubscriptionSmartListMixin(SortableListMixin, SearchableListMixin):
                            ('ends_at', 'ends_at')]
 
 
-class UserSmartListMixin(SortableListMixin,
-                         DateRangeMixin, SearchableListMixin):
-    """
-    ``User`` list which is also searchable and sortable.
-    """
-    search_fields = ['first_name',
-                     'last_name',
-                     'email']
-
-    date_field = 'date_joined'
-
-    sort_fields_aliases = [('first_name', 'first_name'),
-                           ('last_name', 'last_name'),
-                           ('email', 'email'),
-                           ('date_joined', 'created_at')]
-
-
 class UserSortableSearchableListMixin(SortableListMixin, SearchableListMixin):
     """
     ``User`` list which is also searchable and sortable.

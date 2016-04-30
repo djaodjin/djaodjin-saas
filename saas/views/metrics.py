@@ -36,7 +36,7 @@ from ..api.users import RegisteredQuerysetMixin
 from ..managers.metrics import monthly_balances, month_periods
 from ..mixins import (CouponMixin, ProviderMixin, MetricsMixin,
     ChurnedQuerysetMixin, SubscriptionSmartListMixin, SubscribedQuerysetMixin,
-    UserSmartListMixin)
+    UserSortableSearchableListMixin)
 from ..models import CartItem, Plan, Transaction
 from ..utils import datetime_or_now
 
@@ -279,7 +279,8 @@ class RegisteredBaseDownloadView(RegisteredQuerysetMixin, CSVDownloadView):
         ]
 
 
-class RegisteredDownloadView(UserSmartListMixin, RegisteredBaseDownloadView):
+class RegisteredDownloadView(UserSortableSearchableListMixin,
+                             RegisteredBaseDownloadView):
 
     pass
 

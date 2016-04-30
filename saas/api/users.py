@@ -33,7 +33,7 @@ from rest_framework.response import Response
 from .serializers import UserSerializer
 from ..compat import User
 from ..mixins import (OrganizationMixin, ProviderMixin, RelationMixin,
-    UserSmartListMixin, UserSortableSearchableListMixin)
+    UserSortableSearchableListMixin)
 from ..utils import datetime_or_now, get_role_model
 
 
@@ -238,10 +238,13 @@ class UserQuerysetMixin(object):
     model = User
 
     def get_queryset(self):
+        self.ends_at = datetime_or_now(
+            parse_datetime(self.request.GET.get('ends_at', '').strip('"')))
         return User.objects.filter(date_joined__lt=self.ends_at)
 
 
-class UserListAPIView(UserSmartListMixin, UserQuerysetMixin, ListAPIView):
+class UserListAPIView(UserSortableSearchableListMixin,
+                      UserQuerysetMixin, ListAPIView):
     """
     GET queries all ``User``.
 
