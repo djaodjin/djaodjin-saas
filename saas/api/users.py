@@ -23,6 +23,7 @@
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 from django.http import Http404
+from django.utils.dateparse import parse_datetime
 from django.utils.encoding import force_text
 from rest_framework import status
 from rest_framework.generics import (DestroyAPIView, ListAPIView,
@@ -32,8 +33,8 @@ from rest_framework.response import Response
 from .serializers import UserSerializer
 from ..compat import User
 from ..mixins import (OrganizationMixin, ProviderMixin, RelationMixin,
-    UserSmartListMixin)
-from ..utils import get_role_model
+    UserSmartListMixin, UserSortableSearchableListMixin)
+from ..utils import datetime_or_now, get_role_model
 
 
 #pylint: disable=no-init
@@ -57,6 +58,8 @@ class RegisteredQuerysetMixin(ProviderMixin):
         #       WHERE created_at < ends_at) AS RoleSubSet
         #     ON User.id = RoleSubSet.user_id
         #     WHERE user_id IS NULL;
+        self.ends_at = datetime_or_now(
+            parse_datetime(self.request.GET.get('ends_at', '').strip('"')))
         return User.objects.exclude(pk__in=get_role_model().objects.filter(
             organization__subscription__created_at__lt=self.ends_at).values(
             'user')).order_by('-date_joined', 'last_name').distinct()
@@ -67,7 +70,8 @@ class RegisteredBaseAPIView(RegisteredQuerysetMixin, ListAPIView):
     pass
 
 
-class RegisteredAPIView(UserSmartListMixin, RegisteredBaseAPIView):
+class RegisteredAPIView(UserSortableSearchableListMixin,
+                        RegisteredBaseAPIView):
     """
     GET queries all ``User`` which have no associated role or a role
     to an ``Organization`` which has no Subscription, active or inactive.

@@ -354,6 +354,20 @@ class UserSmartListMixin(SortableListMixin,
                            ('date_joined', 'created_at')]
 
 
+class UserSortableSearchableListMixin(SortableListMixin, SearchableListMixin):
+    """
+    ``User`` list which is also searchable and sortable.
+    """
+    search_fields = ['first_name',
+                     'last_name',
+                     'email']
+
+    sort_fields_aliases = [('first_name', 'first_name'),
+                           ('last_name', 'last_name'),
+                           ('email', 'email'),
+                           ('date_joined', 'created_at')]
+
+
 class ChurnedQuerysetMixin(ProviderMixin):
     """
     ``QuerySet`` of ``Subscription`` which are no longer active.
