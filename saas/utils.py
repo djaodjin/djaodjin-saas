@@ -22,7 +22,7 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-import datetime, random, urlparse
+import datetime, inspect, random, sys, urlparse
 
 from django.conf import settings as django_settings
 from django.http.request import split_domain_port, validate_host
@@ -38,15 +38,6 @@ def datetime_or_now(dtime_at=None):
         dtime_at = dtime_at.replace(tzinfo=utc)
     return dtime_at
 
-def start_of_day(dtime_at=None):
-    dtime_at = datetime_or_now(dtime_at)
-    return datetime.datetime(dtime_at.year, dtime_at.month,
-        dtime_at.day, tzinfo=dtime_at.tzinfo)
-
-
-def utctimestamp_to_datetime(timestamp):
-    return datetime_or_now(datetime.datetime.utcfromtimestamp(timestamp))
-
 
 def datetime_to_utctimestamp(dtime_at, epoch=None):
     if epoch is None:
@@ -55,6 +46,37 @@ def datetime_to_utctimestamp(dtime_at, epoch=None):
         dtime_at = epoch
     diff = dtime_at - epoch
     return int(diff.total_seconds())
+
+
+def extract_full_exception_stack(err):
+    tbk = sys.exc_info()[2]
+    message = str(err) + '\nTraceback (most recent call last):'
+    for item in reversed(inspect.getouterframes(tbk.tb_frame)[1:]):
+        message += ' File "{1}", line {2}, in {3}\n'.format(*item)
+        for line in item[4]:
+            message += ' ' + line.lstrip()
+    for item in inspect.getinnerframes(tbk):
+        message += ' File "{1}", line {2}, in {3}\n'.format(*item)
+        for line in item[4]:
+            message += ' ' + line.lstrip()
+    message += '%s: %s' % (err.__class__, err)
+    return message
+
+
+def generate_random_slug(prefix=None):
+    """
+    This function is used, for example, to create Coupon code mechanically
+    when a customer pays for the subscriptions of an organization which
+    does not yet exist in the database.
+    """
+    suffix = "".join([random.choice("abcdefghijklmnopqrstuvwxyz0123456789-")
+                      for _ in range(40)]) # Generated coupon codes are stored
+                             # as ``Transaction.event_id`` we a 'cpn_' prefix.
+                             # The total event_id must be less than 50 chars.
+    if prefix:
+        return str(prefix) + suffix
+    return suffix
+
 
 def get_organization_model():
     # delayed import so we can load ``OrganizationMixinBase`` in django.conf
@@ -76,6 +98,12 @@ def get_roles(role_name, using=None):
         name=role_name)
 
 
+def start_of_day(dtime_at=None):
+    dtime_at = datetime_or_now(dtime_at)
+    return datetime.datetime(dtime_at.year, dtime_at.month,
+        dtime_at.day, tzinfo=dtime_at.tzinfo)
+
+
 def validate_redirect_url(next_url):
     """
     Returns the next_url path if next_url matches allowed hosts.
@@ -95,17 +123,5 @@ def validate_redirect_url(next_url):
     return parts.path
 
 
-def generate_random_slug(prefix=None):
-    """
-    This function is used, for example, to create Coupon code mechanically
-    when a customer pays for the subscriptions of an organization which
-    does not yet exist in the database.
-    """
-    suffix = "".join([random.choice("abcdefghijklmnopqrstuvwxyz0123456789-")
-                      for _ in range(40)]) # Generated coupon codes are stored
-                             # as ``Transaction.event_id`` we a 'cpn_' prefix.
-                             # The total event_id must be less than 50 chars.
-    if prefix:
-        return str(prefix) + suffix
-    return suffix
-
+def utctimestamp_to_datetime(timestamp):
+    return datetime_or_now(datetime.datetime.utcfromtimestamp(timestamp))

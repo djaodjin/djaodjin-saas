@@ -110,8 +110,8 @@ class TotalPagination(PageNumberPagination):
         ]))
 
 
-class SmartChargeListMixin(DateRangeMixin,
-                                SearchableListMixin, SortableListMixin):
+class SmartChargeListMixin(SortableListMixin, DateRangeMixin,
+                           SearchableListMixin):
     """
     Subscriber list which is also searchable and sortable.
     """
@@ -122,14 +122,6 @@ class SmartChargeListMixin(DateRangeMixin,
     sort_fields_aliases = [('descr', 'description'),
                            ('amount', 'amount'),
                            ('customer__full_name', 'Full name')]
-
-    def get_queryset(self):
-        """
-        Implement date range filtering
-        """
-        self.cache_fields(self.request)
-        return super(SmartChargeListMixin, self).get_queryset().filter(
-            created_at__gte=self.start_at, created_at__lt=self.ends_at)
 
 
 class ChargeQuerysetMixin(object):

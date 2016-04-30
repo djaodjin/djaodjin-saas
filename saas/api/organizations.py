@@ -27,7 +27,6 @@ import re
 from django.conf import settings as django_settings
 from django.contrib.auth import logout as auth_logout
 from django.db import transaction
-from extra_views.contrib.mixins import SortableListMixin
 from rest_framework import status
 from rest_framework.generics import ListAPIView, RetrieveUpdateDestroyAPIView
 from rest_framework.response import Response
@@ -102,19 +101,16 @@ class OrganizationDetailAPIView(OrganizationMixin,
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
-class SubscribersQueryAPIView(ProviderMixin):
+class SubscribersQuerysetMixin(ProviderMixin):
 
     def get_queryset(self):
         queryset = Organization.objects.filter(
             subscriptions__organization=self.provider)
-        # XXX Hack! should be moved to ``DateRangeMixin``.
-        queryset = queryset.filter(
-            created_at__gte=self.start_at, created_at__lt=self.ends_at)
         return queryset
 
 
-class SubscribersAPIView(SortableListMixin, OrganizationSmartListMixin,
-                         SubscribersQueryAPIView, ListAPIView):
+class SubscribersAPIView(OrganizationSmartListMixin,
+                         SubscribersQuerysetMixin, ListAPIView):
     """
     List active and churned subscribers of a provider.
 

@@ -253,12 +253,6 @@ class BalancesDownloadView(MetricsMixin, CSVDownloadView):
     def get_filename(self, *_):
         return '{}.csv'.format(self.queryname)
 
-    def get(self, request, *args, **kwargs): #pylint: disable=unused-argument
-        # cache_fields sets attributes like 'starts_at',
-        # required by other methods
-        self.cache_fields(request)
-        return super(BalancesDownloadView, self).get(request, *args, **kwargs)
-
     def get_queryset(self, *_):
         return Transaction.objects.distinct_accounts()
 

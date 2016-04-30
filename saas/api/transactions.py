@@ -129,9 +129,6 @@ class TotalAnnotateMixin(object):
 
     def get_queryset(self):
         queryset = super(TotalAnnotateMixin, self).get_queryset()
-        # XXX Hack! should be moved to ``DateRangeMixin``.
-        queryset = queryset.filter(
-            created_at__gte=self.start_at, created_at__lt=self.ends_at)
         self.totals = sum_orig_amount(queryset)
         return queryset
 

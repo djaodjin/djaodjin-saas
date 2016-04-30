@@ -77,10 +77,10 @@ def export(output, transactions):
         else:
             orig_amount = ''
         output.write("""
-%(date)s #%(reference)s - %(description)s
+%(created_at)s #%(reference)s - %(description)s
 %(dest)s%(dest_amount)s
 %(orig)s%(orig_amount)s
-""" % {'date': datetime.datetime.strftime(
+""" % {'created_at': datetime.datetime.strftime(
             transaction.created_at, '%Y/%m/%d %H:%M:%S'),
         'reference': '%s' % transaction.event_id,
         'description': transaction.descr,

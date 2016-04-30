@@ -695,16 +695,20 @@ transactionControllers.controller("transactionListCtrl",
     ["$scope", "$http", "$timeout", "settings", "Transaction",
      function($scope, $http, $timeout, settings, Transaction) {
     "use strict";
-    var defaultSortByField = "date";
     $scope.dir = {};
     $scope.totalItems = 0;
-    $scope.dir[defaultSortByField] = "desc";
     $scope.opened = { "start_at": false, "ends_at": false };
-    $scope.params = {
-        o: defaultSortByField,
-        ot: $scope.dir[defaultSortByField],
-        start_at: moment(settings.date_range.start_at).toDate(),
-        ends_at: moment(settings.date_range.ends_at).toDate()
+    $scope.params = {};
+    if( settings.sortByField ) {
+        $scope.params['o'] = settings.sortByField;
+        $scope.params['ot'] = settings.sortDirection || "desc";
+        $scope.dir[settings.sortByField] = $scope.params['ot'];
+    }
+    if( settings.date_range.start_at ) {
+        $scope.params['start_at'] = moment(settings.date_range.start_at).toDate();
+    }
+    if( settings.date_range.ends_at ) {
+        $scope.params['ends_at'] = moment(settings.date_range.ends_at).toDate()
     };
 
     $scope.last4 = "N/A";

@@ -438,7 +438,8 @@ class TransactionBaseView(DateRangeMixin, TemplateView):
             api_location += '?%s' % urlencode({'selector': self.selector})
         context.update({
             'organization': get_broker(),
-            'saas_api_transactions': api_location})
+            'saas_api_transactions': api_location,
+            'sort_by_field': 'created_at'})
         return context
 
 

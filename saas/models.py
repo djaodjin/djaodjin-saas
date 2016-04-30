@@ -58,8 +58,8 @@ from django_countries.fields import CountryField
 
 from . import settings, signals
 from .backends import get_processor_backend, ProcessorError, CardError
-from .utils import (datetime_or_now, get_roles, get_role_model,
-    generate_random_slug)
+from .utils import (datetime_or_now, extract_full_exception_stack,
+    generate_random_slug, get_roles, get_role_model)
 
 from .humanize import (as_money, describe_buy_periods,
     DESCRIBE_BUY_PERIODS, DESCRIBE_BALANCE,
@@ -768,8 +768,8 @@ class ChargeManager(models.Manager):
             # An error from the processor which indicates the logic might be
             # incorrect, the network down, etc. We want to know about it right
             # away.
-            LOGGER.exception('ProcessorError for charge of %d cents to %s: %s',
-                        amount, customer, err)
+            LOGGER.error("ProcessorError for charge of %d cents to %s\n" % (
+                amount, customer) + extract_full_exception_stack(err))
             raise
         return charge
 
@@ -2046,8 +2046,7 @@ class TransactionManager(models.Manager):
             |(Q(orig_organization=organization)
               & (Q(orig_account=Transaction.LIABILITY)
                  | Q(orig_account=Transaction.REFUNDED)))).exclude(
-                     orig_account=Transaction.PAYABLE).order_by(
-                     '-created_at')
+                     orig_account=Transaction.PAYABLE)
 
     def by_organization(self, organization, account=None):
         """
@@ -2061,8 +2060,7 @@ class TransactionManager(models.Manager):
             ((Q(orig_organization=organization)
               & Q(orig_account=account))
             | (Q(dest_organization=organization)
-              & Q(dest_account=account)))) \
-            .order_by('-created_at')
+              & Q(dest_account=account))))
 
     def by_subsciptions(self, subscriptions, at_time=None):
         """
@@ -2838,8 +2836,8 @@ def sum_dest_amount(transactions):
     query_result = []
     if isinstance(transactions, QuerySet):
         if transactions.exists():
-            query_result = transactions.values(
-                'dest_unit').annotate(Sum('dest_amount'), Max('created_at'))
+            query_result = transactions.values('dest_unit').annotate(
+                Sum('dest_amount'), Max('created_at')).distinct()
     else:
         group_by = {}
         most_recent = None
@@ -2859,7 +2857,7 @@ def sum_dest_amount(transactions):
                     (len(query_result), ','.join(
                         [res['dest_unit'] for res in query_result])))
             except ValueError as err:
-                LOGGER.exception(err)
+                LOGGER.error(extract_full_exception_stack(err))
         # XXX Hack: until we change the function signature
         return {'amount': query_result[0]['dest_amount__sum'],
                 'unit': query_result[0]['dest_unit'],
@@ -2874,8 +2872,8 @@ def sum_orig_amount(transactions):
     query_result = []
     if isinstance(transactions, QuerySet):
         if transactions.exists():
-            query_result = transactions.values(
-                'orig_unit').annotate(Sum('orig_amount'), Max('created_at'))
+            query_result = transactions.values('orig_unit').annotate(
+                Sum('orig_amount'), Max('created_at')).distinct()
     else:
         group_by = {}
         most_recent = None
@@ -2895,7 +2893,7 @@ def sum_orig_amount(transactions):
                     (len(query_result), ', '.join(
                         [res['orig_unit'] for res in query_result])))
             except ValueError as err:
-                LOGGER.exception(err)
+                LOGGER.error(extract_full_exception_stack(err))
         # XXX Hack: until we change the function signature
         return {'amount': query_result[0]['orig_amount__sum'],
                 'unit': query_result[0]['orig_unit'],

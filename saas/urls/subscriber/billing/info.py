@@ -27,6 +27,7 @@ URLs responding to GET requests with billing history.
 """
 
 from django.conf.urls import url
+from django.views.generic import RedirectView
 
 from ....settings import ACCT_REGEX
 from ....views.billing import ChargeReceiptView, BillingStatementView
@@ -48,4 +49,7 @@ urlpatterns += [
         ChargeReceiptView.as_view(), name='saas_charge_receipt'),
     url(r'^billing/(?P<organization>%s)/$' % ACCT_REGEX,
         BillingStatementView.as_view(), name='saas_billing_info'),
+    url(r'^billing/$',
+        RedirectView.as_view(pattern_name='saas_billing_info'),
+        name='saas_billing_base'),
 ]

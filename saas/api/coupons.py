@@ -77,7 +77,7 @@ class CouponMixin(OrganizationMixin):
             serializer.save(organization=self.organization, ends_at='never')
 
 
-class SmartCouponListMixin(SearchableListMixin, SortableListMixin):
+class SmartCouponListMixin(SortableListMixin, SearchableListMixin):
     """
     Subscriber list which is also searchable and sortable.
     """

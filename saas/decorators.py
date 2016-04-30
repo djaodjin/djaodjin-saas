@@ -388,6 +388,33 @@ def fail_self_provider_strong(request, user=None):
     return fail_self_provider(request, user=user, strength=STRONG)
 
 
+def requires_authenticated(function=None,
+                           redirect_field_name=REDIRECT_FIELD_NAME):
+    """
+    Decorator for views that checks that the user is authenticated.
+
+    ``django.contrib.auth.decorators.login_required`` will automatically
+    redirect to the login page. We want to raise a ``PermissionDenied``
+    instead when Content-Type is showing we are dealing with an API request.
+    """
+    def decorator(view_func):
+        @wraps(view_func, assigned=available_attrs(view_func))
+        def _wrapped_view(request, *args, **kwargs):
+            redirect = fail_authenticated(request)
+            if redirect:
+                content_type = request.META.get('CONTENT_TYPE', '')
+                if (content_type.lower() in ['text/html', 'text/plain']
+                    and isinstance(redirect, basestring)):
+                    return _insert_url(request, redirect_field_name, redirect)
+                raise PermissionDenied
+            return view_func(request, *args, **kwargs)
+        return _wrapped_view
+
+    if function:
+        return decorator(function)
+    return decorator
+
+
 def requires_agreement(function=None,
                        agreement=settings.TERMS_OF_USE,
                        redirect_field_name=REDIRECT_FIELD_NAME):

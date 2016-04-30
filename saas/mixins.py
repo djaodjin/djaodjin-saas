@@ -158,26 +158,26 @@ class ChargeMixin(SingleObjectMixin):
         context = super(ChargeMixin, self).get_context_data(**kwargs)
         charge = self.object
         context.update(get_charge_context(charge))
-        urls_charge = {
+        urls = {'charge': {
             'api_base': reverse('saas_api_charge', args=(charge,)),
-            'api_refund': reverse('saas_api_charge_refund', args=(charge,)),
             'api_email_receipt': reverse(
                 'saas_api_email_charge_receipt', args=(charge,)),
-        }
+            'api_refund': reverse('saas_api_charge_refund', args=(charge,))}}
         try:
             # optional
-            urls_charge.update({'printable_receipt': reverse(
+            urls['charge'].update({'printable_receipt': reverse(
                 'saas_printable_charge_receipt',
                 args=(charge.customer, charge,))})
         except NoReverseMatch:
             pass
         if 'urls' in context:
-            if 'charge' in context['urls']:
-                context['urls']['charge'].update(urls_charge)
-            else:
-                context['urls'].update({'charge': urls_charge})
+            for key, val in urls.iteritems():
+                if key in context['urls']:
+                    context['urls'][key].update(val)
+                else:
+                    context['urls'].update({key: val})
         else:
-            context.update({'urls': {'charge': urls_charge}})
+            context.update({'urls': urls})
         return context
 
 
@@ -187,6 +187,7 @@ class OrganizationMixin(OrganizationMixinBase, settings.EXTRA_MIXIN):
 
 class DateRangeMixin(object):
 
+    date_field = 'created_at'
     natural_period = dateutil.relativedelta.relativedelta(months=-1)
 
     def cache_fields(self, request):
@@ -200,6 +201,15 @@ class DateRangeMixin(object):
             self.start_at = start_of_day(self.ends_at
                 + self.natural_period) + dateutil.relativedelta.relativedelta(
                     days=1)
+
+    def get_queryset(self):
+        """
+        Implements date range filtering on ``created_at``
+        """
+        kwargs = {
+            '%s__gte' % self.date_field: self.start_at,
+            '%s__lt' % self.date_field: self.ends_at}
+        return super(DateRangeMixin, self).get_queryset().filter(**kwargs)
 
     def get(self, request, *args, **kwargs): #pylint: disable=unused-argument
         self.cache_fields(request)
@@ -255,30 +265,9 @@ class CouponMixin(ProviderMixin):
         return context
 
 
-class MetricsMixin(ProviderMixin):
-    """
-    Adds [start_at, ends_at[ into a View instance.
-    """
+class MetricsMixin(DateRangeMixin, ProviderMixin):
 
-    def cache_fields(self, request): #pylint: disable=unused-argument
-        self.start_at = self.request.GET.get('start_at', None)
-        if self.start_at:
-            self.start_at = parse_datetime(self.start_at)
-        self.start_at = datetime_or_now(self.start_at)
-        self.ends_at = self.request.GET.get('ends_at', None)
-        if self.ends_at:
-            self.ends_at = parse_datetime(self.ends_at)
-        self.ends_at = datetime_or_now(self.ends_at)
-
-    def get(self, request, *args, **kwargs): #pylint: disable=unused-argument
-        self.cache_fields(request)
-        return super(MetricsMixin, self).get(request, *args, **kwargs)
-
-    def get_context_data(self, **kwargs):
-        context = super(MetricsMixin, self).get_context_data(**kwargs)
-        context.update({'start_at': self.start_at,
-                        'ends_at': self.ends_at})
-        return context
+    pass
 
 
 class SubscriptionMixin(object):
@@ -308,9 +297,10 @@ class SubscriptionMixin(object):
         return queryset.filter(plan__slug=plan).get()
 
 
-class OrganizationSmartListMixin(DateRangeMixin, SearchableListMixin):
+class OrganizationSmartListMixin(SortableListMixin,
+                                 DateRangeMixin, SearchableListMixin):
     """
-    ``Organization`` list which is also searchable.
+    ``Organization`` list which is searchable and filtered by date ranges.
     """
     search_fields = ['slug',
                      'full_name',
@@ -322,8 +312,11 @@ class OrganizationSmartListMixin(DateRangeMixin, SearchableListMixin):
                      'postal_code',
                      'country']
 
+    sort_fields_aliases = [('full_name', 'full_name'),
+                           ('created_at', 'created_at')]
 
-class SubscriptionSmartListMixin(SearchableListMixin, SortableListMixin):
+
+class SubscriptionSmartListMixin(SortableListMixin, SearchableListMixin):
     """
     ``Subscription`` list which is also searchable and sortable.
     """
@@ -352,6 +345,8 @@ class UserSmartListMixin(SortableListMixin,
     search_fields = ['first_name',
                      'last_name',
                      'email']
+
+    date_field = 'date_joined'
 
     sort_fields_aliases = [('first_name', 'first_name'),
                            ('last_name', 'last_name'),
