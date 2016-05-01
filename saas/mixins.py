@@ -185,14 +185,21 @@ class OrganizationMixin(OrganizationMixinBase, settings.EXTRA_MIXIN):
     pass
 
 
-class DateRangeMixin(object):
+class BeforeMixin(object):
 
     date_field = 'created_at'
-    natural_period = dateutil.relativedelta.relativedelta(months=-1)
 
     def cache_fields(self, request):
         self.ends_at = datetime_or_now(
             parse_datetime(request.GET.get('ends_at', '').strip('"')))
+
+
+class DateRangeMixin(BeforeMixin):
+
+    natural_period = dateutil.relativedelta.relativedelta(months=-1)
+
+    def cache_fields(self, request):
+        super(DateRangeMixin, self).cache_fields(request)
         self.start_at = request.GET.get('start_at', None)
         if self.start_at:
             self.start_at = datetime_or_now(parse_datetime(
@@ -337,13 +344,15 @@ class SubscriptionSmartListMixin(SortableListMixin, SearchableListMixin):
                            ('ends_at', 'ends_at')]
 
 
-class UserSortableSearchableListMixin(SortableListMixin, SearchableListMixin):
+class UserSmartListMixin(SortableListMixin, BeforeMixin, SearchableListMixin):
     """
     ``User`` list which is also searchable and sortable.
     """
     search_fields = ['first_name',
                      'last_name',
                      'email']
+
+    date_field = 'date_joined'
 
     sort_fields_aliases = [('first_name', 'first_name'),
                            ('last_name', 'last_name'),

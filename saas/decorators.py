@@ -403,8 +403,12 @@ def requires_authenticated(function=None,
             redirect = fail_authenticated(request)
             if redirect:
                 content_type = request.META.get('CONTENT_TYPE', '')
-                if (content_type.lower() in ['text/html', 'text/plain']
+                if (not content_type.lower() in ['application/json']
                     and isinstance(redirect, basestring)):
+                    # testing for 'application/json' because either casperjs
+                    # is not passing a Content-Type by default (text/html)
+                    # and Django runserver command fixes it, or gunicorn
+                    # removes it before passing the request forward.
                     return _insert_url(request, redirect_field_name, redirect)
                 raise PermissionDenied
             return view_func(request, *args, **kwargs)
