@@ -1032,9 +1032,9 @@ class Charge(models.Model):
             event_id=self.id,
             descr=self.description,
             created_at=self.created_at,
-            dest_unit=processor_funds_unit,
+            dest_unit=self.unit,
             # XXX provider and processor must have same units.
-            dest_amount=total_distribute_amount + total_fee_amount,
+            dest_amount=self.amount,
             dest_account=Transaction.FUNDS,
             dest_organization=self.processor,
             orig_unit=self.unit,
@@ -1102,12 +1102,12 @@ class Charge(models.Model):
                     descr=DESCRIBE_CHARGED_CARD_PROCESSOR % {
                         'charge': self.processor_key, 'event': event},
                     event_id=self.id,
-                    dest_unit=self.unit,
-                    dest_amount=orig_fee_amount,
+                    dest_unit=funds_unit,
+                    dest_amount=fee_amount,
                     dest_account=Transaction.EXPENSES,
                     dest_organization=provider,
-                    orig_unit=processor_funds_unit,
-                    orig_amount=fee_amount,
+                    orig_unit=self.unit,
+                    orig_amount=orig_fee_amount,
                     orig_account=Transaction.BACKLOG,
                     orig_organization=self.processor)
                 # pylint:disable=no-member
@@ -1132,7 +1132,10 @@ class Charge(models.Model):
                 dest_account=Transaction.RECEIVABLE,
                 dest_organization=provider,
                 orig_unit=funds_unit,
-                orig_amount=orig_item_amount,
+                # XXX Just making sure we don't screw up rounding
+                # when using the same unit.
+                orig_amount=(distribute_amount + fee_amount
+                    if self.unit != funds_unit else orig_item_amount),
                 orig_account=Transaction.BACKLOG,
                 orig_organization=provider)
 
