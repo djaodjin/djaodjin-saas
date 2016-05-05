@@ -133,11 +133,11 @@ class TotalAnnotateMixin(object):
         return queryset
 
 
-class SmartTransactionListMixin(SortableListMixin, TotalAnnotateMixin,
-                                DateRangeMixin, SearchableListMixin):
+class TransactionFilterMixin(DateRangeMixin, SearchableListMixin):
     """
-    Subscriber list which is also searchable and sortable.
+    ``Transaction`` list result of a search query, filtered by dates.
     """
+
     search_fields = ['descr',
                      'orig_organization__full_name',
                      'dest_organization__full_name']
@@ -149,6 +149,13 @@ class SmartTransactionListMixin(SortableListMixin, TotalAnnotateMixin,
                            ('orig_organization__slug', 'orig_organization'),
                            ('orig_account', 'orig_account'),
                            ('created_at', 'created_at')]
+
+
+class SmartTransactionListMixin(SortableListMixin, TransactionFilterMixin):
+    """
+    ``Transaction`` list which is also searchable and sortable.
+    """
+    pass
 
 
 class TransactionQuerysetMixin(object):
@@ -247,8 +254,9 @@ class ReceivablesQuerysetMixin(ProviderMixin):
         return self.provider.receivables().filter(orig_amount__gt=0)
 
 
-class ReceivablesListAPIView(SmartTransactionListMixin,
-                             ReceivablesQuerysetMixin, ListAPIView):
+class ReceivablesListAPIView(SortableListMixin, TotalAnnotateMixin,
+                             TransactionFilterMixin, ReceivablesQuerysetMixin,
+                             ListAPIView):
     """
     GET queries all receivables for a provider.
 
