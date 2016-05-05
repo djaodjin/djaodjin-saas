@@ -46,10 +46,12 @@ class Command(BaseCommand):
         parser.add_argument('--create-organizations', action='store_true',
             dest='create_organizations', default=False,
             help='Create organization if it does not exist.')
+        parser.add_argument('subcommand', metavar='subcommand', nargs='+',
+            help="subcommand: export|import")
 
     def handle(self, *args, **options):
         #pylint: disable=too-many-locals
-        subcommand = args[0]
+        subcommand = options['subcommand'][0]
         using = options['database']
         if subcommand == 'export':
             export(self.stdout, Transaction.objects.using(using).all().order_by(

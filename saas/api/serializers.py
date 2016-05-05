@@ -23,14 +23,29 @@
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 from django.core import validators
+from django.shortcuts import get_object_or_404
 from django.utils.translation import ugettext_lazy as _
 from rest_framework import serializers
 
 from ..compat import User
 from ..mixins import product_url
-from ..models import BalanceLine, Organization, Plan, Subscription
+from ..models import BalanceLine, CartItem, Organization, Plan, Subscription
 
 #pylint: disable=no-init,old-style-class
+
+class PlanRelatedField(serializers.RelatedField):
+
+    def __init__(self, **kwargs):
+        super(PlanRelatedField, self).__init__(
+            queryset=Plan.objects.all(), **kwargs)
+
+    # Django REST Framework 3.0
+    def to_representation(self, obj):
+        return obj.slug
+
+    def to_internal_value(self, data):
+        return get_object_or_404(Plan, slug=data)
+
 
 class BalanceLineSerializer(serializers.ModelSerializer):
 
@@ -116,3 +131,15 @@ class UserSerializer(serializers.ModelSerializer):
     @staticmethod
     def get_full_name(obj):
         return obj.get_full_name()
+
+
+class CartItemSerializer(serializers.ModelSerializer):
+    """
+    serializer for ``Coupon`` use metrics.
+    """
+    user = UserSerializer()
+    plan = PlanRelatedField(read_only=False, required=True)
+
+    class Meta:
+        model = CartItem
+        fields = ('user', 'plan', 'created_at')

@@ -67,25 +67,12 @@ from rest_framework.generics import CreateAPIView, DestroyAPIView
 from rest_framework.response import Response
 from rest_framework import serializers, status
 
-from ..models import CartItem, Plan
 from ..mixins import CartMixin
+from ..models import CartItem
+from .serializers import PlanRelatedField
 
 #pylint: disable=no-init,old-style-class
 LOGGER = logging.getLogger(__name__)
-
-
-class PlanRelatedField(serializers.RelatedField):
-
-    def __init__(self, **kwargs):
-        super(PlanRelatedField, self).__init__(
-            queryset=Plan.objects.all(), **kwargs)
-
-    # Django REST Framework 3.0
-    def to_representation(self, obj):
-        return obj.slug
-
-    def to_internal_value(self, data):
-        return get_object_or_404(Plan, slug=data)
 
 
 class CartItemSerializer(serializers.ModelSerializer):

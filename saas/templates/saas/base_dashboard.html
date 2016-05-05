@@ -52,6 +52,7 @@ urls: {
     api_users: "{{ urls.broker.api_users }}"
 {% endif %}
 },
+itemsPerPage: {% if items_per_page %}{{items_per_page}}{% else %}25{% endif %},
 tables: {% if tables %}{{tables|safe}}{% else %}{}{% endif %}, // XXX
 date_range: {
     start_at: {% if start_at %}"{{start_at}}"{% else %}""{% endif %},

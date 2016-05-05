@@ -25,14 +25,15 @@
 from django.core.urlresolvers import reverse
 from django.utils.dateparse import parse_datetime
 from rest_framework.views import APIView
-from rest_framework.generics import GenericAPIView
+from rest_framework.generics import GenericAPIView, ListAPIView
 from rest_framework.response import Response
 
-from ..mixins import ProviderMixin
-from ..models import Transaction, Organization, Plan
+from ..mixins import CartItemSmartListMixin, CouponMixin, ProviderMixin
+from ..models import CartItem, Organization, Plan, Transaction
 from ..utils import datetime_or_now
 from ..managers.metrics import monthly_balances
-from .serializers import OrganizationWithSubscriptionsSerializer
+from .serializers import (CartItemSerializer,
+    OrganizationWithSubscriptionsSerializer)
 from ..managers.metrics import (active_subscribers, aggregate_monthly,
     aggregate_monthly_transactions, churn_subscribers)
 
@@ -271,6 +272,34 @@ class RevenueMetricAPIView(ProviderMixin, APIView):
         return Response(
             {"title": "Amount",
             "unit": "$", "scale": 0.01, "table": account_table})
+
+
+class CouponUsesQuerysetMixin(object):
+
+    def get_queryset(self):
+        return CartItem.objects.filter(coupon=self.coupon, recorded=True)
+
+
+class CouponUsesAPIView(CartItemSmartListMixin, CouponUsesQuerysetMixin,
+                        CouponMixin, ListAPIView):
+    """
+    GET list uses of a ``Coupon``.
+
+    .. autoclass:: saas.mixins.CartItemSmartListMixin
+
+    **Example response**:
+
+    .. sourcecode:: http
+
+        {
+            "code": "DIS100",
+            "percent": 100,
+            "created_at": "2014-01-01T09:00:00Z",
+            "ends_at": null,
+            "description": null
+       }
+    """
+    serializer_class = CartItemSerializer
 
 
 class CustomerMetricAPIView(ProviderMixin, APIView):

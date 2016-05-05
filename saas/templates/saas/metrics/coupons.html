@@ -1,34 +1,45 @@
 {% extends "saas/base_dashboard.html" %}
 
 {% block saas_content %}
-<section id="coupon_metrics">
-  <h1>{{coupon.code}} Performance</h1>
-  <p>
-{{coupon.code}} was used {{coupon_performance_count}} time{% if coupon_performance_count > 0 %}s{% endif %}.
-  </p>
-  <table>
-    <thead>
-      <tr>
-        <th>User</th>
-        <th>Plan</th>
-        <th>Used at</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% if cartitem_list %}
-      {% for cartitem in cartitem_list %}
-      <tr>
-        <td><a href="{{'users/'|site_prefixed}}{{cartitem.user}}/">{{cartitem.user.get_full_name}}</a></td>
-        <td>{{cartitem.plan}}</td>
-        <td>{{cartitem.created_at}}</td>
-      </tr>
-      {% endfor %}
-      {% else %}
-      <tr><td colspan="3"><em>No Item</em></td></tr>
-      {% endif %}
-    </tbody>
-  </table>
-  {% include "paginator.html" %}
+<section id="coupon-performance" ng-app="saasApp">
+    <div ng-controller="cartItemListCtrl">
+        <p ng-show="items.$resolved">
+{{coupon.code}} was used [[totalItems]] time[[totalItems > 0 ? "s" : ""]].
+        </p>
+        <table>
+            <thead>
+                <tr>
+                    <th><button ng-click="sortBy('slug')">User</button></th>
+                    <th><button ng-click="sortBy('plan')">Plan</button></th>
+                    <th><button ng-click="sortBy('created_at')">Used at</button></th>
+                </tr>
+            </thead>
+            <tbody>
+              <tr ng-show="items.$resolved && items.results.length == 0">
+                <td colspan="3">
+                  <h4>No use of {{coupon.code}} coupon</h4>
+                </td>
+              </tr>
+              <tr ng-repeat="item in items.results"
+                  ng-show="items.$resolved && items.results.length > 0" >
+                <td><a id="[[item.user.slug]]" href="{{'users/'|site_prefixed}}[[item.user.slug]]/">[[item.user.full_name]]</a></td>
+                <td>[[item.plan]]</td>
+                <td>[[item.created_at | date: mediumDate]]</td>
+              </tr>
+        </table>
+        <div ng-show="items.$resolved && totalItems > itemsPerPage">
+          <uib-pagination class="pagination-sm" ng-model="currentPage"
+                      total-items="totalItems"
+                      items-per-page="itemsPerPage"
+                      boundary-links="true"
+                      max-size="maxSize"
+                      previous-text="&lsaquo;"
+                      next-text="&rsaquo;"
+                      first-text="&laquo;"
+                      last-text="&raquo;"
+                      ng-change="pageChanged()"></uib-pagination>
+        </div>
+    </div>
 </section>
 {% endblock %}
 

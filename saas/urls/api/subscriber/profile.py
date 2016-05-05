@@ -28,12 +28,12 @@ URLs API for profile resources (contributors, managers and subscriptions)
 
 from django.conf.urls import url
 
-from ....api.organizations import OrganizationDetailAPIView
+from ....api.organizations import (
+    OrganizationDetailAPIView, OrganizationListAPIView)
 from ....api.subscriptions import (SubscriptionDetailAPIView,
     SubscriptionListAPIView)
 from ....api.users import (RoleListAPIView, RoleDetailAPIView)
 from ....settings import ACCT_REGEX
-from ....views import OrganizationRedirectView
 
 
 urlpatterns = [
@@ -53,6 +53,6 @@ urlpatterns = [
     url(r'^(?P<organization>%s)/?$' % ACCT_REGEX,
         OrganizationDetailAPIView.as_view(), name='saas_api_organization'),
     url(r'^$',
-        OrganizationRedirectView.as_view(pattern_name='saas_api_organization'),
+        OrganizationListAPIView.as_view(),
         name='saas_api_profile'),
 ]

@@ -4,9 +4,6 @@
 
 {% block saas_content %}
 <section ng-app="saasApp" ng-cloak>
-  <script type="text/ng-template" id="customTemplate.html">
-    <a><span bind-html-unsafe="match.model.organization.printable_name + ' - ' + match.model.plan.title | typeaheadHighlight:query"></span></a>
-  </script>
 <div ng-controller="importTransactionsCtrl">
 <form action="." method="post">
   <input type="hidden" name="csrfmiddlewaretoken" value="{{csrf_token}}">
@@ -19,13 +16,7 @@
                 <input id="subscription" name="subscription"
                        placeholder="Subscriber name or email" type="text"
                        autocomplete="off"
-                       ng-model="subscription"
-                       typeahead="subscription as subscription.organization.slug + ':' + subscription.plan.slug for subscription in getSubscriptions($viewValue)"
-                       typeahead-loading="loadingSubscriptions"
-                       typeahead-template-url="customTemplate.html">
-                <div ng-show="loadingSubscriptions">
-                    <i>loading ...</i>
-                </div>
+                       ng-model="subscription">
             </div>
         </div>
         <div class="{% if form.amount.errors %} has-error{% endif %}">

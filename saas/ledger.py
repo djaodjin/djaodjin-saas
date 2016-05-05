@@ -72,8 +72,9 @@ def export(output, transactions):
                 % {'orig_organization': transaction.orig_organization,
                    'orig_account': transaction.orig_account})
         if transaction.dest_unit != transaction.orig_unit:
-            orig_amount = as_money(transaction.orig_amount,
-                transaction.orig_unit).rjust(60 - len(orig))
+            disp_orig_amount = "-%s" % as_money(transaction.orig_amount,
+                transaction.orig_unit)
+            orig_amount = disp_orig_amount.rjust(60 - len(orig))
         else:
             orig_amount = ''
         output.write("""

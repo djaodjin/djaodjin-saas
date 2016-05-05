@@ -9,9 +9,7 @@ var saasApp = angular.module("saasApp", [
     "metricsControllers",
     "importTransactionsControllers",
     "subscriptionControllers",
-    "transactionControllers", "transactionServices",
-    "userRelationControllers", "userRelationServices",
-    "saasFilters"]);
+    "transactionControllers", "transactionServices", "saasFilters"]);
 
 /*=============================================================================
   Filters
@@ -109,7 +107,6 @@ angular.module("saasFilters", [])
   Services
   ============================================================================*/
 var couponServices = angular.module("couponServices", ["ngResource"]);
-var userRelationServices = angular.module("userRelationServices", ["ngResource"]);
 var transactionServices = angular.module("transactionServices", ["ngResource"]);
 
 
@@ -121,15 +118,6 @@ couponServices.factory("Coupon", ["$resource", "settings",
             {query: {method: "GET"},
              create: {method: "POST"},
              update: {method: "PUT", isArray: false}});
-  }]);
-
-userRelationServices.factory("UserRelation", ["$resource", "settings",
-  function($resource, settings){
-    "use strict";
-    return $resource(
-        settings.urls.saas_api_user_relation_url + "/:user", {user: "@user"},
-        {query: {method: "GET"},
-         force: {method: "POST", params: {force: true}}});
   }]);
 
 transactionServices.factory("Transaction", ["$resource", "settings",
@@ -145,7 +133,6 @@ transactionServices.factory("Transaction", ["$resource", "settings",
 //============================================================================
 
 var couponControllers = angular.module("couponControllers", []);
-var userRelationControllers = angular.module("userRelationControllers", []);
 var subscriptionControllers = angular.module("subscriptionControllers", []);
 var transactionControllers = angular.module("transactionControllers", []);
 var metricsControllers = angular.module("metricsControllers", []);
@@ -165,16 +152,18 @@ transactionControllers.controller("itemsListCtrl",
         $scope.params['ot'] = settings.sortDirection || "desc";
         $scope.dir[settings.sortByField] = $scope.params['ot'];
     }
-    if( settings.date_range.start_at ) {
-        $scope.params['start_at'] = moment(settings.date_range.start_at).toDate();
+    if( settings.date_range ) {
+        if( settings.date_range.start_at ) {
+            $scope.params['start_at'] = moment(settings.date_range.start_at).toDate();
+        }
+        if( settings.date_range.ends_at ) {
+            $scope.params['ends_at'] = moment(settings.date_range.ends_at).toDate()
+        }
     }
-    if( settings.date_range.ends_at ) {
-        $scope.params['ends_at'] = moment(settings.date_range.ends_at).toDate()
-    };
 
     $scope.filterExpr = "";
-    $scope.itemsPerPage = 25; // Must match on the server-side.
-    $scope.maxSize = 5;      // Total number of pages to display
+    $scope.itemsPerPage = settings.itemsPerPage; // Must match server-side
+    $scope.maxSize = 5;               // Total number of direct pages link
     $scope.currentPage = 1;
     // currentPage will be saturated at maxSize when maxSize is defined.
     $scope.formats = ["dd-MMMM-yyyy", "yyyy/MM/dd", "dd.MM.yyyy", "shortDate"];
@@ -281,6 +270,70 @@ transactionControllers.controller("itemsListCtrl",
 }]);
 
 
+transactionControllers.controller("relationListCtrl",
+    ["$scope", "$controller", "$http", "$timeout", "settings",
+    function($scope, $controller, $http, $timeout, settings) {
+    "use strict";
+    $controller("itemsListCtrl", {
+        $scope: $scope, $http: $http, $timeout:$timeout, settings: settings});
+
+    $scope.item = null;
+
+    $scope.getCandidates = function(val) {
+        return $http.get(settings.urls.api_candidates, {
+            params: {q: val}
+        }).then(function(res){
+            return res.data.results;
+        });
+    };
+
+    $scope.create = function() {
+        $scope.item.invite = angular.element(
+            settings.modalId + " [name='message']").val();
+        $http.post(settings.urls.api_items + "?force=1", $scope.item).then(
+            function success(resp) {
+                // XXX Couldn't figure out how to get the status code
+                //   here so we just reload the list.
+                $scope.refresh();
+                $scope.item = null;
+            },
+            function error(resp) {
+                showErrorMessages(resp);
+            });
+    };
+
+    $scope.save = function($event) {
+        $event.preventDefault();
+        $http.post(settings.urls.api_items, $scope.item).then(
+            function(success) {
+                // XXX Couldn't figure out how to get the status code
+                // here so we just reload the list.
+                $scope.refresh();
+                $scope.item = null;
+            },
+            function(resp) {
+                if( resp.status === 404 ) {
+                    $scope.item.email = $scope.item.slug;
+                    angular.element(settings.modalId).modal("show");
+                } else {
+                    showErrorMessages(resp);
+                }
+            });
+    };
+
+    $scope.remove = function (idx) {
+        $http.delete(settings.urls.api_items
+                     + '/' + $scope.items.results[idx].slug).then(
+            function success(resp) {
+                $scope.items.results.splice(idx, 1);
+            },
+            function error(resp) {
+                showErrorMessages(resp);
+            });
+    };
+}]);
+
+
 couponControllers.controller("CouponListCtrl",
     ["$scope", "$http", "$timeout", "Coupon", "settings",
      function($scope, $http, $timeout, Coupon, settings) {
@@ -298,8 +351,8 @@ couponControllers.controller("CouponListCtrl",
     $scope.newCoupon = new Coupon();
 
     $scope.filterExpr = "";
-    $scope.itemsPerPage = 25; // Must match on the server-side.
-    $scope.maxSize = 5;      // Total number of pages to display
+    $scope.itemsPerPage = settings.itemsPerPage; // Must match server-side
+    $scope.maxSize = 5;               // Total number of direct pages link
     $scope.currentPage = 1;
 
     $scope.dateOptions = {
@@ -430,86 +483,20 @@ couponControllers.controller("CouponListCtrl",
 }]);
 
 
-userRelationControllers.controller("userRelationListCtrl",
-    ["$scope", "$http", "UserRelation", "settings",
-    function($scope, $http, UserRelation, settings) {
+transactionControllers.controller("userRelationListCtrl",
+    ["$scope", "$controller", "$http", "$timeout", "settings",
+    function($scope, $controller, $http, $timeout, settings) {
     "use strict";
-    $scope.params = {};
-    $scope.itemsPerPage = 25; // Must match on the server-side.
-    $scope.maxSize = 5;      // Total number of pages to display
-    $scope.currentPage = 1;
-    $scope.totalItems = 0;
-    $scope.user = null;
-
-    $scope.refresh = function() {
-        $scope.users = UserRelation.query($scope.params, function() {
-            // We cannot watch users.count otherwise things start
-            // to snowball. We must update totalItems only when
-            // it truly changed.
-            if( $scope.users.count != $scope.totalItems ) {
-                $scope.totalItems = $scope.users.count;
-            }
-        });
-    };
-    $scope.refresh();
-
-    $scope.pageChanged = function() {
-        if( $scope.currentPage > 1 ) {
-            $scope.params.page = $scope.currentPage;
-        } else {
-            delete $scope.params.page;
-        }
-        $scope.refresh();
-    };
-
-    $scope.create = function() {
-        $scope.user.invite = angular.element(
-            "#new-user-relation [name='message']").val();
-        (new UserRelation($scope.user)).$force(
-            function(success) {
-                // XXX Couldn't figure out how to get the status code
-                //   here so we just reload the list.
-                $scope.refresh();
-                $scope.user = null;
-            },
-            function(resp) {
-                showErrorMessages(resp);
-            });
-    };
-
-    $scope.save = function($event) {
-        $event.preventDefault();
-        (new UserRelation($scope.user)).$save(
-            function(success) {
-                // XXX Couldn't figure out how to get the status code
-                // here so we just reload the list.
-                $scope.refresh();
-                $scope.user = null;
-            },
-            function(resp) {
-                if( resp.status === 404 ) {
-                    $scope.user.email = $scope.user.slug;
-                    angular.element("#new-user-relation").modal("show");
-                } else {
-                    showErrorMessages(resp);
-                }
-            });
-    };
-
-    $scope.getUsers = function(val) {
-        return $http.get(settings.urls.api_users, {
-            params: {q: val}
-        }).then(function(res){
-            return res.data.results;
-        });
-    };
-
-    $scope.remove = function (idx) {
-        UserRelation.remove({ user: $scope.users.results[idx].slug },
-        function (success) {
-            $scope.users.results.splice(idx, 1);
-        });
-    };
+    var opts = angular.merge({
+        autoload: true,
+        sortByField: "username",
+        sortDirection: "desc",
+        modalId: "#new-user-relation",
+        urls: {api_items: settings.urls.saas_api_user_relation_url,
+               api_candidates: settings.urls.api_users}}, settings);
+    $controller("relationListCtrl", {
+        $scope: $scope, $http: $http, $timeout:$timeout,
+        settings: opts});
 }]);
 
 
@@ -523,8 +510,8 @@ subscriptionControllers.controller("subscriptionListCtrl",
     $scope.params = {o: defaultSortByField, ot: $scope.dir[defaultSortByField]};
 
     $scope.filterExpr = "";
-    $scope.itemsPerPage = 25; // Must match on the server-side.
-    $scope.maxSize = 5;      // Total number of pages to display
+    $scope.itemsPerPage = settings.itemsPerPage; // Must match server-side
+    $scope.maxSize = 5;               // Total number of direct pages link
     $scope.currentPage = 1;
 
     $scope.dateOptions = {
@@ -727,8 +714,8 @@ transactionControllers.controller("transactionListCtrl",
     };
 
     $scope.filterExpr = "";
-    $scope.itemsPerPage = 25; // Must match on the server-side.
-    $scope.maxSize = 5;      // Total number of pages to display
+    $scope.itemsPerPage = settings.itemsPerPage; // Must match server-side
+    $scope.maxSize = 5;               // Total number of direct pages link
     $scope.currentPage = 1;
     // currentPage will be saturated at maxSize when maxSize is defined.
     $scope.formats = ["dd-MMMM-yyyy", "yyyy/MM/dd", "dd.MM.yyyy", "shortDate"];
@@ -1157,6 +1144,19 @@ balanceControllers.controller("BalanceListCtrl",
                 showErrorMessages(resp);
             });
     };
+}]);
+
+transactionControllers.controller("cartItemListCtrl",
+    ["$scope", "$controller", "$http", "$timeout", "settings",
+    function($scope, $controller, $http, $timeout, settings) {
+    var opts = angular.merge({
+        autoload: true,
+        sortByField: "created_at",
+        sortDirection: "desc",
+        urls: {api_items: settings.urls.api_metrics_coupon_uses}}, settings);
+    $controller("itemsListCtrl", {
+        $scope: $scope, $http: $http, $timeout:$timeout,
+        settings: opts});
 }]);
 
 

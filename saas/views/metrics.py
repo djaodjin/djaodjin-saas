@@ -26,12 +26,10 @@ import json
 from datetime import datetime
 
 from django.core.urlresolvers import reverse
-from django.views.generic import ListView, TemplateView
+from django.views.generic import TemplateView
 
 from .download import CSVDownloadView
-from ..api.coupons import SmartCouponListMixin
-# NB: there is another CouponMixin
-from ..api.coupons import CouponMixin as CouponAPIMixin
+from ..api.coupons import SmartCouponListMixin, CouponQuerysetMixin
 from ..api.users import RegisteredQuerysetMixin
 from ..managers.metrics import monthly_balances, month_periods
 from ..mixins import (CouponMixin, ProviderMixin, MetricsMixin,
@@ -67,7 +65,7 @@ class BalanceView(ProviderMixin, TemplateView):
         return context
 
 
-class CouponMetricsView(CouponMixin, ListView):
+class CouponMetricsView(CouponMixin, TemplateView):
     """
     Performance of Coupon based on CartItem.
 
@@ -84,23 +82,27 @@ class CouponMetricsView(CouponMixin, ListView):
     """
 
     model = CartItem
-    paginate_by = 10
     template_name = 'saas/metrics/coupons.html'
-
-    def get_queryset(self):
-        queryset = super(CouponMetricsView, self).get_queryset().filter(
-            coupon=self.get_coupon(), recorded=True)
-        return queryset
 
     def get_context_data(self, **kwargs):
         context = super(CouponMetricsView, self).get_context_data(**kwargs)
-        context.update({'coupon_performance_count': CartItem.objects.filter(
-            coupon=self.get_coupon(), recorded=True).count()})
+        urls = {'provider': {
+            'api_metrics_coupon_uses': reverse(
+                'saas_api_coupon_uses',
+                args=(self.provider, self.coupon.code))}}
+        if 'urls' in context:
+            for key, val in urls.iteritems():
+                if key in context['urls']:
+                    context['urls'][key].update(val)
+                else:
+                    context['urls'].update({key: val})
+        else:
+            context.update({'urls': urls})
         return context
 
 
-class CouponMetricsDownloadView(SmartCouponListMixin, CouponAPIMixin,
-                                ProviderMixin, CSVDownloadView):
+class CouponMetricsDownloadView(SmartCouponListMixin, CouponQuerysetMixin,
+                                CSVDownloadView):
 
     headings = [
         'Code',

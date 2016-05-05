@@ -30,7 +30,7 @@ from rest_framework.response import Response
 from extra_views.contrib.mixins import SearchableListMixin, SortableListMixin
 
 from ..models import CartItem, Coupon
-from ..mixins import OrganizationMixin
+from ..mixins import CouponMixin, ProviderMixin
 
 #pylint: disable=no-init
 #pylint: disable=old-style-class
@@ -57,26 +57,6 @@ class RedeemCouponSerializer(serializers.Serializer):
         raise RuntimeError('`update()` should not have been called.')
 
 
-class CouponMixin(OrganizationMixin):
-
-    model = Coupon
-    serializer_class = CouponSerializer
-    lookup_field = 'code'
-    lookup_url_kwarg = 'coupon'
-
-    def get_queryset(self):
-        return Coupon.objects.filter(organization=self.organization)
-
-    def perform_create(self, serializer):
-        serializer.save(organization=self.organization)
-
-    def perform_update(self, serializer):
-        if 'ends_at' in serializer.validated_data:
-            serializer.save(organization=self.organization)
-        else:
-            serializer.save(organization=self.organization, ends_at='never')
-
-
 class SmartCouponListMixin(SortableListMixin, SearchableListMixin):
     """
     Subscriber list which is also searchable and sortable.
@@ -95,7 +75,14 @@ class SmartCouponListMixin(SortableListMixin, SearchableListMixin):
                            ('created_at', 'created_at')]
 
 
-class CouponListAPIView(SmartCouponListMixin, CouponMixin, ListCreateAPIView):
+class CouponQuerysetMixin(ProviderMixin):
+
+    def get_queryset(self):
+        return Coupon.objects.filter(organization=self.organization)
+
+
+class CouponListAPIView(SmartCouponListMixin, CouponQuerysetMixin,
+                        ListCreateAPIView):
     """
     ``GET`` queries all ``Coupon`` associated to a provider.
 
@@ -151,7 +138,11 @@ class CouponListAPIView(SmartCouponListMixin, CouponMixin, ListCreateAPIView):
     ``/api/billing/:organization/coupons/:coupon/`` for an example of JSON
     data).
     """
-    pass
+    serializer_class = CouponSerializer
+
+    def perform_create(self, serializer):
+        serializer.save(organization=self.organization)
+
 
 
 class CouponDetailAPIView(CouponMixin, RetrieveUpdateDestroyAPIView):
@@ -170,7 +161,13 @@ class CouponDetailAPIView(CouponMixin, RetrieveUpdateDestroyAPIView):
             "description": null
        }
     """
-    pass
+    serializer_class = CouponSerializer
+
+    def perform_update(self, serializer):
+        if 'ends_at' in serializer.validated_data:
+            serializer.save(organization=self.organization)
+        else:
+            serializer.save(organization=self.organization, ends_at='never')
 
 
 class CouponRedeemAPIView(GenericAPIView):

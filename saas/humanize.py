@@ -78,9 +78,9 @@ def as_money(value, currency='usd'):
         if currency in ['usd', 'cad']:
             unit_prefix = '$'
             if currency != 'usd':
-                unit_suffix = currency
+                unit_suffix = ' %s' % currency
         else:
-            unit_suffix = currency
+            unit_suffix = ' %s' % currency
     grouped = ""
     if value < 0:
         value = - value

@@ -28,14 +28,17 @@ URLs API for provider resources related to billing
 
 from django.conf.urls import url
 
-from ....api.metrics import (BalancesAPIView,
-    RevenueMetricAPIView, CustomerMetricAPIView, PlanMetricAPIView)
+from ....api.metrics import (BalancesAPIView, CouponUsesAPIView,
+    CustomerMetricAPIView, PlanMetricAPIView, RevenueMetricAPIView)
 from ....api.subscriptions import (ActiveSubscriptionAPIView,
     ChurnedSubscriptionAPIView)
 from ....settings import ACCT_REGEX
 
 
 urlpatterns = [
+    url(r'^metrics/(?P<organization>%s)/coupons/(?P<coupon>%s)/?' % (
+        ACCT_REGEX, ACCT_REGEX), CouponUsesAPIView.as_view(),
+        name='saas_api_coupon_uses'),
     url(r'^metrics/(?P<organization>%s)/active/?' % ACCT_REGEX,
         ActiveSubscriptionAPIView.as_view(), name='saas_api_subscribed'),
     url(r'^metrics/(?P<organization>%s)/balances/?' % ACCT_REGEX,

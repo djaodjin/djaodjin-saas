@@ -261,14 +261,17 @@ class CouponMixin(ProviderMixin):
 
     coupon_url_kwarg = 'coupon'
 
-    def get_coupon(self):
-        return get_object_or_404(Coupon,
-            code=self.kwargs.get(self.coupon_url_kwarg),
-            organization=self.provider)
+    @property
+    def coupon(self):
+        if not hasattr(self, '_coupon'):
+            self._coupon = get_object_or_404(Coupon,
+                code=self.kwargs.get(self.coupon_url_kwarg),
+                organization=self.provider)
+        return self._coupon
 
     def get_context_data(self, **kwargs):
         context = super(CouponMixin, self).get_context_data(**kwargs)
-        context.update({'coupon': self.get_coupon()})
+        context.update({'coupon': self.coupon})
         return context
 
 
@@ -304,10 +307,63 @@ class SubscriptionMixin(object):
         return queryset.filter(plan__slug=plan).get()
 
 
+class CartItemSmartListMixin(SortableListMixin,
+                             DateRangeMixin, SearchableListMixin):
+    """
+    The queryset can be further filtered to a range of dates between
+    ``start_at`` and ``ends_at``.
+
+    The queryset can be further filtered by passing a ``q`` parameter.
+    The value in ``q`` will be matched against:
+
+      - user.username
+      - user.first_name
+      - user.last_name
+      - user.email
+
+    The result queryset can be ordered by passing an ``o`` (field name)
+    and ``ot`` (asc or desc) parameter.
+    The fields the queryset can be ordered by are:
+
+      - user.first_name
+      - user.last_name
+      - created_at
+    """
+    search_fields = ['user__username',
+                     'user__first_name',
+                     'user__last_name',
+                     'user__email']
+
+    sort_fields_aliases = [('slug', 'user__username'),
+                           ('plan', 'plan'),
+                           ('created_at', 'created_at')]
+
+
 class OrganizationSmartListMixin(SortableListMixin,
                                  DateRangeMixin, SearchableListMixin):
     """
-    ``Organization`` list which is searchable and filtered by date ranges.
+    The queryset can be further filtered to a range of dates between
+    ``start_at`` and ``ends_at``.
+
+    The queryset can be further filtered by passing a ``q`` parameter.
+    The value in ``q`` will be matched against:
+
+      - slug
+      - full_name
+      - email
+      - phone
+      - street_address
+      - locality
+      - region
+      - postal_code
+      - country
+
+    The result queryset can be ordered by passing an ``o`` (field name)
+    and ``ot`` (asc or desc) parameter.
+    The fields the queryset can be ordered by are:
+
+      - full_name
+      - created_at
     """
     search_fields = ['slug',
                      'full_name',

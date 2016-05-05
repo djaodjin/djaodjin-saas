@@ -101,6 +101,44 @@ class OrganizationDetailAPIView(OrganizationMixin,
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
+class OrganizationQuerysetMixin(object):
+
+    @staticmethod
+    def get_queryset():
+        return Organization.objects.all()
+
+
+class OrganizationListAPIView(OrganizationSmartListMixin,
+                              OrganizationQuerysetMixin, ListAPIView):
+    """
+    GET queries all ``Organization``.
+
+    .. autoclass:: saas.mixins.OrganizationSmartListMixin
+
+    **Example request**:
+
+    .. sourcecode:: http
+
+        GET /api/users/?o=created_at&ot=desc
+
+    **Example response**:
+
+    .. sourcecode:: http
+
+        {
+            "count": 1,
+            "next": null,
+            "previous": null,
+            "results": [{
+                "slug": "xia",
+                "full_name": "Xia Lee",
+                "created_at": "2016-01-14T23:16:55Z",
+            }]
+        }
+    """
+    serializer_class = OrganizationSerializer
+
+
 class SubscribersQuerysetMixin(ProviderMixin):
 
     def get_queryset(self):
