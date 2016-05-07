@@ -190,8 +190,10 @@ class BeforeMixin(object):
     date_field = 'created_at'
 
     def cache_fields(self, request):
-        self.ends_at = datetime_or_now(
-            parse_datetime(request.GET.get('ends_at', '').strip('"')))
+        self.ends_at = request.GET.get('ends_at', None)
+        if self.ends_at:
+            self.start_at = datetime_or_now(parse_datetime(
+                self.ends_at.strip('"')))
 
 
 class DateRangeMixin(BeforeMixin):
@@ -200,22 +202,25 @@ class DateRangeMixin(BeforeMixin):
 
     def cache_fields(self, request):
         super(DateRangeMixin, self).cache_fields(request)
-        self.start_at = request.GET.get('start_at', None)
-        if self.start_at:
-            self.start_at = datetime_or_now(parse_datetime(
-                self.start_at.strip('"')))
-        else:
-            self.start_at = start_of_day(self.ends_at
-                + self.natural_period) + dateutil.relativedelta.relativedelta(
-                    days=1)
+        if self.ends_at:
+            self.start_at = request.GET.get('start_at', None)
+            if self.start_at:
+                self.start_at = datetime_or_now(parse_datetime(
+                    self.start_at.strip('"')))
+            else:
+                self.start_at = (
+                    start_of_day(self.ends_at + self.natural_period)
+                    + dateutil.relativedelta.relativedelta(days=1))
 
     def get_queryset(self):
         """
         Implements date range filtering on ``created_at``
         """
-        kwargs = {
-            '%s__gte' % self.date_field: self.start_at,
-            '%s__lt' % self.date_field: self.ends_at}
+        kwargs = {}
+        if self.ends_at:
+            kwargs.update({'%s__lt' % self.date_field: self.ends_at})
+        if self.start_at:
+            kwargs.update({'%s__gte' % self.date_field: self.start_at})
         return super(DateRangeMixin, self).get_queryset().filter(**kwargs)
 
     def get(self, request, *args, **kwargs): #pylint: disable=unused-argument
@@ -224,9 +229,10 @@ class DateRangeMixin(BeforeMixin):
 
     def get_context_data(self, **kwargs):
         context = super(DateRangeMixin, self).get_context_data(**kwargs)
-        context.update({
-            'start_at': self.start_at.isoformat(),
-            'ends_at': self.ends_at.isoformat()})
+        if self.ends_at:
+            context.update({'ends_at': self.ends_at.isoformat()})
+        if self.start_at:
+            context.update({'start_at': self.start_at.isoformat()})
         return context
 
 
