@@ -10,7 +10,7 @@
 <script type="text/javascript" charset="utf-8" src="{{'static/vendor/js/ui-bootstrap-tpls.js'|asset}}"></script>
 <script type="text/javascript" charset="utf-8" src="{{'static/js/djaodjin-saas-angular.js'|asset}}"></script>
 {% if organization %}
-{# XXX /users/:user/products/ page does not define ``organization``. #}
+{# XXX /users/:user/roles/ page does not define ``organization``. #}
 <script type="text/javascript">
 /* Implementation Note: Not including a list of dependent modules
    (2nd parameter to `module`) "re-opens" the module for additional
@@ -35,7 +35,7 @@ urls: {
     saas_api_user_relation_url: "{{ urls.organization.api_roles }}",
 {% endif %}
     /* subscriptions */
-    saas_api_profile: "{{ urls.organization.api_profile_base }}",
+    api_organizations: "{{ urls.organization.api_profile_base }}",
     saas_api_subscriptions: "{{ urls.organization.api_subscriptions }}",
 {% endif %}
 {% if urls.provider %}
@@ -47,9 +47,22 @@ urls: {
     /* transactions */
     api_receivables: "{{urls.provider.api_receivables}}",
     saas_api_bank: "{{ urls.provider.api_bank }}",
+    {% if urls.provider.api_metrics_coupon_uses %}
+        api_metrics_coupon_uses: "{{urls.provider.api_metrics_coupon_uses}}",
+    {% endif %}
+{% endif %}
     /* users */
+{% if urls.broker %}
     api_registered: "{{ urls.broker.api_users_registered }}",
-    api_users: "{{ urls.broker.api_users }}"
+    api_users: "{{ urls.broker.api_users }}",
+{% endif %}
+    /* accounts */
+{% if urls.accounts_base and urls.provider and urls.provider.api_accounts %}
+    accounts_base: "{{ urls.accounts_base }}",
+    api_accounts: "{{ urls.provider.api_accounts }}",
+{% endif %}
+{% if urls.user %}
+    api_accessibles: "{{urls.user.api_accessibles}}",
 {% endif %}
 },
 itemsPerPage: {% if items_per_page %}{{items_per_page}}{% else %}25{% endif %},

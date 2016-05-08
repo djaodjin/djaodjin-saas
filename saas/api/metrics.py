@@ -299,6 +299,7 @@ class CouponUsesAPIView(CartItemSmartListMixin, CouponUsesQuerysetMixin,
             "description": null
        }
     """
+    clip = False
     serializer_class = CartItemSerializer
 
 

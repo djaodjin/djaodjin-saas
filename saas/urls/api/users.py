@@ -23,16 +23,17 @@
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 """
-URLs for pages from a ``User`` perspective.
+URLs for API related to users accessible by.
 """
 
 from django.conf.urls import url
 
-from ..settings import ACCT_REGEX
-from ..views.users import ProductListView
+from ...api.roles import AccessibleByListAPIView
+from ...settings import ACCT_REGEX
 
 urlpatterns = [
-    url(r'^(?P<user>%s)/roles/' % ACCT_REGEX,
-        ProductListView.as_view(), name='saas_user_product_list'),
+    url(r'^users/(?P<user>%s)/accessibles/?' % ACCT_REGEX,
+        AccessibleByListAPIView.as_view(), name='saas_api_accessibles'),
+    url(r'^users/accessibles/?',
+        AccessibleByListAPIView.as_view(), name='saas_api_accessibles'),
 ]
-

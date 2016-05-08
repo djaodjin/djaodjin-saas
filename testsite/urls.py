@@ -65,6 +65,8 @@ urlpatterns = [
         name='saas_cart'),
     # saas urls with provider key to implement marketplace.
     url_prefixed(r'api/', include('saas.urls.api.cart')),
+    url_prefixed(r'api/', include('saas.urls.api.users'),
+        decorators=['saas.decorators.requires_self_provider']),
     url_prefixed(r'api/', include('saas.urls.api.broker'),
         decorators=['saas.decorators.requires_direct']),
     # api/charges/:charge/refund must be before api/charges/

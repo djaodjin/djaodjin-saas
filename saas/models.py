@@ -42,13 +42,14 @@ Two sets or relations are supported: managers and contributors (for details see
 :doc:`Security <security>`).
 """
 
-import datetime, logging, re
+import datetime, hashlib, logging, random, re
 
 from dateutil.relativedelta import relativedelta
 from django.core.validators import MaxValueValidator
 from django.db import IntegrityError, models, transaction
 from django.db.models import Max, Q, Sum
 from django.db.models.query import QuerySet
+from django.template.defaultfilters import slugify
 from django.utils.http import quote
 from django.utils.decorators import method_decorator
 from django.utils.safestring import mark_safe
@@ -175,6 +176,7 @@ class Organization(models.Model):
     have one of two relationships with an Organization. They can
     either be managers (all permissions) or contributors (use permissions).
     """
+    #pylint:disable=too-many-instance-attributes
 
     objects = OrganizationManager()
     slug = models.SlugField(unique=True,
@@ -226,6 +228,8 @@ class Organization(models.Model):
 
     def save(self, force_insert=False, force_update=False, using=None,
              update_fields=None):
+        if not self.slug:
+            self.slug = slugify(self.full_name)
         if not self.processor_id: #pylint:disable=no-member
             self.processor = Organization.objects.get(pk=settings.PROCESSOR_ID)
         super(Organization, self).save(force_insert=force_insert,
@@ -302,12 +306,38 @@ class Organization(models.Model):
         queryset = get_roles(role_name, using=self._state.db).filter(
             organization=self, user=user)
         if not queryset.exists():
-            m2m = get_role_model()(organization=self, user=user, name=role_name)
-            m2m.save(using=self._state.db, force_insert=True)
+            queryset = get_role_model().objects.db_manager(
+                using=self._state.db).filter(organization=self, user=user,
+                request_key__isnull=False)
+            if queryset.exists():
+                # We have a request. Let's use it.
+                m2m = queryset.get()
+                force_insert = False
+            else:
+                m2m = get_role_model()(organization=self, user=user)
+                force_insert = True
+            m2m.name = role_name
+            m2m.request_key = None
+            m2m.save(using=self._state.db, force_insert=force_insert)
             signals.user_relation_added.send(sender=__name__,
-                organization=self, user=user, role=role_name, reason=reason)
+                organization=m2m.organization, user=m2m.user,
+                role=m2m.name, reason=reason)
             return True
         return False
+
+    def add_role_request(self, user, at_time=None, reason=None):
+        if not get_role_model().objects.filter(
+                organization=self, user=user).exists():
+            # Otherwise a role already exists
+            # or a request was previously sent.
+            at_time = datetime_or_now(at_time)
+            salt = hashlib.sha1(str(random.random())).hexdigest()[:5]
+            m2m = get_role_model()(created_at=at_time,
+                organization=self, user=user,
+                request_key=hashlib.sha1(salt+user.username).hexdigest())
+            m2m.save(using=self._state.db, force_insert=True)
+            signals.user_relation_requested.send(sender=__name__,
+                organization=self, user=user, reason=reason)
 
     def add_manager(self, user, at_time=None, reason=None):
         """
@@ -605,9 +635,12 @@ class Organization(models.Model):
 
 class Role(models.Model):
 
+    created_at = models.DateTimeField(auto_now_add=True)
     organization = models.ForeignKey(Organization)
     user = models.ForeignKey(settings.AUTH_USER_MODEL, db_column='user_id')
     name = models.CharField(max_length=20)
+    request_key = models.CharField(null=True, max_length=40)
+    grant_key = models.CharField(null=True, max_length=40)
 
     class Meta:
         unique_together = ('name', 'organization', 'user')

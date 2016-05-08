@@ -28,6 +28,7 @@ from django.conf.urls import include, url
 
 urlpatterns = [
     url(r'^', include('saas.urls.api.cart')),
+    url(r'^', include('saas.urls.api.users')),
     url(r'^', include('saas.urls.api.broker')),
     url(r'^', include('saas.urls.api.provider')),
     url(r'^', include('saas.urls.api.subscriber')),

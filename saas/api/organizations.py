@@ -193,4 +193,3 @@ class SubscribersAPIView(OrganizationSmartListMixin,
         }
     """
     serializer_class = OrganizationSerializer
-

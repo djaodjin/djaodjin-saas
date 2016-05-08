@@ -187,13 +187,34 @@ class OrganizationMixin(OrganizationMixinBase, settings.EXTRA_MIXIN):
 
 class BeforeMixin(object):
 
+    clip = True
     date_field = 'created_at'
 
     def cache_fields(self, request):
         self.ends_at = request.GET.get('ends_at', None)
+        if self.clip or self.ends_at:
+            if self.ends_at is not None:
+                self.ends_at = parse_datetime(self.ends_at.strip('"'))
+            self.ends_at = datetime_or_now(self.ends_at)
+
+    def get_queryset(self):
+        """
+        Implements before date filtering on ``date_field``
+        """
+        kwargs = {}
         if self.ends_at:
-            self.start_at = datetime_or_now(parse_datetime(
-                self.ends_at.strip('"')))
+            kwargs.update({'%s__lt' % self.date_field: self.ends_at})
+        return super(BeforeMixin, self).get_queryset().filter(**kwargs)
+
+    def get(self, request, *args, **kwargs): #pylint: disable=unused-argument
+        self.cache_fields(request)
+        return super(BeforeMixin, self).get(request, *args, **kwargs)
+
+    def get_context_data(self, **kwargs):
+        context = super(BeforeMixin, self).get_context_data(**kwargs)
+        if self.ends_at:
+            context.update({'ends_at': self.ends_at.isoformat()})
+        return context
 
 
 class DateRangeMixin(BeforeMixin):
@@ -202,6 +223,7 @@ class DateRangeMixin(BeforeMixin):
 
     def cache_fields(self, request):
         super(DateRangeMixin, self).cache_fields(request)
+        self.start_at = None
         if self.ends_at:
             self.start_at = request.GET.get('start_at', None)
             if self.start_at:
@@ -217,20 +239,12 @@ class DateRangeMixin(BeforeMixin):
         Implements date range filtering on ``created_at``
         """
         kwargs = {}
-        if self.ends_at:
-            kwargs.update({'%s__lt' % self.date_field: self.ends_at})
         if self.start_at:
             kwargs.update({'%s__gte' % self.date_field: self.start_at})
         return super(DateRangeMixin, self).get_queryset().filter(**kwargs)
 
-    def get(self, request, *args, **kwargs): #pylint: disable=unused-argument
-        self.cache_fields(request)
-        return super(DateRangeMixin, self).get(request, *args, **kwargs)
-
     def get_context_data(self, **kwargs):
         context = super(DateRangeMixin, self).get_context_data(**kwargs)
-        if self.ends_at:
-            context.update({'ends_at': self.ends_at.isoformat()})
         if self.start_at:
             context.update({'start_at': self.start_at.isoformat()})
         return context
@@ -371,6 +385,8 @@ class OrganizationSmartListMixin(SortableListMixin,
       - full_name
       - created_at
     """
+    clip = False
+
     search_fields = ['slug',
                      'full_name',
                      'email',
@@ -382,6 +398,44 @@ class OrganizationSmartListMixin(SortableListMixin,
                      'country']
 
     sort_fields_aliases = [('full_name', 'full_name'),
+                           ('created_at', 'created_at')]
+
+
+class RoleSmartListMixin(SortableListMixin,
+                         DateRangeMixin, SearchableListMixin):
+    """
+    The queryset can be further filtered to a range of dates between
+    ``start_at`` and ``ends_at``.
+
+    The queryset can be further filtered by passing a ``q`` parameter.
+    The value in ``q`` will be matched against:
+
+      - organization.slug
+      - organization.full_name
+      - organization.email
+      - user.username
+      - user.email
+      - name
+
+    The result queryset can be ordered by passing an ``o`` (field name)
+    and ``ot`` (asc or desc) parameter.
+    The fields the queryset can be ordered by are:
+
+      - full_name
+      - username
+      - role_name
+      - created_at
+    """
+    search_fields = ['organization__slug',
+                     'organization__full_name',
+                     'organization__email',
+                     'user__username',
+                     'user__email',
+                     'name']
+
+    sort_fields_aliases = [('full_name', 'organization__full_name'),
+                           ('username', 'user__username'),
+                           ('role_name', 'name'),
                            ('created_at', 'created_at')]
 
 
@@ -409,6 +463,22 @@ class SubscriptionSmartListMixin(SortableListMixin, SearchableListMixin):
 class UserSmartListMixin(SortableListMixin, BeforeMixin, SearchableListMixin):
     """
     ``User`` list which is also searchable and sortable.
+
+    The queryset can be further filtered to a before date with ``ends_at``.
+
+    The queryset can be further filtered by passing a ``q`` parameter.
+    The value in ``q`` will be matched against:
+
+      - User.first_name
+      - User.last_name
+      - User.email
+
+    The result queryset can be ordered by:
+
+      - User.first_name
+      - User.last_name
+      - User.email
+      - User.created_at
     """
     search_fields = ['first_name',
                      'last_name',

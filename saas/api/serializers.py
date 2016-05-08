@@ -30,6 +30,7 @@ from rest_framework import serializers
 from ..compat import User
 from ..mixins import product_url
 from ..models import BalanceLine, CartItem, Organization, Plan, Subscription
+from ..utils import get_role_model
 
 #pylint: disable=no-init,old-style-class
 
@@ -143,3 +144,15 @@ class CartItemSerializer(serializers.ModelSerializer):
     class Meta:
         model = CartItem
         fields = ('user', 'plan', 'created_at')
+
+
+class RoleSerializer(serializers.ModelSerializer):
+
+    organization = OrganizationSerializer(read_only=True)
+    user = UserSerializer(read_only=True)
+
+    class Meta:
+        model = get_role_model()
+        fields = ('created_at', 'organization', 'user', 'name',
+            'request_key', 'grant_key')
+        read_only_fields = ('created_at', 'name', 'request_key', 'grant_key')

@@ -142,6 +142,12 @@ class TransactionFilterMixin(DateRangeMixin, SearchableListMixin):
                      'orig_organization__full_name',
                      'dest_organization__full_name']
 
+
+class SmartTransactionListMixin(SortableListMixin, TransactionFilterMixin):
+    """
+    ``Transaction`` list which is also searchable and sortable.
+    """
+
     sort_fields_aliases = [('descr', 'description'),
                            ('dest_amount', 'amount'),
                            ('dest_organization__slug', 'dest_organization'),
@@ -149,13 +155,6 @@ class TransactionFilterMixin(DateRangeMixin, SearchableListMixin):
                            ('orig_organization__slug', 'orig_organization'),
                            ('orig_account', 'orig_account'),
                            ('created_at', 'created_at')]
-
-
-class SmartTransactionListMixin(SortableListMixin, TransactionFilterMixin):
-    """
-    ``Transaction`` list which is also searchable and sortable.
-    """
-    pass
 
 
 class TransactionQuerysetMixin(object):
@@ -312,6 +311,14 @@ class ReceivablesListAPIView(SortableListMixin, TotalAnnotateMixin,
             ]
         }
     """
+    sort_fields_aliases = [('descr', 'description'),
+                           ('dest_amount', 'amount'),
+                           ('dest_organization__slug', 'dest_organization'),
+                           ('dest_account', 'dest_account'),
+                           ('orig_organization__slug', 'orig_organization'),
+                           ('orig_account', 'orig_account'),
+                           ('created_at', 'created_at')]
+
     natural_period = dateutil.relativedelta.relativedelta(days=-1)
     serializer_class = TransactionSerializer
     pagination_class = TotalPagination

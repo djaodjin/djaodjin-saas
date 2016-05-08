@@ -32,7 +32,7 @@ from ....api.organizations import (
     OrganizationDetailAPIView, OrganizationListAPIView)
 from ....api.subscriptions import (SubscriptionDetailAPIView,
     SubscriptionListAPIView)
-from ....api.users import (RoleListAPIView, RoleDetailAPIView)
+from ....api.roles import (RoleListAPIView, RoleDetailAPIView)
 from ....settings import ACCT_REGEX
 
 

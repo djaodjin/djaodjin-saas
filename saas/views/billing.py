@@ -526,20 +526,21 @@ djaodjin-saas/tree/master/saas/templates/saas/billing/transfers.html>`__).
                 'saas_api_transfer_list', args=(self.provider,)),
             'download_url': reverse(
                 'saas_transfers_download', kwargs=self.get_url_kwargs())})
-        urls_provider = {
+        urls = {'provider': {
             'bank': reverse('saas_update_bank', args=(self.provider,)),
             'import_transactions': reverse(
                 'saas_import_transactions', args=(self.provider,)),
             'withdraw_funds': reverse(
                 'saas_withdraw_funds', args=(self.provider,)),
-        }
+        }}
         if 'urls' in context:
-            if 'provider' in context['urls']:
-                context['urls']['provider'].update(urls_provider)
-            else:
-                context['urls'].update({'provider': urls_provider})
+            for key, val in urls.iteritems():
+                if key in context['urls']:
+                    context['urls'][key].update(val)
+                else:
+                    context['urls'].update({key: val})
         else:
-            context.update({'urls': {'provider': urls_provider}})
+            context.update({'urls': urls})
         return context
 
 

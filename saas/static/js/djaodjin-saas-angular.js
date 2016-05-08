@@ -120,13 +120,6 @@ couponServices.factory("Coupon", ["$resource", "settings",
              update: {method: "PUT", isArray: false}});
   }]);
 
-transactionServices.factory("Transaction", ["$resource", "settings",
-  function($resource, settings){
-    "use strict";
-    return $resource(
-        settings.urls.api_transactions, {},
-            {query: {method: "GET"}});
-  }]);
 
 //=============================================================================
 // Controllers
@@ -302,8 +295,11 @@ transactionControllers.controller("relationListCtrl",
             });
     };
 
-    $scope.save = function($event) {
+    $scope.save = function($event, item) {
         $event.preventDefault();
+        if( typeof item !== "undefined" ) {
+            $scope.item = item;
+        }
         $http.post(settings.urls.api_items, $scope.item).then(
             function(success) {
                 // XXX Couldn't figure out how to get the status code
@@ -313,7 +309,8 @@ transactionControllers.controller("relationListCtrl",
             },
             function(resp) {
                 if( resp.status === 404 ) {
-                    $scope.item.email = $scope.item.slug;
+                    // XXX hack to set full_name when org does not exist.
+                    $scope.item.full_name = $scope.item.slug;
                     angular.element(settings.modalId).modal("show");
                 } else {
                     showErrorMessages(resp);
@@ -571,7 +568,7 @@ subscriptionControllers.controller("subscriptionListCtrl",
     $scope.saveDescription = function(event, entry){
         if (event.which === 13 || event.type === "blur" ){
             delete entry.editDescription;
-            $http.patch(settings.urls.saas_api_profile
+            $http.patch(settings.urls.api_organizations
                 + entry.organization.slug + "/subscriptions/" + entry.plan.slug,
                 {description: entry.description}).then(
                 function(data){
@@ -657,7 +654,7 @@ subscriptionControllers.controller("subscriptionListCtrl",
 
     $scope.unsubscribe = function(organization, plan) {
         if( confirm("Are you sure?") ) {
-            $http.delete(settings.urls.saas_api_profile
+            $http.delete(settings.urls.api_organizations
                 + organization + "/subscriptions/" + plan).then(
             function() {
                 $scope.query($scope.active);
@@ -679,103 +676,20 @@ subscriptionControllers.controller("subscriberListCtrl",
 
 
 transactionControllers.controller("transactionListCtrl",
-    ["$scope", "$http", "$timeout", "settings", "Transaction",
-     function($scope, $http, $timeout, settings, Transaction) {
-    "use strict";
-    $scope.dir = {};
-    $scope.totalItems = 0;
-    $scope.opened = { "start_at": false, "ends_at": false };
-    $scope.params = {};
-    if( settings.sortByField ) {
-        $scope.params['o'] = settings.sortByField;
-        $scope.params['ot'] = settings.sortDirection || "desc";
-        $scope.dir[settings.sortByField] = $scope.params['ot'];
-    }
-    if( settings.date_range.start_at ) {
-        $scope.params['start_at'] = moment(settings.date_range.start_at).toDate();
-    }
-    if( settings.date_range.ends_at ) {
-        $scope.params['ends_at'] = moment(settings.date_range.ends_at).toDate()
-    };
+    ["$scope", "$controller", "$http", "$timeout", "settings",
+    function($scope, $controller, $http, $timeout, settings) {
+    var opts = angular.merge({
+        autoload: true,
+        sortByField: "created_at",
+        sortDirection: "desc",
+        urls: {api_items: settings.urls.api_transactions}}, settings);
+    $controller("itemsListCtrl", {
+        $scope: $scope, $http: $http, $timeout:$timeout,
+        settings: opts});
 
     $scope.last4 = "N/A";
     $scope.bank_name = "N/A";
     $scope.balance_amount = "N/A";
-
-    $scope.refresh = function() {
-        $scope.transactions = Transaction.query($scope.params, function() {
-            // We cannot watch transactions.count otherwise things start
-            // to snowball. We must update totalItems only when it truly
-            // changed.
-            if( $scope.transactions.count != $scope.totalItems ) {
-                $scope.totalItems = $scope.transactions.count;
-            }
-        });
-    };
-
-    $scope.filterExpr = "";
-    $scope.itemsPerPage = settings.itemsPerPage; // Must match server-side
-    $scope.maxSize = 5;               // Total number of direct pages link
-    $scope.currentPage = 1;
-    // currentPage will be saturated at maxSize when maxSize is defined.
-    $scope.formats = ["dd-MMMM-yyyy", "yyyy/MM/dd", "dd.MM.yyyy", "shortDate"];
-    $scope.format = $scope.formats[0];
-
-    // calendar for start_at and ends_at
-    $scope.open = function($event, date_at) {
-        $event.preventDefault();
-        $event.stopPropagation();
-        $scope.opened[date_at] = true;
-    };
-
-    $scope.$watch("params", function(newVal, oldVal, scope) {
-        if( newVal.start_at !== oldVal.start_at
-            && newVal.ends_at === oldVal.ends_at ) {
-            if( $scope.params.ends_at < newVal.start_at ) {
-                $scope.params.ends_at = newVal.start_at;
-            }
-        } else if( newVal.start_at === oldVal.start_at
-            && newVal.ends_at !== oldVal.ends_at ) {
-            if( $scope.params.start_at > newVal.ends_at ) {
-                $scope.params.start_at = newVal.ends_at;
-            }
-        }
-        $scope.refresh();
-    }, true);
-
-    $scope.filterList = function(regex) {
-        if( regex ) {
-            if ("page" in $scope.params){
-                delete $scope.params.page;
-            }
-            $scope.params.q = regex;
-        } else {
-            delete $scope.params.q;
-        }
-    };
-
-    $scope.pageChanged = function() {
-        if( $scope.currentPage > 1 ) {
-            $scope.params.page = $scope.currentPage;
-        } else {
-            delete $scope.params.page;
-        }
-    };
-
-    $scope.sortBy = function(fieldName) {
-        if( $scope.dir[fieldName] == "asc" ) {
-            $scope.dir = {};
-            $scope.dir[fieldName] = "desc";
-        } else {
-            $scope.dir = {};
-            $scope.dir[fieldName] = "asc";
-        }
-        $scope.params.o = fieldName;
-        $scope.params.ot = $scope.dir[fieldName];
-        $scope.currentPage = 1;
-        // pageChanged only called on click?
-        delete $scope.params.page;
-    };
 
     if( settings.urls.saas_api_bank ) {
         $http.get(settings.urls.saas_api_bank).success(function(data) {
@@ -784,7 +698,6 @@ transactionControllers.controller("transactionListCtrl",
             $scope.balance_amount = data.balance_amount;
         });
     }
-
 }]);
 
 
@@ -1145,6 +1058,24 @@ balanceControllers.controller("BalanceListCtrl",
             });
     };
 }]);
+
+
+transactionControllers.controller("accessibleListCtrl",
+    ["$scope", "$controller", "$http", "$timeout", "settings",
+    function($scope, $controller, $http, $timeout, settings) {
+    "use strict";
+    var opts = angular.merge({
+        autoload: true,
+        sortByField: "slug",
+        sortDirection: "asc",
+        modalId: "#new-user-relation",
+        urls: {api_items: settings.urls.api_accessibles,
+               api_candidates: settings.urls.api_organizations}}, settings);
+    $controller("relationListCtrl", {
+        $scope: $scope, $http: $http, $timeout:$timeout,
+        settings: opts});
+}]);
+
 
 transactionControllers.controller("cartItemListCtrl",
     ["$scope", "$controller", "$http", "$timeout", "settings",

@@ -39,15 +39,18 @@ function showErrorMessages(resp) {
         if( resp.data && typeof resp.data === "object" ) {
             for( var key in resp.data ) {
                 if (resp.data.hasOwnProperty(key)) {
-                    var message = "";
-                    var sep = "";
-                    for( var i = 0; i < resp.data[key].length; ++i ) {
-                        var messagePart = resp.data[key][i];
-                        if( typeof resp.data[key][i] !== 'string' ) {
-                            messagePart = JSON.stringify(resp.data[key][i]);
+                    var message = resp.data[key];
+                    if( typeof resp.data[key] !== 'string' ) {
+                        message = "";
+                        var sep = "";
+                        for( var i = 0; i < resp.data[key].length; ++i ) {
+                            var messagePart = resp.data[key][i];
+                            if( typeof resp.data[key][i] !== 'string' ) {
+                                messagePart = JSON.stringify(resp.data[key][i]);
+                            }
+                            message += sep + messagePart;
+                            sep = ", ";
                         }
-                        message += sep + messagePart;
-                        sep = ", ";
                     }
                     messages.push(key + ": " + message);
                     $("#" + key).addClass("has-error");

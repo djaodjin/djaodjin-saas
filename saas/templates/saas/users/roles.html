@@ -1,0 +1,50 @@
+{% extends "saas/base.html" %}
+
+{% block saas_content %}
+<section id="managed" ng-app="siteApp">
+  <h1>Accessible by {{user}}</h1>
+<div ng-controller="SiteListCtrl">
+  <div class="text-right">
+    <span>Filter</span> <input type="text" ng-model="filterExpr" ng-change="filterList(filterExpr)" />
+  </div>
+  <table class="table table-striped">
+    <thead>
+      <tr>
+        <th>Name<button class="btn-link btn-sort" ng-click="sortBy('slug')"><i class="fa fa-sort[[dir.slug ? ('-' + dir.slug) : '']]"></i></button></th>
+        <th class="text-center">Configure</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr ng-hide="sites.$resolved">
+        <td colspan="2">
+            <h3  class="text-center"><i class="fa fa-refresh fa-spin fa-2x"></i></h3>
+        </td>
+      </tr>
+      <tr ng-show="sites.$resolved && sites.results.length == 0">
+          <td colspan="2">No sites</td>
+      </tr>
+      <tr ng-repeat="entry in sites.results" ng-cloak ng-show="sites.$resolved && sites.results.length > 0">
+        <td>
+          <a href="{{ urls.organization.profile_base }}[[entry.slug]]/">[[entry.slug]]</a>
+        </td>
+        <td class="text-center">
+          <a id="[[entry.slug]]" href="{{urls.djaodjin.app}}[[entry.slug]]/" class="btn btn-default"><i class="fa fa-cogs"></i></a>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+  <div class="text-center">
+    <uib-pagination class="pagination-sm" ng-model="currentPage"
+                total-items="totalItems"
+                items-per-page="itemsPerPage"
+                boundary-links="true"
+                max-size="maxSize"
+                previous-text="&lsaquo;"
+                next-text="&rsaquo;"
+                first-text="&laquo;"
+                last-text="&raquo;"
+                ng-change="pageChanged()"></uib-pagination>
+  </div>
+</div>
+</section>
+{% endblock %}
