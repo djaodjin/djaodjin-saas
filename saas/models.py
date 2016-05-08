@@ -586,18 +586,36 @@ class Organization(models.Model):
         # We use ``get_or_create`` here because the method is also called
         # when transfers are reconciled with the payment processor.
         with transaction.atomic():
-            _, created = Transaction.objects.get_or_create(
-                event_id=event_id,
-                descr=descr,
-                created_at=created_at,
-                dest_unit=unit,
-                dest_amount=amount,
-                dest_account=Transaction.WITHDRAW,
-                dest_organization=self.processor,
-                orig_unit=unit,
-                orig_amount=amount,
-                orig_account=Transaction.FUNDS,
-                orig_organization=self)
+            if amount > 0:
+                _, created = Transaction.objects.get_or_create(
+                    event_id=event_id,
+                    descr=descr,
+                    created_at=created_at,
+                    dest_unit=unit,
+                    dest_amount=amount,
+                    dest_account=Transaction.WITHDRAW,
+                    dest_organization=self.processor,
+                    orig_unit=unit,
+                    orig_amount=amount,
+                    orig_account=Transaction.FUNDS,
+                    orig_organization=self)
+            elif amount < 0:
+                # When there is not enough funds in the Stripe account,
+                # Stripe will draw back from the bank account to cover
+                # a refund, etc.
+
+                _, created = Transaction.objects.get_or_create(
+                    event_id=event_id,
+                    descr=descr,
+                    created_at=created_at,
+                    dest_unit=unit,
+                    dest_amount=- amount,
+                    dest_account=Transaction.FUNDS,
+                    dest_organization=self,
+                    orig_unit=unit,
+                    orig_amount=- amount,
+                    orig_account=Transaction.WITHDRAW,
+                    orig_organization=self.processor)
             if created:
                 # Add processor fee for transfer.
                 transfer_fee = self.processor_backend.prorate_transfer(
