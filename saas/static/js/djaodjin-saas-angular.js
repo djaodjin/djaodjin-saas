@@ -320,7 +320,7 @@ transactionControllers.controller("relationListCtrl",
 
     $scope.remove = function (idx) {
         $http.delete(settings.urls.api_items
-                     + '/' + $scope.items.results[idx].slug).then(
+                     + '/' + $scope.items.results[idx].user.slug).then(
             function success(resp) {
                 $scope.items.results.splice(idx, 1);
             },
