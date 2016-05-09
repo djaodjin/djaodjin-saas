@@ -163,6 +163,9 @@ class CouponDetailAPIView(CouponMixin, RetrieveUpdateDestroyAPIView):
     """
     serializer_class = CouponSerializer
 
+    def get_object(self):
+        return self.coupon
+
     def perform_update(self, serializer):
         if 'ends_at' in serializer.validated_data:
             serializer.save(organization=self.organization)
