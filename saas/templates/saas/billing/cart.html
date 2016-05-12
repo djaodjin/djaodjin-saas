@@ -27,7 +27,11 @@ If you have a coupon code, it is time to redeem it now!
         Your subscription cart is empty.
         {% endif %}
         {% block order_card %}
+        {% if RAZORPAY_PUB_KEY %}
+        {% include "saas/_razorpay_checkout.html" %}
+        {% else %}
         {% include "saas/_card_use.html" %}
+        {% endif %}
         {% endblock %}
     </form>
 </div>

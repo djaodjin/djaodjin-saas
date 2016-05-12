@@ -24,15 +24,34 @@
 
 from importlib import import_module
 
+from django.conf import settings as django_settings
 from django.core.exceptions import ImproperlyConfigured
 from stripe.error import APIConnectionError as ProcessorConnectionError
-from stripe.error import StripeError as ProcessorError
-from stripe.error import CardError as BaseCardError
 
 from .. import settings
 
 
-class CardError(BaseCardError):
+class ProcessorError(RuntimeError):
+
+    def __init__(self, message, backend_except=None):
+        super(ProcessorError, self).__init__(message)
+        self.backend_except = backend_except
+
+    def __unicode__(self):
+        result = self.message
+        if django_settings.DEBUG and self.backend_except:
+            result += self.processor_details()
+        return result
+
+    def processor_details(self):
+        return "(processor exception: %s)" % str(self.backend_except)
+
+
+class CardError(ProcessorError):
+
+    def __init__(self, message, code, backend_except=None):
+        super(CardError, self).__init__(message, backend_except=backend_except)
+        self.code = code
 
     def __unicode__(self):
         if self.code == 'card_declined':
@@ -41,9 +60,6 @@ class CardError(BaseCardError):
 " systems that determine whether or not to accept the charge. Check you"\
 " entered the card  number, expiration date, CVC and address correctly."\
 " If problems persist, please contact your bank."
-        return self._message
-
-    def processor_details(self):
         return super(CardError, self).__unicode__()
 
 
@@ -69,6 +85,5 @@ def get_processor_backend(provider):
         func = import_string(settings.PROCESSOR_BACKEND_CALLABLE)
         processor_backend = func(provider)
     else:
-        processor_backend = load_backend(
-            'saas.backends.stripe_processor.StripeBackend')
+        processor_backend = load_backend(settings.PROCESSOR['BACKEND'])
     return processor_backend

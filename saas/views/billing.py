@@ -71,6 +71,10 @@ class BankMixin(ProviderMixin):
     Adds bank information to the context.
     """
 
+    @property
+    def processor_token_id(self):
+        return get_broker().processor_backend.token_id
+
     def bank_context(self):
         if not hasattr(self, "_bank_context"):
             self._bank_context = self.provider.retrieve_bank()
@@ -92,6 +96,10 @@ class CardFormMixin(OrganizationMixin):
 
     form_class = CreditCardForm
     organization_url_kwarg = 'organization'
+
+    @property
+    def processor_token_id(self):
+        return get_broker().processor_backend.token_id
 
     def get_initial(self):
         """
@@ -198,13 +206,13 @@ djaodjin-saas/tree/master/saas/templates/saas/billing/bank.html>`__).
     """
 
     def form_valid(self, form):
-        stripe_token = form.cleaned_data['stripeToken']
-        if not stripe_token:
+        processor_token = form.cleaned_data[self.processor_token_id]
+        if not processor_token:
             messages.error(self.request, "Missing processor token.")
             return self.form_invalid(form)
         # Since all fields are optional, we cannot assume the card token
         # will be present (i.e. in case of erroneous POST request).
-        self.object.update_bank(stripe_token)
+        self.object.update_bank(processor_token)
         return super(BankAuthorizeView, self).form_valid(form)
 
 
@@ -302,7 +310,7 @@ class CardInvoicablesFormMixin(CardFormMixin, InvoicablesFormMixin):
         If the form is valid we, optionally, checkout the cart items
         and charge the invoiced items which are due now.
         """
-        # We remember the card by default. ``stripeToken`` is not present
+        # We remember the card by default. ``processor_token_id`` is not present
         # when we are creating charges on a card already on file.
         if 'remember_card' in self.request.POST:
             # Workaround: Django does not take into account the value
@@ -311,7 +319,7 @@ class CardInvoicablesFormMixin(CardFormMixin, InvoicablesFormMixin):
             remember_card = form.cleaned_data['remember_card']
         else:
             remember_card = form.fields['remember_card'].initial
-        stripe_token = form.cleaned_data['stripeToken']
+        processor_token = form.cleaned_data[self.processor_token_id]
 
         # deep copy the invoicables because we are updating the list in place
         # and we don't want to keep the edited state on a card failure.
@@ -345,7 +353,7 @@ class CardInvoicablesFormMixin(CardFormMixin, InvoicablesFormMixin):
         try:
             self.charge = self.organization.checkout(
                 invoicables, self.request.user,
-                token=stripe_token, remember_card=remember_card)
+                token=processor_token, remember_card=remember_card)
             if self.charge and self.charge.invoiced_total_amount > 0:
                 messages.info(self.request, "A receipt will be sent to"\
 " %(email)s once the charge has been processed. Thank you."
@@ -392,11 +400,11 @@ class CardUpdateView(CardFormMixin, FormView):
     template_name = 'saas/billing/card.html'
 
     def form_valid(self, form):
-        stripe_token = form.cleaned_data['stripeToken']
-        if stripe_token:
+        processor_token = form.cleaned_data[self.processor_token_id]
+        if processor_token:
             # Since all fields are optional, we cannot assume the card token
             # will be present (i.e. in case of erroneous POST request).
-            self.organization.update_card(stripe_token, self.request.user)
+            self.organization.update_card(processor_token, self.request.user)
             messages.success(self.request,
                 "Your credit card on file was sucessfully updated")
         return super(CardUpdateView, self).form_valid(form)

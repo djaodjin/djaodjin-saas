@@ -160,8 +160,14 @@ DURATIONFIELD_ALLOW_MONTHS = True
 # Configuration of djaodjin-saas
 SAAS = {
   'PLATFORM': 'cowork',
-  'STRIPE_PRIV_KEY': getattr(sys.modules[__name__], "STRIPE_PRIV_KEY", None),
-  'STRIPE_PUB_KEY': getattr(sys.modules[__name__], "STRIPE_PUB_KEY", None)
+  'PROCESSOR': {
+      'BACKEND': 'saas.backends.stripe_processor.StripeBackend',
+      'PRIV_KEY': getattr(sys.modules[__name__], "STRIPE_PRIV_KEY", None),
+      'PUB_KEY': getattr(sys.modules[__name__], "STRIPE_PUB_KEY", None),
+#      'BACKEND': 'saas.backends.razorpay_processor.RazorpayBackend',
+#      'PRIV_KEY': getattr(sys.modules[__name__], "RAZORPAY_PRIV_KEY", None),
+#      'PUB_KEY': getattr(sys.modules[__name__], "RAZORPAY_PUB_KEY", None),
+    }
 }
 
 # A sample logging configuration. The only tangible logging
@@ -209,7 +215,7 @@ LOGGING = {
 
 # Templates (Django 1.8+)
 # ----------------------
-TEMPLATE_REVERT_TO_DJANGO = False
+TEMPLATE_REVERT_TO_DJANGO = True
 
 if TEMPLATE_REVERT_TO_DJANGO:
     sys.stderr.write("Use Django templates engine.\n")

@@ -49,8 +49,8 @@ class FakeProcessorBackend(object):
         return distribute_amount, distribute_unit, fee_amount, fee_unit
 
     @staticmethod
-    def create_charge(organization, amount, unit,
-        descr=None, stmt_descr=None):
+    def create_charge(customer, amount, unit,
+                    broker=None, descr=None, stmt_descr=None):
         #pylint: disable=too-many-arguments,unused-argument
         LOGGER.debug('create_charge(amount=%s, unit=%s, descr=%s)',
             amount, unit, descr)
@@ -60,7 +60,7 @@ class FakeProcessorBackend(object):
 
     @staticmethod
     def create_charge_on_card(card, amount, unit,
-        descr=None, stmt_descr=None):
+                    broker=None, descr=None, stmt_descr=None):
         #pylint: disable=too-many-arguments,unused-argument
         LOGGER.debug('create_charge_on_card(amount=%s, unit=%s, descr=%s)',
             amount, unit, descr)

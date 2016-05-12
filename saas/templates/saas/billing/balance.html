@@ -43,5 +43,9 @@ Please enter a valid credit card. A new charge of
 {% endwith %}
 {% endif %}
 </section>
+{% if RAZORPAY_PUB_KEY %}
+{% include "saas/_razorpay_checkout.html" %}
+{% else %}
 {% include "saas/_card_use.html" %}
+{% endif %}
 {% endblock %}

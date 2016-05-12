@@ -23,6 +23,9 @@
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 """
+Stripe configuration
+--------------------
+
 The Stripe backend works in 3 different modes:
 
   - ``LOCAL``
@@ -30,11 +33,11 @@ The Stripe backend works in 3 different modes:
   - ``REMOTE``
 
 In LOCAL mode, Stripe Customer and Charge objects are created on the Stripe
-Account identified by settings.STRIPE_PRIV_KEY. All transfers are made to
+Account identified by settings.PROCESSOR['PRIV_KEY']. All transfers are made to
 the bank account associated to that account.
 
 In FORWARD mode, Stripe Customer and Charge objects are also created on
-the Stripe Account identified by settings.STRIPE_PRIV_KEY but each
+the Stripe Account identified by settings.PROCESSOR['PRIV_KEY'] but each
 Charge is tied automatically to a Stripe Transfer to a Stripe Connect Account.
 
 In REMOTE mode, Stripe Customer and Charge objects are created on
@@ -45,12 +48,19 @@ at https://stripe.com/docs/connect,
 
 Go to "Account Settings" > "Connect"
 
-Edit the redirect_url and copy/paste the keys into your project settings.py:
+Edit the redirect_url and copy/paste the keys into your project settings.py
+
+.. code-block:: python
 
     SAAS = {
-        'STRIPE_CLIENT_ID': "...",
-        'STRIPE_PRIV_KEY': "...",
-        'STRIPE_PUB_KEY': "..."
+        'PROCESSOR': {
+            'BACKEND': 'saas.backends.stripe_processor.StripeBackend',
+            'PRIV_KEY': "...",
+            'PUB_KEY': "...",
+        # optional
+            'CLIENT_ID': "...",
+            'MODE': "...",
+        }
     }
 """
 
@@ -76,11 +86,13 @@ class StripeBackend(object):
     FORWARD = 1
     REMOTE = 2
 
+    token_id = 'stripeToken'
+
     def __init__(self):
-        self.mode = settings.STRIPE_MODE
-        self.pub_key = settings.STRIPE_PUB_KEY
-        self.priv_key = settings.STRIPE_PRIV_KEY
-        self.client_id = settings.STRIPE_CLIENT_ID
+        self.pub_key = settings.PROCESSOR['PUB_KEY']
+        self.priv_key = settings.PROCESSOR['PRIV_KEY']
+        self.client_id = settings.PROCESSOR.get('CLIENT_ID', None)
+        self.mode = settings.PROCESSOR.get('MODE', 0)
 
     def _prepare_request(self):
         stripe.api_version = '2015-10-16'
@@ -228,9 +240,7 @@ class StripeBackend(object):
                 description=descr, statement_descriptor=stmt_descr[:15],
                 **kwargs)
         except stripe.error.CardError, err:
-            raise CardError(err.message, err.param, err.code,
-                http_body=err.http_body, http_status=err.http_status,
-                json_body=err.json_body, headers=err.headers)
+            raise CardError(err.message, err.code, backend_except=err)
         created_at = utctimestamp_to_datetime(processor_charge.created)
         last4 = processor_charge.source.last4
         exp_year = processor_charge.source.exp_year
@@ -340,9 +350,7 @@ class StripeBackend(object):
                     email=subscriber.email, description=subscriber.slug,
                     card=card_token, **kwargs)
             except stripe.error.CardError, err:
-                raise CardError(err.message, err.param, err.code,
-                    http_body=err.http_body, http_status=err.http_status,
-                    json_body=err.json_body, headers=err.headers)
+                raise CardError(err.message, err.code, backend_except=err)
             subscriber.processor_card_key = p_customer.id
             subscriber.save()
 

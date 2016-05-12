@@ -27,7 +27,7 @@ Contents:
    security
    pages
    api
-
+   backends
 
 Indices and tables
 ==================

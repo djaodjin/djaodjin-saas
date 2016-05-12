@@ -1,0 +1,14 @@
+<!-- Note that the amount is in paise = 50 INR -->
+<script
+    src="https://checkout.razorpay.com/v1/checkout.js"
+    data-key="{{RAZORPAY_PUB_KEY}}"
+    data-amount="{{lines_price.amount}}"
+    data-buttontext="Pay with Razorpay"
+    data-name="Provider name"
+    data-description="Purchase Description"
+    data-image="https://your-awesome-site.com/your_logo.jpg"
+    data-prefill.name="{{organization.printable_name}}"
+    data-prefill.email="{{organization.email}}"
+    data-theme.color="#F37254"
+></script>
+<input type="hidden" name="remember_card" value="0">

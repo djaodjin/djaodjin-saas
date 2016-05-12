@@ -77,6 +77,7 @@ class CreditCardForm(PostalFormMixin, forms.Form):
     Update Card Information.
     """
     stripeToken = forms.CharField(required=False)
+    razorpay_payment_id = forms.CharField(required=False)
     remember_card = forms.BooleanField(
         label=_("Remember this card"), required=False, initial=True)
 
@@ -97,6 +98,13 @@ class CreditCardForm(PostalFormMixin, forms.Form):
         for item in self.initial:
             if item.startswith('cart-'):
                 self.fields[item] = forms.CharField(required=True)
+
+    def clean_remember_card(self):
+        remember_card = self.data.get('remember_card', None)
+        if remember_card is not None:
+            self.cleaned_data['remember_card'] = (
+                remember_card != "0" and remember_card != "off")
+        return self.cleaned_data['remember_card']
 
 
 class CartPeriodsForm(forms.Form):
