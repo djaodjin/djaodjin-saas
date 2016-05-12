@@ -281,6 +281,14 @@ transactionControllers.controller("relationListCtrl",
     };
 
     $scope.create = function() {
+        if( !$scope.item ) {
+            $scope.item = {};
+        }
+        if( !$scope.item.hasOwnProperty('email')
+              || typeof $scope.item.email === "undefined" ) {
+            $scope.item.email =
+                angular.element(settings.modalId + " [name='email']").val();
+        }
         $scope.item.invite = angular.element(
             settings.modalId + " [name='message']").val();
         $http.post(settings.urls.api_items + "?force=1", $scope.item).then(

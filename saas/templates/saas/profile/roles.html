@@ -6,12 +6,12 @@
 <section id="{{role}}" ng-app="saasApp">
   <div ng-controller="userRelationListCtrl">
     <form>
-      <input name="user" type="text" ng-model="user.username" placeholder="Username or Email" />
+      <input name="user" type="text" ng-model="item.slug" placeholder="Username or Email" />
       <input type="submit" ng-click="save($event)" />
     </form>
-    <h2 ng-hide="users.$resolved">Please wait...</h2>
-    <h2 ng-show="users.$resolved && users.results.length == 0"><em>No {{role}} yet</em></h2>
-    <table ng-show="users.$resolved && users.results.length > 0">
+    <h2 ng-hide="items.$resolved">Please wait...</h2>
+    <h2 ng-show="items.$resolved && items.results.length == 0"><em>No {{role}} yet</em></h2>
+    <table ng-show="items.$resolved && items.results.length > 0">
       <thead>
         <tr>
           <th>Username</th>
@@ -20,9 +20,9 @@
         </tr>
       </thead>
       <tbody>
-        <tr id="[[user.username]]" ng-repeat="user in users.results" ng-cloak>
-          <td>[[user.username]]</td>
-          <td>[[user.email]]</td>
+        <tr id="[[item.user.slug]]" ng-repeat="item in items.results" ng-cloak>
+          <td>[[item.user.slug]]</td>
+          <td>[[item.user.email]]</td>
           <td><button ng-click="remove($index)">Remove</button></td>
         </tr>
       </tbody>
@@ -34,6 +34,8 @@ If the user couldn't be found in the system, it is a great occasion to invite
 them.
       </p>
       <label>The following invite message will be sent:</label>
+      <input ng-model="item.email" name="email" type="text" max-length="150"
+             placeholder="invitee@example.com" />
       <textarea class="form-control form-control"
                 name="message" maxlength="255" type="text" rows="10">
 Hello,

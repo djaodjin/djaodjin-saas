@@ -40,6 +40,8 @@ def environment(**options):
         deployutils.templatetags.deployutils_tags.site_prefixed
     env.filters['asset'] = deployutils.templatetags.deployutils_tags.asset
     env.filters['as_html'] = testsite.templatetags.testsite_tags.as_html
+    env.filters['url_profile_base'] = \
+        testsite.templatetags.testsite_tags.url_profile_base
     env.filters['url_profile'] = testsite.templatetags.testsite_tags.url_profile
     env.filters['is_authenticated'] = \
         testsite.templatetags.testsite_tags.is_authenticated

@@ -47,7 +47,12 @@ def is_authenticated(request):
 
 
 @register.filter()
-def url_profile(request): #pylint:disable=unused-argument
+def url_profile_base(request): #pylint:disable=unused-argument
+    return reverse('accounts_profile')
+
+
+@register.filter()
+def url_profile(request):
     if request.user.is_authenticated():
         organization = attached_organization(request.user)
         if organization:

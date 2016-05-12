@@ -209,7 +209,6 @@ LOGGING = {
 
 # Templates (Django 1.8+)
 # ----------------------
-TEMPLATE_DEBUG = DEBUG
 TEMPLATE_REVERT_TO_DJANGO = False
 
 if TEMPLATE_REVERT_TO_DJANGO:

@@ -58,7 +58,7 @@ jQuery(document).ready(function($) {
 {% if request|is_authenticated %}
     $("#delete-organization-btn").profile({
         saas_api_organization: "{% if urls and urls.organization %}{{ urls.organization.api_base }}{% endif %}",
-        user_profile_redirect: "{{'users/'|site_prefixed}}"
+        user_profile_redirect: "{{request|url_profile_base}}"
     });
 {% endif %}
 {% if urls and urls.api_redeem %}
