@@ -75,20 +75,9 @@ class BankMixin(ProviderMixin):
     def processor_token_id(self):
         return get_broker().processor_backend.token_id
 
-    def bank_context(self):
-        if not hasattr(self, "_bank_context"):
-            self._bank_context = self.provider.retrieve_bank()
-        return self._bank_context
-
     def get_context_data(self, **kwargs):
         context = super(BankMixin, self).get_context_data(**kwargs)
-        try:
-            context.update(self.bank_context())
-        except ProcessorConnectionError, err:
-            LOGGER.exception(err)
-            messages.error(self.request,
-                "Unable to communicate with Payment Processor. We are aware\
-                of the issue and working on it. Thank you for your patience.")
+        context.update(self.provider.get_deposit_context())
         return context
 
 
@@ -1090,7 +1079,8 @@ djaodjin-saas/tree/master/saas/templates/saas/billing/withdraw.html>`__).
 
     def get_initial(self):
         kwargs = super(WithdrawView, self).get_initial()
-        available_amount = self.bank_context()['balance_amount']
+        # XXX Remove call to processor backend from a ``View``.
+        available_amount = self.provider.retrieve_bank()['balance_amount']
         kwargs.update({
           'amount': (available_amount / 100.0) if available_amount > 0 else 0})
         return kwargs

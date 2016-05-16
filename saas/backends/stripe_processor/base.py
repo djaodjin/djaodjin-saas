@@ -26,7 +26,7 @@
 Stripe configuration
 --------------------
 
-The Stripe backend works in 3 different modes:
+The `Stripe <https://stripe.com/>`_ backend works in 3 different modes:
 
   - ``LOCAL``
   - ``FORMWARD``
@@ -363,10 +363,17 @@ class StripeBackend(object):
             charge.processor_key, **kwargs)
         processor_charge.refund(amount=amount)
 
-    def retrieve_bank(self, provider):
-        # XXX ``STRIPE_CLIENT_ID`` here because serves page with Connect button.
+    def get_deposit_context(self):
+        # We insert the``STRIPE_CLIENT_ID`` here because we serve page
+        # with a "Stripe Connect" button.
         context = {
-            'STRIPE_PUB_KEY': self.pub_key, 'STRIPE_CLIENT_ID': self.client_id}
+            'STRIPE_PUB_KEY': self.pub_key,
+            'STRIPE_CLIENT_ID': self.client_id
+        }
+        return context
+
+    def retrieve_bank(self, provider):
+        context = {}
         try:
             kwargs = self._prepare_transfer_request(provider)
             # The ``PLATFORM`` provider is always connected to a Stripe Account
@@ -382,7 +389,8 @@ class StripeBackend(object):
                     balance = stripe.Balance.retrieve(**kwargs)
                     # XXX available is a list, ordered by currency?
                     context.update({
-                        'balance_amount': balance.available[0].amount})
+                        'balance_amount': balance.available[0].amount,
+                        'balance_unit': balance.available[0].currency})
                 except stripe.error.InvalidRequestError:
                     context.update({'balance_unit': 'Unaccessible'})
         except ProcessorError:

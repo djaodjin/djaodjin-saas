@@ -501,6 +501,9 @@ class Organization(models.Model):
 
         return charge
 
+    def get_deposit_context(self):
+        return self.processor_backend.get_deposit_context()
+
     def retrieve_bank(self):
         """
         Returns associated bank account as a dictionnary.
