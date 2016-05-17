@@ -36,7 +36,7 @@ click on "Generate Key", then copy/paste the keys into your project settings.py
 
     SAAS = {
         'PROCESSOR': {
-            'BACKEND': 'saas.backends.RazorpayBackend',
+            'BACKEND': 'saas.backends.razorpay_processor.RazorpayBackend',
             'PRIV_KEY': "...",
             'PUB_KEY': "...",
         }
