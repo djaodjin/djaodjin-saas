@@ -23,10 +23,7 @@
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 """
-Razopay configuration
----------------------
-
-Install Razopay package
+Install Razorpay pip package
 
 .. code-block:: shell
 

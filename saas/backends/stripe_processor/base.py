@@ -23,9 +23,6 @@
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 """
-Stripe configuration
---------------------
-
 The `Stripe <https://stripe.com/>`_ backend works in 3 different modes:
 
   - ``LOCAL``
