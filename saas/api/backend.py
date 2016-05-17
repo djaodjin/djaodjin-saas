@@ -34,10 +34,12 @@ from ..mixins import OrganizationMixin
 class RetrieveBankAPIView(OrganizationMixin, GenericAPIView):
     """
     Pass through to the processor to retrieve some details about
-    the bank account associated to an ``Organization``.
+    the deposit account associated to a provider.
 
     - ``balance_amount`` Amount available to transfer to the provider bank
     - ``balance_unit`` Unit of the available balance (ex: usd)
+    - ``bank_name`` Name of the deposit account
+    - ``last4`` Last 4 characters of the deposit account identifier
 
     **Example response**:
 
@@ -45,7 +47,7 @@ class RetrieveBankAPIView(OrganizationMixin, GenericAPIView):
 
         {
           "bank_name": "Stripe Test Bank",
-          "last4": "1234",
+          "last4": "***-htrTZ",
           "balance_amount": 0,
           "balance_unit": "usd"
         }
@@ -59,7 +61,7 @@ class RetrieveBankAPIView(OrganizationMixin, GenericAPIView):
 class RetrieveCardAPIView(OrganizationMixin, GenericAPIView):
     """
     Pass through to the processor to retrieve some details about
-    the card associated to an ``Organization``.
+    the payment method (ex: credit card) associated to a subscriber.
 
     **Example response**:
 

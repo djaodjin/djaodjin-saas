@@ -34,9 +34,7 @@ from django.contrib.auth import REDIRECT_FIELD_NAME
 from django.http import HttpResponseRedirect
 from django.views.generic import CreateView, DetailView, ListView
 
-from .. import settings
-from ..compat import import_string
-from ..mixins import ProviderMixin
+from ..mixins import ProviderMixin, get_provider_site
 from ..models import Agreement, Signature, get_broker
 from ..utils import validate_redirect_url
 
@@ -119,10 +117,9 @@ def _read_agreement_file(slug, context=None):
     if not context:
         broker = get_broker()
         context = {'organization': broker}
-        if settings.PROVIDER_SITE_CALLABLE:
-            site = import_string(settings.PROVIDER_SITE_CALLABLE)(str(broker))
-            if site:
-                context.update({'site': site})
+        site = get_provider_site(broker)
+        if site:
+            context.update({'site': site})
     # We use context and not context=context in the following statement
     # such that the code is compatible with Django 1.7 and Django 1.8
     return markdown.markdown(

@@ -24,7 +24,6 @@
 
 from __future__ import absolute_import
 
-import deployutils.templatetags.deployutils_tags
 from jinja2.sandbox import SandboxedEnvironment as Jinja2Environment
 import saas.templatetags.saas_tags
 
@@ -34,11 +33,7 @@ import testsite.templatetags.testsite_tags
 def environment(**options):
     env = Jinja2Environment(**options)
     # Generic filters to render pages
-    env.filters['host'] = deployutils.templatetags.deployutils_tags.host
-    env.filters['messages'] = deployutils.templatetags.deployutils_tags.messages
-    env.filters['site_prefixed'] = \
-        deployutils.templatetags.deployutils_tags.site_prefixed
-    env.filters['asset'] = deployutils.templatetags.deployutils_tags.asset
+    env.filters['messages'] = testsite.templatetags.testsite_tags.messages
     env.filters['as_html'] = testsite.templatetags.testsite_tags.as_html
     env.filters['url_profile_base'] = \
         testsite.templatetags.testsite_tags.url_profile_base

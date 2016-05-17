@@ -1,6 +1,18 @@
 API Reference
 =============
 
+The djaodjin-saas API is split in four sections: Billing, Subscription, Metrics
+and Search.
+
+The Billing and Subscription APIs deal with the actual business logic
+of a Software-as-a-Service, that is the transfer of funds and access
+control respectively.
+
+The Metrics and Search APIs aggregate the underlying data in various ways
+to keep on top of the performance of the business as well as provide rich
+interfaces.
+
+
 Billing API
 -----------
 
@@ -12,9 +24,17 @@ a provider through a processor.
 .. autoclass:: saas.api.backend.RetrieveBankAPIView
 
 
+.. _api_billing_payments:
+
+.. http:get:: /api/billing/:organization/billings/
+
+.. autoclass:: saas.api.transactions.BillingsAPIView
+
+
 .. http:get:: /api/billing/:organization/card/
 
 .. autoclass:: saas.api.backend.RetrieveCardAPIView
+
 
 .. _api_billing_coupons:
 
@@ -30,17 +50,22 @@ a provider through a processor.
 
 .. autoclass:: saas.api.coupons.CouponDetailAPIView
 
-.. _api_billing_payments:
 
-.. http:get:: /api/billing/:organization/payments/
+.. http:get:: /api/billing/:organization/receivables/
 
-.. autoclass:: saas.api.transactions.TransactionListAPIView
+.. autoclass:: saas.api.transactions.ReceivablesListAPIView
+
 
 .. _api_billing_transfers:
 
 .. http:get:: /api/billing/:organization/transfers/
 
 .. autoclass:: saas.api.transactions.TransferListAPIView
+
+
+.. http:get:: /api/billing/transactions/
+
+.. autoclass:: saas.api.transactions.TransactionListAPIView
 
 
 .. http:get:: /api/billing/charges/:charge/
@@ -57,6 +82,8 @@ a provider through a processor.
 
 .. autoclass:: saas.api.charges.ChargeRefundAPIView
 
+
+.. _api_cart:
 
 .. http:post:: /api/cart/
 
@@ -102,19 +129,30 @@ These API end points manage the subscription logic, payments excluded.
 
 .. autoclass:: saas.api.organizations.OrganizationDetailAPIView
 
+.. _api_accessibles:
+
+.. http:get:: /api/users/:user/accessibles/
+.. http:post:: /api/users/:user/accessibles/
+
+.. autoclass:: saas.api.roles.AccessibleByListAPIView
+
 .. _api_role:
 
 .. http:get:: /api/profile/:organization/roles/:role/
 .. http:post:: /api/profile/:organization/roles/:role/
 
-.. autoclass:: saas.api.users.RoleListAPIView
+.. autoclass:: saas.api.roles.RoleListAPIView
 
 
 .. http:delete:: /api/profile/:organization/roles/:role/:user/
 
-.. autoclass:: saas.api.users.RoleDetailAPIView
+.. autoclass:: saas.api.roles.RoleDetailAPIView
 
 .. _api_subscriptions:
+
+.. http:get:: /api/profile/:organization/subscribers/
+
+.. autoclass:: saas.api.organizations.SubscribersAPIView
 
 .. http:get:: /api/profile/:organization/subscriptions/
 .. http:post:: /api/profile/:organization/subscriptions/
@@ -132,7 +170,7 @@ Metrics API
 
 .. http:get:: /api/metrics/registered/
 
-.. autoclass:: saas.api.metrics.RegisteredAPIView
+.. autoclass:: saas.api.users.RegisteredAPIView
 
 .. _api_metrics_subscribers_active:
 
@@ -148,11 +186,28 @@ Metrics API
 .. autoclass:: saas.api.metrics.BalancesAPIView
 
 
+.. _api_broker_balance_sheets:
+
+.. http:get:: /api/metrics/balances/:report/
+
+.. autoclass:: saas.api.balances.BrokerBalancesAPIView
+
+.. http:get:: /api/metrics/lines/:report/
+.. http:post:: /api/metrics/lines/:report/
+
+.. autoclass:: saas.api.balances.BalanceLineListAPIView
+
+
 .. _api_metrics_subscribers_churned:
 
 .. http:get:: /api/metrics/:organization/churned/
 
 .. autoclass:: saas.api.subscriptions.ChurnedSubscriptionAPIView
+
+
+.. http:get:: /api/metrics/:organization/coupons/:coupon/
+
+.. autoclass:: saas.api.metrics.CouponUsesAPIView
 
 
 .. _api_metrics_customers:
@@ -175,3 +230,17 @@ Metrics API
 
 .. autoclass:: saas.api.metrics.PlanMetricAPIView
 
+
+Search API
+----------
+
+At times, we might be looking to grant a ``User`` permissions to an
+``Organization`` through a ``Role`` (manager, contributor, etc.), or we might
+be looking to request access to an ``Organization`` on behalf of a ``User``.
+Both features might benefit from an auto-complete suggestions list.
+The two following API end point will list all ``Organization`` and ``User``
+in the database regardless of their associations.
+
+.. autoclass:: saas.api.organizations.OrganizationListAPIView
+
+.. autoclass:: saas.api.users.UserListAPIView

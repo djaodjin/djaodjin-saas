@@ -46,6 +46,11 @@ Create a subscription
 .. autoclass:: saas.views.plans.CartPlanListView
 
 
+.. http:get:: /redeem/
+
+.. autoclass:: saas.views.billing.RedeemCouponView
+
+
 .. http:get:: /billing/cart/
 .. http:get:: /billing/:organization/cart/
 .. http:post:: /billing/:organization/cart/
@@ -95,7 +100,7 @@ a :doc:`Flexible Security Framework <security>`.
 
 .. http:get:: /billing/:organization/
 
-.. autoclass:: saas.views.billing.TransactionListView
+.. autoclass:: saas.views.billing.BillingStatementView
 
 
 .. http:get:: /billing/:organization/balance/
@@ -125,6 +130,12 @@ a :doc:`Flexible Security Framework <security>`.
 .. http:get:: /profile/:organization/roles/contributors/
 
 .. autoclass:: saas.views.profile.RoleListView
+
+
+.. http:get:: /users/roles/
+.. http:get:: /users/:user/roles/
+
+.. autoclass:: saas.views.users.ProductListView
 
 
 Provider facing pages
@@ -167,10 +178,10 @@ Transfer subscriber payments to provider bank
 
 .. autoclass:: saas.views.billing.TransferListView
 
-.. http:get:: /provider/billing/withdraw/
-.. http:get:: /provider/billing/:organization/withdraw/
+.. http:get:: /provider/billing/import/
+.. http:get:: /provider/billing/:organization/import/
 
-.. autoclass:: saas.views.billing.WithdrawView
+.. autoclass:: saas.views.billing.ImportTransactionsView
 
 
 Manage subscribers and business performance
@@ -204,3 +215,9 @@ Manage subscribers and business performance
 .. http:get:: /provider/profile/:organization/subscribers/
 
 .. autoclass:: saas.views.profile.SubscriberListView
+
+
+.. http:get:: /provider/metrics/balances/:report/
+
+.. autoclass:: saas.views.metrics.BalanceView
+

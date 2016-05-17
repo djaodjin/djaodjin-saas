@@ -639,16 +639,25 @@ def get_charge_context(charge):
     return context
 
 
+def get_provider_site(provider):
+    """
+    Returns a Site object that contains a ``domain`` field.
+    """
+    if not settings.PROVIDER_SITE_CALLABLE:
+        return None
+    from .compat import import_string
+    return import_string(settings.PROVIDER_SITE_CALLABLE)(str(provider))
+
+
 def product_url(provider, subscriber=None):
     """
     We cannot use a basic ``reverse('product_default_start')`` here because
     *organization* and ``get_broker`` might be different.
     """
     current_uri = '/'
-    if settings.PROVIDER_SITE_CALLABLE:
-        from .compat import import_string
-        site = import_string(settings.PROVIDER_SITE_CALLABLE)(str(provider))
-        if site and site.domain:
+    site = get_provider_site(provider)
+    if site:
+        if site.domain:
             scheme = 'https' # Defaults to secure connection.
             current_uri = '%s://%s/' % (scheme, site.domain)
         else:

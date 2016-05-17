@@ -170,7 +170,58 @@ class TransactionQuerysetMixin(object):
 
 class TransactionListAPIView(SmartTransactionListMixin,
                              TransactionQuerysetMixin, ListAPIView):
+    """
+    GET queries all ``Transaction`` recorded in the ledger.
 
+    The queryset can be further filtered to a range of dates between
+    ``start_at`` and ``ends_at``.
+
+    The queryset can be further filtered by passing a ``q`` parameter.
+    The value in ``q`` will be matched against:
+
+      - Transaction.descr
+      - Transaction.orig_organization.full_name
+      - Transaction.dest_organization.full_name
+
+    The result queryset can be ordered by:
+
+      - Transaction.created_at
+      - Transaction.descr
+      - Transaction.dest_amount
+
+    **Example request**:
+
+    .. sourcecode:: http
+
+        GET /api/billing/transactions?start_at=2015-07-05T07:00:00.000Z\
+&o=date&ot=desc
+
+    **Example response**:
+
+    .. sourcecode:: http
+
+        {
+            "count": 1,
+            "next": null,
+            "previous": null,
+            "results": [
+                {
+                    "created_at": "2015-08-01T00:00:00Z",
+                    "description": "Charge for 4 periods",
+                    "amount": "($356.00)",
+                    "is_debit": true,
+                    "orig_account": "Liability",
+                    "orig_organization": "xia",
+                    "orig_amount": 112120,
+                    "orig_unit": "usd",
+                    "dest_account": "Funds",
+                    "dest_organization": "stripe",
+                    "dest_amount": 112120,
+                    "dest_unit": "usd"
+                }
+            ]
+        }
+    """
     serializer_class = TransactionSerializer
     pagination_class = BalancePagination
 
@@ -210,7 +261,7 @@ class BillingsAPIView(SmartTransactionListMixin,
 
     .. sourcecode:: http
 
-        GET /api/billing/cowork/transactions?start_at=2015-07-05T07:00:00.000Z\
+        GET /api/billing/xia/billings?start_at=2015-07-05T07:00:00.000Z\
 &o=date&ot=desc
 
     **Example response**:
@@ -224,9 +275,8 @@ class BillingsAPIView(SmartTransactionListMixin,
             "results": [
                 {
                     "created_at": "2015-08-01T00:00:00Z",
-                    "description": "Charge <a href=\"/billing/cowork/receipt/\
-1123\">1123</a> distribution for demo562-open-plus",
-                    "amount": "$1121.20",
+                    "description": "Charge for 4 periods",
+                    "amount": "($356.00)",
                     "is_debit": true,
                     "orig_account": "Liability",
                     "orig_organization": "xia",

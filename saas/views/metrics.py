@@ -40,6 +40,19 @@ from ..utils import datetime_or_now
 
 
 class BalanceView(ProviderMixin, TemplateView):
+    """
+    Display a balance sheet named ``:report``.
+
+    Template:
+
+    To edit the layout of this page, create a local \
+    ``saas/metrics/balances.html`` (`example <https://github.com/djaodjin/\
+djaodjin-saas/tree/master/saas/templates/saas/metrics/balances.html>`__).
+
+    Template context:
+      - ``organization`` The provider object
+      - ``request`` The HTTP request object
+    """
 
     template_name = 'saas/metrics/balances.html'
 

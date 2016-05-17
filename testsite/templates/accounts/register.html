@@ -4,20 +4,20 @@
 <div>
     <h1>Sign up</div>
     <div>
-        <form action="{{'register/'|site_prefixed}}{% if next %}?next={{next}}{% endif %}" method="post">
+        <form action="/register/{% if next %}?next={{next}}{% endif %}" method="post">
             <input type="hidden" name="csrfmiddlewaretoken" value="{{csrf_token}}">
             {{form|as_html}}
             <input type="submit" name="submit" value="Submit" />
         </form>
         <div>
-            <p>You already have an account? <a href="{{'login/'|site_prefixed}}">Sign in</a>
+            <p>You already have an account? <a href="/login/">Sign in</a>
         </div>
     </div>
 </div>
 {% endblock %}
 
 {% block bodyscripts %}
-<script type="text/javascript" charset="utf-8" src="{{'js/djaodjin-postal.js'|asset}}"></script>
+<script type="text/javascript" charset="utf-8" src="/static/js/djaodjin-postal.js"></script>
 <script type="text/javascript">
 $(document).ready(function(){
     $("[name='region']").region({country:$("[name='country']")});

@@ -20,7 +20,7 @@
   {% endif %}
 {% else %}
 <p>
-<a href="https://connect.stripe.com/oauth/authorize?response_type=code&client_id={%if STRIPE_CLIENT_ID %}{{STRIPE_CLIENT_ID}}{% else %}undefined{% endif %}&scope=read_write&state={{state}}"><img src="{{'static/img/stripe-connect.png'|asset}}" /></a>
+<a href="https://connect.stripe.com/oauth/authorize?response_type=code&client_id={%if STRIPE_CLIENT_ID %}{{STRIPE_CLIENT_ID}}{% else %}undefined{% endif %}&scope=read_write&state={{state}}"><img src="/static/img/stripe-connect.png" /></a>
 </p>
 {% endif %}
 <div id="de-authorize">

@@ -34,6 +34,4 @@ from ...settings import ACCT_REGEX
 urlpatterns = [
     url(r'^users/(?P<user>%s)/accessibles/?' % ACCT_REGEX,
         AccessibleByListAPIView.as_view(), name='saas_api_accessibles'),
-    url(r'^users/accessibles/?',
-        AccessibleByListAPIView.as_view(), name='saas_api_accessibles'),
 ]

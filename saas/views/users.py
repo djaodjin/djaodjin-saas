@@ -29,8 +29,22 @@ from ..mixins import UserMixin, ProviderMixin
 
 
 class ProductListView(UserMixin, ProviderMixin, TemplateView):
-    """List of organizations the request.user is a manager
-    or contributor for."""
+    """
+    List of organizations a ``:user`` has a role with.
+
+    Template:
+
+    To edit the layout of this page, create a local \
+    ``saas/users/roles.html`` (`example <https://github.com/djaodjin\
+/djaodjin-saas/tree/master/saas/templates/saas/users/roles.html>`__).
+    You should insure the page will call back the
+    :ref:`/api/users/:user/roles/ <api_accessibles>`
+    API end point to fetch the set of organization accessible by the user.
+
+    Template context:
+      - ``user`` The organization object users have permissions to.
+      - ``request`` The HTTP request object
+    """
     # XXX We use ``OrganizationMixin`` so that urls.pricing is defined.
 
     template_name = 'saas/users/roles.html'

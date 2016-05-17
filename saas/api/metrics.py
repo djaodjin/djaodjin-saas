@@ -287,17 +287,33 @@ class CouponUsesAPIView(CartItemSmartListMixin, CouponUsesQuerysetMixin,
 
     .. autoclass:: saas.mixins.CartItemSmartListMixin
 
+    **Example request**:
+
+    .. sourcecode:: http
+
+        GET /api/metrics/cowork/coupons/DIS100/
+
     **Example response**:
 
     .. sourcecode:: http
 
         {
-            "code": "DIS100",
-            "percent": 100,
-            "created_at": "2014-01-01T09:00:00Z",
-            "ends_at": null,
-            "description": null
-       }
+            "count": 1,
+            "next": null,
+            "previous": null,
+            "results": [
+                {
+                    "user": {
+                        "slug": "xia",
+                        "email": "xia@localhost.localdomain",
+                        "full_name": "Xia Doe",
+                        "created_at": "2012-09-14T23:16:55Z"
+                    },
+                    "plan": "basic",
+                    "created_at": "2014-01-01T09:00:00Z"
+                }
+            ]
+        }
     """
     clip = False
     serializer_class = CartItemSerializer

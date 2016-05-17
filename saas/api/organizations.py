@@ -119,7 +119,7 @@ class OrganizationListAPIView(OrganizationSmartListMixin,
 
     .. sourcecode:: http
 
-        GET /api/users/?o=created_at&ot=desc
+        GET /api/profile/?o=created_at&ot=desc
 
     **Example response**:
 
@@ -132,7 +132,8 @@ class OrganizationListAPIView(OrganizationSmartListMixin,
             "results": [{
                 "slug": "xia",
                 "full_name": "Xia Lee",
-                "created_at": "2016-01-14T23:16:55Z",
+                "printable_name": "Xia Lee",
+                "created_at": "2016-01-14T23:16:55Z"
             }]
         }
     """
@@ -150,7 +151,8 @@ class SubscribersQuerysetMixin(ProviderMixin):
 class SubscribersAPIView(OrganizationSmartListMixin,
                          SubscribersQuerysetMixin, ListAPIView):
     """
-    List active and churned subscribers of a provider.
+    List all ``Organization`` which have or had a subscription to a plan
+    provided by ``:organization``.
 
     The value passed in the ``q`` parameter will be matched against:
 

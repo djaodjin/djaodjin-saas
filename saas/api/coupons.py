@@ -59,7 +59,7 @@ class RedeemCouponSerializer(serializers.Serializer):
 
 class SmartCouponListMixin(SortableListMixin, SearchableListMixin):
     """
-    Subscriber list which is also searchable and sortable.
+    ``Coupon`` list which is also searchable and sortable.
     """
     search_fields = ['code',
                      'description',
@@ -69,10 +69,10 @@ class SmartCouponListMixin(SortableListMixin, SearchableListMixin):
     search_date_fields = ['created_at', 'ends_at']
 
     sort_fields_aliases = [('code', 'code'),
-                           ('percent', 'percent'),
-                           ('ends_at', 'ends_at'),
+                           ('created_at', 'created_at'),
                            ('description', 'description'),
-                           ('created_at', 'created_at')]
+                           ('ends_at', 'ends_at'),
+                           ('percent', 'percent')]
 
 
 class CouponQuerysetMixin(ProviderMixin):

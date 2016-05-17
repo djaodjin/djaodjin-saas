@@ -29,10 +29,13 @@ URLs for pages from a ``User`` perspective.
 from django.conf.urls import url
 
 from ..settings import ACCT_REGEX
+from ..views import UserRedirectView
 from ..views.users import ProductListView
 
 urlpatterns = [
+    url(r'^roles/$',
+        UserRedirectView.as_view(pattern_name='saas_user_product_list'),
+        name='saas_accessibles'),
     url(r'^(?P<user>%s)/roles/' % ACCT_REGEX,
         ProductListView.as_view(), name='saas_user_product_list'),
 ]
-

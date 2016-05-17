@@ -23,7 +23,9 @@
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 from django import template
+from django.contrib.messages.api import get_messages
 from django.core.urlresolvers import reverse
+from django.forms import BaseForm
 from django.utils.text import capfirst
 from saas.templatetags.saas_tags import attached_organization
 
@@ -44,6 +46,16 @@ def capitalize(name):
 @register.filter()
 def is_authenticated(request):
     return request.user.is_authenticated()
+
+
+@register.filter()
+def messages(obj):
+    """
+    Messages to be displayed to the current session.
+    """
+    if isinstance(obj, BaseForm):
+        return obj.non_field_errors()
+    return get_messages(obj)
 
 
 @register.filter()

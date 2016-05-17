@@ -37,6 +37,39 @@ from .serializers import BalanceLineSerializer
 #pylint: disable=no-init,old-style-class
 
 class BrokerBalancesAPIView(DateRangeMixin, APIView):
+    """
+    GET queries a balance sheet named ``:report`` for the broker.
+
+    **Example request**:
+
+    .. sourcecode:: http
+
+        GET /api/metrics/balances/taxes/
+
+    **Example response**:
+
+    .. sourcecode:: http
+
+        {
+            "scale": 0.01,
+            "unit": "$",
+            "title": "Balances: taxes",
+            "table": [
+                {
+                    "key": "Sales",
+                    "selector": "Receivable",
+                    "values": [
+                        ["2015-05-01T00:00:00Z", 0],
+                        ["2015-08-01T00:00:00Z", 0],
+                        ["2015-11-01T00:00:00Z", 0],
+                        ["2016-02-01T00:00:00Z", 0],
+                        ["2016-05-01T00:00:00Z", 0],
+                        ["2016-05-16T21:08:15.637Z", 0]
+                    ]
+                }
+            ]
+        }
+    """
 
     def get(self, request, *args, **kwargs): #pylint: disable=unused-argument
         self.cache_fields(request)
@@ -55,6 +88,57 @@ class BrokerBalancesAPIView(DateRangeMixin, APIView):
 
 
 class BalanceLineListAPIView(ListCreateAPIView):
+    """
+    GET queries the list of rows reported on the balance sheet
+    named ``:report`` for the broker.
+
+    POST adds a new row on the ``:report`` balance sheet.
+
+    **Example request**:
+
+    .. sourcecode:: http
+
+        GET /api/metrics/lines/taxes/
+
+    **Example response**:
+
+    .. sourcecode:: http
+
+        {
+            "count": 1,
+            "next": null,
+            "previous": null,
+            "results": [
+                {
+                    "title": "Sales",
+                    "selector": "Receivable",
+                    "rank": 1
+                }
+            ]
+        }
+
+    **Example request**:
+
+    .. sourcecode:: http
+
+        POST /api/metrics/lines/taxes/
+
+        {
+          "title": "Sales",
+          "selector": "Receivable",
+          "rank": 1
+        }
+
+    **Example response**:
+
+    .. sourcecode:: http
+
+        {
+          "title": "Sales",
+          "selector": "Receivable",
+          "rank": 1
+        }
+    """
 
     serializer_class = BalanceLineSerializer
 

@@ -32,8 +32,8 @@ Install Razopay package
 
     $ pip install razorpay
 
-Go to your Razopay dashboard "API Keys", click on "Generate Key",
-then copy/paste the keys into your project settings.py
+Go to your `Razorpay <https://razorpay.com/>`_ dashboard "API Keys",
+click on "Generate Key", then copy/paste the keys into your project settings.py
 
 .. code-block:: python
 

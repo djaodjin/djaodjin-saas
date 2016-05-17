@@ -2,7 +2,7 @@
 <html>
 <head>
   <title>SaaS Testsite</title>
-  <script type="text/javascript" src="{{'static/vendor/js/jquery.js'|asset}}"></script>
+  <script type="text/javascript" src="/static/vendor/js/jquery.js"></script>
   {% if csrf_token %}
   <meta name="csrf-token" content="{{csrf_token}}">
   <script type="text/javascript">
@@ -26,12 +26,12 @@
   {% block menubar %}
   <div>
   <a href="/">Home</a>
-  | <a href="{{'pricing/'|site_prefixed}}">Pricing</a>
+  | <a href="/pricing/">Pricing</a>
   {% if request|is_authenticated %}
   | <a id="authenticated-user" href="{{request|url_profile}}">{{request.user.username}}</a>
-  | <a href="{{'logout/'|site_prefixed}}?next=/">Sign Out</a>
+  | <a href="/logout/">Sign Out</a>
   {% else %}
-  | <a href="{{'login/'|site_prefixed}}">Sign In</a>
+  | <a href="/login/">Sign In</a>
   {% endif %}
   </div>
   {% endblock %}

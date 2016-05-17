@@ -2879,9 +2879,9 @@ def get_broker():
     Returns the site-wide provider from a request.
     """
     broker_slug = settings.PLATFORM
-    if settings.PROVIDER_CALLABLE:
+    if settings.BROKER_CALLABLE:
         from saas.compat import import_string
-        broker_slug = str(import_string(settings.PROVIDER_CALLABLE)())
+        broker_slug = str(import_string(settings.BROKER_CALLABLE)())
     LOGGER.debug("get_broker('%s')", broker_slug)
     return Organization.objects.get(slug=broker_slug)
 

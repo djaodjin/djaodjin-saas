@@ -22,7 +22,28 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-"""Command for the cron job. Create credit card charges"""
+"""
+The renewals command is intended to be run as part of an automated scripts
+run at least once a day. It will
+
+- recognize revenue for past periods (see :doc:`ledger <ledger>`).
+- extends active subscriptions
+- create charges for new periods
+
+Every functions part of the renewals script are explicitly written to be
+idempotent. Calling the scripts multiple times for the same timestamp
+(i.e. with the ``--at-time`` command line argument) will generate the
+appropriate ``Transaction`` and ``Charge`` only once.
+
+**Example cron setup**:
+
+.. code-block:: bash
+
+    $ cat /etc/cron.daily/renewals
+    #!/bin/sh
+
+    cd /var/*mysite* && python manage.py renewals
+"""
 
 import logging, time
 

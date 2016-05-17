@@ -234,7 +234,6 @@ if TEMPLATE_REVERT_TO_DJANGO:
                 'django.template.loaders.app_directories.Loader'],
             'libraries': {},
             'builtins': [
-                'deployutils.templatetags.deployutils_tags',
                 'saas.templatetags.saas_tags',
                 'testsite.templatetags.testsite_tags']
         }

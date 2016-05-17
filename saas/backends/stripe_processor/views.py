@@ -36,9 +36,10 @@ class StripeProcessorRedirectView(RedirectView):
     query_string = True
 
     def get_redirect_url(self, *args, **kwargs):
-        if settings.PROCESSOR_REDIRECT_CALLABLE:
+        redirect_func_name = settings.PROCESSOR.get('REDIRECT_CALLABLE', None)
+        if redirect_func_name:
             from saas.compat import import_string
-            func = import_string(settings.PROCESSOR_REDIRECT_CALLABLE)
+            func = import_string(redirect_func_name)
             url = func(self.request, site=kwargs.get(self.slug_url_kwarg))
             args = self.request.META.get('QUERY_STRING', '')
             if args and self.query_string:

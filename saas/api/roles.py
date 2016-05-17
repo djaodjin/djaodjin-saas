@@ -61,7 +61,68 @@ class AccessibleByQuerysetMixin(UserMixin):
 class AccessibleByListAPIView(RoleSmartListMixin,
                               AccessibleByQuerysetMixin, ListCreateAPIView):
     """
-    List of ``Organization`` accessible by a ``User``.
+    ``GET`` lists all relations where an ``Organization`` is accessible by
+    a ``User``. Typically the user was granted specific permissions through
+    a ``Role``.
+
+    ``POST`` Generates a request to attach a user to a role on an organization
+
+    see :doc:`Flexible Security Framework <security>`.
+
+    **Example request**:
+
+    .. sourcecode:: http
+
+        GET  /api/users/alice/accessibles/
+
+    **Example response**:
+
+    .. sourcecode:: http
+
+        {
+            "count": 1,
+            "next": null,
+            "previous": null,
+            "results": [
+                {
+                    "created_at": "2012-10-01T09:00:00Z",
+                    "organization": {
+                        "slug": "cowork",
+                        "full_name": "ABC Corp.",
+                        "printable_name": "ABC Corp.",
+                        "created_at": "2012-08-14T23:16:55Z",
+                        "email": "support@localhost.localdomain"
+                    },
+                    "user": {
+                        "slug": "alice",
+                        "email": "alice@localhost.localdomain",
+                        "full_name": "Alice Doe",
+                        "created_at": "2012-09-14T23:16:55Z"
+                    },
+                    "name": "manager",
+                    "request_key": null,
+                    "grant_key": null
+                }
+            ]
+        }
+
+    **Example request**:
+
+    .. sourcecode:: http
+
+        POST /api/users/xia/accessibles/
+
+        {
+          "slug": "cowork"
+        }
+
+    **Example response**:
+
+    .. sourcecode:: http
+
+        {
+          "slug": "cowork"
+        }
     """
     serializer_class = RoleSerializer
 
@@ -164,7 +225,7 @@ class RelationListAPIView(OrganizationMixin, ListCreateAPIView):
 
 class RoleListAPIView(RelationListAPIView):
     """
-    ``GET`` lists all users with a specified role with regards
+    ``GET`` lists all relations with a specified role with regards
     to an organization.
 
     ``POST`` attaches a user to a role on an organization, typically granting
@@ -180,6 +241,51 @@ class RoleListAPIView(RelationListAPIView):
     **Example response**:
 
     .. sourcecode:: http
+
+        {
+            "count": 1,
+            "next": null,
+            "previous": null,
+            "results": [
+                {
+                    "created_at": "2012-10-01T09:00:00Z",
+                    "organization": {
+                        "slug": "cowork",
+                        "full_name": "ABC Corp.",
+                        "printable_name": "ABC Corp.",
+                        "created_at": "2012-08-14T23:16:55Z",
+                        "email": "support@localhost.localdomain"
+                    },
+                    "user": {
+                        "slug": "alice",
+                        "email": "alice@localhost.localdomain",
+                        "full_name": "Alice Doe",
+                        "created_at": "2012-09-14T23:16:55Z"
+                    },
+                    "name": "manager",
+                    "request_key": null,
+                    "grant_key": null
+                }
+            ]
+        }
+
+    **Example request**:
+
+    .. sourcecode:: http
+
+        POST /api/profile/cowork/roles/managers/
+
+        {
+          "slug": "Xia"
+        }
+
+    **Example response**:
+
+    .. sourcecode:: http
+
+        {
+          "slug": "Xia"
+        }
     """
 
     def add_relation(self, user, reason=None):
