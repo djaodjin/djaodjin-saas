@@ -1,3 +1,22 @@
+0.2.0
+
+  * Generalize role relationship
+  * Replace Stripe Recipients by use of StripeConnect
+
+ -- Sebastien Mirolo <smirolo@djaodjin.com>  Fri, 5 Feb 2016 00:00:00 -0900
+
+0.1.8
+
+  * Refactor ledger to fully support backlog accounting
+
+ -- Sebastien Mirolo <smirolo@djaodjin.com>  Thu, 13 Aug 2015 00:00:00 -0900
+
+0.1.7
+
+  * Update support to Django 1.7 and django-restframework 3.1
+
+ -- Sebastien Mirolo <smirolo@djaodjin.com>  Wed, 13 May 2015 00:00:00 -0900
+
 0.1.4
 
   * Create coupon metrics pages

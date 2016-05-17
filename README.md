@@ -29,6 +29,7 @@ To test payment through [Stripe](https://stripe.com/):
 
 1. Add your Stripe keys in the credentials file.
 
+
     STRIPE_PUB_KEY = "_your_stripe_public_api_key_"
     STRIPE_PRIV_KEY = "_your_stripe_private_api_key_"
 
@@ -51,6 +52,11 @@ to define ``PAGE_SIZE`` in your settings.py
 Release Notes
 =============
 
-- version 0.2.0 generic role, replaced Stripe Recipients by use of StripeConnect
-- version 0.1.8 refactor ledger to fully support backlog accounting
-- version 0.1.7 supports Django 1.7 and django-restframework 3.1
+0.2.1
+
+  * Create dashboard views
+  * Generate requests for a role on an organization
+  * Add Razorpay backend
+
+[previous release notes](changelog)
+

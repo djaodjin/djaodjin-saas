@@ -35,6 +35,16 @@ Edit your project settings.py to add a SAAS configuration block
 
 Various :doc:`payment processor backends<backends>` are available.
 
+The latest versions of django-restframework implement paginators disconnected
+from parameters in  views (i.e. no more paginate_by). You will thus need
+to define ``PAGE_SIZE`` in your settings.py
+
+.. code-block:: python
+
+    REST_FRAMEWORK = {
+        'PAGE_SIZE': 25,
+    }
+
 There is no access polcies by default on the djaodjin-saas URLs. It is thus
 your responsability to add the appropriate decorators to restrict which users
 can access which URL. A set of common decorators in Software-as-a-Service
