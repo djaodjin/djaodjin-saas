@@ -1,17 +1,17 @@
-Django==1.9.5
+Django==1.9.6
 django-countries==3.4.1
 django-durationfield==0.5.2
 django-extra-views==0.7.1
-django-localflavor==1.2
-djangorestframework==3.3.2
+django-localflavor==1.3
+djangorestframework==3.3.3
 # We need Python Markdown for django.contrib.markup. markdown2 is not enough.
-Markdown==2.6.5
+Markdown==2.6.6
 python-dateutil==2.4.2
-stripe==1.29.0
+stripe==1.33.0
 
 # testsite-only
 django-urldecorators==0.5
 
 # development
-Sphinx==1.3.5
+Sphinx==1.4.1
 sphinxcontrib-httpdomain==1.4.0
