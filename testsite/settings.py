@@ -42,6 +42,11 @@ def load_config(confpath):
 
 load_config(os.path.join(BASE_DIR, 'credentials'))
 
+if not hasattr(sys.modules[__name__], "SECRET_KEY"):
+    from random import choice
+    SECRET_KEY = "".join([choice(
+        "abcdefghijklmnopqrstuvwxyz0123456789!@#$%^*-_=+") for i in range(50)])
+
 DEBUG = True
 FEATURES_DEBUG = True
 

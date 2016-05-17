@@ -29,8 +29,8 @@ To test payment through [Stripe](https://stripe.com/):
 
 1. Add your Stripe keys in the credentials file.
 
-
     STRIPE_PUB_KEY = "_your_stripe_public_api_key_"
+
     STRIPE_PRIV_KEY = "_your_stripe_private_api_key_"
 
 2. This Django App does not send notification e-mails itself. All major
