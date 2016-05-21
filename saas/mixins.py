@@ -557,8 +557,8 @@ class UserMixin(object):
         context = super(UserMixin, self).get_context_data(**kwargs)
         user = self.user
         top_accessibles = []
-        queryset = Organization.objects.accessible_by(
-            user).filter(is_active=True)[:self.SHORT_LIST_CUT_OFF + 1]
+        queryset = Organization.objects.accessible_by(user).filter(
+            is_provider=True, is_active=True)[:self.SHORT_LIST_CUT_OFF + 1]
         for organization in queryset:
             top_accessibles += [{'printable_name': organization.printable_name,
                 'location': reverse('saas_dashboard', args=(organization,))}]

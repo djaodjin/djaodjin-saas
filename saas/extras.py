@@ -105,7 +105,8 @@ class OrganizationMixinBase(object):
                 'contributors': reverse('saas_role_list',
                     args=(organization, 'contributors'))})
 
-        if organization.is_provider:
+        if (organization.is_provider
+            and organization.accessible_by(self.request.user)):
             provider = organization
             urls.update({'provider': {
                 'api_bank': reverse('saas_api_bank', args=(provider,)),

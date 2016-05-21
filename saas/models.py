@@ -291,6 +291,20 @@ class Organization(models.Model):
             self._processor_backend = get_processor_backend(self)
         return self._processor_backend
 
+    def accessible_by(self, user):
+        """
+        Returns True if the user has any ``Role`` relationship
+        with the ``Organization``.
+
+        When *user* is a string instead of a ``User`` instance, it will
+        be interpreted as a username.
+        """
+        from .compat import User
+        if not isinstance(user, User):
+            user = User.objects.get(username=user)
+        return get_role_model().objects.filter(
+            organization=self, user=user).exists()
+
     def add_role(self, user, role_name, at_time=None, reason=None):
         """
         Add user with a role to organization.
