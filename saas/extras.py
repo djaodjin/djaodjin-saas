@@ -106,6 +106,7 @@ class OrganizationMixinBase(object):
                     args=(organization, 'contributors'))})
 
         if (organization.is_provider
+            and self.request.user.is_authenticated()
             and organization.accessible_by(self.request.user)):
             provider = organization
             urls.update({'provider': {
