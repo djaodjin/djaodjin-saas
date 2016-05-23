@@ -21,9 +21,15 @@ Edit your project urls.py to add the djaojdin-saas urls
    ]
 
 
-Edit your project settings.py to add a SAAS configuration block
+Edit your project settings.py to add saas into the ``INSTALLED_APPS``
+and a SAAS configuration block
 
 .. code-block:: python
+
+    INSTALLED_APPS = (
+        ...
+        'saas'
+    )
 
     SAAS = {
         'PROCESSOR': {
