@@ -172,8 +172,11 @@ class OrganizationManager(models.Manager):
 class Organization(models.Model):
     """
     The Organization table stores information about who gets
-    charged (and who gets paid) for using the service. Users can
-    have one of two relationships with an Organization. They can
+    charged (subscriber) and who gets paid (provider) for using a service.
+    A special ``Organization``, named processor, is used to represent
+    the backend charge/deposit processor.
+
+    Users can have one of two relationships with an Organization. They can
     either be managers (all permissions) or contributors (use permissions).
     """
     #pylint:disable=too-many-instance-attributes
@@ -204,16 +207,22 @@ class Organization(models.Model):
     country = CountryField()
 
     # Payment Processing
-    # We could support multiple payment processors at the same time by
-    # by having a relation to a separate table. For simplicity we only
-    # allow on processor per organization at a time.
+    # ------------------
+    # Implementation Note: Software developpers using the Django admin
+    # panel to bootstrap their database will have an issue if the processor
+    # is not optional. This is because the processor ``Organization`` does
+    # not itself reference a processor.
+    # 2nd note: We could support multiple payment processors at the same
+    # time by having a relation to a separate table. For simplicity we only
+    # allow one processor per organization at a time.
     subscriptions = models.ManyToManyField('Plan',
         related_name='subscribes', through='Subscription')
     billing_start = models.DateField(null=True, auto_now_add=True)
 
     funds_balance = models.PositiveIntegerField(default=0,
         help_text="Funds escrowed in cents")
-    processor = models.ForeignKey('Organization', related_name='processes')
+    processor = models.ForeignKey(
+        'Organization', null=True, blank=True, related_name='processes')
     processor_card_key = models.CharField(null=True, blank=True, max_length=20)
     processor_deposit_key = models.CharField(max_length=60, null=True,
         blank=True,
@@ -226,12 +235,16 @@ class Organization(models.Model):
     def __unicode__(self):
         return unicode(self.slug)
 
+    def validate_processor(self):
+        if not self.processor_id: #pylint:disable=no-member
+            self.processor = Organization.objects.get(pk=settings.PROCESSOR_ID)
+        return self.processor
+
     def save(self, force_insert=False, force_update=False, using=None,
              update_fields=None):
         if not self.slug:
             self.slug = slugify(self.full_name)
-        if not self.processor_id: #pylint:disable=no-member
-            self.processor = Organization.objects.get(pk=settings.PROCESSOR_ID)
+        self.validate_processor()
         super(Organization, self).save(force_insert=force_insert,
              force_update=force_update, using=using,
              update_fields=update_fields)
@@ -602,6 +615,7 @@ class Organization(models.Model):
         #pylint:disable=too-many-arguments
         # We use ``get_or_create`` here because the method is also called
         # when transfers are reconciled with the payment processor.
+        self.validate_processor()
         with transaction.atomic():
             if amount > 0:
                 _, created = Transaction.objects.get_or_create(
@@ -646,6 +660,7 @@ class Organization(models.Model):
                              event_id=None, created_at=None, descr=None):
         #pylint: disable=too-many-arguments
         if fee_amount:
+            self.validate_processor()
             funds_unit = 'usd' # XXX currency on receipient bank account
             created_at = datetime_or_now(created_at)
             if not descr:
@@ -664,8 +679,8 @@ class Organization(models.Model):
                 orig_amount=fee_amount,
                 orig_account=Transaction.FUNDS,
                 orig_organization=self)
-        self.funds_balance -= fee_amount
-        self.save()
+            self.funds_balance -= fee_amount
+            self.save()
 
 
 class Role(models.Model):
@@ -793,7 +808,7 @@ class ChargeManager(models.Manager):
             broker = providers[0]
         else:
             broker = get_broker()
-        processor = broker.processor
+        processor = broker.validate_processor()
         processor_backend = broker.processor_backend
         descr = DESCRIBE_CHARGED_CARD % {
             'charge': '', 'organization': customer.printable_name}
