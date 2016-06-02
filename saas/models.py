@@ -49,6 +49,8 @@ from django.core.validators import MaxValueValidator
 from django.db import IntegrityError, models, transaction
 from django.db.models import Max, Q, Sum
 from django.db.models.query import QuerySet
+from django.db.models.signals import post_save
+from django.dispatch import receiver
 from django.template.defaultfilters import slugify
 from django.utils.http import quote
 from django.utils.decorators import method_decorator
@@ -1823,6 +1825,15 @@ class Plan(models.Model):
             fraction = (end_time.date() - start_time.date()).days / 366
         # Round down to the advantage of a customer.
         return int(self.period_amount * fraction)
+
+
+@receiver(post_save, sender=Plan)
+def on_plan_post_save(sender, instance, created, raw, **kwargs):
+    if not raw:
+        if created:
+            signals.plan_created.send(sender=sender, plan=instance)
+        else:
+            signals.plan_updated.send(sender=sender, plan=instance)
 
 
 class CartItemManager(models.Manager):
