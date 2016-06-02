@@ -25,6 +25,8 @@
 from django.dispatch import Signal
 
 #pylint: disable=invalid-name
+plan_created = Signal(providing_args=["plan"])
+plan_updated = Signal(providing_args=["plan"])
 bank_updated = Signal(providing_args=["organization", "user"])
 card_updated = Signal(
     providing_args=["organization", "user", "old_card", "new_card"])
