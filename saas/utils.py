@@ -26,7 +26,7 @@ import datetime, inspect, random, sys, urlparse
 
 from django.conf import settings as django_settings
 from django.http.request import split_domain_port, validate_host
-from django.utils.timezone import utc
+from django.utils.timezone import utc, get_current_timezone
 
 
 def datetime_or_now(dtime_at=None):
@@ -99,9 +99,13 @@ def get_roles(role_name, using=None):
 
 
 def start_of_day(dtime_at=None):
+    """
+    Returns the local (user timezone) start of day, that's,
+    time 00:00:00 for a given datetime
+    """
     dtime_at = datetime_or_now(dtime_at)
     return datetime.datetime(dtime_at.year, dtime_at.month,
-        dtime_at.day, tzinfo=dtime_at.tzinfo)
+        dtime_at.day, tzinfo=get_current_timezone())
 
 
 def validate_redirect_url(next_url):
