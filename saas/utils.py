@@ -91,11 +91,15 @@ def get_role_model():
     return get_model_class(settings.ROLE_RELATION, 'ROLE_RELATION')
 
 
-def get_roles(role_name, using=None):
+def normalize_role_name(role_name):
     if role_name.endswith('s'):
         role_name = role_name[:-1]
+    return role_name
+
+
+def get_roles(role_name, using=None):
     return get_role_model().objects.db_manager(using=using).filter(
-        name=role_name)
+        name=normalize_role_name(role_name))
 
 
 def start_of_day(dtime_at=None):
