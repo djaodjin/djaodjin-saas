@@ -38,7 +38,7 @@ from ..compat import User
 from ..mixins import (OrganizationMixin, RelationMixin,
     RoleSmartListMixin, UserMixin)
 from ..models import Organization
-from ..utils import get_role_model
+from ..utils import get_role_model, normalize_role_name
 from .serializers import RoleSerializer
 
 
@@ -296,9 +296,7 @@ class RoleListAPIView(RelationListAPIView):
             raise Http404("No role named '%s'" % role_name)
 
     def get_queryset(self):
-        role_name = self.kwargs.get('role')
-        if role_name.endswith('s'):
-            role_name = role_name[:-1]
+        role_name = normalize_role_name(self.kwargs.get('role'))
         return get_role_model().objects.filter(
             Q(name=role_name) | Q(request_key__isnull=False),
             organization=self.organization)

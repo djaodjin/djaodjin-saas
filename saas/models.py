@@ -338,8 +338,6 @@ class Organization(models.Model):
         # an instance so the using database will be lost. The following
         # code saves the relation in the correct database associated
         # with the organization.
-        if role_name.endswith('s'):
-            role_name = role_name[:-1]
         queryset = get_roles(role_name, using=self._state.db).filter(
             organization=self, user=user)
         if not queryset.exists():
