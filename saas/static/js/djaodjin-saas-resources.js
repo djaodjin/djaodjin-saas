@@ -1,3 +1,6 @@
+/** These are plumbing functions to connect the UI and API backends.
+ */
+
 function showMessages(messages, style) {
     "use strict";
     if( typeof toastr !== 'undefined' ) {
