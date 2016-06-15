@@ -186,21 +186,26 @@ transactionControllers.controller("itemsListCtrl",
     $scope.$watch("params", function(newVal, oldVal, scope) {
         var updated = (newVal.o !== oldVal.o || newVal.ot !== oldVal.ot
             || newVal.q !== oldVal.q || newVal.page !== oldVal.page );
-        /* Implementation Note:
-           The Date objects can be compared using the >, <, <= or >= operators.
-           The ==, !=, ===, and !== operators require you to use date.getTime().
-           Don't ask. */
-        if( newVal.start_at.getTime() !== oldVal.start_at.getTime()
-            && newVal.ends_at.getTime() === oldVal.ends_at.getTime() ) {
-            updated = true;
-            if( $scope.params.ends_at < newVal.start_at ) {
-                $scope.params.ends_at = newVal.start_at;
-            }
-        } else if( newVal.start_at.getTime() === oldVal.start_at.getTime()
-            && newVal.ends_at.getTime() !== oldVal.ends_at.getTime() ) {
-            updated = true;
-            if( $scope.params.start_at > newVal.ends_at ) {
-                $scope.params.start_at = newVal.ends_at;
+        if( (typeof newVal.start_at !== "undefined")
+            && (typeof newVal.ends_at !== "undefined")
+            && (typeof oldVal.start_at !== "undefined")
+            && (typeof oldVal.ends_at !== "undefined") ) {
+            /* Implementation Note:
+               The Date objects can be compared using the >, <, <=
+               or >= operators. The ==, !=, ===, and !== operators require
+               you to use date.getTime(). Don't ask. */
+            if( newVal.start_at.getTime() !== oldVal.start_at.getTime()
+                && newVal.ends_at.getTime() === oldVal.ends_at.getTime() ) {
+                updated = true;
+                if( $scope.params.ends_at < newVal.start_at ) {
+                    $scope.params.ends_at = newVal.start_at;
+                }
+            } else if( newVal.start_at.getTime() === oldVal.start_at.getTime()
+                       && newVal.ends_at.getTime() !== oldVal.ends_at.getTime() ) {
+                updated = true;
+                if( $scope.params.start_at > newVal.ends_at ) {
+                    $scope.params.start_at = newVal.ends_at;
+                }
             }
         }
         if( updated ) {
@@ -277,6 +282,9 @@ transactionControllers.controller("relationListCtrl",
     $scope.item = null;
 
     $scope.getCandidates = function(val) {
+        if( typeof settings.urls.api_candidates === "undefined" ) {
+            return [];
+        }
         return $http.get(settings.urls.api_candidates, {
             params: {q: val}
         }).then(function(res){
@@ -284,14 +292,27 @@ transactionControllers.controller("relationListCtrl",
         });
     };
 
-    $scope.create = function() {
+    $scope.create = function($event) {
+        $event.preventDefault();
+        var emailField = angular.element(settings.modalId + " [name='email']");
+        if( emailField.val() === "" ) {
+            var emailFieldGroup = emailField.parents(".form-group");
+            var helpBlock = emailFieldGroup.find(".help-block");
+            if( helpBlock.length === 0 ) {
+                emailField.parent().append("<span class=\"help-block\">This field cannot be empty.</span>");
+            }
+            emailFieldGroup.addClass("has-error");
+            return;
+        }
+        var self = $event.target;
+        var dialog = $(self).parents("[role='dialog']");
+        dialog.modal('hide');
         if( !$scope.item ) {
             $scope.item = {};
         }
         if( !$scope.item.hasOwnProperty('email')
               || typeof $scope.item.email === "undefined" ) {
-            $scope.item.email =
-                angular.element(settings.modalId + " [name='email']").val();
+            $scope.item.email = emailField.val();
         }
         $scope.item.invite = angular.element(
             settings.modalId + " [name='message']").val();

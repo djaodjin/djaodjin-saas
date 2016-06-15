@@ -38,7 +38,6 @@ function showErrorMessages(resp) {
     if( typeof resp === "string" ) {
         messages = [resp];
     } else {
-        messages = ["Error " + resp.status + ": " + resp.statusText];
         if( resp.data && typeof resp.data === "object" ) {
             for( var key in resp.data ) {
                 if (resp.data.hasOwnProperty(key)) {
@@ -62,6 +61,9 @@ function showErrorMessages(resp) {
         } else if( resp.detail ) {
             messages = [resp.detail];
         }
+    }
+    if( messages.length === 0 ) {
+        messages = ["Error " + resp.status + ": " + resp.statusText];
     }
     showMessages(messages, "error");
 };

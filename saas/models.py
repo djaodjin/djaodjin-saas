@@ -1829,6 +1829,7 @@ class Plan(models.Model):
 
 @receiver(post_save, sender=Plan)
 def on_plan_post_save(sender, instance, created, raw, **kwargs):
+    #pylint:disable=unused-argument
     if not raw:
         if created:
             signals.plan_created.send(sender=sender, plan=instance)
