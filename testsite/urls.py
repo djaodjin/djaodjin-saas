@@ -101,5 +101,6 @@ urlpatterns = [
         decorators=['saas.decorators.requires_provider',
                     'saas.decorators.requires_agreement']),
     url_prefixed(r'app/',
-        AppView.as_view(template_name='app.html'), name='app'),
+        AppView.as_view(template_name='app.html'), name='app',
+        decorators=['django.contrib.auth.decorators.login_required']),
 ]
