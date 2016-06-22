@@ -1,9 +1,104 @@
 {% extends "base.html" %}
+{% load static from staticfiles %}
 
 {% block content %}
 <div>
-<p>
+    <p>
 Welcome to the product!
-</p>
+    </p>
+    <div id="upgrades">
+        <button id="basic" class="select-item">Upgrade</button>
+    </div>
 </div>
+{% endblock %}
+
+{% block bodyscripts %}
+<script type="text/javascript" src="{% static 'js/djaodjin-saas-resources.js' %}"></script>
+<script type="text/javascript" src="{% static 'js/djaodjin-saas.js' %}"></script>
+<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+<script type="text/javascript">
+/** This function is called by RazorPay when the payment was successful.
+    We pass the RazorPay payment token to the djaodjin-saas backend
+    in order to capture the payment and update subscriptions accordingly.
+ */
+function paymentSucceeded(response) {
+    $.ajax({ type: "POST",
+        url: "{% url 'saas_api_checkout' organization %}",
+        beforeSend: function(xhr) {
+            xhr.setRequestHeader("X-CSRFToken", getMetaCSRFToken());
+        },
+        data: JSON.stringify({
+            "processor_token": response.razorpay_payment_id
+        }),
+        datatype: "json",
+        contentType: "application/json; charset=utf-8",
+        success: function(data) {
+            $("#upgrades").html("<dl><dt>Confirmation Number</dt><dd>"+data.processor_key+"</dd></dl><dl><dt>Amount</dt><dd>"+data.amount+"</dd></dl>");
+        },
+        error: function(resp) {
+            showErrorMessages(resp);
+        }
+    });
+
+    (response.razorpay_payment_id);
+};
+
+jQuery(document).ready(function($) {
+
+    /** When a user clicks on the "Upgrade" button, we add an item into
+        her cart, then we retrieve the invoicable cart for that user
+        and compute the amount due (including discounts, etc.).
+        We pass that total amount to the RazorPay checkout which in turn
+        will callback ``paymentSucceeded`` with a payment token
+        on a successful charge.
+     */
+    $(".select-item").click(function (event) {
+        var self = $(this);
+        event.preventDefault();
+        var thisCartItem = new CartItem({
+            'plan': self.attr('id'),
+            'nb_periods': 1,
+            'urls': {'saas_api_cart': "{% url 'saas_api_cart' %}"}});
+        thisCartItem.add(function(data) {
+            $.ajax({
+                type: "GET",
+                url: "{% url 'saas_api_checkout' request.user %}",
+                datatype: "json",
+                contentType: "application/json; charset=utf-8",
+                success: function(data) {
+                    var totalAmount = 0;
+                    for( var idx = 0; idx < data.length; ++idx ) {
+                        for( var jdx = 0; jdx < data[idx].lines.length; ++jdx ) {
+                            totalAmount += data[idx].lines[jdx].orig_amount;
+                        }
+                    }
+                    var options = {
+                      "key": "{{RAZORPAY_PUB_KEY}}",
+                      "amount": totalAmount, // 2000 paise = INR 20
+                      "name": "Merchant Name",
+                      "description": "Purchase Description",
+                      "image": "/your_logo.png",
+                      "handler": paymentSucceeded,
+                      "prefill": {
+                        "name": "{{request.user.full_name}}",
+                        "email": "{{request.user.email}}"
+                      },
+                      "notes": {
+                        "address": "Hello World"
+                      },
+                      "theme": {
+                        "color": "#F37254"
+                      }
+                    };
+                    var rzp1 = new Razorpay(options);
+                    rzp1.open();
+                },
+                error: function(resp) {
+                    showErrorMessages(resp);
+                }
+            });
+        });
+    });
+});
+</script>
 {% endblock %}

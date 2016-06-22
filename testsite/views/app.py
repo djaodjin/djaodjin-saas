@@ -22,23 +22,26 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-"""
-URLs API for resources
-"""
-
-from django.conf.urls import url
-
-from ....api.billing import CheckoutAPIView
-from ....api.backend import RetrieveCardAPIView
-from ....api.transactions import BillingsAPIView
-from ....settings import ACCT_REGEX
+from django.contrib import messages
+from django.views.generic import TemplateView
+from saas.backends import ProcessorConnectionError
+from saas.models import Organization
 
 
-urlpatterns = [
-    url(r'^(?P<organization>%s)/billings/?' % ACCT_REGEX,
-        BillingsAPIView.as_view(), name='saas_api_billings'),
-    url(r'^(?P<organization>%s)/card/?' % ACCT_REGEX,
-        RetrieveCardAPIView.as_view(), name='saas_api_card'),
-    url(r'^(?P<organization>%s)/checkout/?' % ACCT_REGEX,
-        CheckoutAPIView.as_view(), name='saas_api_checkout'),
-]
+class AppView(TemplateView):
+
+    template_name = 'app.html'
+
+    @property
+    def organization(self):
+        return Organization.objects.attached(self.request.user)
+
+    def get_context_data(self, **kwargs):
+        context = super(AppView, self).get_context_data(**kwargs)
+        try:
+            context.update(self.organization.retrieve_card())
+        except ProcessorConnectionError:
+            messages.error(self.request, "The payment processor is "\
+                "currently unreachable. Sorry for the inconvienience.")
+        context.update({'organization': self.organization})
+        return context

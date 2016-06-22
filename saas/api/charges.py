@@ -27,11 +27,12 @@ from collections import OrderedDict
 from django.http import Http404
 from django.db import transaction
 from extra_views.contrib.mixins import SearchableListMixin, SortableListMixin
-from rest_framework import status, serializers
+from rest_framework import status
 from rest_framework.generics import ListAPIView, GenericAPIView, RetrieveAPIView
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 
+from .serializers import ChargeSerializer
 from .. import signals
 from ..models import Charge, InsufficientFunds
 from ..mixins import ChargeMixin, DateRangeMixin
@@ -57,16 +58,6 @@ class RetrieveChargeMixin(ChargeMixin):
         charge = super(RetrieveChargeMixin, self).get_object(queryset)
         charge.retrieve()
         return charge
-
-
-class ChargeSerializer(serializers.ModelSerializer):
-
-    state = serializers.CharField(source='get_state_display')
-
-    class Meta:
-        model = Charge
-        fields = ('created_at', 'amount', 'unit', 'description',
-                  'last4', 'exp_date', 'processor_key', 'state')
 
 
 class ChargeResourceView(RetrieveChargeMixin, RetrieveAPIView):

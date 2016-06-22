@@ -166,12 +166,12 @@ DURATIONFIELD_ALLOW_MONTHS = True
 SAAS = {
   'PLATFORM': 'cowork',
   'PROCESSOR': {
-      'BACKEND': 'saas.backends.stripe_processor.StripeBackend',
-      'PRIV_KEY': getattr(sys.modules[__name__], "STRIPE_PRIV_KEY", None),
-      'PUB_KEY': getattr(sys.modules[__name__], "STRIPE_PUB_KEY", None),
-#      'BACKEND': 'saas.backends.razorpay_processor.RazorpayBackend',
-#      'PRIV_KEY': getattr(sys.modules[__name__], "RAZORPAY_PRIV_KEY", None),
-#      'PUB_KEY': getattr(sys.modules[__name__], "RAZORPAY_PUB_KEY", None),
+#      'BACKEND': 'saas.backends.stripe_processor.StripeBackend',
+#      'PRIV_KEY': getattr(sys.modules[__name__], "STRIPE_PRIV_KEY", None),
+#      'PUB_KEY': getattr(sys.modules[__name__], "STRIPE_PUB_KEY", None),
+      'BACKEND': 'saas.backends.razorpay_processor.RazorpayBackend',
+      'PRIV_KEY': getattr(sys.modules[__name__], "RAZORPAY_PRIV_KEY", None),
+      'PUB_KEY': getattr(sys.modules[__name__], "RAZORPAY_PUB_KEY", None),
     }
 }
 
@@ -227,7 +227,8 @@ if TEMPLATE_REVERT_TO_DJANGO:
     TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': (os.path.join(BASE_DIR, 'testsite', 'templates'),
+                 os.path.join(BASE_DIR, 'saas', 'templates')),
         'OPTIONS': {
             'context_processors': [
     'django.contrib.auth.context_processors.auth', # because of admin/

@@ -63,25 +63,31 @@ import logging
 
 from django.core.exceptions import MultipleObjectsReturned
 from django.shortcuts import get_object_or_404
-from rest_framework.generics import CreateAPIView, DestroyAPIView
+from rest_framework.generics import (CreateAPIView, DestroyAPIView,
+    ListCreateAPIView)
 from rest_framework.response import Response
 from rest_framework import serializers, status
 
-from ..mixins import CartMixin
+from ..backends import ProcessorError
+from ..mixins import CartMixin, OrganizationMixin
 from ..models import CartItem
-from .serializers import PlanRelatedField
+from .serializers import (CartItemSerializer, ChargeSerializer,
+    InvoicableSerializer)
 
 #pylint: disable=no-init,old-style-class
 LOGGER = logging.getLogger(__name__)
 
 
-class CartItemSerializer(serializers.ModelSerializer):
+class CheckoutSerializer(serializers.Serializer):
 
-    plan = PlanRelatedField(read_only=False, required=True)
+    remember_card = serializers.BooleanField(required=False)
+    processor_token = serializers.CharField(max_length=255)
 
-    class Meta:
-        model = CartItem
-        fields = ('plan', 'nb_periods', 'first_name', 'last_name', 'email')
+    def create(self, validated_data):
+        raise RuntimeError('`create()` should not be called.')
+
+    def update(self, instance, validated_data):
+        raise RuntimeError('`update()` should not be called.')
 
 
 class CartItemAPIView(CartMixin, CreateAPIView):
@@ -192,4 +198,112 @@ class CartItemDestroyAPIView(DestroyAPIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
+class CheckoutAPIView(CartMixin, OrganizationMixin, ListCreateAPIView):
+    """
+    Get the list of invoicables from a user cart, and checkout the cart
+    of the request user on POST.
 
+    **Example request**:
+
+    .. sourcecode:: http
+
+        GET /api/billing/:organization/checkout
+
+    **Example response**:
+
+    .. sourcecode:: http
+
+        [{
+          "subscription":{
+              "created_at":"2016-06-21T23:24:09.242925Z",
+              "ends_at":"2016-10-21T23:24:09.229768Z",
+              "description":null,
+              "organization":{
+                  "slug":"xia",
+                  "full_name":"Xia",
+                  "printable_name":"Xia",
+                  "created_at":"2012-08-14T23:16:55Z",
+                  "email":"xia@localhost.localdomain"
+              },
+              "plan":{
+                  "slug":"basic",
+                  "title":"Basic",
+                  "description":"Basic Plan",
+                  "is_active":true,
+                  "setup_amount":0,
+                  "period_amount":2000,
+                  "interval":4,
+                  "app_url":"/app/"
+              },
+              "auto_renew":true
+          },
+          "lines":[{
+              "created_at":"2016-06-21T23:42:13.863739Z",
+              "description":"Subscription to basic until 2016/11/21 (1 month)",
+              "amount":"$20.00",
+              "is_debit":false,
+              "orig_account":"Receivable",
+              "orig_organization":"cowork",
+              "orig_amount":2000,
+              "orig_unit":"usd",
+              "dest_account":"Payable",
+              "dest_organization":"xia",
+              "dest_amount":2000,
+              "dest_unit":"usd"
+          }],
+          "options":[]
+        }]
+
+    **Example request**:
+
+    .. sourcecode:: http
+
+        POST /api/billing/:organization/checkout
+
+        {
+            "remember_card": true,
+            "processor_token": "token-from-payment-processor"
+        }
+
+    **Example response**:
+
+    .. sourcecode:: http
+
+       {
+            "created_at": "2016-06-21T23:42:44.270977Z",
+            "processor_key": "pay_5lK5TacFH3gbKe"
+            "amount": 2000,
+            "unit": "usd",
+            "description": "Charge pay_5lK5TacFH3gblP on credit card of Xia",
+            "last4": "1234",
+            "exp_date": "2016-06-01",
+            "state": "created"
+        }
+    """
+    serializer_class = CheckoutSerializer
+
+    def get_queryset(self):
+        return super(CheckoutAPIView, self).as_invoicables(
+            self.request.user, self.organization)
+
+    def list(self, request, *args, **kwargs):
+        queryset = self.get_queryset()
+        serializer = InvoicableSerializer(queryset, many=True)
+        return Response(serializer.data)
+
+    def create(self, request, *args, **kwargs):#pylint:disable=unused-argument
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        queryset = self.get_queryset()
+        try:
+            charge = self.organization.checkout(
+                queryset, self.request.user,
+                token=serializer.validated_data['processor_token'],
+                remember_card=serializer.validated_data.get(
+                    'remember_card', False))
+            if charge and charge.invoiced_total_amount > 0:
+                result = ChargeSerializer(charge)
+                return Response(result.data, status=status.HTTP_200_OK)
+        except ProcessorError as err:
+            return Response({"details": err}, status=status.HTTP_403_FORBIDDEN)
+        return Response({}, status=status.HTTP_200_OK)

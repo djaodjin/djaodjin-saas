@@ -27,59 +27,13 @@ from collections import OrderedDict
 import dateutil
 from django.db.models import Q
 from extra_views.contrib.mixins import SearchableListMixin, SortableListMixin
-from rest_framework import serializers
 from rest_framework.generics import ListAPIView
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 
-from ..humanize import as_money
-from ..mixins import (DateRangeMixin, OrganizationMixin, ProviderMixin,
-    as_html_description)
+from .serializers import TransactionSerializer
+from ..mixins import DateRangeMixin, OrganizationMixin, ProviderMixin
 from ..models import Transaction, sum_dest_amount, sum_orig_amount
-
-#pylint: disable=no-init
-#pylint: disable=old-style-class
-
-
-class TransactionSerializer(serializers.ModelSerializer):
-
-    orig_organization = serializers.SlugRelatedField(
-        read_only=True, slug_field='slug')
-    dest_organization = serializers.SlugRelatedField(
-        read_only=True, slug_field='slug')
-    description = serializers.CharField(source='descr', read_only=True)
-    amount = serializers.CharField(source='dest_amount', read_only=True)
-    is_debit = serializers.CharField(source='dest_amount', read_only=True)
-
-    def _is_debit(self, transaction):
-        """
-        True if the transaction can be tagged as a debit. That is
-        it is either payable by the organization or the transaction
-        moves from a Funds account to the organization's Expenses account.
-        """
-        #pylint: disable=no-member
-        if hasattr(self.context['view'], 'organization'):
-            return transaction.is_debit(self.context['view'].organization)
-        return False
-
-    def to_representation(self, obj):
-        ret = super(TransactionSerializer, self).to_representation(obj)
-        is_debit = self._is_debit(obj)
-        if is_debit:
-            amount = as_money(obj.orig_amount, '-%s' % obj.orig_unit)
-        else:
-            amount = as_money(obj.dest_amount, obj.dest_unit)
-        ret.update({
-            'description': as_html_description(obj),
-            'is_debit': is_debit,
-            'amount': amount})
-        return ret
-
-    class Meta:
-        model = Transaction
-        fields = ('created_at', 'description', 'amount', 'is_debit',
-            'orig_account', 'orig_organization', 'orig_amount', 'orig_unit',
-            'dest_account', 'dest_organization', 'dest_amount', 'dest_unit')
 
 
 class BalancePagination(PageNumberPagination):

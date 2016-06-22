@@ -29,6 +29,7 @@ from saas.views import OrganizationRedirectView, UserRedirectView
 from saas.views.plans import CartPlanListView
 from urldecorators import include, url
 
+from testsite.views.app import AppView
 from testsite.views.organization import OrganizationListView, UserProfileView
 from testsite.views.registration import PersonalRegistrationView
 
@@ -100,5 +101,5 @@ urlpatterns = [
         decorators=['saas.decorators.requires_provider',
                     'saas.decorators.requires_agreement']),
     url_prefixed(r'app/',
-        TemplateView.as_view(template_name='app.html'), name='app'),
+        AppView.as_view(template_name='app.html'), name='app'),
 ]

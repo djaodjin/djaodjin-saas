@@ -28,8 +28,10 @@ from django.utils.translation import ugettext_lazy as _
 from rest_framework import serializers
 
 from ..compat import User
-from ..mixins import product_url
-from ..models import BalanceLine, CartItem, Organization, Plan, Subscription
+from ..humanize import as_money
+from ..mixins import as_html_description, product_url
+from ..models import (BalanceLine, CartItem, Charge, Organization, Plan,
+    Subscription, Transaction)
 from ..utils import get_role_model
 
 #pylint: disable=no-init,old-style-class
@@ -53,6 +55,16 @@ class BalanceLineSerializer(serializers.ModelSerializer):
     class Meta:
         model = BalanceLine
         fields = ('title', 'selector', 'rank')
+
+
+class ChargeSerializer(serializers.ModelSerializer):
+
+    state = serializers.CharField(source='get_state_display')
+
+    class Meta:
+        model = Charge
+        fields = ('created_at', 'amount', 'unit', 'description',
+                  'last4', 'exp_date', 'processor_key', 'state')
 
 
 class OrganizationSerializer(serializers.ModelSerializer):
@@ -114,6 +126,48 @@ class SubscriptionSerializer(serializers.ModelSerializer):
                   'organization', 'plan', 'auto_renew')
 
 
+class TransactionSerializer(serializers.ModelSerializer):
+
+    orig_organization = serializers.SlugRelatedField(
+        read_only=True, slug_field='slug')
+    dest_organization = serializers.SlugRelatedField(
+        read_only=True, slug_field='slug')
+    description = serializers.CharField(source='descr', read_only=True)
+    amount = serializers.CharField(source='dest_amount', read_only=True)
+    is_debit = serializers.CharField(source='dest_amount', read_only=True)
+
+    def _is_debit(self, transaction):
+        """
+        True if the transaction can be tagged as a debit. That is
+        it is either payable by the organization or the transaction
+        moves from a Funds account to the organization's Expenses account.
+        """
+        #pylint: disable=no-member
+        if ('view' in self.context
+            and hasattr(self.context['view'], 'organization')):
+            return transaction.is_debit(self.context['view'].organization)
+        return False
+
+    def to_representation(self, obj):
+        ret = super(TransactionSerializer, self).to_representation(obj)
+        is_debit = self._is_debit(obj)
+        if is_debit:
+            amount = as_money(obj.orig_amount, '-%s' % obj.orig_unit)
+        else:
+            amount = as_money(obj.dest_amount, obj.dest_unit)
+        ret.update({
+            'description': as_html_description(obj),
+            'is_debit': is_debit,
+            'amount': amount})
+        return ret
+
+    class Meta:
+        model = Transaction
+        fields = ('created_at', 'description', 'amount', 'is_debit',
+            'orig_account', 'orig_organization', 'orig_amount', 'orig_unit',
+            'dest_account', 'dest_organization', 'dest_amount', 'dest_unit')
+
+
 class UserSerializer(serializers.ModelSerializer):
 
     # Only way I found out to remove the ``UniqueValidator``. We are not
@@ -138,12 +192,28 @@ class CartItemSerializer(serializers.ModelSerializer):
     """
     serializer for ``Coupon`` use metrics.
     """
-    user = UserSerializer()
+    user = UserSerializer(required=False)
     plan = PlanRelatedField(read_only=False, required=True)
 
     class Meta:
         model = CartItem
-        fields = ('user', 'plan', 'created_at')
+        fields = ('user',
+            'plan', 'nb_periods', 'first_name', 'last_name', 'email')
+
+
+class InvoicableSerializer(serializers.Serializer):
+    """
+    serializer for an invoicable item with available options.
+    """
+    subscription = SubscriptionSerializer(read_only=True)
+    lines = TransactionSerializer(read_only=True, many=True)
+    options = TransactionSerializer(read_only=True, many=True)
+
+    def create(self, validated_data):
+        raise RuntimeError('`create()` should not be called.')
+
+    def update(self, instance, validated_data):
+        raise RuntimeError('`update()` should not be called.')
 
 
 class RoleSerializer(serializers.ModelSerializer):

@@ -691,8 +691,8 @@ class Role(models.Model):
     organization = models.ForeignKey(Organization)
     user = models.ForeignKey(settings.AUTH_USER_MODEL, db_column='user_id')
     name = models.CharField(max_length=20)
-    request_key = models.CharField(null=True, max_length=40)
-    grant_key = models.CharField(null=True, max_length=40)
+    request_key = models.CharField(null=True, max_length=40, blank=True)
+    grant_key = models.CharField(null=True, max_length=40, blank=True)
 
     class Meta:
         unique_together = ('name', 'organization', 'user')

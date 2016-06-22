@@ -34,10 +34,10 @@ from extra_views.contrib.mixins import SearchableListMixin, SortableListMixin
 
 from . import settings
 from .compat import User
-from .humanize import (DESCRIBE_BUY_PERIODS, DESCRIBE_UNLOCK_NOW,
+from .humanize import (as_money, DESCRIBE_BUY_PERIODS, DESCRIBE_UNLOCK_NOW,
     DESCRIBE_UNLOCK_LATER, DESCRIBE_BALANCE)
 from .models import (CartItem, Charge, Coupon, Organization, Plan,
-    Subscription, get_broker)
+    Subscription, Transaction, get_broker)
 from .utils import datetime_or_now, get_roles, start_of_day
 from .extras import OrganizationMixinBase
 
@@ -144,6 +144,191 @@ class CartMixin(object):
                     'email': email}]
             request.session['cart_items'] = cart_items
         return inserted_item, created
+
+    @staticmethod
+    def get_invoicable_options(subscription, created_at=None,
+                               prorate_to=None, cart_item=None):
+        """
+        Return a set of lines that must charged Today and a set of choices
+        based on current subscriptions that the user might be willing
+        to charge Today.
+        """
+        #pylint: disable=too-many-locals
+        created_at = datetime_or_now(created_at)
+        option_items = []
+        plan = subscription.plan
+        # XXX Not charging setup fee, it complicates the design too much
+        # at this point.
+
+        # Pro-rated to billing cycle
+        prorated_amount = 0
+        if prorate_to:
+            prorated_amount = plan.prorate_period(created_at, prorate_to)
+
+        discount_percent = 0
+        descr_suffix = None
+        if cart_item:
+            coupon = cart_item.coupon
+            if coupon:
+                discount_percent = coupon.percent
+                if coupon.code.startswith('cpn_'):
+                    descr_suffix = ', complimentary of %s' % cart_item.last_name
+                else:
+                    descr_suffix = '(code: %s)' % coupon.code
+
+        first_periods_amount = plan.first_periods_amount(
+            discount_percent=discount_percent,
+            prorated_amount=prorated_amount)
+
+        if first_periods_amount == 0:
+            # We are having a freemium business models, no discounts.
+            if not descr_suffix:
+                descr_suffix = "free"
+            option_items += [Transaction.objects.new_subscription_order(
+                subscription, 1, prorated_amount, created_at,
+                discount_percent=discount_percent,
+                descr_suffix=descr_suffix)]
+
+        elif plan.unlock_event:
+            # Locked plans are free until an event.
+            option_items += [Transaction.objects.new_subscription_order(
+                subscription, 1, plan.period_amount, created_at,
+                DESCRIBE_UNLOCK_NOW % {
+                    'plan': plan, 'unlock_event': plan.unlock_event},
+               discount_percent=discount_percent,
+               descr_suffix=descr_suffix)]
+            option_items += [Transaction.objects.new_subscription_order(
+                subscription, 1, 0, created_at,
+                DESCRIBE_UNLOCK_LATER % {
+                        'amount': as_money(plan.period_amount, plan.unit),
+                        'plan': plan, 'unlock_event': plan.unlock_event})]
+
+        else:
+            natural_periods = [1]
+            if cart_item.nb_periods > 0:
+                natural_periods = [cart_item.nb_periods]
+            elif plan.advance_discount > 0:
+                # Give a chance for discount when paying periods in advance
+                if plan.interval == Plan.MONTHLY:
+                    if plan.period_length == 1:
+                        natural_periods = [1, 3, 6, 12]
+                    elif plan.period_length == 4:
+                        natural_periods = [1, 2, 3]
+                    else:
+                        natural_periods = [1, 2, 3, 4]
+                else:
+                    natural_periods = [1, 2, 3, 4]
+
+            for nb_periods in natural_periods:
+                if nb_periods > 1:
+                    descr_suffix = ""
+                    amount, discount_percent \
+                        = subscription.plan.advance_period_amount(nb_periods)
+                    if amount <= 0:
+                        break # never allow to be completely free here.
+                option_items += [Transaction.objects.new_subscription_order(
+                    subscription, nb_periods, prorated_amount, created_at,
+                    discount_percent=discount_percent,
+                    descr_suffix=descr_suffix)]
+
+        return option_items
+
+    def as_invoicables(self, user, customer, at_time=None):
+        """
+        Returns a list of invoicables from the cart of a request user.
+
+        invoicables = [
+                { "subscription": Subscription,
+                  "lines": [Transaction, ...],
+                  "options": [Transaction, ...],
+                }, ...]
+
+
+        Each subscription is either an actual record in the database (paying
+        more periods on a subscription) or ``Subscription`` instance that only
+        exists in memory but will be committed on checkout.
+
+        The ``Transaction`` list keyed by "lines" contains in-memory instances
+        for the invoice items that will be committed and charged when the order
+        is finally placed.
+
+        The ``Transaction`` list keyed by "options" contains in-memory instances
+        the user can choose from. Options usually include various number
+        of periods that can be pre-paid now for a discount. ex:
+
+        $189.00 Subscription to medium-plan until 2015/11/07 (1 month)
+        $510.30 Subscription to medium-plan until 2016/01/07 (3 months, 10% off)
+        $907.20 Subscription to medium-plan until 2016/04/07 (6 months, 20% off)
+        """
+        #pylint: disable=too-many-locals
+        created_at = datetime_or_now(at_time)
+        prorate_to_billing = False
+        prorate_to = None
+        if prorate_to_billing:
+            # XXX First we add enough periods to get the next billing date later
+            # than created_at but no more than one period in the future.
+            prorate_to = customer.billing_start
+        invoicables = []
+        for cart_item in CartItem.objects.get_cart(user=user):
+            if cart_item.email:
+                full_name = ' '.join([
+                        cart_item.first_name, cart_item.last_name]).strip()
+                for_descr = ', for %s (%s)' % (full_name, cart_item.email)
+                organization_queryset = Organization.objects.filter(
+                    email=cart_item.email)
+                if organization_queryset.exists():
+                    organization = organization_queryset.get()
+                else:
+                    organization = Organization(
+                        full_name='%s %s' % (
+                            cart_item.first_name, cart_item.last_name),
+                        email=cart_item.email)
+            else:
+                for_descr = ''
+                organization = customer
+            try:
+                # If we can extend a current ``Subscription`` we will.
+                # XXX For each (organization, plan) there should not
+                #     be overlapping timeframe [created_at, ends_at[,
+                #     None-the-less, it might be a good idea to catch
+                #     and throw a nice error message in case.
+                subscription = Subscription.objects.get(
+                    organization=organization, plan=cart_item.plan,
+                    ends_at__gt=datetime_or_now())
+            except Subscription.DoesNotExist:
+                ends_at = prorate_to
+                if not ends_at:
+                    ends_at = created_at
+                subscription = Subscription.objects.new_instance(
+                    organization, cart_item.plan, ends_at=ends_at)
+            lines = []
+            options = self.get_invoicable_options(subscription,
+                created_at=created_at, prorate_to=prorate_to,
+                cart_item=cart_item)
+            if cart_item.nb_periods > 0:
+                # The number of periods was already selected so we generate
+                # a line instead.
+                for line in options:
+                    plan = subscription.plan
+                    nb_periods = plan.period_number(line.descr)
+                    if nb_periods == cart_item.nb_periods:
+                        # ``TransactionManager.new_subscription_order``
+                        # will have created a ``Transaction``
+                        # with the ultimate subscriber
+                        # as payee. Overriding ``dest_organization`` here
+                        # insures in all cases (bulk and direct buying),
+                        # the transaction is recorded (in ``execute_order``)
+                        # on behalf of the customer on the checkout page.
+                        line.dest_organization = customer
+                        line.descr += for_descr
+                        lines += [line]
+                        options = []
+                        break
+            invoicables += [{
+                'name': cart_item.name, 'descr': cart_item.descr,
+                'subscription': subscription,
+                "lines": lines, "options": options}]
+        return invoicables
 
 
 class ChargeMixin(SingleObjectMixin):
