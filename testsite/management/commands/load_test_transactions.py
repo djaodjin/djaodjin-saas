@@ -29,6 +29,7 @@ from django.db.utils import IntegrityError
 from django.template.defaultfilters import slugify
 from django.utils.timezone import utc
 
+from saas.backends.razorpay_processor import RazorpayBackend
 from saas.models import Transaction
 from saas.utils import datetime_or_now
 from saas.settings import PROCESSOR_ID
@@ -153,6 +154,8 @@ class Command(BaseCommand):
         from saas.models import (Charge, ChargeItem, Organization, Plan,
             Subscription)
 
+        RazorpayBackend.bypass_api = True
+
         now = datetime.datetime.utcnow().replace(tzinfo=utc)
         from_date = now
         from_date = datetime.datetime(
@@ -218,7 +221,7 @@ class Command(BaseCommand):
                     last4=1241,
                     exp_date=datetime_or_now(),
                     processor=processor,
-                    processor_key=transaction_item.pk,
+                    processor_key=str(transaction_item.pk),
 # XXX We can't do that yet because of
 # ``PROCESSOR_BACKEND.charge_distribution(self)``
 #                    unit=transaction_item.dest_unit,

@@ -57,6 +57,7 @@ LOGGER = logging.getLogger(__name__)
 
 class RazorpayBackend(object):
 
+    bypass_api = False
     token_id = 'razorpay_payment_id'
 
     def __init__(self):
@@ -65,7 +66,11 @@ class RazorpayBackend(object):
         self.razor = razorpay.Client(auth=(self.pub_key, self.priv_key))
 
     def charge_distribution(self, charge, refunded=0, unit='inr'):
-        processor_charge = self.razor.payment.fetch(charge.processor_key)
+        if self.bypass_api:
+            processor_charge = {
+                'fee': 0, 'service_tax': 0, 'amount': charge.amount}
+        else:
+            processor_charge = self.razor.payment.fetch(charge.processor_key)
         fee_amount = processor_charge['fee'] + processor_charge['service_tax']
         fee_unit = unit
         distribute_amount = processor_charge['amount'] - fee_amount
