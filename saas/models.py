@@ -691,6 +691,34 @@ class Organization(models.Model):
             self.save()
 
 
+class RoleDescription(models.Model):
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    organization = models.ForeignKey(Organization, related_name="role_descriptions")
+    name = models.CharField(max_length=20)
+    slug = models.SlugField(help_text=_("Unique identifier shown in the URL bar."))
+
+    class Meta:
+        unique_together = ('organization', 'slug')
+
+    def __unicode__(self):
+        return '%s-%s' % (
+            unicode(self.slug),
+            unicode(self.organization))
+
+    def save(self, **kwargs):
+        if not self.slug:
+            self.slug = self.normalize_slug(slugify(self.name))
+        super(RoleDescription, self).save(**kwargs)
+
+    @staticmethod
+    def normalize_slug(slug):
+        slug = slug.lower()
+        if slug.endswith('s'):
+            slug = slug[:-1]
+        return slug
+
+
 class Role(models.Model):
 
     created_at = models.DateTimeField(auto_now_add=True)
