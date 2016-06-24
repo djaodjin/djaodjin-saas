@@ -32,8 +32,7 @@ from ...views.profile import (RoleListView, OrganizationProfileView,
     SubscriptionListView)
 
 urlpatterns = [
-    url(r'^profile/(?P<organization>%s)/roles/(?P<role>%s)/'
-        % (ACCT_REGEX, ACCT_REGEX),
+    url(r'^profile/(?P<organization>%s)/roles/$' % ACCT_REGEX,
         RoleListView.as_view(), name='saas_role_list'),
     url(r'^profile/(?P<organization>%s)/subscriptions/' % ACCT_REGEX,
         SubscriptionListView.as_view(), name='saas_subscription_list'),
