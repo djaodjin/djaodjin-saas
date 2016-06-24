@@ -30,14 +30,15 @@ from django.template.defaultfilters import slugify
 from django.utils.encoding import force_text
 from django.utils.translation import ugettext_lazy as _
 from rest_framework import serializers, status
-from rest_framework.generics import ListCreateAPIView, DestroyAPIView
+from rest_framework.generics import ListAPIView, CreateAPIView, ListCreateAPIView, DestroyAPIView
+from rest_framework.viewsets import ModelViewSet
 from rest_framework.response import Response
 
 from .. import settings
 from ..compat import User
 from ..mixins import (OrganizationMixin, RelationMixin,
     RoleSmartListMixin, UserMixin)
-from ..models import Organization
+from ..models import Organization, RoleDescription
 from ..utils import get_role_model, normalize_role_name
 from .serializers import RoleSerializer
 
@@ -50,6 +51,16 @@ class RoleCreateSerializer(serializers.Serializer):
             _('Enter a valid username.'), 'invalid')])
     email = serializers.EmailField(required=False)
     message = serializers.CharField(max_length=255, required=False)
+
+
+class RoleDescriptionCRUDSerializer(serializers.ModelSerializer):
+    def create(self, validated_data):
+        validated_data['organization'] = self.initial_data['organization']
+        return super(RoleDescriptionCRUDSerializer, self).create(validated_data)
+
+    class Meta:
+        model = RoleDescription
+        fields = ('created_at', 'name', 'slug')
 
 
 class AccessibleByQuerysetMixin(UserMixin):
@@ -170,16 +181,150 @@ class AccessibleByListAPIView(RoleSmartListMixin,
             headers=self.get_success_headers(serializer.validated_data))
 
 
-class RelationListAPIView(OrganizationMixin, ListCreateAPIView):
+class RoleDescriptionAPIViewSet(OrganizationMixin, ModelViewSet):
+    serializer_class = RoleDescriptionCRUDSerializer
+    queryset = RoleDescription.objects.all()
+    lookup_field = 'slug'
 
-    queryset = User.objects.all()
+    def get_queryset(self):
+        return super(RoleDescriptionAPIViewSet, self).get_queryset().filter(organization=self.organization)
+
+    def create(self, request, *args, **kwargs):
+        request.data['organization'] = self.organization
+        return super(RoleDescriptionAPIViewSet, self).create(request, *args, **kwargs)
+
+
+class RoleListAPIView(OrganizationMixin, ListAPIView):
+    """
+    ``GET`` lists all roles for an organization
+
+    **Example request**:
+
+    .. sourcecode:: http
+
+        GET /api/profile/cowork/roles/
+
+    **Example response**:
+
+    .. sourcecode:: http
+
+        {
+            "count": 1,
+            "next": null,
+            "previous": null,
+            "results": [
+                {
+                    "created_at": "2012-10-01T09:00:00Z",
+                    "role_description": {
+                        "name": "Manager",
+                        "slug": "manager",
+                        "organization": {
+                            "slug": "cowork",
+                            "full_name": "ABC Corp.",
+                            "printable_name": "ABC Corp.",
+                            "created_at": "2012-08-14T23:16:55Z",
+                            "email": "support@localhost.localdomain"
+                        }
+                    },
+                    "user": {
+                        "slug": "alice",
+                        "email": "alice@localhost.localdomain",
+                        "full_name": "Alice Doe",
+                        "created_at": "2012-09-14T23:16:55Z"
+                    },
+                    "request_key": "1",
+                    "grant_key": null
+                },
+            ]
+        }
+    """
+
     serializer_class = RoleSerializer
 
-    def add_relation(self, user, reason=None):
-        raise NotImplementedError(
-            "add_relation should be overriden in derived classes.")
+    def get_queryset(self):
+        return get_role_model().objects.filter(request_key__isnull=False,
+                                               role_description__organization=self.organization)
 
-    def create(self, request, *args, **kwargs): #pylint:disable=unused-argument
+
+class RoleFilteredListAPIView(RoleListAPIView, CreateAPIView):
+    """
+    ``GET`` lists the specified role assignments for an organization.
+
+    ``POST`` attaches a user to a role on an organization, typically granting
+    permissions to the user with regards to managing an organization profile
+    (see :doc:`Flexible Security Framework <security>`).
+
+    **Example request**:
+
+    .. sourcecode:: http
+
+        GET /api/profile/cowork/roles/managers/
+
+    **Example response**:
+
+    .. sourcecode:: http
+
+        {
+            "count": 1,
+            "next": null,
+            "previous": null,
+            "results": [
+                {
+                    "created_at": "2012-10-01T09:00:00Z",
+                    "role_description": {
+                        "name": "Manager",
+                        "slug": "manager",
+                        "organization": {
+                            "slug": "cowork",
+                            "full_name": "ABC Corp.",
+                            "printable_name": "ABC Corp.",
+                            "created_at": "2012-08-14T23:16:55Z",
+                            "email": "support@localhost.localdomain"
+                        }
+                    },
+                    "user": {
+                        "slug": "alice",
+                        "email": "alice@localhost.localdomain",
+                        "full_name": "Alice Doe",
+                        "created_at": "2012-09-14T23:16:55Z"
+                    },
+                    "request_key": "1",
+                    "grant_key": null
+                },
+            ]
+        }
+
+    **Example request**:
+
+    .. sourcecode:: http
+
+        POST /api/profile/cowork/roles/managers/
+        {
+          "slug": "Xia"
+        }
+
+    **Example response**:
+
+    .. sourcecode:: http
+
+        {
+          "slug": "Xia"
+        }
+    """
+
+    def get_queryset(self):
+        queryset = super(RoleFilteredListAPIView, self).get_queryset()
+        role_name = normalize_role_name(self.kwargs.get('role'))
+        return queryset.filter(name=role_name)
+
+    def add_role(self, user, reason=None):
+        role_name = self.kwargs.get('role')
+        try:
+            return self.organization.add_role(user, role_name, reason=reason)
+        except RoleDescription.DoesNotExist:
+            raise Http404("No role named '%s'" % role_name)
+
+    def create(self, request, *args, **kwargs):  # pylint:disable=unused-argument
         serializer = RoleCreateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         try:
@@ -212,7 +357,7 @@ class RelationListAPIView(OrganizationMixin, ListCreateAPIView):
         reason = serializer.validated_data.get('message', None)
         if reason:
             reason = force_text(reason)
-        if self.add_relation(user, reason=reason):
+        if self.add_role(user, reason=reason):
             resp_status = status.HTTP_201_CREATED
         else:
             resp_status = status.HTTP_200_OK
@@ -221,85 +366,6 @@ class RelationListAPIView(OrganizationMixin, ListCreateAPIView):
         # while expecting a single object.
         return Response(serializer.validated_data, status=resp_status,
             headers=self.get_success_headers(serializer.validated_data))
-
-
-class RoleListAPIView(RelationListAPIView):
-    """
-    ``GET`` lists all relations with a specified role with regards
-    to an organization.
-
-    ``POST`` attaches a user to a role on an organization, typically granting
-    permissions to the user with regards to managing an organization profile
-    (see :doc:`Flexible Security Framework <security>`).
-
-    **Example request**:
-
-    .. sourcecode:: http
-
-        GET /api/profile/cowork/roles/managers/
-
-    **Example response**:
-
-    .. sourcecode:: http
-
-        {
-            "count": 1,
-            "next": null,
-            "previous": null,
-            "results": [
-                {
-                    "created_at": "2012-10-01T09:00:00Z",
-                    "organization": {
-                        "slug": "cowork",
-                        "full_name": "ABC Corp.",
-                        "printable_name": "ABC Corp.",
-                        "created_at": "2012-08-14T23:16:55Z",
-                        "email": "support@localhost.localdomain"
-                    },
-                    "user": {
-                        "slug": "alice",
-                        "email": "alice@localhost.localdomain",
-                        "full_name": "Alice Doe",
-                        "created_at": "2012-09-14T23:16:55Z"
-                    },
-                    "name": "manager",
-                    "request_key": null,
-                    "grant_key": null
-                }
-            ]
-        }
-
-    **Example request**:
-
-    .. sourcecode:: http
-
-        POST /api/profile/cowork/roles/managers/
-
-        {
-          "slug": "Xia"
-        }
-
-    **Example response**:
-
-    .. sourcecode:: http
-
-        {
-          "slug": "Xia"
-        }
-    """
-
-    def add_relation(self, user, reason=None):
-        role_name = self.kwargs.get('role')
-        try:
-            return self.organization.add_role(user, role_name, reason=reason)
-        except ValueError:
-            raise Http404("No role named '%s'" % role_name)
-
-    def get_queryset(self):
-        role_name = normalize_role_name(self.kwargs.get('role'))
-        return get_role_model().objects.filter(
-            Q(name=role_name) | Q(request_key__isnull=False),
-            organization=self.organization)
 
 
 class RoleDetailAPIView(RelationMixin, DestroyAPIView):
