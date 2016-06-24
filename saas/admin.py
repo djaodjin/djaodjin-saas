@@ -26,7 +26,8 @@ from django.contrib import admin
 from django import forms
 
 from .models import (Agreement, CartItem, Charge, ChargeItem, Coupon,
-    Organization, Role, Plan, Signature, Subscription, Transaction)
+    Organization, Role, RoleDescription, Plan, Signature, Subscription,
+    Transaction)
 
 admin.site.register(Agreement)
 admin.site.register(CartItem)
@@ -35,6 +36,8 @@ admin.site.register(ChargeItem)
 admin.site.register(Coupon)
 admin.site.register(Organization)
 admin.site.register(Plan)
+admin.site.register(Role)
+admin.site.register(RoleDescription)
 admin.site.register(Signature)
 admin.site.register(Subscription)
 admin.site.register(Transaction)
