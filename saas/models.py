@@ -134,19 +134,21 @@ class OrganizationManager(models.Manager):
         from .compat import User
         if not isinstance(user, User):
             user = User.objects.get(username=user)
-        return self.filter(pk__in=get_role_model().objects.filter(
-            user=user).values('organization')).distinct()
+        return self.filter(pk__in=get_role_model().objects.filter(user=user)
+            .values('role_description__organization')).distinct()
 
-    def with_role(self, user, role_name):
+    def with_role(self, user, role_slug):
         """
-        Returns a QuerySet of Organziation for which *user* has a *role_name*.
+        Returns a QuerySet of Organziation for which *user* has a *role*
+        which slug is *role_slug*.
         """
         from .compat import User
         if not isinstance(user, User):
             user = User.objects.get(username=user)
-        return self.filter(
-            pk__in=get_roles(role_name).filter(user=user).values(
-                'organization').distinct())
+        return self.filter(pk__in=get_role_model().objects.filter(user=user,
+                                                                  role_description__slug=role_slug)
+                                                          .values('role_description__organization')
+                                                          .distinct())
 
     def providers(self, subscriptions):
         """
@@ -324,10 +326,14 @@ class Organization(models.Model):
         from .compat import User
         if not isinstance(user, User):
             user = User.objects.get(username=user)
-        return get_role_model().objects.filter(
-            organization=self, user=user).exists()
+        return get_role_model().objects.filter(user=user,
+                                               role_description__organization=self).exists()
 
-    def add_role(self, user, role_name, at_time=None, reason=None):
+    def get_role_description(self, role_slug):
+        return self.role_descriptions.db_manger(using=self._state.db).get(
+            slug=RoleDescription.normalize_slug(role_slug))
+
+    def add_role(self, user, role_slug, at_time=None, reason=None):
         """
         Add user with a role to organization.
         """
@@ -337,25 +343,19 @@ class Organization(models.Model):
         # an instance so the using database will be lost. The following
         # code saves the relation in the correct database associated
         # with the organization.
-        queryset = get_roles(role_name, using=self._state.db).filter(
-            organization=self, user=user)
-        if not queryset.exists():
-            queryset = get_role_model().objects.db_manager(
-                using=self._state.db).filter(organization=self, user=user,
-                request_key__isnull=False)
-            if queryset.exists():
-                # We have a request. Let's use it.
-                m2m = queryset.get()
-                force_insert = False
-            else:
-                m2m = get_role_model()(organization=self, user=user)
-                force_insert = True
-            m2m.name = role_name
-            m2m.request_key = None
-            m2m.save(using=self._state.db, force_insert=force_insert)
+        role_description = self.get_role_description(role_slug)
+        role_exists = user.role_set.db_manger(using=self._state.db).filter(
+            role_description=role_description).exists()
+
+        if not role_exists:
+            role = get_role_model()()
+            role.role_description = role_description
+            role.user = user
+            role.request_key = None
+            role.save(using=self._state.db)
             signals.user_relation_added.send(sender=__name__,
-                organization=m2m.organization, user=m2m.user,
-                role=m2m.name, reason=reason)
+                organization=role.role_description.organization, user=role.user,
+                role=role, reason=reason)
             return True
         return False
 
@@ -721,18 +721,19 @@ class RoleDescription(models.Model):
 class Role(models.Model):
 
     created_at = models.DateTimeField(auto_now_add=True)
-    organization = models.ForeignKey(Organization)
+    role_description = models.ForeignKey(RoleDescription)
     user = models.ForeignKey(settings.AUTH_USER_MODEL, db_column='user_id')
     name = models.CharField(max_length=20)
     request_key = models.CharField(null=True, max_length=40, blank=True)
     grant_key = models.CharField(null=True, max_length=40, blank=True)
 
     class Meta:
-        unique_together = ('name', 'organization', 'user')
+        unique_together = ('role_description', 'user')
 
     def __unicode__(self):
-        return '%s-%s-%s' % (
-            self.name, unicode(self.organization), unicode(self.user))
+        return '%s-%s' % (
+            unicode(self.role_description),
+            unicode(self.user))
 
 
 class Agreement(models.Model):
