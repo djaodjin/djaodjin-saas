@@ -6,6 +6,22 @@
     <p>
 Welcome to the product!
     </p>
+    <p>
+If you haven't loaded the test fixtures, you will need to create three
+organizations for the demo to work:
+<ul>
+<li>A payment processor (stripe or razorpay with pk=settings.PROCESSOR_ID)</li>
+<li>A broker platform (with slug=settings.PLATFORM)</li>
+<li>A subscriber (with slug=request.user)</li>
+</ul>
+    </p>
+    <p>
+You will also need to create:
+<ul>
+<li>A Role such that request.user is a *manager* of subscriber.</li>
+<li>a Plan with slug='basic' and advance discount of zero.</li>
+</ul>
+    </p>
     <div id="upgrades">
         <button id="basic" class="select-item">Upgrade</button>
     </div>
@@ -23,7 +39,7 @@ Welcome to the product!
  */
 function paymentSucceeded(response) {
     $.ajax({ type: "POST",
-        url: "{% url 'saas_api_checkout' organization %}",
+        url: "{{urls.saas_api_checkout}}",
         beforeSend: function(xhr) {
             xhr.setRequestHeader("X-CSRFToken", getMetaCSRFToken());
         },
@@ -58,11 +74,11 @@ jQuery(document).ready(function($) {
         var thisCartItem = new CartItem({
             'plan': self.attr('id'),
             'nb_periods': 1,
-            'urls': {'saas_api_cart': "{% url 'saas_api_cart' %}"}});
+            'urls': {'saas_api_cart': "{{urls.saas_api_cart}}"}});
         thisCartItem.add(function(data) {
             $.ajax({
                 type: "GET",
-                url: "{% url 'saas_api_checkout' request.user %}",
+                url: "{{urls.saas_api_checkout}}",
                 datatype: "json",
                 contentType: "application/json; charset=utf-8",
                 success: function(data) {

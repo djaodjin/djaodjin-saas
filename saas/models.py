@@ -239,7 +239,14 @@ class Organization(models.Model):
 
     def validate_processor(self):
         if not self.processor_id: #pylint:disable=no-member
-            self.processor = Organization.objects.get(pk=settings.PROCESSOR_ID)
+            try:
+                self.processor = Organization.objects.get(
+                    pk=settings.PROCESSOR_ID)
+            except Organization.DoesNotExist:
+                # If the processor organization does not exist yet, it means
+                # we are inserting the first record to bootstrap the db.
+                self.processor_id = settings.PROCESSOR_ID
+                self.pk = settings.PROCESSOR_ID #pylint:disable=invalid-name
         return self.processor
 
     def save(self, force_insert=False, force_update=False, using=None,
@@ -1654,7 +1661,7 @@ class Plan(models.Model):
         help_text=_('Number of intervals the plan before the plan ends.'))
     auto_renew = models.BooleanField(default=True)
     # Pb with next : maybe create an other model for it
-    next_plan = models.ForeignKey("Plan", null=True)
+    next_plan = models.ForeignKey("Plan", null=True, blank=True)
 
     class Meta:
         unique_together = ('slug', 'organization')

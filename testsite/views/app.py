@@ -23,6 +23,7 @@
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 from django.contrib import messages
+from django.core.urlresolvers import reverse
 from django.views.generic import TemplateView
 from saas.backends import ProcessorConnectionError
 from saas.models import Organization
@@ -38,10 +39,28 @@ class AppView(TemplateView):
 
     def get_context_data(self, **kwargs):
         context = super(AppView, self).get_context_data(**kwargs)
+        organization = self.organization
+        if organization is None:
+            messages.error(self.request, "The user '%s' is not manager "\
+                "of an attached payment profile (i.e. Organization with "\
+                "self.request.user.username == Organization.slug)"
+                % self.request.user)
+            return context
         try:
-            context.update(self.organization.retrieve_card())
+            context.update(organization.retrieve_card())
         except ProcessorConnectionError:
             messages.error(self.request, "The payment processor is "\
                 "currently unreachable. Sorry for the inconvienience.")
-        context.update({'organization': self.organization})
+        context.update({'organization': organization})
+        urls = {'saas_api_checkout': reverse(
+            'saas_api_checkout', args=(organization,)),
+                'saas_api_cart': reverse('saas_api_cart')}
+        if 'urls' in context:
+            for key, val in urls.iteritems():
+                if key in context['urls']:
+                    context['urls'][key].update(val)
+                else:
+                    context['urls'].update({key: val})
+        else:
+            context.update({'urls': urls})
         return context
