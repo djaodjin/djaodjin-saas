@@ -31,7 +31,7 @@ from ..compat import User
 from ..humanize import as_money
 from ..mixins import as_html_description, product_url
 from ..models import (BalanceLine, CartItem, Charge, Organization, Plan,
-    Subscription, Transaction)
+    RoleDescription, Subscription, Transaction)
 from ..utils import get_role_model
 
 #pylint: disable=no-init,old-style-class
@@ -216,13 +216,21 @@ class InvoicableSerializer(serializers.Serializer):
         raise RuntimeError('`update()` should not be called.')
 
 
-class RoleSerializer(serializers.ModelSerializer):
+class RoleDescriptionSerializer(serializers.ModelSerializer):
 
     organization = OrganizationSerializer(read_only=True)
+
+    class Meta:
+        model = RoleDescription
+        fields = ('created_at', 'name', 'slug', 'organization')
+
+
+class RoleSerializer(serializers.ModelSerializer):
+
+    role_description = RoleDescriptionSerializer(read_only=True)
     user = UserSerializer(read_only=True)
 
     class Meta:
         model = get_role_model()
-        fields = ('created_at', 'organization', 'user', 'name',
-            'request_key', 'grant_key')
-        read_only_fields = ('created_at', 'name', 'request_key', 'grant_key')
+        fields = ('created_at', 'role_description', 'user', 'request_key', 'grant_key')
+        read_only_fields = ('created_at', 'request_key', 'grant_key')

@@ -42,7 +42,7 @@ from django.utils.decorators import available_attrs
 from . import settings
 from .models import (Charge, Organization, Plan, Signature, Subscription,
     get_broker)
-from .utils import datetime_or_now, get_roles
+from .utils import datetime_or_now, get_role_model
 
 
 LOGGER = logging.getLogger(__name__)
@@ -54,6 +54,7 @@ LOGGER = logging.getLogger(__name__)
 WEAK = 0
 NORMAL = 1
 STRONG = 2
+
 
 def _valid_role(user, candidates, role=settings.MANAGER):
     """
@@ -71,9 +72,10 @@ def _valid_role(user, candidates, role=settings.MANAGER):
         return candidates
     if user and user.is_authenticated():
         results = Organization.objects.filter(
-            pk__in=get_roles(role).filter(
-                user=user, organization__in=candidates).values(
-                'organization')).values('slug')
+            pk__in=get_role_model().objects.filter(role_description__slug=role,
+                                                   role_description__organization__in=candidates,
+                                                   user=user)
+                                           .values('role_description__organization')).values('slug')
     return results
 
 
