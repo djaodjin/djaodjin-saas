@@ -116,10 +116,13 @@ class RazorpayBackend(object):
         }
         return context
 
-    def reconcile_transfers(self, provider, created_at):
+    @staticmethod
+    def reconcile_transfers(provider, created_at):
+        #pylint:disable=unused-argument
         LOGGER.warning("There are no RazorPay APIs to implement this method.")
 
     def retrieve_bank(self, provider):
+        #pylint:disable=unused-argument
         return self.get_deposit_context()
 
     def retrieve_card(self, subscriber, broker=None):

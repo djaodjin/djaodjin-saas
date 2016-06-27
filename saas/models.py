@@ -238,7 +238,8 @@ class Organization(models.Model):
         return unicode(self.slug)
 
     def validate_processor(self):
-        if not self.processor_id: #pylint:disable=no-member
+        #pylint:disable=no-member,access-member-before-definition
+        if not self.processor_id:
             try:
                 self.processor = Organization.objects.get(
                     pk=settings.PROCESSOR_ID)
