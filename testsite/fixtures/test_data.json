@@ -87,6 +87,51 @@
 },
 {
     "fields": {
+      "created_at": "2012-08-14T15:00:00-09:00",
+      "organization": 2,
+      "name": "Manager",
+      "slug": "manager"
+    },
+    "model" : "saas.RoleDescription", "pk": 1
+},
+{
+    "fields": {
+      "created_at": "2012-08-14T15:00:00-09:00",
+      "organization": 4,
+      "name": "Manager",
+      "slug": "manager"
+    },
+    "model" : "saas.RoleDescription", "pk": 2
+},
+{
+    "fields": {
+      "created_at": "2012-08-14T15:00:00-09:00",
+      "organization": 5,
+      "name": "Manager",
+      "slug": "manager"
+    },
+    "model" : "saas.RoleDescription", "pk": 3
+},
+{
+    "fields": {
+      "created_at": "2012-08-14T15:00:00-09:00",
+      "organization": 6,
+      "name": "Manager",
+      "slug": "manager"
+    },
+    "model" : "saas.RoleDescription", "pk": 4
+},
+{
+    "fields": {
+      "created_at": "2012-08-14T15:00:00-09:00",
+      "organization": 9,
+      "name": "Manager",
+      "slug": "manager"
+    },
+    "model" : "saas.RoleDescription", "pk": 5
+},
+{
+    "fields": {
       "date_joined": "2012-09-14T14:16:55-09:00",
       "email": "alice@localhost.localdomain",
       "first_name": "Alice",
@@ -95,7 +140,7 @@
       "is_superuser": true,
       "last_login": "2012-09-14T14:57:48-09:00",
       "last_name": "Doe",
-      "password": "pbkdf2_sha256$10000$z0MBiWn0Rlem$iZdC6uHomlE07qGK/TqfcfxNzKJtFp03c0JILF1frRc=", 
+      "password": "pbkdf2_sha256$10000$z0MBiWn0Rlem$iZdC6uHomlE07qGK/TqfcfxNzKJtFp03c0JILF1frRc=",
       "username": "alice"
     },
     "model": "auth.User", "pk": 2
@@ -103,8 +148,7 @@
 {
     "fields":{
       "created_at": "2012-10-01T00:00:00-09:00",
-      "name": "manager",
-      "organization": 2,
+      "role_description": 1,
       "user": 2
     },
     "model": "saas.Role", "pk": 2
@@ -127,7 +171,7 @@
       "is_superuser": true,
       "last_login": "2012-09-14T14:57:48-09:00",
       "last_name": "Manager",
-      "password": "pbkdf2_sha256$10000$z0MBiWn0Rlem$iZdC6uHomlE07qGK/TqfcfxNzKJtFp03c0JILF1frRc=", 
+      "password": "pbkdf2_sha256$10000$z0MBiWn0Rlem$iZdC6uHomlE07qGK/TqfcfxNzKJtFp03c0JILF1frRc=",
       "username": "donny"
     },
     "model": "auth.User", "pk": 3
@@ -135,11 +179,26 @@
 {
     "fields":{
       "created_at": "2012-10-01T00:00:00-09:00",
-      "name": "manager",
-      "organization": 2,
+      "role_description": 1,
       "user": 3
     },
     "model": "saas.Role", "pk": 3
+},
+{
+    "fields":{
+      "created_at": "2012-10-01T00:00:00-09:00",
+      "role_description": 2,
+      "user": 3
+    },
+    "model": "saas.Role", "pk": 10
+},
+{
+    "fields":{
+      "created_at": "2012-10-01T00:00:00-09:00",
+      "role_description": 5,
+      "user": 3
+    },
+    "model": "saas.Role", "pk": 11
 },
 {
     "fields": {
@@ -160,7 +219,7 @@
       "is_superuser": true,
       "last_login": "2012-09-14T14:57:48-09:00",
       "last_name": "Doe",
-      "password": "pbkdf2_sha256$10000$z0MBiWn0Rlem$iZdC6uHomlE07qGK/TqfcfxNzKJtFp03c0JILF1frRc=", 
+      "password": "pbkdf2_sha256$10000$z0MBiWn0Rlem$iZdC6uHomlE07qGK/TqfcfxNzKJtFp03c0JILF1frRc=",
       "user_permissions": [],
       "username": "xia"
     },
@@ -186,8 +245,7 @@
 {
     "fields":{
       "created_at": "2012-10-01T00:00:00-09:00",
-      "name": "manager",
-      "organization": 4,
+      "role_description": 2,
       "user": 4
     },
     "model": "saas.Role", "pk": 4
@@ -255,7 +313,7 @@
       "is_superuser": false,
       "last_login": "2015-02-01T00:00:00-09:00",
       "last_name": "DuJardin",
-      "password": "pbkdf2_sha256$10000$z0MBiWn0Rlem$iZdC6uHomlE07qGK/TqfcfxNzKJtFp03c0JILF1frRc=", 
+      "password": "pbkdf2_sha256$10000$z0MBiWn0Rlem$iZdC6uHomlE07qGK/TqfcfxNzKJtFp03c0JILF1frRc=",
       "username": "stephanie"
     },
     "model": "auth.User", "pk": 5
@@ -271,8 +329,7 @@
 {
     "fields": {
       "created_at": "2012-10-01T00:00:00-09:00",
-      "name": "manager",
-      "organization": 5,
+      "role_description": 3,
       "user": 5
     },
     "model": "saas.Role", "pk": 5
@@ -287,7 +344,7 @@
       "is_staff": false,
       "is_superuser": false,
       "last_login": "2014-01-01T00:00:00-00:00",
-      "password": "pbkdf2_sha256$10000$z0MBiWn0Rlem$iZdC6uHomlE07qGK/TqfcfxNzKJtFp03c0JILF1frRc=", 
+      "password": "pbkdf2_sha256$10000$z0MBiWn0Rlem$iZdC6uHomlE07qGK/TqfcfxNzKJtFp03c0JILF1frRc=",
       "username": "joe"
     },
     "model": "auth.User", "pk": 6
@@ -321,8 +378,7 @@
 {
     "fields": {
       "created_at": "2012-10-01T00:00:00-09:00",
-      "name": "manager",
-      "organization": 6,
+      "role_description": 4,
       "user": 6
     },
     "model": "saas.Role", "pk": 6
@@ -388,8 +444,7 @@
 {
     "fields": {
       "created_at": "2012-10-01T00:00:00-09:00",
-      "name": "manager",
-      "organization": 9,
+      "role_description": 5,
       "user": 9
     },
     "model": "saas.Role", "pk": 9

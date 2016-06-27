@@ -46,7 +46,7 @@ LOGGER = logging.getLogger(__name__)
 
 class RoleListView(OrganizationMixin, TemplateView):
     """
-    List of managers (or contributors) for an organization.
+    List of roles for an organization.
 
     Template:
 
@@ -67,11 +67,9 @@ class RoleListView(OrganizationMixin, TemplateView):
 
     def get_context_data(self, **kwargs):
         context = super(RoleListView, self).get_context_data(**kwargs)
-        role = self.kwargs.get('role', None)
-        context.update({'role': role})
         urls_organization = {
             'api_roles': reverse(
-                'saas_api_role_list', args=(self.organization, role)),
+                'saas_api_role_list', args=(self.organization,)),
         }
         if 'urls' in context:
             if 'organization' in context['urls']:

@@ -26,7 +26,7 @@ from django.contrib.auth import get_user_model
 from django.core.urlresolvers import NoReverseMatch, reverse
 from django.shortcuts import get_object_or_404
 
-from .utils import get_roles, get_organization_model
+from .utils import get_role_model, get_organization_model
 
 
 class OrganizationMixinBase(object):
@@ -42,8 +42,9 @@ class OrganizationMixinBase(object):
         # in django.conf.settings.
         from . import settings
         managers = get_user_model().objects.filter(
-            pk__in=get_roles(settings.MANAGER).filter(
-            organization=organization).values('user'))
+            pk__in=get_role_model().objects.filter(role_description__slug=settings.MANAGER,
+                                                   role_description__organization=organization)
+                                           .values('user'))
         if managers.count() == 1:
             manager = managers.get()
             if organization.slug == manager.username:
@@ -100,10 +101,8 @@ class OrganizationMixinBase(object):
                 pass
         else:
             urls['organization'].update({
-                'managers': reverse('saas_role_list',
-                    args=(organization, 'managers')),
-                'contributors': reverse('saas_role_list',
-                    args=(organization, 'contributors'))})
+                'roles': reverse('saas_role_list',
+                    args=(organization,))})
 
         if (organization.is_provider
             and self.request.user.is_authenticated()
