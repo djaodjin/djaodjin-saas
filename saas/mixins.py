@@ -595,12 +595,13 @@ class RoleSmartListMixin(SortableListMixin,
     The queryset can be further filtered by passing a ``q`` parameter.
     The value in ``q`` will be matched against:
 
-      - organization.slug
-      - organization.full_name
-      - organization.email
+      - role_description.organization.slug
+      - role_description.organization.full_name
+      - role_description.organization.email
       - user.username
       - user.email
-      - name
+      - role_description.name
+      - role_description.slug
 
     The result queryset can be ordered by passing an ``o`` (field name)
     and ``ot`` (asc or desc) parameter.
@@ -611,16 +612,17 @@ class RoleSmartListMixin(SortableListMixin,
       - role_name
       - created_at
     """
-    search_fields = ['organization__slug',
-                     'organization__full_name',
-                     'organization__email',
+    search_fields = ['role_description__organization__slug',
+                     'role_description__organization__full_name',
+                     'role_description__organization__email',
                      'user__username',
                      'user__email',
-                     'name']
+                     'role_description__name',
+                     'role_description__slug']
 
-    sort_fields_aliases = [('full_name', 'organization__full_name'),
+    sort_fields_aliases = [('full_name', 'role_description__organization__full_name'),
                            ('username', 'user__username'),
-                           ('role_name', 'name'),
+                           ('role_name', 'role_description__name'),
                            ('created_at', 'created_at')]
 
 

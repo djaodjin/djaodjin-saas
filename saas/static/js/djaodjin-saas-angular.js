@@ -528,7 +528,7 @@ transactionControllers.controller("userRelationListCtrl",
         sortByField: "username",
         sortDirection: "desc",
         modalId: "#new-user-relation",
-        urls: {api_items: settings.urls.saas_api_user_relation_url,
+        urls: {api_items: settings.urls.saas_api_user_roles_url,
                api_candidates: settings.urls.api_users}}, settings);
     $controller("relationListCtrl", {
         $scope: $scope, $http: $http, $timeout:$timeout,

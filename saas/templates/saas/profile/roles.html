@@ -1,20 +1,21 @@
 {% extends "saas/base_dashboard.html" %}
 
-{% block saas_title %}{{role|capitalize}}{% endblock %}
+{% block saas_title %}Roles{% endblock %}
 
 {% block saas_content %}
-<section id="{{role}}" ng-app="saasApp">
+<section id="roles" ng-app="saasApp">
   <div ng-controller="userRelationListCtrl">
     <form>
       <input name="user" type="text" ng-model="item.slug" placeholder="Username or Email" />
       <input type="submit" ng-click="save($event)" />
     </form>
     <h2 ng-hide="items.$resolved">Please wait...</h2>
-    <h2 ng-show="items.$resolved && items.results.length == 0"><em>No {{role}} yet</em></h2>
+    <h2 ng-show="items.$resolved && items.results.length == 0"><em>No roles assigned yet</em></h2>
     <table ng-show="items.$resolved && items.results.length > 0">
       <thead>
         <tr>
           <th>Username</th>
+          <th>Role</th>
           <th>Email</th>
           <th></th>
         </tr>
@@ -22,6 +23,7 @@
       <tbody>
         <tr id="[[item.user.slug]]" ng-repeat="item in items.results" ng-cloak>
           <td>[[item.user.slug]]</td>
+          <td>[[item.role_description.name]]</td>
           <td>[[item.user.email]]</td>
           <td><button ng-click="remove($index)">Remove</button></td>
         </tr>
@@ -40,13 +42,13 @@ them.
                 name="message" maxlength="255" type="text" rows="10">
 Hello,
 
-I am adding you as a {{role}} to {{organization.printable_name}}.
+I am adding to {{organization.printable_name}}.
 
 Thank you,
 - {{request.user.first_name}}
       </textarea>
       <button id="new-rule-submit" ng-click="create($event)"
-              type="button">Invite {{role}}</button>
+              type="button">Invite user</button>
     </div>
   </div>
 </section>
