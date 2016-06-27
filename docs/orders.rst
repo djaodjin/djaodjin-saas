@@ -32,6 +32,8 @@ is replaced by a more complex catalog. Cart and checkout concepts appear.
 2. Click a checkout button
 3. Submit credit card information
 
+.. _group_buy:
+
 Pipeline to Bulk Subscribe Third-parties
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 Software-as-a-Service that target businesses (B2B) and/or other kind

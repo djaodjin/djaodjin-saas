@@ -99,6 +99,12 @@ a provider through a processor.
 
 .. autoclass:: saas.api.billing.CartItemDestroyAPIView
 
+.. _api_checkout:
+
+.. http:post:: /api/billing/:organization/checkout
+
+.. autoclass:: saas.api.billing.CheckoutAPIView
+
 
 Subscription API
 ----------------

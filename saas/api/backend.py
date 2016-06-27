@@ -33,8 +33,13 @@ from ..mixins import OrganizationMixin
 
 class RetrieveBankAPIView(OrganizationMixin, GenericAPIView):
     """
-    Pass through to the processor to retrieve some details about
-    the deposit account associated to a provider.
+    Pass through that calls the processor API to retrieve some details about
+    the deposit account associated to a provider (if that information is
+    available through the :doc:`payment processor backend<backends>` API).
+
+    This API does not trigger payment of a subscriber to a provider. Checkout
+    of a subscription cart is done either through the
+    :ref:`HTML page<pages_cart>` or :ref:`API end point<api_checkout>`.
 
     - ``balance_amount`` Amount available to transfer to the provider bank
     - ``balance_unit`` Unit of the available balance (ex: usd)

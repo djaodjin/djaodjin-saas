@@ -26,12 +26,13 @@ $(srcDir)/credentials: $(srcDir)/testsite/etc/credentials
 		SECRET_KEY=`python -c 'import sys ; from random import choice ; sys.stdout.write("".join([choice("abcdefghijklmnopqrstuvwxyz0123456789!@#$%^*-_=+") for i in range(50)]))'` ; \
 		sed -e "s,\%(SECRET_KEY)s,$${SECRET_KEY}," $< > $@
 
+initdb-with-dummydata: initdb
+	cd $(srcDir) && $(PYTHON) ./manage.py load_test_transactions
+
 initdb: install-conf
 	-rm -f $(srcDir)/db.sqlite
 	cd $(srcDir) && $(PYTHON) ./manage.py migrate $(RUNSYNCDB) --noinput
-	cd $(srcDir) && $(PYTHON) ./manage.py loaddata \
-						testsite/fixtures/test_data.json
-	cd $(srcDir) && $(PYTHON) ./manage.py load_test_transactions
+	cd $(srcDir) && $(PYTHON) ./manage.py loaddata testsite/fixtures/test_data.json
 
 doc:
 	$(installDirs) docs

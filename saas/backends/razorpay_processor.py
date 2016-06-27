@@ -110,6 +110,18 @@ class RazorpayBackend(object):
         return (processor_charge['id'], created_at, last4,
                 datetime.date(exp_year, exp_month, 1))
 
+    def get_deposit_context(self):
+        context = {
+            'RAZORPAY_PUB_KEY': self.pub_key
+        }
+        return context
+
+    def reconcile_transfers(self, provider, created_at):
+        LOGGER.warning("There are no RazorPay APIs to implement this method.")
+
+    def retrieve_bank(self, provider):
+        return self.get_deposit_context()
+
     def retrieve_card(self, subscriber, broker=None):
         #pylint:disable=unused-argument
         context = {'RAZORPAY_PUB_KEY': self.pub_key}

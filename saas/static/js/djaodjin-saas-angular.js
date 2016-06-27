@@ -304,9 +304,12 @@ transactionControllers.controller("relationListCtrl",
             emailFieldGroup.addClass("has-error");
             return;
         }
-        var self = $event.target;
-        var dialog = $(self).parents("[role='dialog']");
-        dialog.modal('hide');
+        var dialog = angular.element(settings.modalId);
+        if( dialog ) {
+            if( dialog.data('bs.modal') ) {
+                dialog.modal("hide");
+            }
+        }
         if( !$scope.item ) {
             $scope.item = {};
         }
@@ -344,7 +347,10 @@ transactionControllers.controller("relationListCtrl",
                 if( resp.status === 404 ) {
                     // XXX hack to set full_name when org does not exist.
                     $scope.item.full_name = $scope.item.slug;
-                    angular.element(settings.modalId).modal("show");
+                    var dialog = angular.element(settings.modalId);
+                    if( dialog ) {
+                        dialog.modal("show");
+                    }
                 } else {
                     showErrorMessages(resp);
                 }

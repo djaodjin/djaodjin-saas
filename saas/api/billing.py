@@ -23,42 +23,9 @@
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 """
-Add and remove plans from a user subscription cart.
-
-.. http:post:: /api/cart/
-
-    Add a ``Plan`` into the subscription cart of a ``User``.
-
-   **Example request**:
-
-   .. sourcecode:: http
-
-    {
-        "plan": "premium",
-    }
-
-   **Example response**:
-
-   .. sourcecode:: http
-
-    {
-        "plan": "premium",
-    }
-
-.. http:delete:: /api/cart/:plan
-
-    Remove a ``Plan`` from the subscription cart of a ``User``.
-
-   **Example request**:
-
-   .. sourcecode:: http
-
-   **Example response**:
-
-   .. sourcecode:: http
-
-   OK
+APIs for cart and checkout functionality.
 """
+
 import logging
 
 from django.core.exceptions import MultipleObjectsReturned
@@ -71,11 +38,22 @@ from rest_framework import serializers, status
 from ..backends import ProcessorError
 from ..mixins import CartMixin, OrganizationMixin
 from ..models import CartItem
-from .serializers import (CartItemSerializer, ChargeSerializer,
+from .serializers import (PlanRelatedField, ChargeSerializer,
     InvoicableSerializer)
 
 #pylint: disable=no-init,old-style-class
 LOGGER = logging.getLogger(__name__)
+
+
+class CartItemCreateSerializer(serializers.ModelSerializer):
+    """
+    Serializer to build a request.user set of plans to subscribe to (i.e. cart).
+    """
+    plan = PlanRelatedField(read_only=False, required=True)
+
+    class Meta:
+        model = CartItem
+        fields = ('plan', 'nb_periods', 'first_name', 'last_name', 'email')
 
 
 class CheckoutSerializer(serializers.Serializer):
@@ -92,7 +70,17 @@ class CheckoutSerializer(serializers.Serializer):
 
 class CartItemAPIView(CartMixin, CreateAPIView):
     """
-    Add a plan into the cart of the request user.
+    Add a ``Plan`` into the subscription cart of the ``request.user``.
+
+    The cart can later be checked out and paid by an ``Organization``,
+    either through the :ref:`HTML page<pages_cart>`
+    or :ref:`API end point<api_checkout>`.
+
+    This end point is typically used when a user is presented with a list
+    of add-ons that she can subscribes to in one checkout screen. The end-point
+    works in both cases, authenticated or anonymous users. For authenticated
+    users, the cart is stored in the database as ``CartItem`` objects.
+    For anonymous users, the cart is stored in an HTTP Cookie.
 
     **Example request**:
 
@@ -102,10 +90,7 @@ class CartItemAPIView(CartMixin, CreateAPIView):
 
         {
             "plan": "open-space",
-            "nb_periods": 1,
-            "first_name": "",
-            "last_name": "",
-            "email": ""
+            "nb_periods": 1
         }
 
     **Example response**:
@@ -114,16 +99,19 @@ class CartItemAPIView(CartMixin, CreateAPIView):
 
         {
             "plan": "open-space",
-            "nb_periods": 1,
-            "first_name": "",
-            "last_name": "",
-            "email": ""
+            "nb_periods": 1
         }
+
+    ``nb_periods`` is optional. When it is not specified, subsquent checkout
+    screens will provide choices to pay multiple periods in advance
+    When additional ``first_name``, ``last_name`` and ``email`` are specified,
+    payment can be made by one ``Organization`` for another ``Organization``
+    to be subscribed (see :ref:`GroupBuy orders<group_buy>`).
     """
     #pylint: disable=no-member
 
     model = CartItem
-    serializer_class = CartItemSerializer
+    serializer_class = CartItemCreateSerializer
 
     # XXX This was a workaround until we figure what is wrong with proxy
     # and csrf, unfortunately it prevents authenticated users to add into
@@ -151,7 +139,19 @@ class CartItemAPIView(CartMixin, CreateAPIView):
 
 class CartItemDestroyAPIView(DestroyAPIView):
     """
-    Remove a ``Plan`` from the subscription cart of the request user.
+    Remove a ``Plan`` from the subscription cart of the ``request.user``.
+
+    **Example request**:
+
+    .. sourcecode:: http
+
+        DELETE /api/cart/:plan
+
+    **Example response**:
+
+    .. sourcecode:: http
+
+       204 NO_CONTENT
     """
 
     model = CartItem

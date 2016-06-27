@@ -1432,8 +1432,8 @@ class ChargeItem(models.Model):
                 '%(provider)s has %(funds_available)s of funds available.'\
 ' %(funds_required)s are required to refund "%(descr)s"' % {
     'provider': provider,
-    'funds_available': as_money(abs(provider.funds_balance), provider_unit),
-    'funds_required': as_money(abs(refunded_distribute_amount), provider_unit),
+    'funds_available': as_money(provider.funds_balance, provider_unit),
+    'funds_required': as_money(refunded_distribute_amount, provider_unit),
     'descr': invoiced_item.descr})
 
         with transaction.atomic():

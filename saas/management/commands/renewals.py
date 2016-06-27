@@ -23,7 +23,7 @@
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 """
-The renewals command is intended to be run as part of an automated scripts
+The renewals command is intended to be run as part of an automated script
 run at least once a day. It will
 
 - recognize revenue for past periods (see :doc:`ledger <ledger>`).

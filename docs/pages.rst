@@ -50,6 +50,7 @@ Create a subscription
 
 .. autoclass:: saas.views.billing.RedeemCouponView
 
+.. _pages_cart:
 
 .. http:get:: /billing/cart/
 .. http:get:: /billing/:organization/cart/

@@ -164,14 +164,15 @@ DURATIONFIELD_ALLOW_MONTHS = True
 
 # Configuration of djaodjin-saas
 SAAS = {
-  'PLATFORM': 'cowork',
+  'PLATFORM': 'cowork-master',
   'PROCESSOR': {
-#      'BACKEND': 'saas.backends.stripe_processor.StripeBackend',
-#      'PRIV_KEY': getattr(sys.modules[__name__], "STRIPE_PRIV_KEY", None),
-#      'PUB_KEY': getattr(sys.modules[__name__], "STRIPE_PUB_KEY", None),
-      'BACKEND': 'saas.backends.razorpay_processor.RazorpayBackend',
-      'PRIV_KEY': getattr(sys.modules[__name__], "RAZORPAY_PRIV_KEY", None),
-      'PUB_KEY': getattr(sys.modules[__name__], "RAZORPAY_PUB_KEY", None),
+      'BACKEND': 'saas.backends.stripe_processor.StripeBackend',
+      'PRIV_KEY': getattr(sys.modules[__name__], "STRIPE_PRIV_KEY", None),
+      'PUB_KEY': getattr(sys.modules[__name__], "STRIPE_PUB_KEY", None),
+# Comment above and uncomment below to use RazorPay instead.
+#      'BACKEND': 'saas.backends.razorpay_processor.RazorpayBackend',
+#      'PRIV_KEY': getattr(sys.modules[__name__], "RAZORPAY_PRIV_KEY", None),
+#      'PUB_KEY': getattr(sys.modules[__name__], "RAZORPAY_PUB_KEY", None),
     }
 }
 
