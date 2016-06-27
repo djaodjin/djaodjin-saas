@@ -97,11 +97,6 @@ def normalize_role_name(role_name):
     return role_name
 
 
-def get_roles(role_name, using=None):
-    return get_role_model().objects.db_manager(using=using).filter(
-        name=normalize_role_name(role_name))
-
-
 def start_of_day(dtime_at=None):
     """
     Returns the local (user timezone) start of day, that's,

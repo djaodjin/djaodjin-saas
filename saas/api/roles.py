@@ -30,16 +30,17 @@ from django.template.defaultfilters import slugify
 from django.utils.encoding import force_text
 from django.utils.translation import ugettext_lazy as _
 from rest_framework import serializers, status
-from rest_framework.generics import ListAPIView, CreateAPIView, ListCreateAPIView, DestroyAPIView
+from rest_framework.generics import (ListAPIView, CreateAPIView,
+    ListCreateAPIView, DestroyAPIView)
 from rest_framework.viewsets import ModelViewSet
 from rest_framework.response import Response
 
 from .. import settings
 from ..compat import User
-from ..mixins import (OrganizationMixin, RelationMixin,
+from ..mixins import (OrganizationMixin, RoleDescriptionMixin, RelationMixin,
     RoleSmartListMixin, UserMixin)
 from ..models import Organization, RoleDescription
-from ..utils import get_role_model, normalize_role_name
+from ..utils import get_role_model
 from .serializers import RoleSerializer
 
 
@@ -187,14 +188,22 @@ class RoleDescriptionAPIViewSet(OrganizationMixin, ModelViewSet):
     lookup_field = 'slug'
 
     def get_queryset(self):
-        return super(RoleDescriptionAPIViewSet, self).get_queryset().filter(organization=self.organization)
+        return super(RoleDescriptionAPIViewSet, self).get_queryset().filter(
+            organization=self.organization)
 
     def create(self, request, *args, **kwargs):
         request.data['organization'] = self.organization
-        return super(RoleDescriptionAPIViewSet, self).create(request, *args, **kwargs)
+        return super(RoleDescriptionAPIViewSet, self).create(
+            request, *args, **kwargs)
 
 
-class RoleListAPIView(OrganizationMixin, ListAPIView):
+class RoleQuerysetMixin(OrganizationMixin):
+
+    def get_queryset(self):
+        return get_role_model().objects.filter(organization=self.organization)
+
+
+class RoleListAPIView(RoleSmartListMixin, RoleQuerysetMixin, ListAPIView):
     """
     ``GET`` lists all roles for an organization
 
@@ -238,15 +247,19 @@ class RoleListAPIView(OrganizationMixin, ListAPIView):
             ]
         }
     """
-
     serializer_class = RoleSerializer
 
+
+class RoleByDescrQuerysetMixin(RoleDescriptionMixin, RoleQuerysetMixin):
+
     def get_queryset(self):
-        return get_role_model().objects.filter(request_key__isnull=False,
-                                               role_description__organization=self.organization)
+        return super(RoleByDescrQuerysetMixin, self).get_queryset().filter(
+            Q(role_description=self.role_description)
+            | Q(request_key__isnull=False))
 
 
-class RoleFilteredListAPIView(RoleListAPIView, CreateAPIView):
+class RoleFilteredListAPIView(RoleSmartListMixin, RoleByDescrQuerysetMixin,
+                              ListAPIView, CreateAPIView):
     """
     ``GET`` lists the specified role assignments for an organization.
 
@@ -311,20 +324,10 @@ class RoleFilteredListAPIView(RoleListAPIView, CreateAPIView):
           "slug": "Xia"
         }
     """
+    serializer_class = RoleSerializer
 
-    def get_queryset(self):
-        queryset = super(RoleFilteredListAPIView, self).get_queryset()
-        role_name = normalize_role_name(self.kwargs.get('role'))
-        return queryset.filter(name=role_name)
-
-    def add_role(self, user, reason=None):
-        role_name = self.kwargs.get('role')
-        try:
-            return self.organization.add_role(user, role_name, reason=reason)
-        except RoleDescription.DoesNotExist:
-            raise Http404("No role named '%s'" % role_name)
-
-    def create(self, request, *args, **kwargs):  # pylint:disable=unused-argument
+    def create(self, request, *args, **kwargs): #pylint:disable=unused-argument
+        role_descr = self.role_description
         serializer = RoleCreateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         try:
@@ -357,7 +360,8 @@ class RoleFilteredListAPIView(RoleListAPIView, CreateAPIView):
         reason = serializer.validated_data.get('message', None)
         if reason:
             reason = force_text(reason)
-        if self.add_role(user, reason=reason):
+        created = self.organization.add_role(user, role_descr, reason=reason)
+        if created:
             resp_status = status.HTTP_201_CREATED
         else:
             resp_status = status.HTTP_200_OK

@@ -357,9 +357,10 @@ transactionControllers.controller("relationListCtrl",
             });
     };
 
-    $scope.remove = function (idx) {
-        $http.delete(settings.urls.api_items
-                     + '/' + $scope.items.results[idx].user.slug).then(
+    $scope.remove = function ($event, idx) {
+        $event.preventDefault();
+        var slug = $($event.target).parents("[id]").attr("id");
+        $http.delete(settings.urls.api_items + '/' + slug).then(
             function success(resp) {
                 $scope.items.results.splice(idx, 1);
             },

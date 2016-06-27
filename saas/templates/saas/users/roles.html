@@ -1,40 +1,63 @@
-{% extends "saas/base.html" %}
+{% extends "saas/base_dashboard.html" %}
+
+{% block saas_title %}Accessible by {{user}}{% endblock %}
 
 {% block saas_content %}
-<section id="managed" ng-app="siteApp">
-  <h1>Accessible by {{user}}</h1>
-<div ng-controller="SiteListCtrl">
-  <div class="text-right">
+<section ng-app="saasApp">
+<div ng-controller="accessibleListCtrl">
+  <div>
     <span>Filter</span> <input type="text" ng-model="filterExpr" ng-change="filterList(filterExpr)" />
   </div>
-  <table class="table table-striped">
+  <table>
     <thead>
       <tr>
-        <th>Name<button class="btn-link btn-sort" ng-click="sortBy('slug')"><i class="fa fa-sort[[dir.slug ? ('-' + dir.slug) : '']]"></i></button></th>
-        <th class="text-center">Configure</th>
+        <th>Name<button ng-click="sortBy('slug')"></button></th>
+        <th>Role<button ng-click="sortBy('role_name')"></button></th>
+        <th></th>
       </tr>
     </thead>
     <tbody>
-      <tr ng-hide="sites.$resolved">
-        <td colspan="2">
-            <h3  class="text-center"><i class="fa fa-refresh fa-spin fa-2x"></i></h3>
+      <tr>
+        <td colspan="3">
+          <form>
+            <div>
+              <input name="organization" type="text" placeholder="Name or email"
+                     autocomplete="off"
+                     ng-model="item.slug"
+                     uib-typeahead="item.slug for item in getCandidates($viewValue)"
+                     uib-typeahead-loading="loadingOrganizations"
+                     uib-typeahead-template-url="customTemplate.html">
+              <div>
+                <button type="submit" ng-click="save($event)">Add</button>
+              </div>
+            </div>
+            <div>
+              <i ng-show="loadingOrganizations"></i>
+            </div>
+          </form>
         </td>
       </tr>
-      <tr ng-show="sites.$resolved && sites.results.length == 0">
-          <td colspan="2">No sites</td>
+      <tr ng-hide="items.$resolved">
+        <td colspan="3">
+            <h3></h3>
+        </td>
       </tr>
-      <tr ng-repeat="entry in sites.results" ng-cloak ng-show="sites.$resolved && sites.results.length > 0">
+      <tr ng-show="items.$resolved && items.results.length == 0">
+          <td colspan="3">No organization accessible for {{user}}</td>
+      </tr>
+      <tr id="[[entry.organization.slug]]" ng-repeat="entry in items.results" ng-cloak ng-show="items.$resolved && items.results.length > 0">
         <td>
-          <a href="{{ urls.organization.profile_base }}[[entry.slug]]/">[[entry.slug]]</a>
+          <a href="{{urls.organization.profile_base}}[[entry.organization.slug]]/">[[entry.organization.full_name]]</a>
         </td>
-        <td class="text-center">
-          <a id="[[entry.slug]]" href="{{urls.djaodjin.app}}[[entry.slug]]/" class="btn btn-default"><i class="fa fa-cogs"></i></a>
+        <td>
+          [[entry.request_key ? "requested" : entry.role_description]]
         </td>
+        <td><button ng-click="remove($event, $index)"></button></td>
       </tr>
     </tbody>
   </table>
-  <div class="text-center">
-    <uib-pagination class="pagination-sm" ng-model="currentPage"
+  <div ng-show="items.$resolved && totalItems > itemsPerPage">
+    <uib-pagination ng-model="currentPage"
                 total-items="totalItems"
                 items-per-page="itemsPerPage"
                 boundary-links="true"
@@ -45,6 +68,64 @@
                 last-text="&raquo;"
                 ng-change="pageChanged()"></uib-pagination>
   </div>
+
+  <!-- modal dialog to add a request to add a role to a user
+       on an organization. -->
+  <div id="new-user-relation" tabindex="-1" role="dialog"
+       aria-labelledby="Request access" aria-hidden="true">
+    <div>
+      <div>
+        <div>
+          <button type="button" class="close"
+                  data-dismiss="modal" aria-hidden="true">&times;</button>
+          <h4>Request access ...</h4>
+        </div>
+        <div>
+          <p ng-model="item">
+[[item.full_name]] was not found. This is an opportunity to invite
+a manager for [[item.full_name]] to join {{site.printable_name}}.
+          </p>
+          <div>
+            <label>To</label>
+              <input id="new-request-email" name="email" ng-model="item.email"
+                     type="text" max-length="150"
+                     placeholder="invitee@example.com" autofocus />
+          </div>
+          <div>
+            <div>
+              <label>The following invite message will be sent:</label>
+              <textarea name="message"
+                        ng-model="item.message"
+                        maxlength="255" type="text" rows="10">
+Hello,
+
+I would like to request access to [[item.full_name]].
+
+Thank you,
+- {{request.user.first_name}}
+              </textarea>
+            </div>
+          </div>
+        </div>
+        <div>
+          <button type="button" data-dismiss="modal">Cancel</button>
+          <button id="new-rule-submit" ng-click="create($event)"
+                  type="button" data-dismiss="modal">Request access</button>
+        </div>
+      </div>
+    </div>
+  </div>
+<!-- end of modal dialog -->
 </div>
 </section>
+{% endblock %}
+
+{% block dashboard_bodyscripts %}
+<script type="text/javascript">
+jQuery(document).ready(function($) {
+  $("#new-user-relation").on('shown.bs.modal', function () {
+    $("#new-user-relation .email").focus();
+  });
+});
+</script>
 {% endblock %}

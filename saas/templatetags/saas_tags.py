@@ -37,7 +37,7 @@ from ..decorators import fail_direct, _valid_manager
 from ..humanize import as_money
 from ..mixins import as_html_description, product_url as utils_product_url
 from ..models import Organization, Subscription, Plan, get_broker
-from ..utils import get_roles
+from ..utils import get_role_model
 
 register = template.Library()
 
@@ -140,8 +140,8 @@ def manages_subscriber_to(user, plan):
     """
     if not user.is_authenticated():
         return False
-    return get_roles(settings.MANAGER).filter(
-        user=user, organization__subscriptions__plan=plan).exists()
+    return get_role_model().objects.role_on_subscriber(
+        user, plan, role_descr=settings.MANAGER).exists()
 
 
 @register.filter(needs_autoescape=False)

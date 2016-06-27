@@ -50,6 +50,19 @@ class PlanRelatedField(serializers.RelatedField):
         return get_object_or_404(Plan, slug=data)
 
 
+class RoleDescriptionRelatedField(serializers.RelatedField):
+
+    def __init__(self, **kwargs):
+        super(RoleDescriptionRelatedField, self).__init__(**kwargs)
+
+    # Django REST Framework 3.0
+    def to_representation(self, obj):
+        return obj.slug
+
+    def to_internal_value(self, data):
+        return get_object_or_404(RoleDescription, slug=data)
+
+
 class BalanceLineSerializer(serializers.ModelSerializer):
 
     class Meta:
@@ -227,10 +240,13 @@ class RoleDescriptionSerializer(serializers.ModelSerializer):
 
 class RoleSerializer(serializers.ModelSerializer):
 
-    role_description = RoleDescriptionSerializer(read_only=True)
+    organization = OrganizationSerializer(read_only=True)
     user = UserSerializer(read_only=True)
+    role_description = RoleDescriptionRelatedField(read_only=True)
 
     class Meta:
         model = get_role_model()
-        fields = ('created_at', 'role_description', 'user', 'request_key', 'grant_key')
-        read_only_fields = ('created_at', 'request_key', 'grant_key')
+        fields = ('created_at', 'organization', 'user', 'role_description',
+            'request_key', 'grant_key')
+        read_only_fields = ('created_at', 'role_description',
+            'request_key', 'grant_key')

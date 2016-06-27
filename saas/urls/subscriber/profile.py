@@ -28,10 +28,13 @@ from django.conf.urls import url
 
 from ...settings import ACCT_REGEX
 from ...views import OrganizationRedirectView
-from ...views.profile import (RoleListView, OrganizationProfileView,
-    SubscriptionListView)
+from ...views.profile import (RoleDetailView, RoleListView,
+    OrganizationProfileView, SubscriptionListView)
 
 urlpatterns = [
+    url(r'^profile/(?P<organization>%s)/roles/(?P<role>%s)/'
+        % (ACCT_REGEX, ACCT_REGEX),
+        RoleDetailView.as_view(), name='saas_role_detail'),
     url(r'^profile/(?P<organization>%s)/roles/$' % ACCT_REGEX,
         RoleListView.as_view(), name='saas_role_list'),
     url(r'^profile/(?P<organization>%s)/subscriptions/' % ACCT_REGEX,

@@ -44,6 +44,24 @@
     "model": "saas.Organization", "pk": 2
 },
 {
+    "fields": {
+      "slug": "cowork",
+      "full_name": "ABC Corp.",
+      "created_at": "2012-08-14T14:16:55-09:00",
+      "email": "support@localhost.localdomain",
+      "phone": "555-555-5555",
+      "street_address": "1 ABC loop",
+      "locality":  "San Francisco",
+      "region": "CA",
+      "postal_code": "94102",
+      "country": "US",
+      "processor": 1,
+      "is_provider": 1,
+      "is_active": 1
+    },
+    "model": "saas.Organization", "pk": 3
+},
+{
   "fields": {
     "slug": "basic",
     "title": "Basic",
@@ -88,7 +106,6 @@
 {
     "fields": {
       "created_at": "2012-08-14T15:00:00-09:00",
-      "organization": 2,
       "name": "Manager",
       "slug": "manager"
     },
@@ -97,38 +114,10 @@
 {
     "fields": {
       "created_at": "2012-08-14T15:00:00-09:00",
-      "organization": 4,
-      "name": "Manager",
-      "slug": "manager"
+      "name": "Contributor",
+      "slug": "contributor"
     },
     "model" : "saas.RoleDescription", "pk": 2
-},
-{
-    "fields": {
-      "created_at": "2012-08-14T15:00:00-09:00",
-      "organization": 5,
-      "name": "Manager",
-      "slug": "manager"
-    },
-    "model" : "saas.RoleDescription", "pk": 3
-},
-{
-    "fields": {
-      "created_at": "2012-08-14T15:00:00-09:00",
-      "organization": 6,
-      "name": "Manager",
-      "slug": "manager"
-    },
-    "model" : "saas.RoleDescription", "pk": 4
-},
-{
-    "fields": {
-      "created_at": "2012-08-14T15:00:00-09:00",
-      "organization": 9,
-      "name": "Manager",
-      "slug": "manager"
-    },
-    "model" : "saas.RoleDescription", "pk": 5
 },
 {
     "fields": {
@@ -149,6 +138,7 @@
     "fields":{
       "created_at": "2012-10-01T00:00:00-09:00",
       "role_description": 1,
+      "organization": 2,
       "user": 2
     },
     "model": "saas.Role", "pk": 2
@@ -180,6 +170,7 @@
     "fields":{
       "created_at": "2012-10-01T00:00:00-09:00",
       "role_description": 1,
+      "organization": 2,
       "user": 3
     },
     "model": "saas.Role", "pk": 3
@@ -187,7 +178,8 @@
 {
     "fields":{
       "created_at": "2012-10-01T00:00:00-09:00",
-      "role_description": 2,
+      "role_description": 1,
+      "organization": 5,
       "user": 3
     },
     "model": "saas.Role", "pk": 10
@@ -195,7 +187,8 @@
 {
     "fields":{
       "created_at": "2012-10-01T00:00:00-09:00",
-      "role_description": 5,
+      "role_description": 1,
+      "organization": 6,
       "user": 3
     },
     "model": "saas.Role", "pk": 11
@@ -245,7 +238,8 @@
 {
     "fields":{
       "created_at": "2012-10-01T00:00:00-09:00",
-      "role_description": 2,
+      "role_description": 1,
+      "organization": 4,
       "user": 4
     },
     "model": "saas.Role", "pk": 4
@@ -329,7 +323,8 @@
 {
     "fields": {
       "created_at": "2012-10-01T00:00:00-09:00",
-      "role_description": 3,
+      "role_description": 1,
+      "organization": 5,
       "user": 5
     },
     "model": "saas.Role", "pk": 5
@@ -378,7 +373,8 @@
 {
     "fields": {
       "created_at": "2012-10-01T00:00:00-09:00",
-      "role_description": 4,
+      "role_description": 1,
+      "organization": 6,
       "user": 6
     },
     "model": "saas.Role", "pk": 6
@@ -444,7 +440,8 @@
 {
     "fields": {
       "created_at": "2012-10-01T00:00:00-09:00",
-      "role_description": 5,
+      "role_description": 1,
+      "organization": 9,
       "user": 9
     },
     "model": "saas.Role", "pk": 9

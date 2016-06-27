@@ -37,7 +37,7 @@ from ...views.profile import SubscriberListView
 
 urlpatterns = [
     url(r'^profile/roles/(?P<role>%s)/' % ACCT_REGEX,
-        ProviderRedirectView.as_view(pattern_name='saas_role_list'),
+        ProviderRedirectView.as_view(pattern_name='saas_role_detail'),
         name='saas_provider_role_list'),
     url(r'^profile/plans/new/',
         ProviderRedirectView.as_view(pattern_name='saas_plan_new'),
