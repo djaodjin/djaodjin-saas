@@ -1908,7 +1908,7 @@ class CartItem(models.Model):
 " the item could be claimed."))
     plan = models.ForeignKey(Plan, null=True,
         help_text=_("item added to the cart."))
-    coupon = models.ForeignKey(Coupon, null=True,
+    coupon = models.ForeignKey(Coupon, null=True, blank=True,
         help_text=_("coupon to apply to the plan."))
     recorded = models.BooleanField(default=False,
         help_text=_("whever the item has been checked out or not."))
