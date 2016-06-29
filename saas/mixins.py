@@ -38,7 +38,7 @@ from .humanize import (as_money, DESCRIBE_BUY_PERIODS, DESCRIBE_UNLOCK_NOW,
     DESCRIBE_UNLOCK_LATER, DESCRIBE_BALANCE)
 from .models import (CartItem, Charge, Coupon, Organization, Plan,
     Subscription, Transaction, get_broker)
-from .utils import datetime_or_now, get_roles, start_of_day
+from .utils import datetime_or_now, get_role_model, start_of_day
 from .extras import OrganizationMixinBase
 
 
@@ -761,8 +761,15 @@ class RelationMixin(OrganizationMixin, UserMixin):
     """
 
     def get_queryset(self):
-        return get_roles(self.kwargs.get('role')).filter(
-            organization=self.organization, user=self.user)
+        if self.kwargs.get('role'):
+            name = self.kwargs.get('role')
+            if name.endswith('s'):
+                name = name[:-1]
+            kwargs = {'name': name}
+        else:
+            kwargs = {}
+        return get_role_model().objects.filter(
+            organization=self.organization, user=self.user, **kwargs)
 
     def get_object(self):
         # Since there is no lookup_field for relations, we must override
