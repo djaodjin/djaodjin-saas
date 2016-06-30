@@ -92,26 +92,46 @@ jQuery(document).ready(function($) {
                             totalAmount += data[idx].lines[jdx].orig_amount;
                         }
                     }
-                    var options = {
-                      "key": "{{RAZORPAY_PUB_KEY}}",
-                      "amount": totalAmount, // 2000 paise = INR 20
-                      "name": "Merchant Name",
-                      "description": "Purchase Description",
-                      "image": "/your_logo.png",
-                      "handler": paymentSucceeded,
-                      "prefill": {
-                        "name": "{{request.user.full_name}}",
-                        "email": "{{request.user.email}}"
-                      },
-                      "notes": {
-                        "address": "Hello World"
-                      },
-                      "theme": {
-                        "color": "#F37254"
-                      }
-                    };
-                    var rzp1 = new Razorpay(options);
-                    rzp1.open();
+                    if( totalAmount > 0 ) {
+                        var options = {
+                          "key": "{{RAZORPAY_PUB_KEY}}",
+                          "amount": totalAmount, // 2000 paise = INR 20
+                          "name": "Merchant Name",
+                          "description": "Purchase Description",
+                          "image": "/your_logo.png",
+                          "handler": paymentSucceeded,
+                          "prefill": {
+                            "name": "{{request.user.full_name}}",
+                            "email": "{{request.user.email}}"
+                          },
+                          "notes": {
+                            "address": "Hello World"
+                          },
+                          "theme": {
+                            "color": "#F37254"
+                          }
+                        };
+                        var rzp1 = new Razorpay(options);
+                        rzp1.open();
+                     } else {
+                         // All free ...
+                         $.ajax({
+                             type: "POST",
+                             url: "{{urls.saas_api_checkout}}",
+                             beforeSend: function(xhr) {
+                                 xhr.setRequestHeader("X-CSRFToken", getMetaCSRFToken());
+                             },
+                             data: JSON.stringify({"processor_token": "dummy"}),
+                             datatype: "json",
+                             contentType: "application/json; charset=utf-8",
+                             success: function(data) {
+                                 $("#upgrades").html("<div id='"+data.processor_key+"'><dl><dt>Status</dt><dd class='charge-status' data-charge-done='The charge succeeded.' data-charge-failed='The charge failed.' data-charge-disputed='The charge was disputed.' data-charge-created='The charge is in progress...'>"+data.state+"</dd></dl><dl><dt>Confirmation Number</dt><dd>"+data.processor_key+"</dd></dl><dl><dt>Amount</dt><dd>"+data.amount+"</dd></dl></div>");
+                             },
+                             error: function(resp) {
+                                 showErrorMessages(resp);
+                             }
+                         });
+                     }
                 },
                 error: function(resp) {
                     showErrorMessages(resp);
