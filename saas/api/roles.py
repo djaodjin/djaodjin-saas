@@ -30,6 +30,7 @@ from django.template.defaultfilters import slugify
 from django.utils.encoding import force_text
 from django.utils.translation import ugettext_lazy as _
 from rest_framework import serializers, status
+from rest_framework.exceptions import PermissionDenied
 from rest_framework.generics import (ListAPIView, CreateAPIView,
     ListCreateAPIView, DestroyAPIView)
 from rest_framework.viewsets import ModelViewSet
@@ -41,7 +42,7 @@ from ..mixins import (OrganizationMixin, RoleDescriptionMixin, RelationMixin,
     RoleSmartListMixin, UserMixin)
 from ..models import Organization, RoleDescription
 from ..utils import get_role_model
-from .serializers import RoleSerializer
+from .serializers import BaseRoleSerializer, RoleSerializer
 
 
 class RoleCreateSerializer(serializers.Serializer):
@@ -54,14 +55,25 @@ class RoleCreateSerializer(serializers.Serializer):
     message = serializers.CharField(max_length=255, required=False)
 
 
+class RoleDescriptionCRUDRoleSerializer(BaseRoleSerializer):
+    pass
+
+
 class RoleDescriptionCRUDSerializer(serializers.ModelSerializer):
+    roles = serializers.SerializerMethodField()
+
+    def get_roles(self, obj):
+        roles_queryset = obj.role_set.filter(
+            organization=self._context['view'].organization)
+        return RoleDescriptionCRUDRoleSerializer(roles_queryset, many=True).data
+
     def create(self, validated_data):
-        validated_data['organization'] = self.initial_data['organization']
+        validated_data['organization'] = self._context['view'].organization
         return super(RoleDescriptionCRUDSerializer, self).create(validated_data)
 
     class Meta:
         model = RoleDescription
-        fields = ('created_at', 'name', 'slug')
+        fields = ('created_at', 'name', 'slug', 'is_global', 'roles')
 
 
 class AccessibleByQuerysetMixin(UserMixin):
@@ -189,12 +201,19 @@ class RoleDescriptionAPIViewSet(OrganizationMixin, ModelViewSet):
 
     def get_queryset(self):
         return super(RoleDescriptionAPIViewSet, self).get_queryset().filter(
-            organization=self.organization)
+            Q(organization=self.organization) | Q(organization__isnull=True))
 
-    def create(self, request, *args, **kwargs):
-        request.data['organization'] = self.organization
-        return super(RoleDescriptionAPIViewSet, self).create(
-            request, *args, **kwargs)
+    def abort_on_global_role_description(self, instance):
+        if instance.is_global():
+            raise PermissionDenied()
+
+    def perform_update(self, serializer):
+        self.abort_on_global_role_description(serializer.instance)
+        super(RoleDescriptionAPIViewSet, self).perform_update(serializer)
+
+    def perform_destroy(self, instance):
+        self.abort_on_global_role_description(instance)
+        super(RoleDescriptionAPIViewSet, self).perform_destroy(instance)
 
 
 class RoleQuerysetMixin(OrganizationMixin):

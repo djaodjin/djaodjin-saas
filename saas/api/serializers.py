@@ -235,18 +235,26 @@ class RoleDescriptionSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = RoleDescription
-        fields = ('created_at', 'name', 'slug', 'organization')
+        fields = ('created_at', 'name', 'slug', 'organization', 'is_global')
 
 
-class RoleSerializer(serializers.ModelSerializer):
+class BaseRoleSerializer(serializers.ModelSerializer):
 
-    organization = OrganizationSerializer(read_only=True)
     user = UserSerializer(read_only=True)
-    role_description = RoleDescriptionRelatedField(read_only=True)
 
     class Meta:
         model = get_role_model()
-        fields = ('created_at', 'organization', 'user', 'role_description',
-            'request_key', 'grant_key')
-        read_only_fields = ('created_at', 'role_description',
-            'request_key', 'grant_key')
+        fields = ('created_at', 'user', 'request_key', 'grant_key')
+        read_only_fields = ('created_at', 'request_key', 'grant_key')
+
+
+class RoleSerializer(BaseRoleSerializer):
+
+    organization = OrganizationSerializer(read_only=True)
+    role_description = RoleDescriptionRelatedField(read_only=True)
+
+    class Meta(BaseRoleSerializer.Meta):
+        fields = BaseRoleSerializer.Meta.fields + (
+            'organization', 'role_description')
+        read_only_fields = BaseRoleSerializer.Meta.read_only_fields + (
+            'role_description',)
