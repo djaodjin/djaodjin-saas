@@ -537,6 +537,103 @@ transactionControllers.controller("userRelationListCtrl",
 }]);
 
 
+transactionControllers.controller("userRoleDescriptionCtrl",
+    ["$scope", "$controller", "$http", "$timeout", "$attrs", "settings",
+    function($scope, $controller, $http, $timeout, $attrs, settings) {
+    "use strict";
+
+    $scope.newRoleDescription = null;
+    $scope.newRole = null;
+    $scope.selectedRoleDescription = null;
+    $scope.organization = $attrs.saasOrganization;
+
+    var opts = angular.merge({
+        autoload: true,
+        urls: {api_items: settings.urls.saas_api_role_descriptions_url}}, settings);
+    $controller("itemsListCtrl", {
+        $scope: $scope, $http: $http, $timeout: $timeout,
+        settings: opts});
+
+    $scope.addRoleDescription = function() {
+        $scope.newRoleDescription = null;
+        var dialog = angular.element("#new-role-description");
+        if (dialog.data("bs.modal")) {
+            dialog.modal("show");
+        }
+    };
+
+    $scope.createRoleDescription = function() {
+        $http.post(settings.urls.saas_api_role_descriptions_url,
+                   $scope.newRoleDescription).then(function() {
+            var dialog = angular.element("#new-role-description");
+            if (dialog.data("bs.modal")) {
+                dialog.modal("hide");
+            }
+            $scope.refresh();
+        });
+    };
+
+    $scope.deleteRoleDescription = function(roleDescription) {
+        var url = settings.urls.saas_api_role_descriptions_url +
+                  "/" + roleDescription.slug;
+
+        $http.delete(url).then(function() {
+            $scope.refresh();
+        });
+    }
+
+    $scope.addRole = function(roleDescription) {
+        $scope.newRole = null;
+        $scope.selectedRoleDescription = roleDescription;
+        var dialog = angular.element("#new-role");
+        if (dialog.data("bs.modal")) {
+            dialog.modal("show");
+        }
+    };
+
+    $scope.createRole = function() {
+        var url = settings.urls.api_organizations +
+                  $scope.organization + "/roles/" +
+                  $scope.selectedRoleDescription.slug + "/";
+
+        $http.post(url, $scope.newRole).then(function() {
+            $scope.refresh();
+        }).catch(function(response) {
+            if (response.status === 404) {
+                showErrorMessages("The user doesn't exists");
+            } else {
+                showErrorMessages(response.statusText);
+            }
+        }).finally(function() {
+            var dialog = angular.element("#new-role");
+            if (dialog.data("bs.modal")) {
+                dialog.modal("hide");
+            }
+        });
+    };
+
+    $scope.deleteRole = function(roleDescription, role) {
+        var url = settings.urls.api_organizations +
+                  $scope.organization + "/roles/" +
+                  roleDescription.slug + "/" + role.user.slug + "/";
+
+        if (role.user.slug === settings.user.slug) {
+            if (!confirm("You are about to delete yourself from this organization " +
+                         "as " + roleDescription.name + ", it's possible that you " +
+                         "no longer can manage this organization after perform this " +
+                         "action.\n\nDo you want to delete yourself from this " +
+                         "organization?")) {
+                return
+            }
+        }
+
+        $http.delete(url).then(function() {
+            $scope.refresh();
+        });
+    }
+}]);
+
+
 subscriptionControllers.controller("subscriptionListCtrl",
     ["$scope", "$http", "$timeout", "settings",
     function($scope, $http, $timeout, settings) {

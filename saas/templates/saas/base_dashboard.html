@@ -34,6 +34,9 @@ urls: {
 {% if urls.organization.api_roles %}
     saas_api_user_roles_url: "{{ urls.organization.api_roles }}",
 {% endif %}
+{% if urls.organization.api_role_descriptions %}
+    saas_api_role_descriptions_url: "{{ urls.organization.api_role_descriptions }}",
+{% endif %}
     /* subscriptions */
     api_organizations: "{{ urls.organization.api_profile_base }}",
     saas_api_subscriptions: "{{ urls.organization.api_subscriptions }}",
