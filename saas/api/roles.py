@@ -61,6 +61,7 @@ class RoleDescriptionCRUDRoleSerializer(BaseRoleSerializer):
 
 class RoleDescriptionCRUDSerializer(serializers.ModelSerializer):
     roles = serializers.SerializerMethodField()
+    slug = serializers.CharField(required=False)
 
     def get_roles(self, obj):
         roles_queryset = obj.role_set.filter(
