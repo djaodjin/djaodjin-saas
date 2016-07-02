@@ -70,7 +70,14 @@ tables: {% if tables %}{{tables|safe}}{% else %}{}{% endif %}, // XXX
 date_range: {
     start_at: {% if start_at %}"{{start_at}}"{% else %}""{% endif %},
     ends_at: {% if ends_at %}"{{ends_at}}"{% else %}""{% endif %}
-}});
+},
+user: {
+    username: "{{request.user.username}}",
+    slug: "{{request.user.username}}",
+    first_name: "{{request.user.first_name}}",
+    last_name: "{{request.user.last_name}}"
+}
+});
 </script>
 {% endif %}
 {% block dashboard_bodyscripts %}{% endblock %}
