@@ -63,7 +63,7 @@ class RoleDetailView(OrganizationMixin, TemplateView):
       - ``organization`` The organization object users have permissions to.
       - ``request`` The HTTP request object
     """
-    template_name = 'saas/profile/roles.html'
+    template_name = 'saas/profile/role_detail.html'
 
     def get_context_data(self, **kwargs):
         context = super(RoleDetailView, self).get_context_data(**kwargs)
@@ -85,7 +85,7 @@ class RoleDetailView(OrganizationMixin, TemplateView):
 
 class RoleListView(OrganizationMixin, TemplateView):
     """
-    List all ``RoleDescriptor`` for an organization and the users
+    List all ``RoleDescription`` for an organization and the users
     under each role.
     """
 
@@ -94,8 +94,8 @@ class RoleListView(OrganizationMixin, TemplateView):
     def get_context_data(self, **kwargs):
         context = super(RoleListView, self).get_context_data(**kwargs)
         urls_organization = {
-            'api_roles': reverse(
-                'saas_api_roles', args=(self.organization)),
+            'api_role_descriptions': reverse(
+                'saas_api_role_description_list', args=(self.organization.slug,)),
         }
         if 'urls' in context:
             if 'organization' in context['urls']:

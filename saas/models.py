@@ -738,6 +738,9 @@ class RoleDescription(models.Model):
             self.slug = self.normalize_slug(slugify(self.name))
         super(RoleDescription, self).save(**kwargs)
 
+    def is_global(self):
+        return self.organization is None
+
     @staticmethod
     def normalize_slug(slug):
         slug = slug.lower()

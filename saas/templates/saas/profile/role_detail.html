@@ -1,0 +1,56 @@
+{% extends "saas/base_dashboard.html" %}
+
+{% block saas_title %}Roles{% endblock %}
+
+{% block saas_content %}
+<section id="roles" ng-app="saasApp">
+  <div ng-controller="userRoleDescriptionCtrl">
+    <form>
+      <input name="user" type="text" ng-model="item.slug" placeholder="Username or Email" />
+      <input type="submit" ng-click="save($event)" />
+    </form>
+    <h2 ng-hide="items.$resolved">Please wait...</h2>
+    <h2 ng-show="items.$resolved && items.results.length == 0"><em>No roles assigned yet</em></h2>
+    <table ng-show="items.$resolved && items.results.length > 0">
+      <thead>
+        <tr>
+          <th>Username</th>
+          <th>Role</th>
+          <th>Email</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr id="[[item.user.slug]]" ng-repeat="item in items.results" ng-cloak>
+          <td>[[item.user.slug]]</td>
+          <td>[[item.role_description.name]]</td>
+          <td>[[item.user.email]]</td>
+          <td><button ng-click="remove($event, $index)">Remove</button></td>
+        </tr>
+      </tbody>
+    </table>
+    <!-- modal -->
+    <div id="new-user-relation">
+      <p>
+If the user couldn't be found in the system, it is a great occasion to invite
+them.
+      </p>
+      <label>The following invite message will be sent:</label>
+      <input ng-model="item.email" name="email" type="text" max-length="150"
+             placeholder="invitee@example.com" />
+      <select ng-model="item.email" />
+      <textarea class="form-control form-control"
+                name="message" maxlength="255" type="text" rows="10">
+Hello,
+
+I am adding to {{organization.printable_name}}.
+
+Thank you,
+- {{request.user.first_name}}
+      </textarea>
+      <button id="new-rule-submit" ng-click="create($event)"
+              type="button">Invite user</button>
+    </div>
+  </div>
+</section>
+{% endblock %}
