@@ -197,8 +197,8 @@ class CartItemSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = CartItem
-        fields = ('user',
-            'plan', 'nb_periods', 'first_name', 'last_name', 'email')
+        fields = ('created_at', 'user', 'plan',
+            'nb_periods', 'first_name', 'last_name', 'email')
 
 
 class InvoicableSerializer(serializers.Serializer):
