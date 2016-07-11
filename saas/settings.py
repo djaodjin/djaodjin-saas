@@ -100,6 +100,7 @@ _SETTINGS = {
     'ROLE_RELATION': 'saas.Role',
     'SKIP_PERMISSION_CHECK': False,
     'TERMS_OF_USE': 'terms-of-use',
+    'DEFAULT_UNIT': 'usd',
 }
 _SETTINGS.update(getattr(settings, 'SAAS', {}))
 
@@ -125,6 +126,7 @@ BROKER_CALLABLE = _SETTINGS.get('BROKER_CALLABLE')
 PROVIDER_SITE_CALLABLE = _SETTINGS.get('PROVIDER_SITE_CALLABLE')
 ROLE_RELATION = _SETTINGS.get('ROLE_RELATION')
 TERMS_OF_USE = _SETTINGS.get('TERMS_OF_USE')
+DEFAULT_UNIT = _SETTINGS.get('DEFAULT_UNIT')
 
 # BE EXTRA CAREFUL! This variable is used to bypass PermissionDenied
 # exceptions. It is solely intended as a debug flexibility nob.

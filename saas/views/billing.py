@@ -253,7 +253,7 @@ class InvoicablesFormMixin(OrganizationMixin):
         context = super(InvoicablesFormMixin, self).get_context_data(**kwargs)
         context.update(self.get_redirect_path())
         lines_amount = 0
-        lines_unit = 'usd'
+        lines_unit = settings.DEFAULT_UNIT
         for invoicable in self.invoicables:
             if len(invoicable['options']) > 0:
                 # In case it is pure options, no lines.
