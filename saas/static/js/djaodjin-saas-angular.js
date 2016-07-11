@@ -823,7 +823,12 @@ transactionControllers.controller("transactionListCtrl",
     $controller("itemsListCtrl", {
         $scope: $scope, $http: $http, $timeout:$timeout,
         settings: opts});
+}]);
 
+
+transactionControllers.controller("billingSummaryCtrl",
+    ["$scope", "$controller", "$http", "$timeout", "settings",
+    function($scope, $controller, $http, $timeout, settings) {
     $scope.last4 = "N/A";
     $scope.bank_name = "N/A";
     $scope.balance_amount = "N/A";
