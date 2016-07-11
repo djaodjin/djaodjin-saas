@@ -2,7 +2,7 @@
 
 {% block saas_content %}
 <div ng-app="saasApp">
-  <div ng-controller="transactionListCtrl">
+  <div ng-controller="billingSummaryCtrl">
     <section id="info">
       <h1>Deposit Information <a id="update_bank" href="{{urls.provider.bank}}">Update</a></h1>
       <div>
@@ -23,12 +23,12 @@
         <dd>Available (<a href="{{urls.provider.withdraw_funds}}">withdraw</a>)</dd>
       </dl>
     </section>
-    {% include "saas/_transactions.html" %}
-    <section>
-      <div>
-        <a href="{{urls.provider.import_transactions}}">Add offline transaction</a>
-      </div>
-    </section>
   </div>
+  {% include "saas/_transactions.html" %}
+  <section>
+    <div>
+      <a href="{{urls.provider.import_transactions}}">Add offline transaction</a>
+    </div>
+  </section>
 </div>
 {% endblock %}
