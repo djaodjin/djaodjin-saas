@@ -843,6 +843,20 @@ transactionControllers.controller("billingSummaryCtrl",
 }]);
 
 
+transactionControllers.controller("chargeListCtrl",
+    ["$scope", "$controller", "$http", "$timeout", "settings",
+    function($scope, $controller, $http, $timeout, settings) {
+    var opts = angular.merge({
+        autoload: true,
+        sortByField: "created_at",
+        sortDirection: "desc",
+        urls: {api_items: settings.urls.api_charges}}, settings);
+    $controller("itemsListCtrl", {
+        $scope: $scope, $http: $http, $timeout:$timeout,
+        settings: opts});
+}]);
+
+
 metricsControllers.controller("metricsCtrl",
     ["$scope", "$http", "settings",
     function($scope, $http, settings) {

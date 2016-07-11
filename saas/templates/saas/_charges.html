@@ -1,0 +1,29 @@
+<section id="charges" ng-controller="chargeListCtrl">
+  <h1>Charges</h1>
+  <table>
+    <thead>
+      <tr>
+        <th>Date</th>
+        <th>Amount</th>
+        <th>State</th>
+        <th>Description</th>
+        <th><label>Filter</label> <input type="text" ng-model="filterExpr" ng-change="filterList(filterExpr)" /></th>
+      </tr>
+    </thead>
+    <tbody ng-show="items.$resolved && items.results.length == 0">
+      <tr>
+        <td colspan="3">
+          <h4 class="text-center"><em>No charges<span ng-show="filterExpr"> [[filterExpr]]</span></em></h4>
+        </td>
+      </tr>
+    </tbody>
+    <tbody id="has-charges" ng-show="items.$resolved && items.results.length > 0">
+      <tr ng-repeat="entry in items.results">
+        <td>[[entry.created_at | date : mediumDate]]</td>
+        <td>[[entry.readable_amount]]</td>
+        <td>[[entry.state]]</td>
+        <td colspan="2" ng-bind-html="entry.description | unsafe"></td>
+      </tr>
+    </tbody>
+  </table>
+</section>
