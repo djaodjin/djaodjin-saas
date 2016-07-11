@@ -73,11 +73,15 @@ class BalanceLineSerializer(serializers.ModelSerializer):
 class ChargeSerializer(serializers.ModelSerializer):
 
     state = serializers.CharField(source='get_state_display')
+    readable_amount = serializers.SerializerMethodField()
+
+    def get_readable_amount(self, charge):
+        return as_money(charge.amount, charge.unit)
 
     class Meta:
         model = Charge
-        fields = ('created_at', 'amount', 'unit', 'description',
-                  'last4', 'exp_date', 'processor_key', 'state')
+        fields = ('created_at', 'amount', 'unit', 'readable_amount',
+                  'description', 'last4', 'exp_date', 'processor_key', 'state')
 
 
 class OrganizationSerializer(serializers.ModelSerializer):
