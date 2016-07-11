@@ -35,7 +35,7 @@ from rest_framework.response import Response
 from .serializers import ChargeSerializer
 from .. import signals
 from ..models import Charge, InsufficientFunds
-from ..mixins import ChargeMixin, DateRangeMixin
+from ..mixins import ChargeMixin, DateRangeMixin, OrganizationMixin
 
 #pylint: disable=no-init
 #pylint: disable=old-style-class
@@ -70,6 +70,7 @@ class ChargeResourceView(RetrieveChargeMixin, RetrieveAPIView):
 
         {
             "created_at": "2016-01-01T00:00:00Z",
+            "readable_amount": "$1121.20",
             "amount": 112120,
             "unit": "usd",
             "description": "Charge for subscription to cowork open-space",
@@ -106,13 +107,14 @@ class SmartChargeListMixin(SortableListMixin, DateRangeMixin,
     """
     Subscriber list which is also searchable and sortable.
     """
-    search_fields = ['descr',
+    search_fields = ['description',
                      'processor_key',
                      'customer__full_name']
 
-    sort_fields_aliases = [('descr', 'description'),
+    sort_fields_aliases = [('description', 'description'),
                            ('amount', 'amount'),
-                           ('customer__full_name', 'Full name')]
+                           ('customer__full_name', 'Full name'),
+                           ('created_at', 'created_at')]
 
 
 class ChargeQuerysetMixin(object):
@@ -147,6 +149,53 @@ class ChargeListAPIView(SmartChargeListMixin,
             "previous": null,
             "results": [{
                 "created_at": "2016-01-01T00:00:00Z",
+                "readable_amount": "$1121.20",
+                "amount": 112120,
+                "unit": "usd",
+                "description": "Charge for subscription to cowork open-space",
+                "last4": "1234",
+                "exp_date"" "12/2016",
+                "processor_key": "ch_XAb124EF",
+                "state": "DONE"
+            } ...]
+    """
+    serializer_class = ChargeSerializer
+    pagination_class = TotalPagination
+
+
+class OrganizationChargeQuerysetMixin(OrganizationMixin):
+
+    def get_queryset(self):
+        return Charge.objects.by_customer(self.organization)
+
+
+class OrganizationChargeListAPIView(SmartChargeListMixin,
+                                    OrganizationChargeQuerysetMixin,
+                                    ListAPIView):
+
+    """
+    List of ``Charge``.
+
+    **Example request**:
+
+    .. sourcecode:: http
+
+        GET /api/charges?start_at=2015-07-05T07:00:00.000Z\
+&o=date&ot=desc
+
+    **Example response**:
+
+    .. sourcecode:: http
+
+        {
+            "count": 1,
+            "unit": "usd",
+            "total": "112120",
+            "next": null,
+            "previous": null,
+            "results": [{
+                "created_at": "2016-01-01T00:00:00Z",
+                "readable_amount": "$1121.20",
                 "amount": 112120,
                 "unit": "usd",
                 "description": "Charge for subscription to cowork open-space",
@@ -189,6 +238,7 @@ class ChargeRefundAPIView(RetrieveChargeMixin, RetrieveAPIView):
 
         {
             "created_at": "2016-01-01T00:00:00Z",
+            "readable_amount": "$1121.20",
             "amount": 112120,
             "unit": "usd",
             "description": "Charge for subscription to cowork open-space",
