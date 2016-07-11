@@ -24,6 +24,9 @@
 
 import datetime, re
 
+from . import settings
+
+
 HOURLY = 1 # XXX to avoid import loop
 
 DESCRIBE_BALANCE = \
@@ -66,7 +69,7 @@ DESCRIBE_UNLOCK_LATER = \
     "Access %(plan)s Today. Pay %(amount)s later to %(unlock_event)s."
 
 
-def as_money(value, currency='usd'):
+def as_money(value, currency=settings.DEFAULT_UNIT):
     unit_prefix = ''
     unit_suffix = ''
     negative = False
