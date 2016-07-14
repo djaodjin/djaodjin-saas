@@ -8,6 +8,23 @@
           <em>{{entry.subscription.plan.title}} from {{entry.subscription.plan.organization.printable_name}}</em>
         </td>
       </tr>
+      {% if is_bulk_buyer %}
+      <tr class="seat">
+        <td colspan="3">
+          <input class="seat-first-name" type="text" placeholder="First Name" />
+          <input class="seat-last-name" type="text" placeholder="Last Name" />
+          <input class="seat-email" type="text" placeholder="Email" />
+          <button type="button" class="add-seat" type="button">Add</button>
+        </td>
+      </tr>
+      <tr class="seat-file-upload">
+        <td colspan="3">
+          <label>Upload CSV:</label>
+          <input class="seat-file" type="file" />
+          <button type="button" class="seat-upload-file">Upload</button>
+        </td>
+      </tr>
+      {% endif %}
     {% endif %}
       {% for line in entry.lines %}
       <tr class="invoice-item">
@@ -25,16 +42,6 @@
         </td>
       </tr>
       {% endfor %}
-      {% if is_bulk_buyer %}
-      <tr class="seat">
-        <td colspan="3">
-          <input class="seat-first-name" type="text" placeholder="First Name" />
-          <input class="seat-last-name" type="text" placeholder="Last Name" />
-          <input class="seat-email" type="text" placeholder="Email" />
-          <button type="button" class="add-seat" type="button">Add</button>
-        </td>
-      </tr>
-      {% endif %}
     {% if entry.is_changed %}
     </tbody>
     {% endif %}
