@@ -838,6 +838,9 @@ class Signature(models.Model):
 
 class ChargeManager(models.Manager):
 
+    def by_customer(self, organization):
+        return self.filter(customer=organization)
+
     def create_charge(self, customer, transactions, amount, unit,
                       processor, processor_charge_id, last4, exp_date,
                       descr=None, created_at=None):

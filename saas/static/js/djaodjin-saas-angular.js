@@ -823,7 +823,12 @@ transactionControllers.controller("transactionListCtrl",
     $controller("itemsListCtrl", {
         $scope: $scope, $http: $http, $timeout:$timeout,
         settings: opts});
+}]);
 
+
+transactionControllers.controller("billingSummaryCtrl",
+    ["$scope", "$controller", "$http", "$timeout", "settings",
+    function($scope, $controller, $http, $timeout, settings) {
     $scope.last4 = "N/A";
     $scope.bank_name = "N/A";
     $scope.balance_amount = "N/A";
@@ -835,6 +840,20 @@ transactionControllers.controller("transactionListCtrl",
             $scope.balance_amount = data.balance_amount;
         });
     }
+}]);
+
+
+transactionControllers.controller("chargeListCtrl",
+    ["$scope", "$controller", "$http", "$timeout", "settings",
+    function($scope, $controller, $http, $timeout, settings) {
+    var opts = angular.merge({
+        autoload: true,
+        sortByField: "created_at",
+        sortDirection: "desc",
+        urls: {api_items: settings.urls.api_charges}}, settings);
+    $controller("itemsListCtrl", {
+        $scope: $scope, $http: $http, $timeout:$timeout,
+        settings: opts});
 }]);
 
 

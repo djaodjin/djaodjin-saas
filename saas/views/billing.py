@@ -520,6 +520,8 @@ djaodjin-saas/tree/master/saas/templates/saas/billing/transfers.html>`__).
         context.update({
             'saas_api_transactions': reverse(
                 'saas_api_transfer_list', args=(self.provider,)),
+            'saas_api_charges': reverse(
+                'saas_api_organization_charges', args=(self.organization,)),
             'download_url': reverse(
                 'saas_transfers_download', kwargs=self.get_url_kwargs())})
         urls = {'provider': {
