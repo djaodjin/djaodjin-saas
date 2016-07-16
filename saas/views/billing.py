@@ -265,7 +265,7 @@ class InvoicablesFormMixin(OrganizationMixin):
                 lines_unit = line.dest_unit
         current_plan = None
         self.invoicables.sort(
-            key=lambda invoicable: invoicable['subscription'].plan)
+            key=lambda invoicable: str(invoicable['subscription']))
         for invoicable in self.invoicables:
             plan = invoicable['subscription'].plan
             invoicable['is_changed'] = (plan != current_plan)

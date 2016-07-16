@@ -26,6 +26,7 @@
 APIs for cart and checkout functionality.
 """
 
+import csv
 import logging
 
 from django.core.exceptions import MultipleObjectsReturned
@@ -33,6 +34,7 @@ from django.shortcuts import get_object_or_404
 from rest_framework.generics import (CreateAPIView, DestroyAPIView,
     ListCreateAPIView)
 from rest_framework.response import Response
+from rest_framework.views import APIView
 from rest_framework import serializers, status
 
 from ..backends import ProcessorError
@@ -135,6 +137,88 @@ class CartItemAPIView(CartMixin, CreateAPIView):
                 return Response(cart_item, status=status.HTTP_200_OK,
                     headers=headers)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class CartItemUploadAPIView(CartMixin, APIView):
+    """
+    Add a ``Plan`` into the subscription cart of multiple users as per the
+    content of an uploaded file.
+
+    This works bulk fashion of :ref:`/cart/ endpoint<api_cart>`. The
+    uploaded file must be a CSV containing the fields ``first_name``,
+    ``last_name`` and ``email``. The CSV file must not contain a header
+    line, only data.
+
+    **Example request**:
+
+    Content of ``names.csv``:
+
+    .. sourcecode
+
+        Joe,Smith,joesmith@example.com
+        Marie,Johnson,mariejohnson@example.com
+
+    .. sourcecode:: http
+
+        POST /api/cart/:plan/upload/
+
+        Content-Disposition: form-data; name="file"; filename="names.csv"
+        Content-Type: text/csv
+
+    **Example response**:
+
+    .. sourcecode:: http
+
+        {
+            "created" [
+                {
+                    "first_name": "Joe",
+                    "last_name": "Smith",
+                    "email": "joesmith@example.com"
+                },
+                {
+                    "first_name": "Marie",
+                    "last_name": "Johnson",
+                    "email": "mariejohnson@example.com"
+                }
+            ],
+            "updated": [],
+            "failed": []
+        }
+    """
+
+    def post(self, request, *args, **kwargs):
+        plan = kwargs.get('plan')
+        file = csv.reader(request.FILES['file'])
+        response = {'created': [],
+                    'updated': [],
+                    'failed': []}
+
+        for row in file:
+            try:
+                first_name, last_name, email = row
+            except Exception:
+                response['failed'].append({'data': {'raw': row},
+                                           'error': 'Unable to parse row'})
+            else:
+                serializer = CartItemCreateSerializer(data={'plan': plan,
+                                                            'first_name': first_name,
+                                                            'last_name': last_name,
+                                                            'email': email})
+
+                if serializer.is_valid():
+                    cart_item, created = self.insert_item(request, **serializer.data)
+                    if isinstance(cart_item, CartItem):
+                        cart_item = serializer.to_representation(cart_item)
+                    if created:
+                        response['created'].append(cart_item)
+                    else:
+                        response['updated'].append(cart_item)
+                else:
+                    response['failed'].append({'data': serializer.data,
+                                               'error': serializer.errors})
+
+        return Response(response)
 
 
 class CartItemDestroyAPIView(DestroyAPIView):
