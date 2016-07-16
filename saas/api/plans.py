@@ -32,6 +32,7 @@ from rest_framework.response import Response
 from .serializers import PlanSerializer
 from ..mixins import ProviderMixin
 from ..models import Plan, Subscription
+from .. import settings
 
 #pylint: disable=no-init
 #pylint: disable=old-style-class
@@ -60,7 +61,7 @@ class PlanMixin(ProviderMixin):
             if first_plan:
                 unit = first_plan.unit
             else:
-                unit = 'usd'
+                unit = settings.DEFAULT_UNIT
         serializer.save(organization=self.provider,
             slug=self.slugify(serializer.validated_data['title']),
             unit=unit)

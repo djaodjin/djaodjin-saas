@@ -27,6 +27,7 @@ from django.core.urlresolvers import NoReverseMatch, reverse
 from django.shortcuts import get_object_or_404
 
 from .utils import get_role_model, get_organization_model
+from . import settings
 
 
 class OrganizationMixinBase(object):
@@ -152,6 +153,7 @@ class OrganizationMixinBase(object):
                     context['urls'].update({key: val})
         else:
             context.update({'urls': urls})
+        context['default_unit'] = settings.DEFAULT_UNIT
         return context
 
     @property

@@ -615,7 +615,7 @@ class Organization(models.Model):
         if user:
             descr += ' (%s)' % user.username
         self.processor_backend.create_transfer(
-            self, amount, currency='usd', descr=descr)
+            self, amount, currency=settings.DEFAULT_UNIT, descr=descr)
         # We will wait on a call to ``reconcile_transfers`` to create
         # those ``Trnansaction`` in the database.
 
@@ -964,7 +964,7 @@ class Charge(models.Model):
 
     created_at = models.DateTimeField(auto_now_add=True)
     amount = models.PositiveIntegerField(default=0, help_text="Amount in cents")
-    unit = models.CharField(max_length=3, default='usd')
+    unit = models.CharField(max_length=3, default=settings.DEFAULT_UNIT)
     customer = models.ForeignKey(Organization,
         help_text='organization charged')
     description = models.TextField(null=True)
@@ -1474,9 +1474,9 @@ class ChargeItem(models.Model):
         customer = invoiced_item.dest_organization
         invoiced_distribute = self.invoiced_distribute
         if not processor_unit:
-            processor_unit = 'usd' # XXX
+            processor_unit = settings.DEFAULT_UNIT # XXX
         if not provider_unit:
-            provider_unit = 'usd' # XXX
+            provider_unit = settings.DEFAULT_UNIT # XXX
         refunded_fee_amount = 0
         if invoiced_fee:
             refunded_fee_amount = min(
@@ -1717,7 +1717,7 @@ class Plan(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     discontinued_at = models.DateTimeField(null=True, blank=True)
     organization = models.ForeignKey(Organization, related_name='plans')
-    unit = models.CharField(max_length=3, default='usd')
+    unit = models.CharField(max_length=3, default=settings.DEFAULT_UNIT)
     setup_amount = models.PositiveIntegerField(default=0,
         help_text=_('One-time charge amount (in cents).'))
     period_amount = models.PositiveIntegerField(default=0,
@@ -2928,7 +2928,7 @@ class Transaction(models.Model):
         related_name="outgoing")
     orig_amount = models.PositiveIntegerField(default=0,
         help_text=_('amount withdrawn from origin in origin units'))
-    orig_unit = models.CharField(max_length=3, default="usd",
+    orig_unit = models.CharField(max_length=3, default=settings.DEFAULT_UNIT,
         help_text=_('Measure of units on origin account'))
 
     dest_account = models.CharField(max_length=255, default="unknown")
@@ -2936,7 +2936,7 @@ class Transaction(models.Model):
         related_name="incoming")
     dest_amount = models.PositiveIntegerField(default=0,
         help_text=_('amount deposited into destination in destination units'))
-    dest_unit = models.CharField(max_length=3, default="usd",
+    dest_unit = models.CharField(max_length=3, default=settings.DEFAULT_UNIT,
         help_text=_('Measure of units on destination account'))
 
     # Optional

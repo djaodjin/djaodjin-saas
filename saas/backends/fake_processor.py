@@ -25,6 +25,7 @@
 import datetime, logging
 
 from ..utils import datetime_or_now, generate_random_slug
+from .. import settings
 
 
 LOGGER = logging.getLogger(__name__)
@@ -33,7 +34,7 @@ LOGGER = logging.getLogger(__name__)
 class FakeProcessorBackend(object):
 
     @staticmethod
-    def charge_distribution(charge, refunded=0, unit='usd'):
+    def charge_distribution(charge, refunded=0, unit=settings.DEFAULT_UNIT):
         # Stripe processing fee associated to a transaction
         # is 2.9% + 30 cents.
         # Stripe rounds up so we do the same here. Be careful Python 3.x
