@@ -139,7 +139,8 @@ class StripeBackend(object):
             all_custs = response['data']
         return customers
 
-    def charge_distribution(self, charge, refunded=0, unit=settings.DEFAULT_UNIT):
+    def charge_distribution(self, charge,
+                            refunded=0, unit=settings.DEFAULT_UNIT):
         if charge.unit != unit:
             # Avoids an HTTP request to Stripe API when we can compute it.
             kwargs = self._prepare_charge_request(charge.broker)

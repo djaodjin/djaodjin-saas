@@ -189,25 +189,26 @@ class CartItemUploadAPIView(CartMixin, APIView):
 
     def post(self, request, *args, **kwargs):
         plan = kwargs.get('plan')
-        file = csv.reader(request.FILES['file'])
+        filed = csv.reader(request.FILES['file'])
         response = {'created': [],
                     'updated': [],
                     'failed': []}
 
-        for row in file:
+        for row in filed:
             try:
                 first_name, last_name, email = row
-            except Exception:
+            except csv.Error:
                 response['failed'].append({'data': {'raw': row},
                                            'error': 'Unable to parse row'})
             else:
-                serializer = CartItemCreateSerializer(data={'plan': plan,
-                                                            'first_name': first_name,
-                                                            'last_name': last_name,
-                                                            'email': email})
-
+                serializer = CartItemCreateSerializer(
+                    data={'plan': plan,
+                          'first_name': first_name,
+                          'last_name': last_name,
+                          'email': email})
                 if serializer.is_valid():
-                    cart_item, created = self.insert_item(request, **serializer.data)
+                    cart_item, created = self.insert_item(
+                        request, **serializer.data)
                     if isinstance(cart_item, CartItem):
                         cart_item = serializer.to_representation(cart_item)
                     if created:

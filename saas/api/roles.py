@@ -204,16 +204,17 @@ class RoleDescriptionAPIViewSet(OrganizationMixin, ModelViewSet):
         return super(RoleDescriptionAPIViewSet, self).get_queryset().filter(
             Q(organization=self.organization) | Q(organization__isnull=True))
 
-    def abort_on_global_role_description(self, instance):
+    @staticmethod
+    def check_local(instance):
         if instance.is_global():
             raise PermissionDenied()
 
     def perform_update(self, serializer):
-        self.abort_on_global_role_description(serializer.instance)
+        self.check_local(serializer.instance)
         super(RoleDescriptionAPIViewSet, self).perform_update(serializer)
 
     def perform_destroy(self, instance):
-        self.abort_on_global_role_description(instance)
+        self.check_local(instance)
         super(RoleDescriptionAPIViewSet, self).perform_destroy(instance)
 
 
