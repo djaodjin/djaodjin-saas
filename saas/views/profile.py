@@ -69,17 +69,11 @@ class RoleDetailView(OrganizationMixin, TemplateView):
         context = super(RoleDetailView, self).get_context_data(**kwargs)
         role = self.kwargs.get('role', None)
         context.update({'role': role})
-        urls_organization = {
+        urls = {'organization': {
             'api_roles': reverse(
                 'saas_api_role_filtered_list', args=(self.organization, role)),
-        }
-        if 'urls' in context:
-            if 'organization' in context['urls']:
-                context['urls']['organization'].update(urls_organization)
-            else:
-                context['urls'].update({'organization': urls_organization})
-        else:
-            context.update({'urls': {'organization': urls_organization}})
+        }}
+        self.update_context_urls(context, urls)
         return context
 
 
@@ -93,17 +87,13 @@ class RoleListView(OrganizationMixin, TemplateView):
 
     def get_context_data(self, **kwargs):
         context = super(RoleListView, self).get_context_data(**kwargs)
-        urls_organization = {
+        urls = {'organization': {
+            'api_roles': reverse(
+                'saas_api_role_list', args=(self.organization,)),
             'api_role_descriptions': reverse(
-                'saas_api_role_description_list', args=(self.organization.slug,)),
-        }
-        if 'urls' in context:
-            if 'organization' in context['urls']:
-                context['urls']['organization'].update(urls_organization)
-            else:
-                context['urls'].update({'organization': urls_organization})
-        else:
-            context.update({'urls': {'organization': urls_organization}})
+                'saas_api_role_description_list', args=(self.organization,)),
+        }}
+        self.update_context_urls(context, urls)
         return context
 
 

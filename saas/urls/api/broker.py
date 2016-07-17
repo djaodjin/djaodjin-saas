@@ -30,12 +30,15 @@ from django.conf.urls import url
 
 from ... import settings
 from ...api.balances import BalanceLineListAPIView, BrokerBalancesAPIView
+from ...api.charges import OrganizationChargeListAPIView
 from ...api.transactions import TransactionListAPIView
 from ...api.users import RegisteredAPIView, UserListAPIView
 
 urlpatterns = [
     url(r'^billing/transactions/?',
         TransactionListAPIView.as_view(), name='saas_api_transactions'),
+    url(r'^charges/?', OrganizationChargeListAPIView.as_view(),
+        name='saas_api_charges'),
     url(r'^metrics/balances/(?P<report>%s)/?' % settings.ACCT_REGEX,
         BrokerBalancesAPIView.as_view(), name='saas_api_broker_balances'),
     url(r'^metrics/lines/(?P<report>%s)/?' % settings.ACCT_REGEX,

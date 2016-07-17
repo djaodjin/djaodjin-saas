@@ -26,8 +26,11 @@ from django.contrib.auth import get_user_model
 from django.core.urlresolvers import NoReverseMatch, reverse
 from django.shortcuts import get_object_or_404
 
+# Implementation Note:
+#
+# saas.settings cannot be imported at this point because this file will
+# be imported before ``django.conf.settings`` is fully initialized.
 from .utils import get_role_model, get_organization_model
-from . import settings
 
 
 class OrganizationMixinBase(object):
@@ -145,6 +148,11 @@ class OrganizationMixinBase(object):
                 'api_users': reverse('saas_api_users'),
                 'api_users_registered': reverse('saas_api_registered'),
             }})
+        self.update_context_urls(context, urls)
+        return context
+
+    @staticmethod
+    def update_context_urls(context, urls):
         if 'urls' in context:
             for key, val in urls.iteritems():
                 if key in context['urls']:
@@ -153,7 +161,6 @@ class OrganizationMixinBase(object):
                     context['urls'].update({key: val})
         else:
             context.update({'urls': urls})
-        context['default_unit'] = settings.DEFAULT_UNIT
         return context
 
     @property

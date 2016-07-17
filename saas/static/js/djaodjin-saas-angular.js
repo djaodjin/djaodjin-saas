@@ -273,8 +273,8 @@ transactionControllers.controller("itemsListCtrl",
 
 
 transactionControllers.controller("relationListCtrl",
-    ["$scope", "$controller", "$http", "$timeout", "settings",
-    function($scope, $controller, $http, $timeout, settings) {
+    ["$scope", "$element", "$controller", "$http", "$timeout", "settings",
+    function($scope, $element, $controller, $http, $timeout, settings) {
     "use strict";
     $controller("itemsListCtrl", {
         $scope: $scope, $http: $http, $timeout:$timeout, settings: settings});
@@ -294,7 +294,13 @@ transactionControllers.controller("relationListCtrl",
 
     $scope.create = function($event) {
         $event.preventDefault();
-        var emailField = angular.element(settings.modalId + " [name='email']");
+        var dialog = $element.find(settings.modalSelector);
+        if( dialog ) {
+            if( dialog.data('bs.modal') ) {
+                dialog.modal("hide");
+            }
+        }
+        var emailField = dialog.find("[name='email']");
         if( emailField.val() === "" ) {
             var emailFieldGroup = emailField.parents(".form-group");
             var helpBlock = emailFieldGroup.find(".help-block");
@@ -304,12 +310,6 @@ transactionControllers.controller("relationListCtrl",
             emailFieldGroup.addClass("has-error");
             return;
         }
-        var dialog = angular.element(settings.modalId);
-        if( dialog ) {
-            if( dialog.data('bs.modal') ) {
-                dialog.modal("hide");
-            }
-        }
         if( !$scope.item ) {
             $scope.item = {};
         }
@@ -317,8 +317,7 @@ transactionControllers.controller("relationListCtrl",
               || typeof $scope.item.email === "undefined" ) {
             $scope.item.email = emailField.val();
         }
-        $scope.item.invite = angular.element(
-            settings.modalId + " [name='message']").val();
+        $scope.item.invite = dialog.find("[name='message']").val();
         $http.post(settings.urls.api_items + "?force=1", $scope.item).then(
             function success(resp) {
                 // XXX Couldn't figure out how to get the status code
@@ -347,7 +346,9 @@ transactionControllers.controller("relationListCtrl",
                 if( resp.status === 404 ) {
                     // XXX hack to set full_name when org does not exist.
                     $scope.item.full_name = $scope.item.slug;
-                    var dialog = angular.element(settings.modalId);
+                    // XXX hack to set email when user does not exist.
+                    $scope.item.email = $scope.item.slug;
+                    var dialog = $element.find(settings.modalSelector);
                     if( dialog ) {
                         dialog.modal("show");
                     }
@@ -360,6 +361,16 @@ transactionControllers.controller("relationListCtrl",
     $scope.remove = function ($event, idx) {
         $event.preventDefault();
         var slug = $($event.target).parents("[id]").attr("id");
+        if( settings.user
+            && $scope.items.results[idx].user.slug === settings.user.slug ) {
+            if( !confirm("You are about to delete yourself from this" +
+                         " role. it's possible that you no longer can manage" +
+                         " this organization after performing this " +
+                         " action.\n\nDo you want to remove yourself " +
+                         " from this organization?") ) {
+                return;
+            }
+        }
         $http.delete(settings.urls.api_items + '/' + slug).then(
             function success(resp) {
                 $scope.items.results.splice(idx, 1);
@@ -368,6 +379,7 @@ transactionControllers.controller("relationListCtrl",
                 showErrorMessages(resp);
             });
     };
+
 }]);
 
 
@@ -521,19 +533,24 @@ couponControllers.controller("CouponListCtrl",
 
 
 transactionControllers.controller("userRelationListCtrl",
-    ["$scope", "$controller", "$http", "$timeout", "settings",
-    function($scope, $controller, $http, $timeout, settings) {
+    ["$scope", "$element", "$attrs", "$controller",
+     "$http", "$timeout", "settings",
+    function($scope, $element, $attrs, $controller, $http, $timeout, settings) {
     "use strict";
+    var apiUrl = ($attrs.apiUrl && $scope.roleDescription
+                  && $scope.roleDescription.slug) ?
+        ($attrs.apiUrl + '/' + $scope.roleDescription.slug)
+        : settings.urls.saas_api_user_roles_url;
     var opts = angular.merge({
         autoload: true,
         sortByField: "username",
         sortDirection: "desc",
-        modalId: "#new-user-relation",
-        urls: {api_items: settings.urls.saas_api_user_roles_url,
+        modalSelector: ".add-role-modal",
+        urls: {api_items: apiUrl,
                api_candidates: settings.urls.api_users}}, settings);
     $controller("relationListCtrl", {
-        $scope: $scope, $http: $http, $timeout:$timeout,
-        settings: opts});
+        $scope: $scope, $element: $element, $controller: $controller,
+        $http: $http, $timeout:$timeout, settings: opts});
 }]);
 
 
@@ -557,9 +574,7 @@ transactionControllers.controller("userRoleDescriptionCtrl",
     $scope.addRoleDescription = function() {
         $scope.newRoleDescription = null;
         var dialog = angular.element("#new-role-description");
-        if (dialog.data("bs.modal")) {
-            dialog.modal("show");
-        }
+        console.log("XXX dialog=", dialog, "bs.modal=", dialog.data("bs.modal"));
     };
 
     $scope.createRoleDescription = function() {
@@ -576,56 +591,6 @@ transactionControllers.controller("userRoleDescriptionCtrl",
     $scope.deleteRoleDescription = function(roleDescription) {
         var url = settings.urls.saas_api_role_descriptions_url +
                   "/" + roleDescription.slug;
-
-        $http.delete(url).then(function() {
-            $scope.refresh();
-        });
-    }
-
-    $scope.addRole = function(roleDescription) {
-        $scope.newRole = null;
-        $scope.selectedRoleDescription = roleDescription;
-        var dialog = angular.element("#new-role");
-        if (dialog.data("bs.modal")) {
-            dialog.modal("show");
-        }
-    };
-
-    $scope.createRole = function() {
-        var url = settings.urls.api_organizations +
-                  $scope.organization + "/roles/" +
-                  $scope.selectedRoleDescription.slug + "/";
-
-        $http.post(url, $scope.newRole).then(function() {
-            $scope.refresh();
-        }).catch(function(response) {
-            if (response.status === 404) {
-                showErrorMessages("The user doesn't exists");
-            } else {
-                showErrorMessages(response.statusText);
-            }
-        }).finally(function() {
-            var dialog = angular.element("#new-role");
-            if (dialog.data("bs.modal")) {
-                dialog.modal("hide");
-            }
-        });
-    };
-
-    $scope.deleteRole = function(roleDescription, role) {
-        var url = settings.urls.api_organizations +
-                  $scope.organization + "/roles/" +
-                  roleDescription.slug + "/" + role.user.slug + "/";
-
-        if (role.user.slug === settings.user.slug) {
-            if (!confirm("You are about to delete yourself from this organization " +
-                         "as " + roleDescription.name + ", it's possible that you " +
-                         "no longer can manage this organization after perform this " +
-                         "action.\n\nDo you want to delete yourself from this " +
-                         "organization?")) {
-                return
-            }
-        }
 
         $http.delete(url).then(function() {
             $scope.refresh();
@@ -1217,19 +1182,19 @@ balanceControllers.controller("BalanceListCtrl",
 
 
 transactionControllers.controller("accessibleListCtrl",
-    ["$scope", "$controller", "$http", "$timeout", "settings",
-    function($scope, $controller, $http, $timeout, settings) {
+    ["$scope", "$element", "$controller", "$http", "$timeout", "settings",
+    function($scope, $element, $controller, $http, $timeout, settings) {
     "use strict";
     var opts = angular.merge({
         autoload: true,
         sortByField: "slug",
         sortDirection: "asc",
-        modalId: "#new-user-relation",
+        modalSelector: ".add-role-modal",
         urls: {api_items: settings.urls.api_accessibles,
                api_candidates: settings.urls.api_organizations}}, settings);
     $controller("relationListCtrl", {
-        $scope: $scope, $http: $http, $timeout:$timeout,
-        settings: opts});
+        $scope: $scope, $element: $element, $controller: $controller,
+        $http: $http, $timeout:$timeout, settings: opts});
 }]);
 
 
