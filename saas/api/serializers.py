@@ -75,7 +75,8 @@ class ChargeSerializer(serializers.ModelSerializer):
     state = serializers.CharField(source='get_state_display')
     readable_amount = serializers.SerializerMethodField()
 
-    def get_readable_amount(self, charge):
+    @staticmethod
+    def get_readable_amount(charge):
         return as_money(charge.amount, charge.unit)
 
     class Meta:
