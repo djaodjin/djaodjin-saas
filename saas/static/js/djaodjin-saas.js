@@ -283,7 +283,6 @@ CartItem.prototype = {
             self.element.find(".add-seat").click(function(event) {
                 event.preventDefault();
                 var subscription = $(this).parents("tbody");
-                var prevLine = $(this).parents("tr").prev();
                 var seatFirstName = subscription.find(".seat-first-name");
                 var seatLastName = subscription.find(".seat-last-name");
                 var seatEmail = subscription.find(".seat-email");
@@ -297,22 +296,11 @@ CartItem.prototype = {
                 seatLastName.val("");
                 seatEmail.val("");
                 item.add(function(data, textStatus, jqXHR) {
-                    var msg = data.first_name + " " + data.last_name +
-                    " (" + data.email + ")";
-                    var newLine = prevLine;
                     if( jqXHR.status === 201 ) {
-                        newLine = prevLine.clone();
-                        prevLine.removeClass("alert alert-info");
-                        var clonedNode = $(newLine.children("td")[2]);
-                        clonedNode.text(clonedNode.text().replace(
-                                /, for .*/, ", for " + msg));
-                        newLine.insertAfter(prevLine);
+                        self.insertLine(data);
                     } else {
-                        var descrNode = $(newLine.children("td")[2]);
-                        descrNode.text(descrNode.text() + ", for " + msg);
+                        self.updateLine(data);
                     }
-                    newLine.addClass("alert alert-info");
-                    self.updateTotalAmount();
                 }, function(result) {
                     var msgs = [];
                     for( var field in result.responseJSON ) {
@@ -325,6 +313,47 @@ CartItem.prototype = {
                 });
                 return false;
             });
+
+            self.element.find(".seat-upload-file").click(function(event) {
+                var file = $(this).parents("td").find(".seat-file");
+                var plan = $(this).parents("tbody").attr("data-plan");
+                if (file.get(0).files.length > 0) {
+                    var formData = new FormData();
+                    formData.append("file", file.get(0).files[0]);
+                    $.ajax({
+                        type: "POST",
+                        url: "/api/cart/" + plan + "/upload/",
+                        beforeSend: function(xhr) {
+                            xhr.setRequestHeader("X-CSRFToken", getMetaCSRFToken());
+                        },
+                        data: formData,
+                        processData: false,
+                        contentType: false,
+                        success: function(data) {
+                            for (var i in data.created) {
+                                self.insertLine(data.created[i]);
+                            }
+                            for (var i in data.updated) {
+                                self.updateLine(data.updated[i]);
+                            }
+                            file.val("").change();
+                        },
+                        error: function(response) {
+                            showErrorMessages(response, "error");
+                        }
+                    });
+                }
+            });
+
+            self.element.find(".seat-file").change(function(event) {
+                self.updateUploadButtonVisibility($(this));
+            }).each(function() {
+                self.updateUploadButtonVisibility($(this));
+            });
+
+            if(window.FormData === undefined) {
+                self.element.find(".seat-file").hide();
+            }
 
             self.updateTotalAmount();
         },
@@ -376,6 +405,48 @@ CartItem.prototype = {
             } else {
                 if( cardUse.is(":visible") ) { cardUse.slideUp(); }
             }
+        },
+
+        updateUploadButtonVisibility: function(fileInput) {
+            var button = fileInput.parents("td").find(".seat-upload-file");
+            if (fileInput.get(0).files.length === 0) {
+                button.hide();
+            } else {
+                button.show();
+            }
+        },
+
+        createLineMessage: function(data) {
+            return data.first_name + " " + data.last_name + " (" + data.email + ")";
+        },
+
+        insertLine: function(data) {
+            var msg = this.createLineMessage(data);
+            var prevLine = this.element.find("tbody[data-plan='" +
+                data.plan + "' .invoice-item").last();
+            var newLine = prevLine.clone();
+            var clonedNode = $(newLine.children("td")[2]);
+
+            prevLine.removeClass("alert alert-info");
+            clonedNode.text(clonedNode.text().replace(
+                /, for .*/, ", for " + msg));
+            newLine.insertAfter(prevLine);
+            newLine.addClass("alert alert-info");
+
+            this.updateTotalAmount();
+        },
+
+        updateLine: function(data) {
+            var msg = this.createLineMessage(data);
+            var prevLine = this.element.find("tbody[data-plan='" +
+                data.plan + "' .invoice-item").last();
+            var newLine = prevLine;
+            var descrNode = $(newLine.children("td")[2]);
+
+            descrNode.text(descrNode.text() + ", for " + msg);
+            newLine.addClass("alert alert-info");
+
+            this.updateTotalAmount();
         }
     };
 

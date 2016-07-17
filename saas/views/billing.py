@@ -265,7 +265,7 @@ class InvoicablesFormMixin(OrganizationMixin):
                 lines_unit = line.dest_unit
         current_plan = None
         self.invoicables.sort(
-            key=lambda invoicable: invoicable['subscription'].plan)
+            key=lambda invoicable: str(invoicable['subscription']))
         for invoicable in self.invoicables:
             plan = invoicable['subscription'].plan
             invoicable['is_changed'] = (plan != current_plan)
@@ -518,10 +518,9 @@ djaodjin-saas/tree/master/saas/templates/saas/billing/transfers.html>`__).
     def get_context_data(self, **kwargs):
         context = super(TransferListView, self).get_context_data(**kwargs)
         context.update({
+            'saas_api_charges': reverse('saas_api_charges'),
             'saas_api_transactions': reverse(
                 'saas_api_transfer_list', args=(self.provider,)),
-            'saas_api_charges': reverse(
-                'saas_api_organization_charges', args=(self.organization,)),
             'download_url': reverse(
                 'saas_transfers_download', kwargs=self.get_url_kwargs())})
         urls = {'provider': {
@@ -531,14 +530,7 @@ djaodjin-saas/tree/master/saas/templates/saas/billing/transfers.html>`__).
             'withdraw_funds': reverse(
                 'saas_withdraw_funds', args=(self.provider,)),
         }}
-        if 'urls' in context:
-            for key, val in urls.iteritems():
-                if key in context['urls']:
-                    context['urls'][key].update(val)
-                else:
-                    context['urls'].update({key: val})
-        else:
-            context.update({'urls': urls})
+        self.update_context_urls(context, urls)
         return context
 
 

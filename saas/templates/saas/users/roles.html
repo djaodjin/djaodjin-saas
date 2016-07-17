@@ -71,7 +71,7 @@
 
   <!-- modal dialog to add a request to add a role to a user
        on an organization. -->
-  <div id="new-user-relation" tabindex="-1" role="dialog"
+  <div id="add-role-modal" tabindex="-1" role="dialog"
        aria-labelledby="Request access" aria-hidden="true">
     <div>
       <div>
@@ -118,14 +118,4 @@ Thank you,
 <!-- end of modal dialog -->
 </div>
 </section>
-{% endblock %}
-
-{% block dashboard_bodyscripts %}
-<script type="text/javascript">
-jQuery(document).ready(function($) {
-  $("#new-user-relation").on('shown.bs.modal', function () {
-    $("#new-user-relation .email").focus();
-  });
-});
-</script>
 {% endblock %}

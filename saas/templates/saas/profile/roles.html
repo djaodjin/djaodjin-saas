@@ -7,66 +7,70 @@
   <div ng-controller="userRoleDescriptionCtrl"
        saas-organization="{{organization.slug}}">
     <h2 ng-hide="items.$resolved">Please wait...</h2>
-
     <div ng-show="items.$resolved">
       <div ng-repeat="roleDescription in items.results">
         <h3>[[roleDescription.name]]</h3>
         <button type="button" ng-show="!roleDescription.is_global"
                 ng-click="deleteRoleDescription(roleDescription)">Delete</button>
-        <ul>
-          <li ng-show="roleDescription.roles.length == 0">
-            No users assigned to this role
-          </li>
-          <li ng-repeat="role in roleDescription.roles">
-            [[role.user.full_name]] ([[role.user.email]])
-            <button ng-click="deleteRole(roleDescription, role)"
-                    type="button">Delete</button>
-          </li>
-        </ul>
-        <button ng-click="addRole(roleDescription)"
-                type="button">Add user</button>
-      </div>
+        <div id="[[roleDescription.slug]]" ng-controller="userRelationListCtrl"
+             data-api-url="{{urls.organization.api_roles}}">
+          <form>
+            <input name="user" type="text" ng-model="item.slug" placeholder="Username or Email" />
+            <input type="submit" ng-click="save($event)" />
+          </form>
+          <h2 ng-hide="items.$resolved">Please wait...</h2>
+          <h2 ng-show="items.$resolved && items.results.length == 0"><em>No roles assigned yet</em></h2>
+          <table ng-show="items.$resolved && items.results.length > 0">
+            <thead>
+              <tr>
+                <th>Username</th>
+                <th>Email</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr id="[[item.user.slug]]" ng-repeat="item in items.results" ng-cloak>
+                <td>[[item.user.slug]]</td>
+                <td>[[item.user.email]]</td>
+                <td><button ng-click="remove($event, $index)">Remove</button></td>
+              </tr>
+            </tbody>
+          </table>
+          <!-- modal -->
+          <div id="add-role-modal">
+            <p>
+If the user couldn't be found in the system, it is a great occasion to invite
+them.
+            </p>
+            <label>The following invite message will be sent:</label>
+            <input ng-model="item.email" name="email" type="text" max-length="150"
+                   placeholder="invitee@example.com" />
+            <select ng-model="item.email" />
+            <textarea class="form-control form-control"
+                      name="message" maxlength="255" type="text" rows="10">
+Hello,
 
+I am adding you as a [[roleDescription.name]] to {{organization.printable_name}}.
+
+Thank you,
+- {{request.user.first_name}}
+            </textarea>
+            <button id="new-rule-submit" ng-click="create($event)"
+                    type="button">Invite user</button>
+          </div>
+        </div>
+      </div>
       <button ng-click="addRoleDescription()"
               type="button">Add role</button>
-    </div>
-
-    <div id="new-role-description">
-      <form ng-submit="createRoleDescription()">
-        <label>Role name:</label>
-        <input name="name" type="text" ng-model="newRoleDescription.name"
-               placeholder="e.g. Sales manager" />
-
-        <button type="submit">Create role</button>
-      </form>
-    </div>
-
-    <div id="new-role">
-      <form ng-submit="createRole()">
-        <p>You are about to assign a user to the
-           role <em>[[selectedRoleDescription.name]]</em></p>
-
-        <label>Username or E-mail address:</label>
-        <input name="slug" type="text" ng-model="newRole.slug"
-               placeholder="info@example.com" />
-
-        <button type="submit">Add user</button>
-      </form>
+      <div id="new-role-description">
+        <form ng-submit="createRoleDescription()">
+          <label>Role name:</label>
+          <input name="name" type="text" ng-model="newRoleDescription.name"
+                 placeholder="e.g. Sales associates" />
+          <button type="submit">Create role</button>
+        </form>
+      </div>
     </div>
   </div>
 </section>
-{% endblock %}
-
-{% block dashboard_bodyscripts %}
-<script type="text/javascript">
-jQuery(document).ready(function($) {
-  $("#new-role-description").on('shown.bs.modal', function () {
-    $("#new-role-description [name='name']").focus();
-  });
-
-  $("#new-role").on('shown.bs.modal', function () {
-    $("#new-role [name='slug']").focus();
-  });
-});
-</script>
 {% endblock %}
