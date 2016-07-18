@@ -1,6 +1,5 @@
 Django>=1.7
 django-countries>=2.1.2
-django-durationfield>=0.5
 django-extra-views>=0.6.5
 django-localflavor>=1.0
 djangorestframework>=3.3.1
