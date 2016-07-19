@@ -715,6 +715,42 @@ class Organization(models.Model):
             self.funds_balance -= fee_amount
             self.save()
 
+    def create_cancel_balance_transactions(self):
+        balance_amount, balance_unit \
+            = Transaction.objects.get_statement_balance(self)
+
+        if balance_amount == 0:
+            return None
+
+        raise NotImplementedError()
+
+        # if balance_amount > 0:
+        #     return Transaction.objects.create(
+        #         event_id='admin',
+        #         descr='Manual balance due cancellation',
+        #         created_at=datetime_or_now(),
+        #         dest_unit=balance_unit,
+        #         dest_amount=balance_amount,
+        #         dest_account=Transaction.WRITEOFF,
+        #         dest_organization=self,
+        #         orig_unit=balance_unit,
+        #         orig_amount=balance_amount,
+        #         orig_account=Transaction.LIABILITY,
+        #         orig_organization=self)
+        # else:
+        #     return Transaction.objects.create(
+        #         event_id='admin',
+        #         descr='Manual balance due cancellation',
+        #         created_at=datetime_or_now(),
+        #         dest_unit=balance_unit,
+        #         dest_amount=balance_amount,
+        #         dest_account=Transaction.LIABILITY,
+        #         dest_organization=self,
+        #         orig_unit=balance_unit,
+        #         orig_amount=balance_amount,
+        #         orig_account=Transaction.WRITEOFF,
+        #         orig_organization=self)
+
 
 class RoleDescription(models.Model):
 
