@@ -791,6 +791,36 @@ transactionControllers.controller("transactionListCtrl",
 }]);
 
 
+transactionControllers.controller("statementBalanceCtrl",
+    ["$scope", "$controller", "$http", "$timeout", "settings",
+    function($scope, $controller, $http, $timeout, settings) {
+    $scope.balance = null;
+    $scope.showCancelBalanceButton = !!settings.urls.api_cancel_balance;
+
+    $scope.refresh = function() {
+        $http.get(settings.urls.api_statement_balance).success(function(data) {
+            $scope.balance = {
+                amount: data.balance_amount,
+                unit: data.balance_unit,
+                $resolved: true
+            };
+        });
+    };
+
+    $scope.cancelBalance = function() {
+        if (confirm("Are you sure you want to cancel the balance " +
+                    "due? This will create a new transaction in " +
+                    "the history.")) {
+            $http.post(settings.urls.api_cancel_balance).success(function() {
+                $scope.refresh();
+            });
+        }
+    };
+
+    $scope.refresh();
+}]);
+
+
 transactionControllers.controller("billingSummaryCtrl",
     ["$scope", "$controller", "$http", "$timeout", "settings",
     function($scope, $controller, $http, $timeout, settings) {

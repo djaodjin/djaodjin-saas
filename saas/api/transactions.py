@@ -27,9 +27,12 @@ from collections import OrderedDict
 import dateutil
 from django.db.models import Q
 from extra_views.contrib.mixins import SearchableListMixin, SortableListMixin
-from rest_framework.generics import ListAPIView
+from rest_framework import status
+from rest_framework.exceptions import PermissionDenied
+from rest_framework.generics import GenericAPIView, ListAPIView
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
+from rest_framework.views import APIView
 
 from .serializers import TransactionSerializer
 from ..mixins import DateRangeMixin, OrganizationMixin, ProviderMixin
@@ -394,3 +397,84 @@ class TransferListAPIView(SmartTransactionListMixin, TransferQuerysetMixin,
         }
     """
     serializer_class = TransactionSerializer
+
+
+class StatementBalanceAPIView(OrganizationMixin, APIView):
+    """
+    Get the statement balance due for an organization.
+
+    **Example request**:
+
+    .. sourcecode:: http
+
+        GET /api/billing/cowork/balance/
+
+    **Example response**:
+
+    .. sourcecode:: http
+
+        {
+            "balance_amount": "1200",
+            "balance_unit": "usd"
+        }
+    """
+
+    def get(self, request, *args, **kwargs):
+        balance_amount, balance_unit \
+            = Transaction.objects.get_statement_balance(self.organization)
+
+        return Response({'balance_amount': balance_amount,
+                         'balance_unit': balance_unit})
+
+
+class CancelBalanceAPIView(OrganizationMixin, GenericAPIView):
+    """
+    Cancel the balance for a provider organization. This will create
+    a transaction for this balance cancellation. A manager can use
+    this endpoint to cancel balance dues that is known impossible
+    to be recovered (e.g. an external bank or credit card company
+    act).
+
+    The endpoint returns the transaction created to cancel the
+    balance due.
+
+    **Example request**:
+
+    .. sourcecode:: http
+
+        POST /api/billing/cowork/cancel_balance/
+
+    **Example response**:
+
+    .. sourcecode:: http
+
+        {
+            "created_at": "2016-07-19T00:00:00.000000Z",
+            "description": "Manual balance due cancellation",
+            "amount": "$0.30",
+            "is_debit": false,
+            "orig_account": "Liability",
+            "orig_organization": "cowork-master",
+            "orig_amount": 3000,
+            "orig_unit": "usd",
+            "dest_account": "Writeoff",
+            "dest_organization": "cowork-master",
+            "dest_amount": 3000,
+            "dest_unit": "usd"
+        }
+    """
+
+    serializer_class = TransactionSerializer
+
+    def post(self, request, *args, **kwargs):
+        if not self.organization.is_provider:
+            raise PermissionDenied()
+
+        transactions = self.organization.create_cancel_balance_transactions()
+
+        if transactions:
+            serializer = self.get_serializer(transactions, many=True)
+            return Response(serializer.data)
+        else:
+            return Response({'detail': 'The organization does not have balance due to be canceled'},
+                            status=status.HTTP_400_BAD_REQUEST)

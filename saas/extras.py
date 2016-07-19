@@ -85,6 +85,8 @@ class OrganizationMixinBase(object):
             'api_profile_base': reverse('saas_api_profile'),
             'api_subscriptions': reverse(
                 'saas_api_subscription_list', args=(organization,)),
+            'api_statement_balance': reverse(
+                'saas_api_statement_balance', args=(organization,)),
             'billing_base': reverse('saas_billing_base'),
             'profile_base': reverse('saas_profile'),
             'profile': reverse(
@@ -118,6 +120,8 @@ class OrganizationMixinBase(object):
             provider = organization
             urls.update({'provider': {
                 'api_bank': reverse('saas_api_bank', args=(provider,)),
+                'api_cancel_balance': reverse(
+                    'saas_api_cancel_balance', args=(provider,)),
                 'api_coupons': reverse(
                     'saas_api_coupon_list', args=(provider,)),
                 'api_metrics_plans': reverse(
