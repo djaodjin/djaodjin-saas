@@ -28,7 +28,6 @@ import dateutil
 from django.db.models import Q
 from extra_views.contrib.mixins import SearchableListMixin, SortableListMixin
 from rest_framework import status
-from rest_framework.exceptions import PermissionDenied
 from rest_framework.generics import GenericAPIView, ListAPIView
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
@@ -467,14 +466,10 @@ class CancelBalanceAPIView(OrganizationMixin, GenericAPIView):
     serializer_class = TransactionSerializer
 
     def post(self, request, *args, **kwargs):
-        if not self.organization.is_provider:
-            raise PermissionDenied()
-
-        transactions = self.organization.create_cancel_balance_transactions()
-
+        transactions = self.organization.create_cancel_transactions()
         if transactions:
             serializer = self.get_serializer(transactions, many=True)
             return Response(serializer.data)
-        else:
-            return Response({'detail': 'The organization does not have balance due to be canceled'},
-                            status=status.HTTP_400_BAD_REQUEST)
+        return Response({'detail':
+            'The organization does not have balance due to be canceled'},
+            status=status.HTTP_400_BAD_REQUEST)

@@ -715,8 +715,8 @@ class Organization(models.Model):
             self.funds_balance -= fee_amount
             self.save()
 
-    def create_cancel_balance_transactions(self):
-        balance_amount, balance_unit \
+    def create_cancel_transactions(self):
+        balance_amount, _ \
             = Transaction.objects.get_statement_balance(self)
 
         if balance_amount == 0:

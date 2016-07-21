@@ -349,7 +349,7 @@ transactionControllers.controller("relationListCtrl",
                     // XXX hack to set email when user does not exist.
                     $scope.item.email = $scope.item.slug;
                     var dialog = $element.find(settings.modalSelector);
-                    if( dialog ) {
+                    if( dialog && jQuery().modal ) {
                         dialog.modal("show");
                     }
                 } else {
