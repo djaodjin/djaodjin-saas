@@ -2,17 +2,26 @@
 
 {% block saas_content %}
 <div ng-app="saasApp">
-  <section id="balance">
+  <section id="balance" ng-controller="statementBalanceCtrl">
     <h1>Balance</h1>
-    <dl>
-      {% if balance_price.amount >= 0 %}
-      <dt>{{balance_price|humanize_money}}</dt>
-      <dd>Balance due {% if balance_price.amount > 0 %}(<a href="{{ urls.organization.balance }}">pay now</a>){% endif %}</dd>
-      {% else %}
-      <dt>{{balance_price|humanize_money}}</dt>
-      <dd>Balance Credits</dd>
-      {% endif %}
-    </dl>
+    <h2 ng-hide="balance.$resolved">Please wait...</h2>
+    <div ng-show="balance.$resolved">
+      <dl ng-show="balance.amount >= 0">
+        <dt>[[balance.amount|humanizeCell : balance.unit : 0.01]]</dt>
+        <dd ng-show="balance.amount >= 0">
+          {% spaceless %}
+          Balance due
+          <span ng-if="balance.amount > 0">
+            (<a href="{{ urls.organization.balance }}">pay now</a>
+            <span ng-if="showCancelBalanceButton">
+              - <a href="" ng-click="cancelBalance()">cancel balance due</a>
+            </span>)
+          </span>
+          {% endspaceless %}
+        </dd>
+        <dd ng-show="balance.amount < 0">Balance Credits</dd>
+      </dl>
+    </div>
   </section>
   <section id="info">
     <h1>Credit Card</h1>
