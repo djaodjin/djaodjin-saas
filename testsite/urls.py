@@ -51,8 +51,11 @@ urlpatterns = [
         PersonalRegistrationView.as_view(
             success_url=reverse_lazy('home')),
         name='registration_register'),
+    url_prefixed(r'^users/', include('saas.urls.users'),
+        decorators=['django.contrib.auth.decorators.login_required']),
     url_prefixed(r'users/(?P<user>[\w.@+-]+)/',
-        UserProfileView.as_view(), name='users_profile'),
+        UserProfileView.as_view(), name='users_profile',
+        decorators=['django.contrib.auth.decorators.login_required']),
     url_prefixed(r'', include('django.contrib.auth.urls')),
     url_prefixed(r'saas/$',
         OrganizationListView.as_view(), name='saas_organization_list',

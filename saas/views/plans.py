@@ -35,7 +35,7 @@ from ..compat import csrf
 from ..forms import PlanForm
 from ..mixins import CartMixin, OrganizationMixin, ProviderMixin
 from ..models import CartItem, Coupon, Plan, Price
-from ..utils import get_roles
+from ..utils import get_role_model
 
 
 class PlanFormMixin(OrganizationMixin, SingleObjectMixin):
@@ -122,9 +122,8 @@ djaodjin-saas/tree/master/saas/templates/saas/pricing.html>`__).
                      plan.unit))
             if self.request.user.is_authenticated():
                 setattr(plan, 'managed_subscribers',
-                    get_roles(settings.MANAGER).filter(
-                        user=self.request.user,
-                        organization__subscriptions__plan=plan))
+                    get_role_model().objects.role_on_subscriber(
+                        self.request.user, plan, role_descr=settings.MANAGER))
         if len(context['plan_list']) % self.line_break == 0:
             setattr(context['plan_list'], 'is_line_break', True)
         context.update({

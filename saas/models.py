@@ -62,7 +62,7 @@ from django_countries.fields import CountryField
 from . import settings, signals
 from .backends import get_processor_backend, ProcessorError, CardError
 from .utils import (datetime_or_now, extract_full_exception_stack,
-    generate_random_slug, get_roles, get_role_model)
+    generate_random_slug, get_role_model)
 
 from .humanize import (as_money, describe_buy_periods,
     DESCRIBE_BUY_PERIODS, DESCRIBE_BALANCE,
@@ -123,7 +123,7 @@ class OrganizationManager(models.Manager):
             return queryset.get()
         return None
 
-    def accessible_by(self, user):
+    def accessible_by(self, user, role_descr=None):
         """
         Returns a QuerySet of Organziation which *user* has an associated
         role with.
@@ -134,8 +134,14 @@ class OrganizationManager(models.Manager):
         from .compat import User
         if not isinstance(user, User):
             user = User.objects.get(username=user)
-        return self.filter(pk__in=get_role_model().objects.filter(user=user)
-            .values('role_description__organization')).distinct()
+        kwargs = {}
+        if role_descr:
+            if isinstance(role_descr, RoleDescription):
+                kwargs = {'role_description': role_descr}
+            else:
+                kwargs = {'role_description__slug': role_descr}
+        return self.filter(pk__in=get_role_model().objects.filter(
+            user=user, **kwargs).values('organization')).distinct()
 
     def with_role(self, user, role_slug):
         """
@@ -145,10 +151,9 @@ class OrganizationManager(models.Manager):
         from .compat import User
         if not isinstance(user, User):
             user = User.objects.get(username=user)
-        return self.filter(pk__in=get_role_model().objects.filter(user=user,
-                                                                  role_description__slug=role_slug)
-                                                          .values('role_description__organization')
-                                                          .distinct())
+        return self.filter(pk__in=get_role_model().objects.filter(
+            user=user, role_description__slug=role_slug).values(
+                'organization').distinct())
 
     def providers(self, subscriptions):
         """
@@ -327,14 +332,26 @@ class Organization(models.Model):
         from .compat import User
         if not isinstance(user, User):
             user = User.objects.get(username=user)
-        return get_role_model().objects.filter(user=user,
-                                               role_description__organization=self).exists()
+        return get_role_model().objects.filter(
+            user=user, organization=self).exists()
 
     def get_role_description(self, role_slug):
-        return self.role_descriptions.db_manger(using=self._state.db).get(
+        return RoleDescription.objects.db_manager(using=self._state.db).get(
+            Q(organization=self) | Q(organization__isnull=True),
             slug=RoleDescription.normalize_slug(role_slug))
 
-    def add_role(self, user, role_slug, at_time=None, reason=None):
+    def get_roles(self, role_descr):
+        if not isinstance(role_descr, RoleDescription):
+            role_descr = self.get_role_description(role_descr)
+        return get_role_model().objects.db_manager(using=self._state.db).filter(
+            organization=self, role_description=role_descr)
+
+    @staticmethod
+    def _generate_role_key(user):
+        salt = hashlib.sha1(str(random.random())).hexdigest()[:5]
+        return hashlib.sha1(salt+user.username).hexdigest()
+
+    def add_role(self, user, role_descr, at_time=None, reason=None):
         """
         Add user with a role to organization.
         """
@@ -344,19 +361,29 @@ class Organization(models.Model):
         # an instance so the using database will be lost. The following
         # code saves the relation in the correct database associated
         # with the organization.
-        role_description = self.get_role_description(role_slug)
-        role_exists = user.role_set.db_manger(using=self._state.db).filter(
-            role_description=role_description).exists()
-
-        if not role_exists:
-            role = get_role_model()()
-            role.role_description = role_description
-            role.user = user
-            role.request_key = None
-            role.save(using=self._state.db)
+        if not isinstance(role_descr, RoleDescription):
+            role_descr = self.get_role_description(role_descr)
+        queryset = get_role_model().objects.db_manager(
+            using=self._state.db).filter(organization=self, user=user,
+                role_description=role_descr)
+        if not queryset.exists():
+            queryset = get_role_model().objects.db_manager(
+                using=self._state.db).filter(organization=self, user=user,
+                request_key__isnull=False)
+            if queryset.exists():
+                # We have a request. Let's use it.
+                m2m = queryset.get()
+                force_insert = False
+            else:
+                m2m = get_role_model()(organization=self, user=user,
+                    grant_key=self._generate_role_key(user))
+                force_insert = True
+            m2m.role_description = role_descr
+            m2m.request_key = None
+            m2m.save(using=self._state.db, force_insert=force_insert)
             signals.user_relation_added.send(sender=__name__,
-                organization=role.role_description.organization, user=role.user,
-                role=role, reason=reason)
+                organization=m2m.organization, user=m2m.user,
+                role_descr=m2m.role_description, reason=reason)
             return True
         return False
 
@@ -366,10 +393,9 @@ class Organization(models.Model):
             # Otherwise a role already exists
             # or a request was previously sent.
             at_time = datetime_or_now(at_time)
-            salt = hashlib.sha1(str(random.random())).hexdigest()[:5]
             m2m = get_role_model()(created_at=at_time,
                 organization=self, user=user,
-                request_key=hashlib.sha1(salt+user.username).hexdigest())
+                request_key=self._generate_role_key(user))
             m2m.save(using=self._state.db, force_insert=True)
             signals.user_relation_requested.send(sender=__name__,
                 organization=self, user=user, reason=reason)
@@ -386,7 +412,7 @@ class Organization(models.Model):
         """
         Remove user as a *role_name* (ex: manager, contributor) to organization.
         """
-        relation = get_roles(role_name).get(organization=self, user=user)
+        relation = self.get_roles(role_name).get(user=user)
         relation.delete()
 
     def with_role(self, role_name):
@@ -395,8 +421,7 @@ class Organization(models.Model):
         """
         from .compat import User
         return User.objects.filter(
-            pk__in=get_roles(role_name).filter(organization=self).values(
-                'user')).distinct()
+            pk__in=self.get_roles(role_name).values('user')).distinct()
 
     def receivables(self):
         """
@@ -694,9 +719,11 @@ class Organization(models.Model):
 class RoleDescription(models.Model):
 
     created_at = models.DateTimeField(auto_now_add=True)
-    organization = models.ForeignKey(Organization, related_name="role_descriptions")
+    organization = models.ForeignKey(
+        Organization, related_name="role_descriptions", null=True)
     name = models.CharField(max_length=20)
-    slug = models.SlugField(help_text=_("Unique identifier shown in the URL bar."))
+    slug = models.SlugField(
+        help_text=_("Unique identifier shown in the URL bar."))
 
     class Meta:
         unique_together = ('organization', 'slug')
@@ -719,22 +746,38 @@ class RoleDescription(models.Model):
         return slug
 
 
+class RoleManager(models.Manager):
+
+    def role_on_subscriber(self, user, plan, role_descr=None):
+        from .compat import User
+        if not isinstance(user, User):
+            user = User.objects.get(username=user)
+        if role_descr:
+            if isinstance(role_descr, RoleDescription):
+                kwargs = {'role_description': role_descr}
+            else:
+                kwargs = {'role_description__slug': role_descr}
+        return self.filter(
+            user=user, organization__subscriptions__plan=plan, **kwargs)
+
+
 class Role(models.Model):
 
+    objects = RoleManager()
+
     created_at = models.DateTimeField(auto_now_add=True)
-    role_description = models.ForeignKey(RoleDescription)
+    organization = models.ForeignKey(Organization)
     user = models.ForeignKey(settings.AUTH_USER_MODEL, db_column='user_id')
-    name = models.CharField(max_length=20)
-    request_key = models.CharField(null=True, max_length=40, blank=True)
-    grant_key = models.CharField(null=True, max_length=40, blank=True)
+    role_description = models.ForeignKey(RoleDescription, null=True)
+    request_key = models.CharField(max_length=40, null=True, blank=True)
+    grant_key = models.CharField(max_length=40, null=True, blank=True)
 
     class Meta:
-        unique_together = ('role_description', 'user')
+        unique_together = ('organization', 'user')
 
     def __unicode__(self):
-        return '%s-%s' % (
-            unicode(self.role_description),
-            unicode(self.user))
+        return '%s-%s-%s' % (unicode(self.role_description),
+            unicode(self.organization), unicode(self.user))
 
 
 class Agreement(models.Model):

@@ -23,7 +23,6 @@
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 from django.contrib import admin
-from django import forms
 
 from .models import (Agreement, CartItem, Charge, ChargeItem, Coupon,
     Organization, Role, RoleDescription, Plan, Signature, Subscription,
@@ -41,20 +40,3 @@ admin.site.register(RoleDescription)
 admin.site.register(Signature)
 admin.site.register(Subscription)
 admin.site.register(Transaction)
-
-
-class RoleForm(forms.ModelForm):
-
-    name = forms.ChoiceField(
-        choices=[('manager', 'manager'), ('contributor', 'contributor')])
-
-    class Meta:
-        model = Role
-        fields = ('name', 'organization', 'user',
-            'request_key', 'grant_key')
-
-
-class RoleAdmin(admin.ModelAdmin):
-    form = RoleForm
-
-admin.site.register(Role, RoleAdmin)

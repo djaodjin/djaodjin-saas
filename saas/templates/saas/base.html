@@ -18,6 +18,12 @@
       {% if urls and urls.organization and urls.organization.roles %}
       | <a id="saas_role_list" href="{{urls.organization.roles}}">roles</a>
       {% endif %}
+      {% if urls and urls.organization and urls.organization.managers %}
+      | <a id="saas_manager_list" href="{{urls.organization.managers}}">managers</a>
+      {% endif %}
+      {% if urls and urls.organization and urls.organization.contributors %}
+      | <a id="saas_contributor_list" href="{{urls.organization.contributors}}">contributors</a>
+      {% endif %}
     </div>
     {% if organization.is_provider %}
     <div>

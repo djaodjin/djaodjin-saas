@@ -73,9 +73,8 @@ def _valid_role(user, candidates, role=settings.MANAGER):
     if user and user.is_authenticated():
         results = Organization.objects.filter(
             pk__in=get_role_model().objects.filter(role_description__slug=role,
-                                                   role_description__organization__in=candidates,
-                                                   user=user)
-                                           .values('role_description__organization')).values('slug')
+                organization__in=candidates,
+                user=user).values('organization')).values('slug')
     return results
 
 

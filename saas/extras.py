@@ -42,9 +42,9 @@ class OrganizationMixinBase(object):
         # in django.conf.settings.
         from . import settings
         managers = get_user_model().objects.filter(
-            pk__in=get_role_model().objects.filter(role_description__slug=settings.MANAGER,
-                                                   role_description__organization=organization)
-                                           .values('user'))
+            pk__in=get_role_model().objects.filter(
+                role_description__slug=settings.MANAGER,
+                organization=organization).values('user'))
         if managers.count() == 1:
             manager = managers.get()
             if organization.slug == manager.username:
@@ -102,7 +102,11 @@ class OrganizationMixinBase(object):
         else:
             urls['organization'].update({
                 'roles': reverse('saas_role_list',
-                    args=(organization,))})
+                    args=(organization,)),
+                'managers': reverse('saas_role_detail',
+                    args=(organization, 'managers')),
+                'contributors': reverse('saas_role_detail',
+                    args=(organization, 'contributors'))})
 
         if (organization.is_provider
             and self.request.user.is_authenticated()

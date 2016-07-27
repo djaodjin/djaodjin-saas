@@ -37,7 +37,7 @@ from .compat import User
 from .humanize import (as_money, DESCRIBE_BUY_PERIODS, DESCRIBE_UNLOCK_NOW,
     DESCRIBE_UNLOCK_LATER, DESCRIBE_BALANCE)
 from .models import (CartItem, Charge, Coupon, Organization, Plan,
-    Subscription, Transaction, get_broker)
+    RoleDescription, Subscription, Transaction, get_broker)
 from .utils import datetime_or_now, get_role_model, start_of_day
 from .extras import OrganizationMixinBase
 
@@ -586,8 +586,7 @@ class OrganizationSmartListMixin(SortableListMixin,
                            ('created_at', 'created_at')]
 
 
-class RoleSmartListMixin(SortableListMixin,
-                         DateRangeMixin, SearchableListMixin):
+class RoleSmartListMixin(SortableListMixin, SearchableListMixin):
     """
     The queryset can be further filtered to a range of dates between
     ``start_at`` and ``ends_at``.
@@ -595,9 +594,9 @@ class RoleSmartListMixin(SortableListMixin,
     The queryset can be further filtered by passing a ``q`` parameter.
     The value in ``q`` will be matched against:
 
-      - role_description.organization.slug
-      - role_description.organization.full_name
-      - role_description.organization.email
+      - organization.slug
+      - organization.full_name
+      - organization.email
       - user.username
       - user.email
       - role_description.name
@@ -612,15 +611,15 @@ class RoleSmartListMixin(SortableListMixin,
       - role_name
       - created_at
     """
-    search_fields = ['role_description__organization__slug',
-                     'role_description__organization__full_name',
-                     'role_description__organization__email',
+    search_fields = ['organization__slug',
+                     'organization__full_name',
+                     'organization__email',
                      'user__username',
                      'user__email',
                      'role_description__name',
                      'role_description__slug']
 
-    sort_fields_aliases = [('full_name', 'role_description__organization__full_name'),
+    sort_fields_aliases = [('full_name', 'organization__full_name'),
                            ('username', 'user__username'),
                            ('role_name', 'role_description__name'),
                            ('created_at', 'created_at')]
@@ -757,18 +756,28 @@ class UserMixin(object):
         return context
 
 
-class RelationMixin(OrganizationMixin, UserMixin):
+class RoleDescriptionMixin(OrganizationMixin):
+
+    @property
+    def role_description(self):
+        if not hasattr(self, '_role_description'):
+            self._role_description = self.organization.get_role_description(
+                self.kwargs.get('role'))
+        return self._role_description
+
+
+class RelationMixin(RoleDescriptionMixin, UserMixin):
     """
     Returns a User-Organization relation from a URL.
     """
 
     def get_queryset(self):
-        if self.kwargs.get('role'):
-            name = self.kwargs.get('role')
-            if name.endswith('s'):
-                name = name[:-1]
-            kwargs = {'name': name}
-        else:
+        try:
+            if self.kwargs.get('role'):
+                kwargs = {'role_description': self.role_description}
+            else:
+                kwargs = {}
+        except RoleDescription.DoesNotExist:
             kwargs = {}
         return get_role_model().objects.filter(
             organization=self.organization, user=self.user, **kwargs)

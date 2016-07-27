@@ -25,7 +25,7 @@
           <td>[[item.user.slug]]</td>
           <td>[[item.role_description.name]]</td>
           <td>[[item.user.email]]</td>
-          <td><button ng-click="remove($index)">Remove</button></td>
+          <td><button ng-click="remove($event, $index)">Remove</button></td>
         </tr>
       </tbody>
     </table>

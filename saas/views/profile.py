@@ -44,9 +44,9 @@ from ..models import Organization, Subscription, get_broker
 LOGGER = logging.getLogger(__name__)
 
 
-class RoleListView(OrganizationMixin, TemplateView):
+class RoleDetailView(OrganizationMixin, TemplateView):
     """
-    List of roles for an organization.
+    List of user with a *role* for an organization.
 
     Template:
 
@@ -66,10 +66,36 @@ class RoleListView(OrganizationMixin, TemplateView):
     template_name = 'saas/profile/roles.html'
 
     def get_context_data(self, **kwargs):
+        context = super(RoleDetailView, self).get_context_data(**kwargs)
+        role = self.kwargs.get('role', None)
+        context.update({'role': role})
+        urls_organization = {
+            'api_roles': reverse(
+                'saas_api_role_filtered_list', args=(self.organization, role)),
+        }
+        if 'urls' in context:
+            if 'organization' in context['urls']:
+                context['urls']['organization'].update(urls_organization)
+            else:
+                context['urls'].update({'organization': urls_organization})
+        else:
+            context.update({'urls': {'organization': urls_organization}})
+        return context
+
+
+class RoleListView(OrganizationMixin, TemplateView):
+    """
+    List all ``RoleDescriptor`` for an organization and the users
+    under each role.
+    """
+
+    template_name = 'saas/profile/roles.html'
+
+    def get_context_data(self, **kwargs):
         context = super(RoleListView, self).get_context_data(**kwargs)
         urls_organization = {
             'api_roles': reverse(
-                'saas_api_role_list', args=(self.organization,)),
+                'saas_api_roles', args=(self.organization)),
         }
         if 'urls' in context:
             if 'organization' in context['urls']:
