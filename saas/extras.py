@@ -120,8 +120,6 @@ class OrganizationMixinBase(object):
             provider = organization
             urls.update({'provider': {
                 'api_bank': reverse('saas_api_bank', args=(provider,)),
-                'api_cancel_balance': reverse(
-                    'saas_api_cancel_balance', args=(provider,)),
                 'api_coupons': reverse(
                     'saas_api_coupon_list', args=(provider,)),
                 'api_metrics_plans': reverse(

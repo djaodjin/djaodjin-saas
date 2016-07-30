@@ -6,6 +6,9 @@
     <h1>Balance</h1>
     <h2 ng-hide="balance.$resolved">Please wait...</h2>
     <div ng-show="balance.$resolved">
+      {% if urls.organization.api_statement_balance %}
+      <button ng-click="cancelBalance()">cancel balance due</button>
+      {% endif %}
       <dl ng-show="balance.amount >= 0">
         <dt>[[balance.amount|humanizeCell : balance.unit : 0.01]]</dt>
         <dd ng-show="balance.amount >= 0">
@@ -13,8 +16,6 @@
           Balance due
           <span ng-if="balance.amount > 0">
             (<a href="{{ urls.organization.balance }}">pay now</a>
-            <span ng-if="showCancelBalanceButton">
-              - <a href="" ng-click="cancelBalance()">cancel balance due</a>
             </span>)
           </span>
           {% endspaceless %}

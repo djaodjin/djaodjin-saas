@@ -449,10 +449,12 @@ class Organization(models.Model):
     def update_card(self, card_token, user):
         self.processor_backend.create_or_update_card(
             self, card_token, user=user, broker=get_broker())
+        # The following ``save`` will be rolled back in ``checkout``
+        # if there is any ProcessorError.
+        self.save()
         LOGGER.info('Updated card information for %s on processor '\
             '{"processor_card_key": %s}', self, self.processor_card_key)
 
-    @method_decorator(transaction.atomic)
     def checkout(self, invoicables, user, token=None, remember_card=True):
         """
         *invoiced_items* is a set of ``Transaction`` that will be recorded
@@ -460,104 +462,108 @@ class Organization(models.Model):
         the ends_at is extended in the future.
         """
         #pylint: disable=too-many-locals, too-many-statements
+        charge = None
         claim_carts = {}
         invoiced_items = []
         new_organizations = []
         coupon_providers = set([])
-        for invoicable in invoicables:
-            subscription = invoicable['subscription']
-            # If the invoicable we are checking out is somehow related to
-            # a user shopping cart, we mark that cart item as recorded
-            # unless the organization does not exist in the database,
-            # in which case we will create a claim_code for it.
-            cart_item = None
-            cart_items = CartItem.objects.get_cart(user, plan=subscription.plan)
-            if cart_items.exists():
-                bulk_items = cart_items.filter(
-                    email=subscription.organization.email)
-                if bulk_items.exists():
-                    cart_item = bulk_items.get()
+        with transaction.atomic():
+            for invoicable in invoicables:
+                subscription = invoicable['subscription']
+                # If the invoicable we are checking out is somehow related to
+                # a user shopping cart, we mark that cart item as recorded
+                # unless the organization does not exist in the database,
+                # in which case we will create a claim_code for it.
+                cart_item = None
+                cart_items = CartItem.objects.get_cart(
+                    user, plan=subscription.plan)
+                if cart_items.exists():
+                    bulk_items = cart_items.filter(
+                        email=subscription.organization.email)
+                    if bulk_items.exists():
+                        cart_item = bulk_items.get()
+                    else:
+                        cart_item = cart_items.get()
+
+                if not subscription.organization.id:
+                    # When the organization does not exist into the database,
+                    # we will create a random (i.e. hard to guess) claim code
+                    # that will be emailed to the expected subscriber.
+                    key = subscription.organization.email
+                    if not key in new_organizations:
+                        claim_carts[key] = []
+                        new_organizations += [subscription.organization]
+                        coupon_providers |= set([subscription.provider])
+                    assert cart_item is not None
+                    claim_carts[key] += [cart_item]
                 else:
-                    cart_item = cart_items.get()
+                    LOGGER.info("[checkout] save subscription of %s to %s",
+                        subscription.organization, subscription.plan)
+                    subscription.save()
+                    if cart_item:
+                        cart_item.recorded = True
+                        cart_item.save()
 
-            if not subscription.organization.id:
-                # When the organization does not exist into the database,
-                # we will create a random (i.e. hard to guess) claim code
-                # that will be emailed to the expected subscriber.
-                key = subscription.organization.email
-                if not key in new_organizations:
-                    claim_carts[key] = []
-                    new_organizations += [subscription.organization]
-                    coupon_providers |= set([subscription.provider])
-                assert cart_item is not None
-                claim_carts[key] += [cart_item]
-            else:
-                LOGGER.info("[checkout] save subscription of %s to %s",
-                    subscription.organization, subscription.plan)
-                subscription.save()
-                if cart_item:
-                    cart_item.recorded = True
+            # At this point we have gathered all the ``Organization``
+            # which have yet to be registered. For these no ``Subscription``
+            # has been created yet. We create a claim_code that will
+            # be emailed to the expected subscribers such that it will populate
+            # their cart automatically.
+            coupons = {}
+            claim_codes = {}
+            for provider in coupon_providers:
+                coupon = Coupon.objects.create(
+                    code='cpn_%s' % generate_random_slug(),
+                    organization=provider,
+                    percent=100, nb_attempts=0,
+                    description=('Auto-generated after payment by %s'
+                        % self.printable_name))
+                LOGGER.info('Auto-generated Coupon %s for %s',
+                    coupon.code, provider)
+                coupons.update({provider.id: coupon})
+            for key, cart_items in claim_carts.iteritems():
+                claim_code = generate_random_slug()
+                provider = CartItem.objects.provider(cart_items)
+                for cart_item in cart_items:
+                    cart_item.email = ''
+                    cart_item.user = None
+                    cart_item.first_name = ''
+                    cart_item.claim_code = claim_code
+                    cart_item.last_name = self.printable_name
+                    cart_item.coupon = coupons[cart_item.plan.organization.id]
                     cart_item.save()
+                LOGGER.info("Generated claim code '%s' for %d cart items",
+                    claim_code, len(cart_items))
+                claim_codes.update({key: claim_code})
 
-        # At this point we have gathered all the ``Organization``
-        # which have yet to be registered. For these no ``Subscription``
-        # has been created yet. We create a claim_code that will
-        # be emailed to the expected subscribers such that it will populate
-        # their cart automatically.
-        coupons = {}
-        claim_codes = {}
-        for provider in coupon_providers:
-            coupon = Coupon.objects.create(
-                code='cpn_%s' % generate_random_slug(),
-                organization=provider,
-                percent=100, nb_attempts=0,
-                description=('Auto-generated after payment by %s'
-                    % self.printable_name))
-            LOGGER.info('Auto-generated Coupon %s for %s',
-                coupon.code, provider)
-            coupons.update({provider.id: coupon})
-        for key, cart_items in claim_carts.iteritems():
-            claim_code = generate_random_slug()
-            provider = CartItem.objects.provider(cart_items)
-            for cart_item in cart_items:
-                cart_item.email = ''
-                cart_item.user = None
-                cart_item.first_name = ''
-                cart_item.claim_code = claim_code
-                cart_item.last_name = self.printable_name
-                cart_item.coupon = coupons[cart_item.plan.organization.id]
-                cart_item.save()
-            LOGGER.info("Generated claim code '%s' for %d cart items",
-                claim_code, len(cart_items))
-            claim_codes.update({key: claim_code})
+            # We now either have a ``subscription.id`` (subscriber present
+            # in the database) or a ``Coupon`` (subscriber absent from
+            # the database).
+            for invoicable in invoicables:
+                subscription = invoicable['subscription']
+                if subscription.id:
+                    event_id = subscription.id
+                else:
+                    # We do not use id's here. Integers are reserved
+                    # to match ``Subscription.id``.
+                    coupon = coupons[subscription.provider.id]
+                    event_id = coupon.code
+                for invoiced_item in invoicable['lines']:
+                    invoiced_item.event_id = event_id
+                    invoiced_items += [invoiced_item]
 
-        # We now either have a ``subscription.id`` (subscriber present
-        # in the database) or a ``Coupon`` (subscriber absent from
-        # the database).
-        for invoicable in invoicables:
-            subscription = invoicable['subscription']
-            if subscription.id:
-                event_id = subscription.id
-            else:
-                # We do not use id's here. Integers are reserved
-                # to match ``Subscription.id``.
-                coupon = coupons[subscription.provider.id]
-                event_id = coupon.code
-            for invoiced_item in invoicable['lines']:
-                invoiced_item.event_id = event_id
-                invoiced_items += [invoiced_item]
+            invoiced_items = Transaction.objects.execute_order(
+                invoiced_items, user)
+            charge = Charge.objects.charge_card(self, invoiced_items, user,
+                token=token, remember_card=remember_card)
 
-        invoiced_items = Transaction.objects.execute_order(invoiced_items, user)
-        charge = Charge.objects.charge_card(self, invoiced_items, user,
-            token=token, remember_card=remember_card)
-
-        # We email users which have yet to be registerd after the charge
-        # is created, just that we don't inadvertently email new subscribers
-        # in case something goes wrong.
-        for organization in new_organizations:
-            signals.claim_code_generated.send(
-                sender=__name__, subscriber=organization,
-                claim_code=claim_codes[organization.email], user=user)
+            # We email users which have yet to be registerd after the charge
+            # is created, just that we don't inadvertently email new subscribers
+            # in case something goes wrong.
+            for organization in new_organizations:
+                signals.claim_code_generated.send(
+                    sender=__name__, subscriber=organization,
+                    claim_code=claim_codes[organization.email], user=user)
 
         return charge
 
@@ -716,40 +722,41 @@ class Organization(models.Model):
             self.save()
 
     def create_cancel_transactions(self):
-        balance_amount, _ \
-            = Transaction.objects.get_statement_balance(self)
+        """
+        The receivables from this subscriber will not be recovered.
+        They are being written off.
 
-        if balance_amount == 0:
-            return None
+            yyyy/mm/dd balance ledger
+                subscriber:Liability                       payable_amount
+                subscriber:Payable
 
+            yyyy/mm/dd write off liability
+                provider:Writeoff                          liability_amount
+                subscriber:Liability
+
+            yyyy/mm/dd write off receivable
+                subscriber:Cancelled                       liability_amount
+                provider:Receivable
+
+        Example::
+
+            2014/09/10 balance ledger
+                xia:Liability                             $179.99
+                xia:Payable
+
+            2014/09/10 write off liability
+                cowork:Writeoff                           $179.99
+                xia:Liability
+
+            2014/09/10 write off receivable
+                xia:Cancelled                             $179.99
+                cowork:Receivable
+        """
+        #Transaction.objects.filter(
+        #    dest_organization=self,
+        #    dest_account=Transaction.PAYABLE,
+        #    orig_account=Transaction.RECEIVABLE)
         raise NotImplementedError()
-
-        # if balance_amount > 0:
-        #     return Transaction.objects.create(
-        #         event_id='admin',
-        #         descr='Manual balance due cancellation',
-        #         created_at=datetime_or_now(),
-        #         dest_unit=balance_unit,
-        #         dest_amount=balance_amount,
-        #         dest_account=Transaction.WRITEOFF,
-        #         dest_organization=self,
-        #         orig_unit=balance_unit,
-        #         orig_amount=balance_amount,
-        #         orig_account=Transaction.LIABILITY,
-        #         orig_organization=self)
-        # else:
-        #     return Transaction.objects.create(
-        #         event_id='admin',
-        #         descr='Manual balance due cancellation',
-        #         created_at=datetime_or_now(),
-        #         dest_unit=balance_unit,
-        #         dest_amount=balance_amount,
-        #         dest_account=Transaction.LIABILITY,
-        #         dest_organization=self,
-        #         orig_unit=balance_unit,
-        #         orig_amount=balance_amount,
-        #         orig_account=Transaction.WRITEOFF,
-        #         orig_organization=self)
 
 
 class RoleDescription(models.Model):
@@ -936,38 +943,47 @@ class ChargeManager(models.Manager):
             'charge': '', 'organization': customer.printable_name}
         if user:
             descr += ' (%s)' % user.username
+        prev_processor_card_key = customer.processor_card_key
         try:
-            if token:
-                if remember_card:
-                    customer.update_card(token, user)
-                    (processor_charge_id, created_at,
-                     last4, exp_date) = processor_backend.create_charge(
-                         customer, amount, unit,
-                         broker=broker, descr=descr)
-                else:
-                    (processor_charge_id, created_at,
-                     last4, exp_date) = processor_backend.create_charge_on_card(
-                         token, amount, unit,
-                         broker=broker, descr=descr)
-            else:
-                # XXX A card must already be attached to the customer.
+            if token and remember_card:
+                customer.update_card(token, user)
+
+            if customer.processor_card_key:
                 (processor_charge_id, created_at,
                  last4, exp_date) = processor_backend.create_charge(
                      customer, amount, unit,
                      broker=broker, descr=descr)
+            elif token:
+                (processor_charge_id, created_at,
+                 last4, exp_date) = processor_backend.create_charge_on_card(
+                     token, amount, unit, broker=broker, descr=descr)
+            else:
+                raise ProcessorError("%s is not connected to a processor"
+                    " backend customer and no token passed." % customer)
             # Create record of the charge in our database
             descr = DESCRIBE_CHARGED_CARD % {'charge': processor_charge_id,
                 'organization': customer.printable_name}
             if user:
                 descr += ' (%s)' % user.username
-            charge = self.create_charge(customer, transactions, amount, unit,
-                processor, processor_charge_id, last4, exp_date,
-                descr=descr, created_at=created_at)
+            return self.create_charge(customer, transactions,
+                amount, unit, processor, processor_charge_id, last4,
+                exp_date, descr=descr, created_at=created_at)
+
         except CardError as err:
-            # Expected runtime error. We just log that the charge was declined.
-            LOGGER.info('{"event": "CardError",'\
-                ' "amount": %d, "customer": "%s", "msg": "%s"}',
-                amount, customer, err.processor_details())
+            # Implementation Note:
+            # We are going to rollback because of the ``transaction.atomic``
+            # in ``checkout``. There is two choices here:
+            #   1) We persist the created ``Stripe.Customer`` in ``checkout``
+            #      after the rollback.
+            #   2) We forget about the created ``Stripe.Customer`` and
+            #      reset the processor_card_key.
+            # We implement (2) because the UI feedback to a user looks strange
+            # when the Card is persisted while an error message is displayed.
+            customer.processor_card_key = prev_processor_card_key
+            LOGGER.info('{"event": "CardError", "amount": %d, "unit": "%s",'\
+                ' "customer": "%s", "charge_processor_key": "%s", "msg": "%s"}',
+                amount, unit, customer, err.charge_processor_key,
+                err.processor_details())
             raise
         except ProcessorError as err:
             # An error from the processor which indicates the logic might be
@@ -975,8 +991,10 @@ class ChargeManager(models.Manager):
             # away.
             LOGGER.error("ProcessorError for charge of %d cents to %s\n" % (
                 amount, customer) + extract_full_exception_stack(err))
+            # We are going to rollback because of the ``transaction.atomic``
+            # in ``checkout`` so let's reset the processor_card_key.
+            customer.processor_card_key = prev_processor_card_key
             raise
-        return charge
 
 
 class Charge(models.Model):
@@ -2234,7 +2252,44 @@ class Subscription(models.Model):
         self.save()
 
 
+class TransactionQuerySet(models.QuerySet):
+    """
+    Custom ``QuerySet`` for ``Transaction`` that provides useful queries.
+    """
+
+    def get_statement_balance(self, organization, until=None):
+        until = datetime_or_now(until)
+        balance = sum_dest_amount(self.filter(
+            Q(dest_account=Transaction.PAYABLE)
+            | Q(dest_account=Transaction.LIABILITY),
+            dest_organization=organization,
+            created_at__lt=until))
+        dest_amount = balance['amount']
+        dest_unit = balance['unit']
+        balance = sum_orig_amount(self.filter(
+            Q(orig_account=Transaction.PAYABLE)
+            | Q(orig_account=Transaction.LIABILITY),
+            orig_organization=organization,
+            created_at__lt=until))
+        orig_amount = balance['amount']
+        orig_unit = balance['unit']
+        if dest_unit is None:
+            unit = orig_unit
+        elif orig_unit is None:
+            unit = dest_unit
+        elif dest_unit != orig_unit:
+            raise ValueError('orig and dest balances until %s for statement'\
+' of %s have different unit (%s vs. %s).' % (until, organization,
+                orig_unit, dest_unit))
+        else:
+            unit = dest_unit
+        return dest_amount - orig_amount, unit
+
+
 class TransactionManager(models.Manager):
+
+    def get_queryset(self):
+        return TransactionQuerySet(self.model, using=self._db)
 
     def by_charge(self, charge):
         """
@@ -2556,32 +2611,8 @@ class TransactionManager(models.Manager):
             'created_at': max(dest_created_at, orig_created_at)}
 
     def get_statement_balance(self, organization, until=None):
-        until = datetime_or_now(until)
-        balance = sum_dest_amount(self.filter(
-            Q(dest_account=Transaction.PAYABLE)
-            | Q(dest_account=Transaction.LIABILITY),
-            dest_organization=organization,
-            created_at__lt=until))
-        dest_amount = balance['amount']
-        dest_unit = balance['unit']
-        balance = sum_orig_amount(self.filter(
-            Q(orig_account=Transaction.PAYABLE)
-            | Q(orig_account=Transaction.LIABILITY),
-            orig_organization=organization,
-            created_at__lt=until))
-        orig_amount = balance['amount']
-        orig_unit = balance['unit']
-        if dest_unit is None:
-            unit = orig_unit
-        elif orig_unit is None:
-            unit = dest_unit
-        elif dest_unit != orig_unit:
-            raise ValueError('orig and dest balances until %s for statement'\
-' of %s have different unit (%s vs. %s).' % (until, organization,
-                orig_unit, dest_unit))
-        else:
-            unit = dest_unit
-        return dest_amount - orig_amount, unit
+        return self.get_queryset().get_statement_balance(
+            organization, until=until)
 
     def get_subscription_statement_balance(self, subscription):
         # XXX A little long but no better so far.

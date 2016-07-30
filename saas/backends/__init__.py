@@ -49,9 +49,11 @@ class ProcessorError(RuntimeError):
 
 class CardError(ProcessorError):
 
-    def __init__(self, message, code, backend_except=None):
+    def __init__(self, message, code,
+                 charge_processor_key=None, backend_except=None):
         super(CardError, self).__init__(message, backend_except=backend_except)
         self.code = code
+        self.charge_processor_key = charge_processor_key
 
     def __unicode__(self):
         if self.code == 'card_declined':

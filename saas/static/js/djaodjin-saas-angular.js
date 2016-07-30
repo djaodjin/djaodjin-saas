@@ -791,48 +791,50 @@ transactionControllers.controller("transactionListCtrl",
 }]);
 
 
-transactionControllers.controller("statementBalanceCtrl",
+transactionControllers.controller("billingStatementCtrl",
     ["$scope", "$controller", "$http", "$timeout", "settings",
     function($scope, $controller, $http, $timeout, settings) {
-    $scope.balance = null;
-    $scope.showCancelBalanceButton = !!settings.urls.api_cancel_balance;
-
-    $scope.refresh = function() {
-        $http.get(settings.urls.api_statement_balance).success(function(data) {
-            $scope.balance = {
-                amount: data.balance_amount,
-                unit: data.balance_unit,
-                $resolved: true
-            };
-        });
-    };
 
     $scope.cancelBalance = function() {
         if (confirm("Are you sure you want to cancel the balance " +
                     "due? This will create a new transaction in " +
                     "the history.")) {
-            $http.post(settings.urls.api_cancel_balance).success(function() {
+            $http.delete(settings.urls.api_statement_balance).then(
+            function success(resp) {
                 $scope.refresh();
+            },
+            function error(resp) {
+                showErrorMessages(resp);
             });
         }
     };
 
-    $scope.refresh();
+    $controller("transactionListCtrl", {
+        $scope: $scope, $http: $http, $timeout:$timeout,
+        settings: settings});
 }]);
 
 
 transactionControllers.controller("billingSummaryCtrl",
-    ["$scope", "$controller", "$http", "$timeout", "settings",
-    function($scope, $controller, $http, $timeout, settings) {
+    ["$scope", "$attrs", "$controller", "$http", "$timeout", "settings",
+    function($scope, $attrs, $controller, $http, $timeout, settings) {
+    "use strict";
+    var apiUrl = $attrs.apiUrl ? $attrs.apiUrl : settings.urls.saas_api_bank;
+
     $scope.last4 = "N/A";
+    $scope.exp_date = "N/A";
     $scope.bank_name = "N/A";
     $scope.balance_amount = "N/A";
 
-    if( settings.urls.saas_api_bank ) {
-        $http.get(settings.urls.saas_api_bank).success(function(data) {
+    if( apiUrl ) {
+        $http.get(apiUrl).success(function(data) {
             $scope.last4 = data.last4;
+            if( data.exp_date ) {
+                $scope.exp_date = data.exp_date;
+            }
             $scope.bank_name = data.bank_name;
             $scope.balance_amount = data.balance_amount;
+            $scope.$resolved = true;
         });
     }
 }]);

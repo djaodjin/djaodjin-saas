@@ -237,14 +237,21 @@ class StripeBackend(object):
                 amount=amount, currency=unit,
                 description=descr, statement_descriptor=stmt_descr[:15],
                 **kwargs)
+            processor_key = processor_charge.id
+            created_at = utctimestamp_to_datetime(processor_charge.created)
+            last4 = processor_charge.source.last4
+            exp_date = datetime.date(processor_charge.source.exp_year,
+                processor_charge.source.exp_month, 1)
         except stripe.error.CardError, err:
-            raise CardError(err.message, err.code, backend_except=err)
-        created_at = utctimestamp_to_datetime(processor_charge.created)
-        last4 = processor_charge.source.last4
-        exp_year = processor_charge.source.exp_year
-        exp_month = processor_charge.source.exp_month
-        return (processor_charge.id, created_at, last4,
-                datetime.date(exp_year, exp_month, 1))
+            # If the card is declined, Stripe will record a failed ``Charge``
+            # and raise an exception here. Unfortunately only the Charge id
+            # is present in the CardError exception. So instead of generating
+            # an HTTP retrieve and recording a failed charge in our database,
+            # we raise and rollback.
+            raise CardError(err.message, err.code,
+                charge_processor_key=err.json_body['error']['charge'],
+                backend_except=err)
+        return (processor_key, created_at, last4, exp_date)
 
     def create_charge(self, customer, amount, unit,
                     broker=None, descr=None, stmt_descr=None):
@@ -334,6 +341,8 @@ class StripeBackend(object):
                 signals.card_updated.send(
                     sender=__name__, organization=subscriber,
                     user=user, old_card=old_card, new_card=new_card)
+            except stripe.error.CardError, err:
+                raise CardError(err.message, err.code, backend_except=err)
             except stripe.error.InvalidRequestError:
                 # Can't find the customer on Stripe. This can be related to
                 # a switch from using devel to production keys.
@@ -350,7 +359,7 @@ class StripeBackend(object):
             except stripe.error.CardError, err:
                 raise CardError(err.message, err.code, backend_except=err)
             subscriber.processor_card_key = p_customer.id
-            subscriber.save()
+            # We rely on ``update_card`` to do the ``save``.
 
     def refund_charge(self, charge, amount):
         """

@@ -27,8 +27,7 @@ from collections import OrderedDict
 import dateutil
 from django.db.models import Q
 from extra_views.contrib.mixins import SearchableListMixin, SortableListMixin
-from rest_framework import status
-from rest_framework.generics import GenericAPIView, ListAPIView
+from rest_framework.generics import ListAPIView
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -39,6 +38,10 @@ from ..models import Transaction, sum_dest_amount, sum_orig_amount
 
 
 class BalancePagination(PageNumberPagination):
+    """
+    Decorate the results of an API call with balance on an account
+    containing *selector*.
+    """
 
     def paginate_queryset(self, queryset, request, view=None):
         if view.selector is not None:
@@ -49,13 +52,36 @@ class BalancePagination(PageNumberPagination):
         else:
             dest_totals = sum_dest_amount(queryset)
             orig_totals = sum_orig_amount(queryset)
-        self.balance = dest_totals['amount'] - orig_totals['amount']
+        self.balance_amount = dest_totals['amount'] - orig_totals['amount']
         return super(BalancePagination, self).paginate_queryset(
             queryset, request, view=view)
 
     def get_paginated_response(self, data):
         return Response(OrderedDict([
-            ('balance', self.balance),
+            ('balance', self.balance_amount),
+            ('count', self.page.paginator.count),
+            ('next', self.get_next_link()),
+            ('previous', self.get_previous_link()),
+            ('results', data)
+        ]))
+
+
+class StatementBalancePagination(PageNumberPagination):
+    """
+    Decorate the results of an API call with the balance as shown
+    in an organization statement.
+    """
+
+    def paginate_queryset(self, queryset, request, view=None):
+        self.balance_amount, self.balance_unit \
+            = Transaction.objects.get_statement_balance(view.organization)
+        return super(StatementBalancePagination, self).paginate_queryset(
+            queryset, request, view=view)
+
+    def get_paginated_response(self, data):
+        return Response(OrderedDict([
+            ('balance', self.balance_amount),
+            ('unit', self.balance_unit),
             ('count', self.page.paginator.count),
             ('next', self.get_next_link()),
             ('previous', self.get_previous_link()),
@@ -160,6 +186,8 @@ class TransactionListAPIView(SmartTransactionListMixin,
             "count": 1,
             "next": null,
             "previous": null,
+            "balance": 11000,
+            "unit": "usd",
             "results": [
                 {
                     "created_at": "2015-08-01T00:00:00Z",
@@ -228,6 +256,8 @@ class BillingsAPIView(SmartTransactionListMixin,
             "count": 1,
             "next": null,
             "previous": null,
+            "balance": 11000,
+            "unit": "usd",
             "results": [
                 {
                     "created_at": "2015-08-01T00:00:00Z",
@@ -246,8 +276,8 @@ class BillingsAPIView(SmartTransactionListMixin,
             ]
         }
     """
-
     serializer_class = TransactionSerializer
+    pagination_class = StatementBalancePagination
 
 
 class ReceivablesQuerysetMixin(ProviderMixin):
@@ -416,18 +446,7 @@ class StatementBalanceAPIView(OrganizationMixin, APIView):
             "balance_amount": "1200",
             "balance_unit": "usd"
         }
-    """
 
-    def get(self, request, *args, **kwargs):
-        balance_amount, balance_unit \
-            = Transaction.objects.get_statement_balance(self.organization)
-
-        return Response({'balance_amount': balance_amount,
-                         'balance_unit': balance_unit})
-
-
-class CancelBalanceAPIView(OrganizationMixin, GenericAPIView):
-    """
     Cancel the balance for a provider organization. This will create
     a transaction for this balance cancellation. A manager can use
     this endpoint to cancel balance dues that is known impossible
@@ -441,35 +460,14 @@ class CancelBalanceAPIView(OrganizationMixin, GenericAPIView):
 
     .. sourcecode:: http
 
-        POST /api/billing/cowork/cancel_balance/
-
-    **Example response**:
-
-    .. sourcecode:: http
-
-        {
-            "created_at": "2016-07-19T00:00:00.000000Z",
-            "description": "Manual balance due cancellation",
-            "amount": "$0.30",
-            "is_debit": false,
-            "orig_account": "Liability",
-            "orig_organization": "cowork-master",
-            "orig_amount": 3000,
-            "orig_unit": "usd",
-            "dest_account": "Writeoff",
-            "dest_organization": "cowork-master",
-            "dest_amount": 3000,
-            "dest_unit": "usd"
-        }
+        DELETE /api/billing/cowork/balance/
     """
 
-    serializer_class = TransactionSerializer
+    def get(self, request, *args, **kwargs):
+        balance_amount, balance_unit \
+            = Transaction.objects.get_statement_balance(self.organization)
+        return Response({'balance_amount': balance_amount,
+                         'balance_unit': balance_unit})
 
-    def post(self, request, *args, **kwargs):
-        transactions = self.organization.create_cancel_transactions()
-        if transactions:
-            serializer = self.get_serializer(transactions, many=True)
-            return Response(serializer.data)
-        return Response({'detail':
-            'The organization does not have balance due to be canceled'},
-            status=status.HTTP_400_BAD_REQUEST)
+    def delete(self, request, *args, **kwargs): #pylint:disable=unused-argument
+        self.organization.create_cancel_transactions()

@@ -83,7 +83,6 @@ class BankMixin(ProviderMixin):
 class CardFormMixin(OrganizationMixin):
 
     form_class = CreditCardForm
-    organization_url_kwarg = 'organization'
 
     @property
     def processor_token_id(self):
@@ -119,16 +118,10 @@ class CardFormMixin(OrganizationMixin):
         except ProcessorConnectionError:
             messages.error(self.request, "The payment processor is "\
                 "currently unreachable. Sorry for the inconvienience.")
-        urls_organization = {
-            'update_card': reverse(
-                'saas_update_card', args=(self.organization,))}
-        if 'urls' in context:
-            if 'organization' in context['urls']:
-                context['urls']['organization'].update(urls_organization)
-            else:
-                context['urls'].update({'organization': urls_organization})
-        else:
-            context.update({'urls': {'organization': urls_organization}})
+        self.update_context_urls(context,
+            {'organization': {
+                'update_card': reverse(
+                    'saas_update_card', args=(self.organization,))}})
         return context
 
 
@@ -392,9 +385,14 @@ class CardUpdateView(CardFormMixin, FormView):
         if processor_token:
             # Since all fields are optional, we cannot assume the card token
             # will be present (i.e. in case of erroneous POST request).
-            self.organization.update_card(processor_token, self.request.user)
-            messages.success(self.request,
-                "Your credit card on file was sucessfully updated")
+            try:
+                self.organization.update_card(
+                    processor_token, self.request.user)
+                messages.success(self.request,
+                    "Your credit card on file was sucessfully updated")
+            except ProcessorError as err:
+                messages.error(self.request, err)
+                return self.form_invalid(form)
         return super(CardUpdateView, self).form_valid(form)
 
     def get_context_data(self, **kwargs):
@@ -439,7 +437,7 @@ class TransactionBaseView(DateRangeMixin, TemplateView):
         return context
 
 
-class BillingStatementView(CardFormMixin, TransactionBaseView):
+class BillingStatementView(OrganizationMixin, TransactionBaseView):
     """
     This page shows a statement of ``Subscription`` orders, ``Charge``
     created and payment refunded.
@@ -469,29 +467,18 @@ class BillingStatementView(CardFormMixin, TransactionBaseView):
 
     def get_context_data(self, **kwargs):
         context = super(BillingStatementView, self).get_context_data(**kwargs)
-        balance_amount, balance_unit \
-            = Transaction.objects.get_statement_balance(self.organization)
-        if balance_amount < 0:
-            # It is not straightforward to inverse a number in Django templates
-            # so we do it with a convention on the ``humanize_money`` filter.
-            balance_unit = '-%s' % balance_unit
         context.update({
-            'balance_price': Price(balance_amount, balance_unit),
             'organization': self.organization,
             'saas_api_transactions': reverse(
                 'saas_api_billings', args=(self.organization,)),
             'download_url': reverse(
                 'saas_statement_download', kwargs=self.get_url_kwargs())})
-        urls_organization = {
-            'balance': reverse(
-                'saas_organization_balance', args=(self.organization,))}
-        if 'urls' in context:
-            if 'organization' in context['urls']:
-                context['urls']['organization'].update(urls_organization)
-            else:
-                context['urls'].update({'organization': urls_organization})
-        else:
-            context.update({'urls': {'organization': urls_organization}})
+        self.update_context_urls(context,
+            {'organization': {
+                'balance': reverse(
+                    'saas_organization_balance', args=(self.organization,)),
+                'update_card': reverse(
+                    'saas_update_card', args=(self.organization,))}})
         return context
 
 
