@@ -380,7 +380,7 @@ class StripeBackend(object):
         return context
 
     def retrieve_bank(self, provider):
-        context = {}
+        context = {'bank_name': "N/A", 'last4': "N/A"}
         try:
             kwargs = self._prepare_transfer_request(provider)
             # The ``PLATFORM`` provider is always connected to a Stripe Account
@@ -398,10 +398,13 @@ class StripeBackend(object):
                     context.update({
                         'balance_amount': balance.available[0].amount,
                         'balance_unit': balance.available[0].currency})
-                except stripe.error.InvalidRequestError:
-                    context.update({'balance_unit': 'Unaccessible'})
+                except stripe.error.StripeError as err:
+                    raise ProcessorError(err.message, backend_except=err)
         except ProcessorError:
-            pass # OK here. We don't have a connected Stripe account.
+            # OK here. We don't have a connected Stripe account.
+            context.update({
+                'balance_amount': "N/A",
+                'balance_unit':  "N/A"})
         return context
 
     def retrieve_card(self, subscriber, broker=None):
@@ -438,21 +441,19 @@ class StripeBackend(object):
         return charge
 
     def reconcile_transfers(self, provider, created_at):
+        kwargs = self._prepare_transfer_request(provider)
+        timestamp = datetime_to_utctimestamp(created_at)
         try:
-            kwargs = self._prepare_transfer_request(provider)
-            timestamp = datetime_to_utctimestamp(created_at)
-            try:
-                transfers = stripe.Transfer.all(
-                    created={'gt': timestamp}, status='paid', **kwargs)
-                for transfer in transfers.data:
-                    created_at = utctimestamp_to_datetime(transfer.created)
-                    provider.create_withdraw_transactions(
-                        transfer.id, transfer.amount, transfer.currency,
-                        transfer.description, created_at=created_at)
-            except stripe.error.InvalidRequestError as err:
-                LOGGER.exception(err)
-        except ProcessorError:
-            pass # OK here. We don't have a connected Stripe account.
+            transfers = stripe.Transfer.all(
+                created={'gt': timestamp}, status='paid', **kwargs)
+            for transfer in transfers.data:
+                created_at = utctimestamp_to_datetime(transfer.created)
+                provider.create_withdraw_transactions(
+                    transfer.id, transfer.amount, transfer.currency,
+                    transfer.description, created_at=created_at)
+        except stripe.error.StripeError as err:
+            LOGGER.exception(err)
+            raise ProcessorError(err.message, backend_except=err)
 
     @staticmethod
     def dispute_fee(amount): #pylint: disable=unused-argument

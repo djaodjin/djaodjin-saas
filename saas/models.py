@@ -594,23 +594,24 @@ class Organization(models.Model):
         """
         return self.processor_backend.retrieve_card(self, broker=get_broker())
 
-    def get_transfers(self):
+    def get_transfers(self, reconcile=True):
         """
         Returns a ``QuerySet`` of ``Transaction`` after it has been
         reconcile with the withdrawals that happened in the processor
         backend.
         """
-        queryset = Transaction.objects.filter(
-            orig_organization=self,
-            orig_account=Transaction.FUNDS,
-            dest_account__startswith=Transaction.WITHDRAW).order_by(
-                'created_at')
-        created_at = queryset.values('created_at').first()
-        if isinstance(created_at, dict):
-            created_at = created_at.get('created_at', None)
-        else:
-            created_at = None
-        self.processor_backend.reconcile_transfers(self, created_at)
+        if reconcile:
+            queryset = Transaction.objects.filter(
+                orig_organization=self,
+                orig_account=Transaction.FUNDS,
+                dest_account__startswith=Transaction.WITHDRAW).order_by(
+                    'created_at')
+            created_at = queryset.values('created_at').first()
+            if isinstance(created_at, dict):
+                created_at = created_at.get('created_at', None)
+            else:
+                created_at = None
+            self.processor_backend.reconcile_transfers(self, created_at)
         return Transaction.objects.by_organization(self)
 
     def withdraw_funds(self, amount, user):
@@ -2912,7 +2913,7 @@ class TransactionManager(models.Manager):
                 recognized.save()
             created_transactions += [recognized]
             amount -= available
-        assert amount == 0
+        assert amount == 0, "issue with subscription.id=%d" % subscription.id
         return created_transactions
 
     @staticmethod

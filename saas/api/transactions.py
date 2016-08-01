@@ -27,6 +27,7 @@ from collections import OrderedDict
 import dateutil
 from django.db.models import Q
 from extra_views.contrib.mixins import SearchableListMixin, SortableListMixin
+from rest_framework.exceptions import ValidationError
 from rest_framework.generics import ListAPIView
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
@@ -35,6 +36,7 @@ from rest_framework.views import APIView
 from .serializers import TransactionSerializer
 from ..mixins import DateRangeMixin, OrganizationMixin, ProviderMixin
 from ..models import Transaction, sum_dest_amount, sum_orig_amount
+from ..backends import ProcessorError
 
 
 class BalancePagination(PageNumberPagination):
@@ -366,7 +368,8 @@ class TransferQuerysetMixin(ProviderMixin):
         """
         Get the list of transactions for this organization.
         """
-        return self.organization.get_transfers()
+        reconcile = not bool(self.request.GET.get('force', False))
+        return self.organization.get_transfers(reconcile=reconcile)
 
 
 class TransferListAPIView(SmartTransactionListMixin, TransferQuerysetMixin,
@@ -426,6 +429,15 @@ class TransferListAPIView(SmartTransactionListMixin, TransferQuerysetMixin,
         }
     """
     serializer_class = TransactionSerializer
+
+    def list(self, request, *args, **kwargs):
+        try:
+            return super(TransferListAPIView, self).list(
+                request, *args, **kwargs)
+        except ProcessorError as err:
+            raise ValidationError({'detail': "The latest transfers might"\
+                " not be shown because there was an error with the backend"\
+                " processor (ie. %s)." % str(err)})
 
 
 class StatementBalanceAPIView(OrganizationMixin, APIView):

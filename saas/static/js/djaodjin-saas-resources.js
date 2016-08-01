@@ -40,27 +40,31 @@ function showErrorMessages(resp) {
     } else {
         var data = resp.data || resp.responseJSON || null;
         if( data && typeof data === "object" ) {
-            for( var key in data ) {
-                if (data.hasOwnProperty(key)) {
-                    var message = data[key];
-                    if( typeof data[key] !== 'string' ) {
-                        message = "";
-                        var sep = "";
-                        for( var i = 0; i < data[key].length; ++i ) {
-                            var messagePart = data[key][i];
-                            if( typeof data[key][i] !== 'string' ) {
-                                messagePart = JSON.stringify(data[key][i]);
+            if( data.detail ) {
+                messages = ["Error: " + data.detail];
+            } else {
+                for( var key in data ) {
+                    if (data.hasOwnProperty(key)) {
+                        var message = data[key];
+                        if( typeof data[key] !== 'string' ) {
+                            message = "";
+                            var sep = "";
+                            for( var i = 0; i < data[key].length; ++i ) {
+                                var messagePart = data[key][i];
+                                if( typeof data[key][i] !== 'string' ) {
+                                    messagePart = JSON.stringify(data[key][i]);
+                                }
+                                message += sep + messagePart;
+                                sep = ", ";
                             }
-                            message += sep + messagePart;
-                            sep = ", ";
                         }
+                        messages.push(key + ": " + message);
+                        $("[name=\"" + key + "\"]").addClass("has-error");
                     }
-                    messages.push(key + ": " + message);
-                    $("[name=\"" + key + "\"]").addClass("has-error");
                 }
             }
         } else if( resp.detail ) {
-            messages = [resp.detail];
+            messages = ["Error: " + resp.detail];
         }
     }
     if( messages.length === 0 ) {

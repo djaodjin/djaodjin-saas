@@ -263,6 +263,17 @@ transactionControllers.controller("itemsListCtrl",
                 $scope.items = {};
                 $scope.items.$resolved = false;
                 showErrorMessages(resp);
+                $http.get(settings.urls.api_items,
+                    {params: angular.merge({force: 1}, $scope.params)}).then(
+                function success(resp) {
+                    // ``force`` load will not call the processor backend
+                    // for reconciliation.
+                    if( resp.data.count != $scope.totalItems ) {
+                        $scope.totalItems = resp.data.count;
+                    }
+                    $scope.items = resp.data;
+                    $scope.items.$resolved = true;
+                });
             });
     };
 
@@ -463,13 +474,12 @@ couponControllers.controller("CouponListCtrl",
     };
 
     $scope.save = function() {
-        $http.post(settings.urls.saas_api_coupon_url, $scope.newCoupon).success(
-        function(result) {
-            $scope.coupons.results.push(new Coupon(result));
+        $http.post(settings.urls.saas_api_coupon_url, $scope.newCoupon).then(
+        function success(resp) {
+            $scope.coupons.results.push(new Coupon(resp.data));
             // Reset our editor to a new blank post
             $scope.newCoupon = new Coupon();
-        }).error(
-        function(resp){
+        }, function error(resp){
             showErrorMessages(resp);
         });
     };
@@ -651,11 +661,11 @@ subscriptionControllers.controller("subscriptionListCtrl",
     $scope.query = function(queryset) {
         queryset.$resolved = false;
         queryset.results = [];
-        $http.get(queryset.location,
-            {params: $scope.params}).success(function(data) {
-                queryset.results = data.results;
-                queryset.count = data.count;
-                queryset.$resolved = true;
+        $http.get(queryset.location, {params: $scope.params}).then(
+        function success(resp) {
+            queryset.results = resp.data.results;
+            queryset.count = resp.data.count;
+            queryset.$resolved = true;
         });
     };
 
@@ -827,13 +837,15 @@ transactionControllers.controller("billingSummaryCtrl",
     $scope.balance_amount = "N/A";
 
     if( apiUrl ) {
-        $http.get(apiUrl).success(function(data) {
-            $scope.last4 = data.last4;
-            if( data.exp_date ) {
-                $scope.exp_date = data.exp_date;
+        $http.get(apiUrl).then(
+        function success(resp) {
+            $scope.balance_amount = resp.data.balance_amount;
+            $scope.balance_unit = resp.data.balance_unit;
+            $scope.last4 = resp.data.last4;
+            if( resp.data.exp_date ) {
+                $scope.exp_date = resp.data.exp_date;
             }
-            $scope.bank_name = data.bank_name;
-            $scope.balance_amount = data.balance_amount;
+            $scope.bank_name = resp.data.bank_name;
             $scope.$resolved = true;
         });
     }
@@ -909,34 +921,31 @@ metricsControllers.controller("metricsCtrl",
 
     $scope.query = function(queryset) {
         $http.get(
-            queryset.location,
-            {params: {"ends_at": $scope.ends_at}}
-        ).success(
-            function(data) {
-                var unit = data.unit;
-                var scale = data.scale;
-                scale = parseFloat(scale);
-                if( isNaN(scale) ) {
-                    scale = 1.0;
-                }
-                // add "extra" rows at the end
-                var extra = data.extra || [];
-
-                queryset.unit = unit;
-                queryset.scale = scale;
-                queryset.data = data.table;
-
-                // manual binding - trigger updates to the graph
-                if( queryset.key === "balances") {
-                    // XXX Hard-coded.
-                    updateBarChart("#metrics-chart",
-                        data.table, unit, scale, extra);
-                } else {
-                    updateChart("#metrics-chart",
-                        data.table, unit, scale, extra);
-                }
+            queryset.location, {params: {"ends_at": $scope.ends_at}}).then(
+        function success(resp) {
+            var unit = resp.data.unit;
+            var scale = resp.data.scale;
+            scale = parseFloat(scale);
+            if( isNaN(scale) ) {
+                scale = 1.0;
             }
-        );
+            // add "extra" rows at the end
+            var extra = resp.data.extra || [];
+
+            queryset.unit = unit;
+            queryset.scale = scale;
+            queryset.data = resp.data.table;
+
+            // manual binding - trigger updates to the graph
+            if( queryset.key === "balances") {
+                // XXX Hard-coded.
+                updateBarChart("#metrics-chart",
+                               resp.data.table, unit, scale, extra);
+            } else {
+                updateChart("#metrics-chart",
+                            resp.data.table, unit, scale, extra);
+            }
+        });
     };
 
     $scope.refreshTable = function() {
@@ -996,8 +1005,8 @@ importTransactionsControllers.controller("importTransactionsCtrl",
     $scope.getSubscriptions = function(val) {
         return $http.get(settings.urls.saas_api_subscriptions, {
             params: {q: val}
-        }).then(function(res){
-            return res.data.results;
+        }).then(function success(resp){
+            return resp.data.results;
         });
     };
 }]);
