@@ -38,7 +38,9 @@ urls: {
 {% if urls.organization.api_role_descriptions %}
     saas_api_role_descriptions_url: "{{ urls.organization.api_role_descriptions }}",
 {% endif %}
-    api_statement_balance: "{{ urls.organization.api_statement_balance }}",
+{% if urls.organization.api_cancel_balance_due %}
+    api_cancel_balance_due: "{{ urls.organization.api_cancel_balance_due }}",
+{% endif %}
     /* subscriptions */
     api_organizations: "{{ urls.organization.api_profile_base }}",
     saas_api_subscriptions: "{{ urls.organization.api_subscriptions }}",
@@ -73,8 +75,8 @@ urls: {
 itemsPerPage: {% if items_per_page %}{{items_per_page}}{% else %}25{% endif %},
 tables: {% if tables %}{{tables|safe}}{% else %}{}{% endif %}, // XXX
 date_range: {
-    start_at: {% if start_at %}"{{start_at}}"{% else %}""{% endif %},
-    ends_at: {% if ends_at %}"{{ends_at}}"{% else %}""{% endif %}
+    start_at: "{% if start_at %}{{start_at|isoformat}}{% endif %}",
+    ends_at: "{% if ends_at %}{{ends_at|isoformat}}{% endif %}"
 },
 user: {
     username: "{{request.user.username}}",

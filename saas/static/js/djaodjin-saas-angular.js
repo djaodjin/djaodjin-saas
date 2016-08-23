@@ -9,7 +9,7 @@ var saasApp = angular.module("saasApp", [
     "metricsControllers",
     "importTransactionsControllers",
     "subscriptionControllers",
-    "transactionControllers", "transactionServices", "saasFilters"]);
+    "transactionControllers", "saasFilters"]);
 
 /*=============================================================================
   Filters
@@ -107,7 +107,6 @@ angular.module("saasFilters", [])
   Services
   ============================================================================*/
 var couponServices = angular.module("couponServices", ["ngResource"]);
-var transactionServices = angular.module("transactionServices", ["ngResource"]);
 
 
 couponServices.factory("Coupon", ["$resource", "settings",
@@ -136,31 +135,41 @@ transactionControllers.controller("itemsListCtrl",
     ["$scope", "$http", "$timeout", "settings",
      function($scope, $http, $timeout, settings) {
     "use strict";
-    $scope.dir = {};
+    $scope.items = {};
     $scope.totalItems = 0;
-    $scope.opened = { "start_at": false, "ends_at": false };
-    $scope.params = {};
-    if( settings.sortByField ) {
-        $scope.params['o'] = settings.sortByField;
-        $scope.params['ot'] = settings.sortDirection || "desc";
-        $scope.dir[settings.sortByField] = $scope.params['ot'];
-    }
-    if( settings.date_range ) {
-        if( settings.date_range.start_at ) {
-            $scope.params['start_at'] = moment(settings.date_range.start_at).toDate();
-        }
-        if( settings.date_range.ends_at ) {
-            $scope.params['ends_at'] = moment(settings.date_range.ends_at).toDate()
-        }
-    }
 
-    $scope.filterExpr = "";
-    $scope.itemsPerPage = settings.itemsPerPage; // Must match server-side
-    $scope.maxSize = 5;               // Total number of direct pages link
-    $scope.currentPage = 1;
-    // currentPage will be saturated at maxSize when maxSize is defined.
-    $scope.formats = ["dd-MMMM-yyyy", "yyyy/MM/dd", "dd.MM.yyyy", "shortDate"];
-    $scope.format = $scope.formats[0];
+    $scope.resetDefaults = function(overrides) {
+        $scope.dir = {};
+        var opts = {};
+        if( settings.sortByField ) {
+            opts['o'] = settings.sortByField;
+            opts['ot'] = settings.sortDirection || "desc";
+            $scope.dir[settings.sortByField] = opts['ot'];
+        }
+        if( settings.date_range ) {
+            if( settings.date_range.start_at ) {
+                opts['start_at'] = moment(settings.date_range.start_at).toDate();
+            }
+            if( settings.date_range.ends_at ) {
+                opts['ends_at'] = moment(settings.date_range.ends_at).toDate()
+            }
+        }
+        $scope.filterExpr = "";
+        $scope.itemsPerPage = settings.itemsPerPage; // Must match server-side
+        $scope.maxSize = 5;               // Total number of direct pages link
+        $scope.currentPage = 1;
+        // currentPage will be saturated at maxSize when maxSize is defined.
+        $scope.formats = ["dd-MMMM-yyyy", "yyyy/MM/dd",
+            "dd.MM.yyyy", "shortDate"];
+        $scope.format = $scope.formats[0];
+        $scope.opened = { "start_at": false, "ends_at": false };
+        if( typeof overrides === "undefined" ) {
+            overrides = {};
+        }
+        $scope.params = angular.merge({}, opts, overrides);
+    };
+
+    $scope.resetDefaults();
 
     // calendar for start_at and ends_at
     $scope.open = function($event, date_at) {
@@ -208,6 +217,7 @@ transactionControllers.controller("itemsListCtrl",
                 }
             }
         }
+
         if( updated ) {
             $scope.refresh();
         }
@@ -584,7 +594,6 @@ transactionControllers.controller("userRoleDescriptionCtrl",
     $scope.addRoleDescription = function() {
         $scope.newRoleDescription = null;
         var dialog = angular.element("#new-role-description");
-        console.log("XXX dialog=", dialog, "bs.modal=", dialog.data("bs.modal"));
     };
 
     $scope.createRoleDescription = function() {
@@ -804,19 +813,16 @@ transactionControllers.controller("transactionListCtrl",
 transactionControllers.controller("billingStatementCtrl",
     ["$scope", "$controller", "$http", "$timeout", "settings",
     function($scope, $controller, $http, $timeout, settings) {
-
-    $scope.cancelBalance = function() {
-        if (confirm("Are you sure you want to cancel the balance " +
-                    "due? This will create a new transaction in " +
-                    "the history.")) {
-            $http.delete(settings.urls.api_statement_balance).then(
+    $scope.cancelBalance = function($event) {
+        $event.preventDefault();
+        $http.delete(settings.urls.api_cancel_balance_due).then(
             function success(resp) {
-                $scope.refresh();
+                $scope.resetDefaults({'ends_at': moment().toDate()});
             },
             function error(resp) {
                 showErrorMessages(resp);
             });
-        }
+        return 0;
     };
 
     $controller("transactionListCtrl", {

@@ -59,17 +59,11 @@ from django.utils.timezone import utc
 from django.utils.translation import ugettext_lazy as _
 from django_countries.fields import CountryField
 
-from . import settings, signals
+from . import humanize, settings, signals
 from .backends import get_processor_backend, ProcessorError, CardError
 from .utils import (datetime_or_now, extract_full_exception_stack,
     generate_random_slug, get_role_model)
 
-from .humanize import (as_money, describe_buy_periods,
-    DESCRIBE_BUY_PERIODS, DESCRIBE_BALANCE,
-    DESCRIBE_CHARGED_CARD, DESCRIBE_CHARGED_CARD_PROCESSOR,
-    DESCRIBE_CHARGED_CARD_PROVIDER, DESCRIBE_CHARGED_CARD_REFUND,
-    DESCRIBE_DOUBLE_ENTRY_MATCH, DESCRIBE_LIABILITY_START_PERIOD,
-    DESCRIBE_OFFLINE_PAYMENT)
 
 LOGGER = logging.getLogger(__name__)
 
@@ -722,7 +716,7 @@ class Organization(models.Model):
             self.funds_balance -= fee_amount
             self.save()
 
-    def create_cancel_transactions(self):
+    def create_cancel_transactions(self, at_time=None, user=None):
         """
         The receivables from this subscriber will not be recovered.
         They are being written off.
@@ -753,11 +747,85 @@ class Organization(models.Model):
                 xia:Cancelled                             $179.99
                 cowork:Receivable
         """
-        #Transaction.objects.filter(
-        #    dest_organization=self,
-        #    dest_account=Transaction.PAYABLE,
-        #    orig_account=Transaction.RECEIVABLE)
-        raise NotImplementedError()
+        at_time = datetime_or_now(at_time)
+        dest_balances = Transaction.objects.filter(
+            Q(dest_account=Transaction.PAYABLE)
+            | Q(dest_account=Transaction.LIABILITY),
+            dest_organization=self).values('event_id', 'dest_unit').annotate(
+                Sum('dest_amount'))
+        orig_balances = Transaction.objects.filter(
+            Q(orig_account=Transaction.PAYABLE)
+            | Q(orig_account=Transaction.LIABILITY),
+            orig_organization=self).values('event_id', 'orig_unit').annotate(
+                Sum('orig_amount'))
+        orig_amounts = {}
+        for balance in orig_balances:
+            orig_amounts[balance['event_id']] = balance['orig_amount__sum']
+        for balance in dest_balances:
+            subscription_id = balance['event_id']
+            balance_due = (balance['dest_amount__sum']
+                - orig_amounts.get(subscription_id, 0))
+            if balance_due > 0:
+                dest_unit = balance['dest_unit']
+                subscription = Subscription.objects.get(pk=subscription_id)
+                event_balance = Transaction.objects.get_event_balance(
+                    subscription_id, account=Transaction.PAYABLE)
+                balance_payable = event_balance['amount']
+                with transaction.atomic():
+                    if balance_payable > 0:
+                        # Example:
+                        # 2016/08/16 keep a balanced ledger
+                        #     xia:Liability                            15800
+                        #     xia:Payable
+                        Transaction.objects.create(
+                            event_id=subscription_id,
+                            created_at=at_time,
+                            descr=humanize.DESCRIBE_DOUBLE_ENTRY_MATCH,
+                            dest_unit=dest_unit,
+                            dest_amount=balance_payable,
+                            dest_account=Transaction.LIABILITY,
+                            dest_organization=subscription.organization,
+                            orig_unit=dest_unit,
+                            orig_amount=balance_payable,
+                            orig_account=Transaction.PAYABLE,
+                            orig_organization=subscription.organization)
+                    # Example:
+                    # 2016/08/16 write off liability
+                    #     cowork:Writeoff                              15800
+                    #     xia:Liability
+                    Transaction.objects.create(
+                        event_id=subscription_id,
+                        created_at=at_time,
+                        descr=humanize.DESCRIBE_WRITEOFF_LIABILITY % {
+                            'event': subscription},
+                        dest_unit=dest_unit,
+                        dest_amount=balance_due,
+                        dest_account=Transaction.WRITEOFF,
+                        dest_organization=subscription.plan.organization,
+                        orig_unit=dest_unit,
+                        orig_amount=balance_due,
+                        orig_account=Transaction.LIABILITY,
+                        orig_organization=subscription.organization)
+                    # Example:
+                    # 2016/08/16 write off receivable
+                    #     xia:Cancelled                             15800
+                    #     cowork:Receivable
+                    Transaction.objects.create(
+                        event_id=subscription_id,
+                        created_at=at_time,
+                        descr=humanize.DESCRIBE_WRITEOFF_RECEIVABLE % {
+                            'event': subscription},
+                        dest_unit=dest_unit,
+                        dest_amount=balance_due,
+                        dest_account=Transaction.CANCELED,
+                        dest_organization=subscription.organization,
+                        orig_unit=dest_unit,
+                        orig_amount=balance_due,
+                        orig_account=Transaction.RECEIVABLE,
+                        orig_organization=subscription.plan.organization)
+                    LOGGER.info('cancel_balance {"organization": "%s",'\
+                        ' "amount": "%d", "user": "%s"}',
+                        self, balance_due, user)
 
 
 class RoleDescription(models.Model):
@@ -940,7 +1008,7 @@ class ChargeManager(models.Manager):
             broker = get_broker()
         processor = broker.validate_processor()
         processor_backend = broker.processor_backend
-        descr = DESCRIBE_CHARGED_CARD % {
+        descr = humanize.DESCRIBE_CHARGED_CARD % {
             'charge': '', 'organization': customer.printable_name}
         if user:
             descr += ' (%s)' % user.username
@@ -962,7 +1030,8 @@ class ChargeManager(models.Manager):
                 raise ProcessorError("%s is not connected to a processor"
                     " backend customer and no token passed." % customer)
             # Create record of the charge in our database
-            descr = DESCRIBE_CHARGED_CARD % {'charge': processor_charge_id,
+            descr = humanize.DESCRIBE_CHARGED_CARD % {
+                'charge': processor_charge_id,
                 'organization': customer.printable_name}
             if user:
                 descr += ' (%s)' % user.username
@@ -1286,7 +1355,7 @@ class Charge(models.Model):
                 Transaction.objects.create(
                     event_id=invoiced_item.event_id,
                     created_at=self.created_at,
-                    descr=DESCRIBE_DOUBLE_ENTRY_MATCH,
+                    descr=humanize.DESCRIBE_DOUBLE_ENTRY_MATCH,
                     dest_unit=invoiced_item.dest_unit,
                     dest_amount=available,
                     dest_account=Transaction.LIABILITY,
@@ -1323,7 +1392,7 @@ class Charge(models.Model):
                 #     stripe:Backlog
                 charge_item.invoiced_fee = Transaction.objects.create(
                     created_at=self.created_at,
-                    descr=DESCRIBE_CHARGED_CARD_PROCESSOR % {
+                    descr=humanize.DESCRIBE_CHARGED_CARD_PROCESSOR % {
                         'charge': self.processor_key, 'event': event},
                     event_id=self.id,
                     dest_unit=funds_unit,
@@ -1349,7 +1418,7 @@ class Charge(models.Model):
             Transaction.objects.create(
                 event_id=event.id,
                 created_at=self.created_at,
-                descr=DESCRIBE_CHARGED_CARD_PROVIDER % {
+                descr=humanize.DESCRIBE_CHARGED_CARD_PROVIDER % {
                         'charge': self.processor_key, 'event': event},
                 dest_unit=self.unit,
                 dest_amount=orig_item_amount,
@@ -1366,7 +1435,7 @@ class Charge(models.Model):
             charge_item.invoiced_distribute = Transaction.objects.create(
                 event_id=self.id,
                 created_at=self.created_at,
-                descr=DESCRIBE_CHARGED_CARD_PROVIDER % {
+                descr=humanize.DESCRIBE_CHARGED_CARD_PROVIDER % {
                         'charge': self.processor_key, 'event': event},
                 dest_unit=funds_unit,
                 dest_amount=distribute_amount,
@@ -1413,8 +1482,8 @@ class Charge(models.Model):
         if refunded_amount > refund_available:
             raise InsufficientFunds("Cannot refund %(refund_required)s"\
 " while there is only %(refund_available)s available on the line item."
-% {'refund_available': as_money(refund_available, self.unit),
-   'refund_required': as_money(refunded_amount, self.unit)})
+% {'refund_available': humanize.as_money(refund_available, self.unit),
+   'refund_required': humanize.as_money(refunded_amount, self.unit)})
 
         charge_available_amount, provider_unit, \
             charge_fee_amount, processor_unit \
@@ -1564,13 +1633,14 @@ class ChargeItem(models.Model):
                 '%(provider)s has %(funds_available)s of funds available.'\
 ' %(funds_required)s are required to refund "%(descr)s"' % {
     'provider': provider,
-    'funds_available': as_money(provider.funds_balance, provider_unit),
-    'funds_required': as_money(refunded_distribute_amount, provider_unit),
+    'funds_available': humanize.as_money(provider.funds_balance, provider_unit),
+    'funds_required': humanize.as_money(
+        refunded_distribute_amount, provider_unit),
     'descr': invoiced_item.descr})
 
         with transaction.atomic():
             # Record the refund from provider to subscriber
-            descr = DESCRIBE_CHARGED_CARD_REFUND % {
+            descr = humanize.DESCRIBE_CHARGED_CARD_REFUND % {
                 'charge': charge.processor_key,
                 'refund_type': refund_type.lower(),
                 'descr': invoiced_item.descr}
@@ -1707,7 +1777,7 @@ class PlanManager(models.Manager):
         plan = None
         nb_periods = 0
         ends_at = datetime.datetime()
-        look = re.match(DESCRIBE_BUY_PERIODS % {
+        look = re.match(humanize.DESCRIBE_BUY_PERIODS % {
                 'plan': r'(?P<plan>\S+)',
                 'ends_at': r'(?P<ends_at>\d\d\d\d/\d\d/\d\d)',
                 'humanized_periods': r'(?P<nb_periods>\d+).*'}, descr)
@@ -2410,7 +2480,7 @@ class TransactionManager(models.Manager):
                 cowork:Funds
         """
         if descr is None:
-            descr = DESCRIBE_OFFLINE_PAYMENT
+            descr = humanize.DESCRIBE_OFFLINE_PAYMENT
         if user:
             descr += ' (%s)' % user.username
         created_at = datetime_or_now(created_at)
@@ -2452,7 +2522,7 @@ class TransactionManager(models.Manager):
                 Transaction.objects.create(
                     event_id=subscription.id,
                     created_at=created_at,
-                    descr=DESCRIBE_DOUBLE_ENTRY_MATCH,
+                    descr=humanize.DESCRIBE_DOUBLE_ENTRY_MATCH,
                     dest_amount=available,
                     dest_unit=subscription.plan.unit,
                     dest_account=Transaction.LIABILITY,
@@ -2477,7 +2547,7 @@ class TransactionManager(models.Manager):
 
             self.create(
                 created_at=created_at,
-                descr="%s - %s" % (descr, DESCRIBE_DOUBLE_ENTRY_MATCH),
+                descr="%s - %s" % (descr, humanize.DESCRIBE_DOUBLE_ENTRY_MATCH),
                 event_id=subscription.id,
                 dest_amount=amount,
                 dest_unit=subscription.plan.unit,
@@ -2733,7 +2803,7 @@ class TransactionManager(models.Manager):
             # descr will later be use to recover the ``period_number``,
             # so we need to use The true ``nb_periods`` and not the number
             # of natural periods.
-            descr = describe_buy_periods(
+            descr = humanize.describe_buy_periods(
                 subscription.plan, ends_at, nb_periods,
                 discount_percent=discount_percent, descr_suffix=descr_suffix)
         else:
@@ -2760,7 +2830,8 @@ class TransactionManager(models.Manager):
         to be paid later.
         """
         return self.new_subscription_statement(subscription,
-            created_at=created_at, descr_pat=DESCRIBE_BALANCE + '- Pay later',
+            created_at=created_at,
+            descr_pat=humanize.DESCRIBE_BALANCE + '- Pay later',
             balance_now=0)
 
     def new_subscription_statement(self, subscription, created_at=None,
@@ -2786,11 +2857,11 @@ class TransactionManager(models.Manager):
         if balance_now is None:
             balance_now = balance
         if descr_pat is None:
-            descr_pat = DESCRIBE_BALANCE
+            descr_pat = humanize.DESCRIBE_BALANCE
         return Transaction(
             event_id=subscription.id,
             created_at=created_at,
-            descr=descr_pat % {'amount': as_money(balance, unit),
+            descr=descr_pat % {'amount': humanize.as_money(balance, unit),
                 'plan': subscription.plan},
             dest_unit=unit,
             dest_amount=balance_now,
@@ -2821,7 +2892,7 @@ class TransactionManager(models.Manager):
         amount = subscription.plan.period_amount
         return self.create(
             created_at=created_at,
-            descr=DESCRIBE_LIABILITY_START_PERIOD,
+            descr=humanize.DESCRIBE_LIABILITY_START_PERIOD,
             dest_amount=amount,
             dest_unit=subscription.plan.unit,
             dest_account=Transaction.LIABILITY,
@@ -2968,7 +3039,8 @@ class Transaction(models.Model):
     WITHDRAW = 'Withdraw'     # >= 0
     REFUND = 'Refund'         # >= 0
     CHARGEBACK = 'Chargeback'
-    WRITEOFF = 'Writeoff'      # unused
+    CANCELED = 'Canceled'
+    WRITEOFF = 'Writeoff'
     RECEIVABLE = 'Receivable' # always <= 0
     BACKLOG = 'Backlog'       # always <= 0
     INCOME = 'Income'         # always <= 0

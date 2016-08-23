@@ -63,7 +63,7 @@ djaodjin-saas/tree/master/saas/templates/saas/metrics/balances.html>`__).
         if year:
             year = int(year)
             ends_at = datetime_or_now(datetime(year=year + 1, month=1, day=1))
-            context.update({'ends_at': ends_at.isoformat()})
+            context.update({'ends_at': ends_at})
         urls = {
             'api_balance_lines': reverse(
                 'saas_api_balance_lines', kwargs={'report': report}),

@@ -68,6 +68,12 @@ DESCRIBE_UNLOCK_NOW = \
 DESCRIBE_UNLOCK_LATER = \
     "Access %(plan)s Today. Pay %(amount)s later to %(unlock_event)s."
 
+DESCRIBE_WRITEOFF_LIABILITY = \
+    "Write off liability for %(event)s"
+
+DESCRIBE_WRITEOFF_RECEIVABLE = \
+    "Write off receivable for %(event)s"
+
 
 def as_money(value, currency=settings.DEFAULT_UNIT):
     unit_prefix = ''

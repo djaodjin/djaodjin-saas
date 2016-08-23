@@ -41,6 +41,17 @@ from ..utils import get_role_model
 
 register = template.Library()
 
+@register.filter()
+def isoformat(val):
+    if isinstance(val, datetime):
+        return val.isoformat()
+    return val
+
+@register.filter()
+def short_date(val):
+    if isinstance(val, datetime):
+        return val.strftime("%b %d, %Y")
+    return val
 
 @register.filter()
 def htmlize_money(amount_unit_tuple):

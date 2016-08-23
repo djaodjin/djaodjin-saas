@@ -381,6 +381,22 @@
 },
 {
     "fields": {
+      "slug": "xia-card7",
+      "full_name": "Xia Card7",
+      "created_at": "2016-08-22T00:00:00+00:00",
+      "email": "noreply@djaodjin.com",
+      "phone": "+1 415 857 3526",
+      "street_address": "588 Sutter St. #237A",
+      "locality":  "San Francisco",
+      "region": "CA",
+      "postal_code": "94102",
+      "country": "US",
+      "is_active": 1
+    },
+    "model": "saas.Organization", "pk": 7
+},
+{
+    "fields": {
       "slug": "to-be-deleted-1",
       "full_name": "Subscriber ToBeDeleted",
       "created_at": "2012-09-14T14:16:55-09:00",
@@ -455,4 +471,43 @@
         "recorded": 1
     },
     "model" : "saas.CartItem", "pk": 1
+},
+{
+    "fields": {
+      "created_at": "2016-08-22T00:00:00+00:00",
+      "ends_at": "2017-01-01T00:00:00-09:00",
+      "organization": 7,
+      "plan": 1
+    },
+    "model": "saas.subscription", "pk": 7
+},
+{
+    "fields": {
+      "created_at": "2016-08-22T00:00:00+00:00",
+      "dest_amount": 13800,
+      "dest_unit": "usd",
+      "dest_account": "Payable",
+      "dest_organization": 7,
+      "orig_amount": 13800,
+      "orig_unit": "usd",
+      "orig_account": "Receivable",
+      "orig_organization": 2,
+      "event_id": 7
+    },
+    "model": "saas.transaction", "pk": 1
+},
+{
+    "fields": {
+      "created_at": "2016-08-22T00:00:01+00:00",
+      "dest_amount": 6900,
+      "dest_unit": "usd",
+      "dest_account": "Liability",
+      "dest_organization": 7,
+      "orig_amount": 6900,
+      "orig_unit": "usd",
+      "orig_account": "Payable",
+      "orig_organization": 7,
+      "event_id": 7
+    },
+    "model": "saas.transaction", "pk": 2
 }]

@@ -479,6 +479,10 @@ class BillingStatementView(OrganizationMixin, TransactionBaseView):
                     'saas_organization_balance', args=(self.organization,)),
                 'update_card': reverse(
                     'saas_update_card', args=(self.organization,))}})
+        if _valid_manager(self.request.user, [get_broker()]):
+            context['urls']['organization'].update({
+                'api_cancel_balance_due': reverse(
+                    'saas_api_cancel_balance_due', args=(self.organization,))})
         return context
 
 

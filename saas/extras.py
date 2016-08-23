@@ -85,8 +85,6 @@ class OrganizationMixinBase(object):
             'api_profile_base': reverse('saas_api_profile'),
             'api_subscriptions': reverse(
                 'saas_api_subscription_list', args=(organization,)),
-            'api_statement_balance': reverse(
-                'saas_api_statement_balance', args=(organization,)),
             'billing_base': reverse('saas_billing_base'),
             'profile_base': reverse('saas_profile'),
             'profile': reverse(

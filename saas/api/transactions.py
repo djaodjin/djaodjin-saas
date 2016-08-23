@@ -27,8 +27,9 @@ from collections import OrderedDict
 import dateutil
 from django.db.models import Q
 from extra_views.contrib.mixins import SearchableListMixin, SortableListMixin
+from rest_framework import status
 from rest_framework.exceptions import ValidationError
-from rest_framework.generics import ListAPIView
+from rest_framework.generics import ListAPIView, DestroyAPIView
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -458,7 +459,17 @@ class StatementBalanceAPIView(OrganizationMixin, APIView):
             "balance_amount": "1200",
             "balance_unit": "usd"
         }
+    """
 
+    def get(self, request, *args, **kwargs):
+        balance_amount, balance_unit \
+            = Transaction.objects.get_statement_balance(self.organization)
+        return Response({'balance_amount': balance_amount,
+                         'balance_unit': balance_unit})
+
+
+class CancelStatementBalanceAPIView(OrganizationMixin, DestroyAPIView):
+    """
     Cancel the balance for a provider organization. This will create
     a transaction for this balance cancellation. A manager can use
     this endpoint to cancel balance dues that is known impossible
@@ -475,11 +486,6 @@ class StatementBalanceAPIView(OrganizationMixin, APIView):
         DELETE /api/billing/cowork/balance/
     """
 
-    def get(self, request, *args, **kwargs):
-        balance_amount, balance_unit \
-            = Transaction.objects.get_statement_balance(self.organization)
-        return Response({'balance_amount': balance_amount,
-                         'balance_unit': balance_unit})
-
-    def delete(self, request, *args, **kwargs): #pylint:disable=unused-argument
-        self.organization.create_cancel_transactions()
+    def destroy(self, request, *args, **kwargs): #pylint:disable=unused-argument
+        self.organization.create_cancel_transactions(user=request.user)
+        return Response(status=status.HTTP_204_NO_CONTENT)

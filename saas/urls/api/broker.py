@@ -31,12 +31,17 @@ from django.conf.urls import url
 from ... import settings
 from ...api.balances import BalanceLineListAPIView, BrokerBalancesAPIView
 from ...api.charges import OrganizationChargeListAPIView
-from ...api.transactions import TransactionListAPIView
+from ...api.transactions import (CancelStatementBalanceAPIView,
+    TransactionListAPIView)
 from ...api.users import RegisteredAPIView, UserListAPIView
+
 
 urlpatterns = [
     url(r'^billing/transactions/?',
         TransactionListAPIView.as_view(), name='saas_api_transactions'),
+    url(r'^billing/(?P<organization>%s)/balance/cancel/?' % settings.ACCT_REGEX,
+        CancelStatementBalanceAPIView.as_view(),
+        name='saas_api_cancel_balance_due'),
     url(r'^charges/?', OrganizationChargeListAPIView.as_view(),
         name='saas_api_charges'),
     url(r'^metrics/balances/(?P<report>%s)/?' % settings.ACCT_REGEX,

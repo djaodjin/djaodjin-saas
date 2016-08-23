@@ -2,8 +2,9 @@
 
 {% block saas_content %}
 <div ng-app="saasApp">
-  <div ng-controller="billingSummaryCtrl">
-    <section id="info">
+  <div ng-controller="billingStatementCtrl">
+    <section id="info" ng-controller="billingSummaryCtrl"
+             data-api-url="{{urls.provider.api_bank}}">
       <h1>Deposit Information <a id="update_bank" href="{{urls.provider.bank}}">Update</a></h1>
       <div>
         <dl>

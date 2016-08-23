@@ -72,7 +72,7 @@ urlpatterns = [
     url_prefixed(r'api/', include('saas.urls.api.users'),
         decorators=['saas.decorators.requires_self_provider']),
     url_prefixed(r'api/', include('saas.urls.api.broker'),
-        decorators=['saas.decorators.requires_direct']),
+        decorators=['saas.decorators.requires_provider_only']),
     # api/charges/:charge/refund must be before api/charges/
     url_prefixed(r'api/',
         include('saas.urls.api.provider.charges'),
