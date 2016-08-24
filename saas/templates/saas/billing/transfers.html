@@ -2,35 +2,32 @@
 
 {% block saas_content %}
 <div ng-app="saasApp">
-  <div ng-controller="billingStatementCtrl">
-    <section id="info" ng-controller="billingSummaryCtrl"
-             data-api-url="{{urls.provider.api_bank}}">
+  <div ng-controller="billingSummaryCtrl"
+       data-api-url="{{urls.provider.api_bank}}">
+    <section id="info">
       <h1>Deposit Information <a id="update_bank" href="{{urls.provider.bank}}">Update</a></h1>
-      <div>
-        <dl>
-          <dt>Institution</dt>
-          <dd>[[bank_name]]</dd>
-        </dl>
-        <dl>
-          <dt>Account Number</dt>
-          <dd>[[last4]]</dd>
-        </dl>
-      </div>
+      <dl>
+        <dt>Institution</dt>
+        <dd>[[bank_name]]</dd>
+      </dl>
+      <dl>
+        <dt>Account Number</dt>
+        <dd>[[last4]]</dd>
+      </dl>
     </section>
     <section id="funds">
       <h1>Funds</h1>
       <dl>
-        <dt id="balance-amount">[[balance_amount|humanizeCell : balance_unit : 0.01]]</dt>
-        <dd>Available (<a href="{{urls.provider.withdraw_funds}}">withdraw</a>)</dd>
+        <dt>Available</dt>
+        <dd id="balance-amount">[[balance_amount|humanizeCell : balance_unit : 0.01]] (<a href="{{urls.provider.withdraw_funds}}">withdraw</a>)</dd>
       </dl>
     </section>
   </div>
-  {% include "saas/_charges.html" %}
-  {% include "saas/_transactions.html" %}
-  <section>
-    <div>
-      <a href="{{urls.provider.import_transactions}}">Add offline transaction</a>
-    </div>
-  </section>
+  <div ng-controller="transactionListCtrl">
+    {% include "saas/_transactions.html" %}
+  </div>
+  <div>
+    <a href="{{urls.provider.import_transactions}}">Add offline transaction</a>
+  </div>
 </div>
 {% endblock %}

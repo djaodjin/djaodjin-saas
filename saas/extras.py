@@ -147,6 +147,7 @@ class OrganizationMixinBase(object):
             urls.update({'broker': {
                 'api_users': reverse('saas_api_users'),
                 'api_users_registered': reverse('saas_api_registered'),
+                'charges': reverse('saas_charges'),
             }})
         self.update_context_urls(context, urls)
         return context

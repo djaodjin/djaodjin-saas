@@ -509,7 +509,6 @@ djaodjin-saas/tree/master/saas/templates/saas/billing/transfers.html>`__).
     def get_context_data(self, **kwargs):
         context = super(TransferListView, self).get_context_data(**kwargs)
         context.update({
-            'saas_api_charges': reverse('saas_api_charges'),
             'saas_api_transactions': reverse(
                 'saas_api_transfer_list', args=(self.provider,)),
             'download_url': reverse(
@@ -715,6 +714,22 @@ djaodjin-saas/tree/master/saas/templates/saas/billing/cart.html>`__).
     def get_context_data(self, **kwargs):
         context = super(CartView, self).get_context_data(**kwargs)
         context.update({'is_bulk_buyer': False})
+        return context
+
+
+class ChargeListView(ProviderMixin, TemplateView):
+    """
+    Display all charges made through a broker.
+    """
+
+    template_name = 'saas/billing/charges.html'
+
+    def get_context_data(self, **kwargs):
+        context = super(ChargeListView, self).get_context_data(**kwargs)
+        urls = {'broker': {
+            'api_charges': reverse('saas_api_charges'),
+        }}
+        self.update_context_urls(context, urls)
         return context
 
 

@@ -30,7 +30,6 @@ urls: {
     api_balance_lines: "{{urls.api_balance_lines}}",
     api_broker_balances: "{{urls.api_broker_balances}}",
     api_transactions: "{{saas_api_transactions}}",
-    api_charges: "{{saas_api_charges}}",
 {% if urls.organization %}
 {% if urls.organization.api_roles %}
     saas_api_user_roles_url: "{{ urls.organization.api_roles }}",
@@ -61,7 +60,8 @@ urls: {
     /* users */
 {% if urls.broker %}
     api_registered: "{{ urls.broker.api_users_registered }}",
-    api_users: "{{ urls.broker.api_users }}",
+    api_users: "{{urls.broker.api_users }}",
+    api_charges: "{{urls.broker.api_charges}}",
 {% endif %}
     /* accounts */
 {% if urls.accounts_base and urls.provider and urls.provider.api_accounts %}

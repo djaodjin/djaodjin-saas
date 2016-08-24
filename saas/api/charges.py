@@ -174,7 +174,7 @@ class OrganizationChargeListAPIView(SmartChargeListMixin,
                                     ListAPIView):
 
     """
-    List of ``Charge``.
+    List all ``Charge`` for a subscriber.
 
     **Example request**:
 
