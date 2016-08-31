@@ -161,8 +161,7 @@ def create_charges_for_balance(until=None, dry_run=False):
     until = datetime_or_now(until)
     LOGGER.info("create charges for balance at %s ...", until)
     for organization in Organization.objects.all():
-        charges = Charge.objects.filter(
-            customer=organization, state=Charge.CREATED)
+        charges = Charge.objects.in_progress_for_customer(organization)
         # We will create charges only when we have no charges
         # already in flight for this customer.
         if not charges.exists():

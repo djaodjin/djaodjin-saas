@@ -953,6 +953,17 @@ class ChargeManager(models.Manager):
     def by_customer(self, organization):
         return self.filter(customer=organization)
 
+    def in_progress_for_customer(self, organization):
+        return self.by_customer(organization).filter(state=Charge.CREATED)
+
+    def settle_customer_payments(self, organization):
+        """
+        This will call the processor backend to attempt to settle charges
+        into a success or failed state.
+        """
+        for charge in self.in_progress_for_customer(organization):
+            charge.retrieve()
+
     def create_charge(self, customer, transactions, amount, unit,
                       processor, processor_charge_id, last4, exp_date,
                       descr=None, created_at=None):
@@ -2217,6 +2228,7 @@ class Subscription(models.Model):
 
     @property
     def is_locked(self):
+        Charge.objects.settle_customer_payments(self.organization)
         balance, _ = \
             Transaction.objects.get_subscription_statement_balance(self)
         return balance > 0
@@ -2341,8 +2353,7 @@ class Subscription(models.Model):
         return partial_start_period + full_periods + partial_end_period
 
     def charge_in_progress(self):
-        queryset = Charge.objects.filter(
-            customer=self.organization, state=Charge.CREATED)
+        queryset = Charge.objects.in_progress_for_customer(self.organization)
         if queryset.exists():
             return queryset.first()
         return None
