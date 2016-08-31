@@ -423,7 +423,8 @@ class Organization(models.Model):
         """
         return Transaction.objects.filter(
             orig_organization=self,
-            orig_account=Transaction.RECEIVABLE).exclude(Transaction.CANCELED)
+            orig_account=Transaction.RECEIVABLE).exclude(
+                dest_account=Transaction.CANCELED)
 
     def update_bank(self, bank_token):
         if bank_token is None:
