@@ -5,7 +5,6 @@ Database Models
 
 .. image:: saas-models.*
 
-
 ``Organization`` can be semantically separated in four categories, processor,
 broker, providers and subscribers.
 

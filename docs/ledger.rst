@@ -71,6 +71,10 @@ to balance the books.
     Cash received by a *provider* that was received in advance of earning it.
 - Chargeback
     Cash taken back out of a *provider* funds by the platform on a dispute.
+- Canceled
+    Receivables are written off
+- Expenses
+    Fees paid by *provider* to a *processor* to settle a credit card payment.
 - Funds
     Cash amount currently held on the platform by a *provider*.
 - Income
@@ -79,6 +83,8 @@ to balance the books.
     Balance due by a *subscriber*.
 - Payable
     Order of a subscription to a plan as recorded by a *subscriber*.
+- Offline
+    Record an offline payment to a *provider* (ex: paper check).
 - Receivable
     Order of a subscription to a plan as recorded by a *provider*.
 - Refund
@@ -88,7 +94,7 @@ to balance the books.
 - Withdraw
     Cash that was taken out of the platform by a *provider*.
 - Writeoff
-    Receivable that cannot and will not be collected by a *provider*
+    Payables that cannot and will not be collected by a *provider*
 
 Place a subscription order from a ``Cart``
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -152,19 +158,13 @@ Period ended
 Write off
 ^^^^^^^^^
 
-Sometimes, a provider will give up and assume payables cannot be recovered
-from a subscriber. At that point a writeoff transaction is recorded in order
-to keep the ledger balanced::
-
-            yyyy/mm/dd description
-                provider:Refund                        amount
-                subscriber:Writeoff
+.. automethod:: saas.models.Organization.create_cancel_transactions
 
 
 Settled account
 ^^^^^^^^^^^^^^^
 
-.. automedthod:: saas.models.new_subscription_statement
+.. automethod:: saas.models.TransactionManager.new_subscription_statement
 
 
 Charges

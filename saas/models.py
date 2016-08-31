@@ -29,17 +29,35 @@
 #   import loops.
 
 """
+
+Subscribers and providers are both instances of ``Organization``. This is done
+such that one can be a subscriber to a ``Plan`` for a service hosted on
+the broker website as well as itself a provider to other subscribers.
+(ex: An organization can provide a CRM tool to subscribers while paying
+another app, also hosted on the broker platform, to display usage analytics
+of its own product). It is possible to implement
+a :doc:`symmetric double-entry bookkeeping ledger<ledger>` by having a single
+model ``Organization``.
+
+Typically if you are self-hosting a pure Software-as-a-Service, as opposed to
+building a marketplace, you will define a single provider which incidently
+is also the the broker (See :doc:`examples<getting-started>`).
+
 A billing profile (credit card and deposit bank account) is represented by
 an ``Organization``.
-An organization (subscriber) subscribes to services provided by another
-organization (provider) through a ``Subscription`` to a ``Plan``.
+An ``Organization`` subscriber subscribes to services provided by another
+``Organization`` provider through a ``Subscription`` to a ``Plan``.
+An ``Organization`` represents a billing profile. The ``processor_card_key``
+and ``processor_deposit_key`` fields are respectively used when an organization
+acts as a subscriber or provider in the subscription relationship.
 
 There are no mechanism provided to authenticate as an ``Organization``.
 Instead ``User`` authenticate with the application (through a login page
 or an API token). They are then able to access URLs related
-to an ``Organization`` based on their relation with that ``Organization``.
-Two sets or relations are supported: managers and contributors (for details see
-:doc:`Security <security>`).
+to an ``Organization`` based on their relation with that ``Organization``
+as implemented by a ``RoleDescription``.
+For historical reasons, two roles are often implemented: managers
+and contributors (for details see :doc:`Security <security>`).
 """
 
 import datetime, hashlib, logging, random, re
@@ -718,8 +736,9 @@ class Organization(models.Model):
 
     def create_cancel_transactions(self, at_time=None, user=None):
         """
-        The receivables from this subscriber will not be recovered.
-        They are being written off.
+        Sometimes, a provider will give up and assume receivables cannot
+        be recovered from a subscriber. At that point the receivables are
+        written off.::
 
             yyyy/mm/dd balance ledger
                 subscriber:Liability                       payable_amount

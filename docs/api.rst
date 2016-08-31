@@ -36,6 +36,11 @@ a provider through a processor.
 .. autoclass:: saas.api.backend.RetrieveCardAPIView
 
 
+.. http:delete:: /api/billing/:organization/balance/cancel/
+
+.. autoclass:: saas.api.transactions.CancelStatementBalanceAPIView
+
+
 .. _api_billing_coupons:
 
 .. http:get:: /api/billing/:organization/coupons/
@@ -68,6 +73,11 @@ a provider through a processor.
 .. autoclass:: saas.api.transactions.TransactionListAPIView
 
 
+.. http:get:: /api/billing/charges/
+
+.. autoclass:: saas.api.charges.ChargeListAPIView
+
+
 .. http:get:: /api/billing/charges/:charge/
 
 .. autoclass:: saas.api.charges.ChargeResourceView
@@ -98,6 +108,12 @@ a provider through a processor.
 .. http:delete:: /api/cart/<plan>/
 
 .. autoclass:: saas.api.billing.CartItemDestroyAPIView
+
+
+.. http:delete:: /api/cart/<plan>/upload/
+
+.. autoclass:: saas.api.billing.CartItemUploadAPIView
+
 
 .. _api_checkout:
 
@@ -142,7 +158,25 @@ These API end points manage the subscription logic, payments excluded.
 
 .. autoclass:: saas.api.roles.AccessibleByListAPIView
 
+
+.. http:delete:: /api/users/:user/accessibles/:organization/
+
+.. autoclass:: saas.api.roles.RoleDetailAPIView
+
+
 .. _api_role:
+
+.. http:get:: /api/profile/:organization/roles/describe/
+.. http:post:: /api/profile/:organization/roles/describe/
+
+.. autoclass:: saas.api.roles.RoleDescriptionListCreateView
+
+.. http:get:: /api/profile/:organization/roles/describe/:role/
+.. http:put:: /api/profile/:organization/roles/describe/:role/
+.. http:delete:: /api/profile/:organization/roles/describe/:role/
+
+.. autoclass:: saas.api.roles.RoleDescriptionDetailView
+
 
 .. http:get:: /api/profile/:organization/roles/:role/
 .. http:post:: /api/profile/:organization/roles/:role/

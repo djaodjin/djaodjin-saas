@@ -32,8 +32,7 @@ from django.utils.translation import ugettext_lazy as _
 from rest_framework import serializers, status
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.generics import (ListAPIView, CreateAPIView,
-    ListCreateAPIView, DestroyAPIView)
-from rest_framework.viewsets import ModelViewSet
+    ListCreateAPIView, DestroyAPIView, RetrieveUpdateDestroyAPIView)
 from rest_framework.response import Response
 
 from .. import settings
@@ -195,13 +194,15 @@ class AccessibleByListAPIView(RoleSmartListMixin,
             headers=self.get_success_headers(serializer.validated_data))
 
 
-class RoleDescriptionAPIViewSet(OrganizationMixin, ModelViewSet):
+class RoleDescriptionQuerysetMixin(OrganizationMixin):
+
     serializer_class = RoleDescriptionCRUDSerializer
     queryset = RoleDescription.objects.all()
     lookup_field = 'slug'
+    lookup_url_kwarg = 'role'
 
     def get_queryset(self):
-        return super(RoleDescriptionAPIViewSet, self).get_queryset().filter(
+        return super(RoleDescriptionQuerysetMixin, self).get_queryset().filter(
             Q(organization=self.organization) | Q(organization__isnull=True))
 
     @staticmethod
@@ -209,13 +210,106 @@ class RoleDescriptionAPIViewSet(OrganizationMixin, ModelViewSet):
         if instance.is_global():
             raise PermissionDenied()
 
+
+class RoleDescriptionListCreateView(RoleDescriptionQuerysetMixin,
+                                    ListCreateAPIView):
+    """
+    List and create ``RoleDescription``.
+
+    see :doc:`Flexible Security Framework <security>`.
+
+    **Example request**:
+
+    .. sourcecode:: http
+
+        GET  /api/profile/cowork/roles/describe/
+
+    **Example response**:
+
+    .. sourcecode:: http
+
+        {
+            "count": 2,
+            "next": null,
+            "previous": null,
+            "results": [
+                {
+                    "created_at": "2016-01-14T23:16:55Z",
+                    "name": "Managers",
+                    "slug": "manager",
+                    "is_global": true,
+                    "roles": [
+                        {
+                            "created_at": "2016-09-14T23:16:55Z",
+                            "user": {
+                                "slug": "donny",
+                                "email": "support@djaodjin.com",
+                                "full_name": "Donny Cooper",
+                                "created_at": "2016-09-15T00:00:00Z"
+                            },
+                            "request_key": null,
+                            "grant_key": null
+                        },
+                    ]
+                },
+                {
+                    "created_at": "2012-09-14T23:16:55Z",
+                    "name": "Contributors",
+                    "slug": "contributor",
+                    "is_global": true,
+                    "roles": []
+                }
+            ]
+        }
+    """
+    pass
+
+
+class RoleDescriptionDetailView(RoleDescriptionQuerysetMixin,
+                                RetrieveUpdateDestroyAPIView):
+    """
+    Create, retrieve, update and delete ``RoleDescription``.
+
+    see :doc:`Flexible Security Framework <security>`.
+
+    **Example request**:
+
+    .. sourcecode:: http
+
+        GET  /api/profile/cowork/roles/describe/manager
+
+    **Example response**:
+
+    .. sourcecode:: http
+
+        {
+            "created_at": "2016-01-14T23:16:55Z",
+            "name": "Managers",
+            "slug": "manager",
+            "is_global": true,
+            "roles": [
+                {
+                    "created_at": "2016-09-14T23:16:55Z",
+                    "user": {
+                        "slug": "donny",
+                        "email": "support@djaodjin.com",
+                        "full_name": "Donny Cooper",
+                        "created_at": "2016-09-15T00:00:00Z"
+                    },
+                    "request_key": null,
+                    "grant_key": null
+                },
+            ]
+        }
+
+    """
     def perform_update(self, serializer):
         self.check_local(serializer.instance)
-        super(RoleDescriptionAPIViewSet, self).perform_update(serializer)
+        super(RoleDescriptionDetailView, self).perform_update(serializer)
 
     def perform_destroy(self, instance):
         self.check_local(instance)
-        super(RoleDescriptionAPIViewSet, self).perform_destroy(instance)
+        super(RoleDescriptionDetailView, self).perform_destroy(instance)
 
 
 class RoleQuerysetMixin(OrganizationMixin):
