@@ -806,7 +806,9 @@ def as_html_description(transaction):
     look = re.match(r'Charge (?P<charge>\S+)', transaction.descr)
     if look:
         link = '<a href="%s">%s</a>' % (reverse('saas_charge_receipt',
-            args=(transaction.dest_organization, look.group('charge'),)),
+            args=(transaction.dest_organization
+                  if transaction.dest_account == Transaction.EXPENSES
+                  else transaction.orig_organization, look.group('charge'),)),
             look.group('charge'))
         result = result.replace(look.group('charge'), link)
 

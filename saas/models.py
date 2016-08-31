@@ -419,12 +419,11 @@ class Organization(models.Model):
 
     def receivables(self):
         """
-        Returns all ``Transaction`` for a *provider* whose *orig_account*
-        is ``RECEIVABLE``.
+        Returns all ``Transaction`` for payments that are due to a *provider*.
         """
         return Transaction.objects.filter(
             orig_organization=self,
-            orig_account=Transaction.RECEIVABLE)
+            orig_account=Transaction.RECEIVABLE).exclude(Transaction.CANCELED)
 
     def update_bank(self, bank_token):
         if bank_token is None:
@@ -730,7 +729,7 @@ class Organization(models.Model):
                 subscriber:Liability
 
             yyyy/mm/dd write off receivable
-                subscriber:Cancelled                       liability_amount
+                subscriber:Canceled                        liability_amount
                 provider:Receivable
 
         Example::
@@ -744,7 +743,7 @@ class Organization(models.Model):
                 xia:Liability
 
             2014/09/10 write off receivable
-                xia:Cancelled                             $179.99
+                xia:Canceled                              $179.99
                 cowork:Receivable
         """
         at_time = datetime_or_now(at_time)
@@ -2225,6 +2224,12 @@ class Subscription(models.Model):
     def provider(self):
         return self.plan.organization
 
+    def clipped_period_for(self, at_time=None):
+        # Both lower and upper fall on an exact period multiple
+        # from ``created_at``. This might not be the case for ``ends_at``.
+        lower, upper = self.period_for(at_time=at_time)
+        return (min(lower, self.ends_at), min(upper, self.ends_at))
+
     def period_for(self, at_time=None):
         """
         Returns the period [beg,end[ which includes ``at_time``.
@@ -2258,9 +2263,30 @@ class Subscription(models.Model):
             elif at_time >= upper:
                 lower = upper
                 upper = upper + period
-        # Both lower and upper fall on an exact period multiple
-        # from ``created_at``. This might not be the case for ``ends_at``.
-        return (min(lower, self.ends_at), min(upper, self.ends_at))
+        return lower, upper
+
+    def _period_fraction(self, start, until, start_lower, start_upper):
+        """
+        Returns a [start, until[ interval as a fraction of the plan period.
+        This method will not return the correct answer if [start, until[
+        is longer than a plan period. Use ``nb_periods`` instead.
+        """
+        delta = relativedelta(until, start)
+        if self.plan.interval == Plan.HOURLY:
+            fraction = delta.total_seconds() / 3600.0
+        elif self.plan.interval == Plan.DAILY:
+            fraction = delta.hours / 24.0
+        elif self.plan.interval == Plan.WEEKLY:
+            fraction = delta.days / 7.0
+        elif self.plan.interval == Plan.MONTHLY:
+            # The number of days in a month cannot be reliably computed
+            # from [start_lower, start_upper[ if those bounds cross the 1st
+            # of a month.
+            fraction = (delta.total_seconds()
+                / (start_upper - start_lower).total_seconds())
+        elif self.plan.interval == Plan.YEARLY:
+            fraction = delta.months / 12.0
+        return fraction
 
 
     def nb_periods(self, start=None, until=None):
@@ -2274,8 +2300,12 @@ class Subscription(models.Model):
         assert start < until
         start_lower, start_upper = self.period_for(start)
         until_lower, until_upper = self.period_for(until)
-        if start_upper < until_lower:
-            delta = until_lower - start_upper
+        LOGGER.debug("[%s,%s[ starts in period [%s,%s[ and ends in period"\
+" [%s,%s[", start, until, start_lower, start_upper, until_lower, until_upper)
+        partial_start_period = 0
+        partial_end_period = 0
+        if start_upper <= until_lower:
+            delta = relativedelta(start_upper, until_lower)
             if self.plan.interval == Plan.HOURLY:
                 estimated = delta.total_seconds() / 3600
             elif self.plan.interval == Plan.DAILY:
@@ -2283,31 +2313,30 @@ class Subscription(models.Model):
             elif self.plan.interval == Plan.WEEKLY:
                 estimated = delta.days / 7
             elif self.plan.interval == Plan.MONTHLY:
-                estimated = relativedelta(until_lower, start_upper).months
+                estimated = delta.months
             elif self.plan.interval == Plan.YEARLY:
-                estimated = delta.days / 365
+                estimated = delta.years
             upper = self.plan.end_of_period(start_upper, nb_periods=estimated)
-#            LOGGER.debug("end of %d %s periods from %s => %s",
-#               estimated, self.plan.get_interval_display(), start_upper, upper)
             if upper < until_lower:
                 full_periods = estimated + 1
             else:
                 full_periods = estimated
+            # partial-at-start + full periods + partial-at-end
+            partial_start_period_seconds = (start_upper - start).total_seconds()
+            if partial_start_period_seconds > 0:
+                partial_start_period = self._period_fraction(
+                    start, start_upper, start_lower, start_upper)
+            partial_end_period_seconds = (until - until_lower).total_seconds()
+            if partial_end_period_seconds > 0:
+                partial_end_period = self._period_fraction(
+                    until_lower, until, until_lower, until_upper)
         else:
-            full_periods = 0
-        # partial-at-start + full periods + partial-at-end
-        start_period_total_seconds = (start_upper - start_lower).total_seconds()
-        if start_period_total_seconds > 0:
-            partial_start_period = ((start_upper - start).total_seconds()
-                / start_period_total_seconds)
-        else:
-            partial_start_period = 0
-        end_period_total_seconds = (until_upper - until_lower).total_seconds()
-        if end_period_total_seconds > 0:
-            partial_end_period = ((until - until_lower).total_seconds()
-                / end_period_total_seconds)
-        else:
-            partial_end_period = 0
+            # misnommer. We are returning a fraction of a period here since
+            # [start,until[ is fully included in a single period.
+            full_periods = self._period_fraction(
+                start, until, start_lower, start_upper)
+        LOGGER.debug("[nb_periods] %s + %s + %s",
+            partial_start_period, full_periods, partial_end_period)
         return partial_start_period + full_periods + partial_end_period
 
     def charge_in_progress(self):
@@ -2925,7 +2954,7 @@ class TransactionManager(models.Manager):
                 cowork:Backlog                         $179.99
                 cowork:Income
         """
-        #pylint:disable=unused-argument,too-many-arguments
+        #pylint:disable=unused-argument,too-many-arguments,too-many-locals
         created_transactions = []
         ends_at = datetime_or_now(ends_at)
         # ``created_at`` is set just before ``ends_at``
@@ -2943,6 +2972,11 @@ class TransactionManager(models.Manager):
             amount, backlog_amount, receivable_amount, ends_at)
         assert backlog_amount >= 0 or receivable_amount >= 0
         if amount > 0 and backlog_amount > 0:
+            backlog_remain = backlog_amount - amount
+            if backlog_remain > 0 and backlog_remain < 50:
+                # Dealing with rounding approximations: If there would be less
+                # than 50c left of backlog, we include it as recognized income.
+                amount = backlog_amount
             available = min(amount, backlog_amount)
             LOGGER.info(
                 'RECOGNIZE BACKLOG %dc for %s at %s',
@@ -2964,6 +2998,11 @@ class TransactionManager(models.Manager):
             created_transactions += [recognized]
             amount -= available
         if amount > 0 and receivable_amount > 0:
+            receivable_remain = receivable_amount - amount
+            if receivable_remain > 0 and receivable_remain < 50:
+                # Dealing with rounding approximations: If there would be less
+                # than 50c left of receivable, we recognize it this period.
+                amount = receivable_amount
             available = min(amount, receivable_amount)
             LOGGER.info(
                 'RECOGNIZE RECEIVABLE %dc for %s at %s',
