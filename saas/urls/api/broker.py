@@ -42,7 +42,7 @@ urlpatterns = [
     url(r'^billing/(?P<organization>%s)/balance/cancel/?' % settings.ACCT_REGEX,
         CancelStatementBalanceAPIView.as_view(),
         name='saas_api_cancel_balance_due'),
-    url(r'^billing/charges/?', ChargeListAPIView.as_view(),
+    url(r'^billing/charges/?$', ChargeListAPIView.as_view(),
         name='saas_api_charges'),
     url(r'^metrics/balances/(?P<report>%s)/?' % settings.ACCT_REGEX,
         BrokerBalancesAPIView.as_view(), name='saas_api_broker_balances'),
