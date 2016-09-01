@@ -38,7 +38,7 @@ from . import RedirectFormMixin
 from ..forms import (OrganizationForm, OrganizationCreateForm,
     ManagerAndOrganizationForm)
 from ..mixins import OrganizationMixin, ProviderMixin
-from ..models import Organization, Subscription, get_broker
+from ..models import Organization, Subscription, is_broker
 
 
 LOGGER = logging.getLogger(__name__)
@@ -138,7 +138,7 @@ djaodjin-saas/tree/master/saas/templates/saas/profile/subscribers.html>`__).
               'saas_subscriber_pipeline_download_churned', args=(provider,))
             }}]
         context.update({'tabs': tabs})
-        if provider == get_broker():
+        if is_broker(provider):
             context.update({'registered': {'urls': {'download': reverse(
                 'saas_subscriber_pipeline_download_registered')}}})
         return context
@@ -246,7 +246,7 @@ class DashboardView(OrganizationMixin, DetailView):
 
     def get_context_data(self, **kwargs):
         context = super(DashboardView, self).get_context_data(**kwargs)
-        if self.organization == get_broker():
+        if is_broker(self.organization):
             urls = {
                 'accounts_base': reverse('accounts_profile'),
                 'provider': {

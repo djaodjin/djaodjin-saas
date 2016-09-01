@@ -102,19 +102,6 @@ def percentage(value):
 
 
 @register.filter()
-def is_broker(organization):
-    # We do a string compare here because both ``Organization`` might come
-    # from a different db. That is if the organization parameter is not
-    # a unicode string itself.
-    slug = ''
-    if isinstance(organization, basestring):
-        slug = organization
-    elif organization:
-        slug = organization.slug
-    return slug == get_broker().slug
-
-
-@register.filter()
 def is_debit(transaction, organization):
     """
     True if the transaction can be tagged as a debit. That is

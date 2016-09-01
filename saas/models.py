@@ -3221,6 +3221,26 @@ def get_broker():
     return Organization.objects.get(slug=broker_slug)
 
 
+def is_broker(organization):
+    """
+    Returns ``True`` if the organization is the hosting platform
+    for the service.
+    """
+    # We do a string compare here because both ``Organization`` might come
+    # from a different db. That is if the organization parameter is not
+    # a unicode string itself.
+    broker_slug = settings.PLATFORM
+    organization_slug = ''
+    if isinstance(organization, basestring):
+        organization_slug = organization
+    elif organization:
+        organization_slug = organization.slug
+    if settings.IS_BROKER_CALLABLE:
+        from saas.compat import import_string
+        return import_string(settings.IS_BROKER_CALLABLE)(organization_slug)
+    return organization_slug == broker_slug
+
+
 def sum_dest_amount(transactions):
     """
     Return the sum of the amount in the *transactions* set.
