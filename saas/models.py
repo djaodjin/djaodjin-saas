@@ -2305,7 +2305,7 @@ class Subscription(models.Model):
         """
         delta = relativedelta(until, start)
         if self.plan.interval == Plan.HOURLY:
-            fraction = delta.total_seconds() / 3600.0
+            fraction = (until - start).total_seconds() / 3600.0
         elif self.plan.interval == Plan.DAILY:
             fraction = delta.hours / 24.0
         elif self.plan.interval == Plan.WEEKLY:
@@ -2314,7 +2314,7 @@ class Subscription(models.Model):
             # The number of days in a month cannot be reliably computed
             # from [start_lower, start_upper[ if those bounds cross the 1st
             # of a month.
-            fraction = (delta.total_seconds()
+            fraction = ((until - start).total_seconds()
                 / (start_upper - start_lower).total_seconds())
         elif self.plan.interval == Plan.YEARLY:
             fraction = delta.months / 12.0
@@ -2339,7 +2339,7 @@ class Subscription(models.Model):
         if start_upper <= until_lower:
             delta = relativedelta(start_upper, until_lower)
             if self.plan.interval == Plan.HOURLY:
-                estimated = delta.total_seconds() / 3600
+                estimated = (start_upper - until_lower).total_seconds() / 3600
             elif self.plan.interval == Plan.DAILY:
                 estimated = delta.days
             elif self.plan.interval == Plan.WEEKLY:
