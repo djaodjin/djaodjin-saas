@@ -57,7 +57,11 @@ DESCRIBE_OFFLINE_PAYMENT = \
     "Off-line payment"
 
 DESCRIBE_RECOGNIZE_INCOME = \
-    "Recognize %(subscription)s for %(nb_periods)s period to %(period_end)s"
+    "Recognize %(subscription)s from %(period_start)s to %(period_end)s"
+
+DESCRIBE_RECOGNIZE_INCOME_DETAILED = \
+    "Recognize %(subscription)s from %(period_start)s to %(period_end)s"\
+    " (%(nb_periods)s period)"
 
 DESCRIBE_RETAINER_PERIODS = \
     "Retainer for services (%(humanized_periods)s)"

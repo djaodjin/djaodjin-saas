@@ -31,8 +31,8 @@ import logging
 from dateutil.relativedelta import relativedelta
 from django.db import transaction
 
-from .humanize import DESCRIBE_RECOGNIZE_INCOME
-from .models import (Charge, Organization, Transaction, Subscription,
+from . import humanize
+from .models import (Charge, Organization, Plan, Subscription, Transaction,
     sum_dest_amount)
 from .utils import datetime_or_now
 
@@ -95,14 +95,25 @@ def _recognize_subscription_income(subscription, until=None):
             if to_recognize_amount > recognized_amount:
                 # We have some amount of revenue to recognize here.
                 amount = to_recognize_amount - recognized_amount
+                descr_period_start = recognize_start
+                descr_period_end = recognize_end
+                if nb_periods == 1.0:
+                    descr = humanize.DESCRIBE_RECOGNIZE_INCOME
+                    if subscription.plan.interval > Plan.DAILY:
+                        descr_period_start = recognize_start.date()
+                        # shows the natural bound for "end of day".
+                        descr_period_end = (
+                            recognize_end - relativedelta(days=1)).date()
+                else:
+                    descr = humanize.DESCRIBE_RECOGNIZE_INCOME_DETAILED
                 Transaction.objects.create_income_recognized(
                     subscription, amount=amount,
                     starts_at=recognize_start, ends_at=recognize_end,
-                    descr=DESCRIBE_RECOGNIZE_INCOME % {
+                    descr=descr % {
                         'subscription': subscription,
                         'nb_periods': nb_periods,
-                        'period_start': recognize_start,
-                        'period_end': recognize_end})
+                        'period_start': descr_period_start,
+                        'period_end': descr_period_end})
             recognize_start = recognize_end
             recognize_end += recognize_period
         order_subscribe_beg = order_subscribe_end
