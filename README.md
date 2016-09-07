@@ -75,9 +75,10 @@ saas/templates/notification/ directory.
 Release Notes
 =============
 
-0.2.3
+0.2.4
 
-  * API to checkout cart
+  * Generic roles
+  * Cancel total balance due (#95)
 
 [previous release notes](changelog)
 

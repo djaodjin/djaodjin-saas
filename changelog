@@ -1,3 +1,9 @@
+0.2.3
+
+  * API to checkout cart
+
+ -- Sebastien Mirolo <smirolo@djaodjin.com>  Wed, 7 Sep 2016 00:00:00 -0900
+
 0.2.2
   * Create dashboard views
   * Generate requests for a role on an organization
