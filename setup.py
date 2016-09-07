@@ -64,7 +64,8 @@ setup(
                            'templates/saas/billing/*.html',
                            'templates/saas/legal/*.html',
                            'templates/saas/metrics/*.html',
-                           'templates/saas/profile/*.html']},
+                           'templates/saas/profile/*.html',
+                           'templates/saas/users/*.html']},
     url='https://github.com/djaodjin/djaodjin-saas/',
     download_url='https://github.com/djaodjin/djaodjin-saas/tarball/%s' \
         % saas.__version__,
