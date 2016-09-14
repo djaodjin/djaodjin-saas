@@ -80,23 +80,23 @@ class OrganizationDetailAPIView(OrganizationMixin,
         and transactions history.
         """
         obj = self.get_object()
-        manager = self.attached_manager(obj)
+        user = self.attached_user(obj)
         email = obj.email
         slug = '_archive_%d' % obj.id
         look = re.match(r'.*(@\S+)', django_settings.DEFAULT_FROM_EMAIL)
         if look:
             email = '%s+%d%s' % (obj.slug, obj.id, look.group(1))
         with transaction.atomic():
-            if manager:
-                manager.is_active = False
-                manager.username = slug
-                manager.email = email
-                manager.save()
+            if user:
+                user.is_active = False
+                user.username = slug
+                user.email = email
+                user.save()
             obj.slug = slug
             obj.email = email
             obj.is_active = False
             obj.save()
-            if request.user == manager:
+            if request.user == user:
                 auth_logout(request)
         return Response(status=status.HTTP_204_NO_CONTENT)
 

@@ -435,6 +435,25 @@ class Organization(models.Model):
         return User.objects.filter(
             pk__in=self.get_roles(role_name).values('user')).distinct()
 
+    def attached_user(self):
+        """
+        Returns the only ``User`` attached to the ``Organization`` or
+        ``None`` if more than one ``User`` has access rights
+        to the organization.
+
+        This method is used to implement personal registration, where
+        from a customer perspective user auth and billing profile are
+        one and the same.
+        """
+        from .compat import User
+        users = User.objects.db_manager(using=self._state.db).filter(
+            role__organization=self).distinct()
+        if users.count() == 1:
+            user = users.get()
+            if self.slug == user.username:
+                return user
+        return None
+
     def receivables(self):
         """
         Returns all ``Transaction`` for payments that are due to a *provider*.

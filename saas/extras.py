@@ -22,7 +22,6 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from django.contrib.auth import get_user_model
 from django.core.urlresolvers import NoReverseMatch, reverse
 from django.shortcuts import get_object_or_404
 
@@ -30,7 +29,7 @@ from django.shortcuts import get_object_or_404
 #
 # saas.settings cannot be imported at this point because this file will
 # be imported before ``django.conf.settings`` is fully initialized.
-from .utils import get_role_model, get_organization_model
+from .utils import get_organization_model
 
 
 class OrganizationMixinBase(object):
@@ -41,19 +40,8 @@ class OrganizationMixinBase(object):
     organization_url_kwarg = 'organization'
 
     @staticmethod
-    def attached_manager(organization):
-        # defer call to ``get_user_model`` so that we can import this module
-        # in django.conf.settings.
-        from . import settings
-        managers = get_user_model().objects.filter(
-            pk__in=get_role_model().objects.filter(
-                role_description__slug=settings.MANAGER,
-                organization=organization).values('user'))
-        if managers.count() == 1:
-            manager = managers.get()
-            if organization.slug == manager.username:
-                return manager
-        return None
+    def attached_user(organization):
+        return organization.attached_user()
 
     def get_organization(self):
         return get_object_or_404(get_organization_model(),
@@ -93,7 +81,7 @@ class OrganizationMixinBase(object):
             'subscriptions': reverse(
                 'saas_subscription_list', args=(organization,)),
         }})
-        if self.attached_manager(self.organization):
+        if self.attached_user(self.organization):
             try:
                 urls['organization'].update({
                     'password_change': reverse(

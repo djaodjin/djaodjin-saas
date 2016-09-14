@@ -301,26 +301,26 @@ class OrganizationProfileView(OrganizationMixin, UpdateView):
             self.object.is_bulk_buyer = form.cleaned_data['is_bulk_buyer']
         else:
             self.object.is_bulk_buyer = False
-        manager = self.attached_manager(self.object)
-        if manager:
+        user = self.attached_user(self.object)
+        if user:
             if form.cleaned_data.get('slug', None):
-                manager.username = form.cleaned_data['slug']
+                user.username = form.cleaned_data['slug']
             if form.cleaned_data['full_name']:
                 name_parts = form.cleaned_data['full_name'].split(' ')
                 if len(name_parts) > 1:
-                    manager.first_name = name_parts[0]
-                    manager.last_name = ' '.join(name_parts[1:])
+                    user.first_name = name_parts[0]
+                    user.last_name = ' '.join(name_parts[1:])
                 else:
-                    manager.first_name = form.cleaned_data['full_name']
-                    manager.last_name = ''
+                    user.first_name = form.cleaned_data['full_name']
+                    user.last_name = ''
             if form.cleaned_data['email']:
-                manager.email = form.cleaned_data['email']
-            manager.save()
+                user.email = form.cleaned_data['email']
+            user.save()
         return super(OrganizationProfileView, self).form_valid(form)
 
     def get_form_class(self):
-        if self.attached_manager(self.object):
-            # There is only one manager so we will add the User fields
+        if self.attached_user(self.object):
+            # There is only one user so we will add the User fields
             # to the form so they can be updated at the same time.
             return ManagerAndOrganizationForm
         return OrganizationForm
