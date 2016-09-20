@@ -36,7 +36,7 @@ policy.
 """
 #pylint:disable=too-many-lines
 
-import copy, logging
+import copy
 
 from django import http
 from django.contrib.auth import REDIRECT_FIELD_NAME
@@ -60,9 +60,6 @@ from ..models import (Organization, CartItem, Coupon, Plan, Transaction,
     Subscription, get_broker, Price)
 from ..utils import datetime_or_now, validate_redirect_url
 from ..views import session_cart_to_database
-
-
-LOGGER = logging.getLogger(__name__)
 
 
 class BankMixin(ProviderMixin):

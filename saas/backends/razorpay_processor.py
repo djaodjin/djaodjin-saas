@@ -102,7 +102,9 @@ class RazorpayBackend(object):
             processor_charge = self.razor.payment.capture(card, amount)
         except razorpay.errors.RazorpayError, err:
             raise CardError(err.error, "unknown", backend_except=err)
-        LOGGER.info('capture %s', processor_charge)
+        LOGGER.info('capture %s', processor_charge,
+            extra={'event': 'capture', 'processor': 'razorpay',
+                'processor_key': processor_charge['id']})
         created_at = utctimestamp_to_datetime(processor_charge['created_at'])
         last4 = 0
         exp_year = created_at.year
@@ -145,7 +147,7 @@ class RazorpayBackend(object):
             self.razor.refund.create(
                 charge.processor_key, data={"amount": amount})
             processor_charge = self.razor.payment.fetch(charge.processor_key)
-            LOGGER.info('refund %d inr %s', amount, processor_charge)
+            LOGGER.debug('refund %d inr %s', amount, processor_charge)
         except razorpay.errors.RazorpayError, err:
             raise ProcessorError(err.error, backend_except=err)
 

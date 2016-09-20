@@ -208,7 +208,9 @@ class StripeBackend(object):
                 message="%s: %s" % (data['error'], data['error_description']),
                 http_body=resp.content, http_status=resp.status_code,
                 json_body=data)
-        LOGGER.info("%s authorized. %s", organization, data)
+        LOGGER.info("%s authorized. %s", organization, data,
+            extra={'event': 'connect-authorized', 'processor': 'stripe',
+                'organization': organization.slug})
         organization.processor_pub_key = data.get('stripe_publishable_key')
         organization.processor_priv_key = data.get('access_token')
         organization.processor_deposit_key = data.get('stripe_user_id')
@@ -490,7 +492,9 @@ def processor_hook(request):
         LOGGER.error("Posted stripe '%s' event %s FAIL",
             event.type, request.DATA['id'])
         raise Http404
-    LOGGER.info("Posted stripe '%s' event %s PASS", event.type, event.id)
+    LOGGER.info("Posted stripe '%s' event %s PASS", event.type, event.id,
+        extra={'processor': 'stripe',
+            'event': event.type, 'event_id': event.id})
     charge = get_object_or_404(Charge, processor_key=event.data.object.id)
     if event.type == 'charge.succeeded':
         if charge.state != charge.DONE:

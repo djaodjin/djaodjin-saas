@@ -472,9 +472,10 @@ class Organization(models.Model):
             self.save()
         else:
             self.processor_backend.update_bank(self, bank_token)
-            LOGGER.info('Updated bank information for %s on processor '\
-                '{"processor_deposit_key": %s}',
-                self, self.processor_deposit_key)
+            LOGGER.info("Processor deposit key for %s updated to %s",
+                self, self.processor_deposit_key,
+                extra={'event': 'update-deposit', 'organization': self.slug,
+                    'processor_deposit_key': self.processor_deposit_key})
         signals.bank_updated.send(self)
 
     def update_card(self, card_token, user):
@@ -483,8 +484,10 @@ class Organization(models.Model):
         # The following ``save`` will be rolled back in ``checkout``
         # if there is any ProcessorError.
         self.save()
-        LOGGER.info('Updated card information for %s on processor '\
-            '{"processor_card_key": %s}', self, self.processor_card_key)
+        LOGGER.info("Processor debit key for %s updated to %s",
+            self, self.processor_card_key,
+            extra={'event': 'update-debit', 'organization': self.slug,
+                'processor_card_key': self.processor_card_key})
 
     def checkout(self, invoicables, user, token=None, remember_card=True):
         """
@@ -529,7 +532,10 @@ class Organization(models.Model):
                     claim_carts[key] += [cart_item]
                 else:
                     LOGGER.info("[checkout] save subscription of %s to %s",
-                        subscription.organization, subscription.plan)
+                        subscription.organization, subscription.plan,
+                        extra={'event': 'upsert-subscription',
+                            'organization': subscription.organization.slug,
+                            'plan': subscription.plan.slug})
                     subscription.save()
                     if cart_item:
                         cart_item.recorded = True
@@ -550,7 +556,10 @@ class Organization(models.Model):
                     description=('Auto-generated after payment by %s'
                         % self.printable_name))
                 LOGGER.info('Auto-generated Coupon %s for %s',
-                    coupon.code, provider)
+                    coupon.code, provider,
+                    extra={'event': 'create-coupon',
+                        'coupon': coupon.code, 'auto': True,
+                        'provider': provider.slug})
                 coupons.update({provider.id: coupon})
             for key, cart_items in claim_carts.iteritems():
                 claim_code = generate_random_slug()
@@ -563,8 +572,12 @@ class Organization(models.Model):
                     cart_item.last_name = self.printable_name
                     cart_item.coupon = coupons[cart_item.plan.organization.id]
                     cart_item.save()
+                nb_cart_items = len(cart_items)
                 LOGGER.info("Generated claim code '%s' for %d cart items",
-                    claim_code, len(cart_items))
+                    claim_code, nb_cart_items,
+                    extra={'event': 'create-claim',
+                        'claim_code': claim_code,
+                        'nb_cart_items': nb_cart_items})
                 claim_codes.update({key: claim_code})
 
             # We now either have a ``subscription.id`` (subscriber present
@@ -861,9 +874,12 @@ class Organization(models.Model):
                         orig_amount=balance_due,
                         orig_account=Transaction.RECEIVABLE,
                         orig_organization=subscription.plan.organization)
-                    LOGGER.info('cancel_balance {"organization": "%s",'\
-                        ' "amount": "%d", "user": "%s"}',
-                        self, balance_due, user)
+                    LOGGER.info("%s cancel balance due of %d for %s.",
+                        user, balance_due, self,
+                        extra={'event': 'cancel-balance',
+                            'username': user.username,
+                            'organization': self.slug,
+                            'amount': balance_due})
 
 
 class RoleDescription(models.Model):
@@ -1015,9 +1031,12 @@ class ChargeManager(models.Manager):
                 customer=customer, last4=last4, exp_date=exp_date)
             for invoiced in transactions:
                 ChargeItem.objects.create(invoiced=invoiced, charge=charge)
-            LOGGER.info('{"event": "charge_created", "charge": "%s",'\
-                ' "organization": "%s", "amount": %d, "unit": "%s"}',
-                charge.processor_key, customer, charge.amount, charge.unit)
+            LOGGER.info("create charge %s of %d %s to %s",
+                charge.processor_key, charge.amount, charge.unit, customer,
+                extra={'event': 'create-charge',
+                    'charge': charge.processor_key,
+                    'organization': customer.slug,
+                    'amount': charge.amount, 'unit': charge.unit})
         return charge
 
     def charge_card(self, customer, transactions, descr=None,
@@ -1099,10 +1118,14 @@ class ChargeManager(models.Manager):
             # We implement (2) because the UI feedback to a user looks strange
             # when the Card is persisted while an error message is displayed.
             customer.processor_card_key = prev_processor_card_key
-            LOGGER.info('{"event": "CardError", "amount": %d, "unit": "%s",'\
-                ' "customer": "%s", "charge_processor_key": "%s", "msg": "%s"}',
-                amount, unit, customer, err.charge_processor_key,
-                err.processor_details())
+            LOGGER.info('error: "%s" processing charge %s of %d %s to %s',
+                err.processor_details(), err.charge_processor_key,
+                amount, unit, customer,
+                extra={'event': 'card-error',
+                    'charge': err.charge_processor_key,
+                    'details': err.processor_details(),
+                    'organization': customer.slug,
+                    'amount': amount, 'unit': unit})
             raise
         except ProcessorError as err:
             # An error from the processor which indicates the logic might be
@@ -1555,8 +1578,13 @@ class Charge(models.Model):
             corrected_available_amount, corrected_fee_amount,
             created_at=created_at,
             provider_unit=provider_unit, processor_unit=processor_unit)
-        LOGGER.info('refund {"charge": "%s", "linenum": "%s", "amount": "%d"}',
-            self, linenum, refunded_amount)
+        username = str(user) if user is not None else '-'
+        LOGGER.info("%s refunds %d %s on line item %d of charge %s to %s.",
+            username, refunded_amount, self.unit, linenum, self, self.customer,
+            extra={'event': 'refund', 'username': username,
+                'customer': self.customer.slug,
+                'charge': self.processor_key, 'linenum': linenum,
+                'amount': refunded_amount, 'unit': self.unit})
         signals.charge_updated.send(sender=__name__, charge=self, user=user)
 
     def retrieve(self):

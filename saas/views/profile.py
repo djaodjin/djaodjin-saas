@@ -24,8 +24,6 @@
 
 """Manage Profile information"""
 
-import logging
-
 from django.contrib import messages
 from django.core.urlresolvers import reverse
 from django.db import transaction
@@ -39,9 +37,6 @@ from ..forms import (OrganizationForm, OrganizationCreateForm,
     ManagerAndOrganizationForm)
 from ..mixins import OrganizationMixin, ProviderMixin
 from ..models import Organization, Subscription, is_broker
-
-
-LOGGER = logging.getLogger(__name__)
 
 
 class RoleDetailView(OrganizationMixin, TemplateView):

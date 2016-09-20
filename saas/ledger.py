@@ -22,14 +22,11 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-import datetime, logging
+import datetime
 
 from django.db import connection
 
 from .humanize import as_money
-
-
-LOGGER = logging.getLogger(__name__)
 
 
 def read_balances(account, until=datetime.datetime.now()):

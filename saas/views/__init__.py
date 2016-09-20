@@ -43,9 +43,6 @@ from ..decorators import fail_direct
 from ..models import CartItem, Coupon, Plan, Organization, get_broker
 
 
-LOGGER = logging.getLogger(__name__)
-
-
 def session_cart_to_database(request):
     """
     Transfer all the items in the cart stored in the session into proper
