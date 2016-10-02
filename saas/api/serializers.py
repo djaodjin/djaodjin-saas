@@ -23,11 +23,11 @@
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 from django.core import validators
+from django.contrib.auth import get_user_model
 from django.shortcuts import get_object_or_404
 from django.utils.translation import ugettext_lazy as _
 from rest_framework import serializers
 
-from ..compat import User
 from ..humanize import as_money
 from ..mixins import as_html_description, product_url
 from ..models import (BalanceLine, CartItem, Charge, Organization, Plan,
@@ -197,7 +197,7 @@ class UserSerializer(serializers.ModelSerializer):
     full_name = serializers.SerializerMethodField()
 
     class Meta:
-        model = User
+        model = get_user_model()
         fields = ('slug', 'email', 'full_name', 'created_at')
         read_only = ('full_name', 'created_at',)
 

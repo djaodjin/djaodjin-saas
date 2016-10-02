@@ -25,13 +25,6 @@
 #pylint: disable=no-name-in-module,unused-import
 
 try:
-    from django.contrib.auth import get_user_model
-except ImportError: # django < 1.5
-    from django.contrib.auth.models import User
-else:
-    User = get_user_model()                     #pylint: disable=invalid-name
-
-try:
     from django.utils.module_loading import import_string
 except ImportError: # django < 1.7
     from django.utils.module_loading import import_by_path as import_string

@@ -26,6 +26,7 @@ import re
 
 import dateutil
 from django.core.urlresolvers import NoReverseMatch, reverse
+from django.contrib.auth import get_user_model
 from django.http import Http404
 from django.shortcuts import get_object_or_404
 from django.utils.dateparse import parse_datetime
@@ -33,7 +34,6 @@ from django.views.generic.detail import SingleObjectMixin
 from extra_views.contrib.mixins import SearchableListMixin, SortableListMixin
 
 from . import settings
-from .compat import User
 from .humanize import (as_money, DESCRIBE_BUY_PERIODS, DESCRIBE_UNLOCK_NOW,
     DESCRIBE_UNLOCK_LATER, DESCRIBE_BALANCE)
 from .models import (CartItem, Charge, Coupon, Organization, Plan,
@@ -732,10 +732,11 @@ class UserMixin(object):
     @property
     def user(self):
         if not hasattr(self, "_user"):
+            user_model = get_user_model()
             try:
-                self._user = User.objects.get(
+                self._user = user_model.objects.get(
                     username=self.kwargs.get(self.user_url_kwarg))
-            except User.DoesNotExist:
+            except user_model.DoesNotExist:
                 self._user = self.request.user
         return self._user
 

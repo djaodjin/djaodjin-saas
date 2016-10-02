@@ -63,6 +63,7 @@ and contributors (for details see :doc:`Security <security>`).
 import datetime, hashlib, logging, random, re
 
 from dateutil.relativedelta import relativedelta
+from django.contrib.auth import get_user_model
 from django.core.validators import MaxValueValidator
 from django.db import IntegrityError, models, transaction
 from django.db.models import Max, Q, Sum
@@ -123,8 +124,7 @@ class OrganizationManager(models.Manager):
         Returns the person ``Organization`` associated to the user or None
         in none can be reliably found.
         """
-        from .compat import User
-        if isinstance(user, User):
+        if isinstance(user, get_user_model()):
             username = user.username
         elif isinstance(user, basestring):
             username = user
@@ -143,9 +143,9 @@ class OrganizationManager(models.Manager):
         When *user* is a string instead of a ``User`` instance, it will
         be interpreted as a username.
         """
-        from .compat import User
-        if not isinstance(user, User):
-            user = User.objects.get(username=user)
+        user_model = get_user_model()
+        if not isinstance(user, user_model):
+            user = user_model.objects.get(username=user)
         kwargs = {}
         if role_descr:
             if isinstance(role_descr, RoleDescription):
@@ -160,9 +160,9 @@ class OrganizationManager(models.Manager):
         Returns a QuerySet of Organziation for which *user* has a *role*
         which slug is *role_slug*.
         """
-        from .compat import User
-        if not isinstance(user, User):
-            user = User.objects.get(username=user)
+        user_model = get_user_model()
+        if not isinstance(user, user_model):
+            user = user_model.objects.get(username=user)
         return self.filter(pk__in=get_role_model().objects.filter(
             user=user, role_description__slug=role_slug).values(
                 'organization').distinct())
@@ -253,6 +253,8 @@ class Organization(models.Model):
     processor_refresh_token = models.CharField(max_length=60, null=True,
         blank=True)
 
+    extra = settings.get_extra_field_class()(null=True)
+
     def __unicode__(self):
         return unicode(self.slug)
 
@@ -341,9 +343,9 @@ class Organization(models.Model):
         When *user* is a string instead of a ``User`` instance, it will
         be interpreted as a username.
         """
-        from .compat import User
-        if not isinstance(user, User):
-            user = User.objects.get(username=user)
+        user_model = get_user_model()
+        if not isinstance(user, user_model):
+            user = user_model.objects.get(username=user)
         return get_role_model().objects.filter(
             user=user, organization=self).exists()
 
@@ -431,8 +433,7 @@ class Organization(models.Model):
         """
         Returns all users with a *role_name* to organization.
         """
-        from .compat import User
-        return User.objects.filter(
+        return get_user_model().objects.filter(
             pk__in=self.get_roles(role_name).values('user')).distinct()
 
     def attached_user(self):
@@ -445,8 +446,8 @@ class Organization(models.Model):
         from a customer perspective user auth and billing profile are
         one and the same.
         """
-        from .compat import User
-        users = User.objects.db_manager(using=self._state.db).filter(
+        users = get_user_model().objects.db_manager(
+            using=self._state.db).filter(
             role__organization=self).distinct()
         if users.count() == 1:
             user = users.get()
@@ -885,11 +886,12 @@ class Organization(models.Model):
 class RoleDescription(models.Model):
 
     created_at = models.DateTimeField(auto_now_add=True)
+    slug = models.SlugField(
+        help_text=_("Unique identifier shown in the URL bar."))
     organization = models.ForeignKey(
         Organization, related_name="role_descriptions", null=True)
     name = models.CharField(max_length=20)
-    slug = models.SlugField(
-        help_text=_("Unique identifier shown in the URL bar."))
+    extra = settings.get_extra_field_class()(null=True)
 
     class Meta:
         unique_together = ('organization', 'slug')
@@ -918,9 +920,9 @@ class RoleDescription(models.Model):
 class RoleManager(models.Manager):
 
     def role_on_subscriber(self, user, plan, role_descr=None):
-        from .compat import User
-        if not isinstance(user, User):
-            user = User.objects.get(username=user)
+        user_model = get_user_model()
+        if not isinstance(user, user_model):
+            user = user_model.objects.get(username=user)
         if role_descr:
             if isinstance(role_descr, RoleDescription):
                 kwargs = {'role_description': role_descr}
@@ -1170,6 +1172,7 @@ class Charge(models.Model):
     processor_key = models.SlugField(unique=True, db_index=True)
     state = models.PositiveSmallIntegerField(
         choices=CHARGE_STATES, default=CREATED)
+    extra = settings.get_extra_field_class()(null=True)
 
     # XXX unique together paid and invoiced.
     # customer and invoiced_items account payble should match.
@@ -1800,6 +1803,7 @@ class Coupon(models.Model):
     ends_at = models.DateTimeField(null=True, blank=True)
     nb_attempts = models.IntegerField(null=True, blank=True,
         help_text="Number of times the coupon can be used")
+    extra = settings.get_extra_field_class()(null=True)
 
     class Meta:
         unique_together = ('organization', 'code')
@@ -1941,6 +1945,7 @@ class Plan(models.Model):
     auto_renew = models.BooleanField(default=True)
     # Pb with next : maybe create an other model for it
     next_plan = models.ForeignKey("Plan", null=True, blank=True)
+    extra = settings.get_extra_field_class()(null=True)
 
     class Meta:
         unique_together = ('slug', 'organization')
@@ -2287,6 +2292,7 @@ class Subscription(models.Model):
     description = models.TextField(null=True, blank=True)
     organization = models.ForeignKey(Organization)
     plan = models.ForeignKey(Plan)
+    extra = settings.get_extra_field_class()(null=True)
 
     def __unicode__(self):
         return '%s%s%s' % (unicode(self.organization), Subscription.SEP,

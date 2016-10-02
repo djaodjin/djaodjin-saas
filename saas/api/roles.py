@@ -23,6 +23,7 @@
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 from django.core import validators
+from django.contrib.auth import get_user_model
 from django.db import transaction
 from django.db.models import Q
 from django.http import Http404
@@ -36,7 +37,6 @@ from rest_framework.generics import (ListAPIView, CreateAPIView,
 from rest_framework.response import Response
 
 from .. import settings
-from ..compat import User
 from ..mixins import (OrganizationMixin, RoleDescriptionMixin, RelationMixin,
     RoleSmartListMixin, UserMixin)
 from ..models import Organization, RoleDescription
@@ -172,10 +172,11 @@ class AccessibleByListAPIView(RoleSmartListMixin,
                     full_name = serializer.validated_data['slug']
                 organization = Organization.objects.create(
                     full_name=full_name, email=email)
+                user_model = get_user_model()
                 try:
-                    manager = User.objects.get(email=email)
-                except User.DoesNotExist:
-                    manager = User.objects.create_user(email, email=email)
+                    manager = user_model.objects.get(email=email)
+                except user_model.DoesNotExist:
+                    manager = user_model.objects.create_user(email, email=email)
                 organization.add_manager(manager)
 
             reason = serializer.validated_data.get('message', None)
@@ -445,16 +446,17 @@ class RoleFilteredListAPIView(RoleSmartListMixin, RoleByDescrQuerysetMixin,
         role_descr = self.role_description
         serializer = RoleCreateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
+        user_model = get_user_model()
         try:
-            user = User.objects.get(
+            user = user_model.objects.get(
                 username=serializer.validated_data['slug'])
-        except User.DoesNotExist:
+        except user_model.DoesNotExist:
             try:
                 # The following SQL query is not folded into the previous
                 # one so we can have a priority of username over email.
-                user = User.objects.get(
+                user = user_model.objects.get(
                     email=serializer.validated_data['slug'])
-            except User.DoesNotExist:
+            except user_model.DoesNotExist:
                 if not request.GET.get('force', False):
                     raise Http404("%s not found"
                         % serializer.validated_data['slug'])
@@ -467,7 +469,7 @@ class RoleFilteredListAPIView(RoleSmartListMixin, RoleByDescrQuerysetMixin,
                     first_name = full_name
                     last_name = ''
                 #pylint: disable=no-member
-                user = User.objects.create_user(
+                user = user_model.objects.create_user(
                     serializer.validated_data['slug'],
                     email=serializer.validated_data['email'],
                     first_name=first_name, last_name=last_name)

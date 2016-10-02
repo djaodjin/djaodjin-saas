@@ -74,11 +74,15 @@ TERMS_OF_USE             'terms-of-use'     slug for the ``Agreement`` stating
 from django.conf import settings
 
 _SETTINGS = {
+    'BROKER_CALLABLE': None,
     'BYPASS_CONTRIBUTOR_CHECK': [],
     # Do not check the auth token against the processor to set processor keys.
     # (useful while testing).
     'BYPASS_PROCESSOR_AUTH': False,
+    'DEFAULT_UNIT': 'usd',
     'EXTRA_MIXIN': object,
+    'EXTRA_FIELD': None,
+    'IS_BROKER_CALLABLE': None,
     'ORGANIZATION_MODEL': 'saas.Organization',
     'PAGE_SIZE': 25,
     'PLATFORM': getattr(settings, 'APP_NAME', None),
@@ -95,13 +99,10 @@ _SETTINGS = {
     'PROCESSOR_BACKEND_CALLABLE': None,
     'PROCESSOR_HOOK_URL': 'api/postevent',
     'PROCESSOR_REDIRECT_CALLABLE': None,
-    'BROKER_CALLABLE': None,
-    'IS_BROKER_CALLABLE': None,
     'PROVIDER_SITE_CALLABLE': None,
     'ROLE_RELATION': 'saas.Role',
     'SKIP_PERMISSION_CHECK': False,
     'TERMS_OF_USE': 'terms-of-use',
-    'DEFAULT_UNIT': 'usd',
 }
 _SETTINGS.update(getattr(settings, 'SAAS', {}))
 
@@ -137,3 +138,13 @@ SKIP_PERMISSION_CHECK = _SETTINGS.get('SKIP_PERMISSION_CHECK')
 LOGIN_URL = getattr(settings, 'LOGIN_URL')
 MANAGER = 'manager'
 CONTRIBUTOR = 'contributor'
+
+def get_extra_field_class():
+    extra_class = _SETTINGS.get('EXTRA_FIELD')
+    if extra_class is None:
+        from django.db.models import TextField
+        extra_class = TextField
+    elif isinstance(extra_class, str):
+        from saas.compat import import_string
+        extra_class = import_string(extra_class)
+    return extra_class

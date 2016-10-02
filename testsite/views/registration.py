@@ -26,15 +26,15 @@ import urlparse
 
 from django import forms
 from django.conf import settings
-from django.contrib.auth import REDIRECT_FIELD_NAME
-from django.contrib.auth import authenticate, login as auth_login
+from django.contrib.auth import (REDIRECT_FIELD_NAME, authenticate,
+    get_user_model, login as auth_login)
 from django.db import transaction
 from django.http import HttpResponseRedirect
 from django.utils.decorators import method_decorator
 from django.views.generic.edit import FormView
 from django_countries import countries
 from saas.models import Organization, Signature
-from saas.compat import User
+
 
 class PersonalRegistrationForm(forms.Form):
     """
@@ -108,7 +108,8 @@ class PersonalRegistrationForm(forms.Form):
         """
         if self.cleaned_data.has_key('email'):
             self.cleaned_data['email'] = self.cleaned_data['email'].lower()
-        user = User.objects.filter(email__iexact=self.cleaned_data['email'])
+        user = get_user_model().objects.filter(
+            email__iexact=self.cleaned_data['email'])
         if user.exists():
             raise forms.ValidationError(
                 "A user with that email already exists.")
@@ -144,7 +145,7 @@ class PersonalRegistrationForm(forms.Form):
         """
         Validate that the username is not already taken.
         """
-        user = User.objects.filter(
+        user = get_user_model().objects.filter(
             username=self.cleaned_data['username'])
         if user.exists():
             raise forms.ValidationError(
@@ -192,7 +193,7 @@ class PersonalRegistrationView(FormView):
         last_name = cleaned_data['last_name']
 
         # Create a ``User``
-        user = User.objects.create_user(
+        user = get_user_model().objects.create_user(
             username=username, password=password, email=cleaned_data['email'],
             first_name=first_name, last_name=last_name)
 

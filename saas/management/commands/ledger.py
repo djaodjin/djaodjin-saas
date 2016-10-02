@@ -170,4 +170,4 @@ def parse_line(line, create_organizations=False, broker=None, using='default'):
         except Organization.DoesNotExist:
             sys.stderr.write("error: Cannot find Organization '%s'\n"
                 % organization_slug)
-    return (None, None, None)
+    return (None, None, amount, unit)

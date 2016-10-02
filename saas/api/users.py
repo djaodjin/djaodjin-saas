@@ -22,10 +22,10 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+from django.contrib.auth import get_user_model
 from rest_framework.generics import ListAPIView
 
 from .serializers import UserSerializer
-from ..compat import User
 from ..mixins import ProviderMixin, UserSmartListMixin
 from ..utils import get_role_model
 
@@ -40,7 +40,7 @@ class RegisteredQuerysetMixin(ProviderMixin):
     with has no ``Subscription``.
     """
 
-    model = User
+    model = get_user_model()
 
     def get_queryset(self):
         # We would really like to generate this SQL but Django
@@ -52,7 +52,8 @@ class RegisteredQuerysetMixin(ProviderMixin):
         #     ON User.id = RoleSubSet.user_id
         #     WHERE user_id IS NULL;
         self.cache_fields(self.request)
-        return User.objects.exclude(pk__in=get_role_model().objects.filter(
+        return self.model.objects.exclude(
+            pk__in=get_role_model().objects.filter(
             organization__subscription__created_at__lt=self.ends_at).values(
             'user')).order_by('-date_joined', 'last_name').distinct()
 
@@ -118,7 +119,7 @@ class UserQuerysetMixin(object):
 
     @staticmethod
     def get_queryset():
-        return User.objects.all()
+        return get_user_model().objects.all()
 
 
 class UserListAPIView(UserSmartListMixin, UserQuerysetMixin, ListAPIView):
