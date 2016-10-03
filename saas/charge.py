@@ -158,10 +158,17 @@ def extend_subscriptions(at_time=None, dry_run=False):
             LOGGER.info("EXTENDS subscription %s ending at %s for 1 period",
                 subscription, subscription.ends_at)
             if not dry_run:
-                with transaction.atomic():
-                    _ = Transaction.objects.execute_order([
-                        Transaction.objects.new_subscription_order(
-                            subscription, 1, created_at=at_time)])
+                try:
+                    with transaction.atomic():
+                        _ = Transaction.objects.execute_order([
+                            Transaction.objects.new_subscription_order(
+                                subscription, 1, created_at=at_time)])
+                except Exception as err: #pylint:disable=broad-except
+                    # logs any kind of errors
+                    # and move on to the next subscription.
+                    LOGGER.exception(
+                        "error: extending subscription for %s ending at %s: %s",
+                        subscription, subscription.ends_at, err)
 
 
 def create_charges_for_balance(until=None, dry_run=False):

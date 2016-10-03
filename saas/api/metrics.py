@@ -53,7 +53,7 @@ class BalancesAPIView(ProviderMixin, APIView):
     .. sourcecode:: http
 
         {
-            "title": "Balances"
+            "title": "Balances",
             "scale": 0.01,
             "unit": "$",
             "table": [
@@ -151,7 +151,7 @@ class RevenueMetricAPIView(ProviderMixin, APIView):
     .. sourcecode:: http
 
         {
-            "title": "Amount"
+            "title": "Amount",
             "scale": 0.01,
             "unit": "$",
             "table": [
