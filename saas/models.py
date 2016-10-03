@@ -3051,9 +3051,10 @@ class TransactionManager(models.Manager):
         balance = self.get_event_balance(subscription.id,
             account=Transaction.RECEIVABLE, ends_at=ends_at)
         receivable_amount = - balance['amount'] # def. balance must be negative
-        LOGGER.debug("recognize %dc with %dc backlog available,"\
-            " %dc receivable available at %s",
-            amount, backlog_amount, receivable_amount, ends_at)
+        LOGGER.debug("recognize %dc(%s) with %dc(%s) backlog available,"\
+            " %dc(%s) receivable available at %s",
+            amount, amount.__class__, backlog_amount, backlog_amount.__class__,
+            receivable_amount, receivable_amount.__class__, ends_at)
         assert backlog_amount >= 0 or receivable_amount >= 0
         if amount > 0 and backlog_amount > 0:
             backlog_remain = backlog_amount - amount
@@ -3063,8 +3064,8 @@ class TransactionManager(models.Manager):
                 amount = backlog_amount
             available = min(amount, backlog_amount)
             LOGGER.info(
-                'RECOGNIZE BACKLOG %dc for %s at %s',
-                available, subscription, created_at)
+                'RECOGNIZE BACKLOG %dc of %dc for %s at %s',
+                available, backlog_amount, subscription, created_at)
             recognized = Transaction(
                 created_at=created_at,
                 descr=descr,
@@ -3089,8 +3090,8 @@ class TransactionManager(models.Manager):
                 amount = receivable_amount
             available = min(amount, receivable_amount)
             LOGGER.info(
-                'RECOGNIZE RECEIVABLE %dc for %s at %s',
-                available, subscription, created_at)
+                'RECOGNIZE RECEIVABLE %dc of %dc for %s at %s',
+                available, receivable_amount, subscription, created_at)
             recognized = Transaction(
                 created_at=created_at,
                 descr=descr,

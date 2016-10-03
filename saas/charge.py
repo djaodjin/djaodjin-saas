@@ -61,8 +61,7 @@ def _recognize_subscription_income(subscription, until=None):
         # the subset of the subscription lifetime the order paid for.
         # It covers ``order_periods`` plan periods.
         order_amount = order.dest_amount
-        order_periods = order.get_event().plan.period_number(
-            order.descr)
+        order_periods = order.get_event().plan.period_number(order.descr)
         order_subscribe_end = subscription.plan.end_of_period(
             order_subscribe_beg, nb_periods=order_periods)
         min_end = min(order_subscribe_end, until)
@@ -77,12 +76,10 @@ def _recognize_subscription_income(subscription, until=None):
             # the interval.
             nb_periods = subscription.nb_periods(
                 recognize_start, recognize_end)
-            to_recognize_amount = (
-                nb_periods * order_amount) / order_periods
-            balance = \
-                Transaction.objects.get_subscription_income_balance(
-                    subscription,
-                    starts_at=recognize_start, ends_at=recognize_end)
+            to_recognize_amount = int((nb_periods * order_amount)
+                / order_periods)
+            balance = Transaction.objects.get_subscription_income_balance(
+                subscription, starts_at=recognize_start, ends_at=recognize_end)
             recognized_amount = balance['amount']
             # We are not computing a balance sheet here but looking for
             # a positive amount to compare with the revenue that should
