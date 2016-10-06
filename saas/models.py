@@ -897,9 +897,9 @@ class RoleDescription(models.Model):
         unique_together = ('organization', 'slug')
 
     def __unicode__(self):
-        return '%s-%s' % (
-            unicode(self.slug),
-            unicode(self.organization))
+        if self.organization is not None:
+            return '%s-%s' % (unicode(self.slug), unicode(self.organization))
+        return unicode(self.slug)
 
     def save(self, **kwargs):
         if not self.slug:
