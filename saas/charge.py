@@ -157,7 +157,7 @@ def extend_subscriptions(at_time=None, dry_run=False):
             if not dry_run:
                 try:
                     with transaction.atomic():
-                        _ = Transaction.objects.execute_order([
+                        _ = Transaction.objects.record_order([
                             Transaction.objects.new_subscription_order(
                                 subscription, 1, created_at=at_time)])
                 except Exception as err: #pylint:disable=broad-except

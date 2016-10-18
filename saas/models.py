@@ -490,115 +490,125 @@ class Organization(models.Model):
             extra={'event': 'update-debit', 'organization': self.slug,
                 'processor_card_key': self.processor_card_key})
 
+    def execute_order(self, invoicables, user):
+        """
+        From the list of *invoicables*, clear the user Cart, create
+        the required Transaction to record the order, create/extends
+        Subscription and generate the claim codes for GroupBuy.
+        """
+        #pylint: disable=too-many-locals, too-many-statements
+        claim_carts = {}
+        invoiced_items = []
+        new_organizations = []
+        coupon_providers = set([])
+        for invoicable in invoicables:
+            subscription = invoicable['subscription']
+            # If the invoicable we are checking out is somehow related to
+            # a user shopping cart, we mark that cart item as recorded
+            # unless the organization does not exist in the database,
+            # in which case we will create a claim_code for it.
+            cart_item = None
+            cart_items = CartItem.objects.get_cart(
+                user, plan=subscription.plan)
+            if cart_items.exists():
+                bulk_items = cart_items.filter(
+                    email=subscription.organization.email)
+                if bulk_items.exists():
+                    cart_item = bulk_items.get()
+                else:
+                    cart_item = cart_items.get()
+
+            if not subscription.organization.id:
+                # When the organization does not exist into the database,
+                # we will create a random (i.e. hard to guess) claim code
+                # that will be emailed to the expected subscriber.
+                key = subscription.organization.email
+                if not key in new_organizations:
+                    claim_carts[key] = []
+                    new_organizations += [subscription.organization]
+                    coupon_providers |= set([subscription.provider])
+                assert cart_item is not None
+                claim_carts[key] += [cart_item]
+            else:
+                LOGGER.info("[checkout] save subscription of %s to %s",
+                    subscription.organization, subscription.plan,
+                    extra={'event': 'upsert-subscription',
+                        'organization': subscription.organization.slug,
+                        'plan': subscription.plan.slug})
+                subscription.save()
+                if cart_item:
+                    cart_item.recorded = True
+                    cart_item.save()
+
+        # At this point we have gathered all the ``Organization``
+        # which have yet to be registered. For these no ``Subscription``
+        # has been created yet. We create a claim_code that will
+        # be emailed to the expected subscribers such that it will populate
+        # their cart automatically.
+        coupons = {}
+        claim_codes = {}
+        for provider in coupon_providers:
+            coupon = Coupon.objects.create(
+                code='cpn_%s' % generate_random_slug(),
+                organization=provider,
+                percent=100, nb_attempts=0,
+                description=('Auto-generated after payment by %s'
+                    % self.printable_name))
+            LOGGER.info('Auto-generated Coupon %s for %s',
+                coupon.code, provider,
+                extra={'event': 'create-coupon',
+                    'coupon': coupon.code, 'auto': True,
+                    'provider': provider.slug})
+            coupons.update({provider.id: coupon})
+        for key, cart_items in claim_carts.iteritems():
+            claim_code = generate_random_slug()
+            provider = CartItem.objects.provider(cart_items)
+            for cart_item in cart_items:
+                cart_item.email = ''
+                cart_item.user = None
+                cart_item.first_name = ''
+                cart_item.claim_code = claim_code
+                cart_item.last_name = self.printable_name
+                cart_item.coupon = coupons[cart_item.plan.organization.id]
+                cart_item.save()
+            nb_cart_items = len(cart_items)
+            LOGGER.info("Generated claim code '%s' for %d cart items",
+                claim_code, nb_cart_items,
+                extra={'event': 'create-claim',
+                    'claim_code': claim_code,
+                    'nb_cart_items': nb_cart_items})
+            claim_codes.update({key: claim_code})
+
+        # We now either have a ``subscription.id`` (subscriber present
+        # in the database) or a ``Coupon`` (subscriber absent from
+        # the database).
+        for invoicable in invoicables:
+            subscription = invoicable['subscription']
+            if subscription.id:
+                event_id = subscription.id
+            else:
+                # We do not use id's here. Integers are reserved
+                # to match ``Subscription.id``.
+                coupon = coupons[subscription.provider.id]
+                event_id = coupon.code
+            for invoiced_item in invoicable['lines']:
+                invoiced_item.event_id = event_id
+                invoiced_items += [invoiced_item]
+
+        invoiced_items = Transaction.objects.record_order(
+            invoiced_items, user)
+        return new_organizations, claim_codes, invoiced_items
+
     def checkout(self, invoicables, user, token=None, remember_card=True):
         """
         *invoiced_items* is a set of ``Transaction`` that will be recorded
         in the ledger. Associated subscriptions will be updated such that
         the ends_at is extended in the future.
         """
-        #pylint: disable=too-many-locals, too-many-statements
         charge = None
-        claim_carts = {}
-        invoiced_items = []
-        new_organizations = []
-        coupon_providers = set([])
         with transaction.atomic():
-            for invoicable in invoicables:
-                subscription = invoicable['subscription']
-                # If the invoicable we are checking out is somehow related to
-                # a user shopping cart, we mark that cart item as recorded
-                # unless the organization does not exist in the database,
-                # in which case we will create a claim_code for it.
-                cart_item = None
-                cart_items = CartItem.objects.get_cart(
-                    user, plan=subscription.plan)
-                if cart_items.exists():
-                    bulk_items = cart_items.filter(
-                        email=subscription.organization.email)
-                    if bulk_items.exists():
-                        cart_item = bulk_items.get()
-                    else:
-                        cart_item = cart_items.get()
-
-                if not subscription.organization.id:
-                    # When the organization does not exist into the database,
-                    # we will create a random (i.e. hard to guess) claim code
-                    # that will be emailed to the expected subscriber.
-                    key = subscription.organization.email
-                    if not key in new_organizations:
-                        claim_carts[key] = []
-                        new_organizations += [subscription.organization]
-                        coupon_providers |= set([subscription.provider])
-                    assert cart_item is not None
-                    claim_carts[key] += [cart_item]
-                else:
-                    LOGGER.info("[checkout] save subscription of %s to %s",
-                        subscription.organization, subscription.plan,
-                        extra={'event': 'upsert-subscription',
-                            'organization': subscription.organization.slug,
-                            'plan': subscription.plan.slug})
-                    subscription.save()
-                    if cart_item:
-                        cart_item.recorded = True
-                        cart_item.save()
-
-            # At this point we have gathered all the ``Organization``
-            # which have yet to be registered. For these no ``Subscription``
-            # has been created yet. We create a claim_code that will
-            # be emailed to the expected subscribers such that it will populate
-            # their cart automatically.
-            coupons = {}
-            claim_codes = {}
-            for provider in coupon_providers:
-                coupon = Coupon.objects.create(
-                    code='cpn_%s' % generate_random_slug(),
-                    organization=provider,
-                    percent=100, nb_attempts=0,
-                    description=('Auto-generated after payment by %s'
-                        % self.printable_name))
-                LOGGER.info('Auto-generated Coupon %s for %s',
-                    coupon.code, provider,
-                    extra={'event': 'create-coupon',
-                        'coupon': coupon.code, 'auto': True,
-                        'provider': provider.slug})
-                coupons.update({provider.id: coupon})
-            for key, cart_items in claim_carts.iteritems():
-                claim_code = generate_random_slug()
-                provider = CartItem.objects.provider(cart_items)
-                for cart_item in cart_items:
-                    cart_item.email = ''
-                    cart_item.user = None
-                    cart_item.first_name = ''
-                    cart_item.claim_code = claim_code
-                    cart_item.last_name = self.printable_name
-                    cart_item.coupon = coupons[cart_item.plan.organization.id]
-                    cart_item.save()
-                nb_cart_items = len(cart_items)
-                LOGGER.info("Generated claim code '%s' for %d cart items",
-                    claim_code, nb_cart_items,
-                    extra={'event': 'create-claim',
-                        'claim_code': claim_code,
-                        'nb_cart_items': nb_cart_items})
-                claim_codes.update({key: claim_code})
-
-            # We now either have a ``subscription.id`` (subscriber present
-            # in the database) or a ``Coupon`` (subscriber absent from
-            # the database).
-            for invoicable in invoicables:
-                subscription = invoicable['subscription']
-                if subscription.id:
-                    event_id = subscription.id
-                else:
-                    # We do not use id's here. Integers are reserved
-                    # to match ``Subscription.id``.
-                    coupon = coupons[subscription.provider.id]
-                    event_id = coupon.code
-                for invoiced_item in invoicable['lines']:
-                    invoiced_item.event_id = event_id
-                    invoiced_items += [invoiced_item]
-
-            invoiced_items = Transaction.objects.execute_order(
-                invoiced_items, user)
+            new_organizations, claim_codes, invoiced_items = self.execute_order(
+                invoicables, user)
             charge = Charge.objects.charge_card(self, invoiced_items, user,
                 token=token, remember_card=remember_card)
 
@@ -2678,7 +2688,7 @@ class TransactionManager(models.Manager):
                 | set([val['dest_account']
                     for val in self.all().values('dest_account').distinct()]))
 
-    def execute_order(self, invoiced_items, user=None):
+    def record_order(self, invoiced_items, user=None):
         """
         Save invoiced_items, a set of ``Transaction`` and update when
         each associated ``Subscription`` ends.
@@ -2901,8 +2911,8 @@ class TransactionManager(models.Manager):
         At first, ``nb_periods``, the number of period paid in advance,
         is stored in the ``Transaction.orig_amount``. The ``Transaction``
         is created in ``TransactionManager.new_subscription_order``, then only
-        later saved when ``TransactionManager.execute_order`` is called through
-        ``Organization.checkout``. ``execute_order`` will replace
+        later saved when ``TransactionManager.record_order`` is called through
+        ``Organization.execute_order``. ``record_order`` will replace
         ``orig_amount`` by the correct amount in the expected currency.
         """
         nb_periods = nb_natural_periods * subscription.plan.period_length
