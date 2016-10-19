@@ -44,6 +44,7 @@ setup(
               'saas.backends.stripe_processor',
               'saas.management', # otherwise __init__.py is not installed
               'saas.management.commands',
+              'saas.migrations',
               'saas.templatetags',
               'saas.urls',
               'saas.urls.api',
