@@ -7,3 +7,5 @@ djangorestframework>=3.3.1
 Markdown>=2.4
 python-dateutil>=2.2
 stripe>=1.25.0
+django-urldecorators>=0.5
+razorpay>=0.2.0
