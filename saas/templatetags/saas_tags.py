@@ -127,7 +127,7 @@ def is_direct(request, organization=None):
 @register.filter
 def is_manager(request, organization):
     return _valid_manager(
-        request.user, Organization.objects.filter(slug=organization))
+        request.user, [Organization.objects.filter(slug=organization)])
 
 
 @register.filter()

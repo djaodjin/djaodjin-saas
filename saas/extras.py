@@ -80,7 +80,8 @@ class OrganizationMixinBase(object):
             'billing': reverse('saas_billing_info', args=(organization,)),
             'subscriptions': reverse(
                 'saas_subscription_list', args=(organization,)),
-        }})
+        },
+            'organization_create': reverse('saas_organization_create')})
         if self.attached_user(self.organization):
             try:
                 urls['organization'].update({

@@ -33,10 +33,11 @@ from django.views.generic import (CreateView, DetailView, ListView,
 from django.utils.decorators import method_decorator
 
 from . import RedirectFormMixin
+from ..decorators import _valid_manager
 from ..forms import (OrganizationForm, OrganizationCreateForm,
     ManagerAndOrganizationForm)
 from ..mixins import OrganizationMixin, ProviderMixin
-from ..models import Organization, Subscription, is_broker
+from ..models import Organization, Subscription, get_broker, is_broker
 
 
 class RoleDetailView(OrganizationMixin, TemplateView):
@@ -204,7 +205,10 @@ class OrganizationCreateView(RedirectFormMixin, CreateView):
     def form_valid(self, form):
         with transaction.atomic():
             self.object = form.save()
-            self.object.add_manager(self.request.user)
+            if not _valid_manager(self.request.user, [get_broker()]):
+                # If it is a manager of the broker platform creating
+                # the newly created Organization will be accessible anyway.
+                self.object.add_manager(self.request.user)
         return HttpResponseRedirect(self.get_success_url())
 
     def get_initial(self):
@@ -245,7 +249,7 @@ class DashboardView(OrganizationMixin, DetailView):
             urls = {
                 'accounts_base': reverse('accounts_profile'),
                 'provider': {
-                    'api_accounts': reverse('saas_api_users')}}
+                    'api_accounts': reverse('saas_api_profile')}}
         else:
             urls = {
                 'accounts_base': reverse('saas_profile'),
