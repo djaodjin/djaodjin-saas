@@ -654,11 +654,10 @@ class CartSeatsView(CartPeriodsView):
     template_name = 'saas/billing/cart-seats.html'
 
     def get(self, request, *args, **kwargs):
-        if self.cart_items.filter(nb_periods=0).exists():
-            # If nb_periods == 0, we will present multiple options
-            # to the user. We also rely on discount_percent
-            # to be positive, otherwise it looks really weird
-            # (i.e. one option).
+        if self.cart_items.filter(
+                nb_periods=0, plan__advance_discount__gt=0).exists():
+            # If nb_periods == 0 and there is a discount to buy periods
+            # in advance, we will present multiple options to the user.
             return http.HttpResponseRedirect(
                 reverse('saas_cart_periods', args=(self.organization,)))
         return super(CartSeatsView, self).get(request, *args, **kwargs)
