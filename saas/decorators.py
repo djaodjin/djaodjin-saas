@@ -158,12 +158,18 @@ def _insert_url(request, redirect_field_name=REDIRECT_FIELD_NAME,
 
 
 def fail_authenticated(request):
+    """
+    Authenticated
+    """
     if not request.user.is_authenticated():
         return reverse(settings.LOGIN_URL)
     return False
 
 
 def fail_agreement(request, agreement=settings.TERMS_OF_USE):
+    """
+    Agreed to %(saas.Agreement)s
+    """
     if not Signature.objects.has_been_accepted(
             agreement=agreement, user=request.user):
         return reverse('legal_sign_agreement', kwargs={'agreement': agreement})
@@ -171,6 +177,9 @@ def fail_agreement(request, agreement=settings.TERMS_OF_USE):
 
 
 def fail_paid_subscription(request, organization=None, plan=None):
+    """
+    Subscribed to %(saas.Plan)s
+    """
     if _has_valid_access(request, [get_broker()]):
         # Bypass if a manager for the broker.
         return False
@@ -192,8 +201,27 @@ def fail_paid_subscription(request, organization=None, plan=None):
     return False
 
 
-def fail_direct(request, charge=None, organization=None, strength=NORMAL):
+def _fail_direct(request, organization=None, strength=NORMAL):
+    if isinstance(organization, Charge):
+        # implicit natural conversion
+        organization = organization.customer
+    elif organization and not isinstance(organization, Organization):
+        try:
+            organization = Organization.objects.get(slug=organization)
+        except Organization.DoesNotExist:
+            charge = get_object_or_404(Charge, processor_key=organization)
+            organization = charge.customer
+    else:
+        organization = get_broker()
+    result = not(organization and _has_valid_access(
+        request, [organization], strength))
+    return result
+
+
+def fail_direct(request, organization=None):
     """
+    Direct manager
+
     Returns False if the request authenticated ``User`` is a direct contributor
     (or manager) for the ``Organization`` associated to the request.
 
@@ -202,22 +230,13 @@ def fail_direct(request, charge=None, organization=None, strength=NORMAL):
 
     .. image:: perms-contrib.*
     """
-    if charge:
-        if not isinstance(charge, Charge):
-            charge = get_object_or_404(Charge, processor_key=charge)
-        organization = charge.customer
-    elif organization:
-        if not isinstance(organization, Organization):
-            organization = get_object_or_404(Organization, slug=organization)
-    else:
-        organization = get_broker()
-    result = not(organization and _has_valid_access(
-        request, [organization], strength))
-    return result
+    return _fail_direct(request, organization=organization, strength=NORMAL)
 
 
-def fail_direct_weak(request, charge=None, organization=None):
+def fail_direct_weak(request, organization=None):
     """
+    Direct manager (weak)
+
     Returns False if the request authenticated ``User``
     is a direct contributor (or manager) for the ``Organization`` associated
     to the request.
@@ -225,21 +244,41 @@ def fail_direct_weak(request, charge=None, organization=None):
     Both managers and contributors can issue all types of requests
     (GET, POST, etc.).
     """
-    return fail_direct(
-        request, charge=charge, organization=organization, strength=WEAK)
+    return _fail_direct(request, organization=organization, strength=WEAK)
 
 
-def fail_direct_strong(request, charge=None, organization=None):
+def fail_direct_strong(request, organization=None):
     """
+    Direct manager (strong)
+
     Returns True if the request authenticated ``User``
     is a direct manager for the ``Organization`` associated to the request.
     """
-    return fail_direct(
-        request, charge=charge, organization=organization, strength=STRONG)
+    return _fail_direct(request, organization=organization, strength=STRONG)
 
 
-def fail_provider(request, charge=None, organization=None, strength=NORMAL):
+def _fail_provider(request, organization=None, strength=NORMAL):
+    if isinstance(organization, Charge):
+        # implicit natural conversion
+        organization = organization.customer
+    elif organization and not isinstance(organization, Organization):
+        try:
+            organization = Organization.objects.get(slug=organization)
+        except Organization.DoesNotExist:
+            charge = get_object_or_404(Charge, processor_key=organization)
+            organization = charge.customer
+    candidates = [get_broker()]
+    if organization:
+        candidates = ([organization]
+            + list(Organization.objects.providers_to(organization))
+            + candidates)
+    return not _has_valid_access(request, candidates, strength=strength)
+
+
+def fail_provider(request, organization=None):
     """
+    Direct or provider
+
     Returns False if the request authenticated ``User``
     is a contributor (or manager) for the ``Organization`` associated to
     the request itself or a contributor (or manager) to a provider for
@@ -250,21 +289,13 @@ def fail_provider(request, charge=None, organization=None, strength=NORMAL):
 
     .. image:: perms-contrib-subscribes.*
     """
-    if charge and not isinstance(charge, Charge):
-        charge = get_object_or_404(Charge, processor_key=charge)
-        organization = charge.customer
-    elif organization and not isinstance(organization, Organization):
-        organization = get_object_or_404(Organization, slug=organization)
-    candidates = [get_broker()]
-    if organization:
-        candidates = ([organization]
-            + list(Organization.objects.providers_to(organization))
-            + candidates)
-    return not _has_valid_access(request, candidates, strength=strength)
+    return _fail_provider(request, organization=organization, strength=NORMAL)
 
 
-def fail_provider_weak(request, charge=None, organization=None):
+def fail_provider_weak(request, organization=None):
     """
+    Direct or provider (weak)
+
     Returns False if the request authenticated ``User``
     is a contributor (or manager) for the ``Organization`` associated to
     the request itself or a contributor (or manager) to a provider for
@@ -273,24 +304,42 @@ def fail_provider_weak(request, charge=None, organization=None):
     Both managers and contributors can issue all types of requests
     (GET, POST, etc.).
     """
-    return fail_provider(
-        request, charge=charge, organization=organization, strength=WEAK)
+    return _fail_provider(request, organization=organization, strength=WEAK)
 
 
-def fail_provider_strong(request, charge=None, organization=None):
+def fail_provider_strong(request, organization=None):
     """
+    Direct or provider (strong)
+
     Returns False if the request authenticated ``User``
     is a manager for the ``Organization`` associated to the request itself
     or a manager to a provider for the ``Organization`` associated
     to the request.
     """
-    return fail_provider(
-        request, charge=charge, organization=organization, strength=STRONG)
+    return _fail_provider(request, organization=organization, strength=STRONG)
 
 
-def fail_provider_only(request,
-                       charge=None, organization=None, strength=NORMAL):
+def _fail_provider_only(request, organization=None, strength=NORMAL):
+    if isinstance(organization, Charge):
+        # implicit natural conversion
+        organization = organization.customer
+    elif organization and not isinstance(organization, Organization):
+        try:
+            organization = Organization.objects.get(slug=organization)
+        except Organization.DoesNotExist:
+            charge = get_object_or_404(Charge, processor_key=organization)
+            organization = charge.customer
+    candidates = [get_broker()]
+    if organization:
+        candidates = (list(Organization.objects.providers_to(organization))
+            + candidates)
+    return not _has_valid_access(request, candidates, strength=strength)
+
+
+def fail_provider_only(request, organization=None):
     """
+    Provider only
+
     Returns False if the request authenticated ``User``
     is a contributor (or manager) for a provider to the ``Organization``
     associated to the request.
@@ -300,20 +349,14 @@ def fail_provider_only(request,
 
     .. image:: perms-contrib-provider-only.*
     """
-    if charge:
-        charge = get_object_or_404(Charge, processor_key=charge)
-        organization = charge.customer
-    elif organization:
-        organization = get_object_or_404(Organization, slug=organization)
-    candidates = [get_broker()]
-    if organization:
-        candidates = (list(Organization.objects.providers_to(organization))
-            + candidates)
-    return not _has_valid_access(request, candidates, strength=strength)
+    return _fail_provider_only(
+        request, organization=organization, strength=NORMAL)
 
 
-def fail_provider_only_weak(request, charge=None, organization=None):
+def fail_provider_only_weak(request, organization=None):
     """
+    Provider only (weak)
+
     Returns False if the request authenticated ``User``
     is a contributor (or manager) for a provider to the ``Organization``
     associated to the request.
@@ -321,22 +364,37 @@ def fail_provider_only_weak(request, charge=None, organization=None):
     Both managers and contributors can issue all types of requests
     (GET, POST, etc.).
     """
-    return fail_provider_only(
-        request, charge=charge, organization=organization, strength=WEAK)
+    return _fail_provider_only(
+        request, organization=organization, strength=WEAK)
 
 
-def fail_provider_only_strong(request, charge=None, organization=None):
+def fail_provider_only_strong(request, organization=None):
     """
+    Provider only (strong)
+
     Returns False if the request authenticated ``User``
     is a manager for a provider to the ``Organization`` associated
     to the request.
     """
-    return fail_provider_only(
-        request, charge=charge, organization=organization, strength=STRONG)
+    return _fail_provider_only(
+        request, organization=organization, strength=STRONG)
 
 
-def fail_self_provider(request, user=None, strength=NORMAL):
+def _fail_self_provider(request, user=None, strength=NORMAL):
+    if request.user.username != user:
+        # Organization that are managed by both users
+        directs = Organization.objects.accessible_by(user)
+        providers = Organization.objects.providers(
+            Subscription.objects.filter(organization__in=directs))
+        candidates = list(directs) + list(providers) + [get_broker()]
+        return not _has_valid_access(request, candidates, strength)
+    return False
+
+
+def fail_self_provider(request, user=None):
     """
+    Self or provider
+
     Returns True if the request authenticated ``User``
     is the user associated to the URL.
     Authenticated users that can also access the URL through this decorator
@@ -350,18 +408,13 @@ def fail_self_provider(request, user=None, strength=NORMAL):
 
     .. image:: perms-self-contrib-subscribes.*
     """
-    if request.user.username != user:
-        # Organization that are managed by both users
-        directs = Organization.objects.accessible_by(user)
-        providers = Organization.objects.providers(
-            Subscription.objects.filter(organization__in=directs))
-        candidates = list(directs) + list(providers) + [get_broker()]
-        return not _has_valid_access(request, candidates, strength)
-    return False
+    return _fail_self_provider(request, user=user, strength=NORMAL)
 
 
 def fail_self_provider_weak(request, user=None):
     """
+    Self or provider (weak)
+
     Returns False if the request authenticated ``User``
     is the user associated to the URL.
     Authenticated users that can also access the URL through this decorator
@@ -373,11 +426,13 @@ def fail_self_provider_weak(request, user=None):
     Both managers and contributors can issue all types of requests
     (GET, POST, etc.).
     """
-    return fail_self_provider(request, user=user, strength=WEAK)
+    return _fail_self_provider(request, user=user, strength=WEAK)
 
 
 def fail_self_provider_strong(request, user=None):
     """
+    Self or provider (strong)
+
     Returns False if the request authenticated ``User``
     is the user associated to the URL.
     Authenticated users that can also access the URL through this decorator
@@ -386,7 +441,7 @@ def fail_self_provider_strong(request, user=None):
     and transitively managers for any provider to one of these direct
     organizations.
     """
-    return fail_self_provider(request, user=user, strength=STRONG)
+    return _fail_self_provider(request, user=user, strength=STRONG)
 
 
 def requires_authenticated(function=None,
@@ -460,7 +515,7 @@ def requires_paid_subscription(function=None,
         def _wrapped_view(request, *args, **kwargs):
             subscriber = get_object_or_404(
                 Organization, slug=kwargs.get(organization_kwarg_slug, None))
-            if fail_provider(request,
+            if _fail_provider(request,
                              organization=subscriber, strength=strength):
                 raise PermissionDenied("%(user)s is neither a manager '\
 ' of %(organization)s nor a manager of one of %(organization)s providers."
@@ -493,12 +548,10 @@ def requires_direct(function=None, strength=NORMAL):
     def decorator(view_func):
         @wraps(view_func, assigned=available_attrs(view_func))
         def _wrapped_view(request, *args, **kwargs):
-            organization = kwargs.get('organization', None)
-            if fail_direct(request, charge=kwargs.get('charge', None),
-                           organization=organization,
-                           strength=strength):
+            slug = kwargs.get('charge', kwargs.get('organization', None))
+            if _fail_direct(request, organization=slug, strength=strength):
                 raise PermissionDenied("%(user)s is not a direct manager '\
-' of %(organization)s." % {'user': request.user, 'organization': organization})
+' of %(organization)s." % {'user': request.user, 'organization': slug})
             return view_func(request, *args, **kwargs)
         return _wrapped_view
 
@@ -542,9 +595,12 @@ def requires_provider(function=None, strength=NORMAL):
     def decorator(view_func):
         @wraps(view_func, assigned=available_attrs(view_func))
         def _wrapped_view(request, *args, **kwargs):
-            if fail_provider(request, charge=kwargs.get('charge', None),
-                             organization=kwargs.get('organization', None),
-                             strength=strength):
+            charge = kwargs.get('charge', None)
+            if charge is not None:
+                obj = get_object_or_404(Charge, processor_key=charge)
+            else:
+                obj = kwargs.get('organization', None)
+            if _fail_provider(request, organization=obj, strength=strength):
                 raise PermissionDenied("%(auth)s is neither a manager "\
 " for %(slug)s nor a manager of one of %(slug)s providers." % {
     'auth': request.user,
@@ -594,9 +650,13 @@ def requires_provider_only(function=None, strength=NORMAL):
     def decorator(view_func):
         @wraps(view_func, assigned=available_attrs(view_func))
         def _wrapped_view(request, *args, **kwargs):
-            if fail_provider_only(request, charge=kwargs.get('charge', None),
-                             organization=kwargs.get('organization', None),
-                             strength=strength):
+            charge = kwargs.get('charge', None)
+            if charge is not None:
+                obj = get_object_or_404(Charge, processor_key=charge)
+            else:
+                obj = kwargs.get('organization', None)
+            if _fail_provider_only(
+                    request, organization=obj, strength=strength):
                 raise PermissionDenied("%(auth)s has no direct relation to"\
 " a provider for %(slug)s." % {'auth': request.user,
         'slug': kwargs.get('charge', kwargs.get('organization', None))})
@@ -647,7 +707,7 @@ def requires_self_provider(function=None, strength=NORMAL):
     def decorator(view_func):
         @wraps(view_func, assigned=available_attrs(view_func))
         def _wrapped_view(request, *args, **kwargs):
-            if fail_self_provider(
+            if _fail_self_provider(
                     request, user=kwargs.get('user', None), strength=strength):
                 raise PermissionDenied("%(auth)s has neither a direct"\
 " relation to an organization connected to %(user)s nor a connection to one"\
