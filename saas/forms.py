@@ -221,6 +221,14 @@ class PlanForm(forms.ModelForm):
         super(PlanForm, self).__init__(
             initial=initial, instance=instance, *args, **kwargs)
 
+    def clean_advance_discount(self):
+        try:
+            self.cleaned_data['advance_discount'] = \
+              int(self.cleaned_data['advance_discount'].scaleb(2))
+        except (TypeError, ValueError):
+            self.cleaned_data['advance_discount'] = 0
+        return self.cleaned_data['advance_discount']
+
     def clean_period_amount(self):
         try:
             self.cleaned_data['period_amount'] = \
@@ -229,13 +237,15 @@ class PlanForm(forms.ModelForm):
             self.cleaned_data['period_amount'] = 0
         return self.cleaned_data['period_amount']
 
-    def clean_advance_discount(self):
-        try:
-            self.cleaned_data['advance_discount'] = \
-              int(self.cleaned_data['advance_discount'].scaleb(2))
-        except (TypeError, ValueError):
-            self.cleaned_data['advance_discount'] = 0
-        return self.cleaned_data['advance_discount']
+    def clean_title(self):
+        kwargs = {}
+        if self.initial.has_key('organization'):
+            kwargs.update({'organization': self.initial['organization']})
+        if Plan.objects.filter(
+                slug=slugify(self.cleaned_data['title']), **kwargs).exists():
+            raise forms.ValidationError(
+                _("A Plan with this title already exists."))
+        return self.cleaned_data['title']
 
     def save(self, commit=True):
         if self.initial.has_key('organization'):
