@@ -28,6 +28,7 @@ import re
 
 import markdown
 from django import template
+from django.shortcuts import get_object_or_404
 from django.template.defaultfilters import stringfilter
 from django.utils.safestring import mark_safe
 from django.utils.timezone import utc
@@ -126,8 +127,9 @@ def is_direct(request, organization=None):
 
 @register.filter
 def is_manager(request, organization):
-    return _valid_manager(
-        request.user, [Organization.objects.filter(slug=organization)])
+    if not isinstance(organization, Organization):
+        organization = get_object_or_404(Organization, slug=organization)
+    return _valid_manager(request.user, [organization])
 
 
 @register.filter()
