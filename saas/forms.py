@@ -241,10 +241,15 @@ class PlanForm(forms.ModelForm):
         kwargs = {}
         if self.initial.has_key('organization'):
             kwargs.update({'organization': self.initial['organization']})
-        if Plan.objects.filter(
-                slug=slugify(self.cleaned_data['title']), **kwargs).exists():
-            raise forms.ValidationError(
-                _("A Plan with this title already exists."))
+        try:
+            exists = Plan.objects.get(
+                slug=slugify(self.cleaned_data['title']), **kwargs)
+            if self.instance is None or exists.pk != self.instance.pk:
+                # Rename is ok.
+                raise forms.ValidationError(
+                    _("A Plan with this title already exists."))
+        except Plan.DoesNotExist:
+            pass
         return self.cleaned_data['title']
 
     def save(self, commit=True):
