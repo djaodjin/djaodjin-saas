@@ -37,7 +37,7 @@ from rest_framework.generics import (ListAPIView, CreateAPIView,
 from rest_framework.response import Response
 
 from .. import settings
-from ..mixins import (OrganizationMixin, RoleDescriptionMixin, RelationMixin,
+from ..mixins import (OrganizationMixin, RoleDescriptionMixin, RoleMixin,
     RoleSmartListMixin, UserMixin)
 from ..models import Organization, RoleDescription
 from ..utils import get_role_model
@@ -443,7 +443,7 @@ class RoleFilteredListAPIView(RoleSmartListMixin, RoleByDescrQuerysetMixin,
     serializer_class = RoleSerializer
 
     def create(self, request, *args, **kwargs): #pylint:disable=unused-argument
-        role_descr = self.role_description
+        grant_key = None
         serializer = RoleCreateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user_model = get_user_model()
@@ -473,11 +473,13 @@ class RoleFilteredListAPIView(RoleSmartListMixin, RoleByDescrQuerysetMixin,
                     serializer.validated_data['slug'],
                     email=serializer.validated_data['email'],
                     first_name=first_name, last_name=last_name)
+                grant_key = self.organization.generate_role_key(user)
 
         reason = serializer.validated_data.get('message', None)
         if reason:
             reason = force_text(reason)
-        created = self.organization.add_role(user, role_descr, reason=reason)
+        created = self.organization.add_role(
+            user, self.role_description, grant_key=grant_key, reason=reason)
         if created:
             resp_status = status.HTTP_201_CREATED
         else:
@@ -489,7 +491,7 @@ class RoleFilteredListAPIView(RoleSmartListMixin, RoleByDescrQuerysetMixin,
             headers=self.get_success_headers(serializer.validated_data))
 
 
-class RoleDetailAPIView(RelationMixin, DestroyAPIView):
+class RoleDetailAPIView(RoleMixin, DestroyAPIView):
     """
     Dettach a user from a role with regards to an organization, typically
     resulting in revoking permissions  from this user to manage part of an

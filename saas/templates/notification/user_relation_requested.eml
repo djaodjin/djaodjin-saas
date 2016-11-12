@@ -3,17 +3,17 @@
 {% load saas_tags %}
 
 {% block subject %}
-{{user.printable_name}} requested an additional role on {{organization.printable_name}}
+{{user.get_full_name}} requested an additional role on {{organization.printable_name}}
 {% endblock %}
 
 {% block html_content %}
-{{user.printable_name}} requested an additional role on {{organization.printable_name}}
+{{user.get_full_name}} requested an additional role on {{organization.printable_name}}
 {% if reason %}
 <p>
 {{reason|md}}
 </p>
 {% endif %}
-You can grant this request to {{user.printable_name}} by following this link:
+You can grant this request to {{user.get_full_name}} by following this link:
 {{site.as_absolute_uri}}{% url 'saas_role_list' organization.slug %}
 </p>
 {% endblock %}

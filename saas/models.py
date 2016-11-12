@@ -361,15 +361,16 @@ class Organization(models.Model):
             organization=self, role_description=role_descr)
 
     @staticmethod
-    def _generate_role_key(user):
+    def generate_role_key(user):
         salt = hashlib.sha1(str(random.random())).hexdigest()[:5]
         return hashlib.sha1(salt+user.username).hexdigest()
 
-    def add_role(self, user, role_descr, at_time=None, reason=None):
+    def add_role(self, user, role_descr,
+                 grant_key=None, at_time=None, reason=None):
         """
         Add user with a role to organization.
         """
-        #pylint:disable=unused-argument
+        #pylint:disable=unused-argument,too-many-arguments
         # Implementation Note:
         # Django get_or_create will call router.db_for_write without
         # an instance so the using database will be lost. The following
@@ -389,15 +390,14 @@ class Organization(models.Model):
                 m2m = queryset.get()
                 force_insert = False
             else:
-                m2m = get_role_model()(organization=self, user=user,
-                    grant_key=self._generate_role_key(user))
+                m2m = get_role_model()(
+                    organization=self, user=user, grant_key=grant_key)
                 force_insert = True
             m2m.role_description = role_descr
             m2m.request_key = None
             m2m.save(using=self._state.db, force_insert=force_insert)
             signals.user_relation_added.send(sender=__name__,
-                organization=m2m.organization, user=m2m.user,
-                role_descr=m2m.role_description, reason=reason)
+                role=m2m, reason=reason)
             return True
         return False
 
@@ -409,7 +409,7 @@ class Organization(models.Model):
             at_time = datetime_or_now(at_time)
             m2m = get_role_model()(created_at=at_time,
                 organization=self, user=user,
-                request_key=self._generate_role_key(user))
+                request_key=self.generate_role_key(user))
             m2m.save(using=self._state.db, force_insert=True)
             signals.user_relation_requested.send(sender=__name__,
                 organization=self, user=user, reason=reason)

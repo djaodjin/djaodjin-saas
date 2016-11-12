@@ -749,10 +749,9 @@ class UserMixin(object):
         for organization in queryset:
             top_accessibles += [{'printable_name': organization.printable_name,
                 'location': reverse('saas_dashboard', args=(organization,))}]
-        if len(queryset) > self.SHORT_LIST_CUT_OFF:
-            top_accessibles += [{'printable_name': "More ...",
-                'location': reverse(
-                    'saas_user_product_list', args=(user,))}]
+        # Always add link to "More..." so a user can request access.
+        top_accessibles += [{'printable_name': "More ...",
+            'location': reverse('saas_user_product_list', args=(user,))}]
         context.update({'top_accessibles': top_accessibles})
         return context
 
@@ -767,10 +766,20 @@ class RoleDescriptionMixin(OrganizationMixin):
         return self._role_description
 
 
-class RelationMixin(RoleDescriptionMixin, UserMixin):
+class RoleMixin(RoleDescriptionMixin):
     """
     Returns a User-Organization relation from a URL.
+
+    It is used in Role APIs.
     """
+    user_url_kwarg = 'user'
+
+    @property
+    def user(self):
+        if not hasattr(self, "_user"):
+            self._user = get_object_or_404(get_user_model(),
+                username=self.kwargs.get(self.user_url_kwarg))
+        return self._user
 
     def get_queryset(self):
         try:

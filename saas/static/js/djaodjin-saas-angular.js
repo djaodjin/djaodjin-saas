@@ -392,7 +392,7 @@ transactionControllers.controller("relationListCtrl",
                 return;
             }
         }
-        $http.delete(settings.urls.api_items + '/' + slug).then(
+        $http.delete(settings.urls.api_items + '/' + encodeURIComponent(slug)).then(
             function success(resp) {
                 $scope.items.results.splice(idx, 1);
             },

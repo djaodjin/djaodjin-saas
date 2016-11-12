@@ -33,6 +33,7 @@ card_updated = Signal(
 charge_updated = Signal(providing_args=["charge", "user"])
 order_executed = Signal(providing_args=["invoiced_items", "user"])
 claim_code_generated = Signal(providing_args=[
-        "subscriber", "claim_code", "user"])
-user_relation_added = Signal(providing_args=["organization", "user"])
-user_relation_requested = Signal(providing_args=["organization", "user"])
+    "subscriber", "claim_code", "user"])
+user_relation_added = Signal(providing_args=["role", "reason"])
+user_relation_requested = Signal(providing_args=[
+    "organization", "user", "reason"])

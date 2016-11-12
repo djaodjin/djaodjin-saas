@@ -34,12 +34,12 @@ from ....api.subscriptions import (SubscriptionDetailAPIView,
     SubscriptionListAPIView)
 from ....api.roles import (RoleListAPIView, RoleFilteredListAPIView,
     RoleDetailAPIView)
-from ....settings import ACCT_REGEX
+from ....settings import ACCT_REGEX, MAYBE_EMAIL_REGEX
 
 
 urlpatterns = [
     url(r'^(?P<organization>%s)/roles/(?P<role>%s)/(?P<user>%s)/?'
-        % (ACCT_REGEX, ACCT_REGEX, ACCT_REGEX),
+        % (ACCT_REGEX, ACCT_REGEX, MAYBE_EMAIL_REGEX),
         RoleDetailAPIView.as_view(), name='saas_api_role_detail'),
     url(r'^(?P<organization>%s)/roles/(?P<role>%s)/?'
         % (ACCT_REGEX, ACCT_REGEX),
