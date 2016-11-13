@@ -749,9 +749,10 @@ class UserMixin(object):
         for organization in queryset:
             top_accessibles += [{'printable_name': organization.printable_name,
                 'location': reverse('saas_dashboard', args=(organization,))}]
-        # Always add link to "More..." so a user can request access.
-        top_accessibles += [{'printable_name': "More ...",
-            'location': reverse('saas_user_product_list', args=(user,))}]
+        if len(queryset) > self.SHORT_LIST_CUT_OFF:
+            # XXX Always add link to "More..." so a user can request access.
+            top_accessibles += [{'printable_name': "More ...",
+                'location': reverse('saas_user_product_list', args=(user,))}]
         context.update({'top_accessibles': top_accessibles})
         return context
 
