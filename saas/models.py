@@ -942,6 +942,22 @@ class RoleManager(models.Manager):
         return self.filter(
             user=user, organization__subscriptions__plan=plan, **kwargs)
 
+    def accessbile_by(self, user):
+        """
+        Returns ``Organization`` accessible by a ``user``,
+        keyed by ``Role``.
+        """
+        user_model = get_user_model()
+        if not isinstance(user, user_model):
+            user = user_model.objects.get(username=user)
+        results = {}
+        for role in self.filter(user=user).order_by('role_description'):
+            if role.role_description is not None:
+                if not role.role_description in results:
+                    results[role.role_description] = []
+                results[role.role_description].append(role.organization)
+        return results
+
 
 class Role(models.Model):
 
