@@ -269,7 +269,9 @@ class RedeemCouponForm(forms.Form):
 
 
 class UserRelationForm(forms.Form):
-    '''Form to add/remove contributors and managers.'''
+    """
+    Form to add/remove managers and other custom roles.
+    """
     username = forms.CharField()
 
 

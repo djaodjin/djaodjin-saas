@@ -599,7 +599,7 @@ class RoleSmartListMixin(SortableListMixin, SearchableListMixin):
       - organization.email
       - user.username
       - user.email
-      - role_description.name
+      - role_description.title
       - role_description.slug
 
     The result queryset can be ordered by passing an ``o`` (field name)
@@ -616,12 +616,12 @@ class RoleSmartListMixin(SortableListMixin, SearchableListMixin):
                      'organization__email',
                      'user__username',
                      'user__email',
-                     'role_description__name',
+                     'role_description__title',
                      'role_description__slug']
 
     sort_fields_aliases = [('full_name', 'organization__full_name'),
                            ('username', 'user__username'),
-                           ('role_name', 'role_description__name'),
+                           ('role_name', 'role_description__title'),
                            ('created_at', 'created_at')]
 
 

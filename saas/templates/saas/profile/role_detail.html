@@ -23,7 +23,7 @@
       <tbody>
         <tr id="[[item.user.slug]]" ng-repeat="item in items.results" ng-cloak>
           <td>[[item.user.slug]]</td>
-          <td>[[item.role_description.name]]</td>
+          <td>[[item.role_description.title]]</td>
           <td>[[item.user.email]]</td>
           <td><button ng-click="remove($event, $index)">Remove</button></td>
         </tr>

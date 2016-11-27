@@ -177,7 +177,7 @@ class OrganizationCreateView(RedirectFormMixin, CreateView):
     the request user becomes a manager of the newly created entity.
 
     ``User`` and ``Organization`` are separate concepts links together
-    by manager and contributor relationship.
+    by manager and other custom ``RoleDescription`` relationships.
 
     The complete ``User``, ``Organization`` and relationship might be exposed
     right away to the person registering to the site. This is very usual

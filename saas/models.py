@@ -197,8 +197,9 @@ class Organization(models.Model):
     A special ``Organization``, named processor, is used to represent
     the backend charge/deposit processor.
 
-    Users can have one of two relationships with an Organization. They can
-    either be managers (all permissions) or contributors (use permissions).
+    Users can have one of multiple relationships (roles) with an Organization.
+    They can either be managers (all permissions) or a custom role defined
+    through a ``RoleDescription``.
     """
     #pylint:disable=too-many-instance-attributes
 
@@ -424,7 +425,7 @@ class Organization(models.Model):
 
     def remove_role(self, user, role_name):
         """
-        Remove user as a *role_name* (ex: manager, contributor) to organization.
+        Remove user as a *role_name* (ex: manager) to organization.
         """
         relation = self.get_roles(role_name).get(user=user)
         relation.delete()
@@ -900,7 +901,7 @@ class RoleDescription(models.Model):
         help_text=_("Unique identifier shown in the URL bar."))
     organization = models.ForeignKey(
         Organization, related_name="role_descriptions", null=True)
-    name = models.CharField(max_length=20)
+    title = models.CharField(max_length=20)
     extra = settings.get_extra_field_class()(null=True)
 
     class Meta:
@@ -913,7 +914,7 @@ class RoleDescription(models.Model):
 
     def save(self, **kwargs):
         if not self.slug:
-            self.slug = self.normalize_slug(slugify(self.name))
+            self.slug = self.normalize_slug(slugify(self.title))
         super(RoleDescription, self).save(**kwargs)
 
     def is_global(self):

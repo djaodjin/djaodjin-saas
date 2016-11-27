@@ -56,13 +56,13 @@ NORMAL = 1
 STRONG = 2
 
 
-def _valid_role(user, candidates, role=settings.MANAGER):
+def _valid_role(user, candidates, role):
     """
     Returns the subset of a set of ``Organization`` *candidates*
     which have *user* listed with a role.
     """
     results = []
-    if settings.SKIP_PERMISSION_CHECK:
+    if settings.BYPASS_PERMISSION_CHECK:
         if user:
             username = user.username
         else:
@@ -70,7 +70,7 @@ def _valid_role(user, candidates, role=settings.MANAGER):
         LOGGER.warning("Skip permission check for %s on organizations %s",
                        username, candidates)
         return candidates
-    if user and user.is_authenticated():
+    if role is not None and user and user.is_authenticated():
         results = Organization.objects.filter(
             pk__in=get_role_model().objects.filter(role_description__slug=role,
                 organization__in=candidates,
@@ -83,36 +83,17 @@ def _valid_manager(user, candidates):
     Returns the subset of a queryset of ``Organization``, *candidates*
     which have *user* as a manager.
     """
-    return _valid_role(user, candidates, role=settings.MANAGER)
+    return _valid_role(user, candidates, settings.MANAGER)
 
 
-def _valid_contributor(user, candidates):
-    """
-    Returns a tuple made of two list of ``Organization`` from *candidates*.
-    The first element contains organizations which have *user*
-    as a manager. The second element contains organizations which have *user*
-    as a contributor.
-    """
-    results = _valid_role(user, candidates, role=settings.CONTRIBUTOR)
-    if settings.BYPASS_CONTRIBUTOR_CHECK:
-        # So we can do live demos.
-        for candidate in candidates:
-            if str(candidate) in settings.BYPASS_CONTRIBUTOR_CHECK:
-                if not isinstance(candidate, Organization):
-                    candidate = get_object_or_404(Organization, slug=candidate)
-                if not isinstance(results, list):
-                    results = list(results)
-                results += [candidate]
-    return results
-
-
-def _filter_valid_access(request, candidates, strength=NORMAL):
+def _filter_valid_access(request, candidates,
+                         strength=NORMAL, roledescription=None):
     """
     Returns a tuple made of two lists of ``Organization`` from *candidates*.
 
     The first item in the tuple are the organizations managed by *request.user*
-    while the second item in the tuple are the organizations contributed to
-    by *request.user*.
+    while the second item in the tuple are the organizations for which
+    *request.user* has a *roledescription* role (ex: contributors).
 
     The set of contributed organizations is further filtered by
     *request.method* and *strength*.
@@ -122,18 +103,20 @@ def _filter_valid_access(request, candidates, strength=NORMAL):
     managed = _valid_manager(request.user, candidates)
     if request.method == "GET":
         if strength != STRONG:
-            contributed = _valid_contributor(request.user, candidates)
+            contributed = _valid_role(request.user, candidates, roledescription)
     else:
         if strength == WEAK:
-            contributed = _valid_contributor(request.user, candidates)
+            contributed = _valid_role(request.user, candidates, roledescription)
     return managed, contributed
 
 
-def _has_valid_access(request, candidates, strength=NORMAL):
+def _has_valid_access(request, candidates,
+                      strength=NORMAL, roledescription=None):
     """
     Returns True if any candidate is accessible to the request user.
     """
-    managed, contributed = _filter_valid_access(request, candidates, strength)
+    managed, contributed = _filter_valid_access(request, candidates,
+        strength=strength, roledescription=roledescription)
     return len(managed) + len(contributed) > 0
 
 
@@ -201,7 +184,8 @@ def fail_paid_subscription(request, organization=None, plan=None):
     return False
 
 
-def _fail_direct(request, organization=None, strength=NORMAL):
+def _fail_direct(request, organization=None, roledescription=None,
+                 strength=NORMAL):
     if isinstance(organization, Charge):
         # implicit natural conversion
         organization = organization.customer
@@ -214,50 +198,52 @@ def _fail_direct(request, organization=None, strength=NORMAL):
     else:
         organization = get_broker()
     result = not(organization and _has_valid_access(
-        request, [organization], strength))
+        request, [organization],
+        strength=strength, roledescription=roledescription))
     return result
 
 
-def fail_direct(request, organization=None):
+def fail_direct(request, organization=None, roledescription=None):
     """
-    Direct manager
+    Direct %(saas.RoleDescription)s for :organization restricted to GET
 
-    Returns False if the request authenticated ``User`` is a direct contributor
-    (or manager) for the ``Organization`` associated to the request.
+    Returns False if the authenticated ``request.user`` is a direct
+    ``roledescription`` (ex: contributor) or manager for ``organization``
+    and the user's role allows for ``request.method``.
 
     Managers can issue all types of requests (GET, POST, etc.) while
-    contributors are restricted to GET requests.
+    ``request.user`` with a ``roledescription`` (ex: contributors)
+    are restricted to GET requests.
+    """
+    return _fail_direct(request, organization=organization,
+        strength=NORMAL, roledescription=roledescription)
+
+
+def fail_direct_weak(request, organization=None, roledescription=None):
+    """
+    Direct %(saas.RoleDescription)s for :organization
+
+    Returns False if the authenticated ``request.user`` is a direct
+    ``roledescription`` (ex: contributor) or manager for ``organization``.
+
+    Both ``roledescription`` and managers can issue all types of requests
+    (GET, POST, etc.).
 
     .. image:: perms-contrib.*
     """
-    return _fail_direct(request, organization=organization, strength=NORMAL)
-
-
-def fail_direct_weak(request, organization=None):
-    """
-    Direct manager (weak)
-
-    Returns False if the request authenticated ``User``
-    is a direct contributor (or manager) for the ``Organization`` associated
-    to the request.
-
-    Both managers and contributors can issue all types of requests
-    (GET, POST, etc.).
-    """
-    return _fail_direct(request, organization=organization, strength=WEAK)
+    return _fail_direct(request, organization=organization,
+        strength=WEAK, roledescription=roledescription)
 
 
 def fail_direct_strong(request, organization=None):
     """
-    Direct manager (strong)
-
-    Returns True if the request authenticated ``User``
-    is a direct manager for the ``Organization`` associated to the request.
+    Direct Managers for :organization
     """
     return _fail_direct(request, organization=organization, strength=STRONG)
 
 
-def _fail_provider(request, organization=None, strength=NORMAL):
+def _fail_provider(request, organization=None,
+                   strength=NORMAL, roledescription=None):
     if isinstance(organization, Charge):
         # implicit natural conversion
         organization = organization.customer
@@ -272,54 +258,54 @@ def _fail_provider(request, organization=None, strength=NORMAL):
         candidates = ([organization]
             + list(Organization.objects.providers_to(organization))
             + candidates)
-    return not _has_valid_access(request, candidates, strength=strength)
+    return not _has_valid_access(request, candidates,
+        strength=strength, roledescription=roledescription)
 
 
-def fail_provider(request, organization=None):
+def fail_provider(request, organization=None, roledescription=None):
+    #pylint:disable=line-too-long
     """
-    Direct or provider
+    Provider or Direct %(saas.RoleDescription)s for :organization restricted to GET
 
-    Returns False if the request authenticated ``User``
-    is a contributor (or manager) for the ``Organization`` associated to
-    the request itself or a contributor (or manager) to a provider for
-    the ``Organization`` associated to the request.
+    Returns False if the authenticated ``request.user`` is a direct
+    ``roledescription`` (ex: contributor) or manager for ``organization``,
+    or to a provider of ``organization``, and the user's role allows for
+    ``request.method``.
 
-    When *strength* is NORMAL, managers can issue all types of requests
-    (GET, POST, etc.) while contributors are restricted to GET requests.
+    Managers can issue all types of requests (GET, POST, etc.) while
+    the ``request.user`` with another role (ex: contributor) are restricted
+    to GET requests.
+    """
+    return _fail_provider(request, organization=organization,
+        strength=NORMAL, roledescription=roledescription)
+
+
+def fail_provider_weak(request, organization=None, roledescription=None):
+    """
+    Provider or Direct %(saas.RoleDescription)s for :organization
+
+    Returns False if the authenticated ``request.user`` is a direct
+    ``roledescription`` (ex: contributor) or manager for ``organization``
+    or to a provider of ``organization``.
+
+    Both ``roledescription`` and managers can issue all types of requests
+    (GET, POST, etc.).
 
     .. image:: perms-contrib-subscribes.*
     """
-    return _fail_provider(request, organization=organization, strength=NORMAL)
-
-
-def fail_provider_weak(request, organization=None):
-    """
-    Direct or provider (weak)
-
-    Returns False if the request authenticated ``User``
-    is a contributor (or manager) for the ``Organization`` associated to
-    the request itself or a contributor (or manager) to a provider for
-    the ``Organization`` associated to the request.
-
-    Both managers and contributors can issue all types of requests
-    (GET, POST, etc.).
-    """
-    return _fail_provider(request, organization=organization, strength=WEAK)
+    return _fail_provider(request, organization=organization,
+        strength=WEAK, roledescription=roledescription)
 
 
 def fail_provider_strong(request, organization=None):
     """
-    Direct or provider (strong)
-
-    Returns False if the request authenticated ``User``
-    is a manager for the ``Organization`` associated to the request itself
-    or a manager to a provider for the ``Organization`` associated
-    to the request.
+    Provider or Direct Managers for :organization
     """
     return _fail_provider(request, organization=organization, strength=STRONG)
 
 
-def _fail_provider_only(request, organization=None, strength=NORMAL):
+def _fail_provider_only(request, organization=None, strength=NORMAL,
+                        roledescription=None):
     if isinstance(organization, Charge):
         # implicit natural conversion
         organization = organization.customer
@@ -333,29 +319,13 @@ def _fail_provider_only(request, organization=None, strength=NORMAL):
     if organization:
         candidates = (list(Organization.objects.providers_to(organization))
             + candidates)
-    return not _has_valid_access(request, candidates, strength=strength)
+    return not _has_valid_access(request, candidates,
+        strength=strength, roledescription=roledescription)
 
 
-def fail_provider_only(request, organization=None):
+def fail_provider_only(request, organization=None, roledescription=None):
     """
-    Provider only
-
-    Returns False if the request authenticated ``User``
-    is a contributor (or manager) for a provider to the ``Organization``
-    associated to the request.
-
-    When *strength* is NORMAL, managers can issue all types of requests
-    (GET, POST, etc.) while contributors are restricted to GET requests.
-
-    .. image:: perms-contrib-provider-only.*
-    """
-    return _fail_provider_only(
-        request, organization=organization, strength=NORMAL)
-
-
-def fail_provider_only_weak(request, organization=None):
-    """
-    Provider only (weak)
+    Provider %(saas.RoleDescription)s for :organization restricted to GET
 
     Returns False if the request authenticated ``User``
     is a contributor (or manager) for a provider to the ``Organization``
@@ -365,81 +335,90 @@ def fail_provider_only_weak(request, organization=None):
     (GET, POST, etc.).
     """
     return _fail_provider_only(
-        request, organization=organization, strength=WEAK)
+        request, organization=organization,
+        strength=NORMAL, roledescription=roledescription)
+
+
+def fail_provider_only_weak(request, organization=None, roledescription=None):
+    """
+    Provider %(saas.RoleDescription)s for :organization
+
+    Returns False if the authenticated ``request.user`` is a ``roledescription``
+    (ex: contributor) or manager for a provider of ``organization``.
+
+    Both ``roledescription`` and managers can issue all types of requests
+    (GET, POST, etc.).
+
+    .. image:: perms-contrib-provider-only.*
+    """
+    return _fail_provider_only(
+        request, organization=organization,
+        strength=NORMAL, roledescription=roledescription)
 
 
 def fail_provider_only_strong(request, organization=None):
     """
-    Provider only (strong)
-
-    Returns False if the request authenticated ``User``
-    is a manager for a provider to the ``Organization`` associated
-    to the request.
+    Provider Managers for :organization
     """
     return _fail_provider_only(
         request, organization=organization, strength=STRONG)
 
 
-def _fail_self_provider(request, user=None, strength=NORMAL):
+def _fail_self_provider(request, user=None, strength=NORMAL,
+                        roledescription=None):
     if request.user.username != user:
         # Organization that are managed by both users
         directs = Organization.objects.accessible_by(user)
         providers = Organization.objects.providers(
             Subscription.objects.filter(organization__in=directs))
         candidates = list(directs) + list(providers) + [get_broker()]
-        return not _has_valid_access(request, candidates, strength)
+        return not _has_valid_access(request, candidates,
+            strength=strength, roledescription=roledescription)
     return False
 
 
-def fail_self_provider(request, user=None):
+def fail_self_provider(request, user=None, roledescription=None):
     """
-    Self or provider
+    Self or %(saas.RoleDescription)s Associated to :user restricted to GET
 
-    Returns True if the request authenticated ``User``
-    is the user associated to the URL.
-    Authenticated users that can also access the URL through this decorator
-    are contributors (or managers) for any ``Organization`` associated
-    with the user served by the URL (the accessed user is a direct contributor
-    or manager of the organization) and transitively contributors (or managers)
-    for any provider to one of these direct organizations.
+    Returns False if the authenticated ``request.user`` is the ``user``
+    passed as an argument and the request.user's role allows for
+    ``request.method``.
+    Returns False also if the authenticated user is a ``roledescription``
+    (ex: contributor) or manager for any organizations associated to
+    ``user``, and provider of such organizations  and the request.user's role
+    allows for ``request.method``.
 
-    When *strength* is NORMAL, managers can issue all types of requests
-    (GET, POST, etc.) while contributors are restricted to GET requests.
+    Self and managers can issue all types of requests (GET, POST, etc.) while
+    a ``request.user`` with a different role (ex: contributor) is restricted
+    to GET requests.
+    """
+    return _fail_self_provider(request, user=user,
+        strength=NORMAL, roledescription=roledescription)
+
+
+def fail_self_provider_weak(request, user=None, roledescription=None):
+    """
+    Self or %(saas.RoleDescription)s Associated to :user
+
+    Returns False if the authenticated ``request.user`` is the ``user``
+    passed as an argument.
+    Returns False also if the authenticated user is a ``roledescription``
+    (ex: contributor) or manager for any organizations associated to
+    ``user``, and provider of such organizations.
+
+    All self, ``roledescription`` and managers can issue all types of requests
+    (GET, POST, etc.).
 
     .. image:: perms-self-contrib-subscribes.*
     """
-    return _fail_self_provider(request, user=user, strength=NORMAL)
-
-
-def fail_self_provider_weak(request, user=None):
-    """
-    Self or provider (weak)
-
-    Returns False if the request authenticated ``User``
-    is the user associated to the URL.
-    Authenticated users that can also access the URL through this decorator
-    are contributors (or managers) for any ``Organization`` associated
-    with the user served by the URL (the accessed user is a direct contributor
-    or manager of the organization) and transitively contributors (or managers)
-    for any provider to one of these direct organizations.
-
-    Both managers and contributors can issue all types of requests
-    (GET, POST, etc.).
-    """
-    return _fail_self_provider(request, user=user, strength=WEAK)
+    return _fail_self_provider(request, user=user,
+        strength=WEAK, roledescription=roledescription)
 
 
 def fail_self_provider_strong(request, user=None):
     """
-    Self or provider (strong)
-
-    Returns False if the request authenticated ``User``
-    is the user associated to the URL.
-    Authenticated users that can also access the URL through this decorator
-    are managers for any ``Organization`` associated with the user served
-    by the URL (the accessed user is a direct manager of the organization
-    and transitively managers for any provider to one of these direct
-    organizations.
+    Self or Managers Associated to :user
     """
     return _fail_self_provider(request, user=user, strength=STRONG)
 
@@ -498,10 +477,12 @@ def requires_agreement(function=None,
 
 
 def requires_paid_subscription(function=None,
-                              organization_kwarg_slug='organization',
-                              plan_kwarg_slug='subscribed_plan',
-                              redirect_field_name=REDIRECT_FIELD_NAME,
-                              strength=NORMAL):
+                organization_kwarg_slug='organization',
+                plan_kwarg_slug='subscribed_plan',
+                redirect_field_name=REDIRECT_FIELD_NAME,
+                strength=NORMAL,
+                roledescription=None):
+    #pylint:disable=too-many-arguments
     """
     Decorator that checks a specified subscription is paid. It redirects to an
     appropriate page when this is not the case:
@@ -515,8 +496,8 @@ def requires_paid_subscription(function=None,
         def _wrapped_view(request, *args, **kwargs):
             subscriber = get_object_or_404(
                 Organization, slug=kwargs.get(organization_kwarg_slug, None))
-            if _fail_provider(request,
-                             organization=subscriber, strength=strength):
+            if _fail_provider(request, organization=subscriber,
+                    strength=strength, roledescription=roledescription):
                 raise PermissionDenied("%(user)s is neither a manager '\
 ' of %(organization)s nor a manager of one of %(organization)s providers."
                 % {'user': request.user, 'organization': subscriber})
@@ -534,14 +515,14 @@ def requires_paid_subscription(function=None,
     return decorator
 
 
-def requires_direct(function=None, strength=NORMAL):
+def requires_direct(function=None, roledescription=None):
     """
-    Decorator for views that checks that the request authenticated ``User``
-    is a direct contributor (or manager) for the ``Organization`` associated
-    to the request.
+    Decorator for views that checks that the authenticated ``request.user``
+    is a direct ``roledescription`` (ex: contributor) or manager
+    for the ``Organization`` associated to the request.
 
-    Managers can issue all types of requests (GET, POST, etc.) while
-    contributors are restricted to GET requests.
+    Managers can issue all types of requests (GET, POST, etc.). while
+    ``roledescription`` (ex: contributors) are restricted to GET requests.
 
     .. image:: perms-contrib.*
     """
@@ -549,7 +530,8 @@ def requires_direct(function=None, strength=NORMAL):
         @wraps(view_func, assigned=available_attrs(view_func))
         def _wrapped_view(request, *args, **kwargs):
             slug = kwargs.get('charge', kwargs.get('organization', None))
-            if _fail_direct(request, organization=slug, strength=strength):
+            if fail_direct(request, organization=slug,
+                    roledescription=roledescription):
                 raise PermissionDenied("%(user)s is not a direct manager '\
 ' of %(organization)s." % {'user': request.user, 'organization': slug})
             return view_func(request, *args, **kwargs)
@@ -560,35 +542,41 @@ def requires_direct(function=None, strength=NORMAL):
     return decorator
 
 
-def requires_direct_weak(function=None):
+def requires_direct_weak(function=None, roledescription=None):
     """
     Decorator for views that checks that the request authenticated ``User``
-    is a direct contributor (or manager) for the ``Organization`` associated
-    to the request.
+    is a direct ``roledescription`` (ex: contributor) or manager
+    for the ``Organization`` associated to the request.
 
-    Both managers and contributors can issue all types of requests
+    Both ``roledescription`` and managers can issue all types of requests
     (GET, POST, etc.).
     """
-    return requires_direct(function, strength=WEAK)
+    def decorator(view_func):
+        @wraps(view_func, assigned=available_attrs(view_func))
+        def _wrapped_view(request, *args, **kwargs):
+            slug = kwargs.get('charge', kwargs.get('organization', None))
+            if fail_direct_weak(request, organization=slug,
+                    roledescription=roledescription):
+                raise PermissionDenied("%(user)s is not a direct manager '\
+' of %(organization)s." % {'user': request.user, 'organization': slug})
+            return view_func(request, *args, **kwargs)
+        return _wrapped_view
+
+    if function:
+        return decorator(function)
+    return decorator
 
 
-def requires_direct_strong(function=None):
+def requires_provider(function=None, roledescription=None):
     """
     Decorator for views that checks that the request authenticated ``User``
-    is a direct manager for the ``Organization`` associated to the request.
-    """
-    return requires_direct(function, strength=STRONG)
+    is a ``roledescription`` (ex: contributor) or manager for
+    the ``Organization`` associated to the request itself or
+    a ``roledescription`` (or manager) to a provider for the ``Organization``
+    associated to the request.
 
-
-def requires_provider(function=None, strength=NORMAL):
-    """
-    Decorator for views that checks that the request authenticated ``User``
-    is a contributor (or manager) for the ``Organization`` associated to
-    the request itself or a contributor (or manager) to a provider for
-    the ``Organization`` associated to the request.
-
-    When *strength* is NORMAL, managers can issue all types of requests
-    (GET, POST, etc.) while contributors are restricted to GET requests.
+    Managers can issue all types of requests (GET, POST, etc.). while
+    ``roledescription`` (ex: contributors) are restricted to GET requests.
 
     .. image:: perms-contrib-subscribes.*
     """
@@ -600,7 +588,8 @@ def requires_provider(function=None, strength=NORMAL):
                 obj = get_object_or_404(Charge, processor_key=charge)
             else:
                 obj = kwargs.get('organization', None)
-            if _fail_provider(request, organization=obj, strength=strength):
+            if fail_provider(request, organization=obj,
+                    roledescription=roledescription):
                 raise PermissionDenied("%(auth)s is neither a manager "\
 " for %(slug)s nor a manager of one of %(slug)s providers." % {
     'auth': request.user,
@@ -613,37 +602,47 @@ def requires_provider(function=None, strength=NORMAL):
     return decorator
 
 
-def requires_provider_weak(function=None):
+def requires_provider_weak(function=None, roledescription=None):
     """
     Decorator for views that checks that the request authenticated ``User``
-    is a contributor (or manager) for the ``Organization`` associated to
-    the request itself or a contributor (or manager) to a provider for
-    the ``Organization`` associated to the request.
-
-    Both managers and contributors can issue all types of requests
-    (GET, POST, etc.).
-    """
-    return requires_provider(function, strength=WEAK)
-
-
-def requires_provider_strong(function=None):
-    """
-    Decorator for views that checks that the request authenticated ``User``
-    is a manager for the ``Organization`` associated to the request itself
-    or a manager to a provider for the ``Organization`` associated
-    to the request.
-    """
-    return requires_provider(function, strength=STRONG)
-
-
-def requires_provider_only(function=None, strength=NORMAL):
-    """
-    Decorator for views that checks that the request authenticated ``User``
-    is a contributor (or manager) for a provider to the ``Organization``
+    is a ``roledescription`` (ex: contributor) or manager
+    for the ``Organization`` associated to the request itself
+    or a ``roledescription`` or manager to a provider for the ``Organization``
     associated to the request.
 
-    When *strength* is NORMAL, managers can issue all types of requests
-    (GET, POST, etc.) while contributors are restricted to GET requests.
+    Both ``roledescription`` and managers can issue all types of requests
+    (GET, POST, etc.).
+    """
+    def decorator(view_func):
+        @wraps(view_func, assigned=available_attrs(view_func))
+        def _wrapped_view(request, *args, **kwargs):
+            charge = kwargs.get('charge', None)
+            if charge is not None:
+                obj = get_object_or_404(Charge, processor_key=charge)
+            else:
+                obj = kwargs.get('organization', None)
+            if fail_provider_weak(request, organization=obj,
+                    roledescription=roledescription):
+                raise PermissionDenied("%(auth)s is neither a manager "\
+" for %(slug)s nor a manager of one of %(slug)s providers." % {
+    'auth': request.user,
+    'slug': kwargs.get('charge', kwargs.get('organization', None))})
+            return view_func(request, *args, **kwargs)
+        return _wrapped_view
+
+    if function:
+        return decorator(function)
+    return decorator
+
+
+def requires_provider_only(function=None, roledescription=None):
+    """
+    Decorator for views that checks that the request authenticated ``User``
+    is a ``roledescription`` (ex: contributor) or manager for a provider
+    to the ``Organization`` associated to the request.
+
+    Managers can issue all types of requests (GET, POST, etc.). while
+    ``roledescription`` (ex: contributors) are restricted to GET requests.
 
     .. image:: perms-contrib-provider-only.*
     """
@@ -655,8 +654,8 @@ def requires_provider_only(function=None, strength=NORMAL):
                 obj = get_object_or_404(Charge, processor_key=charge)
             else:
                 obj = kwargs.get('organization', None)
-            if _fail_provider_only(
-                    request, organization=obj, strength=strength):
+            if fail_provider_only(request, organization=obj,
+                    roledescription=roledescription):
                 raise PermissionDenied("%(auth)s has no direct relation to"\
 " a provider for %(slug)s." % {'auth': request.user,
         'slug': kwargs.get('charge', kwargs.get('organization', None))})
@@ -668,47 +667,57 @@ def requires_provider_only(function=None, strength=NORMAL):
     return decorator
 
 
-def requires_provider_only_weak(function=None):
+def requires_provider_only_weak(function=None, roledescription=None):
     """
     Decorator for views that checks that the request authenticated ``User``
-    is a contributor (or manager) for a provider to the ``Organization``
-    associated to the request.
+    is a ``roledescription`` (ex: contributor) or manager for a provider
+    to the ``Organization`` associated to the request.
 
-    Both managers and contributors can issue all types of requests
+    Both ``roledescription`` and managers can issue all types of requests
     (GET, POST, etc.).
     """
-    return requires_provider_only(function, strength=WEAK)
+    def decorator(view_func):
+        @wraps(view_func, assigned=available_attrs(view_func))
+        def _wrapped_view(request, *args, **kwargs):
+            charge = kwargs.get('charge', None)
+            if charge is not None:
+                obj = get_object_or_404(Charge, processor_key=charge)
+            else:
+                obj = kwargs.get('organization', None)
+            if fail_provider_only_weak(request, organization=obj,
+                    roledescription=roledescription):
+                raise PermissionDenied("%(auth)s has no direct relation to"\
+" a provider for %(slug)s." % {'auth': request.user,
+        'slug': kwargs.get('charge', kwargs.get('organization', None))})
+            return view_func(request, *args, **kwargs)
+        return _wrapped_view
+
+    if function:
+        return decorator(function)
+    return decorator
 
 
-def requires_provider_only_strong(function=None):
-    """
-    Decorator for views that checks that the request authenticated ``User``
-    is a manager for a provider to the ``Organization`` associated
-    to the request.
-    """
-    return requires_provider_only(function, strength=STRONG)
-
-
-def requires_self_provider(function=None, strength=NORMAL):
+def requires_self_provider(function=None, roledescription=None):
     """
     Decorator for views that checks that the request authenticated ``User``
     is the user associated to the URL.
     Authenticated users that can also access the URL through this decorator
-    are contributors (or managers) for any ``Organization`` associated
-    with the user served by the URL (the accessed user is a direct contributor
-    or manager of the organization) and transitively contributors (or managers)
-    for any provider to one of these direct organizations.
+    are ``roledescription`` (ex: contributors) or managers for any
+    ``Organization`` associated with the user served by the URL (the accessed
+    user is a direct ``roledescription`` or manager of the organization) and
+    transitively contributors (or managers) for any provider to one of these
+    direct organizations.
 
-    When *strength* is NORMAL, managers can issue all types of requests
-    (GET, POST, etc.) while contributors are restricted to GET requests.
+    Managers can issue all types of requests (GET, POST, etc.). while
+    ``roledescription`` (ex: contributors) are restricted to GET requests.
 
     .. image:: perms-self-contrib-subscribes.*
     """
     def decorator(view_func):
         @wraps(view_func, assigned=available_attrs(view_func))
         def _wrapped_view(request, *args, **kwargs):
-            if _fail_self_provider(
-                    request, user=kwargs.get('user', None), strength=strength):
+            if fail_self_provider(request, user=kwargs.get('user', None),
+                    roledescription=roledescription):
                 raise PermissionDenied("%(auth)s has neither a direct"\
 " relation to an organization connected to %(user)s nor a connection to one"\
 "of the providers to such organization." % {
@@ -721,32 +730,32 @@ def requires_self_provider(function=None, strength=NORMAL):
     return decorator
 
 
-def requires_self_provider_weak(function=None):
+def requires_self_provider_weak(function=None, roledescription=None):
     """
     Decorator for views that checks that the request authenticated ``User``
     is the user associated to the URL.
     Authenticated users that can also access the URL through this decorator
-    are contributors (or managers) for any ``Organization`` associated
-    with the user served by the URL (the accessed user is a direct contributor
-    or manager of the organization) and transitively contributors (or managers)
-    for any provider to one of these direct organizations.
+    are ``roledescription`` (ex: contributors) or managers for any
+    ``Organization`` associated with the user served by the URL (the accessed
+    user is a direct ``roledescription``
+    or manager of the organization) and transitively ``roledescription``s
+    or managers for any provider to one of these direct organizations.
 
-    Both managers and contributors can issue all types of requests
+    Self, ``roledescription`` and managers can issue all types of requests
     (GET, POST, etc.).
     """
-    return requires_self_provider(function, strength=WEAK)
+    def decorator(view_func):
+        @wraps(view_func, assigned=available_attrs(view_func))
+        def _wrapped_view(request, *args, **kwargs):
+            if fail_self_provider_weak(request, user=kwargs.get('user', None),
+                    roledescription=roledescription):
+                raise PermissionDenied("%(auth)s has neither a direct"\
+" relation to an organization connected to %(user)s nor a connection to one"\
+"of the providers to such organization." % {
+    'auth': request.user, 'user': kwargs.get('user', None)})
+            return view_func(request, *args, **kwargs)
+        return _wrapped_view
 
-
-def requires_self_provider_strong(function=None):
-    """
-    Decorator for views that checks that the request authenticated ``User``
-    is the user associated to the URL.
-    Authenticated users that can also access the URL through this decorator
-    are managers for any ``Organization`` associated with the user served
-    by the URL (the accessed user is a direct manager of the organization
-    and transitively managers for any provider to one of these direct
-    organizations.
-    """
-    return requires_self_provider(function, strength=STRONG)
-
-
+    if function:
+        return decorator(function)
+    return decorator

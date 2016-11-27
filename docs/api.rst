@@ -275,7 +275,7 @@ Search API
 ----------
 
 At times, we might be looking to grant a ``User`` permissions to an
-``Organization`` through a ``Role`` (manager, contributor, etc.), or we might
+``Organization`` through a ``Role`` (manager, etc.), or we might
 be looking to request access to an ``Organization`` on behalf of a ``User``.
 Both features might benefit from an auto-complete suggestions list.
 The two following API end point will list all ``Organization`` and ``User``

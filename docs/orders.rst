@@ -39,7 +39,7 @@ Pipeline to Bulk Subscribe Third-parties
 Software-as-a-Service that target businesses (B2B) and/or other kind
 of structured groups almost always require one entity to pay for subscriptions
 on behalf of users that belong to it. This can be implemented through
-managers and contributors to the subscribed entity
+managers (or custom roles) to the subscribed entity
 (see :doc:`Security <security>`) or through the entity buying multiple
 subscriptions in bluk, on behalf of its users. The later case requires
 an extra step to subscribe those third parties.

@@ -14,7 +14,9 @@ The security framework defines a generic ``RoleDescription`` whose purpose
 is to define a role a ``User`` has on an ``Organization`` (see
 :doc:`database schema <models>`).
 
-In most setups two roles are implemented: managers and contributors.
+A organization-agnostic manager role always exists and helps with bootstrapping
+the security policies. In most setups a second role, for example, a contributor
+role is implemented.
 Typically *manager* have full access to an Organization while *contributor*
 are restricted to read-only permissions.
 

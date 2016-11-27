@@ -34,9 +34,7 @@ BROKER_CALLABLE            None             Optional function that returns
                                             the broker ``Organization``
                                             (useful for composition of Django
                                             apps).
-BYPASS_CONTRIBUTOR_CHECK    []              List of ``Organization`` for which
-                                            ``_valid_contributor`` is always
-                                            True.
+BYPASS_PERMISSION_CHECK    False            Skip all permission checks
 BYPASS_PROCESSOR_AUTH      False            Do not check the auth token against
                                             the processor to set processor keys
                                             (useful to test StripeConnect).
@@ -66,7 +64,6 @@ PROVIDER_SITE_CALLABLE   None               Optional function that returns
 ROLE_RELATION            saas.Role          Replace the ``Role`` model
                                             (useful for composition of Django
                                             apps)
-SKIP_PERMISSION_CHECK    False              Skip all permission checks
 TERMS_OF_USE             'terms-of-use'     slug for the ``Agreement`` stating
                                             ther Terms of Use of the site.
 ========================  ================= ===========
@@ -75,7 +72,7 @@ from django.conf import settings
 
 _SETTINGS = {
     'BROKER_CALLABLE': None,
-    'BYPASS_CONTRIBUTOR_CHECK': [],
+    'BYPASS_PERMISSION_CHECK': False,
     # Do not check the auth token against the processor to set processor keys.
     # (useful while testing).
     'BYPASS_PROCESSOR_AUTH': False,
@@ -101,7 +98,6 @@ _SETTINGS = {
     'PROCESSOR_REDIRECT_CALLABLE': None,
     'PROVIDER_SITE_CALLABLE': None,
     'ROLE_RELATION': 'saas.Role',
-    'SKIP_PERMISSION_CHECK': False,
     'TERMS_OF_USE': 'terms-of-use',
 }
 _SETTINGS.update(getattr(settings, 'SAAS', {}))
@@ -113,7 +109,6 @@ SELECTOR_RE = r'[a-zA-Z0-9_\-\:]+'
 AUTH_USER_MODEL = getattr(
     settings, 'AUTH_USER_MODEL', 'django.contrib.auth.models.User')
 
-BYPASS_CONTRIBUTOR_CHECK = _SETTINGS.get('BYPASS_CONTRIBUTOR_CHECK')
 BYPASS_PROCESSOR_AUTH = _SETTINGS.get('BYPASS_PROCESSOR_AUTH')
 CREDIT_ON_CREATE = _SETTINGS.get('CREDIT_ON_CREATE')
 EXTRA_MIXIN = _SETTINGS.get('EXTRA_MIXIN')
@@ -134,11 +129,11 @@ DEFAULT_UNIT = _SETTINGS.get('DEFAULT_UNIT')
 
 # BE EXTRA CAREFUL! This variable is used to bypass PermissionDenied
 # exceptions. It is solely intended as a debug flexibility nob.
-SKIP_PERMISSION_CHECK = _SETTINGS.get('SKIP_PERMISSION_CHECK')
+BYPASS_PERMISSION_CHECK = _SETTINGS.get('BYPASS_PERMISSION_CHECK')
 
 LOGIN_URL = getattr(settings, 'LOGIN_URL')
 MANAGER = 'manager'
-CONTRIBUTOR = 'contributor'
+
 
 def get_extra_field_class():
     extra_class = _SETTINGS.get('EXTRA_FIELD')

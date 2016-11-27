@@ -89,14 +89,14 @@ She can update her personal information (email address, etc.), change
 her credit card on file, review the list of charges by a provider,
 pay a balance due, etc.
 
-The business requirements might require or prevent a manager/contributor
-of a provider to access specific information about a subscriber. For example,
-you might allow your customer support team to update a subscriber credit
-card over the phone for convienience. You might also believe it is too much
-risk, deny the ability to do so by your customer support people
-and instruct them to hand out instructions to the subscriber on how to do so
-by herself. All scenarios can easily be implemented through
-a :doc:`Flexible Security Framework <security>`.
+The business requirements might require or prevent a manager or a custom
+role (ex: contributor) of a provider to access specific information about
+a subscriber. For example, you might allow your customer support team
+to update a subscriber credit card over the phone for convienience.
+You might also believe it is too much risk, deny the ability to do so by your
+customer support people and instruct them to hand out instructions
+to the subscriber on how to do so by herself. All scenarios can easily
+be implemented through a :doc:`Flexible Security Framework <security>`.
 
 
 .. http:get:: /billing/:organization/
@@ -142,8 +142,8 @@ a :doc:`Flexible Security Framework <security>`.
 Provider facing pages
 ---------------------
 
-Provider facing pages are only accessible to managers and contributors
-of a site. They are used to assess the performance of the business,
+Provider facing pages are only accessible to its managers.
+They are used to assess the performance of the business,
 set pricing strategy, and help with customer support.
 
 Pricing strategy

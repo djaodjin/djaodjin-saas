@@ -9,7 +9,7 @@
     <h2 ng-hide="items.$resolved">Please wait...</h2>
     <div ng-show="items.$resolved">
       <div ng-repeat="roleDescription in items.results">
-        <h3>[[roleDescription.name]]</h3>
+        <h3>[[roleDescription.title]]</h3>
         <button type="button" ng-show="!roleDescription.is_global"
                 ng-click="deleteRoleDescription(roleDescription)">Delete</button>
         <div id="[[roleDescription.slug]]" ng-controller="userRelationListCtrl"
@@ -50,7 +50,7 @@ them.
                       name="message" maxlength="255" type="text" rows="10">
 Hello,
 
-I am adding you as a [[roleDescription.name]] to {{organization.printable_name}}.
+I am adding you as a [[roleDescription.title]] to {{organization.printable_name}}.
 
 Thank you,
 - {{request.user.first_name}}
@@ -65,7 +65,7 @@ Thank you,
       <div id="new-role-description">
         <form ng-submit="createRoleDescription()">
           <label>Role name:</label>
-          <input name="name" type="text" ng-model="newRoleDescription.name"
+          <input name="name" type="text" ng-model="newRoleDescription.title"
                  placeholder="e.g. Sales associates" />
           <button type="submit">Create role</button>
         </form>

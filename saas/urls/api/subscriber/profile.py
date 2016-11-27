@@ -23,7 +23,7 @@
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 """
-URLs API for profile resources (contributors, managers and subscriptions)
+URLs API for profile resources (managers, custom roles and subscriptions)
 """
 
 from django.conf.urls import url

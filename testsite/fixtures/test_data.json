@@ -114,8 +114,9 @@
 {
     "fields": {
       "created_at": "2012-08-14T15:00:00-09:00",
-      "name": "Contributor",
-      "slug": "contributor"
+      "organization": 2,
+      "slug": "contributor",
+      "title": "Contributor"
     },
     "model" : "saas.RoleDescription", "pk": 2
 },
