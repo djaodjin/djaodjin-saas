@@ -133,6 +133,7 @@ BYPASS_PERMISSION_CHECK = _SETTINGS.get('BYPASS_PERMISSION_CHECK')
 
 LOGIN_URL = getattr(settings, 'LOGIN_URL')
 MANAGER = 'manager'
+CONTRIBUTOR = 'contributor'
 
 
 def get_extra_field_class():

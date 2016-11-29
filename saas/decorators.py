@@ -98,6 +98,8 @@ def _filter_valid_access(request, candidates,
     The set of contributed organizations is further filtered by
     *request.method* and *strength*.
     """
+    if roledescription is None:
+        roledescription = settings.CONTRIBUTOR
     managed = []
     contributed = []
     managed = _valid_manager(request.user, candidates)
