@@ -419,8 +419,6 @@ class CardUpdateView(CardFormMixin, FormView):
 
 class TransactionBaseView(DateRangeMixin, TemplateView):
 
-    template_name = 'saas/billing/transactions.html'
-
     def get_context_data(self, **kwargs):
         context = super(TransactionBaseView, self).get_context_data(**kwargs)
         self.selector = self.kwargs.get('selector', None)
@@ -432,6 +430,11 @@ class TransactionBaseView(DateRangeMixin, TemplateView):
             'saas_api_transactions': api_location,
             'sort_by_field': 'created_at'})
         return context
+
+
+class AllTransactions(ProviderMixin, TransactionBaseView):
+
+    template_name = 'saas/billing/transactions.html'
 
 
 class BillingStatementView(OrganizationMixin, TransactionBaseView):

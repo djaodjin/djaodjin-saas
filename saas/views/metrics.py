@@ -70,7 +70,8 @@ djaodjin-saas/tree/master/saas/templates/saas/metrics/balances.html>`__).
             'api_broker_balances': reverse(
                 'saas_api_broker_balances', kwargs={'report': report}),
             'download_transactions': reverse(
-                'saas_transactions_download', kwargs=self.get_url_kwargs())}
+                'saas_transactions_download', kwargs=self.get_url_kwargs()),
+            'broker_transactions': reverse('saas_broker_transactions')}
         if 'urls' in context:
             context['urls'].update(urls)
         else:

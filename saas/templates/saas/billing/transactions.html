@@ -4,7 +4,7 @@
 <div ng-app="saasApp">
   <div ng-controller="transactionListCtrl">
     <section id="total">
-      <strong>Balance</strong> <span>[[transactions.balance | humanizeCell : '$' : 0.01]]</span>
+      <strong>Balance</strong> <span>[[items.balance | humanizeCell : '$' : 0.01]]</span>
     </section>
     <section id="transactions">
       <div>
@@ -40,22 +40,22 @@
               <th>Description<button ng-click="sortBy('description')">[[dir.description ? 'down' : 'up']]</button></th>
             </tr>
           </thead>
-          <tbody ng-hide="transactions.$resolved">
+          <tbody ng-hide="items.$resolved">
             <tr>
               <td colspan="4">
                 <h3>Loading ...</h3>
               </td>
             </tr>
           </tbody>
-          <tbody ng-show="transactions.$resolved && transactions.results.length == 0">
+          <tbody ng-show="items.$resolved && items.results.length == 0">
             <tr>
               <td colspan="7">
                 <h4><em>No transactions<span ng-show="filterExpr"> [[filterExpr]]</span></em></h4>
               </td>
             </tr>
           </tbody>
-          <tbody id="has-transactions" ng-cloak ng-show="transactions.$resolved && transactions.results.length > 0">
-            <tr ng-repeat="entry in transactions.results">
+          <tbody id="has-transactions" ng-cloak ng-show="items.$resolved && items.results.length > 0">
+            <tr ng-repeat="entry in items.results">
               <td>[[entry.created_at | date : mediumDate]]</td>
               <td>[[entry.amount]]</td>
               <td>[[entry.orig_organization]]</td>

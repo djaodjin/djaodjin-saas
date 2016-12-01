@@ -52,6 +52,7 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         #pylint: disable=too-many-locals
         subcommand = options['subcommand'][0]
+        filenames = options['subcommand'][1:]
         using = options['database']
         if subcommand == 'export':
             export(self.stdout, Transaction.objects.using(using).all().order_by(
@@ -60,7 +61,7 @@ class Command(BaseCommand):
         elif subcommand == 'import':
             broker = options.get('broker', None)
             create_organizations = options.get('create_organizations', False)
-            for arg in args[1:]:
+            for arg in filenames:
                 if arg == '-':
                     import_transactions(sys.stdin,
                         create_organizations, broker, using=using)
@@ -68,6 +69,8 @@ class Command(BaseCommand):
                     with open(arg) as filedesc:
                         import_transactions(filedesc,
                             create_organizations, broker, using=using)
+        else:
+            self.stderr.write("error: unknown command: '%s'" % subcommand)
 
 
 def import_transactions(filedesc, create_organizations=False, broker=None,
@@ -124,6 +127,10 @@ def import_transactions(filedesc, create_organizations=False, broker=None,
                         orig_organization=orig_organization,
                         orig_account=orig_account,
                         event_id=reference)
+            else:
+                line = line.strip()
+                if line:
+                    sys.stderr.write("warning: skip line '%s'" % line)
             line = filedesc.readline()
 
 

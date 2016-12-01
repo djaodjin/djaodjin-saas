@@ -31,7 +31,7 @@
                     </td>
                     <td>[[row.key]]</td>
                     <td ng-repeat="col in row.values">
-                        <a href="{% url 'saas_broker_transactions' %}[[row.selector]]/?start_at=[[startPeriod]]&ends_at=[[col[0] ]]">
+                        <a href="{{urls.broker_transactions}}[[row.selector]]/?start_at=[[startPeriod]]&ends_at=[[col[0] ]]">
                         [[col[1]|humanizeCell : balances.unit : balances.scale]]
                         </a>
                     </td>
