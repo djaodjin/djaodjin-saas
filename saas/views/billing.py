@@ -702,6 +702,9 @@ djaodjin-saas/tree/master/saas/templates/saas/billing/cart.html>`__).
           - ``organization`` The provider of the product
           - ``request`` The HTTP request object
         """
+        item_plan = request.GET.get('plan', None)
+        if item_plan is not None:
+            self.insert_item(request, plan=item_plan)
         if (self.organization.is_bulk_buyer and
             self.cart_items.filter(
                 Q(email__isnull=True) | Q(email='')).exists()):

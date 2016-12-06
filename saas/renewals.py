@@ -23,7 +23,8 @@
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 """
-Dealing with charges
+The functions defined in the module are meant to be run regularly
+in batch mode.
 """
 
 import logging
@@ -31,7 +32,7 @@ import logging
 from dateutil.relativedelta import relativedelta
 from django.db import transaction
 
-from . import humanize
+from . import humanize, signals
 from .models import (Charge, Organization, Plan, Subscription, Transaction,
     sum_dest_amount)
 from .utils import datetime_or_now
@@ -166,6 +167,25 @@ def extend_subscriptions(at_time=None, dry_run=False):
                     LOGGER.exception(
                         "error: extending subscription for %s ending at %s: %s",
                         subscription, subscription.ends_at, err)
+
+
+def trigger_expiration_notices(at_time=None, nb_days=15, dry_run=False):
+    """
+    Trigger a signal for all subscriptions which are near the expiration date.
+    """
+    at_time = datetime_or_now(at_time)
+    lower = at_time + relativedelta(days=nb_days)
+    upper = at_time + relativedelta(days=nb_days + 1)
+    LOGGER.info(
+        "trigger notifications for subscription expiring within [%s,%s[ ...",
+        lower, upper)
+    for subscription in Subscription.objects.filter(
+            auto_renew=False, ends_at__gte=lower, ends_at__lt=upper,
+            plan__auto_renew=True):
+        LOGGER.info("trigger expires soon for %s", subscription)
+        if not dry_run:
+            signals.expires_soon.send(sender=__name__,
+                subscription=subscription, nb_days=nb_days)
 
 
 def create_charges_for_balance(until=None, dry_run=False):

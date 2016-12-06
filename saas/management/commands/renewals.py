@@ -49,8 +49,8 @@ import logging, time
 
 from django.core.management.base import BaseCommand
 
-from ...renewals import (recognize_income, extend_subscriptions,
-    create_charges_for_balance, complete_charges)
+from ...renewals import (create_charges_for_balance, complete_charges,
+    extend_subscriptions, recognize_income, trigger_expiration_notices)
 from ...utils import datetime_or_now
 
 
@@ -80,6 +80,7 @@ on credit cards"""
             LOGGER.warning("dry_run: no changes will be committed.")
         if no_charges:
             LOGGER.warning("no_charges: no charges will be submitted.")
+
         recognize_income(end_period, dry_run=dry_run)
         extend_subscriptions(end_period, dry_run=dry_run)
         create_charges_for_balance(end_period, dry_run=dry_run or no_charges)
@@ -88,3 +89,6 @@ on credit cards"""
             # them time to settle.
             time.sleep(30)
             complete_charges()
+
+        # Trigger 'expires soon' notifications
+        trigger_expiration_notices(end_period, dry_run=dry_run)
