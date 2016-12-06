@@ -49,7 +49,7 @@ import logging, time
 
 from django.core.management.base import BaseCommand
 
-from ...charge import (recognize_income, extend_subscriptions,
+from ...renewals import (recognize_income, extend_subscriptions,
     create_charges_for_balance, complete_charges)
 from ...utils import datetime_or_now
 
