@@ -31,15 +31,14 @@ from django.views.generic import TemplateView
 from .download import CSVDownloadView
 from ..api.coupons import SmartCouponListMixin, CouponQuerysetMixin
 from ..api.users import RegisteredQuerysetMixin
-from ..managers.metrics import monthly_balances, month_periods
 from ..mixins import (CouponMixin, ProviderMixin, MetricsMixin,
     ChurnedQuerysetMixin, SubscriptionSmartListMixin, SubscribedQuerysetMixin,
     UserSmartListMixin)
-from ..models import CartItem, Plan, Transaction
+from ..models import CartItem, Plan
 from ..utils import datetime_or_now
 
 
-class BalanceView(ProviderMixin, TemplateView):
+class BalancesView(ProviderMixin, TemplateView):
     """
     Display a balance sheet named ``:report``.
 
@@ -57,25 +56,23 @@ djaodjin-saas/tree/master/saas/templates/saas/metrics/balances.html>`__).
     template_name = 'saas/metrics/balances.html'
 
     def get_context_data(self, **kwargs):
-        context = super(BalanceView, self).get_context_data(**kwargs)
+        context = super(BalancesView, self).get_context_data(**kwargs)
         report = self.kwargs.get('report')
         year = self.kwargs.get('year')
         if year:
             year = int(year)
             ends_at = datetime_or_now(datetime(year=year + 1, month=1, day=1))
             context.update({'ends_at': ends_at})
-        urls = {
+        self.update_context_urls(context, {
             'api_balance_lines': reverse(
                 'saas_api_balance_lines', kwargs={'report': report}),
             'api_broker_balances': reverse(
                 'saas_api_broker_balances', kwargs={'report': report}),
+            'download_balances': reverse(
+                'saas_balances_download', kwargs={'report': report}),
             'download_transactions': reverse(
                 'saas_transactions_download', kwargs=self.get_url_kwargs()),
-            'broker_transactions': reverse('saas_broker_transactions')}
-        if 'urls' in context:
-            context['urls'].update(urls)
-        else:
-            context.update({'urls': urls})
+            'broker_transactions': reverse('saas_broker_transactions')})
         return context
 
 
@@ -254,28 +251,6 @@ class RevenueMetricsView(MetricsMixin, TemplateView):
                         "location": reverse('saas_api_balances',
                             args=(self.organization,))}])})
         return context
-
-
-class BalancesDownloadView(MetricsMixin, CSVDownloadView):
-    """
-    Export balance metrics as a CSV file.
-    """
-    queryname = 'balances'
-
-    def get_headings(self):
-        return ['name'] + [
-            end_period for end_period in month_periods(from_date=self.ends_at)]
-
-    def get_filename(self, *_):
-        return '{}.csv'.format(self.queryname)
-
-    def get_queryset(self, *_):
-        return Transaction.objects.distinct_accounts()
-
-    def queryrow_to_columns(self, account):
-        return [account] + [item[1] for item in monthly_balances(
-            organization=self.organization, account=account,
-            until=self.ends_at.date())]
 
 
 class RegisteredBaseDownloadView(RegisteredQuerysetMixin, CSVDownloadView):

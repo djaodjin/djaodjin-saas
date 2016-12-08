@@ -29,11 +29,14 @@ Urls specific to the hosting site (i.e. broker).
 from django.conf.urls import url
 
 from .. import settings
-from ..views.metrics import BalanceView, RegisteredDownloadView
+from ..views.metrics import BalancesView, RegisteredDownloadView
 from ..views.billing import ChargeListView, AllTransactions
-from ..views.download import TransactionDownloadView
+from ..views.download import BalancesDownloadView, TransactionDownloadView
 
 urlpatterns = [
+    url(r'^download/balances/(?P<report>%s)/((?P<year>\d\d\d\d)/)?'
+        % settings.ACCT_REGEX,
+        BalancesDownloadView.as_view(), name='saas_balances_download'),
     url(r'^download/transactions/?',
         TransactionDownloadView.as_view(),
         name='saas_transactions_download'),
@@ -43,7 +46,7 @@ urlpatterns = [
         AllTransactions.as_view(), name='saas_broker_transactions'),
     url(r'^metrics/balances/(?P<report>%s)/((?P<year>\d\d\d\d)/)?'
         % settings.ACCT_REGEX,
-        BalanceView.as_view(), name='saas_balance'),
+        BalancesView.as_view(), name='saas_balance'),
     url(r'^download/registered/?',
         RegisteredDownloadView.as_view(),
         name='saas_subscriber_pipeline_download_registered'),

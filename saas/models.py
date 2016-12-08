@@ -3276,10 +3276,13 @@ class BalanceLine(models.Model):
     """
     Defines a line in a balance sheet. All ``Transaction`` account matching
     ``selector`` will be aggregated over a period of time.
+
+    When ``is_positive`` is ``True``, the absolute value will be reported.
     """
     report = models.SlugField()
     title = models.CharField(max_length=255)
     selector = models.CharField(max_length=255)
+    is_positive = models.BooleanField(default=False)
     rank = models.IntegerField()
     moved = models.BooleanField(default=False)
 

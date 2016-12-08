@@ -31,7 +31,7 @@ from rest_framework.response import Response
 from ..mixins import CartItemSmartListMixin, CouponMixin, ProviderMixin
 from ..models import CartItem, Organization, Plan, Transaction
 from ..utils import datetime_or_now
-from ..managers.metrics import monthly_balances
+from ..managers.metrics import abs_monthly_balances
 from .serializers import (CartItemSerializer,
     OrganizationWithSubscriptionsSerializer)
 from ..managers.metrics import (active_subscribers, aggregate_monthly,
@@ -129,7 +129,7 @@ class BalancesAPIView(ProviderMixin, APIView):
                     Transaction.RECEIVABLE]:
             result += [{
                 'key': key,
-                'values': monthly_balances(
+                'values': abs_monthly_balances(
                     organization=self.provider, account=key, until=ends_at)
             }]
         return Response({'title': "Balances",

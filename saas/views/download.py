@@ -35,7 +35,12 @@ from django.views.generic import View
 
 from ..api.transactions import (BillingsQuerysetMixin,
     SmartTransactionListMixin, TransactionQuerysetMixin, TransferQuerysetMixin)
+from ..managers.metrics import (abs_monthly_balances, monthly_balances,
+    month_periods)
+from ..mixins import MetricsMixin
+from ..models import BalanceLine
 from ..utils import datetime_or_now
+
 
 class CSVDownloadView(View):
 
@@ -68,6 +73,29 @@ class CSVDownloadView(View):
 
     def queryrow_to_columns(self, record):
         raise NotImplementedError
+
+
+class BalancesDownloadView(MetricsMixin, CSVDownloadView):
+    """
+    Export balance metrics as a CSV file.
+    """
+    queryname = 'balances'
+
+    def get_headings(self):
+        return ['Title'] + [
+            end_period for end_period in month_periods(from_date=self.ends_at)]
+
+    def get_queryset(self):
+        report = self.kwargs.get('report')
+        return BalanceLine.objects.filter(report=report).order_by('rank')
+
+    def queryrow_to_columns(self, balance_line):
+        if balance_line.is_positive:
+            balances_func = abs_monthly_balances
+        else:
+            balances_func = monthly_balances
+        return [balance_line.title] + [item[1] for item in balances_func(
+            like_account=balance_line.selector, until=self.ends_at)]
 
 
 class TransactionDownloadView(SmartTransactionListMixin,

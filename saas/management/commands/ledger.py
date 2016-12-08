@@ -130,7 +130,7 @@ def import_transactions(filedesc, create_organizations=False, broker=None,
             else:
                 line = line.strip()
                 if line:
-                    sys.stderr.write("warning: skip line '%s'" % line)
+                    sys.stderr.write("warning: skip line '%s'\n" % line)
             line = filedesc.readline()
 
 

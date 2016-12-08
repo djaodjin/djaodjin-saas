@@ -269,24 +269,28 @@ def active_subscribers(plan, from_date=None):
     return values
 
 
+def abs_monthly_balances(organization=None, account=None, like_account=None,
+                         until=None, step_months=1):
+    return [(item[0], abs(item[1])) for item in monthly_balances(
+        organization=organization, account=account, like_account=like_account,
+        until=until, step_months=step_months)]
+
+
 def monthly_balances(organization=None, account=None, like_account=None,
-                     until=None):
+                     until=None, step_months=1):
     values = []
-    for end_period in month_periods(from_date=until):
+    for end_period in month_periods(from_date=until, step_months=step_months):
         balance = Transaction.objects.get_balance(organization=organization,
             account=account, like_account=like_account, ends_at=end_period)
-        values.append([end_period, abs(balance['amount'])])
+        values.append([end_period, balance['amount']])
     return values
 
 
 def quaterly_balances(organization=None, account=None, like_account=None,
                      until=None):
-    values = []
-    for end_period in month_periods(from_date=until, step_months=3):
-        balance = Transaction.objects.get_balance(organization=organization,
-            account=account, like_account=like_account, ends_at=end_period)
-        values.append([end_period, abs(balance['amount'])])
-    return values
+    return monthly_balances(organization=organization,
+        account=account, like_account=like_account,
+        until=until, step_months=3)
 
 
 def churn_subscribers(plan=None, from_date=None):

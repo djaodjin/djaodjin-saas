@@ -30,7 +30,7 @@ from rest_framework.generics import (
 from rest_framework.response import Response
 
 from ..mixins import DateRangeMixin
-from ..managers.metrics import quaterly_balances
+from ..managers.metrics import abs_monthly_balances, monthly_balances
 from ..models import BalanceLine
 from .serializers import BalanceLineSerializer
 
@@ -75,12 +75,15 @@ class BrokerBalancesAPIView(DateRangeMixin, APIView):
         self.cache_fields(request)
         result = []
         report = self.kwargs.get('report')
-        for line in BalanceLine.objects.filter(
-                report=report).order_by('rank'):
+        for line in BalanceLine.objects.filter(report=report).order_by('rank'):
+            if line.is_positive:
+                balances_func = abs_monthly_balances
+            else:
+                balances_func = monthly_balances
             result += [{
                 'key': line.title,
                 'selector': line.selector,
-                'values': quaterly_balances(
+                'values': balances_func(
                     like_account=line.selector, until=self.ends_at)
             }]
         return Response({'title': "Balances: %s" % report,
