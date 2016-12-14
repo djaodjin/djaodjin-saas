@@ -29,12 +29,12 @@ URLs for API related to users accessible by.
 from django.conf.urls import url
 
 from ...api.roles import AccessibleByListAPIView, RoleDetailAPIView
-from ...settings import ACCT_REGEX
+from ... import settings
 
 urlpatterns = [
     url(r'^users/(?P<user>%s)/accessibles/(?P<organization>%s)/?'
-        % (ACCT_REGEX, ACCT_REGEX),
+        % (settings.ACCT_REGEX, settings.ACCT_REGEX),
         RoleDetailAPIView.as_view(), name='saas_api_accessible_detail'),
-    url(r'^users/(?P<user>%s)/accessibles/?' % ACCT_REGEX,
+    url(r'^users/(?P<user>%s)/accessibles/?' % settings.MAYBE_EMAIL_REGEX,
         AccessibleByListAPIView.as_view(), name='saas_api_accessibles'),
 ]
