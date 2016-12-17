@@ -338,7 +338,7 @@ transactionControllers.controller("relationListCtrl",
               || typeof $scope.item.email === "undefined" ) {
             $scope.item.email = emailField.val();
         }
-        $scope.item.invite = dialog.find("[name='message']").val();
+        $scope.item.message = dialog.find("[name='message']").val();
         $http.post(settings.urls.api_items + "?force=1", $scope.item).then(
             function success(resp) {
                 // XXX Couldn't figure out how to get the status code
