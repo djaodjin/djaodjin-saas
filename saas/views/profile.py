@@ -247,7 +247,7 @@ class DashboardView(OrganizationMixin, DetailView):
         context = super(DashboardView, self).get_context_data(**kwargs)
         if is_broker(self.organization):
             urls = {
-                'accounts_base': reverse('accounts_profile'),
+                'accounts_base': reverse('saas_profile'),
                 'provider': {
                     'api_accounts': reverse('saas_api_profile')}}
         else:
