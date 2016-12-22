@@ -33,6 +33,7 @@ from django.views.generic import (CreateView, DetailView, ListView,
 from django.utils.decorators import method_decorator
 
 from . import RedirectFormMixin
+from .. import signals
 from ..decorators import _valid_manager
 from ..forms import (OrganizationForm, OrganizationCreateForm,
     ManagerAndOrganizationForm)
@@ -296,29 +297,29 @@ class OrganizationProfileView(OrganizationMixin, UpdateView):
 
     @method_decorator(transaction.atomic)
     def form_valid(self, form):
-        if 'is_bulk_buyer' in form.cleaned_data:
-            self.object.is_bulk_buyer = form.cleaned_data['is_bulk_buyer']
+        validated_data = form.cleaned_data
+        # Calls `get_object()` such that we get the actual values present
+        # in the database. `self.object` will contain the updated values
+        # at this point.
+        changes = self.get_object().get_changes(validated_data)
+        user = self.object.attached_user()
+        if user:
+            user.username = validated_data.get('slug', user.username)
+        self.object.slug = validated_data.get('slug', self.object.slug)
+        self.object.full_name = validated_data['full_name']
+        self.object.email = validated_data['email']
+        if 'is_bulk_buyer' in validated_data:
+            self.object.is_bulk_buyer = validated_data['is_bulk_buyer']
         else:
             self.object.is_bulk_buyer = False
-        user = self.attached_user(self.object)
-        if user:
-            if form.cleaned_data.get('slug', None):
-                user.username = form.cleaned_data['slug']
-            if form.cleaned_data['full_name']:
-                name_parts = form.cleaned_data['full_name'].split(' ')
-                if len(name_parts) > 1:
-                    user.first_name = name_parts[0]
-                    user.last_name = ' '.join(name_parts[1:])
-                else:
-                    user.first_name = form.cleaned_data['full_name']
-                    user.last_name = ''
-            if form.cleaned_data['email']:
-                user.email = form.cleaned_data['email']
-            user.save()
-        return super(OrganizationProfileView, self).form_valid(form)
+        result = super(OrganizationProfileView, self).form_valid(form)
+        signals.organization_updated.send(sender=__name__,
+                organization=self.object, changes=changes,
+                user=self.request.user)
+        return result
 
     def get_form_class(self):
-        if self.attached_user(self.object):
+        if self.object.attached_user():
             # There is only one user so we will add the User fields
             # to the form so they can be updated at the same time.
             return ManagerAndOrganizationForm

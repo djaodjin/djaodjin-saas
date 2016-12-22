@@ -259,6 +259,16 @@ class Organization(models.Model):
     def __unicode__(self):
         return unicode(self.slug)
 
+    def get_changes(self, update_fields):
+        changes = {}
+        for field_name in ('full_name',):
+            pre_value = getattr(self, field_name, None)
+            post_value = update_fields.get(field_name, None)
+            if post_value is not None and pre_value != post_value:
+                changes[field_name] = {
+                    'pre': pre_value, 'post': post_value}
+        return changes
+
     def validate_processor(self):
         #pylint:disable=no-member,access-member-before-definition
         if not self.processor_id:
@@ -277,9 +287,22 @@ class Organization(models.Model):
         if not self.slug:
             self.slug = slugify(self.full_name)
         self.validate_processor()
-        super(Organization, self).save(force_insert=force_insert,
-             force_update=force_update, using=using,
-             update_fields=update_fields)
+        with transaction.atomic():
+            user = self.attached_user()
+            if user:
+                name_parts = self.full_name.split(' ')
+                if len(name_parts) > 1:
+                    user.first_name = name_parts[0]
+                    user.last_name = ' '.join(name_parts[1:])
+                else:
+                    user.first_name = self.full_name
+                    user.last_name = ''
+                if self.email:
+                    user.email = self.email
+                user.save()
+            super(Organization, self).save(force_insert=force_insert,
+                 force_update=force_update, using=using,
+                 update_fields=update_fields)
 
     @property
     def printable_name(self):

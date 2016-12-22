@@ -31,6 +31,7 @@ from rest_framework import status
 from rest_framework.generics import ListAPIView, RetrieveUpdateDestroyAPIView
 from rest_framework.response import Response
 
+from .. import signals
 from .serializers import (
     OrganizationSerializer, OrganizationWithSubscriptionsSerializer)
 from ..mixins import (OrganizationMixin, OrganizationSmartListMixin,
@@ -74,13 +75,26 @@ class OrganizationDetailAPIView(OrganizationMixin,
     def get_object(self):
         return self.organization
 
+    def perform_update(self, serializer):
+        changes = serializer.instance.get_changes(serializer.validated_data)
+        user = serializer.instance.attached_user()
+        if user:
+            user.username = serializer.validated_data.get(
+                'slug', user.username)
+        serializer.instance.slug = serializer.validated_data.get(
+            'slug', serializer.instance.slug)
+        super(OrganizationDetailAPIView, self).perform_update(serializer)
+        signals.organization_updated.send(sender=__name__,
+                organization=serializer.instance, changes=changes,
+                user=self.request.user)
+
     def destroy(self, request, *args, **kwargs): #pylint:disable=unused-argument
         """
         Archive the organization. We don't to loose the subscriptions
         and transactions history.
         """
         obj = self.get_object()
-        user = self.attached_user(obj)
+        user = obj.attached_user()
         email = obj.email
         slug = '_archive_%d' % obj.id
         look = re.match(r'.*(@\S+)', django_settings.DEFAULT_FROM_EMAIL)
