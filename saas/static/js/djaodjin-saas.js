@@ -423,7 +423,7 @@ CartItem.prototype = {
         insertLine: function(data) {
             var msg = this.createLineMessage(data);
             var prevLine = this.element.find("tbody[data-plan='" +
-                data.plan + "' .invoice-item").last();
+                data.plan + "'] .invoice-item").last();
             var newLine = prevLine.clone();
             var clonedNode = $(newLine.children("td")[2]);
 
@@ -439,7 +439,7 @@ CartItem.prototype = {
         updateLine: function(data) {
             var msg = this.createLineMessage(data);
             var prevLine = this.element.find("tbody[data-plan='" +
-                data.plan + "' .invoice-item").last();
+                data.plan + "'] .invoice-item").last();
             var newLine = prevLine;
             var descrNode = $(newLine.children("td")[2]);
 

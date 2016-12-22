@@ -241,9 +241,12 @@ class StripeBackend(object):
                 **kwargs)
             processor_key = processor_charge.id
             created_at = utctimestamp_to_datetime(processor_charge.created)
-            last4 = processor_charge.source.last4
-            exp_date = datetime.date(processor_charge.source.exp_year,
-                processor_charge.source.exp_month, 1)
+            receipt_info = {
+                'last4': processor_charge.source.last4,
+                'exp_date': datetime.date(processor_charge.source.exp_year,
+                    processor_charge.source.exp_month, 1),
+                'card_name': processor_charge.source.name
+            }
         except stripe.error.CardError, err:
             # If the card is declined, Stripe will record a failed ``Charge``
             # and raise an exception here. Unfortunately only the Charge id
@@ -253,7 +256,7 @@ class StripeBackend(object):
             raise CardError(err.message, err.code,
                 charge_processor_key=err.json_body['error']['charge'],
                 backend_except=err)
-        return (processor_key, created_at, last4, exp_date)
+        return (processor_key, created_at, receipt_info)
 
     def create_charge(self, customer, amount, unit,
                     broker=None, descr=None, stmt_descr=None):
@@ -427,7 +430,9 @@ class StripeBackend(object):
                     exp_date = "%02d/%04d" % (
                         p_customer.default_source.exp_month,
                         p_customer.default_source.exp_year)
-                    context.update({'last4': last4, 'exp_date': exp_date})
+                    context.update({
+                        'last4': last4, 'exp_date': exp_date,
+                        'card_name': p_customer.default_source.name})
         except ProcessorError:
             pass # OK here. We don't have a connected Stripe account.
         return context

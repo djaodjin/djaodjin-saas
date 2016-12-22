@@ -258,7 +258,8 @@ class InvoicablesFormMixin(OrganizationMixin):
             key=lambda invoicable: str(invoicable['subscription']))
         for invoicable in self.invoicables:
             plan = invoicable['subscription'].plan
-            invoicable['is_changed'] = (plan != current_plan)
+            invoicable['is_changed'] = (
+                current_plan is not None and plan != current_plan)
             current_plan = plan
         context.update({'invoicables': self.invoicables,
             'lines_price': Price(lines_amount, lines_unit)})

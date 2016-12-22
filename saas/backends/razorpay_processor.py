@@ -106,11 +106,12 @@ class RazorpayBackend(object):
             extra={'event': 'capture', 'processor': 'razorpay',
                 'processor_key': processor_charge['id']})
         created_at = utctimestamp_to_datetime(processor_charge['created_at'])
-        last4 = 0
         exp_year = created_at.year
         exp_month = created_at.month
-        return (processor_charge['id'], created_at, last4,
-                datetime.date(exp_year, exp_month, 1))
+        receipt_info = {
+            'last4': 0, 'exp_date': datetime.date(exp_year, exp_month, 1),
+            'card_name': ""}
+        return (processor_charge['id'], created_at, receipt_info)
 
     def get_deposit_context(self):
         context = {

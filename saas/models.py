@@ -610,8 +610,8 @@ class Organization(models.Model):
         with transaction.atomic():
             new_organizations, claim_codes, invoiced_items = self.execute_order(
                 invoicables, user)
-            charge = Charge.objects.charge_card(self, invoiced_items, user,
-                token=token, remember_card=remember_card)
+            charge = Charge.objects.charge_card(self, invoiced_items,
+                user=user, token=token, remember_card=remember_card)
 
             # We email users which have yet to be registerd after the charge
             # is created, just that we don't inadvertently email new subscribers
@@ -1048,16 +1048,19 @@ class ChargeManager(models.Manager):
             charge.retrieve()
 
     def create_charge(self, customer, transactions, amount, unit,
-                      processor, processor_charge_id, last4, exp_date,
-                      descr=None, created_at=None):
+                      processor, processor_charge_id, receipt_info,
+                      user=None, descr=None, created_at=None):
         #pylint: disable=too-many-arguments
         created_at = datetime_or_now(created_at)
         with transaction.atomic():
             charge = self.create(
                 processor=processor, processor_key=processor_charge_id,
-                amount=amount, unit=unit,
-                created_at=created_at, description=descr,
-                customer=customer, last4=last4, exp_date=exp_date)
+                amount=amount, unit=unit, customer=customer,
+                created_at=created_at, created_by=user,
+                description=descr,
+                last4=receipt_info.get('last4'),
+                exp_date=receipt_info.get('exp_date'),
+                card_name=receipt_info.get('card_name', ""))
             for invoiced in transactions:
                 ChargeItem.objects.create(invoiced=invoiced, charge=charge)
             LOGGER.info("create charge %s of %d %s to %s",
@@ -1116,12 +1119,12 @@ class ChargeManager(models.Manager):
 
             if customer.processor_card_key:
                 (processor_charge_id, created_at,
-                 last4, exp_date) = processor_backend.create_charge(
+                 receipt_info) = processor_backend.create_charge(
                      customer, amount, unit,
                      broker=broker, descr=descr)
             elif token:
                 (processor_charge_id, created_at,
-                 last4, exp_date) = processor_backend.create_charge_on_card(
+                 receipt_info) = processor_backend.create_charge_on_card(
                      token, amount, unit, broker=broker, descr=descr)
             else:
                 raise ProcessorError("%s is not connected to a processor"
@@ -1129,12 +1132,12 @@ class ChargeManager(models.Manager):
             # Create record of the charge in our database
             descr = humanize.DESCRIBE_CHARGED_CARD % {
                 'charge': processor_charge_id,
-                'organization': customer.printable_name}
+                'organization': receipt_info['card_name']}
             if user:
                 descr += ' (%s)' % user.username
             return self.create_charge(customer, transactions,
-                amount, unit, processor, processor_charge_id, last4,
-                exp_date, descr=descr, created_at=created_at)
+                amount, unit, processor, processor_charge_id, receipt_info,
+                user=user, descr=descr, created_at=created_at)
 
         except CardError as err:
             # Implementation Note:
@@ -1171,8 +1174,8 @@ class ChargeManager(models.Manager):
 class Charge(models.Model):
     """
     Keep track of charges that have been emitted by the app.
-    We save the last4 and expiration date so we are able to present
-    a receipt.
+    We save the name of the card, last4 and expiration date so we are able
+    to present a receipt usable for expenses re-imbursement.
     """
     CREATED = 0
     DONE = 1
@@ -1188,6 +1191,8 @@ class Charge(models.Model):
     objects = ChargeManager()
 
     created_at = models.DateTimeField(auto_now_add=True)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, db_column='user_id', null=True)
     amount = models.PositiveIntegerField(default=0, help_text="Amount in cents")
     unit = models.CharField(max_length=3, default=settings.DEFAULT_UNIT)
     customer = models.ForeignKey(Organization,
@@ -1195,6 +1200,7 @@ class Charge(models.Model):
     description = models.TextField(null=True)
     last4 = models.PositiveSmallIntegerField()
     exp_date = models.DateField()
+    card_name = models.CharField(max_length=50, null=True)
     processor = models.ForeignKey('Organization', related_name='charges')
     processor_key = models.SlugField(unique=True, db_index=True)
     state = models.PositiveSmallIntegerField(
@@ -1560,7 +1566,8 @@ class Charge(models.Model):
         self.state = self.DONE
         self.save()
 
-        signals.charge_updated.send(sender=__name__, charge=self, user=None)
+        signals.charge_updated.send(
+            sender=__name__, charge=self, user=None)
         return charge_transaction
 
     def refund(self, linenum, refunded_amount=None, created_at=None, user=None):

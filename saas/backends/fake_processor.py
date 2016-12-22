@@ -66,8 +66,12 @@ class FakeProcessorBackend(object):
         LOGGER.debug('create_charge_on_card(amount=%s, unit=%s, descr=%s)',
             amount, unit, descr)
         created_at = datetime_or_now()
-        return (generate_random_slug(), created_at,
-            '1234', created_at + datetime.timedelta(days=365))
+        receipt_info = {
+            'last4': "1234",
+            'exp_date': created_at + datetime.timedelta(days=365),
+            'card_name': "Joe Test"
+        }
+        return (generate_random_slug(), created_at, receipt_info)
 
     @staticmethod
     def create_transfer(provider, amount, unit, descr=None):
