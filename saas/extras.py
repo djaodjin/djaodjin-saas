@@ -39,10 +39,6 @@ class OrganizationMixinBase(object):
 
     organization_url_kwarg = 'organization'
 
-    @staticmethod
-    def attached_user(organization):
-        return organization.attached_user()
-
     def get_organization(self):
         return get_object_or_404(get_organization_model(),
             slug=self.kwargs.get(self.organization_url_kwarg))
@@ -82,11 +78,14 @@ class OrganizationMixinBase(object):
                 'saas_subscription_list', args=(organization,)),
         },
             'organization_create': reverse('saas_organization_create')})
-        if self.attached_user(self.organization):
+
+        # The following `attached_user` will trigger a db query
+        # even when `request.user` is anonymous.
+        if organization.attached_user():
             try:
                 urls['organization'].update({
                     'password_change': reverse(
-                        'password_change', args=(organization.slug,))})
+                        'password_change', args=(organization,))})
             except NoReverseMatch:
                 # With django.contrib.auth we cannot trigger password_change
                 # for a different user than the one associated to the request.
