@@ -162,10 +162,11 @@ class OrganizationManager(models.Manager):
         """
         user_model = get_user_model()
         if not isinstance(user, user_model):
-            user = user_model.objects.get(username=user)
-        return self.filter(pk__in=get_role_model().objects.filter(
-            user=user, role_description__slug=role_slug).values(
-                'organization').distinct())
+            user = user_model.objects.db_manager(using=self._db).get(
+                username=user)
+        return self.filter(pk__in=get_role_model().objects.db_manager(
+            using=self._db).filter(user=user,
+            role_description__slug=role_slug).values('organization').distinct())
 
     def providers(self, subscriptions):
         """
@@ -457,7 +458,7 @@ class Organization(models.Model):
         """
         Returns all users with a *role_name* to organization.
         """
-        return get_user_model().objects.filter(
+        return get_user_model().objects.db_manager(using=self._state.db).filter(
             pk__in=self.get_roles(role_name).values('user')).distinct()
 
     def attached_user(self):
