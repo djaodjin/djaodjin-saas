@@ -36,7 +36,7 @@ policy.
 """
 #pylint:disable=too-many-lines
 
-import copy
+import copy, logging
 
 from django import http
 from django.contrib.auth import REDIRECT_FIELD_NAME
@@ -60,6 +60,9 @@ from ..models import (Organization, CartItem, Coupon, Plan, Transaction,
     Subscription, get_broker, Price)
 from ..utils import datetime_or_now, validate_redirect_url
 from ..views import session_cart_to_database
+
+
+LOGGER = logging.getLogger(__name__)
 
 
 class BankMixin(ProviderMixin):
@@ -303,6 +306,12 @@ class CardInvoicablesFormMixin(CardFormMixin, InvoicablesFormMixin):
         # deep copy the invoicables because we are updating the list in place
         # and we don't want to keep the edited state on a card failure.
         self.sole_provider = None
+        if not self.invoicables:
+            LOGGER.error("No invoicables for user %s", self.request.user)
+            messages.info(self.request,
+              "There are no items invoicable at this point. Please select an"\
+" item before checking out.")
+            return http.HttpResponseRedirect(reverse('saas_cart_plan_list'))
         invoicables = copy.deepcopy(self.invoicables)
         for invoicable in invoicables:
             # We use two conventions here:
@@ -357,7 +366,7 @@ class CardInvoicablesFormMixin(CardFormMixin, InvoicablesFormMixin):
             return redirect_path
         if self.sole_provider:
             return product_url(self.sole_provider, self.organization)
-        return reverse('saas_organization_profile', args=(self.organization,))
+        return product_url(get_broker(), self.organization)
 
 
 class CardUpdateView(CardFormMixin, FormView):
