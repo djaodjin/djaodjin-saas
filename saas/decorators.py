@@ -1,4 +1,4 @@
-# Copyright (c) 2016, DjaoDjin inc.
+# Copyright (c) 2017, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -140,6 +140,11 @@ def _insert_url(request, redirect_field_name=REDIRECT_FIELD_NAME,
     # anything (i.e. inserted_url), not just the login.
     from django.contrib.auth.views import redirect_to_login
     return redirect_to_login(path, inserted_url, redirect_field_name)
+
+
+def _get_accept_list(request):
+    http_accept = request.META.get('HTTP_ACCEPT', '*/*')
+    return [item.strip() for item in http_accept.split(',')]
 
 
 def fail_authenticated(request):
@@ -424,6 +429,18 @@ def fail_self_provider_strong(request, user=None):
     return _fail_self_provider(request, user=user, strength=STRONG)
 
 
+def redirect_or_denied(request, inserted_url,
+                       redirect_field_name=REDIRECT_FIELD_NAME, descr=None):
+    http_accepts = _get_accept_list(request)
+    if ('text/html' in http_accepts
+        and isinstance(inserted_url, basestring)):
+        return _insert_url(request, redirect_field_name=redirect_field_name,
+                           inserted_url=inserted_url)
+    if descr is None:
+        descr = ""
+    raise PermissionDenied(descr)
+
+
 def requires_authenticated(function=None,
                            redirect_field_name=REDIRECT_FIELD_NAME):
     """
@@ -436,17 +453,10 @@ def requires_authenticated(function=None,
     def decorator(view_func):
         @wraps(view_func, assigned=available_attrs(view_func))
         def _wrapped_view(request, *args, **kwargs):
-            redirect = fail_authenticated(request)
-            if redirect:
-                accept_content_type = request.META.get('HTTP_ACCEPT',
-                    request.META.get('CONTENT_TYPE', ''))
-                if (not 'application/json' in accept_content_type.lower()
-                    and isinstance(redirect, basestring)):
-                    # If the client accepts 'application/json' regardless
-                    # of preference order, we will return a 403. Otherwise
-                    # we will reply with a redirect to the login page.
-                    return _insert_url(request, redirect_field_name, redirect)
-                raise PermissionDenied
+            redirect_url = fail_authenticated(request)
+            if redirect_url:
+                return redirect_or_denied(request, redirect_url,
+                    redirect_field_name=redirect_field_name)
             return view_func(request, *args, **kwargs)
         return _wrapped_view
 
@@ -466,9 +476,10 @@ def requires_agreement(function=None,
     def decorator(view_func):
         @wraps(view_func, assigned=available_attrs(view_func))
         def _wrapped_view(request, *args, **kwargs):
-            redirect = fail_agreement(request, agreement=agreement)
-            if redirect:
-                return _insert_url(request, redirect_field_name, redirect)
+            redirect_url = fail_agreement(request, agreement=agreement)
+            if redirect_url:
+                return redirect_or_denied(request, redirect_url,
+                    redirect_field_name=redirect_field_name)
             return view_func(request, *args, **kwargs)
         return _wrapped_view
 
@@ -502,12 +513,11 @@ def requires_paid_subscription(function=None,
                 raise PermissionDenied("%(user)s is neither a manager '\
 ' of %(organization)s nor a manager of one of %(organization)s providers."
                 % {'user': request.user, 'organization': subscriber})
-            redirect = fail_paid_subscription(request, organization=subscriber,
-                plan=kwargs.get(plan_kwarg_slug, None))
-            if redirect:
-                # Note: I couldn't figure out why passing kwargs
-                # stopped working.
-                return _insert_url(request, redirect_field_name, redirect)
+            redirect_url = fail_paid_subscription(request,
+                organization=subscriber, plan=kwargs.get(plan_kwarg_slug, None))
+            if redirect_url:
+                return redirect_or_denied(request, redirect_url,
+                    redirect_field_name=redirect_field_name)
             return view_func(request, *args, **kwargs)
         return _wrapped_view
 
@@ -516,7 +526,8 @@ def requires_paid_subscription(function=None,
     return decorator
 
 
-def requires_direct(function=None, roledescription=None):
+def requires_direct(function=None, roledescription=None,
+                    redirect_field_name=REDIRECT_FIELD_NAME):
     """
     Decorator for views that checks that the authenticated ``request.user``
     is a direct ``roledescription`` (ex: contributor) or manager
@@ -531,9 +542,12 @@ def requires_direct(function=None, roledescription=None):
         @wraps(view_func, assigned=available_attrs(view_func))
         def _wrapped_view(request, *args, **kwargs):
             slug = kwargs.get('charge', kwargs.get('organization', None))
-            if fail_direct(request, organization=slug,
-                    roledescription=roledescription):
-                raise PermissionDenied("%(user)s is not a direct manager '\
+            redirect_url = fail_direct(request, organization=slug,
+                    roledescription=roledescription)
+            if redirect_url:
+                return redirect_or_denied(request, redirect_url,
+                    redirect_field_name=redirect_field_name,
+                    descr="%(user)s is not a direct manager '\
 ' of %(organization)s." % {'user': request.user, 'organization': slug})
             return view_func(request, *args, **kwargs)
         return _wrapped_view
@@ -543,7 +557,8 @@ def requires_direct(function=None, roledescription=None):
     return decorator
 
 
-def requires_direct_weak(function=None, roledescription=None):
+def requires_direct_weak(function=None, roledescription=None,
+                         redirect_field_name=REDIRECT_FIELD_NAME):
     """
     Decorator for views that checks that the request authenticated ``User``
     is a direct ``roledescription`` (ex: contributor) or manager
@@ -556,9 +571,12 @@ def requires_direct_weak(function=None, roledescription=None):
         @wraps(view_func, assigned=available_attrs(view_func))
         def _wrapped_view(request, *args, **kwargs):
             slug = kwargs.get('charge', kwargs.get('organization', None))
-            if fail_direct_weak(request, organization=slug,
-                    roledescription=roledescription):
-                raise PermissionDenied("%(user)s is not a direct manager '\
+            redirect_url = fail_direct_weak(request, organization=slug,
+                    roledescription=roledescription)
+            if redirect_url:
+                return redirect_or_denied(request, redirect_url,
+                    redirect_field_name=redirect_field_name,
+                    descr="%(user)s is not a direct manager '\
 ' of %(organization)s." % {'user': request.user, 'organization': slug})
             return view_func(request, *args, **kwargs)
         return _wrapped_view
@@ -568,7 +586,8 @@ def requires_direct_weak(function=None, roledescription=None):
     return decorator
 
 
-def requires_provider(function=None, roledescription=None):
+def requires_provider(function=None, roledescription=None,
+                      redirect_field_name=REDIRECT_FIELD_NAME):
     """
     Decorator for views that checks that the request authenticated ``User``
     is a ``roledescription`` (ex: contributor) or manager for
@@ -589,9 +608,12 @@ def requires_provider(function=None, roledescription=None):
                 obj = get_object_or_404(Charge, processor_key=charge)
             else:
                 obj = kwargs.get('organization', None)
-            if fail_provider(request, organization=obj,
-                    roledescription=roledescription):
-                raise PermissionDenied("%(auth)s is neither a manager "\
+            redirect_url = fail_provider(request, organization=obj,
+                roledescription=roledescription)
+            if redirect_url:
+                return redirect_or_denied(request, redirect_url,
+                    redirect_field_name=redirect_field_name,
+                    descr="%(auth)s is neither a manager "\
 " for %(slug)s nor a manager of one of %(slug)s providers." % {
     'auth': request.user,
     'slug': kwargs.get('charge', kwargs.get('organization', None))})
@@ -603,7 +625,8 @@ def requires_provider(function=None, roledescription=None):
     return decorator
 
 
-def requires_provider_weak(function=None, roledescription=None):
+def requires_provider_weak(function=None, roledescription=None,
+                           redirect_field_name=REDIRECT_FIELD_NAME):
     """
     Decorator for views that checks that the request authenticated ``User``
     is a ``roledescription`` (ex: contributor) or manager
@@ -622,9 +645,12 @@ def requires_provider_weak(function=None, roledescription=None):
                 obj = get_object_or_404(Charge, processor_key=charge)
             else:
                 obj = kwargs.get('organization', None)
-            if fail_provider_weak(request, organization=obj,
-                    roledescription=roledescription):
-                raise PermissionDenied("%(auth)s is neither a manager "\
+            redirect_url = fail_provider_weak(request, organization=obj,
+                    roledescription=roledescription)
+            if redirect_url:
+                return redirect_or_denied(request, redirect_url,
+                    redirect_field_name=redirect_field_name,
+                    descr="%(auth)s is neither a manager "\
 " for %(slug)s nor a manager of one of %(slug)s providers." % {
     'auth': request.user,
     'slug': kwargs.get('charge', kwargs.get('organization', None))})
@@ -636,7 +662,8 @@ def requires_provider_weak(function=None, roledescription=None):
     return decorator
 
 
-def requires_provider_only(function=None, roledescription=None):
+def requires_provider_only(function=None, roledescription=None,
+                           redirect_field_name=REDIRECT_FIELD_NAME):
     """
     Decorator for views that checks that the request authenticated ``User``
     is a ``roledescription`` (ex: contributor) or manager for a provider
@@ -655,9 +682,12 @@ def requires_provider_only(function=None, roledescription=None):
                 obj = get_object_or_404(Charge, processor_key=charge)
             else:
                 obj = kwargs.get('organization', None)
-            if fail_provider_only(request, organization=obj,
-                    roledescription=roledescription):
-                raise PermissionDenied("%(auth)s has no direct relation to"\
+            redirect_url = fail_provider_only(request, organization=obj,
+                    roledescription=roledescription)
+            if redirect_url:
+                return redirect_or_denied(request, redirect_url,
+                    redirect_field_name=redirect_field_name,
+                    descr="%(auth)s has no direct relation to"\
 " a provider for %(slug)s." % {'auth': request.user,
         'slug': kwargs.get('charge', kwargs.get('organization', None))})
             return view_func(request, *args, **kwargs)
@@ -668,7 +698,8 @@ def requires_provider_only(function=None, roledescription=None):
     return decorator
 
 
-def requires_provider_only_weak(function=None, roledescription=None):
+def requires_provider_only_weak(function=None, roledescription=None,
+                                redirect_field_name=REDIRECT_FIELD_NAME):
     """
     Decorator for views that checks that the request authenticated ``User``
     is a ``roledescription`` (ex: contributor) or manager for a provider
@@ -685,9 +716,12 @@ def requires_provider_only_weak(function=None, roledescription=None):
                 obj = get_object_or_404(Charge, processor_key=charge)
             else:
                 obj = kwargs.get('organization', None)
-            if fail_provider_only_weak(request, organization=obj,
-                    roledescription=roledescription):
-                raise PermissionDenied("%(auth)s has no direct relation to"\
+            redirect_url = fail_provider_only_weak(request, organization=obj,
+                    roledescription=roledescription)
+            if redirect_url:
+                return redirect_or_denied(request, redirect_url,
+                    redirect_field_name=redirect_field_name,
+                    descr="%(auth)s has no direct relation to"\
 " a provider for %(slug)s." % {'auth': request.user,
         'slug': kwargs.get('charge', kwargs.get('organization', None))})
             return view_func(request, *args, **kwargs)
@@ -698,7 +732,8 @@ def requires_provider_only_weak(function=None, roledescription=None):
     return decorator
 
 
-def requires_self_provider(function=None, roledescription=None):
+def requires_self_provider(function=None, roledescription=None,
+                           redirect_field_name=REDIRECT_FIELD_NAME):
     """
     Decorator for views that checks that the request authenticated ``User``
     is the user associated to the URL.
@@ -717,9 +752,12 @@ def requires_self_provider(function=None, roledescription=None):
     def decorator(view_func):
         @wraps(view_func, assigned=available_attrs(view_func))
         def _wrapped_view(request, *args, **kwargs):
-            if fail_self_provider(request, user=kwargs.get('user', None),
-                    roledescription=roledescription):
-                raise PermissionDenied("%(auth)s has neither a direct"\
+            redirect_url = fail_self_provider(request,
+                user=kwargs.get('user', None), roledescription=roledescription)
+            if redirect_url:
+                return redirect_or_denied(request, redirect_url,
+                    redirect_field_name=redirect_field_name,
+                    descr="%(auth)s has neither a direct"\
 " relation to an organization connected to %(user)s nor a connection to one"\
 "of the providers to such organization." % {
     'auth': request.user, 'user': kwargs.get('user', None)})
@@ -731,7 +769,8 @@ def requires_self_provider(function=None, roledescription=None):
     return decorator
 
 
-def requires_self_provider_weak(function=None, roledescription=None):
+def requires_self_provider_weak(function=None, roledescription=None,
+                                redirect_field_name=REDIRECT_FIELD_NAME):
     """
     Decorator for views that checks that the request authenticated ``User``
     is the user associated to the URL.
@@ -748,9 +787,12 @@ def requires_self_provider_weak(function=None, roledescription=None):
     def decorator(view_func):
         @wraps(view_func, assigned=available_attrs(view_func))
         def _wrapped_view(request, *args, **kwargs):
-            if fail_self_provider_weak(request, user=kwargs.get('user', None),
-                    roledescription=roledescription):
-                raise PermissionDenied("%(auth)s has neither a direct"\
+            redirect_url = fail_self_provider_weak(request,
+                user=kwargs.get('user', None), roledescription=roledescription)
+            if redirect_url:
+                return redirect_or_denied(request, redirect_url,
+                    redirect_field_name=redirect_field_name,
+                    descr="%(auth)s has neither a direct"\
 " relation to an organization connected to %(user)s nor a connection to one"\
 "of the providers to such organization." % {
     'auth': request.user, 'user': kwargs.get('user', None)})

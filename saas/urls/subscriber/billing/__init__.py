@@ -1,4 +1,4 @@
-# Copyright (c) 2016, DjaoDjin inc.
+# Copyright (c) 2017, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -30,7 +30,6 @@ from django.conf.urls import url, include
 
 from ....settings import ACCT_REGEX
 from ....views import OrganizationRedirectView
-from ....views.download import BillingStatementDownloadView
 
 
 urlpatterns = [
@@ -39,7 +38,4 @@ urlpatterns = [
         name='saas_cart'),
     url(r'^', include('saas.urls.subscriber.billing.payment')),
     url(r'^', include('saas.urls.subscriber.billing.info')),
-    url(r'^download/(?P<organization>%s)/payments/' % ACCT_REGEX,
-        BillingStatementDownloadView.as_view(),
-        name='saas_statement_download'),
 ]
