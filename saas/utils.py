@@ -1,4 +1,4 @@
-# Copyright (c) 2016, DjaoDjin inc.
+# Copyright (c) 2017, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -25,8 +25,46 @@
 import datetime, inspect, random, sys, urlparse
 
 from django.conf import settings as django_settings
+from django.db import transaction, IntegrityError
 from django.http.request import split_domain_port, validate_host
 from django.utils.timezone import utc, get_current_timezone
+from django.template.defaultfilters import slugify
+from rest_framework.exceptions import ValidationError
+
+
+class SlugTitleMixin(object):
+    """
+    Generate a unique slug from title on ``save()`` when none is specified.
+    """
+    def save(self, force_insert=False, force_update=False,
+             using=None, update_fields=None):
+        if self.slug: #pylint:disable=access-member-before-definition
+            # serializer will set created slug to '' instead of None.
+            return super(SlugTitleMixin, self).save(
+                force_insert=force_insert, force_update=force_update,
+                using=using, update_fields=update_fields)
+        max_length = self._meta.get_field('slug').max_length
+        slug_base = slugify(self.title)
+        if len(slug_base) > max_length:
+            slug_base = slug_base[:max_length]
+        self.slug = slug_base
+        for _ in range(1, 10):
+            try:
+                with transaction.atomic():
+                    return super(SlugTitleMixin, self).save(
+                        force_insert=force_insert, force_update=force_update,
+                        using=using, update_fields=update_fields)
+            except IntegrityError, err:
+                if 'uniq' not in str(err).lower():
+                    raise
+                suffix = '-%s' % "".join([random.choice("abcdef0123456789")
+                    for _ in range(7)])
+                if len(slug_base) + len(suffix) > max_length:
+                    self.slug = slug_base[:(max_length - len(suffix))] + suffix
+                else:
+                    self.slug = slug_base + suffix
+        raise ValidationError({'detail':
+            "Unable to create a unique URL slug from title '%s'" % self.title})
 
 
 def datetime_or_now(dtime_at=None):

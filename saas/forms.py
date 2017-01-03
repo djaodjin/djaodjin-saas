@@ -1,4 +1,4 @@
-# Copyright (c) 2016, DjaoDjin inc.
+# Copyright (c) 2017, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -255,7 +255,6 @@ class PlanForm(forms.ModelForm):
     def save(self, commit=True):
         if self.initial.has_key('organization'):
             self.instance.organization = self.initial['organization']
-        self.instance.slug = slugify(self.cleaned_data['title'])
         return super(PlanForm, self).save(commit)
 
 

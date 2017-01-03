@@ -1,6 +1,6 @@
 #pylint: disable=too-many-lines
 
-# Copyright (c) 2016, DjaoDjin inc.
+# Copyright (c) 2017, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -80,8 +80,8 @@ from django_countries.fields import CountryField
 
 from . import humanize, settings, signals
 from .backends import get_processor_backend, ProcessorError, CardError
-from .utils import (datetime_or_now, extract_full_exception_stack,
-    generate_random_slug, get_role_model)
+from .utils import (SlugTitleMixin, datetime_or_now,
+    extract_full_exception_stack, generate_random_slug, get_role_model)
 
 
 LOGGER = logging.getLogger(__name__)
@@ -1948,7 +1948,7 @@ class PlanManager(models.Manager):
         return result
 
 
-class Plan(models.Model):
+class Plan(SlugTitleMixin, models.Model):
     """
     Recurring billing plan
     """
