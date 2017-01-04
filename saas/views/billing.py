@@ -898,7 +898,10 @@ class BalanceView(CardInvoicablesFormMixin, FormView):
         """
         invoicables = []
         created_at = datetime_or_now()
-        for subscription in Subscription.objects.active_for(self.organization):
+        balances, _ = Transaction.objects.get_statement_balances(
+            self.organization, until=created_at)
+        for event_id in balances.keys():
+            subscription = Subscription.objects.get(pk=event_id)
             options = self.get_invoicable_options(subscription,
                 created_at=created_at)
             if len(options) > 0:

@@ -2499,33 +2499,55 @@ class TransactionQuerySet(models.QuerySet):
     Custom ``QuerySet`` for ``Transaction`` that provides useful queries.
     """
 
-    def get_statement_balance(self, organization, until=None):
+    def get_statement_balances(self, organization, until=None):
         until = datetime_or_now(until)
-        balance = sum_dest_amount(self.filter(
+        dest_balances = self.filter(
             Q(dest_account=Transaction.PAYABLE)
             | Q(dest_account=Transaction.LIABILITY),
             dest_organization=organization,
-            created_at__lt=until))
-        dest_amount = balance['amount']
-        dest_unit = balance['unit']
-        balance = sum_orig_amount(self.filter(
+            created_at__lt=until).values(
+                'event_id', 'dest_unit').annotate(
+                dest_balance=Sum('dest_amount'))
+        orig_balances = self.filter(
             Q(orig_account=Transaction.PAYABLE)
             | Q(orig_account=Transaction.LIABILITY),
             orig_organization=organization,
-            created_at__lt=until))
-        orig_amount = balance['amount']
-        orig_unit = balance['unit']
-        if dest_unit is None:
-            unit = orig_unit
-        elif orig_unit is None:
-            unit = dest_unit
-        elif dest_unit != orig_unit:
-            raise ValueError('orig and dest balances until %s for statement'\
+            created_at__lt=until).values(
+                'event_id', 'orig_unit').annotate(
+                orig_balance=Sum('orig_amount'))
+        unit = None
+        dest_balance_per_events = {}
+        for dest_balance in dest_balances:
+            dest_balance_per_events.update({
+                dest_balance['event_id']: dest_balance['dest_balance']})
+            if unit is None:
+                unit = dest_balance['dest_unit']
+            elif unit != dest_balance['dest_unit']:
+                raise ValueError('dest balances until %s for statement'\
 ' of %s have different unit (%s vs. %s).' % (until, organization,
-                orig_unit, dest_unit))
-        else:
-            unit = dest_unit
-        return dest_amount - orig_amount, unit
+                    unit, dest_balance['dest_unit']))
+        balances = {}
+        for orig_balance in orig_balances:
+            event_id = orig_balance['event_id']
+            balance = (dest_balance_per_events.get(event_id, 0)
+                - orig_balance['orig_balance'])
+            if balance != 0:
+                balances.update({event_id: balance})
+            if unit is None:
+                unit = orig_balance['orig_unit']
+            elif unit != orig_balance['orig_unit']:
+                raise ValueError(
+'orig and dest balances until %s for statement'\
+' of %s have different unit (%s vs. %s).' % (until, organization,
+                    unit, orig_balance['orig_unit']))
+        return balances, unit
+
+    def get_statement_balance(self, organization, until=None):
+        balances, unit = self.get_statement_balances(organization, until=until)
+        balance = 0
+        for val in balances.values():
+            balance += val
+        return balance, unit
 
 
 class TransactionManager(models.Manager):
@@ -2773,14 +2795,15 @@ class TransactionManager(models.Manager):
     def get_invoiceables(self, organization, until=None):
         """
         Returns a set of payable or liability ``Transaction`` since
-        the last successful payment by an ``organization``.
+        the last successful payment by or writeoff to an ``organization``.
         """
         until = datetime_or_now(until)
         last_payment = self.filter(
             Q(orig_account=Transaction.PAYABLE)
             | Q(orig_account=Transaction.LIABILITY),
+            Q(dest_account=Transaction.FUNDS)
+            | Q(dest_account=Transaction.WRITEOFF),
             orig_organization=organization,
-            dest_account=Transaction.FUNDS,
             created_at__lt=until).order_by('-created_at').first()
         if last_payment:
             # Use ``created_at`` strictly greater than last payment date
@@ -2851,6 +2874,10 @@ class TransactionManager(models.Manager):
             unit = dest_unit
         return {'amount': dest_amount - orig_amount, 'unit': unit,
             'created_at': max(dest_created_at, orig_created_at)}
+
+    def get_statement_balances(self, organization, until=None):
+        return self.get_queryset().get_statement_balances(
+            organization, until=until)
 
     def get_statement_balance(self, organization, until=None):
         return self.get_queryset().get_statement_balance(
