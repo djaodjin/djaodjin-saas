@@ -430,9 +430,9 @@ couponControllers.controller("CouponListCtrl",
         startingDay: 1
     };
 
-    $scope.initDate = new Date("2017-15-20");
+    $scope.initDate = new Date("2018-01-01");
     $scope.minDate = new Date();
-    $scope.maxDate = new Date("2017-01-01");
+    $scope.maxDate = new Date("2018-01-01");
     $scope.formats = ["dd-MMMM-yyyy", "yyyy/MM/dd", "dd.MM.yyyy", "shortDate"];
     $scope.format = $scope.formats[0];
 
@@ -637,9 +637,9 @@ subscriptionControllers.controller("subscriptionListCtrl",
         startingDay: 1
     };
 
-    $scope.initDate = new Date("2017-15-20");
+    $scope.initDate = new Date("2018-01-01");
     $scope.minDate = new Date();
-    $scope.maxDate = new Date("2017-01-01");
+    $scope.maxDate = new Date("2018-01-01");
     $scope.formats = ["dd-MMMM-yyyy", "yyyy/MM/dd", "dd.MM.yyyy", "shortDate"];
     $scope.format = $scope.formats[0];
     $scope.ends_at = moment().endOf("day").toDate();
@@ -996,7 +996,7 @@ importTransactionsControllers.controller("importTransactionsCtrl",
         startingDay: 1
     };
     $scope.minDate = new Date('2015-01-01');
-    $scope.maxDate = new Date('2017-01-01');
+    $scope.maxDate = new Date('2018-01-01');
     $scope.opened = {};
 
     $scope.subscription = null; // XXX really a subscription so far.
