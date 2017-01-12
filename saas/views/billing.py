@@ -307,7 +307,8 @@ class CardInvoicablesFormMixin(CardFormMixin, InvoicablesFormMixin):
         # and we don't want to keep the edited state on a card failure.
         self.sole_provider = None
         if not self.invoicables:
-            LOGGER.error("No invoicables for user %s", self.request.user)
+            LOGGER.error("No invoicables for user %s", self.request.user,
+                extra={'request': self.request})
             messages.info(self.request,
               "There are no items invoicable at this point. Please select an"\
 " item before checking out.")

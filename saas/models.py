@@ -2526,13 +2526,10 @@ class TransactionQuerySet(models.QuerySet):
                 raise ValueError('dest balances until %s for statement'\
 ' of %s have different unit (%s vs. %s).' % (until, organization,
                     unit, dest_balance['dest_unit']))
-        balances = {}
         for orig_balance in orig_balances:
             event_id = orig_balance['event_id']
             balance = (dest_balance_per_events.get(event_id, 0)
                 - orig_balance['orig_balance'])
-            if balance != 0:
-                balances.update({event_id: balance})
             if unit is None:
                 unit = orig_balance['orig_unit']
             elif unit != orig_balance['orig_unit']:
@@ -2540,6 +2537,10 @@ class TransactionQuerySet(models.QuerySet):
 'orig and dest balances until %s for statement'\
 ' of %s have different unit (%s vs. %s).' % (until, organization,
                     unit, orig_balance['orig_unit']))
+        balances = {}
+        for event_id, balance in dest_balance_per_events.iteritems():
+            if balance != 0:
+                balances.update({event_id: balance})
         return balances, unit
 
     def get_statement_balance(self, organization, until=None):
