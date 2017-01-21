@@ -68,8 +68,12 @@ class PostalFormMixin(object):
             widget = us_forms.USPSSelect
         else:
             widget = forms.widgets.TextInput
-        self.fields[field_name] = forms.CharField(
+        if field_name in self.fields:
+            self.fields[field_name].widget = widget()
+        else:
+            self.fields[field_name] = forms.CharField(
                 widget=widget, label='State/Province', required=required)
+
 
 
 class CreditCardForm(PostalFormMixin, forms.Form):

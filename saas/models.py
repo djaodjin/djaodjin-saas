@@ -391,7 +391,7 @@ class Organization(models.Model):
         return hashlib.sha1(salt+user.username).hexdigest()
 
     def add_role(self, user, role_descr,
-                 grant_key=None, at_time=None, reason=None):
+                 grant_key=None, at_time=None, reason=None, extra=None):
         """
         Add user with a role to organization.
         """
@@ -420,6 +420,7 @@ class Organization(models.Model):
                 force_insert = True
             m2m.role_description = role_descr
             m2m.request_key = None
+            m2m.extra = extra
             m2m.save(using=self._state.db, force_insert=force_insert)
             signals.user_relation_added.send(sender=__name__,
                 role=m2m, reason=reason)
@@ -439,13 +440,13 @@ class Organization(models.Model):
             signals.user_relation_requested.send(sender=__name__,
                 organization=self, user=user, reason=reason)
 
-    def add_manager(self, user, at_time=None, reason=None):
+    def add_manager(self, user, at_time=None, reason=None, extra=None):
         """
         Add user as a manager to organization.
         """
         #pylint: disable=unused-argument
         return self.add_role(user, settings.MANAGER,
-            at_time=at_time, reason=reason)
+            at_time=at_time, reason=reason, extra=extra)
 
     def remove_role(self, user, role_name):
         """
@@ -993,6 +994,7 @@ class Role(models.Model):
     role_description = models.ForeignKey(RoleDescription, null=True)
     request_key = models.CharField(max_length=40, null=True, blank=True)
     grant_key = models.CharField(max_length=40, null=True, blank=True)
+    extra = settings.get_extra_field_class()(null=True)
 
     class Meta:
         unique_together = ('organization', 'user')
