@@ -1,4 +1,4 @@
-# Copyright (c) 2016, DjaoDjin inc.
+# Copyright (c) 2017, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -29,7 +29,6 @@ URLs for the saas django app
 from django.conf.urls import include, url
 
 from ...settings import ACCT_REGEX
-from ...views import OrganizationRedirectView
 from ...views.profile import OrganizationCreateView
 
 
@@ -38,5 +37,5 @@ urlpatterns = [
         name='saas_organization_create'),
     url(r'^', include('saas.urls.subscriber.billing')),
     url(r'^', include('saas.urls.subscriber.profile')),
-    url(r'^users/', include('saas.urls.users')),
+    url(r'^', include('saas.urls.users')),
 ]

@@ -1,4 +1,4 @@
-# Copyright (c) 2016, DjaoDjin inc.
+# Copyright (c) 2017, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -25,7 +25,7 @@
 from django.contrib.auth.decorators import login_required
 from django.core.urlresolvers import reverse_lazy
 from django.views.generic import TemplateView
-from saas.views import OrganizationRedirectView, UserRedirectView
+from saas.views import OrganizationRedirectView
 from saas.views.plans import CartPlanListView
 from urldecorators import include, url
 
@@ -90,15 +90,14 @@ urlpatterns = [
         decorators=['saas.decorators.requires_provider']),
     url_prefixed(r'pricing/', CartPlanListView.as_view(),
         name='saas_cart_plan_list'),
-    url_prefixed(r'users/$',
-        UserRedirectView.as_view(), name='accounts_profile',
-        decorators=['django.contrib.auth.decorators.login_required']),
     url_prefixed(r'', include('saas.urls.request'),
         decorators=['django.contrib.auth.decorators.login_required']),
     url_prefixed(r'', include('saas.urls.noauth')),
-    url_prefixed(r'', include('saas.urls.provider'),
-        decorators=['saas.decorators.requires_direct']),
     url_prefixed(r'', include('saas.urls.broker'),
+        decorators=['saas.decorators.requires_direct']),
+    url_prefixed(r'', include('saas.urls.redirects'),
+        decorators=['django.contrib.auth.decorators.login_required']),
+    url_prefixed(r'', include('saas.urls.provider'),
         decorators=['saas.decorators.requires_direct']),
     url_prefixed(r'', include('saas.urls.subscriber'),
         decorators=['saas.decorators.requires_provider',

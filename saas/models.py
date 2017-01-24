@@ -157,7 +157,7 @@ class OrganizationManager(models.Manager):
 
     def with_role(self, user, role_slug):
         """
-        Returns a QuerySet of Organziation for which *user* has a *role*
+        Returns a QuerySet of Organziation for which *user* has a role
         which slug is *role_slug*.
         """
         user_model = get_user_model()

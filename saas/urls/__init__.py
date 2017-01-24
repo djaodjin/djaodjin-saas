@@ -1,4 +1,4 @@
-# Copyright (c) 2016, DjaoDjin inc.
+# Copyright (c) 2017, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -28,9 +28,6 @@ URLs for the saas django app
 
 from django.conf.urls import include, url
 
-from ..settings import ACCT_REGEX
-from ..views import OrganizationRedirectView
-from ..views.plans import CartPlanListView
 
 urlpatterns = [
     url(r'^api/', include('saas.urls.api')),

@@ -35,7 +35,7 @@ from ....settings import ACCT_REGEX
 
 
 urlpatterns = [
-    url(r'^(?P<organization>%s)/billings/?' % ACCT_REGEX,
+    url(r'^(?P<organization>%s)/history/?' % ACCT_REGEX,
         BillingsAPIView.as_view(), name='saas_api_billings'),
     url(r'^(?P<organization>%s)/card/?' % ACCT_REGEX,
         RetrieveCardAPIView.as_view(), name='saas_api_card'),

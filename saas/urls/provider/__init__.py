@@ -1,4 +1,4 @@
-# Copyright (c) 2016, DjaoDjin inc.
+# Copyright (c) 2017, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -31,6 +31,5 @@ from django.conf.urls import include, url
 urlpatterns = [
     url(r'^', include('saas.urls.provider.billing')),
     url(r'^', include('saas.urls.provider.metrics')),
-    url(r'^', include('saas.urls.provider.download')),
     url(r'^', include('saas.urls.provider.profile')),
 ]

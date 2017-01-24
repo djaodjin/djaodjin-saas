@@ -28,14 +28,8 @@ URLs related to billing.
 
 from django.conf.urls import url, include
 
-from ....settings import ACCT_REGEX
-from ....views import OrganizationRedirectView
-
 
 urlpatterns = [
-    url(r'^billing/cart/',
-        OrganizationRedirectView.as_view(pattern_name='saas_organization_cart'),
-        name='saas_cart'),
     url(r'^', include('saas.urls.subscriber.billing.payment')),
     url(r'^', include('saas.urls.subscriber.billing.info')),
 ]

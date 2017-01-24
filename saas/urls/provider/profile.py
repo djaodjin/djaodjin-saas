@@ -1,4 +1,4 @@
-# Copyright (c) 2016, DjaoDjin inc.
+# Copyright (c) 2017, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -30,31 +30,13 @@ from django.conf.urls import url
 from django.views.generic import TemplateView
 
 from ...settings import ACCT_REGEX
-from ...views import ProviderRedirectView
 from ...views.plans import PlanCreateView, PlanUpdateView
 from ...views.profile import SubscriberListView
+from ...views.metrics import (ActiveSubscriptionDownloadView,
+    ChurnedSubscriptionDownloadView)
 
 
 urlpatterns = [
-    url(r'^profile/roles/(?P<role>%s)/' % ACCT_REGEX,
-        ProviderRedirectView.as_view(pattern_name='saas_role_detail'),
-        name='saas_provider_role_list'),
-    url(r'^profile/plans/new/',
-        ProviderRedirectView.as_view(pattern_name='saas_plan_new'),
-        name='saas_provider_plan_new'),
-    url(r'^profile/plans/(?P<plan>%s)/$' % ACCT_REGEX,
-        ProviderRedirectView.as_view(pattern_name='saas_plan_edit'),
-        name='saas_provider_plan_edit'),
-    url(r'^profile/plans/',
-        ProviderRedirectView.as_view(pattern_name='saas_plan_base'),
-        name='saas_provider_plan_base'),
-    url(r'^profile/subscribers/',
-        ProviderRedirectView.as_view(pattern_name='saas_subscriber_list'),
-        name='saas_provider_subscriber_list'),
-    url(r'^provider/$',
-        ProviderRedirectView.as_view(pattern_name='saas_organization_profile'),
-        name='saas_provider_profile'),
-
     url(r'^profile/(?P<organization>%s)/plans/new/' % ACCT_REGEX,
         PlanCreateView.as_view(), name='saas_plan_new'),
     url(r'^profile/(?P<organization>%s)/plans/(?P<plan>%s)/'
@@ -62,6 +44,14 @@ urlpatterns = [
         PlanUpdateView.as_view(), name='saas_plan_edit'),
     url(r'^profile/(?P<organization>%s)/plans/' % ACCT_REGEX,
         TemplateView.as_view(), name='saas_plan_base'),
+    url(r'^profile/(?P<organization>%s)/subscribers/active/download/?'
+        % ACCT_REGEX,
+        ActiveSubscriptionDownloadView.as_view(),
+        name='saas_subscriber_pipeline_download_subscribed'),
+    url(r'profile/(?P<organization>%s)/subscribers/churned/download/?'
+        % ACCT_REGEX,
+        ChurnedSubscriptionDownloadView.as_view(),
+        name='saas_subscriber_pipeline_download_churned'),
     url(r'^profile/(?P<organization>%s)/subscribers/' % ACCT_REGEX,
         SubscriberListView.as_view(), name='saas_subscriber_list'),
 ]

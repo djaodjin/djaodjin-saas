@@ -1,4 +1,4 @@
-# Copyright (c) 2016, DjaoDjin inc.
+# Copyright (c) 2017, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -34,20 +34,20 @@ from ..views.billing import ChargeListView, AllTransactions
 from ..views.download import BalancesDownloadView, TransactionDownloadView
 
 urlpatterns = [
-    url(r'^download/balances/(?P<report>%s)/((?P<year>\d\d\d\d)/)?'
-        % settings.ACCT_REGEX,
-        BalancesDownloadView.as_view(), name='saas_balances_download'),
-    url(r'^download/transactions/?',
-        TransactionDownloadView.as_view(),
-        name='saas_transactions_download'),
     url(r'^billing/charges/',
         ChargeListView.as_view(), name='saas_charges'),
+    url(r'^billing/transactions/((?P<selector>%s)/)?download/?',
+        TransactionDownloadView.as_view(),
+        name='saas_transactions_download'),
     url(r'^billing/transactions/((?P<selector>%s)/)?' % settings.SELECTOR_RE,
         AllTransactions.as_view(), name='saas_broker_transactions'),
+    url(r'^metrics/balances/(?P<report>%s)/((?P<year>\d\d\d\d)/)?download/?'
+        % settings.ACCT_REGEX,
+        BalancesDownloadView.as_view(), name='saas_balances_download'),
     url(r'^metrics/balances/(?P<report>%s)/((?P<year>\d\d\d\d)/)?'
         % settings.ACCT_REGEX,
         BalancesView.as_view(), name='saas_balance'),
-    url(r'^download/registered/?',
+    url(r'^metrics/registered/download/?',
         RegisteredDownloadView.as_view(),
         name='saas_subscriber_pipeline_download_registered'),
 ]

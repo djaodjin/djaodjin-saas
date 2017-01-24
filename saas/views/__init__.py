@@ -1,4 +1,4 @@
-# Copyright (c) 2016, DjaoDjin inc.
+# Copyright (c) 2017, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -170,22 +170,22 @@ class OrganizationRedirectView(TemplateResponseMixin, RedirectView):
     template_name = 'saas/organization_redirects.html'
     slug_url_kwarg = 'organization'
     permanent = False
+    create_more = False
 
     def get(self, request, *args, **kwargs):
         session_cart_to_database(request)
-        managed = Organization.objects.with_role(request.user, settings.MANAGER)
-        count = managed.count()
+        accessibles = Organization.objects.accessible_by(request.user)
+        count = accessibles.count()
         if count == 0:
             return http.HttpResponseRedirect(
                 reverse('saas_organization_create'))
-        if count == 1:
-            organization = managed.get()
-            if organization.slug == request.user.username:
-                kwargs.update({self.slug_url_kwarg: managed.get()})
-                return super(OrganizationRedirectView, self).get(
-                    request, *args, **kwargs)
+        if count == 1 and not self.create_more:
+            organization = accessibles.get()
+            kwargs.update({self.slug_url_kwarg: accessibles.get()})
+            return super(OrganizationRedirectView, self).get(
+                request, *args, **kwargs)
         redirects = []
-        for organization in managed:
+        for organization in accessibles:
             kwargs.update({self.slug_url_kwarg: organization})
             url = super(OrganizationRedirectView, self).get_redirect_url(
                 *args, **kwargs)

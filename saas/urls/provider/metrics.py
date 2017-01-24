@@ -1,4 +1,4 @@
-# Copyright (c) 2016, DjaoDjin inc.
+# Copyright (c) 2017, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -27,26 +27,15 @@
 from django.conf.urls import url
 
 from ...settings import ACCT_REGEX
-from ...views import ProviderRedirectView
 from ...views.profile import DashboardView
-from ...views.metrics import (CouponMetricsView, PlansMetricsView,
-    RevenueMetricsView)
+from ...views.metrics import (CouponMetricsView, CouponMetricsDownloadView,
+    PlansMetricsView, RevenueMetricsView)
 
 
 urlpatterns = [
-    url(r'^metrics/dashboard/',
-        ProviderRedirectView.as_view(pattern_name='saas_dashboard'),
-        name='saas_provider_dashboard'),
-    url(r'^metrics/revenue/',
-        ProviderRedirectView.as_view(pattern_name='saas_metrics_summary'),
-        name='saas_provider_metrics_revenue'),
-    url(r'^metrics/plans/',
-        ProviderRedirectView.as_view(pattern_name='saas_metrics_plans'),
-        name='saas_provider_metrics_plans'),
-    url(r'^metrics/coupons/((?P<coupon>%s)/)?' % ACCT_REGEX,
-        ProviderRedirectView.as_view(pattern_name='saas_metrics_coupons'),
-        name='saas_provider_metrics_coupons'),
-
+    url(r'^metrics/(?P<organization>%s)/coupons/download/?' % ACCT_REGEX,
+        CouponMetricsDownloadView.as_view(),
+        name='saas_metrics_coupons_download'),
     url(r'^metrics/(?P<organization>%s)/coupons/((?P<coupon>%s)/)?'
         % (ACCT_REGEX, ACCT_REGEX),
         CouponMetricsView.as_view(), name='saas_metrics_coupons'),
@@ -56,8 +45,4 @@ urlpatterns = [
         RevenueMetricsView.as_view(), name='saas_metrics_summary'),
     url(r'^metrics/(?P<organization>%s)/plans/' % ACCT_REGEX,
         PlansMetricsView.as_view(), name='saas_metrics_plans'),
-
-    url(r'^metrics/',
-        ProviderRedirectView.as_view(pattern_name='saas_metrics_summary'),
-        name='saas_provider_metrics_summary'),
 ]

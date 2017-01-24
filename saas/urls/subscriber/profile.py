@@ -1,4 +1,4 @@
-# Copyright (c) 2016, DjaoDjin inc.
+# Copyright (c) 2017, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -27,7 +27,6 @@
 from django.conf.urls import url
 
 from ...settings import ACCT_REGEX
-from ...views import OrganizationRedirectView
 from ...views.profile import (RoleDetailView, RoleListView,
     OrganizationProfileView, SubscriptionListView)
 
@@ -39,10 +38,6 @@ urlpatterns = [
         RoleListView.as_view(), name='saas_role_list'),
     url(r'^profile/(?P<organization>%s)/subscriptions/' % ACCT_REGEX,
         SubscriptionListView.as_view(), name='saas_subscription_list'),
-    url(r'^profile/(?P<organization>%s)/$' % ACCT_REGEX,
+    url(r'^profile/(?P<organization>%s)/contact/' % ACCT_REGEX,
         OrganizationProfileView.as_view(), name='saas_organization_profile'),
-    url(r'^profile/$', OrganizationRedirectView.as_view(
-            pattern_name='saas_organization_profile'),
-        name='saas_profile'),
 ]
-
