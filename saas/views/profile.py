@@ -1,4 +1,4 @@
-# Copyright (c) 2016, DjaoDjin inc.
+# Copyright (c) 2017, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -37,13 +37,13 @@ from .. import signals
 from ..decorators import _valid_manager
 from ..forms import (OrganizationForm, OrganizationCreateForm,
     ManagerAndOrganizationForm)
-from ..mixins import OrganizationMixin, ProviderMixin
+from ..mixins import OrganizationMixin, ProviderMixin, RoleDescriptionMixin
 from ..models import Organization, Subscription, get_broker, is_broker
 
 
-class RoleDetailView(OrganizationMixin, TemplateView):
+class RoleDetailView(RoleDescriptionMixin, TemplateView):
     """
-    List of user with a *role* for an organization.
+    List of users with a specific role for an organization.
 
     Template:
 
@@ -55,17 +55,25 @@ class RoleDetailView(OrganizationMixin, TemplateView):
     API end point to fetch the set of users with the specified role.
 
     Template context:
-      - ``role`` The name of role that defines the permissions of users
-        on an organization
+      - ``role_descr`` Description of the role that defines
+        the permissions of users on an organization
       - ``organization`` The organization object users have permissions to.
       - ``request`` The HTTP request object
     """
-    template_name = 'saas/profile/role_detail.html'
+    template_name = 'saas/profile/roles/role.html'
+
+    def get_template_names(self):
+        candidates = []
+        role = self.kwargs.get('role', None)
+        if role:
+            candidates = ['saas/profile/roles/%s.html' % role]
+        candidates += super(RoleDetailView, self).get_template_names()
+        return candidates
 
     def get_context_data(self, **kwargs):
         context = super(RoleDetailView, self).get_context_data(**kwargs)
         role = self.kwargs.get('role', None)
-        context.update({'role': role})
+        context.update({'role_descr': self.role_description})
         urls = {'organization': {
             'api_roles': reverse(
                 'saas_api_role_filtered_list', args=(self.organization, role)),
@@ -80,7 +88,7 @@ class RoleListView(OrganizationMixin, TemplateView):
     under each role.
     """
 
-    template_name = 'saas/profile/roles.html'
+    template_name = 'saas/profile/roles/index.html'
 
     def get_context_data(self, **kwargs):
         context = super(RoleListView, self).get_context_data(**kwargs)

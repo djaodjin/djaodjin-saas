@@ -379,6 +379,13 @@ class Organization(models.Model):
             Q(organization=self) | Q(organization__isnull=True),
             slug=RoleDescription.normalize_slug(role_slug))
 
+    def get_role_descriptions(self):
+        """
+        Queryset of roles a ``User`` can take on this ``Organization``.
+        """
+        return RoleDescription.objects.filter(
+            Q(organization=self) | Q(organization__isnull=True)).order_by('pk')
+
     def get_roles(self, role_descr):
         if not isinstance(role_descr, RoleDescription):
             role_descr = self.get_role_description(role_descr)

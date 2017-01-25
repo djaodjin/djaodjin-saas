@@ -1,4 +1,4 @@
-# Copyright (c) 2016, DjaoDjin inc.
+# Copyright (c) 2017, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -198,13 +198,11 @@ class AccessibleByListAPIView(RoleSmartListMixin,
 class RoleDescriptionQuerysetMixin(OrganizationMixin):
 
     serializer_class = RoleDescriptionCRUDSerializer
-    queryset = RoleDescription.objects.all()
     lookup_field = 'slug'
     lookup_url_kwarg = 'role'
 
     def get_queryset(self):
-        return super(RoleDescriptionQuerysetMixin, self).get_queryset().filter(
-            Q(organization=self.organization) | Q(organization__isnull=True))
+        return self.get_role_descriptions()
 
     @staticmethod
     def check_local(instance):

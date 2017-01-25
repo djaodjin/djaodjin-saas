@@ -1,4 +1,4 @@
-# Copyright (c) 2016, DjaoDjin inc.
+# Copyright (c) 2017, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -21,6 +21,8 @@
 # WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+from collections import OrderedDict
 
 from django.core.urlresolvers import NoReverseMatch, reverse
 from django.shortcuts import get_object_or_404
@@ -92,13 +94,12 @@ class OrganizationMixinBase(object):
                 # It is OK. We will just not resolve the link.
                 pass
         else:
-            urls['organization'].update({
-                'roles': reverse('saas_role_list',
-                    args=(organization,)),
-                'managers': reverse('saas_role_detail',
-                    args=(organization, 'managers')),
-                'contributors': reverse('saas_role_detail',
-                    args=(organization, 'contributors'))})
+            urls['organization']['roles'] = OrderedDict()
+            for role_descr in organization.get_role_descriptions():
+                urls['organization']['roles'].update({
+                    role_descr.title: reverse('saas_role_detail',
+                        args=(organization, role_descr.slug)),
+                })
 
         if (organization.is_provider
             and self.request.user.is_authenticated()
