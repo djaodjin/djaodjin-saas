@@ -355,14 +355,7 @@ class ChargeMixin(SingleObjectMixin):
                 args=(charge.customer, charge,))})
         except NoReverseMatch:
             pass
-        if 'urls' in context:
-            for key, val in urls.iteritems():
-                if key in context['urls']:
-                    context['urls'][key].update(val)
-                else:
-                    context['urls'].update({key: val})
-        else:
-            context.update({'urls': urls})
+        self.update_context_urls(context, urls)
         return context
 
 
@@ -866,7 +859,8 @@ def get_charge_context(charge):
     context = {'charge': charge,
                'charge_items': charge.line_items,
                'organization': charge.customer,
-               'provider': charge.broker} # XXX update templates
+               'provider': charge.broker, # XXX update templates
+    }
     return context
 
 

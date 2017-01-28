@@ -1321,7 +1321,8 @@ class Charge(models.Model):
             for charge_item in self.charge_items.all()])
         assert len(providers) <= 1
         if len(providers) == 0:
-            return []
+            # So it does not look weird when we are testing receipts
+            return get_broker()
         return providers[0]
 
     def dispute_created(self):

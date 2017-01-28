@@ -328,7 +328,7 @@ class StripeBackend(object):
                     expand=['default_source'],
                     **kwargs)
                 old_card = {'last4':p_customer.default_source.last4,
-                    'exp':"%d/%d" % (
+                    'exp_date':"%d/%d" % (
                         p_customer.default_source.exp_month,
                         p_customer.default_source.exp_year)
                 }
@@ -339,7 +339,7 @@ class StripeBackend(object):
                     expand=['default_source'],
                     **kwargs)
                 new_card = {'last4':p_customer.default_source.last4,
-                    'exp':"%d/%d" % (
+                    'exp_date':"%d/%d" % (
                         p_customer.default_source.exp_month,
                         p_customer.default_source.exp_year)
                 }
