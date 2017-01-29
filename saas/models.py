@@ -398,7 +398,8 @@ class Organization(models.Model):
         return hashlib.sha1(salt+user.username).hexdigest()
 
     def add_role(self, user, role_descr,
-                 grant_key=None, at_time=None, reason=None, extra=None):
+                 grant_key=None, at_time=None, reason=None, extra=None,
+                 request_user=None):
         """
         Add user with a role to organization.
         """
@@ -430,7 +431,7 @@ class Organization(models.Model):
             m2m.extra = extra
             m2m.save(using=self._state.db, force_insert=force_insert)
             signals.user_relation_added.send(sender=__name__,
-                role=m2m, reason=reason)
+                role=m2m, reason=reason, request_user=request_user)
             return True
         return False
 
@@ -447,13 +448,15 @@ class Organization(models.Model):
             signals.user_relation_requested.send(sender=__name__,
                 organization=self, user=user, reason=reason)
 
-    def add_manager(self, user, at_time=None, reason=None, extra=None):
+    def add_manager(self, user, at_time=None, reason=None, extra=None,
+                    request_user=None):
         """
         Add user as a manager to organization.
         """
-        #pylint: disable=unused-argument
+        #pylint: disable=unused-argument,too-many-arguments
         return self.add_role(user, settings.MANAGER,
-            at_time=at_time, reason=reason, extra=extra)
+            at_time=at_time, reason=reason, extra=extra,
+            request_user=request_user)
 
     def remove_role(self, user, role_name):
         """

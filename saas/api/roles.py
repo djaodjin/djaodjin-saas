@@ -177,7 +177,7 @@ class AccessibleByListAPIView(RoleSmartListMixin,
                     manager = user_model.objects.get(email=email)
                 except user_model.DoesNotExist:
                     manager = user_model.objects.create_user(email, email=email)
-                organization.add_manager(manager)
+                organization.add_manager(manager, request_user=request.user)
 
             reason = serializer.validated_data.get('message', None)
             if reason:
@@ -477,7 +477,8 @@ class RoleFilteredListAPIView(RoleSmartListMixin, RoleByDescrQuerysetMixin,
         if reason:
             reason = force_text(reason)
         created = self.organization.add_role(
-            user, self.role_description, grant_key=grant_key, reason=reason)
+            user, self.role_description, grant_key=grant_key, reason=reason,
+            request_user=request.user)
         if created:
             resp_status = status.HTTP_201_CREATED
         else:
