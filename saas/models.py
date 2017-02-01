@@ -2541,8 +2541,9 @@ class TransactionQuerySet(models.QuerySet):
                     unit, dest_balance['dest_unit']))
         for orig_balance in orig_balances:
             event_id = orig_balance['event_id']
-            balance = (dest_balance_per_events.get(event_id, 0)
-                - orig_balance['orig_balance'])
+            dest_balance_per_events.update({
+                event_id: (dest_balance_per_events.get(event_id, 0)
+                           - orig_balance['orig_balance'])})
             if unit is None:
                 unit = orig_balance['orig_unit']
             elif unit != orig_balance['orig_unit']:
