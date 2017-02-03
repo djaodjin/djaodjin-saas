@@ -1,4 +1,4 @@
-# Copyright (c) 2016, DjaoDjin inc.
+# Copyright (c) 2017, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -152,6 +152,14 @@ class OrganizationListAPIView(OrganizationSmartListMixin,
         }
     """
     serializer_class = OrganizationSerializer
+
+    def get_queryset(self):
+        # If there are no sort order, we sort by ``full_name``
+        # since /api/profile/ is used by typeahead inputs.
+        queryset = super(OrganizationListAPIView, self).get_queryset()
+        if self.sort_param_name not in self.request.GET:
+            queryset = queryset.order_by(self.sort_fields_aliases[0][0])
+        return queryset
 
 
 class SubscribersQuerysetMixin(ProviderMixin):
