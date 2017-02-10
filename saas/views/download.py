@@ -30,7 +30,7 @@ from __future__ import unicode_literals
 
 import csv
 from decimal import Decimal
-from io import StringIO
+from io import BytesIO
 
 from django.http import HttpResponse
 from django.views.generic import View
@@ -54,10 +54,10 @@ class CSVDownloadView(View):
     headings = []
 
     def get(self, *args, **kwargs): #pylint: disable=unused-argument
-        content = StringIO()
+        content = BytesIO()
         csv_writer = csv.writer(content)
-        print "XXX get_headings=%s" % str(self.get_headings())
-        csv_writer.writerow(self.get_headings())
+        csv_writer.writerow([head.encode('utf-8')
+            for head in self.get_headings()])
         for record in self.get_queryset():
             csv_writer.writerow(self.queryrow_to_columns(record))
         content.seek(0)
@@ -245,12 +245,12 @@ class TransactionDownloadView(SmartTransactionListMixin,
         return [
             transaction.created_at.date(),
             humanize.as_money(transaction.dest_amount, transaction.dest_unit,
-                negative_format="-%s"),
+                negative_format="-%s").encode('utf-8'),
             transaction.dest_unit.encode('utf-8'),
             transaction.dest_organization.printable_name.encode('utf-8'),
             transaction.dest_account.encode('utf-8'),
             humanize.as_money(transaction.orig_amount, transaction.orig_unit,
-                negative_format="-%s"),
+                negative_format="-%s").encode('utf-8'),
             transaction.orig_unit.encode('utf-8'),
             transaction.orig_organization.printable_name.encode('utf-8'),
             transaction.orig_account.encode('utf-8'),
