@@ -36,7 +36,7 @@ from django.http.request import split_domain_port, validate_host
 from django.shortcuts import get_object_or_404
 from django.utils import six
 from django.views.generic import RedirectView
-from django.views.generic.base import TemplateResponseMixin
+from django.views.generic.base import ContextMixin, TemplateResponseMixin
 from django.views.generic.edit import FormMixin, ProcessFormView
 
 from .. import settings
@@ -161,7 +161,8 @@ class RedirectFormMixin(FormMixin):
         return context
 
 
-class OrganizationRedirectView(TemplateResponseMixin, RedirectView):
+class OrganizationRedirectView(TemplateResponseMixin, ContextMixin,
+                               RedirectView):
     """
     Find the ``Organization`` associated with the request user
     and return the URL that contains the organization slug
@@ -172,14 +173,33 @@ class OrganizationRedirectView(TemplateResponseMixin, RedirectView):
     slug_url_kwarg = 'organization'
     permanent = False
     create_more = False
+    create_on_none = False
+
+    @staticmethod
+    def update_context_urls(context, urls):
+        if 'urls' in context:
+            for key, val in six.iteritems(urls):
+                if key in context['urls']:
+                    context['urls'][key].update(val)
+                else:
+                    context['urls'].update({key: val})
+        else:
+            context.update({'urls': urls})
+        return context
 
     def get(self, request, *args, **kwargs):
         session_cart_to_database(request)
         accessibles = Organization.objects.accessible_by(request.user)
         count = accessibles.count()
+        next_url = self.get_redirect_url(*args, **kwargs)
+        if next_url:
+            create_url = '%s?next=%s' % (
+                reverse('saas_organization_create'), next_url)
+        else:
+            create_url = reverse('saas_organization_create')
         if count == 0:
-            return http.HttpResponseRedirect(
-                reverse('saas_organization_create'))
+            if self.create_on_none:
+                return http.HttpResponseRedirect(create_url)
         if count == 1 and not self.create_more:
             organization = accessibles.get()
             kwargs.update({self.slug_url_kwarg: accessibles.get()})
@@ -191,14 +211,9 @@ class OrganizationRedirectView(TemplateResponseMixin, RedirectView):
             url = super(OrganizationRedirectView, self).get_redirect_url(
                 *args, **kwargs)
             redirects += [(url, organization.printable_name, organization.slug)]
-        context = {'redirects': redirects}
-        urls = {
-            'organization_create': reverse('saas_organization_create')
-        }
-        if 'urls' in context:
-            context['urls'].update(urls)
-        else:
-            context.update({'urls': urls})
+        context = self.get_context_data(**kwargs)
+        context.update({'redirects': redirects})
+        self.update_context_urls(context, {'organization_create': create_url})
         return self.render_to_response(context)
 
 

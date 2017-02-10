@@ -25,8 +25,8 @@
 from collections import OrderedDict
 
 from django.core.urlresolvers import NoReverseMatch, reverse
-from django.utils.six import iteritems
 from django.shortcuts import get_object_or_404
+from django.utils import six
 
 # Implementation Note:
 #
@@ -63,6 +63,7 @@ class OrganizationMixinBase(object):
         urls = {
             'api_cart': reverse('saas_api_cart'),
             'api_redeem': reverse('saas_api_redeem_coupon'),
+            'organization_create': reverse('saas_organization_create')
         }
 
         # URLs for both sides (subscriber and provider).
@@ -79,8 +80,7 @@ class OrganizationMixinBase(object):
             'billing': reverse('saas_billing_info', args=(organization,)),
             'subscriptions': reverse(
                 'saas_subscription_list', args=(organization,)),
-        },
-            'organization_create': reverse('saas_organization_create')})
+        }})
 
         # The following `attached_user` will trigger a db query
         # even when `request.user` is anonymous.
@@ -145,9 +145,14 @@ class OrganizationMixinBase(object):
     @staticmethod
     def update_context_urls(context, urls):
         if 'urls' in context:
-            for key, val in iteritems(urls):
+            for key, val in six.iteritems(urls):
                 if key in context['urls']:
-                    context['urls'][key].update(val)
+                    if isinstance(val, dict):
+                        context['urls'][key].update(val)
+                    else:
+                        # Because organization_create url is added in this mixin
+                        # and in ``OrganizationRedirectView``.
+                        context['urls'][key] = val
                 else:
                     context['urls'].update({key: val})
         else:
