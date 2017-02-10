@@ -27,9 +27,10 @@
 from django.conf.urls import url
 
 from ...settings import ACCT_REGEX
+from ...views.download import CouponMetricsDownloadView
 from ...views.profile import DashboardView
-from ...views.metrics import (CouponMetricsView, CouponMetricsDownloadView,
-    PlansMetricsView, RevenueMetricsView)
+from ...views.metrics import (CouponMetricsView, PlansMetricsView,
+    RevenueMetricsView)
 
 
 urlpatterns = [

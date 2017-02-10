@@ -22,9 +22,11 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-'''
+"""
 CSV download view basics.
-'''
+"""
+
+from __future__ import unicode_literals
 
 import csv
 from decimal import Decimal
@@ -33,13 +35,16 @@ from io import StringIO
 from django.http import HttpResponse
 from django.views.generic import View
 
+from ..api.coupons import SmartCouponListMixin, CouponQuerysetMixin
 from ..api.transactions import (BillingsQuerysetMixin,
     SmartTransactionListMixin, TransactionQuerysetMixin, TransferQuerysetMixin)
+from ..api.users import RegisteredQuerysetMixin
 from .. import humanize
 from ..managers.metrics import (abs_monthly_balances, monthly_balances,
     month_periods)
-from ..mixins import MetricsMixin
-from ..models import BalanceLine
+from ..mixins import (MetricsMixin, ChurnedQuerysetMixin,
+    SubscriptionSmartListMixin, SubscribedQuerysetMixin, UserSmartListMixin)
+from ..models import BalanceLine, CartItem
 from ..utils import datetime_or_now
 
 
@@ -51,6 +56,7 @@ class CSVDownloadView(View):
     def get(self, *args, **kwargs): #pylint: disable=unused-argument
         content = StringIO()
         csv_writer = csv.writer(content)
+        print "XXX get_headings=%s" % str(self.get_headings())
         csv_writer.writerow(self.get_headings())
         for record in self.get_queryset():
             csv_writer.writerow(self.queryrow_to_columns(record))
@@ -97,6 +103,120 @@ class BalancesDownloadView(MetricsMixin, CSVDownloadView):
             balances_func = monthly_balances
         return [balance_line.title] + [item[1] for item in balances_func(
             like_account=balance_line.selector, until=self.ends_at)]
+
+
+class CouponMetricsDownloadView(SmartCouponListMixin, CouponQuerysetMixin,
+                                CSVDownloadView):
+
+    headings = [
+        'Code',
+        'Percentage',
+        'Name',
+        'Email',
+        'Plan',
+    ]
+
+    def get_headings(self):
+        return self.headings
+
+    def get_filename(self):
+        return datetime_or_now().strftime('coupons-%Y%m%d.csv')
+
+    def get_queryset(self):
+        '''
+        Return CartItems related to the Coupon specified in the URL.
+        '''
+        # invoke SmartCouponListMixin to get the coupon specified by URL params
+        coupons = super(CouponMetricsDownloadView, self).get_queryset()
+        # get related CartItems
+        return CartItem.objects.filter(coupon__in=coupons)
+
+    def queryrow_to_columns(self, cartitem):
+        if cartitem.user:
+            claim_code = 'CLAIMED'
+            email = cartitem.user.email
+            full_name = ' '.join([
+                cartitem.user.first_name, cartitem.user.last_name])
+        else:
+            claim_code = cartitem.claim_code
+            full_name = ' '.join([cartitem.first_name, cartitem.last_name])
+            email = cartitem.email
+        return [
+            cartitem.coupon.code.encode('utf-8'),
+            cartitem.coupon.percent,
+            full_name.encode('utf-8'),
+            email.encode('utf-8'),
+            cartitem.plan.slug.encode('utf-8'),
+            claim_code.encode('utf-8')]
+
+
+class RegisteredBaseDownloadView(RegisteredQuerysetMixin, CSVDownloadView):
+
+    def get_headings(self):
+        return ['First name', 'Last name', 'Email', 'Registration Date']
+
+    def get_filename(self):
+        return 'registered-{}.csv'.format(datetime_or_now().strftime('%Y%m%d'))
+
+    def queryrow_to_columns(self, instance):
+        return [
+            instance.first_name.encode('utf-8'),
+            instance.last_name.encode('utf-8'),
+            instance.email.encode('utf-8'),
+            instance.date_joined.date(),
+        ]
+
+
+class RegisteredDownloadView(UserSmartListMixin, RegisteredBaseDownloadView):
+
+    pass
+
+
+class SubscriptionBaseDownloadView(CSVDownloadView):
+
+    subscriber_type = None
+
+    def get_queryset(self):
+        raise NotImplementedError()
+
+    def get_headings(self):
+        return ['Name', 'Email', 'Plan', 'Since', 'Until']
+
+    def get_filename(self):
+        return 'subscribers-{}-{}.csv'.format(
+            self.subscriber_type, datetime_or_now().strftime('%Y%m%d'))
+
+    def queryrow_to_columns(self, instance):
+        return [
+            instance.organization.full_name.encode('utf-8'),
+            instance.organization.email.encode('utf-8'),
+            instance.plan.title.encode('utf-8'),
+            instance.created_at.date(),
+            instance.ends_at.date(),
+        ]
+
+
+class ActiveSubscriptionBaseDownloadView(SubscribedQuerysetMixin,
+                                         SubscriptionBaseDownloadView):
+
+    subscriber_type = 'active'
+
+class ActiveSubscriptionDownloadView(SubscriptionSmartListMixin,
+                                     ActiveSubscriptionBaseDownloadView):
+
+    pass
+
+
+class ChurnedSubscriptionBaseDownloadView(ChurnedQuerysetMixin,
+                                         SubscriptionBaseDownloadView):
+
+    subscriber_type = 'churned'
+
+
+class ChurnedSubscriptionDownloadView(SubscriptionSmartListMixin,
+                                      ChurnedSubscriptionBaseDownloadView):
+
+    pass
 
 
 class TransactionDownloadView(SmartTransactionListMixin,

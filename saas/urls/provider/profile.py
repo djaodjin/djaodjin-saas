@@ -30,10 +30,10 @@ from django.conf.urls import url
 from django.views.generic import TemplateView
 
 from ...settings import ACCT_REGEX
+from ...views.download import (ActiveSubscriptionDownloadView,
+    ChurnedSubscriptionDownloadView)
 from ...views.plans import PlanCreateView, PlanUpdateView
 from ...views.profile import SubscriberListView
-from ...views.metrics import (ActiveSubscriptionDownloadView,
-    ChurnedSubscriptionDownloadView)
 
 
 urlpatterns = [

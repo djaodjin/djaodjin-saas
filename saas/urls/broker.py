@@ -29,9 +29,10 @@ Urls specific to the hosting site (i.e. broker).
 from django.conf.urls import url
 
 from .. import settings
-from ..views.metrics import BalancesView, RegisteredDownloadView
+from ..views.metrics import BalancesView
 from ..views.billing import ChargeListView, AllTransactions
-from ..views.download import BalancesDownloadView, TransactionDownloadView
+from ..views.download import (BalancesDownloadView, RegisteredDownloadView,
+    TransactionDownloadView)
 
 urlpatterns = [
     url(r'^billing/charges/',
