@@ -24,6 +24,8 @@
 
 import datetime, logging
 
+from django.utils import six
+
 from ..utils import datetime_or_now, generate_random_slug
 from .. import settings
 
@@ -42,7 +44,9 @@ class FakeProcessorBackend(object):
         fee_unit = unit
         available_amount = charge.amount - refunded
         if available_amount > 0:
-            fee_amount = (available_amount * 290 + 5000) / 10000 + 30
+            # integer division
+            fee_amount = (available_amount * 290 + 5000) // 10000 + 30
+            assert isinstance(fee_amount, six.integer_types)
         else:
             fee_amount = 0
         distribute_amount = available_amount - fee_amount

@@ -25,7 +25,7 @@
 """
 Helpers to redirect based on session.
 """
-import logging, re, urlparse
+import logging, re
 
 from django import http
 from django.conf import settings as django_settings
@@ -34,6 +34,7 @@ from django.contrib.auth import REDIRECT_FIELD_NAME
 from django.db import IntegrityError, transaction
 from django.http.request import split_domain_port, validate_host
 from django.shortcuts import get_object_or_404
+from django.utils import six
 from django.views.generic import RedirectView
 from django.views.generic.base import TemplateResponseMixin
 from django.views.generic.edit import FormMixin, ProcessFormView
@@ -55,7 +56,7 @@ def session_cart_to_database(request):
             for cart_item in cart_items:
                 cart_item.user = request.user
                 cart_item.save()
-    if request.session.has_key('cart_items'):
+    if 'cart_items' in request.session:
         with transaction.atomic():
             for item in request.session['cart_items']:
                 coupon = item.get('coupon', None)
@@ -124,7 +125,7 @@ class RedirectFormMixin(FormMixin):
         next_url = self.request.GET.get(REDIRECT_FIELD_NAME, None)
         if not next_url:
             return None
-        parts = urlparse.urlparse(next_url)
+        parts = six.moves.urllib.parse.urlparse(next_url)
         if parts.netloc:
             domain, _ = split_domain_port(parts.netloc)
             allowed_hosts = (['*'] if django_settings.DEBUG
@@ -143,7 +144,7 @@ class RedirectFormMixin(FormMixin):
                 # them. Most likely a redirect URL is present to pick between
                 # multiple choices.
                 path = re.sub(r'%(\S+)s/', '', path)
-        return urlparse.urlunparse((None, '', path,
+        return six.moves.urllib.parse.urlunparse((None, '', path,
             parts.params, parts.query, parts.fragment))
 
     def get_success_url(self):

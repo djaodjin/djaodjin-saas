@@ -31,6 +31,7 @@ import logging
 
 from dateutil.relativedelta import relativedelta
 from django.db import transaction
+from django.utils import six
 
 from . import humanize, signals
 from .models import (Charge, Organization, Plan, Subscription, Transaction,
@@ -77,8 +78,10 @@ def _recognize_subscription_income(subscription, until=None):
             # the interval.
             nb_periods = subscription.nb_periods(
                 recognize_start, recognize_end)
-            to_recognize_amount = int((nb_periods * order_amount)
-                / order_periods)
+            # XXX integer division
+            to_recognize_amount = int(
+                (nb_periods * order_amount) // order_periods)
+            assert isinstance(to_recognize_amount, six.integer_types)
             balance = Transaction.objects.get_subscription_income_balance(
                 subscription, starts_at=recognize_start, ends_at=recognize_end)
             recognized_amount = balance['amount']

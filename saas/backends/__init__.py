@@ -26,18 +26,19 @@ from importlib import import_module
 
 from django.conf import settings as django_settings
 from django.core.exceptions import ImproperlyConfigured
+from django.utils.encoding import python_2_unicode_compatible
 from stripe.error import APIConnectionError as ProcessorConnectionError
 
 from .. import settings
 
-
+@python_2_unicode_compatible
 class ProcessorError(RuntimeError):
 
     def __init__(self, message, backend_except=None):
         super(ProcessorError, self).__init__(message)
         self.backend_except = backend_except
 
-    def __unicode__(self):
+    def __str__(self):
         result = self.message
         if django_settings.DEBUG and self.backend_except:
             result += self.processor_details()
@@ -47,6 +48,7 @@ class ProcessorError(RuntimeError):
         return "(processor exception: %s)" % str(self.backend_except)
 
 
+@python_2_unicode_compatible
 class CardError(ProcessorError):
 
     def __init__(self, message, code,
@@ -55,7 +57,7 @@ class CardError(ProcessorError):
         self.code = code
         self.charge_processor_key = charge_processor_key
 
-    def __unicode__(self):
+    def __str__(self):
         if self.code == 'card_declined':
             return "Your card was declined. We are taking your security"\
 " seriously. When we submit a charge to your bank, they have automated"\
@@ -70,7 +72,7 @@ def load_backend(path):
     module, attr = path[:dot_pos], path[dot_pos + 1:]
     try:
         mod = import_module(module)
-    except (ImportError, ValueError)  as err:
+    except (ImportError, ValueError) as err:
         raise ImproperlyConfigured(
             'Error importing backend %s: "%s"' % (path, err))
     try:

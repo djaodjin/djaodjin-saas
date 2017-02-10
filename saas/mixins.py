@@ -104,7 +104,7 @@ class CartMixin(object):
             # We have an anonymous user so let's play some tricks with
             # the session data.
             cart_items = []
-            if request.session.has_key('cart_items'):
+            if 'cart_items' in request.session:
                 cart_items = request.session['cart_items']
             for item in cart_items:
                 if item['plan'] == kwargs['plan']:

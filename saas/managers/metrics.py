@@ -1,4 +1,4 @@
-# Copyright (c) 2016, DjaoDjin inc.
+# Copyright (c) 2017, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -25,8 +25,9 @@
 from datetime import datetime
 
 from django.db import router
-from django.db.models.sql.query import RawQuery
 from django.db.models import Count, Sum
+from django.db.models.sql.query import RawQuery
+from django.utils import six
 from django.utils.dateparse import parse_datetime
 from django.utils.timezone import utc
 
@@ -39,7 +40,7 @@ def month_periods(nb_months=12, from_date=None, step_months=1):
     on the first of each month until *from_date* which is the last entry
     of the list returned."""
     dates = []
-    if from_date and isinstance(from_date, basestring):
+    if from_date and isinstance(from_date, six.string_types):
         from_date = parse_datetime(from_date)
     from_date = datetime_or_now(from_date)
     dates.append(from_date)
@@ -54,11 +55,13 @@ def month_periods(nb_months=12, from_date=None, step_months=1):
         year = last.year
         month = last.month - step_months
         if month < 1:
+            # integer division
+            year = last.year + month // 12
+            assert isinstance(year, six.integer_types)
             if month % 12 == 0:
-                year = last.year + month / 12 - 1
+                year -= 1
                 month = 12
             else:
-                year = last.year + month / 12
                 month = month % 12
         last = datetime(day=1, month=month, year=year, tzinfo=utc)
         dates.append(last)
@@ -146,7 +149,7 @@ def aggregate_monthly_churn(organization, account, interval,
                 "period_end": period_end,
                 "organization_id": organization.id,
                 "account": account}, router.db_for_read(Transaction))
-        churn_customer, churn_receivable = iter(churn_query).next()
+        churn_customer, churn_receivable = next(iter(churn_query))
         # A bit ugly but it does the job ...
         if orig == 'orig':
             kwargs = {'orig_organization': organization,
@@ -185,7 +188,7 @@ def aggregate_monthly_churn(organization, account, interval,
                 "period_end": period_end,
                 "organization_id": organization.id,
                 "account": account}, router.db_for_read(Transaction))
-        new_customer, new_receivable = iter(new_query).next()
+        new_customer, new_receivable = next(iter(new_query))
         period = period_end
         churn_customers += [(period, churn_customer)]
         churn_receivables += [(period, int(churn_receivable or 0))]

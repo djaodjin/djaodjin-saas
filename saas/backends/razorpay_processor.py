@@ -1,4 +1,4 @@
-# Copyright (c) 2016, DjaoDjin inc.
+# Copyright (c) 2017, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -100,7 +100,7 @@ class RazorpayBackend(object):
             amount, unit, descr)
         try:
             processor_charge = self.razor.payment.capture(card, amount)
-        except razorpay.errors.RazorpayError, err:
+        except razorpay.errors.RazorpayError as err:
             raise CardError(err.error, "unknown", backend_except=err)
         LOGGER.info('capture %s', processor_charge,
             extra={'event': 'capture', 'processor': 'razorpay',
@@ -149,7 +149,7 @@ class RazorpayBackend(object):
                 charge.processor_key, data={"amount": amount})
             processor_charge = self.razor.payment.fetch(charge.processor_key)
             LOGGER.debug('refund %d inr %s', amount, processor_charge)
-        except razorpay.errors.RazorpayError, err:
+        except razorpay.errors.RazorpayError as err:
             raise ProcessorError(err.error, backend_except=err)
 
     @staticmethod

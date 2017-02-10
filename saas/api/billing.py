@@ -245,7 +245,7 @@ class CartItemDestroyAPIView(DestroyAPIView):
     def destroy_in_session(request, *args, **kwargs):
         #pylint: disable=unused-argument
         cart_items = []
-        if request.session.has_key('cart_items'):
+        if 'cart_items' in request.session:
             cart_items = request.session['cart_items']
         candidate = kwargs.get('plan')
         serialized_cart_items = []

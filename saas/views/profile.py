@@ -266,14 +266,7 @@ class DashboardView(OrganizationMixin, DetailView):
                 'provider': {
                     'api_accounts': reverse(
                         'saas_api_subscribers', args=(self.organization,))}}
-        if 'urls' in context:
-            for key, val in urls.iteritems():
-                if key in context['urls']:
-                    context['urls'][key].update(val)
-                else:
-                    context['urls'].update({key: val})
-        else:
-            context.update({'urls': urls})
+        self.update_context_urls(context, urls)
         return context
 
     def get_object(self, queryset=None):

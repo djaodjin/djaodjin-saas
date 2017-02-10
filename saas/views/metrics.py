@@ -1,4 +1,4 @@
-# Copyright (c) 2016, DjaoDjin inc.
+# Copyright (c) 2017, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -101,14 +101,7 @@ class CouponMetricsView(CouponMixin, TemplateView):
             'api_metrics_coupon_uses': reverse(
                 'saas_api_coupon_uses',
                 args=(self.provider, self.coupon.code))}}
-        if 'urls' in context:
-            for key, val in urls.iteritems():
-                if key in context['urls']:
-                    context['urls'][key].update(val)
-                else:
-                    context['urls'].update({key: val})
-        else:
-            context.update({'urls': urls})
+        self.update_context_urls(context, urls)
         return context
 
 

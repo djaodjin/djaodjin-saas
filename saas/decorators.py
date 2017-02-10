@@ -30,7 +30,7 @@ also make security audits a lot easier.
 .. _django-urldecorators: https://github.com/mila/django-urldecorators
 """
 
-import logging, urlparse
+import logging
 
 from functools import wraps
 from django.core.exceptions import PermissionDenied
@@ -38,6 +38,7 @@ from django.core.urlresolvers import reverse
 from django.contrib.auth import REDIRECT_FIELD_NAME
 from django.shortcuts import get_object_or_404
 from django.utils.decorators import available_attrs
+from django.utils import six
 
 from . import settings
 from .models import (Charge, Organization, Plan, Signature, Subscription,
@@ -131,8 +132,9 @@ def _insert_url(request, redirect_field_name=REDIRECT_FIELD_NAME,
     path = request.build_absolute_uri()
     # If the login url is the same scheme and net location then just
     # use the path as the "next" url.
-    login_scheme, login_netloc = urlparse.urlparse(inserted_url)[:2]
-    current_scheme, current_netloc = urlparse.urlparse(path)[:2]
+    login_scheme, login_netloc = six.moves.urllib.parse.urlparse(
+        inserted_url)[:2]
+    current_scheme, current_netloc = six.moves.urllib.parse.urlparse(path)[:2]
     if ((not login_scheme or login_scheme == current_scheme) and
         (not login_netloc or login_netloc == current_netloc)):
         path = request.get_full_path()
@@ -433,7 +435,7 @@ def redirect_or_denied(request, inserted_url,
                        redirect_field_name=REDIRECT_FIELD_NAME, descr=None):
     http_accepts = _get_accept_list(request)
     if ('text/html' in http_accepts
-        and isinstance(inserted_url, basestring)):
+        and isinstance(inserted_url, six.string_types)):
         return _insert_url(request, redirect_field_name=redirect_field_name,
                            inserted_url=inserted_url)
     if descr is None:

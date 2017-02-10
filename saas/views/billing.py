@@ -1,4 +1,4 @@
-# Copyright (c) 2016, DjaoDjin inc.
+# Copyright (c) 2017, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -47,6 +47,7 @@ from django.shortcuts import get_object_or_404
 from django.views.generic import (DetailView, FormView, ListView, TemplateView,
     UpdateView)
 from django.utils.http import urlencode
+from django.utils.six import iterkeys
 
 from .. import settings
 from ..backends import ProcessorError, ProcessorConnectionError
@@ -472,7 +473,7 @@ class BillingStatementView(OrganizationMixin, TransactionBaseView):
 
     def cache_fields(self, request):
         super(BillingStatementView, self).cache_fields(request)
-        if not request.GET.has_key('start_at'):
+        if 'start_at' not in request.GET:
             self.start_at = (self.ends_at
                 - self.organization.natural_subscription_period)
 
@@ -901,7 +902,7 @@ class BalanceView(CardInvoicablesFormMixin, FormView):
         created_at = datetime_or_now()
         balances, _ = Transaction.objects.get_statement_balances(
             self.organization, until=created_at)
-        for event_id in balances.keys():
+        for event_id in iterkeys(balances):
             subscription = Subscription.objects.get(pk=event_id)
             options = self.get_invoicable_options(subscription,
                 created_at=created_at)

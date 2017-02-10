@@ -1,4 +1,4 @@
-# Copyright (c) 2016, DjaoDjin inc.
+# Copyright (c) 2017, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -163,9 +163,9 @@ def parse_line(line, create_organizations=False, broker=None, using='default'):
                     unit = 'usd'
                 value = look.group('value').replace(',', '')
                 if '.' in value:
-                    amount = long(float(value) * 100)
+                    amount = int(float(value) * 100)
                 else:
-                    amount = long(value)
+                    amount = int(value)
         try:
             if create_organizations:
                 organization, _ = Organization.objects.using(

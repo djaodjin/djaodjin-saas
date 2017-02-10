@@ -71,9 +71,11 @@ from django.db.models.query import QuerySet
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 from django.template.defaultfilters import slugify
-from django.utils.http import quote
 from django.utils.decorators import method_decorator
+from django.utils.encoding import python_2_unicode_compatible
+from django.utils.http import quote
 from django.utils.safestring import mark_safe
+from django.utils import six
 from django.utils.timezone import utc
 from django.utils.translation import ugettext_lazy as _
 from django_countries.fields import CountryField
@@ -97,6 +99,7 @@ class InsufficientFunds(Exception):
 class Price(object):
 
     def __init__(self, amount, unit):
+        assert isinstance(amount, six.integer_types)
         self.amount = amount
         self.unit = unit
 
@@ -126,7 +129,7 @@ class OrganizationManager(models.Manager):
         """
         if isinstance(user, get_user_model()):
             username = user.username
-        elif isinstance(user, basestring):
+        elif isinstance(user, six.string_types):
             username = user
         else:
             return None
@@ -168,6 +171,29 @@ class OrganizationManager(models.Manager):
             using=self._db).filter(user=user,
             role_description__slug=role_slug).values('organization').distinct())
 
+    def find_candidates(self, full_name, user=None):
+        """
+        Returns a set of organizations based on a fuzzy match of *full_name*
+        and the email address of *user*.
+
+        This method is primarly intended in registration pages to help
+        a user decides to create a new organization or request access
+        to an already existing organization.
+        """
+        queryset = self.filter(
+            Q(slug=slugify(full_name)) | Q(full_name__iexact=full_name))
+        if queryset.exists():
+            return queryset
+        print "XXX no candidates for '%s'" % str(full_name)
+        if user:
+            email_suffix = user.email.split('@')[-1]
+            candidates_from_email = Role.objects.filter(
+                user__email__iendswith=email_suffix,
+                role_description__slug=settings.MANAGER).values(
+                    'organization')
+            return self.filter(pk__in=candidates_from_email)
+        return self.none()
+
     def providers(self, subscriptions):
         """
         Set of ``Organization`` which provides the plans referenced
@@ -191,6 +217,7 @@ class OrganizationManager(models.Manager):
             organization=organization))
 
 
+@python_2_unicode_compatible
 class Organization(models.Model):
     """
     The Organization table stores information about who gets
@@ -257,8 +284,8 @@ class Organization(models.Model):
 
     extra = settings.get_extra_field_class()(null=True)
 
-    def __unicode__(self):
-        return unicode(self.slug)
+    def __str__(self):
+        return str(self.slug)
 
     def get_changes(self, update_fields):
         changes = {}
@@ -291,13 +318,8 @@ class Organization(models.Model):
         with transaction.atomic():
             user = self.attached_user()
             if user:
-                name_parts = self.full_name.split(' ')
-                if len(name_parts) > 1:
-                    user.first_name = name_parts[0]
-                    user.last_name = ' '.join(name_parts[1:])
-                else:
-                    user.first_name = self.full_name
-                    user.last_name = ''
+                user.first_name, user.last_name \
+                    = split_full_name(self.full_name)
                 if self.email:
                     user.email = self.email
                 user.save()
@@ -596,7 +618,7 @@ class Organization(models.Model):
                     'coupon': coupon.code, 'auto': True,
                     'provider': provider.slug})
             coupons.update({provider.id: coupon})
-        for key, cart_items in claim_carts.iteritems():
+        for key, cart_items in six.iteritems(claim_carts):
             claim_code = generate_random_slug()
             provider = CartItem.objects.provider(cart_items)
             for cart_item in cart_items:
@@ -929,6 +951,7 @@ class Organization(models.Model):
                             'amount': balance_due})
 
 
+@python_2_unicode_compatible
 class RoleDescription(models.Model):
 
     created_at = models.DateTimeField(auto_now_add=True)
@@ -942,10 +965,10 @@ class RoleDescription(models.Model):
     class Meta:
         unique_together = ('organization', 'slug')
 
-    def __unicode__(self):
+    def __str__(self):
         if self.organization is not None:
-            return '%s-%s' % (unicode(self.slug), unicode(self.organization))
-        return unicode(self.slug)
+            return '%s-%s' % (str(self.slug), str(self.organization))
+        return str(self.slug)
 
     def save(self, **kwargs):
         if not self.slug:
@@ -994,6 +1017,7 @@ class RoleManager(models.Manager):
         return results
 
 
+@python_2_unicode_compatible
 class Role(models.Model):
 
     objects = RoleManager()
@@ -1009,25 +1033,26 @@ class Role(models.Model):
     class Meta:
         unique_together = ('organization', 'user')
 
-    def __unicode__(self):
-        return '%s-%s-%s' % (unicode(self.role_description),
-            unicode(self.organization), unicode(self.user))
+    def __str__(self):
+        return '%s-%s-%s' % (str(self.role_description),
+            str(self.organization), str(self.user))
 
 
+@python_2_unicode_compatible
 class Agreement(models.Model):
 
     slug = models.SlugField(unique=True)
     title = models.CharField(max_length=150, unique=True)
     modified = models.DateTimeField(auto_now_add=True)
 
-    def __unicode__(self):
-        return unicode(self.slug)
+    def __str__(self):
+        return str(self.slug)
 
 
 class SignatureManager(models.Manager):
 
     def create_signature(self, agreement, user):
-        if isinstance(agreement, basestring):
+        if isinstance(agreement, six.string_types):
             #pylint: disable=no-member
             agreement = Agreement.objects.db_manager(self.db).get(
                 slug=agreement)
@@ -1040,7 +1065,7 @@ class SignatureManager(models.Manager):
         return sig
 
     def has_been_accepted(self, agreement, user):
-        if isinstance(agreement, basestring):
+        if isinstance(agreement, six.string_types):
             agreement = Agreement.objects.get(slug=agreement)
         try:
             sig = self.get(agreement=agreement, user=user)
@@ -1051,6 +1076,7 @@ class SignatureManager(models.Manager):
         return True
 
 
+@python_2_unicode_compatible
 class Signature(models.Model):
 
     objects = SignatureManager()
@@ -1063,7 +1089,7 @@ class Signature(models.Model):
     class Meta:
         unique_together = ('agreement', 'user')
 
-    def __unicode__(self):
+    def __str__(self):
         return '%s-%s' % (self.user, self.agreement)
 
 
@@ -1115,8 +1141,8 @@ class ChargeManager(models.Manager):
         amount = balance['amount']
         if amount == 0:
             return charge
-        for invoice_items in Transaction.objects.by_processor_key(
-                transactions).values():
+        for invoice_items in six.itervalues(
+                Transaction.objects.by_processor_key(transactions)):
             # XXX This is only working if all line items use the same
             # provider keys to record the charge.
             charge = self.charge_card_one_processor(
@@ -1207,6 +1233,7 @@ class ChargeManager(models.Manager):
             raise
 
 
+@python_2_unicode_compatible
 class Charge(models.Model):
     """
     Keep track of charges that have been emitted by the app.
@@ -1246,8 +1273,8 @@ class Charge(models.Model):
     # XXX unique together paid and invoiced.
     # customer and invoiced_items account payble should match.
 
-    def __unicode__(self):
-        return unicode(self.processor_key)
+    def __str__(self):
+        return str(self.processor_key)
 
     @property
     def price(self):
@@ -1518,12 +1545,18 @@ class Charge(models.Model):
             # same unit, multiplication and division are carefully crafted
             # to keep full precision.
             # XXX to check with transfer btw currencies and multiple items.
-            orig_fee_amount = (orig_item_amount *
-                total_fee_amount / (total_distribute_amount + total_fee_amount))
+            # integer division
+            orig_fee_amount = (orig_item_amount * total_fee_amount
+                // (total_distribute_amount + total_fee_amount))
+            assert isinstance(orig_fee_amount, six.integer_types)
             orig_distribute_amount = orig_item_amount - orig_fee_amount
-            fee_amount = ((total_fee_amount * orig_item_amount / self.amount))
+            # integer division
+            fee_amount = ((total_fee_amount * orig_item_amount // self.amount))
+            assert isinstance(fee_amount, six.integer_types)
+            # integer division
             distribute_amount = (
-                total_distribute_amount * orig_item_amount / self.amount)
+                total_distribute_amount * orig_item_amount // self.amount)
+            assert isinstance(distribute_amount, six.integer_types)
             LOGGER.debug("payment_successful(charge=%s) distribute: %d %s, "\
                 "fee: %d %s out of total distribute: %d %s, total fee: %d %s",
                 self.processor_key, distribute_amount, funds_unit,
@@ -1669,6 +1702,7 @@ class Charge(models.Model):
         return self
 
 
+@python_2_unicode_compatible
 class ChargeItem(models.Model):
     """
     Keep track of each item invoiced within a ``Charge``.
@@ -1689,8 +1723,8 @@ class ChargeItem(models.Model):
     class Meta:
         unique_together = ('charge', 'invoiced')
 
-    def __unicode__(self):
-        return '%s-%s' % (unicode(self.charge), unicode(self.invoiced))
+    def __str__(self):
+        return '%s-%s' % (str(self.charge), str(self.invoiced))
 
     @property
     def refunded(self):
@@ -1854,6 +1888,7 @@ class CouponManager(models.Manager):
             organization=organization)
 
 
+@python_2_unicode_compatible
 class Coupon(models.Model):
     """
     Coupons are used on invoiced to give a rebate to a customer.
@@ -1879,7 +1914,7 @@ class Coupon(models.Model):
     class Meta:
         unique_together = ('organization', 'code')
 
-    def __unicode__(self):
+    def __str__(self):
         return '%s-%s' % (self.organization, self.code)
 
     @property
@@ -1961,6 +1996,7 @@ class PlanManager(models.Manager):
         return result
 
 
+@python_2_unicode_compatible
 class Plan(SlugTitleMixin, models.Model):
     """
     Recurring billing plan
@@ -2021,8 +2057,8 @@ class Plan(SlugTitleMixin, models.Model):
     class Meta:
         unique_together = ('slug', 'organization')
 
-    def __unicode__(self):
-        return unicode(self.slug)
+    def __str__(self):
+        return str(self.slug)
 
     @property
     def period_price(self):
@@ -2031,6 +2067,11 @@ class Plan(SlugTitleMixin, models.Model):
     @property
     def setup_price(self):
         return Price(self.setup_amount, self.unit)
+
+    def discounted_price(self, percentage):
+        # integer division
+        return Price((self.period_amount * (100 - percentage) // 100),
+            self.unit)
 
     @property
     def yearly_amount(self):
@@ -2052,20 +2093,24 @@ class Plan(SlugTitleMixin, models.Model):
         if discount_percent >= 9999:
             # Hardcode to a maximum of 99.99% discount
             discount_percent = 9999
-            return -1, discount_percent / 100
+            # integer division
+            return -1, discount_percent // 100
+        # integer division
         discount_amount = (self.period_amount * nb_periods
-                * (10000 - discount_percent) / 10000)
+                * (10000 - discount_percent) // 10000)
         if rounding == self.PRICE_ROUND_WHOLE:
             discount_amount += 100 - discount_amount % 100
         elif rounding == self.PRICE_ROUND_99:
             discount_amount += 99 - discount_amount % 100
-        return discount_amount, discount_percent / 100
+        # integer division
+        return discount_amount, discount_percent // 100
 
     def first_periods_amount(self, discount_percent=0, nb_natural_periods=1,
                               prorated_amount=0):
+        # XXX integer division?
         amount = int((prorated_amount
             + (self.period_amount * nb_natural_periods))
-            * (100 - discount_percent) / 100)
+            * (100 - discount_percent) // 100)
         return amount
 
     @staticmethod
@@ -2155,7 +2200,8 @@ class Plan(SlugTitleMixin, models.Model):
         """
         Hosting service paid through a transaction fee.
         """
-        return (amount * self.transaction_fee) / 10000
+        # integer division
+        return (amount * self.transaction_fee) // 10000
 
     def prorate_period(self, start_time, end_time):
         """
@@ -2167,24 +2213,28 @@ class Plan(SlugTitleMixin, models.Model):
         """
         if self.interval == self.HOURLY:
             # Hourly: fractional period is in minutes.
-            fraction = (end_time - start_time).seconds / 3600
+            # XXX integer division?
+            fraction = (end_time - start_time).seconds // 3600
         elif self.interval == self.DAILY:
             # Daily: fractional period is in hours.
-            fraction = ((end_time - start_time).seconds
-                        / (3600 * 24))
+            # XXX integer division?
+            fraction = ((end_time - start_time).seconds // (3600 * 24))
         elif self.interval == self.WEEKLY:
             # Weekly, fractional period is in days.
-            fraction = (end_time.date() - start_time.date()).days / 7
+            # XXX integer division?
+            fraction = (end_time.date() - start_time.date()).days // 7
         elif self.interval == self.MONTHLY:
             # Monthly: fractional period is in days.
             # We divide by the maximum number of days in a month to
             # the advantage of a customer.
-            fraction = (end_time.date() - start_time.date()).days / 31
+            # XXX integer division?
+            fraction = (end_time.date() - start_time.date()).days // 31
         elif self.interval == self.YEARLY:
             # Yearly: fractional period is in days.
             # We divide by the maximum number of days in a year to
             # the advantage of a customer.
-            fraction = (end_time.date() - start_time.date()).days / 366
+            # XXX integer division?
+            fraction = (end_time.date() - start_time.date()).days // 366
         # Round down to the advantage of a customer.
         return int(self.period_amount * fraction)
 
@@ -2234,6 +2284,7 @@ class CartItemManager(models.Manager):
         return coupon_applied
 
 
+@python_2_unicode_compatible
 class CartItem(models.Model):
     """
     A user (authenticated or anonymous) shops for plans by adding them
@@ -2281,7 +2332,7 @@ class CartItem(models.Model):
     # already exist in the database, can be redeemed through a claim_code.
     claim_code = models.SlugField(null=True, blank=True)
 
-    def __unicode__(self):
+    def __str__(self):
         return '%s-%s' % (self.user, self.plan)
 
     @property
@@ -2321,7 +2372,7 @@ class SubscriptionManager(models.Manager):
             plan__organization=provider, ends_at__gt=ends_at)
 
     def create(self, **kwargs):
-        if not kwargs.has_key('ends_at'):
+        if 'ends_at' not in kwargs:
             created_at = datetime_or_now(kwargs.get('created_at', None))
             plan = kwargs.get('plan')
             return super(SubscriptionManager, self).create(
@@ -2337,6 +2388,7 @@ class SubscriptionManager(models.Manager):
             auto_renew=plan.auto_renew, ends_at=ends_at)
 
 
+@python_2_unicode_compatible
 class Subscription(models.Model):
     """
     ``Subscription`` represent a service contract (``Plan``) between
@@ -2365,9 +2417,9 @@ class Subscription(models.Model):
     plan = models.ForeignKey(Plan)
     extra = settings.get_extra_field_class()(null=True)
 
-    def __unicode__(self):
-        return '%s%s%s' % (unicode(self.organization), Subscription.SEP,
-            unicode(self.plan))
+    def __str__(self):
+        return '%s%s%s' % (str(self.organization), Subscription.SEP,
+            str(self.plan))
 
     @property
     def is_locked(self):
@@ -2393,19 +2445,23 @@ class Subscription(models.Model):
         at_time = datetime_or_now(at_time)
         delta = at_time - self.created_at
         if self.plan.interval == Plan.HOURLY:
-            estimated = relativedelta(hours=delta.total_seconds() / 3600)
+            # XXX integer division?
+            estimated = relativedelta(hours=delta.total_seconds() // 3600)
             period = relativedelta(hours=1)
         elif self.plan.interval == Plan.DAILY:
             estimated = relativedelta(days=delta.days)
             period = relativedelta(days=1)
         elif self.plan.interval == Plan.WEEKLY:
-            estimated = relativedelta(days=delta.days / 7)
+            # XXX integer division?
+            estimated = relativedelta(days=delta.days // 7)
             period = relativedelta(days=7)
         elif self.plan.interval == Plan.MONTHLY:
-            estimated = relativedelta(months=delta.days / 30)
+            # XXX integer division?
+            estimated = relativedelta(months=delta.days // 30)
             period = relativedelta(months=1)
         elif self.plan.interval == Plan.YEARLY:
-            estimated = relativedelta(years=delta.days / 365)
+            # XXX integer division?
+            estimated = relativedelta(years=delta.days // 365)
             period = relativedelta(years=1)
         else:
             raise ValueError("period type %d is not defined."
@@ -2463,11 +2519,13 @@ class Subscription(models.Model):
         if start_upper <= until_lower:
             delta = relativedelta(start_upper, until_lower)
             if self.plan.interval == Plan.HOURLY:
-                estimated = (start_upper - until_lower).total_seconds() / 3600
+                # Integer division?
+                estimated = (start_upper - until_lower).total_seconds() // 3600
             elif self.plan.interval == Plan.DAILY:
                 estimated = delta.days
             elif self.plan.interval == Plan.WEEKLY:
-                estimated = delta.days / 7
+                # Integer division?
+                estimated = delta.days // 7
             elif self.plan.interval == Plan.MONTHLY:
                 estimated = delta.months
             elif self.plan.interval == Plan.YEARLY:
@@ -2552,7 +2610,7 @@ class TransactionQuerySet(models.QuerySet):
 ' of %s have different unit (%s vs. %s).' % (until, organization,
                     unit, orig_balance['orig_unit']))
         balances = {}
-        for event_id, balance in dest_balance_per_events.iteritems():
+        for event_id, balance in six.iteritems(dest_balance_per_events):
             if balance != 0:
                 balances.update({event_id: balance})
         return balances, unit
@@ -2560,7 +2618,7 @@ class TransactionQuerySet(models.QuerySet):
     def get_statement_balance(self, organization, until=None):
         balances, unit = self.get_statement_balances(organization, until=until)
         balance = 0
-        for val in balances.values():
+        for val in six.itervalues(balances):
             balance += val
         return balance, unit
 
@@ -3246,6 +3304,7 @@ class TransactionManager(models.Manager):
         return results
 
 
+@python_2_unicode_compatible
 class Transaction(models.Model):
     """
     The Transaction table stores entries in the double-entry bookkeeping
@@ -3308,8 +3367,8 @@ class Transaction(models.Model):
     event_id = models.SlugField(null=True, help_text=
         _('Event at the origin of this transaction (ex. job, charge, etc.)'))
 
-    def __unicode__(self):
-        return unicode(self.id)
+    def __str__(self):
+        return str(self.id)
 
     @property
     def dest_price(self):
@@ -3345,6 +3404,7 @@ class Transaction(models.Model):
         return None
 
 
+@python_2_unicode_compatible
 class BalanceLine(models.Model):
     """
     Defines a line in a balance sheet. All ``Transaction`` account matching
@@ -3362,7 +3422,7 @@ class BalanceLine(models.Model):
     class Meta:
         unique_together = ('report', 'rank', 'moved')
 
-    def __unicode__(self):
+    def __str__(self):
         return '%s/%d' % (self.report, self.rank)
 
 
@@ -3388,7 +3448,7 @@ def is_broker(organization):
     # a unicode string itself.
     broker_slug = settings.PLATFORM
     organization_slug = ''
-    if isinstance(organization, basestring):
+    if isinstance(organization, six.string_types):
         organization_slug = organization
     elif organization:
         organization_slug = organization.slug
@@ -3396,6 +3456,22 @@ def is_broker(organization):
         from saas.compat import import_string
         return import_string(settings.IS_BROKER_CALLABLE)(organization_slug)
     return organization_slug == broker_slug
+
+
+def split_full_name(full_name):
+    """
+    Split a full_name into most likely first_name and last_name.
+
+    XXX This is not perfect.
+    """
+    name_parts = full_name.split(' ')
+    if len(name_parts) > 1:
+        first_name = name_parts[0]
+        last_name = ' '.join(name_parts[1:])
+    else:
+        first_name = full_name
+        last_name = ''
+    return first_name, last_name
 
 
 def sum_dest_amount(transactions):
@@ -3416,7 +3492,7 @@ def sum_dest_amount(transactions):
             if not item.dest_unit in group_by:
                 group_by[item.dest_unit] = 0
             group_by[item.dest_unit] += item.dest_amount
-        for unit, amount in group_by.iteritems():
+        for unit, amount in six.iteritems(group_by):
             query_result += [{'dest_unit': unit, 'dest_amount__sum': amount,
                 'created_at__max': most_recent}]
     if len(query_result) > 0:
@@ -3452,7 +3528,7 @@ def sum_orig_amount(transactions):
             if not item.orig_unit in group_by:
                 group_by[item.orig_unit] = 0
             group_by[item.orig_unit] += item.orig_amount
-        for unit, amount in group_by.iteritems():
+        for unit, amount in six.iteritems(group_by):
             query_result += [{'orig_unit': unit, 'orig_amount__sum': amount,
                 'created_at__max': most_recent}]
     if len(query_result) > 0:

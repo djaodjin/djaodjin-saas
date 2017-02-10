@@ -25,6 +25,7 @@
 from collections import OrderedDict
 
 from django.core.urlresolvers import NoReverseMatch, reverse
+from django.utils.six import iteritems
 from django.shortcuts import get_object_or_404
 
 # Implementation Note:
@@ -144,7 +145,7 @@ class OrganizationMixinBase(object):
     @staticmethod
     def update_context_urls(context, urls):
         if 'urls' in context:
-            for key, val in urls.iteritems():
+            for key, val in iteritems(urls):
                 if key in context['urls']:
                     context['urls'][key].update(val)
                 else:

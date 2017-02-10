@@ -1,4 +1,4 @@
-# Copyright (c) 2016, DjaoDjin inc.
+# Copyright (c) 2017, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -28,13 +28,14 @@ CSV download view basics.
 
 import csv
 from decimal import Decimal
-from StringIO import StringIO
+from io import StringIO
 
 from django.http import HttpResponse
 from django.views.generic import View
 
 from ..api.transactions import (BillingsQuerysetMixin,
     SmartTransactionListMixin, TransactionQuerysetMixin, TransferQuerysetMixin)
+from .. import humanize
 from ..managers.metrics import (abs_monthly_balances, monthly_balances,
     month_periods)
 from ..mixins import MetricsMixin
@@ -123,11 +124,13 @@ class TransactionDownloadView(SmartTransactionListMixin,
     def queryrow_to_columns(self, transaction):
         return [
             transaction.created_at.date(),
-            '{:.2f}'.format(Decimal(transaction.dest_amount) / 100),
+            humanize.as_money(transaction.dest_amount, transaction.dest_unit,
+                negative_format="-%s"),
             transaction.dest_unit.encode('utf-8'),
             transaction.dest_organization.printable_name.encode('utf-8'),
             transaction.dest_account.encode('utf-8'),
-            '{:.2f}'.format(Decimal(transaction.orig_amount) / 100),
+            humanize.as_money(transaction.orig_amount, transaction.orig_unit,
+                negative_format="-%s"),
             transaction.orig_unit.encode('utf-8'),
             transaction.orig_organization.printable_name.encode('utf-8'),
             transaction.orig_account.encode('utf-8'),
@@ -152,6 +155,7 @@ class BillingStatementDownloadView(SmartTransactionListMixin,
             transaction.created_at.date(),
             '{:.2f}'.format(
                 (-1 if transaction.is_debit(self.organization) else 1) *
+                # XXX integer division
                 Decimal(transaction.dest_amount) / 100),
             transaction.dest_unit.encode('utf-8'),
             ('"%s"' % transaction.descr.replace(
@@ -175,6 +179,7 @@ class TransferDownloadView(SmartTransactionListMixin,
             transaction.created_at.date(),
             '{:.2f}'.format(
                 (-1 if transaction.is_debit(self.organization) else 1) *
+                # XXX integer division
                 Decimal(transaction.dest_amount) / 100),
             transaction.dest_unit.encode('utf-8'),
             ('"%s"' % transaction.descr.replace(

@@ -22,13 +22,14 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-import datetime, inspect, random, sys, urlparse
+import datetime, inspect, random, sys
 
 from django.conf import settings as django_settings
 from django.db import transaction, IntegrityError
 from django.http.request import split_domain_port, validate_host
-from django.utils.timezone import utc, get_current_timezone
 from django.template.defaultfilters import slugify
+from django.utils import six
+from django.utils.timezone import utc, get_current_timezone
 from rest_framework.exceptions import ValidationError
 
 
@@ -54,7 +55,7 @@ class SlugTitleMixin(object):
                     return super(SlugTitleMixin, self).save(
                         force_insert=force_insert, force_update=force_update,
                         using=using, update_fields=update_fields)
-            except IntegrityError, err:
+            except IntegrityError as err:
                 if 'uniq' not in str(err).lower():
                     raise
                 suffix = '-%s' % "".join([random.choice("abcdef0123456789")
@@ -70,7 +71,7 @@ class SlugTitleMixin(object):
 def datetime_or_now(dtime_at=None):
     if not dtime_at:
         return datetime.datetime.utcnow().replace(tzinfo=utc)
-    if isinstance(dtime_at, basestring):
+    if isinstance(dtime_at, six.string_types):
         dtime_at = datetime.datetime.strptime(dtime_at, "%Y-%m-%dT%H:%M:%S")
     if dtime_at.tzinfo is None:
         dtime_at = dtime_at.replace(tzinfo=utc)
@@ -154,7 +155,7 @@ def validate_redirect_url(next_url):
     # the functionality has already moved into Django proper.
     if not next_url:
         return None
-    parts = urlparse.urlparse(next_url)
+    parts = six.moves.urllib.parse.urlparse(next_url)
     if parts.netloc:
         domain, _ = split_domain_port(parts.netloc)
         allowed_hosts = ['*'] if django_settings.DEBUG \

@@ -79,7 +79,7 @@ DESCRIBE_WRITEOFF_RECEIVABLE = \
     "Write off receivable for %(event)s"
 
 
-def as_money(value, currency=settings.DEFAULT_UNIT):
+def as_money(value, currency=settings.DEFAULT_UNIT, negative_format="(%s)"):
     unit_prefix = ''
     unit_suffix = ''
     negative = False
@@ -112,7 +112,7 @@ def as_money(value, currency=settings.DEFAULT_UNIT):
         frac_part = '%02d' % value
     result = (unit_prefix + int_part + grouped + '.' + frac_part + unit_suffix)
     if negative:
-        result = "(%s)" % result
+        result = negative_format % result
     return result
 
 

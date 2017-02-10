@@ -1,4 +1,4 @@
-# Copyright (c) 2016, DjaoDjin inc.
+# Copyright (c) 2017, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -66,6 +66,7 @@ import datetime, logging, re
 from django.conf import settings as django_settings
 from django.http import Http404
 from django.shortcuts import get_object_or_404
+from django.utils import six
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 import requests, stripe
@@ -169,7 +170,9 @@ class StripeBackend(object):
             fee_unit = charge.unit
             available_amount = charge.amount - refunded
             if available_amount > 0:
-                fee_amount = (available_amount * 290 + 5000) / 10000 + 30
+                # integer division
+                fee_amount = (available_amount * 290 + 5000) // 10000 + 30
+                assert isinstance(fee_amount, six.integer_types)
             else:
                 fee_amount = 0
             distribute_amount = available_amount - fee_amount
@@ -247,7 +250,7 @@ class StripeBackend(object):
                     processor_charge.source.exp_month, 1),
                 'card_name': processor_charge.source.name
             }
-        except stripe.error.CardError, err:
+        except stripe.error.CardError as err:
             # If the card is declined, Stripe will record a failed ``Charge``
             # and raise an exception here. Unfortunately only the Charge id
             # is present in the CardError exception. So instead of generating
@@ -346,7 +349,7 @@ class StripeBackend(object):
                 signals.card_updated.send(
                     sender=__name__, organization=subscriber,
                     user=user, old_card=old_card, new_card=new_card)
-            except stripe.error.CardError, err:
+            except stripe.error.CardError as err:
                 raise CardError(err.message, err.code, backend_except=err)
             except stripe.error.InvalidRequestError:
                 # Can't find the customer on Stripe. This can be related to
@@ -361,7 +364,7 @@ class StripeBackend(object):
                 p_customer = stripe.Customer.create(
                     email=subscriber.email, description=subscriber.slug,
                     card=card_token, **kwargs)
-            except stripe.error.CardError, err:
+            except stripe.error.CardError as err:
                 raise CardError(err.message, err.code, backend_except=err)
             subscriber.processor_card_key = p_customer.id
             # We rely on ``update_card`` to do the ``save``.
@@ -480,7 +483,8 @@ class StripeBackend(object):
             kwargs = self._prepare_transfer_request(provider)
             rcp = stripe.Account.retrieve(**kwargs)
             if rcp.managed:
-                return (amount * 50 + 5000) / 10000
+                # integer division
+                return (amount * 50 + 5000) // 10000
         return 0
 
 

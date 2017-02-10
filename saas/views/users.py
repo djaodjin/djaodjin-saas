@@ -1,4 +1,4 @@
-# Copyright (c) 2016, DjaoDjin inc.
+# Copyright (c) 2017, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -56,12 +56,5 @@ class ProductListView(UserMixin, ProviderMixin, TemplateView):
             'api_accessibles': reverse(
                 'saas_api_accessibles', args=(self.user,)),
         }}
-        if 'urls' in context:
-            for key, val in urls.iteritems():
-                if key in context['urls']:
-                    context['urls'][key].update(val)
-                else:
-                    context['urls'].update({key: val})
-        else:
-            context.update({'urls': urls})
+        self.update_context_urls(context, urls)
         return context

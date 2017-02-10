@@ -1,4 +1,4 @@
-# Copyright (c) 2016, DjaoDjin inc.
+# Copyright (c) 2017, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -34,7 +34,7 @@ from .. import settings
 from ..compat import csrf
 from ..forms import PlanForm
 from ..mixins import CartMixin, OrganizationMixin, ProviderMixin
-from ..models import CartItem, Coupon, Plan, Price
+from ..models import CartItem, Coupon, Plan
 from ..utils import get_role_model
 
 
@@ -107,7 +107,7 @@ djaodjin-saas/tree/master/saas/templates/saas/pricing.html>`__).
         if self.request.user.is_authenticated():
             items_selected += [item.plan.slug
                 for item in CartItem.objects.get_cart(self.request.user)]
-        if self.request.session.has_key('cart_items'):
+        if 'cart_items' in self.request.session:
             items_selected += [item['plan']
                 for item in self.request.session['cart_items']]
         redeemed = self.request.session.get('redeemed', None)
@@ -118,8 +118,8 @@ djaodjin-saas/tree/master/saas/templates/saas/pricing.html>`__).
                 setattr(plan, 'is_line_break', True)
             if redeemed and redeemed.is_valid(plan):
                 setattr(plan, 'discounted_period_price',
-                    Price((plan.period_amount * (100 - redeemed.percent) / 100),
-                     plan.unit))
+                    # XXX integer division
+                    plan.discounted_price(redeemed.percent))
             if self.request.user.is_authenticated():
                 setattr(plan, 'managed_subscribers',
                     get_role_model().objects.role_on_subscriber(

@@ -151,10 +151,10 @@ class OrganizationForm(PostalFormMixin, forms.ModelForm):
         super(OrganizationForm, self).__init__(*args, **kwargs)
         if kwargs.get('instance', None) is None:
             self.submit_title = 'Create'
-        if self.fields.has_key('country'):
+        if 'country' in self.fields:
             # Country field is optional. We won't add a State/Province
             # in case it is omitted.
-            if not (self.initial.has_key('country')
+            if not ('country' in self.initial
                 and self.initial['country']):
                 self.initial['country'] = Country("US", None)
             country = self.initial.get('country', None)
@@ -163,7 +163,7 @@ class OrganizationForm(PostalFormMixin, forms.ModelForm):
             if not self.fields['country'].initial:
                 self.fields['country'].initial = country.code
             self.add_postal_region(country=country)
-        if self.initial.has_key('is_bulk_buyer'):
+        if 'is_bulk_buyer' in self.initial:
             initial = self.initial['is_bulk_buyer']
             if self.instance:
                 initial = self.instance.is_bulk_buyer
@@ -243,7 +243,7 @@ class PlanForm(forms.ModelForm):
 
     def clean_title(self):
         kwargs = {}
-        if self.initial.has_key('organization'):
+        if 'organization' in self.initial:
             kwargs.update({'organization': self.initial['organization']})
         try:
             exists = Plan.objects.get(
@@ -257,7 +257,7 @@ class PlanForm(forms.ModelForm):
         return self.cleaned_data['title']
 
     def save(self, commit=True):
-        if self.initial.has_key('organization'):
+        if 'organization' in self.initial:
             self.instance.organization = self.initial['organization']
         return super(PlanForm, self).save(commit)
 

@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# Copyright (c) 2016, DjaoDjin inc.
+# Copyright (c) 2017, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -31,6 +31,7 @@ from django import template
 from django.shortcuts import get_object_or_404
 from django.template.defaultfilters import stringfilter
 from django.utils.safestring import mark_safe
+from django.utils import six
 from django.utils.timezone import utc
 
 from .. import settings
@@ -96,13 +97,6 @@ def humanize_period(period):
 
 
 @register.filter()
-def percentage(value):
-    if not value:
-        return '0 %%'
-    return '%.1f %%' % (float(value) / 100)
-
-
-@register.filter()
 def is_debit(transaction, organization):
     """
     True if the transaction can be tagged as a debit. That is
@@ -114,7 +108,7 @@ def is_debit(transaction, organization):
 
 @register.filter()
 def is_incomplete_month(date):
-    return ((isinstance(date, basestring) and not date.endswith('01'))
+    return ((isinstance(date, six.string_types) and not date.endswith('01'))
         or (isinstance(date, datetime) and date.day != 1))
 
 
@@ -207,7 +201,7 @@ def date_in_future(value, arg=None):
             base = arg
         else:
             base = datetime.utcnow().replace(tzinfo=utc)
-        if isinstance(value, long) or isinstance(value, int):
+        if isinstance(value, six.integer_types):
             value = datetime.fromtimestamp(value).replace(tzinfo=utc)
         if value > base:
             return True
