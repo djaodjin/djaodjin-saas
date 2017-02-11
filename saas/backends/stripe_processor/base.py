@@ -453,6 +453,7 @@ class StripeBackend(object):
     def reconcile_transfers(self, provider, created_at):
         kwargs = self._prepare_transfer_request(provider)
         timestamp = datetime_to_utctimestamp(created_at)
+        LOGGER.info("reconcile transfers from Stripe at %s", created_at)
         try:
             transfers = stripe.Transfer.all(
                 created={'gt': timestamp}, status='paid', **kwargs)
