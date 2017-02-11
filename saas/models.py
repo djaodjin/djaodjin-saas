@@ -717,14 +717,10 @@ class Organization(models.Model):
             queryset = Transaction.objects.filter(
                 orig_organization=self,
                 orig_account=Transaction.FUNDS,
-                dest_account__startswith=Transaction.WITHDRAW).order_by(
-                    'created_at')
-            created_at = queryset.values('created_at').first()
-            if isinstance(created_at, dict):
-                created_at = created_at.get('created_at', None)
-            else:
-                created_at = None
-            self.processor_backend.reconcile_transfers(self, created_at)
+                dest_account__startswith=Transaction.WITHDRAW)
+            most_recent = queryset.aggregate(
+                Max('created_at'))['created_at__max']
+            self.processor_backend.reconcile_transfers(self, most_recent)
         return Transaction.objects.by_organization(self)
 
     def withdraw_funds(self, amount, user):
