@@ -184,7 +184,6 @@ class OrganizationManager(models.Manager):
             Q(slug=slugify(full_name)) | Q(full_name__iexact=full_name))
         if queryset.exists():
             return queryset
-        print "XXX no candidates for '%s'" % str(full_name)
         if user:
             email_suffix = user.email.split('@')[-1]
             candidates_from_email = Role.objects.filter(
