@@ -172,23 +172,31 @@ def fail_paid_subscription(request, organization=None, plan=None):
     """
     Subscribed to %(saas.Plan)s
     """
+    subscribed_at = datetime_or_now()
     if _has_valid_access(request, [get_broker()]):
         # Bypass if a manager for the broker.
         return False
     if organization and not isinstance(organization, Organization):
         organization = get_object_or_404(Organization, slug=organization)
-    if plan and not isinstance(plan, Plan):
-        plan = get_object_or_404(Plan, slug=plan)
-    subscribed_at = datetime_or_now()
-    subscriptions = Subscription.objects.filter(
-        organization=organization, plan=plan,
-        ends_at__gt=subscribed_at)
-    if not subscriptions.exists():
-        return "%s?plan=%s" % (
-            reverse('saas_organization_cart', args=(organization,)), plan)
-    if subscriptions.first().is_locked:
-        return reverse(
-            'saas_organization_balance', args=(organization, plan))
+    subscriptions = Subscription.objects.filter(organization=organization,
+        ends_at__gt=subscribed_at).order_by("ends_at")
+    # ``order_by("ends_at")`` will get the subscription that ends the earliest,
+    # yet is greater than Today (``subscribed_at``).
+    if plan:
+        if not isinstance(plan, Plan):
+            plan = get_object_or_404(Plan, slug=plan)
+        subscriptions = subscriptions.filter(plan=plan)
+        active_subscription = subscriptions.first()
+        if active_subscription is None:
+            return "%s?plan=%s" % (
+                reverse('saas_organization_cart', args=(organization,)), plan)
+    else:
+        active_subscription = subscriptions.first()
+        if active_subscription is None:
+            return reverse('saas_cart_plan_list')
+        plan = active_subscription.plan
+    if active_subscription.is_locked:
+        return reverse('saas_organization_balance', args=(organization, plan))
     return False
 
 
