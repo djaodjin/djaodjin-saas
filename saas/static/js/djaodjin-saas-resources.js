@@ -3,7 +3,8 @@
 
 function showMessages(messages, style) {
     "use strict";
-    if( typeof toastr !== 'undefined' ) {
+    if( typeof toastr !== 'undefined'
+        && $(toastr.options.containerId).length > 0 ) {
         for( var i = 0; i < messages.length; ++i ) {
             toastr[style](messages[i]);
         }
