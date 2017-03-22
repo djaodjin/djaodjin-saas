@@ -2140,7 +2140,8 @@ class Plan(SlugTitleMixin, models.Model):
     def start_of_period(self, end_time, nb_periods=1):
         return self.end_of_period(end_time, nb_periods=-nb_periods)
 
-    def get_title(self):
+    @property
+    def printable_name(self):
         """
         Returns a printable human-readable title for the plan.
         """
@@ -2333,7 +2334,7 @@ class CartItem(models.Model):
     @property
     def descr(self):
         result = '%s from %s' % (
-            self.plan.get_title(), self.plan.organization.printable_name)
+            self.plan.printable_name, self.plan.organization.printable_name)
         if self.email:
             full_name = ' '.join([self.first_name, self.last_name]).strip()
             result = 'Subscribe %s (%s) to %s' % (full_name, self.email, result)
