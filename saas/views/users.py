@@ -22,7 +22,7 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from django.core.urlresolvers import reverse
+from django.core.urlresolvers import NoReverseMatch, reverse
 from django.views.generic import TemplateView
 
 from ..mixins import UserMixin, ProviderMixin
@@ -51,10 +51,15 @@ class ProductListView(UserMixin, ProviderMixin, TemplateView):
 
     def get_context_data(self, **kwargs):
         context = super(ProductListView, self).get_context_data(**kwargs)
-        context.update({'object': self.user}) # XXX include users/base.html
         urls = {'user': {
             'api_accessibles': reverse(
                 'saas_api_accessibles', args=(self.user,)),
         }}
+        try:
+            # optional
+            urls['user'].update({
+                'profile': reverse('users_profile', args=(self.user,))})
+        except NoReverseMatch:
+            pass
         self.update_context_urls(context, urls)
         return context
