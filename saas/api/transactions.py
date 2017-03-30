@@ -47,6 +47,7 @@ class BalancePagination(PageNumberPagination):
     """
 
     def paginate_queryset(self, queryset, request, view=None):
+        self.ends_at = view.ends_at
         if view.selector is not None:
             dest_totals = sum_dest_amount(queryset.filter(
                 dest_account__icontains=view.selector))
@@ -56,12 +57,15 @@ class BalancePagination(PageNumberPagination):
             dest_totals = sum_dest_amount(queryset)
             orig_totals = sum_orig_amount(queryset)
         self.balance_amount = dest_totals['amount'] - orig_totals['amount']
+        self.balance_unit = dest_totals['unit']
         return super(BalancePagination, self).paginate_queryset(
             queryset, request, view=view)
 
     def get_paginated_response(self, data):
         return Response(OrderedDict([
+            ('ends_at', self.ends_at),
             ('balance', self.balance_amount),
+            ('unit', self.balance_unit),
             ('count', self.page.paginator.count),
             ('next', self.get_next_link()),
             ('previous', self.get_previous_link()),
@@ -76,6 +80,7 @@ class StatementBalancePagination(PageNumberPagination):
     """
 
     def paginate_queryset(self, queryset, request, view=None):
+        self.ends_at = view.ends_at
         self.balance_amount, self.balance_unit \
             = Transaction.objects.get_statement_balance(view.organization)
         return super(StatementBalancePagination, self).paginate_queryset(
@@ -83,6 +88,7 @@ class StatementBalancePagination(PageNumberPagination):
 
     def get_paginated_response(self, data):
         return Response(OrderedDict([
+            ('ends_at', self.ends_at),
             ('balance', self.balance_amount),
             ('unit', self.balance_unit),
             ('count', self.page.paginator.count),
@@ -95,12 +101,14 @@ class StatementBalancePagination(PageNumberPagination):
 class TotalPagination(PageNumberPagination):
 
     def paginate_queryset(self, queryset, request, view=None):
+        self.ends_at = view.ends_at
         self.totals = view.totals
         return super(TotalPagination, self).paginate_queryset(
             queryset, request, view=view)
 
     def get_paginated_response(self, data):
         return Response(OrderedDict([
+            ('ends_at', self.ends_at),
             ('total', self.totals['amount']),
             ('unit', self.totals['unit']),
             ('count', self.page.paginator.count),
@@ -186,14 +194,15 @@ class TransactionListAPIView(SmartTransactionListMixin,
     .. sourcecode:: http
 
         {
+            "ends_at": "2017-03-30T18:10:12.962859Z",
+            "balance": 11000,
+            "unit": "usd",
             "count": 1,
             "next": null,
             "previous": null,
-            "balance": 11000,
-            "unit": "usd",
             "results": [
                 {
-                    "created_at": "2015-08-01T00:00:00Z",
+                    "created_at": "2017-02-01T00:00:00Z",
                     "description": "Charge for 4 periods",
                     "amount": "($356.00)",
                     "is_debit": true,
