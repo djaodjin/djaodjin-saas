@@ -986,8 +986,10 @@ djaodjin-saas/tree/master/saas/templates/saas/billing/import.html>`__).
     template_name = 'saas/billing/import.html'
 
     def form_valid(self, form):
-        subscriber, plan = form.cleaned_data['subscription'].split(
-            Subscription.SEP)
+        parts = form.cleaned_data['subscription'].split(Subscription.SEP)
+        assert len(parts) == 2
+        subscriber = parts[0]
+        plan = parts[1]
         subscriber = Organization.objects.filter(slug=subscriber).first()
         if subscriber is None:
             form.add_error(None, "Invalid subscriber")
@@ -995,11 +997,14 @@ djaodjin-saas/tree/master/saas/templates/saas/billing/import.html>`__).
             slug=plan, organization=self.organization).first()
         if plan is None:
             form.add_error(None, "Invalid plan")
+        subscription = Subscription.objects.active_for(
+            organization=subscriber).filter(plan=plan).first()
+        if subscription is None:
+            form.add_error(None, "Invalid combination of subscriber and plan,"\
+" or the subscription is no longer active.")
         if form.errors:
             # We haven't found either the subscriber or the plan.
             return self.form_invalid(form)
-        subscription = Subscription.objects.active_for(
-            organization=subscriber).filter(plan=plan).first()
         Transaction.objects.offline_payment(
             subscription, form.cleaned_data['amount'],
             descr=form.cleaned_data['descr'], user=self.request.user,

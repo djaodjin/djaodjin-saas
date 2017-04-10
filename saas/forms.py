@@ -29,7 +29,6 @@ Forms shown by the saas application
 from decimal import Decimal
 
 from django import forms
-from django.core.exceptions import ValidationError
 from django.template.defaultfilters import slugify
 from django.utils.safestring import mark_safe
 from django.utils.translation import ugettext_lazy as _
@@ -37,7 +36,7 @@ from django_countries import countries
 from django_countries.fields import Country
 import localflavor.us.forms as us_forms
 
-from .models import Organization, Plan
+from .models import Organization, Plan, Subscription
 
 #pylint: disable=super-on-old-class,no-member
 #pylint: disable=old-style-class,no-init
@@ -127,12 +126,19 @@ class ImportTransactionForm(forms.Form):
     amount = forms.DecimalField()
     descr = forms.CharField(required=False)
 
+    def clean_subscription(self):
+        parts = self.cleaned_data['subscription'].split(Subscription.SEP)
+        if len(parts) != 2:
+            raise forms.ValidationError(
+                "subscription should be of the form subscriber:plan")
+        return self.cleaned_data['subscription']
+
     def clean_amount(self):
         amount = self.cleaned_data['amount']
         try:
             self.cleaned_data['amount'] = int(amount * 100)
         except (TypeError, ValueError):
-            raise ValidationError("invalid amount")
+            raise forms.ValidationError("invalid amount")
         return self.cleaned_data['amount']
 
 
