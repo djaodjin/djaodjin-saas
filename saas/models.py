@@ -148,28 +148,20 @@ class OrganizationManager(models.Manager):
         """
         user_model = get_user_model()
         if not isinstance(user, user_model):
-            user = user_model.objects.get(username=user)
+            user = user_model.objects.db_manager(using=self._db).get(
+                username=str(user))
         kwargs = {}
         if role_descr:
             if isinstance(role_descr, RoleDescription):
                 kwargs = {'role_description': role_descr}
+            elif isinstance(role_descr, six.string_types):
+                kwargs = {'role_description__slug': str(role_descr)}
             else:
-                kwargs = {'role_description__slug': role_descr}
-        return self.filter(pk__in=get_role_model().objects.filter(
-            user=user, **kwargs).values('organization')).distinct()
-
-    def with_role(self, user, role_slug):
-        """
-        Returns a QuerySet of Organziation for which *user* has a role
-        which slug is *role_slug*.
-        """
-        user_model = get_user_model()
-        if not isinstance(user, user_model):
-            user = user_model.objects.db_manager(using=self._db).get(
-                username=user)
-        return self.filter(pk__in=get_role_model().objects.db_manager(
-            using=self._db).filter(user=user,
-            role_description__slug=role_slug).values('organization').distinct())
+                kwargs = {'role_description__slug__in': [
+                    str(descr) for descr in role_descr]}
+        roles = get_role_model().objects.db_manager(using=self._db).filter(
+            user=user, **kwargs)
+        return self.filter(pk__in=roles.values('organization')).distinct()
 
     def find_candidates(self, full_name, user=None):
         """

@@ -139,6 +139,14 @@ class OrganizationMixinBase(object):
                 'api_users_registered': reverse('saas_api_registered'),
                 'charges': reverse('saas_charges'),
             }})
+
+        if self.request.user.is_authenticated():
+            urls.update({'profiles': [{
+                'location': reverse('saas_organization_profile',
+                args=(account,)), 'printable_name': account.printable_name}
+                for account in get_organization_model().objects.accessible_by(
+                        self.request.user)]})
+
         self.update_context_urls(context, urls)
         return context
 
