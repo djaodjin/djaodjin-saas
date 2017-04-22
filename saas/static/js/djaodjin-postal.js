@@ -39,7 +39,7 @@
           } else {
               regionSel = "<input id=\"" + id +
                 "\" class=\"form-control\" name=\"" + name +
-                "\" type=\"text\" value=\"" + value + "\">";
+                "\" type=\"text\" value=\"\">";
           }
           regionSel = $(regionSel);
           this.element.replaceWith(regionSel);
