@@ -22,6 +22,8 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+import logging
+
 from django.core import validators
 from django.contrib.auth import get_user_model
 from django.db import transaction
@@ -44,7 +46,20 @@ from ..utils import get_role_model
 from .serializers import BaseRoleSerializer, RoleSerializer
 
 
-class RoleCreateSerializer(serializers.Serializer):
+LOGGER = logging.getLogger(__name__)
+
+
+class OrganizationRoleCreateSerializer(serializers.Serializer):
+    #pylint:disable=abstract-method
+
+    slug = serializers.CharField(required=False, validators=[
+        validators.RegexValidator(settings.ACCT_REGEX,
+            _('Enter a valid organization slug.'), 'invalid')])
+    email = serializers.EmailField(required=False)
+    message = serializers.CharField(max_length=255, required=False)
+
+
+class UserRoleCreateSerializer(serializers.Serializer):
     #pylint:disable=abstract-method
 
     slug = serializers.CharField(validators=[
@@ -151,21 +166,26 @@ class AccessibleByListAPIView(RoleSmartListMixin,
     serializer_class = RoleSerializer
 
     def create(self, request, *args, **kwargs): #pylint:disable=unused-argument
-        serializer = RoleCreateSerializer(data=request.data)
+        serializer = OrganizationRoleCreateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
+        created = False
+        reason = serializer.validated_data.get('message', None)
+        if reason:
+            reason = force_text(reason)
 
-        try:
+        slug = serializer.validated_data.get('slug', None)
+        if slug:
             # XXX slugify because we actually pass a full_name when doesnt exist
-            organization = Organization.objects.get(
-                slug=slugify(serializer.validated_data['slug']))
-        except Organization.DoesNotExist:
-            if not request.GET.get('force', False):
-                raise Http404("%s not found"
-                    % serializer.validated_data['slug'])
-            organization = None
-
+            organizations = Organization.objects.filter(slug=slugify(slug))
+        else:
+            email = serializer.validated_data.get('email', None)
+            if email:
+                organizations = Organization.objects.filter(email=email)
         with transaction.atomic():
-            if organization is None:
+            if organizations.count() == 0:
+                if not request.GET.get('force', False):
+                    raise Http404("%s not found"
+                        % serializer.validated_data['slug'])
                 email = serializer.validated_data['email']
                 full_name = serializer.validated_data.get('full_name', '')
                 if not full_name:
@@ -178,11 +198,11 @@ class AccessibleByListAPIView(RoleSmartListMixin,
                 except user_model.DoesNotExist:
                     manager = user_model.objects.create_user(email, email=email)
                 organization.add_manager(manager, request_user=request.user)
+                organizations = [organization]
 
-            reason = serializer.validated_data.get('message', None)
-            if reason:
-                reason = force_text(reason)
-            created = organization.add_role_request(self.user, reason=reason)
+            for organization in organizations:
+                created |= organization.add_role_request(
+                    self.user, reason=reason)
 
         if created:
             resp_status = status.HTTP_201_CREATED
@@ -442,7 +462,7 @@ class RoleFilteredListAPIView(RoleSmartListMixin, RoleByDescrQuerysetMixin,
 
     def create(self, request, *args, **kwargs): #pylint:disable=unused-argument
         grant_key = None
-        serializer = RoleCreateSerializer(data=request.data)
+        serializer = UserRoleCreateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user_model = get_user_model()
         try:
@@ -492,9 +512,17 @@ class RoleFilteredListAPIView(RoleSmartListMixin, RoleByDescrQuerysetMixin,
 
 class RoleDetailAPIView(RoleMixin, DestroyAPIView):
     """
-    Dettach a user from a role with regards to an organization, typically
-    resulting in revoking permissions  from this user to manage part of an
-    organization profile.
+    Dettach a user from one or all roles with regards to an organization,
+    typically resulting in revoking permissions from this user to manage
+    part of an organization profile.
     """
-    pass
 
+    def destroy(self, request, *args, **kwargs):
+        queryset = self.get_queryset()
+        roles = [str(role.role_description) for role in queryset]
+        LOGGER.info("Remove roles %s for user '%s' on organization '%s'",
+            roles, self.user, self.organization,
+            extra={'event': 'remove-roles', 'user': self.user,
+                'organization': self.organization.slug, 'roles': roles})
+        queryset.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)

@@ -460,6 +460,8 @@ class Organization(models.Model):
             m2m.save(using=self._state.db, force_insert=True)
             signals.user_relation_requested.send(sender=__name__,
                 organization=self, user=user, reason=reason)
+            return True
+        return False
 
     def add_manager(self, user, at_time=None, reason=None, extra=None,
                     request_user=None):

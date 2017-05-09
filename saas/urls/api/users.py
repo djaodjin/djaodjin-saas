@@ -32,8 +32,8 @@ from ...api.roles import AccessibleByListAPIView, RoleDetailAPIView
 from ... import settings
 
 urlpatterns = [
-    url(r'^users/(?P<user>%s)/accessibles/(?P<organization>%s)/?'
-        % (settings.ACCT_REGEX, settings.ACCT_REGEX),
+   url(r'^users/(?P<user>%s)/accessibles/(?P<organization>%s)(/(?P<role>%s))?/?'
+        % (settings.ACCT_REGEX, settings.ACCT_REGEX, settings.ACCT_REGEX),
         RoleDetailAPIView.as_view(), name='saas_api_accessible_detail'),
     url(r'^users/(?P<user>%s)/accessibles/?' % settings.MAYBE_EMAIL_REGEX,
         AccessibleByListAPIView.as_view(), name='saas_api_accessibles'),
