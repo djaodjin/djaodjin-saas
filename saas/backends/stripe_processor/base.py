@@ -459,9 +459,11 @@ class StripeBackend(object):
                 created={'gt': timestamp}, status='paid', **kwargs)
             for transfer in transfers.data:
                 created_at = utctimestamp_to_datetime(transfer.created)
+                descr = (transfer.description if transfer.description
+                    else "STRIPE TRANSFER %s" % str(transfer.id))
                 provider.create_withdraw_transactions(
                     transfer.id, transfer.amount, transfer.currency,
-                    transfer.description, created_at=created_at)
+                    descr, created_at=created_at)
         except stripe.error.StripeError as err:
             LOGGER.exception(err)
             raise ProcessorError(err.message, backend_except=err)
