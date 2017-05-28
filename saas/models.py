@@ -1073,7 +1073,7 @@ class Signature(models.Model):
 
     last_signed = models.DateTimeField(auto_now_add=True)
     agreement = models.ForeignKey(Agreement)
-    user = models.ForeignKey(settings.AUTH_USER_MODEL,
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, db_column='user_id',
         related_name='signatures')
 
     class Meta:
