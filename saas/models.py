@@ -59,6 +59,7 @@ as implemented by a ``RoleDescription``.
 For historical reasons, two roles are often implemented: managers
 and contributors (for details see :doc:`Security <security>`).
 """
+from __future__ import unicode_literals
 
 import datetime, hashlib, logging, random, re
 
@@ -1072,7 +1073,7 @@ class Signature(models.Model):
 
     last_signed = models.DateTimeField(auto_now_add=True)
     agreement = models.ForeignKey(Agreement)
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, db_column='user_id',
+    user = models.ForeignKey(settings.AUTH_USER_MODEL,
         related_name='signatures')
 
     class Meta:
