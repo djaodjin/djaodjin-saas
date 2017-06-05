@@ -33,8 +33,8 @@ from decimal import Decimal
 from io import BytesIO
 
 from django.http import HttpResponse
+from django.utils import six
 from django.views.generic import View
-import six
 
 from ..api.coupons import SmartCouponListMixin, CouponQuerysetMixin
 from ..api.transactions import (BillingsQuerysetMixin,
@@ -56,7 +56,7 @@ class CSVDownloadView(View):
 
     @staticmethod
     def encode(text):
-        if six.PY2:
+        if isinstance(text, six.string_types):
             return text.encode('utf-8')
         return text
 
