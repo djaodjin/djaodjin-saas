@@ -344,7 +344,7 @@ class CardInvoicablesFormMixin(CardFormMixin, InvoicablesFormMixin):
             self.charge = self.organization.checkout(
                 invoicables, self.request.user,
                 token=processor_token, remember_card=remember_card)
-            if self.charge and self.charge.invoiced_total_amount > 0:
+            if self.charge and self.charge.invoiced_total.amount > 0:
                 messages.info(self.request, "A receipt will be sent to"\
 " %(email)s once the charge has been processed. Thank you."
                           % {'email': self.organization.email})

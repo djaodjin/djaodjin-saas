@@ -1292,7 +1292,7 @@ class Charge(models.Model):
         return self._processor_backend
 
     @property
-    def invoiced_total_amount(self):
+    def invoiced_total(self):
         """
         Returns the total amount of all invoiced items.
         """
@@ -1300,7 +1300,7 @@ class Charge(models.Model):
             invoiced_item__charge=self))
         amount = balance['amount']
         unit = balance['unit']
-        return amount, unit
+        return Price(amount, unit)
 
     @property
     def is_disputed(self):
@@ -1617,7 +1617,7 @@ class Charge(models.Model):
             provider.funds_balance += distribute_amount
             provider.save()
 
-        invoiced_amount, _ = self.invoiced_total_amount
+        invoiced_amount = self.invoiced_total.amount
         if invoiced_amount > self.amount:
             #pylint: disable=nonstandard-exception
             raise IntegrityError("The total amount of invoiced items for "\

@@ -386,7 +386,7 @@ class CheckoutAPIView(CartMixin, OrganizationMixin, ListCreateAPIView):
                 token=serializer.validated_data['processor_token'],
                 remember_card=serializer.validated_data.get(
                     'remember_card', False))
-            if charge and charge.invoiced_total_amount > 0:
+            if charge and charge.invoiced_total.amount > 0:
                 result = ChargeSerializer(charge)
                 return Response(result.data, status=status.HTTP_200_OK)
         except ProcessorError as err:
