@@ -2439,7 +2439,6 @@ class Subscription(models.Model):
         at_time = datetime_or_now(at_time)
         delta = at_time - self.created_at
         if self.plan.interval == Plan.HOURLY:
-            # XXX integer division?
             estimated = relativedelta(hours=delta.total_seconds() // 3600)
             period = relativedelta(hours=1)
         elif self.plan.interval == Plan.DAILY:
@@ -2450,18 +2449,21 @@ class Subscription(models.Model):
             estimated = relativedelta(days=delta.days // 7)
             period = relativedelta(days=7)
         elif self.plan.interval == Plan.MONTHLY:
-            # XXX integer division?
-            estimated = relativedelta(months=delta.days // 30)
+            estimated = relativedelta(at_time, self.created_at)
+            estimated.normalized()
+            estimated = relativedelta(
+                months=estimated.years * 12 + estimated.months)
             period = relativedelta(months=1)
         elif self.plan.interval == Plan.YEARLY:
-            # XXX integer division?
-            estimated = relativedelta(years=delta.days // 365)
+            estimated = relativedelta(at_time, self.created_at)
+            estimated.normalized()
+            estimated = relativedelta(years=estimated.years)
             period = relativedelta(years=1)
         else:
             raise ValueError("period type %d is not defined."
                 % self.plan.interval)
         lower = self.created_at + estimated # rough estimate to start
-        upper = lower + period
+        upper = self.created_at + (estimated + period)
         while not (lower <= at_time and at_time < upper):
             if at_time < lower:
                 upper = lower
@@ -3260,7 +3262,8 @@ class TransactionManager(models.Manager):
                 recognized.save()
             created_transactions += [recognized]
             amount -= available
-        assert amount == 0, "issue with subscription.id=%d" % subscription.id
+        assert amount == 0, "amount(%dc) should be zero for subscription %d" % (
+            amount, subscription.pk)
         return created_transactions
 
     @staticmethod

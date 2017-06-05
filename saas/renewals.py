@@ -49,13 +49,14 @@ class DryRun(RuntimeError):
 def _recognize_subscription_income(subscription, until=None):
     #pylint:disable=too-many-locals
     until = datetime_or_now(until)
-    recognize_period = relativedelta(months=1)
     # [``recognize_start``, ``recognize_end``[ is one period over which
     # revenue is recognized. It will slide over the subscription
     # lifetime from ``created_at`` to ``until``.
     order_subscribe_beg = subscription.created_at
+    recognize_period_idx = 0
     recognize_start = subscription.created_at
-    recognize_end = recognize_start + recognize_period
+    recognize_end = (subscription.created_at
+        + relativedelta(months=recognize_period_idx + 1))
     LOGGER.debug('process %s', subscription)
     for order in Transaction.objects.get_subscription_receivable(
             subscription, until=until):
@@ -115,8 +116,11 @@ def _recognize_subscription_income(subscription, until=None):
                         'nb_periods': nb_periods,
                         'period_start': descr_period_start,
                         'period_end': descr_period_end})
-            recognize_start = recognize_end
-            recognize_end += recognize_period
+            recognize_period_idx += 1
+            recognize_start = (subscription.created_at
+                + relativedelta(months=recognize_period_idx))
+            recognize_end = (subscription.created_at
+                + relativedelta(months=recognize_period_idx + 1))
         order_subscribe_beg = order_subscribe_end
         if recognize_end >= until:
             break
@@ -137,6 +141,10 @@ def recognize_income(until=None, dry_run=False):
                 _recognize_subscription_income(subscription, until=until)
                 if dry_run:
                     raise DryRun()
+        except AssertionError as err:
+            # We log the exception and moves on to the next subscription,
+            # giving a chance to others to complete.
+            LOGGER.exception(err)
         except DryRun:
             pass
 
