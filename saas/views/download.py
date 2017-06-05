@@ -34,6 +34,7 @@ from io import BytesIO
 
 from django.http import HttpResponse
 from django.views.generic import View
+import six
 
 from ..api.coupons import SmartCouponListMixin, CouponQuerysetMixin
 from ..api.transactions import (BillingsQuerysetMixin,
@@ -53,10 +54,16 @@ class CSVDownloadView(View):
     basename = 'download'
     headings = []
 
+    @staticmethod
+    def encode(text):
+        if six.PY2:
+            return text.encode('utf-8')
+        return text
+
     def get(self, *args, **kwargs): #pylint: disable=unused-argument
         content = BytesIO()
         csv_writer = csv.writer(content)
-        csv_writer.writerow([head.encode('utf-8')
+        csv_writer.writerow([self.encode(head)
             for head in self.get_headings()])
         for record in self.get_queryset():
             csv_writer.writerow(self.queryrow_to_columns(record))
@@ -142,12 +149,12 @@ class CouponMetricsDownloadView(SmartCouponListMixin, CouponQuerysetMixin,
             full_name = ' '.join([cartitem.first_name, cartitem.last_name])
             email = cartitem.email
         return [
-            cartitem.coupon.code.encode('utf-8'),
+            self.encode(cartitem.coupon.code),
             cartitem.coupon.percent,
-            full_name.encode('utf-8'),
-            email.encode('utf-8'),
-            cartitem.plan.slug.encode('utf-8'),
-            claim_code.encode('utf-8')]
+            self.encode(full_name),
+            self.encode(email),
+            self.encode(cartitem.plan.slug),
+            self.encode(claim_code)]
 
 
 class RegisteredBaseDownloadView(RegisteredQuerysetMixin, CSVDownloadView):
@@ -160,9 +167,9 @@ class RegisteredBaseDownloadView(RegisteredQuerysetMixin, CSVDownloadView):
 
     def queryrow_to_columns(self, instance):
         return [
-            instance.first_name.encode('utf-8'),
-            instance.last_name.encode('utf-8'),
-            instance.email.encode('utf-8'),
+            self.encode(instance.first_name),
+            self.encode(instance.last_name),
+            self.encode(instance.email),
             instance.date_joined.date(),
         ]
 
@@ -188,9 +195,9 @@ class SubscriptionBaseDownloadView(CSVDownloadView):
 
     def queryrow_to_columns(self, instance):
         return [
-            instance.organization.full_name.encode('utf-8'),
-            instance.organization.email.encode('utf-8'),
-            instance.plan.title.encode('utf-8'),
+            self.encode(instance.organization.full_name),
+            self.encode(instance.organization.email),
+            self.encode(instance.plan.title),
             instance.created_at.date(),
             instance.ends_at.date(),
         ]
@@ -244,18 +251,20 @@ class TransactionDownloadView(SmartTransactionListMixin,
     def queryrow_to_columns(self, transaction):
         return [
             transaction.created_at.date(),
-            humanize.as_money(transaction.dest_amount, transaction.dest_unit,
-                negative_format="-%s").encode('utf-8'),
-            transaction.dest_unit.encode('utf-8'),
-            transaction.dest_organization.printable_name.encode('utf-8'),
-            transaction.dest_account.encode('utf-8'),
-            humanize.as_money(transaction.orig_amount, transaction.orig_unit,
-                negative_format="-%s").encode('utf-8'),
-            transaction.orig_unit.encode('utf-8'),
-            transaction.orig_organization.printable_name.encode('utf-8'),
-            transaction.orig_account.encode('utf-8'),
-            ('"%s"' % transaction.descr.replace(
-                '\\', '\\\\').replace('"', '\"')).encode('utf-8')
+            self.encode(humanize.as_money(
+                transaction.dest_amount, transaction.dest_unit,
+                negative_format="-%s")),
+            self.encode(transaction.dest_unit),
+            self.encode(transaction.dest_organization.printable_name),
+            self.encode(transaction.dest_account),
+            self.encode(humanize.as_money(
+                transaction.orig_amount, transaction.orig_unit,
+                negative_format="-%s")),
+            self.encode(transaction.orig_unit),
+            self.encode(transaction.orig_organization.printable_name),
+            self.encode(transaction.orig_account),
+            self.encode(('"%s"' % transaction.descr.replace(
+                '\\', '\\\\').replace('"', '\"')))
         ]
 
 
@@ -277,9 +286,9 @@ class BillingStatementDownloadView(SmartTransactionListMixin,
                 (-1 if transaction.is_debit(self.organization) else 1) *
                 # XXX integer division
                 Decimal(transaction.dest_amount) / 100),
-            transaction.dest_unit.encode('utf-8'),
-            ('"%s"' % transaction.descr.replace(
-                '\\', '\\\\').replace('"', '\"')).encode('utf-8')
+            self.encode(transaction.dest_unit),
+            self.encode(('"%s"' % transaction.descr.replace(
+                '\\', '\\\\').replace('"', '\"')))
         ]
 
 
@@ -301,7 +310,7 @@ class TransferDownloadView(SmartTransactionListMixin,
                 (-1 if transaction.is_debit(self.organization) else 1) *
                 # XXX integer division
                 Decimal(transaction.dest_amount) / 100),
-            transaction.dest_unit.encode('utf-8'),
-            ('"%s"' % transaction.descr.replace(
-                '\\', '\\\\').replace('"', '\"')).encode('utf-8')
+            self.encode(transaction.dest_unit),
+            self.encode(('"%s"' % transaction.descr.replace(
+                '\\', '\\\\').replace('"', '\"')))
         ]
