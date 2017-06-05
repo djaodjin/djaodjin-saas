@@ -256,7 +256,7 @@ class StripeBackend(object):
             # is present in the CardError exception. So instead of generating
             # an HTTP retrieve and recording a failed charge in our database,
             # we raise and rollback.
-            raise CardError(err.message, err.code,
+            raise CardError(str(err), err.code,
                 charge_processor_key=err.json_body['error']['charge'],
                 backend_except=err)
         return (processor_key, created_at, receipt_info)
@@ -350,7 +350,7 @@ class StripeBackend(object):
                     sender=__name__, organization=subscriber,
                     user=user, old_card=old_card, new_card=new_card)
             except stripe.error.CardError as err:
-                raise CardError(err.message, err.code, backend_except=err)
+                raise CardError(str(err), err.code, backend_except=err)
             except stripe.error.InvalidRequestError:
                 # Can't find the customer on Stripe. This can be related to
                 # a switch from using devel to production keys.
@@ -365,7 +365,7 @@ class StripeBackend(object):
                     email=subscriber.email, description=subscriber.slug,
                     card=card_token, **kwargs)
             except stripe.error.CardError as err:
-                raise CardError(err.message, err.code, backend_except=err)
+                raise CardError(str(err), err.code, backend_except=err)
             subscriber.processor_card_key = p_customer.id
             # We rely on ``update_card`` to do the ``save``.
 
@@ -407,7 +407,7 @@ class StripeBackend(object):
                         'balance_amount': balance.available[0].amount,
                         'balance_unit': balance.available[0].currency})
                 except stripe.error.StripeError as err:
-                    raise ProcessorError(err.message, backend_except=err)
+                    raise ProcessorError(str(err), backend_except=err)
         except ProcessorError:
             # OK here. We don't have a connected Stripe account.
             context.update({
@@ -466,7 +466,7 @@ class StripeBackend(object):
                     descr, created_at=created_at)
         except stripe.error.StripeError as err:
             LOGGER.exception(err)
-            raise ProcessorError(err.message, backend_except=err)
+            raise ProcessorError(str(err), backend_except=err)
 
     @staticmethod
     def dispute_fee(amount): #pylint: disable=unused-argument
