@@ -30,7 +30,7 @@ from __future__ import unicode_literals
 
 import csv
 from decimal import Decimal
-from io import BytesIO
+from io import BytesIO, StringIO
 
 from django.http import HttpResponse
 from django.utils import six
@@ -56,12 +56,15 @@ class CSVDownloadView(View):
 
     @staticmethod
     def encode(text):
-        if isinstance(text, six.string_types):
+        if six.PY2:
             return text.encode('utf-8')
         return text
 
     def get(self, *args, **kwargs): #pylint: disable=unused-argument
-        content = BytesIO()
+        if six.PY2:
+            content = BytesIO()
+        else:
+            content = StringIO()
         csv_writer = csv.writer(content)
         csv_writer.writerow([self.encode(head)
             for head in self.get_headings()])
