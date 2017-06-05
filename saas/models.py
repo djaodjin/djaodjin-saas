@@ -408,8 +408,11 @@ class Organization(models.Model):
 
     @staticmethod
     def generate_role_key(user):
-        salt = hashlib.sha1(str(random.random())).hexdigest()[:5]
-        return hashlib.sha1(salt+user.username).hexdigest()
+        random_key = str(random.random()).encode('utf-8')
+        salt = hashlib.sha1(random_key).hexdigest()[:5]
+        verification_key = hashlib.sha1(
+            (salt+user.username).encode('utf-8')).hexdigest()
+        return verification_key
 
     def add_role(self, user, role_descr,
                  grant_key=None, at_time=None, reason=None, extra=None,
