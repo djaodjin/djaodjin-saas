@@ -60,7 +60,7 @@ def messages(obj):
 
 @register.filter()
 def url_profile_base(request): #pylint:disable=unused-argument
-    return reverse('accounts_profile')
+    return reverse('users_profile_base')
 
 
 @register.filter()

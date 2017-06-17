@@ -12,7 +12,9 @@ razorpay==0.2.0
 stripe==1.58.0
 
 # testsite-only
-django-urldecorators==0.5
+# XXX django-urldecorators==0.5 is broken on Python3 and Django 1.10
+#     We use a patched version here while pull request is being reviewed.
+git+https://github.com/smirolo/django-urldecorators.git
 
 # development
 Sphinx==1.4.6

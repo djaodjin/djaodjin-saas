@@ -22,8 +22,6 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-import urlparse
-
 from django import forms
 from django.conf import settings
 from django.contrib.auth import (REDIRECT_FIELD_NAME, authenticate,
@@ -31,6 +29,7 @@ from django.contrib.auth import (REDIRECT_FIELD_NAME, authenticate,
 from django.db import transaction
 from django.http import HttpResponseRedirect
 from django.utils.decorators import method_decorator
+from django.utils.six.moves.urllib.parse import urlparse
 from django.views.generic.edit import FormView
 from django_countries import countries
 from saas.models import Organization, Signature
@@ -182,7 +181,7 @@ class PersonalRegistrationView(FormView):
         self.register(**form.cleaned_data)
         next_url = self.request.GET.get(REDIRECT_FIELD_NAME, None)
         if next_url:
-            return HttpResponseRedirect(urlparse.urlparse(next_url).path)
+            return HttpResponseRedirect(urlparse(next_url).path)
         return super(PersonalRegistrationView, self).form_valid(form)
 
     @method_decorator(transaction.atomic)

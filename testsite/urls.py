@@ -24,7 +24,7 @@
 
 from django.contrib.auth.decorators import login_required
 from django.core.urlresolvers import reverse_lazy
-from django.views.generic import TemplateView
+from django.views.generic import RedirectView, TemplateView
 from saas.views import OrganizationRedirectView
 from saas.views.plans import CartPlanListView
 from urldecorators import include, url
@@ -55,6 +55,10 @@ urlpatterns = [
         decorators=['django.contrib.auth.decorators.login_required']),
     url_prefixed(r'users/(?P<user>[\w.@+-]+)/',
         UserProfileView.as_view(), name='users_profile',
+        decorators=['django.contrib.auth.decorators.login_required']),
+    url_prefixed(r'users/',
+        RedirectView.as_view(pattern_name='users_profile'),
+            name='users_profile_base',
         decorators=['django.contrib.auth.decorators.login_required']),
     url_prefixed(r'', include('django.contrib.auth.urls')),
     url_prefixed(r'saas/$',
