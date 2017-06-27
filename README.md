@@ -75,10 +75,9 @@ saas/templates/notification/ directory.
 Release Notes
 =============
 
-0.2.4
+0.2.6
 
-  * Generic roles
-  * Cancel total balance due (#95)
+  * Compatible with Python 3.6
 
 [previous release notes](changelog)
 

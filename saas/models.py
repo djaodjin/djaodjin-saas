@@ -66,7 +66,7 @@ import datetime, hashlib, logging, random, re
 from dateutil.relativedelta import relativedelta
 from django.contrib.auth import get_user_model
 from django.core.validators import MaxValueValidator
-from django.db import IntegrityError, models, transaction
+from django.db import DatabaseError, IntegrityError, models, transaction
 from django.db.models import Max, Q, Sum
 from django.db.models.query import QuerySet
 from django.db.models.signals import post_save
@@ -1349,7 +1349,7 @@ class Charge(models.Model):
 
     def dispute_created(self):
         #pylint: disable=too-many-locals
-        self.state = self.DISPUTED
+        assert self.state == self.DONE
         created_at = datetime_or_now()
         balance = sum_orig_amount(self.refunded)
         previously_refunded = balance['amount']
@@ -1359,8 +1359,13 @@ class Charge(models.Model):
             = self.processor_backend.charge_distribution(self)
         corrected_available_amount = charge_available_amount
         corrected_fee_amount = charge_fee_amount
+        providers = set([])
         with transaction.atomic():
-            providers = set([])
+            updated = Charge.objects.select_for_update(nowait=True).filter(
+                pk=self.pk, state=self.DONE).update(state=self.DISPUTED)
+            if not updated:
+                raise DatabaseError(
+                    "Charge is currently being updated by another transaction")
             for charge_item in self.line_items:
                 refunded_amount = min(refund_available,
                     charge_item.invoiced_item.dest_amount)
@@ -1379,22 +1384,28 @@ class Charge(models.Model):
                     processor_unit=processor_unit,
                     refund_type=Transaction.CHARGEBACK)
                 refund_available -= refunded_amount
-            self.save()
         signals.charge_updated.send(sender=__name__, charge=self, user=None)
 
     def dispute_updated(self):
-        self.state = self.DISPUTED
-        self.save()
+        with transaction.atomic():
+            Charge.objects.select_for_update(nowait=True).filter(
+                pk=self.pk).update(state=self.DISPUTED)
         signals.charge_updated.send(sender=__name__, charge=self, user=None)
 
     def dispute_lost(self):
-        self.state = self.DONE
-        self.save()
+        with transaction.atomic():
+            Charge.objects.select_for_update(nowait=True).filter(
+                pk=self.pk).update(state=self.FAILED)
         signals.charge_updated.send(sender=__name__, charge=self, user=None)
 
     def dispute_won(self):
-        self.state = self.DONE
+        assert self.state == self.DISPUTED
         with transaction.atomic():
+            updated = Charge.objects.select_for_update(nowait=True).filter(
+                pk=self.pk, state=self.DISPUTED).update(state=self.DONE)
+            if not updated:
+                raise DatabaseError(
+                    "Charge is currently being updated by another transaction")
             for reverted in Transaction.objects.by_charge(self).filter(
                     dest_account=Transaction.CHARGEBACK):
                 Transaction.objects.create(
@@ -1409,16 +1420,18 @@ class Charge(models.Model):
                     orig_amount=reverted.dest_amount,
                     orig_account=reverted.dest_account,
                     orig_organization=reverted.dest_organization)
-            self.save()
         signals.charge_updated.send(sender=__name__, charge=self, user=None)
 
     def failed(self):
-        self.state = self.FAILED
-        self.save()
+        assert self.state == self.CREATED
+        with transaction.atomic():
+            updated = Charge.objects.select_for_update(nowait=True).filter(
+                pk=self.pk, state=self.CREATED).update(state=self.FAILED)
+            if not updated:
+                raise DatabaseError(
+                    "Charge is currently being updated by another transaction")
         signals.charge_updated.send(sender=__name__, charge=self, user=None)
 
-
-    @transaction.atomic
     def payment_successful(self):
         """
         When a charge through the payment processor is sucessful,
@@ -1476,163 +1489,166 @@ class Charge(models.Model):
         """
         #pylint: disable=too-many-locals
         assert self.state == self.CREATED
-
-        # up at the top of this method so that we bail out quickly, before
-        # we start to mistakenly enter the charge and distributions a second
-        # time on two rapid fire `Charge.retrieve()` calls.
-        self.state = self.DONE
-        self.save()
-
-        # Example:
-        # 2014/01/15 charge on xia card
-        #     stripe:Funds                                 15800
-        #     xia:Liability
-        total_distribute_amount, funds_unit, \
-            total_fee_amount, processor_funds_unit \
-            = self.processor_backend.charge_distribution(self)
-
-        charge_transaction = Transaction.objects.create(
-            event_id=self.id,
-            descr=self.description,
-            created_at=self.created_at,
-            dest_unit=self.unit,
-            # XXX provider and processor must have same units.
-            dest_amount=self.amount,
-            dest_account=Transaction.FUNDS,
-            dest_organization=self.processor,
-            orig_unit=self.unit,
-            orig_amount=self.amount,
-            orig_account=Transaction.LIABILITY,
-            orig_organization=self.customer)
-        # Once we have created a transaction for the charge, let's
-        # redistribute the funds to their rightful owners.
-        for charge_item in self.charge_items.all(): #pylint: disable=no-member
-            invoiced_item = charge_item.invoiced
-
-            # If there is still an amount on the ``Payable`` account,
-            # we create Payable to Liability transaction in order to correct
-            # the accounts amounts. This is a side effect of the atomicity
-            # requirement for a ``Transaction`` associated to a ``Charge``.
-            balance = Transaction.objects.get_event_balance(
-                invoiced_item.event_id, account=Transaction.PAYABLE)
-            balance_payable = balance['amount']
-            if balance_payable > 0:
-                available = min(invoiced_item.dest_amount, balance_payable)
-                # Example:
-                # 2014/01/15 keep a balanced ledger
-                #     xia:Liability                                 15800
-                #     xia:Payable
-                Transaction.objects.create(
-                    event_id=invoiced_item.event_id,
-                    created_at=self.created_at,
-                    descr=humanize.DESCRIBE_DOUBLE_ENTRY_MATCH,
-                    dest_unit=invoiced_item.dest_unit,
-                    dest_amount=available,
-                    dest_account=Transaction.LIABILITY,
-                    dest_organization=invoiced_item.dest_organization,
-                    orig_unit=invoiced_item.dest_unit,
-                    orig_amount=available,
-                    orig_account=Transaction.PAYABLE,
-                    orig_organization=invoiced_item.dest_organization)
-
-            # XXX used for provider and in description.
-            event = invoiced_item.get_event()
-            provider = event.provider
-            orig_item_amount = invoiced_item.dest_amount
-            # Has long as we have only one item and charge/funds are using
-            # same unit, multiplication and division are carefully crafted
-            # to keep full precision.
-            # XXX to check with transfer btw currencies and multiple items.
-            # integer division
-            orig_fee_amount = (orig_item_amount * total_fee_amount
-                // (total_distribute_amount + total_fee_amount))
-            assert isinstance(orig_fee_amount, six.integer_types)
-            orig_distribute_amount = orig_item_amount - orig_fee_amount
-            # integer division
-            fee_amount = ((total_fee_amount * orig_item_amount // self.amount))
-            assert isinstance(fee_amount, six.integer_types)
-            # integer division
-            distribute_amount = (
-                total_distribute_amount * orig_item_amount // self.amount)
-            assert isinstance(distribute_amount, six.integer_types)
-            LOGGER.debug("payment_successful(charge=%s) distribute: %d %s, "\
-                "fee: %d %s out of total distribute: %d %s, total fee: %d %s",
-                self.processor_key, distribute_amount, funds_unit,
-                fee_amount, processor_funds_unit,
-                total_distribute_amount, funds_unit,
-                total_fee_amount, processor_funds_unit)
-            if fee_amount > 0:
-                # Example:
-                # 2014/01/15 fee to cowork
-                #     cowork:Expenses                             900
-                #     stripe:Backlog
-                charge_item.invoiced_fee = Transaction.objects.create(
-                    created_at=self.created_at,
-                    descr=humanize.DESCRIBE_CHARGED_CARD_PROCESSOR % {
-                        'charge': self.processor_key, 'event': event},
-                    event_id=self.id,
-                    dest_unit=funds_unit,
-                    dest_amount=fee_amount,
-                    dest_account=Transaction.EXPENSES,
-                    dest_organization=provider,
-                    orig_unit=self.unit,
-                    orig_amount=orig_fee_amount,
-                    orig_account=Transaction.BACKLOG,
-                    orig_organization=self.processor)
-                # pylint:disable=no-member
-                self.processor.funds_balance += fee_amount
-                self.processor.save()
+        with transaction.atomic():
+            # up at the top of this method so that we bail out quickly, before
+            # we start to mistakenly enter the charge and distributions a second
+            # time on two rapid fire `Charge.retrieve()` calls.
+            updated = Charge.objects.select_for_update(nowait=True).filter(
+                pk=self.pk, state=self.CREATED).update(state=self.DONE)
+            if not updated:
+                raise DatabaseError(
+                    "Charge is currently being updated by another transaction")
 
             # Example:
-            # 2014/01/15 distribution due to cowork
-            #     cowork:Receivable                             8000
-            #     cowork:Backlog
-            #
-            # 2014/01/15 distribution due to cowork
-            #     cowork:Funds                                  7000
-            #     stripe:Funds
-            Transaction.objects.create(
-                event_id=event.id,
-                created_at=self.created_at,
-                descr=humanize.DESCRIBE_CHARGED_CARD_PROVIDER % {
-                        'charge': self.processor_key, 'event': event},
-                dest_unit=self.unit,
-                dest_amount=orig_item_amount,
-                dest_account=Transaction.RECEIVABLE,
-                dest_organization=provider,
-                orig_unit=funds_unit,
-                # XXX Just making sure we don't screw up rounding
-                # when using the same unit.
-                orig_amount=(distribute_amount + fee_amount
-                    if self.unit != funds_unit else orig_item_amount),
-                orig_account=Transaction.BACKLOG,
-                orig_organization=provider)
+            # 2014/01/15 charge on xia card
+            #     stripe:Funds                                 15800
+            #     xia:Liability
+            total_distribute_amount, funds_unit, \
+                total_fee_amount, processor_funds_unit \
+                = self.processor_backend.charge_distribution(self)
 
-            charge_item.invoiced_distribute = Transaction.objects.create(
+            charge_transaction = Transaction.objects.create(
                 event_id=self.id,
+                descr=self.description,
                 created_at=self.created_at,
-                descr=humanize.DESCRIBE_CHARGED_CARD_PROVIDER % {
-                        'charge': self.processor_key, 'event': event},
-                dest_unit=funds_unit,
-                dest_amount=distribute_amount,
+                dest_unit=self.unit,
+                # XXX provider and processor must have same units.
+                dest_amount=self.amount,
                 dest_account=Transaction.FUNDS,
-                dest_organization=provider,
+                dest_organization=self.processor,
                 orig_unit=self.unit,
-                orig_amount=orig_distribute_amount,
-                orig_account=Transaction.FUNDS,
-                orig_organization=self.processor)
-            charge_item.save()
-            provider.funds_balance += distribute_amount
-            provider.save()
+                orig_amount=self.amount,
+                orig_account=Transaction.LIABILITY,
+                orig_organization=self.customer)
+            # Once we have created a transaction for the charge, let's
+            # redistribute the funds to their rightful owners.
+            for charge_item in self.charge_items.all():
+                invoiced_item = charge_item.invoiced
 
-        invoiced_amount = self.invoiced_total.amount
-        if invoiced_amount > self.amount:
-            #pylint: disable=nonstandard-exception
-            raise IntegrityError("The total amount of invoiced items for "\
-              "charge %s exceed the amount of the charge.", self.processor_key)
+                # If there is still an amount on the ``Payable`` account,
+                # we create Payable to Liability transaction in order to correct
+                # the accounts amounts. This is a side effect of the atomicity
+                # requirement for a ``Transaction`` associated to a ``Charge``.
+                balance = Transaction.objects.get_event_balance(
+                    invoiced_item.event_id, account=Transaction.PAYABLE)
+                balance_payable = balance['amount']
+                if balance_payable > 0:
+                    available = min(invoiced_item.dest_amount, balance_payable)
+                    # Example:
+                    # 2014/01/15 keep a balanced ledger
+                    #     xia:Liability                                 15800
+                    #     xia:Payable
+                    Transaction.objects.create(
+                        event_id=invoiced_item.event_id,
+                        created_at=self.created_at,
+                        descr=humanize.DESCRIBE_DOUBLE_ENTRY_MATCH,
+                        dest_unit=invoiced_item.dest_unit,
+                        dest_amount=available,
+                        dest_account=Transaction.LIABILITY,
+                        dest_organization=invoiced_item.dest_organization,
+                        orig_unit=invoiced_item.dest_unit,
+                        orig_amount=available,
+                        orig_account=Transaction.PAYABLE,
+                        orig_organization=invoiced_item.dest_organization)
 
-        signals.charge_updated.send(
-            sender=__name__, charge=self, user=None)
+                # XXX used for provider and in description.
+                event = invoiced_item.get_event()
+                provider = event.provider
+                orig_item_amount = invoiced_item.dest_amount
+                # Has long as we have only one item and charge/funds are using
+                # same unit, multiplication and division are carefully crafted
+                # to keep full precision.
+                # XXX to check with transfer btw currencies and multiple items.
+                # integer division
+                orig_fee_amount = (orig_item_amount * total_fee_amount
+                    // (total_distribute_amount + total_fee_amount))
+                assert isinstance(orig_fee_amount, six.integer_types)
+                orig_distribute_amount = orig_item_amount - orig_fee_amount
+                # integer division
+                fee_amount = ((total_fee_amount * orig_item_amount
+                               // self.amount))
+                assert isinstance(fee_amount, six.integer_types)
+                # integer division
+                distribute_amount = (
+                    total_distribute_amount * orig_item_amount // self.amount)
+                assert isinstance(distribute_amount, six.integer_types)
+                LOGGER.debug("payment_successful(charge=%s) distribute: %d %s,"\
+                 " fee: %d %s out of total distribute: %d %s, total fee: %d %s",
+                    self.processor_key, distribute_amount, funds_unit,
+                    fee_amount, processor_funds_unit,
+                    total_distribute_amount, funds_unit,
+                    total_fee_amount, processor_funds_unit)
+                if fee_amount > 0:
+                    # Example:
+                    # 2014/01/15 fee to cowork
+                    #     cowork:Expenses                             900
+                    #     stripe:Backlog
+                    charge_item.invoiced_fee = Transaction.objects.create(
+                        created_at=self.created_at,
+                        descr=humanize.DESCRIBE_CHARGED_CARD_PROCESSOR % {
+                            'charge': self.processor_key, 'event': event},
+                        event_id=self.id,
+                        dest_unit=funds_unit,
+                        dest_amount=fee_amount,
+                        dest_account=Transaction.EXPENSES,
+                        dest_organization=provider,
+                        orig_unit=self.unit,
+                        orig_amount=orig_fee_amount,
+                        orig_account=Transaction.BACKLOG,
+                        orig_organization=self.processor)
+                    # pylint:disable=no-member
+                    self.processor.funds_balance += fee_amount
+                    self.processor.save()
+
+                # Example:
+                # 2014/01/15 distribution due to cowork
+                #     cowork:Receivable                             8000
+                #     cowork:Backlog
+                #
+                # 2014/01/15 distribution due to cowork
+                #     cowork:Funds                                  7000
+                #     stripe:Funds
+                Transaction.objects.create(
+                    event_id=event.id,
+                    created_at=self.created_at,
+                    descr=humanize.DESCRIBE_CHARGED_CARD_PROVIDER % {
+                            'charge': self.processor_key, 'event': event},
+                    dest_unit=self.unit,
+                    dest_amount=orig_item_amount,
+                    dest_account=Transaction.RECEIVABLE,
+                    dest_organization=provider,
+                    orig_unit=funds_unit,
+                    # XXX Just making sure we don't screw up rounding
+                    # when using the same unit.
+                    orig_amount=(distribute_amount + fee_amount
+                        if self.unit != funds_unit else orig_item_amount),
+                    orig_account=Transaction.BACKLOG,
+                    orig_organization=provider)
+
+                charge_item.invoiced_distribute = Transaction.objects.create(
+                    event_id=self.id,
+                    created_at=self.created_at,
+                    descr=humanize.DESCRIBE_CHARGED_CARD_PROVIDER % {
+                            'charge': self.processor_key, 'event': event},
+                    dest_unit=funds_unit,
+                    dest_amount=distribute_amount,
+                    dest_account=Transaction.FUNDS,
+                    dest_organization=provider,
+                    orig_unit=self.unit,
+                    orig_amount=orig_distribute_amount,
+                    orig_account=Transaction.FUNDS,
+                    orig_organization=self.processor)
+                charge_item.save()
+                provider.funds_balance += distribute_amount
+                provider.save()
+
+            invoiced_amount = self.invoiced_total.amount
+            if invoiced_amount > self.amount:
+                #pylint: disable=nonstandard-exception
+                raise IntegrityError("The total amount of invoiced items for "\
+                    "charge %s exceed the amount of the charge.",
+                    self.processor_key)
+        signals.charge_updated.send(sender=__name__, charge=self, user=None)
         return charge_transaction
 
     def refund(self, linenum, refunded_amount=None, created_at=None, user=None):
