@@ -81,7 +81,7 @@
     "title": "Medium",
     "created_at":"2013-08-30T14:16:55-09:00",
     "setup_amount": 0,
-    "period_amount": 6900,
+    "period_amount": 24900,
     "interval": 4,
     "description": "Medium Plan",
     "organization" : 2,
@@ -267,7 +267,7 @@
       "created_at": "2012-08-14T14:16:55-09:00",
       "code": "HALLOWEEN",
       "organization": 2,
-      "percent": 20
+      "percent": 50
     },
     "model": "saas.Coupon", "pk": 1
 },
@@ -329,6 +329,15 @@
       "user": 5
     },
     "model": "saas.Role", "pk": 5
+},
+{
+    "fields": {
+      "created_at": "2012-10-01T00:00:00-09:00",
+      "role_description": 1,
+      "organization": 5,
+      "user": 2
+    },
+    "model": "saas.Role", "pk": 8
 },
 {
     "fields": {
@@ -462,6 +471,71 @@
       "user": 9
     },
     "model": "saas.Role", "pk": 9
+},
+{
+    "fields": {
+      "slug": "tennis-club",
+      "email": "cowork@djaodjin.com",
+      "full_name": "Tennis Club of North Beach",
+      "created_at": "2012-09-14T14:16:55-09:00",
+      "processor": 1,
+      "is_provider": 1,
+      "is_active": 1
+    },
+    "model": "saas.Organization", "pk": 13
+},
+{
+    "fields": {
+      "created_at": "2012-09-14T14:16:55-09:00",
+      "role_description": 1,
+      "organization": 13,
+      "user": 2
+    },
+    "model": "saas.Role", "pk": 11
+},
+{
+    "fields": {
+      "slug": "dibaggio-parents",
+      "email": "cowork@djaodjin.com",
+      "full_name": "Di Baggio Middle School Parents Association",
+      "created_at": "2012-09-14T14:16:55-09:00",
+      "processor": 1,
+      "is_provider": 1,
+      "is_active": 1
+    },
+    "model": "saas.Organization", "pk": 12
+},
+{
+    "fields":{
+        "slug":"standard",
+        "title":"Di Baggio Middle School Parents Association",
+        "created_at":"2013-11-01T00:00:00-09:00",
+        "setup_amount":0,
+        "period_amount":18900,
+        "transaction_fee": 0,
+        "interval": 5,
+        "advance_discount": 0,
+        "description":"",
+        "organization" : 12,
+        "is_active" : 1
+    },
+    "model" : "saas.Plan", "pk": 12
+},
+{
+    "fields":{
+        "slug": "tennis-club",
+        "title":"Tennis Club of North Beach",
+        "created_at":"2013-11-01T00:00:00-09:00",
+        "setup_amount":0,
+        "period_amount":18900,
+        "transaction_fee": 0,
+        "interval": 5,
+        "advance_discount": 0,
+        "description":"",
+        "organization" : 13,
+        "is_active" : 1
+    },
+    "model" : "saas.Plan", "pk": 13
 },
 {
     "fields":{

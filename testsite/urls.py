@@ -24,8 +24,8 @@
 
 from django.contrib.auth.decorators import login_required
 from django.core.urlresolvers import reverse_lazy
-from django.views.generic import RedirectView, TemplateView
-from saas.views import OrganizationRedirectView
+from django.views.generic import TemplateView
+from saas.views import OrganizationRedirectView, UserRedirectView
 from saas.views.plans import CartPlanListView
 from urldecorators import include, url
 
@@ -51,14 +51,13 @@ urlpatterns = [
         PersonalRegistrationView.as_view(
             success_url=reverse_lazy('home')),
         name='registration_register'),
-    url_prefixed(r'^users/', include('saas.urls.users'),
+    url_prefixed(r'^', include('saas.urls.users'),
         decorators=['django.contrib.auth.decorators.login_required']),
     url_prefixed(r'users/(?P<user>[\w.@+-]+)/',
         UserProfileView.as_view(), name='users_profile',
         decorators=['django.contrib.auth.decorators.login_required']),
     url_prefixed(r'users/',
-        RedirectView.as_view(pattern_name='users_profile'),
-            name='users_profile_base',
+        UserRedirectView.as_view(), name='users_profile_base',
         decorators=['django.contrib.auth.decorators.login_required']),
     url_prefixed(r'', include('django.contrib.auth.urls')),
     url_prefixed(r'saas/$',

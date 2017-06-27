@@ -1,31 +1,39 @@
 <fieldset id="invoicables">
   <table>
-    {% for entry in invoicables %}
-    {% if entry.is_changed %}
-    <tbody data-plan="{{entry.subscription.plan}}">
+    {% if invoicables %}
+      <tbody data-plan="{{invoicables.0.subscription.plan}}">
+        <tr>
+          <td colspan="3">
+            <em>{{invoicables.0.subscription.plan.title}} from {{invoicables.0.subscription.plan.organization.printable_name}}</em>
+          </td>
+        </tr>
+      {% for entry in invoicables %}
+      {% if entry.is_changed %}
+        {% if is_bulk_buyer %}
+        <tr class="seat">
+          <td colspan="3">
+            <input class="seat-first-name" type="text" placeholder="First Name" />
+            <input class="seat-last-name" type="text" placeholder="Last Name" />
+            <input class="seat-email" type="text" placeholder="Email" />
+            <button type="button" class="add-seat" type="button">Add</button>
+          </td>
+        </tr>
+        <tr class="seat-file-upload">
+          <td colspan="3">
+            <label>Upload CSV:</label>
+            <input class="seat-file" type="file" />
+            <button type="button" class="seat-upload-file">Upload</button>
+          </td>
+        </tr>
+        {% endif %}
+      </tbody>
+      <tbody data-plan="{{entry.subscription.plan}}">
       <tr>
         <td colspan="3">
           <em>{{entry.subscription.plan.title}} from {{entry.subscription.plan.organization.printable_name}}</em>
         </td>
       </tr>
-      {% if is_bulk_buyer %}
-      <tr class="seat">
-        <td colspan="3">
-          <input class="seat-first-name" type="text" placeholder="First Name" />
-          <input class="seat-last-name" type="text" placeholder="Last Name" />
-          <input class="seat-email" type="text" placeholder="Email" />
-          <button type="button" class="add-seat" type="button">Add</button>
-        </td>
-      </tr>
-      <tr class="seat-file-upload">
-        <td colspan="3">
-          <label>Upload CSV:</label>
-          <input class="seat-file" type="file" />
-          <button type="button" class="seat-upload-file">Upload</button>
-        </td>
-      </tr>
       {% endif %}
-    {% endif %}
       {% for line in entry.lines %}
       <tr class="invoice-item">
         <td></td>
@@ -42,10 +50,26 @@
         </td>
       </tr>
       {% endfor %}
-    {% if entry.is_changed %}
-    </tbody>
+      {% endfor %}
+      {% if is_bulk_buyer %}
+      <tr class="seat">
+        <td colspan="3">
+          <input class="seat-first-name" type="text" placeholder="First Name" />
+          <input class="seat-last-name" type="text" placeholder="Last Name" />
+          <input class="seat-email" type="text" placeholder="Email" />
+          <button type="button" class="btn btn-primary add-seat" type="button">Add</button>
+        </td>
+      </tr>
+      <tr class="seat-file-upload">
+        <td colspan="3">
+          <label>Upload CSV:</label>
+          <input class="seat-file" type="file" />
+          <button type="button" class="seat-upload-file">Upload</button>
+        </td>
+      </tr>
+      {% endif %}
+      </tbody>
     {% endif %}
-    {% endfor %}
     <tfooter>
       <tr>
         <th></th>

@@ -72,7 +72,6 @@ from django.db.models.query import QuerySet
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 from django.template.defaultfilters import slugify
-from django.utils.decorators import method_decorator
 from django.utils.encoding import python_2_unicode_compatible
 from django.utils.http import quote
 from django.utils.safestring import mark_safe
@@ -1419,7 +1418,7 @@ class Charge(models.Model):
         signals.charge_updated.send(sender=__name__, charge=self, user=None)
 
 
-    @method_decorator(transaction.atomic)
+    @transaction.atomic
     def payment_successful(self):
         """
         When a charge through the payment processor is sucessful,
@@ -1477,6 +1476,12 @@ class Charge(models.Model):
         """
         #pylint: disable=too-many-locals
         assert self.state == self.CREATED
+
+        # up at the top of this method so that we bail out quickly, before
+        # we start to mistakenly enter the charge and distributions a second
+        # time on two rapid fire `Charge.retrieve()` calls.
+        self.state = self.DONE
+        self.save()
 
         # Example:
         # 2014/01/15 charge on xia card
@@ -1625,9 +1630,6 @@ class Charge(models.Model):
             #pylint: disable=nonstandard-exception
             raise IntegrityError("The total amount of invoiced items for "\
               "charge %s exceed the amount of the charge.", self.processor_key)
-
-        self.state = self.DONE
-        self.save()
 
         signals.charge_updated.send(
             sender=__name__, charge=self, user=None)
