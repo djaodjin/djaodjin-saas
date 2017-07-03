@@ -2892,12 +2892,11 @@ class TransactionManager(models.Manager):
             | Q(dest_account=Transaction.WRITEOFF),
             orig_organization=organization,
             created_at__lt=until).order_by('-created_at').first()
+        kwargs = {'created_at__lte': until}
         if last_payment:
             # Use ``created_at`` strictly greater than last payment date
             # otherwise we pick up the last payment itself.
-            kwargs = {'created_at__gt':last_payment.created_at}
-        else:
-            kwargs = {}
+            kwargs.update({'created_at__gt':last_payment.created_at})
         return self.filter(
             Q(dest_account=Transaction.PAYABLE)
             | Q(dest_account=Transaction.LIABILITY),

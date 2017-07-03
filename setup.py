@@ -72,6 +72,6 @@ setup(
     download_url='https://github.com/djaodjin/djaodjin-saas/tarball/%s' \
         % saas.__version__,
     license='BSD',
-    description='DjaoDjin SaaS implementation',
+    description='Django application for subscription businesses',
     long_description=open('README.md').read(),
 )

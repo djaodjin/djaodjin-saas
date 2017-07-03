@@ -213,6 +213,9 @@ def create_charges_for_balance(until=None, dry_run=False):
         if not charges.exists():
             invoiceables = Transaction.objects.get_invoiceables(
                 organization, until=until)
+            LOGGER.debug("invoicables for %s until %s:", organization, until)
+            for invoicable in invoiceables:
+                LOGGER.debug("\t#%d %s", invoicable.pk, invoicable.dest_amount)
             balance = sum_dest_amount(invoiceables)
             invoiceable_amount = balance['amount']
             if invoiceable_amount > 50:
