@@ -92,6 +92,11 @@ class StripeBackend(object):
         self.client_id = settings.PROCESSOR.get('CLIENT_ID', None)
         self.mode = settings.PROCESSOR.get('MODE', 0)
 
+    @staticmethod
+    def _is_platform(broker):
+        return (broker.slug == settings.PLATFORM
+            or broker.processor_deposit_key == settings.PROCESSOR['PRIV_KEY'])
+
     def _prepare_request(self):
         stripe.api_version = '2015-10-16'
         stripe.api_key = self.priv_key
@@ -99,7 +104,7 @@ class StripeBackend(object):
 
     def _prepare_charge_request(self, broker):
         kwargs = self._prepare_request()
-        if self.mode == self.REMOTE and broker.slug != settings.PLATFORM:
+        if self.mode == self.REMOTE and not self._is_platform(broker):
             # We generate Stripe data into the StripeConnect account.
             if not broker.processor_deposit_key:
                 raise ProcessorError(
@@ -110,7 +115,7 @@ class StripeBackend(object):
     def _prepare_transfer_request(self, provider):
         kwargs = self._prepare_request()
         if (self.mode in (self.FORWARD, self.REMOTE)
-            and provider.slug != settings.PLATFORM):
+            and  not self._is_platform(provider)):
             # We generate Stripe data into the StripeConnect account.
             if not provider.processor_deposit_key:
                 raise ProcessorError(
@@ -225,7 +230,7 @@ class StripeBackend(object):
         #pylint: disable=too-many-arguments
         assert customer is not None or card is not None
         kwargs = self._prepare_charge_request(broker)
-        if self.mode == self.FORWARD and broker.slug != settings.PLATFORM:
+        if self.mode == self.FORWARD and not self._is_platform(broker):
             # We generate Stripe data into the StripeConnect account.
             if not broker.processor_deposit_key:
                 raise ProcessorError(
@@ -392,8 +397,7 @@ class StripeBackend(object):
         try:
             kwargs = self._prepare_transfer_request(provider)
             # The ``PLATFORM`` provider is always connected to a Stripe Account
-            if (provider.processor_deposit_key
-                or provider.slug == settings.PLATFORM):
+            if provider.processor_deposit_key or self._is_platform(provider):
                 if provider.processor_deposit_key:
                     last4 = provider.processor_deposit_key[-4:]
                 else:
