@@ -25,6 +25,8 @@
 """
 Helpers to redirect based on session.
 """
+from __future__ import unicode_literals
+
 import logging, re
 
 from django import http
@@ -144,7 +146,7 @@ class RedirectFormMixin(FormMixin):
                 # them. Most likely a redirect URL is present to pick between
                 # multiple choices.
                 path = re.sub(r'%(\S+)s/', '', path)
-        return six.moves.urllib.parse.urlunparse((None, '', path,
+        return six.moves.urllib.parse.urlunparse(("", "", path,
             parts.params, parts.query, parts.fragment))
 
     def get_success_url(self):
