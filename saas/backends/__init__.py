@@ -64,7 +64,7 @@ class CardError(ProcessorError):
 " systems that determine whether or not to accept the charge. Check you"\
 " entered the card  number, expiration date, CVC and address correctly."\
 " If problems persist, please contact your bank."
-        return super(CardError, self).__unicode__()
+        return super(CardError, self).__str__()
 
 
 def load_backend(path):
