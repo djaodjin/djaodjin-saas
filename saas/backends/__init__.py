@@ -39,7 +39,7 @@ class ProcessorError(RuntimeError):
         self.backend_except = backend_except
 
     def __str__(self):
-        result = self.message
+        result = super(ProcessorError, self).__str__()
         if django_settings.DEBUG and self.backend_except:
             result += self.processor_details()
         return result
