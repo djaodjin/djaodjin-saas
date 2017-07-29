@@ -149,8 +149,8 @@ class OrganizationForm(PostalFormMixin, forms.ModelForm):
 
     class Meta:
         model = Organization
-        fields = ('full_name', 'email', 'phone', 'street_address',
-                  'locality', 'country', 'region', 'postal_code')
+        fields = ('full_name', 'email', 'phone', 'country', 'street_address',
+                  'locality', 'region', 'postal_code')
         widgets = {'country': forms.widgets.Select(choices=countries)}
 
     def __init__(self, *args, **kwargs):
@@ -177,6 +177,13 @@ class OrganizationForm(PostalFormMixin, forms.ModelForm):
                 initial=initial,
                 label=mark_safe('Enable GroupBuy '\
 '(<a href="/docs/#group-billing" target="_blank">what is it?</a>)'))
+        if 'extra' in self.initial:
+            initial = self.initial['extra']
+            if self.instance:
+                initial = self.instance.extra
+            self.fields['extra'] = forms.CharField(required=False,
+                widget=forms.Textarea, label=mark_safe('Notes'),
+                initial=initial)
 
 
 class OrganizationCreateForm(OrganizationForm):

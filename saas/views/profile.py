@@ -314,6 +314,8 @@ class OrganizationProfileView(OrganizationMixin, UpdateView):
             self.object.is_bulk_buyer = validated_data['is_bulk_buyer']
         else:
             self.object.is_bulk_buyer = False
+        if 'extra' in validated_data:
+            self.object.extra = validated_data['extra']
         result = super(OrganizationProfileView, self).form_valid(form)
         signals.organization_updated.send(sender=__name__,
                 organization=self.object, changes=changes,
@@ -330,6 +332,8 @@ class OrganizationProfileView(OrganizationMixin, UpdateView):
     def get_initial(self):
         kwargs = super(OrganizationProfileView, self).get_initial()
         kwargs.update({'is_bulk_buyer': self.object.is_bulk_buyer})
+        if _valid_manager(self.request.user, [get_broker()]):
+            kwargs.update({'extra': self.object.extra})
         return kwargs
 
     def get_success_url(self):
