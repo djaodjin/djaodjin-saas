@@ -24,28 +24,28 @@
 
 """Command for the cron job. Daily statistics"""
 
-import datetime, sys
+import datetime
 
-from django.core.management.base import NoArgsCommand
+from django.core.management.base import BaseCommand
 from django.contrib.auth import get_user_model
 
 from ...models import Organization
 
-class Command(NoArgsCommand):
+class Command(BaseCommand):
     """Daily usage for the service"""
     help = 'Print daily usage'
 
-    def handle_noargs(self, **options):
+    def handle(self, *args, **options):
         end_period = datetime.datetime.now()
         start_period = end_period - datetime.timedelta(days=30)
-        sys.stdout.write('from %s to %s\n' % (start_period, end_period))
+        self.stdout.write('from %s to %s\n' % (start_period, end_period))
         for user in get_user_model().objects.filter(
             date_joined__gt=start_period):
-            sys.stdout.write('%s %s %s\n' % (str(user.date_joined),
+            self.stdout.write('%s %s %s\n' % (str(user.date_joined),
                 user.username, user.email))
 
-        sys.stdout.write('\n')
+        self.stdout.write('\n')
         for organization in Organization.objects.filter(
             created_at__gt=start_period):
-            sys.stdout.write('%s %s\n'
+            self.stdout.write('%s %s\n'
                 % (organization.created_at, organization))
