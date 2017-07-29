@@ -28,6 +28,7 @@ from django.shortcuts import get_object_or_404
 from django.utils.translation import ugettext_lazy as _
 from rest_framework import serializers
 
+from ..decorators import _valid_manager
 from ..humanize import as_money
 from ..mixins import as_html_description, product_url
 from ..models import (BalanceLine, CartItem, Charge, Organization, Plan,
@@ -137,11 +138,16 @@ class SubscriptionSerializer(serializers.ModelSerializer):
 
     organization = OrganizationSerializer(read_only=True)
     plan = PlanSerializer(read_only=True)
+    editable = serializers.SerializerMethodField()
 
     class Meta:
         model = Subscription
         fields = ('created_at', 'ends_at', 'description',
-                  'organization', 'plan', 'auto_renew')
+                  'organization', 'plan', 'auto_renew', 'editable')
+
+    def get_editable(self, subscription):
+        return bool(_valid_manager(self.context['request'].user,
+            [subscription.plan.organization]))
 
 
 class TransactionSerializer(serializers.ModelSerializer):

@@ -25,6 +25,7 @@
 from rest_framework.generics import (ListAPIView,
     ListCreateAPIView, RetrieveUpdateDestroyAPIView)
 
+from ..decorators import _valid_manager
 from ..mixins import (ChurnedQuerysetMixin, SubscriptionMixin,
     SubscriptionSmartListMixin, SubscribedQuerysetMixin)
 from .serializers import SubscriptionSerializer
@@ -118,6 +119,14 @@ class SubscriptionDetailAPIView(SubscriptionMixin,
     """
 
     serializer_class = SubscriptionSerializer
+
+    def perform_update(self, serializer):
+        if not _valid_manager(
+                self.request.user, [serializer.instance.plan.organization]):
+            serializer.validated_data['created_at'] \
+                = serializer.instance.created_at
+            serializer.validated_data['ends_at'] = serializer.instance.ends_at
+        super(SubscriptionDetailAPIView, self).perform_update(serializer)
 
     def perform_destroy(self, instance):
         instance.unsubscribe_now()

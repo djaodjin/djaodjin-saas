@@ -656,6 +656,13 @@ subscriptionControllers.controller("subscriptionListCtrl",
 
     $scope.active = $scope.subscribed;
 
+    // calendar for expiration date
+    $scope.open = function($event, entry) {
+        $event.preventDefault();
+        $event.stopPropagation();
+        entry.opened = true;
+    };
+
     // Returns ends-soon when the subscription is about to end.
     $scope.endsSoon = function(subscription) {
         var cutOff = new Date($scope.ends_at);
@@ -751,6 +758,30 @@ subscriptionControllers.controller("subscriptionListCtrl",
         $scope.query($scope.active);
     };
 
+    $scope.$watch("subscribed", function(newVal, oldVal, scope) {
+        if( newVal.hasOwnProperty("results") &&
+            oldVal.hasOwnProperty("results") ) {
+            var length = ( oldVal.results.length < newVal.results.length ) ?
+                oldVal.results.length : newVal.results.length;
+            for( var i = 0; i < length; ++i ) {
+                if( (oldVal.results[i].ends_at !== newVal.results[i].ends_at)
+                    || (oldVal.results[i].description !== newVal.results[i].description)) {
+                    var entry = newVal.results[i];
+                    $http.patch(newVal.location + "/" + entry.plan.slug,
+                        {ends_at: entry.ends_at,
+                         description: entry.description}).then(
+                        function(data){
+                            // We don't show messages here because it becomes
+                            // quickly annoying if they do not disappear
+                            // automatically.
+                        }, function(resp) {
+                            showErrorMessages(resp);
+                        });
+                }
+            }
+        }
+    }, true);
+
     // Change the active tab.
     // XXX We need this method because filters are "global" accross all tabs.
     $scope.tabClicked = function($event) {
@@ -773,14 +804,23 @@ subscriptionControllers.controller("subscriptionListCtrl",
         }
     };
 
-    $scope.unsubscribe = function(organization, plan) {
-        if( confirm("Are you sure?") ) {
-            $http.delete(settings.urls.api_organizations
-                + organization + "/subscriptions/" + plan).then(
-            function() {
-                $scope.query($scope.active);
-            });
-        }
+    $scope.unsubscribe = function(organization, plan, target) {
+        var dialog = angular.element(target + " [type=\"submit\"]");
+        dialog.attr("data-organization", organization);
+        dialog.attr("data-plan", plan);
+    };
+
+    $scope.unsubscribeConfirmed = function(event) {
+        var elm = angular.element(event.target);
+        var organization = elm.attr("data-organization");
+        var plan = elm.attr("data-plan");
+        $http.delete(settings.urls.api_organizations
+                     + organization + "/subscriptions/" + plan).then(
+        function success(resp) {
+            $scope.query($scope.active);
+        }, function error(resp) {
+            showErrorMessages(resp);
+        });
     };
 
     $scope.query($scope.subscribed);
