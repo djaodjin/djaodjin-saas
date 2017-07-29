@@ -71,7 +71,7 @@ class PostalFormMixin(object):
             self.fields[field_name].widget = widget()
         else:
             self.fields[field_name] = forms.CharField(
-                widget=widget, label='State/Province', required=required)
+                widget=widget, label='State/Province/County', required=required)
 
 
 
@@ -149,8 +149,8 @@ class OrganizationForm(PostalFormMixin, forms.ModelForm):
 
     class Meta:
         model = Organization
-        fields = ('full_name', 'email', 'phone', 'country', 'street_address',
-                  'locality', 'region', 'postal_code')
+        fields = ('full_name', 'email', 'phone', 'country',
+                  'region', 'locality', 'street_address', 'postal_code')
         widgets = {'country': forms.widgets.Select(choices=countries)}
 
     def __init__(self, *args, **kwargs):

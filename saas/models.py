@@ -242,9 +242,9 @@ class Organization(models.Model):
     phone = models.CharField(max_length=50)
     # contact by physical mail
     street_address = models.CharField(max_length=150)
-    locality = models.CharField(max_length=50)
-    region = models.CharField(max_length=50)
-    postal_code = models.CharField(max_length=50)
+    locality = models.CharField(_('City/Town'), max_length=50)
+    region = models.CharField(_('State/Province/County'), max_length=50)
+    postal_code = models.CharField(_('Postal Code'), max_length=50)
     country = CountryField()
 
     # Payment Processing
