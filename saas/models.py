@@ -233,7 +233,8 @@ class Organization(models.Model):
 ' target="_blank">what is it?</a>)'))
     is_provider = models.BooleanField(default=False,
         help_text=_("Can fulfill the provider side of a subscription."))
-    full_name = models.CharField(_('full name'), max_length=60, blank=True)
+    full_name = models.CharField(_('Organization name'),
+        max_length=60, blank=True)
     # contact by e-mail
     email = models.EmailField(# XXX if we use unique=True here, the project
                               #     wizard must be changed.

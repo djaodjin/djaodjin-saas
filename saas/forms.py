@@ -199,8 +199,8 @@ class OrganizationCreateForm(OrganizationForm):
 class ManagerAndOrganizationForm(OrganizationForm):
 
     def __init__(self, *args, **kwargs):
-        #call our superclasse's initializer
         super(ManagerAndOrganizationForm, self).__init__(*args, **kwargs)
+        self.fields['full_name'].label = 'Full name'
         # XXX define other fields dynamically (username, etc.):
         # Unless it is not necessary?
 
