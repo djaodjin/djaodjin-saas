@@ -72,10 +72,13 @@ def _valid_role(user, candidates, role):
                        username, candidates)
         return candidates
     if role is not None and user and user.is_authenticated():
+        if isinstance(role, list) or isinstance(role, tuple):
+            kwargs = {'role_description__slug__in': role}
+        else:
+            kwargs = {'role_description__slug': role}
         results = Organization.objects.filter(
-            pk__in=get_role_model().objects.filter(role_description__slug=role,
-                organization__in=candidates,
-                user=user).values('organization')).values('slug')
+            pk__in=get_role_model().objects.filter(organization__in=candidates,
+                user=user, **kwargs).values('organization')).values('slug')
     return results
 
 
