@@ -38,7 +38,7 @@ from ..decorators import _valid_manager
 from ..forms import (OrganizationForm, OrganizationCreateForm,
     ManagerAndOrganizationForm)
 from ..mixins import OrganizationMixin, ProviderMixin, RoleDescriptionMixin
-from ..models import Organization, Subscription, get_broker, is_broker
+from ..models import Organization, Plan, Subscription, get_broker, is_broker
 
 
 class RoleDetailView(RoleDescriptionMixin, TemplateView):
@@ -331,7 +331,9 @@ class OrganizationProfileView(OrganizationMixin, UpdateView):
 
     def get_initial(self):
         kwargs = super(OrganizationProfileView, self).get_initial()
-        kwargs.update({'is_bulk_buyer': self.object.is_bulk_buyer})
+        if Plan.objects.exists():
+            # Do not display the bulk buying option if there are no plans.
+            kwargs.update({'is_bulk_buyer': self.object.is_bulk_buyer})
         if _valid_manager(self.request.user, [get_broker()]):
             kwargs.update({'extra': self.object.extra})
         return kwargs
