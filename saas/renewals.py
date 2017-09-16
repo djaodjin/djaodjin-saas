@@ -195,8 +195,14 @@ def trigger_expiration_notices(at_time=None, nb_days=15, dry_run=False):
             plan__auto_renew=True):
         LOGGER.info("trigger expires soon for %s", subscription)
         if not dry_run:
-            signals.expires_soon.send(sender=__name__,
-                subscription=subscription, nb_days=nb_days)
+            try:
+                signals.expires_soon.send(sender=__name__,
+                    subscription=subscription, nb_days=nb_days)
+            except Exception as err: #pylint:disable=broad-except
+                # We use `Exception` because the email server might be
+                # unavailable but ConnectionRefusedError is not a subclass
+                # of RuntimeError.
+                LOGGER.exception("error: %s", err)
 
 
 def create_charges_for_balance(until=None, dry_run=False):
