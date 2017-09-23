@@ -35,6 +35,9 @@ DESCRIBE_BALANCE = \
 DESCRIBE_BUY_PERIODS = \
     "Subscription to %(plan)s until %(ends_at)s (%(humanized_periods)s)"
 
+DESCRIBE_BUY_USE = \
+    "Buy %(quantity)s %(plan)s %(use_charge)s"
+
 DESCRIBE_CHARGED_CARD = \
     "Charge %(charge)s on credit card of %(organization)s"
 
@@ -128,6 +131,19 @@ def describe_buy_periods(plan, ends_at, nb_periods,
             {'plan': plan,
              'ends_at': datetime.datetime.strftime(ends_at, '%Y/%m/%d'),
              'humanized_periods': plan.humanize_period(nb_periods)})
+    if discount_percent:
+        descr += ' - a %d%% discount' % discount_percent
+    if descr_suffix:
+        descr += ' %s' % descr_suffix
+    return descr
+
+
+def describe_buy_use(use_charge, quantity,
+                     discount_percent=0, descr_suffix=None):
+    descr = (DESCRIBE_BUY_USE % {
+        'plan': use_charge.plan,
+        'use_charge': use_charge.title,
+        'quantity': quantity})
     if discount_percent:
         descr += ' - a %d%% discount' % discount_percent
     if descr_suffix:

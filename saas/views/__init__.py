@@ -62,7 +62,7 @@ def session_cart_to_database(request):
         with transaction.atomic():
             for item in request.session['cart_items']:
                 coupon = item.get('coupon', None)
-                nb_periods = item.get('nb_periods', 0)
+                quantity = item.get('quantity', 0)
                 first_name = item.get('first_name', '')
                 last_name = item.get('last_name', '')
                 email = item.get('email', '')
@@ -81,8 +81,8 @@ def session_cart_to_database(request):
                     if coupon and not cart_item.coupon:
                         cart_item.coupon = coupon
                         updated = True
-                    if nb_periods and not cart_item.nb_periods:
-                        cart_item.nb_periods = nb_periods
+                    if quantity and not cart_item.quantity:
+                        cart_item.quantity = quantity
                         updated = True
                     if first_name and not cart_item.first_name:
                         cart_item.first_name = first_name
@@ -100,7 +100,7 @@ def session_cart_to_database(request):
                     CartItem.objects.create(
                         user=request.user, plan=plan,
                         first_name=first_name, last_name=last_name, email=email,
-                        coupon=coupon, nb_periods=nb_periods)
+                        coupon=coupon, quantity=quantity)
             del request.session['cart_items']
     redeemed = request.session.get('redeemed', None)
     if redeemed:
@@ -176,6 +176,7 @@ class OrganizationRedirectView(TemplateResponseMixin, ContextMixin,
     permanent = False
     create_more = False
     create_on_none = False
+    query_string = True
 
     @staticmethod
     def update_context_urls(context, urls):

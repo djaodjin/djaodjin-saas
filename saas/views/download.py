@@ -150,7 +150,7 @@ class CouponMetricsDownloadView(SmartCouponListMixin, CouponQuerysetMixin,
         else:
             claim_code = cartitem.claim_code
             full_name = ' '.join([cartitem.first_name, cartitem.last_name])
-            email = cartitem.email
+            email = cartitem.sync_on
         return [
             self.encode(cartitem.coupon.code),
             cartitem.coupon.percent,

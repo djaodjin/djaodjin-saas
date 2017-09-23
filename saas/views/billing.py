@@ -36,7 +36,7 @@ policy.
 """
 #pylint:disable=too-many-lines
 
-import copy, logging
+import copy, itertools, logging
 
 from django import http
 from django.contrib.auth import REDIRECT_FIELD_NAME
@@ -57,8 +57,8 @@ from ..forms import (BankForm, CartPeriodsForm, CreditCardForm,
 from ..humanize import describe_buy_periods, match_unlock
 from ..mixins import (CartMixin, ChargeMixin, DateRangeMixin, OrganizationMixin,
     ProviderMixin, product_url)
-from ..models import (Organization, CartItem, Coupon, Plan, Transaction,
-    Subscription, get_broker, Price)
+from ..models import (CartItem, Coupon, Organization, Plan, Price,
+    Subscription, Transaction, UseCharge, get_broker)
 from ..utils import datetime_or_now, validate_redirect_url
 from ..views import session_cart_to_database
 
@@ -631,7 +631,7 @@ class CartPeriodsView(CartBaseView):
                         queryset = CartItem.objects.get_cart(
                             user=self.request.user).filter(plan=plan)
                         for cart_item in queryset:
-                            cart_item.nb_periods \
+                            cart_item.quantity \
                                 = plan.period_number(line.descr)
                             cart_item.save()
         return super(CartPeriodsView, self).form_valid(form)
@@ -670,8 +670,8 @@ class CartSeatsView(CartPeriodsView):
 
     def get(self, request, *args, **kwargs):
         if self.cart_items.filter(
-                nb_periods=0, plan__advance_discount__gt=0).exists():
-            # If nb_periods == 0 and there is a discount to buy periods
+                quantity=0, plan__advance_discount__gt=0).exists():
+            # If quantity == 0 and there is a discount to buy periods
             # in advance, we will present multiple options to the user.
             return http.HttpResponseRedirect(
                 reverse('saas_cart_periods', args=(self.organization,)))
@@ -714,12 +714,25 @@ djaodjin-saas/tree/master/saas/templates/saas/billing/cart.html>`__).
           - ``organization`` The provider of the product
           - ``request`` The HTTP request object
         """
-        item_plan = request.GET.get('plan', None)
-        if item_plan is not None:
-            self.insert_item(request, plan=item_plan)
-        if (self.organization.is_bulk_buyer and
-            self.cart_items.filter(
-                Q(email__isnull=True) | Q(email='')).exists()):
+        # Let's first make sure we have valid parameters ...
+        params = []
+        for item_plan, item_use, item_sync_on in itertools.zip_longest(
+                request.GET.getlist('plan', []),
+                request.GET.getlist('use', []),
+                request.GET.getlist('sync_on', [])):
+            plan = get_object_or_404(Plan, slug=item_plan)
+            if item_use:
+                use = get_object_or_404(UseCharge, slug=item_use, plan=plan)
+            else:
+                use = None
+            params += [(plan, use, item_sync_on)]
+        invoice_key = request.GET.get('invoice_key', None)
+        # ... before doing any persistent modifications.
+        for item_plan, item_use, item_sync_on in params:
+            self.insert_item(request, plan=item_plan, use=item_use,
+                sync_on=item_sync_on, invoice_key=invoice_key)
+        if (self.organization.is_bulk_buyer and self.cart_items.filter(
+                Q(sync_on__isnull=True) | Q(sync_on="")).exists()):
             # A bulk buyer customer can buy subscriptions for other people.
             return http.HttpResponseRedirect(
                 reverse('saas_cart_seats', args=(self.organization,)))

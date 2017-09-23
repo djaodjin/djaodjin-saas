@@ -563,15 +563,21 @@ class Organization(models.Model):
             # unless the organization does not exist in the database,
             # in which case we will create a claim_code for it.
             cart_item = None
-            cart_items = CartItem.objects.get_cart(
-                user, plan=subscription.plan)
+            cart_items = CartItem.objects.get_cart(user, plan=subscription.plan)
             if cart_items.exists():
+                # We are doing a groupBuy for a specified email.
                 bulk_items = cart_items.filter(
-                    email=subscription.organization.email)
+                    sync_on=subscription.organization.email)
                 if bulk_items.exists():
                     cart_item = bulk_items.get()
                 else:
                     cart_item = cart_items.get()
+            # XXX We have the cart_item here for an invoicable,
+            # or invoicable['lines'] which will end up as ChargeItems.
+            if cart_item:
+                for invoiced_item in invoicable['lines']:
+                    setattr(invoiced_item, 'invoice_key', cart_item.claim_code)
+                    setattr(invoiced_item, 'sync_on', cart_item.sync_on)
 
             if not subscription.organization.id:
                 # When the organization does not exist into the database,
@@ -602,37 +608,42 @@ class Organization(models.Model):
         # their cart automatically.
         coupons = {}
         claim_codes = {}
-        for provider in coupon_providers:
+        for coupon_provider in coupon_providers:
             coupon = Coupon.objects.create(
                 code='cpn_%s' % generate_random_slug(),
-                organization=provider,
+                organization=coupon_provider,
                 percent=100, nb_attempts=0,
                 description=('Auto-generated after payment by %s'
                     % self.printable_name))
             LOGGER.info('Auto-generated Coupon %s for %s',
-                coupon.code, provider,
+                coupon.code, coupon_provider,
                 extra={'event': 'create-coupon',
                     'coupon': coupon.code, 'auto': True,
-                    'provider': provider.slug})
-            coupons.update({provider.id: coupon})
+                    'provider': coupon_provider.slug})
+            coupons.update({coupon_provider.id: coupon})
         for key, cart_items in six.iteritems(claim_carts):
-            claim_code = generate_random_slug()
-            provider = CartItem.objects.provider(cart_items)
+            claim_code = None
             for cart_item in cart_items:
-                cart_item.email = ''
+                cart_item.sync_on = ""
                 cart_item.user = None
                 cart_item.first_name = ''
-                cart_item.claim_code = claim_code
                 cart_item.last_name = self.printable_name
+                if cart_item.claim_code:
+                    claim_codes.update({key: cart_item.claim_code})
+                else:
+                    if not claim_code:
+                        claim_code = generate_random_slug()
+                    cart_item.claim_code = claim_code
                 cart_item.coupon = coupons[cart_item.plan.organization.id]
                 cart_item.save()
-            nb_cart_items = len(cart_items)
-            LOGGER.info("Generated claim code '%s' for %d cart items",
-                claim_code, nb_cart_items,
-                extra={'event': 'create-claim',
-                    'claim_code': claim_code,
-                    'nb_cart_items': nb_cart_items})
-            claim_codes.update({key: claim_code})
+            if claim_code:
+                nb_cart_items = len(cart_items)
+                LOGGER.info("Generated claim code '%s' for %d cart items",
+                    claim_code, nb_cart_items, extra={
+                        'event': 'create-claim',
+                        'claim_code': claim_code,
+                        'nb_cart_items': nb_cart_items})
+                claim_codes.update({key: claim_code})
 
         # We now either have a ``subscription.id`` (subscriber present
         # in the database) or a ``Coupon`` (subscriber absent from
@@ -647,11 +658,13 @@ class Organization(models.Model):
                 coupon = coupons[subscription.provider.id]
                 event_id = coupon.code
             for invoiced_item in invoicable['lines']:
+                # definitely invoice_key should be set by then.
                 invoiced_item.event_id = event_id
                 invoiced_items += [invoiced_item]
 
-        invoiced_items = Transaction.objects.record_order(
-            invoiced_items, user)
+        # Insures all invoiced_items have been stored
+        # as ``Transaction`` into the database.
+        Transaction.objects.record_order(invoiced_items, user)
         return new_organizations, claim_codes, invoiced_items
 
     def checkout(self, invoicables, user, token=None, remember_card=True):
@@ -1106,6 +1119,7 @@ class ChargeManager(models.Manager):
                       processor, processor_charge_id, receipt_info,
                       user=None, descr=None, created_at=None):
         #pylint: disable=too-many-arguments
+        assert amount > 0
         created_at = datetime_or_now(created_at)
         with transaction.atomic():
             charge = self.create(
@@ -1117,7 +1131,11 @@ class ChargeManager(models.Manager):
                 exp_date=receipt_info.get('exp_date'),
                 card_name=receipt_info.get('card_name', ""))
             for invoiced in transactions:
-                ChargeItem.objects.create(invoiced=invoiced, charge=charge)
+                # XXX Here we need to associate the (invoice_key, sync_on)
+                # to the ChargeItem.
+                ChargeItem.objects.create(invoiced=invoiced, charge=charge,
+                    invoice_key=getattr(invoiced, 'invoice_key', None),
+                    sync_on=getattr(invoiced, 'sync_on', None))
             LOGGER.info("create charge %s of %d %s to %s",
                 charge.processor_key, charge.amount, charge.unit, customer,
                 extra={'event': 'create-charge',
@@ -1175,8 +1193,7 @@ class ChargeManager(models.Manager):
             if customer.processor_card_key:
                 (processor_charge_id, created_at,
                  receipt_info) = processor_backend.create_charge(
-                     customer, amount, unit,
-                     broker=broker, descr=descr)
+                     customer, amount, unit, broker=broker, descr=descr)
             elif token:
                 (processor_charge_id, created_at,
                  receipt_info) = processor_backend.create_charge_on_card(
@@ -1714,11 +1731,33 @@ class Charge(models.Model):
         return self
 
 
+class ChargeItemManager(models.Manager):
+
+    def to_sync(self, user):
+        """
+        Returns charges which have been paid and a 3rd party asked
+        to be notified about.
+        """
+        results = self.filter(Q(sync_on=user.username) | Q(sync_on=user.email)
+            | Q(sync_on__in=Organization.objects.accessible_by(user).values(
+                'slug').distinct()),
+            charge__state=Charge.DONE, invoice_key__isnull=False)
+        return results
+
+
 @python_2_unicode_compatible
 class ChargeItem(models.Model):
     """
     Keep track of each item invoiced within a ``Charge``.
+
+    The pair (invoice_key, sync_on) is used by 3rd party services that
+    need to synchronize their own database on the status of a charge been paid.
+    The ``invoice_key`` is created by the 3rd party service and stored at the
+    time the charge is created. When a ``User`` affiliated to the ``sync_on``
+    account logs in, notification of the charge status are generated.
     """
+    objects = ChargeItemManager()
+
     charge = models.ForeignKey(Charge, related_name='charge_items')
     # XXX could be a ``Subscription`` or a balance.
     invoiced = models.ForeignKey('Transaction', related_name='invoiced_item',
@@ -1731,6 +1770,10 @@ class ChargeItem(models.Model):
         related_name='invoiced_distribute',
         help_text="transaction recording the distribution from processor"\
 " to provider.")
+
+    # 3rd party notification
+    invoice_key = models.SlugField(db_index=True, null=True, blank=True)
+    sync_on = models.CharField(max_length=255, null=True)
 
     class Meta:
         unique_together = ('charge', 'invoiced')
@@ -2262,6 +2305,31 @@ def on_plan_post_save(sender, instance, created, raw, **kwargs):
             signals.plan_updated.send(sender=sender, plan=instance)
 
 
+@python_2_unicode_compatible
+class UseCharge(SlugTitleMixin, models.Model):
+    """
+    Additional use charges on a ``Plan``.
+    """
+
+    slug = models.SlugField(unique=True)
+    title = models.CharField(max_length=50, null=True)
+    description = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    plan = models.ForeignKey(Plan, related_name='plans')
+    use_amount = models.PositiveIntegerField(default=0)
+    extra = settings.get_extra_field_class()(null=True)
+
+    class Meta:
+        unique_together = ('slug', 'plan')
+
+    def __str__(self):
+        return str(self.slug)
+
+    @property
+    def use_price(self):
+        return Price(self.use_amount, self.plan.unit)
+
+
 class CartItemManager(models.Manager):
 
     def get_cart(self, user, *args, **kwargs):
@@ -2312,9 +2380,9 @@ class CartItem(models.Model):
     order is placed, not when the item is added to the cart.
 
     Another Historical Note: If we allow a user to buy more periods at
-    a bargain price, then ('user', 'plan', 'email') should not be unique
+    a bargain price, then ('user', 'plan', 'sync_on') should not be unique
     together. There should only be one ``CartItem`` not yet recorded
-    with ('user', 'plan', 'email') unique together.
+    with ('user', 'plan', 'sync_on') unique together.
     """
     objects = CartItemManager()
 
@@ -2325,25 +2393,32 @@ class CartItem(models.Model):
         help_text=_("user who added the item to the cart. ``None`` means"\
 " the item could be claimed."))
     plan = models.ForeignKey(Plan, null=True,
-        help_text=_("item added to the cart."))
+        help_text=_("item added to the cart (if plan)."))
+    use = models.ForeignKey(UseCharge, null=True,
+        help_text=_("item added to the cart (if use charge)."))
     coupon = models.ForeignKey(Coupon, null=True, blank=True,
         help_text=_("coupon to apply to the plan."))
     recorded = models.BooleanField(default=False,
         help_text=_("whever the item has been checked out or not."))
 
-    # The following fields are for number of periods pre-paid in advance.
-    nb_periods = models.PositiveIntegerField(default=0)
+    # The following fields are for number of periods pre-paid in advance
+    # or a quantity in UseCharge units.
+    quantity = models.PositiveIntegerField(default=0)
 
-    # The following fields are used for plans priced per seat. They do not
+    # The following fields are used for the GroupBuy feature. They do not
     # refer to a User nor Organization key because those might not yet exist
-    # at the time the seat is created.
-    first_name = models.CharField(_('first name'), max_length=30, blank=True)
-    last_name = models.CharField(_('last name'), max_length=30, blank=True)
-    email = models.EmailField(_('email address'), blank=True)
-
+    # at the time the CartItem is created.
+    #
     # Items paid by user on behalf of a subscriber, that might or might not
     # already exist in the database, can be redeemed through a claim_code.
-    claim_code = models.SlugField(null=True, blank=True)
+    # claim_code is also the field 3rd parties can use to store an invoice_key
+    # that will be passed back on successful charge notifications.
+    # `sync_on`` will be used for notifications. It needs to be a valid
+    # User or Organization slug or an e-mail address.
+    first_name = models.CharField(_('first name'), max_length=30, blank=True)
+    last_name = models.CharField(_('last name'), max_length=30, blank=True)
+    sync_on = models.CharField(max_length=255, null=True, blank=True)
+    claim_code = models.SlugField(db_index=True, null=True, blank=True)
 
     def __str__(self):
         return '%s-%s' % (self.user, self.plan)
@@ -2352,16 +2427,17 @@ class CartItem(models.Model):
     def descr(self):
         result = '%s from %s' % (
             self.plan.printable_name, self.plan.organization.printable_name)
-        if self.email:
+        if self.sync_on:
             full_name = ' '.join([self.first_name, self.last_name]).strip()
-            result = 'Subscribe %s (%s) to %s' % (full_name, self.email, result)
+            result = 'Subscribe %s (%s) to %s' % (full_name,
+                self.sync_on, result)
         return result
 
     @property
     def name(self):
         result = 'cart-%s' % self.plan.slug
-        if self.email:
-            result = '%s-%s' % (result, quote(self.email))
+        if self.sync_on:
+            result = '%s-%s' % (result, quote(self.sync_on))
         return result
 
 
@@ -2846,7 +2922,8 @@ class TransactionManager(models.Manager):
                 | set([val['dest_account']
                     for val in self.all().values('dest_account').distinct()]))
 
-    def record_order(self, invoiced_items, user=None):
+    @staticmethod
+    def record_order(invoiced_items, user=None):
         """
         Save invoiced_items, a set of ``Transaction`` and update when
         each associated ``Subscription`` ends.
@@ -2878,7 +2955,6 @@ class TransactionManager(models.Manager):
         if len(invoiced_items_ids) > 0:
             signals.order_executed.send(
                 sender=__name__, invoiced_items=invoiced_items_ids, user=user)
-        return self.filter(id__in=invoiced_items_ids)
 
     def get_invoiceables(self, organization, until=None):
         """
@@ -3049,6 +3125,44 @@ class TransactionManager(models.Manager):
             orig_account=Transaction.RECEIVABLE,
             event_id=subscription.id,
             created_at__lt=until, **kwargs).order_by('created_at')
+
+    @staticmethod
+    def new_use_charge(subscription, use_charge, quantity,
+                       created_at=None, descr=None):
+        """
+        Each time a subscriber places an order through
+        the /billing/:organization/cart/ page, a ``Transaction``
+        is recorded as follow::
+
+            yyyy/mm/dd description
+                subscriber:Payable                       amount
+                provider:Receivable
+
+        Example::
+
+            2014/09/10 additional charge for 1,000 sheet of paper
+                xia:Payable                              $39.99
+                cowork:Receivable
+        """
+        created_at = datetime_or_now(created_at)
+        if quantity <= 0:
+            # Minimum quantity for a use charge is one.
+            quantity = 1
+        amount = use_charge.use_amount * quantity
+        if not descr:
+            descr = humanize.describe_buy_use(use_charge, quantity)
+        return Transaction(
+            created_at=created_at,
+            descr=descr,
+            event_id=subscription.id,
+            dest_amount=amount,
+            dest_unit=subscription.plan.unit,
+            dest_account=Transaction.PAYABLE,
+            dest_organization=subscription.organization,
+            orig_amount=amount,
+            orig_unit=subscription.plan.unit,
+            orig_account=Transaction.RECEIVABLE,
+            orig_organization=subscription.plan.organization)
 
     @staticmethod
     def new_subscription_order(subscription, nb_natural_periods,

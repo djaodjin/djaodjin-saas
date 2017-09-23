@@ -26,8 +26,7 @@
 APIs for cart and checkout functionality.
 """
 
-import csv
-import logging
+import csv, logging
 
 from django.core.exceptions import MultipleObjectsReturned
 from django.shortcuts import get_object_or_404
@@ -55,7 +54,7 @@ class CartItemCreateSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = CartItem
-        fields = ('plan', 'nb_periods', 'first_name', 'last_name', 'email')
+        fields = ('plan', 'quantity', 'first_name', 'last_name', 'sync_on')
 
 
 class CheckoutSerializer(serializers.Serializer):
@@ -84,6 +83,8 @@ class CartItemAPIView(CartMixin, CreateAPIView):
     users, the cart is stored in the database as ``CartItem`` objects.
     For anonymous users, the cart is stored in an HTTP Cookie.
 
+    The end-point accepts a single item or a list of items.
+
     **Example request**:
 
     .. sourcecode:: http
@@ -92,7 +93,7 @@ class CartItemAPIView(CartMixin, CreateAPIView):
 
         {
             "plan": "open-space",
-            "nb_periods": 1
+            "quantity": 1
         }
 
     **Example response**:
@@ -101,12 +102,12 @@ class CartItemAPIView(CartMixin, CreateAPIView):
 
         {
             "plan": "open-space",
-            "nb_periods": 1
+            "quantity": 1
         }
 
-    ``nb_periods`` is optional. When it is not specified, subsquent checkout
+    ``quantity`` is optional. When it is not specified, subsquent checkout
     screens will provide choices to pay multiple periods in advance
-    When additional ``first_name``, ``last_name`` and ``email`` are specified,
+    When additional ``first_name``, ``last_name`` and ``sync_on`` are specified,
     payment can be made by one ``Organization`` for another ``Organization``
     to be subscribed (see :ref:`GroupBuy orders<group_buy>`).
     """
@@ -121,22 +122,35 @@ class CartItemAPIView(CartMixin, CreateAPIView):
     # authentication_classes = []
 
     def post(self, request, *args, **kwargs):
+        items = None
         serializer = self.get_serializer(data=request.data)
         if serializer.is_valid():
-            cart_item, created = self.insert_item(request, **serializer.data)
+            items = [serializer.validated_data]
+        else:
+            serializer = self.get_serializer(data=request.data, many=True)
+            if serializer.is_valid():
+                items = serializer.validated_data
+        if not items:
+            return Response(
+                serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        cart_items = []
+        status_code = status.HTTP_200_OK
+        for item in items:
+            cart_item, created = self.insert_item(request, **item)
+            if created:
+                status_code = status.HTTP_201_CREATED
             # insert_item will either return a dict or a CartItem instance
             # (which cannot be directly serialized).
             if isinstance(cart_item, CartItem):
-                cart_item = serializer.to_representation(cart_item)
-            if created:
-                headers = self.get_success_headers(cart_item)
-                return Response(cart_item, status=status.HTTP_201_CREATED,
-                    headers=headers)
+                cart_items += [serializer.to_representation(cart_item)]
             else:
-                headers = self.get_success_headers(cart_item)
-                return Response(cart_item, status=status.HTTP_200_OK,
-                    headers=headers)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+                cart_items += [cart_item]
+        if len(items) > 1:
+            headers = self.get_success_headers(cart_items)
+            return Response(cart_items, status=status_code, headers=headers)
+        headers = self.get_success_headers(cart_items[0])
+        return Response(cart_items[0], status=status_code, headers=headers)
 
 
 class CartItemUploadAPIView(CartMixin, APIView):
@@ -146,7 +160,7 @@ class CartItemUploadAPIView(CartMixin, APIView):
 
     This works bulk fashion of :ref:`/cart/ endpoint<api_cart>`. The
     uploaded file must be a CSV containing the fields ``first_name``,
-    ``last_name`` and ``email``. The CSV file must not contain a header
+    ``last_name`` and email. The CSV file must not contain a header
     line, only data.
 
     **Example request**:
@@ -205,7 +219,7 @@ class CartItemUploadAPIView(CartMixin, APIView):
                     data={'plan': plan,
                           'first_name': first_name,
                           'last_name': last_name,
-                          'email': email})
+                          'sync_on': email})
                 if serializer.is_valid():
                     cart_item, created = self.insert_item(
                         request, **serializer.data)

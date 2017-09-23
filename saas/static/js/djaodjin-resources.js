@@ -31,18 +31,22 @@ function showMessages(messages, style) {
         // avoid weird animation when messages at the top:
         scrollTop: $("body").offset().top
     }, 500);
-}
+};
 
 
-function showErrorMessages(resp) {
+function _showErrorMessages(resp) {
     var messages = [];
     if( typeof resp === "string" ) {
         messages = [resp];
     } else {
-        var data = resp.data || resp.responseJSON || null;
+        var data = resp.data || resp.responseJSON || resp;
         if( data && typeof data === "object" ) {
             if( data.detail ) {
                 messages = ["Error: " + data.detail];
+            } else if( $.isArray(data) ) {
+                for( var idx = 0; idx < data.length; ++idx ) {
+                    messages = messages.concat(_showErrorMessages(data[idx]));
+                }
             } else {
                 for( var key in data ) {
                     if (data.hasOwnProperty(key)) {
@@ -68,6 +72,12 @@ function showErrorMessages(resp) {
             messages = ["Error: " + resp.detail];
         }
     }
+    return messages;
+};
+
+
+function showErrorMessages(resp) {
+    var messages = _showErrorMessages(resp);
     if( messages.length === 0 ) {
         messages = ["Error " + resp.status + ": " + resp.statusText];
     }
@@ -88,4 +98,4 @@ function getMetaCSRFToken() {
         }
     }
     return "";
-}
+};

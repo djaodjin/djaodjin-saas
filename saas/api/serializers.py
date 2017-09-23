@@ -222,7 +222,7 @@ class CartItemSerializer(serializers.ModelSerializer):
     class Meta:
         model = CartItem
         fields = ('created_at', 'user', 'plan',
-            'nb_periods', 'first_name', 'last_name', 'email')
+            'quantity', 'first_name', 'last_name', 'sync_on')
 
 
 class InvoicableSerializer(serializers.Serializer):

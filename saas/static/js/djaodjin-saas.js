@@ -6,7 +6,8 @@
 function CartItem(options) {
     "use strict";
     this.item = {};
-    var restricted = ["plan", "nb_periods", "first_name", "last_name", "email"];
+    var restricted = ["plan", "quantity", "first_name", "last_name", "sync_on",
+        "invoice_key"];
     for(var i = 0; i < restricted.length; ++i ){
         var key = restricted[i];
         if( key in options ) {
@@ -290,7 +291,7 @@ CartItem.prototype = {
                     plan: subscription.attr("data-plan"),
                     first_name: seatFirstName.val(),
                     last_name: seatLastName.val(),
-                    email: seatEmail.val(),
+                    sync_on: seatEmail.val(),
                     urls: { saas_api_cart: self.options.saas_api_cart }});
                 seatFirstName.val("");
                 seatLastName.val("");
@@ -417,7 +418,7 @@ CartItem.prototype = {
         },
 
         createLineMessage: function(data) {
-            return data.first_name + " " + data.last_name + " (" + data.email + ")";
+            return data.first_name + " " + data.last_name + " (" + data.sync_on + ")";
         },
 
         insertLine: function(data) {

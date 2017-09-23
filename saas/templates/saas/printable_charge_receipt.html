@@ -1,0 +1,109 @@
+{# Implementation Note:                                                     #}
+{#  Here we have a copy/paste of the CSS from the site as well              #}
+{#  as a copy/paste of the charge_detail.html.                              #}
+{#  This might not be the best idea but it is necessary to produce          #}
+{#  consistent PDF receipts.                                                #}
+{#                                                                          #}
+{# Workaround:                                                              #}
+{#  The PDF library has issues with formatted dl/dt/dd so we replaced       #}
+{#  the info section with a table as well.                                  #}
+{#  Actually the XML2PDF library has a lot of trouble with many CSS stuff.  #}
+{#  Fortunately we switched to WeasyPrint (support for Python3 and ACID2)   #}
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+.info-row-header {
+text-align: right;
+}
+  </style>
+</head>
+<body>
+
+<div>
+  <h1>{{provider.printable_name}} Charge Receipt</h1>
+</div>
+<div id="status">
+    {% if charge.is_paid %}
+    <p>
+      On {{charge.created_at}}, the credit card has been charged for an amount
+      of {{charge.price|humanize_money}}. Payment Information:
+    </p>
+    {% elif charge.is_failed %}
+    <p>
+    On {{charge.created_at}}, we attempted to charge your card for
+    {{charge.price|humanize_money}}. The charge failed.
+    </p>
+    {% elif charge.is_disputed %}
+    <p>
+    On {{charge.created_at}}, we attempted to charge your card for
+    {{charge.price|humanize_money}}. The charge was disputed.
+    </p>
+    {% elif charge.is_progress %}
+    <p>
+    On {{charge.created_at}}, we attempted to charge your card for
+    {{charge.price|humanize_money}}. The charge is in progress...
+    </p>
+    {% endif %}
+</div>
+<div class="info">
+  <table class="table"><!-- without this class element Weasyprint 0.36 throws an exception 'undefined variable'-->
+    <thead>
+    </thead>
+    <tbody>
+      <tr>
+        <th class="info-row-header">REFERENCE&nbsp;&nbsp;</th>
+        <td>#{{charge.processor_key}}</td>
+      </tr>
+      <tr>
+        <th class="info-row-header">AMOUNT&nbsp;&nbsp;</th>
+        <td>{{charge.price|humanize_money}}</td>
+      </tr>
+      <tr>
+        <th class="info-row-header">CARD&nbsp;&nbsp;</th>
+        <td>**** - {{charge.last4}}</td>
+      </tr>
+      <tr>
+        <th class="info-row-header">EXPIRES&nbsp;&nbsp;</th>
+        <td>{{charge.exp_date}}</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+<hr>
+<div id="invoiced_items">
+    <table>
+      <thead>
+        <tr>
+          <th>Amount</th>
+          <th>Description</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for line in charge_items %}
+        <tr>
+          <td>{{line.invoiced.dest_price|humanize_money}}</td>
+          <td>{{line.invoiced|describe}}</td>
+          <td></td>
+        </tr>
+        {% for refund in line.refunded %}
+        <tr>
+          <td>-{{refund.orig_price|humanize_money}}</td>
+          <td>{{refund|describe}}</td>
+          <td></td>
+        </tr>
+        {% endfor %}
+        {% endfor %}
+      </tbody>
+    </table>
+</div>
+<hr>
+<div id="support">
+<p>
+Thank you for your continued business. If you have any questions
+or comments, email us at <a href="mailto:{{provider.email}}">{{provider.email}}</a>.
+</p>
+</div>
+</body>
+</html>

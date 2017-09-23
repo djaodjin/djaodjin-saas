@@ -34,10 +34,10 @@ from django.views.generic.detail import SingleObjectMixin
 from extra_views.contrib.mixins import SearchableListMixin, SortableListMixin
 
 from . import settings
-from .humanize import (as_money, DESCRIBE_BUY_PERIODS, DESCRIBE_UNLOCK_NOW,
-    DESCRIBE_UNLOCK_LATER, DESCRIBE_BALANCE)
+from .humanize import (as_money, DESCRIBE_BUY_PERIODS, DESCRIBE_BUY_USE,
+    DESCRIBE_UNLOCK_NOW, DESCRIBE_UNLOCK_LATER, DESCRIBE_BALANCE)
 from .models import (CartItem, Charge, Coupon, Organization, Plan,
-    RoleDescription, Subscription, Transaction, get_broker)
+    RoleDescription, Subscription, Transaction, UseCharge, get_broker)
 from .utils import datetime_or_now, get_role_model, start_of_day
 from .extras import OrganizationMixinBase
 
@@ -50,42 +50,51 @@ class CartMixin(object):
         created = False
         inserted_item = None
         template_item = None
-        email = kwargs.get('email', '')
+        invoice_key = kwargs.get('invoice_key', None)
+        sync_on = kwargs.get('sync_on', "")
+        plan = kwargs['plan']
+        if not isinstance(plan, Plan):
+            plan = get_object_or_404(Plan, slug=plan)
+        use = kwargs.get('use', None)
+        if use and not isinstance(use, UseCharge):
+            use = get_object_or_404(UseCharge, slug=use, plan=plan)
         if request.user.is_authenticated():
             # If the user is authenticated, we just create the cart items
             # into the database.
-            plan = get_object_or_404(Plan, slug=kwargs['plan'])
             queryset = CartItem.objects.get_cart(
-                request.user, plan=plan).order_by('-email')
+                request.user, plan=plan).order_by('-sync_on')
             if queryset.exists():
                 template_item = queryset.first()
             if template_item:
                 created = False
                 inserted_item = template_item
-                if email:
+                if sync_on:
                     # Bulk buyer subscribes someone else than request.user
-                    if template_item.email:
-                        if email != template_item.email:
+                    if template_item.sync_on:
+                        if sync_on != template_item.sync_on:
                             # Copy/Replace in template CartItem
                             created = True
                             inserted_item = CartItem.objects.create(
+                                user=request.user,
                                 plan=template_item.plan,
+                                use=template_item.use,
                                 coupon=template_item.coupon,
-                                nb_periods=template_item.nb_periods,
+                                quantity=template_item.quantity,
                                 first_name=kwargs.get('first_name', ''),
                                 last_name=kwargs.get('last_name', ''),
-                                email=email, user=request.user)
+                                sync_on=sync_on,
+                                claim_code=invoice_key)
                     else:
                         # Use template CartItem
                         inserted_item.first_name = kwargs.get('first_name', '')
                         inserted_item.last_name = kwargs.get('last_name', '')
-                        inserted_item.email = email
+                        inserted_item.sync_on = sync_on
                         inserted_item.save()
             else:
                 # New CartItem
                 created = True
                 item_queryset = CartItem.objects.get_cart(user=request.user,
-                    plan=plan, email=email)
+                    plan=plan, sync_on=sync_on)
                 if item_queryset.exists():
                     inserted_item = item_queryset.get()
                 else:
@@ -94,11 +103,12 @@ class CartMixin(object):
                         redeemed = Coupon.objects.active(
                             plan.organization, redeemed).first()
                     inserted_item = CartItem.objects.create(
-                        plan=plan, coupon=redeemed,
-                        email=email, user=request.user,
-                        nb_periods=kwargs.get('nb_periods', 0),
+                        plan=plan, use=use, coupon=redeemed,
+                        user=request.user,
+                        quantity=kwargs.get('quantity', 0),
                         first_name=kwargs.get('first_name', ''),
-                        last_name=kwargs.get('last_name', ''))
+                        last_name=kwargs.get('last_name', ''),
+                        sync_on=sync_on, claim_code=invoice_key)
 
         else:
             # We have an anonymous user so let's play some tricks with
@@ -107,41 +117,44 @@ class CartMixin(object):
             if 'cart_items' in request.session:
                 cart_items = request.session['cart_items']
             for item in cart_items:
-                if item['plan'] == kwargs['plan']:
+                if item['plan'] == str(plan):
                     if not template_item:
                         template_item = item
-                    elif ('email' in template_item and 'email' in item
-                        and len(template_item['email']) > len(item['email'])):
+                    elif ('sync_on' in template_item and 'sync_on' in item
+                      and len(template_item['sync_on']) > len(item['sync_on'])):
                         template_item = item
             if template_item:
                 created = False
                 inserted_item = template_item
-                if email:
+                if sync_on:
                     # Bulk buyer subscribes someone else than request.user
-                    if template_item.email:
-                        if email != template_item.email:
+                    if template_item.sync_on:
+                        if sync_on != template_item.sync_on:
                             # (anonymous) Copy/Replace in template item
                             created = True
                             cart_items += [{'plan': template_item['plan'],
-                                'nb_periods': template_item['nb_periods'],
+                                'use': template_item['use'],
+                                'quantity': template_item['quantity'],
                                 'first_name': kwargs.get('first_name', ''),
                                 'last_name': kwargs.get('last_name', ''),
-                                'email': email}]
+                                'sync_on': sync_on,
+                                'invoice_key': invoice_key}]
                     else:
                         # (anonymous) Use template item
                         inserted_item['first_name'] = kwargs.get(
                             'first_name', '')
                         inserted_item['last_name'] = kwargs.get(
                             'last_name', '')
-                        inserted_item['email'] = email
+                        inserted_item['sync_on'] = sync_on
             else:
                 # (anonymous) New item
                 created = True
-                cart_items += [{'plan': kwargs['plan'],
-                    'nb_periods': kwargs.get('nb_periods', 0),
+                cart_items += [{'plan': str(plan), 'use': str(use),
+                    'quantity': kwargs.get('quantity', 0),
                     'first_name': kwargs.get('first_name', ''),
                     'last_name': kwargs.get('last_name', ''),
-                    'email': email}]
+                    'sync_on': sync_on,
+                    'invoice_key': invoice_key}]
             request.session['cart_items'] = cart_items
         return inserted_item, created
 
@@ -205,8 +218,8 @@ class CartMixin(object):
 
         else:
             natural_periods = [1]
-            if cart_item.nb_periods > 0:
-                natural_periods = [cart_item.nb_periods]
+            if cart_item.quantity > 0:
+                natural_periods = [cart_item.quantity]
             elif plan.advance_discount > 0:
                 # Give a chance for discount when paying periods in advance
                 if plan.interval == Plan.MONTHLY:
@@ -270,19 +283,19 @@ class CartMixin(object):
             prorate_to = customer.billing_start
         invoicables = []
         for cart_item in CartItem.objects.get_cart(user=user):
-            if cart_item.email:
+            if cart_item.sync_on:
                 full_name = ' '.join([
                         cart_item.first_name, cart_item.last_name]).strip()
-                for_descr = ', for %s (%s)' % (full_name, cart_item.email)
+                for_descr = ', for %s (%s)' % (full_name, cart_item.sync_on)
                 organization_queryset = Organization.objects.filter(
-                    email=cart_item.email)
+                    email=cart_item.sync_on)
                 if organization_queryset.exists():
                     organization = organization_queryset.get()
                 else:
                     organization = Organization(
                         full_name='%s %s' % (
                             cart_item.first_name, cart_item.last_name),
-                        email=cart_item.email)
+                        email=cart_item.sync_on)
             else:
                 for_descr = ''
                 organization = customer
@@ -302,28 +315,37 @@ class CartMixin(object):
                 subscription = Subscription.objects.new_instance(
                     organization, cart_item.plan, ends_at=ends_at)
             lines = []
-            options = self.get_invoicable_options(subscription,
-                created_at=created_at, prorate_to=prorate_to,
-                cart_item=cart_item)
-            if cart_item.nb_periods > 0:
-                # The number of periods was already selected so we generate
-                # a line instead.
-                for line in options:
-                    plan = subscription.plan
-                    nb_periods = plan.period_number(line.descr)
-                    if nb_periods == cart_item.nb_periods:
-                        # ``TransactionManager.new_subscription_order``
-                        # will have created a ``Transaction``
-                        # with the ultimate subscriber
-                        # as payee. Overriding ``dest_organization`` here
-                        # insures in all cases (bulk and direct buying),
-                        # the transaction is recorded (in ``execute_order``)
-                        # on behalf of the customer on the checkout page.
-                        line.dest_organization = customer
-                        line.descr += for_descr
-                        lines += [line]
-                        options = []
-                        break
+            options = []
+            if cart_item.use:
+                # We are dealing with an additional use charge instead
+                # of the base subscription.
+                lines += [Transaction.objects.new_use_charge(subscription,
+                    cart_item.use, cart_item.quantity)]
+            else:
+                # Base subscription to plan.
+                options = self.get_invoicable_options(subscription,
+                    created_at=created_at, prorate_to=prorate_to,
+                    cart_item=cart_item)
+                if cart_item.quantity > 0:
+                    # The number of periods was already selected so we generate
+                    # a line instead.
+                    for line in options:
+                        plan = subscription.plan
+                        nb_periods = plan.period_number(line.descr)
+                        if nb_periods == cart_item.quantity:
+                            lines += [line]
+                            options = []
+                            break
+            # Both ``TransactionManager.new_use_charge``
+            # and ``TransactionManager.new_subscription_order`` will have
+            # created a ``Transaction`` with the ultimate subscriber
+            # as payee. Overriding ``dest_organization`` here
+            # insures in all cases (bulk and direct buying),
+            # the transaction is recorded (in ``execute_order``)
+            # on behalf of the customer on the checkout page.
+            for line in lines:
+                line.dest_organization = customer
+                line.descr += for_descr
             invoicables += [{
                 'name': cart_item.name, 'descr': cart_item.descr,
                 'subscription': subscription,
@@ -831,6 +853,11 @@ def as_html_description(transaction):
             'amount': r'.*'}, transaction.descr)
     if not look:
         look = re.match(DESCRIBE_BALANCE % {
+            'plan': r'(?P<plan>\S+)'}, transaction.descr)
+    if not look:
+        look = re.match(DESCRIBE_BUY_USE % {
+            'quantity': r'\d+',
+            'use_charge': r'.*',
             'plan': r'(?P<plan>\S+)'}, transaction.descr)
     if not look:
         look = re.match(r'.*for (?P<subscriber>\S+):(?P<plan>\S+)',
