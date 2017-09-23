@@ -65,14 +65,14 @@ def session_cart_to_database(request):
                 quantity = item.get('quantity', 0)
                 first_name = item.get('first_name', '')
                 last_name = item.get('last_name', '')
-                email = item.get('email', '')
+                email = item.get('sync_on', '')
                 # We use ``filter(...).first()`` instead of ``get_or_create()``
                 # here just in case the database is inconsistent and multiple
                 # ``CartItem`` are already present.
                 cart_item = CartItem.objects.get_cart(
                     user=request.user, plan__slug=item['plan']).filter(
                     first_name=first_name, last_name=last_name,
-                    email=email).first()
+                    sync_on=email).first()
                 # if the item is already in the cart, it is OK to forget about
                 # any additional count of it. We are just going to constraint
                 # the available one further.
@@ -90,8 +90,8 @@ def session_cart_to_database(request):
                     if last_name and not cart_item.last_name:
                         cart_item.last_name = last_name
                         updated = True
-                    if email and not cart_item.email:
-                        cart_item.email = email
+                    if email and not cart_item.sync_on:
+                        cart_item.sync_on = email
                         updated = True
                     if updated:
                         cart_item.save()
@@ -99,8 +99,8 @@ def session_cart_to_database(request):
                     plan = get_object_or_404(Plan, slug=item['plan'])
                     CartItem.objects.create(
                         user=request.user, plan=plan,
-                        first_name=first_name, last_name=last_name, email=email,
-                        coupon=coupon, quantity=quantity)
+                        first_name=first_name, last_name=last_name,
+                        sync_on=email, coupon=coupon, quantity=quantity)
             del request.session['cart_items']
     redeemed = request.session.get('redeemed', None)
     if redeemed:
