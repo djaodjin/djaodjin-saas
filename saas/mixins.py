@@ -908,12 +908,9 @@ def product_url(provider, subscriber=None):
     """
     current_uri = '/'
     site = get_provider_site(provider)
-    if site:
-        if site.domain:
-            scheme = 'https' # Defaults to secure connection.
-            current_uri = '%s://%s/' % (scheme, site.domain)
-        else:
-            current_uri += '%s/' % provider
+    if site and site.domain:
+        scheme = 'https' # Defaults to secure connection.
+        current_uri = '%s://%s/' % (scheme, site.domain)
     elif provider != get_broker():
         current_uri += '%s/' % provider
     current_uri += 'app/'
