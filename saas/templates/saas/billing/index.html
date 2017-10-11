@@ -23,6 +23,9 @@
         {% if urls.organization.api_cancel_balance_due %}
         <button id="cancel-balance-btn">cancel balance due</button>
         {% endif %}
+        {% if urls.organization.vtcharge %}
+        <a id="one-time-charge" href="{{urls.organization.vtcharge}}">one-time charge</a>
+        {% endif %}
         <dl ng-show="items.balance >= 0">
           <dt>[[items.balance|humanizeCell : items.unit : 0.01]]</dt>
           <dd ng-show="items.balance >= 0">

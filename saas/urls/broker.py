@@ -30,7 +30,7 @@ from django.conf.urls import url
 
 from .. import settings
 from ..views.metrics import BalancesView
-from ..views.billing import ChargeListView, AllTransactions
+from ..views.billing import AllTransactions, ChargeListView, VTChargeView
 from ..views.download import (BalancesDownloadView, RegisteredDownloadView,
     TransactionDownloadView)
 
@@ -42,6 +42,9 @@ urlpatterns = [
         name='saas_transactions_download'),
     url(r'^billing/transactions/((?P<selector>%s)/)?' % settings.SELECTOR_RE,
         AllTransactions.as_view(), name='saas_broker_transactions'),
+    # Organization refers to the subscriber in the following URL pattern.
+    url(r'^billing/(?P<customer>%s)/vtcharge/' % settings.ACCT_REGEX,
+        VTChargeView.as_view(), name='saas_organization_vtcharge'),
     url(r'^metrics/balances/(?P<report>%s)/((?P<year>\d\d\d\d)/)?download/?'
         % settings.ACCT_REGEX,
         BalancesDownloadView.as_view(), name='saas_balances_download'),

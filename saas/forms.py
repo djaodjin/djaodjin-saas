@@ -110,6 +110,21 @@ class CreditCardForm(PostalFormMixin, forms.Form):
         return self.cleaned_data['remember_card']
 
 
+class VTChargeForm(CreditCardForm):
+
+    amount = forms.CharField()
+    descr = forms.CharField()
+
+    def clean_amount(self):
+        amount = self.cleaned_data['amount']
+        try:
+            self.cleaned_data['amount'] = int(Decimal(amount) * 100)
+        except (TypeError, ValueError) as err:
+            raise forms.ValidationError("'%s' is an invalid amount (%s)"
+                % (amount, err))
+        return self.cleaned_data['amount']
+
+
 class CartPeriodsForm(forms.Form):
 
     def __init__(self, *args, **kwargs):
@@ -136,7 +151,7 @@ class ImportTransactionForm(forms.Form):
     def clean_amount(self):
         amount = self.cleaned_data['amount']
         try:
-            self.cleaned_data['amount'] = int(amount * 100)
+            self.cleaned_data['amount'] = int(Decimal(amount) * 100)
         except (TypeError, ValueError):
             raise forms.ValidationError("invalid amount")
         return self.cleaned_data['amount']

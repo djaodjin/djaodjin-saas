@@ -1569,9 +1569,14 @@ class Charge(models.Model):
                         orig_account=Transaction.PAYABLE,
                         orig_organization=invoiced_item.dest_organization)
 
-                # XXX used for provider and in description.
+                # XXX event is used for provider and in description.
                 event = invoiced_item.get_event()
-                provider = event.provider
+                if event:
+                    event_id = event.id
+                    provider = event.provider
+                else:
+                    event_id = None
+                    provider = get_broker()
                 orig_item_amount = invoiced_item.dest_amount
                 # Has long as we have only one item and charge/funds are using
                 # same unit, multiplication and division are carefully crafted
@@ -1627,7 +1632,7 @@ class Charge(models.Model):
                 #     cowork:Funds                                  7000
                 #     stripe:Funds
                 Transaction.objects.create(
-                    event_id=event.id,
+                    event_id=event_id,
                     created_at=self.created_at,
                     descr=humanize.DESCRIBE_CHARGED_CARD_PROVIDER % {
                             'charge': self.processor_key, 'event': event},
@@ -3126,8 +3131,7 @@ class TransactionManager(models.Manager):
             event_id=subscription.id,
             created_at__lt=until, **kwargs).order_by('created_at')
 
-    @staticmethod
-    def new_use_charge(subscription, use_charge, quantity,
+    def new_use_charge(self, subscription, use_charge, quantity,
                        created_at=None, descr=None):
         """
         Each time a subscriber places an order through
@@ -3144,28 +3148,19 @@ class TransactionManager(models.Manager):
                 xia:Payable                              $39.99
                 cowork:Receivable
         """
-        created_at = datetime_or_now(created_at)
+        #pylint:disable=too-many-arguments
         if quantity <= 0:
             # Minimum quantity for a use charge is one.
             quantity = 1
         amount = use_charge.use_amount * quantity
         if not descr:
             descr = humanize.describe_buy_use(use_charge, quantity)
-        return Transaction(
-            created_at=created_at,
-            descr=descr,
-            event_id=subscription.id,
-            dest_amount=amount,
-            dest_unit=subscription.plan.unit,
-            dest_account=Transaction.PAYABLE,
-            dest_organization=subscription.organization,
-            orig_amount=amount,
-            orig_unit=subscription.plan.unit,
-            orig_account=Transaction.RECEIVABLE,
-            orig_organization=subscription.plan.organization)
+        return self.new_payable(
+            subscription.organization, Price(amount, subscription.plan.unit),
+            subscription.plan.organization, descr,
+            event_id=subscription.id, created_at=created_at)
 
-    @staticmethod
-    def new_subscription_order(subscription, nb_natural_periods,
+    def new_subscription_order(self, subscription, nb_natural_periods,
         prorated_amount=0, created_at=None, descr=None, discount_percent=0,
         descr_suffix=None):
         #pylint: disable=too-many-arguments
@@ -3209,19 +3204,28 @@ class TransactionManager(models.Manager):
             # If we already have a description, all bets are off on
             # what the amount represents (see unlock_event).
             amount = prorated_amount
+        return self.new_payable(
+            subscription.organization, Price(amount, subscription.plan.unit),
+            subscription.plan.organization, descr,
+            event_id=subscription.id, created_at=created_at)
+
+    @staticmethod
+    def new_payable(customer, price, provider, descr,
+                    event_id=None, created_at=None):
+        #pylint:disable=too-many-arguments
         created_at = datetime_or_now(created_at)
         return Transaction(
             created_at=created_at,
             descr=descr,
-            event_id=subscription.id,
-            dest_amount=amount,
-            dest_unit=subscription.plan.unit,
+            event_id=event_id,
+            dest_amount=price.amount,
+            dest_unit=price.unit,
             dest_account=Transaction.PAYABLE,
-            dest_organization=subscription.organization,
-            orig_amount=amount,
-            orig_unit=subscription.plan.unit,
+            dest_organization=customer,
+            orig_amount=price.amount,
+            orig_unit=price.unit,
             orig_account=Transaction.RECEIVABLE,
-            orig_organization=subscription.plan.organization)
+            orig_organization=provider)
 
     def new_subscription_later(self, subscription, created_at=None):
         """

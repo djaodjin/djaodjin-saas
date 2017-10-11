@@ -41,6 +41,7 @@ import copy, itertools, logging
 from django import http
 from django.contrib.auth import REDIRECT_FIELD_NAME
 from django.core.urlresolvers import reverse
+from django.db import transaction
 from django.db.models import Q
 from django.contrib import messages
 from django.shortcuts import get_object_or_404
@@ -53,11 +54,11 @@ from .. import settings
 from ..backends import ProcessorError, ProcessorConnectionError
 from ..decorators import _insert_url, _valid_manager
 from ..forms import (BankForm, CartPeriodsForm, CreditCardForm,
-    ImportTransactionForm, RedeemCouponForm, WithdrawForm)
+    ImportTransactionForm, RedeemCouponForm, VTChargeForm, WithdrawForm)
 from ..humanize import describe_buy_periods, match_unlock
 from ..mixins import (CartMixin, ChargeMixin, DateRangeMixin, OrganizationMixin,
     ProviderMixin, product_url)
-from ..models import (CartItem, Coupon, Organization, Plan, Price,
+from ..models import (CartItem, Charge, Coupon, Organization, Plan, Price,
     Subscription, Transaction, UseCharge, get_broker)
 from ..utils import datetime_or_now, validate_redirect_url
 from ..views import session_cart_to_database
@@ -494,7 +495,9 @@ class BillingStatementView(OrganizationMixin, TransactionBaseView):
         if _valid_manager(self.request.user, [get_broker()]):
             context['urls']['organization'].update({
                 'api_cancel_balance_due': reverse(
-                    'saas_api_cancel_balance_due', args=(self.organization,))})
+                    'saas_api_cancel_balance_due', args=(self.organization,)),
+                'vtcharge': reverse('saas_organization_vtcharge',
+                    args=(self.organization,))})
         return context
 
 
@@ -742,6 +745,66 @@ djaodjin-saas/tree/master/saas/templates/saas/billing/cart.html>`__).
         context = super(CartView, self).get_context_data(**kwargs)
         context.update({'is_bulk_buyer': False})
         return context
+
+
+class VTChargeView(CardFormMixin, FormView):
+    """
+    Virtual Terminal to create a Charge that is not directly tied to a Plan.
+    """
+
+    template_name = 'saas/billing/cart.html'
+    organization_url_kwarg = 'customer'
+    form_class = VTChargeForm
+
+    def get_context_data(self, **kwargs):
+        context = super(VTChargeView, self).get_context_data(**kwargs)
+        context.update({'is_extra_charge': True, 'force_update': True})
+        return context
+
+    def form_valid(self, form):
+        """
+        If the form is valid we, optionally, checkout the cart items
+        and charge the invoiced items which are due now.
+        """
+        provider = get_broker() # XXX only works with broker so far.
+        # We do not remember the card by default.
+        remember_card = False
+        if 'remember_card' in self.request.POST:
+            remember_card = form.cleaned_data['remember_card']
+        processor_token = form.cleaned_data[self.processor_token_id]
+        try:
+            with transaction.atomic():
+                invoiced_item = Transaction.objects.new_payable(
+                    self.organization,
+                    Price(form.cleaned_data['amount'], settings.DEFAULT_UNIT),
+                    provider, form.cleaned_data['descr'])
+                invoiced_item.save()
+                self.charge = Charge.objects.charge_card(
+                    self.organization, [invoiced_item], user=self.request.user,
+                    token=processor_token, remember_card=remember_card)
+            if self.charge and self.charge.invoiced_total.amount > 0:
+                messages.info(self.request, "A receipt will be sent to"\
+" %(email)s once the charge has been processed. Thank you."
+                          % {'email': self.organization.email})
+        except ProcessorError as err:
+            messages.error(self.request, err)
+            return self.form_invalid(form)
+        return super(VTChargeView, self).form_valid(form)
+
+    def get_success_url(self):
+        redirect_path = validate_redirect_url(
+            self.request.GET.get(REDIRECT_FIELD_NAME, None))
+        if hasattr(self, 'charge') and self.charge:
+            if redirect_path:
+                return '%s?%s=%s' % (
+                    reverse('saas_charge_receipt',
+                        args=(self.charge.customer, self.charge.processor_key)),
+                    REDIRECT_FIELD_NAME, redirect_path)
+            return reverse('saas_charge_receipt',
+                        args=(self.charge.customer, self.charge.processor_key))
+        if redirect_path:
+            return redirect_path
+        return reverse('saas_billing_info', args=(self.organization,))
 
 
 class ChargeListView(ProviderMixin, TemplateView):
