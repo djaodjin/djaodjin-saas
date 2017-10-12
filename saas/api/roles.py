@@ -49,7 +49,7 @@ from .serializers import BaseRoleSerializer, RoleSerializer
 LOGGER = logging.getLogger(__name__)
 
 
-def _create_user(username, email=None, first_name=None, last_name=None):
+def _create_user(username, email=None, first_name="", last_name=""):
     user_model = get_user_model()
     return user_model.objects.create_user(username,
         email=email, first_name=first_name, last_name=last_name)
