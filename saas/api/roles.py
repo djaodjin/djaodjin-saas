@@ -49,6 +49,12 @@ from .serializers import BaseRoleSerializer, RoleSerializer
 LOGGER = logging.getLogger(__name__)
 
 
+def _create_user(username, email=None, first_name=None, last_name=None):
+    user_model = get_user_model()
+    return user_model.objects.create_user(username,
+        email=email, first_name=first_name, last_name=last_name)
+
+
 class OrganizationRoleCreateSerializer(serializers.Serializer):
     #pylint:disable=abstract-method
 
@@ -60,13 +66,30 @@ class OrganizationRoleCreateSerializer(serializers.Serializer):
 
 
 class UserRoleCreateSerializer(serializers.Serializer):
-    #pylint:disable=abstract-method
+    #pylint:disable=abstract-method,protected-access
 
     slug = serializers.CharField(validators=[
         validators.RegexValidator(settings.ACCT_REGEX,
             _('Enter a valid username.'), 'invalid')])
-    email = serializers.EmailField(required=False)
+    email = serializers.EmailField(
+        max_length=get_user_model()._meta.get_field('email').max_length,
+        required=False)
     message = serializers.CharField(max_length=255, required=False)
+
+    @staticmethod
+    def validate_slug(data):
+        # The ``slug`` / ``username`` is implicit in the addition of a role
+        # for a newly created user while adding a role. Hence we don't return
+        # a validation error if the length is too long but arbitrarly shorten
+        # the username.
+        user_model = get_user_model()
+        max_length = user_model._meta.get_field('username').max_length
+        if len(data) > max_length:
+            if '@' in data:
+                data = data.split('@')[0]
+            data = data[:max_length]
+        return data
+
 
 
 class RoleDescriptionCRUDRoleSerializer(BaseRoleSerializer):
@@ -196,7 +219,7 @@ class AccessibleByListAPIView(RoleSmartListMixin,
                 try:
                     manager = user_model.objects.get(email=email)
                 except user_model.DoesNotExist:
-                    manager = user_model.objects.create_user(email, email=email)
+                    manager = _create_user(email, email=email)
                 organization.add_manager(manager, request_user=request.user)
                 organizations = [organization]
 
@@ -487,7 +510,7 @@ class RoleFilteredListAPIView(RoleSmartListMixin, RoleByDescrQuerysetMixin,
                     first_name = full_name
                     last_name = ''
                 #pylint: disable=no-member
-                user = user_model.objects.create_user(
+                user = _create_user(
                     serializer.validated_data['slug'],
                     email=serializer.validated_data['email'],
                     first_name=first_name, last_name=last_name)
