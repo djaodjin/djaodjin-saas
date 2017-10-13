@@ -249,6 +249,24 @@ class RoleDescriptionSerializer(serializers.ModelSerializer):
         fields = ('created_at', 'name', 'slug', 'organization', 'is_global')
 
 
+class AccessibleSerializer(serializers.ModelSerializer):
+    """
+    Formats an entry in a list of ``Organization`` accessible by a ``User``.
+    """
+    slug = serializers.SlugField(source='organization.slug')
+    printable_name = serializers.CharField(source='organization.printable_name')
+    email = serializers.CharField(source='organization.email')
+    role_description = serializers.SlugField(source='role_description.slug')
+
+    class Meta:
+        model = get_role_model()
+        fields = ('created_at', 'request_key', 'grant_key',
+            'slug', 'printable_name', 'email', # Organization
+            'role_description')                # RoleDescription
+        read_only_fields = ('created_at', 'request_key', 'grant_key',
+            'printable_name')
+
+
 class BaseRoleSerializer(serializers.ModelSerializer):
 
     user = UserSerializer(read_only=True)

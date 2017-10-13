@@ -43,7 +43,8 @@ from ..mixins import (OrganizationMixin, RoleDescriptionMixin, RoleMixin,
     RoleSmartListMixin, UserMixin)
 from ..models import Organization, RoleDescription
 from ..utils import get_role_model
-from .serializers import BaseRoleSerializer, RoleSerializer
+from .serializers import (AccessibleSerializer, BaseRoleSerializer,
+    RoleSerializer)
 
 
 LOGGER = logging.getLogger(__name__)
@@ -148,20 +149,9 @@ class AccessibleByListAPIView(RoleSmartListMixin,
             "results": [
                 {
                     "created_at": "2012-10-01T09:00:00Z",
-                    "organization": {
-                        "slug": "cowork",
-                        "full_name": "ABC Corp.",
-                        "printable_name": "ABC Corp.",
-                        "created_at": "2012-08-14T23:16:55Z",
-                        "email": "support@localhost.localdomain"
-                    },
-                    "user": {
-                        "slug": "alice",
-                        "email": "alice@localhost.localdomain",
-                        "full_name": "Alice Doe",
-                        "created_at": "2012-09-14T23:16:55Z"
-                    },
-                    "name": "manager",
+                    "slug": "cowork",
+                    "printable_name": "ABC Corp.",
+                    "role_description": "manager",
                     "request_key": null,
                     "grant_key": null
                 }
@@ -186,7 +176,7 @@ class AccessibleByListAPIView(RoleSmartListMixin,
           "slug": "cowork"
         }
     """
-    serializer_class = RoleSerializer
+    serializer_class = AccessibleSerializer
 
     def create(self, request, *args, **kwargs): #pylint:disable=unused-argument
         serializer = OrganizationRoleCreateSerializer(data=request.data)
