@@ -45,9 +45,9 @@
         <tr ng-show="items.$resolved && items.results.length == 0">
           <td colspan="3">No organization accessible for {{user}}</td>
         </tr>
-        <tr id="[[entry.organization.slug]]" ng-repeat="entry in items.results" ng-cloak ng-show="items.$resolved && items.results.length > 0">
+        <tr id="[[entry.slug]]" ng-repeat="entry in items.results" ng-cloak ng-show="items.$resolved && items.results.length > 0">
           <td>
-            <a href="{{urls.organization.profile_base}}[[entry.organization.slug]]/">[[entry.organization.full_name]]</a>
+            <a href="{{urls.organization.profile_base}}[[entry.slug]]/">[[entry.printable_name]]</a>
           </td>
           <td>
             [[entry.request_key ? "requested" : entry.role_description]]
