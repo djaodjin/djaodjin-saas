@@ -27,6 +27,7 @@ import re
 import dateutil
 from django.core.urlresolvers import NoReverseMatch, reverse
 from django.contrib.auth import get_user_model
+from django.db.models import Q
 from django.http import Http404
 from django.shortcuts import get_object_or_404
 from django.utils.dateparse import parse_datetime
@@ -283,22 +284,26 @@ class CartMixin(object):
             prorate_to = customer.billing_start
         invoicables = []
         for cart_item in CartItem.objects.get_cart(user=user):
+            for_descr = ''
+            organization = customer
             if cart_item.sync_on:
                 full_name = ' '.join([
                         cart_item.first_name, cart_item.last_name]).strip()
                 for_descr = ', for %s (%s)' % (full_name, cart_item.sync_on)
                 organization_queryset = Organization.objects.filter(
-                    email=cart_item.sync_on)
+                    Q(slug=cart_item.sync_on) | Q(email=cart_item.sync_on))
                 if organization_queryset.exists():
                     organization = organization_queryset.get()
                 else:
-                    organization = Organization(
-                        full_name='%s %s' % (
-                            cart_item.first_name, cart_item.last_name),
-                        email=cart_item.sync_on)
-            else:
-                for_descr = ''
-                organization = customer
+                    user_queryset = get_user_model().objects.filter(
+                        Q(username=cart_item.sync_on)
+                        | Q(email=cart_item.sync_on))
+                    if not user_queryset.exists():
+                        # XXX Hacky way to determine GroupBuy vs. notify.
+                        organization = Organization(
+                            full_name='%s %s' % (
+                                cart_item.first_name, cart_item.last_name),
+                            email=cart_item.sync_on)
             try:
                 # If we can extend a current ``Subscription`` we will.
                 # XXX For each (organization, plan) there should not
