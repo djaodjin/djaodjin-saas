@@ -153,8 +153,7 @@ def monthly_caption(last_date):
     if last_date.day == 1:
         prev = last_date - timedelta(days=2) # more than one day to make sure
         return datetime.strftime(prev, "%b'%y")
-    else:
-        return datetime.strftime(last_date, "%b'%y") + "*"
+    return datetime.strftime(last_date, "%b'%y") + "*"
 
 
 @register.filter()

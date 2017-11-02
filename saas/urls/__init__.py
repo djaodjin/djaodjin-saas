@@ -35,4 +35,3 @@ urlpatterns = [
     url(r'^', include('saas.urls.provider')),
     url(r'^', include('saas.urls.subscriber')),
 ]
-

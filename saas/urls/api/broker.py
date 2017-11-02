@@ -53,5 +53,3 @@ urlpatterns = [
     url(r'^users/?',
         UserListAPIView.as_view(), name='saas_api_users'),
 ]
-
-

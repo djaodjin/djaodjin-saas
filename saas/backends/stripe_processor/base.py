@@ -63,12 +63,7 @@ Edit the redirect_url and copy/paste the keys into your project settings.py
 
 import datetime, logging, re
 
-from django.conf import settings as django_settings
-from django.http import Http404
-from django.shortcuts import get_object_or_404
 from django.utils import six
-from rest_framework.decorators import api_view
-from rest_framework.response import Response
 import requests, stripe
 
 from .. import CardError, ProcessorError
@@ -134,7 +129,7 @@ class StripeBackend(object):
         nb_customers_listed = 0
         response = stripe.Customer.all(**kwargs)
         all_custs = response['data']
-        while len(all_custs) > 0:
+        while all_custs:
             for cust in all_custs:
                 # We use the description field to store extra information
                 # that connects the Stripe customer back to our database.
@@ -445,13 +440,42 @@ class StripeBackend(object):
         return context
 
     def retrieve_charge(self, charge):
-        # XXX make sure to avoid race condition.
-        kwargs = self._prepare_charge_request(charge.broker)
-        if charge.is_progress:
+        return self._update_charge_state(charge)
+
+    def _update_charge_state(self, charge, stripe_charge=None, event_type=None):
+        if stripe_charge is None:
+            kwargs = self._prepare_charge_request(charge.broker)
             stripe_charge = stripe.Charge.retrieve(
                 charge.processor_key, **kwargs)
-            if stripe_charge.paid:
-                charge.payment_successful()
+        if event_type is None:
+            if charge.is_progress:
+                if stripe_charge.paid and stripe_charge.status == 'succeeded':
+                    event_type = 'charge.succeeded'
+                elif stripe_charge.status == 'failed':
+                    event_type = 'charge.failed'
+        # Record state transition
+        if event_type:
+            if event_type == 'charge.succeeded':
+                if charge.is_progress:
+                    charge.payment_successful()
+                else:
+                    LOGGER.warning(
+                        "Already received a state update event for %s", charge)
+            elif event_type == 'charge.failed':
+                charge.failed()
+            elif event_type == 'charge.refunded':
+                charge.refund()
+            elif event_type == 'charge.captured':
+                charge.capture()
+            elif event_type == 'charge.dispute.created':
+                charge.dispute_created()
+            elif event_type == 'charge.dispute.updated':
+                charge.dispute_updated()
+            elif event_type == 'charge.dispute.closed.won':
+                charge.dispute_won()
+            elif event_type == 'charge.dispute.closed.lost':
+                charge.dispute_lost()
+
         return charge
 
     def reconcile_transfers(self, provider, created_at):
@@ -493,45 +517,3 @@ class StripeBackend(object):
                 # integer division
                 return (amount * 50 + 5000) // 10000
         return 0
-
-
-@api_view(['POST'])
-def processor_hook(request):
-    from saas.models import Charge
-    stripe.api_key = StripeBackend().priv_key
-    # Attempt to validate the event by posting it back to Stripe.
-    if django_settings.DEBUG:
-        event = stripe.Event.construct_from(request.DATA, stripe.api_key)
-    else:
-        event = stripe.Event.retrieve(request.DATA['id'])
-    if not event:
-        LOGGER.error("Posted stripe '%s' event %s FAIL",
-            event.type, request.DATA['id'])
-        raise Http404
-    LOGGER.info("Posted stripe '%s' event %s PASS", event.type, event.id,
-        extra={'processor': 'stripe',
-            'event': event.type, 'event_id': event.id})
-    charge = get_object_or_404(Charge, processor_key=event.data.object.id)
-    if event.type == 'charge.succeeded':
-        if charge.state != charge.DONE:
-            charge.payment_successful()
-        else:
-            LOGGER.warning(
-                "Already received a charge.succeeded event for %s", charge)
-    elif event.type == 'charge.failed':
-        charge.failed()
-    elif event.type == 'charge.refunded':
-        charge.refund()
-    elif event.type == 'charge.captured':
-        charge.capture()
-    elif event.type == 'charge.dispute.created':
-        charge.dispute_created()
-    elif event.type == 'charge.dispute.updated':
-        charge.dispute_updated()
-    elif event.type == 'charge.dispute.closed':
-        if event.data.object.status == 'won':
-            charge.dispute_won()
-        elif event.data.object.status == 'lost':
-            charge.dispute_lost()
-
-    return Response("OK")

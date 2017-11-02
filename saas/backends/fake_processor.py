@@ -35,6 +35,18 @@ LOGGER = logging.getLogger(__name__)
 
 class FakeProcessorBackend(object):
 
+    LOCAL = 0
+    FORWARD = 1
+    REMOTE = 2
+
+    token_id = 'stripeToken'
+
+    def __init__(self):
+        self.pub_key = settings.PROCESSOR['PUB_KEY']
+        self.priv_key = settings.PROCESSOR['PRIV_KEY']
+        self.client_id = settings.PROCESSOR.get('CLIENT_ID', None)
+        self.mode = settings.PROCESSOR.get('MODE', 0)
+
     @staticmethod
     def charge_distribution(charge, refunded=0, unit=settings.DEFAULT_UNIT):
         # Stripe processing fee associated to a transaction
@@ -60,8 +72,12 @@ class FakeProcessorBackend(object):
         LOGGER.debug('create_charge(amount=%s, unit=%s, descr=%s)',
             amount, unit, descr)
         created_at = datetime_or_now()
-        return (generate_random_slug(), created_at,
-            '1234', created_at + datetime.timedelta(days=365))
+        receipt_info = {
+            'last4': "1234",
+            'exp_date': created_at + datetime.timedelta(days=365),
+            'card_name': "Joe Test"
+        }
+        return (generate_random_slug(), created_at, receipt_info)
 
     @staticmethod
     def create_charge_on_card(card, amount, unit,

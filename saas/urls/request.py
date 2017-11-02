@@ -34,5 +34,3 @@ urlpatterns = [
     url(r'^legal/(?P<agreement>%s)/sign/' % ACCT_REGEX,
         AgreementSignView.as_view(), name='legal_sign_agreement'),
 ]
-
-

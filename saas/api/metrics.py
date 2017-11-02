@@ -596,5 +596,3 @@ class OrganizationListAPIView(ProviderMixin, GenericAPIView):
             self.queryset_name: [serializer.to_representation(organization)
                 for organization in page_object_list],
             })
-
-

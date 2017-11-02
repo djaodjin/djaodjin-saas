@@ -563,6 +563,8 @@ class Organization(models.Model):
             # unless the organization does not exist in the database,
             # in which case we will create a claim_code for it.
             cart_item = None
+            # XXX Two use charges, sync_on is username will raise a 500 error
+            # because of multiple CartItem.
             cart_items = CartItem.objects.get_cart(user, plan=subscription.plan)
             if cart_items.exists():
                 # We are doing a groupBuy for a specified email.
@@ -1402,18 +1404,27 @@ class Charge(models.Model):
                     processor_unit=processor_unit,
                     refund_type=Transaction.CHARGEBACK)
                 refund_available -= refunded_amount
+        # We did a `select_for_update` earlier on but that did not change
+        # in state of the `self` currently in memory.
+        self.state = self.DISPUTED
         signals.charge_updated.send(sender=__name__, charge=self, user=None)
 
     def dispute_updated(self):
         with transaction.atomic():
             Charge.objects.select_for_update(nowait=True).filter(
                 pk=self.pk).update(state=self.DISPUTED)
+        # We did a `select_for_update` earlier on but that did not change
+        # in state of the `self` currently in memory.
+        self.state = self.DISPUTED
         signals.charge_updated.send(sender=__name__, charge=self, user=None)
 
     def dispute_lost(self):
         with transaction.atomic():
             Charge.objects.select_for_update(nowait=True).filter(
                 pk=self.pk).update(state=self.FAILED)
+        # We did a `select_for_update` earlier on but that did not change
+        # in state of the `self` currently in memory.
+        self.state = self.FAILED
         signals.charge_updated.send(sender=__name__, charge=self, user=None)
 
     def dispute_won(self):
@@ -1438,6 +1449,9 @@ class Charge(models.Model):
                     orig_amount=reverted.dest_amount,
                     orig_account=reverted.dest_account,
                     orig_organization=reverted.dest_organization)
+        # We did a `select_for_update` earlier on but that did not change
+        # in state of the `self` currently in memory.
+        self.state = self.DONE
         signals.charge_updated.send(sender=__name__, charge=self, user=None)
 
     def failed(self):
@@ -1448,6 +1462,9 @@ class Charge(models.Model):
             if not updated:
                 raise DatabaseError(
                     "Charge is currently being updated by another transaction")
+        # We did a `select_for_update` earlier on but that did not change
+        # in state of the `self` currently in memory.
+        self.state = self.FAILED
         signals.charge_updated.send(sender=__name__, charge=self, user=None)
 
     def payment_successful(self):
@@ -1498,7 +1515,7 @@ class Charge(models.Model):
                 stripe:Backlog
 
             2014/09/10 Charge ch_ABC123 distribution for open-space
-                cowork:Receivable                     $189.00
+                cowork:Receivable                     $179.99
                 cowork:Backlog
 
             2014/09/10 Charge ch_ABC123 distribution for open-space
@@ -1671,6 +1688,9 @@ class Charge(models.Model):
                 raise IntegrityError("The total amount of invoiced items for "\
                     "charge %s exceed the amount of the charge.",
                     self.processor_key)
+            # We did a `select_for_update` earlier on but that did not change
+            # in state of the `self` currently in memory.
+            self.state = self.DONE
         signals.charge_updated.send(sender=__name__, charge=self, user=None)
         return charge_transaction
 
@@ -3319,7 +3339,7 @@ class TransactionManager(models.Manager):
                 provider:Income
 
             yyyy/mm/dd When service is invoiced after period ends
-                provider:Backlog                   period_amount
+                provider:Receivable                period_amount
                 provider:Income
 
         Example::

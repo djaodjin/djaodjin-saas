@@ -1,4 +1,4 @@
-# Copyright (c) 2014, DjaoDjin inc.
+# Copyright (c) 2017, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -30,16 +30,15 @@ including Transaction history.
 from django.core.management.base import BaseCommand
 
 # We need this import to avoid getting an exception importing 'saas.models'
-from saas.utils import datetime_or_now #pylint: disable=unused-import
-from saas.models import Organization
+from ...utils import datetime_or_now #pylint: disable=unused-import
+from ...models import Organization
 
 
 class Command(BaseCommand):
 
     help = "Obliterate all traces of an Organization."
 
-    def handle(self, args, **options):
+    def handle(self, *args, **options):
         #pylint: disable=too-many-locals
-        organizations = Organization.objects.filter(slug=args)
+        organizations = Organization.objects.filter(slug__in=args)
         organizations.delete()
-

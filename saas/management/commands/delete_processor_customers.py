@@ -1,4 +1,4 @@
-# Copyright (c) 2016, DjaoDjin inc.
+# Copyright (c) 2017, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -42,7 +42,7 @@ from the payment processor service."""
 
     def handle(self, *args, **options):
         pat = r'.*'
-        if len(args) > 0:
+        if args:
             pat = args[0]
         for cust in get_processor_backend(
                 provider=Organization.objects.get(pk=settings.PROCESSOR_ID
@@ -50,6 +50,3 @@ from the payment processor service."""
             sys.stdout.write('%s %s\n' % (str(cust.id), str(cust.description)))
             if not options['no_execute']:
                 cust.delete()
-
-
-

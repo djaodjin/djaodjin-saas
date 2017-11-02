@@ -194,5 +194,3 @@ class RevenueMetricsView(MetricsMixin, TemplateView):
                         "location": reverse('saas_api_balances',
                             args=(self.organization,))}])})
         return context
-
-

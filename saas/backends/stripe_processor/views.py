@@ -22,9 +22,22 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+import logging
+
+from django.conf import settings as django_settings
+from django.http import Http404
+from django.shortcuts import get_object_or_404
 from django.views.generic import RedirectView
+from rest_framework.decorators import api_view
+from rest_framework.response import Response
+import stripe
 
 from ... import settings
+from ...models import get_broker
+from .. import get_processor_backend
+
+
+LOGGER = logging.getLogger(__name__)
 
 
 class StripeProcessorRedirectView(RedirectView):
@@ -55,3 +68,42 @@ class StripeProcessorRedirectView(RedirectView):
         kwargs.update({self.slug_url_kwarg: provider})
         return super(StripeProcessorRedirectView, self).get(
             request, *args, **kwargs)
+
+
+@api_view(['POST'])
+def processor_hook(request):
+    from saas.models import Charge
+    processor_backend = get_processor_backend(get_broker())
+    stripe.api_key = processor_backend.priv_key
+    # Attempt to validate the event by posting it back to Stripe.
+    if django_settings.DEBUG:
+        event = stripe.Event.construct_from(request.DATA, stripe.api_key)
+    else:
+        event = stripe.Event.retrieve(request.DATA['id'])
+    event_type = event.type
+    if not event:
+        LOGGER.error("Posted stripe '%s' event %s FAIL",
+            event.type, request.DATA['id'])
+        raise Http404
+    LOGGER.info("Posted stripe '%s' event %s PASS", event.type, event.id,
+        extra={'processor': 'stripe', 'event': event.type, 'event_id': event.id,
+            'request': request})
+    if event_type in ['charge.succeeded', 'charge.failed', 'charge.refunded',
+            'charge.captured']:
+        charge = get_object_or_404(Charge, processor_key=event.data.object.id)
+        #pylint:disable=protected-access
+        processor_backend._update_charge_state(charge,
+            stripe_charge=event.data.object, event_type=event_type)
+    elif event_type in ['charge.dispute.created',
+            'charge.dispute.updated', 'charge.dispute.closed']:
+        if event_type == 'charge.dispute.closed':
+            if event.data.object.status == 'won':
+                event_type = 'charge.dispute.closed.won'
+            elif event.data.object.status == 'lost':
+                event_type = 'charge.dispute.closed.lost'
+        charge = get_object_or_404(Charge,
+            processor_key=event.data.object.charge)
+        #pylint:disable=protected-access
+        processor_backend._update_charge_state(charge, event_type=event_type)
+
+    return Response("OK")

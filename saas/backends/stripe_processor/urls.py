@@ -24,8 +24,7 @@
 
 from django.conf.urls import url
 
-from .base import processor_hook
-from .views import StripeProcessorRedirectView
+from .views import StripeProcessorRedirectView, processor_hook
 from ...settings import PROCESSOR_HOOK_URL
 
 urlpatterns = [

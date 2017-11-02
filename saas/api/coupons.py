@@ -212,8 +212,7 @@ class CouponRedeemAPIView(GenericAPIView):
                 messages.success(request._request, details['details'])#pylint: disable=protected-access
                 return Response(details, status=status.HTTP_200_OK,
                                 headers=headers)
-            else:
-                details = {"details": (
+            details = {"details": (
 "No items can be discounted using this coupon: %s." % coupon_code)}
-                return Response(details, status=status.HTTP_400_BAD_REQUEST)
+            return Response(details, status=status.HTTP_400_BAD_REQUEST)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

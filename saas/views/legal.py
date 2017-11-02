@@ -172,4 +172,3 @@ djaodjin-saas/tree/master/saas/templates/saas/legal/sign.html>`__).
         context.update({
                 'page': _read_agreement_file(self.kwargs.get('agreement'))})
         return context
-

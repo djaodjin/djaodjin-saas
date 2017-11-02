@@ -1089,4 +1089,3 @@ djaodjin-saas/tree/master/saas/templates/saas/billing/import.html>`__).
 
     def get_success_url(self):
         return reverse('saas_transfer_info', kwargs=self.get_url_kwargs())
-

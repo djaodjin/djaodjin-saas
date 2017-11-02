@@ -341,5 +341,3 @@ class OrganizationProfileView(OrganizationMixin, UpdateView):
     def get_success_url(self):
         messages.info(self.request, 'Profile Updated.')
         return reverse('saas_organization_profile', args=(self.object,))
-
-
