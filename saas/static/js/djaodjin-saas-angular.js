@@ -425,16 +425,18 @@ couponControllers.controller("CouponListCtrl",
     $scope.maxSize = 5;               // Total number of direct pages link
     $scope.currentPage = 1;
 
+    // settings for coupon expiration datepicker in angular-ui-bootstrap@2.5.6
+    // (https://angular-ui.github.io/bootstrap/#datepicker)
+    // We cannot set the expiration date in the past (`minDate` > now()) but do
+    // not prevent an expiration date far in the future (`maxDate` = null).
+    // The coupon expires a month from now (initDate = now() + 1.month)
+    // by default.
     $scope.dateOptions = {
         formatYear: "yy",
-        startingDay: 1
+        minDate: moment().startOf('day').toDate(),
+        initDate: moment().add(1, "months").toDate()
     };
-
-    $scope.initDate = new Date("2018-01-01");
-    $scope.minDate = new Date();
-    $scope.maxDate = new Date("2018-01-01");
-    $scope.formats = ["dd-MMMM-yyyy", "yyyy/MM/dd", "dd.MM.yyyy", "shortDate"];
-    $scope.format = $scope.formats[0];
+    $scope.format = "yyyy/MM/dd";
 
     $scope.filterList = function(regex) {
         if( regex ) {
@@ -618,6 +620,8 @@ transactionControllers.controller("userRoleDescriptionCtrl",
 }]);
 
 
+// XXX Currently most of the functionality of subscriberListCtrl is actually
+// included here.
 subscriptionControllers.controller("subscriptionListCtrl",
     ["$scope", "$http", "$timeout", "settings",
     function($scope, $http, $timeout, settings) {
@@ -632,16 +636,20 @@ subscriptionControllers.controller("subscriptionListCtrl",
     $scope.maxSize = 5;               // Total number of direct pages link
     $scope.currentPage = 1;
 
+    // settings for datepicker in angular-ui-bootstrap@2.5.6
+    // when a subscription ends.
+    // (https://angular-ui.github.io/bootstrap/#datepicker)
+    // We cannot set the end date in the past (`minDate` > now()) but do
+    // not prevent an en date far in the future (`maxDate` = null).
+    // The default end date is a month from now (initDate = now() + 1.month)
+    // by default.
     $scope.dateOptions = {
         formatYear: "yy",
-        startingDay: 1
+        minDate: moment().startOf('day').toDate(),
+        initDate: moment().add(1, "months").toDate()
     };
+    $scope.format = "yyyy/MM/dd";
 
-    $scope.initDate = new Date("2018-01-01");
-    $scope.minDate = new Date();
-    $scope.maxDate = new Date("2018-01-01");
-    $scope.formats = ["dd-MMMM-yyyy", "yyyy/MM/dd", "dd.MM.yyyy", "shortDate"];
-    $scope.format = $scope.formats[0];
     $scope.ends_at = moment().endOf("day").toDate();
 
     $scope.registered = {
@@ -655,6 +663,11 @@ subscriptionControllers.controller("subscriptionListCtrl",
         location: settings.urls.saas_api_churned};
 
     $scope.active = $scope.subscribed;
+
+    $scope.subscriptionURL = function(organization, plan) {
+        return settings.urls.api_organizations
+            + organization + "/subscriptions/" + plan;
+    };
 
     // calendar for expiration date
     $scope.open = function($event, entry) {
@@ -696,8 +709,8 @@ subscriptionControllers.controller("subscriptionListCtrl",
     $scope.saveDescription = function(event, entry){
         if (event.which === 13 || event.type === "blur" ){
             delete entry.editDescription;
-            $http.patch(settings.urls.api_organizations
-                + entry.organization.slug + "/subscriptions/" + entry.plan.slug,
+            $http.patch($scope.subscriptionURL(
+                entry.organization.slug, entry.plan.slug),
                 {description: entry.description}).then(
                 function(data){
                     // XXX message expiration date was updated.
@@ -767,7 +780,9 @@ subscriptionControllers.controller("subscriptionListCtrl",
                 if( (oldVal.results[i].ends_at !== newVal.results[i].ends_at)
                     || (oldVal.results[i].description !== newVal.results[i].description)) {
                     var entry = newVal.results[i];
-                    $http.patch(newVal.location + "/" + entry.plan.slug,
+                    console.log("XXX changed:", entry);
+                    $http.patch($scope.subscriptionURL(
+                        entry.organization.slug, entry.plan.slug),
                         {ends_at: entry.ends_at,
                          description: entry.description}).then(
                         function(data){
@@ -814,8 +829,7 @@ subscriptionControllers.controller("subscriptionListCtrl",
         var elm = angular.element(event.target);
         var organization = elm.attr("data-organization");
         var plan = elm.attr("data-plan");
-        $http.delete(settings.urls.api_organizations
-                     + organization + "/subscriptions/" + plan).then(
+        $http.delete($scope.subscriptionURL(organization, plan)).then(
         function success(resp) {
             $scope.query($scope.active);
         }, function error(resp) {
@@ -1028,17 +1042,17 @@ importTransactionsControllers.controller("importTransactionsCtrl",
     function($scope, $http, settings) {
     "use strict";
 
-    // these aren't documented; do they do anything?
-    $scope.formats = ["yyyy-MM-dd", "shortDate"];
-    $scope.format = $scope.formats[0];
+    // settings for datepicker in angular-ui-bootstrap@2.5.6
+    // (https://angular-ui.github.io/bootstrap/#datepicker)
+    // The datepicker is used to sed the date an off-line transactions
+    // has been created.
     $scope.dateOptions = {
         formatYear: "yyyy",
-        startingDay: 1
+        initDate: moment().toDate() // today
     };
-    $scope.minDate = new Date('2015-01-01');
-    $scope.maxDate = new Date('2018-01-01');
-    $scope.opened = {};
+    $scope.format = "yyyy-MM-dd";
 
+    $scope.opened = {};
     $scope.subscription = null; // XXX really a subscription so far.
     $scope.createdAt = moment().format("YYYY-MM-DD");
 
