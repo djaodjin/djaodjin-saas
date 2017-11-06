@@ -45,6 +45,8 @@ from .. import settings
 from ..decorators import fail_direct
 from ..models import CartItem, Coupon, Plan, Organization, get_broker
 
+LOGGER = logging.getLogger(__name__)
+
 
 def session_cart_to_database(request):
     """
@@ -175,7 +177,8 @@ class OrganizationRedirectView(TemplateResponseMixin, ContextMixin,
     slug_url_kwarg = 'organization'
     permanent = False
     create_more = False
-    create_on_none = False
+    implicit_create_on_none = False
+    explicit_create_on_none = False
     query_string = True
 
     @staticmethod
@@ -190,6 +193,18 @@ class OrganizationRedirectView(TemplateResponseMixin, ContextMixin,
             context.update({'urls': urls})
         return context
 
+    def create_organization_from_user(self, user):
+        with transaction.atomic():
+            organization = Organization.objects.create(
+                slug=user.username,
+                full_name=user.get_full_name(),
+                email=user.email)
+            organization.add_manager(user)
+        return organization
+
+    def get_implicit_create_on_none(self):
+        return self.implicit_create_on_none
+
     def get(self, request, *args, **kwargs):
         session_cart_to_database(request)
         accessibles = Organization.objects.accessible_by(request.user)
@@ -201,8 +216,19 @@ class OrganizationRedirectView(TemplateResponseMixin, ContextMixin,
         else:
             create_url = reverse('saas_organization_create')
         if count == 0:
-            if self.create_on_none:
+            if self.explicit_create_on_none:
                 return http.HttpResponseRedirect(create_url)
+            if self.get_implicit_create_on_none():
+                try:
+                    kwargs.update({self.slug_url_kwarg: str(
+                        self.create_organization_from_user(request.user))})
+                    return super(OrganizationRedirectView, self).get(
+                        request, *args, **kwargs)
+                except IntegrityError:
+                    LOGGER.warning("tried to implicitely create"\
+                        " an organization that already exists.",
+                        extra={'request': request})
+            raise http.Http404("No organizations are accessible by user.")
         if count == 1 and not self.create_more:
             organization = accessibles.get()
             kwargs.update({self.slug_url_kwarg: accessibles.get()})
