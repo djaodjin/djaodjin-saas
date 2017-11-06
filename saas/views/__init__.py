@@ -193,7 +193,7 @@ class OrganizationRedirectView(TemplateResponseMixin, ContextMixin,
             context.update({'urls': urls})
         return context
 
-    def create_organization_from_user(self, user):
+    def create_organization_from_user(self, user):#pylint:disable=no-self-use
         with transaction.atomic():
             organization = Organization.objects.create(
                 slug=user.username,

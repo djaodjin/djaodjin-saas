@@ -73,6 +73,9 @@ def datetime_or_now(dtime_at=None):
         return datetime.datetime.utcnow().replace(tzinfo=utc)
     if isinstance(dtime_at, six.string_types):
         dtime_at = datetime.datetime.strptime(dtime_at, "%Y-%m-%dT%H:%M:%S")
+    if isinstance(dtime_at, datetime.date):
+        dtime_at = datetime.datetime(
+            dtime_at.year, dtime_at.month, dtime_at.day)
     if dtime_at.tzinfo is None:
         dtime_at = dtime_at.replace(tzinfo=utc)
     return dtime_at

@@ -117,6 +117,23 @@ class OrganizationWithSubscriptionsSerializer(serializers.ModelSerializer):
         read_only_fields = ('slug', )
 
 
+class OrganizationWithActiveSubscriptionsSerializer(
+        serializers.ModelSerializer):
+    """
+    Operational information on an Organization,
+    bundled with its active subscriptions.
+    """
+
+    subscriptions = WithSubscriptionSerializer(
+        source='get_active_subscriptions', many=True, read_only=True)
+
+    class Meta:
+        model = Organization
+        fields = ('slug', 'printable_name', 'created_at',
+            'email', 'subscriptions', )
+        read_only_fields = ('slug', )
+
+
 class PlanSerializer(serializers.ModelSerializer):
 
     app_url = serializers.SerializerMethodField()

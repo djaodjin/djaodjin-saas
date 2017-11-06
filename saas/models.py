@@ -279,6 +279,15 @@ class Organization(models.Model):
     def __str__(self):
         return str(self.slug)
 
+    def get_active_subscriptions(self, at_time=None):
+        """
+        Returns the set of active subscriptions for this organization
+        at time *at_time* or now if *at_time* is not specified.
+        """
+        at_time = datetime_or_now(at_time)
+        return Subscription.objects.filter(
+            organization=self, ends_at__gte=at_time)
+
     def get_changes(self, update_fields):
         changes = {}
         for field_name in ('full_name',):
