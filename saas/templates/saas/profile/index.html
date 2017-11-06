@@ -8,8 +8,10 @@
         <input type="submit" name="submit" value="Update Profile">
     </div>
 </form>
-<div id="delete-action">
-<button id="delete-action-open">Delete</button>
-<button type="button" id="delete-organization-btn">Delete</button>
+<div ng-app="saasApp">
+  <div id="delete-action" ng-controller="organizationProfileCtrl">
+    <button id="delete-action-open">Delete</button>
+    <button type="button" id="delete-organization-btn" ng-click="deleteProfile($event)">Delete</button>
+  </div>
 </div>
 {% endblock %}

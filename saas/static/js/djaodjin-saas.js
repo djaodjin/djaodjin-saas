@@ -1,55 +1,118 @@
-/* Functionality related to the SaaS API.
+/**
+   Functionality related to the cart and checkout of djaodjin-saas.
+
+   These are based on jquery.
  */
+
 /*global location setTimeout jQuery*/
 /*global getMetaCSRFToken showMessages*/
 
-function CartItem(options) {
-    "use strict";
-    this.item = {};
-    var restricted = ["plan", "quantity", "first_name", "last_name", "sync_on",
-        "invoice_key"];
-    for(var i = 0; i < restricted.length; ++i ){
-        var key = restricted[i];
-        if( key in options ) {
-            this.item[key] = options[key];
-        }
-    }
-    this.urls = options.urls;
-}
-
-
-CartItem.prototype = {
-    add: function(successFunc, errorFunc) {
-        "use strict";
-        var self = this;
-        $.ajax({ type: "POST", // XXX Might still prefer to do PUT on list.
-                 url: self.urls.saas_api_cart,
-                 beforeSend: function(xhr) {
-                     xhr.setRequestHeader("X-CSRFToken", getMetaCSRFToken());
-                 },
-                 data: JSON.stringify(self.item),
-                 datatype: "json",
-                 contentType: "application/json; charset=utf-8",
-                 success: successFunc,
-                 error: errorFunc
-               });
-    },
-
-    remove: function(successFunction) {
-        "use strict";
-        var self = this;
-        $.ajax({ type: "DELETE",
-                 url: self.urls.saas_api_cart + self.item.plan + "/",
-                 beforeSend: function(xhr) {
-                     xhr.setRequestHeader("X-CSRFToken", getMetaCSRFToken());
-                 },
-                 success: successFunction
-               });
-    }
-};
 
 (function ($) {
     "use strict";
+
+    /** Add/Remove a ``CartItem`` from the active shopping cart.
+
+        HTML requirements:
+
+        <form id="*plan.slug*">
+            <input type="hidden" name="csrfmiddlewaretoken" value="...">
+            <button type="submit">*addLabel*</button>
+        </form>
+     */
+    function CartItem(el, options) {
+        this.element = $(el);
+        this.options = options;
+        this.init();
+    }
+
+    CartItem.prototype = {
+        init: function() {
+            var self = this;
+            self.item = {};
+            var restricted = ["plan", "quantity",
+                "first_name", "last_name", "sync_on", "invoice_key"];
+            for(var i = 0; i < restricted.length; ++i ) {
+                var key = restricted[i];
+                if( key in self.options ) {
+                    self.item[key] = options[key];
+                }
+            }
+            if( self.element.attr('id') ) {
+                self.item.plan = self.element.attr('id');
+            }
+            self.submitBtn = self.element.find("[type='submit']");
+            if( self.submitBtn.empty() ) {
+                self.submitBtn = self.element;
+            }
+            self.submitBtn.click(function (event) {
+                event.preventDefault();
+                if( self.submitBtn.text() == self.options.removeLabel ) {
+                    self.remove();
+                } else {
+                    self.add();
+                }
+            });
+        },
+
+        _getCSRFToken: function() {
+            var self = this;
+            var crsfNode = self.element.find("[name='csrfmiddlewaretoken']");
+            if( !crsfNode.empty() ) {
+                return crsfNode.val();
+            }
+            return getMetaCSRFToken();
+        },
+
+        add: function() {
+            var self = this;
+            $.ajax({
+                type: "POST", // XXX Might still prefer to do PUT on list.
+                url: self.options.api_cart,
+                beforeSend: function(xhr) {
+                    xhr.setRequestHeader("X-CSRFToken", self._getCSRFToken());
+                },
+                data: JSON.stringify(self.item),
+                datatype: "json",
+                contentType: "application/json; charset=utf-8",
+                success: function(data) {
+                    self.submitBtn.text(self.options.removeLabel);
+                },
+                error: function(resp) {
+                    showErrorMessages(resp);
+                }
+            });
+        },
+
+        remove: function(successFunction) {
+            var self = this;
+            $.ajax({
+                type: "DELETE",
+                url: self.options.api_cart + self.item.plan + "/",
+                beforeSend: function(xhr) {
+                    xhr.setRequestHeader("X-CSRFToken", self._getCSRFToken());
+                },
+                success: function(data) {
+                    self.submitBtn.text(self.options.addLabel);
+                }
+            });
+        }
+    };
+
+    $.fn.cartItem = function(options) {
+        var opts = $.extend( {}, $.fn.cartItem.defaults, options );
+        return this.each(function() {
+            $(this).data("cartItem", new CartItem($(this), opts));
+        });
+    };
+
+    $.fn.cartItem.defaults = {
+        addLabel: "Add to Cart",
+        removeLabel: "Remove from Cart",
+        nb_periods: 1,
+        api_cart: null
+    };
+
 
     /** Monitor the state (in-process, declined, etc.) of a ``Charge``
 
@@ -99,7 +162,9 @@ CartItem.prototype = {
 
     $.fn.chargeMonitor = function(options) {
         var opts = $.extend( {}, $.fn.chargeMonitor.defaults, options );
-        return new ChargeMonitor($(this), opts);
+        return this.each(function() {
+            $(this).data("chargeMonitor", new ChargeMonitor($(this), opts));
+        });
     };
 
     $.fn.chargeMonitor.defaults = {
@@ -126,6 +191,15 @@ CartItem.prototype = {
             });
         },
 
+        _getCSRFToken: function() {
+            var self = this;
+            var crsfNode = self.element.find("[name='csrfmiddlewaretoken']");
+            if( !crsfNode.empty() ) {
+                return crsfNode.val();
+            }
+            return getMetaCSRFToken();
+        },
+
         emailReceipt: function() {
             var self = this;
             if( self.state === "created" ) {
@@ -146,7 +220,7 @@ CartItem.prototype = {
                     type: "POST",
                     url: self.options.saas_api_email_charge_receipt,
                     beforeSend: function(xhr) {
-                        xhr.setRequestHeader("X-CSRFToken", getMetaCSRFToken());
+                        xhr.setRequestHeader("X-CSRFToken", self._getCSRFToken());
                     },
                     datatype: "json",
                     contentType: "application/json; charset=utf-8",
@@ -202,6 +276,15 @@ CartItem.prototype = {
             });
         },
 
+        _getCSRFToken: function() {
+            var self = this;
+            var crsfNode = self.element.find("[name='csrfmiddlewaretoken']");
+            if( !crsfNode.empty() ) {
+                return crsfNode.val();
+            }
+            return getMetaCSRFToken();
+        },
+
         submit: function() {
             var self = this;
             var refundButton = self.options.refundButton;
@@ -223,7 +306,7 @@ CartItem.prototype = {
                     url: self.options.saas_api_charge_refund,
                     beforeSend: function(xhr) {
                         xhr.setRequestHeader(
-                            "X-CSRFToken", getMetaCSRFToken());
+                            "X-CSRFToken", self._getCSRFToken());
                     },
                     data: JSON.stringify({"lines":
                         [{"num": linenum, "refunded_amount": refundedAmount}]}),
@@ -325,7 +408,7 @@ CartItem.prototype = {
                         type: "POST",
                         url: "/api/cart/" + plan + "/upload/",
                         beforeSend: function(xhr) {
-                            xhr.setRequestHeader("X-CSRFToken", getMetaCSRFToken());
+                            xhr.setRequestHeader("X-CSRFToken", self._getCSRFToken());
                         },
                         data: formData,
                         processData: false,
@@ -357,6 +440,15 @@ CartItem.prototype = {
             }
 
             self.updateTotalAmount();
+        },
+
+        _getCSRFToken: function() {
+            var self = this;
+            var crsfNode = self.element.find("[name='csrfmiddlewaretoken']");
+            if( !crsfNode.empty() ) {
+                return crsfNode.val();
+            }
+            return getMetaCSRFToken();
         },
 
         /** Update total amount charged on card based on selected subscription
@@ -461,7 +553,15 @@ CartItem.prototype = {
         saas_api_cart: "/api/cart/"
     };
 
-   /* redeem a ``Coupon``. */
+   /** redeem a ``Coupon``.
+
+        HTML requirements:
+
+        <form>
+            <input name="code">
+            <input type="hidden" name="csrfmiddlewaretoken" value="...">
+        </form>
+    */
    function Redeem(el, options){
       this.element = $(el);
       this.options = options;
@@ -479,28 +579,32 @@ CartItem.prototype = {
           });
       },
 
+      _getCSRFToken: function() {
+          var self = this;
+          var crsfNode = self.element.find("[name='csrfmiddlewaretoken']");
+          if( !crsfNode.empty() ) {
+              return crsfNode.val();
+          }
+          return getMetaCSRFToken();
+      },
+
       redeemCode: function(code) {
           $.ajax({ type: "POST",
                    url: this.options.saas_api_redeem_coupon,
                    beforeSend: function(xhr) {
-                       xhr.setRequestHeader("X-CSRFToken", getMetaCSRFToken());
+                      xhr.setRequestHeader("X-CSRFToken", self._getCSRFToken());
                    },
                    data: JSON.stringify({"code": code }),
                    dataType: "json",
-                   contentType: "application/json; charset=utf-8"
-                 }).done(function(data) {
+                   contentType: "application/json; charset=utf-8",
+                   success: function(data) {
                      // XXX does not show messages since we reload...
                      showMessages([data.details], "success");
                      location.reload();
-                 }).fail(function(data) {
-                     if("details" in data.responseJSON) {
-                          showMessages(
-                            [data.responseJSON.details], "error");
-                     } else {
-                          showMessages(["Error " + data.status + ": " +
-                            data.responseText + ". Please accept our apologies."], "error");
-                     }
-                 });
+                   },
+                   error: function(resp) {
+                       showErrorMessages(resp);
+                   }});
           return false;
       }
    };
@@ -514,56 +618,6 @@ CartItem.prototype = {
        saas_api_redeem_coupon: "/api/cart/redeem/"
    };
 
-   /** Decorate an HTML controller to delete ``Organization``s.
-    */
-   function Profile(el, options){
-      this.element = $(el);
-      this.options = options;
-      this.init();
-   }
-
-   Profile.prototype = {
-      init: function () {
-          var self = this;
-          this.element.click(function() {
-              self.deleteProfile();
-              // prevent the form from submitting with the default action
-              return false;
-          });
-      },
-
-      deleteProfile: function() {
-          var self = this;
-          $.ajax({ type: "DELETE",
-                 url: self.options.saas_api_organization,
-                 dataType: "json",
-                 contentType: "application/json; charset=utf-8",
-          }).done(function(data) {
-            /* When we DELETE the request.user profile, it will lead
-               to a logout. When we delete a different profile, a reload
-               of the page leads to a 404. In either cases, moving on
-               to the redirect_to_profile page is a safe bet. */
-            window.location = self.options.user_profile_redirect;
-          }).fail(function(data) {
-            if('details' in data.responseJSON) {
-                showMessages([data.responseJSON['details']], "error");
-            } else {
-                showMessages(["Error " + data.status + ": "
-+ data.responseText + ". Please accept our apologies."], "error");
-            }
-          });
-      }
-   };
-
-   $.fn.profile = function(options) {
-      var opts = $.extend( {}, $.fn.profile.defaults, options );
-      return new Profile($(this), opts);
-   };
-
-   $.fn.profile.defaults = {
-       saas_api_organization: "/api/profile",
-       user_profile_redirect: "/users/"
-   };
 
    /** Decorate an HTML controller to trigger AJAX requests to create,
        activate and delete ``Plan``s.
@@ -602,13 +656,22 @@ CartItem.prototype = {
           });
       },
 
+      _getCSRFToken: function() {
+          var self = this;
+          var crsfNode = self.element.find("[name='csrfmiddlewaretoken']");
+          if( !crsfNode.empty() ) {
+              return crsfNode.val();
+          }
+          return getMetaCSRFToken();
+      },
+
       create: function(reload) {
         "use strict";
         var self = this;
         $.ajax({ type: "POST",
                  url: self.options.saas_api_plan + "/",
                  beforeSend: function(xhr) {
-                     xhr.setRequestHeader("X-CSRFToken", getMetaCSRFToken());
+                     xhr.setRequestHeader("X-CSRFToken", self._getCSRFToken());
                  },
                  data: JSON.stringify({
                      "title": "New Plan",
@@ -639,7 +702,7 @@ CartItem.prototype = {
         $.ajax({ type: "PUT",
                  url: self.options.saas_api_plan + "/" + self.id + "/",
                  beforeSend: function(xhr) {
-                     xhr.setRequestHeader("X-CSRFToken", getMetaCSRFToken());
+                     xhr.setRequestHeader("X-CSRFToken", self._getCSRFToken());
                  },
                  async: false,
                  data: JSON.stringify(data),
@@ -687,7 +750,7 @@ CartItem.prototype = {
           $.ajax({type: "PUT",
                  url: self.options.saas_api_plan + "/" + self.id + "/activate/",
                  beforeSend: function(xhr) {
-                     xhr.setRequestHeader("X-CSRFToken", getMetaCSRFToken());
+                     xhr.setRequestHeader("X-CSRFToken", self._getCSRFToken());
                  },
                  data: JSON.stringify({
                      "is_active": !button.hasClass("activated")}),
