@@ -589,12 +589,13 @@
       },
 
       redeemCode: function(code) {
+          var self = this;
           $.ajax({ type: "POST",
-                   url: this.options.saas_api_redeem_coupon,
+                   url: self.options.saas_api_redeem_coupon,
                    beforeSend: function(xhr) {
                       xhr.setRequestHeader("X-CSRFToken", self._getCSRFToken());
                    },
-                   data: JSON.stringify({"code": code }),
+                   data: JSON.stringify({"code": code}),
                    dataType: "json",
                    contentType: "application/json; charset=utf-8",
                    success: function(data) {
