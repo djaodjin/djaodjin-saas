@@ -58,7 +58,7 @@
         _getCSRFToken: function() {
             var self = this;
             var crsfNode = self.element.find("[name='csrfmiddlewaretoken']");
-            if( !crsfNode.empty() ) {
+            if( crsfNode.length > 0 ) {
                 return crsfNode.val();
             }
             return getMetaCSRFToken();
@@ -194,7 +194,7 @@
         _getCSRFToken: function() {
             var self = this;
             var crsfNode = self.element.find("[name='csrfmiddlewaretoken']");
-            if( !crsfNode.empty() ) {
+            if( crsfNode.length > 0 ) {
                 return crsfNode.val();
             }
             return getMetaCSRFToken();
@@ -279,7 +279,7 @@
         _getCSRFToken: function() {
             var self = this;
             var crsfNode = self.element.find("[name='csrfmiddlewaretoken']");
-            if( !crsfNode.empty() ) {
+            if( crsfNode.length > 0 ) {
                 return crsfNode.val();
             }
             return getMetaCSRFToken();
@@ -449,7 +449,7 @@
         _getCSRFToken: function() {
             var self = this;
             var crsfNode = self.element.find("[name='csrfmiddlewaretoken']");
-            if( !crsfNode.empty() ) {
+            if( crsfNode.length > 0 ) {
                 return crsfNode.val();
             }
             return getMetaCSRFToken();
@@ -586,7 +586,7 @@
       _getCSRFToken: function() {
           var self = this;
           var crsfNode = self.element.find("[name='csrfmiddlewaretoken']");
-          if( !crsfNode.empty() ) {
+          if( crsfNode.length > 0 ) {
               return crsfNode.val();
           }
           return getMetaCSRFToken();
@@ -664,7 +664,7 @@
       _getCSRFToken: function() {
           var self = this;
           var crsfNode = self.element.find("[name='csrfmiddlewaretoken']");
-          if( !crsfNode.empty() ) {
+          if( crsfNode.length > 0 ) {
               return crsfNode.val();
           }
           return getMetaCSRFToken();
