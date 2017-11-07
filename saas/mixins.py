@@ -29,10 +29,10 @@ from django.core.urlresolvers import NoReverseMatch, reverse
 from django.contrib.auth import get_user_model
 from django.db.models import Q
 from django.http import Http404
-from django.shortcuts import get_object_or_404
 from django.utils.dateparse import parse_datetime
 from django.views.generic.detail import SingleObjectMixin
 from extra_views.contrib.mixins import SearchableListMixin, SortableListMixin
+from rest_framework.generics import get_object_or_404
 
 from . import settings
 from .humanize import (as_money, DESCRIBE_BUY_PERIODS, DESCRIBE_BUY_USE,
@@ -55,10 +55,11 @@ class CartMixin(object):
         sync_on = kwargs.get('sync_on', "")
         plan = kwargs['plan']
         if not isinstance(plan, Plan):
-            plan = get_object_or_404(Plan, slug=plan)
+            plan = get_object_or_404(Plan.objects.all(), slug=plan)
         use = kwargs.get('use', None)
         if use and not isinstance(use, UseCharge):
-            use = get_object_or_404(UseCharge, slug=use, plan=plan)
+            use = get_object_or_404(UseCharge.objects.filter(
+                plan=plan), slug=use)
         if request.user.is_authenticated():
             # If the user is authenticated, we just create the cart items
             # into the database.
@@ -489,9 +490,9 @@ class CouponMixin(ProviderMixin):
     @property
     def coupon(self):
         if not hasattr(self, '_coupon'):
-            self._coupon = get_object_or_404(Coupon,
-                code=self.kwargs.get(self.coupon_url_kwarg),
-                organization=self.provider)
+            self._coupon = get_object_or_404(
+                Coupon.objects.filter(organization=self.provider),
+                code=self.kwargs.get(self.coupon_url_kwarg))
         return self._coupon
 
     def get_context_data(self, **kwargs):
@@ -529,7 +530,7 @@ class SubscriptionMixin(object):
             plan = self.kwargs.get('plan')
         else:
             plan = self.kwargs.get('subscribed_plan')
-        return queryset.filter(plan__slug=plan).get()
+        return get_object_or_404(queryset, plan__slug=plan)
 
 
 class CartItemSmartListMixin(SortableListMixin,
@@ -798,7 +799,7 @@ class RoleMixin(RoleDescriptionMixin):
     @property
     def user(self):
         if not hasattr(self, "_user"):
-            self._user = get_object_or_404(get_user_model(),
+            self._user = get_object_or_404(get_user_model().objects.all(),
                 username=self.kwargs.get(self.user_url_kwarg))
         return self._user
 
