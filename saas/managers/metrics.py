@@ -28,7 +28,6 @@ from django.db import router
 from django.db.models import Count, Sum
 from django.db.models.sql.query import RawQuery
 from django.utils import six
-from django.utils.dateparse import parse_datetime
 from django.utils.timezone import utc
 
 from ..models import Plan, Subscription, Transaction
@@ -40,8 +39,6 @@ def month_periods(nb_months=12, from_date=None, step_months=1):
     on the first of each month until *from_date* which is the last entry
     of the list returned."""
     dates = []
-    if from_date and isinstance(from_date, six.string_types):
-        from_date = parse_datetime(from_date)
     from_date = datetime_or_now(from_date)
     dates.append(from_date)
     last = datetime(

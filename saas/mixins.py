@@ -29,7 +29,6 @@ from django.core.urlresolvers import NoReverseMatch, reverse
 from django.contrib.auth import get_user_model
 from django.db.models import Q
 from django.http import Http404
-from django.utils.dateparse import parse_datetime
 from django.views.generic.detail import SingleObjectMixin
 from extra_views.contrib.mixins import SearchableListMixin, SortableListMixin
 from rest_framework.generics import get_object_or_404
@@ -400,7 +399,7 @@ class BeforeMixin(object):
         self.ends_at = request.GET.get('ends_at', None)
         if self.clip or self.ends_at:
             if self.ends_at is not None:
-                self.ends_at = parse_datetime(self.ends_at.strip('"'))
+                self.ends_at = self.ends_at.strip('"')
             self.ends_at = datetime_or_now(self.ends_at)
 
     def get_queryset(self):
@@ -433,8 +432,7 @@ class DateRangeMixin(BeforeMixin):
         if self.ends_at:
             self.start_at = request.GET.get('start_at', None)
             if self.start_at:
-                self.start_at = datetime_or_now(parse_datetime(
-                    self.start_at.strip('"')))
+                self.start_at = datetime_or_now(self.start_at.strip('"'))
             else:
                 self.start_at = (
                     start_of_day(self.ends_at + self.natural_period)
@@ -514,12 +512,9 @@ class SubscriptionMixin(object):
         kwargs = {}
         start_at = self.request.GET.get('start_at', None)
         if start_at:
-            start_at = datetime_or_now(parse_datetime(start_at))
+            start_at = datetime_or_now(start_at)
             kwargs.update({'created_at__lt': start_at})
-        ends_at = self.request.GET.get('ends_at', None)
-        if ends_at:
-            ends_at = parse_datetime(ends_at)
-        ends_at = datetime_or_now(ends_at)
+        ends_at = datetime_or_now(self.request.GET.get('ends_at', None))
         return Subscription.objects.filter(
             organization__slug=self.kwargs.get('organization'),
             ends_at__gte=ends_at, **kwargs)
@@ -710,12 +705,9 @@ class ChurnedQuerysetMixin(ProviderMixin):
         kwargs = {}
         start_at = self.request.GET.get('start_at', None)
         if start_at:
-            start_at = datetime_or_now(parse_datetime(start_at))
+            start_at = datetime_or_now(start_at)
             kwargs.update({'ends_at__gte': start_at})
-        ends_at = self.request.GET.get('ends_at', None)
-        if ends_at:
-            ends_at = parse_datetime(ends_at)
-        ends_at = datetime_or_now(ends_at)
+        ends_at = datetime_or_now(self.request.GET.get('ends_at', None))
         return Subscription.objects.filter(
             plan__organization=self.provider,
             ends_at__lt=ends_at, **kwargs).order_by('-ends_at')
@@ -732,12 +724,9 @@ class SubscribedQuerysetMixin(ProviderMixin):
         kwargs = {}
         start_at = self.request.GET.get('start_at', None)
         if start_at:
-            start_at = datetime_or_now(parse_datetime(start_at))
+            start_at = datetime_or_now(start_at)
             kwargs.update({'created_at__lt': start_at})
-        ends_at = self.request.GET.get('ends_at', None)
-        if ends_at:
-            ends_at = parse_datetime(ends_at)
-        ends_at = datetime_or_now(ends_at)
+        ends_at = datetime_or_now(self.request.GET.get('ends_at', None))
         return Subscription.objects.filter(
             plan__organization=self.provider,
             ends_at__gte=ends_at, **kwargs).order_by('-ends_at')

@@ -29,6 +29,7 @@ from django.db import transaction, IntegrityError
 from django.http.request import split_domain_port, validate_host
 from django.template.defaultfilters import slugify
 from django.utils import six
+from django.utils.dateparse import parse_datetime
 from django.utils.timezone import utc, get_current_timezone
 from rest_framework.exceptions import ValidationError
 
@@ -72,10 +73,7 @@ def datetime_or_now(dtime_at=None):
     if not dtime_at:
         return datetime.datetime.utcnow().replace(tzinfo=utc)
     if isinstance(dtime_at, six.string_types):
-        dtime_at = datetime.datetime.strptime(dtime_at, "%Y-%m-%dT%H:%M:%S")
-    if isinstance(dtime_at, datetime.date):
-        dtime_at = datetime.datetime(
-            dtime_at.year, dtime_at.month, dtime_at.day)
+        dtime_at = parse_datetime(dtime_at)
     if dtime_at.tzinfo is None:
         dtime_at = dtime_at.replace(tzinfo=utc)
     return dtime_at

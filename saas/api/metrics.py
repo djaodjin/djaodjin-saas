@@ -23,7 +23,6 @@
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 from django.core.urlresolvers import reverse
-from django.utils.dateparse import parse_datetime
 from rest_framework.views import APIView
 from rest_framework.generics import GenericAPIView, ListAPIView
 from rest_framework.response import Response
@@ -116,14 +115,7 @@ class BalancesAPIView(ProviderMixin, APIView):
     """
 
     def get(self, request, *args, **kwargs): #pylint: disable=unused-argument
-        start_at = request.GET.get('start_at', None)
-        if start_at:
-            start_at = parse_datetime(start_at)
-        start_at = datetime_or_now(start_at)
-        ends_at = request.GET.get('ends_at', None)
-        if ends_at:
-            ends_at = parse_datetime(ends_at)
-        ends_at = datetime_or_now(ends_at)
+        ends_at = datetime_or_now(request.GET.get('ends_at', None))
         result = []
         for key in [Transaction.INCOME, Transaction.BACKLOG,
                     Transaction.RECEIVABLE]:
@@ -244,10 +236,7 @@ class RevenueMetricAPIView(ProviderMixin, APIView):
         }
     """
     def get(self, request, *args, **kwargs):
-        ends_at = request.GET.get('ends_at', None)
-        if ends_at:
-            ends_at = parse_datetime(ends_at)
-        ends_at = datetime_or_now(ends_at)
+        ends_at = datetime_or_now(request.GET.get('ends_at', None))
 
         # All amounts are in the customer currency.
         account_table, _, _ = \
@@ -427,10 +416,7 @@ class CustomerMetricAPIView(ProviderMixin, APIView):
         }
     """
     def get(self, request, *args, **kwargs):
-        ends_at = request.GET.get('ends_at', None)
-        if ends_at:
-            ends_at = parse_datetime(ends_at)
-        ends_at = datetime_or_now(ends_at)
+        ends_at = datetime_or_now(request.GET.get('ends_at', None))
 
         account_title = 'Payments'
         account = Transaction.RECEIVABLE
@@ -548,10 +534,6 @@ class PlanMetricAPIView(ProviderMixin, APIView):
         }
     """
     def get(self, request, *args, **kwargs):
-        ends_at = request.GET.get('ends_at', None)
-        if ends_at:
-            ends_at = parse_datetime(ends_at)
-        ends_at = datetime_or_now(ends_at)
         table = []
         for plan in Plan.objects.filter(organization=self.provider):
             values = active_subscribers(
@@ -578,14 +560,8 @@ class OrganizationListAPIView(ProviderMixin, GenericAPIView):
 
     def get(self, request, *args, **kwargs):
         #pylint: disable=no-member,unused-argument
-        start_at = request.GET.get('start_at', None)
-        if start_at:
-            start_at = parse_datetime(start_at)
-        start_at = datetime_or_now(start_at)
-        ends_at = request.GET.get('ends_at', None)
-        if ends_at:
-            ends_at = parse_datetime(ends_at)
-        ends_at = datetime_or_now(ends_at)
+        start_at = datetime_or_now(request.GET.get('start_at', None))
+        ends_at = datetime_or_now(request.GET.get('ends_at', None))
         queryset = self.get_range_queryset(start_at, ends_at)
         page_object_list = self.paginate_queryset(queryset)
         serializer = self.serializer_class()
