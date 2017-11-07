@@ -35,7 +35,7 @@
             for(var i = 0; i < restricted.length; ++i ) {
                 var key = restricted[i];
                 if( key in self.options ) {
-                    self.item[key] = options[key];
+                    self.item[key] = self.options[key];
                 }
             }
             if( self.element.attr('id') ) {
@@ -370,30 +370,34 @@
                 var seatFirstName = subscription.find(".seat-first-name");
                 var seatLastName = subscription.find(".seat-last-name");
                 var seatEmail = subscription.find(".seat-email");
-                var item = new CartItem({
+                var item = {
                     plan: subscription.attr("data-plan"),
                     first_name: seatFirstName.val(),
                     last_name: seatLastName.val(),
-                    sync_on: seatEmail.val(),
-                    urls: { saas_api_cart: self.options.saas_api_cart }});
+                    sync_on: seatEmail.val()
+                };
                 seatFirstName.val("");
                 seatLastName.val("");
                 seatEmail.val("");
-                item.add(function(data, textStatus, jqXHR) {
-                    if( jqXHR.status === 201 ) {
-                        self.insertLine(data);
-                    } else {
-                        self.updateLine(data);
+                $.ajax({
+                    type: "POST", // XXX Might still prefer to do PUT on list.
+                    url: self.options.saas_api_cart,
+                    beforeSend: function(xhr) {
+                      xhr.setRequestHeader("X-CSRFToken", self._getCSRFToken());
+                    },
+                    data: JSON.stringify(item),
+                    datatype: "json",
+                    contentType: "application/json; charset=utf-8",
+                    success: function(data, textStatus, jqXHR) {
+                        if( jqXHR.status === 201 ) {
+                            self.insertLine(data);
+                        } else {
+                            self.updateLine(data);
+                        }
+                    },
+                    error: function(resp) {
+                        showErrorMessages(resp);
                     }
-                }, function(result) {
-                    var msgs = [];
-                    for( var field in result.responseJSON ) {
-                        msgs = msgs.concat(result.responseJSON[field]);
-                    }
-                    if( (msgs.length <= 0) ) {
-                        msgs = ["ERROR " + result.status + ": " + result.statusText];
-                    }
-                    showMessages(msgs, "error");
                 });
                 return false;
             });
