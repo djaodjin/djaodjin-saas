@@ -27,11 +27,14 @@ Convenience module for access of saas application settings, which enforces
 default settings when the main settings module does not contain
 the appropriate settings.
 
+The ``Organization`` broker manages the StripeConnect client account.
+
 ========================  ================= ===========
 Name                      Default           Description
 ========================  ================= ===========
-BROKER_CALLABLE            None             Optional function that returns
-                                            the broker ``Organization``
+BROKER.GET_INSTANCE       APP_NAME          Slug for the ``Organization`` broker
+                                            or callable that returns the
+                                            ``Organization`` broker
                                             (useful for composition of Django
                                             apps).
 BYPASS_PERMISSION_CHECK    False            Skip all permission checks
@@ -71,7 +74,6 @@ TERMS_OF_USE             'terms-of-use'     slug for the ``Agreement`` stating
 from django.conf import settings
 
 _SETTINGS = {
-    'BROKER_CALLABLE': None,
     'BYPASS_PERMISSION_CHECK': False,
     # Do not check the auth token against the processor to set processor keys.
     # (useful while testing).
@@ -79,11 +81,15 @@ _SETTINGS = {
     'DEFAULT_UNIT': 'usd',
     'EXTRA_MIXIN': object,
     'EXTRA_FIELD': None,
-    'IS_BROKER_CALLABLE': None,
     'ORGANIZATION_MODEL': 'saas.Organization',
     'PAGE_SIZE': 25,
-    'PLATFORM': getattr(settings, 'APP_NAME', None),
+    'BROKER': {
+        'GET_INSTANCE': getattr(settings, 'APP_NAME', None),
+        'IS_INSTANCE_CALLABLE': None,
+        'BUILD_ABSOLUTE_URI_CALLABLE': None
+    },
     'PROCESSOR': {
+        'INSTANCE_PK': 1,
         'BACKEND': 'saas.backends.stripe_processor.StripeBackend',
         'PRIV_KEY': None,
         'PUB_KEY': None,
@@ -92,11 +98,7 @@ _SETTINGS = {
         'WEBHOOK_URL': 'api/postevent',
         'REDIRECT_CALLABLE': None
     },
-    'PROCESSOR_ID': 1,
     'PROCESSOR_BACKEND_CALLABLE': None,
-    'PROCESSOR_HOOK_URL': 'api/postevent',
-    'PROCESSOR_REDIRECT_CALLABLE': None,
-    'PROVIDER_SITE_CALLABLE': None,
     'ROLE_RELATION': 'saas.Role',
     'TERMS_OF_USE': 'terms-of-use',
 }
@@ -114,15 +116,15 @@ CREDIT_ON_CREATE = _SETTINGS.get('CREDIT_ON_CREATE')
 EXTRA_MIXIN = _SETTINGS.get('EXTRA_MIXIN')
 ORGANIZATION_MODEL = _SETTINGS.get('ORGANIZATION_MODEL')
 PAGE_SIZE = _SETTINGS.get('PAGE_SIZE')
-PLATFORM = _SETTINGS.get('PLATFORM')
 PROCESSOR = _SETTINGS.get('PROCESSOR')
 PROCESSOR_BACKEND_CALLABLE = _SETTINGS.get('PROCESSOR_BACKEND_CALLABLE')
-PROCESSOR_ID = _SETTINGS.get('PROCESSOR_ID')
+PROCESSOR_ID = _SETTINGS.get('PROCESSOR').get('INSTANCE_PK')
 PROCESSOR_HOOK_URL = _SETTINGS.get('PROCESSOR').get(
     'WEBHOOK_URL', 'api/postevent')
-BROKER_CALLABLE = _SETTINGS.get('BROKER_CALLABLE')
-IS_BROKER_CALLABLE = _SETTINGS.get('IS_BROKER_CALLABLE')
-PROVIDER_SITE_CALLABLE = _SETTINGS.get('PROVIDER_SITE_CALLABLE')
+BROKER_CALLABLE = _SETTINGS.get('BROKER').get('GET_INSTANCE', None)
+IS_BROKER_CALLABLE = _SETTINGS.get('BROKER').get('IS_INSTANCE_CALLABLE', None)
+BUILD_ABSOLUTE_URI_CALLABLE = _SETTINGS.get('BROKER').get(
+    'BUILD_ABSOLUTE_URI_CALLABLE')
 ROLE_RELATION = _SETTINGS.get('ROLE_RELATION')
 TERMS_OF_USE = _SETTINGS.get('TERMS_OF_USE')
 DEFAULT_UNIT = _SETTINGS.get('DEFAULT_UNIT')

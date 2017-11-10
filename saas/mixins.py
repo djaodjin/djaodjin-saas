@@ -37,7 +37,8 @@ from . import settings
 from .humanize import (as_money, DESCRIBE_BUY_PERIODS, DESCRIBE_BUY_USE,
     DESCRIBE_UNLOCK_NOW, DESCRIBE_UNLOCK_LATER, DESCRIBE_BALANCE)
 from .models import (CartItem, Charge, Coupon, Organization, Plan,
-    RoleDescription, Subscription, Transaction, UseCharge, get_broker)
+    RoleDescription, Subscription, Transaction, UseCharge,
+    get_broker, is_broker)
 from .utils import datetime_or_now, get_role_model, start_of_day
 from .extras import OrganizationMixinBase
 
@@ -886,29 +887,19 @@ def get_charge_context(charge):
     return context
 
 
-def get_provider_site(provider):
-    """
-    Returns a Site object that contains a ``domain`` field.
-    """
-    if not settings.PROVIDER_SITE_CALLABLE:
-        return None
-    from .compat import import_string
-    return import_string(settings.PROVIDER_SITE_CALLABLE)(str(provider))
-
-
-def product_url(provider, subscriber=None):
+def product_url(provider, subscriber=None, request=None):
     """
     We cannot use a basic ``reverse('product_default_start')`` here because
     *organization* and ``get_broker`` might be different.
     """
-    current_uri = '/'
-    site = get_provider_site(provider)
-    if site and site.domain:
-        scheme = 'https' # Defaults to secure connection.
-        current_uri = '%s://%s/' % (scheme, site.domain)
-    elif provider != get_broker():
-        current_uri += '%s/' % provider
-    current_uri += 'app/'
-    if subscriber:
-        current_uri += '%s/' % subscriber
-    return current_uri
+    from .compat import import_string
+    location = 'app/'
+    if location:
+        location += '%s/' % subscriber
+    if not is_broker(provider):
+        location = '%s/' % provider + location
+    if settings.BUILD_ABSOLUTE_URI_CALLABLE:
+        build_absolute_uri = import_string(settings.BUILD_ABSOLUTE_URI_CALLABLE)
+        return build_absolute_uri(request, location=location,
+            site=str(provider))
+    return "/%s" % location

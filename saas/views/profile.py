@@ -272,9 +272,6 @@ class DashboardView(OrganizationMixin, DetailView):
     def get_object(self, queryset=None):
         return self.organization
 
-    def get(self, request, *args, **kwargs):
-        return super(DashboardView, self).get(request, *args, **kwargs)
-
 
 class OrganizationProfileView(OrganizationMixin, UpdateView):
     """

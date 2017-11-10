@@ -69,6 +69,8 @@ import requests, stripe
 from .. import CardError, ProcessorError
 from ... import settings, signals
 from ...utils import datetime_to_utctimestamp, utctimestamp_to_datetime
+from ...models import is_broker
+
 
 LOGGER = logging.getLogger(__name__)
 
@@ -89,7 +91,7 @@ class StripeBackend(object):
 
     @staticmethod
     def _is_platform(broker):
-        return (broker.slug == settings.PLATFORM
+        return (is_broker(broker)
             or broker.processor_deposit_key == settings.PROCESSOR['PRIV_KEY'])
 
     def _prepare_request(self):
@@ -391,7 +393,8 @@ class StripeBackend(object):
         context = {'bank_name': "N/A", 'last4': "N/A"}
         try:
             kwargs = self._prepare_transfer_request(provider)
-            # The ``PLATFORM`` provider is always connected to a Stripe Account
+            # The platform provider (i.e. broker)
+            # is always connected to a Stripe Account
             if provider.processor_deposit_key or self._is_platform(provider):
                 if provider.processor_deposit_key:
                     last4 = provider.processor_deposit_key[-4:]

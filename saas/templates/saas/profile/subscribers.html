@@ -42,7 +42,7 @@
         </tbody>
       </table>
       <div>
-        <uib-pagination ng-model="currentPage"
+        <ul uib-pagination ng-model="currentPage"
                     total-items="registered.count"
                     items-per-page="itemsPerPage"
                     boundary-links="true"
@@ -52,7 +52,7 @@
                     first-text="&laquo;"
                     last-text="&raquo;"
                     ng-change="pageChanged(registered)"
-                    ng-show="registered.$resolved && registered.results.length > 0"></uib-pagination>
+                    ng-show="registered.$resolved && registered.results.length > 0"></ul>
       </div>
     </div>
     {% for tab in tabs %}

@@ -59,7 +59,7 @@ from ..humanize import describe_buy_periods, match_unlock
 from ..mixins import (CartMixin, ChargeMixin, DateRangeMixin, OrganizationMixin,
     ProviderMixin, product_url)
 from ..models import (CartItem, Charge, Coupon, Organization, Plan, Price,
-    Subscription, Transaction, UseCharge, get_broker)
+    Subscription, Transaction, UseCharge, get_broker, is_broker)
 from ..utils import datetime_or_now, validate_redirect_url
 from ..views import session_cart_to_database
 
@@ -368,8 +368,10 @@ class CardInvoicablesFormMixin(CardFormMixin, InvoicablesFormMixin):
         if redirect_path:
             return redirect_path
         if self.sole_provider:
-            return product_url(self.sole_provider, self.organization)
-        return product_url(get_broker(), self.organization)
+            return product_url(self.sole_provider, self.organization,
+                request=self.request)
+        return product_url(get_broker(), self.organization,
+            request=self.request)
 
 
 class CardUpdateView(CardFormMixin, FormView):
@@ -1036,7 +1038,7 @@ djaodjin-saas/tree/master/saas/templates/saas/billing/withdraw.html>`__).
 
     def get(self, request, *args, **kwargs):
         if not (self.organization.processor_deposit_key
-                or self.organization.slug == settings.PLATFORM):
+                or is_broker(self.organization)):
             return _insert_url(request, inserted_url=reverse('saas_update_bank',
                 args=(self.organization,)))
         return super(WithdrawView, self).get(request, *args, **kwargs)

@@ -57,7 +57,7 @@
       </tbody>
     </table>
     <div ng-show="items.$resolved && totalItems > itemsPerPage">
-      <uib-pagination ng-model="currentPage"
+      <ul uib-pagination ng-model="currentPage"
                       total-items="totalItems"
                       items-per-page="itemsPerPage"
                       boundary-links="true"
@@ -66,7 +66,7 @@
                       next-text="&rsaquo;"
                       first-text="&laquo;"
                       last-text="&raquo;"
-                      ng-change="pageChanged()"></uib-pagination>
+                      ng-change="pageChanged()"></ul>
     </div>
     <!-- modal dialog to add a request to add a role to a user
          on an organization. -->

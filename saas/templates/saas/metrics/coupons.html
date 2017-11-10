@@ -28,7 +28,7 @@
               </tr>
         </table>
         <div ng-show="items.$resolved && totalItems > itemsPerPage">
-          <uib-pagination class="pagination-sm" ng-model="currentPage"
+          <ul uib-pagination class="pagination-sm" ng-model="currentPage"
                       total-items="totalItems"
                       items-per-page="itemsPerPage"
                       boundary-links="true"
@@ -37,7 +37,7 @@
                       next-text="&rsaquo;"
                       first-text="&laquo;"
                       last-text="&raquo;"
-                      ng-change="pageChanged()"></uib-pagination>
+                      ng-change="pageChanged()"></ul>
         </div>
     </div>
 </section>

@@ -34,7 +34,8 @@ from django.contrib.auth import REDIRECT_FIELD_NAME
 from django.http import HttpResponseRedirect
 from django.views.generic import CreateView, DetailView, ListView
 
-from ..mixins import ProviderMixin, get_provider_site
+from .. import settings
+from ..mixins import ProviderMixin
 from ..models import Agreement, Signature, get_broker
 from ..utils import validate_redirect_url
 
@@ -112,14 +113,16 @@ class SignatureForm(forms.ModelForm):
         fields = ('read_terms',)
 
 
-def _read_agreement_file(slug, context=None):
+def _read_agreement_file(slug, context=None, request=None):
     import markdown
+    from ..compat import import_string
     if not context:
         broker = get_broker()
         context = {'organization': broker}
-        site = get_provider_site(broker)
-        if site:
-            context.update({'site': site})
+        if settings.BUILD_ABSOLUTE_URI_CALLABLE:
+            build_absolute_uri = import_string(
+                settings.BUILD_ABSOLUTE_URI_CALLABLE)
+            context.update({'site_url': build_absolute_uri(request)})
     # We use context and not context=context in the following statement
     # such that the code is compatible with Django 1.7 and Django 1.8
     return markdown.markdown(
@@ -170,5 +173,6 @@ djaodjin-saas/tree/master/saas/templates/saas/legal/sign.html>`__).
         if redirect_path:
             context.update({REDIRECT_FIELD_NAME: redirect_path})
         context.update({
-                'page': _read_agreement_file(self.kwargs.get('agreement'))})
+                'page': _read_agreement_file(self.kwargs.get('agreement'),
+                    request=self.request)})
         return context

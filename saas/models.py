@@ -76,7 +76,6 @@ from django.utils.encoding import python_2_unicode_compatible
 from django.utils.http import quote
 from django.utils.safestring import mark_safe
 from django.utils import six
-from django.utils.timezone import utc
 from django.utils.translation import ugettext_lazy as _
 from django_countries.fields import CountryField
 
@@ -2052,7 +2051,7 @@ class PlanManager(models.Manager):
         """
         plan = None
         nb_periods = 0
-        ends_at = datetime.datetime()
+        ends_at = datetime_or_now()
         look = re.match(humanize.DESCRIBE_BUY_PERIODS % {
                 'plan': r'(?P<plan>\S+)',
                 'ends_at': r'(?P<ends_at>\d\d\d\d/\d\d/\d\d)',
@@ -2062,8 +2061,8 @@ class PlanManager(models.Manager):
                 plan = self.get(slug=look.group('plan'))
             except Plan.DoesNotExist:
                 plan = None
-            ends_at = datetime.datetime.strptime(
-                look.group('ends_at'), '%Y/%m/%d').replace(tzinfo=utc)
+            ends_at = datetime_or_now(datetime.datetime.strptime(
+                look.group('ends_at'), '%Y/%m/%d'))
             nb_periods = int(look.group('nb_periods'))
         return (plan, ends_at, nb_periods)
 
@@ -3592,12 +3591,13 @@ def get_broker():
     """
     Returns the site-wide provider from a request.
     """
-    broker_slug = settings.PLATFORM
-    if settings.BROKER_CALLABLE:
-        from saas.compat import import_string
-        broker_slug = str(import_string(settings.BROKER_CALLABLE)())
-    LOGGER.debug("get_broker('%s')", broker_slug)
-    return Organization.objects.get(slug=broker_slug)
+    from saas.compat import import_string
+    LOGGER.debug("get_broker('%s')", settings.BROKER_CALLABLE)
+    try:
+        return import_string(settings.BROKER_CALLABLE)()
+    except ImportError:
+        pass
+    return Organization.objects.get(slug=settings.BROKER_CALLABLE)
 
 
 def is_broker(organization):
@@ -3608,7 +3608,6 @@ def is_broker(organization):
     # We do a string compare here because both ``Organization`` might come
     # from a different db. That is if the organization parameter is not
     # a unicode string itself.
-    broker_slug = settings.PLATFORM
     organization_slug = ''
     if isinstance(organization, six.string_types):
         organization_slug = organization
@@ -3617,7 +3616,7 @@ def is_broker(organization):
     if settings.IS_BROKER_CALLABLE:
         from saas.compat import import_string
         return import_string(settings.IS_BROKER_CALLABLE)(organization_slug)
-    return organization_slug == broker_slug
+    return get_broker().slug == organization_slug
 
 
 def split_full_name(full_name):
