@@ -64,7 +64,7 @@ function _showErrorMessages(resp) {
                             }
                         }
                         messages.push(key + ": " + message);
-                        $("[name=\"" + key + "\"]").addClass("has-error");
+                        $("[name=\"" + key + "\"]").parents('.form-group').addClass("has-error");
                     }
                 }
             }
