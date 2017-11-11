@@ -893,13 +893,13 @@ def product_url(provider, subscriber=None, request=None):
     *organization* and ``get_broker`` might be different.
     """
     from .compat import import_string
-    location = 'app/'
+    location = '/app/'
     if location:
         location += '%s/' % subscriber
-    if not is_broker(provider):
-        location = '%s/' % provider + location
     if settings.BUILD_ABSOLUTE_URI_CALLABLE:
         build_absolute_uri = import_string(settings.BUILD_ABSOLUTE_URI_CALLABLE)
         return build_absolute_uri(request, location=location,
-            site=str(provider))
-    return "/%s" % location
+            site=None if is_broker(provider) else str(provider))
+    elif not is_broker(provider):
+        location = '/%s' % provider + location
+    return location
