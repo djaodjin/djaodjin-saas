@@ -84,6 +84,7 @@ _SETTINGS = {
     'ORGANIZATION_MODEL': 'saas.Organization',
     'PAGE_SIZE': 25,
     'BROKER': {
+        'SLUG': getattr(settings, 'APP_NAME', None),
         'GET_INSTANCE': getattr(settings, 'APP_NAME', None),
         'IS_INSTANCE_CALLABLE': None,
         'BUILD_ABSOLUTE_URI_CALLABLE': None

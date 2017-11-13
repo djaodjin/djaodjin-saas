@@ -894,7 +894,7 @@ def product_url(provider, subscriber=None, request=None):
     """
     from .compat import import_string
     location = '/app/'
-    if location:
+    if subscriber:
         location += '%s/' % subscriber
     if settings.BUILD_ABSOLUTE_URI_CALLABLE:
         build_absolute_uri = import_string(settings.BUILD_ABSOLUTE_URI_CALLABLE)
