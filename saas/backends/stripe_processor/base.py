@@ -69,7 +69,6 @@ import requests, stripe
 from .. import CardError, ProcessorError
 from ... import settings, signals
 from ...utils import datetime_to_utctimestamp, utctimestamp_to_datetime
-from ...models import is_broker
 
 
 LOGGER = logging.getLogger(__name__)
@@ -91,7 +90,7 @@ class StripeBackend(object):
 
     @staticmethod
     def _is_platform(broker):
-        return (is_broker(broker)
+        return (broker.slug == settings.PLATFORM
             or broker.processor_deposit_key == settings.PROCESSOR['PRIV_KEY'])
 
     def _prepare_request(self):
@@ -428,7 +427,8 @@ class StripeBackend(object):
                         expand=['default_source'],
                         **kwargs)
                 except stripe.error.StripeError as err:
-                    LOGGER.exception(err)
+                    LOGGER.exception("%s (mode=%s)", err,
+                        "REMOTE" if kwargs else "LOCAL")
                     raise
                 if p_customer.default_source:
                     last4 = '***-%s' % str(p_customer.default_source.last4)
