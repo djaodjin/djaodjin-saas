@@ -37,6 +37,11 @@ BROKER.GET_INSTANCE       APP_NAME          Slug for the ``Organization`` broker
                                             ``Organization`` broker
                                             (useful for composition of Django
                                             apps).
+BROKER.IS_INSTANCE_CALLABLE None            Function that will return `True`
+                                            if the provider argument is the
+                                            broker. If `None` we will compare
+                                            provider with the instance returned
+                                            by `BROKER.GET_INSTANCE`.
 BYPASS_PERMISSION_CHECK    False            Skip all permission checks
 BYPASS_PROCESSOR_AUTH      False            Do not check the auth token against
                                             the processor to set processor keys
@@ -50,8 +55,6 @@ ORGANIZATION_MODEL        saas.Organization Replace the ``Organization`` model
                                             apps)
 PAGE_SIZE                 25                Maximum number of objects to return
                                             per API calls.
-PLATFORM                  None              slug of Organization managing the
-                                            StripeConnect client account.
 PROCESSOR                :doc:`Stripe backend<backends>`
 PROCESSOR_ID             1                  pk of the processor ``Organization``
 PROCESSOR_BACKEND_CALLABLE None             Optional function that returns
@@ -84,20 +87,20 @@ _SETTINGS = {
     'ORGANIZATION_MODEL': 'saas.Organization',
     'PAGE_SIZE': 25,
     'BROKER': {
-        'SLUG': getattr(settings, 'APP_NAME', None),
         'GET_INSTANCE': getattr(settings, 'APP_NAME', None),
         'IS_INSTANCE_CALLABLE': None,
         'BUILD_ABSOLUTE_URI_CALLABLE': None
     },
     'PROCESSOR': {
-        'INSTANCE_PK': 1,
         'BACKEND': 'saas.backends.stripe_processor.StripeBackend',
+        'CLIENT_ID': None,
+        'FALLBACK': False,
+        'INSTANCE_PK': 1,
+        'MODE': 0,
         'PRIV_KEY': None,
         'PUB_KEY': None,
-        'CLIENT_ID': None,
-        'MODE': 0,
+        'REDIRECT_CALLABLE': None,
         'WEBHOOK_URL': 'api/postevent',
-        'REDIRECT_CALLABLE': None
     },
     'PROCESSOR_BACKEND_CALLABLE': None,
     'ROLE_RELATION': 'saas.Role',
@@ -119,10 +122,10 @@ ORGANIZATION_MODEL = _SETTINGS.get('ORGANIZATION_MODEL')
 PAGE_SIZE = _SETTINGS.get('PAGE_SIZE')
 PROCESSOR = _SETTINGS.get('PROCESSOR')
 PROCESSOR_BACKEND_CALLABLE = _SETTINGS.get('PROCESSOR_BACKEND_CALLABLE')
+PROCESSOR_FALLBACK = _SETTINGS.get('PROCESSOR').get('FALLBACK', [])
 PROCESSOR_ID = _SETTINGS.get('PROCESSOR').get('INSTANCE_PK', 1)
 PROCESSOR_HOOK_URL = _SETTINGS.get('PROCESSOR').get(
     'WEBHOOK_URL', 'api/postevent')
-PLATFORM = _SETTINGS.get('BROKER').get('SLUG', None)
 BROKER_CALLABLE = _SETTINGS.get('BROKER').get('GET_INSTANCE', None)
 IS_BROKER_CALLABLE = _SETTINGS.get('BROKER').get('IS_INSTANCE_CALLABLE', None)
 BUILD_ABSOLUTE_URI_CALLABLE = _SETTINGS.get('BROKER').get(

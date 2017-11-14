@@ -88,10 +88,25 @@ class StripeBackend(object):
         self.client_id = settings.PROCESSOR.get('CLIENT_ID', None)
         self.mode = settings.PROCESSOR.get('MODE', 0)
 
+    def get_processor_charge(self, charge):
+        kwargs = self._prepare_charge_request(charge.broker)
+        try:
+            stripe_charge = stripe.Charge.retrieve(
+                charge.processor_key, **kwargs)
+        except stripe.error.InvalidRequestError:
+            if (charge.processor_key in settings.PROCESSOR_FALLBACK and
+                (self.mode == self.REMOTE and
+                 not self._is_platform(charge.broker))):
+                LOGGER.warning("Attempt fallback on charge %s.",
+                    charge.processor_key)
+                kwargs = self._prepare_request()
+                stripe_charge = stripe.Charge.retrieve(
+                    charge.processor_key, **kwargs)
+        return stripe_charge, kwargs
+
     @staticmethod
     def _is_platform(broker):
-        return (broker.slug == settings.PLATFORM
-            or broker.processor_deposit_key == settings.PROCESSOR['PRIV_KEY'])
+        return broker.processor_deposit_key == settings.PROCESSOR['PRIV_KEY']
 
     def _prepare_request(self):
         stripe.api_version = '2015-10-16'
@@ -145,7 +160,7 @@ class StripeBackend(object):
                             refunded=0, unit=settings.DEFAULT_UNIT):
         if charge.unit != unit:
             # Avoids an HTTP request to Stripe API when we can compute it.
-            kwargs = self._prepare_charge_request(charge.broker)
+            stripe_charge, kwargs = self.get_processor_charge(charge)
             balance_transactions = stripe.BalanceTransaction.all(
                 source=charge.processor_key, **kwargs)
             # You would think to get all BalanceTransaction related to
@@ -156,10 +171,9 @@ class StripeBackend(object):
             fee_amount = balance_transactions.data[0].fee
             distribute_unit = balance_transactions.data[0].currency
             distribute_amount = balance_transactions.data[0].amount
-            for refunds in stripe.Charge.retrieve(
-                    charge.processor_key, **kwargs).refunds:
+            for refund in stripe_charge.refunds:
                 balance_transaction = stripe.BalanceTransaction.retrieve(
-                    refunds.balance_transaction, **kwargs)
+                    refund.balance_transaction, **kwargs)
                 # fee and amount are negative
                 fee_amount += balance_transaction.fee
                 distribute_amount += balance_transaction.amount
@@ -374,10 +388,8 @@ class StripeBackend(object):
         """
         Refund a charge on the associated card.
         """
-        kwargs = self._prepare_charge_request(charge.broker)
-        processor_charge = stripe.Charge.retrieve(
-            charge.processor_key, **kwargs)
-        processor_charge.refund(amount=amount)
+        stripe_charge, _ = self.get_processor_charge(charge)
+        stripe_charge.refund(amount=amount)
 
     def get_deposit_context(self):
         # We insert the``STRIPE_CLIENT_ID`` here because we serve page
@@ -447,9 +459,7 @@ class StripeBackend(object):
 
     def _update_charge_state(self, charge, stripe_charge=None, event_type=None):
         if stripe_charge is None:
-            kwargs = self._prepare_charge_request(charge.broker)
-            stripe_charge = stripe.Charge.retrieve(
-                charge.processor_key, **kwargs)
+            stripe_charge, _ = self.get_processor_charge(charge)
         if event_type is None:
             if charge.is_progress:
                 if stripe_charge.paid and stripe_charge.status == 'succeeded':
