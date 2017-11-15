@@ -48,7 +48,7 @@ from django.shortcuts import get_object_or_404
 from django.views.generic import (DetailView, FormView, ListView, TemplateView,
     UpdateView)
 from django.utils.http import urlencode
-from django.utils.six import iterkeys
+from django.utils import six
 
 from .. import settings
 from ..backends import ProcessorError, ProcessorConnectionError
@@ -980,7 +980,7 @@ class BalanceView(CardInvoicablesFormMixin, FormView):
         created_at = datetime_or_now()
         balances, _ = Transaction.objects.get_statement_balances(
             self.organization, until=created_at)
-        for event_id in iterkeys(balances):
+        for event_id in six.iterkeys(balances):
             subscription = Subscription.objects.get(pk=event_id)
             options = self.get_invoicable_options(subscription,
                 created_at=created_at)
@@ -1021,7 +1021,9 @@ djaodjin-saas/tree/master/saas/templates/saas/billing/withdraw.html>`__).
         # XXX Remove call to processor backend from a ``View``.
         available_amount = self.provider.retrieve_bank()['balance_amount']
         kwargs.update({
-          'amount': (available_amount / 100.0) if available_amount > 0 else 0})
+          'amount': (available_amount / 100.0)
+            if (isinstance(available_amount, six.integer_types)
+                and available_amount > 0) else 0})
         return kwargs
 
     def form_valid(self, form):

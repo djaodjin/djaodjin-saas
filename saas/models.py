@@ -708,16 +708,19 @@ class Organization(models.Model):
         Returns associated bank account as a dictionnary.
         """
         context = self.processor_backend.retrieve_bank(self)
-        processor_amount = context.get('balance_amount', 0)
-        balance = Transaction.objects.get_balance(
-            organization=self, account=Transaction.FUNDS)
-        available_amount = min(balance['amount'], processor_amount)
-        transfer_fee = self.processor_backend.prorate_transfer(
-            processor_amount, self)
-        if available_amount > transfer_fee:
-            available_amount -= transfer_fee
-        else:
-            available_amount = 0
+        available_amount = context.get('balance_amount', 0)
+        if isinstance(available_amount, six.integer_types):
+            # The processor could return "N/A" if the organization is not
+            # connected to a processor account.
+            balance = Transaction.objects.get_balance(
+                organization=self, account=Transaction.FUNDS)
+            available_amount = min(balance['amount'], available_amount)
+            transfer_fee = self.processor_backend.prorate_transfer(
+                available_amount, self)
+            if available_amount > transfer_fee:
+                available_amount -= transfer_fee
+            else:
+                available_amount = 0
         context.update({'balance_amount': available_amount})
         return context
 
