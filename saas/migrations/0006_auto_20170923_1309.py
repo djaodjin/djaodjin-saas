@@ -87,6 +87,26 @@ class Migration(migrations.Migration):
             name='use',
             field=models.ForeignKey(help_text='item added to the cart (if use charge).', null=True, on_delete=django.db.models.deletion.CASCADE, to='saas.UseCharge'),
         ),
+        migrations.AddField(
+            model_name='plan',
+            name='optin_on_grant',
+            field=models.BooleanField(default=False),
+        ),
+        migrations.AddField(
+            model_name='plan',
+            name='optin_on_request',
+            field=models.BooleanField(default=False),
+        ),
+        migrations.AddField(
+            model_name='subscription',
+            name='request_key',
+            field=models.CharField(max_length=40, null=True, blank=True),
+        ),
+        migrations.AddField(
+            model_name='subscription',
+            name='grant_key',
+            field=models.CharField(max_length=40, null=True, blank=True),
+        ),
         migrations.AlterUniqueTogether(
             name='usecharge',
             unique_together=set([('slug', 'plan')]),
