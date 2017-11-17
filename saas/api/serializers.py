@@ -318,7 +318,8 @@ class AccessibleSerializer(serializers.ModelSerializer):
     slug = serializers.SlugField(source='organization.slug')
     printable_name = serializers.CharField(source='organization.printable_name')
     email = serializers.CharField(source='organization.email')
-    role_description = serializers.SlugField(source='role_description.slug')
+    role_description = serializers.SlugRelatedField(
+        slug_field='slug', read_only=True, allow_null=True)
 
     class Meta:
         model = get_role_model()
