@@ -119,7 +119,7 @@ class OptinBase(object):
 
     organization_model = get_organization_model()
 
-    def add_relation(self, organizations, user, reason=None):
+    def add_relations(self, organizations, user, reason=None):
         #pylint:disable=no-self-use
         created = False
         for organization in organizations:
