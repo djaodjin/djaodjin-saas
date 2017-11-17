@@ -254,7 +254,7 @@ class PlanSubscriptionsAPIView(SubscriptionSmartListMixin,
                 created = True
                 subscription = Subscription.objects.new_instance(
                     organization, plan=self.plan)
-                if self.plan.optin_on_grant:
+                if not self.plan.skip_optin_on_grant:
                     subscription.grant_key = \
                         self.plan.organization.generate_role_key(user)
                 subscription.save()

@@ -89,7 +89,7 @@ class Migration(migrations.Migration):
         ),
         migrations.AddField(
             model_name='plan',
-            name='optin_on_grant',
+            name='skip_optin_on_grant',
             field=models.BooleanField(default=False),
         ),
         migrations.AddField(

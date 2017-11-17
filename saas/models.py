@@ -2101,8 +2101,9 @@ class Plan(SlugTitleMixin, models.Model):
     the subscription before the subscriber can continue, ``optin_on_request``
     should be set to ``True``. Reciprocally when a provider's manager initiates
     the subscription of an organization to one of the provider's plan,
-    the subscription is effective immediately or after the subscriber
-    explicitely accepts when ``optin_on_grant`` is ``True``.
+    the subscription, it is effective immediately when ``skip_optin_on_grant``
+    is ``True``, otherwise the subscription is effective only
+    after the subscriber explicitely accepts the grant.
     """
     objects = PlanManager()
 
@@ -2135,7 +2136,7 @@ class Plan(SlugTitleMixin, models.Model):
     organization = models.ForeignKey(Organization, related_name='plans')
     unit = models.CharField(max_length=3, default=settings.DEFAULT_UNIT)
     # on creatiion of a subscription
-    optin_on_grant = models.BooleanField(default=False)
+    skip_optin_on_grant = models.BooleanField(default=False)
     optin_on_request = models.BooleanField(default=False)
     setup_amount = models.PositiveIntegerField(default=0,
         help_text=_('One-time charge amount (in cents).'))
