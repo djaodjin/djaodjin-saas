@@ -665,6 +665,10 @@ subscriptionControllers.controller("subscriptionListCtrl",
 
     $scope.active = $scope.subscribed;
 
+    $scope.subscribersURL = function(provider, plan) {
+        return settings.urls.api_organizations + provider + "/plans/" + plan + "/subscriptions/";
+    };
+
     $scope.subscriptionURL = function(organization, plan) {
         return settings.urls.api_organizations
             + organization + "/subscriptions/" + plan;
@@ -817,6 +821,24 @@ subscriptionControllers.controller("subscriptionListCtrl",
             }
             $scope.active = $scope.churned;
         }
+    };
+
+    $scope.plan = null;
+
+    $scope.subscribe = function(organization) {
+        var plan = JSON.parse($scope.plan);
+        $http.post($scope.subscribersURL(plan.organization, plan.slug), {
+            organization: {
+              slug: organization
+            }
+        }).then(
+        function success(resp) {
+            $scope.query($scope.active);
+        }, function error(resp) {
+            showErrorMessages(resp);
+        });
+        // prevent the form from submitting with the default action
+        return false;
     };
 
     $scope.unsubscribe = function(organization, plan, target) {

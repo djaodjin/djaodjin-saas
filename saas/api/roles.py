@@ -41,8 +41,8 @@ from rest_framework.response import Response
 from .. import settings
 from ..mixins import (OrganizationMixin, RoleDescriptionMixin, RoleMixin,
     RoleSmartListMixin, UserMixin)
-from ..models import Organization, RoleDescription
-from ..utils import get_role_model
+from ..models import RoleDescription
+from ..utils import get_organization_model, get_role_model
 from .serializers import (AccessibleSerializer, BaseRoleSerializer,
     RoleSerializer)
 
@@ -115,6 +115,71 @@ class RoleDescriptionCRUDSerializer(serializers.ModelSerializer):
         fields = ('created_at', 'name', 'slug', 'is_global', 'roles')
 
 
+class OptinBase(object):
+
+    organization_model = get_organization_model()
+
+    def add_relation(self, organizations, user, reason=None):
+        #pylint:disable=no-self-use
+        created = False
+        for organization in organizations:
+            created |= organization.add_role_request(user, reason=reason)
+        return created
+
+    def perform_optin(self, serializer, request, user=None):
+        if user is None:
+            user = request.user
+        reason = serializer.validated_data.get('message', None)
+        if reason:
+            reason = force_text(reason)
+        organization_data = serializer.validated_data.get('organization', {})
+        slug = serializer.validated_data.get('slug',
+            organization_data.get('slug', None))
+        if slug:
+            # XXX slugify because we actually pass a full_name when doesnt exist
+            organizations = self.organization_model.objects.filter(
+                slug=slugify(slug))
+        else:
+            email = serializer.validated_data.get('email',
+                organization_data.get('email', None))
+            if email:
+                organizations = self.organization_model.objects.filter(
+                    email=email)
+            else:
+                organizations = self.organization_model.objects.none()
+        with transaction.atomic():
+            if organizations.count() == 0:
+                if not request.GET.get('force', False):
+                    raise Http404("%s not found"
+                        % serializer.validated_data['slug'])
+                email = serializer.validated_data['email']
+                full_name = serializer.validated_data.get('full_name', '')
+                if not full_name:
+                    full_name = serializer.validated_data['slug']
+                organization = self.organization_model.objects.create(
+                    full_name=full_name, email=email)
+                user_model = get_user_model()
+                try:
+                    manager = user_model.objects.get(email=email)
+                except user_model.DoesNotExist:
+                    manager = _create_user(email, email=email)
+                organization.add_manager(manager, request_user=request.user)
+                organizations = [organization]
+
+            created = self.add_relations(
+                organizations, user, reason=reason)
+
+        if created:
+            resp_status = status.HTTP_201_CREATED
+        else:
+            resp_status = status.HTTP_200_OK
+        # We were going to return the list of managers here but
+        # angularjs complains about deserialization of a list
+        # while expecting a single object.
+        return Response(serializer.validated_data, status=resp_status,
+            headers=self.get_success_headers(serializer.validated_data))
+
+
 class AccessibleByQuerysetMixin(UserMixin):
 
     def get_queryset(self):
@@ -122,7 +187,8 @@ class AccessibleByQuerysetMixin(UserMixin):
 
 
 class AccessibleByListAPIView(RoleSmartListMixin,
-                              AccessibleByQuerysetMixin, ListCreateAPIView):
+                              AccessibleByQuerysetMixin, OptinBase,
+                              ListCreateAPIView):
     """
     ``GET`` lists all relations where an ``Organization`` is accessible by
     a ``User``. Typically the user was granted specific permissions through
@@ -181,51 +247,7 @@ class AccessibleByListAPIView(RoleSmartListMixin,
     def create(self, request, *args, **kwargs): #pylint:disable=unused-argument
         serializer = OrganizationRoleCreateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        created = False
-        reason = serializer.validated_data.get('message', None)
-        if reason:
-            reason = force_text(reason)
-
-        slug = serializer.validated_data.get('slug', None)
-        if slug:
-            # XXX slugify because we actually pass a full_name when doesnt exist
-            organizations = Organization.objects.filter(slug=slugify(slug))
-        else:
-            email = serializer.validated_data.get('email', None)
-            if email:
-                organizations = Organization.objects.filter(email=email)
-        with transaction.atomic():
-            if organizations.count() == 0:
-                if not request.GET.get('force', False):
-                    raise Http404("%s not found"
-                        % serializer.validated_data['slug'])
-                email = serializer.validated_data['email']
-                full_name = serializer.validated_data.get('full_name', '')
-                if not full_name:
-                    full_name = serializer.validated_data['slug']
-                organization = Organization.objects.create(
-                    full_name=full_name, email=email)
-                user_model = get_user_model()
-                try:
-                    manager = user_model.objects.get(email=email)
-                except user_model.DoesNotExist:
-                    manager = _create_user(email, email=email)
-                organization.add_manager(manager, request_user=request.user)
-                organizations = [organization]
-
-            for organization in organizations:
-                created |= organization.add_role_request(
-                    self.user, reason=reason)
-
-        if created:
-            resp_status = status.HTTP_201_CREATED
-        else:
-            resp_status = status.HTTP_200_OK
-        # We were going to return the list of managers here but
-        # angularjs complains about deserialization of a list
-        # while expecting a single object.
-        return Response(serializer.validated_data, status=resp_status,
-            headers=self.get_success_headers(serializer.validated_data))
+        return self.perform_optin(serializer, request, user=self.user)
 
 
 class RoleDescriptionQuerysetMixin(OrganizationMixin):
@@ -493,7 +515,7 @@ class RoleFilteredListAPIView(RoleSmartListMixin, RoleByDescrQuerysetMixin,
                         % serializer.validated_data['slug'])
                 full_name = serializer.validated_data.get('full_name', '')
                 name_parts = full_name.split(' ')
-                if len(name_parts) > 0:
+                if name_parts:
                     first_name = name_parts[0]
                     last_name = ' '.join(name_parts[1:])
                 else:

@@ -72,7 +72,6 @@ class BrokerBalancesAPIView(DateRangeMixin, APIView):
     """
 
     def get(self, request, *args, **kwargs): #pylint: disable=unused-argument
-        self.cache_fields(request)
         result = []
         report = self.kwargs.get('report')
         for line in BalanceLine.objects.filter(report=report).order_by('rank'):

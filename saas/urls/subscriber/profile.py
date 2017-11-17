@@ -26,9 +26,10 @@
 
 from django.conf.urls import url
 
-from ...settings import ACCT_REGEX
+from ...settings import ACCT_REGEX, VERIFICATION_KEY_RE
 from ...views.profile import (RoleDetailView, RoleListView,
     OrganizationProfileView, SubscriptionListView)
+from ...views.optins import SubscriptionGrantAcceptView
 
 urlpatterns = [
     url(r'^profile/(?P<organization>%s)/roles/(?P<role>%s)/'
@@ -36,6 +37,10 @@ urlpatterns = [
         RoleDetailView.as_view(), name='saas_role_detail'),
     url(r'^profile/(?P<organization>%s)/roles/$' % ACCT_REGEX,
         RoleListView.as_view(), name='saas_role_list'),
+    url(r'^profile/(?P<organization>%s)/subscriptions/accept/'\
+        '(?P<grant_key>%s)/' % (ACCT_REGEX, VERIFICATION_KEY_RE),
+        SubscriptionGrantAcceptView.as_view(),
+        name='subscription_grant_accept'),
     url(r'^profile/(?P<organization>%s)/subscriptions/' % ACCT_REGEX,
         SubscriptionListView.as_view(), name='saas_subscription_list'),
     url(r'^profile/(?P<organization>%s)/contact/' % ACCT_REGEX,

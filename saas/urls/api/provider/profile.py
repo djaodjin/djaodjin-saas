@@ -29,11 +29,12 @@ API URLs for profile resources typically associated to a provider
 
 from django.conf.urls import url
 
-from ....api.plans import (PlanActivateAPIView, PlanCreateAPIView,
-    PlanResourceView)
+from ....api.plans import (PlanCreateAPIView, PlanResourceView)
 from ....api.roles import (RoleDescriptionListCreateView,
     RoleDescriptionDetailView)
 from ....api.organizations import SubscribersAPIView
+from ....api.subscriptions import (PlanSubscriptionsAPIView,
+    PlanSubscriptionDetailAPIView)
 from ....settings import ACCT_REGEX
 
 urlpatterns = [
@@ -44,9 +45,14 @@ urlpatterns = [
     url(r'^profile/(?P<organization>%s)/roles/describe/?' % ACCT_REGEX,
         RoleDescriptionListCreateView.as_view(),
         name='saas_api_role_description_list'),
-    url(r'^profile/(?P<organization>%s)/plans/(?P<plan>%s)/activate/'
+    url(r'^profile/(?P<organization>%s)/plans/(?P<plan>%s)/subscriptions/'\
+    '(?P<subscriber>%s)/'
+        % (ACCT_REGEX, ACCT_REGEX, ACCT_REGEX),
+        PlanSubscriptionDetailAPIView.as_view(),
+        name='saas_api_plan_subscription'),
+    url(r'^profile/(?P<organization>%s)/plans/(?P<plan>%s)/subscriptions/'
         % (ACCT_REGEX, ACCT_REGEX),
-        PlanActivateAPIView.as_view(), name='saas_api_plan_activate'),
+        PlanSubscriptionsAPIView.as_view(), name='saas_api_plan_subscriptions'),
     url(r'^profile/(?P<organization>%s)/plans/(?P<plan>%s)/?'
         % (ACCT_REGEX, ACCT_REGEX),
         PlanResourceView.as_view(), name='saas_api_plan'),

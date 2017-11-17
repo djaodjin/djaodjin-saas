@@ -49,6 +49,8 @@ to define ``PAGE_SIZE`` in your settings.py
 
     REST_FRAMEWORK = {
         'PAGE_SIZE': 25,
+        'DEFAULT_PAGINATION_CLASS':
+            'rest_framework.pagination.PageNumberPagination',
     }
 
 There is no access polcies by default on the djaodjin-saas URLs. It is thus

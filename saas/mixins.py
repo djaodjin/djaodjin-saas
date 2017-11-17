@@ -29,6 +29,7 @@ from django.core.urlresolvers import NoReverseMatch, reverse
 from django.contrib.auth import get_user_model
 from django.db.models import Q
 from django.http import Http404
+from django.template.defaultfilters import slugify
 from django.views.generic.detail import SingleObjectMixin
 from extra_views.contrib.mixins import SearchableListMixin, SortableListMixin
 from rest_framework.generics import get_object_or_404
@@ -396,12 +397,15 @@ class BeforeMixin(object):
     clip = True
     date_field = 'created_at'
 
-    def cache_fields(self, request):
-        self.ends_at = request.GET.get('ends_at', None)
-        if self.clip or self.ends_at:
-            if self.ends_at is not None:
-                self.ends_at = self.ends_at.strip('"')
-            self.ends_at = datetime_or_now(self.ends_at)
+    @property
+    def ends_at(self):
+        if not hasattr(self, '_ends_at'):
+            self._ends_at = self.request.GET.get('ends_at', None)
+            if self.clip or self._ends_at:
+                if self._ends_at is not None:
+                    self._ends_at = self._ends_at.strip('"')
+                self._ends_at = datetime_or_now(self._ends_at)
+        return self._ends_at
 
     def get_queryset(self):
         """
@@ -411,10 +415,6 @@ class BeforeMixin(object):
         if self.ends_at:
             kwargs.update({'%s__lt' % self.date_field: self.ends_at})
         return super(BeforeMixin, self).get_queryset().filter(**kwargs)
-
-    def get(self, request, *args, **kwargs): #pylint: disable=unused-argument
-        self.cache_fields(request)
-        return super(BeforeMixin, self).get(request, *args, **kwargs)
 
     def get_context_data(self, **kwargs):
         context = super(BeforeMixin, self).get_context_data(**kwargs)
@@ -427,17 +427,19 @@ class DateRangeMixin(BeforeMixin):
 
     natural_period = dateutil.relativedelta.relativedelta(months=-1)
 
-    def cache_fields(self, request):
-        super(DateRangeMixin, self).cache_fields(request)
-        self.start_at = None
-        if self.ends_at:
-            self.start_at = request.GET.get('start_at', None)
-            if self.start_at:
-                self.start_at = datetime_or_now(self.start_at.strip('"'))
-            else:
-                self.start_at = (
-                    start_of_day(self.ends_at + self.natural_period)
-                    + dateutil.relativedelta.relativedelta(days=1))
+    @property
+    def start_at(self):
+        if not hasattr(self, '_start_at'):
+            self._start_at = None
+            if self.ends_at:
+                self._start_at = self.request.GET.get('start_at', None)
+                if self._start_at:
+                    self._start_at = datetime_or_now(self._start_at.strip('"'))
+                else:
+                    self._start_at = (
+                        start_of_day(self.ends_at + self.natural_period)
+                        + dateutil.relativedelta.relativedelta(days=1))
+        return self._start_at
 
     def get_queryset(self):
         """
@@ -479,6 +481,30 @@ class ProviderMixin(OrganizationMixin):
         return self._provider
 
 
+class PlanMixin(ProviderMixin):
+
+    model = Plan
+    plan_url_kwarg = 'plan'
+
+    @property
+    def plan(self):
+        if not hasattr(self, '_plan'):
+            self._plan = get_object_or_404(Plan.objects.all(),
+                slug=self.kwargs.get(self.plan_url_kwarg),
+                organization=self.provider)
+        return self._plan
+
+    @staticmethod
+    def slugify(title):
+        slug_base = slugify(title)
+        i = 0
+        slug = slug_base
+        while Plan.objects.filter(slug__exact=slug).count() > 0:
+            slug = slugify('%s-%d' % (slug_base, i))
+            i += 1
+        return slug
+
+
 class CouponMixin(ProviderMixin):
     """
     Returns a ``Coupon`` from a URL.
@@ -508,6 +534,7 @@ class MetricsMixin(DateRangeMixin, ProviderMixin):
 class SubscriptionMixin(object):
 
     model = Subscription
+    subscriber_url_kwarg = 'organization'
 
     def get_queryset(self):
         kwargs = {}
@@ -517,7 +544,7 @@ class SubscriptionMixin(object):
             kwargs.update({'created_at__lt': start_at})
         ends_at = datetime_or_now(self.request.GET.get('ends_at', None))
         return Subscription.objects.filter(
-            organization__slug=self.kwargs.get('organization'),
+            organization__slug=self.kwargs.get(self.subscriber_url_kwarg),
             ends_at__gte=ends_at, **kwargs)
 
     def get_object(self):

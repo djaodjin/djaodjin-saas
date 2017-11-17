@@ -2090,7 +2090,19 @@ class PlanManager(models.Manager):
 @python_2_unicode_compatible
 class Plan(SlugTitleMixin, models.Model):
     """
-    Recurring billing plan
+    Recurring billing plan.
+
+    The ``slug`` field is used as a unique identifier for the ``Plan`` when
+    interacting with the external World (i.e. URLs). The ``title`` and
+    ``description`` fields are human-readable information about the ``Plan``.
+
+    By default, any organization can subscribe to a plan through the checkout
+    pipeline. In cases where a manager of the provider must approve
+    the subscription before the subscriber can continue, ``optin_on_request``
+    should be set to ``True``. Reciprocally when a provider's manager initiates
+    the subscription of an organization to one of the provider's plan,
+    the subscription is effective immediately or after the subscriber
+    explicitely accepts when ``optin_on_grant`` is ``True``.
     """
     objects = PlanManager()
 
@@ -2122,8 +2134,12 @@ class Plan(SlugTitleMixin, models.Model):
     discontinued_at = models.DateTimeField(null=True, blank=True)
     organization = models.ForeignKey(Organization, related_name='plans')
     unit = models.CharField(max_length=3, default=settings.DEFAULT_UNIT)
+    # on creatiion of a subscription
+    optin_on_grant = models.BooleanField(default=False)
+    optin_on_request = models.BooleanField(default=False)
     setup_amount = models.PositiveIntegerField(default=0,
         help_text=_('One-time charge amount (in cents).'))
+    # period billing
     period_amount = models.PositiveIntegerField(default=0,
         help_text=_('Recurring amount per period (in cents).'))
     transaction_fee = models.PositiveIntegerField(default=0,
@@ -2509,6 +2525,9 @@ class SubscriptionManager(models.Manager):
         """
         New ``Subscription`` instance which is explicitely not in the db.
         """
+        if ends_at is None:
+            ends_at = plan.end_of_period(
+                datetime_or_now(), nb_periods=plan.period_length)
         return Subscription(organization=organization, plan=plan,
             auto_renew=plan.auto_renew, ends_at=ends_at)
 
@@ -2532,6 +2551,9 @@ class Subscription(models.Model):
     """
     SEP = ':' # The separator must be a character which cannot be used in slugs.
 
+    ACCEPTED = "ACCEPTED"
+    DENIED = "DENIED"
+
     objects = SubscriptionManager()
 
     auto_renew = models.BooleanField(default=True)
@@ -2540,6 +2562,8 @@ class Subscription(models.Model):
     description = models.TextField(null=True, blank=True)
     organization = models.ForeignKey(Organization)
     plan = models.ForeignKey(Plan)
+    request_key = models.CharField(max_length=40, null=True, blank=True)
+    grant_key = models.CharField(max_length=40, null=True, blank=True)
     extra = settings.get_extra_field_class()(null=True)
 
     def __str__(self):

@@ -220,5 +220,5 @@ Manage subscribers and business performance
 
 .. http:get:: /provider/metrics/balances/:report/
 
-.. autoclass:: saas.views.metrics.BalanceView
+.. autoclass:: saas.views.metrics.BalancesView
 

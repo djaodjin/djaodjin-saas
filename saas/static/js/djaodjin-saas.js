@@ -753,7 +753,7 @@
           var self = this;
           var button = self.element.find(".activate");
           $.ajax({type: "PUT",
-                 url: self.options.saas_api_plan + "/" + self.id + "/activate/",
+                 url: self.options.saas_api_plan + "/" + self.id + "/",
                  beforeSend: function(xhr) {
                      xhr.setRequestHeader("X-CSRFToken", self._getCSRFToken());
                  },

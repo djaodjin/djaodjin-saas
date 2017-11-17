@@ -22,15 +22,27 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+from rest_framework import serializers
 from rest_framework.generics import (ListAPIView,
     ListCreateAPIView, RetrieveUpdateDestroyAPIView)
 
 from ..decorators import _valid_manager
-from ..mixins import (ChurnedQuerysetMixin, SubscriptionMixin,
-    SubscriptionSmartListMixin, SubscribedQuerysetMixin)
-from .serializers import SubscriptionSerializer
+from ..mixins import (ChurnedQuerysetMixin, PlanMixin, ProviderMixin,
+    SubscriptionMixin, SubscriptionSmartListMixin, SubscribedQuerysetMixin)
+from ..models import Subscription
+from .. import signals
+from .roles import OptinBase
+from .serializers import OrganizationSerializer, SubscriptionSerializer
 
 #pylint: disable=no-init,old-style-class
+
+class SubscriptionCreateSerializer(serializers.ModelSerializer):
+
+    organization = OrganizationSerializer()
+
+    class Meta:
+        model = Subscription
+        fields = ('organization',)
 
 
 class SubscriptionBaseListAPIView(SubscriptionMixin, ListCreateAPIView):
@@ -130,6 +142,145 @@ class SubscriptionDetailAPIView(SubscriptionMixin,
 
     def perform_destroy(self, instance):
         instance.unsubscribe_now()
+
+
+class PlanSubscriptionsQuerysetMixin(PlanMixin):
+
+    def get_queryset(self):
+        return Subscription.objects.filter(
+            plan__slug=self.kwargs.get(self.plan_url_kwarg),
+            organization=self.provider)
+
+
+class PlanSubscriptionsAPIView(SubscriptionSmartListMixin,
+                             PlanSubscriptionsQuerysetMixin,
+                             OptinBase, ListCreateAPIView):
+    """
+    A GET request will list all ``Subscription`` to
+    a specified ``:plan`` provided by ``:organization``.
+
+    A POST request will subscribe an organization to the ``:plan``.
+
+    The value passed in the ``q`` parameter will be matched against:
+
+      - Organization.slug
+      - Organization.full_name
+      - Organization.email
+      - Organization.phone
+      - Organization.street_address
+      - Organization.locality
+      - Organization.region
+      - Organization.postal_code
+      - Organization.country
+
+    The result queryset can be ordered by:
+
+      - Organization.created_at
+      - Organization.full_name
+
+    **Example request**:
+
+    .. sourcecode:: http
+
+        GET /api/profile/:organization/plans/:plan/subscriptions/
+
+    **Example response**:
+
+    .. sourcecode:: http
+
+        {
+            "count": 1,
+            "next": null,
+            "previous": null,
+            "results": [
+                {
+                "slug": "xia",
+                "full_name": "Xia Lee",
+                "created_at": "2016-01-14T23:16:55Z"
+                }
+            ]
+        }
+
+    **Example request**:
+
+    .. sourcecode:: http
+
+        POST /api/profile/:organization/plans/:plan/subscriptions/
+
+        {
+          "organizatoin": {
+            "slug": "xia"
+          }
+        }
+
+    **Example response**:
+
+    .. sourcecode:: http
+
+        201 CREATED
+        {
+          "created_at": "2016-01-14T23:16:55Z",
+          "ends_at": "2017-01-14T23:16:55Z",
+          "description": null,
+          "organization": {
+            "slug": "xia",
+            "printable_name": "Xia Lee"
+          },
+          "plan": {
+            "slug": "open-space",
+            "title": "Open Space",
+            "description": "open space desk, High speed internet
+                              - Ethernet or WiFi, Unlimited printing,
+                                Unlimited scanning, Unlimited fax service
+                                (send and receive)",
+            "is_active": true,
+            "setup_amount": 0,
+            "period_amount": 17999,
+            "interval": 4,
+            "app_url": "http://localhost:8020/app"
+          },
+          "auto_renew": true
+        }
+    """
+    serializer_class = SubscriptionSerializer
+
+    def add_relations(self, organizations, user, reason=None):
+        subscriptions = []
+        for organization in organizations:
+            if Subscription.objects.active_for(organization).filter(
+                    plan=self.plan).exists():
+                created = False
+            else:
+                created = True
+                subscription = Subscription.objects.new_instance(
+                    organization, plan=self.plan)
+                if self.plan.optin_on_grant:
+                    subscription.grant_key = \
+                        self.plan.organization.generate_role_key(user)
+                subscription.save()
+                subscriptions += [subscription]
+        for subscription in subscriptions:
+            signals.subscription_grant_created.send(sender=__name__,
+                subscription=subscription, reason=reason, request=self.request)
+        return created
+
+    def create(self, request, *args, **kwargs): #pylint:disable=unused-argument
+        serializer = SubscriptionCreateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        return self.perform_optin(serializer, request)
+
+
+class PlanSubscriptionDetailAPIView(ProviderMixin, SubscriptionDetailAPIView):
+    """
+    Unsubscribe an organization from a plan.
+    """
+    subscriber_url_kwarg = 'subscriber'
+
+    serializer_class = SubscriptionSerializer
+
+    def get_queryset(self):
+        return super(PlanSubscriptionDetailAPIView, self).get_queryset().filter(
+            plan__organization=self.provider)
 
 
 class ActiveSubscriptionBaseAPIView(SubscribedQuerysetMixin, ListAPIView):

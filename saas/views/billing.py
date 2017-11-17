@@ -474,12 +474,6 @@ class BillingStatementView(OrganizationMixin, TransactionBaseView):
     """
     template_name = 'saas/billing/index.html'
 
-    def cache_fields(self, request):
-        super(BillingStatementView, self).cache_fields(request)
-        if 'start_at' not in request.GET:
-            self.start_at = (self.ends_at
-                - self.organization.natural_subscription_period)
-
     def get_context_data(self, **kwargs):
         context = super(BillingStatementView, self).get_context_data(**kwargs)
         context.update({

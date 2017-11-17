@@ -33,12 +33,13 @@ from django.views.generic import (CreateView, DetailView, ListView,
 from django.utils.decorators import method_decorator
 
 from . import RedirectFormMixin
-from .. import signals
+from .. import settings, signals
 from ..decorators import _valid_manager
 from ..forms import (OrganizationForm, OrganizationCreateForm,
     ManagerAndOrganizationForm)
 from ..mixins import OrganizationMixin, ProviderMixin, RoleDescriptionMixin
-from ..models import Organization, Plan, Subscription, get_broker, is_broker
+from ..models import Plan, Subscription, get_broker, is_broker
+from ..utils import get_organization_model
 
 
 class RoleDetailView(RoleDescriptionMixin, TemplateView):
@@ -176,6 +177,9 @@ class SubscriptionListView(OrganizationMixin, ListView):
 
     def get_context_data(self, **kwargs):
         context = super(SubscriptionListView, self).get_context_data(**kwargs)
+        context.update({'plans': Plan.objects.filter(
+            organization__in=get_organization_model().objects.accessible_by(
+                self.request.user, role_descr=settings.MANAGER))})
         context.update({'subscriptions': context['object_list']})
         return context
 
@@ -206,7 +210,7 @@ class OrganizationCreateView(RedirectFormMixin, CreateView):
       - ``request`` The HTTP request object
     """
 
-    model = Organization
+    model = get_organization_model()
     form_class = OrganizationCreateForm
     pattern_name = 'saas_organization_cart'
     template_name = "saas/app/new.html"
@@ -249,7 +253,7 @@ class DashboardView(OrganizationMixin, DetailView):
       - ``request`` The HTTP request object
     """
 
-    model = Organization
+    model = get_organization_model()
     slug_url_kwarg = 'organization'
     template_name = 'saas/metrics/dashboard.html'
 
@@ -289,7 +293,7 @@ class OrganizationProfileView(OrganizationMixin, UpdateView):
       - ``request`` The HTTP request object
     """
 
-    model = Organization
+    model = get_organization_model()
     slug_field = 'slug'
     slug_url_kwarg = 'organization'
     template_name = "saas/profile/index.html"

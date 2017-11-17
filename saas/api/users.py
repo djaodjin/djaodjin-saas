@@ -51,7 +51,6 @@ class RegisteredQuerysetMixin(ProviderMixin):
         #       WHERE created_at < ends_at) AS RoleSubSet
         #     ON User.id = RoleSubSet.user_id
         #     WHERE user_id IS NULL;
-        self.cache_fields(self.request)
         return self.model.objects.exclude(
             pk__in=get_role_model().objects.filter(
             organization__subscription__created_at__lt=self.ends_at).values(

@@ -36,7 +36,7 @@ from .serializers import (
     OrganizationSerializer, OrganizationWithSubscriptionsSerializer)
 from ..mixins import (OrganizationMixin, OrganizationSmartListMixin,
     ProviderMixin)
-from ..models import Organization
+from ..utils import get_organization_model
 
 #pylint: disable=no-init
 #pylint: disable=old-style-class
@@ -69,7 +69,7 @@ class OrganizationDetailAPIView(OrganizationMixin,
     and transactions.
     """
 
-    queryset = Organization.objects.all()
+    queryset = get_organization_model().objects.all()
     serializer_class = OrganizationWithSubscriptionsSerializer
 
     def get_object(self):
@@ -119,7 +119,7 @@ class OrganizationQuerysetMixin(object):
 
     @staticmethod
     def get_queryset():
-        return Organization.objects.all()
+        return get_organization_model().objects.all()
 
 
 class OrganizationListAPIView(OrganizationSmartListMixin,
@@ -165,7 +165,7 @@ class OrganizationListAPIView(OrganizationSmartListMixin,
 class SubscribersQuerysetMixin(ProviderMixin):
 
     def get_queryset(self):
-        queryset = Organization.objects.filter(
+        queryset = get_organization_model().objects.filter(
             subscriptions__organization=self.provider)
         return queryset
 

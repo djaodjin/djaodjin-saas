@@ -72,7 +72,7 @@ def _valid_role(user, candidates, role):
                        username, candidates)
         return candidates
     if role is not None and user and user.is_authenticated():
-        if isinstance(role, list) or isinstance(role, tuple):
+        if isinstance(role, (list, tuple)):
             kwargs = {'role_description__slug__in': role}
         else:
             kwargs = {'role_description__slug': role}

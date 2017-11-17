@@ -29,12 +29,12 @@ URLs related to provider bank account information.
 from django.conf.urls import url
 from django.views.generic import TemplateView
 
-from ...settings import ACCT_REGEX
+from ...settings import ACCT_REGEX, VERIFICATION_KEY_RE
 from ...views.download import (ActiveSubscriptionDownloadView,
     ChurnedSubscriptionDownloadView)
+from ...views.optins import SubscriptionRequestAcceptView
 from ...views.plans import PlanCreateView, PlanUpdateView
 from ...views.profile import SubscriberListView
-
 
 urlpatterns = [
     url(r'^profile/(?P<organization>%s)/plans/new/' % ACCT_REGEX,
@@ -52,6 +52,10 @@ urlpatterns = [
         % ACCT_REGEX,
         ChurnedSubscriptionDownloadView.as_view(),
         name='saas_subscriber_pipeline_download_churned'),
+    url(r'^profile/(?P<organization>%s)/subscribers/accept/'\
+        '(?P<request_key>%s)/' % (ACCT_REGEX, VERIFICATION_KEY_RE),
+        SubscriptionRequestAcceptView.as_view(),
+        name='subscription_grant_accept'),
     url(r'^profile/(?P<organization>%s)/subscribers/' % ACCT_REGEX,
         SubscriberListView.as_view(), name='saas_subscriber_list'),
 ]

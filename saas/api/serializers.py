@@ -24,9 +24,11 @@
 
 from django.core import validators
 from django.contrib.auth import get_user_model
-from django.shortcuts import get_object_or_404
 from django.utils.translation import ugettext_lazy as _
+from django.utils import six
 from rest_framework import serializers
+from rest_framework.exceptions import ValidationError
+from rest_framework.generics import get_object_or_404
 
 from ..decorators import _valid_manager
 from ..humanize import as_money
@@ -36,6 +38,40 @@ from ..models import (BalanceLine, CartItem, Charge, Organization, Plan,
 from ..utils import get_role_model
 
 #pylint: disable=no-init,old-style-class
+
+class EnumField(serializers.Field):
+    """
+    Treat a ``PositiveSmallIntegerField`` as an enum.
+    """
+    choices = {}
+    inverted_choices = {}
+
+    def __init__(self, choices, *args, **kwargs):
+        self.choices = dict(choices)
+        self.inverted_choices = {
+            val: key for key, val in six.iteritems(self.choices)}
+        super(EnumField, self).__init__(*args, **kwargs)
+
+    def to_representation(self, obj):
+        if isinstance(obj, list):
+            result = [self.choices.get(item, None) for item in obj]
+        else:
+            result = self.choices.get(obj, None)
+        return result
+
+    def to_internal_value(self, data):
+        if isinstance(data, list):
+            result = [self.inverted_choices.get(item, None) for item in data]
+        else:
+            result = self.inverted_choices.get(data, None)
+        if result is None:
+            if not data:
+                raise ValidationError("This field cannot be blank.")
+            raise ValidationError(
+                "'%s' is not a valid choice. Expected one of %s." % (
+                data, [choice for choice in six.itervalues(self.choices)]))
+        return result
+
 
 class PlanRelatedField(serializers.RelatedField):
 
@@ -48,7 +84,7 @@ class PlanRelatedField(serializers.RelatedField):
         return obj.slug
 
     def to_internal_value(self, data):
-        return get_object_or_404(Plan, slug=data)
+        return get_object_or_404(Plan.objects.all(), slug=data)
 
 
 class RoleDescriptionRelatedField(serializers.RelatedField):
@@ -61,7 +97,7 @@ class RoleDescriptionRelatedField(serializers.RelatedField):
         return obj.slug
 
     def to_internal_value(self, data):
-        return get_object_or_404(RoleDescription, slug=data)
+        return get_object_or_404(RoleDescription.objects.all(), slug=data)
 
 
 class BalanceLineSerializer(serializers.ModelSerializer):
@@ -88,12 +124,17 @@ class ChargeSerializer(serializers.ModelSerializer):
 
 class OrganizationSerializer(serializers.ModelSerializer):
 
+    # If we put ``slug`` in the ``read_only_fields``, it will be set ``None``
+    # when one creates an opt-in subscription.
+    # If we don't define ``slug`` here, the serializer validators will raise
+    # an exception "Organization already exists in database".
+    slug = serializers.CharField()
+    email = serializers.CharField(required=False)
     printable_name = serializers.CharField(read_only=True)
 
     class Meta:
         model = Organization
         fields = ('slug', 'full_name', 'printable_name', 'created_at', 'email')
-        read_only_fields = ('slug',)
 
 
 class WithSubscriptionSerializer(serializers.ModelSerializer):
@@ -136,9 +177,13 @@ class OrganizationWithActiveSubscriptionsSerializer(
 
 class PlanSerializer(serializers.ModelSerializer):
 
-    app_url = serializers.SerializerMethodField()
+    title = serializers.CharField(required=False)
     description = serializers.CharField(required=False)
     is_active = serializers.BooleanField(required=False)
+    setup_amount = serializers.IntegerField(required=False)
+    period_amount = serializers.IntegerField(required=False)
+    interval = EnumField(choices=Plan.INTERVAL_CHOICES, required=False)
+    app_url = serializers.SerializerMethodField()
 
     class Meta:
         model = Plan

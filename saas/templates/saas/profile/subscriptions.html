@@ -13,6 +13,23 @@
         </tr>
       </thead>
       <tbody>
+        {% if plans %}
+        <tr>
+          <td colspan="4">
+            <form id="subscribe" ng-submit="subscribe('{{organization}}')">
+              <div>
+                <select name="plan" ng-model="plan">
+                  <option selected value="">Select a plan...</option>
+                  {% for choice in plans %}
+                  <option value='{"slug":"{{choice.slug}}","organization":"{{choice.organization.slug}}"}'>{{choice.title}}</option>
+                  {% endfor %}
+                </select>
+                <button type="submit">Subscribe</button>
+              </div>
+            </form>
+          </td>
+        </tr>
+        {% endif %}
         <tr ng-hide="subscribed.$resolved">
           <td colspan="4">
             <h4>Loading ...</h4>

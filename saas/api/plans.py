@@ -22,99 +22,17 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from django.template.defaultfilters import slugify
-from rest_framework.generics import (CreateAPIView,
-    RetrieveUpdateDestroyAPIView, UpdateAPIView)
-from rest_framework import serializers
 from rest_framework import status
+from rest_framework.generics import CreateAPIView, RetrieveUpdateDestroyAPIView
 from rest_framework.response import Response
 
 from .serializers import PlanSerializer
-from ..mixins import ProviderMixin
+from ..mixins import ProviderMixin, PlanMixin
 from ..models import Plan, Subscription
 from .. import settings
 
-#pylint: disable=no-init
-#pylint: disable=old-style-class
 
-
-class PlanActivateSerializer(serializers.ModelSerializer):
-
-    class Meta:
-        model = Plan
-        fields = ('is_active',)
-
-
-class PlanMixin(ProviderMixin):
-
-    model = Plan
-    lookup_field = 'slug'
-    lookup_url_kwarg = 'plan'
-
-    def get_queryset(self):
-        return Plan.objects.filter(organization=self.provider)
-
-    def perform_create(self, serializer):
-        unit = serializer.validated_data.get('unit', None)
-        if unit is None:
-            first_plan = self.get_queryset().first()
-            if first_plan:
-                unit = first_plan.unit
-            else:
-                unit = settings.DEFAULT_UNIT
-        serializer.save(organization=self.provider,
-            slug=self.slugify(serializer.validated_data['title']),
-            unit=unit)
-
-    def perform_update(self, serializer):
-        if ('title' in serializer.validated_data and
-            not Subscription.objects.filter(plan=self.get_object()).exists()):
-            # In case no subscription has ever been created for this ``Plan``
-            # it seems safe to update its slug.
-            # In cases some other resource's slug was derived on the initial
-            # slug, we don't want to perform an update and get inconsistent
-            # look of the derived URLs.
-            # pylint: disable=protected-access
-            serializer._validated_data['slug'] \
-                = self.slugify(serializer.validated_data['title'])
-        # We use PUT instead of PATCH otherwise we cannot run test units
-        # on phantomjs. PUT would override the is_active if not present.
-        serializer.save(organization=self.provider,
-            is_active=serializer.validated_data.get('is_active',
-                serializer.instance.is_active))
-
-    @staticmethod
-    def slugify(title):
-        slug_base = slugify(title)
-        i = 0
-        slug = slug_base
-        while Plan.objects.filter(slug__exact=slug).count() > 0:
-            slug = slugify('%s-%d' % (slug_base, i))
-            i += 1
-        return slug
-
-
-class PlanActivateAPIView(PlanMixin, UpdateAPIView):
-    """
-    Activate a plan, enabling users to subscribe to it, or deactivate
-    a plan, disabling users from subscribing to it. Activation or
-    deactivation is toggled based on the ``is_active`` field passed
-    in the PUT request.
-
-    **Example request**:
-
-    .. sourcecode:: http
-
-        PUT /api/profile/cowork/plans/activate
-
-        {
-            "is_active": true
-        }
-    """
-    serializer_class = PlanActivateSerializer
-
-
-class PlanCreateAPIView(PlanMixin, CreateAPIView):
+class PlanCreateAPIView(ProviderMixin, CreateAPIView):
     """
     Create a ``Plan`` for a provider.
 
@@ -147,10 +65,32 @@ class PlanCreateAPIView(PlanMixin, CreateAPIView):
 
     serializer_class = PlanSerializer
 
+    def perform_create(self, serializer):
+        unit = serializer.validated_data.get('unit', None)
+        if unit is None:
+            first_plan = self.get_queryset().first()
+            if first_plan:
+                unit = first_plan.unit
+            else:
+                unit = settings.DEFAULT_UNIT
+        serializer.save(organization=self.provider,
+            slug=self.slugify(serializer.validated_data['title']),
+            unit=unit)
+
 
 class PlanResourceView(PlanMixin, RetrieveUpdateDestroyAPIView):
     """
     Retrieve, update or delete a ``Plan``.
+
+    The ``is_active`` boolean is used to activate a plan, enabling users
+    to subscribe to it, or deactivate a plan, disabling users from subscribing
+    to it.
+
+    **Example request**:
+
+    .. sourcecode:: http
+
+        GET /api/profile/cowork/plans/open-space
 
     **Example response**:
 
@@ -166,6 +106,12 @@ class PlanResourceView(PlanMixin, RetrieveUpdateDestroyAPIView):
     """
 
     serializer_class = PlanSerializer
+
+    def get_queryset(self):
+        return Plan.objects.filter(organization=self.provider)
+
+    def get_object(self):
+        return self.plan
 
     def destroy(self, request, *args, **kwargs): #pylint:disable=unused-argument
 #        Override to provide some validation.
@@ -187,3 +133,20 @@ class PlanResourceView(PlanMixin, RetrieveUpdateDestroyAPIView):
                 status=status.HTTP_403_FORBIDDEN)
         self.perform_destroy(instance)
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+    def perform_update(self, serializer):
+        if ('title' in serializer.validated_data and
+            not Subscription.objects.filter(plan=self.get_object()).exists()):
+            # In case no subscription has ever been created for this ``Plan``
+            # it seems safe to update its slug.
+            # In cases some other resource's slug was derived on the initial
+            # slug, we don't want to perform an update and get inconsistent
+            # look of the derived URLs.
+            # pylint: disable=protected-access
+            serializer._validated_data['slug'] \
+                = self.slugify(serializer.validated_data['title'])
+        # We use PUT instead of PATCH otherwise we cannot run test units
+        # on phantomjs. PUT would override the is_active if not present.
+        serializer.save(organization=self.provider,
+            is_active=serializer.validated_data.get('is_active',
+                serializer.instance.is_active))
