@@ -137,6 +137,21 @@ class OrganizationSerializer(serializers.ModelSerializer):
         fields = ('slug', 'full_name', 'printable_name', 'created_at', 'email')
 
 
+class WithEndsAtByPlanSerializer(serializers.Serializer):
+
+    plan = serializers.SlugField(source='plan__slug', read_only=True)
+    ends_at = serializers.DateTimeField(source='ends_at__max', read_only=True)
+
+    class Meta:
+        fields = ('plan', 'ends_at')
+
+    def create(self, validated_data):
+        raise RuntimeError('`create()` should not be called.')
+
+    def update(self, instance, validated_data):
+        raise RuntimeError('`update()` should not be called.')
+
+
 class WithSubscriptionSerializer(serializers.ModelSerializer):
 
     plan = serializers.SlugRelatedField(read_only=True, slug_field='slug')
@@ -158,15 +173,14 @@ class OrganizationWithSubscriptionsSerializer(serializers.ModelSerializer):
         read_only_fields = ('slug', )
 
 
-class OrganizationWithActiveSubscriptionsSerializer(
-        serializers.ModelSerializer):
+class OrganizationWithEndsAtByPlanSerializer(serializers.ModelSerializer):
     """
     Operational information on an Organization,
     bundled with its active subscriptions.
     """
 
-    subscriptions = WithSubscriptionSerializer(
-        source='get_active_subscriptions', many=True, read_only=True)
+    subscriptions = WithEndsAtByPlanSerializer(
+        source='get_ends_at_by_plan', many=True, read_only=True)
 
     class Meta:
         model = Organization

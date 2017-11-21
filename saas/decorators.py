@@ -171,6 +171,37 @@ def fail_agreement(request, agreement=settings.TERMS_OF_USE):
     return False
 
 
+def fail_subscription(request, organization=None, plan=None):
+    """
+    Subscribed or was subscribed to %(saas.Plan)s
+    """
+    if _has_valid_access(request, [get_broker()]):
+        # Bypass if a manager for the broker.
+        return False
+    if organization and not isinstance(organization, Organization):
+        organization = get_object_or_404(Organization, slug=organization)
+    subscriptions = Subscription.objects.filter(
+        organization=organization).order_by("ends_at")
+    # ``order_by("ends_at")`` will get the subscription that ends the earliest,
+    # yet is greater than Today (``subscribed_at``).
+    if plan:
+        if not isinstance(plan, Plan):
+            plan = get_object_or_404(Plan, slug=plan)
+        subscriptions = subscriptions.filter(plan=plan)
+        active_subscription = subscriptions.first()
+        if active_subscription is None:
+            return "%s?plan=%s" % (
+                reverse('saas_organization_cart', args=(organization,)), plan)
+    else:
+        active_subscription = subscriptions.first()
+        if active_subscription is None:
+            return reverse('saas_cart_plan_list')
+        plan = active_subscription.plan
+    if active_subscription.is_locked:
+        return reverse('saas_organization_balance', args=(organization, plan))
+    return False
+
+
 def fail_paid_subscription(request, organization=None, plan=None):
     """
     Subscribed to %(saas.Plan)s
@@ -181,8 +212,8 @@ def fail_paid_subscription(request, organization=None, plan=None):
         return False
     if organization and not isinstance(organization, Organization):
         organization = get_object_or_404(Organization, slug=organization)
-    subscriptions = Subscription.objects.filter(organization=organization,
-        ends_at__gt=subscribed_at).order_by("ends_at")
+    subscriptions = organization.get_active_subscriptions(
+        at_time=subscribed_at).order_by('ends_at')
     # ``order_by("ends_at")`` will get the subscription that ends the earliest,
     # yet is greater than Today (``subscribed_at``).
     if plan:
@@ -490,6 +521,42 @@ def requires_agreement(function=None,
         @wraps(view_func, assigned=available_attrs(view_func))
         def _wrapped_view(request, *args, **kwargs):
             redirect_url = fail_agreement(request, agreement=agreement)
+            if redirect_url:
+                return redirect_or_denied(request, redirect_url,
+                    redirect_field_name=redirect_field_name)
+            return view_func(request, *args, **kwargs)
+        return _wrapped_view
+
+    if function:
+        return decorator(function)
+    return decorator
+
+
+def requires_subscription(function=None,
+                organization_kwarg_slug='organization',
+                plan_kwarg_slug='subscribed_plan',
+                redirect_field_name=REDIRECT_FIELD_NAME,
+                strength=NORMAL,
+                roledescription=None):
+    #pylint:disable=too-many-arguments
+    """
+    Decorator that checks an organization is or was subscribed to a plan.
+    It redirects to an appropriate page when this is not the case:
+
+    - Checkout page when there never was a subscription (to plan).
+    """
+    def decorator(view_func):
+        @wraps(view_func, assigned=available_attrs(view_func))
+        def _wrapped_view(request, *args, **kwargs):
+            subscriber = get_object_or_404(
+                Organization, slug=kwargs.get(organization_kwarg_slug, None))
+            if _fail_provider(request, organization=subscriber,
+                    strength=strength, roledescription=roledescription):
+                raise PermissionDenied("%(user)s is neither a manager '\
+' of %(organization)s nor a manager of one of %(organization)s providers."
+                % {'user': request.user, 'organization': subscriber})
+            redirect_url = fail_subscription(request,
+                organization=subscriber, plan=kwargs.get(plan_kwarg_slug, None))
             if redirect_url:
                 return redirect_or_denied(request, redirect_url,
                     redirect_field_name=redirect_field_name)

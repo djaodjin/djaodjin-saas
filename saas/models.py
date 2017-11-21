@@ -287,6 +287,16 @@ class Organization(models.Model):
         return Subscription.objects.filter(
             organization=self, ends_at__gte=at_time)
 
+    def get_ends_at_by_plan(self, at_time=None):
+        """
+        Returns the set of churned subscriptions for this organization
+        at time *at_time* or now if *at_time* is not specified.
+        """
+        at_time = datetime_or_now(at_time)
+        return Subscription.objects.filter(
+            organization=self).values('plan__slug').annotate(
+                Max('ends_at')).distinct()
+
     def get_changes(self, update_fields):
         changes = {}
         for field_name in ('full_name',):
