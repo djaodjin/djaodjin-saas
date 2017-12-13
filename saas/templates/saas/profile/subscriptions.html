@@ -42,9 +42,9 @@
         </tr>
       </tbody>
       <tbody ng-repeat="entry in subscribed.results" ng-cloak ng-show="subscribed.$resolved && subscribed.results.length > 0">
-        <tr ng-class="endsSoon(entry)">
+        <tr id="[[entry.plan.slug]]" ng-class="endsSoon(entry)">
           <td>
-            <a href="[[entry.plan.app_url]]/[[entry.organization.slug]]/">[[entry.plan.title]]</a>
+            <a href="[[entry.plan.app_url]][[entry.organization.slug]]/[[entry.plan.slug]]/">[[entry.plan.title]]</a>
           </td>
           <td>
             [[entry.ends_at|date: mediumDate]]

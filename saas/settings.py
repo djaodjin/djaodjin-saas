@@ -32,7 +32,7 @@ The ``Organization`` broker manages the StripeConnect client account.
 ========================  ================= ===========
 Name                      Default           Description
 ========================  ================= ===========
-BROKER.GET_INSTANCE       APP_NAME          Slug for the ``Organization`` broker
+BROKER.GET_INSTANCE       basename(BASE_DIR)Slug for the ``Organization`` broker
                                             or callable that returns the
                                             ``Organization`` broker
                                             (useful for composition of Django
@@ -74,6 +74,8 @@ TERMS_OF_USE             'terms-of-use'     slug for the ``Agreement`` stating
                                             ther Terms of Use of the site.
 ========================  ================= ===========
 """
+import os
+
 from django.conf import settings
 
 _SETTINGS = {
@@ -87,7 +89,8 @@ _SETTINGS = {
     'ORGANIZATION_MODEL': 'saas.Organization',
     'PAGE_SIZE': 25,
     'BROKER': {
-        'GET_INSTANCE': getattr(settings, 'APP_NAME', None),
+        'GET_INSTANCE': os.path.basename(
+            getattr(settings, 'BASE_DIR', "broker")),
         'IS_INSTANCE_CALLABLE': None,
         'BUILD_ABSOLUTE_URI_CALLABLE': None
     },

@@ -585,4 +585,19 @@
       "event_id": 7
     },
     "model": "saas.transaction", "pk": 2
+},
+{
+    "fields": {
+      "username": "melissa",
+      "date_joined": "2017-12-13T00:00:00+00:00",
+      "email": "melissa@localhost.localdomain",
+      "first_name": "Melissa",
+      "last_name": "",
+      "is_active": true,
+      "is_staff": false,
+      "is_superuser": false,
+      "last_login": "2017-12-13T00:00:00+00:00",
+      "password": "pbkdf2_sha256$10000$z0MBiWn0Rlem$iZdC6uHomlE07qGK/TqfcfxNzKJtFp03c0JILF1frRc="
+    },
+    "model": "auth.User", "pk": 10
 }]

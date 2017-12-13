@@ -17,7 +17,7 @@
       | <a id="saas_subscription_list" href="{{urls.organization.subscriptions}}">subscriptions</a>
       {% if urls.organization.roles %}
       {% for role_title, role_url in urls.organization.roles.items %}
-      | <a href="{{role_url}}">{{role_title|pluralize}</a>
+      | <a href="{{role_url}}">{{role_title|pluralize}}</a>
       {% endfor %}
       {% endif %}
       {% if urls and urls.organization and urls.organization.roles %}
@@ -56,12 +56,6 @@ jQuery(document).ready(function($) {
     $("[data-plan]").plan({
         saas_api_plan: "{{ urls.provider.api_plans }}",
         saas_metrics_plans: "{{ urls.provider.metrics_plans }}"
-    });
-{% endif %}
-{% if request|is_authenticated %}
-    $("#delete-organization-btn").profile({
-        saas_api_organization: "{% if urls and urls.organization %}{{ urls.organization.api_base }}{% endif %}",
-        user_profile_redirect: "{{request|url_profile_base}}"
     });
 {% endif %}
 {% if urls and urls.api_redeem %}

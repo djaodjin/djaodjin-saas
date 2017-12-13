@@ -384,6 +384,7 @@ transactionControllers.controller("relationListCtrl",
         $event.preventDefault();
         var slug = $($event.target).parents("[id]").attr("id");
         if( settings.user
+            && $scope.items.results[idx].user
             && $scope.items.results[idx].user.slug === settings.user.slug ) {
             if( !confirm("You are about to delete yourself from this" +
                          " role. it's possible that you no longer can manage" +

@@ -47,6 +47,7 @@ urls: {
 {% if urls.provider %}
     saas_api_coupon_url: "{{ urls.provider.api_coupons }}",
     saas_metrics_coupons_url: "{{ urls.provider.coupons }}",
+    saas_api_plans: "{{ urls.provider.api_plans }}",
     /* subscribers */
     saas_api_churned: "{{ urls.provider.api_subscribers_churned }}",
     saas_api_active_subscribers: "{{ urls.provider.api_subscribers_active }}",
@@ -70,6 +71,10 @@ urls: {
 {% endif %}
 {% if urls.user %}
     api_accessibles: "{{urls.user.api_accessibles}}",
+{% endif %}
+{% if request|is_authenticated %}
+    saas_api_organization: "{% if urls and urls.organization %}{{ urls.organization.api_base }}{% endif %}",
+    user_profile_redirect: "{% if urls and urls.user %}{{urls.user.profile_redirect}}{% else %}/users/{% endif %}",
 {% endif %}
 },
 itemsPerPage: {% if items_per_page %}{{items_per_page}}{% else %}25{% endif %},

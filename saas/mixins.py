@@ -543,9 +543,11 @@ class SubscriptionMixin(object):
             start_at = datetime_or_now(start_at)
             kwargs.update({'created_at__lt': start_at})
         ends_at = datetime_or_now(self.request.GET.get('ends_at', None))
-        return Subscription.objects.active_for(
-            organization=self.kwargs.get(self.subscriber_url_kwarg),
-            ends_at=ends_at, **kwargs)
+        # Use ``filter`` instead of active_for here because we want to list
+        # through the API subscriptions which are pending opt-in.
+        return Subscription.objects.filter(
+            organization__slug=self.kwargs.get(self.subscriber_url_kwarg),
+            ends_at__gt=ends_at, **kwargs)
 
     def get_object(self):
         queryset = self.get_queryset()

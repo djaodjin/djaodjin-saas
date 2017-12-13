@@ -66,9 +66,11 @@ urlpatterns = [
     url_prefixed(r'$', TemplateView.as_view(template_name='index.html'),
         name='home'),
     url_prefixed(r'billing/cart/',
-        login_required(OrganizationRedirectView.as_view(
+        login_required(
+            OrganizationRedirectView.as_view(
+                implicit_create_on_none=True,
                 pattern_name='saas_organization_cart'),
-                       login_url=reverse_lazy('registration_register')),
+            login_url=reverse_lazy('registration_register')),
         name='saas_cart'),
     # saas urls with provider key to implement marketplace.
     url_prefixed(r'api/', include('saas.urls.api.cart')),

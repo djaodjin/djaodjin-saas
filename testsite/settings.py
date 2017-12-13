@@ -164,7 +164,9 @@ DURATIONFIELD_ALLOW_MONTHS = True
 
 # Configuration of djaodjin-saas
 SAAS = {
-  'PLATFORM': 'cowork-master',
+  'BROKER': {
+      'GET_INSTANCE': 'cowork-master',
+  },
   'PROCESSOR': {
       'BACKEND': 'saas.backends.stripe_processor.StripeBackend',
       'PRIV_KEY': getattr(sys.modules[__name__], "STRIPE_PRIV_KEY", None),
