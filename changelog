@@ -1,3 +1,9 @@
+0.2.6
+
+  * Compatible with Python 3.6
+
+ -- Sebastien Mirolo <smirolo@djaodjin.com>  Tue, 27 Jun 2017 12:12:20 -0700
+
 0.2.4
 
   * Generic roles

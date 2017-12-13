@@ -75,9 +75,10 @@ saas/templates/notification/ directory.
 Release Notes
 =============
 
-0.2.6
+0.3.0
 
-  * Compatible with Python 3.6
+  * Grants and requests for double opt-in on roles and subscriptions.
+  * Adds logic for use charges
 
 [previous release notes](changelog)
 
