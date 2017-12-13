@@ -841,6 +841,16 @@ subscriptionControllers.controller("subscriptionListCtrl",
         return false;
     };
 
+    $scope.acceptRequest = function(organization, request_key) {
+        $http.put(settings.urls.api_organizations
+            + organization + "/subscribers/accept/" + request_key + "/").then(
+        function success(resp) {
+            $scope.query($scope.active);
+        }, function error(resp) {
+            showErrorMessages(resp);
+        });
+    };
+
     $scope.unsubscribe = function(organization, plan, target) {
         var dialog = angular.element(target + " [type=\"submit\"]");
         dialog.attr("data-organization", organization);

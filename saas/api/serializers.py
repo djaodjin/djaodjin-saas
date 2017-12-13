@@ -198,11 +198,14 @@ class PlanSerializer(serializers.ModelSerializer):
     period_amount = serializers.IntegerField(required=False)
     interval = EnumField(choices=Plan.INTERVAL_CHOICES, required=False)
     app_url = serializers.SerializerMethodField()
+    organization = serializers.SlugRelatedField(
+        read_only=True, slug_field='slug')
 
     class Meta:
         model = Plan
         fields = ('slug', 'title', 'description', 'is_active',
-                  'setup_amount', 'period_amount', 'interval', 'app_url')
+                  'setup_amount', 'period_amount', 'interval', 'app_url',
+                  'organization')
         read_only_fields = ('slug', 'app_url')
 
     @staticmethod
@@ -219,7 +222,9 @@ class SubscriptionSerializer(serializers.ModelSerializer):
     class Meta:
         model = Subscription
         fields = ('created_at', 'ends_at', 'description',
-                  'organization', 'plan', 'auto_renew', 'editable')
+                  'organization', 'plan', 'grant_key', 'request_key',
+                  'auto_renew', 'editable')
+        read_only_fields = ('grant_key', 'request_key')
 
     def get_editable(self, subscription):
         return bool(_valid_manager(self.context['request'].user,

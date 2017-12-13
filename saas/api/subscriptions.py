@@ -22,9 +22,11 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+import logging
+
 from rest_framework import serializers
-from rest_framework.generics import (ListAPIView,
-    ListCreateAPIView, RetrieveUpdateDestroyAPIView)
+from rest_framework.generics import (get_object_or_404, ListAPIView,
+    ListCreateAPIView, RetrieveUpdateDestroyAPIView, UpdateAPIView)
 
 from ..decorators import _valid_manager
 from ..mixins import (ChurnedQuerysetMixin, PlanMixin, ProviderMixin,
@@ -35,6 +37,9 @@ from .roles import OptinBase
 from .serializers import OrganizationSerializer, SubscriptionSerializer
 
 #pylint: disable=no-init,old-style-class
+
+LOGGER = logging.getLogger(__name__)
+
 
 class SubscriptionCreateSerializer(serializers.ModelSerializer):
 
@@ -147,9 +152,10 @@ class SubscriptionDetailAPIView(SubscriptionMixin,
 class PlanSubscriptionsQuerysetMixin(PlanMixin):
 
     def get_queryset(self):
+        # OK to use ``filter`` here since we want to list all subscriptions.
         return Subscription.objects.filter(
             plan__slug=self.kwargs.get(self.plan_url_kwarg),
-            organization=self.provider)
+            plan__organization=self.provider)
 
 
 class PlanSubscriptionsAPIView(SubscriptionSmartListMixin,
@@ -439,3 +445,41 @@ class ChurnedSubscriptionAPIView(SubscriptionSmartListMixin,
         }
     """
     serializer_class = SubscriptionSerializer
+
+
+class SubscriptionRequestAcceptAPIView(UpdateAPIView):
+
+    provider_url_kwarg = 'organization'
+    serializer_class = serializers.Serializer
+
+    def get_queryset(self):
+        return Subscription.objects.active_with(
+            self.kwargs.get(self.provider_url_kwarg))
+
+    @property
+    def subscription(self):
+        if not hasattr(self, '_subscription'):
+            self._subscription = get_object_or_404(self.get_queryset(),
+                request_key=self.kwargs.get('request_key'))
+        return self._subscription
+
+    def get_object(self):
+        return self.subscription
+
+    def perform_update(self, serializer):
+        request_key = serializer.instance.request_key
+        serializer.instance.request_key = None
+        serializer.instance.save()
+        LOGGER.info(
+            "%s accepted subscription of %s to plan %s (request_key=%s)",
+            self.request.user, serializer.instance.organization,
+            serializer.instance.plan, request_key, extra={
+                'request': self.request, 'event': 'accept',
+                'user': str(self.request.user),
+                'organization': str(serializer.instance.organization),
+                'plan': str(serializer.instance.plan),
+                'ends_at': str(serializer.instance.ends_at),
+                'request_key': request_key})
+        signals.subscription_request_accepted.send(sender=__name__,
+            subscription=serializer.instance,
+            request_key=request_key, request=self.request)

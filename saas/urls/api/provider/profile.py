@@ -35,7 +35,8 @@ from ....api.roles import (RoleDescriptionListCreateView,
 from ....api.organizations import SubscribersAPIView
 from ....api.subscriptions import (PlanSubscriptionsAPIView,
     PlanSubscriptionDetailAPIView)
-from ....settings import ACCT_REGEX
+from ....settings import ACCT_REGEX, VERIFICATION_KEY_RE
+from ....api.subscriptions import SubscriptionRequestAcceptAPIView
 
 urlpatterns = [
     url(r'^profile/(?P<organization>%s)/roles/describe/(?P<role>%s)/?'
@@ -58,6 +59,10 @@ urlpatterns = [
         PlanResourceView.as_view(), name='saas_api_plan'),
     url(r'^profile/(?P<organization>%s)/plans/?' % ACCT_REGEX,
         PlanCreateAPIView.as_view(), name='saas_api_plans'),
+    url(r'^profile/(?P<organization>%s)/subscribers/accept/'\
+        '(?P<request_key>%s)/' % (ACCT_REGEX, VERIFICATION_KEY_RE),
+        SubscriptionRequestAcceptAPIView.as_view(),
+        name='saas_api_subscription_grant_accept'),
     url(r'^profile/(?P<organization>%s)/subscribers/?' % ACCT_REGEX,
         SubscribersAPIView.as_view(), name='saas_api_subscribers'),
 ]

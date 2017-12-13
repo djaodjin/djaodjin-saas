@@ -24,10 +24,11 @@ Contents:
    subscriptions
    orders
    ledger
-   models
    security
+   relations
    pages
    api
+   models
    backends
 
 Indices and tables

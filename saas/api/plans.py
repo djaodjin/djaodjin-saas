@@ -137,6 +137,8 @@ class PlanResourceView(PlanMixin, RetrieveUpdateDestroyAPIView):
     def perform_update(self, serializer):
         if ('title' in serializer.validated_data and
             not Subscription.objects.filter(plan=self.get_object()).exists()):
+            # OK to use ``filter`` here since grants/requests should also be
+            # included.
             # In case no subscription has ever been created for this ``Plan``
             # it seems safe to update its slug.
             # In cases some other resource's slug was derived on the initial

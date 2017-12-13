@@ -263,9 +263,8 @@ def active_subscribers(plan, from_date=None):
     """
     values = []
     for end_period in month_periods(from_date=from_date):
-        values.append([end_period, Subscription.objects.filter(
-            plan=plan, created_at__lte=end_period,
-            ends_at__gt=end_period).count()])
+        values.append([end_period,
+            Subscription.objects.active_at(end_period, plan=plan).count()])
     return values
 
 
@@ -300,14 +299,11 @@ def churn_subscribers(plan=None, from_date=None):
     values = []
     dates = month_periods(13, from_date)
     start_period = dates[0]
+    kwargs = {}
     if plan:
-        for end_period in dates[1:]:
-            values.append([end_period, Subscription.objects.filter(plan=plan,
-                ends_at__gte=start_period, ends_at__lt=end_period).count()])
-            start_period = end_period
-    else:
-        for end_period in dates[1:]:
-            values.append([end_period, Subscription.objects.filter(
-                ends_at__gte=start_period, ends_at__lt=end_period).count()])
-            start_period = end_period
+        kwargs = {'plan': plan}
+    for end_period in dates[1:]:
+        values.append([end_period, Subscription.objects.churn_in_period(
+            start_period, end_period, **kwargs).count()])
+        start_period = end_period
     return values

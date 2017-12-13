@@ -40,6 +40,8 @@ expires_soon = Signal(providing_args=["subscription", "nb_days"])
 user_relation_added = Signal(providing_args=["role", "reason"])
 user_relation_requested = Signal(providing_args=[
     "organization", "user", "reason"])
+role_grant_accepted = Signal(providing_args=[
+    "role", "grant_key"])
 subscription_grant_accepted = Signal(providing_args=[
     "subscription", "grant_key"])
 subscription_grant_created = Signal(providing_args=[

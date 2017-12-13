@@ -52,11 +52,25 @@
           <td>
             [[relativeDate(entry.ends_at)]]
           </td>
-          <td>
-            <button ng-click="unsubscribe(entry.organization.slug, entry.plan.slug)"
-                    ng-show="entry.auto_renew">
+          <td ng-if="!entry.request_key">
+            <button class="unsubscribe"
+               data-toggle="modal" data-target="#unsubscribe-action"
+               ng-click="unsubscribe(entry.organization.slug, entry.plan.slug, '#unsubscribe-action')">
               Unsubscribe Now
             </button>
+          </td>
+          <td ng-if="entry.request_key && entry.editable">
+            <button class="unsubscribe"
+                    data-toggle="modal" data-target="#unsubscribe-action"
+                    ng-click="unsubscribe(entry.organization.slug, entry.plan.slug, '#unsubscribe-action')">
+              Deny
+            </button>
+            <button ng-click="acceptRequest(entry.plan.organization, entry.request_key)">
+              Accept
+            </button>
+          </td>
+          <td ng-if="entry.request_key && !entry.editable">
+            Request pending approval ...
           </td>
         </tr>
       </tbody>

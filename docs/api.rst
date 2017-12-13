@@ -140,11 +140,6 @@ These API end points manage the subscription logic, payments excluded.
 .. autoclass:: saas.api.plans.PlanResourceView
 
 
-.. http:put:: /api/profile/:organization/plans/<plan>/activate/
-
-.. autoclass:: saas.api.plans.PlanActivateAPIView
-
-
 .. http:get::  /api/profile/:organization/
 .. http:put::  /api/profile/:organization/
 .. http:delete::  /api/profile/:organization/

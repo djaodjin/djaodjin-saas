@@ -543,9 +543,9 @@ class SubscriptionMixin(object):
             start_at = datetime_or_now(start_at)
             kwargs.update({'created_at__lt': start_at})
         ends_at = datetime_or_now(self.request.GET.get('ends_at', None))
-        return Subscription.objects.filter(
-            organization__slug=self.kwargs.get(self.subscriber_url_kwarg),
-            ends_at__gte=ends_at, **kwargs)
+        return Subscription.objects.active_for(
+            organization=self.kwargs.get(self.subscriber_url_kwarg),
+            ends_at=ends_at, **kwargs)
 
     def get_object(self):
         queryset = self.get_queryset()
@@ -736,7 +736,7 @@ class ChurnedQuerysetMixin(ProviderMixin):
             start_at = datetime_or_now(start_at)
             kwargs.update({'ends_at__gte': start_at})
         ends_at = datetime_or_now(self.request.GET.get('ends_at', None))
-        return Subscription.objects.filter(
+        return Subscription.objects.valid_for(
             plan__organization=self.provider,
             ends_at__lt=ends_at, **kwargs).order_by('-ends_at')
 
@@ -755,9 +755,8 @@ class SubscribedQuerysetMixin(ProviderMixin):
             start_at = datetime_or_now(start_at)
             kwargs.update({'created_at__lt': start_at})
         ends_at = datetime_or_now(self.request.GET.get('ends_at', None))
-        return Subscription.objects.filter(
-            plan__organization=self.provider,
-            ends_at__gte=ends_at, **kwargs).order_by('-ends_at')
+        return Subscription.objects.active_with(
+            self.provider, ends_at=ends_at, **kwargs).order_by('-ends_at')
 
 
 class UserMixin(object):
@@ -828,6 +827,8 @@ class RoleMixin(RoleDescriptionMixin):
                 kwargs = {}
         except RoleDescription.DoesNotExist:
             kwargs = {}
+        # OK to use filter here since we want to present all pending grants
+        # and requests.
         return get_role_model().objects.filter(
             organization=self.organization, user=self.user, **kwargs)
 

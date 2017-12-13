@@ -183,6 +183,7 @@ class OptinBase(object):
 class AccessibleByQuerysetMixin(UserMixin):
 
     def get_queryset(self):
+        # OK to use filter here since we want to see the requests as well.
         return get_role_model().objects.filter(user=self.user)
 
 
@@ -369,6 +370,7 @@ class RoleDescriptionDetailView(RoleDescriptionQuerysetMixin,
 class RoleQuerysetMixin(OrganizationMixin):
 
     def get_queryset(self):
+        # OK to use filter here since we want to see the requests as well.
         return get_role_model().objects.filter(organization=self.organization)
 
 
@@ -527,7 +529,8 @@ class RoleFilteredListAPIView(RoleSmartListMixin, RoleByDescrQuerysetMixin,
                     email=serializer.validated_data['email'],
                     first_name=first_name, last_name=last_name)
                 grant_key = self.organization.generate_role_key(user)
-
+        if not (self.role_description.skip_optin_on_grant or grant_key):
+            grant_key = self.organization.generate_role_key(user)
         reason = serializer.validated_data.get('message', None)
         if reason:
             reason = force_text(reason)

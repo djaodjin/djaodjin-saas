@@ -1,4 +1,4 @@
-Getting started
+Getting Started
 ===============
 
 Installation and configuration
@@ -65,7 +65,7 @@ Setting up a Software-as-a-Service site
 To setup a site with three plans (basic, premium and ultimate), we will create
 an ``Organization`` for the payment processor and an ``Organization`` for the
 provider / broker together with three ``Plan`` that belong to the provider
-(see :doc:`Database schema <models>`). We will also need to create an default
+(see :doc:`database schema <models>`). We will also need to create an default
 ``Agreement`` for the terms of use of the site.
 
 **Example fixtures**:

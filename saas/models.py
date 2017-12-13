@@ -158,7 +158,7 @@ class OrganizationManager(models.Manager):
             else:
                 kwargs = {'role_description__slug__in': [
                     str(descr) for descr in role_descr]}
-        roles = get_role_model().objects.db_manager(using=self._db).filter(
+        roles = get_role_model().objects.db_manager(using=self._db).valid_for(
             user=user, **kwargs)
         return self.filter(pk__in=roles.values('organization')).distinct()
 
@@ -177,7 +177,7 @@ class OrganizationManager(models.Manager):
             return queryset
         if user:
             email_suffix = user.email.split('@')[-1]
-            candidates_from_email = Role.objects.filter(
+            candidates_from_email = get_role_model().objects.valid_for(
                 user__email__iendswith=email_suffix,
                 role_description__slug=settings.MANAGER).values(
                     'organization')
@@ -203,7 +203,7 @@ class OrganizationManager(models.Manager):
         Set of ``Organization`` which provides active services
         to a subscribed *organization*.
         """
-        return self.providers(Subscription.objects.filter(
+        return self.providers(Subscription.objects.valid_for(
             organization=organization))
 
 
@@ -284,7 +284,7 @@ class Organization(models.Model):
         at time *at_time* or now if *at_time* is not specified.
         """
         at_time = datetime_or_now(at_time)
-        return Subscription.objects.filter(
+        return Subscription.objects.valid_for(
             organization=self, ends_at__gte=at_time)
 
     def get_ends_at_by_plan(self, at_time=None):
@@ -293,7 +293,7 @@ class Organization(models.Model):
         at time *at_time* or now if *at_time* is not specified.
         """
         at_time = datetime_or_now(at_time)
-        return Subscription.objects.filter(
+        return Subscription.objects.valid_for(
             organization=self).values('plan__slug').annotate(
                 Max('ends_at')).distinct()
 
@@ -403,7 +403,7 @@ class Organization(models.Model):
         user_model = get_user_model()
         if not isinstance(user, user_model):
             user = user_model.objects.get(username=user)
-        return get_role_model().objects.filter(
+        return get_role_model().objects.valid_for(
             user=user, organization=self).exists()
 
     def get_role_description(self, role_slug):
@@ -421,15 +421,17 @@ class Organization(models.Model):
     def get_roles(self, role_descr):
         if not isinstance(role_descr, RoleDescription):
             role_descr = self.get_role_description(role_descr)
+        # OK to use ``filter`` here since we want to see all pending grants
+        # and requests.
         return get_role_model().objects.db_manager(using=self._state.db).filter(
             organization=self, role_description=role_descr)
 
     @staticmethod
-    def generate_role_key(user):
+    def generate_role_key(user=None):
         random_key = str(random.random()).encode('utf-8')
         salt = hashlib.sha1(random_key).hexdigest()[:5]
-        verification_key = hashlib.sha1(
-            (salt+user.username).encode('utf-8')).hexdigest()
+        salted = (salt + user.username) if user else salt
+        verification_key = hashlib.sha1(salted.encode('utf-8')).hexdigest()
         return verification_key
 
     def add_role(self, user, role_descr,
@@ -446,6 +448,8 @@ class Organization(models.Model):
         # with the organization.
         if not isinstance(role_descr, RoleDescription):
             role_descr = self.get_role_description(role_descr)
+        # OK to use ``filter`` in both subsequent queries as we are dealing
+        # with the whole QuerySet related to a user.
         queryset = get_role_model().objects.db_manager(
             using=self._state.db).filter(organization=self, user=user,
                 role_description=role_descr)
@@ -471,6 +475,8 @@ class Organization(models.Model):
         return False
 
     def add_role_request(self, user, at_time=None, reason=None):
+        # OK to use ``filter`` in both subsequent queries as we are dealing
+        # with the whole QuerySet related to a user.
         if not get_role_model().objects.filter(
                 organization=self, user=user).exists():
             # Otherwise a role already exists
@@ -982,6 +988,12 @@ class Organization(models.Model):
 
 @python_2_unicode_compatible
 class RoleDescription(models.Model):
+    """
+    By default, when a ``User`` grants a ``Role`` on an ``Organization``
+    to another ``User``, the grantee is required to opt-in the relationship
+    unless ``skip_optin_on_grant`` is ``True``. Then the newly created
+    relationship is effective immediately.
+    """
 
     created_at = models.DateTimeField(auto_now_add=True)
     slug = models.SlugField(
@@ -989,6 +1001,7 @@ class RoleDescription(models.Model):
     organization = models.ForeignKey(
         Organization, related_name="role_descriptions", null=True)
     title = models.CharField(max_length=20)
+    skip_optin_on_grant = models.BooleanField(default=False)
     extra = settings.get_extra_field_class()(null=True)
 
     class Meta:
@@ -1044,6 +1057,9 @@ class RoleManager(models.Manager):
                     results[role.role_description] = []
                 results[role.role_description].append(role.organization)
         return results
+
+    def valid_for(self, **kwargs):
+        return self.filter(grant_key=None, request_key=None, **kwargs)
 
 
 @python_2_unicode_compatible
@@ -2507,21 +2523,43 @@ class CartItem(models.Model):
 class SubscriptionManager(models.Manager):
     #pylint: disable=super-on-old-class
 
-    def active_for(self, organization, ends_at=None):
+    def active_at(self, at_time, **kwargs):
+        return self.valid_for(
+            created_at__lte=at_time, ends_at__gt=at_time, **kwargs)
+
+    def active_for(self, organization, ends_at=None, **kwargs):
         """
         Returns active subscriptions for *organization*
         """
         ends_at = datetime_or_now(ends_at)
-        return self.filter(organization=organization, ends_at__gt=ends_at)
+        if isinstance(organization, Organization):
+            return self.valid_for(
+                organization=organization, ends_at__gte=ends_at, **kwargs)
+        return self.valid_for(
+            organization__slug=str(organization), ends_at__gt=ends_at, **kwargs)
 
-    def active_with_provider(self, organization, provider, ends_at=None):
+    def active_with(self, provider, ends_at=None, **kwargs):
         """
-        Returns a list of active subscriptions for organization
-        for which provider is the owner of the plan.
+        Returns a list of active subscriptions for which provider
+        is the owner of the plan.
         """
         ends_at = datetime_or_now(ends_at)
-        return self.filter(organization=organization,
-            plan__organization=provider, ends_at__gt=ends_at)
+        if isinstance(provider, Organization):
+            return self.valid_for(
+                plan__organization=provider, ends_at__gte=ends_at, **kwargs)
+        return self.valid_for(
+            plan__organization__slug=str(provider), ends_at__gte=ends_at,
+            **kwargs)
+
+    def churn_in_period(self, start_period, end_period, **kwargs):
+        return self.valid_for(
+            ends_at__gte=start_period, ends_at__lt=end_period, **kwargs)
+
+    def valid_for(self, **kwargs):
+        """
+        Returns valid (i.e. fully opted-in) subscriptions.
+        """
+        return self.filter(grant_key=None, request_key=None, **kwargs)
 
     def create(self, **kwargs):
         if 'ends_at' not in kwargs:
@@ -3014,6 +3052,9 @@ class TransactionManager(models.Manager):
                 subscription.ends_at = subscription.plan.end_of_period(
                     subscription.ends_at,
                     subscription.plan.period_number(invoiced_item.descr))
+                if subscription.plan.optin_on_request:
+                    subscription.request_key = \
+                        subscription.organization.generate_role_key(user)
                 subscription.save()
                 if (subscription.plan.unlock_event
                     and invoiced_item.dest_amount == 0):

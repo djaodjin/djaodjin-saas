@@ -64,7 +64,7 @@ to a full pipeline as such:
 
 
 Django Views
-============
+------------
 
 .. automodule:: saas.views.billing
 

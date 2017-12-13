@@ -77,8 +77,9 @@ def _valid_role(user, candidates, role):
         else:
             kwargs = {'role_description__slug': role}
         results = Organization.objects.filter(
-            pk__in=get_role_model().objects.filter(organization__in=candidates,
-                user=user, **kwargs).values('organization')).values('slug')
+            pk__in=get_role_model().objects.valid_for(
+                organization__in=candidates, user=user, **kwargs).values(
+                'organization')).values('slug')
     return results
 
 
@@ -180,7 +181,7 @@ def fail_subscription(request, organization=None, plan=None):
         return False
     if organization and not isinstance(organization, Organization):
         organization = get_object_or_404(Organization, slug=organization)
-    subscriptions = Subscription.objects.filter(
+    subscriptions = Subscription.objects.valid_for(
         organization=organization).order_by("ends_at")
     # ``order_by("ends_at")`` will get the subscription that ends the earliest,
     # yet is greater than Today (``subscribed_at``).
@@ -420,7 +421,7 @@ def _fail_self_provider(request, user=None, strength=NORMAL,
         # Organization that are managed by both users
         directs = Organization.objects.accessible_by(user)
         providers = Organization.objects.providers(
-            Subscription.objects.filter(organization__in=directs))
+            Subscription.objects.valid_for(organization__in=directs))
         candidates = list(directs) + list(providers) + [get_broker()]
         return not _has_valid_access(request, candidates,
             strength=strength, roledescription=roledescription)

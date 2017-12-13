@@ -1,5 +1,5 @@
-Flexible Security Framework
-===========================
+Flexible Role-based Access Control
+==================================
 
 Business logic sometimes dictates that a provider has minimal access the billing
 profile of a customer and sometimes a provider must be able to update the credit
@@ -12,7 +12,7 @@ to associate decorators to URLs as dictated by the business requirements.
 
 The security framework defines a generic ``RoleDescription`` whose purpose
 is to define a role a ``User`` has on an ``Organization`` (see
-:doc:`database schema <models>`).
+:doc:`grant and request roles <relations>`).
 
 A organization-agnostic manager role always exists and helps with bootstrapping
 the security policies. In most setups a second role, for example, a contributor

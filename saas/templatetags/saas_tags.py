@@ -185,7 +185,8 @@ def active_with_provider(organization, provider):
     Returns a list of active subscriptions for organization for which provider
     is the owner of the plan.
     """
-    return Subscription.objects.active_with_provider(organization, provider)
+    return Subscription.objects.active_with(provider).filter(
+        organization=organization)
 
 
 @register.filter(needs_autoescape=False)

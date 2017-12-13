@@ -29,9 +29,42 @@ from django.views.generic.base import RedirectView
 from rest_framework.generics import get_object_or_404
 
 from .. import signals
-from ..mixins import SubscriptionMixin
+from ..mixins import RoleMixin, SubscriptionMixin
 
 LOGGER = logging.getLogger(__name__)
+
+
+class RoleGrantAcceptView(RoleMixin, RedirectView):
+
+    pattern_name = 'organization_app'
+
+    @property
+    def role(self):
+        if not hasattr(self, '_role'):
+            self._role = get_object_or_404(self.get_queryset(),
+                grant_key=self.kwargs.get('grant_key'))
+        return self._role
+
+    def get(self, request, *args, **kwargs):
+        obj = self.role
+        grant_key = obj.grant_key
+        obj.grant_key = None
+        obj.save()
+        LOGGER.info("%s accepted role of %s to %s (grant_key=%s)",
+            request.user, obj.role_description, obj.organization,
+            grant_key, extra={
+                'request': request, 'event': 'accept',
+                'user': str(request.user),
+                'organization': str(obj.organization),
+                'role_description': str(obj.role_description),
+                'grant_key': grant_key})
+        signals.role_grant_accepted.send(sender=__name__,
+            role=obj, grant_key=grant_key, request=request)
+        messages.success(request,
+            "%s role to %s accepted." % (
+                obj.role_description.title, obj.organization.printable_name))
+        return super(RoleGrantAcceptView, self).get(
+            request, *args, organization=kwargs.get('organization'))
 
 
 class SubscriptionGrantAcceptView(SubscriptionMixin, RedirectView):

@@ -133,7 +133,7 @@ def recognize_income(until=None, dry_run=False):
     """
     until = datetime_or_now(until)
     LOGGER.info("recognize income until %s ...", until)
-    for subscription in Subscription.objects.filter(created_at__lte=until):
+    for subscription in Subscription.objects.valid_for(created_at__lte=until):
         # We need to pass through subscriptions otherwise we won't recognize
         # income on subscription that were just cancelled.
         try:
@@ -155,7 +155,7 @@ def extend_subscriptions(at_time=None, dry_run=False):
     """
     at_time = datetime_or_now(at_time)
     LOGGER.info("extend subscriptions at %s ...", at_time)
-    for subscription in Subscription.objects.filter(
+    for subscription in Subscription.objects.valid_for(
             auto_renew=True, created_at__lte=at_time, ends_at__gt=at_time):
         lower, upper = subscription.clipped_period_for(at_time)
         LOGGER.debug("at_time (%s) in period [%s, %s[ of %s ending at %s",
@@ -190,7 +190,7 @@ def trigger_expiration_notices(at_time=None, nb_days=15, dry_run=False):
     LOGGER.info(
         "trigger notifications for subscription expiring within [%s,%s[ ...",
         lower, upper)
-    for subscription in Subscription.objects.filter(
+    for subscription in Subscription.objects.valid_for(
             auto_renew=False, ends_at__gte=lower, ends_at__lt=upper,
             plan__auto_renew=True):
         LOGGER.info("trigger expires soon for %s", subscription)

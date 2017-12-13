@@ -52,6 +52,7 @@ class RegisteredQuerysetMixin(ProviderMixin):
         #     ON User.id = RoleSubSet.user_id
         #     WHERE user_id IS NULL;
         return self.model.objects.exclude(
+            # OK to use filter because we want to see all users here.
             pk__in=get_role_model().objects.filter(
             organization__subscription__created_at__lt=self.ends_at).values(
             'user')).order_by('-date_joined', 'last_name').distinct()
