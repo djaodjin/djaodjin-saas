@@ -477,12 +477,12 @@
                     totalAmount += lineAmount;
                 }
             }
-            var grouped = "$";
             var totalAmountText = "" + (totalAmount / 100).toFixed(2);
-            if( self.options.currency_unit === "cad" ) {
-                grouped = "$";
-            } else {
+            if( self.options.currency_unit === "usd"
+                || self.options.currency_unit === "cad" ) {
                 totalAmountText = "$" + totalAmountText;
+            } else if( self.options.currency_unit === "eur" ) {
+                totalAmountText = "\u20ac" + totalAmountText;
             }
             var grouped = "";
             var sep = "";

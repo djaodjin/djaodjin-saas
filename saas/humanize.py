@@ -22,6 +22,8 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+from __future__ import unicode_literals
+
 import datetime, re
 
 from . import settings
@@ -95,6 +97,8 @@ def as_money(value, currency=settings.DEFAULT_UNIT, negative_format="(%s)"):
             unit_prefix = '$'
             if currency != 'usd':
                 unit_suffix = ' %s' % currency
+        elif currency in ['eur']:
+            unit_prefix = '\u20ac'
         else:
             unit_suffix = ' %s' % currency
     grouped = ""

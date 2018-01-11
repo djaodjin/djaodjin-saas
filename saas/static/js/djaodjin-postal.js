@@ -19,15 +19,16 @@
       },
 
       _country: function (country) {
-          var node = this.element;
-          var id = this.element.attr("id");
-          var name = this.element.attr("name");
-          var value = this.element.val();
+          var self = this;
+          var node = self.element;
+          var id = self.element.attr("id");
+          var name = self.element.attr("name");
+          var value = self.element.val();
           var regionSel = "";
-          if( country in this._regions ) {
+          if( country in self._regions ) {
               regionSel = "<select id=\"" + id +
               "\" class=\"form-control\" name=\"" + name + "\">";
-              var localRegions = this._regions[country];
+              var localRegions = self._regions[country];
               for(var key in localRegions ) {
                   regionSel += "<option value=\"" + key + "\"";
                   if(key === value) {
@@ -36,14 +37,16 @@
                   regionSel += ">" + localRegions[key] + "</option>";
               }
               regionSel += "</select>";
-          } else {
+          } else if( !self.element.is("input") ) {
               regionSel = "<input id=\"" + id +
                 "\" class=\"form-control\" name=\"" + name +
                 "\" type=\"text\" value=\"\">";
           }
-          regionSel = $(regionSel);
-          this.element.replaceWith(regionSel);
-          this.element = regionSel;
+          if( regionSel ) {
+              regionSel = $(regionSel);
+              self.element.replaceWith(regionSel);
+              self.element = regionSel;
+          }
       },
 
       _regions: {

@@ -784,10 +784,17 @@ class UserMixin(object):
         user = self.user
         top_accessibles = []
         queryset = Organization.objects.accessible_by(user).filter(
-            is_provider=True, is_active=True)[:self.SHORT_LIST_CUT_OFF + 1]
+            is_active=True).exclude(
+            slug=user.username)[:self.SHORT_LIST_CUT_OFF + 1]
         for organization in queryset:
-            top_accessibles += [{'printable_name': organization.printable_name,
-                'location': reverse('saas_dashboard', args=(organization,))}]
+            if organization.is_provider:
+                location = reverse('saas_dashboard', args=(organization,))
+            else:
+                location = reverse('saas_organization_profile',
+                    args=(organization,))
+            top_accessibles += [{
+                'printable_name': organization.printable_name,
+                'location': location}]
         if len(queryset) > self.SHORT_LIST_CUT_OFF:
             # XXX Always add link to "More..." so a user can request access.
             top_accessibles += [{'printable_name': "More ...",

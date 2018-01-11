@@ -96,7 +96,7 @@ class CreditCardForm(PostalFormMixin, forms.Form):
             label='Street', required=False)
         self.add_postal_region(country=self.initial['country'], required=False)
         self.fields['card_address_zip'] = forms.CharField(
-            label='Zip', required=False)
+            label='Zip/Postal Code', required=False)
         self.add_postal_country(required=False)
         for item in self.initial:
             if item.startswith('cart-'):
@@ -226,7 +226,8 @@ class PlanForm(forms.ModelForm):
     """
     submit_title = 'Update'
 
-    unit = forms.ChoiceField(choices=(('usd', 'usd'), ('cad', 'cad')))
+    unit = forms.ChoiceField(choices=(
+        ('usd', 'usd'), ('cad', 'cad'), ('eur', 'eur')))
     period_amount = forms.DecimalField(max_digits=7, decimal_places=2)
     advance_discount = forms.DecimalField(max_digits=5, decimal_places=2)
 
