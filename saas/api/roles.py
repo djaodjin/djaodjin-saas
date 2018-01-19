@@ -258,7 +258,7 @@ class RoleDescriptionQuerysetMixin(OrganizationMixin):
     lookup_url_kwarg = 'role'
 
     def get_queryset(self):
-        return self.get_role_descriptions()
+        return self.organization.get_role_descriptions()
 
     @staticmethod
     def check_local(instance):
