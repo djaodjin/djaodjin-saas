@@ -1,4 +1,4 @@
-# Copyright (c) 2017, DjaoDjin inc.
+# Copyright (c) 2018, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -67,31 +67,25 @@ class FakeProcessorBackend(object):
 
     @staticmethod
     def create_charge(customer, amount, unit,
-                    broker=None, descr=None, stmt_descr=None):
+                    broker=None, descr=None, stmt_descr=None, created_at=None):
         #pylint: disable=too-many-arguments,unused-argument
-        LOGGER.debug('create_charge(amount=%s, unit=%s, descr=%s)',
-            amount, unit, descr)
-        created_at = datetime_or_now()
+        created_at = datetime_or_now(created_at)
         receipt_info = {
             'last4': "1234",
             'exp_date': created_at + datetime.timedelta(days=365),
             'card_name': "Joe Test"
         }
-        return (generate_random_slug(), created_at, receipt_info)
+        charge_key = "fake_%s" % generate_random_slug()
+        LOGGER.debug("create_charge(amount=%s, unit='%s', descr='%s') => %s",
+            amount, unit, descr, charge_key)
+        return (charge_key, created_at, receipt_info)
 
-    @staticmethod
-    def create_charge_on_card(card, amount, unit,
-                    broker=None, descr=None, stmt_descr=None):
+    def create_charge_on_card(self, card, amount, unit,
+                    broker=None, descr=None, stmt_descr=None, created_at=None):
         #pylint: disable=too-many-arguments,unused-argument
-        LOGGER.debug('create_charge_on_card(amount=%s, unit=%s, descr=%s)',
-            amount, unit, descr)
-        created_at = datetime_or_now()
-        receipt_info = {
-            'last4': "1234",
-            'exp_date': created_at + datetime.timedelta(days=365),
-            'card_name': "Joe Test"
-        }
-        return (generate_random_slug(), created_at, receipt_info)
+        return self.create_charge(card, amount, unit,
+                    broker=broker, descr=descr,
+                    stmt_descr=descr, created_at=created_at)
 
     @staticmethod
     def create_transfer(provider, amount, unit, descr=None):
@@ -110,6 +104,12 @@ class FakeProcessorBackend(object):
         Refund a charge on the associated card.
         """
         pass
+
+    @staticmethod
+    def retrieve_charge(charge):
+        if charge.is_progress:
+            charge.payment_successful()
+        return charge
 
     @staticmethod
     def dispute_fee(amount): #pylint: disable=unused-argument

@@ -1,4 +1,4 @@
-# Copyright (c) 2017, DjaoDjin inc.
+# Copyright (c) 2018, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -277,8 +277,8 @@ class StripeBackend(object):
         return (processor_key, created_at, receipt_info)
 
     def create_charge(self, customer, amount, unit,
-                    broker=None, descr=None, stmt_descr=None):
-        #pylint: disable=too-many-arguments
+                    broker=None, descr=None, stmt_descr=None, created_at=None):
+        #pylint: disable=too-many-arguments,unused-argument
         """
         Create a charge on the default card associated to the customer.
 
@@ -289,8 +289,8 @@ class StripeBackend(object):
             customer=customer.processor_card_key)
 
     def create_charge_on_card(self, card, amount, unit,
-                    broker=None, descr=None, stmt_descr=None):
-        #pylint: disable=too-many-arguments
+                    broker=None, descr=None, stmt_descr=None, created_at=None):
+        #pylint: disable=too-many-arguments,unused-argument
         """
         Create a charge on a specified card.
 

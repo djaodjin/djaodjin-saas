@@ -1,6 +1,6 @@
 #pylint: disable=too-many-lines
 
-# Copyright (c) 2017, DjaoDjin inc.
+# Copyright (c) 2018, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -1184,8 +1184,10 @@ class ChargeManager(models.Manager):
         return charge
 
     def charge_card(self, customer, transactions, descr=None,
-                    user=None, token=None, remember_card=True):
+                    user=None, token=None, remember_card=True,
+                    created_at=None):
         #pylint: disable=too-many-arguments
+        created_at = datetime_or_now(created_at)
         charge = None
         balance = sum_dest_amount(transactions)
         amount = balance['amount']
@@ -1197,17 +1199,19 @@ class ChargeManager(models.Manager):
             # provider keys to record the charge.
             charge = self.charge_card_one_processor(
                 customer, invoice_items, descr=descr,
-                user=user, token=token, remember_card=remember_card)
+                user=user, token=token, remember_card=remember_card,
+                created_at=created_at)
         return charge
 
     def charge_card_one_processor(self, customer, transactions, descr=None,
-                    user=None, token=None, remember_card=True):
-        #pylint: disable=too-many-arguments,too-many-locals
+                    user=None, token=None, remember_card=True, created_at=None):
         """
         Create a charge on a customer card.
 
         Be careful, Stripe will not processed charges less than 50 cents.
         """
+        #pylint: disable=too-many-arguments,too-many-locals
+        created_at = datetime_or_now(created_at)
         balance = sum_dest_amount(transactions)
         amount = balance['amount']
         unit = balance['unit']
@@ -1232,11 +1236,13 @@ class ChargeManager(models.Manager):
             if customer.processor_card_key:
                 (processor_charge_id, created_at,
                  receipt_info) = processor_backend.create_charge(
-                     customer, amount, unit, broker=broker, descr=descr)
+                     customer, amount, unit, broker=broker, descr=descr,
+                     created_at=created_at)
             elif token:
                 (processor_charge_id, created_at,
                  receipt_info) = processor_backend.create_charge_on_card(
-                     token, amount, unit, broker=broker, descr=descr)
+                     token, amount, unit, broker=broker, descr=descr,
+                     created_at=created_at)
             else:
                 raise ProcessorError("%s is not connected to a processor"
                     " backend customer and no token passed." % customer)
@@ -1302,7 +1308,7 @@ class Charge(models.Model):
 
     objects = ChargeManager()
 
-    created_at = models.DateTimeField(auto_now_add=True)
+    created_at = models.DateTimeField()
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL, db_column='user_id', null=True)
     amount = models.PositiveIntegerField(default=0, help_text="Amount in cents")

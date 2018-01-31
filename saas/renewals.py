@@ -1,4 +1,4 @@
-# Copyright (c) 2017, DjaoDjin inc.
+# Copyright (c) 2018, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -241,7 +241,7 @@ def create_charges_for_balance(until=None, dry_run=False):
                     try:
                         if not dry_run:
                             Charge.objects.charge_card(
-                                organization, invoiceables)
+                                organization, invoiceables, created_at=until)
                     except:
                         raise
             elif invoiceable_amount > 0:

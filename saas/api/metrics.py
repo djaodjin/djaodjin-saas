@@ -57,7 +57,7 @@ class BalancesAPIView(ProviderMixin, APIView):
             "unit": "$",
             "table": [
                 {
-                    "key": "Income"
+                    "key": "Income",
                     "values": [
                         ["2014-09-01T00:00:00Z", 0],
                         ["2014-10-01T00:00:00Z", 1532624],
@@ -75,7 +75,7 @@ class BalancesAPIView(ProviderMixin, APIView):
                     ],
                 },
                 {
-                    "key": "Backlog"
+                    "key": "Backlog",
                     "values": [
                         ["2014-09-01T00:00:00Z", 1712624],
                         ["2014-10-01T00:00:00Z", 3698340],
@@ -93,7 +93,7 @@ class BalancesAPIView(ProviderMixin, APIView):
                     ],
                 },
                 {
-                    "key": "Receivable"
+                    "key": "Receivable",
                     "values": [
                         ["2014-09-01T00:00:00Z", 0],
                         ["2014-10-01T00:00:00Z", 0],
