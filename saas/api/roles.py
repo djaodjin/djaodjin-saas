@@ -150,12 +150,13 @@ class OptinBase(object):
         with transaction.atomic():
             if organizations.count() == 0:
                 if not request.GET.get('force', False):
-                    raise Http404("%s not found"
-                        % serializer.validated_data['slug'])
-                email = serializer.validated_data['email']
-                full_name = serializer.validated_data.get('full_name', '')
+                    raise Http404("%s not found" % slug)
+                email = serializer.validated_data.get('email',
+                    organization_data.get('email', None))
+                full_name = serializer.validated_data.get('full_name',
+                    organization_data.get('full_name', None))
                 if not full_name:
-                    full_name = serializer.validated_data['slug']
+                    full_name = slug
                 organization = self.organization_model.objects.create(
                     full_name=full_name, email=email)
                 user_model = get_user_model()
