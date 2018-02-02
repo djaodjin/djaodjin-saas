@@ -236,7 +236,7 @@ class StripeBackend(object):
 
     def _create_charge(self, amount, unit,
             broker=None, descr=None, stmt_descr=None,
-            customer=None, card=None):
+            customer=None, card=None, created_at=None):
         #pylint: disable=too-many-arguments
         assert customer is not None or card is not None
         kwargs = self._prepare_charge_request(broker)
@@ -258,7 +258,14 @@ class StripeBackend(object):
                 description=descr, statement_descriptor=stmt_descr[:15],
                 **kwargs)
             processor_key = processor_charge.id
-            created_at = utctimestamp_to_datetime(processor_charge.created)
+            if created_at is None:
+                # Implementation Note:
+                #  We don't blindly use the `created` field from the Stripe
+                #  Charge object because it seems to have dropped
+                #  the microseconds accuracy recently. That's a problem
+                #  whe `Transaction` are ordered and order->charge->receipt
+                #  pipeline is script driven.
+                created_at = utctimestamp_to_datetime(processor_charge.created)
             receipt_info = {
                 'last4': processor_charge.source.last4,
                 'exp_date': datetime.date(processor_charge.source.exp_year,
@@ -278,7 +285,7 @@ class StripeBackend(object):
 
     def create_charge(self, customer, amount, unit,
                     broker=None, descr=None, stmt_descr=None, created_at=None):
-        #pylint: disable=too-many-arguments,unused-argument
+        #pylint: disable=too-many-arguments
         """
         Create a charge on the default card associated to the customer.
 
@@ -286,11 +293,11 @@ class StripeBackend(object):
         """
         return self._create_charge(amount, unit,
             broker=broker, descr=descr, stmt_descr=stmt_descr,
-            customer=customer.processor_card_key)
+            customer=customer.processor_card_key, created_at=created_at)
 
     def create_charge_on_card(self, card, amount, unit,
                     broker=None, descr=None, stmt_descr=None, created_at=None):
-        #pylint: disable=too-many-arguments,unused-argument
+        #pylint: disable=too-many-arguments
         """
         Create a charge on a specified card.
 
@@ -298,7 +305,7 @@ class StripeBackend(object):
         """
         return self._create_charge(amount, unit,
             broker=broker, descr=descr, stmt_descr=stmt_descr,
-            card=card)
+            card=card, created_at=created_at)
 
     def create_transfer(self, provider, amount, currency, descr=None):
         """
