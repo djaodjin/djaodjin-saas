@@ -110,7 +110,7 @@ a provider through a processor.
 .. autoclass:: saas.api.billing.CartItemDestroyAPIView
 
 
-.. http:delete:: /api/cart/<plan>/upload/
+.. http:delete:: /api/cart/:plan/upload/
 
 .. autoclass:: saas.api.billing.CartItemUploadAPIView
 
@@ -133,11 +133,16 @@ These API end points manage the subscription logic, payments excluded.
 .. autoclass:: saas.api.plans.PlanCreateAPIView
 
 
-.. http:get:: /api/profile/:organization/plans/<plan>/
-.. http:put:: /api/profile/:organization/plans/<plan>/
-.. http:delete:: /api/profile/:organization/plans/<plan>/
+.. http:get:: /api/profile/:organization/plans/:plan/
+.. http:put:: /api/profile/:organization/plans/:plan/
+.. http:delete:: /api/profile/:organization/plans/:plan/
 
 .. autoclass:: saas.api.plans.PlanResourceView
+
+.. http:get:: /api/profile/:organization/plans/:plan/subscriptions/
+.. http:post:: /api/profile/:organization/plans/:plan/subscriptions/
+
+.. autoclass:: saas.api.subscriptions.PlanSubscriptionsAPIView
 
 
 .. http:get::  /api/profile/:organization/
