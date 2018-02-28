@@ -1,4 +1,4 @@
-# Copyright (c) 2017, DjaoDjin inc.
+# Copyright (c) 2018, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -26,4 +26,4 @@
 PEP 386-compliant version number for the saas django app.
 """
 
-__version__ = '0.3.1-dev'
+__version__ = '0.3.1'

@@ -15,7 +15,7 @@ Development
 After cloning the repository, create a virtualenv environment and install
 the prerequisites:
 
-    $ virtualenv-2.7 _installTop_
+    $ virtualenv _installTop_
     $ source _installTop_/bin/activate
     $ pip install -r testsite/requirements.txt
 
