@@ -108,7 +108,7 @@
         </tbody>
       </table>
       <div>
-        <pagination ng-model="currentPage"
+        <ul uib-pagination ng-model="currentPage"
                     total-items="{{tab.slug}}.count"
                     items-per-page="itemsPerPage"
                     boundary-links="true"
@@ -118,7 +118,7 @@
                     first-text="&laquo;"
                     last-text="&raquo;"
                     ng-change="pageChanged({{tab.slug}})"
-                    ng-show="{{tab.slug}}.$resolved && {{tab.slug}}.results.length > 0"></pagination>
+                    ng-show="{{tab.slug}}.$resolved && {{tab.slug}}.results.length > 0"></ul>
       </div>
     </div>
     {% endfor %}

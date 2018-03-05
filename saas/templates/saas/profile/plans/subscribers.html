@@ -54,7 +54,7 @@
         </tbody>
       </table>
       <div>
-        <pagination ng-model="currentPage"
+        <ul uib-pagination ng-model="currentPage"
                     total-items="subscribers.count"
                     items-per-page="itemsPerPage"
                     boundary-links="true"
@@ -64,7 +64,7 @@
                     first-text="&laquo;"
                     last-text="&raquo;"
                     ng-change="pageChanged(subscribers)"
-                    ng-show="subscribers.$resolved && subscribers.results.length > 0"></pagination>
+                    ng-show="subscribers.$resolved && subscribers.results.length > 0"></ul>
       </div>
     </div>
   </div>
