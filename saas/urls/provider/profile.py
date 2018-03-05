@@ -34,9 +34,12 @@ from ...views.download import (ActiveSubscriptionDownloadView,
     ChurnedSubscriptionDownloadView)
 from ...views.optins import SubscriptionRequestAcceptView
 from ...views.plans import PlanCreateView, PlanUpdateView
-from ...views.profile import SubscriberListView
+from ...views.profile import SubscriberListView, PlanSubscribersListView
 
 urlpatterns = [
+    url(r'^profile/(?P<organization>%s)/plans/(?P<plan>%s)/subscribers/'
+        % (ACCT_REGEX, ACCT_REGEX),
+        PlanSubscribersListView.as_view(), name='saas_plan_subscribers'),
     url(r'^profile/(?P<organization>%s)/plans/new/' % ACCT_REGEX,
         PlanCreateView.as_view(), name='saas_plan_new'),
     url(r'^profile/(?P<organization>%s)/plans/(?P<plan>%s)/'
