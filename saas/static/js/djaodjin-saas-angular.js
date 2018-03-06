@@ -622,95 +622,18 @@ transactionControllers.controller("userRoleDescriptionCtrl",
 }]);
 
 subscriptionControllers.controller("planSubscribersListCtrl",
-    ["$scope", "$http", "$timeout", "settings",
-    function($scope, $http, $timeout, settings) {
+    ["$scope", "$controller", "$http", "$timeout", "settings",
+    function($scope, $controller, $http, $timeout, settings) {
     "use strict";
-    var defaultSortByField = "created_at";
-    $scope.dir = {};
-    $scope.dir[defaultSortByField] = "desc";
-    $scope.params = {o: defaultSortByField, ot: $scope.dir[defaultSortByField]};
-
-    $scope.filterExpr = "";
-    $scope.itemsPerPage = settings.itemsPerPage; // Must match server-side
-    $scope.maxSize = 5;               // Total number of direct pages link
-    $scope.currentPage = 1;
-
-    $scope.ends_at = moment().endOf("day").toDate();
+    $controller('subscriptionListCtrl', {
+        $scope: $scope, $http: $http, $timeout:$timeout,
+        settings: settings});
 
     $scope.subscribers = {
         $resolved: false, count: 0,
         location: settings.urls.saas_api_plan_subscribers};
 
-    $scope.query = function(queryset) {
-        queryset.$resolved = false;
-        queryset.results = [];
-        $http.get(queryset.location, {params: $scope.params}).then(
-        function success(resp) {
-            queryset.results = resp.data.results;
-                        console.log(queryset.results)
-            queryset.count = resp.data.count;
-            queryset.$resolved = true;
-        });
-    };
-
-    $scope.filterList = function(regex) {
-        if( regex ) {
-            if ("page" in $scope.params){
-                delete $scope.params.page;
-            }
-            $scope.params.q = regex;
-        } else {
-            delete $scope.params.q;
-        }
-        $scope.query($scope.subscribers);
-    };
-
-    $scope.pageChanged = function(queryset) {
-        if( $scope.currentPage > 1 ) {
-            $scope.params.page = $scope.currentPage;
-        } else {
-            delete $scope.params.page;
-        }
-        $scope.query(queryset);
-    };
-
-    // Generate a relative date for an instance with a ``created_at`` field.
-    $scope.relativeDate = function(at_time) {
-        var cutOff = new Date($scope.ends_at);
-        var dateTime = new Date(at_time);
-        if( dateTime <= cutOff ) {
-            return moment.duration(cutOff - dateTime).humanize() + " ago";
-        } else {
-            return moment.duration(dateTime - cutOff).humanize() + " left";
-        }
-    };
-
-    $scope.sortBy = function(fieldName) {
-        if( $scope.dir[fieldName] === "asc" ) {
-            $scope.dir = {};
-            $scope.dir[fieldName] = "desc";
-        } else {
-            $scope.dir = {};
-            $scope.dir[fieldName] = "asc";
-        }
-        $scope.params.o = fieldName;
-        $scope.params.ot = $scope.dir[fieldName];
-        $scope.currentPage = 1;
-        // pageChanged only called on click?
-        delete $scope.paramspage;
-        $scope.query($scope.subscribers);
-    };
-
-    // Returns ends-soon when the subscription is about to end.
-    $scope.endsSoon = function(subscription) {
-        var cutOff = new Date($scope.ends_at);
-        cutOff.setDate($scope.ends_at.getDate() + 5);
-        var subEndsAt = new Date(subscription.ends_at);
-        if( subEndsAt < cutOff ) {
-            return "ends-soon";
-        }
-        return "";
-    };
+    $scope.active = $scope.subscribers;
 
     $scope.prefetch = function() {
       $scope.query($scope.subscribers);
