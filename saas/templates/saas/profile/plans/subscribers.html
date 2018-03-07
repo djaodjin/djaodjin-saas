@@ -1,0 +1,72 @@
+{% extends "saas/base_dashboard.html" %}
+
+{% block saas_content %}
+<section id="subscribers" ng-app="saasApp" ng-cloak>
+  <div ng-controller="planSubscribersListCtrl" ng-init="prefetch()">
+    <div>
+      <h2>{{plan}} plan subscribers</h2></a>
+      <div>
+        <label>Filter</label> <input type="text" ng-model="filterExpr" ng-change="filterList(filterExpr)" />
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>Subscriber<button ng-click="sortBy('organization')"></button></th>
+            <th>Plan<button ng-click="sortBy('plan')"></button></th>
+            <th>Since<button ng-click="sortBy('created_at')"></button></th>
+            <th>Ends At<button ng-click="sortBy('ends_at')"></button></th>
+            <th>Description</th>
+          </tr>
+        </thead>
+        <tbody ng-hide="subscribers.$resolved">
+          <tr>
+            <td colspan="5">
+              <h4>Loading ...</h4>
+            </td>
+          </tr>
+        </tbody>
+        <tbody class="has-no-results" ng-show="subscribers.$resolved && subscribers.results.length == 0">
+          <tr>
+            <td colspan="5">
+              <h4>No subscribers<span ng-show="filterExpr"> with filter: '[[filterExpr]]'</span></h4>
+            </td>
+          </tr>
+        </tbody>
+        <tbody class="has-results" ng-repeat="entry in subscribers.results" ng-show="subscribers.$resolved && subscribers.results.length > 0">
+          <tr ng-class="endsSoon(entry)">
+            <td>
+              <a id="[[entry.organization.slug]]" href="{{urls.organization.profile_base}}[[entry.organization.slug]]/subscriptions/">[[entry.organization.printable_name]]</a>
+            </td>
+            <td>[[entry.plan.title]]</td>
+            <td>[[entry.created_at | date: mediumDate]]</td>
+            <td>[[entry.ends_at |date: mediumDate]]</td>
+            <td id="[[entry.id]]">
+              <span ng-hide="entry.editDescription"
+                    ng-click="editDescription($event, entry)">[[entry.description]]
+                <input ng-show="entry.editDescription" type="text"
+                       ng-blur="saveDescription($event, entry)"
+                       ng-model="entry.description"
+                       tooltip="Edit description here"
+                       tooltip-trigger="focus"
+                       tooltip-placement="top">
+            </td>
+          </tr>
+        </tbody>
+      </table>
+      <div>
+        <ul uib-pagination ng-model="currentPage"
+                    total-items="subscribers.count"
+                    items-per-page="itemsPerPage"
+                    boundary-links="true"
+                    max-size="maxSize"
+                    previous-text="&lsaquo;"
+                    next-text="&rsaquo;"
+                    first-text="&laquo;"
+                    last-text="&raquo;"
+                    ng-change="pageChanged(subscribers)"
+                    ng-show="subscribers.$resolved && subscribers.results.length > 0"></ul>
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}

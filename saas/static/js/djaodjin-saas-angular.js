@@ -621,6 +621,25 @@ transactionControllers.controller("userRoleDescriptionCtrl",
     }
 }]);
 
+subscriptionControllers.controller("planSubscribersListCtrl",
+    ["$scope", "$controller", "$http", "$timeout", "settings",
+    function($scope, $controller, $http, $timeout, settings) {
+    "use strict";
+    $controller('subscriptionListCtrl', {
+        $scope: $scope, $http: $http, $timeout:$timeout,
+        settings: settings});
+
+    $scope.subscribers = {
+        $resolved: false, count: 0,
+        location: settings.urls.saas_api_plan_subscribers};
+
+    $scope.active = $scope.subscribers;
+
+    $scope.prefetch = function() {
+      $scope.query($scope.subscribers);
+    };
+}]);
+
 
 // XXX Currently most of the functionality of subscriberListCtrl is actually
 // included here.
