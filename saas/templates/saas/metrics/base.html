@@ -12,11 +12,30 @@
       <div id="metrics-table">
         <div class="date-chooser">
           <span>To</span>
-          <span class="date" datepicker-popup="[[format]]" ng-model="ends_at" is-open="opened" datepicker-options="dateOptions" ng-required="true" close-text="Close" datepicker-mode="'month'" max-date="maxDate" show-button-bar="false" data-trip data-trip data-trip-index="2" data-trip-content="<p>Look back through time.</p>" data-trip-position="s">[[ends_at | date : mediumDate]]</span>
+          <span
+            class="date"
+            uib-datepicker-popup="[[format]]"
+            ng-model="ends_at"
+            is-open="opened"
+            datepicker-options="dateOptions"
+            ng-required="true"
+            close-text="Close"
+            datepicker-mode="'month'"
+            max-date="maxDate"
+            show-button-bar="false"
+            data-trip
+            data-trip-index="2"
+            data-trip-content="<p>Look back through time.</p>"
+            data-trip-position="s">[[ends_at | date : mediumDate]]</span>
           <span>
             <button type="button" ng-click="open($event, 'ends_at')">Pick date</button>
           </span>
         </div>
+        <select>
+            <option value="local">Local</option>
+            <option value="utc">utc</option>
+        <select>
+
         <div ng-repeat="table in tables">
           <a href="#[[table.key]]"><h2>[[table.key]]</h2></a>
           <div id="metrics-chart">
@@ -25,7 +44,7 @@
           <table>
           <tr>
             <td></td>
-            <td ng-repeat="col in in table.data[0].values">[[col[0] | monthHeading]]</td>
+            <td ng-repeat="col in table.data[0].values">[[col[0] | monthHeading]]</td>
           </tr>
           <tr ng-repeat="row in table.data">
             <td ng-if="row.location"><span>[[row.is_active ? 'Active': 'Inactive' ]]</span> <a id="[[row.key]]" href="[[row.location]]">[[row.key]]</a></td>
