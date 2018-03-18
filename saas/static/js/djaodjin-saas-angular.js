@@ -1015,6 +1015,17 @@ metricsControllers.controller("metricsCtrl",
         minMode: "month"
     };
     $scope.opened = false;
+    $scope.timezone = 'local';
+
+    function convertDataTimeToLocal(data){
+        return data.map(function(f){
+            return f.values.map(function(v){
+                // localizing the period to local browser time
+                v[0] = moment(v[0]).format();
+                return v;
+            });
+        });
+    }
 
     $scope.getTable = function(key) {
         for( var i = 0; i < $scope.tables.length; ++i ) {
@@ -1047,14 +1058,13 @@ metricsControllers.controller("metricsCtrl",
 
             queryset.unit = unit;
             queryset.scale = scale;
-            queryset.data = resp.data.table.map(function(f){
-                return f.values.map(function(v){
-                    // localizing the period to local browser time
-                    v[0] = moment(v[0]).format()
-                    return v
-                });
-            });
-
+            if($scope.timezone === 'local'){
+                queryset.data = convertDataTimeToLocal(resp.data.table)
+            }
+            else
+            {
+                queryset.data = resp.data.table;
+            }
             // manual binding - trigger updates to the graph
             if( queryset.key === "balances") {
                 // XXX Hard-coded.
@@ -1090,6 +1100,12 @@ metricsControllers.controller("metricsCtrl",
             $scope.refreshTable();
         }
     }, true);
+
+    $scope.$watch("timezone", function(newVal, oldVal, scope) {
+        if (newVal !== oldVal) {
+            $scope.refreshTable();
+        }
+    });
 
     $scope.refreshTable();
 

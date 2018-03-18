@@ -31,9 +31,9 @@
             <button type="button" ng-click="open($event, 'ends_at')">Pick date</button>
           </span>
         </div>
-        <select>
+        <select ng-model="timezone">
             <option value="local">Local</option>
-            <option value="utc">utc</option>
+            <option value="utc">UTC</option>
         <select>
 
         <div ng-repeat="table in tables">
