@@ -1032,8 +1032,9 @@ metricsControllers.controller("metricsCtrl",
     };
 
     $scope.query = function(queryset) {
+        var d = moment($scope.ends_at).add(1, 'day').startOf('day').format()
         $http.get(
-            queryset.location, {params: {"ends_at": $scope.ends_at}}).then(
+            queryset.location, {params: {"ends_at": d}}).then(
         function success(resp) {
             var unit = resp.data.unit;
             var scale = resp.data.scale;
@@ -1046,7 +1047,13 @@ metricsControllers.controller("metricsCtrl",
 
             queryset.unit = unit;
             queryset.scale = scale;
-            queryset.data = resp.data.table;
+            queryset.data = resp.data.table.map(function(f){
+                return f.values.map(function(v){
+                    // localizing the period to local browser time
+                    v[0] = moment(v[0]).format()
+                    return v
+                });
+            });
 
             // manual binding - trigger updates to the graph
             if( queryset.key === "balances") {
@@ -1074,7 +1081,7 @@ metricsControllers.controller("metricsCtrl",
     $scope.open = function($event) {
         $event.preventDefault();
         $event.stopPropagation();
-        $scope.opened = true;
+        $scope.opened = !$scope.opened;
     };
 
     $scope.$watch("ends_at", function(newVal, oldVal, scope) {
