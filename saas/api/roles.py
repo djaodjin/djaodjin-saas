@@ -119,7 +119,7 @@ class OptinBase(object):
 
     organization_model = get_organization_model()
 
-    def add_relations(self, organizations, user, reason=None):
+    def add_relations(self, organizations, user, reason=None, invite=False):
         #pylint:disable=no-self-use
         created = False
         for organization in organizations:
@@ -147,6 +147,7 @@ class OptinBase(object):
                     email=email)
             else:
                 organizations = self.organization_model.objects.none()
+        invite = False
         with transaction.atomic():
             if organizations.count() == 0:
                 if not request.GET.get('force', False):
@@ -166,9 +167,10 @@ class OptinBase(object):
                     manager = _create_user(email, email=email)
                 organization.add_manager(manager, request_user=request.user)
                 organizations = [organization]
+                invite = True
 
             created = self.add_relations(
-                organizations, user, reason=reason)
+                organizations, user, reason=reason, invite=invite)
 
         if created:
             resp_status = status.HTTP_201_CREATED

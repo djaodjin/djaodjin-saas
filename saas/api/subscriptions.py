@@ -1,4 +1,4 @@
-# Copyright (c) 2017, DjaoDjin inc.
+# Copyright (c) 2018, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -44,10 +44,12 @@ LOGGER = logging.getLogger(__name__)
 class SubscriptionCreateSerializer(serializers.ModelSerializer):
 
     organization = OrganizationSerializer()
+    message = serializers.CharField(
+        max_length=1024, required=False, allow_null=True)
 
     class Meta:
         model = Subscription
-        fields = ('organization',)
+        fields = ('organization', 'message')
 
 
 class SubscriptionBaseListAPIView(SubscriptionMixin, ListCreateAPIView):
@@ -250,9 +252,11 @@ class PlanSubscriptionsAPIView(SubscriptionSmartListMixin,
     """
     serializer_class = SubscriptionSerializer
 
-    def add_relations(self, organizations, user, reason=None):
+    def add_relations(self, organizations, user, reason=None, invite=False):
         subscriptions = []
         for organization in organizations:
+            # Be careful that `self.plan` must exist otherwise the API will
+            # return a 404.
             if Subscription.objects.active_for(organization).filter(
                     plan=self.plan).exists():
                 created = False
@@ -267,7 +271,8 @@ class PlanSubscriptionsAPIView(SubscriptionSmartListMixin,
                 subscriptions += [subscription]
         for subscription in subscriptions:
             signals.subscription_grant_created.send(sender=__name__,
-                subscription=subscription, reason=reason, request=self.request)
+                subscription=subscription, reason=reason, invite=invite,
+                request=self.request)
         return created
 
     def create(self, request, *args, **kwargs): #pylint:disable=unused-argument

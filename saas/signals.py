@@ -45,7 +45,7 @@ role_grant_accepted = Signal(providing_args=[
 subscription_grant_accepted = Signal(providing_args=[
     "subscription", "grant_key"])
 subscription_grant_created = Signal(providing_args=[
-    "subscription", "reason"])
+    "subscription", "reason", "invite"])
 subscription_request_accepted = Signal(providing_args=[
     "subscription", "request_key"])
 subscription_request_created = Signal(providing_args=[
