@@ -1019,10 +1019,11 @@ metricsControllers.controller("metricsCtrl",
 
     function convertDataTimeToLocal(data){
         return data.map(function(f){
-            return f.values.map(function(v){
+            var values = f.values.map(function(v){
                 // localizing the period to local browser time
                 return [moment(v[0]).format(), v[1]];
             });
+            return {values: values, key: f.key}
         });
     }
 
@@ -1058,20 +1059,21 @@ metricsControllers.controller("metricsCtrl",
             queryset.unit = unit;
             queryset.scale = scale;
             if($scope.timezone === 'local'){
-                queryset.data = convertDataTimeToLocal(resp.data.table)
+                var values = convertDataTimeToLocal(resp.data.table)
             }
             else
             {
-                queryset.data = resp.data.table;
+                var values = resp.data.table;
             }
+            queryset.data = values;
             // manual binding - trigger updates to the graph
             if( queryset.key === "balances") {
                 // XXX Hard-coded.
                 updateBarChart("#metrics-chart",
-                               resp.data.table, unit, scale, extra);
+                               values, unit, scale, extra);
             } else {
                 updateChart("#metrics-chart",
-                            resp.data.table, unit, scale, extra);
+                            values, unit, scale, extra);
             }
         });
     };
