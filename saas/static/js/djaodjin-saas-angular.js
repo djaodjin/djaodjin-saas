@@ -1021,8 +1021,7 @@ metricsControllers.controller("metricsCtrl",
         return data.map(function(f){
             return f.values.map(function(v){
                 // localizing the period to local browser time
-                v[0] = moment(v[0]).format();
-                return v;
+                return [moment(v[0]).format(), v[1]];
             });
         });
     }
