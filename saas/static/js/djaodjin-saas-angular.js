@@ -25,6 +25,15 @@ angular.module("saasFilters", [])
         var current = moment();
         return function(datestr) {
             var date = moment(datestr);
+            // shift each period by 1 month unless this is
+            // current month and not a first day of the month
+            if(!(date.isSame(current, 'year')
+                && date.isSame(current, 'month')
+                && date.date() != 1)
+            )
+            {
+                date.subtract(1, 'months');
+            }
             var heading = date.format("MMM'YY");
             if( date > current ) {
                 // add incomplete month marker
