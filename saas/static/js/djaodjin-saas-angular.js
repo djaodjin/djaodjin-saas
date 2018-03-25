@@ -25,6 +25,15 @@ angular.module("saasFilters", [])
         var current = moment();
         return function(datestr) {
             var date = moment(datestr);
+            // shift each period by 1 month unless this is
+            // current month and not a first day of the month
+            if(!(date.isSame(current, 'year')
+                && date.isSame(current, 'month')
+                && date.date() != 1)
+            )
+            {
+                date.subtract(1, 'months');
+            }
             var heading = date.format("MMM'YY");
             if( date > current ) {
                 // add incomplete month marker
@@ -1015,6 +1024,17 @@ metricsControllers.controller("metricsCtrl",
         minMode: "month"
     };
     $scope.opened = false;
+    $scope.timezone = 'local';
+
+    function convertDataTimeToLocal(data){
+        return data.map(function(f){
+            var values = f.values.map(function(v){
+                // localizing the period to local browser time
+                return [moment(v[0]).format(), v[1]];
+            });
+            return {values: values, key: f.key}
+        });
+    }
 
     $scope.getTable = function(key) {
         for( var i = 0; i < $scope.tables.length; ++i ) {
@@ -1032,8 +1052,10 @@ metricsControllers.controller("metricsCtrl",
     };
 
     $scope.query = function(queryset) {
+        var d = moment($scope.ends_at).add(1, 'day').startOf('day').format()
+        var tz = moment.tz.guess();
         $http.get(
-            queryset.location, {params: {"ends_at": $scope.ends_at}}).then(
+            queryset.location, {params: {"ends_at": d, "timezone": tz}}).then(
         function success(resp) {
             var unit = resp.data.unit;
             var scale = resp.data.scale;
@@ -1046,16 +1068,22 @@ metricsControllers.controller("metricsCtrl",
 
             queryset.unit = unit;
             queryset.scale = scale;
-            queryset.data = resp.data.table;
-
+            if($scope.timezone === 'local'){
+                var values = convertDataTimeToLocal(resp.data.table)
+            }
+            else
+            {
+                var values = resp.data.table;
+            }
+            queryset.data = values;
             // manual binding - trigger updates to the graph
             if( queryset.key === "balances") {
                 // XXX Hard-coded.
                 updateBarChart("#metrics-chart",
-                               resp.data.table, unit, scale, extra);
+                               values, unit, scale, extra);
             } else {
                 updateChart("#metrics-chart",
-                            resp.data.table, unit, scale, extra);
+                            values, unit, scale, extra);
             }
         });
     };
@@ -1074,7 +1102,7 @@ metricsControllers.controller("metricsCtrl",
     $scope.open = function($event) {
         $event.preventDefault();
         $event.stopPropagation();
-        $scope.opened = true;
+        $scope.opened = !$scope.opened;
     };
 
     $scope.$watch("ends_at", function(newVal, oldVal, scope) {
@@ -1083,6 +1111,12 @@ metricsControllers.controller("metricsCtrl",
             $scope.refreshTable();
         }
     }, true);
+
+    $scope.$watch("timezone", function(newVal, oldVal, scope) {
+        if (newVal !== oldVal) {
+            $scope.refreshTable();
+        }
+    });
 
     $scope.refreshTable();
 

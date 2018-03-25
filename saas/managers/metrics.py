@@ -31,21 +31,37 @@ from django.utils import six
 from django.utils.timezone import utc
 
 from ..models import Plan, Subscription, Transaction
-from ..utils import datetime_or_now
+from ..utils import datetime_or_now, parse_tz
 
 
-def month_periods(nb_months=12, from_date=None, step_months=1):
+def month_periods(nb_months=12, from_date=None, step_months=1, convert_to_utc=False, tz = None):
     """constructs a list of (nb_months + 1) dates in the past that fall
     on the first of each month until *from_date* which is the last entry
     of the list returned."""
+
+    def _handle_tz(dt, tz_ob, orig_tz):
+        if tz_ob:
+            # adding timezone info
+            # + accounting for DST
+            loc = tz_ob.normalize(tz_ob.localize(dt))
+        else:
+            # adding offset info
+            loc = last.replace(tzinfo=orig_tz)
+        return loc
+
     dates = []
     from_date = datetime_or_now(from_date)
+    orig_tz = from_date.tzinfo
+    tz_ob = parse_tz(tz)
+    if tz_ob:
+        # no need to normalize here
+        from_date = from_date.astimezone(tz_ob)
     dates.append(from_date)
-    last = datetime(
-        day=from_date.day, month=from_date.month, year=from_date.year,
-        tzinfo=utc)
+    last = datetime(day=from_date.day, month=from_date.month, year=from_date.year)
+    last = _handle_tz(last, tz_ob, orig_tz)
     if last.day != 1:
-        last = datetime(day=1, month=last.month, year=last.year, tzinfo=utc)
+        last = datetime(day=1, month=last.month, year=last.year)
+        last = _handle_tz(last, tz_ob, orig_tz)
         dates.append(last)
         nb_months = nb_months - 1
     for _ in range(0, nb_months, step_months):
@@ -60,20 +76,23 @@ def month_periods(nb_months=12, from_date=None, step_months=1):
                 month = 12
             else:
                 month = month % 12
-        last = datetime(day=1, month=month, year=year, tzinfo=utc)
+        last = datetime(day=1, month=month, year=year)
+        last = _handle_tz(last, tz_ob, orig_tz)
         dates.append(last)
     dates.reverse()
+    if convert_to_utc:
+        dates = [date.astimezone(utc) for date in dates]
+
     return dates
 
-
 def aggregate_monthly(organization, account,
-                      from_date=None, orig='orig', dest='dest', **kwargs):
+                      from_date=None, tz=None, orig='orig', dest='dest', **kwargs):
     # pylint: disable=too-many-locals
     counts = []
     amounts = []
     # We want to be able to compare *last* to *from_date* and not get django
     # warnings because timezones are not specified.
-    dates = month_periods(13, from_date)
+    dates = month_periods(13, from_date, convert_to_utc=True, tz=tz)
     period_start = dates[1]
     for period_end in dates[2:]:
         # A bit ugly but it does the job ...
@@ -94,7 +113,7 @@ def aggregate_monthly(organization, account,
 
 
 def aggregate_monthly_churn(organization, account, interval,
-                            from_date=None, orig='orig', dest='dest'):
+                            from_date=None, tz=None, orig='orig', dest='dest'):
     """
     Returns a table of records over a period of 12 months *from_date*.
     """
@@ -107,7 +126,7 @@ def aggregate_monthly_churn(organization, account, interval,
     churn_receivables = []
     # We want to be able to compare *last* to *from_date* and not get django
     # warnings because timezones are not specified.
-    dates = month_periods(13, from_date)
+    dates = month_periods(13, from_date, convert_to_utc=True, tz=tz)
     trail_period_start = dates[0]
     period_start = dates[1]
     for period_end in dates[2:]:
@@ -200,7 +219,7 @@ def aggregate_monthly_churn(organization, account, interval,
 
 
 def aggregate_monthly_transactions(organization, account,
-    account_title=None, from_date=None, orig='orig', dest='dest'):
+    account_title=None, from_date=None, tz=None, orig='orig', dest='dest'):
     """
     12 months of total/new/churn into or out of (see *reverse*) *account*
     and associated distinct customers as extracted from Transactions.
@@ -210,7 +229,7 @@ def aggregate_monthly_transactions(organization, account,
         account_title = str(account)
     interval = organization.natural_interval
     customers, account_totals = aggregate_monthly_churn(organization, account,
-        interval, from_date=from_date, orig=orig, dest=dest)
+        interval, from_date=from_date, tz=tz, orig=orig, dest=dest)
     churned_custs, total_custs, new_custs = customers
     churned_account, total_account, new_account = account_totals
     net_new_custs = []

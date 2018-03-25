@@ -32,6 +32,7 @@ from django.utils import six
 from django.utils.dateparse import parse_datetime
 from django.utils.timezone import utc, get_current_timezone
 from rest_framework.exceptions import ValidationError
+from pytz import timezone, UnknownTimeZoneError
 
 
 class SlugTitleMixin(object):
@@ -67,6 +68,14 @@ class SlugTitleMixin(object):
                     self.slug = slug_base + suffix
         raise ValidationError({'detail':
             "Unable to create a unique URL slug from title '%s'" % self.title})
+
+
+def parse_tz(tz):
+    if tz:
+        try:
+            return timezone(tz)
+        except UnknownTimeZoneError:
+            pass
 
 
 def datetime_or_now(dtime_at=None):
