@@ -1053,8 +1053,9 @@ metricsControllers.controller("metricsCtrl",
 
     $scope.query = function(queryset) {
         var d = moment($scope.ends_at).add(1, 'day').startOf('day').format()
+        var tz = moment.tz.guess();
         $http.get(
-            queryset.location, {params: {"ends_at": d}}).then(
+            queryset.location, {params: {"ends_at": d, "timezone": tz}}).then(
         function success(resp) {
             var unit = resp.data.unit;
             var scale = resp.data.scale;
