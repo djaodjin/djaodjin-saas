@@ -62,20 +62,21 @@ def month_periods(nb_months=12, from_date=None, step_months=1,
     #pylint:disable=invalid-name
 
     def _handle_tz(dt, tz_ob, orig_tz):
-        #pylint:disable=unused-argument
         if tz_ob:
             # adding timezone info
             # + accounting for DST
             return tz_ob.normalize(tz_ob.localize(dt))
-        return dt
+        return dt.replace(tzinfo=orig_tz)
 
     dates = []
     from_date = datetime_or_now(from_date)
-    orig_tz = from_date.tzinfo
+    orig_tz = utc
     tz_ob = parse_tz(tz)
     if tz_ob:
         # no need to normalize here
         from_date = from_date.astimezone(tz_ob)
+    else:
+        from_date = from_date.astimezone(orig_tz)
     dates.append(from_date)
     last = _handle_tz(
         datetime(day=from_date.day, month=from_date.month, year=from_date.year),
