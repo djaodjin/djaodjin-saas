@@ -120,13 +120,14 @@ class OptinBase(object):
     organization_model = get_organization_model()
 
     def add_relations(self, organizations, user, reason=None, invite=False):
-        #pylint:disable=no-self-use
+        #pylint:disable=no-self-use,unused-argument
         created = False
         for organization in organizations:
             created |= organization.add_role_request(user, reason=reason)
         return created
 
     def perform_optin(self, serializer, request, user=None):
+        #pylint:disable=too-many-locals
         if user is None:
             user = request.user
         reason = serializer.validated_data.get('message', None)

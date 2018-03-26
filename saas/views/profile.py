@@ -1,4 +1,4 @@
-# Copyright (c) 2017, DjaoDjin inc.
+# Copyright (c) 2018, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -37,7 +37,8 @@ from .. import settings, signals
 from ..decorators import _valid_manager
 from ..forms import (OrganizationForm, OrganizationCreateForm,
     ManagerAndOrganizationForm)
-from ..mixins import OrganizationMixin, ProviderMixin, RoleDescriptionMixin, PlanMixin
+from ..mixins import (OrganizationMixin, ProviderMixin, RoleDescriptionMixin,
+    PlanMixin)
 from ..models import Plan, Subscription, get_broker, is_broker
 from ..utils import get_organization_model
 
@@ -157,17 +158,20 @@ class PlanSubscribersListView(PlanMixin, TemplateView):
     Template:
 
     To edit the layout of this page, create a local \
-    ``saas/profile/plans/subscribers.html`` (`example <https://github.com/djaodjin/\
-djaodjin-saas/tree/master/saas/templates/saas/profile/plans/subscribers.html>`__).
+    ``saas/profile/plans/subscribers.html`` (`example <https://github.com/\
+djaodjin/djaodjin-saas/tree/master/saas/templates/saas/profile/plans/\
+subscribers.html>`__).
 
     """
     template_name = 'saas/profile/plans/subscribers.html'
 
     def get_context_data(self, **kwargs):
-        context = super(PlanSubscribersListView, self).get_context_data(**kwargs)
+        context = super(PlanSubscribersListView, self).get_context_data(
+            **kwargs)
         context['urls']['provider']['api_plan_subscribers'] = reverse(
             'saas_api_plan_subscriptions', args=(self.provider, self.plan))
         return context
+
 
 class SubscriptionListView(OrganizationMixin, ListView):
     """

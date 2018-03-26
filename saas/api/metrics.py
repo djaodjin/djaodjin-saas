@@ -236,24 +236,24 @@ class RevenueMetricAPIView(ProviderMixin, APIView):
         }
     """
     def get(self, request, *args, **kwargs):
-        ends_at = request.GET.get('ends_at')
-        tz = request.GET.get('timezone')
+        ends_at = datetime_or_now(request.GET.get('ends_at'))
+        tzone = request.GET.get('timezone')
 
         # All amounts are in the customer currency.
         account_table, _, _ = \
             aggregate_monthly_transactions(self.provider,
                 Transaction.RECEIVABLE, account_title='Sales',
-                from_date=ends_at, tz=tz, orig='orig', dest='dest')
+                from_date=ends_at, tz=tzone, orig='orig', dest='dest')
 
         _, payment_amounts = aggregate_monthly(
             self.provider, Transaction.RECEIVABLE,
-            from_date=ends_at, tz=tz, orig='dest', dest='dest',
+            from_date=ends_at, tz=tzone, orig='dest', dest='dest',
             orig_account=Transaction.BACKLOG,
             orig_organization=self.provider)
 
         _, refund_amounts = aggregate_monthly(
             self.provider, Transaction.REFUND,
-            from_date=ends_at, tz=tz, orig='dest', dest='dest')
+            from_date=ends_at, tz=tzone, orig='dest', dest='dest')
 
         account_table += [
             {"key": "Payments", "values": payment_amounts},

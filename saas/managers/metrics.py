@@ -1,4 +1,4 @@
-# Copyright (c) 2017, DjaoDjin inc.
+# Copyright (c) 2018, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -34,20 +34,40 @@ from ..models import Plan, Subscription, Transaction
 from ..utils import datetime_or_now, parse_tz
 
 
-def month_periods(nb_months=12, from_date=None, step_months=1, convert_to_utc=False, tz = None):
-    """constructs a list of (nb_months + 1) dates in the past that fall
-    on the first of each month until *from_date* which is the last entry
-    of the list returned."""
+def month_periods(nb_months=12, from_date=None, step_months=1,
+                  convert_to_utc=False, tz=None):
+    """
+    Constructs a list of (nb_months + 1) dates in the past that fall
+    on the first of each month, defined as midnight in timezone *tz*,
+    until *from_date* which is the last entry of the list returned.
+
+    When *tz* is ``None``, the first of the month is defined
+    as midnight UTC.
+
+    Example::
+
+        ["2017-05-01T07:00:00Z",
+         "2017-06-01T07:00:00Z",
+         "2017-07-01T07:00:00Z",
+         "2017-08-01T07:00:00Z",
+         "2017-09-01T07:00:00Z",
+         "2017-10-01T07:00:00Z",
+         "2017-11-01T07:00:00Z",
+         "2017-12-01T08:00:00Z",
+         "2018-01-01T08:00:00Z",
+         "2018-02-01T08:00:00Z",
+         "2018-03-01T08:00:00Z",
+         "2018-03-26T07:11:24Z"]
+    """
+    #pylint:disable=invalid-name
 
     def _handle_tz(dt, tz_ob, orig_tz):
+        #pylint:disable=unused-argument
         if tz_ob:
             # adding timezone info
             # + accounting for DST
-            loc = tz_ob.normalize(tz_ob.localize(dt))
-        else:
-            # adding offset info
-            loc = last.replace(tzinfo=orig_tz)
-        return loc
+            return tz_ob.normalize(tz_ob.localize(dt))
+        return dt
 
     dates = []
     from_date = datetime_or_now(from_date)
@@ -57,11 +77,13 @@ def month_periods(nb_months=12, from_date=None, step_months=1, convert_to_utc=Fa
         # no need to normalize here
         from_date = from_date.astimezone(tz_ob)
     dates.append(from_date)
-    last = datetime(day=from_date.day, month=from_date.month, year=from_date.year)
-    last = _handle_tz(last, tz_ob, orig_tz)
+    last = _handle_tz(
+        datetime(day=from_date.day, month=from_date.month, year=from_date.year),
+        tz_ob, orig_tz)
     if last.day != 1:
-        last = datetime(day=1, month=last.month, year=last.year)
-        last = _handle_tz(last, tz_ob, orig_tz)
+        last = _handle_tz(
+            datetime(day=1, month=last.month, year=last.year),
+            tz_ob, orig_tz)
         dates.append(last)
         nb_months = nb_months - 1
     for _ in range(0, nb_months, step_months):
@@ -85,9 +107,9 @@ def month_periods(nb_months=12, from_date=None, step_months=1, convert_to_utc=Fa
 
     return dates
 
-def aggregate_monthly(organization, account,
-                      from_date=None, tz=None, orig='orig', dest='dest', **kwargs):
-    # pylint: disable=too-many-locals
+def aggregate_monthly(organization, account, from_date=None, tz=None,
+                      orig='orig', dest='dest', **kwargs):
+    # pylint: disable=too-many-locals,too-many-arguments,invalid-name
     counts = []
     amounts = []
     # We want to be able to compare *last* to *from_date* and not get django
@@ -117,7 +139,7 @@ def aggregate_monthly_churn(organization, account, interval,
     """
     Returns a table of records over a period of 12 months *from_date*.
     """
-    #pylint: disable=too-many-locals,too-many-arguments
+    #pylint: disable=too-many-locals,too-many-arguments,invalid-name
     customers = []
     receivables = []
     new_customers = []
@@ -224,7 +246,7 @@ def aggregate_monthly_transactions(organization, account,
     12 months of total/new/churn into or out of (see *reverse*) *account*
     and associated distinct customers as extracted from Transactions.
     """
-    #pylint: disable=too-many-locals,too-many-arguments
+    #pylint: disable=too-many-locals,too-many-arguments,invalid-name
     if not account_title:
         account_title = str(account)
     interval = organization.natural_interval

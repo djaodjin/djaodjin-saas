@@ -70,10 +70,10 @@ class SlugTitleMixin(object):
             "Unable to create a unique URL slug from title '%s'" % self.title})
 
 
-def parse_tz(tz):
-    if tz:
+def parse_tz(tzone):
+    if tzone:
         try:
-            return timezone(tz)
+            return timezone(tzone)
         except UnknownTimeZoneError:
             pass
 

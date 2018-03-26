@@ -22,24 +22,14 @@ angular.module("saasFilters", [])
     }).filter("monthHeading", function() {
         "use strict";
 
-        var current = moment();
-        return function(datestr) {
-            var date = moment(datestr);
+        return function(d) {
             // shift each period by 1 month unless this is
             // current month and not a first day of the month
-            if(!(date.isSame(current, 'year')
-                && date.isSame(current, 'month')
-                && date.date() != 1)
-            )
-            {
-                date.subtract(1, 'months');
+            if(d.date() !== 1 || d.hour() !== 0
+               || d.minute() !== 0 || d.second() !== 0 ) {
+                return d.format("MMM'YY*");
             }
-            var heading = date.format("MMM'YY");
-            if( date > current ) {
-                // add incomplete month marker
-                heading += "*";
-            }
-            return heading;
+            return d.clone().subtract(1, 'months').format("MMM'YY");
         };
     })
     .filter("humanizeCell", function(currencyFilter, numberFilter) {
@@ -1026,11 +1016,12 @@ metricsControllers.controller("metricsCtrl",
     $scope.opened = false;
     $scope.timezone = 'local';
 
-    function convertDataTimeToLocal(data){
+    function convertDataTimeToReport(data, isUTC){
         return data.map(function(f){
             var values = f.values.map(function(v){
                 // localizing the period to local browser time
-                return [moment(v[0]).format(), v[1]];
+                // unless showing reports in UTC.
+                return [isUTC ? moment.parseZone(v[0]) : moment(v[0]), v[1]];
             });
             return {values: values, key: f.key}
         });
@@ -1052,10 +1043,11 @@ metricsControllers.controller("metricsCtrl",
     };
 
     $scope.query = function(queryset) {
-        var d = moment($scope.ends_at).add(1, 'day').startOf('day').format()
-        var tz = moment.tz.guess();
-        $http.get(
-            queryset.location, {params: {"ends_at": d, "timezone": tz}}).then(
+        var params = {"ends_at": moment($scope.ends_at).format()};
+        if( $scope.timezone !== 'utc' ) {
+            params["timezone"] = moment.tz.guess();
+        }
+        $http.get(queryset.location, {params: params}).then(
         function success(resp) {
             var unit = resp.data.unit;
             var scale = resp.data.scale;
@@ -1068,22 +1060,16 @@ metricsControllers.controller("metricsCtrl",
 
             queryset.unit = unit;
             queryset.scale = scale;
-            if($scope.timezone === 'local'){
-                var values = convertDataTimeToLocal(resp.data.table)
-            }
-            else
-            {
-                var values = resp.data.table;
-            }
-            queryset.data = values;
+            queryset.data = convertDataTimeToReport(
+                resp.data.table, $scope.timezone === 'utc');
             // manual binding - trigger updates to the graph
             if( queryset.key === "balances") {
                 // XXX Hard-coded.
                 updateBarChart("#metrics-chart",
-                               values, unit, scale, extra);
+                    queryset.data, unit, scale, extra);
             } else {
                 updateChart("#metrics-chart",
-                            values, unit, scale, extra);
+                    queryset.data, unit, scale, extra);
             }
         });
     };
