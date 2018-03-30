@@ -433,7 +433,7 @@ class CustomerMetricAPIView(BeforeMixin, ProviderMixin, APIView):
                 "table": customer_table, "extra": customer_extra})
 
 
-class PlanMetricAPIView(ProviderMixin, APIView):
+class PlanMetricAPIView(BeforeMixin, ProviderMixin, APIView):
     """
     Produce plan stats
 
