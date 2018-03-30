@@ -407,6 +407,12 @@ class BeforeMixin(object):
                 self._ends_at = datetime_or_now(self._ends_at)
         return self._ends_at
 
+    @property
+    def timezone(self):
+        if not hasattr(self, '_timezone'):
+            self._timezone = self.request.GET.get('timezone', None)
+        return self._timezone
+
     def get_queryset(self):
         """
         Implements before date filtering on ``date_field``

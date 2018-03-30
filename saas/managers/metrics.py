@@ -299,28 +299,34 @@ def aggregate_monthly_transactions(organization, account,
     return account_table, customer_table, customer_extra
 
 
-def active_subscribers(plan, from_date=None):
+def active_subscribers(plan, from_date=None, tz=None):
     """
     List of active subscribers for a *plan*.
     """
+    #pylint:disable=invalid-name
     values = []
-    for end_period in month_periods(from_date=from_date):
+    for end_period in month_periods(from_date=from_date,
+                            convert_to_utc=True, tz=tz):
         values.append([end_period,
             Subscription.objects.active_at(end_period, plan=plan).count()])
     return values
 
 
 def abs_monthly_balances(organization=None, account=None, like_account=None,
-                         until=None, step_months=1):
+                         until=None, step_months=1, tz=None):
+    #pylint:disable=invalid-name,too-many-arguments
     return [(item[0], abs(item[1])) for item in monthly_balances(
         organization=organization, account=account, like_account=like_account,
-        until=until, step_months=step_months)]
+        until=until, step_months=step_months, tz=tz)]
 
 
 def monthly_balances(organization=None, account=None, like_account=None,
-                     until=None, step_months=1):
+                     until=None, step_months=1, tz=None):
+    #pylint:disable=invalid-name,too-many-arguments
     values = []
-    for end_period in month_periods(from_date=until, step_months=step_months):
+    for end_period in month_periods(
+            from_date=until, step_months=step_months,
+            convert_to_utc=True, tz=tz):
         balance = Transaction.objects.get_balance(organization=organization,
             account=account, like_account=like_account, ends_at=end_period)
         values.append([end_period, balance['amount']])
@@ -334,12 +340,13 @@ def quaterly_balances(organization=None, account=None, like_account=None,
         until=until, step_months=3)
 
 
-def churn_subscribers(plan=None, from_date=None):
+def churn_subscribers(plan=None, from_date=None, tz=None):
     """
     List of churn subscribers from the previous period for a *plan*.
     """
+    #pylint:disable=invalid-name
     values = []
-    dates = month_periods(13, from_date)
+    dates = month_periods(13, from_date, convert_to_utc=True, tz=tz)
     start_period = dates[0]
     kwargs = {}
     if plan:

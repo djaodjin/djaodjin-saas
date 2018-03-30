@@ -1016,14 +1016,15 @@ metricsControllers.controller("metricsCtrl",
     $scope.opened = false;
     $scope.timezone = 'local';
 
-    function convertDataTimeToReport(data, isUTC){
+    function convertDatetime(data, isUTC){
+        // Convert datetime string to moment object in-place because we want
+        // to keep extra keys and structure in the JSON returned by the API.
         return data.map(function(f){
             var values = f.values.map(function(v){
                 // localizing the period to local browser time
                 // unless showing reports in UTC.
-                return [isUTC ? moment.parseZone(v[0]) : moment(v[0]), v[1]];
+                v[0] = isUTC ? moment.parseZone(v[0]) : moment(v[0]);
             });
-            return {values: values, key: f.key}
         });
     }
 
@@ -1060,8 +1061,8 @@ metricsControllers.controller("metricsCtrl",
 
             queryset.unit = unit;
             queryset.scale = scale;
-            queryset.data = convertDataTimeToReport(
-                resp.data.table, $scope.timezone === 'utc');
+            queryset.data = resp.data.table;
+            convertDatetime(queryset.data, $scope.timezone === 'utc');
             // manual binding - trigger updates to the graph
             if( queryset.key === "balances") {
                 // XXX Hard-coded.

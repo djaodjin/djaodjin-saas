@@ -99,8 +99,8 @@ class BalancesDownloadView(MetricsMixin, CSVDownloadView):
     queryname = 'balances'
 
     def get_headings(self):
-        return ['Title'] + [str(end_period)
-            for end_period in month_periods(from_date=self.ends_at)]
+        return ['Title'] + [str(end_period) for end_period in month_periods(
+            from_date=self.ends_at, tz=self.timezone)]
 
     def get_queryset(self):
         report = self.kwargs.get('report')

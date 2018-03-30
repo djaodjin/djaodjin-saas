@@ -1,4 +1,4 @@
-# Copyright (c) 2017, DjaoDjin inc.
+# Copyright (c) 2018, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -27,7 +27,8 @@ from rest_framework.views import APIView
 from rest_framework.generics import GenericAPIView, ListAPIView
 from rest_framework.response import Response
 
-from ..mixins import CartItemSmartListMixin, CouponMixin, ProviderMixin
+from ..mixins import (BeforeMixin, CartItemSmartListMixin, CouponMixin,
+    ProviderMixin)
 from ..models import CartItem, Organization, Plan, Transaction
 from ..utils import datetime_or_now
 from ..managers.metrics import abs_monthly_balances
@@ -37,7 +38,7 @@ from ..managers.metrics import (active_subscribers, aggregate_monthly,
     aggregate_monthly_transactions, churn_subscribers)
 
 
-class BalancesAPIView(ProviderMixin, APIView):
+class BalancesAPIView(BeforeMixin, ProviderMixin, APIView):
     """
     Generate a table of revenue (rows) per months (columns).
 
@@ -115,20 +116,20 @@ class BalancesAPIView(ProviderMixin, APIView):
     """
 
     def get(self, request, *args, **kwargs): #pylint: disable=unused-argument
-        ends_at = datetime_or_now(request.GET.get('ends_at', None))
         result = []
         for key in [Transaction.INCOME, Transaction.BACKLOG,
                     Transaction.RECEIVABLE]:
             result += [{
                 'key': key,
                 'values': abs_monthly_balances(
-                    organization=self.provider, account=key, until=ends_at)
+                    organization=self.provider, account=key,
+                    until=self.ends_at, tz=self.timezone)
             }]
         return Response({'title': "Balances",
             'unit': "$", 'scale': 0.01, 'table': result})
 
 
-class RevenueMetricAPIView(ProviderMixin, APIView):
+class RevenueMetricAPIView(BeforeMixin, ProviderMixin, APIView):
     """
     Produce The sales, payments and refunds over a period of time.
 
@@ -236,24 +237,24 @@ class RevenueMetricAPIView(ProviderMixin, APIView):
         }
     """
     def get(self, request, *args, **kwargs):
-        ends_at = datetime_or_now(request.GET.get('ends_at'))
-        tzone = request.GET.get('timezone')
-
         # All amounts are in the customer currency.
         account_table, _, _ = \
             aggregate_monthly_transactions(self.provider,
                 Transaction.RECEIVABLE, account_title='Sales',
-                from_date=ends_at, tz=tzone, orig='orig', dest='dest')
+                orig='orig', dest='dest',
+                from_date=self.ends_at, tz=self.timezone)
 
         _, payment_amounts = aggregate_monthly(
             self.provider, Transaction.RECEIVABLE,
-            from_date=ends_at, tz=tzone, orig='dest', dest='dest',
+            orig='dest', dest='dest',
             orig_account=Transaction.BACKLOG,
-            orig_organization=self.provider)
+            orig_organization=self.provider,
+            from_date=self.ends_at, tz=self.timezone)
 
         _, refund_amounts = aggregate_monthly(
             self.provider, Transaction.REFUND,
-            from_date=ends_at, tz=tzone, orig='dest', dest='dest')
+            orig='dest', dest='dest',
+            from_date=self.ends_at, tz=self.timezone)
 
         account_table += [
             {"key": "Payments", "values": payment_amounts},
@@ -309,7 +310,7 @@ class CouponUsesAPIView(CartItemSmartListMixin, CouponUsesQuerysetMixin,
     serializer_class = CartItemSerializer
 
 
-class CustomerMetricAPIView(ProviderMixin, APIView):
+class CustomerMetricAPIView(BeforeMixin, ProviderMixin, APIView):
     """
     Produce revenue stats
 
@@ -417,8 +418,6 @@ class CustomerMetricAPIView(ProviderMixin, APIView):
         }
     """
     def get(self, request, *args, **kwargs):
-        ends_at = datetime_or_now(request.GET.get('ends_at', None))
-
         account_title = 'Payments'
         account = Transaction.RECEIVABLE
         # We use ``Transaction.RECEIVABLE`` which technically counts the number
@@ -427,7 +426,7 @@ class CustomerMetricAPIView(ProviderMixin, APIView):
         _, customer_table, customer_extra = \
             aggregate_monthly_transactions(self.provider, account,
                 account_title=account_title,
-                from_date=ends_at)
+                from_date=self.ends_at, tz=self.timezone)
 
         return Response(
             {"title": "Customers",
@@ -538,7 +537,7 @@ class PlanMetricAPIView(ProviderMixin, APIView):
         table = []
         for plan in Plan.objects.filter(organization=self.provider):
             values = active_subscribers(
-                plan, from_date=self.kwargs.get('from_date'))
+                plan, from_date=self.ends_at, tz=self.timezone)
             table.append({
                 "key": plan.slug,
                 "values": values,
@@ -547,7 +546,7 @@ class PlanMetricAPIView(ProviderMixin, APIView):
                 "is_active": plan.is_active})
         extra = [{"key": "churn",
             "values": churn_subscribers(
-                from_date=self.kwargs.get('from_date'))}]
+                from_date=self.ends_at, tz=self.timezone)}]
 
         return Response(
             {"title": "Active Subscribers",
