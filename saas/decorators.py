@@ -108,7 +108,7 @@ def _filter_valid_access(request, candidates,
         roledescription = settings.CONTRIBUTOR
     managed = []
     contributed = []
-    managed = _valid_manager(request.user, candidates)
+    managed = _valid_manager(request, candidates)
     if request.method == "GET":
         if strength != STRONG:
             contributed = _valid_role(request, candidates, roledescription)
