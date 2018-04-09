@@ -1,4 +1,4 @@
-# Copyright (c) 2017, DjaoDjin inc.
+# Copyright (c) 2018, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -24,7 +24,6 @@
 
 from collections import OrderedDict
 
-from django.core.urlresolvers import NoReverseMatch, reverse
 from django.shortcuts import get_object_or_404
 from django.utils import six
 
@@ -32,6 +31,7 @@ from django.utils import six
 #
 # saas.settings cannot be imported at this point because this file will
 # be imported before ``django.conf.settings`` is fully initialized.
+from .compat import NoReverseMatch, is_authenticated, reverse
 from .utils import get_organization_model
 
 
@@ -103,7 +103,7 @@ class OrganizationMixinBase(object):
                 })
 
         if (organization.is_provider
-            and self.request.user.is_authenticated()
+            and is_authenticated(self.request)
             and organization.accessible_by(self.request.user)):
             provider = organization
             urls.update({'provider': {
@@ -140,7 +140,7 @@ class OrganizationMixinBase(object):
                 'charges': reverse('saas_charges'),
             }})
 
-        if self.request.user.is_authenticated():
+        if is_authenticated(self.request):
             urls.update({'profiles': [{
                 'location': reverse('saas_organization_profile',
                 args=(account,)), 'printable_name': account.printable_name}

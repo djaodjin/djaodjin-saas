@@ -1,4 +1,4 @@
-# Copyright (c) 2017, DjaoDjin inc.
+# Copyright (c) 2018, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -25,7 +25,6 @@
 import re
 
 import dateutil
-from django.core.urlresolvers import NoReverseMatch, reverse
 from django.contrib.auth import get_user_model
 from django.db.models import Q
 from django.http import Http404
@@ -35,6 +34,7 @@ from extra_views.contrib.mixins import SearchableListMixin, SortableListMixin
 from rest_framework.generics import get_object_or_404
 
 from . import settings
+from .compat import NoReverseMatch, is_authenticated, reverse
 from .humanize import (as_money, DESCRIBE_BUY_PERIODS, DESCRIBE_BUY_USE,
     DESCRIBE_UNLOCK_NOW, DESCRIBE_UNLOCK_LATER, DESCRIBE_BALANCE)
 from .models import (CartItem, Charge, Coupon, Organization, Plan,
@@ -61,7 +61,7 @@ class CartMixin(object):
         if use and not isinstance(use, UseCharge):
             use = get_object_or_404(UseCharge.objects.filter(
                 plan=plan), slug=use)
-        if request.user.is_authenticated():
+        if is_authenticated(request):
             # If the user is authenticated, we just create the cart items
             # into the database.
             queryset = CartItem.objects.get_cart(

@@ -1,4 +1,4 @@
-# Copyright (c) 2017, DjaoDjin inc.
+# Copyright (c) 2018, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -23,9 +23,9 @@
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 from django.contrib import messages
-from django.core.urlresolvers import reverse
 from django.views.generic import TemplateView
 from saas.backends import ProcessorConnectionError
+from saas.compat import reverse
 from saas.models import Organization
 
 

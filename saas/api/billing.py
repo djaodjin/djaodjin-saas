@@ -1,4 +1,4 @@
-# Copyright (c) 2017, DjaoDjin inc.
+# Copyright (c) 2018, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -37,6 +37,7 @@ from rest_framework.views import APIView
 from rest_framework import serializers, status
 
 from ..backends import ProcessorError
+from ..compat import is_authenticated
 from ..mixins import CartMixin, OrganizationMixin
 from ..models import CartItem
 from .serializers import (PlanRelatedField, ChargeSerializer,
@@ -120,7 +121,6 @@ class CartItemAPIView(CartMixin, CreateAPIView):
     # and csrf, unfortunately it prevents authenticated users to add into
     # their db cart, instead put their choices into the unauth session.
     # authentication_classes = []
-
     def post(self, request, *args, **kwargs):
         items = None
         serializer = self.get_serializer(data=request.data)
@@ -290,7 +290,7 @@ class CartItemDestroyAPIView(DestroyAPIView):
     def delete(self, request, *args, **kwargs):
         destroyed = self.destroy_in_session(request, *args, **kwargs)
         # We found the items in the session cart, nothing else to do.
-        if not destroyed and self.request.user.is_authenticated():
+        if not destroyed and is_authenticated(self.request):
             # If the user is authenticated, we delete the cart items
             # from the database.
             return self.destroy(request, *args, **kwargs)

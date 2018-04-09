@@ -141,7 +141,7 @@ class SubscriptionDetailAPIView(SubscriptionMixin,
 
     def perform_update(self, serializer):
         if not _valid_manager(
-                self.request.user, [serializer.instance.plan.organization]):
+                self.request, [serializer.instance.plan.organization]):
             serializer.validated_data['created_at'] \
                 = serializer.instance.created_at
             serializer.validated_data['ends_at'] = serializer.instance.ends_at

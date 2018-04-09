@@ -1,4 +1,4 @@
-# Copyright (c) 2017, DjaoDjin inc.
+# Copyright (c) 2018, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -25,9 +25,9 @@
 import json
 from datetime import datetime
 
-from django.core.urlresolvers import reverse
 from django.views.generic import TemplateView
 
+from ..compat import reverse
 from ..mixins import CouponMixin, ProviderMixin, MetricsMixin
 from ..models import CartItem, Plan
 from ..utils import datetime_or_now

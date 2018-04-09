@@ -1,4 +1,4 @@
-# Copyright (c) 2017, DjaoDjin inc.
+# Copyright (c) 2018, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -34,6 +34,14 @@ try:
 except ImportError: # django < 1.8
     from django.core.context_processors import csrf #pylint:disable=import-error
 
+try:
+    from django.urls import NoReverseMatch, reverse, reverse_lazy
+except ImportError: # <= Django 1.10, Python<3.6
+    from django.core.urlresolvers import NoReverseMatch, reverse, reverse_lazy
+except ModuleNotFoundError: #pylint:disable=undefined-variable
+    # <= Django 1.10, Python>=3.6
+    from django.core.urlresolvers import NoReverseMatch, reverse, reverse_lazy
+
 
 def get_model_class(full_name, settings_meta):
     """
@@ -61,3 +69,9 @@ def get_model_class(full_name, settings_meta):
             "%s refers to model '%s' that has not been installed"
             % (settings_meta, full_name))
     return model_class
+
+
+def is_authenticated(request):
+    if callable(request.user.is_authenticated):
+        return request.user.is_authenticated()
+    return request.user.is_authenticated

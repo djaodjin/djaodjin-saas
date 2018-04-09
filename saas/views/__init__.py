@@ -1,4 +1,4 @@
-# Copyright (c) 2017, DjaoDjin inc.
+# Copyright (c) 2018, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -31,7 +31,6 @@ import logging, re
 
 from django import http
 from django.conf import settings as django_settings
-from django.core.urlresolvers import reverse
 from django.contrib.auth import REDIRECT_FIELD_NAME
 from django.db import IntegrityError, transaction
 from django.http.request import split_domain_port, validate_host
@@ -42,6 +41,7 @@ from django.views.generic.base import ContextMixin, TemplateResponseMixin
 from django.views.generic.edit import FormMixin, ProcessFormView
 
 from .. import settings
+from ..compat import reverse
 from ..decorators import fail_direct
 from ..models import CartItem, Coupon, Plan, Organization, get_broker
 

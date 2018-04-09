@@ -1,4 +1,4 @@
-# Copyright (c) 2017, DjaoDjin inc.
+# Copyright (c) 2018, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -24,14 +24,13 @@
 
 from django import forms
 from django.contrib import messages
-from django.core.urlresolvers import reverse, reverse_lazy
 from django.http import HttpResponseRedirect
 from django.views.generic import CreateView, ListView, UpdateView
 from django.views.generic.detail import SingleObjectMixin
 
 from . import RedirectFormMixin
 from .. import settings
-from ..compat import csrf
+from ..compat import csrf, is_authenticated, reverse, reverse_lazy
 from ..forms import PlanForm
 from ..mixins import CartMixin, OrganizationMixin, ProviderMixin
 from ..models import CartItem, Coupon, Plan
@@ -104,7 +103,7 @@ djaodjin-saas/tree/master/saas/templates/saas/pricing.html>`__).
         # can call the shopping cart API.
         context.update(csrf(self.request))
         items_selected = []
-        if self.request.user.is_authenticated():
+        if is_authenticated(self.request):
             items_selected += [item.plan.slug
                 for item in CartItem.objects.get_cart(self.request.user)]
         if 'cart_items' in self.request.session:
@@ -120,7 +119,7 @@ djaodjin-saas/tree/master/saas/templates/saas/pricing.html>`__).
                 setattr(plan, 'discounted_period_price',
                     # XXX integer division
                     plan.discounted_price(redeemed.percent))
-            if self.request.user.is_authenticated():
+            if is_authenticated(self.request):
                 setattr(plan, 'managed_subscribers',
                     get_role_model().objects.role_on_subscriber(
                         self.request.user, plan, role_descr=settings.MANAGER))

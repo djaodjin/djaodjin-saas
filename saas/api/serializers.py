@@ -1,4 +1,4 @@
-# Copyright (c) 2017, DjaoDjin inc.
+# Copyright (c) 2018, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -105,6 +105,32 @@ class BalanceLineSerializer(serializers.ModelSerializer):
     class Meta:
         model = BalanceLine
         fields = ('title', 'selector', 'rank')
+
+
+class BankSerializer(serializers.Serializer):
+
+    bank_name = serializers.CharField()
+    last4 = serializers.CharField()
+    balance_amount = serializers.IntegerField()
+    balance_unit = serializers.CharField()
+
+    def create(self, validated_data):
+        raise RuntimeError('`create()` should not be called.')
+
+    def update(self, instance, validated_data):
+        raise RuntimeError('`update()` should not be called.')
+
+
+class CardSerializer(serializers.Serializer):
+
+    last4 = serializers.CharField()
+    exp_date = serializers.CharField()
+
+    def create(self, validated_data):
+        raise RuntimeError('`create()` should not be called.')
+
+    def update(self, instance, validated_data):
+        raise RuntimeError('`update()` should not be called.')
 
 
 class ChargeSerializer(serializers.ModelSerializer):
@@ -227,7 +253,7 @@ class SubscriptionSerializer(serializers.ModelSerializer):
         read_only_fields = ('grant_key', 'request_key')
 
     def get_editable(self, subscription):
-        return bool(_valid_manager(self.context['request'].user,
+        return bool(_valid_manager(self.context['request'],
             [subscription.plan.organization]))
 
 
@@ -327,7 +353,7 @@ class RoleDescriptionSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = RoleDescription
-        fields = ('created_at', 'name', 'slug', 'organization', 'is_global')
+        fields = ('created_at', 'title', 'slug', 'organization', 'is_global')
 
 
 class AccessibleSerializer(serializers.ModelSerializer):

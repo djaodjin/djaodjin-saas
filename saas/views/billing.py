@@ -1,4 +1,4 @@
-# Copyright (c) 2017, DjaoDjin inc.
+# Copyright (c) 2018, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -40,7 +40,6 @@ import copy, itertools, logging
 
 from django import http
 from django.contrib.auth import REDIRECT_FIELD_NAME
-from django.core.urlresolvers import reverse
 from django.db import transaction
 from django.db.models import Q
 from django.contrib import messages
@@ -51,6 +50,7 @@ from django.utils.http import urlencode
 from django.utils import six
 
 from .. import settings
+from ..compat import is_authenticated, reverse
 from ..backends import ProcessorError, ProcessorConnectionError
 from ..decorators import _insert_url, _valid_manager
 from ..forms import (BankForm, CartPeriodsForm, CreditCardForm,
@@ -488,7 +488,7 @@ class BillingStatementView(OrganizationMixin, TransactionBaseView):
                     'saas_organization_balance', args=(self.organization,)),
                 'update_card': reverse(
                     'saas_update_card', args=(self.organization,))}})
-        if _valid_manager(self.request.user, [get_broker()]):
+        if _valid_manager(self.request, [get_broker()]):
             context['urls']['organization'].update({
                 'api_cancel_balance_due': reverse(
                     'saas_api_cancel_balance_due', args=(self.organization,)),
@@ -850,7 +850,7 @@ djaodjin-saas/tree/master/saas/templates/saas/billing/receipt.html>`__).
             event = line.invoiced.get_event()
             setattr(line, 'rank', rank)
             setattr(line, 'refundable',
-                event and _valid_manager(self.request.user, [event.provider]))
+                event and _valid_manager(self.request, [event.provider]))
         return context
 
 
@@ -914,7 +914,7 @@ class RedeemCouponView(ProviderMixin, FormView):
             self.request.GET.get(REDIRECT_FIELD_NAME, None))
         if redirect_path:
             return redirect_path
-        if self.request.user.is_authenticated():
+        if is_authenticated(self.request):
             return reverse('saas_cart')
         return reverse('saas_cart_plan_list')
 

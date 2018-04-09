@@ -25,7 +25,6 @@
 """Manage Profile information"""
 
 from django.contrib import messages
-from django.core.urlresolvers import reverse
 from django.db import transaction
 from django.http import HttpResponseRedirect
 from django.views.generic import (CreateView, DetailView, ListView,
@@ -34,6 +33,7 @@ from django.utils.decorators import method_decorator
 
 from . import RedirectFormMixin
 from .. import settings, signals
+from ..compat import reverse
 from ..decorators import _valid_manager
 from ..forms import (OrganizationForm, OrganizationCreateForm,
     ManagerAndOrganizationForm)
@@ -241,7 +241,7 @@ class OrganizationCreateView(RedirectFormMixin, CreateView):
     def form_valid(self, form):
         with transaction.atomic():
             self.object = form.save()
-            if not _valid_manager(self.request.user, [get_broker()]):
+            if not _valid_manager(self.request, [get_broker()]):
                 # If it is a manager of the broker platform creating
                 # the newly created Organization will be accessible anyway.
                 self.object.add_manager(
@@ -358,7 +358,7 @@ class OrganizationProfileView(OrganizationMixin, UpdateView):
         if Plan.objects.exists():
             # Do not display the bulk buying option if there are no plans.
             kwargs.update({'is_bulk_buyer': self.object.is_bulk_buyer})
-        if _valid_manager(self.request.user, [get_broker()]):
+        if _valid_manager(self.request, [get_broker()]):
             kwargs.update({'extra': self.object.extra})
         return kwargs
 

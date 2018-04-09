@@ -1,4 +1,4 @@
-# Copyright (c) 2017, DjaoDjin inc.
+# Copyright (c) 2018, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -281,6 +281,8 @@ class EmailChargeReceiptAPIView(RetrieveChargeMixin, GenericAPIView):
             "email": "info@djaodjin.com"
         }
     """
+    serializer_class = ChargeSerializer
+
     def post(self, request, *args, **kwargs): #pylint: disable=unused-argument
         self.object = self.get_object()
         signals.charge_updated.send(

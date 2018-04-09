@@ -1,4 +1,4 @@
-# Copyright (c) 2017, DjaoDjin inc.
+# Copyright (c) 2018, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -112,7 +112,7 @@ class RoleDescriptionCRUDSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = RoleDescription
-        fields = ('created_at', 'name', 'slug', 'is_global', 'roles')
+        fields = ('created_at', 'title', 'slug', 'is_global', 'roles')
 
 
 class OptinBase(object):

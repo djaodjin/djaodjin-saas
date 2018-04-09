@@ -22,11 +22,11 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from django.core.urlresolvers import reverse
 from rest_framework.views import APIView
 from rest_framework.generics import GenericAPIView, ListAPIView
 from rest_framework.response import Response
 
+from ..compat import reverse
 from ..mixins import (BeforeMixin, CartItemSmartListMixin, CouponMixin,
     ProviderMixin)
 from ..models import CartItem, Organization, Plan, Transaction

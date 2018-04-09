@@ -1,4 +1,4 @@
-# Copyright (c) 2017, DjaoDjin inc.
+# Copyright (c) 2018, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -27,6 +27,7 @@ from rest_framework.generics import GenericAPIView
 from rest_framework.response import Response
 
 from ..mixins import OrganizationMixin
+from .serializers import BankSerializer, CardSerializer
 
 #pylint: disable=no-init
 #pylint: disable=old-style-class
@@ -57,6 +58,7 @@ class RetrieveBankAPIView(OrganizationMixin, GenericAPIView):
           "balance_unit": "usd"
         }
     """
+    serializer_class = BankSerializer
 
     def get(self, request, *args, **kwargs): #pylint: disable=unused-argument
         return Response(
@@ -77,6 +79,7 @@ class RetrieveCardAPIView(OrganizationMixin, GenericAPIView):
           "exp_date": "12/2015"
         }
     """
+    serializer_class = CardSerializer
 
     def get(self, request, *args, **kwargs): #pylint: disable=unused-argument
         return Response(

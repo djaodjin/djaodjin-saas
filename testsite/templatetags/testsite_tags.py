@@ -1,4 +1,4 @@
-# Copyright (c) 2017, DjaoDjin inc.
+# Copyright (c) 2018, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -24,9 +24,9 @@
 
 from django import template
 from django.contrib.messages.api import get_messages
-from django.core.urlresolvers import reverse
 from django.forms import BaseForm
 from django.utils.text import capfirst
+from saas.compat import is_authenticated as is_authenticated_base, reverse
 from saas.templatetags.saas_tags import attached_organization
 
 
@@ -45,7 +45,7 @@ def capitalize(name):
 
 @register.filter()
 def is_authenticated(request):
-    return request.user.is_authenticated()
+    return is_authenticated_base(request)
 
 
 @register.filter()
@@ -65,7 +65,7 @@ def url_profile_base(request): #pylint:disable=unused-argument
 
 @register.filter()
 def url_profile(request):
-    if request.user.is_authenticated():
+    if is_authenticated_base(request):
         organization = attached_organization(request.user)
         if organization:
             return reverse('saas_organization_profile', args=(organization,))

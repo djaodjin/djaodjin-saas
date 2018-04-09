@@ -1,4 +1,4 @@
-# Copyright (c) 2017, DjaoDjin inc.
+# Copyright (c) 2018, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -34,13 +34,13 @@ import logging
 
 from functools import wraps
 from django.core.exceptions import PermissionDenied
-from django.core.urlresolvers import reverse
 from django.contrib.auth import REDIRECT_FIELD_NAME
 from django.shortcuts import get_object_or_404
 from django.utils.decorators import available_attrs
 from django.utils import six
 
 from . import settings
+from .compat import is_authenticated, reverse
 from .models import (Charge, Organization, Plan, Signature, Subscription,
     get_broker)
 from .utils import datetime_or_now, get_role_model
@@ -57,38 +57,39 @@ NORMAL = 1
 STRONG = 2
 
 
-def _valid_role(user, candidates, role):
+def _valid_role(request, candidates, role):
     """
     Returns the subset of a set of ``Organization`` *candidates*
-    which have *user* listed with a role.
+    which have *request.user* listed with a role.
     """
     results = []
     if settings.BYPASS_PERMISSION_CHECK:
-        if user:
-            username = user.username
+        if request.user:
+            username = request.user.username
         else:
             username = '(none)'
         LOGGER.warning("Skip permission check for %s on organizations %s",
                        username, candidates)
         return candidates
-    if role is not None and user and user.is_authenticated():
+    if role is not None and request.user and is_authenticated(request):
         if isinstance(role, (list, tuple)):
             kwargs = {'role_description__slug__in': role}
         else:
             kwargs = {'role_description__slug': role}
         results = Organization.objects.filter(
             pk__in=get_role_model().objects.valid_for(
-                organization__in=candidates, user=user, **kwargs).values(
+                organization__in=candidates,
+                user=request.user, **kwargs).values(
                 'organization')).values('slug')
     return results
 
 
-def _valid_manager(user, candidates):
+def _valid_manager(request, candidates):
     """
     Returns the subset of a queryset of ``Organization``, *candidates*
     which have *user* as a manager.
     """
-    return _valid_role(user, candidates, settings.MANAGER)
+    return _valid_role(request, candidates, settings.MANAGER)
 
 
 def _filter_valid_access(request, candidates,
@@ -110,10 +111,10 @@ def _filter_valid_access(request, candidates,
     managed = _valid_manager(request.user, candidates)
     if request.method == "GET":
         if strength != STRONG:
-            contributed = _valid_role(request.user, candidates, roledescription)
+            contributed = _valid_role(request, candidates, roledescription)
     else:
         if strength == WEAK:
-            contributed = _valid_role(request.user, candidates, roledescription)
+            contributed = _valid_role(request, candidates, roledescription)
     return managed, contributed
 
 
@@ -157,7 +158,7 @@ def fail_authenticated(request):
     """
     Authenticated
     """
-    if not request.user.is_authenticated():
+    if not is_authenticated(request):
         return reverse(settings.LOGIN_URL)
     return False
 

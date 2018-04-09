@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# Copyright (c) 2017, DjaoDjin inc.
+# Copyright (c) 2018, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -34,12 +34,11 @@ from django.utils.safestring import mark_safe
 from django.utils import six
 from django.utils.timezone import utc
 
-from .. import settings
 from ..decorators import fail_direct, _valid_manager
 from ..humanize import as_money
 from ..mixins import as_html_description, product_url as utils_product_url
 from ..models import Organization, Subscription, Plan, get_broker
-from ..utils import get_role_model
+
 
 register = template.Library()
 
@@ -123,19 +122,7 @@ def is_direct(request, organization=None):
 def is_manager(request, organization):
     if not isinstance(organization, Organization):
         organization = get_object_or_404(Organization, slug=organization)
-    return _valid_manager(request.user, [organization])
-
-
-@register.filter()
-def manages_subscriber_to(user, plan):
-    """
-    Returns ``True`` if the user is a manager for an organization
-    subscribed to plan.
-    """
-    if not user.is_authenticated():
-        return False
-    return get_role_model().objects.role_on_subscriber(
-        user, plan, role_descr=settings.MANAGER).exists()
+    return _valid_manager(request, [organization])
 
 
 @register.filter(needs_autoescape=False)

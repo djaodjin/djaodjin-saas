@@ -263,7 +263,8 @@ class Organization(models.Model):
     funds_balance = models.PositiveIntegerField(default=0,
         help_text="Funds escrowed in cents")
     processor = models.ForeignKey(
-        'Organization', null=True, blank=True, related_name='processes')
+        'Organization', null=True, blank=True, on_delete=models.SET_NULL,
+        related_name='processes',)
     processor_card_key = models.CharField(null=True, blank=True, max_length=20)
     processor_deposit_key = models.CharField(max_length=60, null=True,
         blank=True,
@@ -999,7 +1000,8 @@ class RoleDescription(models.Model):
     slug = models.SlugField(
         help_text=_("Unique identifier shown in the URL bar."))
     organization = models.ForeignKey(
-        Organization, related_name="role_descriptions", null=True)
+        Organization, null=True, on_delete=models.CASCADE,
+        related_name="role_descriptions")
     title = models.CharField(max_length=20)
     skip_optin_on_grant = models.BooleanField(default=False)
     extra = settings.get_extra_field_class()(null=True)
@@ -1068,9 +1070,11 @@ class Role(models.Model):
     objects = RoleManager()
 
     created_at = models.DateTimeField(auto_now_add=True)
-    organization = models.ForeignKey(Organization)
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, db_column='user_id')
-    role_description = models.ForeignKey(RoleDescription, null=True)
+    organization = models.ForeignKey(Organization, on_delete=models.CASCADE)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE,
+        db_column='user_id')
+    role_description = models.ForeignKey(RoleDescription, null=True,
+        on_delete=models.CASCADE)
     request_key = models.CharField(max_length=40, null=True, blank=True)
     grant_key = models.CharField(max_length=40, null=True, blank=True)
     extra = settings.get_extra_field_class()(null=True)
@@ -1127,9 +1131,9 @@ class Signature(models.Model):
     objects = SignatureManager()
 
     last_signed = models.DateTimeField(auto_now_add=True)
-    agreement = models.ForeignKey(Agreement)
+    agreement = models.ForeignKey(Agreement, on_delete=models.PROTECT)
     user = models.ForeignKey(settings.AUTH_USER_MODEL, db_column='user_id',
-        related_name='signatures')
+        related_name='signatures', on_delete=models.PROTECT)
 
     class Meta:
         unique_together = ('agreement', 'user')
@@ -1310,16 +1314,18 @@ class Charge(models.Model):
 
     created_at = models.DateTimeField()
     created_by = models.ForeignKey(
-        settings.AUTH_USER_MODEL, db_column='user_id', null=True)
+        settings.AUTH_USER_MODEL, null=True, on_delete=models.PROTECT,
+        db_column='user_id')
     amount = models.PositiveIntegerField(default=0, help_text="Amount in cents")
     unit = models.CharField(max_length=3, default=settings.DEFAULT_UNIT)
-    customer = models.ForeignKey(Organization,
+    customer = models.ForeignKey(Organization, on_delete=models.PROTECT,
         help_text='organization charged')
     description = models.TextField(null=True)
     last4 = models.PositiveSmallIntegerField()
     exp_date = models.DateField()
     card_name = models.CharField(max_length=50, null=True)
-    processor = models.ForeignKey('Organization', related_name='charges')
+    processor = models.ForeignKey('Organization', on_delete=models.PROTECT,
+        related_name='charges')
     processor_key = models.SlugField(unique=True, db_index=True)
     state = models.PositiveSmallIntegerField(
         choices=CHARGE_STATES, default=CREATED)
@@ -1826,15 +1832,19 @@ class ChargeItem(models.Model):
     """
     objects = ChargeItemManager()
 
-    charge = models.ForeignKey(Charge, related_name='charge_items')
+    charge = models.ForeignKey(Charge, on_delete=models.PROTECT,
+        related_name='charge_items')
     # XXX could be a ``Subscription`` or a balance.
-    invoiced = models.ForeignKey('Transaction', related_name='invoiced_item',
+    invoiced = models.ForeignKey('Transaction', on_delete=models.PROTECT,
+        related_name='invoiced_item',
         help_text="transaction invoiced through this charge")
     invoiced_fee = models.ForeignKey('Transaction', null=True,
+        on_delete=models.PROTECT,
         related_name='invoiced_fee_item',
         help_text="fee transaction to process the transaction invoiced"\
 " through this charge")
     invoiced_distribute = models.ForeignKey('Transaction', null=True,
+        on_delete=models.PROTECT,
         related_name='invoiced_distribute',
         help_text="transaction recording the distribution from processor"\
 " to provider.")
@@ -2026,8 +2036,9 @@ class Coupon(models.Model):
         validators=[MaxValueValidator(100)],
         help_text="Percentage discounted")
     # restrict use in scope
-    organization = models.ForeignKey(Organization)
-    plan = models.ForeignKey('saas.Plan', null=True, blank=True)
+    organization = models.ForeignKey(Organization, on_delete=models.CASCADE)
+    plan = models.ForeignKey('saas.Plan', null=True, on_delete=models.CASCADE,
+        blank=True)
     # restrict use in time and count.
     ends_at = models.DateTimeField(null=True, blank=True)
     nb_attempts = models.IntegerField(null=True, blank=True,
@@ -2165,7 +2176,8 @@ class Plan(SlugTitleMixin, models.Model):
     is_not_priced = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     discontinued_at = models.DateTimeField(null=True, blank=True)
-    organization = models.ForeignKey(Organization, related_name='plans')
+    organization = models.ForeignKey(Organization, on_delete=models.CASCADE,
+        related_name='plans')
     unit = models.CharField(max_length=3, default=settings.DEFAULT_UNIT)
     # on creatiion of a subscription
     skip_optin_on_grant = models.BooleanField(default=False)
@@ -2191,7 +2203,8 @@ class Plan(SlugTitleMixin, models.Model):
         help_text=_('Number of intervals the plan before the plan ends.'))
     auto_renew = models.BooleanField(default=True)
     # Pb with next : maybe create an other model for it
-    next_plan = models.ForeignKey("Plan", null=True, blank=True)
+    next_plan = models.ForeignKey("Plan", null=True, on_delete=models.CASCADE,
+        blank=True)
     extra = settings.get_extra_field_class()(null=True)
 
     class Meta:
@@ -2400,7 +2413,8 @@ class UseCharge(SlugTitleMixin, models.Model):
     title = models.CharField(max_length=50, null=True)
     description = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
-    plan = models.ForeignKey(Plan, related_name='plans')
+    plan = models.ForeignKey(Plan, on_delete=models.CASCADE,
+        related_name='plans')
     use_amount = models.PositiveIntegerField(default=0)
     extra = settings.get_extra_field_class()(null=True)
 
@@ -2473,16 +2487,20 @@ class CartItem(models.Model):
 
     created_at = models.DateTimeField(auto_now_add=True,
         help_text=_("date/time at which the item was added to the cart."))
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, db_column='user_id',
-        null=True, related_name='cart_items',
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, null=True,
+        on_delete=models.CASCADE,
+        db_column='user_id', related_name='cart_items',
         help_text=_("user who added the item to the cart. ``None`` means"\
 " the item could be claimed."))
     plan = models.ForeignKey(Plan, null=True,
+        on_delete=models.CASCADE,
         help_text=_("item added to the cart (if plan)."))
     use = models.ForeignKey(UseCharge, null=True,
+        on_delete=models.CASCADE,
         help_text=_("item added to the cart (if use charge)."))
-    coupon = models.ForeignKey(Coupon, null=True, blank=True,
-        help_text=_("coupon to apply to the plan."))
+    coupon = models.ForeignKey(Coupon, null=True,
+        on_delete=models.CASCADE,
+        blank=True, help_text=_("coupon to apply to the plan."))
     recorded = models.BooleanField(default=False,
         help_text=_("whever the item has been checked out or not."))
 
@@ -2615,8 +2633,8 @@ class Subscription(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     ends_at = models.DateTimeField()
     description = models.TextField(null=True, blank=True)
-    organization = models.ForeignKey(Organization)
-    plan = models.ForeignKey(Plan)
+    organization = models.ForeignKey(Organization, on_delete=models.CASCADE)
+    plan = models.ForeignKey(Plan, on_delete=models.CASCADE)
     request_key = models.CharField(max_length=40, null=True, blank=True)
     grant_key = models.CharField(max_length=40, null=True, blank=True)
     extra = settings.get_extra_field_class()(null=True)
@@ -3594,6 +3612,7 @@ class Transaction(models.Model):
 
     orig_account = models.CharField(max_length=255, default="unknown")
     orig_organization = models.ForeignKey(Organization,
+        on_delete=models.PROTECT,
         related_name="outgoing")
     orig_amount = models.PositiveIntegerField(default=0,
         help_text=_('amount withdrawn from origin in origin units'))
@@ -3602,6 +3621,7 @@ class Transaction(models.Model):
 
     dest_account = models.CharField(max_length=255, default="unknown")
     dest_organization = models.ForeignKey(Organization,
+        on_delete=models.PROTECT,
         related_name="incoming")
     dest_amount = models.PositiveIntegerField(default=0,
         help_text=_('amount deposited into destination in destination units'))

@@ -1,4 +1,4 @@
-# Copyright (c) 2017, DjaoDjin inc.
+# Copyright (c) 2018, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -22,9 +22,10 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+from django.core.exceptions import ImproperlyConfigured
 from django.contrib.auth.decorators import login_required
-from django.core.urlresolvers import reverse_lazy
 from django.views.generic import TemplateView
+from saas.compat import reverse_lazy
 from saas.views import OrganizationRedirectView, UserRedirectView
 from saas.views.plans import CartPlanListView
 from urldecorators import include, url
@@ -43,15 +44,25 @@ def url_prefixed(regex, view, name=None, decorators=None):
     """
     return url(r'^' + regex, view, name=name, decorators=decorators)
 
-urlpatterns = [
-    # admin doc and panel
-    url(r'^admin/doc/', include('django.contrib.admindocs.urls')),
-    url(r'^admin/', include(admin.site.urls)),
+
+# admin doc and panel
+try:
+    urlpatterns = [
+        url(r'^admin/doc/', include('django.contrib.admindocs.urls')),
+        url(r'^admin/', admin.site.urls),
+    ]
+except ImproperlyConfigured: # Django <= 1.9
+    urlpatterns = [
+        url(r'^admin/doc/', include('django.contrib.admindocs.urls')),
+        url(r'^admin/', include(admin.site.urls)),
+    ]
+
+urlpatterns += [
     url_prefixed(r'register/$',
         PersonalRegistrationView.as_view(
             success_url=reverse_lazy('home')),
         name='registration_register'),
-    url_prefixed(r'^', include('saas.urls.users'),
+    url_prefixed(r'', include('saas.urls.users'),
         decorators=['django.contrib.auth.decorators.login_required']),
     url_prefixed(r'users/(?P<user>[\w.@+-]+)/',
         UserProfileView.as_view(), name='users_profile',
