@@ -30,6 +30,7 @@ install-conf:: $(DESTDIR)$(CONFIG_DIR)/credentials \
 
 
 $(DESTDIR)$(CONFIG_DIR)/credentials: $(srcDir)/testsite/etc/credentials
+	install -d $(dir $@)
 	[ -f $@ ] || \
 		SECRET_KEY=`python -c 'import sys ; from random import choice ; sys.stdout.write("".join([choice("abcdefghijklmnopqrstuvwxyz0123456789!@#$%^*-_=+") for i in range(50)]))'` ; \
 		sed -e "s,\%(SECRET_KEY)s,$${SECRET_KEY}," $< > $@
