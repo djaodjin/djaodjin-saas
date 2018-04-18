@@ -7,6 +7,7 @@ from saas.compat import reverse_lazy
 
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+RUN_DIR = os.getcwd()
 
 def load_config(confpath):
     '''
@@ -25,7 +26,7 @@ def load_config(confpath):
                     look = re.match(r'(\w+)\s*=\s*(.*)', line)
                     if look:
                         value = look.group(2) \
-                            % {'LOCALSTATEDIR': BASE_DIR + '/var'}
+                            % {'LOCALSTATEDIR': RUN_DIR + '/var'}
                         try:
                             # Once Django 1.5 introduced ALLOWED_HOSTS (a tuple
                             # definitely in the site.conf set), we had no choice
@@ -40,7 +41,7 @@ def load_config(confpath):
     else:
         sys.stderr.write('warning: config file %s does not exist.\n' % confpath)
 
-load_config(os.path.join(BASE_DIR, 'credentials'))
+load_config(os.path.join(RUN_DIR, 'credentials'))
 
 if not hasattr(sys.modules[__name__], "SECRET_KEY"):
     from random import choice
@@ -83,7 +84,7 @@ MIDDLEWARE_CLASSES = MIDDLEWARE
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': os.path.join(os.getcwd(), 'db.sqlite'),
+        'NAME': os.path.join(RUN_DIR, 'db.sqlite'),
         'USER': '',
         'PASSWORD': '',
         'HOST': '',
@@ -205,20 +206,31 @@ LOGGING = {
     },
     'loggers': {
         'saas': {
-            'handlers': ['logfile'],
+            'handlers': [],
             'level': 'INFO',
-            'propagate': False,
-        },
-        'django.request': {
-            'handlers': ['mail_admins'],
-            'level': 'ERROR',
-            'propagate': True,
         },
 #        'django.db.backends': {
 #             'handlers': ['logfile'],
 #             'level': 'DEBUG',
 #             'propagate': True,
 #        },
+        'django.request': {
+            'handlers': [],
+            'level': 'ERROR',
+        },
+        # If we don't disable 'django' handlers here, we will get an extra
+        # copy on stderr.
+        'django': {
+            'handlers': [],
+        },
+        # This is the root logger.
+        # The level will only be taken into account if the record is not
+        # propagated from a child logger.
+        #https://docs.python.org/2/library/logging.html#logging.Logger.propagate
+        '': {
+            'handlers': ['logfile', 'mail_admins'],
+            'level': 'INFO'
+        }
     }
 }
 
