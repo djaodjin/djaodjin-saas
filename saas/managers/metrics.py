@@ -31,11 +31,11 @@ from django.utils import six
 from django.utils.timezone import utc
 
 from ..models import Plan, Subscription, Transaction
-from ..utils import datetime_or_now, parse_tz
+from ..utils import datetime_or_now, parse_tz, convert_dates_to_utc
 
 
 def month_periods(nb_months=12, from_date=None, step_months=1,
-                  convert_to_utc=False, tz=None):
+                  tz=None):
     """
     Constructs a list of (nb_months + 1) dates in the past that fall
     on the first of each month, defined as midnight in timezone *tz*,
@@ -65,18 +65,15 @@ def month_periods(nb_months=12, from_date=None, step_months=1,
         if tz_ob:
             # adding timezone info
             # + accounting for DST
-            return tz_ob.normalize(tz_ob.localize(dt))
+            return tz_ob.localize(dt)
         return dt.replace(tzinfo=orig_tz)
 
     dates = []
     from_date = datetime_or_now(from_date)
-    orig_tz = utc
+    orig_tz = from_date.tzinfo
     tz_ob = parse_tz(tz)
     if tz_ob:
-        # no need to normalize here
         from_date = from_date.astimezone(tz_ob)
-    else:
-        from_date = from_date.astimezone(orig_tz)
     dates.append(from_date)
     last = _handle_tz(
         datetime(day=from_date.day, month=from_date.month, year=from_date.year),
@@ -103,10 +100,9 @@ def month_periods(nb_months=12, from_date=None, step_months=1,
         last = _handle_tz(last, tz_ob, orig_tz)
         dates.append(last)
     dates.reverse()
-    if convert_to_utc:
-        dates = [date.astimezone(utc) for date in dates]
 
     return dates
+
 
 def aggregate_monthly(organization, account, from_date=None, tz=None,
                       orig='orig', dest='dest', **kwargs):
@@ -115,7 +111,7 @@ def aggregate_monthly(organization, account, from_date=None, tz=None,
     amounts = []
     # We want to be able to compare *last* to *from_date* and not get django
     # warnings because timezones are not specified.
-    dates = month_periods(13, from_date, convert_to_utc=True, tz=tz)
+    dates = convert_dates_to_utc(month_periods(13, from_date, tz=tz))
     period_start = dates[1]
     for period_end in dates[2:]:
         # A bit ugly but it does the job ...
@@ -149,7 +145,7 @@ def aggregate_monthly_churn(organization, account, interval,
     churn_receivables = []
     # We want to be able to compare *last* to *from_date* and not get django
     # warnings because timezones are not specified.
-    dates = month_periods(13, from_date, convert_to_utc=True, tz=tz)
+    dates = convert_dates_to_utc(month_periods(13, from_date, tz=tz))
     trail_period_start = dates[0]
     period_start = dates[1]
     for period_end in dates[2:]:
@@ -305,8 +301,8 @@ def active_subscribers(plan, from_date=None, tz=None):
     """
     #pylint:disable=invalid-name
     values = []
-    for end_period in month_periods(from_date=from_date,
-                            convert_to_utc=True, tz=tz):
+    for end_period in convert_dates_to_utc(month_periods(
+                            from_date=from_date, tz=tz)):
         values.append([end_period,
             Subscription.objects.active_at(end_period, plan=plan).count()])
     return values
@@ -324,9 +320,8 @@ def monthly_balances(organization=None, account=None, like_account=None,
                      until=None, step_months=1, tz=None):
     #pylint:disable=invalid-name,too-many-arguments
     values = []
-    for end_period in month_periods(
-            from_date=until, step_months=step_months,
-            convert_to_utc=True, tz=tz):
+    for end_period in convert_dates_to_utc(month_periods(
+            from_date=until, step_months=step_months, tz=tz)):
         balance = Transaction.objects.get_balance(organization=organization,
             account=account, like_account=like_account, ends_at=end_period)
         values.append([end_period, balance['amount']])
@@ -346,7 +341,7 @@ def churn_subscribers(plan=None, from_date=None, tz=None):
     """
     #pylint:disable=invalid-name
     values = []
-    dates = month_periods(13, from_date, convert_to_utc=True, tz=tz)
+    dates = convert_dates_to_utc(month_periods(13, from_date, tz=tz))
     start_period = dates[0]
     kwargs = {}
     if plan:

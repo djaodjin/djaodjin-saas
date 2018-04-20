@@ -33,6 +33,7 @@ from django.utils.dateparse import parse_datetime
 from django.utils.timezone import utc, get_current_timezone
 from rest_framework.exceptions import ValidationError
 from pytz import timezone, UnknownTimeZoneError
+from pytz.tzinfo import DstTzInfo
 
 
 class SlugTitleMixin(object):
@@ -71,11 +72,17 @@ class SlugTitleMixin(object):
 
 
 def parse_tz(tzone):
+    if issubclass(type(tzone), DstTzInfo):
+        return tzone
     if tzone:
         try:
             return timezone(tzone)
         except UnknownTimeZoneError:
             pass
+
+
+def convert_dates_to_utc(dates):
+    return [date.astimezone(utc) for date in dates]
 
 
 def datetime_or_now(dtime_at=None):
