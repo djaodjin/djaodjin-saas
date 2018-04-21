@@ -1,6 +1,6 @@
 # Django settings for testsite project.
 
-import os.path, sys
+import logging, os.path, sys
 
 from django.contrib.messages import constants as messages
 from saas.compat import reverse_lazy
@@ -233,6 +233,12 @@ LOGGING = {
         }
     }
 }
+if logging.getLogger('gunicorn.error').handlers:
+    LOGGING['handlers']['logfile'].update({
+        'class':'logging.handlers.WatchedFileHandler',
+        'filename': os.path.join(RUN_DIR, 'testsite-app.log')
+    })
+
 
 # Templates (Django 1.8+)
 # ----------------------
