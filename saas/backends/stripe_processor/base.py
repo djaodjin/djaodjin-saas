@@ -509,20 +509,27 @@ class StripeBackend(object):
 
         return charge
 
-    def reconcile_transfers(self, provider, created_at):
+    def reconcile_transfers(self, provider, created_at, dry_run=False):
         kwargs = self._prepare_transfer_request(provider)
         timestamp = datetime_to_utctimestamp(created_at)
         LOGGER.info("reconcile transfers from Stripe at %s", created_at)
         try:
+            offset = 0
             transfers = stripe.Transfer.all(
-                created={'gt': timestamp}, status='paid', **kwargs)
-            for transfer in transfers.data:
-                created_at = utctimestamp_to_datetime(transfer.created)
-                descr = (transfer.description if transfer.description
-                    else "STRIPE TRANSFER %s" % str(transfer.id))
-                provider.create_withdraw_transactions(
-                    transfer.id, transfer.amount, transfer.currency,
-                    descr, created_at=created_at)
+                created={'gt': timestamp}, status='paid',
+                offset=offset, **kwargs)
+            while transfers.data:
+                for transfer in transfers.data:
+                    created_at = utctimestamp_to_datetime(transfer.created)
+                    descr = (transfer.description if transfer.description
+                        else "STRIPE TRANSFER %s" % str(transfer.id))
+                    provider.create_withdraw_transactions(
+                        transfer.id, transfer.amount, transfer.currency,
+                        descr, created_at=created_at, dry_run=dry_run)
+                offset = offset + len(transfers.data)
+                transfers = stripe.Transfer.all(
+                    created={'gt': timestamp}, status='paid',
+                    offset=offset, **kwargs)
         except stripe.error.StripeError as err:
             LOGGER.exception(err)
             raise ProcessorError(str(err), backend_except=err)

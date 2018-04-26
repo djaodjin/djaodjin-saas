@@ -120,7 +120,7 @@ class RazorpayBackend(object):
         return context
 
     @staticmethod
-    def reconcile_transfers(provider, created_at):
+    def reconcile_transfers(provider, created_at, dry_run=False):
         #pylint:disable=unused-argument
         LOGGER.warning("There are no RazorPay APIs to implement this method.")
 

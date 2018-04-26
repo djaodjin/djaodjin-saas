@@ -99,6 +99,12 @@ class FakeProcessorBackend(object):
         return (generate_random_slug(), created_at)
 
     @staticmethod
+    def reconcile_transfers(provider, created_at, dry_run=False):
+        #pylint:disable=unused-argument
+        raise NotImplemented(
+            "reconcile_transfers is not implemented on FakeProcessor")
+
+    @staticmethod
     def refund_charge(charge, amount):
         """
         Refund a charge on the associated card.
