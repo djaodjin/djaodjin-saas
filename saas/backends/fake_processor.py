@@ -101,7 +101,7 @@ class FakeProcessorBackend(object):
     @staticmethod
     def reconcile_transfers(provider, created_at, dry_run=False):
         #pylint:disable=unused-argument
-        raise NotImplemented(
+        raise NotImplementedError(
             "reconcile_transfers is not implemented on FakeProcessor")
 
     @staticmethod

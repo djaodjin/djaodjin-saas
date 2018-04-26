@@ -27,7 +27,7 @@ The reconcile_with_processor command is will check all payouts on the processor
 have been accounted for in the local database.
 """
 
-import logging, time
+import logging
 
 from django.core.management.base import BaseCommand
 from django.db import transaction
@@ -41,7 +41,8 @@ LOGGER = logging.getLogger(__name__)
 
 
 class Command(BaseCommand):
-    help = """Reconcile processor payouts with transactions in the local database"""
+    help = """Reconcile processor payouts with transactions in the local
+ database"""
 
     def add_arguments(self, parser):
         parser.add_argument('--dry-run', action='store_true',
@@ -59,7 +60,8 @@ class Command(BaseCommand):
         created_at = options['after']
         if created_at:
             created_at = datetime_or_now(created_at)
-        end_period = datetime_or_now(options['at_time'])
+        # XXX currently unused
+        # end_period = datetime_or_now(options['at_time'])
         if dry_run:
             LOGGER.warning("dry_run: no changes will be committed.")
         self.run_reconcile(created_at=created_at, dry_run=dry_run)

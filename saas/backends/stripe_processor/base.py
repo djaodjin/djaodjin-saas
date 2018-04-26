@@ -404,6 +404,7 @@ class StripeBackend(object):
             from ...compat import import_string
             func = import_string(redirect_func_name)
             return func(self, provider)
+        #pylint:disable=line-too-long
         return "https://connect.stripe.com/oauth/authorize?response_type=code&client_id=%(client_id)s&scope=read_write&state=%(provider)s" % {
             'client_id': self.client_id,
             'provider': str(provider)

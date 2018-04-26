@@ -135,10 +135,9 @@ class BankUpdateView(BankMixin, UpdateView):
     def get_context_data(self, **kwargs):
         context = super(BankUpdateView, self).get_context_data(**kwargs)
         context.update({'force_update': True})
-        self.update_context_urls(context,{
+        self.update_context_urls(context, {
             'deauthorize_bank': reverse(
                 'saas_deauthorize_bank', args=(self.provider,))})
-        context.update({'state': self.provider})
         return context
 
     def get_object(self, queryset=None):
@@ -193,7 +192,7 @@ djaodjin-saas/tree/master/saas/templates/saas/billing/bank.html>`__).
         return super(BankAuthorizeView, self).form_valid(form)
 
     def get_context_data(self, **kwargs):
-        context = super(BankUpdateView, self).get_context_data(**kwargs)
+        context = super(BankAuthorizeView, self).get_context_data(**kwargs)
         self.update_context_urls(context, {
             'authorize_processor': self.get_authorize_url()})
         return context

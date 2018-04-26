@@ -809,6 +809,7 @@ class Organization(models.Model):
         with transaction.atomic():
             created = False
             if amount > 0:
+                #pylint:disable=protected-access
                 Transaction.objects._for_write = True
                 # The get() needs to be targeted at the write database in order
                 # to avoid potential transaction consistency problems.
@@ -848,6 +849,7 @@ class Organization(models.Model):
                 # When there is not enough funds in the Stripe account,
                 # Stripe will draw back from the bank account to cover
                 # a refund, etc.
+                #pylint:disable=protected-access
                 Transaction.objects._for_write = True
                 # The get() needs to be targeted at the write database in order
                 # to avoid potential transaction consistency problems.
