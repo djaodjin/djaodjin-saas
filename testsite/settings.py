@@ -41,7 +41,8 @@ def load_config(confpath):
     else:
         sys.stderr.write('warning: config file %s does not exist.\n' % confpath)
 
-load_config(os.path.join(RUN_DIR, 'credentials'))
+load_config(
+    os.path.join(os.getenv('TESTSITE_CONFIG_DIR', RUN_DIR), 'credentials'))
 
 if not hasattr(sys.modules[__name__], "SECRET_KEY"):
     from random import choice
@@ -94,6 +95,8 @@ DATABASES = {
 
 REST_FRAMEWORK = {
     'PAGE_SIZE': 25,
+    'DEFAULT_PAGINATION_CLASS':
+        'rest_framework.pagination.PageNumberPagination',
 }
 
 # Absolute filesystem path to the directory that will hold user-uploaded files.
