@@ -102,6 +102,7 @@ _SETTINGS = {
         'MODE': 0,
         'PRIV_KEY': None,
         'PUB_KEY': None,
+        'AUTHORIZE_CALLABLE': None,
         'REDIRECT_CALLABLE': None,
         'WEBHOOK_URL': 'api/postevent',
     },

@@ -23,6 +23,7 @@
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 from django.contrib import messages
+from django.http import HttpResponseRedirect
 from django.views.generic import TemplateView
 from saas.backends import ProcessorConnectionError
 from saas.compat import reverse
@@ -64,3 +65,8 @@ class AppView(TemplateView):
         else:
             context.update({'urls': urls})
         return context
+
+    def get(self, request, *args, **kwargs):
+        if self.organization is None:
+            return HttpResponseRedirect(reverse('saas_organization_create'))
+        return super(AppView, self).get(request, *args, **kwargs)

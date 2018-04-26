@@ -398,6 +398,17 @@ class StripeBackend(object):
         stripe_charge, _ = self.get_processor_charge(charge)
         stripe_charge.refund(amount=amount)
 
+    def get_authorize_url(self, provider):
+        redirect_func_name = settings.PROCESSOR.get('AUTHORIZE_CALLABLE', None)
+        if redirect_func_name:
+            from ...compat import import_string
+            func = import_string(redirect_func_name)
+            return func(self, provider)
+        return "https://connect.stripe.com/oauth/authorize?response_type=code&client_id=%(client_id)s&scope=read_write&state=%(provider)s" % {
+            'client_id': self.client_id,
+            'provider': str(provider)
+        }
+
     def get_deposit_context(self):
         # We insert the``STRIPE_CLIENT_ID`` here because we serve page
         # with a "Stripe Connect" button.

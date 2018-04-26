@@ -170,7 +170,7 @@ DURATIONFIELD_ALLOW_MONTHS = True
 # Configuration of djaodjin-saas
 SAAS = {
   'BROKER': {
-      'GET_INSTANCE': 'cowork-master',
+      'GET_INSTANCE': 'cowork',
   },
   'PROCESSOR': {
       'BACKEND': 'saas.backends.stripe_processor.StripeBackend',
