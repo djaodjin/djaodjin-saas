@@ -9,11 +9,9 @@ Major Features:
 
 Tested with
 
-**Python:** 2.7, **Django:** 1.11.12 [LTS](https://www.djangoproject.com/download/), **Django Rest Framework:** 3.8.2
-
-**Python:** 3.6, **Django:** 1.11.12 [LTS](https://www.djangoproject.com/download/), **Django Rest Framework:** 3.8.2
-
-**Python:** 3.6, **Django:** 2.0.4,       **Django Rest Framework:** 3.8.2
+- **Python:** 2.7, **Django:** 1.11.12 ([LTS](https://www.djangoproject.com/download/)), **Django Rest Framework:** 3.8.2
+- **Python:** 3.6, **Django:** 1.11.12 ([LTS](https://www.djangoproject.com/download/)), **Django Rest Framework:** 3.8.2
+- **Python:** 3.6, **Django:** 2.0.4 (latest),       **Django Rest Framework:** 3.8.2
 
 This project contains bare bone templates which are compatible with Django
 and Jinja2 template engines. To see djaodjin-saas in action as part
@@ -90,10 +88,11 @@ saas/templates/notification/ directory.
 Release Notes
 =============
 
-0.3.0
+0.3.2
 
-  * Grants and requests for double opt-in on roles and subscriptions.
-  * Adds logic for use charges
+  * Compatible with Django 2.0.x
+  * Adds command to reconcile payouts with processor
+  * Generates revenue reports in utc and local time
 
 [previous release notes](changelog)
 
