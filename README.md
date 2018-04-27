@@ -9,9 +9,11 @@ Major Features:
 
 Tested with
 
-Python: 2.7, Django: 1.11.12 [LTS](https://www.djangoproject.com/download/), Django Rest Framework: 3.8.2
-Python: 3.6, Django: 1.11.12 [LTS](https://www.djangoproject.com/download/), Django Rest Framework: 3.8.2
-Python: 3.6, Django: 2.0.4,       Django Rest Framework: 3.8.2
+**Python:** 2.7, **Django:** 1.11.12 [LTS](https://www.djangoproject.com/download/), **Django Rest Framework:** 3.8.2
+
+**Python:** 3.6, **Django:** 1.11.12 [LTS](https://www.djangoproject.com/download/), **Django Rest Framework:** 3.8.2
+
+**Python:** 3.6, **Django:** 2.0.4,       **Django Rest Framework:** 3.8.2
 
 This project contains bare bone templates which are compatible with Django
 and Jinja2 template engines. To see djaodjin-saas in action as part
