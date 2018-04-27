@@ -639,7 +639,9 @@ class CartPeriodsView(CartBaseView):
 
     @property
     def cart_items(self):
-        return CartItem.objects.get_cart(user=self.request.user)
+        if is_authenticated(self.request):
+            return CartItem.objects.get_cart(user=self.request.user)
+        return CartItem.objects.none()
 
     def get(self, request, *args, **kwargs):
         if not self.cart_items.exists():

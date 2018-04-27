@@ -41,7 +41,7 @@ from django.views.generic.base import ContextMixin, TemplateResponseMixin
 from django.views.generic.edit import FormMixin, ProcessFormView
 
 from .. import settings
-from ..compat import reverse
+from ..compat import reverse, NoReverseMatch
 from ..decorators import fail_direct
 from ..models import CartItem, Coupon, Plan, Organization, get_broker
 
@@ -209,7 +209,10 @@ class OrganizationRedirectView(TemplateResponseMixin, ContextMixin,
         session_cart_to_database(request)
         accessibles = Organization.objects.accessible_by(request.user)
         count = accessibles.count()
-        next_url = self.get_redirect_url(*args, **kwargs)
+        try:
+            next_url = self.get_redirect_url(*args, **kwargs)
+        except NoReverseMatch: # Django==2.0
+            next_url = None
         if next_url:
             create_url = '%s?next=%s' % (
                 reverse('saas_organization_create'), next_url)
