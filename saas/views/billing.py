@@ -36,7 +36,7 @@ policy.
 """
 #pylint:disable=too-many-lines
 
-import copy, itertools, logging
+import copy, logging
 
 from django import http
 from django.contrib.auth import REDIRECT_FIELD_NAME
@@ -717,7 +717,7 @@ djaodjin-saas/tree/master/saas/templates/saas/billing/cart.html>`__).
         """
         # Let's first make sure we have valid parameters ...
         params = []
-        for item_plan, item_use, item_sync_on in itertools.zip_longest(
+        for item_plan, item_use, item_sync_on in six.itertools.zip_longest(
                 request.GET.getlist('plan', []),
                 request.GET.getlist('use', []),
                 request.GET.getlist('sync_on', [])):
