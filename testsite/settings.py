@@ -176,6 +176,7 @@ SAAS = {
       'BACKEND': 'saas.backends.stripe_processor.StripeBackend',
       'PRIV_KEY': getattr(sys.modules[__name__], "STRIPE_PRIV_KEY", None),
       'PUB_KEY': getattr(sys.modules[__name__], "STRIPE_PUB_KEY", None),
+      'CLIENT_ID': getattr(sys.modules[__name__], "STRIPE_CLIENT_ID", None),
 # Comment above and uncomment below to use RazorPay instead.
 #      'BACKEND': 'saas.backends.razorpay_processor.RazorpayBackend',
 #      'PRIV_KEY': getattr(sys.modules[__name__], "RAZORPAY_PRIV_KEY", None),

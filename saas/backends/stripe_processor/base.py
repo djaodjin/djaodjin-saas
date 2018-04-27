@@ -405,10 +405,11 @@ class StripeBackend(object):
             func = import_string(redirect_func_name)
             return func(self, provider)
         #pylint:disable=line-too-long
-        return "https://connect.stripe.com/oauth/authorize?response_type=code&client_id=%(client_id)s&scope=read_write&state=%(provider)s" % {
+        authorize_url = "https://connect.stripe.com/oauth/authorize?response_type=code&client_id=%(client_id)s&scope=read_write&state=%(provider)s" % {
             'client_id': self.client_id,
             'provider': str(provider)
         }
+        return authorize_url
 
     def get_deposit_context(self):
         # We insert the``STRIPE_CLIENT_ID`` here because we serve page
