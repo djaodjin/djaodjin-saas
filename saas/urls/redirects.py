@@ -90,13 +90,14 @@ urlpatterns = [
         name='saas_provider_metrics_coupons'),
 
     url(r'^billing/(?P<organization>%s)/$' % ACCT_REGEX,
-        RedirectView.as_view(pattern_name='saas_billing_info'),
+        RedirectView.as_view(permanent=False, pattern_name='saas_billing_info'),
         name='saas_billing_redirect'),
     url(r'^billing/$',
         OrganizationRedirectView.as_view(pattern_name='saas_billing_info'),
         name='saas_billing_base'),
     url(r'^profile/(?P<organization>%s)/$' % ACCT_REGEX,
-        RedirectView.as_view(pattern_name='saas_organization_profile'),
+        RedirectView.as_view(permanent=False,
+            pattern_name='saas_organization_profile'),
         name='saas_profile_redirect'),
     url(r'^profile/$', OrganizationRedirectView.as_view(
             pattern_name='saas_organization_profile'),

@@ -37,6 +37,7 @@ $(DESTDIR)$(CONFIG_DIR)/credentials: $(srcDir)/testsite/etc/credentials
 		-e "s,\%(SECRET_KEY)s,$${SECRET_KEY}," \
 		-e "s,STRIPE_PUB_KEY = \"\",STRIPE_PUB_KEY = \"$(STRIPE_PUB_KEY)\"," \
 		-e "s,STRIPE_PRIV_KEY = \"\",STRIPE_PRIV_KEY = \"$(STRIPE_PRIV_KEY)\","\
+		-e "s,STRIPE_CLIENT_ID = \"\",STRIPE_CLIENT_ID = \"$(STRIPE_CLIENT_ID)\","\
 			$< > $@
 
 

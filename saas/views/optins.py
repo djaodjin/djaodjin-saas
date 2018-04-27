@@ -37,6 +37,7 @@ LOGGER = logging.getLogger(__name__)
 class RoleGrantAcceptView(RoleMixin, RedirectView):
 
     pattern_name = 'organization_app'
+    permanent = False
 
     @property
     def role(self):
@@ -70,6 +71,7 @@ class RoleGrantAcceptView(RoleMixin, RedirectView):
 class SubscriptionGrantAcceptView(SubscriptionMixin, RedirectView):
 
     pattern_name = 'organization_app'
+    permanent = False
 
     @property
     def subscription(self):
@@ -103,6 +105,7 @@ class SubscriptionGrantAcceptView(SubscriptionMixin, RedirectView):
 class SubscriptionRequestAcceptView(SubscriptionMixin, RedirectView):
 
     pattern_name = 'organization_app'
+    permanent = False
 
     @property
     def subscription(self):

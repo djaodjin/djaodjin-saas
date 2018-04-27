@@ -263,7 +263,7 @@ if TEMPLATE_REVERT_TO_DJANGO:
             'loaders': [
                 'django.template.loaders.filesystem.Loader',
                 'django.template.loaders.app_directories.Loader'],
-            'libraries': {},
+            # XXX 'builtins' key is not supported on Django 1.8
             'builtins': [
                 'saas.templatetags.saas_tags',
                 'testsite.templatetags.testsite_tags']
