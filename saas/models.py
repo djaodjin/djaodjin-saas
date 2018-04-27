@@ -754,13 +754,18 @@ class Organization(models.Model):
         backend.
         """
         if reconcile:
+            after = datetime_or_now() - relativedelta(months=1)
+            # We want to avoid looping through too many calls to the Stripe API.
             queryset = Transaction.objects.filter(
                 orig_organization=self,
                 orig_account=Transaction.FUNDS,
                 dest_account__startswith=Transaction.WITHDRAW)
             most_recent = queryset.aggregate(
                 Max('created_at'))['created_at__max']
-            self.processor_backend.reconcile_transfers(self, most_recent)
+            if most_recent:
+                after = max(most_recent, after)
+            self.processor_backend.reconcile_transfers(self, after,
+                limit_to_one_request=True)
         return Transaction.objects.by_organization(self)
 
     def withdraw_funds(self, amount, user):

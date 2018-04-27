@@ -510,7 +510,8 @@ class StripeBackend(object):
 
         return charge
 
-    def reconcile_transfers(self, provider, created_at, dry_run=False):
+    def reconcile_transfers(self, provider, created_at,
+                            limit_to_one_request=False, dry_run=False):
         kwargs = self._prepare_transfer_request(provider)
         timestamp = datetime_to_utctimestamp(created_at)
         LOGGER.info("reconcile transfers from Stripe at %s", created_at)
@@ -527,6 +528,8 @@ class StripeBackend(object):
                     provider.create_withdraw_transactions(
                         transfer.id, transfer.amount, transfer.currency,
                         descr, created_at=created_at, dry_run=dry_run)
+                if limit_to_one_request:
+                    break
                 offset = offset + len(transfers.data)
                 transfers = stripe.Transfer.all(
                     created={'gt': timestamp}, status='paid',
