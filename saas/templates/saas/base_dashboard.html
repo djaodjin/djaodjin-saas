@@ -70,12 +70,16 @@ urls: {
     accounts_base: "{{ urls.accounts_base }}",
     api_accounts: "{{ urls.provider.api_accounts }}",
 {% endif %}
+{% if urls and urls.organization and urls.organization.api_base %}
+    saas_api_organization: "{{ urls.organization.api_base }}",
+{% endif %}
 {% if urls.user %}
     api_accessibles: "{{urls.user.api_accessibles}}",
 {% endif %}
-{% if request|is_authenticated %}
-    saas_api_organization: "{% if urls and urls.organization %}{{ urls.organization.api_base }}{% endif %}",
-    user_profile_redirect: "{% if urls and urls.user %}{{urls.user.profile_redirect}}{% else %}/users/{% endif %}",
+{% if urls and urls.user and urls.user.profile_redirect %}
+    user_profile_redirect: "{{urls.user.profile_redirect}}",
+{% else %}
+    user_profile_redirect: "/users/",
 {% endif %}
 },
 itemsPerPage: {% if items_per_page %}{{items_per_page}}{% else %}25{% endif %},

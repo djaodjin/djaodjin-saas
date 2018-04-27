@@ -1,5 +1,5 @@
 djaodjin-saas is a Django application that implements the logic to support
-subscription-based Sofware-as-a-Service businesses.
+subscription-based Software-as-a-Service businesses.
 
 Major Features:
 
@@ -7,7 +7,19 @@ Major Features:
 - Double entry book keeping ledger
 - Flexible security framework
 
+Tested with
+
+Python: 2.7, Django: 1.11.12 [LTS](https://www.djangoproject.com/download/), Django Rest Framework: 3.8.2
+Python: 3.6, Django: 1.11.12 [LTS](https://www.djangoproject.com/download/), Django Rest Framework: 3.8.2
+Python: 3.6, Django: 2.0.4,       Django Rest Framework: 3.8.2
+
+This project contains bare bone templates which are compatible with Django
+and Jinja2 template engines. To see djaodjin-saas in action as part
+of a full-fledged subscription-based session proxy, take a look
+at [djaoapp](https://github.com/djaodjin/djaoapp/).
+
 Full documentation for the project is available at [Read-the-Docs](http://djaodjin-saas.readthedocs.org/)
+
 
 Development
 ===========
@@ -18,7 +30,6 @@ the prerequisites:
     $ virtualenv _installTop_
     $ source _installTop_/bin/activate
     $ pip install -r testsite/requirements.txt
-
 
 To use the testsite, you will need to add the payment processor keys
 (see [Processor Backends](http://djaodjin-saas.readthedocs.io/en/latest/backends.html))
@@ -50,7 +61,7 @@ If all is well then, you are ready to run the server and browse the testsite.
     $ python manage.py runserver
 
     # Browse http://localhost:8000/
-    # Login with username: donny and password: yoyo
+    # Login with username: alice and password: yoyo
 
 
 Implementation Notes
@@ -63,6 +74,8 @@ thus need to define ``PAGE_SIZE`` in your settings.py
     $ diff testsite/settings.py
     +REST_FRAMEWORK = {
     +    'PAGE_SIZE': 25,
+    +    'DEFAULT_PAGINATION_CLASS':
+    +        'rest_framework.pagination.PageNumberPagination',
     +}
 
 This Django App does not send notification e-mails itself. All major
