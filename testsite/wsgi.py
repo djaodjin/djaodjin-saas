@@ -13,7 +13,29 @@ middleware here, or combine a Django application with an application of another
 framework.
 
 """
-import os
+import os, signal
+
+#pylint: disable=invalid-name
+
+def save_coverage():
+    sys.stderr.write("saving coverage\n")
+    cov.stop()
+    cov.save()
+
+if os.getenv('DJANGO_COVERAGE'):
+    import atexit, sys
+    import coverage
+    cov = coverage.coverage(data_file=os.path.join(os.getenv('DJANGO_COVERAGE'),
+        ".coverage.%d" % os.getpid()))
+    cov.start()
+    atexit.register(save_coverage)
+    try:
+        signal.signal(signal.SIGTERM, save_coverage)
+    except ValueError as e:
+        # trapping signals does not work with manage
+        # trying to do so fails with
+        # ValueError: signal only works in main thread
+        pass
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "testsite.settings")
 
