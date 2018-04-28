@@ -135,9 +135,9 @@ class BankUpdateView(BankMixin, UpdateView):
     def get_context_data(self, **kwargs):
         context = super(BankUpdateView, self).get_context_data(**kwargs)
         context.update({'force_update': True})
-        self.update_context_urls(context, {
+        self.update_context_urls(context, {'provider': {
             'deauthorize_bank': reverse(
-                'saas_deauthorize_bank', args=(self.provider,))})
+                'saas_deauthorize_bank', args=(self.provider,))}})
         return context
 
     def get_object(self, queryset=None):
