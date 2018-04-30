@@ -1,4 +1,4 @@
-# Copyright (c) 2016, DjaoDjin inc.
+# Copyright (c) 2018, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -28,7 +28,7 @@ from datetime import datetime, timedelta
 from django.core.management.base import BaseCommand
 from django.utils.timezone import utc
 
-from ...managers.metrics import (aggregate_monthly,
+from ...managers.metrics import (aggregate_weekly,
     aggregate_monthly_transactions)
 from ...models import Organization, Transaction
 
@@ -64,17 +64,17 @@ class Command(BaseCommand):
                 orig='orig', dest='dest',
                 from_date=monday)
 
-        _, payment_amounts = aggregate_monthly(
+        payment_amounts = aggregate_weekly(
             provider, Transaction.RECEIVABLE,
             orig='dest', dest='dest',
             orig_account=Transaction.BACKLOG,
             orig_organization=provider,
-            from_date=monday)
+            curr_week=monday)
 
-        _, refund_amounts = aggregate_monthly(
+        refund_amounts = aggregate_weekly(
             provider, Transaction.REFUND,
             orig='dest', dest='dest',
-            from_date=monday)
+            curr_week=monday)
 
         account_table += [
             {"key": "Payments", "values": payment_amounts},

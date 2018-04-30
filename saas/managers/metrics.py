@@ -22,7 +22,7 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from django.db import router
 from django.db.models import Count, Sum
@@ -128,6 +128,31 @@ def aggregate_monthly(organization, account, from_date=None, tz=None,
         amounts += [(period, int(amount or 0))]
         period_start = period_end
     return (counts, amounts)
+
+
+def aggregate_weekly(organization, account, curr_week=None, tz=None,
+                      orig='orig', dest='dest', **kwargs):
+    # pylint: disable=too-many-locals,too-many-arguments,invalid-name
+    counts = []
+    amounts = []
+    week = timedelta(days=-curr_week.weekday(), weeks=1)
+    prev_week = curr_week - week
+    prev_prev_week = curr_week - (week + week)
+    dates = [prev_prev_week, prev_week, curr_week]
+    period_start = dates[0]
+    kwargs.update({'%s_organization' % orig: organization,
+        '%s_account' % orig: account})
+    for period_end in dates[1:]:
+        query_result = Transaction.objects.filter(
+            created_at__gte=period_start,
+            created_at__lt=period_end, **kwargs).aggregate(
+            Count('%s_organization' % dest, distinct=True),
+            Sum('%s_amount' % dest))
+        amount = query_result['%s_amount__sum' % dest]
+        period = period_end
+        amounts += [(period, int(amount or 0))]
+        period_start = period_end
+    return amounts
 
 
 def aggregate_monthly_churn(organization, account, interval,
