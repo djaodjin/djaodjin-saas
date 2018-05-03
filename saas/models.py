@@ -475,7 +475,7 @@ class Organization(models.Model):
             return True
         return False
 
-    def add_role_request(self, user, at_time=None, reason=None):
+    def add_role_request(self, user, at_time=None):
         # OK to use ``filter`` in both subsequent queries as we are dealing
         # with the whole QuerySet related to a user.
         if not get_role_model().objects.filter(
@@ -487,8 +487,6 @@ class Organization(models.Model):
                 organization=self, user=user,
                 request_key=self.generate_role_key(user))
             m2m.save(using=self._state.db, force_insert=True)
-            signals.user_relation_requested.send(sender=__name__,
-                organization=self, user=user, reason=reason)
             return True
         return False
 

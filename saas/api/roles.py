@@ -38,7 +38,7 @@ from rest_framework.generics import (ListAPIView, CreateAPIView,
     ListCreateAPIView, DestroyAPIView, RetrieveUpdateDestroyAPIView)
 from rest_framework.response import Response
 
-from .. import settings
+from .. import settings, signals
 from ..mixins import (OrganizationMixin, RoleDescriptionMixin, RoleMixin,
     RoleSmartListMixin, UserMixin)
 from ..models import RoleDescription
@@ -119,12 +119,18 @@ class OptinBase(object):
 
     organization_model = get_organization_model()
 
-    def add_relations(self, organizations, user, reason=None, invite=False):
+    def add_relations(self, organizations, user):
         #pylint:disable=no-self-use,unused-argument
         created = False
         for organization in organizations:
-            created |= organization.add_role_request(user, reason=reason)
-        return created
+            created |= organization.add_role_request(user)
+        return organizations, created
+
+    def send_signals(self, organizations, user, reason=None, invite=False):
+        #pylint:disable=no-self-use,unused-argument
+        for organization in organizations:
+            signals.user_relation_requested.send(sender=__name__,
+                organization=organization, user=user, reason=reason)
 
     def perform_optin(self, serializer, request, user=None):
         #pylint:disable=too-many-locals
@@ -170,8 +176,9 @@ class OptinBase(object):
                 organizations = [organization]
                 invite = True
 
-            created = self.add_relations(
-                organizations, user, reason=reason, invite=invite)
+            notified, created = self.add_relations(organizations, user)
+
+        self.send_signals(notified, user, reason=reason, invite=invite)
 
         if created:
             resp_status = status.HTTP_201_CREATED

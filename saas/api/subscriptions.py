@@ -252,7 +252,7 @@ class PlanSubscriptionsAPIView(SubscriptionSmartListMixin,
     """
     serializer_class = SubscriptionSerializer
 
-    def add_relations(self, organizations, user, reason=None, invite=False):
+    def add_relations(self, organizations, user):
         subscriptions = []
         for organization in organizations:
             # Be careful that `self.plan` must exist otherwise the API will
@@ -269,11 +269,13 @@ class PlanSubscriptionsAPIView(SubscriptionSmartListMixin,
                         self.plan.organization.generate_role_key(user)
                 subscription.save()
                 subscriptions += [subscription]
+        return subscriptions, created
+
+    def send_signals(self, subscriptions, user, reason=None, invite=False):
         for subscription in subscriptions:
             signals.subscription_grant_created.send(sender=__name__,
                 subscription=subscription, reason=reason, invite=invite,
                 request=self.request)
-        return created
 
     def create(self, request, *args, **kwargs): #pylint:disable=unused-argument
         serializer = SubscriptionCreateSerializer(data=request.data)
