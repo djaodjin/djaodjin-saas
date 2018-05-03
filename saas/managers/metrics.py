@@ -130,29 +130,26 @@ def aggregate_monthly(organization, account, from_date=None, tz=None,
     return (counts, amounts)
 
 
-def aggregate_weekly(organization, account, curr_week=None, tz=None,
+def aggregate_within_periods(organization, account, periods,
                       orig='orig', dest='dest', **kwargs):
     # pylint: disable=too-many-locals,too-many-arguments,invalid-name
     counts = []
     amounts = []
-    week = timedelta(days=-curr_week.weekday(), weeks=1)
-    prev_week = curr_week - week
-    prev_prev_week = curr_week - (week + week)
-    dates = [prev_prev_week, prev_week, curr_week]
-    period_start = dates[0]
     kwargs.update({'%s_organization' % orig: organization,
         '%s_account' % orig: account})
-    for period_end in dates[1:]:
+    for period in periods:
+        period_start = period[0]
+        period_end = period[1]
         query_result = Transaction.objects.filter(
             created_at__gte=period_start,
             created_at__lt=period_end, **kwargs).aggregate(
             Count('%s_organization' % dest, distinct=True),
             Sum('%s_amount' % dest))
+        count = query_result['%s_organization__count' % dest]
         amount = query_result['%s_amount__sum' % dest]
-        period = period_end
+        counts += [(period, count)]
         amounts += [(period, int(amount or 0))]
-        period_start = period_end
-    return amounts
+    return (counts, amounts)
 
 
 def aggregate_monthly_churn(organization, account, interval,

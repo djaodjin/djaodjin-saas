@@ -25,10 +25,12 @@
 """Command for the cron job. Send revenue report for the last week"""
 
 from datetime import datetime, timedelta
+from dateutil.relativedelta import relativedelta, SU
+
 from django.core.management.base import BaseCommand
 from django.utils.timezone import utc
 
-from ...managers.metrics import (aggregate_weekly,
+from ...managers.metrics import (aggregate_within_periods,
     aggregate_monthly_transactions)
 from ...models import Organization, Transaction
 
@@ -50,33 +52,40 @@ class Command(BaseCommand):
         if provider_slug:
             providers = providers.filter(slug=provider_slug)
         provider = providers[0]
-        today_date = datetime.today()
+
+        today_dt = datetime.today()
         today = datetime(
-            year=today_date.year,
-            month=today_date.month,
-            day=today_date.day,
+            year=today_dt.year,
+            month=today_dt.month,
+            day=today_dt.day,
             tzinfo=utc
         )
-        monday = today - timedelta(days=today.weekday())
-        account_table, _, _ = \
-            aggregate_monthly_transactions(provider,
-                Transaction.RECEIVABLE, account_title='Sales',
-                orig='orig', dest='dest',
-                from_date=monday)
+        last_sunday = today + relativedelta(weeks=-1, weekday=SU(0))
+        last_week = [last_sunday - relativedelta(weeks=1), last_sunday]
+        week_before = [last_week[0] - relativedelta(weeks=1), last_week[0]]
+        week_last_year =  [last_sunday - relativedelta(years=1, weeks=1), last_sunday - relativedelta(years=1)]
+        periods = [last_week, week_before, week_last_year]
 
-        payment_amounts = aggregate_weekly(
+        #account_table, _, _ = \
+        #    aggregate_monthly_transactions(self.provider,
+        #        Transaction.RECEIVABLE, account_title='Sales',
+        #        orig='orig', dest='dest',
+        #        from_date=self.ends_at, tz=self.timezone)
+
+        _, payment_amounts = aggregate_within_periods(
             provider, Transaction.RECEIVABLE,
             orig='dest', dest='dest',
             orig_account=Transaction.BACKLOG,
             orig_organization=provider,
-            curr_week=monday)
+            periods=periods)
 
-        refund_amounts = aggregate_weekly(
+        _, refund_amounts = aggregate_within_periods(
             provider, Transaction.REFUND,
             orig='dest', dest='dest',
-            curr_week=monday)
+            periods=periods)
 
-        account_table += [
-            {"key": "Payments", "values": payment_amounts},
-            {"key": "Refunds", "values": refund_amounts}]
-        import pdb; pdb.set_trace()
+        #import pdb; pdb.set_trace()
+
+        #account_table += [
+        #    {"key": "Payments", "values": payment_amounts},
+        #    {"key": "Refunds", "values": refund_amounts}]
