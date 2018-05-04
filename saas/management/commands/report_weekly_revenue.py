@@ -61,31 +61,30 @@ class Command(BaseCommand):
             tzinfo=utc
         )
         last_sunday = today + relativedelta(weeks=-1, weekday=SU(0))
-        last_week = [last_sunday - relativedelta(weeks=1), last_sunday]
-        week_before = [last_week[0] - relativedelta(weeks=1), last_week[0]]
-        week_last_year =  [last_sunday - relativedelta(years=1, weeks=1), last_sunday - relativedelta(years=1)]
-        periods = [last_week, week_before, week_last_year]
+        prev_sunday = last_sunday - relativedelta(weeks=1)
+        week_last_year = [last_sunday - relativedelta(years=1, weeks=1), last_sunday - relativedelta(years=1)]
+        periods = [prev_sunday - relativedelta(weeks=1), prev_sunday, last_sunday]
 
-        #account_table, _, _ = \
-        #    aggregate_transactions_change_by_period(self.provider,
-        #        Transaction.RECEIVABLE, account_title='Sales',
-        #        orig='orig', dest='dest',
-        #        from_date=self.ends_at, tz=self.timezone)
+        account_table, _, _ = \
+            aggregate_transactions_change_by_period(provider,
+                Transaction.RECEIVABLE, account_title='Sales',
+                orig='orig', dest='dest',
+                date_periods=periods)
 
-        _, payment_amounts = aggregate_within_periods(
+        _, payment_amounts = aggregate_transactions_by_period(
             provider, Transaction.RECEIVABLE,
             orig='dest', dest='dest',
             orig_account=Transaction.BACKLOG,
             orig_organization=provider,
-            periods=periods)
+            date_periods=periods)
 
-        _, refund_amounts = aggregate_within_periods(
+        _, refund_amounts = aggregate_transactions_by_period(
             provider, Transaction.REFUND,
             orig='dest', dest='dest',
-            periods=periods)
+            date_periods=periods)
 
-        #import pdb; pdb.set_trace()
 
-        #account_table += [
-        #    {"key": "Payments", "values": payment_amounts},
-        #    {"key": "Refunds", "values": refund_amounts}]
+        account_table += [
+            {"key": "Payments", "values": payment_amounts},
+            {"key": "Refunds", "values": refund_amounts}]
+        import pdb; pdb.set_trace()
