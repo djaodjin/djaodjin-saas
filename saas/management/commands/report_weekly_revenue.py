@@ -30,8 +30,8 @@ from dateutil.relativedelta import relativedelta, SU
 from django.core.management.base import BaseCommand
 from django.utils.timezone import utc
 
-from ...managers.metrics import (aggregate_within_periods,
-    aggregate_monthly_transactions)
+from ...managers.metrics import (aggregate_transactions_by_period,
+    aggregate_transactions_change_by_period)
 from ...models import Organization, Transaction
 
 class Command(BaseCommand):
@@ -67,7 +67,7 @@ class Command(BaseCommand):
         periods = [last_week, week_before, week_last_year]
 
         #account_table, _, _ = \
-        #    aggregate_monthly_transactions(self.provider,
+        #    aggregate_transactions_change_by_period(self.provider,
         #        Transaction.RECEIVABLE, account_title='Sales',
         #        orig='orig', dest='dest',
         #        from_date=self.ends_at, tz=self.timezone)

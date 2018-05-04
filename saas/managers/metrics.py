@@ -103,16 +103,13 @@ def month_periods(nb_months=12, from_date=None, step_months=1,
     return dates
 
 
-def aggregate_monthly(organization, account, from_date=None, tz=None,
+def aggregate_transactions_by_period(organization, account, date_periods,
                       orig='orig', dest='dest', **kwargs):
     # pylint: disable=too-many-locals,too-many-arguments,invalid-name
     counts = []
     amounts = []
-    # We want to be able to compare *last* to *from_date* and not get django
-    # warnings because timezones are not specified.
-    dates = convert_dates_to_utc(month_periods(13, from_date, tz=tz))
-    period_start = dates[1]
-    for period_end in dates[2:]:
+    period_start = date_periods[0]
+    for period_end in date_periods[1:]:
         # A bit ugly but it does the job ...
         kwargs.update({'%s_organization' % orig: organization,
             '%s_account' % orig: account})
@@ -130,30 +127,8 @@ def aggregate_monthly(organization, account, from_date=None, tz=None,
     return (counts, amounts)
 
 
-def aggregate_within_periods(organization, account, periods,
-                      orig='orig', dest='dest', **kwargs):
-    # pylint: disable=too-many-locals,too-many-arguments,invalid-name
-    counts = []
-    amounts = []
-    kwargs.update({'%s_organization' % orig: organization,
-        '%s_account' % orig: account})
-    for period in periods:
-        period_start = period[0]
-        period_end = period[1]
-        query_result = Transaction.objects.filter(
-            created_at__gte=period_start,
-            created_at__lt=period_end, **kwargs).aggregate(
-            Count('%s_organization' % dest, distinct=True),
-            Sum('%s_amount' % dest))
-        count = query_result['%s_organization__count' % dest]
-        amount = query_result['%s_amount__sum' % dest]
-        counts += [(period, count)]
-        amounts += [(period, int(amount or 0))]
-    return (counts, amounts)
-
-
-def aggregate_monthly_churn(organization, account, interval,
-                            from_date=None, tz=None, orig='orig', dest='dest'):
+def _aggregate_transactions_change_by_period(organization, account, interval,
+                            date_periods, orig='orig', dest='dest'):
     """
     Returns a table of records over a period of 12 months *from_date*.
     """
@@ -164,12 +139,9 @@ def aggregate_monthly_churn(organization, account, interval,
     new_receivables = []
     churn_customers = []
     churn_receivables = []
-    # We want to be able to compare *last* to *from_date* and not get django
-    # warnings because timezones are not specified.
-    dates = convert_dates_to_utc(month_periods(13, from_date, tz=tz))
-    trail_period_start = dates[0]
-    period_start = dates[1]
-    for period_end in dates[2:]:
+    trail_period_start = date_periods[0]
+    period_start = date_periods[1]
+    for period_end in date_periods[2:]:
         if interval == Plan.YEARLY:
             prev_period_start = datetime(
                 day=period_start.day, month=period_start.month,
@@ -258,8 +230,8 @@ def aggregate_monthly_churn(organization, account, interval,
             (churn_receivables, receivables, new_receivables))
 
 
-def aggregate_monthly_transactions(organization, account,
-    account_title=None, from_date=None, tz=None, orig='orig', dest='dest'):
+def aggregate_transactions_change_by_period(organization, account, date_periods,
+    account_title=None, orig='orig', dest='dest'):
     """
     12 months of total/new/churn into or out of (see *reverse*) *account*
     and associated distinct customers as extracted from Transactions.
@@ -268,8 +240,8 @@ def aggregate_monthly_transactions(organization, account,
     if not account_title:
         account_title = str(account)
     interval = organization.natural_interval
-    customers, account_totals = aggregate_monthly_churn(organization, account,
-        interval, from_date=from_date, tz=tz, orig=orig, dest=dest)
+    customers, account_totals = _aggregate_transactions_change_by_period(organization, account,
+        interval, date_periods=date_periods, orig=orig, dest=dest)
     churned_custs, total_custs, new_custs = customers
     churned_account, total_account, new_account = account_totals
     net_new_custs = []
