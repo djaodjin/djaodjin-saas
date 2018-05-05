@@ -142,17 +142,9 @@ def _aggregate_transactions_change_by_period(organization, account, interval,
     trail_period_start = date_periods[0]
     period_start = date_periods[1]
     for period_end in date_periods[2:]:
-        if interval == Plan.YEARLY:
-            prev_period_start = datetime(
-                day=period_start.day, month=period_start.month,
-                year=period_start.year - 1, tzinfo=period_start.tzinfo)
-            prev_period_end = datetime(
-                day=period_end.day, month=period_end.month,
-                year=period_end.year - 1, tzinfo=period_end.tzinfo)
-        else:
-            # default to monthly
-            prev_period_start = trail_period_start
-            prev_period_end = period_start
+        delta = Plan.get_natural_period(1, organization.natural_interval)
+        prev_period_start = trail_period_start - delta
+        prev_period_end = period_start - delta
         churn_query = RawQuery(
 """SELECT COUNT(DISTINCT(prev.%(dest)s_organization_id)),
           SUM(prev.%(dest)s_amount)

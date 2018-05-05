@@ -62,27 +62,44 @@ class Command(BaseCommand):
         )
         last_sunday = today + relativedelta(weeks=-1, weekday=SU(0))
         prev_sunday = last_sunday - relativedelta(weeks=1)
-        week_last_year = [last_sunday - relativedelta(years=1, weeks=1), last_sunday - relativedelta(years=1)]
-        periods = [prev_sunday - relativedelta(weeks=1), prev_sunday, last_sunday]
+        prev_year = [last_sunday - relativedelta(years=1, weeks=1), last_sunday - relativedelta(years=1)]
+        prev_week = [prev_sunday - relativedelta(weeks=1), prev_sunday, last_sunday]
 
         account_table, _, _ = \
             aggregate_transactions_change_by_period(provider,
                 Transaction.RECEIVABLE, account_title='Sales',
                 orig='orig', dest='dest',
-                date_periods=periods)
+                date_periods=prev_week)
+
+        account_table_prev_year, _, _ = \
+            aggregate_transactions_change_by_period(provider,
+                Transaction.RECEIVABLE, account_title='Sales',
+                orig='orig', dest='dest',
+                date_periods=prev_year)
 
         _, payment_amounts = aggregate_transactions_by_period(
             provider, Transaction.RECEIVABLE,
             orig='dest', dest='dest',
             orig_account=Transaction.BACKLOG,
             orig_organization=provider,
-            date_periods=periods)
+            date_periods=prev_week)
+
+        _, payment_amounts_prev_year = aggregate_transactions_by_period(
+            provider, Transaction.RECEIVABLE,
+            orig='dest', dest='dest',
+            orig_account=Transaction.BACKLOG,
+            orig_organization=provider,
+            date_periods=prev_year)
 
         _, refund_amounts = aggregate_transactions_by_period(
             provider, Transaction.REFUND,
             orig='dest', dest='dest',
-            date_periods=periods)
+            date_periods=prev_week)
 
+        _, refund_amounts_prev_year = aggregate_transactions_by_period(
+            provider, Transaction.REFUND,
+            orig='dest', dest='dest',
+            date_periods=prev_year)
 
         account_table += [
             {"key": "Payments", "values": payment_amounts},
