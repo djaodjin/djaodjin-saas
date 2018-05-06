@@ -139,12 +139,11 @@ def _aggregate_transactions_change_by_period(organization, account, interval,
     new_receivables = []
     churn_customers = []
     churn_receivables = []
-    trail_period_start = date_periods[0]
-    period_start = date_periods[1]
-    for period_end in date_periods[2:]:
+    period_start = date_periods[0]
+    for period_end in date_periods[1:]:
         delta = Plan.get_natural_period(1, organization.natural_interval)
-        prev_period_start = trail_period_start - delta
-        prev_period_end = period_start - delta
+        prev_period_start = period_start - delta
+        prev_period_end = period_start
         churn_query = RawQuery(
 """SELECT COUNT(DISTINCT(prev.%(dest)s_organization_id)),
           SUM(prev.%(dest)s_amount)
@@ -216,7 +215,6 @@ def _aggregate_transactions_change_by_period(organization, account, interval,
         receivables += [(period, int(receivable or 0))]
         new_customers += [(period, new_customer)]
         new_receivables += [(period, int(new_receivable or 0))]
-        trail_period_start = period_start
         period_start = period_end
     return ((churn_customers, customers, new_customers),
             (churn_receivables, receivables, new_receivables))
