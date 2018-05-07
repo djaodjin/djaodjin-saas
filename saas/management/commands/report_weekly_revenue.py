@@ -24,6 +24,7 @@
 
 """Command for the cron job. Send revenue report for the last week"""
 
+from six import iteritems
 from datetime import datetime, timedelta
 from dateutil.relativedelta import relativedelta, SU
 
@@ -62,8 +63,10 @@ class Command(BaseCommand):
         )
         last_sunday = today + relativedelta(weeks=-1, weekday=SU(0))
         prev_sunday = last_sunday - relativedelta(weeks=1)
-        prev_year = [last_sunday - relativedelta(years=1, weeks=1), last_sunday - relativedelta(years=1)]
-        prev_week = [prev_sunday - relativedelta(weeks=1), prev_sunday, last_sunday]
+        prev_year = [last_sunday - relativedelta(years=1, weeks=1),
+                    last_sunday - relativedelta(years=1)]
+        prev_week = [prev_sunday - relativedelta(weeks=1),
+                    prev_sunday, last_sunday]
 
         account_table, _, _ = \
             aggregate_transactions_change_by_period(provider,
@@ -101,7 +104,45 @@ class Command(BaseCommand):
             orig='dest', dest='dest',
             date_periods=prev_year)
 
-        account_table += [
-            {"key": "Payments", "values": payment_amounts},
-            {"key": "Refunds", "values": refund_amounts}]
+        table = {
+            'total_sales': {
+                'last': account_table[0]['values'][1][1],
+                'prev': account_table[0]['values'][0][1],
+                'prev_year': account_table_prev_year[0]['values'][0][1]
+            },
+            'new_sales': {
+                'last': account_table[1]['values'][1][1],
+                'prev': account_table[1]['values'][0][1],
+                'prev_year': account_table_prev_year[1]['values'][0][1]
+            },
+            'churned_sales': {
+                'last': account_table[2]['values'][1][1],
+                'prev': account_table[2]['values'][0][1],
+                'prev_year': account_table_prev_year[2]['values'][0][1]
+            },
+            'payments': {
+                'last': payment_amounts[1][1],
+                'prev': payment_amounts[0][1],
+                'prev_year': payment_amounts_prev_year[0][1]
+            },
+            'refunds': {
+                'last': refund_amounts[1][1],
+                'prev': refund_amounts[0][1],
+                'prev_year': refund_amounts_prev_year[0][1]
+            },
+        }
+
+        for k, v in table.iteritems():
+            try:
+                prev = (v['last'] - v['prev']) * 100 / v['prev']
+            except ZeroDivisionError:
+                prev = 'N/A'
+            try:
+                prev_year = (v['last'] - v['prev_year']) * 100 / v['prev_year']
+            except ZeroDivisionError:
+                prev_year = 'N/A'
+            v['prev'] = prev 
+            v['prev_year'] = prev_year
+
+        from pprint import pprint
         import pdb; pdb.set_trace()
