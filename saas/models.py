@@ -1185,7 +1185,7 @@ class Signature(models.Model):
     last_signed = models.DateTimeField(auto_now_add=True)
     agreement = models.ForeignKey(Agreement, on_delete=models.PROTECT)
     user = models.ForeignKey(settings.AUTH_USER_MODEL, db_column='user_id',
-        related_name='signatures', on_delete=models.PROTECT)
+        related_name='signatures', on_delete=models.CASCADE)
 
     class Meta:
         unique_together = ('agreement', 'user')

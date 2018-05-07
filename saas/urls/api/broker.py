@@ -50,6 +50,6 @@ urlpatterns = [
         BalanceLineListAPIView.as_view(), name='saas_api_balance_lines'),
     url(r'^metrics/registered/?',
         RegisteredAPIView.as_view(), name='saas_api_registered'),
-    url(r'^users/?',
+    url(r'^users/$',
         UserListAPIView.as_view(), name='saas_api_users'),
 ]
