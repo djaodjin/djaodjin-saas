@@ -44,6 +44,12 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         parser.add_argument(
+            '--at-time', action='store',
+            dest='at_time', default=None,
+            help='Specifies the time at which the command runs'
+        )
+
+        parser.add_argument(
             '--provider',
             action='store',
             dest='provider',
@@ -166,18 +172,20 @@ class Command(BaseCommand):
         return data
 
     def handle(self, *args, **options):
+        # aware utc datetime object
+        today_dt = datetime_or_now()
+        # discarding time, keeping utc tzinfo (00:00:00 utc)
+        today = today_dt.replace(hour=0, minute=0, second=0, microsecond=0)
+        self.stdout.write("running report_weekly_revenue at %s" % today_dt)
+
         providers = Organization.objects.filter(is_provider=True)
         provider_slug = options.get('provider')
         if provider_slug:
             providers = providers.filter(slug=provider_slug)
 
-        # aware utc datetime object
-        today_dt = datetime_or_now()
-        # discarding time, keeping utc tzinfo (00:00:00 utc)
-        today = today_dt.replace(hour=0, minute=0, second=0, microsecond=0)
-
         for provider in providers:
-            dates = self.construct_date_periods(today, timezone=provider.default_timezone)
+            dates = self.construct_date_periods(
+                today, timezone=provider.default_timezone)
             prev_week, prev_year = dates
             data = self.get_company_weekly_perf_data(
                 provider, prev_week, prev_year)
