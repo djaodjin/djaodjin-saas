@@ -35,7 +35,7 @@ from django.core.mail import send_mail
 from ...managers.metrics import (aggregate_transactions_by_period,
     aggregate_transactions_change_by_period)
 from ...models import Organization, Transaction
-from ...utils import datetime_or_now
+from ...utils import datetime_or_now, parse_tz
 
 class Command(BaseCommand):
     """Send past week revenue report in email"""
@@ -49,14 +49,17 @@ class Command(BaseCommand):
             help='Specify a provider to generate reports for',
         )
 
-    def construct_date_periods(self):
+    def construct_date_periods(self, timezone=None):
+        # aware utc datetime object
         today_dt = datetime_or_now()
-        today = datetime(
-            year=today_dt.year,
-            month=today_dt.month,
-            day=today_dt.day,
-            tzinfo=utc
-        )
+        # discarding time, keeping utc tzinfo (00:00:00 utc)
+        today = today_dt.replace(hour=0, minute=0, second=0, microsecond=0)
+        tz = parse_tz(timezone)
+        if tz:
+            # we are interested in 00:00 local time, if we don't have
+            # local time zone, fall back to 00:00 utc time
+            # in case we have local timezone, replace utc with it
+            today = tz.localize(today.replace(tzinfo=None))
         last_sunday = today + relativedelta(weeks=-1, weekday=SU(0))
         prev_sunday = last_sunday - relativedelta(weeks=1)
         prev_year = [last_sunday - relativedelta(years=1, weeks=1),
@@ -184,9 +187,9 @@ class Command(BaseCommand):
         provider_slug = options.get('provider')
         if provider_slug:
             providers = providers.filter(slug=provider_slug)
-        prev_week, prev_year = self.construct_date_periods()
 
         for provider in providers:
+            prev_week, prev_year = self.construct_date_periods(timezone=provider.default_timezone)
             data = self.get_company_weekly_perf_data(
                 provider, prev_week, prev_year)
             table = self.construct_table(data)
