@@ -425,10 +425,11 @@ class CustomerMetricAPIView(BeforeMixin, ProviderMixin, APIView):
         # We use ``Transaction.RECEIVABLE`` which technically counts the number
         # or orders, not the number of payments.
 
+        dates = convert_dates_to_utc(month_periods(12, self.ends_at, tz=self.timezone))
         _, customer_table, customer_extra = \
             aggregate_transactions_change_by_period(self.provider, account,
                 account_title=account_title,
-                from_date=self.ends_at, tz=self.timezone)
+                date_periods=dates)
 
         return Response(
             {"title": "Customers",
