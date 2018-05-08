@@ -50,11 +50,7 @@ class Command(BaseCommand):
             help='Specify a provider to generate reports for',
         )
 
-    def construct_date_periods(self, timezone=None):
-        # aware utc datetime object
-        today_dt = datetime_or_now()
-        # discarding time, keeping utc tzinfo (00:00:00 utc)
-        today = today_dt.replace(hour=0, minute=0, second=0, microsecond=0)
+    def construct_date_periods(self, today, timezone=None):
         tz = parse_tz(timezone)
         if tz:
             # we are interested in 00:00 local time, if we don't have
@@ -175,8 +171,13 @@ class Command(BaseCommand):
         if provider_slug:
             providers = providers.filter(slug=provider_slug)
 
+        # aware utc datetime object
+        today_dt = datetime_or_now()
+        # discarding time, keeping utc tzinfo (00:00:00 utc)
+        today = today_dt.replace(hour=0, minute=0, second=0, microsecond=0)
+
         for provider in providers:
-            dates = self.construct_date_periods(timezone=provider.default_timezone)
+            dates = self.construct_date_periods(today, timezone=provider.default_timezone)
             prev_week, prev_year = dates
             data = self.get_company_weekly_perf_data(
                 provider, prev_week, prev_year)
