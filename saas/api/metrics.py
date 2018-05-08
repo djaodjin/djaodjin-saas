@@ -237,7 +237,7 @@ class RevenueMetricAPIView(BeforeMixin, ProviderMixin, APIView):
         }
     """
     def get(self, request, *args, **kwargs):
-        dates = convert_dates_to_utc(month_periods(13, self.ends_at, tz=self.timezone))
+        dates = convert_dates_to_utc(month_periods(12, self.ends_at, tz=self.timezone))
 
         # All amounts are in the customer currency.
         account_table, _, _ = \
@@ -251,12 +251,12 @@ class RevenueMetricAPIView(BeforeMixin, ProviderMixin, APIView):
             orig='dest', dest='dest',
             orig_account=Transaction.BACKLOG,
             orig_organization=self.provider,
-            date_periods=dates[1:])
+            date_periods=dates)
 
         _, refund_amounts = aggregate_transactions_by_period(
             self.provider, Transaction.REFUND,
             orig='dest', dest='dest',
-            date_periods=dates[1:])
+            date_periods=dates)
 
         account_table += [
             {"key": "Payments", "values": payment_amounts},

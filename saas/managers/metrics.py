@@ -237,7 +237,7 @@ def aggregate_transactions_change_by_period(organization, account, date_periods,
     net_new_custs = []
     cust_churn_percent = []
     last_nb_total_custs = 0
-    for index in range(0, len(date_periods) - 2):
+    for index in range(0, len(date_periods) - 1):
         period, nb_total_custs = total_custs[index]
         period, nb_new_custs = new_custs[index]
         period, nb_churned_custs = churned_custs[index]

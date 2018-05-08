@@ -34,6 +34,7 @@ from django.utils.timezone import utc
 from ...managers.metrics import (aggregate_transactions_by_period,
     aggregate_transactions_change_by_period)
 from ...models import Organization, Transaction
+from ...utils import datetime_or_now
 
 class Command(BaseCommand):
     """Send past week revenue report in email"""
@@ -54,7 +55,7 @@ class Command(BaseCommand):
             providers = providers.filter(slug=provider_slug)
         provider = providers[0]
 
-        today_dt = datetime.today()
+        today_dt = datetime_or_now()
         today = datetime(
             year=today_dt.year,
             month=today_dt.month,
@@ -132,7 +133,7 @@ class Command(BaseCommand):
             },
         }
 
-        for k, v in table.iteritems():
+        for k, v in iteritems(table):
             try:
                 prev = (v['last'] - v['prev']) * 100 / v['prev']
             except ZeroDivisionError:
@@ -145,4 +146,4 @@ class Command(BaseCommand):
             v['prev_year'] = prev_year
 
         from pprint import pprint
-        import pdb; pdb.set_trace()
+        pprint(table)
