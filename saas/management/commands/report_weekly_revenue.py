@@ -173,7 +173,7 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         # aware utc datetime object
-        today_dt = datetime_or_now()
+        today_dt = datetime_or_now(options.get('at_time'))
         # discarding time, keeping utc tzinfo (00:00:00 utc)
         today = today_dt.replace(hour=0, minute=0, second=0, microsecond=0)
         self.stdout.write("running report_weekly_revenue at %s" % today_dt)
