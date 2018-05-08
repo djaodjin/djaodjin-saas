@@ -36,6 +36,7 @@ from ...managers.metrics import (aggregate_transactions_by_period,
     aggregate_transactions_change_by_period)
 from ...models import Organization, Transaction
 from ...utils import datetime_or_now, parse_tz
+from ... import signals
 
 class Command(BaseCommand):
     """Send past week revenue report in email"""
@@ -168,20 +169,6 @@ class Command(BaseCommand):
 
         return data
 
-    def send_email(self, provider, table):
-        from pprint import pprint
-        pprint(table)
-        message = 'a table should be here'
-        to = ['knivets@gmail.com', provider.email]
-        # send_mass_mail?
-        send_mail(
-            'Weekly Report',
-            message,
-            'from@example.com',
-            to,
-            fail_silently=False,
-        )
-
     def handle(self, *args, **options):
         providers = Organization.objects.filter(is_provider=True)
         provider_slug = options.get('provider')
@@ -189,8 +176,10 @@ class Command(BaseCommand):
             providers = providers.filter(slug=provider_slug)
 
         for provider in providers:
-            prev_week, prev_year = self.construct_date_periods(timezone=provider.default_timezone)
+            dates = self.construct_date_periods(timezone=provider.default_timezone)
+            prev_week, prev_year = dates
             data = self.get_company_weekly_perf_data(
                 provider, prev_week, prev_year)
             table = self.construct_table(data)
-            self.send_email(provider, table)
+            signals.weekly_sales_report_created.send(sender=__name__,
+                provider=provider, dates=dates, data=table)
