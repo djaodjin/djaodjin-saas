@@ -73,30 +73,30 @@ class Command(BaseCommand):
 
     def construct_table(self, data):
         table = {
-            'total_sales': {
+            'Total Sales': {
                 'last': data['account_table'][0]['values'][1][1],
                 'prev': data['account_table'][0]['values'][0][1],
                 'prev_year': \
                     data['account_table_prev_year'][0]['values'][0][1]
             },
-            'new_sales': {
+            'New Sales': {
                 'last': data['account_table'][1]['values'][1][1],
                 'prev': data['account_table'][1]['values'][0][1],
                 'prev_year': \
                     data['account_table_prev_year'][1]['values'][0][1]
             },
-            'churned_sales': {
+            'Churned Sales': {
                 'last': data['account_table'][2]['values'][1][1],
                 'prev': data['account_table'][2]['values'][0][1],
                 'prev_year': \
                     data['account_table_prev_year'][2]['values'][0][1]
             },
-            'payments': {
+            'Payments': {
                 'last': data['payment_amounts'][1][1],
                 'prev': data['payment_amounts'][0][1],
                 'prev_year': data['payment_amounts_prev_year'][0][1]
             },
-            'refunds': {
+            'Refunds': {
                 'last': data['refund_amounts'][1][1],
                 'prev': data['refund_amounts'][0][1],
                 'prev_year': data['refund_amounts_prev_year'][0][1]
