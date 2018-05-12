@@ -168,10 +168,16 @@ def extend_subscriptions(at_time=None, dry_run=False):
                 subscription, subscription.ends_at)
             if not dry_run:
                 try:
+                    if not subscription.organization.attached_user():
+                        descr_suffix = (
+                            '(%s)' % subscription.organization.printable_name)
+                    else:
+                        descr_suffix = None
                     with transaction.atomic():
                         Transaction.objects.record_order([
                             Transaction.objects.new_subscription_order(
-                                subscription, 1, created_at=at_time)])
+                                subscription, 1, created_at=at_time,
+                                descr_suffix=descr_suffix)])
                 except Exception as err: #pylint:disable=broad-except
                     # logs any kind of errors
                     # and move on to the next subscription.
