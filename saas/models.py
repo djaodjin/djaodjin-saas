@@ -234,7 +234,8 @@ class Organization(models.Model):
         help_text=_("Can fulfill the provider side of a subscription."))
     full_name = models.CharField(_('Organization name'),
         max_length=60, blank=True)
-    default_timezone = models.CharField(max_length=100, default=settings.TIME_ZONE)
+    default_timezone = models.CharField(
+        max_length=100, default=settings.TIME_ZONE)
     # contact by e-mail
     email = models.EmailField(# XXX if we use unique=True here, the project
                               #     wizard must be changed.

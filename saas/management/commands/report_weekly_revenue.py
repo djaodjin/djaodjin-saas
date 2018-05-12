@@ -25,12 +25,8 @@
 """Command for the cron job. Send revenue report for the last week"""
 
 from six import iteritems
-from datetime import datetime, timedelta
 from dateutil.relativedelta import relativedelta, SU
-
 from django.core.management.base import BaseCommand
-from django.utils.timezone import utc
-from django.core.mail import send_mail
 
 from ...managers.metrics import (aggregate_transactions_by_period,
     aggregate_transactions_change_by_period)
@@ -56,13 +52,14 @@ class Command(BaseCommand):
             help='Specify a provider to generate reports for',
         )
 
-    def construct_date_periods(self, today, timezone=None):
-        tz = parse_tz(timezone)
-        if tz:
+    @staticmethod
+    def construct_date_periods(today, timezone=None):
+        tzinfo = parse_tz(timezone)
+        if tzinfo:
             # we are interested in 00:00 local time, if we don't have
             # local time zone, fall back to 00:00 utc time
             # in case we have local timezone, replace utc with it
-            today = tz.localize(today.replace(tzinfo=None))
+            today = tzinfo.localize(today.replace(tzinfo=None))
         last_sunday = today + relativedelta(weeks=-1, weekday=SU(0))
         prev_sunday = last_sunday - relativedelta(weeks=1)
         prev_year = [last_sunday - relativedelta(years=1, weeks=1),
@@ -71,7 +68,8 @@ class Command(BaseCommand):
                     prev_sunday, last_sunday]
         return prev_week, prev_year
 
-    def construct_table(self, data):
+    @staticmethod
+    def construct_table(data):
         table = {
             'Total Sales': {
                 'last': data['account_table'][0]['values'][1][1],
@@ -103,9 +101,9 @@ class Command(BaseCommand):
             },
         }
 
-        for k, v in iteritems(table):
+        for _, val in iteritems(table):
             try:
-                amount = (v['last'] - v['prev']) * 100 / v['prev']
+                amount = (val['last'] - val['prev']) * 100 / val['prev']
                 prev = str(amount) + '%'
                 if amount > 0:
                     prev = '+' + prev
@@ -113,22 +111,21 @@ class Command(BaseCommand):
                 prev = 'N/A'
             try:
                 amount = \
-                    (v['last'] - v['prev_year']) * 100 / v['prev_year']
+                    (val['last'] - val['prev_year']) * 100 / val['prev_year']
                 prev_year = str(amount) + '%'
                 if amount > 0:
                     prev_year = '+' + prev_year
             except ZeroDivisionError:
                 prev_year = 'N/A'
 
-            v['last'] = '$' + str(v['last'])
-            v['prev'] = prev
-            v['prev_year'] = prev_year
+            val['last'] = '$' + str(val['last'])
+            val['prev'] = prev
+            val['prev_year'] = prev_year
 
         return table
 
-    def get_company_weekly_perf_data(self, provider,
-        prev_week, prev_year):
-
+    @staticmethod
+    def get_company_weekly_perf_data(provider, prev_week, prev_year):
         data = {}
 
         data['account_table'], _, _ = \

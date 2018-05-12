@@ -22,7 +22,7 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from datetime import datetime, timedelta
+from datetime import datetime
 
 from django.db import router
 from django.db.models import Count, Sum
@@ -127,7 +127,7 @@ def aggregate_transactions_by_period(organization, account, date_periods,
     return (counts, amounts)
 
 
-def _aggregate_transactions_change_by_period(organization, account, interval,
+def _aggregate_transactions_change_by_period(organization, account,
                             date_periods, orig='orig', dest='dest'):
     """
     Returns a table of records over a period of 12 months *from_date*.
@@ -229,9 +229,8 @@ def aggregate_transactions_change_by_period(organization, account, date_periods,
     #pylint: disable=too-many-locals,too-many-arguments,invalid-name
     if not account_title:
         account_title = str(account)
-    interval = organization.natural_interval
-    customers, account_totals = _aggregate_transactions_change_by_period(organization, account,
-        interval, date_periods=date_periods, orig=orig, dest=dest)
+    customers, account_totals = _aggregate_transactions_change_by_period(
+        organization, account, date_periods=date_periods, orig=orig, dest=dest)
     churned_custs, total_custs, new_custs = customers
     churned_account, total_account, new_account = account_totals
     net_new_custs = []
