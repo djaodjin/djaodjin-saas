@@ -50,3 +50,5 @@ subscription_request_accepted = Signal(providing_args=[
     "subscription", "request_key"])
 subscription_request_created = Signal(providing_args=[
     "subscription", "reason"])
+weekly_sales_report_created = Signal(providing_args=[
+    "provider", "dates", "data"])

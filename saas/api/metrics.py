@@ -30,12 +30,12 @@ from ..compat import reverse
 from ..mixins import (BeforeMixin, CartItemSmartListMixin, CouponMixin,
     ProviderMixin)
 from ..models import CartItem, Organization, Plan, Transaction
-from ..utils import datetime_or_now
-from ..managers.metrics import abs_monthly_balances
+from ..utils import datetime_or_now, convert_dates_to_utc
 from .serializers import (CartItemSerializer,
     OrganizationWithSubscriptionsSerializer)
-from ..managers.metrics import (active_subscribers, aggregate_monthly,
-    aggregate_monthly_transactions, churn_subscribers)
+from ..managers.metrics import (abs_monthly_balances, active_subscribers,
+    aggregate_transactions_by_period, month_periods, churn_subscribers,
+    aggregate_transactions_change_by_period)
 
 
 class BalancesAPIView(BeforeMixin, ProviderMixin, APIView):
@@ -237,24 +237,26 @@ class RevenueMetricAPIView(BeforeMixin, ProviderMixin, APIView):
         }
     """
     def get(self, request, *args, **kwargs):
+        dates = convert_dates_to_utc(month_periods(12, self.ends_at, tz=self.timezone))
+
         # All amounts are in the customer currency.
         account_table, _, _ = \
-            aggregate_monthly_transactions(self.provider,
+            aggregate_transactions_change_by_period(self.provider,
                 Transaction.RECEIVABLE, account_title='Sales',
                 orig='orig', dest='dest',
-                from_date=self.ends_at, tz=self.timezone)
+                date_periods=dates)
 
-        _, payment_amounts = aggregate_monthly(
+        _, payment_amounts = aggregate_transactions_by_period(
             self.provider, Transaction.RECEIVABLE,
             orig='dest', dest='dest',
             orig_account=Transaction.BACKLOG,
             orig_organization=self.provider,
-            from_date=self.ends_at, tz=self.timezone)
+            date_periods=dates)
 
-        _, refund_amounts = aggregate_monthly(
+        _, refund_amounts = aggregate_transactions_by_period(
             self.provider, Transaction.REFUND,
             orig='dest', dest='dest',
-            from_date=self.ends_at, tz=self.timezone)
+            date_periods=dates)
 
         account_table += [
             {"key": "Payments", "values": payment_amounts},
@@ -423,10 +425,11 @@ class CustomerMetricAPIView(BeforeMixin, ProviderMixin, APIView):
         # We use ``Transaction.RECEIVABLE`` which technically counts the number
         # or orders, not the number of payments.
 
+        dates = convert_dates_to_utc(month_periods(12, self.ends_at, tz=self.timezone))
         _, customer_table, customer_extra = \
-            aggregate_monthly_transactions(self.provider, account,
+            aggregate_transactions_change_by_period(self.provider, account,
                 account_title=account_title,
-                from_date=self.ends_at, tz=self.timezone)
+                date_periods=dates)
 
         return Response(
             {"title": "Customers",

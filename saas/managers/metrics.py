@@ -22,7 +22,7 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from django.db import router
 from django.db.models import Count, Sum
@@ -103,16 +103,13 @@ def month_periods(nb_months=12, from_date=None, step_months=1,
     return dates
 
 
-def aggregate_monthly(organization, account, from_date=None, tz=None,
+def aggregate_transactions_by_period(organization, account, date_periods,
                       orig='orig', dest='dest', **kwargs):
     # pylint: disable=too-many-locals,too-many-arguments,invalid-name
     counts = []
     amounts = []
-    # We want to be able to compare *last* to *from_date* and not get django
-    # warnings because timezones are not specified.
-    dates = convert_dates_to_utc(month_periods(13, from_date, tz=tz))
-    period_start = dates[1]
-    for period_end in dates[2:]:
+    period_start = date_periods[0]
+    for period_end in date_periods[1:]:
         # A bit ugly but it does the job ...
         kwargs.update({'%s_organization' % orig: organization,
             '%s_account' % orig: account})
@@ -130,8 +127,8 @@ def aggregate_monthly(organization, account, from_date=None, tz=None,
     return (counts, amounts)
 
 
-def aggregate_monthly_churn(organization, account, interval,
-                            from_date=None, tz=None, orig='orig', dest='dest'):
+def _aggregate_transactions_change_by_period(organization, account, interval,
+                            date_periods, orig='orig', dest='dest'):
     """
     Returns a table of records over a period of 12 months *from_date*.
     """
@@ -142,23 +139,11 @@ def aggregate_monthly_churn(organization, account, interval,
     new_receivables = []
     churn_customers = []
     churn_receivables = []
-    # We want to be able to compare *last* to *from_date* and not get django
-    # warnings because timezones are not specified.
-    dates = convert_dates_to_utc(month_periods(13, from_date, tz=tz))
-    trail_period_start = dates[0]
-    period_start = dates[1]
-    for period_end in dates[2:]:
-        if interval == Plan.YEARLY:
-            prev_period_start = datetime(
-                day=period_start.day, month=period_start.month,
-                year=period_start.year - 1, tzinfo=period_start.tzinfo)
-            prev_period_end = datetime(
-                day=period_end.day, month=period_end.month,
-                year=period_end.year - 1, tzinfo=period_end.tzinfo)
-        else:
-            # default to monthly
-            prev_period_start = trail_period_start
-            prev_period_end = period_start
+    period_start = date_periods[0]
+    for period_end in date_periods[1:]:
+        delta = Plan.get_natural_period(1, organization.natural_interval)
+        prev_period_start = period_start - delta
+        prev_period_end = period_start
         churn_query = RawQuery(
 """SELECT COUNT(DISTINCT(prev.%(dest)s_organization_id)),
           SUM(prev.%(dest)s_amount)
@@ -230,14 +215,13 @@ def aggregate_monthly_churn(organization, account, interval,
         receivables += [(period, int(receivable or 0))]
         new_customers += [(period, new_customer)]
         new_receivables += [(period, int(new_receivable or 0))]
-        trail_period_start = period_start
         period_start = period_end
     return ((churn_customers, customers, new_customers),
             (churn_receivables, receivables, new_receivables))
 
 
-def aggregate_monthly_transactions(organization, account,
-    account_title=None, from_date=None, tz=None, orig='orig', dest='dest'):
+def aggregate_transactions_change_by_period(organization, account, date_periods,
+    account_title=None, orig='orig', dest='dest'):
     """
     12 months of total/new/churn into or out of (see *reverse*) *account*
     and associated distinct customers as extracted from Transactions.
@@ -246,14 +230,14 @@ def aggregate_monthly_transactions(organization, account,
     if not account_title:
         account_title = str(account)
     interval = organization.natural_interval
-    customers, account_totals = aggregate_monthly_churn(organization, account,
-        interval, from_date=from_date, tz=tz, orig=orig, dest=dest)
+    customers, account_totals = _aggregate_transactions_change_by_period(organization, account,
+        interval, date_periods=date_periods, orig=orig, dest=dest)
     churned_custs, total_custs, new_custs = customers
     churned_account, total_account, new_account = account_totals
     net_new_custs = []
     cust_churn_percent = []
     last_nb_total_custs = 0
-    for index in range(0, 12):
+    for index in range(0, len(date_periods) - 1):
         period, nb_total_custs = total_custs[index]
         period, nb_new_custs = new_custs[index]
         period, nb_churned_custs = churned_custs[index]
