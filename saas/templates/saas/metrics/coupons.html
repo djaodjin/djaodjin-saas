@@ -22,7 +22,7 @@
               </tr>
               <tr ng-repeat="item in items.results"
                   ng-show="items.$resolved && items.results.length > 0" >
-                <td><a id="[[item.user.slug]]" href="{{request|url_profile_base}}[[item.user.slug]]/">[[item.user.full_name]]</a></td>
+                <td><a id="[[item.user.slug]]" href="{{urls.user.profile_redirect}}[[item.user.slug]]/">[[item.user.full_name]]</a></td>
                 <td>[[item.plan]]</td>
                 <td>[[item.created_at | date: mediumDate]]</td>
               </tr>

@@ -1,4 +1,4 @@
-# Copyright (c) 2017, DjaoDjin inc.
+# Copyright (c) 2018, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -102,6 +102,7 @@ _SETTINGS = {
         'MODE': 0,
         'PRIV_KEY': None,
         'PUB_KEY': None,
+        'AUTHORIZE_CALLABLE': None,
         'REDIRECT_CALLABLE': None,
         'WEBHOOK_URL': 'api/postevent',
     },

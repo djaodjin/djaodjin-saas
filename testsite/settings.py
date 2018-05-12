@@ -1,6 +1,6 @@
 # Django settings for testsite project.
 
-import os.path, sys
+import logging, os.path, sys
 
 from django.contrib.messages import constants as messages
 from saas.compat import reverse_lazy
@@ -41,7 +41,8 @@ def load_config(confpath):
     else:
         sys.stderr.write('warning: config file %s does not exist.\n' % confpath)
 
-load_config(os.path.join(RUN_DIR, 'credentials'))
+load_config(
+    os.path.join(os.getenv('TESTSITE_CONFIG_DIR', RUN_DIR), 'credentials'))
 
 if not hasattr(sys.modules[__name__], "SECRET_KEY"):
     from random import choice
@@ -94,6 +95,8 @@ DATABASES = {
 
 REST_FRAMEWORK = {
     'PAGE_SIZE': 25,
+    'DEFAULT_PAGINATION_CLASS':
+        'rest_framework.pagination.PageNumberPagination',
 }
 
 # Absolute filesystem path to the directory that will hold user-uploaded files.
@@ -167,12 +170,13 @@ DURATIONFIELD_ALLOW_MONTHS = True
 # Configuration of djaodjin-saas
 SAAS = {
   'BROKER': {
-      'GET_INSTANCE': 'cowork-master',
+      'GET_INSTANCE': 'cowork',
   },
   'PROCESSOR': {
       'BACKEND': 'saas.backends.stripe_processor.StripeBackend',
       'PRIV_KEY': getattr(sys.modules[__name__], "STRIPE_PRIV_KEY", None),
       'PUB_KEY': getattr(sys.modules[__name__], "STRIPE_PUB_KEY", None),
+      'CLIENT_ID': getattr(sys.modules[__name__], "STRIPE_CLIENT_ID", None),
 # Comment above and uncomment below to use RazorPay instead.
 #      'BACKEND': 'saas.backends.razorpay_processor.RazorpayBackend',
 #      'PRIV_KEY': getattr(sys.modules[__name__], "RAZORPAY_PRIV_KEY", None),
@@ -233,6 +237,12 @@ LOGGING = {
         }
     }
 }
+if logging.getLogger('gunicorn.error').handlers:
+    LOGGING['handlers']['logfile'].update({
+        'class':'logging.handlers.WatchedFileHandler',
+        'filename': os.path.join(RUN_DIR, 'testsite-app.log')
+    })
+
 
 # Templates (Django 1.8+)
 # ----------------------
@@ -254,7 +264,7 @@ if TEMPLATE_REVERT_TO_DJANGO:
             'loaders': [
                 'django.template.loaders.filesystem.Loader',
                 'django.template.loaders.app_directories.Loader'],
-            'libraries': {},
+            # XXX 'builtins' key is not supported on Django 1.8
             'builtins': [
                 'saas.templatetags.saas_tags',
                 'testsite.templatetags.testsite_tags']

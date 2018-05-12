@@ -1,17 +1,69 @@
 {% extends "base.html" %}
+{% load testsite_tags %}
 
 {% block content %}
 <div>
-    <h1>Sign up</div>
+  <h1>Sign up</div>
     <div>
-        <form action="/register/{% if next %}?next={{next}}{% endif %}" method="post">
-            <input type="hidden" name="csrfmiddlewaretoken" value="{{csrf_token}}">
-            {{form|as_html}}
-            <input type="submit" name="submit" value="Submit" />
-        </form>
+      <form action="/register/{% if next %}?next={{next}}{% endif %}" method="post">
+        <input type="hidden" name="csrfmiddlewaretoken" value="{{csrf_token}}">
         <div>
-            <p>You already have an account? <a href="/login/">Sign in</a>
+          <label for="id_username">Username:</label>
+          <input id="id_username" maxlength="30" name="username" type="text">
         </div>
+        <div>
+          <label for="id_email">E-mail:</label>
+          <input id="id_email" maxlength="75" name="email" type="text">
+        </div>
+        <div>
+          <label for="id_email2">E-mail confirmation:</label>
+          <input id="id_email2" maxlength="75" name="email2" type="text">
+        </div>
+        <div>
+          <label for="id_password">Password:</label>
+          <input id="id_password" name="password" type="password">
+        </div>
+        <div>
+          <label for="id_password2">Password confirmation:</label>
+          <input id="id_password2" name="password2" type="password">
+        </div>
+        <div>
+          <label for="id_first_name">First name:</label>
+          <input id="id_first_name" maxlength="30" name="first_name" type="text">
+        </div>
+        <div>
+          <label for="id_last_name">Last name:</label>
+          <input id="id_last_name" maxlength="30" name="last_name" type="text">
+        </div>
+        <div>
+          <label for="id_street_address">Street Addess:</label>
+          <input id="id_street_address" name="street_address" type="text">
+        </div>
+        <div>
+          <label for="id_city">City:</label>
+          <input id="id_city" name="city" type="text">
+        </div>
+        <div>
+          <label for="id_region">State/province:</label>
+          <input id="id_region" name="region" type="text">
+        </div>
+        <div>
+          <label for="id_zip_code">Postal code:</label>
+          <input id="id_zip_code" maxlength="30" name="zip_code" type="text">
+        </div>
+        <div>
+            <label for="id_country">Country:</label>
+            <select id="id_country" name="country">
+                {% for choice in form.country.field.widget.choices %}
+                <option {% if form.country.value == choice.0 %}selected="1"{% endif %} value="{{choice.0}}">{{choice.1}}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <input type="submit" name="submit" value="Submit" />
+      </form>
+      <div>
+        <p>You already have an account? <a href="/login/">Sign in</a>
+      </div>
     </div>
 </div>
 {% endblock %}

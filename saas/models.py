@@ -755,13 +755,18 @@ class Organization(models.Model):
         backend.
         """
         if reconcile:
+            after = datetime_or_now() - relativedelta(months=1)
+            # We want to avoid looping through too many calls to the Stripe API.
             queryset = Transaction.objects.filter(
                 orig_organization=self,
                 orig_account=Transaction.FUNDS,
                 dest_account__startswith=Transaction.WITHDRAW)
             most_recent = queryset.aggregate(
                 Max('created_at'))['created_at__max']
-            self.processor_backend.reconcile_transfers(self, most_recent)
+            if most_recent:
+                after = max(most_recent, after)
+            self.processor_backend.reconcile_transfers(self, after,
+                limit_to_one_request=True)
         return Transaction.objects.by_organization(self)
 
     def withdraw_funds(self, amount, user):
@@ -777,7 +782,7 @@ class Organization(models.Model):
         # those ``Trnansaction`` in the database.
 
     def create_withdraw_transactions(self, event_id, amount, unit, descr,
-                                     created_at=None):
+                                     created_at=None, dry_run=False):
         """
         Withdraw funds from the site into the provider's bank account.
 
@@ -805,39 +810,88 @@ class Organization(models.Model):
         #pylint:disable=too-many-arguments
         # We use ``get_or_create`` here because the method is also called
         # when transfers are reconciled with the payment processor.
+        dry_run_prefix = "(dryrun) " if dry_run else ""
         self.validate_processor()
         with transaction.atomic():
+            created = False
             if amount > 0:
-                _, created = Transaction.objects.get_or_create(
-                    event_id=event_id,
-                    descr=descr,
-                    created_at=created_at,
-                    dest_unit=unit,
-                    dest_amount=amount,
-                    dest_account=Transaction.WITHDRAW,
-                    dest_organization=self.processor,
-                    orig_unit=unit,
-                    orig_amount=amount,
-                    orig_account=Transaction.FUNDS,
-                    orig_organization=self)
+                #pylint:disable=protected-access
+                Transaction.objects._for_write = True
+                # The get() needs to be targeted at the write database in order
+                # to avoid potential transaction consistency problems.
+                try:
+                    _ = Transaction.objects.get(
+                        event_id=event_id,
+                        descr=descr,
+                        created_at=created_at,
+                        dest_unit=unit,
+                        dest_amount=amount,
+                        dest_account=Transaction.WITHDRAW,
+                        dest_organization=self.processor,
+                        orig_unit=unit,
+                        orig_amount=amount,
+                        orig_account=Transaction.FUNDS,
+                        orig_organization=self)
+                    LOGGER.debug("%s  %s payout %d %s",
+                        dry_run_prefix, created_at, amount, unit)
+                except Transaction.DoesNotExist:
+                    if not dry_run:
+                        _ = Transaction.objects.create(
+                            event_id=event_id,
+                            descr=descr,
+                            created_at=created_at,
+                            dest_unit=unit,
+                            dest_amount=amount,
+                            dest_account=Transaction.WITHDRAW,
+                            dest_organization=self.processor,
+                            orig_unit=unit,
+                            orig_amount=amount,
+                            orig_account=Transaction.FUNDS,
+                            orig_organization=self)
+                    LOGGER.debug("%s+ %s payout %d %s",
+                        dry_run_prefix, created_at, amount, unit)
+                    created = True
             elif amount < 0:
                 # When there is not enough funds in the Stripe account,
                 # Stripe will draw back from the bank account to cover
                 # a refund, etc.
-
-                _, created = Transaction.objects.get_or_create(
-                    event_id=event_id,
-                    descr=descr,
-                    created_at=created_at,
-                    dest_unit=unit,
-                    dest_amount=- amount,
-                    dest_account=Transaction.FUNDS,
-                    dest_organization=self,
-                    orig_unit=unit,
-                    orig_amount=- amount,
-                    orig_account=Transaction.WITHDRAW,
-                    orig_organization=self.processor)
-            if created:
+                #pylint:disable=protected-access
+                Transaction.objects._for_write = True
+                # The get() needs to be targeted at the write database in order
+                # to avoid potential transaction consistency problems.
+                try:
+                    _ = Transaction.objects.get(
+                        event_id=event_id,
+                        descr=descr,
+                        created_at=created_at,
+                        dest_unit=unit,
+                        dest_amount=- amount,
+                        dest_account=Transaction.FUNDS,
+                        dest_organization=self,
+                        orig_unit=unit,
+                        orig_amount=- amount,
+                        orig_account=Transaction.WITHDRAW,
+                        orig_organization=self.processor)
+                    LOGGER.debug("%s  %s payout %d %s",
+                        dry_run_prefix, created_at, amount, unit)
+                except Transaction.DoesNotExist:
+                    if not dry_run:
+                        _ = Transaction.objects.create(
+                            event_id=event_id,
+                            descr=descr,
+                            created_at=created_at,
+                            dest_unit=unit,
+                            dest_amount=- amount,
+                            dest_account=Transaction.FUNDS,
+                            dest_organization=self,
+                            orig_unit=unit,
+                            orig_amount=- amount,
+                            orig_account=Transaction.WITHDRAW,
+                            orig_organization=self.processor)
+                    LOGGER.debug("%s+ %s payout %d %s",
+                        dry_run_prefix, created_at, amount, unit)
+                    created = True
+            if created and not dry_run:
                 # Add processor fee for transfer.
                 transfer_fee = self.processor_backend.prorate_transfer(
                     amount, self)

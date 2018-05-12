@@ -36,7 +36,7 @@ policy.
 """
 #pylint:disable=too-many-lines
 
-import copy, itertools, logging
+import copy, logging
 
 from django import http
 from django.contrib.auth import REDIRECT_FIELD_NAME
@@ -135,16 +135,9 @@ class BankUpdateView(BankMixin, UpdateView):
     def get_context_data(self, **kwargs):
         context = super(BankUpdateView, self).get_context_data(**kwargs)
         context.update({'force_update': True})
-        urls_provider = {'deauthorize_bank': reverse(
-            'saas_deauthorize_bank', args=(self.provider,))}
-        if 'urls' in context:
-            if 'provider' in context['urls']:
-                context['urls']['provider'].update(urls_provider)
-            else:
-                context['urls'].update({'provider': urls_provider})
-        else:
-            context.update({'urls': {'provider': urls_provider}})
-        context.update({'state': self.provider})
+        self.update_context_urls(context, {
+            'deauthorize_bank': reverse(
+                'saas_deauthorize_bank', args=(self.provider,))})
         return context
 
     def get_object(self, queryset=None):
@@ -198,6 +191,15 @@ djaodjin-saas/tree/master/saas/templates/saas/billing/bank.html>`__).
         self.object.update_bank(processor_token)
         return super(BankAuthorizeView, self).form_valid(form)
 
+    def get_context_data(self, **kwargs):
+        context = super(BankAuthorizeView, self).get_context_data(**kwargs)
+        self.update_context_urls(context, {
+            'authorize_processor': self.get_authorize_url()})
+        return context
+
+    def get_authorize_url(self):
+        provider = self.organization
+        return provider.processor_backend.get_authorize_url(provider)
 
     def get(self, request, *args, **kwargs):
         error = self.request.GET.get('error', None)
@@ -637,7 +639,9 @@ class CartPeriodsView(CartBaseView):
 
     @property
     def cart_items(self):
-        return CartItem.objects.get_cart(user=self.request.user)
+        if is_authenticated(self.request):
+            return CartItem.objects.get_cart(user=self.request.user)
+        return CartItem.objects.none()
 
     def get(self, request, *args, **kwargs):
         if not self.cart_items.exists():
@@ -715,7 +719,7 @@ djaodjin-saas/tree/master/saas/templates/saas/billing/cart.html>`__).
         """
         # Let's first make sure we have valid parameters ...
         params = []
-        for item_plan, item_use, item_sync_on in itertools.zip_longest(
+        for item_plan, item_use, item_sync_on in six.moves.zip_longest(
                 request.GET.getlist('plan', []),
                 request.GET.getlist('use', []),
                 request.GET.getlist('sync_on', [])):

@@ -23,72 +23,58 @@
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 """
-The renewals command is intended to be run as part of an automated script
-run at least once a day. It will
-
-- recognize revenue for past periods (see :doc:`ledger <ledger>`).
-- extends active subscriptions
-- create charges for new periods
-
-Every functions part of the renewals script are explicitly written to be
-idempotent. Calling the scripts multiple times for the same timestamp
-(i.e. with the ``--at-time`` command line argument) will generate the
-appropriate ``Transaction`` and ``Charge`` only once.
-
-**Example cron setup**:
-
-.. code-block:: bash
-
-    $ cat /etc/cron.daily/renewals
-    #!/bin/sh
-
-    cd /var/*mysite* && python manage.py renewals
+The reconcile_with_processor command is will check all payouts on the processor
+have been accounted for in the local database.
 """
 
-import logging, time
+import logging
 
 from django.core.management.base import BaseCommand
+from django.db import transaction
 
-from ...renewals import (create_charges_for_balance, complete_charges,
-    extend_subscriptions, recognize_income, trigger_expiration_notices)
+from ...models import Organization
 from ...utils import datetime_or_now
+from ...backends import get_processor_backend, ProcessorError
 
 
 LOGGER = logging.getLogger(__name__)
 
 
 class Command(BaseCommand):
-    help = """Recognized backlog, extends subscription and charge due balance
-on credit cards"""
+    help = """Reconcile processor payouts with transactions in the local
+ database"""
 
     def add_arguments(self, parser):
         parser.add_argument('--dry-run', action='store_true',
             dest='dry_run', default=False,
-            help='Do not commit transactions nor submit charges to processor')
-        parser.add_argument('--no-charges', action='store_true',
-            dest='no_charges', default=False,
-            help='Do not submit charges to processor')
+            help='Do not commit transactions')
+        parser.add_argument('--after', action='store',
+            dest='after', default=None,
+           help='Only accounts for records created *after* a specific datetime')
         parser.add_argument('--at-time', action='store',
             dest='at_time', default=None,
             help='Specifies the time at which the command runs')
 
     def handle(self, *args, **options):
         dry_run = options['dry_run']
-        no_charges = options['no_charges']
-        end_period = datetime_or_now(options['at_time'])
+        created_at = options['after']
+        if created_at:
+            created_at = datetime_or_now(created_at)
+        # XXX currently unused
+        # end_period = datetime_or_now(options['at_time'])
         if dry_run:
             LOGGER.warning("dry_run: no changes will be committed.")
-        if no_charges:
-            LOGGER.warning("no_charges: no charges will be submitted.")
+        self.run_reconcile(created_at=created_at, dry_run=dry_run)
 
-        recognize_income(end_period, dry_run=dry_run)
-        extend_subscriptions(end_period, dry_run=dry_run)
-        create_charges_for_balance(end_period, dry_run=dry_run or no_charges)
-        if not (dry_run or no_charges):
-            # Let's complete the in flight charges after we have given
-            # them time to settle.
-            time.sleep(30)
-            complete_charges()
-
-        # Trigger 'expires soon' notifications
-        trigger_expiration_notices(end_period, dry_run=dry_run)
+    def run_reconcile(self, created_at=None, dry_run=False):
+        for provider in Organization.objects.filter(is_provider=True):
+            self.stdout.write("reconcile payouts for %s ..." % str(provider))
+            backend = get_processor_backend(provider)
+            if not created_at:
+                created_at = provider.created_at
+            try:
+                with transaction.atomic():
+                    backend.reconcile_transfers(provider, created_at,
+                        dry_run=dry_run)
+            except ProcessorError as err:
+                self.stderr.write("error: %s" % str(err))

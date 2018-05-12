@@ -5,11 +5,15 @@
 
 <form method="post" id="bank-form"
       action=".{% if next %}/?next={{ next }}{% endif %}">
-      <input type="hidden" name="csrfmiddlewaretoken" value="{{csrf_token}}">
-      <fieldset>
+    <input type="hidden" name="csrfmiddlewaretoken" value="{{csrf_token}}">
+    <input name="stripeToken" type="hidden">
+    <fieldset>
         <legend>Amount to transfer</legend>
-        {{form|as_html}}
+        <div>
+         <label for="id_amount">Amount (in $):</label>
+         <input id="id_amount" name="amount" step="any" type="number" value="0">
+        </div>
       </fieldset>
-        <button type="submit">{% if form.submit_title %}{{form.submit_title}}{% else %}Submit{% endif %}</button>
+      <button type="submit">{% if form.submit_title %}{{form.submit_title}}{% else %}Submit{% endif %}</button>
 </form>
 {% endblock %}

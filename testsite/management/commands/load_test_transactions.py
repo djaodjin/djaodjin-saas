@@ -1,4 +1,4 @@
-# Copyright (c) 2017, DjaoDjin inc.
+# Copyright (c) 2018, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -24,6 +24,7 @@
 
 import datetime, logging, random
 
+from django.conf import settings
 from django.core.management.base import BaseCommand
 from django.db.utils import IntegrityError
 from django.template.defaultfilters import slugify
@@ -148,6 +149,12 @@ class Command(BaseCommand):
         'Peterson',
         )
 
+    def add_arguments(self, parser):
+        parser.add_argument('--provider',
+            action='store', dest='provider',
+            default=settings.SAAS['BROKER']['GET_INSTANCE'],
+            help='create sample subscribers on this provider')
+
     def handle(self, *args, **options):
         #pylint: disable=too-many-locals,too-many-statements
         from saas.managers.metrics import month_periods # avoid import loop
@@ -160,11 +167,11 @@ class Command(BaseCommand):
         from_date = now
         from_date = datetime.datetime(
             year=from_date.year, month=from_date.month, day=1)
-        if len(args) > 0:
+        if args:
             from_date = datetime.datetime.strptime(
                 args[0], '%Y-%m-%d')
         # Create Income transactions that represents a growing bussiness.
-        provider = Organization.objects.get(pk=2)
+        provider = Organization.objects.get(slug=options['provider'])
         processor = Organization.objects.get(pk=PROCESSOR_ID)
         for end_period in month_periods(from_date=from_date):
             nb_new_customers = random.randint(0, 9)
@@ -192,9 +199,9 @@ class Command(BaseCommand):
                          'impossible to create a new customer after 10 trials.')
                 Organization.objects.filter(pk=customer.id).update(
                     created_at=end_period)
-                subscription = Subscription.objects.new_instance(
-                    customer, plan, ends_at=now + datetime.timedelta(days=31))
-                subscription.save()
+                subscription = Subscription.objects.create(
+                    organization=customer, plan=plan,
+                    ends_at=now + datetime.timedelta(days=31))
                 Subscription.objects.filter(
                     pk=subscription.id).update(created_at=end_period)
             # Insert some churn in %
@@ -202,14 +209,16 @@ class Command(BaseCommand):
             all_subscriptions = Subscription.objects.filter(
                 plan__organization=provider)
             nb_churn_customers = (all_subscriptions.count()
-                * churn_rate / 100)
-            subscriptions = random.sample(all_subscriptions,
+                * churn_rate // 100)
+            subscriptions = random.sample(list(all_subscriptions),
                 all_subscriptions.count() - nb_churn_customers)
             for subscription in subscriptions:
                 nb_periods = random.randint(1, 6)
                 transaction_item = Transaction.objects.new_subscription_order(
                     subscription, nb_natural_periods=nb_periods,
                     created_at=end_period)
+                if transaction_item.dest_amount < 50:
+                    continue
                 transaction_item.orig_amount = transaction_item.dest_amount
                 transaction_item.orig_unit = transaction_item.dest_unit
                 transaction_item.save()
@@ -236,7 +245,5 @@ class Command(BaseCommand):
             for subscription in churned:
                 subscription.ends_at = end_period
                 subscription.save()
-            print "%d new and %d churned customers at %s" % (
-                nb_new_customers, nb_churn_customers, end_period)
-
-
+            self.stdout.write("%d new and %d churned customers at %s" % (
+                nb_new_customers, nb_churn_customers, end_period))

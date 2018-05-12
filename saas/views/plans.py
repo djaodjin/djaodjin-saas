@@ -27,10 +27,11 @@ from django.contrib import messages
 from django.http import HttpResponseRedirect
 from django.views.generic import CreateView, ListView, UpdateView
 from django.views.generic.detail import SingleObjectMixin
+from django.template.context_processors import csrf
 
 from . import RedirectFormMixin
 from .. import settings
-from ..compat import csrf, is_authenticated, reverse, reverse_lazy
+from ..compat import is_authenticated, reverse, reverse_lazy
 from ..forms import PlanForm
 from ..mixins import CartMixin, OrganizationMixin, ProviderMixin
 from ..models import CartItem, Coupon, Plan
@@ -99,8 +100,9 @@ djaodjin-saas/tree/master/saas/templates/saas/pricing.html>`__).
 
     def get_context_data(self, **kwargs):
         context = super(CartPlanListView, self).get_context_data(**kwargs)
-        # We add the csrf token here so that javascript on the page
-        # can call the shopping cart API.
+        # We add the csrf token here so that we can add a plan by generating
+        # a POST request directly or through Javascript calling the shopping
+        # cart API.
         context.update(csrf(self.request))
         items_selected = []
         if is_authenticated(self.request):

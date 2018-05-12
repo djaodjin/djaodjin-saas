@@ -14,7 +14,7 @@ Provider Dashboard
         <table>
             <tbody id="has-registered" ng-cloak ng-show="items.$resolved && items.results.length > 0">
                 <tr ng-repeat="entry in items.results">
-                    <td><a href="{{request|url_profile_base}}[[entry.username]]/">[[entry.username]]</td>
+                    <td><a href="{{urls.user.profile_redirect}}[[entry.username]]/">[[entry.username]]</td>
                     <td>[[entry.first_name]] [[entry.last_name]]</td>
                     <td>[[entry.email]]</td>
                     <td>[[relativeDate(entry.created_at)]]</td>
@@ -46,7 +46,7 @@ No items to take care of Today.
             </tbody>
             <tbody id="has-registered" ng-cloak ng-show="items.$resolved && items.results.length > 0">
                 <tr ng-repeat="entry in items.results">
-                    <td><a href="{{request|url_profile_base}}[[entry.slug]]/">[[entry.slug]]</td>
+                    <td><a href="{{urls.user.profile_redirect}}[[entry.slug]]/">[[entry.slug]]</td>
                     <td>[[relativeDate(entry.created_at)]]</td>
                 </tr>
             </tbody>

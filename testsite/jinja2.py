@@ -1,4 +1,4 @@
-# Copyright (c) 2017, DjaoDjin inc.
+# Copyright (c) 2018, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -34,9 +34,6 @@ def environment(**options):
     env = Jinja2Environment(**options)
     # Generic filters to render pages
     env.filters['messages'] = testsite.templatetags.testsite_tags.messages
-    env.filters['as_html'] = testsite.templatetags.testsite_tags.as_html
-    env.filters['url_profile_base'] = \
-        testsite.templatetags.testsite_tags.url_profile_base
     env.filters['url_profile'] = testsite.templatetags.testsite_tags.url_profile
     env.filters['is_authenticated'] = \
         testsite.templatetags.testsite_tags.is_authenticated

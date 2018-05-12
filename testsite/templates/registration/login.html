@@ -1,6 +1,16 @@
-  <form method="post" action="./?next={{next}}">
-    <input type="hidden" name="csrfmiddlewaretoken" value="{{csrf_token}}">
-    {{form|as_html}}
-    <input type="submit" value="Login" />
-  </form>
+{% extends "base.html" %}
 
+{% block content %}
+<form method="post" action="./?next={{next}}">
+  <input type="hidden" name="csrfmiddlewaretoken" value="{{csrf_token}}">
+  <div>
+    <label for="id_username">Username:</label>
+    <input id="id_username" maxlength="254" name="username" type="text">
+  </div>
+  <div>
+    <label for="id_password">Password:</label>
+    <input id="id_password" name="password" type="password">
+  </div>
+  <input type="submit" value="Login" />
+</form>
+{% endblock %}

@@ -25,22 +25,11 @@
 from django import template
 from django.contrib.messages.api import get_messages
 from django.forms import BaseForm
-from django.utils.text import capfirst
 from saas.compat import is_authenticated as is_authenticated_base, reverse
 from saas.templatetags.saas_tags import attached_organization
 
 
 register = template.Library()
-
-
-@register.filter()
-def as_html(form):
-    return form.as_ul()
-
-
-@register.filter()
-def capitalize(name):
-    return capfirst(name)
 
 
 @register.filter()
@@ -56,11 +45,6 @@ def messages(obj):
     if isinstance(obj, BaseForm):
         return obj.non_field_errors()
     return get_messages(obj)
-
-
-@register.filter()
-def url_profile_base(request): #pylint:disable=unused-argument
-    return reverse('users_profile_base')
 
 
 @register.filter()

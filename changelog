@@ -1,3 +1,10 @@
+0.3.0
+
+  * Grants and requests for double opt-in on roles and subscriptions.
+  * Adds logic for use charges
+
+ -- Sebastien Mirolo <smirolo@djaodjin.com>  Wed, 13 Dec 2017 12:12:20 -0700
+
 0.2.6
 
   * Compatible with Python 3.6

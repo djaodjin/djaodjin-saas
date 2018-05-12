@@ -940,9 +940,8 @@ def product_url(provider, subscriber=None, request=None):
     if subscriber:
         location += '%s/' % subscriber
     if settings.BUILD_ABSOLUTE_URI_CALLABLE:
-        build_absolute_uri = import_string(settings.BUILD_ABSOLUTE_URI_CALLABLE)
-        return build_absolute_uri(request, location=location,
-            site=None if is_broker(provider) else str(provider))
+        build_absolute_url = import_string(settings.BUILD_ABSOLUTE_URI_CALLABLE)
+        return build_absolute_url(request, provider=provider, location=location)
     elif not is_broker(provider):
         location = '/%s' % provider + location
     return location

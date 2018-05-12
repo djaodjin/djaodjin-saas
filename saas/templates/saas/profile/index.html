@@ -3,7 +3,51 @@
 {% block saas_content %}
 <form method="post" action=".">
     <input type="hidden" name="csrfmiddlewaretoken" value="{{csrf_token}}">
-    {{ form|as_html }}
+    <div>
+      <label for="id_full_name">Organization name:</label>
+      <input id="id_full_name" maxlength="60" name="full_name" type="text" value="{{form.full_name.value}}">
+    </div>
+    <div>
+        <label for="id_email">Email:</label>
+        <input id="id_email" maxlength="254" name="email" type="email" value="{{form.email.value}}">
+    </div>
+    <div>
+        <label for="id_phone">Phone:</label>
+        <input id="id_phone" name="phone" type="text" value="{{form.phone.value}}">
+    </div>
+    <div>
+        <label for="id_country">Country:</label>
+        <select id="id_country" name="country">
+          {% for choice in form.country.field.widget.choices %}
+          <option {% if form.country.value == choice.0 %}selected="1"{% endif %} value="{{choice.0}}">{{choice.1}}</option>
+          {% endfor %}
+        </select>
+    </div>
+    <div>
+        <label for="id_region">State/Province/County:</label>
+        <input id="id_region" name="region" type="text" value="{{form.region.value}}">
+    </div>
+    <div>
+        <label for="id_locality">City/Town:</label>
+        <input id="id_locality" maxlength="50" name="locality" type="text" value="{{form.locality.value}}">
+    </div>
+    <div>
+        <label for="id_street_address">Street address:</label>
+        <input id="id_street_address" name="street_address" type="text" value="{{form.street_address.value}}">
+    </div>
+    <div>
+        <label for="id_postal_code">Postal Code:</label>
+        <input id="id_postal_code" maxlength="50" name="postal_code" type="text" value="{{form.postal_code.value}}">
+    </div>
+    <div>
+        <label for="id_is_bulk_buyer">Enable GroupBuy:
+            <input id="id_is_bulk_buyer" name="is_bulk_buyer" type="checkbox" {% if form.is_bulk_buyer.value %}checked{% endif %}>
+        </label>
+    </div>
+    <div>
+        <label for="id_extra">Notes:</label>
+        <textarea cols="40" id="id_extra" name="extra" rows="10">{% if form.extra.value %}{{form.extra.value}}{% endif %}</textarea>
+    </div>
     <div>
         <input type="submit" name="submit" value="Update Profile">
     </div>

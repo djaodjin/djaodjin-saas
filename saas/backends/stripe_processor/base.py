@@ -398,6 +398,19 @@ class StripeBackend(object):
         stripe_charge, _ = self.get_processor_charge(charge)
         stripe_charge.refund(amount=amount)
 
+    def get_authorize_url(self, provider):
+        redirect_func_name = settings.PROCESSOR.get('AUTHORIZE_CALLABLE', None)
+        if redirect_func_name:
+            from ...compat import import_string
+            func = import_string(redirect_func_name)
+            return func(self, provider)
+        #pylint:disable=line-too-long
+        authorize_url = "https://connect.stripe.com/oauth/authorize?response_type=code&client_id=%(client_id)s&scope=read_write&state=%(provider)s" % {
+            'client_id': self.client_id,
+            'provider': str(provider)
+        }
+        return authorize_url
+
     def get_deposit_context(self):
         # We insert the``STRIPE_CLIENT_ID`` here because we serve page
         # with a "Stripe Connect" button.
@@ -498,20 +511,30 @@ class StripeBackend(object):
 
         return charge
 
-    def reconcile_transfers(self, provider, created_at):
+    def reconcile_transfers(self, provider, created_at,
+                            limit_to_one_request=False, dry_run=False):
         kwargs = self._prepare_transfer_request(provider)
         timestamp = datetime_to_utctimestamp(created_at)
         LOGGER.info("reconcile transfers from Stripe at %s", created_at)
         try:
+            offset = 0
             transfers = stripe.Transfer.all(
-                created={'gt': timestamp}, status='paid', **kwargs)
-            for transfer in transfers.data:
-                created_at = utctimestamp_to_datetime(transfer.created)
-                descr = (transfer.description if transfer.description
-                    else "STRIPE TRANSFER %s" % str(transfer.id))
-                provider.create_withdraw_transactions(
-                    transfer.id, transfer.amount, transfer.currency,
-                    descr, created_at=created_at)
+                created={'gt': timestamp}, status='paid',
+                offset=offset, **kwargs)
+            while transfers.data:
+                for transfer in transfers.data:
+                    created_at = utctimestamp_to_datetime(transfer.created)
+                    descr = (transfer.description if transfer.description
+                        else "STRIPE TRANSFER %s" % str(transfer.id))
+                    provider.create_withdraw_transactions(
+                        transfer.id, transfer.amount, transfer.currency,
+                        descr, created_at=created_at, dry_run=dry_run)
+                if limit_to_one_request:
+                    break
+                offset = offset + len(transfers.data)
+                transfers = stripe.Transfer.all(
+                    created={'gt': timestamp}, status='paid',
+                    offset=offset, **kwargs)
         except stripe.error.StripeError as err:
             LOGGER.exception(err)
             raise ProcessorError(str(err), backend_except=err)
