@@ -24,6 +24,7 @@
 
 from collections import OrderedDict
 
+from django.http import Http404
 from django.shortcuts import get_object_or_404
 from django.utils import six
 
@@ -58,6 +59,10 @@ class OrganizationMixinBase(object):
     def get_context_data(self, **kwargs):
         context = super(OrganizationMixinBase, self).get_context_data(**kwargs)
         organization = self.organization
+        if not organization:
+            # If we don't even have a broker/provider for a site.
+            raise Http404(
+                "It seems a broker was not defined, or defined incorrectly.")
         context.update({'organization': organization})
         # XXX These might be moved to a higher-level
         urls = {
