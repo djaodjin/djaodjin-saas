@@ -14,6 +14,11 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
+        migrations.AddField(
+            model_name='organization',
+            name='default_timezone',
+            field=models.CharField(default=b'America/Los_Angeles', max_length=100),
+        ),
         migrations.AlterField(
             model_name='charge',
             name='created_at',
