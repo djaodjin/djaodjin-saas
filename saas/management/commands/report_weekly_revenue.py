@@ -32,6 +32,7 @@ from ...managers.metrics import (aggregate_transactions_by_period,
     aggregate_transactions_change_by_period)
 from ...models import Organization, Transaction
 from ...utils import datetime_or_now, parse_tz
+from ...humanize import as_money
 from ... import signals
 
 class Command(BaseCommand):
@@ -104,7 +105,7 @@ class Command(BaseCommand):
         for _, val in iteritems(table):
             try:
                 amount = (val['last'] - val['prev']) * 100 / val['prev']
-                prev = str(amount) + '%'
+                prev = str(round(amount, 2)) + '%'
                 if amount > 0:
                     prev = '+' + prev
             except ZeroDivisionError:
@@ -112,13 +113,13 @@ class Command(BaseCommand):
             try:
                 amount = \
                     (val['last'] - val['prev_year']) * 100 / val['prev_year']
-                prev_year = str(amount) + '%'
+                prev_year = str(round(amount, 2)) + '%'
                 if amount > 0:
                     prev_year = '+' + prev_year
             except ZeroDivisionError:
                 prev_year = 'N/A'
 
-            val['last'] = '$' + str(val['last'])
+            val['last'] = as_money(val['last'])
             val['prev'] = prev
             val['prev_year'] = prev_year
 

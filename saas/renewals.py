@@ -170,7 +170,7 @@ def extend_subscriptions(at_time=None, dry_run=False):
                 try:
                     if not subscription.organization.attached_user():
                         descr_suffix = (
-                            '(%s)' % subscription.organization.printable_name)
+                            '- %s' % subscription.organization.printable_name)
                     else:
                         descr_suffix = None
                     with transaction.atomic():
