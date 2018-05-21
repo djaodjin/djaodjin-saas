@@ -410,28 +410,29 @@ class UserMixin(object):
 
     def get_context_data(self, **kwargs):
         context = super(UserMixin, self).get_context_data(**kwargs)
-        user = self.user
-        top_accessibles = []
-        queryset = Organization.objects.accessible_by(user).filter(
-            is_active=True).exclude(
-            slug=user.username)[:self.SHORT_LIST_CUT_OFF + 1]
-        for organization in queryset:
-            if organization.is_provider:
-                location = reverse('saas_dashboard', args=(organization,))
-            else:
-                location = reverse('saas_organization_profile',
-                    args=(organization,))
-            top_accessibles += [{
-                'slug': organization.slug,
-                'printable_name': organization.printable_name,
-                'location': location}]
-        if len(queryset) > self.SHORT_LIST_CUT_OFF:
-            # XXX Always add link to "More..." so a user can request access.
-            top_accessibles += [{
-                'slug': None,
-                'printable_name': "More ...",
-                'location': reverse('saas_user_product_list', args=(user,))}]
-        context.update({'top_accessibles': top_accessibles})
+        if self.user.is_authenticated():
+            top_accessibles = []
+            queryset = Organization.objects.accessible_by(self.user).filter(
+                is_active=True).exclude(
+                slug=self.user.username)[:self.SHORT_LIST_CUT_OFF + 1]
+            for organization in queryset:
+                if organization.is_provider:
+                    location = reverse('saas_dashboard', args=(organization,))
+                else:
+                    location = reverse('saas_organization_profile',
+                        args=(organization,))
+                top_accessibles += [{
+                    'slug': organization.slug,
+                    'printable_name': organization.printable_name,
+                    'location': location}]
+            if len(queryset) > self.SHORT_LIST_CUT_OFF:
+                # XXX Always add link to "More..." so a user can request access.
+                top_accessibles += [{
+                    'slug': None,
+                    'printable_name': "More ...",
+                    'location': reverse(
+                        'saas_user_product_list', args=(self.user,))}]
+            context.update({'top_accessibles': top_accessibles})
         return context
 
 
