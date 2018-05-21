@@ -22,16 +22,12 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from django.conf.urls import url
+"""
+URLs for backends of saas Django app
+"""
 
-from .views import StripeProcessorRedirectView, processor_hook
-from ...settings import PROCESSOR_HOOK_URL
+from django.conf.urls import include, url
 
 urlpatterns = [
-    url(r'^billing/connected/',
-        StripeProcessorRedirectView.as_view(
-            pattern_name='saas_update_bank'),
-        name='saas_processor_connected_hook'),
-    url(r'^%s' % PROCESSOR_HOOK_URL,
-        processor_hook, name='saas_processor_hook')
+    url(r'^', include('saas.backends.stripe_processor.urls.api')),
 ]

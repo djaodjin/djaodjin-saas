@@ -25,10 +25,10 @@
 from django.views.generic import TemplateView
 
 from ..compat import NoReverseMatch, reverse
-from ..mixins import UserMixin, ProviderMixin
+from ..mixins import ProviderMixin
 
 
-class ProductListView(UserMixin, ProviderMixin, TemplateView):
+class ProductListView(ProviderMixin, TemplateView):
     """
     List of organizations a ``:user`` has a role with.
 

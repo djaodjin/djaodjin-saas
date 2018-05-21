@@ -153,8 +153,8 @@ class RevenueMetricsView(MetricsMixin, TemplateView):
     Template:
 
     To edit the layout of this page, create a local \
-    ``saas/metrics/base.html`` (`example <https://github.com/djaodjin\
-/djaodjin-saas/tree/master/saas/templates/saas/metrics/base.html>`__).
+    ``saas/metrics/revenue.html`` (`example <https://github.com/djaodjin\
+/djaodjin-saas/tree/master/saas/templates/saas/metrics/revenue.html>`__).
 
     The page will typically call back
     :ref:`/api/metrics/:organization/funds/ <api_metrics_funds>`
@@ -172,7 +172,7 @@ class RevenueMetricsView(MetricsMixin, TemplateView):
       - ``request`` The HTTP request object
     """
 
-    template_name = 'saas/metrics/base.html'
+    template_name = 'saas/metrics/revenue.html'
 
     def get_context_data(self, **kwargs):
         context = super(RevenueMetricsView, self).get_context_data(**kwargs)

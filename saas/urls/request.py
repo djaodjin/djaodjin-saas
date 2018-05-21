@@ -26,11 +26,15 @@
 
 from django.conf.urls import url
 
-from ..settings import ACCT_REGEX
+from ..settings import ACCT_REGEX, VERIFICATION_KEY_RE
 from ..views.legal import AgreementSignView
+from ..views.optins import RoleGrantAcceptView
 
 
 urlpatterns = [
+    url(r'users/roles/accept/(?P<grant_key>%s)/' % (
+        VERIFICATION_KEY_RE),
+        RoleGrantAcceptView.as_view(), name='saas_role_grant_accept'),
     url(r'^legal/(?P<agreement>%s)/sign/' % ACCT_REGEX,
         AgreementSignView.as_view(), name='legal_sign_agreement'),
 ]

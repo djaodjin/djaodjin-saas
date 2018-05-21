@@ -1,0 +1,25 @@
+{% extends "notification/base.eml" %}
+
+{% block subject %}
+{# We are putting |safe here because an e-mail's subject line shouldn't be
+HTML encoded. #}
+{{user.printable_name|safe}} was added as a {{role}} to {{organization.printable_name|safe}}
+{% endblock %}
+
+{% block title %}{{user.printable_name}} was added as a {{role}} to {{organization.printable_name}}{% endblock %}
+
+{% block html_content %}
+<h3>{{user.printable_name}} was added as a {{role}} to {{organization.printable_name}}</h3>
+{% if reason %}
+<p>
+{{reason|md}}
+</p>
+{% endif %}
+<p>
+You can review who has a {{role}} to
+<a href="{{back_url}}">{{organization.printable_name}} account</a>
+now by clicking on the previous link or copy/pasting the following link
+in your browser:
+{{back_url}}
+</p>
+{% endblock %}

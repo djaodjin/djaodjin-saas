@@ -388,7 +388,54 @@ class ChargeMixin(SingleObjectMixin):
         return context
 
 
-class OrganizationMixin(OrganizationMixinBase, settings.EXTRA_MIXIN):
+class UserMixin(object):
+    """
+    Returns an ``User`` from a URL.
+    """
+    SHORT_LIST_CUT_OFF = 8
+    user_url_kwarg = 'user'
+
+    @property
+    def user(self):
+        if not hasattr(self, "_user"):
+            self._user = self.request.user
+            username = self.kwargs.get(self.user_url_kwarg, None)
+            if username:
+                user_model = get_user_model()
+                try:
+                    self._user = user_model.objects.get(username=username)
+                except user_model.DoesNotExist:
+                    pass
+        return self._user
+
+    def get_context_data(self, **kwargs):
+        context = super(UserMixin, self).get_context_data(**kwargs)
+        user = self.user
+        top_accessibles = []
+        queryset = Organization.objects.accessible_by(user).filter(
+            is_active=True).exclude(
+            slug=user.username)[:self.SHORT_LIST_CUT_OFF + 1]
+        for organization in queryset:
+            if organization.is_provider:
+                location = reverse('saas_dashboard', args=(organization,))
+            else:
+                location = reverse('saas_organization_profile',
+                    args=(organization,))
+            top_accessibles += [{
+                'slug': organization.slug,
+                'printable_name': organization.printable_name,
+                'location': location}]
+        if len(queryset) > self.SHORT_LIST_CUT_OFF:
+            # XXX Always add link to "More..." so a user can request access.
+            top_accessibles += [{
+                'slug': None,
+                'printable_name': "More ...",
+                'location': reverse('saas_user_product_list', args=(user,))}]
+        context.update({'top_accessibles': top_accessibles})
+        return context
+
+
+class OrganizationMixin(UserMixin, OrganizationMixinBase, settings.EXTRA_MIXIN):
     pass
 
 
@@ -765,48 +812,6 @@ class SubscribedQuerysetMixin(ProviderMixin):
         ends_at = datetime_or_now(self.request.GET.get('ends_at', None))
         return Subscription.objects.active_with(
             self.provider, ends_at=ends_at, **kwargs).order_by('-ends_at')
-
-
-class UserMixin(object):
-    """
-    Returns an ``User`` from a URL.
-    """
-    SHORT_LIST_CUT_OFF = 8
-    user_url_kwarg = 'user'
-
-    @property
-    def user(self):
-        if not hasattr(self, "_user"):
-            user_model = get_user_model()
-            try:
-                self._user = user_model.objects.get(
-                    username=self.kwargs.get(self.user_url_kwarg))
-            except user_model.DoesNotExist:
-                self._user = self.request.user
-        return self._user
-
-    def get_context_data(self, **kwargs):
-        context = super(UserMixin, self).get_context_data(**kwargs)
-        user = self.user
-        top_accessibles = []
-        queryset = Organization.objects.accessible_by(user).filter(
-            is_active=True).exclude(
-            slug=user.username)[:self.SHORT_LIST_CUT_OFF + 1]
-        for organization in queryset:
-            if organization.is_provider:
-                location = reverse('saas_dashboard', args=(organization,))
-            else:
-                location = reverse('saas_organization_profile',
-                    args=(organization,))
-            top_accessibles += [{
-                'printable_name': organization.printable_name,
-                'location': location}]
-        if len(queryset) > self.SHORT_LIST_CUT_OFF:
-            # XXX Always add link to "More..." so a user can request access.
-            top_accessibles += [{'printable_name': "More ...",
-                'location': reverse('saas_user_product_list', args=(user,))}]
-        context.update({'top_accessibles': top_accessibles})
-        return context
 
 
 class RoleDescriptionMixin(OrganizationMixin):

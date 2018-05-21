@@ -28,15 +28,11 @@ URLs for pages from a ``User`` perspective.
 
 from django.conf.urls import url
 
-from ..settings import ACCT_REGEX, VERIFICATION_KEY_RE
+from ..settings import ACCT_REGEX
 from ..views.users import ProductListView
-from ..views.optins import RoleGrantAcceptView
 
 
 urlpatterns = [
-    url(r'users/(?P<user>%s)/roles/accept/(?P<grant_key>%s)/' % (
-        ACCT_REGEX, VERIFICATION_KEY_RE),
-        RoleGrantAcceptView.as_view(), name='saas_role_grant_accept'),
     url(r'users/(?P<user>%s)/roles/' % ACCT_REGEX,
         ProductListView.as_view(), name='saas_user_product_list'),
 ]

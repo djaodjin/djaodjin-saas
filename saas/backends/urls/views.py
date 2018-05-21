@@ -29,5 +29,5 @@ URLs for backends of saas Django app
 from django.conf.urls import include, url
 
 urlpatterns = [
-    url(r'^stripe/', include('saas.backends.stripe_processor.urls')),
+    url(r'^', include('saas.backends.stripe_processor.urls.views')),
 ]
