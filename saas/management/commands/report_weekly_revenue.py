@@ -25,6 +25,7 @@
 """Command for the cron job. Send revenue report for the last week"""
 
 from six import iteritems
+from collections import OrderedDict
 from dateutil.relativedelta import relativedelta, SU
 from django.core.management.base import BaseCommand
 
@@ -54,14 +55,19 @@ class Command(BaseCommand):
         )
 
     @staticmethod
-    def construct_date_periods(today, timezone=None):
+    def construct_date_periods(at_time, timezone=None):
+        # discarding time, keeping utc tzinfo (00:00:00 utc)
+        today = at_time.replace(hour=0, minute=0, second=0, microsecond=0)
         tzinfo = parse_tz(timezone)
         if tzinfo:
             # we are interested in 00:00 local time, if we don't have
             # local time zone, fall back to 00:00 utc time
             # in case we have local timezone, replace utc with it
             today = tzinfo.localize(today.replace(tzinfo=None))
-        last_sunday = today + relativedelta(weeks=-1, weekday=SU(0))
+        if today.weekday() == 0:
+            last_sunday = today
+        else:
+            last_sunday = today + relativedelta(weeks=-1, weekday=SU(0))
         prev_sunday = last_sunday - relativedelta(weeks=1)
         prev_year = [last_sunday - relativedelta(years=1, weeks=1),
                     last_sunday - relativedelta(years=1)]
@@ -71,7 +77,7 @@ class Command(BaseCommand):
 
     @staticmethod
     def construct_table(data):
-        table = {
+        table = OrderedDict({
             'Total Sales': {
                 'last': data['account_table'][0]['values'][1][1],
                 'prev': data['account_table'][0]['values'][0][1],
@@ -100,7 +106,7 @@ class Command(BaseCommand):
                 'prev': data['refund_amounts'][0][1],
                 'prev_year': data['refund_amounts_prev_year'][0][1]
             },
-        }
+        })
 
         for _, val in iteritems(table):
             try:
@@ -172,8 +178,6 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         # aware utc datetime object
         today_dt = datetime_or_now(options.get('at_time'))
-        # discarding time, keeping utc tzinfo (00:00:00 utc)
-        today = today_dt.replace(hour=0, minute=0, second=0, microsecond=0)
         self.stdout.write("running report_weekly_revenue at %s" % today_dt)
 
         providers = Organization.objects.filter(is_provider=True)
@@ -183,7 +187,7 @@ class Command(BaseCommand):
 
         for provider in providers:
             dates = self.construct_date_periods(
-                today, timezone=provider.default_timezone)
+                today_dt, timezone=provider.default_timezone)
             prev_week, prev_year = dates
             data = self.get_company_weekly_perf_data(
                 provider, prev_week, prev_year)
