@@ -24,6 +24,9 @@ function showMessages(messages, style) {
         }
         messageBlock += "\"><button type=\"button\" class=\"close\" data-dismiss=\"alert\">&times;</button>";
 
+        if( typeof messages === "string" ) {
+            messages = [messages];
+        }
         for( var i = 0; i < messages.length; ++i ) {
             messageBlock += "<div>" + messages[i] + "</div>";
          }

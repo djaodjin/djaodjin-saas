@@ -24,10 +24,10 @@
 
 from django.conf.urls import url
 
-from ..views import processor_hook
+from ..views import StripeWebhook
 from ....settings import PROCESSOR_HOOK_URL
 
 urlpatterns = [
     url(r'^%s' % PROCESSOR_HOOK_URL,
-        processor_hook, name='saas_processor_hook')
+        StripeWebhook.as_view(), name='saas_processor_hook')
 ]
