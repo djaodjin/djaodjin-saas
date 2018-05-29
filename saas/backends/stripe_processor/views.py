@@ -28,7 +28,6 @@ from django.conf import settings as django_settings
 from django.http import Http404
 from django.shortcuts import get_object_or_404
 from django.views.generic import RedirectView
-from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework.views import APIView
 import stripe
@@ -78,6 +77,7 @@ class StripeWebhook(APIView):
     swagger_schema = None
 
     def post(self, request, *args, **kwargs):
+        #pylint:disable=unused-argument,no-self-use
         from saas.models import Charge
         processor_backend = get_processor_backend(get_broker())
         stripe.api_key = processor_backend.priv_key
@@ -92,11 +92,13 @@ class StripeWebhook(APIView):
                 event.type, request.DATA['id'])
             raise Http404
         LOGGER.info("Posted stripe '%s' event %s PASS", event.type, event.id,
-            extra={'processor': 'stripe', 'event': event.type, 'event_id': event.id,
+            extra={'processor': 'stripe', 'event': event.type,
+                'event_id': event.id,
                 'request': request})
-        if event_type in ['charge.succeeded', 'charge.failed', 'charge.refunded',
-                'charge.captured']:
-            charge = get_object_or_404(Charge, processor_key=event.data.object.id)
+        if event_type in ['charge.succeeded', 'charge.failed',
+                          'charge.refunded', 'charge.captured']:
+            charge = get_object_or_404(Charge,
+                processor_key=event.data.object.id)
             #pylint:disable=protected-access
             processor_backend._update_charge_state(charge,
                 stripe_charge=event.data.object, event_type=event_type)
@@ -110,6 +112,7 @@ class StripeWebhook(APIView):
             charge = get_object_or_404(Charge,
                 processor_key=event.data.object.charge)
             #pylint:disable=protected-access
-            processor_backend._update_charge_state(charge, event_type=event_type)
+            processor_backend._update_charge_state(
+                charge, event_type=event_type)
 
         return Response("OK")

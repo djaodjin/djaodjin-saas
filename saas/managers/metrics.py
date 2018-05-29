@@ -23,7 +23,9 @@
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 from datetime import datetime
+import logging
 
+from dateutil.relativedelta import relativedelta
 from django.db import router
 from django.db.models import Count, Sum
 from django.db.models.sql.query import RawQuery
@@ -31,6 +33,8 @@ from django.utils import six
 
 from ..models import Plan, Subscription, Transaction
 from ..utils import datetime_or_now, parse_tz, convert_dates_to_utc
+
+LOGGER = logging.getLogger(__name__)
 
 
 def month_periods(nb_months=12, from_date=None, step_months=1,
@@ -142,8 +146,13 @@ def _aggregate_transactions_change_by_period(organization, account,
     period_start = date_periods[0]
     for period_end in date_periods[1:]:
         delta = Plan.get_natural_period(1, organization.natural_interval)
-        prev_period_start = period_start - delta
-        prev_period_end = period_start
+        prev_period_end = period_end - delta
+        prev_period_start = prev_period_end - relativedelta(
+            period_end, period_start)
+        LOGGER.debug(
+            "computes churn between periods ['%s', '%s'] and ['%s', '%s']",
+            prev_period_start.isoformat(), prev_period_end.isoformat(),
+            period_start.isoformat(), period_end.isoformat())
         churn_query = RawQuery(
 """SELECT COUNT(DISTINCT(prev.%(dest)s_organization_id)),
           SUM(prev.%(dest)s_amount)

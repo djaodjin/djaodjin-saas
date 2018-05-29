@@ -24,8 +24,6 @@
 
 """Command for the cron job. Send revenue report for the last week"""
 
-from six import iteritems
-from collections import OrderedDict
 from dateutil.relativedelta import relativedelta, SU
 from django.core.management.base import BaseCommand
 
@@ -35,6 +33,7 @@ from ...models import Organization, Transaction
 from ...utils import datetime_or_now, parse_tz
 from ...humanize import as_money
 from ... import signals
+
 
 class Command(BaseCommand):
     """Send past week revenue report in email"""
@@ -64,51 +63,63 @@ class Command(BaseCommand):
             # local time zone, fall back to 00:00 utc time
             # in case we have local timezone, replace utc with it
             today = tzinfo.localize(today.replace(tzinfo=None))
-        if today.weekday() == 0:
+        if today.weekday() == SU:
             last_sunday = today
         else:
-            last_sunday = today + relativedelta(weeks=-1, weekday=SU(0))
+            last_sunday = today + relativedelta(weeks=-1, weekday=SU)
         prev_sunday = last_sunday - relativedelta(weeks=1)
-        prev_year = [last_sunday - relativedelta(years=1, weeks=1),
-                    last_sunday - relativedelta(years=1)]
-        prev_week = [prev_sunday - relativedelta(weeks=1),
-                    prev_sunday, last_sunday]
+
+        prev_year = [
+            last_sunday + relativedelta(years=-1, weeks=-1, weekday=SU),
+            last_sunday + relativedelta(years=-1, weekday=SU)
+        ]
+        prev_week = [      # 2 consecutive weeks (last and previous)
+            prev_sunday - relativedelta(weeks=1),
+            prev_sunday,
+            last_sunday
+        ]
         return prev_week, prev_year
 
     @staticmethod
     def construct_table(data):
-        table = OrderedDict({
-            'Total Sales': {
+        table = [
+            {'key': "Total Sales",
+             'values': {
                 'last': data['account_table'][0]['values'][1][1],
                 'prev': data['account_table'][0]['values'][0][1],
                 'prev_year': \
                     data['account_table_prev_year'][0]['values'][0][1]
-            },
-            'New Sales': {
+            }},
+            {'key': "New Sales",
+             'values': {
                 'last': data['account_table'][1]['values'][1][1],
                 'prev': data['account_table'][1]['values'][0][1],
                 'prev_year': \
                     data['account_table_prev_year'][1]['values'][0][1]
-            },
-            'Churned Sales': {
-                'last': data['account_table'][2]['values'][1][1],
+            }},
+            {'key': "Churned Sales",
+             'values': {
+                 'last': data['account_table'][2]['values'][1][1],
                 'prev': data['account_table'][2]['values'][0][1],
                 'prev_year': \
                     data['account_table_prev_year'][2]['values'][0][1]
-            },
-            'Payments': {
-                'last': data['payment_amounts'][1][1],
-                'prev': data['payment_amounts'][0][1],
-                'prev_year': data['payment_amounts_prev_year'][0][1]
-            },
-            'Refunds': {
+            }},
+            {'key': "Payments",
+             'values': {
+                 'last': data['payment_amounts'][1][1],
+                 'prev': data['payment_amounts'][0][1],
+                 'prev_year': data['payment_amounts_prev_year'][0][1]
+            }},
+            {'key': "Refunds",
+             'values': {
                 'last': data['refund_amounts'][1][1],
                 'prev': data['refund_amounts'][0][1],
                 'prev_year': data['refund_amounts_prev_year'][0][1]
-            },
-        })
+            }}
+        ]
 
-        for _, val in iteritems(table):
+        for row in table:
+            val = row['values']
             try:
                 amount = (val['last'] - val['prev']) * 100 / val['prev']
                 prev = str(round(amount, 2)) + '%'
@@ -172,7 +183,6 @@ class Command(BaseCommand):
                 provider, Transaction.REFUND,
                 orig='dest', dest='dest',
                 date_periods=prev_year)
-
         return data
 
     def handle(self, *args, **options):
@@ -184,11 +194,16 @@ class Command(BaseCommand):
         provider_slug = options.get('provider')
         if provider_slug:
             providers = providers.filter(slug=provider_slug)
-
         for provider in providers:
             dates = self.construct_date_periods(
                 today_dt, timezone=provider.default_timezone)
             prev_week, prev_year = dates
+            self.stdout.write("Two last consecutive weeks:\n  %s %s %s" % (
+                prev_week[0].isoformat(), prev_week[1].isoformat(),
+                prev_week[2].isoformat()))
+            self.stdout.write("Same week last year:\n"\
+                "                            %s %s" % (
+                prev_year[0].isoformat(), prev_year[1].isoformat()))
             data = self.get_company_weekly_perf_data(
                 provider, prev_week, prev_year)
             table = self.construct_table(data)
