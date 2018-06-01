@@ -398,7 +398,7 @@ class UserMixin(object):
     @property
     def user(self):
         if not hasattr(self, "_user"):
-            self._user = self.request.user
+            self._user = None
             username = self.kwargs.get(self.user_url_kwarg, None)
             if username:
                 user_model = get_user_model()
@@ -406,11 +406,13 @@ class UserMixin(object):
                     self._user = user_model.objects.get(username=username)
                 except user_model.DoesNotExist:
                     pass
+            elif is_authenticated(self.request):
+                self._user = self.request.user
         return self._user
 
     def get_context_data(self, **kwargs):
         context = super(UserMixin, self).get_context_data(**kwargs)
-        if self.user.is_authenticated():
+        if self.user:
             top_accessibles = []
             queryset = Organization.objects.accessible_by(self.user).filter(
                 is_active=True).exclude(

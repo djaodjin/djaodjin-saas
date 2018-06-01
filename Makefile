@@ -52,7 +52,7 @@ initdb-with-dummydata: initdb
 
 
 initdb: install-conf
-	-rm -f $(srcDir)/db.sqlite
+	-rm -f $(srcDir)/db.sqlite $(srcDir)/testsite-app.log
 	cd $(srcDir) && $(PYTHON) ./manage.py migrate $(RUNSYNCDB) --noinput
 	cd $(srcDir) && $(PYTHON) ./manage.py loaddata testsite/fixtures/test_data.json
 
