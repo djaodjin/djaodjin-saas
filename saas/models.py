@@ -145,21 +145,22 @@ class OrganizationManager(models.Manager):
         When *user* is a string instead of a ``User`` instance, it will
         be interpreted as a username.
         """
-        user_model = get_user_model()
-        if not isinstance(user, user_model):
-            user = user_model.objects.db_manager(using=self._db).get(
-                username=str(user))
         kwargs = {}
+        user_model = get_user_model()
+        if isinstance(user, user_model):
+            kwargs.update({'user': user})
+        else:
+            kwargs.update({'user__username': str(user)})
         if role_descr:
             if isinstance(role_descr, RoleDescription):
-                kwargs = {'role_description': role_descr}
+                kwargs.update({'role_description': role_descr})
             elif isinstance(role_descr, six.string_types):
-                kwargs = {'role_description__slug': str(role_descr)}
+                kwargs.update({'role_description__slug': str(role_descr)})
             else:
-                kwargs = {'role_description__slug__in': [
-                    str(descr) for descr in role_descr]}
-        roles = get_role_model().objects.db_manager(using=self._db).valid_for(
-            user=user, **kwargs)
+                kwargs.update({'role_description__slug__in': [
+                    str(descr) for descr in role_descr]})
+        roles = get_role_model().objects.db_manager(
+            using=self._db).valid_for(**kwargs)
         return self.filter(pk__in=roles.values('organization')).distinct()
 
     def find_candidates(self, full_name, user=None):
