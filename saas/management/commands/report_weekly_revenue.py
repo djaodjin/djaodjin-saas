@@ -45,13 +45,9 @@ class Command(BaseCommand):
             dest='at_time', default=None,
             help='Specifies the time at which the command runs'
         )
-
-        parser.add_argument(
-            '--provider',
-            action='store',
-            dest='provider',
-            help='Specify a provider to generate reports for',
-        )
+        parser.add_argument('--provider', action='append',
+            dest='providers', default=None,
+            help='Specifies provider to generate reports for.')
 
     @staticmethod
     def construct_date_periods(at_time, timezone=None):
@@ -81,43 +77,7 @@ class Command(BaseCommand):
         return prev_week, prev_year
 
     @staticmethod
-    def construct_table(data):
-        table = [
-            {'key': "Total Sales",
-             'values': {
-                'last': data['account_table'][0]['values'][1][1],
-                'prev': data['account_table'][0]['values'][0][1],
-                'prev_year': \
-                    data['account_table_prev_year'][0]['values'][0][1]
-            }},
-            {'key': "New Sales",
-             'values': {
-                'last': data['account_table'][1]['values'][1][1],
-                'prev': data['account_table'][1]['values'][0][1],
-                'prev_year': \
-                    data['account_table_prev_year'][1]['values'][0][1]
-            }},
-            {'key': "Churned Sales",
-             'values': {
-                 'last': data['account_table'][2]['values'][1][1],
-                'prev': data['account_table'][2]['values'][0][1],
-                'prev_year': \
-                    data['account_table_prev_year'][2]['values'][0][1]
-            }},
-            {'key': "Payments",
-             'values': {
-                 'last': data['payment_amounts'][1][1],
-                 'prev': data['payment_amounts'][0][1],
-                 'prev_year': data['payment_amounts_prev_year'][0][1]
-            }},
-            {'key': "Refunds",
-             'values': {
-                'last': data['refund_amounts'][1][1],
-                'prev': data['refund_amounts'][0][1],
-                'prev_year': data['refund_amounts_prev_year'][0][1]
-            }}
-        ]
-
+    def construct_table(table):
         for row in table:
             val = row['values']
             try:
@@ -135,37 +95,31 @@ class Command(BaseCommand):
                     prev_year = '+' + prev_year
             except ZeroDivisionError:
                 prev_year = 'N/A'
-
             val['last'] = as_money(val['last'])
             val['prev'] = prev
             val['prev_year'] = prev_year
-
         return table
 
     @staticmethod
-    def get_company_weekly_perf_data(provider, prev_week, prev_year):
-        data = {}
-
-        data['account_table'], _, _ = \
+    def get_weekly_perf_data(provider, prev_week, prev_year):
+        account_table, _, _ = \
             aggregate_transactions_change_by_period(provider,
                 Transaction.RECEIVABLE, account_title='Sales',
                 orig='orig', dest='dest',
                 date_periods=prev_week)
-
-        data['account_table_prev_year'], _, _ = \
+        account_table_prev_year, _, _ = \
             aggregate_transactions_change_by_period(provider,
                 Transaction.RECEIVABLE, account_title='Sales',
                 orig='orig', dest='dest',
                 date_periods=prev_year)
 
-        _, data['payment_amounts'] = aggregate_transactions_by_period(
+        _, payment_amounts = aggregate_transactions_by_period(
             provider, Transaction.RECEIVABLE,
             orig='dest', dest='dest',
             orig_account=Transaction.BACKLOG,
             orig_organization=provider,
             date_periods=prev_week)
-
-        _, data['payment_amounts_prev_year'] = \
+        _, payment_amounts_prev_year = \
             aggregate_transactions_by_period(
                 provider, Transaction.RECEIVABLE,
                 orig='dest', dest='dest',
@@ -173,30 +127,63 @@ class Command(BaseCommand):
                 orig_organization=provider,
                 date_periods=prev_year)
 
-        _, data['refund_amounts'] = aggregate_transactions_by_period(
+        _, refund_amounts = aggregate_transactions_by_period(
             provider, Transaction.REFUND,
             orig='dest', dest='dest',
             date_periods=prev_week)
-
-        _, data['refund_amounts_prev_year'] = \
+        _, refund_amounts_prev_year = \
             aggregate_transactions_by_period(
                 provider, Transaction.REFUND,
                 orig='dest', dest='dest',
                 date_periods=prev_year)
-        return data
+
+        table = [
+            {'key': "Total Sales",
+             'values': {
+                'last': account_table[0]['values'][1][1],
+                'prev': account_table[0]['values'][0][1],
+                'prev_year': account_table_prev_year[0]['values'][0][1]
+            }},
+            {'key': "New Sales",
+             'values': {
+                'last': account_table[1]['values'][1][1],
+                'prev': account_table[1]['values'][0][1],
+                'prev_year': account_table_prev_year[1]['values'][0][1]
+            }},
+            {'key': "Churned Sales",
+             'values': {
+                 'last': account_table[2]['values'][1][1],
+                'prev': account_table[2]['values'][0][1],
+                'prev_year': account_table_prev_year[2]['values'][0][1]
+            }},
+            {'key': "Payments",
+             'values': {
+                 'last': payment_amounts[1][1],
+                 'prev': payment_amounts[0][1],
+                 'prev_year': payment_amounts_prev_year[0][1]
+            }},
+            {'key': "Refunds",
+             'values': {
+                'last': refund_amounts[1][1],
+                'prev': refund_amounts[0][1],
+                'prev_year': refund_amounts_prev_year[0][1]
+            }}
+        ]
+
+        return table
 
     def handle(self, *args, **options):
         # aware utc datetime object
-        today_dt = datetime_or_now(options.get('at_time'))
-        self.stdout.write("running report_weekly_revenue at %s" % today_dt)
+        at_time = datetime_or_now(options.get('at_time'))
+        self.stdout.write("running report_weekly_revenue at %s" % at_time)
 
         providers = Organization.objects.filter(is_provider=True)
-        provider_slug = options.get('provider')
-        if provider_slug:
-            providers = providers.filter(slug=provider_slug)
+        provider_slugs = options.get('providers')
+        if provider_slugs:
+            providers = providers.filter(slug__in=provider_slugs)
         for provider in providers:
             dates = self.construct_date_periods(
-                today_dt, timezone=provider.default_timezone)
+                at_time, timezone=provider.default_timezone)
             prev_week, prev_year = dates
             self.stdout.write("Two last consecutive weeks:\n  %s %s %s" % (
                 prev_week[0].isoformat(), prev_week[1].isoformat(),
@@ -204,7 +191,7 @@ class Command(BaseCommand):
             self.stdout.write("Same week last year:\n"\
                 "                            %s %s" % (
                 prev_year[0].isoformat(), prev_year[1].isoformat()))
-            data = self.get_company_weekly_perf_data(
+            data = self.get_weekly_perf_data(
                 provider, prev_week, prev_year)
             table = self.construct_table(data)
             signals.weekly_sales_report_created.send(sender=__name__,
