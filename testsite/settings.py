@@ -41,8 +41,8 @@ def load_config(confpath):
     else:
         sys.stderr.write('warning: config file %s does not exist.\n' % confpath)
 
-load_config(
-    os.path.join(os.getenv('TESTSITE_CONFIG_DIR', RUN_DIR), 'credentials'))
+load_config(os.path.join(
+    os.getenv('TESTSITE_SETTINGS_LOCATION', RUN_DIR), 'credentials'))
 
 if not hasattr(sys.modules[__name__], "SECRET_KEY"):
     from random import choice

@@ -9,7 +9,7 @@ CONFIG_DIR    ?= $(srcDir)
 # XXX CONFIG_DIR should really be $(installTop)/etc/testsite
 LOCALSTATEDIR ?= $(installTop)/var
 
-PYTHON        := TESTSITE_CONFIG_DIR=$(CONFIG_DIR) $(binDir)/python
+PYTHON        := TESTSITE_SETTINGS_LOCATION=$(CONFIG_DIR) $(binDir)/python
 installDirs   ?= install -d
 
 # Django 1.7,1.8 sync tables without migrations by default while Django 1.9
