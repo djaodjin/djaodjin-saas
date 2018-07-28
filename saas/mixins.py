@@ -822,8 +822,12 @@ class RoleDescriptionMixin(OrganizationMixin):
     @property
     def role_description(self):
         if not hasattr(self, '_role_description'):
-            self._role_description = self.organization.get_role_description(
-                self.kwargs.get('role'))
+            try:
+                self._role_description = self.organization.get_role_description(
+                    self.kwargs.get('role'))
+            except RoleDescription.DoesNotExist:
+                raise Http404("RoleDescription '%s' does not exist."
+                    % self.kwargs.get('role'))
         return self._role_description
 
 
