@@ -106,7 +106,8 @@ class BalancesDownloadView(MetricsMixin, CSVDownloadView):
         report = self.kwargs.get('report')
         return BalanceLine.objects.filter(report=report).order_by('rank')
 
-    def queryrow_to_columns(self, balance_line):
+    def queryrow_to_columns(self, record):
+        balance_line = record
         if balance_line.is_positive:
             balances_func = abs_monthly_balances
         else:
@@ -141,7 +142,8 @@ class CouponMetricsDownloadView(SmartCouponListMixin, CouponQuerysetMixin,
         # get related CartItems
         return CartItem.objects.filter(coupon__in=coupons)
 
-    def queryrow_to_columns(self, cartitem):
+    def queryrow_to_columns(self, record):
+        cartitem = record
         if cartitem.user:
             claim_code = 'CLAIMED'
             email = cartitem.user.email
@@ -168,12 +170,13 @@ class RegisteredBaseDownloadView(RegisteredQuerysetMixin, CSVDownloadView):
     def get_filename(self):
         return 'registered-{}.csv'.format(datetime_or_now().strftime('%Y%m%d'))
 
-    def queryrow_to_columns(self, instance):
+    def queryrow_to_columns(self, record):
+        user = record
         return [
-            self.encode(instance.first_name),
-            self.encode(instance.last_name),
-            self.encode(instance.email),
-            instance.date_joined.date(),
+            self.encode(user.first_name),
+            self.encode(user.last_name),
+            self.encode(user.email),
+            user.date_joined.date(),
         ]
 
 
@@ -196,13 +199,14 @@ class SubscriptionBaseDownloadView(CSVDownloadView):
         return 'subscribers-{}-{}.csv'.format(
             self.subscriber_type, datetime_or_now().strftime('%Y%m%d'))
 
-    def queryrow_to_columns(self, instance):
+    def queryrow_to_columns(self, record):
+        subscription = record
         return [
-            self.encode(instance.organization.full_name),
-            self.encode(instance.organization.email),
-            self.encode(instance.plan.title),
-            instance.created_at.date(),
-            instance.ends_at.date(),
+            self.encode(subscription.organization.full_name),
+            self.encode(subscription.organization.email),
+            self.encode(subscription.plan.title),
+            subscription.created_at.date(),
+            subscription.ends_at.date(),
         ]
 
 
@@ -251,7 +255,8 @@ class TransactionDownloadView(SmartTransactionListMixin,
         return super(TransactionDownloadView, self).get_queryset().order_by(
             '-created_at')
 
-    def queryrow_to_columns(self, transaction):
+    def queryrow_to_columns(self, record):
+        transaction = record
         return [
             transaction.created_at.date(),
             self.encode(humanize.as_money(
@@ -282,7 +287,8 @@ class BillingStatementDownloadView(SmartTransactionListMixin,
         'Description'
     ]
 
-    def queryrow_to_columns(self, transaction):
+    def queryrow_to_columns(self, record):
+        transaction = record
         return [
             transaction.created_at.date(),
             '{:.2f}'.format(
@@ -306,7 +312,8 @@ class TransferDownloadView(SmartTransactionListMixin,
         'Description'
     ]
 
-    def queryrow_to_columns(self, transaction):
+    def queryrow_to_columns(self, record):
+        transaction = record
         return [
             transaction.created_at.date(),
             '{:.2f}'.format(

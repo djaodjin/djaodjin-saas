@@ -142,7 +142,7 @@ def parse_line(line, create_organizations=False, broker=None, using='default'):
     Parse an (organization, account, amount) triplet.
     """
     unit = None
-    amount = None
+    amount = 0
     look = re.match(r'\s+(?P<tags>\w(\w|:)+)(\s+(?P<amount>.+))?', line)
     if look:
         organization_slug = broker

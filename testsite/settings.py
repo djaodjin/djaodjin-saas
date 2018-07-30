@@ -35,7 +35,7 @@ def load_config(confpath):
                             # pylint: disable=eval-used
                             setattr(sys.modules[__name__],
                                     look.group(1).upper(), eval(value, {}, {}))
-                        except StandardError:
+                        except Exception:
                             raise
                 line = conffile.readline()
     else:

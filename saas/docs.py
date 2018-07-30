@@ -1,4 +1,4 @@
-# Copyright (c) 2018, DjaoDjin inc.
+# Copyright (c) 2018, Djaodjin Inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -22,34 +22,32 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-"""
-URLs responding to GET requests with billing history.
-"""
-
-from django.conf.urls import url
-
-from ....settings import ACCT_REGEX
-from ....views.billing import ChargeReceiptView, BillingStatementView
-from ....views.download import BillingStatementDownloadView
+#pylint:disable=unused-argument,unused-import
 
 try:
-    from ....views.extra import PrintableChargeReceiptView
-    urlpatterns = [
-        url(r'^billing/(?P<organization>%s)/'\
-'receipt/(?P<charge>[a-zA-Z0-9_]+)/printable/' % ACCT_REGEX,
-            PrintableChargeReceiptView.as_view(),
-            name='saas_printable_charge_receipt'),
-        ]
+    from drf_yasg.openapi import Response as OpenAPIResponse
+    from drf_yasg.utils import swagger_auto_schema
 except ImportError:
-    urlpatterns = []
+    from functools import wraps
+    from django.utils.decorators import available_attrs
 
-urlpatterns += [
-    url(r'^billing/(?P<organization>%s)/receipt/(?P<charge>[a-zA-Z0-9_]+)$'
-        % ACCT_REGEX,
-        ChargeReceiptView.as_view(), name='saas_charge_receipt'),
-    url(r'^billing/(?P<organization>%s)/history/download/?' % ACCT_REGEX,
-        BillingStatementDownloadView.as_view(),
-        name='saas_statement_download'),
-    url(r'^billing/(?P<organization>%s)/history/' % ACCT_REGEX,
-        BillingStatementView.as_view(), name='saas_billing_info'),
-]
+    def swagger_auto_schema(function=None, **kwargs):
+        """
+        Dummy decorator when drf_yasg is not present.
+        """
+        def decorator(view_func):
+            @wraps(view_func, assigned=available_attrs(view_func))
+            def _wrapped_view(request, *args, **kwargs):
+                return view_func(request, *args, **kwargs)
+            return _wrapped_view
+
+        if function:
+            return decorator(function)
+        return decorator
+
+    class OpenAPIResponse(object):
+        """
+        Dummy response object to document API.
+        """
+        def __init__(self, *args, **kwargs):
+            pass

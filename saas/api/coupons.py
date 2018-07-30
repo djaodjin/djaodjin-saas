@@ -29,6 +29,7 @@ from rest_framework.generics import (GenericAPIView,
 from rest_framework.response import Response
 from extra_views.contrib.mixins import SearchableListMixin, SortableListMixin
 
+from ..filters import SortableDateRangeSearchableFilterBackend
 from ..models import CartItem, Coupon
 from ..mixins import CouponMixin, ProviderMixin
 
@@ -48,7 +49,7 @@ class RedeemCouponSerializer(serializers.Serializer):
     Serializer to redeem a ``Coupon``.
     """
 
-    code = serializers.CharField()
+    code = serializers.CharField(help_text="Coupon code to redeem")
 
     def create(self, validated_data):
         return validated_data
@@ -74,6 +75,9 @@ class SmartCouponListMixin(SortableListMixin, SearchableListMixin):
                            ('ends_at', 'ends_at'),
                            ('percent', 'percent')]
 
+    filter_backends = (SortableDateRangeSearchableFilterBackend(
+        sort_fields_aliases, search_fields),)
+
 
 class CouponQuerysetMixin(ProviderMixin):
 
@@ -84,33 +88,26 @@ class CouponQuerysetMixin(ProviderMixin):
 class CouponListAPIView(SmartCouponListMixin, CouponQuerysetMixin,
                         ListCreateAPIView):
     """
-    ``GET`` queries all ``Coupon`` associated to a provider.
+    Queries a page (``PAGE_SIZE`` records) of ``Coupon`` associated
+    to a provider.
 
-    The queryset can be further filtered by passing a ``q`` parameter.
-    The value in ``q`` will be matched against:
+    The queryset can be filtered to a range of dates
+    ([``start_at``, ``ends_at``]) and for at least one field to match a search
+    term (``q``).
 
-      - Coupon.code
-      - Coupon.description
-      - Coupon.percent
-      - Coupon.organization.full_name
+    Query results can be ordered by natural fields (``o``) in either ascending
+    or descending order (``ot``).
 
-    The result queryset can be ordered by:
+    **Examples
 
-      - Coupon.code
-      - Coupon.created_at
-      - Coupon.description
-      - Coupon.ends_at
-      - Coupon.percent
+    .. code-block:: http
 
-    **Example request**:
+        GET /api/billing/cowork/coupons?o=code&ot=asc&q=DIS HTTP/1.1
 
-    .. sourcecode:: http
+    retrieves the list of Coupon for provider cowork where `code`
+    matches 'DIS', ordered by `code` in ascending order.
 
-        GET /api/billing/cowork/coupons?o=code&ot=asc&q=DIS
-
-    **Example response**:
-
-    .. sourcecode:: http
+    .. code-block:: json
 
         {
             "count": 2,
@@ -133,12 +130,29 @@ class CouponListAPIView(SmartCouponListMixin, CouponQuerysetMixin,
                 }
             ]
         }
-
-    ``POST`` creates a ``Coupon`` (see
-    ``/api/billing/:organization/coupons/:coupon/`` for an example of JSON
-    data).
     """
     serializer_class = CouponSerializer
+
+    def post(self, request, *args, **kwargs):
+        """
+        Creates a ``Coupon`` to be used on provider's plans.
+
+        **Examples
+
+        .. code-block:: http
+
+            POST /api/billing/cowork/coupons HTTP/1.1
+
+        .. code-block:: json
+
+            {
+              "code": "DIS100",
+              "percent": 100,
+              "ends_at": null,
+              "description": null
+            }
+        """
+        return self.create(request, *args, **kwargs)
 
     def perform_create(self, serializer):
         serializer.save(organization=self.organization)
@@ -147,11 +161,15 @@ class CouponListAPIView(SmartCouponListMixin, CouponQuerysetMixin,
 
 class CouponDetailAPIView(CouponMixin, RetrieveUpdateDestroyAPIView):
     """
-    Retrieve, update or delete a ``Coupon``.
+    Retrieves a ``Coupon``.
 
-    **Example response**:
+    **Examples
 
-    .. sourcecode:: http
+    .. code-block:: http
+
+        GET /api/billing/cowork/coupons/DIS100 HTTP/1.1
+
+    .. code-block:: json
 
         {
             "code": "DIS100",
@@ -162,6 +180,38 @@ class CouponDetailAPIView(CouponMixin, RetrieveUpdateDestroyAPIView):
        }
     """
     serializer_class = CouponSerializer
+
+    def put(self, request, *args, **kwargs):
+        """
+        Updates a ``Coupon``.
+
+        **Examples
+
+        .. code-block:: http
+
+            PUT /api/billing/cowork/coupons/DIS100 HTTP/1.1
+
+        .. code-block:: json
+
+            {
+                "percent": 100,
+                "ends_at": null,
+                "description": null
+           }
+        """
+        return self.update(request, *args, **kwargs)
+
+    def delete(self, request, *args, **kwargs):
+        """
+        Deletes a ``Coupon``.
+
+        **Examples
+
+        .. code-block:: http
+
+            DELETE /api/billing/cowork/coupons/DIS100 HTTP/1.1
+        """
+        return self.destroy(request, *args, **kwargs)
 
     def get_object(self):
         return self.coupon
@@ -178,17 +228,21 @@ class CouponRedeemAPIView(GenericAPIView):
     Redeem a ``Coupon`` and apply the discount to the eligible items
     in the cart.
 
-    **Example request**:
+    **Examples
 
-    .. sourcecode:: http
+    .. code-block:: http
+
+         POST /api/redeem HTTP/1.1
+
+    .. code-block:: json
 
         {
             "code": "LABORDAY"
         }
 
-    **Example response**:
+    responds
 
-    .. sourcecode:: http
+    .. code-block:: json
 
         {
             "details": "Coupon 'LABORDAY' was successfully applied."

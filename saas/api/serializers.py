@@ -100,6 +100,15 @@ class RoleDescriptionRelatedField(serializers.RelatedField):
         return get_object_or_404(RoleDescription.objects.all(), slug=data)
 
 
+class NoModelSerializer(serializers.Serializer):
+
+    def create(self, validated_data):
+        raise RuntimeError('`create()` should not be called.')
+
+    def update(self, instance, validated_data):
+        raise RuntimeError('`update()` should not be called.')
+
+
 class BalanceLineSerializer(serializers.ModelSerializer):
 
     class Meta:
@@ -107,36 +116,36 @@ class BalanceLineSerializer(serializers.ModelSerializer):
         fields = ('title', 'selector', 'rank')
 
 
-class BankSerializer(serializers.Serializer):
+class BankSerializer(NoModelSerializer):
+    """
+    Information to verify a deposit account
+    """
+    bank_name = serializers.CharField(
+        help_text="Name of the deposit account")
+    last4 = serializers.CharField(
+        help_text="Last 4 characters of the deposit account identifier")
+    balance_amount = serializers.IntegerField(
+       help_text="Amount available to transfer to the provider deposit account")
+    balance_unit = serializers.CharField(
+        help_text="three-letter ISO 4217 code for currency unit (ex: usd)")
 
-    bank_name = serializers.CharField()
-    last4 = serializers.CharField()
-    balance_amount = serializers.IntegerField()
-    balance_unit = serializers.CharField()
 
-    def create(self, validated_data):
-        raise RuntimeError('`create()` should not be called.')
-
-    def update(self, instance, validated_data):
-        raise RuntimeError('`update()` should not be called.')
-
-
-class CardSerializer(serializers.Serializer):
-
-    last4 = serializers.CharField()
-    exp_date = serializers.CharField()
-
-    def create(self, validated_data):
-        raise RuntimeError('`create()` should not be called.')
-
-    def update(self, instance, validated_data):
-        raise RuntimeError('`update()` should not be called.')
+class CardSerializer(NoModelSerializer):
+    """
+    Information to verify a credit card
+    """
+    last4 = serializers.CharField(
+        help_text="Last 4 digits of the credit card on file")
+    exp_date = serializers.CharField(
+        help_text="Expiration date of the credit card on file")
 
 
 class ChargeSerializer(serializers.ModelSerializer):
 
-    state = serializers.CharField(source='get_state_display')
-    readable_amount = serializers.SerializerMethodField()
+    state = serializers.CharField(source='get_state_display',
+        help_text="current state (created, done, failed, disputed)")
+    readable_amount = serializers.SerializerMethodField(
+        help_text="Amount and unit in a commonly accepted readable format")
 
     @staticmethod
     def get_readable_amount(charge):
@@ -146,6 +155,50 @@ class ChargeSerializer(serializers.ModelSerializer):
         model = Charge
         fields = ('created_at', 'amount', 'unit', 'readable_amount',
                   'description', 'last4', 'exp_date', 'processor_key', 'state')
+
+
+class EmailChargeReceiptSerializer(NoModelSerializer):
+    """
+    Response for the API call to send an e-mail duplicate to the customer.
+    """
+    charge_id = serializers.CharField(read_only=True,
+        help_text="Charge identifier (i.e. matches the URL {charge} parameter)")
+    email = serializers.EmailField(read_only=True,
+        help_text="Email address to which the receipt was sent.")
+
+
+class TableSerializer(NoModelSerializer):
+
+    key = serializers.CharField()
+    selector = serializers.CharField()
+    values = serializers.CharField()
+
+
+class MetricsSerializer(NoModelSerializer):
+
+    scale = serializers.FloatField()
+    unit = serializers.CharField()
+    title = serializers.CharField()
+    table = TableSerializer(many=True)
+
+
+class RefundChargeItemSerializer(NoModelSerializer):
+    """
+    One item to refund on a `Charge`.
+    """
+    num = serializers.IntegerField(
+        help_text="line item index counting from zero.")
+    refunded_amount = serializers.IntegerField(required=False,
+        help_text="The amount to refund cannot be higher than the amount"\
+        " of the line item minus the total amount already refunded on that"\
+        " line item.")
+
+
+class RefundChargeSerializer(NoModelSerializer):
+    """
+    Response for the API call to send an e-mail duplicate to the customer.
+    """
+    lines = RefundChargeItemSerializer(many=True)
 
 
 class OrganizationSerializer(serializers.ModelSerializer):
@@ -163,19 +216,13 @@ class OrganizationSerializer(serializers.ModelSerializer):
         fields = ('slug', 'full_name', 'printable_name', 'created_at', 'email')
 
 
-class WithEndsAtByPlanSerializer(serializers.Serializer):
+class WithEndsAtByPlanSerializer(NoModelSerializer):
 
     plan = serializers.SlugField(source='plan__slug', read_only=True)
     ends_at = serializers.DateTimeField(source='ends_at__max', read_only=True)
 
     class Meta:
         fields = ('plan', 'ends_at')
-
-    def create(self, validated_data):
-        raise RuntimeError('`create()` should not be called.')
-
-    def update(self, instance, validated_data):
-        raise RuntimeError('`update()` should not be called.')
 
 
 class WithSubscriptionSerializer(serializers.ModelSerializer):
@@ -258,12 +305,18 @@ class SubscriptionSerializer(serializers.ModelSerializer):
 
 
 class TransactionSerializer(serializers.ModelSerializer):
+    """
+    A `Transaction` in the double-entry bookkeeping ledger.
+    """
 
     orig_organization = serializers.SlugRelatedField(
-        read_only=True, slug_field='slug')
+        read_only=True, slug_field='slug', help_text="slug of the origin"\
+        " Organization from which funds are withdrawn")
     dest_organization = serializers.SlugRelatedField(
-        read_only=True, slug_field='slug')
-    description = serializers.CharField(source='descr', read_only=True)
+        read_only=True, slug_field='slug', help_text="slug of the destination"\
+        " Organization to which funds are deposited")
+    description = serializers.CharField(source='descr', read_only=True,
+        help_text="free-form text description for the Transaction")
     amount = serializers.CharField(source='dest_amount', read_only=True)
     is_debit = serializers.CharField(source='dest_amount', read_only=True)
 
@@ -332,19 +385,16 @@ class CartItemSerializer(serializers.ModelSerializer):
             'quantity', 'first_name', 'last_name', 'sync_on')
 
 
-class InvoicableSerializer(serializers.Serializer):
+class InvoicableSerializer(NoModelSerializer):
     """
     serializer for an invoicable item with available options.
     """
-    subscription = SubscriptionSerializer(read_only=True)
-    lines = TransactionSerializer(read_only=True, many=True)
-    options = TransactionSerializer(read_only=True, many=True)
-
-    def create(self, validated_data):
-        raise RuntimeError('`create()` should not be called.')
-
-    def update(self, instance, validated_data):
-        raise RuntimeError('`update()` should not be called.')
+    subscription = SubscriptionSerializer(read_only=True, help_text=_(
+        "subscription lines and options refer to."))
+    lines = TransactionSerializer(read_only=True, many=True, help_text=_(
+        "line items to charge on checkout."))
+    options = TransactionSerializer(read_only=True, many=True, help_text=(
+        "options to replace line items."))
 
 
 class RoleDescriptionSerializer(serializers.ModelSerializer):
@@ -353,7 +403,7 @@ class RoleDescriptionSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = RoleDescription
-        fields = ('created_at', 'title', 'slug', 'organization', 'is_global')
+        fields = ('created_at', 'title', 'slug', 'is_global', 'organization')
 
 
 class AccessibleSerializer(serializers.ModelSerializer):
@@ -395,3 +445,11 @@ class RoleSerializer(BaseRoleSerializer):
             'organization', 'role_description')
         read_only_fields = BaseRoleSerializer.Meta.read_only_fields + (
             'role_description',)
+
+
+class ValidationErrorSerializer(NoModelSerializer):
+    """
+    Details on why token is invalid.
+    """
+    detail = serializers.CharField(help_text=_("describes the reason for"\
+        " the error in plain text"))

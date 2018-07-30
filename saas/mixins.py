@@ -35,6 +35,8 @@ from rest_framework.generics import get_object_or_404
 
 from . import settings
 from .compat import NoReverseMatch, is_authenticated, reverse
+from .filters import (SortableSearchableFilterBackend,
+    SortableDateRangeSearchableFilterBackend)
 from .humanize import (as_money, DESCRIBE_BUY_PERIODS, DESCRIBE_BUY_USE,
     DESCRIBE_UNLOCK_NOW, DESCRIBE_UNLOCK_LATER, DESCRIBE_BALANCE)
 from .models import (CartItem, Charge, Coupon, Organization, Plan,
@@ -645,6 +647,9 @@ class CartItemSmartListMixin(SortableListMixin,
                            ('plan', 'plan'),
                            ('created_at', 'created_at')]
 
+    filter_backends = (SortableSearchableFilterBackend(
+        sort_fields_aliases, search_fields),)
+
 
 class OrganizationSmartListMixin(SortableListMixin,
                                  DateRangeMixin, SearchableListMixin):
@@ -688,6 +693,10 @@ class OrganizationSmartListMixin(SortableListMixin,
                            ('created_at', 'created_at')]
 
 
+    filter_backends = (SortableSearchableFilterBackend(
+        sort_fields_aliases, search_fields),)
+
+
 class RoleSmartListMixin(SortableListMixin, SearchableListMixin):
     """
     The queryset can be further filtered to a range of dates between
@@ -726,6 +735,9 @@ class RoleSmartListMixin(SortableListMixin, SearchableListMixin):
                            ('role_name', 'role_description__title'),
                            ('created_at', 'created_at')]
 
+    filter_backends = (SortableSearchableFilterBackend(
+        sort_fields_aliases, search_fields),)
+
 
 class SubscriptionSmartListMixin(SortableListMixin, SearchableListMixin):
     """
@@ -746,6 +758,9 @@ class SubscriptionSmartListMixin(SortableListMixin, SearchableListMixin):
                            ('plan__title', 'plan'),
                            ('created_at', 'created_at'),
                            ('ends_at', 'ends_at')]
+
+    filter_backends = (SortableSearchableFilterBackend(
+        sort_fields_aliases, search_fields),)
 
 
 class UserSmartListMixin(SortableListMixin, BeforeMixin, SearchableListMixin):
@@ -778,6 +793,9 @@ class UserSmartListMixin(SortableListMixin, BeforeMixin, SearchableListMixin):
                            ('last_name', 'last_name'),
                            ('email', 'email'),
                            ('date_joined', 'created_at')]
+
+    filter_backends = (SortableDateRangeSearchableFilterBackend(
+        sort_fields_aliases, search_fields),)
 
 
 class ChurnedQuerysetMixin(ProviderMixin):

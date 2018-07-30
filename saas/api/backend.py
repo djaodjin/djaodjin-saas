@@ -23,7 +23,7 @@
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 from rest_framework import status
-from rest_framework.generics import GenericAPIView
+from rest_framework.generics import RetrieveAPIView
 from rest_framework.response import Response
 
 from ..mixins import OrganizationMixin
@@ -32,7 +32,7 @@ from .serializers import BankSerializer, CardSerializer
 #pylint: disable=no-init
 #pylint: disable=old-style-class
 
-class RetrieveBankAPIView(OrganizationMixin, GenericAPIView):
+class RetrieveBankAPIView(OrganizationMixin, RetrieveAPIView):
     """
     Pass through that calls the processor API to retrieve some details about
     the deposit account associated to a provider (if that information is
@@ -42,14 +42,15 @@ class RetrieveBankAPIView(OrganizationMixin, GenericAPIView):
     of a subscription cart is done either through the
     :ref:`HTML page<pages_cart>` or :ref:`API end point<api_checkout>`.
 
-    - ``balance_amount`` Amount available to transfer to the provider bank
-    - ``balance_unit`` Unit of the available balance (ex: usd)
-    - ``bank_name`` Name of the deposit account
-    - ``last4`` Last 4 characters of the deposit account identifier
+    **Examples
 
-    **Example response**:
+    .. code-block:: http
 
-    .. sourcecode:: http
+        GET /api/billing/cowork/bank/ HTTP/1.1
+
+    responds
+
+    .. code-block:: json
 
         {
           "bank_name": "Stripe Test Bank",
@@ -60,19 +61,26 @@ class RetrieveBankAPIView(OrganizationMixin, GenericAPIView):
     """
     serializer_class = BankSerializer
 
-    def get(self, request, *args, **kwargs): #pylint: disable=unused-argument
+    def retrieve(self, request, *args, **kwargs):
+        #pylint: disable=unused-argument
         return Response(
             self.organization.retrieve_bank(), status=status.HTTP_200_OK)
 
 
-class RetrieveCardAPIView(OrganizationMixin, GenericAPIView):
+class RetrieveCardAPIView(OrganizationMixin, RetrieveAPIView):
     """
     Pass through to the processor to retrieve some details about
     the payment method (ex: credit card) associated to a subscriber.
 
-    **Example response**:
+    **Examples
 
-    .. sourcecode:: http
+    .. code-block:: http
+
+        GET /api/billing/cowork/card/ HTTP/1.1
+
+    responds
+
+    .. code-block:: json
 
         {
           "last4": "1234",
@@ -81,6 +89,7 @@ class RetrieveCardAPIView(OrganizationMixin, GenericAPIView):
     """
     serializer_class = CardSerializer
 
-    def get(self, request, *args, **kwargs): #pylint: disable=unused-argument
+    def retrieve(self, request, *args, **kwargs):
+        #pylint: disable=unused-argument
         return Response(
             self.organization.retrieve_card(), status=status.HTTP_200_OK)

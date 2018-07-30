@@ -25,6 +25,9 @@ angular.module("saasFilters", [])
         return function(d) {
             // shift each period by 1 month unless this is
             // current month and not a first day of the month
+            if( typeof d === 'string' ) {
+                d = moment(d);
+            }
             if(d.date() !== 1 || d.hour() !== 0
                || d.minute() !== 0 || d.second() !== 0 ) {
                 return d.format("MMM'YY*");
@@ -1263,6 +1266,19 @@ balanceControllers.controller("BalanceListCtrl",
         minMode: "month"
     };
     $scope.opened = { "start_at": false, "ends_at": false };
+    $scope.timezone = 'local';
+
+    function convertDatetime(data, isUTC){
+        // Convert datetime string to moment object in-place because we want
+        // to keep extra keys and structure in the JSON returned by the API.
+        return data.map(function(f){
+            var values = f.values.map(function(v){
+                // localizing the period to local browser time
+                // unless showing reports in UTC.
+                v[0] = isUTC ? moment.parseZone(v[0]) : moment(v[0]);
+            });
+        });
+    }
 
     $scope.endOfMonth = function(date) {
         return new Date(
@@ -1299,6 +1315,7 @@ balanceControllers.controller("BalanceListCtrl",
         $http.get(settings.urls.api_broker_balances,
             {params: $scope.params}).then(
             function success(resp) {
+                convertDatetime(resp.data.table, $scope.timezone === 'utc');
                 $scope.balances = resp.data;
                 $scope.balances.$resolved = true;
                 $scope.startPeriod = moment(resp.data.table[0].values[0][0]).subtract(1, 'months');

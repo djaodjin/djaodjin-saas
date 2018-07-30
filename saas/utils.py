@@ -79,6 +79,7 @@ def parse_tz(tzone):
             return timezone(tzone)
         except UnknownTimeZoneError:
             pass
+    return None
 
 
 def convert_dates_to_utc(dates):
@@ -119,16 +120,43 @@ def extract_full_exception_stack(err):
     return message
 
 
-def generate_random_slug(prefix=None):
+def full_name_natural_split(full_name):
+    """
+    This function splits a full name into a natural first name, last name
+    and middle initials.
+    """
+    parts = full_name.strip().split(' ')
+    first_name = ""
+    if parts:
+        first_name = parts.pop(0)
+    if first_name.lower() == "el" and parts:
+        first_name += " " + parts.pop(0)
+    last_name = ""
+    if parts:
+        last_name = parts.pop()
+    if (last_name.lower() == 'i' or last_name.lower() == 'ii'
+        or last_name.lower() == 'iii' and parts):
+        last_name = parts.pop() + " " + last_name
+    middle_initials = ""
+    for middle_name in parts:
+        if middle_name:
+            middle_initials += middle_name[0]
+    return first_name, middle_initials, last_name
+
+
+def generate_random_slug(length=40, prefix=None):
     """
     This function is used, for example, to create Coupon code mechanically
     when a customer pays for the subscriptions of an organization which
     does not yet exist in the database.
     """
+    if prefix:
+        length = length - len(prefix)
     suffix = "".join([random.choice("abcdefghijklmnopqrstuvwxyz0123456789-")
-                      for _ in range(40)]) # Generated coupon codes are stored
-                             # as ``Transaction.event_id`` we a 'cpn_' prefix.
-                             # The total event_id must be less than 50 chars.
+                      for _ in range(length)]) # Generated coupon codes are
+                             # stored as ``Transaction.event_id`` we a 'cpn_'
+                             # prefix. The total event_id must be less than 50
+                             # chars.
     if prefix:
         return str(prefix) + suffix
     return suffix

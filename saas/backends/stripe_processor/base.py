@@ -89,6 +89,7 @@ class StripeBackend(object):
         self.mode = settings.PROCESSOR.get('MODE', 0)
 
     def get_processor_charge(self, charge):
+        stripe_charge = None
         kwargs = self._prepare_charge_request(charge.broker)
         try:
             stripe_charge = stripe.Charge.retrieve(

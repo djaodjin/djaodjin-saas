@@ -24,31 +24,30 @@
 
 from django.db.models import F, Q, Max
 from django.db import transaction
-from rest_framework.views import APIView
 from rest_framework.generics import (
-    ListCreateAPIView, RetrieveUpdateDestroyAPIView)
+    GenericAPIView, ListCreateAPIView, RetrieveUpdateDestroyAPIView)
 from rest_framework.response import Response
 
 from ..mixins import DateRangeMixin
 from ..managers.metrics import abs_monthly_balances, monthly_balances
 from ..models import BalanceLine
-from .serializers import BalanceLineSerializer
+from .serializers import BalanceLineSerializer, MetricsSerializer
 
 #pylint: disable=no-init,old-style-class
 
-class BrokerBalancesAPIView(DateRangeMixin, APIView):
+class BrokerBalancesAPIView(DateRangeMixin, GenericAPIView):
     """
     GET queries a balance sheet named ``:report`` for the broker.
 
-    **Example request**:
+    **Examples
 
-    .. sourcecode:: http
+    .. code-block:: http
 
-        GET /api/metrics/balances/taxes/
+        GET /api/metrics/balances/taxes/ HTTP/1.1
 
-    **Example response**:
+    responds
 
-    .. sourcecode:: http
+    .. code-block:: json
 
         {
             "scale": 0.01,
@@ -70,6 +69,7 @@ class BrokerBalancesAPIView(DateRangeMixin, APIView):
             ]
         }
     """
+    serializer_class = MetricsSerializer
 
     def get(self, request, *args, **kwargs): #pylint: disable=unused-argument
         result = []
@@ -94,17 +94,15 @@ class BalanceLineListAPIView(ListCreateAPIView):
     GET queries the list of rows reported on the balance sheet
     named ``:report`` for the broker.
 
-    POST adds a new row on the ``:report`` balance sheet.
+    **Examples
 
-    **Example request**:
+    .. code-block:: http
 
-    .. sourcecode:: http
+        GET  /api/metrics/lines/taxes/ HTTP/1.1
 
-        GET /api/metrics/lines/taxes/
+    responds
 
-    **Example response**:
-
-    .. sourcecode:: http
+    .. code-block:: json
 
         {
             "count": 1,
@@ -118,30 +116,7 @@ class BalanceLineListAPIView(ListCreateAPIView):
                 }
             ]
         }
-
-    **Example request**:
-
-    .. sourcecode:: http
-
-        POST /api/metrics/lines/taxes/
-
-        {
-          "title": "Sales",
-          "selector": "Receivable",
-          "rank": 1
-        }
-
-    **Example response**:
-
-    .. sourcecode:: http
-
-        {
-          "title": "Sales",
-          "selector": "Receivable",
-          "rank": 1
-        }
     """
-
     serializer_class = BalanceLineSerializer
 
     def get_queryset(self):
@@ -155,9 +130,40 @@ class BalanceLineListAPIView(ListCreateAPIView):
         last_rank = last_rank + 1 if last_rank is not None else 1
         serializer.save(report=self.kwargs.get('report'), rank=last_rank)
 
+    def post(self, request, *args, **kwargs):
+        """
+        POST adds a new row on the ``:report`` balance sheet.
+
+        **Examples
+
+        .. code-block:: http
+
+            POST /api/metrics/lines/taxes/ HTTP/1.1
+
+        .. code-block:: json
+
+            {
+              "title": "Sales",
+              "selector": "Receivable",
+              "rank": 1
+            }
+
+        responds
+
+        .. code-block:: json
+
+            {
+              "title": "Sales",
+              "selector": "Receivable",
+              "rank": 1
+            }
+        """
+        return super(BalanceLineListAPIView, self).post(
+            request, *args, **kwargs)
+
     def patch(self, request, *args, **kwargs):
         """
-        Update the order in which lines are displayed.
+        Updates the order in which lines are displayed.
 
         When receiving a request like [{u'newpos': 1, u'oldpos': 3}],
         it will move the line at position 3 to position 1, updating the

@@ -22,20 +22,22 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from collections import OrderedDict
-
 from django.http import Http404
 from django.db import transaction
 from extra_views.contrib.mixins import SearchableListMixin, SortableListMixin
 from rest_framework import status
-from rest_framework.generics import ListAPIView, GenericAPIView, RetrieveAPIView
-from rest_framework.pagination import PageNumberPagination
+from rest_framework.generics import (CreateAPIView, ListAPIView,
+    GenericAPIView, RetrieveAPIView)
 from rest_framework.response import Response
 
-from .serializers import ChargeSerializer
+from .serializers import (ChargeSerializer, EmailChargeReceiptSerializer,
+    RefundChargeSerializer, ValidationErrorSerializer)
 from .. import signals
+from ..docs import OpenAPIResponse, swagger_auto_schema
+from ..filters import SortableDateRangeSearchableFilterBackend
 from ..models import Charge, InsufficientFunds
 from ..mixins import ChargeMixin, DateRangeMixin, OrganizationMixin
+from ..pagination import TotalPagination
 
 #pylint: disable=no-init
 #pylint: disable=old-style-class
@@ -64,9 +66,13 @@ class ChargeResourceView(RetrieveChargeMixin, RetrieveAPIView):
     """
     Pass through to the processor and returns details about a ``Charge``.
 
-    **Example response**:
+    **Examples
 
-    .. sourcecode:: http
+    .. code-block:: http
+
+        GET /api/billing/charges/ch_XAb124EF/ HTTP/1.1
+
+    .. code-block:: json
 
         {
             "created_at": "2016-01-01T00:00:00Z",
@@ -83,25 +89,6 @@ class ChargeResourceView(RetrieveChargeMixin, RetrieveAPIView):
     serializer_class = ChargeSerializer
 
 
-class TotalPagination(PageNumberPagination):
-
-    def paginate_queryset(self, queryset, request, view=None):
-        self.total = 0
-        for charge in queryset:
-            self.total += charge.amount
-        return super(TotalPagination, self).paginate_queryset(
-            queryset, request, view=view)
-
-    def get_paginated_response(self, data):
-        return Response(OrderedDict([
-            ('total', self.total),
-            ('count', self.page.paginator.count),
-            ('next', self.get_next_link()),
-            ('previous', self.get_previous_link()),
-            ('results', data)
-        ]))
-
-
 class SmartChargeListMixin(SortableListMixin, DateRangeMixin,
                            SearchableListMixin):
     """
@@ -116,6 +103,9 @@ class SmartChargeListMixin(SortableListMixin, DateRangeMixin,
                            ('customer__full_name', 'Full name'),
                            ('created_at', 'created_at')]
 
+    filter_backends = (SortableDateRangeSearchableFilterBackend(
+        sort_fields_aliases, search_fields),)
+
 
 class ChargeQuerysetMixin(object):
 
@@ -128,18 +118,27 @@ class ChargeListAPIView(SmartChargeListMixin,
                         ChargeQuerysetMixin, ListAPIView):
 
     """
-    List of ``Charge``.
+    Queries a page (``PAGE_SIZE`` records) of ``Charge`` that were created
+    on the processor.
 
-    **Example request**:
+    The queryset can be filtered to a range of dates
+    ([``start_at``, ``ends_at``]) and for at least one field to match a search
+    term (``q``).
 
-    .. sourcecode:: http
+    Query results can be ordered by natural fields (``o``) in either ascending
+    or descending order (``ot``).
 
-        GET /api/charges?start_at=2015-07-05T07:00:00.000Z\
-&o=date&ot=desc
+    **Examples
 
-    **Example response**:
+    .. code-block:: http
 
-    .. sourcecode:: http
+        GET /api/billing/charges?start_at=2015-07-05T07:00:00.000Z\
+&o=date&ot=desc HTTP/1.1
+
+    Retrieve the list of charges that were created before
+    2015-07-05T07:00:00.000Z, sort them by date in descending order.
+
+    .. code-block:: json
 
         {
             "count": 1,
@@ -176,16 +175,14 @@ class OrganizationChargeListAPIView(SmartChargeListMixin,
     """
     List all ``Charge`` for a subscriber.
 
-    **Example request**:
+    **Examples
 
-    .. sourcecode:: http
+    .. code-block:: http
 
-        GET /api/charges?start_at=2015-07-05T07:00:00.000Z\
-&o=date&ot=desc
+         GET /api/charges?start_at=2015-07-05T07:00:00.000Z\
+&o=date&ot=desc HTTP/1.1
 
-    **Example response**:
-
-    .. sourcecode:: http
+    .. code-block:: json
 
         {
             "count": 1,
@@ -209,15 +206,17 @@ class OrganizationChargeListAPIView(SmartChargeListMixin,
     pagination_class = TotalPagination
 
 
-class ChargeRefundAPIView(RetrieveChargeMixin, RetrieveAPIView):
+class ChargeRefundAPIView(RetrieveChargeMixin, CreateAPIView):
     """
     Partially or totally refund all or a subset of line items on a ``Charge``.
 
-    **Example request**:
+    **Example
 
-    .. sourcecode:: http
+    .. code-block:: http
 
-        POST /api/billing/charges/ch_XAb124EF/refund/
+        POST /api/billing/charges/ch_XAb124EF/refund/ HTTP/1.1
+
+    .. code-block:: json
 
         {
             "lines": [
@@ -232,9 +231,10 @@ class ChargeRefundAPIView(RetrieveChargeMixin, RetrieveAPIView):
           ]
         }
 
-    **Example response**:
+    Refunds $40 and $821.20 from first and second line item on the receipt
+    respectively. The API call responds with the Charge.
 
-    .. sourcecode:: http
+    .. code-block:: json
 
         {
             "created_at": "2016-01-01T00:00:00Z",
@@ -248,13 +248,18 @@ class ChargeRefundAPIView(RetrieveChargeMixin, RetrieveAPIView):
             "state": "DONE"
         }
     """
-    serializer_class = ChargeSerializer
+    serializer_class = RefundChargeSerializer
 
+    @swagger_auto_schema(responses={
+        200: OpenAPIResponse("Refund successful", ChargeSerializer),
+        400: OpenAPIResponse("parameters error", ValidationErrorSerializer)})
     def post(self, request, *args, **kwargs): #pylint: disable=unused-argument
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
         self.object = self.get_object()
         with transaction.atomic():
             try:
-                for line in request.data.get('lines', []):
+                for line in serializer.validated_data.get('lines', []):
                     try:
                         self.object.refund(int(line['num']),
                             refunded_amount=int(line.get('refunded_amount', 0)),
@@ -265,28 +270,37 @@ class ChargeRefundAPIView(RetrieveChargeMixin, RetrieveAPIView):
             except InsufficientFunds as insufficient_funds_err:
                 return Response({"detail": str(insufficient_funds_err)},
                     status=status.HTTP_405_METHOD_NOT_ALLOWED)
-        return super(ChargeRefundAPIView, self).get(request, *args, **kwargs)
+        return Response(ChargeSerializer().to_representation(self.object))
 
 
 class EmailChargeReceiptAPIView(RetrieveChargeMixin, GenericAPIView):
     """
     Email the charge receipt to the customer email address on file.
 
-    **Example response**:
+    **Example
 
-    .. sourcecode:: http
+    .. code-block:: http
+
+        POST /api/billing/charges/ch_XAb124EF/email/  HTTP/1.1
+
+    responds
+
+    .. code-block:: json
 
         {
             "charge_id": "ch_XAb124EF",
-            "email": "info@djaodjin.com"
+            "email": "joe@localhost.localdomain"
         }
+
+    The service sends a duplicate e-mail receipt for charge `ch_XAb124EF`
+    to the e-mail address of the customer, i.e. `joe@localhost.localdomain`.
     """
-    serializer_class = ChargeSerializer
+    serializer_class = EmailChargeReceiptSerializer
 
     def post(self, request, *args, **kwargs): #pylint: disable=unused-argument
         self.object = self.get_object()
         signals.charge_updated.send(
             sender=__name__, charge=self.object, user=request.user)
-        return Response({
+        return Response(self.get_serializer().to_representation({
             "charge_id": self.object.processor_key,
-            "email": self.object.customer.email})
+            "email": self.object.customer.email}))

@@ -568,11 +568,11 @@ class CartBaseView(InvoicablesFormMixin, CartMixin, FormView):
         $907.20 Subscription to medium-plan until 2016/04/07 (6 months, 20% off)
     """
 
-    def dispatch(self, *args, **kwargs):
+    def dispatch(self, request, *args, **kwargs):
         # We are not getting here without an authenticated user. It is time
         # to store the cart into the database.
         session_cart_to_database(self.request)
-        return super(CartBaseView, self).dispatch(*args, **kwargs)
+        return super(CartBaseView, self).dispatch(request, *args, **kwargs)
 
     def get_context_data(self, **kwargs):
         context = super(CartBaseView, self).get_context_data(**kwargs)
@@ -976,9 +976,10 @@ class BalanceView(CardInvoicablesFormMixin, FormView):
         """
         invoicables = []
         created_at = datetime_or_now()
-        balances, _ = Transaction.objects.get_statement_balances(
+        balances = Transaction.objects.get_statement_balances(
             self.organization, until=created_at)
         for event_id in six.iterkeys(balances):
+            # XXX Are we sure that all event_id here are `Subscription`?
             subscription = Subscription.objects.get(pk=event_id)
             options = self.get_invoicable_options(subscription,
                 created_at=created_at)

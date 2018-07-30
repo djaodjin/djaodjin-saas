@@ -64,35 +64,14 @@ class SubscriptionListAPIView(SubscriptionSmartListMixin,
     can be further refined to match a search filter (``q``) and sorted
     on a specific field. The returned queryset is always paginated.
 
-    The value passed in the ``q`` parameter will be matched against:
+    **Examples
 
-      - Subscription.organization.slug
-      - Subscription.organization.full_name
-      - Subscription.organization.email
-      - Subscription.organization.phone
-      - Subscription.organization.street_address
-      - Subscription.organization.locality
-      - Subscription.organization.region
-      - Subscription.organization.postal_code
-      - Subscription.organization.country
-      - Subscription.plan.title
+    .. code-block:: http
 
-    The result queryset can be ordered by:
+        GET /api/profile/:organization/subscriptions/\
+?o=created_at&ot=desc HTTP/1.1
 
-      - Subscription.created_at
-      - Subscription.ends_at
-      - Subscription.organization.full_name
-      - Subscription.plan.title
-
-    **Example request**:
-
-    .. sourcecode:: http
-
-        GET /api/profile/:organization/subscriptions/?o=created_at&ot=desc
-
-    **Example response**:
-
-    .. sourcecode:: http
+    .. code-block:: json
 
         {
             "count": 1,
@@ -124,20 +103,62 @@ class SubscriptionListAPIView(SubscriptionSmartListMixin,
                 }
             ]
         }
-
-    POST subscribes the organization to a plan.
     """
-
     serializer_class = SubscriptionSerializer
+
+    def post(self, request, *args, **kwargs):
+        """
+        Subscribes the organization to a plan.
+
+        **Examples
+
+        .. code-block:: http
+
+            POST /api/profile/:organization/subscriptions/ HTTP/1.1
+
+        .. code-block:: json
+
+           {
+               "plan": "open-space"
+           }
+        """
+        return super(SubscriptionListAPIView, self).post(
+            request, *args, **kwargs)
+
 
 
 class SubscriptionDetailAPIView(SubscriptionMixin,
                                 RetrieveUpdateDestroyAPIView):
     """
-    Unsubscribe an organization from a plan.
-    """
+    Retrieves a ``Subscription``.
 
+    **Examples
+
+    .. code-block:: http
+
+        GET /api/profile/cowork/plans/open-space/subscriptions/xia/ HTTP/1.1
+
+    .. code-block:: json
+
+        {
+            ... XXX ...
+        }
+    """
     serializer_class = SubscriptionSerializer
+
+    def delete(self, request, *args, **kwargs):
+        """
+        Unsubscribe an organization from a plan.
+
+        **Examples
+
+        .. code-block:: http
+
+            DELETE /api/profile/cowork/plans/open-space/subscriptions/xia/\
+ HTTP/1.1
+        """
+        return super(SubscriptionDetailAPIView, self).delete(
+            request, *args, **kwargs)
 
     def perform_update(self, serializer):
         if not _valid_manager(
@@ -149,6 +170,33 @@ class SubscriptionDetailAPIView(SubscriptionMixin,
 
     def perform_destroy(self, instance):
         instance.unsubscribe_now()
+
+    def put(self, request, *args, **kwargs):
+        """
+        Updates an organization subscription.
+
+        **Examples
+
+        .. code-block:: http
+
+            PUT /api/profile/cowork/plans/open-space/subscriptions/xia/ HTTP/1.1
+
+        .. code-block:: json
+
+            {
+                ... XXX ...
+            }
+
+        responds
+
+        .. code-block:: json
+
+            {
+                ... XXX ...
+            }
+        """
+        return super(SubscriptionDetailAPIView, self).delete(
+            request, *args, **kwargs)
 
 
 class PlanSubscriptionsQuerysetMixin(PlanMixin):
@@ -167,34 +215,13 @@ class PlanSubscriptionsAPIView(SubscriptionSmartListMixin,
     A GET request will list all ``Subscription`` to
     a specified ``:plan`` provided by ``:organization``.
 
-    A POST request will subscribe an organization to the ``:plan``.
+    **Examples
 
-    The value passed in the ``q`` parameter will be matched against:
+    .. code-block:: http
 
-      - Organization.slug
-      - Organization.full_name
-      - Organization.email
-      - Organization.phone
-      - Organization.street_address
-      - Organization.locality
-      - Organization.region
-      - Organization.postal_code
-      - Organization.country
+        GET /api/profile/:organization/plans/:plan/subscriptions/ HTTP/1.1
 
-    The result queryset can be ordered by:
-
-      - Organization.created_at
-      - Organization.full_name
-
-    **Example request**:
-
-    .. sourcecode:: http
-
-        GET /api/profile/:organization/plans/:plan/subscriptions/
-
-    **Example response**:
-
-    .. sourcecode:: http
+    .. code-block:: json
 
         {
             "count": 1,
@@ -207,47 +234,6 @@ class PlanSubscriptionsAPIView(SubscriptionSmartListMixin,
                 "created_at": "2016-01-14T23:16:55Z"
                 }
             ]
-        }
-
-    **Example request**:
-
-    .. sourcecode:: http
-
-        POST /api/profile/:organization/plans/:plan/subscriptions/
-
-        {
-          "organizatoin": {
-            "slug": "xia"
-          }
-        }
-
-    **Example response**:
-
-    .. sourcecode:: http
-
-        201 CREATED
-        {
-          "created_at": "2016-01-14T23:16:55Z",
-          "ends_at": "2017-01-14T23:16:55Z",
-          "description": null,
-          "organization": {
-            "slug": "xia",
-            "printable_name": "Xia Lee"
-          },
-          "plan": {
-            "slug": "open-space",
-            "title": "Open Space",
-            "description": "open space desk, High speed internet
-                              - Ethernet or WiFi, Unlimited printing,
-                                Unlimited scanning, Unlimited fax service
-                                (send and receive)",
-            "is_active": true,
-            "setup_amount": 0,
-            "period_amount": 17999,
-            "interval": 4,
-            "app_url": "http://localhost:8020/app"
-          },
-          "auto_renew": true
         }
     """
     serializer_class = SubscriptionSerializer
@@ -271,6 +257,55 @@ class PlanSubscriptionsAPIView(SubscriptionSmartListMixin,
                 subscriptions += [subscription]
         return subscriptions, created
 
+    def post(self, request, *args, **kwargs):
+        """
+        A POST request will subscribe an organization to the ``:plan``.
+
+        **Examples
+
+        .. code-block:: http
+
+            POST /api/profile/:organization/plans/:plan/subscriptions/ HTTP/1.1
+
+        .. code-block:: json
+
+            {
+              "organization": {
+                "slug": "xia"
+              }
+            }
+
+        responds
+
+        .. code-block:: json
+
+            {
+              "created_at": "2016-01-14T23:16:55Z",
+              "ends_at": "2017-01-14T23:16:55Z",
+              "description": null,
+              "organization": {
+                "slug": "xia",
+                "printable_name": "Xia Lee"
+              },
+              "plan": {
+                "slug": "open-space",
+                "title": "Open Space",
+                "description": "open space desk, High speed internet
+                                  - Ethernet or WiFi, Unlimited printing,
+                                    Unlimited scanning, Unlimited fax service
+                                    (send and receive)",
+                "is_active": true,
+                "setup_amount": 0,
+                "period_amount": 17999,
+                "interval": 4,
+                "app_url": "http://localhost:8020/app"
+              },
+              "auto_renew": true
+            }
+        """
+        return super(PlanSubscriptionsAPIView, self).post(
+            request, *args, **kwargs)
+
     def send_signals(self, subscriptions, user, reason=None, invite=False):
         for subscription in subscriptions:
             signals.subscription_grant_created.send(sender=__name__,
@@ -286,9 +321,20 @@ class PlanSubscriptionsAPIView(SubscriptionSmartListMixin,
 class PlanSubscriptionDetailAPIView(ProviderMixin, SubscriptionDetailAPIView):
     """
     Unsubscribe an organization from a plan.
+
+    **Examples
+
+    .. code-block:: http
+
+        GET /api/profile/cowork/plans/open-space/subscriptions/xia/ HTTP/1.1
+
+    .. code-block:: json
+
+        {
+            ... XXX ...
+        }
     """
     subscriber_url_kwarg = 'subscriber'
-
     serializer_class = SubscriptionSerializer
 
     def get_queryset(self):
@@ -304,42 +350,23 @@ class ActiveSubscriptionBaseAPIView(SubscribedQuerysetMixin, ListAPIView):
 class ActiveSubscriptionAPIView(SubscriptionSmartListMixin,
                                 ActiveSubscriptionBaseAPIView):
     """
-    GET queries all ``Subscription`` to a plan whose provider is
+    Lists all ``Subscription`` to a plan whose provider is
     ``:organization`` which are currently in progress.
 
     The queryset can be further filtered to a range of dates between
     ``start_at`` and ``ends_at``.
 
     The queryset can be further filtered by passing a ``q`` parameter.
-    The value in ``q`` will be matched against:
 
-      - Subscription.organization.slug
-      - Subscription.organization.full_name
-      - Subscription.organization.email
-      - Subscription.organization.phone
-      - Subscription.organization.street_address
-      - Subscription.organization.locality
-      - Subscription.organization.region
-      - Subscription.organization.postal_code
-      - Subscription.organization.country
-      - Subscription.plan.title
+    The result queryset can be ordered.
 
-    The result queryset can be ordered by:
+    **Examples
 
-      - Subscription.created_at
-      - Subscription.ends_at
-      - Subscription.organization.full_name
-      - Subscription.plan.title
+    .. code-block:: http
 
-    **Example request**:
+        GET /api/metrics/cowork/active?o=created_at&ot=desc HTTP/1.1
 
-    .. sourcecode:: http
-
-        GET /api/metrics/cowork/active?o=created_at&ot=desc
-
-    **Example response**:
-
-    .. sourcecode:: http
+    .. code-block:: json
 
         {
             "count": 1,
@@ -383,42 +410,22 @@ class ChurnedSubscriptionBaseAPIView(ChurnedQuerysetMixin, ListAPIView):
 class ChurnedSubscriptionAPIView(SubscriptionSmartListMixin,
                                  ChurnedSubscriptionBaseAPIView):
     """
-    GET queries all ``Subscription`` to a plan whose provider is
+    Lists all ``Subscription`` to a plan whose provider is
     ``:organization`` which have ended already.
 
     The queryset can be further filtered to a range of dates between
     ``start_at`` and ``ends_at``.
 
     The queryset can be further filtered by passing a ``q`` parameter.
-    The value in ``q`` will be matched against:
+    The result queryset can be ordered.
 
-      - Subscription.organization.slug
-      - Subscription.organization.full_name
-      - Subscription.organization.email
-      - Subscription.organization.phone
-      - Subscription.organization.street_address
-      - Subscription.organization.locality
-      - Subscription.organization.region
-      - Subscription.organization.postal_code
-      - Subscription.organization.country
-      - Subscription.plan.title
+    **Examples
 
-    The result queryset can be ordered by:
+    .. code-block:: http
 
-      - Subscription.created_at
-      - Subscription.ends_at
-      - Subscription.organization.full_name
-      - Subscription.plan.title
+        GET /api/metrics/cowork/churned?o=created_at&ot=desc HTTP/1.1
 
-    **Example request**:
-
-    .. sourcecode:: http
-
-        GET /api/metrics/cowork/churned?o=created_at&ot=desc
-
-    **Example response**:
-
-    .. sourcecode:: http
+    .. code-block:: json
 
         {
             "count": 1,
@@ -457,7 +464,7 @@ class ChurnedSubscriptionAPIView(SubscriptionSmartListMixin,
 class SubscriptionRequestAcceptAPIView(UpdateAPIView):
 
     provider_url_kwarg = 'organization'
-    serializer_class = serializers.Serializer
+    serializer_class = SubscriptionSerializer
 
     def get_queryset(self):
         return Subscription.objects.active_with(

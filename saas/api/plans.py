@@ -36,11 +36,13 @@ class PlanCreateAPIView(ProviderMixin, CreateAPIView):
     """
     Create a ``Plan`` for a provider.
 
-    **Example request**:
+    **Examples
 
-    .. sourcecode:: http
+    .. code-block:: http
 
-        POST /api/profile/cowork/plans
+         POST /api/profile/cowork/plans HTTP/1.1
+
+    .. code-block:: json
 
         {
             "title": "Open Space",
@@ -50,9 +52,9 @@ class PlanCreateAPIView(ProviderMixin, CreateAPIView):
             "interval": 1
         }
 
-    **Example response**:
+    responds
 
-    .. sourcecode:: http
+    .. code-block:: json
 
         {
             "title": "Open Space",
@@ -80,21 +82,19 @@ class PlanCreateAPIView(ProviderMixin, CreateAPIView):
 
 class PlanResourceView(PlanMixin, RetrieveUpdateDestroyAPIView):
     """
-    Retrieve, update or delete a ``Plan``.
+    Retrieves a ``Plan``.
 
     The ``is_active`` boolean is used to activate a plan, enabling users
     to subscribe to it, or deactivate a plan, disabling users from subscribing
     to it.
 
-    **Example request**:
+    **Examples
 
-    .. sourcecode:: http
+    .. code-block:: http
 
-        GET /api/profile/cowork/plans/open-space
+        GET /api/profile/cowork/plans/open-space HTTP/1.1
 
-    **Example response**:
-
-    .. sourcecode:: http
+    .. code-block:: json
 
         {
             "title": "Open Space",
@@ -104,8 +104,19 @@ class PlanResourceView(PlanMixin, RetrieveUpdateDestroyAPIView):
             "interval": 1
         }
     """
-
     serializer_class = PlanSerializer
+
+    def delete(self, request, *args, **kwargs):
+        """
+        Deletes a ``Plan``.
+
+        **Examples
+
+        .. code-block:: http
+
+            DELETE /api/profile/cowork/plans/open-space HTTP/1.1
+        """
+        return super(PlanResourceView, self).delete(request, *args, **kwargs)
 
     def get_queryset(self):
         return Plan.objects.filter(organization=self.provider)
@@ -152,3 +163,37 @@ class PlanResourceView(PlanMixin, RetrieveUpdateDestroyAPIView):
         serializer.save(organization=self.provider,
             is_active=serializer.validated_data.get('is_active',
                 serializer.instance.is_active))
+
+    def put(self, request, *args, **kwargs):
+        """
+        Updates a ``Plan``.
+
+        The ``is_active`` boolean is used to activate a plan, enabling users
+        to subscribe to it, or deactivate a plan, disabling users
+        from subscribing to it.
+
+        **Examples
+
+        .. code-block:: http
+
+            PUT /api/profile/cowork/plans/open-space HTTP/1.1
+
+        .. code-block:: json
+
+            {
+                "title": "Open Space",
+            }
+
+        responds
+
+        .. code-block:: json
+
+            {
+                "title": "Open Space",
+                "description": "A desk in our coworking space",
+                "is_active": false,
+                "period_amount": 12000,
+                "interval": 1
+            }
+        """
+        return super(PlanResourceView, self).put(request, *args, **kwargs)

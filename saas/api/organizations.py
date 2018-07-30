@@ -44,33 +44,72 @@ from ..utils import get_organization_model
 class OrganizationDetailAPIView(OrganizationMixin,
                                 RetrieveUpdateDestroyAPIView):
     """
-    Retrieve, update or delete an ``Organization``.
+    Retrieves profile information on an ``Organization``.
 
-    **Example response**:
+    **Examples
 
-    .. sourcecode:: http
+    .. code-block:: http
+
+        GET /api/profile/xia/ HTTP/1.1
+
+    responds
+
+    .. code-block:: json
 
         {
-            "slug": "xia",
+            "created_at": "2018-01-01T00:00:00Z",
+            "email": "xia@locahost.localdomain",
             "full_name": "Xia Lee",
-            "created_at": "2016-01-14T23:16:55Z",
+            "printable_name": "Xia Lee",
+            "slug": "xia",
             "subscriptions": [
                 {
-                    "created_at": "2016-01-14T23:16:55Z",
-                    "ends_at": "2017-01-14T23:16:55Z",
+                    "created_at": "2018-01-01T00:00:00Z",
+                    "ends_at": "2019-01-01T00:00:00Z",
                     "plan": "open-space",
                     "auto_renew": true
                 }
             ]
         }
-
-    On ``DELETE``, we anonymize the organization instead of purely deleting
-    it from the database because we don't want to loose history on subscriptions
-    and transactions.
     """
 
     queryset = get_organization_model().objects.all()
     serializer_class = OrganizationWithSubscriptionsSerializer
+
+    def put(self, request, *args, **kwargs):
+        """
+        Updates profile information for an ``Organization``
+
+        **Examples
+
+        .. code-block:: http
+
+            PUT /api/profile/xia/ HTTP/1.1
+
+        .. code-block:: json
+
+            {
+              "email": "xia@locahost.localdomain",
+              "full_name": "Xia Lee"
+            }
+        """
+        return self.update(request, *args, **kwargs)
+
+    def delete(self, request, *args, **kwargs):
+        """
+        Deletes an `Organization``.
+
+        We anonymize the organization instead of purely deleting
+        it from the database because we don't want to loose history
+        on subscriptions and transactions.
+
+        **Examples
+
+        .. code-block:: http
+
+            DELETE /api/profile/xia/ HTTP/1.1
+        """
+        return self.destroy(request, *args, **kwargs)
 
     def get_object(self):
         return self.organization
@@ -125,19 +164,15 @@ class OrganizationQuerysetMixin(object):
 class OrganizationListAPIView(OrganizationSmartListMixin,
                               OrganizationQuerysetMixin, ListAPIView):
     """
-    GET queries all ``Organization``.
+    Queries all ``Organization``.
 
-    .. autoclass:: saas.mixins.OrganizationSmartListMixin
+    **Examples
 
-    **Example request**:
+    .. code-block:: http
 
-    .. sourcecode:: http
+        GET /api/profile/?o=created_at&ot=desc HTTP/1.1
 
-        GET /api/profile/?o=created_at&ot=desc
-
-    **Example response**:
-
-    .. sourcecode:: http
+    .. code-block:: http
 
         {
             "count": 1,
@@ -193,15 +228,14 @@ class SubscribersAPIView(OrganizationSmartListMixin,
       - Organization.created_at
       - Organization.full_name
 
-    **Example request**:
+    **Examples
 
-    .. sourcecode:: http
+    .. code-block:: http
 
-        GET /api/profile/:organization/subscribers/?o=created_at&ot=desc
+        GET /api/profile/:organization/subscribers/\
+?o=created_at&ot=desc HTTP/1.1
 
-    **Example response**:
-
-    .. sourcecode:: http
+    .. code-block:: json
 
         {
             "count": 1,

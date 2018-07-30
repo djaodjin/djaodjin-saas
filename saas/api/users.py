@@ -72,28 +72,18 @@ class RegisteredAPIView(UserSmartListMixin, RegisteredBaseAPIView):
     ``start_at`` and ``ends_at``.
 
     The queryset can be further filtered by passing a ``q`` parameter.
-    The value in ``q`` will be matched against:
 
-      - User.first_name
-      - User.last_name
-      - User.email
+    The result queryset can be ordered.
 
-    The result queryset can be ordered by:
+    **Examples
 
-      - User.first_name
-      - User.last_name
-      - User.email
-      - User.created_at
+    .. code-block:: http
 
-    **Example request**:
+        GET  /api/metrics/registered?o=created_at&ot=desc HTTP/1.1
 
-    .. sourcecode:: http
+    responds
 
-        GET /api/metrics/registered?o=created_at&ot=desc
-
-    **Example response**:
-
-    .. sourcecode:: http
+    .. code-block:: json
 
         {
             "count": 1,
@@ -128,15 +118,15 @@ class UserListAPIView(UserSmartListMixin, UserQuerysetMixin, ListAPIView):
 
     .. autoclass:: saas.mixins.UserSmartListMixin
 
-    **Example request**:
+    **Examples
 
-    .. sourcecode:: http
+    .. code-block:: http
 
-        GET /api/users/?o=created_at&ot=desc
+        GET  /api/users/?o=created_at&ot=desc HTTP/1.1
 
-    **Example response**:
+    responds
 
-    .. sourcecode:: http
+    .. code-block:: json
 
         {
             "count": 1,

@@ -228,8 +228,12 @@ def create_charges_for_balance(until=None, dry_run=False):
             LOGGER.debug("invoicables for %s until %s:", organization, until)
             for invoicable in invoiceables:
                 LOGGER.debug("\t#%d %s", invoicable.pk, invoicable.dest_amount)
-            balance = sum_dest_amount(invoiceables)
-            invoiceable_amount = balance['amount']
+            balances = sum_dest_amount(invoiceables)
+            if len(balances) > 1:
+                raise ValueError("balances with multiple currency units (%s)" %
+                    str(balances))
+            # `sum_dest_amount` guarentees at least one result.
+            invoiceable_amount = balances[0]['amount']
             if invoiceable_amount > 50:
                 # Stripe will not processed charges less than 50 cents.
                 if not Subscription.objects.active_for(

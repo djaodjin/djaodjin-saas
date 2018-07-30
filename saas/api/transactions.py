@@ -35,43 +35,11 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from .serializers import TransactionSerializer
+from ..filters import SortableDateRangeSearchableFilterBackend
 from ..mixins import DateRangeMixin, OrganizationMixin, ProviderMixin
-from ..models import Transaction, sum_dest_amount, sum_orig_amount
+from ..models import Transaction, sum_orig_amount
 from ..backends import ProcessorError
-
-
-class BalancePagination(PageNumberPagination):
-    """
-    Decorate the results of an API call with balance on an account
-    containing *selector*.
-    """
-
-    def paginate_queryset(self, queryset, request, view=None):
-        self.ends_at = view.ends_at
-        if view.selector is not None:
-            dest_totals = sum_dest_amount(queryset.filter(
-                dest_account__icontains=view.selector))
-            orig_totals = sum_orig_amount(queryset.filter(
-                orig_account__icontains=view.selector))
-        else:
-            dest_totals = sum_dest_amount(queryset)
-            orig_totals = sum_orig_amount(queryset)
-        self.balance_amount = dest_totals['amount'] - orig_totals['amount']
-        self.balance_unit = dest_totals['unit']
-        return super(BalancePagination, self).paginate_queryset(
-            queryset, request, view=view)
-
-    def get_paginated_response(self, data):
-        return Response(OrderedDict([
-            ('ends_at', self.ends_at),
-            ('balance', self.balance_amount),
-            ('unit', self.balance_unit),
-            ('count', self.page.paginator.count),
-            ('next', self.get_next_link()),
-            ('previous', self.get_previous_link()),
-            ('results', data)
-        ]))
-
+from ..pagination import BalancePagination
 
 class StatementBalancePagination(PageNumberPagination):
     """
@@ -122,7 +90,12 @@ class TotalAnnotateMixin(object):
 
     def get_queryset(self):
         queryset = super(TotalAnnotateMixin, self).get_queryset()
-        self.totals = sum_orig_amount(queryset)
+        balances = sum_orig_amount(queryset)
+        if len(balances) > 1:
+            raise ValueError("balances with multiple currency units (%s)" %
+                str(balances))
+        # `sum_orig_amount` guarentees at least one result.
+        self.totals = balances[0]
         return queryset
 
 
@@ -140,7 +113,6 @@ class SmartTransactionListMixin(SortableListMixin, TransactionFilterMixin):
     """
     ``Transaction`` list which is also searchable and sortable.
     """
-
     sort_fields_aliases = [('descr', 'description'),
                            ('dest_amount', 'amount'),
                            ('dest_organization__slug', 'dest_organization'),
@@ -148,6 +120,9 @@ class SmartTransactionListMixin(SortableListMixin, TransactionFilterMixin):
                            ('orig_organization__slug', 'orig_organization'),
                            ('orig_account', 'orig_account'),
                            ('created_at', 'created_at')]
+
+    filter_backends = (SortableDateRangeSearchableFilterBackend(
+        sort_fields_aliases, TransactionFilterMixin.search_fields),)
 
 
 class TransactionQuerysetMixin(object):
@@ -164,34 +139,25 @@ class TransactionQuerysetMixin(object):
 class TransactionListAPIView(SmartTransactionListMixin,
                              TransactionQuerysetMixin, ListAPIView):
     """
-    GET queries all ``Transaction`` recorded in the ledger.
+    Queries a page (``PAGE_SIZE`` records) of ``Transaction`` from the ledger.
 
-    The queryset can be further filtered to a range of dates between
-    ``start_at`` and ``ends_at``.
+    The queryset can be filtered to a range of dates. The queryset can be
+    further filtered to only include ``Transaction`` where at least one
+    field is matching a specified search text.
 
-    The queryset can be further filtered by passing a ``q`` parameter.
-    The value in ``q`` will be matched against:
+    Query results can be ordered by natural fields in either ascending
+    or descending order.
 
-      - Transaction.descr
-      - Transaction.orig_organization.full_name
-      - Transaction.dest_organization.full_name
+    **Examples
 
-    The result queryset can be ordered by:
-
-      - Transaction.created_at
-      - Transaction.descr
-      - Transaction.dest_amount
-
-    **Example request**:
-
-    .. sourcecode:: http
+    .. code-block:: http
 
         GET /api/billing/transactions?start_at=2015-07-05T07:00:00.000Z\
-&o=date&ot=desc
+&o=date&ot=desc HTTP/1.1
 
-    **Example response**:
+    responds
 
-    .. sourcecode:: http
+    .. code-block:: json
 
         {
             "ends_at": "2017-03-30T18:10:12.962859Z",
@@ -218,8 +184,8 @@ class TransactionListAPIView(SmartTransactionListMixin,
             ]
         }
     """
-    serializer_class = TransactionSerializer
     pagination_class = BalancePagination
+    serializer_class = TransactionSerializer
 
 
 class BillingsQuerysetMixin(OrganizationMixin):
@@ -234,35 +200,25 @@ class BillingsQuerysetMixin(OrganizationMixin):
 class BillingsAPIView(SmartTransactionListMixin,
                       BillingsQuerysetMixin, ListAPIView):
     """
-    GET queries all ``Transaction`` associated to ``:organization`` while
-    the organization acts as a subscriber in the relation.
+    Queries a page (``PAGE_SIZE`` records) of ``Transaction`` associated
+    to ``{organization}`` while the organization acts as a subscriber
+    in the relation.
 
-    The queryset can be further filtered to a range of dates between
-    ``start_at`` and ``ends_at``.
+    The queryset can be filtered to a range of dates
+    ([``start_at``, ``ends_at``]) and for at least one field to match a search
+    term (``q``).
 
-    The queryset can be further filtered by passing a ``q`` parameter.
-    The value in ``q`` will be matched against:
+    Query results can be ordered by natural fields (``o``) in either ascending
+    or descending order (``ot``).
 
-      - Transaction.descr
-      - Transaction.orig_organization.full_name
-      - Transaction.dest_organization.full_name
+    **Examples
 
-    The result queryset can be ordered by:
+    .. code-block:: http
 
-      - Transaction.created_at
-      - Transaction.descr
-      - Transaction.dest_amount
+         GET /api/billing/xia/history?start_at=2015-07-05T07:00:00.000Z\
+&o=date&ot=desc HTTP/1.1
 
-    **Example request**:
-
-    .. sourcecode:: http
-
-        GET /api/billing/xia/billings?start_at=2015-07-05T07:00:00.000Z\
-&o=date&ot=desc
-
-    **Example response**:
-
-    .. sourcecode:: http
+    .. code-block:: json
 
         {
             "count": 1,
@@ -305,34 +261,25 @@ class ReceivablesListAPIView(SortableListMixin, TotalAnnotateMixin,
                              TransactionFilterMixin, ReceivablesQuerysetMixin,
                              ListAPIView):
     """
-    GET queries all receivables for a provider.
+    Queries a page (``PAGE_SIZE`` records) of ``Transaction`` marked
+    as receivables associated to ``{organization}`` while the organization
+    acts as a provider in the relation.
 
-    The queryset can be further filtered to a range of dates between
-    ``start_at`` and ``ends_at``.
+    The queryset can be filtered to a range of dates
+    ([``start_at``, ``ends_at``]) and for at least one field to match a search
+    term (``q``).
 
-    The queryset can be further filtered by passing a ``q`` parameter.
-    The value in ``q`` will be matched against:
+    Query results can be ordered by natural fields (``o``) in either ascending
+    or descending order (``ot``).
 
-      - Transaction.descr
-      - Transaction.orig_organization.full_name
-      - Transaction.dest_organization.full_name
+    **Examples
 
-    The result queryset can be ordered by:
+    .. code-block:: http
 
-      - Transaction.created_at
-      - Transaction.descr
-      - Transaction.dest_amount
+         GET /api/billing/cowork/receivables?start_at=2015-07-05T07:00:00.000Z\
+&o=date&ot=desc HTTP/1.1
 
-    **Example request**:
-
-    .. sourcecode:: http
-
-        GET /api/billing/cowork/receivables?start_at=2015-07-05T07:00:00.000Z\
-&o=date&ot=desc
-
-    **Example response**:
-
-    .. sourcecode:: http
+    .. code-block:: json
 
         {
             "count": 1,
@@ -367,6 +314,9 @@ class ReceivablesListAPIView(SortableListMixin, TotalAnnotateMixin,
                            ('orig_account', 'orig_account'),
                            ('created_at', 'created_at')]
 
+    filter_backends = (SortableDateRangeSearchableFilterBackend(
+        sort_fields_aliases, TransactionFilterMixin.search_fields),)
+
     natural_period = dateutil.relativedelta.relativedelta(days=-1)
     serializer_class = TransactionSerializer
     pagination_class = TotalPagination
@@ -385,35 +335,25 @@ class TransferQuerysetMixin(ProviderMixin):
 class TransferListAPIView(SmartTransactionListMixin, TransferQuerysetMixin,
                           ListAPIView):
     """
-    GET queries all ``Transaction`` associated to ``:organization`` while
-    the organization acts as a provider in the relation.
+    Queries a page (``PAGE_SIZE`` records) of ``Transaction`` associated
+    to ``:organization`` while the organization acts as a provider in the
+    relation.
 
-    The queryset can be further filtered to a range of dates between
-    ``start_at`` and ``ends_at``.
+    The queryset can be filtered to a range of dates
+    ([``start_at``, ``ends_at``]) and for at least one field to match a search
+    term (``q``).
 
-    The queryset can be further filtered by passing a ``q`` parameter.
-    The value in ``q`` will be matched against:
+    Query results can be ordered by natural fields (``o``) in either ascending
+    or descending order (``ot``).
 
-      - Transaction.descr
-      - Transaction.orig_organization.full_name
-      - Transaction.dest_organization.full_name
+    **Examples
 
-    The result queryset can be ordered by:
+    .. code-block:: http
 
-      - Transaction.created_at
-      - Transaction.descr
-      - Transaction.dest_amount
+         GET /api/billing/cowork/transfers?start_at=2015-07-05T07:00:00.000Z\
+&o=date&ot=desc HTTP/1.1
 
-    **Example request**:
-
-    .. sourcecode:: http
-
-        GET /api/billing/cowork/transfers?start_at=2015-07-05T07:00:00.000Z\
-&o=date&ot=desc
-
-    **Example response**:
-
-    .. sourcecode:: http
+    .. code-block:: json
 
         {
             "count": 1,
@@ -454,15 +394,13 @@ class StatementBalanceAPIView(OrganizationMixin, APIView):
     """
     Get the statement balance due for an organization.
 
-    **Example request**:
+    **Examples
 
-    .. sourcecode:: http
+    .. code-block:: http
 
-        GET /api/billing/cowork/balance/
+         GET  /api/billing/cowork/balance/ HTTP/1.1
 
-    **Example response**:
-
-    .. sourcecode:: http
+    .. code-block:: json
 
         {
             "balance_amount": "1200",
@@ -471,6 +409,7 @@ class StatementBalanceAPIView(OrganizationMixin, APIView):
     """
 
     def get(self, request, *args, **kwargs):
+        #pylint:disable=unused-argument
         balance_amount, balance_unit \
             = Transaction.objects.get_statement_balance(self.organization)
         return Response({'balance_amount': balance_amount,
@@ -488,11 +427,11 @@ class CancelStatementBalanceAPIView(OrganizationMixin, DestroyAPIView):
     The endpoint returns the transaction created to cancel the
     balance due.
 
-    **Example request**:
+    **Examples
 
-    .. sourcecode:: http
+    .. code-block:: http
 
-        DELETE /api/billing/cowork/balance/
+         DELETE /api/billing/cowork/balance/ HTTP/1.1
     """
 
     def destroy(self, request, *args, **kwargs): #pylint:disable=unused-argument

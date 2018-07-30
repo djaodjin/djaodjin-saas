@@ -22,7 +22,6 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from rest_framework.views import APIView
 from rest_framework.generics import GenericAPIView, ListAPIView
 from rest_framework.response import Response
 
@@ -36,21 +35,20 @@ from .serializers import (CartItemSerializer,
 from ..managers.metrics import (abs_monthly_balances, active_subscribers,
     aggregate_transactions_by_period, month_periods, churn_subscribers,
     aggregate_transactions_change_by_period)
+from .serializers import MetricsSerializer
 
 
-class BalancesAPIView(BeforeMixin, ProviderMixin, APIView):
+class BalancesAPIView(BeforeMixin, ProviderMixin, GenericAPIView):
     """
     Generate a table of revenue (rows) per months (columns).
 
-    **Example request**:
+    **Examples
 
-    .. sourcecode:: http
+    .. code-block:: http
 
-        GET /api/metrics/cowork/balances
+        GET /api/metrics/cowork/balances HTTP/1.1
 
-    **Example response**:
-
-    .. sourcecode:: http
+    .. code-block:: json
 
         {
             "title": "Balances",
@@ -114,6 +112,7 @@ class BalancesAPIView(BeforeMixin, ProviderMixin, APIView):
             ]
         }
     """
+    serializer_class = MetricsSerializer
 
     def get(self, request, *args, **kwargs): #pylint: disable=unused-argument
         result = []
@@ -129,19 +128,17 @@ class BalancesAPIView(BeforeMixin, ProviderMixin, APIView):
             'unit': "$", 'scale': 0.01, 'table': result})
 
 
-class RevenueMetricAPIView(BeforeMixin, ProviderMixin, APIView):
+class RevenueMetricAPIView(BeforeMixin, ProviderMixin, GenericAPIView):
     """
-    Produce The sales, payments and refunds over a period of time.
+    Produces sales, payments and refunds over a period of time.
 
-    **Example request**:
+    **Examples
 
-    .. sourcecode:: http
+    .. code-block:: http
 
-        GET /api/metrics/cowork/revenue
+        GET /api/metrics/cowork/funds/ HTTP/1.1
 
-    **Example response**:
-
-    .. sourcecode:: http
+    .. code-block:: json
 
         {
             "title": "Amount",
@@ -236,7 +233,10 @@ class RevenueMetricAPIView(BeforeMixin, ProviderMixin, APIView):
             ],
         }
     """
+    serializer_class = MetricsSerializer
+
     def get(self, request, *args, **kwargs):
+        #pylint:disable=unused-argument
         dates = convert_dates_to_utc(
             month_periods(12, self.ends_at, tz=self.timezone))
 
@@ -277,19 +277,22 @@ class CouponUsesQuerysetMixin(object):
 class CouponUsesAPIView(CartItemSmartListMixin, CouponUsesQuerysetMixin,
                         CouponMixin, ListAPIView):
     """
-    GET list uses of a ``Coupon``.
+    Queries a page (``PAGE_SIZE`` records) of ``Coupon`` usage.
 
-    .. autoclass:: saas.mixins.CartItemSmartListMixin
+    The queryset can be filtered to a range of dates
+    ([``start_at``, ``ends_at``]) and for at least one field to match a search
+    term (``q``).
 
-    **Example request**:
+    The result queryset can be ordered by passing an ``o`` (field name)
+    and ``ot`` (asc or desc) parameter.
 
-    .. sourcecode:: http
+    **Examples
 
-        GET /api/metrics/cowork/coupons/DIS100/
+    .. code-block:: http
 
-    **Example response**:
+        GET /api/metrics/cowork/coupons/DIS100/ HTTP/1.1
 
-    .. sourcecode:: http
+    .. code-block:: json
 
         {
             "count": 1,
@@ -313,19 +316,17 @@ class CouponUsesAPIView(CartItemSmartListMixin, CouponUsesQuerysetMixin,
     serializer_class = CartItemSerializer
 
 
-class CustomerMetricAPIView(BeforeMixin, ProviderMixin, APIView):
+class CustomerMetricAPIView(BeforeMixin, ProviderMixin, GenericAPIView):
     """
     Produce revenue stats
 
-    **Example request**:
+    **Examples
 
-    .. sourcecode:: http
+    .. code-block:: http
 
-        GET /api/metrics/cowork/customers
+        GET /api/metrics/cowork/customers HTTP/1.1
 
-    **Example response**:
-
-    .. sourcecode:: http
+    .. code-block:: json
 
         {
             "title": "Customers"
@@ -420,7 +421,10 @@ class CustomerMetricAPIView(BeforeMixin, ProviderMixin, APIView):
             ]
         }
     """
+    serializer_class = MetricsSerializer
+
     def get(self, request, *args, **kwargs):
+        #pylint:disable=unused-argument
         account_title = 'Payments'
         account = Transaction.RECEIVABLE
         # We use ``Transaction.RECEIVABLE`` which technically counts the number
@@ -438,19 +442,17 @@ class CustomerMetricAPIView(BeforeMixin, ProviderMixin, APIView):
                 "table": customer_table, "extra": customer_extra})
 
 
-class PlanMetricAPIView(BeforeMixin, ProviderMixin, APIView):
+class PlanMetricAPIView(BeforeMixin, ProviderMixin, GenericAPIView):
     """
     Produce plan stats
 
-    **Example request**:
+    **Examples
 
-    .. sourcecode:: http
+    .. code-block:: http
 
-        GET /api/metrics/cowork/revenue
+        GET /api/metrics/cowork/plans HTTP/1.1
 
-    **Example response**:
-
-    .. sourcecode:: http
+    .. code-block:: json
 
         {
             "title": "Active Subscribers",
@@ -538,9 +540,13 @@ class PlanMetricAPIView(BeforeMixin, ProviderMixin, APIView):
             ]
         }
     """
+    serializer_class = MetricsSerializer
+
     def get(self, request, *args, **kwargs):
+        #pylint:disable=unused-argument
         table = []
-        for plan in Plan.objects.filter(organization=self.provider):
+        for plan in Plan.objects.filter(
+                organization=self.provider).order_by('title'):
             values = active_subscribers(
                 plan, from_date=self.ends_at, tz=self.timezone)
             table.append({

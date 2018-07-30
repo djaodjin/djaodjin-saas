@@ -25,6 +25,7 @@
 import logging
 
 from django.core import validators
+from django.core.exceptions import ValidationError
 from django.contrib.auth import get_user_model
 from django.db import transaction
 from django.db.models import Q
@@ -39,24 +40,54 @@ from rest_framework.generics import (ListAPIView, CreateAPIView,
 from rest_framework.response import Response
 
 from .. import settings, signals
+from ..docs import swagger_auto_schema
 from ..mixins import (OrganizationMixin, RoleDescriptionMixin, RoleMixin,
     RoleSmartListMixin, UserMixin)
 from ..models import RoleDescription
-from ..utils import get_organization_model, get_role_model
+from ..utils import (full_name_natural_split, get_organization_model,
+    get_role_model, generate_random_slug)
 from .serializers import (AccessibleSerializer, BaseRoleSerializer,
-    RoleSerializer)
+    NoModelSerializer, RoleSerializer)
 
 
 LOGGER = logging.getLogger(__name__)
 
 
+def _clean_field(user_model, field_name, value):
+    #pylint:disable=protected-access
+    field = user_model._meta.get_field(field_name)
+    max_length = field.max_length
+    if len(value) > max_length:
+        orig = value
+        value = value[:max_length]
+        LOGGER.info("shorten %s '%s' to '%s' because it is longer than"\
+            " %d characters", field_name, orig, value, max_length)
+    try:
+        field.run_validators(value)
+    except ValidationError:
+        orig = value
+        value = generate_random_slug(max_length, prefix='user_')
+        LOGGER.info("'%s' is an invalid %s so use '%s' instead.",
+            orig, field_name, value)
+    return value
+
 def _create_user(username, email=None, first_name="", last_name=""):
     user_model = get_user_model()
+    username = _clean_field(user_model, 'username', username)
+    # The e-mail address was already validated by the Serializer.
+    first_name = _clean_field(user_model, 'first_name', first_name)
+    last_name = _clean_field(user_model, 'last_name', last_name)
     return user_model.objects.create_user(username,
         email=email, first_name=first_name, last_name=last_name)
 
 
-class OrganizationRoleCreateSerializer(serializers.Serializer):
+class ForceSerializer(NoModelSerializer):
+
+    force = serializers.BooleanField(required=False,
+        help_text="Invite if not registered.")
+
+
+class OrganizationRoleCreateSerializer(NoModelSerializer):
     #pylint:disable=abstract-method
 
     slug = serializers.CharField(required=False, validators=[
@@ -98,8 +129,8 @@ class RoleDescriptionCRUDRoleSerializer(BaseRoleSerializer):
 
 
 class RoleDescriptionCRUDSerializer(serializers.ModelSerializer):
+    # Slightly different from `RoleDescriptionSerializer` in api.serializer.
     roles = serializers.SerializerMethodField()
-    slug = serializers.CharField(required=False)
 
     def get_roles(self, obj):
         roles_queryset = obj.role_set.filter(
@@ -113,6 +144,7 @@ class RoleDescriptionCRUDSerializer(serializers.ModelSerializer):
     class Meta:
         model = RoleDescription
         fields = ('created_at', 'title', 'slug', 'is_global', 'roles')
+        read_only_fields = ('created_at', 'slug', 'is_global')
 
 
 class OptinBase(object):
@@ -202,23 +234,21 @@ class AccessibleByListAPIView(RoleSmartListMixin,
                               AccessibleByQuerysetMixin, OptinBase,
                               ListCreateAPIView):
     """
-    ``GET`` lists all relations where an ``Organization`` is accessible by
+    Lists all relations where an ``Organization`` is accessible by
     a ``User``. Typically the user was granted specific permissions through
     a ``Role``.
 
-    ``POST`` Generates a request to attach a user to a role on an organization
-
     see :doc:`Flexible Security Framework <security>`.
 
-    **Example request**:
+    **Examples
 
-    .. sourcecode:: http
+    .. code-block:: http
 
-        GET  /api/users/alice/accessibles/
+        GET  /api/users/alice/accessibles/ HTTP/1.1
 
-    **Example response**:
+    responds
 
-    .. sourcecode:: http
+    .. code-block:: json
 
         {
             "count": 1,
@@ -226,7 +256,7 @@ class AccessibleByListAPIView(RoleSmartListMixin,
             "previous": null,
             "results": [
                 {
-                    "created_at": "2012-10-01T09:00:00Z",
+                    "created_at": "2018-01-01T00:00:00Z",
                     "slug": "cowork",
                     "printable_name": "ABC Corp.",
                     "role_description": "manager",
@@ -235,27 +265,40 @@ class AccessibleByListAPIView(RoleSmartListMixin,
                 }
             ]
         }
-
-    **Example request**:
-
-    .. sourcecode:: http
-
-        POST /api/users/xia/accessibles/
-
-        {
-          "slug": "cowork"
-        }
-
-    **Example response**:
-
-    .. sourcecode:: http
-
-        {
-          "slug": "cowork"
-        }
     """
     serializer_class = AccessibleSerializer
 
+    def post(self, request, *args, **kwargs):
+        """
+        Creates a request to attach a user to a role on an organization
+
+        see :doc:`Flexible Security Framework <security>`.
+
+        **Examples
+
+        .. code-block:: http
+
+            POST /api/users/xia/accessibles/ HTTP/1.1
+
+        .. code-block:: json
+
+            {
+              "slug": "cowork"
+            }
+
+        responds
+
+        .. code-block:: json
+
+            {
+              "slug": "cowork"
+            }
+        """
+        return super(AccessibleByListAPIView, self).post(
+            request, *args, **kwargs)
+
+    @swagger_auto_schema(request_body=OrganizationRoleCreateSerializer,
+        query_serializer=ForceSerializer)
     def create(self, request, *args, **kwargs): #pylint:disable=unused-argument
         serializer = OrganizationRoleCreateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -263,10 +306,6 @@ class AccessibleByListAPIView(RoleSmartListMixin,
 
 
 class RoleDescriptionQuerysetMixin(OrganizationMixin):
-
-    serializer_class = RoleDescriptionCRUDSerializer
-    lookup_field = 'slug'
-    lookup_url_kwarg = 'role'
 
     def get_queryset(self):
         return self.organization.get_role_descriptions()
@@ -280,19 +319,19 @@ class RoleDescriptionQuerysetMixin(OrganizationMixin):
 class RoleDescriptionListCreateView(RoleDescriptionQuerysetMixin,
                                     ListCreateAPIView):
     """
-    List and create ``RoleDescription``.
+    Lists roles by description``RoleDescription``.
 
     see :doc:`Flexible Security Framework <security>`.
 
-    **Example request**:
+    **Examples
 
-    .. sourcecode:: http
+    .. code-block:: http
 
-        GET  /api/profile/cowork/roles/describe/
+        GET /api/profile/cowork/roles/describe/ HTTP/1.1
 
-    **Example response**:
+    responds
 
-    .. sourcecode:: http
+    .. code-block:: json
 
         {
             "count": 2,
@@ -300,18 +339,18 @@ class RoleDescriptionListCreateView(RoleDescriptionQuerysetMixin,
             "previous": null,
             "results": [
                 {
-                    "created_at": "2016-01-14T23:16:55Z",
-                    "name": "Managers",
+                    "created_at": "2018-01-01T00:00:00Z",
+                    "title": "Managers",
                     "slug": "manager",
                     "is_global": true,
                     "roles": [
                         {
-                            "created_at": "2016-09-14T23:16:55Z",
+                            "created_at": "2018-01-01T00:00:00Z",
                             "user": {
                                 "slug": "donny",
-                                "email": "support@djaodjin.com",
+                                "email": "donny@localhost.localdomain",
                                 "full_name": "Donny Cooper",
-                                "created_at": "2016-09-15T00:00:00Z"
+                                "created_at": "2018-01-01T00:00:00Z"
                             },
                             "request_key": null,
                             "grant_key": null
@@ -319,48 +358,108 @@ class RoleDescriptionListCreateView(RoleDescriptionQuerysetMixin,
                     ]
                 },
                 {
-                    "created_at": "2012-09-14T23:16:55Z",
+                    "created_at": "2018-01-01T00:00:00Z",
                     "name": "Contributors",
                     "slug": "contributor",
-                    "is_global": true,
+                    "is_global": false,
                     "roles": []
                 }
             ]
         }
     """
-    pass
+    serializer_class = RoleDescriptionCRUDSerializer
+
+    def post(self, request, *args, **kwargs):
+        """
+        Creates a new role that users can take on an organization.
+
+        see :doc:`Flexible Security Framework <security>`.
+
+        **Examples
+
+        .. code-block:: http
+
+            GET /api/profile/cowork/roles/describe/ HTTP/1.1
+
+        .. code-block:: json
+
+            {
+                "title": "Managers",
+            }
+
+        responds
+
+        .. code-block:: json
+
+            {
+                "count": 2,
+                "next": null,
+                "previous": null,
+                "results": [
+                    {
+                        "created_at": "2018-01-01T00:00:00Z",
+                        "name": "Managers",
+                        "slug": "manager",
+                        "is_global": true,
+                        "roles": [
+                            {
+                                "created_at": "2018-01-01T00:00:00Z",
+                                "user": {
+                                    "slug": "donny",
+                                    "email": "donny@localhost.localdomain",
+                                    "full_name": "Donny Cooper",
+                                    "created_at": "2018-01-01T00:00:00Z"
+                                },
+                                "request_key": null,
+                                "grant_key": null
+                            },
+                        ]
+                    },
+                    {
+                        "created_at": "2018-01-01T00:00:00Z",
+                        "name": "Contributors",
+                        "slug": "contributor",
+                        "is_global": false,
+                        "roles": []
+                    }
+                ]
+            }
+        """
+        return super(RoleDescriptionListCreateView, self).post(
+            request, *args, **kwargs)
+
 
 
 class RoleDescriptionDetailView(RoleDescriptionQuerysetMixin,
                                 RetrieveUpdateDestroyAPIView):
     """
-    Create, retrieve, update and delete ``RoleDescription``.
+    Retrieves a ``RoleDescription``.
 
     see :doc:`Flexible Security Framework <security>`.
 
-    **Example request**:
+    **Examples
 
-    .. sourcecode:: http
+    .. code-block:: http
 
-        GET  /api/profile/cowork/roles/describe/manager
+        GET /api/profile/cowork/roles/describe/manager HTTP/1.1
 
-    **Example response**:
+    responds
 
-    .. sourcecode:: http
+    .. code-block:: json
 
         {
-            "created_at": "2016-01-14T23:16:55Z",
+            "created_at": "2018-01-01T00:00:00Z",
             "name": "Managers",
             "slug": "manager",
             "is_global": true,
             "roles": [
                 {
-                    "created_at": "2016-09-14T23:16:55Z",
+                    "created_at": "2018-01-01T00:00:00Z",
                     "user": {
                         "slug": "donny",
-                        "email": "support@djaodjin.com",
+                        "email": "donny@localhost.localdomain",
                         "full_name": "Donny Cooper",
-                        "created_at": "2016-09-15T00:00:00Z"
+                        "created_at": "2018-01-01T00:00:00Z"
                     },
                     "request_key": null,
                     "grant_key": null
@@ -369,6 +468,71 @@ class RoleDescriptionDetailView(RoleDescriptionQuerysetMixin,
         }
 
     """
+    serializer_class = RoleDescriptionCRUDSerializer
+    lookup_field = 'slug'
+    lookup_url_kwarg = 'role'
+
+    def delete(self, request, *args, **kwargs):
+        """
+        Deletes ``RoleDescription``.
+
+        see :doc:`Flexible Security Framework <security>`.
+
+        **Examples
+
+        .. code-block:: http
+
+            DELETE /api/profile/cowork/roles/describe/manager HTTP/1.1
+        """
+        return super(RoleDescriptionDetailView, self).delete(
+            request, *args, **kwargs)
+
+    def put(self, request, *args, **kwargs):
+        """
+        Updates ``RoleDescription``.
+
+        see :doc:`Flexible Security Framework <security>`.
+
+        **Examples
+
+        .. code-block:: http
+
+            PUT /api/profile/cowork/roles/describe/manager HTTP/1.1
+
+        .. code-block:: json
+
+            {
+                "title": "Profile managers"
+            }
+
+        responds
+
+        .. code-block:: json
+
+            {
+                "created_at": "2018-01-01T00:00:00Z",
+                "title": "Profile managers",
+                "slug": "manager",
+                "is_global": true,
+                "roles": [
+                    {
+                        "created_at": "2018-01-01T00:00:00Z",
+                        "user": {
+                            "slug": "donny",
+                            "email": "donny@localhost.localdomain",
+                            "full_name": "Donny Cooper",
+                            "created_at": "2018-01-01T00:00:00Z"
+                        },
+                        "request_key": null,
+                        "grant_key": null
+                    },
+                ]
+            }
+
+        """
+        return super(RoleDescriptionDetailView, self).put(
+            request, *args, **kwargs)
+
     def perform_update(self, serializer):
         self.check_local(serializer.instance)
         super(RoleDescriptionDetailView, self).perform_update(serializer)
@@ -387,17 +551,17 @@ class RoleQuerysetMixin(OrganizationMixin):
 
 class RoleListAPIView(RoleSmartListMixin, RoleQuerysetMixin, ListAPIView):
     """
-    ``GET`` lists all roles for an organization
+    Lists all roles for an organization
 
-    **Example request**:
+    **Examples
 
-    .. sourcecode:: http
+    .. code-block:: http
 
-        GET /api/profile/cowork/roles/
+        GET /api/profile/cowork/roles/ HTTP/1.1
 
-    **Example response**:
+    responds
 
-    .. sourcecode:: http
+    .. code-block:: json
 
         {
             "count": 1,
@@ -405,7 +569,7 @@ class RoleListAPIView(RoleSmartListMixin, RoleQuerysetMixin, ListAPIView):
             "previous": null,
             "results": [
                 {
-                    "created_at": "2012-10-01T09:00:00Z",
+                    "created_at": "2018-01-01T00:00:00Z",
                     "role_description": {
                         "name": "Manager",
                         "slug": "manager",
@@ -413,7 +577,7 @@ class RoleListAPIView(RoleSmartListMixin, RoleQuerysetMixin, ListAPIView):
                             "slug": "cowork",
                             "full_name": "ABC Corp.",
                             "printable_name": "ABC Corp.",
-                            "created_at": "2012-08-14T23:16:55Z",
+                            "created_at": "2018-01-01T00:00:00Z",
                             "email": "support@localhost.localdomain"
                         }
                     },
@@ -421,7 +585,7 @@ class RoleListAPIView(RoleSmartListMixin, RoleQuerysetMixin, ListAPIView):
                         "slug": "alice",
                         "email": "alice@localhost.localdomain",
                         "full_name": "Alice Doe",
-                        "created_at": "2012-09-14T23:16:55Z"
+                        "created_at": "2018-01-01T00:00:00Z"
                     },
                     "request_key": "1",
                     "grant_key": null
@@ -445,19 +609,15 @@ class RoleFilteredListAPIView(RoleSmartListMixin, RoleByDescrQuerysetMixin,
     """
     ``GET`` lists the specified role assignments for an organization.
 
-    ``POST`` attaches a user to a role on an organization, typically granting
-    permissions to the user with regards to managing an organization profile
-    (see :doc:`Flexible Security Framework <security>`).
+    **Examples
 
-    **Example request**:
+    .. code-block:: http
 
-    .. sourcecode:: http
+        GET /api/profile/cowork/roles/manager/ HTTP/1.1
 
-        GET /api/profile/cowork/roles/managers/
+    responds
 
-    **Example response**:
-
-    .. sourcecode:: http
+    .. code-block:: json
 
         {
             "count": 1,
@@ -465,7 +625,7 @@ class RoleFilteredListAPIView(RoleSmartListMixin, RoleByDescrQuerysetMixin,
             "previous": null,
             "results": [
                 {
-                    "created_at": "2012-10-01T09:00:00Z",
+                    "created_at": "2018-01-01T00:00:00Z",
                     "role_description": {
                         "name": "Manager",
                         "slug": "manager",
@@ -473,7 +633,7 @@ class RoleFilteredListAPIView(RoleSmartListMixin, RoleByDescrQuerysetMixin,
                             "slug": "cowork",
                             "full_name": "ABC Corp.",
                             "printable_name": "ABC Corp.",
-                            "created_at": "2012-08-14T23:16:55Z",
+                            "created_at": "2018-01-01T00:00:00Z",
                             "email": "support@localhost.localdomain"
                         }
                     },
@@ -481,29 +641,12 @@ class RoleFilteredListAPIView(RoleSmartListMixin, RoleByDescrQuerysetMixin,
                         "slug": "alice",
                         "email": "alice@localhost.localdomain",
                         "full_name": "Alice Doe",
-                        "created_at": "2012-09-14T23:16:55Z"
+                        "created_at": "2018-01-01T00:00:00Z"
                     },
                     "request_key": "1",
                     "grant_key": null
                 },
             ]
-        }
-
-    **Example request**:
-
-    .. sourcecode:: http
-
-        POST /api/profile/cowork/roles/managers/
-        {
-          "slug": "Xia"
-        }
-
-    **Example response**:
-
-    .. sourcecode:: http
-
-        {
-          "slug": "Xia"
         }
     """
     serializer_class = RoleSerializer
@@ -527,14 +670,9 @@ class RoleFilteredListAPIView(RoleSmartListMixin, RoleByDescrQuerysetMixin,
                     raise Http404("%s not found"
                         % serializer.validated_data['slug'])
                 full_name = serializer.validated_data.get('full_name', '')
-                name_parts = full_name.split(' ')
-                if name_parts:
-                    first_name = name_parts[0]
-                    last_name = ' '.join(name_parts[1:])
-                else:
-                    first_name = full_name
-                    last_name = ''
-                #pylint: disable=no-member
+                first_name, _, last_name = full_name_natural_split(full_name)
+                # The slug is neither a username nor an email address
+                # at this point.
                 user = _create_user(
                     serializer.validated_data['slug'],
                     email=serializer.validated_data['email'],
@@ -558,12 +696,49 @@ class RoleFilteredListAPIView(RoleSmartListMixin, RoleByDescrQuerysetMixin,
         return Response(serializer.validated_data, status=resp_status,
             headers=self.get_success_headers(serializer.validated_data))
 
+    @swagger_auto_schema(request_body=UserRoleCreateSerializer,
+        query_serializer=ForceSerializer)
+    def post(self, request, *args, **kwargs):
+        """
+        Attaches a user to a role on an organization, typically granting
+        permissions to the user with regards to managing an organization profile
+        (see :doc:`Flexible Security Framework <security>`).
+
+        **Examples
+
+        .. code-block:: http
+
+            POST /api/profile/cowork/roles/manager/ HTTP/1.1
+
+        .. code-block:: json
+
+            {
+              "slug": "xia"
+            }
+
+        responds
+
+        .. code-block:: json
+
+            {
+              "slug": "xia"
+            }
+        """
+        return super(RoleFilteredListAPIView, self).post(
+            request, *args, **kwargs)
+
 
 class RoleDetailAPIView(RoleMixin, DestroyAPIView):
     """
     Dettach a user from one or all roles with regards to an organization,
     typically resulting in revoking permissions from this user to manage
     part of an organization profile.
+
+    **Examples
+
+    .. code-block:: http
+
+        DELETE /api/profile/cowork/roles/managers/xia/ HTTP/1.1
     """
 
     def destroy(self, request, *args, **kwargs):

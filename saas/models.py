@@ -226,7 +226,9 @@ class Organization(models.Model):
     slug = models.SlugField(unique=True,
         help_text=_("Unique identifier shown in the URL bar."))
 
-    created_at = models.DateTimeField(auto_now_add=True)
+    created_at = models.DateTimeField(auto_now_add=True,
+        help_text=_("date/time in ISO format at which the Organization"\
+            " was created"))
     is_active = models.BooleanField(default=True)
     is_bulk_buyer = models.BooleanField(default=False,
         help_text=mark_safe('Enable GroupBuy (<a href="/docs/#group-billing"'\
@@ -374,7 +376,7 @@ class Organization(models.Model):
     def natural_interval(self):
         plan_periods = self.plans.values('interval').distinct()
         interval = Plan.MONTHLY
-        if len(plan_periods) > 0:
+        if plan_periods.exists():
             interval = Plan.YEARLY
             for period in plan_periods:
                 interval = min(interval, period['interval'])
@@ -384,7 +386,7 @@ class Organization(models.Model):
     def natural_subscription_period(self):
         plan_periods = self.subscriptions.values('interval').distinct()
         interval = Plan.MONTHLY
-        if len(plan_periods) > 0:
+        if plan_periods.exists():
             interval = Plan.YEARLY
             for period in plan_periods:
                 interval = min(interval, period['interval'])
@@ -1051,13 +1053,16 @@ class RoleDescription(models.Model):
     relationship is effective immediately.
     """
 
-    created_at = models.DateTimeField(auto_now_add=True)
+    created_at = models.DateTimeField(auto_now_add=True,
+        help_text=_("date/time in ISO format at which the role was created"))
     slug = models.SlugField(
-        help_text=_("Unique identifier shown in the URL bar."))
+        help_text=_("unique identifier, typically used in URLs."))
     organization = models.ForeignKey(
         Organization, null=True, on_delete=models.CASCADE,
         related_name="role_descriptions")
-    title = models.CharField(max_length=20)
+    title = models.CharField(max_length=20,
+        help_text=_("Short description of the role. Grammatical rules to"\
+        " pluralize the title might be used in User Interfaces."))
     skip_optin_on_grant = models.BooleanField(default=False)
     extra = settings.get_extra_field_class()(null=True)
 
@@ -1248,8 +1253,12 @@ class ChargeManager(models.Manager):
         #pylint: disable=too-many-arguments
         created_at = datetime_or_now(created_at)
         charge = None
-        balance = sum_dest_amount(transactions)
-        amount = balance['amount']
+        balances = sum_dest_amount(transactions)
+        if len(balances) > 1:
+            raise ValueError("balances with multiple currency units (%s)" %
+                str(balances))
+        # `sum_dest_amount` guarentees at least one result.
+        amount = balances[0]['amount']
         if amount == 0:
             return charge
         for invoice_items in six.itervalues(
@@ -1271,9 +1280,13 @@ class ChargeManager(models.Manager):
         """
         #pylint: disable=too-many-arguments,too-many-locals
         created_at = datetime_or_now(created_at)
-        balance = sum_dest_amount(transactions)
-        amount = balance['amount']
-        unit = balance['unit']
+        balances = sum_dest_amount(transactions)
+        if len(balances) > 1:
+            raise ValueError("balances with multiple currency units (%s)" %
+                str(balances))
+        # `sum_dest_amount` guarentees at least one result.
+        amount = balances[0]['amount']
+        unit = balances[0]['unit']
         if amount == 0:
             return None
         providers = Transaction.objects.providers(transactions)
@@ -1367,23 +1380,30 @@ class Charge(models.Model):
 
     objects = ChargeManager()
 
-    created_at = models.DateTimeField()
+    created_at = models.DateTimeField(
+        help_text="date/time in ISO format at which the Charge was created")
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL, null=True, on_delete=models.PROTECT,
         db_column='user_id')
-    amount = models.PositiveIntegerField(default=0, help_text="Amount in cents")
-    unit = models.CharField(max_length=3, default=settings.DEFAULT_UNIT)
+    amount = models.PositiveIntegerField(default=0,
+        help_text="total amount in cents (i.e. 100ths) of unit")
+    unit = models.CharField(max_length=3, default=settings.DEFAULT_UNIT,
+        help_text="three-letter ISO 4217 code for currency unit (ex: usd)")
     customer = models.ForeignKey(Organization, on_delete=models.PROTECT,
         help_text='organization charged')
-    description = models.TextField(null=True)
-    last4 = models.PositiveSmallIntegerField()
-    exp_date = models.DateField()
+    description = models.TextField(null=True,
+        help_text="description for the Charge as appears on billing statements")
+    last4 = models.PositiveSmallIntegerField(
+        help_text="last 4 digits of the credit card used")
+    exp_date = models.DateField(
+        help_text="expiration date of the credit card used")
     card_name = models.CharField(max_length=50, null=True)
     processor = models.ForeignKey('Organization', on_delete=models.PROTECT,
         related_name='charges')
     processor_key = models.SlugField(unique=True, db_index=True)
     state = models.PositiveSmallIntegerField(
-        choices=CHARGE_STATES, default=CREATED)
+        choices=CHARGE_STATES, default=CREATED,
+        help_text="current state ('created', 'done', 'failed', 'disputed')")
     extra = settings.get_extra_field_class()(null=True)
 
     # XXX unique together paid and invoiced.
@@ -1422,10 +1442,14 @@ class Charge(models.Model):
         """
         Returns the total amount of all invoiced items.
         """
-        balance = sum_dest_amount(Transaction.objects.filter(
+        balances = sum_dest_amount(Transaction.objects.filter(
             invoiced_item__charge=self))
-        amount = balance['amount']
-        unit = balance['unit']
+        if len(balances) > 1:
+            raise ValueError("balances with multiple currency units (%s)" %
+                str(balances))
+        # `sum_dest_amount` guarentees at least one result.
+        amount = balances[0]['amount']
+        unit = balances[0]['unit']
         return Price(amount, unit)
 
     @property
@@ -1465,8 +1489,9 @@ class Charge(models.Model):
         #pylint: disable=no-member
         providers = Transaction.objects.providers([charge_item.invoiced
             for charge_item in self.charge_items.all()])
-        assert len(providers) <= 1
-        if len(providers) == 0:
+        nb_providers = len(providers)
+        assert nb_providers <= 1
+        if nb_providers:
             # So it does not look weird when we are testing receipts
             return get_broker()
         return providers[0]
@@ -1475,8 +1500,12 @@ class Charge(models.Model):
         #pylint: disable=too-many-locals
         assert self.state == self.DONE
         created_at = datetime_or_now()
-        balance = sum_orig_amount(self.refunded)
-        previously_refunded = balance['amount']
+        balances = sum_orig_amount(self.refunded)
+        if len(balances) > 1:
+            raise ValueError("balances with multiple currency units (%s)" %
+                str(balances))
+        # `sum_orig_amount` guarentees at least one result.
+        previously_refunded = balances[0]['amount']
         refund_available = self.amount - previously_refunded
         charge_available_amount, provider_unit, \
             charge_fee_amount, processor_unit \
@@ -1790,7 +1819,7 @@ class Charge(models.Model):
             if invoiced_amount > self.amount:
                 #pylint: disable=nonstandard-exception
                 raise IntegrityError("The total amount of invoiced items for "\
-                    "charge %s exceed the amount of the charge.",
+                    "charge %s exceed the amount of the charge." %
                     self.processor_key)
             # We did a `select_for_update` earlier on but that did not change
             # in state of the `self` currently in memory.
@@ -1812,8 +1841,12 @@ class Charge(models.Model):
         if refunded_amount is None:
             refunded_amount = invoiced_item.dest_amount
 
-        balance = sum_orig_amount(self.refunded)
-        previously_refunded = balance['amount']
+        balances = sum_orig_amount(self.refunded)
+        if len(balances) > 1:
+            raise ValueError("balances with multiple currency units (%s)" %
+                str(balances))
+        # `sum_orig_amount` guarentees at least one result.
+        previously_refunded = balances[0]['amount']
         refund_available = min(invoiced_item.dest_amount,
                                self.amount - previously_refunded)
         if refunded_amount > refund_available:
@@ -2084,20 +2117,27 @@ class Coupon(models.Model):
     #pylint: disable=super-on-old-class
     objects = CouponManager()
 
-    created_at = models.DateTimeField(auto_now_add=True)
-    code = models.SlugField()
-    description = models.TextField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True,
+        help_text=_("date/time in ISO format at which the Coupon was created"))
+    code = models.SlugField(help_text=_(
+        "unique identifier per provider, typically used in URLs"))
+    description = models.TextField(null=True, blank=True,
+        help_text=_("free-form text description for the Coupon"))
     percent = models.PositiveSmallIntegerField(default=0,
         validators=[MaxValueValidator(100)],
-        help_text="Percentage discounted")
+        help_text="percentage discounted")
     # restrict use in scope
-    organization = models.ForeignKey(Organization, on_delete=models.CASCADE)
-    plan = models.ForeignKey('saas.Plan', null=True, on_delete=models.CASCADE,
-        blank=True)
+    organization = models.ForeignKey(Organization, on_delete=models.CASCADE,
+        help_text=_("coupon will only apply to purchased plans"\
+            " from this provider"))
+    plan = models.ForeignKey('saas.Plan', on_delete=models.CASCADE, null=True,
+        blank=True, help_text=_("coupon will only apply to this plan"))
     # restrict use in time and count.
-    ends_at = models.DateTimeField(null=True, blank=True)
+    ends_at = models.DateTimeField(null=True, blank=True,
+        help_text=_("date/time in ISO format at which the code expires"\
+            " to purchase subscriptions"))
     nb_attempts = models.IntegerField(null=True, blank=True,
-        help_text="Number of times the coupon can be used")
+        help_text="number of times the coupon can be used")
     extra = settings.get_extra_field_class()(null=True)
 
     class Meta:
@@ -2779,7 +2819,6 @@ class Subscription(models.Model):
             fraction = delta.months / 12.0
         return fraction
 
-
     def nb_periods(self, start=None, until=None):
         """
         Returns the number of completed periods at datetime ``until``
@@ -2865,41 +2904,60 @@ class TransactionQuerySet(models.QuerySet):
             created_at__lt=until).values(
                 'event_id', 'orig_unit').annotate(
                 orig_balance=Sum('orig_amount'))
-        unit = None
         dest_balance_per_events = {}
         for dest_balance in dest_balances:
+            event_id = dest_balance['event_id']
+            if event_id in dest_balance_per_events:
+                # Because of the `GROUP BY` clause in the SQL query,
+                # if the balance is already in the dictionary then
+                # units are different on the same event.
+                raise ValueError('dest balances until %s for event %s'\
+                ' of %s have different unit (%s vs. %s).' % (
+                    until, event_id, organization,
+                    dest_balance_per_events[event_id].unit,
+                    dest_balance['dest_unit']))
             dest_balance_per_events.update({
-                dest_balance['event_id']: dest_balance['dest_balance']})
-            if unit is None:
-                unit = dest_balance['dest_unit']
-            elif unit != dest_balance['dest_unit']:
-                raise ValueError('dest balances until %s for statement'\
-' of %s have different unit (%s vs. %s).' % (until, organization,
-                    unit, dest_balance['dest_unit']))
+                event_id: Price(
+                    dest_balance['dest_balance'], dest_balance['dest_unit'])})
         for orig_balance in orig_balances:
             event_id = orig_balance['event_id']
-            dest_balance_per_events.update({
-                event_id: (dest_balance_per_events.get(event_id, 0)
-                           - orig_balance['orig_balance'])})
-            if unit is None:
-                unit = orig_balance['orig_unit']
-            elif unit != orig_balance['orig_unit']:
+            dest_total = dest_balance_per_events.get(event_id,
+                Price(0, orig_balance['orig_unit']))
+            dest_balance = dest_total.amount
+            dest_unit = dest_total.unit
+            if orig_balance['orig_unit'] != dest_unit:
                 raise ValueError(
-'orig and dest balances until %s for statement'\
-' of %s have different unit (%s vs. %s).' % (until, organization,
-                    unit, orig_balance['orig_unit']))
+'orig and dest balances until %s for event %s'\
+' of %s have different unit (%s vs. %s).' % (until, event_id, organization,
+                    dest_unit, orig_balance['orig_unit']))
+            dest_balance_per_events.update({event_id: Price(
+                dest_balance - orig_balance['orig_balance'], dest_unit)})
         balances = {}
         for event_id, balance in six.iteritems(dest_balance_per_events):
-            if balance != 0:
+            if balance.amount != 0:
                 balances.update({event_id: balance})
-        return balances, unit
+        return balances
 
     def get_statement_balance(self, organization, until=None):
-        balances, unit = self.get_statement_balances(organization, until=until)
-        balance = 0
-        for val in six.itervalues(balances):
-            balance += val
-        return balance, unit
+        balances_per_unit = {}
+        for val in six.itervalues(self.get_statement_balances(
+                organization, until=until)):
+            balances_per_unit.update({
+                val.unit: balances_per_unit.get(val.unit, 0) + val.amount
+            })
+        balances = {}
+        for unit, balance in six.iteritems(balances_per_unit):
+            if balance != 0:
+                balances.update({unit: balance})
+        if len(balances) > 1:
+            raise ValueError(
+'Multiple balances at %s for %s with different units %s is not supported.' % (
+    until, organization, ','.join(six.iterkeys(balances))))
+        if balances:
+            for unit, balance in six.iteritems(balances):
+                # return first and only element
+                return balance, unit
+        return 0, settings.DEFAULT_UNIT
 
 
 class TransactionManager(models.Manager):
@@ -3143,7 +3201,7 @@ class TransactionManager(models.Manager):
             if pay_now:
                 invoiced_item.save()
                 invoiced_items_ids += [invoiced_item.id]
-        if len(invoiced_items_ids) > 0:
+        if invoiced_items_ids:
             signals.order_executed.send(
                 sender=__name__, invoiced_items=invoiced_items_ids, user=user)
 
@@ -3208,26 +3266,9 @@ class TransactionManager(models.Manager):
         elif like_account is not None:
             dest_params.update({'dest_account__icontains': like_account})
             orig_params.update({'orig_account__icontains': like_account})
-        balance = sum_dest_amount(self.filter(**dest_params))
-        dest_amount = balance['amount']
-        dest_unit = balance['unit']
-        dest_created_at = balance['created_at']
-        balance = sum_orig_amount(self.filter(**orig_params))
-        orig_amount = balance['amount']
-        orig_unit = balance['unit']
-        orig_created_at = balance['created_at']
-        if dest_unit is None:
-            unit = orig_unit
-        elif orig_unit is None:
-            unit = dest_unit
-        elif dest_unit != orig_unit:
-            raise ValueError('orig and dest balances until %s for account'\
-' %s of %s have different unit (%s vs. %s).' % (datetime_or_now(ends_at),
-                account, organization, orig_unit, dest_unit))
-        else:
-            unit = dest_unit
-        return {'amount': dest_amount - orig_amount, 'unit': unit,
-            'created_at': max(dest_created_at, orig_created_at)}
+        dest_balances = sum_dest_amount(self.filter(**dest_params))
+        orig_balances = sum_orig_amount(self.filter(**orig_params))
+        return sum_balance_amount(dest_balances, orig_balances)
 
     def get_statement_balances(self, organization, until=None):
         return self.get_queryset().get_statement_balances(
@@ -3252,11 +3293,15 @@ class TransactionManager(models.Manager):
         # a ``Charge`` will be the ``Charge.id``. As a result, getting the
         # amount due on a subscription by itself is more complicated than
         # just filtering by account and event_id.
-        balance = sum_dest_amount(
+        balances = sum_dest_amount(
             self.get_invoiceables(subscription.organization).filter(
                 event_id=subscription.id))
-        dest_amount = balance['amount']
-        dest_unit = balance['unit']
+        if len(balances) > 1:
+            raise ValueError("balances with multiple currency units (%s)" %
+                str(balances))
+        # `sum_dest_amount` guarentees at least one result.
+        dest_amount = balances[0]['amount']
+        dest_unit = balances[0]['unit']
         return dest_amount, dest_unit
 
     def get_event_balance(self, event_id,
@@ -3662,31 +3707,39 @@ class Transaction(models.Model):
     objects = TransactionManager()
 
     # Implementation Note:
-    # An exact created_at is to important to let auto_now_add mess with it.
-    created_at = models.DateTimeField()
+    # An exact created_at is too important to let auto_now_add mess with it.
+    created_at = models.DateTimeField(
+        help_text=_("date/time in ISO format at which the Charge was created"))
 
-    orig_account = models.CharField(max_length=255, default="unknown")
+    orig_account = models.CharField(max_length=255, default="unknown",
+        help_text=_('origin account from which funds are withdrawn'))
     orig_organization = models.ForeignKey(Organization,
         on_delete=models.PROTECT,
-        related_name="outgoing")
+        related_name="outgoing",
+        help_text=_('origin Organization from which funds are withdrawn'))
     orig_amount = models.PositiveIntegerField(default=0,
-        help_text=_('amount withdrawn from origin in origin units'))
+        help_text=_('amount withdrawn from origin in orig_unit'))
     orig_unit = models.CharField(max_length=3, default=settings.DEFAULT_UNIT,
-        help_text=_('Measure of units on origin account'))
-
-    dest_account = models.CharField(max_length=255, default="unknown")
+        help_text=_("three-letter ISO 4217 code for origin currency unit"\
+            " (ex: usd)"))
+    dest_account = models.CharField(max_length=255, default="unknown",
+        help_text=_('destination account to which funds are deposited'))
     dest_organization = models.ForeignKey(Organization,
         on_delete=models.PROTECT,
-        related_name="incoming")
+        related_name="incoming",
+        help_text=_('destination Organization to which funds are deposited'))
     dest_amount = models.PositiveIntegerField(default=0,
-        help_text=_('amount deposited into destination in destination units'))
+        help_text=_('amount deposited into destination in dest_unit'))
     dest_unit = models.CharField(max_length=3, default=settings.DEFAULT_UNIT,
-        help_text=_('Measure of units on destination account'))
+        help_text=_("three-letter ISO 4217 code for destination currency unit"\
+            " (ex: usd)"))
 
     # Optional
-    descr = models.TextField(default="N/A")
-    event_id = models.SlugField(null=True, help_text=
-        _('Event at the origin of this transaction (ex. job, charge, etc.)'))
+    descr = models.TextField(default="N/A",
+        help_text=_("free-form text description for the Transaction"))
+    event_id = models.SlugField(null=True,
+        help_text=_('Event at the origin of this transaction"\
+        " (ex. subscription, charge, etc.)'))
 
     def __str__(self):
         return str(self.id)
@@ -3795,6 +3848,43 @@ def split_full_name(full_name):
     return first_name, last_name
 
 
+def sum_balance_amount(dest_balances, orig_balances):
+    """
+    `dest_balances` and `orig_balances` are mostly the results
+    of `sum_dest_amount` and `sum_orig_amount` respectively.
+    """
+    balances_by_unit = {}
+    created_at = None
+    for row in dest_balances:
+        balances_by_unit.update({row['unit']: row['amount']})
+        if created_at is None:
+            created_at = row['created_at']
+        else:
+            created_at = max(row['created_at'], created_at)
+    for row in orig_balances:
+        balances_by_unit.update({row['unit']:
+            balances_by_unit.get(row['unit'], 0) - row['amount']})
+        if created_at is None:
+            created_at = row['created_at']
+        else:
+            created_at = max(row['created_at'], created_at)
+    balances = []
+    for unit, balance in six.iteritems(balances_by_unit):
+        if balance != 0:
+            balances += [{
+                'amount': balance,
+                'unit': unit,
+                'created_at': created_at # XXX OK to use max of all?
+            }]
+    if len(balances) > 1:
+        raise ValueError("balances with multiple currency units (%s)" %
+            str(balances))
+    if balances:
+        return balances[0]
+    return {'amount': 0, 'unit': settings.DEFAULT_UNIT,
+        'created_at': datetime_or_now()}
+
+
 def sum_dest_amount(transactions):
     """
     Return the sum of the amount in the *transactions* set.
@@ -3818,19 +3908,16 @@ def sum_dest_amount(transactions):
         for unit, amount in six.iteritems(group_by):
             query_result += [{'dest_unit': unit, 'dest_amount__sum': amount,
                 'created_at__max': most_recent}]
-    if len(query_result) > 0:
-        if len(query_result) > 1:
-            try:
-                raise ValueError("sum accross %d units (%s)" %
-                    (len(query_result), ','.join(
-                        [res['dest_unit'] for res in query_result])))
-            except ValueError as err:
-                LOGGER.error(extract_full_exception_stack(err))
-        # XXX Hack: until we change the function signature
-        return {'amount': query_result[0]['dest_amount__sum'],
-                'unit': query_result[0]['dest_unit'],
-                'created_at': query_result[0]['created_at__max']}
-    return {'amount': 0, 'unit': None, 'created_at': datetime_or_now()}
+    results = []
+    for res in query_result:
+        results += [{
+            'amount': res['dest_amount__sum'],
+            'unit': res['dest_unit'],
+            'created_at': res['created_at__max']}]
+    if not results:
+        results = [{'amount': 0, 'unit': settings.DEFAULT_UNIT,
+            'created_at': datetime_or_now()}]
+    return results
 
 
 def sum_orig_amount(transactions):
@@ -3856,16 +3943,13 @@ def sum_orig_amount(transactions):
         for unit, amount in six.iteritems(group_by):
             query_result += [{'orig_unit': unit, 'orig_amount__sum': amount,
                 'created_at__max': most_recent}]
-    if len(query_result) > 0:
-        if len(query_result) > 1:
-            try:
-                raise ValueError("sum accross %d units (%s)" %
-                    (len(query_result), ', '.join(
-                        [res['orig_unit'] for res in query_result])))
-            except ValueError as err:
-                LOGGER.error(extract_full_exception_stack(err))
-        # XXX Hack: until we change the function signature
-        return {'amount': query_result[0]['orig_amount__sum'],
-                'unit': query_result[0]['orig_unit'],
-                'created_at': query_result[0]['created_at__max']}
-    return {'amount': 0, 'unit': None, 'created_at': datetime_or_now()}
+    results = []
+    for res in query_result:
+        results += [{
+            'amount': res['orig_amount__sum'],
+            'unit': res['orig_unit'],
+            'created_at': res['created_at__max']}]
+    if not results:
+        results = [{'amount': 0, 'unit': settings.DEFAULT_UNIT,
+            'created_at': datetime_or_now()}]
+    return results

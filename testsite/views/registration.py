@@ -219,5 +219,3 @@ class PersonalRegistrationView(FormView):
         auth_login(self.request, user)
 
         return user
-
-
