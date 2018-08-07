@@ -383,7 +383,10 @@ class CheckoutAPIView(CartMixin, OrganizationMixin,
         201: OpenAPIResponse("", ChargeSerializer)})
     def post(self, request, *args, **kwargs):
         """
-        Create a charge for items in the cart.
+        Places an order for the subscription items in the cart and creates
+        a ``Charge`` on the ``{organization}`` payment card.
+
+        If the charge fails a balance is due, to be collected later.
 
         **Examples
 

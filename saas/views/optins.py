@@ -44,7 +44,7 @@ class RoleGrantAcceptView(RedirectView):
     def role(self):
         if not hasattr(self, '_role'):
             self._role = get_object_or_404(Role.objects.all(),
-                grant_key=self.kwargs.get('grant_key'))
+                grant_key=self.kwargs.get('verification_key'))
         return self._role
 
     def get(self, request, *args, **kwargs):
@@ -79,7 +79,7 @@ class SubscriptionGrantAcceptView(SubscriptionMixin, RedirectView):
     def subscription(self):
         if not hasattr(self, '_subscription'):
             self._subscription = get_object_or_404(self.get_queryset(),
-                grant_key=self.kwargs.get('grant_key'))
+                grant_key=self.kwargs.get('verification_key'))
         return self._subscription
 
     def get(self, request, *args, **kwargs):

@@ -139,14 +139,15 @@ class TransactionQuerysetMixin(object):
 class TransactionListAPIView(SmartTransactionListMixin,
                              TransactionQuerysetMixin, ListAPIView):
     """
-    Queries a page (``PAGE_SIZE`` records) of ``Transaction`` from the ledger.
+    Queries a page (``PAGE_SIZE`` records) of ``Transaction`` from
+    the :doc:`ledger <ledger>`.
 
-    The queryset can be filtered to a range of dates. The queryset can be
-    further filtered to only include ``Transaction`` where at least one
-    field is matching a specified search text.
+    The queryset can be filtered to a range of dates
+    ([``start_at``, ``ends_at``]) and for at least one field to match a search
+    term (``q``).
 
-    Query results can be ordered by natural fields in either ascending
-    or descending order.
+    Query results can be ordered by natural fields (``o``) in either ascending
+    or descending order (``ot``).
 
     **Examples
 
@@ -201,8 +202,7 @@ class BillingsAPIView(SmartTransactionListMixin,
                       BillingsQuerysetMixin, ListAPIView):
     """
     Queries a page (``PAGE_SIZE`` records) of ``Transaction`` associated
-    to ``{organization}`` while the organization acts as a subscriber
-    in the relation.
+    to ``{organization}`` while the organization acts as a subscriber.
 
     The queryset can be filtered to a range of dates
     ([``start_at``, ``ends_at``]) and for at least one field to match a search
@@ -210,6 +210,9 @@ class BillingsAPIView(SmartTransactionListMixin,
 
     Query results can be ordered by natural fields (``o``) in either ascending
     or descending order (``ot``).
+
+    This API end point is typically used to display orders, payments and refunds
+    of a subscriber (see :ref:`subscribers pages <_pages_subscribers>`)
 
     **Examples
 
@@ -263,7 +266,7 @@ class ReceivablesListAPIView(SortableListMixin, TotalAnnotateMixin,
     """
     Queries a page (``PAGE_SIZE`` records) of ``Transaction`` marked
     as receivables associated to ``{organization}`` while the organization
-    acts as a provider in the relation.
+    acts as a provider.
 
     The queryset can be filtered to a range of dates
     ([``start_at``, ``ends_at``]) and for at least one field to match a search
@@ -271,6 +274,9 @@ class ReceivablesListAPIView(SortableListMixin, TotalAnnotateMixin,
 
     Query results can be ordered by natural fields (``o``) in either ascending
     or descending order (``ot``).
+
+    This API endpoint is typically used to find all sales for ``{organization}``
+    whether it was paid or not.
 
     **Examples
 
@@ -336,8 +342,7 @@ class TransferListAPIView(SmartTransactionListMixin, TransferQuerysetMixin,
                           ListAPIView):
     """
     Queries a page (``PAGE_SIZE`` records) of ``Transaction`` associated
-    to ``:organization`` while the organization acts as a provider in the
-    relation.
+    to ``{organization}`` while the organization acts as a provider.
 
     The queryset can be filtered to a range of dates
     ([``start_at``, ``ends_at``]) and for at least one field to match a search
@@ -345,6 +350,10 @@ class TransferListAPIView(SmartTransactionListMixin, TransferQuerysetMixin,
 
     Query results can be ordered by natural fields (``o``) in either ascending
     or descending order (``ot``).
+
+    This API endpoint is typically used to find sales, payments, refunds
+    and bank deposits for a provider.
+    (see :ref:`provider pages <_pages_provider_transactions>`)
 
     **Examples
 

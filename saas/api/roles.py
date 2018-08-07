@@ -656,6 +656,7 @@ class RoleFilteredListAPIView(RoleSmartListMixin, RoleByDescrQuerysetMixin,
         serializer = UserRoleCreateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user_model = get_user_model()
+        user = None
         try:
             user = user_model.objects.get(
                 username=serializer.validated_data['slug'])
@@ -669,15 +670,16 @@ class RoleFilteredListAPIView(RoleSmartListMixin, RoleByDescrQuerysetMixin,
                 if not request.GET.get('force', False):
                     raise Http404("%s not found"
                         % serializer.validated_data['slug'])
-                full_name = serializer.validated_data.get('full_name', '')
-                first_name, _, last_name = full_name_natural_split(full_name)
-                # The slug is neither a username nor an email address
-                # at this point.
-                user = _create_user(
-                    serializer.validated_data['slug'],
-                    email=serializer.validated_data['email'],
-                    first_name=first_name, last_name=last_name)
-                grant_key = self.organization.generate_role_key(user)
+        if not user:
+            full_name = serializer.validated_data.get('full_name', '')
+            first_name, _, last_name = full_name_natural_split(full_name)
+            # The slug is neither a username nor an email address
+            # at this point.
+            user = _create_user(
+                serializer.validated_data['slug'],
+                email=serializer.validated_data['email'],
+                first_name=first_name, last_name=last_name)
+            grant_key = self.organization.generate_role_key(user)
         if not (self.role_description.skip_optin_on_grant or grant_key):
             grant_key = self.organization.generate_role_key(user)
         reason = serializer.validated_data.get('message', None)

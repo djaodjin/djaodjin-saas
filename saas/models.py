@@ -227,8 +227,7 @@ class Organization(models.Model):
         help_text=_("Unique identifier shown in the URL bar."))
 
     created_at = models.DateTimeField(auto_now_add=True,
-        help_text=_("date/time in ISO format at which the Organization"\
-            " was created"))
+        help_text=_("date/time of creation in ISO format"))
     is_active = models.BooleanField(default=True)
     is_bulk_buyer = models.BooleanField(default=False,
         help_text=mark_safe('Enable GroupBuy (<a href="/docs/#group-billing"'\
@@ -1054,7 +1053,7 @@ class RoleDescription(models.Model):
     """
 
     created_at = models.DateTimeField(auto_now_add=True,
-        help_text=_("date/time in ISO format at which the role was created"))
+        help_text=_("date/time of creation in ISO format"))
     slug = models.SlugField(
         help_text=_("unique identifier, typically used in URLs."))
     organization = models.ForeignKey(
@@ -1381,7 +1380,7 @@ class Charge(models.Model):
     objects = ChargeManager()
 
     created_at = models.DateTimeField(
-        help_text="date/time in ISO format at which the Charge was created")
+        help_text="date/time of creation in ISO format")
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL, null=True, on_delete=models.PROTECT,
         db_column='user_id')
@@ -2118,7 +2117,7 @@ class Coupon(models.Model):
     objects = CouponManager()
 
     created_at = models.DateTimeField(auto_now_add=True,
-        help_text=_("date/time in ISO format at which the Coupon was created"))
+        help_text=_("date/time of creation in ISO format"))
     code = models.SlugField(help_text=_(
         "unique identifier per provider, typically used in URLs"))
     description = models.TextField(null=True, blank=True,
@@ -3709,29 +3708,29 @@ class Transaction(models.Model):
     # Implementation Note:
     # An exact created_at is too important to let auto_now_add mess with it.
     created_at = models.DateTimeField(
-        help_text=_("date/time in ISO format at which the Charge was created"))
+        help_text=_("date/time of creation in ISO format"))
 
     orig_account = models.CharField(max_length=255, default="unknown",
-        help_text=_('origin account from which funds are withdrawn'))
+        help_text=_('source account from which funds are withdrawn'))
     orig_organization = models.ForeignKey(Organization,
         on_delete=models.PROTECT,
         related_name="outgoing",
-        help_text=_('origin Organization from which funds are withdrawn'))
+        help_text=_('source Organization from which funds are withdrawn'))
     orig_amount = models.PositiveIntegerField(default=0,
-        help_text=_('amount withdrawn from origin in orig_unit'))
+        help_text=_('amount withdrawn from source in orig_unit'))
     orig_unit = models.CharField(max_length=3, default=settings.DEFAULT_UNIT,
-        help_text=_("three-letter ISO 4217 code for origin currency unit"\
+        help_text=_("three-letter ISO 4217 code for source currency unit"\
             " (ex: usd)"))
     dest_account = models.CharField(max_length=255, default="unknown",
-        help_text=_('destination account to which funds are deposited'))
+        help_text=_('target account to which funds are deposited'))
     dest_organization = models.ForeignKey(Organization,
         on_delete=models.PROTECT,
         related_name="incoming",
-        help_text=_('destination Organization to which funds are deposited'))
+        help_text=_('target Organization to which funds are deposited'))
     dest_amount = models.PositiveIntegerField(default=0,
-        help_text=_('amount deposited into destination in dest_unit'))
+        help_text=_('amount deposited into target in dest_unit'))
     dest_unit = models.CharField(max_length=3, default=settings.DEFAULT_UNIT,
-        help_text=_("three-letter ISO 4217 code for destination currency unit"\
+        help_text=_("three-letter ISO 4217 code for target currency unit"\
             " (ex: usd)"))
 
     # Optional

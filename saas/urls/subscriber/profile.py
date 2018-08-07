@@ -38,7 +38,7 @@ urlpatterns = [
     url(r'^profile/(?P<organization>%s)/roles/$' % ACCT_REGEX,
         RoleListView.as_view(), name='saas_role_list'),
     url(r'^profile/(?P<organization>%s)/subscriptions/accept/'\
-        '(?P<grant_key>%s)/' % (ACCT_REGEX, VERIFICATION_KEY_RE),
+        '(?P<verification_key>%s)/' % (ACCT_REGEX, VERIFICATION_KEY_RE),
         SubscriptionGrantAcceptView.as_view(),
         name='subscription_grant_accept'),
     url(r'^profile/(?P<organization>%s)/subscriptions/' % ACCT_REGEX,

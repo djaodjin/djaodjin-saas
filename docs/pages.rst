@@ -83,6 +83,7 @@ Create a subscription
 
 Manage subscriptions
 ^^^^^^^^^^^^^^^^^^^^
+.. _pages_subscribers:
 
 These pages enable a subscriber to manage her profile on the site.
 She can update her personal information (email address, etc.), change
@@ -97,7 +98,6 @@ You might also believe it is too much risk, deny the ability to do so by your
 customer support people and instruct them to hand out instructions
 to the subscriber on how to do so by herself. All scenarios can easily
 be implemented through a :doc:`Flexible Security Framework <security>`.
-
 
 .. http:get:: /billing/:organization/
 
@@ -168,6 +168,8 @@ Pricing strategy
 
 Transfer subscriber payments to provider bank
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. _pages_provider_transactions:
 
 .. http:get:: /provider/billing/bank/
 .. http:get:: /provider/billing/:organization/bank/
