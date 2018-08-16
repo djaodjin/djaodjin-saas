@@ -114,6 +114,7 @@ class BalanceLineSerializer(serializers.ModelSerializer):
     class Meta:
         model = BalanceLine
         fields = ('title', 'selector', 'rank')
+        extra_kwargs = {'selector': {'required': False}}
 
 
 class BankSerializer(NoModelSerializer):

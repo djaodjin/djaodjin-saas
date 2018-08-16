@@ -30,7 +30,7 @@
                         <button ng-click="remove($index)">Delete</button>
                     </td>
                     <td>[[row.key]]</td>
-                    <td ng-repeat="col in row.values">
+                    <td ng-repeat="col in row.values" ng-show="row.selector !== ''">
                         <a href="{{urls.broker_transactions}}[[row.selector]]/?start_at=[[startPeriod]]&ends_at=[[col[0] ]]">
                         [[col[1]|humanizeCell : balances.unit : balances.scale]]
                         </a>
