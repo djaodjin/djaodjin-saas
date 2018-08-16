@@ -112,8 +112,13 @@ class BalancesDownloadView(MetricsMixin, CSVDownloadView):
             balances_func = abs_monthly_balances
         else:
             balances_func = monthly_balances
-        return [balance_line.title] + [item[1] for item in balances_func(
+        if balance_line.selector:
+            row = [balance_line.title] + [item[1] for item in balances_func(
             like_account=balance_line.selector, until=self.ends_at)]
+        else:
+            # means we have a heading only
+            row = [balance_line.title]
+        return row
 
 
 class CouponMetricsDownloadView(SmartCouponListMixin, CouponQuerysetMixin,

@@ -1169,22 +1169,25 @@ saasApp.directive("saasDndList", function() {
 
         // use jquery to make the element sortable (dnd). This is called
         // when the element is rendered
-        $(element[0]).sortable({
-            items: "tr",
-            start: function (event, ui) {
-                // on start we define where the item is dragged from
-                startIndex = ($(ui.item).index());
-            },
-            stop: function (event, ui) {
-                // on stop we determine the new index of the
-                // item and store it there
-                var newIndex = ($(ui.item).index());
-                var oldRank = toUpdate[startIndex].rank;
-                var newRank = toUpdate[newIndex].rank;
-                scope.saveOrder(oldRank, newRank);
-            },
-            axis: "y"
-        });
+        var $el = $(element[0]);
+        if($el.sortable !== undefined){
+            $el.sortable({
+                items: "tr",
+                start: function (event, ui) {
+                    // on start we define where the item is dragged from
+                    startIndex = ($(ui.item).index());
+                },
+                stop: function (event, ui) {
+                    // on stop we determine the new index of the
+                    // item and store it there
+                    var newIndex = ($(ui.item).index());
+                    var oldRank = toUpdate[startIndex].rank;
+                    var newRank = toUpdate[newIndex].rank;
+                    scope.saveOrder(oldRank, newRank);
+                },
+                axis: "y"
+            });
+        }
     };
 });
 
@@ -1229,6 +1232,7 @@ balanceServices.factory("BalanceLine", ["BalanceResource", "settings",
          update: { method: "put", isArray: false,
                    url: settings.urls.api_balance_lines + ":balance",
                    params: {"balance": "@path"}},
+        // TODO this is broken (405 method not allowed)
          remove: { method: "delete", isArray: false,
                    url: settings.urls.api_balance_lines + ":balance",
                    params: {"balance": "@path"}},
@@ -1347,8 +1351,8 @@ balanceControllers.controller("BalanceListCtrl",
 
     $scope.remove = function (idx) {
         BalanceLine.remove({
-            balance: $scope.balances.results[idx].path}, function (success) {
-                $scope.balances.results.splice(idx, 1);
+            balance: $scope.balances.table[idx].path}, function (success) {
+                $scope.balances.table.splice(idx, 1);
             });
     };
 
