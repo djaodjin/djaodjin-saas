@@ -26,6 +26,7 @@ from rest_framework.generics import GenericAPIView, ListAPIView
 from rest_framework.response import Response
 
 from ..compat import reverse
+from .. import settings
 from ..mixins import (BeforeMixin, CartItemSmartListMixin, CouponMixin,
     ProviderMixin)
 from ..models import CartItem, Organization, Plan, Transaction
@@ -53,7 +54,7 @@ class BalancesAPIView(BeforeMixin, ProviderMixin, GenericAPIView):
         {
             "title": "Balances",
             "scale": 0.01,
-            "unit": "$",
+            "unit": "usd",
             "table": [
                 {
                     "key": "Income",
@@ -116,16 +117,21 @@ class BalancesAPIView(BeforeMixin, ProviderMixin, GenericAPIView):
 
     def get(self, request, *args, **kwargs): #pylint: disable=unused-argument
         result = []
+        unit = settings.DEFAULT_UNIT
         for key in [Transaction.INCOME, Transaction.BACKLOG,
                     Transaction.RECEIVABLE]:
+            values = abs_monthly_balances(
+                organization=self.provider, account=key,
+                until=self.ends_at, tz=self.timezone)
+            if values and len(values[0]) > 2:
+                unit = values[0][2]
+
             result += [{
                 'key': key,
-                'values': abs_monthly_balances(
-                    organization=self.provider, account=key,
-                    until=self.ends_at, tz=self.timezone)
+                'values': values
             }]
         return Response({'title': "Balances",
-            'unit': "$", 'scale': 0.01, 'table': result})
+            'unit': unit, 'scale': 0.01, 'table': result})
 
 
 class RevenueMetricAPIView(BeforeMixin, ProviderMixin, GenericAPIView):
@@ -143,7 +149,7 @@ class RevenueMetricAPIView(BeforeMixin, ProviderMixin, GenericAPIView):
         {
             "title": "Amount",
             "scale": 0.01,
-            "unit": "$",
+            "unit": "usd",
             "table": [
                 {
                     "key": "Total Sales",
@@ -240,6 +246,8 @@ class RevenueMetricAPIView(BeforeMixin, ProviderMixin, GenericAPIView):
         dates = convert_dates_to_utc(
             month_periods(12, self.ends_at, tz=self.timezone))
 
+        unit = settings.DEFAULT_UNIT
+
         # All amounts are in the customer currency.
         account_table, _, _ = \
             aggregate_transactions_change_by_period(self.provider,
@@ -265,7 +273,7 @@ class RevenueMetricAPIView(BeforeMixin, ProviderMixin, GenericAPIView):
 
         return Response(
             {"title": "Amount",
-            "unit": "$", "scale": 0.01, "table": account_table})
+            "unit": unit, "scale": 0.01, "table": account_table})
 
 
 class CouponUsesQuerysetMixin(object):

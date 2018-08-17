@@ -28,6 +28,7 @@ from rest_framework.generics import (
     GenericAPIView, ListCreateAPIView, RetrieveUpdateDestroyAPIView)
 from rest_framework.response import Response
 
+from .. import settings
 from ..mixins import DateRangeMixin
 from ..managers.metrics import abs_monthly_balances, monthly_balances
 from ..models import BalanceLine
@@ -51,7 +52,7 @@ class BrokerBalancesAPIView(DateRangeMixin, GenericAPIView):
 
         {
             "scale": 0.01,
-            "unit": "$",
+            "unit": "usd",
             "title": "Balances: taxes",
             "table": [
                 {
@@ -74,19 +75,24 @@ class BrokerBalancesAPIView(DateRangeMixin, GenericAPIView):
     def get(self, request, *args, **kwargs): #pylint: disable=unused-argument
         result = []
         report = self.kwargs.get('report')
+        unit = settings.DEFAULT_UNIT
         for line in BalanceLine.objects.filter(report=report).order_by('rank'):
             if line.is_positive:
                 balances_func = abs_monthly_balances
             else:
                 balances_func = monthly_balances
+            values = balances_func(
+                like_account=line.selector, until=self.ends_at)
+            if values and len(values[0]) > 2:
+                unit = values[0][2]
+
             result += [{
                 'key': line.title,
                 'selector': line.selector,
-                'values': balances_func(
-                    like_account=line.selector, until=self.ends_at)
+                'values': values
             }]
         return Response({'title': "Balances: %s" % report,
-            'unit': "$", 'scale': 0.01, 'table': result})
+            'unit': unit, 'scale': 0.01, 'table': result})
 
 
 class BalanceLineListAPIView(ListCreateAPIView):

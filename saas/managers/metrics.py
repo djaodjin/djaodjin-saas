@@ -302,7 +302,7 @@ def active_subscribers(plan, from_date=None, tz=None):
 def abs_monthly_balances(organization=None, account=None, like_account=None,
                          until=None, step_months=1, tz=None):
     #pylint:disable=invalid-name,too-many-arguments
-    return [(item[0], abs(item[1])) for item in monthly_balances(
+    return [(item[0], abs(item[1]), item[2]) for item in monthly_balances(
         organization=organization, account=account, like_account=like_account,
         until=until, step_months=step_months, tz=tz)]
 
@@ -315,7 +315,7 @@ def monthly_balances(organization=None, account=None, like_account=None,
             from_date=until, step_months=step_months, tz=tz)):
         balance = Transaction.objects.get_balance(organization=organization,
             account=account, like_account=like_account, ends_at=end_period)
-        values.append([end_period, balance['amount']])
+        values.append([end_period, balance['amount'], balance['unit']])
     return values
 
 
