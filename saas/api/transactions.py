@@ -34,7 +34,7 @@ from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .serializers import TransactionSerializer, OfflineTransactionSerializer
+from .serializers import TransactionSerializer
 from ..filters import SortableDateRangeSearchableFilterBackend
 from ..mixins import DateRangeMixin, OrganizationMixin, ProviderMixin
 from ..models import (Transaction, sum_orig_amount, Subscription,
