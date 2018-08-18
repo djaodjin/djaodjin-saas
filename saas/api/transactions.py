@@ -29,19 +29,18 @@ from django.db.models import Q
 from extra_views.contrib.mixins import SearchableListMixin, SortableListMixin
 from rest_framework import status
 from rest_framework.exceptions import ValidationError
-from rest_framework.generics import ListAPIView, DestroyAPIView
+from rest_framework.generics import ListAPIView, DestroyAPIView, CreateAPIView
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .serializers import TransactionSerializer
+from .serializers import TransactionSerializer, OfflineTransactionSerializer
 from ..filters import SortableDateRangeSearchableFilterBackend
 from ..mixins import DateRangeMixin, OrganizationMixin, ProviderMixin
 from ..models import (Transaction, sum_orig_amount, Subscription,
     Organization, Plan)
 from ..backends import ProcessorError
 from ..pagination import BalancePagination
-from ..forms import ImportTransactionForm
 
 class StatementBalancePagination(PageNumberPagination):
     """
@@ -392,50 +391,35 @@ class TransferListAPIView(SmartTransactionListMixin, TransferQuerysetMixin,
                 " processor (ie. %s)." % str(err)})
 
 
-class ImportTransactionsAPIView(ProviderMixin, APIView):
+class ImportTransactionsAPIView(ProviderMixin, CreateAPIView):
     """
     Insert transactions that were done offline for the purpose of computing
     accurate metrics.
 
     """
+    serializer_class = OfflineTransactionSerializer
 
-    def post(self, request, *args, **kwargs):
-        form = ImportTransactionForm(request.data)
-        if form.is_valid():
-            return self.form_valid(form)
-        else:
-            return self.form_invalid(form)
-
-    def form_invalid(self, form):
-        return Response({'errors': form.errors},
-            status.HTTP_422_UNPROCESSABLE_ENTITY)
-
-    def form_valid(self, form):
-        parts = form.cleaned_data['subscription'].split(Subscription.SEP)
+    def perform_create(self, serializer):
+        parts = serializer.validated_data['subscription'].split(Subscription.SEP)
         assert len(parts) == 2
         subscriber = parts[0]
         plan = parts[1]
         subscriber = Organization.objects.filter(slug=subscriber).first()
         if subscriber is None:
-            form.add_error(None, "Invalid subscriber")
+            raise ValidationError({'detail': "Invalid subscriber"})
         plan = Plan.objects.filter(
             slug=plan, organization=self.organization).first()
         if plan is None:
-            form.add_error(None, "Invalid plan")
+            raise ValidationError({'detail': "Invalid plan"})
         subscription = Subscription.objects.active_for(
             organization=subscriber).filter(plan=plan).first()
         if subscription is None:
-            form.add_error(None, "Invalid combination of subscriber and plan,"\
-" or the subscription is no longer active.")
-        if form.errors:
-            # We haven't found either the subscriber or the plan.
-            return self.form_invalid(form)
+            raise ValidationError({'detail': "Invalid combination of subscriber and plan,"\
+" or the subscription is no longer active."})
         Transaction.objects.offline_payment(
-            subscription, form.cleaned_data['amount'],
-            descr=form.cleaned_data['descr'], user=self.request.user,
-            created_at=form.cleaned_data['created_at'])
-
-        return Response({'status': 'ok'}, status.HTTP_201_CREATED)
+            subscription, serializer.validated_data['amount'],
+            descr=serializer.validated_data['descr'], user=self.request.user,
+            created_at=serializer.validated_data['created_at'])
 
 
 class StatementBalanceAPIView(OrganizationMixin, APIView):
