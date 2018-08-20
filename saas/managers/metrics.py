@@ -33,6 +33,7 @@ from django.utils import six
 
 from ..models import Plan, Subscription, Transaction
 from ..utils import datetime_or_now, parse_tz, convert_dates_to_utc
+from .. import settings
 
 LOGGER = logging.getLogger(__name__)
 
@@ -113,21 +114,34 @@ def aggregate_transactions_by_period(organization, account, date_periods,
     counts = []
     amounts = []
     period_start = date_periods[0]
+    valid_unit = settings.DEFAULT_UNIT
     for period_end in date_periods[1:]:
         # A bit ugly but it does the job ...
         kwargs.update({'%s_organization' % orig: organization,
             '%s_account' % orig: account})
+
+        count, amount, unit = 0, 0, None
         query_result = Transaction.objects.filter(
             created_at__gte=period_start,
-            created_at__lt=period_end, **kwargs).aggregate(
-            Count('%s_organization' % dest, distinct=True),
-            Sum('%s_amount' % dest))
-        count = query_result['%s_organization__count' % dest]
-        amount = query_result['%s_amount__sum' % dest]
+            created_at__lt=period_end, **kwargs).values('orig_unit').annotate(
+                count=Count('%s_organization' % dest, distinct=True),
+                sum=Sum('%s_amount' % dest))
+        if query_result:
+            count = query_result[0]['count']
+            amount = query_result[0]['sum']
+            unit = query_result[0]['orig_unit']
+            valid_unit = unit
         period = period_end
         counts += [(period, count)]
-        amounts += [(period, int(amount or 0))]
+        amounts += [(period, int(amount or 0), unit)]
         period_start = period_end
+
+    for i, amount in enumerate(amounts):
+        if not amount[2]:
+            lst = list(amount)
+            lst[2] = valid_unit
+            amounts[i] = tuple(lst)
+
     return (counts, amounts)
 
 
@@ -143,6 +157,9 @@ def _aggregate_transactions_change_by_period(organization, account,
     new_receivables = []
     churn_customers = []
     churn_receivables = []
+    receivables_unit = settings.DEFAULT_UNIT
+    new_receivables_unit = settings.DEFAULT_UNIT
+    churn_receivables_unit = settings.DEFAULT_UNIT
     period_start = date_periods[0]
     for period_end in date_periods[1:]:
         delta = Plan.get_natural_period(1, organization.natural_interval)
@@ -153,31 +170,40 @@ def _aggregate_transactions_change_by_period(organization, account,
             "computes churn between periods ['%s', '%s'] and ['%s', '%s']",
             prev_period_start.isoformat(), prev_period_end.isoformat(),
             period_start.isoformat(), period_end.isoformat())
-        churn_query = RawQuery(
-"""SELECT COUNT(DISTINCT(prev.%(dest)s_organization_id)),
-          SUM(prev.%(dest)s_amount)
-       FROM saas_transaction prev
-       LEFT OUTER JOIN (
-         SELECT distinct(%(dest)s_organization_id)
-           FROM saas_transaction
-           WHERE created_at >= '%(period_start)s'
-         AND created_at < '%(period_end)s'
-         AND %(orig)s_organization_id = '%(organization_id)s'
-         AND %(orig)s_account = '%(account)s') curr
-         ON prev.%(dest)s_organization_id = curr.%(dest)s_organization_id
-       WHERE prev.created_at >= '%(prev_period_start)s'
-         AND prev.created_at < '%(prev_period_end)s'
-         AND prev.%(orig)s_organization_id = '%(organization_id)s'
-         AND prev.%(orig)s_account = '%(account)s'
-         AND curr.%(dest)s_organization_id IS NULL""" % {
-                "orig": orig, "dest": dest,
-                "prev_period_start": prev_period_start,
-                "prev_period_end": prev_period_end,
-                "period_start": period_start,
-                "period_end": period_end,
-                "organization_id": organization.id,
-                "account": account}, router.db_for_read(Transaction))
-        churn_customer, churn_receivable = next(iter(churn_query))
+        try:
+            churn_query = RawQuery(
+    """SELECT COUNT(DISTINCT(prev.%(dest)s_organization_id)),
+              SUM(prev.%(dest)s_amount),
+              prev.%(orig)s_unit
+           FROM saas_transaction prev
+           LEFT OUTER JOIN (
+             SELECT distinct(%(dest)s_organization_id), %(orig)s_unit
+               FROM saas_transaction
+               WHERE created_at >= '%(period_start)s'
+             AND created_at < '%(period_end)s'
+             AND %(orig)s_organization_id = '%(organization_id)s'
+             AND %(orig)s_account = '%(account)s'
+             ) curr
+             ON prev.%(dest)s_organization_id = curr.%(dest)s_organization_id
+           WHERE prev.created_at >= '%(prev_period_start)s'
+             AND prev.created_at < '%(prev_period_end)s'
+             AND prev.%(orig)s_organization_id = '%(organization_id)s'
+             AND prev.%(orig)s_account = '%(account)s'
+             AND curr.%(dest)s_organization_id IS NULL
+             GROUP BY prev.%(orig)s_unit
+             """ % {
+                    "orig": orig, "dest": dest,
+                    "prev_period_start": prev_period_start,
+                    "prev_period_end": prev_period_end,
+                    "period_start": period_start,
+                    "period_end": period_end,
+                    "organization_id": organization.id,
+                    "account": account}, router.db_for_read(Transaction))
+            churn_customer, churn_receivable, churn_receivable_unit = next(iter(churn_query))
+            churn_receivables_unit = churn_receivable_unit
+        except StopIteration:
+            churn_customer, churn_receivable, churn_receivable_unit = 0, 0, None
+
         # A bit ugly but it does the job ...
         if orig == 'orig':
             kwargs = {'orig_organization': organization,
@@ -185,46 +211,80 @@ def _aggregate_transactions_change_by_period(organization, account,
         else:
             kwargs = {'dest_organization': organization,
                       'dest_account': account}
+
+        customer = 0
+        receivable = 0
+        receivable_unit = None
         query_result = Transaction.objects.filter(
             created_at__gte=period_start,
-            created_at__lt=period_end, **kwargs).aggregate(
-            Count('%s_organization' % dest, distinct=True),
-            Sum('%s_amount' % dest))
-        customer = query_result['%s_organization__count' % dest]
-        receivable = query_result['%s_amount__sum' % dest]
-        new_query = RawQuery(
-"""SELECT count(distinct(curr.%(dest)s_organization_id)),
-          SUM(curr.%(dest)s_amount)
-   FROM saas_transaction curr
-       LEFT OUTER JOIN (
-         SELECT distinct(%(dest)s_organization_id)
-           FROM saas_transaction
-           WHERE created_at >= '%(prev_period_start)s'
-         AND created_at < '%(prev_period_end)s'
-         AND %(orig)s_organization_id = '%(organization_id)s'
-         AND %(orig)s_account = '%(account)s') prev
-         ON curr.%(dest)s_organization_id = prev.%(dest)s_organization_id
-       WHERE curr.created_at >= '%(period_start)s'
-         AND curr.created_at < '%(period_end)s'
-         AND curr.%(orig)s_organization_id = '%(organization_id)s'
-         AND curr.%(orig)s_account = '%(account)s'
-         AND prev.%(dest)s_organization_id IS NULL""" % {
-                "orig": orig, "dest": dest,
-                "prev_period_start": prev_period_start,
-                "prev_period_end": prev_period_end,
-                "period_start": period_start,
-                "period_end": period_end,
-                "organization_id": organization.id,
-                "account": account}, router.db_for_read(Transaction))
-        new_customer, new_receivable = next(iter(new_query))
+            created_at__lt=period_end, **kwargs).values('orig_unit').annotate(
+                count=Count('%s_organization' % dest, distinct=True),
+                sum=Sum('%s_amount' % dest))
+        if query_result:
+            customer = query_result[0]['count']
+            receivable = query_result[0]['sum']
+            receivable_unit = query_result[0]['orig_unit']
+            receivables_unit = receivable_unit
+
+        try:
+            new_query = RawQuery(
+    """SELECT count(distinct(curr.%(dest)s_organization_id)),
+              SUM(curr.%(dest)s_amount),
+              orig_unit
+       FROM saas_transaction curr
+           LEFT OUTER JOIN (
+             SELECT distinct(%(dest)s_organization_id)
+               FROM saas_transaction
+               WHERE created_at >= '%(prev_period_start)s'
+             AND created_at < '%(prev_period_end)s'
+             AND %(orig)s_organization_id = '%(organization_id)s'
+             AND %(orig)s_account = '%(account)s') prev
+             ON curr.%(dest)s_organization_id = prev.%(dest)s_organization_id
+           WHERE curr.created_at >= '%(period_start)s'
+             AND curr.created_at < '%(period_end)s'
+             AND curr.%(orig)s_organization_id = '%(organization_id)s'
+             AND curr.%(orig)s_account = '%(account)s'
+             AND prev.%(dest)s_organization_id IS NULL
+             GROUP BY orig_unit""" % {
+                    "orig": orig, "dest": dest,
+                    "prev_period_start": prev_period_start,
+                    "prev_period_end": prev_period_end,
+                    "period_start": period_start,
+                    "period_end": period_end,
+                    "organization_id": organization.id,
+                    "account": account}, router.db_for_read(Transaction))
+            new_customer, new_receivable, new_receivable_unit = next(iter(new_query))
+            new_receivables_unit = new_receivable_unit
+        except StopIteration:
+            new_customer, new_receivable, new_receivable_unit = 0, 0, None
         period = period_end
         churn_customers += [(period, churn_customer)]
-        churn_receivables += [(period, int(churn_receivable or 0))]
+        churn_receivables += [(period, int(churn_receivable or 0), churn_receivable_unit)]
         customers += [(period, customer)]
-        receivables += [(period, int(receivable or 0))]
+        receivables += [(period, int(receivable or 0), receivable_unit)]
         new_customers += [(period, new_customer)]
-        new_receivables += [(period, int(new_receivable or 0))]
+        new_receivables += [(period, int(new_receivable or 0), new_receivable_unit)]
         period_start = period_end
+
+    # plugging valid unit values for records that don't have a unit
+    for i, receivable in enumerate(receivables):
+        if not receivable[2]:
+            lst = list(receivable)
+            lst[2] = receivables_unit
+            receivables[i] = tuple(lst)
+
+    for i, churn_receivable in enumerate(churn_receivables):
+        if not churn_receivable[2]:
+            lst = list(churn_receivable)
+            lst[2] = churn_receivables_unit
+            churn_receivables[i] = tuple(lst)
+
+    for i, new_receivable in enumerate(new_receivables):
+        if not new_receivable[2]:
+            lst = list(new_receivable)
+            lst[2] = new_receivables_unit
+            new_receivables[i] = tuple(lst)
+
     return ((churn_customers, customers, new_customers),
             (churn_receivables, receivables, new_receivables))
 

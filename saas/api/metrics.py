@@ -246,14 +246,20 @@ class RevenueMetricAPIView(BeforeMixin, ProviderMixin, GenericAPIView):
         dates = convert_dates_to_utc(
             month_periods(12, self.ends_at, tz=self.timezone))
 
-        unit = settings.DEFAULT_UNIT
-
         # All amounts are in the customer currency.
         account_table, _, _ = \
             aggregate_transactions_change_by_period(self.provider,
                 Transaction.RECEIVABLE, account_title='Sales',
                 orig='orig', dest='dest',
                 date_periods=dates)
+
+        unit = account_table[0]['values'][0][2]
+
+        for subtable in account_table:
+            for i, value in enumerate(subtable['values']):
+                lst = list(value)
+                del lst[2]
+                subtable['values'][i] = tuple(lst)
 
         _, payment_amounts = aggregate_transactions_by_period(
             self.provider, Transaction.RECEIVABLE,
@@ -262,10 +268,20 @@ class RevenueMetricAPIView(BeforeMixin, ProviderMixin, GenericAPIView):
             orig_organization=self.provider,
             date_periods=dates)
 
+        for i, amount in enumerate(payment_amounts):
+            lst = list(amount)
+            del lst[2]
+            payment_amounts[i] = tuple(lst)
+
         _, refund_amounts = aggregate_transactions_by_period(
             self.provider, Transaction.REFUND,
             orig='dest', dest='dest',
             date_periods=dates)
+
+        for i, amount in enumerate(refund_amounts):
+            lst = list(amount)
+            del lst[2]
+            refund_amounts[i] = tuple(lst)
 
         account_table += [
             {"key": "Payments", "values": payment_amounts},
