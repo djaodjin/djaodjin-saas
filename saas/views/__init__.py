@@ -36,6 +36,7 @@ from django.db import IntegrityError, transaction
 from django.http.request import split_domain_port, validate_host
 from django.shortcuts import get_object_or_404
 from django.utils import six
+from django.utils.translation import ugettext_lazy as _
 from django.views.generic import RedirectView
 from django.views.generic.base import ContextMixin, TemplateResponseMixin
 from django.views.generic.edit import FormMixin, ProcessFormView
@@ -231,7 +232,7 @@ class OrganizationRedirectView(TemplateResponseMixin, ContextMixin,
                     LOGGER.warning("tried to implicitely create"\
                         " an organization that already exists.",
                         extra={'request': request})
-            raise http.Http404("No organizations are accessible by user.")
+            raise http.Http404(_("No organizations are accessible by user."))
         if count == 1 and not self.create_more:
             organization = accessibles.get()
             kwargs.update({self.slug_url_kwarg: accessibles.get()})

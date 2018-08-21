@@ -60,10 +60,12 @@ Edit the redirect_url and copy/paste the keys into your project settings.py
         }
     }
 """
+from __future__ import unicode_literals
 
 import datetime, logging, re
 
 from django.utils import six
+from django.utils.translation import ugettext_lazy as _
 import requests, stripe
 
 from .. import CardError, ProcessorError
@@ -120,7 +122,7 @@ class StripeBackend(object):
             # We generate Stripe data into the StripeConnect account.
             if not broker.processor_deposit_key:
                 raise ProcessorError(
-                    "%s is not connected to a Stripe Account." % broker)
+                    _("%s is not connected to a Stripe Account.") % broker)
             kwargs.update({'stripe_account': broker.processor_deposit_key})
         return kwargs
 
@@ -131,7 +133,7 @@ class StripeBackend(object):
             # We generate Stripe data into the StripeConnect account.
             if not provider.processor_deposit_key:
                 raise ProcessorError(
-                    "%s is not connected to a Stripe Account." % provider)
+                    _("%s is not connected to a Stripe Account.") % provider)
             kwargs.update({'stripe_account': provider.processor_deposit_key})
         return kwargs
 
@@ -245,7 +247,7 @@ class StripeBackend(object):
             # We generate Stripe data into the StripeConnect account.
             if not broker.processor_deposit_key:
                 raise ProcessorError(
-                    "%s is not connected to a Stripe Account." % broker)
+                    _("%s is not connected to a Stripe Account.") % broker)
             kwargs.update({'destination': broker.processor_deposit_key})
         if customer is not None:
             kwargs.update({'customer': customer})

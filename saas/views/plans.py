@@ -21,10 +21,12 @@
 # WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+from __future__ import unicode_literals
 
 from django import forms
 from django.contrib import messages
 from django.http import HttpResponseRedirect
+from django.utils.translation import ugettext_lazy as _
 from django.views.generic import CreateView, ListView, UpdateView
 from django.views.generic.detail import SingleObjectMixin
 from django.template.context_processors import csrf
@@ -164,7 +166,7 @@ djaodjin-saas/tree/master/saas/templates/saas/profile/plans.html>`__).
 
     def get_success_url(self):
         messages.success(
-            self.request, "Successfully created '%s' plan." % self.object)
+            self.request, _("Successfully created '%s' plan.") % self.object)
         return reverse('saas_metrics_plans', args=(self.organization,))
 
 
@@ -190,7 +192,7 @@ djaodjin-saas/tree/master/saas/templates/saas/profile/plans.html>`__).
 
     def get_success_url(self):
         messages.success(self.request,
-            "Successfully updated plan titled '%s'." % self.object.title)
+            _("Successfully updated plan titled '%s'.") % self.object.title)
         return reverse('saas_plan_edit', kwargs=self.get_url_kwargs())
 
     def get_context_data(self, **kwargs):

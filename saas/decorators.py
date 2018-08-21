@@ -29,6 +29,7 @@ also make security audits a lot easier.
 
 .. _django-urldecorators: https://github.com/mila/django-urldecorators
 """
+from __future__ import unicode_literals
 
 import logging
 
@@ -38,6 +39,7 @@ from django.contrib.auth import REDIRECT_FIELD_NAME
 from django.shortcuts import get_object_or_404
 from django.utils.decorators import available_attrs
 from django.utils import six
+from django.utils.translation import ugettext_lazy as _
 
 from . import settings
 from .compat import is_authenticated, reverse
@@ -592,8 +594,8 @@ def requires_paid_subscription(function=None,
                 Organization, slug=kwargs.get(organization_kwarg_slug, None))
             if _fail_provider(request, organization=subscriber,
                     strength=strength, roledescription=roledescription):
-                raise PermissionDenied("%(user)s is neither a manager '\
-' of %(organization)s nor a manager of one of %(organization)s providers."
+                raise PermissionDenied(_("%(user)s is neither a manager "\
+" of %(organization)s nor a manager of one of %(organization)s providers.")
                 % {'user': request.user, 'organization': subscriber})
             redirect_url = fail_paid_subscription(request,
                 organization=subscriber, plan=kwargs.get(plan_kwarg_slug, None))
@@ -629,8 +631,8 @@ def requires_direct(function=None, roledescription=None,
             if redirect_url:
                 return redirect_or_denied(request, redirect_url,
                     redirect_field_name=redirect_field_name,
-                    descr="%(user)s is not a direct manager '\
-' of %(organization)s." % {'user': request.user, 'organization': slug})
+                    descr=_("%(user)s is not a direct manager "\
+" of %(organization)s.") % {'user': request.user, 'organization': slug})
             return view_func(request, *args, **kwargs)
         return _wrapped_view
 
@@ -658,8 +660,8 @@ def requires_direct_weak(function=None, roledescription=None,
             if redirect_url:
                 return redirect_or_denied(request, redirect_url,
                     redirect_field_name=redirect_field_name,
-                    descr="%(user)s is not a direct manager '\
-' of %(organization)s." % {'user': request.user, 'organization': slug})
+                    descr=_("%(user)s is not a direct manager "\
+" of %(organization)s.") % {'user': request.user, 'organization': slug})
             return view_func(request, *args, **kwargs)
         return _wrapped_view
 
@@ -695,8 +697,8 @@ def requires_provider(function=None, roledescription=None,
             if redirect_url:
                 return redirect_or_denied(request, redirect_url,
                     redirect_field_name=redirect_field_name,
-                    descr="%(auth)s is neither a manager "\
-" for %(slug)s nor a manager of one of %(slug)s providers." % {
+                    descr=_("%(auth)s is neither a manager "\
+" for %(slug)s nor a manager of one of %(slug)s providers.") % {
     'auth': request.user,
     'slug': kwargs.get('charge', kwargs.get('organization', None))})
             return view_func(request, *args, **kwargs)
@@ -732,8 +734,8 @@ def requires_provider_weak(function=None, roledescription=None,
             if redirect_url:
                 return redirect_or_denied(request, redirect_url,
                     redirect_field_name=redirect_field_name,
-                    descr="%(auth)s is neither a manager "\
-" for %(slug)s nor a manager of one of %(slug)s providers." % {
+                    descr=_("%(auth)s is neither a manager "\
+" for %(slug)s nor a manager of one of %(slug)s providers.") % {
     'auth': request.user,
     'slug': kwargs.get('charge', kwargs.get('organization', None))})
             return view_func(request, *args, **kwargs)
@@ -769,8 +771,8 @@ def requires_provider_only(function=None, roledescription=None,
             if redirect_url:
                 return redirect_or_denied(request, redirect_url,
                     redirect_field_name=redirect_field_name,
-                    descr="%(auth)s has no direct relation to"\
-" a provider for %(slug)s." % {'auth': request.user,
+                    descr=_("%(auth)s has no direct relation to"\
+" a provider for %(slug)s.") % {'auth': request.user,
         'slug': kwargs.get('charge', kwargs.get('organization', None))})
             return view_func(request, *args, **kwargs)
         return _wrapped_view
@@ -803,8 +805,8 @@ def requires_provider_only_weak(function=None, roledescription=None,
             if redirect_url:
                 return redirect_or_denied(request, redirect_url,
                     redirect_field_name=redirect_field_name,
-                    descr="%(auth)s has no direct relation to"\
-" a provider for %(slug)s." % {'auth': request.user,
+                    descr=_("%(auth)s has no direct relation to"\
+" a provider for %(slug)s.") % {'auth': request.user,
         'slug': kwargs.get('charge', kwargs.get('organization', None))})
             return view_func(request, *args, **kwargs)
         return _wrapped_view
@@ -839,9 +841,9 @@ def requires_self_provider(function=None, roledescription=None,
             if redirect_url:
                 return redirect_or_denied(request, redirect_url,
                     redirect_field_name=redirect_field_name,
-                    descr="%(auth)s has neither a direct"\
+                    descr=_("%(auth)s has neither a direct"\
 " relation to an organization connected to %(user)s nor a connection to one"\
-"of the providers to such organization." % {
+"of the providers to such organization.") % {
     'auth': request.user, 'user': kwargs.get('user', None)})
             return view_func(request, *args, **kwargs)
         return _wrapped_view
@@ -874,9 +876,9 @@ def requires_self_provider_weak(function=None, roledescription=None,
             if redirect_url:
                 return redirect_or_denied(request, redirect_url,
                     redirect_field_name=redirect_field_name,
-                    descr="%(auth)s has neither a direct"\
+                    descr=_("%(auth)s has neither a direct"\
 " relation to an organization connected to %(user)s nor a connection to one"\
-"of the providers to such organization." % {
+"of the providers to such organization.") % {
     'auth': request.user, 'user': kwargs.get('user', None)})
             return view_func(request, *args, **kwargs)
         return _wrapped_view

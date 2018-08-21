@@ -227,14 +227,14 @@ class Organization(models.Model):
         help_text=_("Unique identifier shown in the URL bar."))
 
     created_at = models.DateTimeField(auto_now_add=True,
-        help_text=_("date/time of creation in ISO format"))
+        help_text=_("Date/time of creation in ISO format"))
     is_active = models.BooleanField(default=True)
     is_bulk_buyer = models.BooleanField(default=False,
-        help_text=mark_safe('Enable GroupBuy (<a href="/docs/#group-billing"'\
-' target="_blank">what is it?</a>)'))
+        help_text=mark_safe(_("Enable GroupBuy ("\
+        "<a href=\"/docs/#group-billing\" target=\"_blank\">what is it?</a>)")))
     is_provider = models.BooleanField(default=False,
         help_text=_("Can fulfill the provider side of a subscription."))
-    full_name = models.CharField(_('Organization name'),
+    full_name = models.CharField(_("Organization name"),
         max_length=100, blank=True)
     default_timezone = models.CharField(
         max_length=100, default=settings.TIME_ZONE)
@@ -246,9 +246,9 @@ class Organization(models.Model):
     phone = models.CharField(max_length=50)
     # contact by physical mail
     street_address = models.CharField(max_length=150)
-    locality = models.CharField(_('City/Town'), max_length=50)
-    region = models.CharField(_('State/Province/County'), max_length=50)
-    postal_code = models.CharField(_('Postal Code'), max_length=50)
+    locality = models.CharField(_("City/Town"), max_length=50)
+    region = models.CharField(_("State/Province/County"), max_length=50)
+    postal_code = models.CharField(_("Zip/Postal Code"), max_length=50)
     country = CountryField()
 
     # Payment Processing
@@ -265,7 +265,7 @@ class Organization(models.Model):
     billing_start = models.DateField(null=True, auto_now_add=True)
 
     funds_balance = models.PositiveIntegerField(default=0,
-        help_text="Funds escrowed in cents")
+        help_text=_("Funds escrowed in cents"))
     processor = models.ForeignKey(
         'Organization', null=True, blank=True, on_delete=models.SET_NULL,
         related_name='processes',)
@@ -1053,9 +1053,9 @@ class RoleDescription(models.Model):
     """
 
     created_at = models.DateTimeField(auto_now_add=True,
-        help_text=_("date/time of creation in ISO format"))
+        help_text=_("Date/time of creation in ISO format"))
     slug = models.SlugField(
-        help_text=_("unique identifier, typically used in URLs."))
+        help_text=_("Unique identifier, typically used in URLs."))
     organization = models.ForeignKey(
         Organization, null=True, on_delete=models.CASCADE,
         related_name="role_descriptions")
@@ -1254,7 +1254,7 @@ class ChargeManager(models.Manager):
         charge = None
         balances = sum_dest_amount(transactions)
         if len(balances) > 1:
-            raise ValueError("balances with multiple currency units (%s)" %
+            raise ValueError(_("balances with multiple currency units (%s)") %
                 str(balances))
         # `sum_dest_amount` guarentees at least one result.
         amount = balances[0]['amount']
@@ -1281,7 +1281,7 @@ class ChargeManager(models.Manager):
         created_at = datetime_or_now(created_at)
         balances = sum_dest_amount(transactions)
         if len(balances) > 1:
-            raise ValueError("balances with multiple currency units (%s)" %
+            raise ValueError(_("balances with multiple currency units (%s)") %
                 str(balances))
         # `sum_dest_amount` guarentees at least one result.
         amount = balances[0]['amount']
@@ -1315,8 +1315,8 @@ class ChargeManager(models.Manager):
                      token, amount, unit, broker=broker, descr=descr,
                      created_at=created_at)
             else:
-                raise ProcessorError("%s is not connected to a processor"
-                    " backend customer and no token passed." % customer)
+                raise ProcessorError(_("%s is not connected to a processor"
+                    " backend customer and no token passed.") % customer)
             # Create record of the charge in our database
             descr = humanize.DESCRIBE_CHARGED_CARD % {
                 'charge': processor_charge_id,
@@ -1380,29 +1380,30 @@ class Charge(models.Model):
     objects = ChargeManager()
 
     created_at = models.DateTimeField(
-        help_text="date/time of creation in ISO format")
+        help_text=_("date/time of creation in ISO format"))
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL, null=True, on_delete=models.PROTECT,
         db_column='user_id')
     amount = models.PositiveIntegerField(default=0,
-        help_text="total amount in cents (i.e. 100ths) of unit")
+        help_text=_("total amount in cents (i.e. 100ths) of unit"))
     unit = models.CharField(max_length=3, default=settings.DEFAULT_UNIT,
-        help_text="three-letter ISO 4217 code for currency unit (ex: usd)")
+        help_text=_("three-letter ISO 4217 code for currency unit (ex: usd)"))
     customer = models.ForeignKey(Organization, on_delete=models.PROTECT,
-        help_text='organization charged')
+        help_text=_("organization charged"))
     description = models.TextField(null=True,
-        help_text="description for the Charge as appears on billing statements")
+        help_text=_("description for the Charge as appears on billing"\
+            " statements"))
     last4 = models.PositiveSmallIntegerField(
-        help_text="last 4 digits of the credit card used")
+        help_text=_("last 4 digits of the credit card used"))
     exp_date = models.DateField(
-        help_text="expiration date of the credit card used")
+        help_text=_("expiration date of the credit card used"))
     card_name = models.CharField(max_length=50, null=True)
     processor = models.ForeignKey('Organization', on_delete=models.PROTECT,
         related_name='charges')
     processor_key = models.SlugField(unique=True, db_index=True)
     state = models.PositiveSmallIntegerField(
         choices=CHARGE_STATES, default=CREATED,
-        help_text="current state ('created', 'done', 'failed', 'disputed')")
+        help_text=_("current state ('created', 'done', 'failed', 'disputed')"))
     extra = settings.get_extra_field_class()(null=True)
 
     # XXX unique together paid and invoiced.
@@ -1444,7 +1445,7 @@ class Charge(models.Model):
         balances = sum_dest_amount(Transaction.objects.filter(
             invoiced_item__charge=self))
         if len(balances) > 1:
-            raise ValueError("balances with multiple currency units (%s)" %
+            raise ValueError(_("balances with multiple currency units (%s)") %
                 str(balances))
         # `sum_dest_amount` guarentees at least one result.
         amount = balances[0]['amount']
@@ -1501,7 +1502,7 @@ class Charge(models.Model):
         created_at = datetime_or_now()
         balances = sum_orig_amount(self.refunded)
         if len(balances) > 1:
-            raise ValueError("balances with multiple currency units (%s)" %
+            raise ValueError(_("balances with multiple currency units (%s)") %
                 str(balances))
         # `sum_orig_amount` guarentees at least one result.
         previously_refunded = balances[0]['amount']
@@ -1842,15 +1843,15 @@ class Charge(models.Model):
 
         balances = sum_orig_amount(self.refunded)
         if len(balances) > 1:
-            raise ValueError("balances with multiple currency units (%s)" %
+            raise ValueError(_("balances with multiple currency units (%s)") %
                 str(balances))
         # `sum_orig_amount` guarentees at least one result.
         previously_refunded = balances[0]['amount']
         refund_available = min(invoiced_item.dest_amount,
                                self.amount - previously_refunded)
         if refunded_amount > refund_available:
-            raise InsufficientFunds("Cannot refund %(refund_required)s"\
-" while there is only %(refund_available)s available on the line item."
+            raise InsufficientFunds(_("Cannot refund %(refund_required)s"\
+" while there is only %(refund_available)s available on the line item.")
 % {'refund_available': humanize.as_money(refund_available, self.unit),
    'refund_required': humanize.as_money(refunded_amount, self.unit)})
 
@@ -1924,17 +1925,17 @@ class ChargeItem(models.Model):
     # XXX could be a ``Subscription`` or a balance.
     invoiced = models.ForeignKey('Transaction', on_delete=models.PROTECT,
         related_name='invoiced_item',
-        help_text="transaction invoiced through this charge")
+        help_text=_("transaction invoiced through this charge"))
     invoiced_fee = models.ForeignKey('Transaction', null=True,
         on_delete=models.PROTECT,
         related_name='invoiced_fee_item',
-        help_text="fee transaction to process the transaction invoiced"\
-" through this charge")
+        help_text=_("fee transaction to process the transaction invoiced"\
+" through this charge"))
     invoiced_distribute = models.ForeignKey('Transaction', null=True,
         on_delete=models.PROTECT,
         related_name='invoiced_distribute',
-        help_text="transaction recording the distribution from processor"\
-" to provider.")
+        help_text=_("transaction recording the distribution from processor"\
+" to provider."))
 
     # 3rd party notification
     invoice_key = models.SlugField(db_index=True, null=True, blank=True)
@@ -2035,8 +2036,8 @@ class ChargeItem(models.Model):
 
         if refunded_distribute_amount > provider.funds_balance:
             raise InsufficientFunds(
-                '%(provider)s has %(funds_available)s of funds available.'\
-' %(funds_required)s are required to refund "%(descr)s"' % {
+                _("%(provider)s has %(funds_available)s of funds available."\
+" %(funds_required)s are required to refund \"%(descr)s\"") % {
     'provider': provider,
     'funds_available': humanize.as_money(provider.funds_balance, provider_unit),
     'funds_required': humanize.as_money(
@@ -2118,13 +2119,13 @@ class Coupon(models.Model):
 
     created_at = models.DateTimeField(auto_now_add=True,
         help_text=_("date/time of creation in ISO format"))
-    code = models.SlugField(help_text=_(
-        "unique identifier per provider, typically used in URLs"))
+    code = models.SlugField(
+        help_text=_("unique identifier per provider, typically used in URLs"))
     description = models.TextField(null=True, blank=True,
         help_text=_("free-form text description for the Coupon"))
     percent = models.PositiveSmallIntegerField(default=0,
         validators=[MaxValueValidator(100)],
-        help_text="percentage discounted")
+        help_text=_("percentage discounted"))
     # restrict use in scope
     organization = models.ForeignKey(Organization, on_delete=models.CASCADE,
         help_text=_("coupon will only apply to purchased plans"\
@@ -2136,7 +2137,7 @@ class Coupon(models.Model):
         help_text=_("date/time in ISO format at which the code expires"\
             " to purchase subscriptions"))
     nb_attempts = models.IntegerField(null=True, blank=True,
-        help_text="number of times the coupon can be used")
+        help_text=_("number of times the coupon can be used"))
     extra = settings.get_extra_field_class()(null=True)
 
     class Meta:
@@ -2434,7 +2435,7 @@ class Plan(SlugTitleMixin, models.Model):
         elif self.interval == self.YEARLY:
             pat = r'(\d+)(\s|-)year'
         else:
-            raise ValueError("period type %d is not defined."
+            raise ValueError(_("period type %d is not defined.")
                 % self.interval)
         look = re.search(pat, text)
         if look:
@@ -2782,7 +2783,7 @@ class Subscription(models.Model):
             estimated = relativedelta(years=estimated.years)
             period = relativedelta(years=1)
         else:
-            raise ValueError("period type %d is not defined."
+            raise ValueError(_("period type %d is not defined.")
                 % self.plan.interval)
         lower = self.created_at + estimated # rough estimate to start
         upper = self.created_at + (estimated + period)
@@ -3296,7 +3297,7 @@ class TransactionManager(models.Manager):
             self.get_invoiceables(subscription.organization).filter(
                 event_id=subscription.id))
         if len(balances) > 1:
-            raise ValueError("balances with multiple currency units (%s)" %
+            raise ValueError(_("balances with multiple currency units (%s)") %
                 str(balances))
         # `sum_dest_amount` guarentees at least one result.
         dest_amount = balances[0]['amount']
@@ -3711,24 +3712,24 @@ class Transaction(models.Model):
         help_text=_("date/time of creation in ISO format"))
 
     orig_account = models.CharField(max_length=255, default="unknown",
-        help_text=_('source account from which funds are withdrawn'))
+        help_text=_("source account from which funds are withdrawn"))
     orig_organization = models.ForeignKey(Organization,
         on_delete=models.PROTECT,
         related_name="outgoing",
-        help_text=_('source Organization from which funds are withdrawn'))
+        help_text=_("source Organization from which funds are withdrawn"))
     orig_amount = models.PositiveIntegerField(default=0,
-        help_text=_('amount withdrawn from source in orig_unit'))
+        help_text=_("amount withdrawn from source in orig_unit"))
     orig_unit = models.CharField(max_length=3, default=settings.DEFAULT_UNIT,
         help_text=_("three-letter ISO 4217 code for source currency unit"\
             " (ex: usd)"))
     dest_account = models.CharField(max_length=255, default="unknown",
-        help_text=_('target account to which funds are deposited'))
+        help_text=_("target account to which funds are deposited"))
     dest_organization = models.ForeignKey(Organization,
         on_delete=models.PROTECT,
         related_name="incoming",
-        help_text=_('target Organization to which funds are deposited'))
+        help_text=_("target Organization to which funds are deposited"))
     dest_amount = models.PositiveIntegerField(default=0,
-        help_text=_('amount deposited into target in dest_unit'))
+        help_text=_("amount deposited into target in dest_unit"))
     dest_unit = models.CharField(max_length=3, default=settings.DEFAULT_UNIT,
         help_text=_("three-letter ISO 4217 code for target currency unit"\
             " (ex: usd)"))
@@ -3876,7 +3877,7 @@ def sum_balance_amount(dest_balances, orig_balances):
                 'created_at': created_at # XXX OK to use max of all?
             }]
     if len(balances) > 1:
-        raise ValueError("balances with multiple currency units (%s)" %
+        raise ValueError(_("balances with multiple currency units (%s)") %
             str(balances))
     if balances:
         return balances[0]

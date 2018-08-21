@@ -26,29 +26,29 @@ from django.dispatch import Signal
 
 #pylint: disable=invalid-name
 organization_updated = Signal(providing_args=[
-    "organization", "changes", "user"])
-plan_created = Signal(providing_args=["plan"])
-plan_updated = Signal(providing_args=["plan"])
-bank_updated = Signal(providing_args=["organization", "user"])
+    'organization', 'changes', 'user'])
+plan_created = Signal(providing_args=['plan'])
+plan_updated = Signal(providing_args=['plan'])
+bank_updated = Signal(providing_args=['organization', 'user'])
 card_updated = Signal(
-    providing_args=["organization", "user", "old_card", "new_card"])
-charge_updated = Signal(providing_args=["charge", "user"])
-order_executed = Signal(providing_args=["invoiced_items", "user"])
+    providing_args=['organization', 'user', 'old_card', 'new_card'])
+charge_updated = Signal(providing_args=['charge', 'user'])
+order_executed = Signal(providing_args=['invoiced_items', 'user'])
 claim_code_generated = Signal(providing_args=[
-    "subscriber", "claim_code", "user"])
-expires_soon = Signal(providing_args=["subscription", "nb_days"])
-user_relation_added = Signal(providing_args=["role", "reason"])
+    'subscriber', 'claim_code', 'user'])
+expires_soon = Signal(providing_args=['subscription', 'nb_days'])
+user_relation_added = Signal(providing_args=['role', 'reason'])
 user_relation_requested = Signal(providing_args=[
-    "organization", "user", "reason"])
+    'organization', 'user', 'reason'])
 role_grant_accepted = Signal(providing_args=[
-    "role", "grant_key"])
+    'role', 'grant_key'])
 subscription_grant_accepted = Signal(providing_args=[
-    "subscription", "grant_key"])
+    'subscription', 'grant_key'])
 subscription_grant_created = Signal(providing_args=[
-    "subscription", "reason", "invite"])
+    'subscription', 'reason', 'invite'])
 subscription_request_accepted = Signal(providing_args=[
-    "subscription", "request_key"])
+    'subscription', 'request_key'])
 subscription_request_created = Signal(providing_args=[
-    "subscription", "reason"])
+    'subscription', 'reason'])
 weekly_sales_report_created = Signal(providing_args=[
-    "provider", "dates", "data"])
+    'provider', 'dates', 'data'])

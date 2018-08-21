@@ -21,11 +21,13 @@
 # WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+from __future__ import unicode_literals
 
 from collections import OrderedDict
 
 import dateutil
 from django.db.models import Q
+from django.utils.translation import ugettext_lazy as _
 from extra_views.contrib.mixins import SearchableListMixin, SortableListMixin
 from rest_framework import status
 from rest_framework.exceptions import ValidationError
@@ -92,7 +94,7 @@ class TotalAnnotateMixin(object):
         queryset = super(TotalAnnotateMixin, self).get_queryset()
         balances = sum_orig_amount(queryset)
         if len(balances) > 1:
-            raise ValueError("balances with multiple currency units (%s)" %
+            raise ValueError(_("balances with multiple currency units (%s)") %
                 str(balances))
         # `sum_orig_amount` guarentees at least one result.
         self.totals = balances[0]
@@ -394,9 +396,9 @@ class TransferListAPIView(SmartTransactionListMixin, TransferQuerysetMixin,
             return super(TransferListAPIView, self).list(
                 request, *args, **kwargs)
         except ProcessorError as err:
-            raise ValidationError({'detail': "The latest transfers might"\
+            raise ValidationError({'detail': _("The latest transfers might"\
                 " not be shown because there was an error with the backend"\
-                " processor (ie. %s)." % str(err)})
+                " processor (ie. %s).") % str(err)})
 
 
 class StatementBalanceAPIView(OrganizationMixin, APIView):

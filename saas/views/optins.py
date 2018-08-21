@@ -21,10 +21,12 @@
 # WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+from __future__ import unicode_literals
 
 import logging
 
 from django.contrib import messages
+from django.utils.translation import ugettext_lazy as _
 from django.views.generic.base import RedirectView
 from rest_framework.generics import get_object_or_404
 
@@ -98,8 +100,8 @@ class SubscriptionGrantAcceptView(SubscriptionMixin, RedirectView):
                 'grant_key': grant_key})
         signals.subscription_grant_accepted.send(sender=__name__,
             subscription=obj, grant_key=grant_key, request=request)
-        messages.success(request,
-            "Request from %s accepted." % obj.plan.organization.printable_name)
+        messages.success(request, _("Request from %s accepted.")
+            % obj.plan.organization.printable_name)
         return super(SubscriptionGrantAcceptView, self).get(
             request, *args, organization=kwargs.get('organization'))
 
@@ -133,7 +135,7 @@ class SubscriptionRequestAcceptView(SubscriptionMixin, RedirectView):
                 'request_key': request_key})
         signals.subscription_request_accepted.send(sender=__name__,
             subscription=obj, request_key=request_key, request=request)
-        messages.success(request,
-            "Request from %s accepted." % obj.plan.organization.printable_name)
+        messages.success(request, _("Request from %s accepted.")
+            % obj.plan.organization.printable_name)
         return super(SubscriptionRequestAcceptView, self).get(
             request, *args, organization=kwargs.get('organization'))

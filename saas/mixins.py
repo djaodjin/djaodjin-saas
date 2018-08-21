@@ -21,6 +21,7 @@
 # WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+from __future__ import unicode_literals
 
 import re
 
@@ -29,6 +30,7 @@ from django.contrib.auth import get_user_model
 from django.db.models import Q
 from django.http import Http404
 from django.template.defaultfilters import slugify
+from django.utils.translation import ugettext_lazy as _
 from django.views.generic.detail import SingleObjectMixin
 from extra_views.contrib.mixins import SearchableListMixin, SortableListMixin
 from rest_framework.generics import get_object_or_404
@@ -201,7 +203,7 @@ class CartMixin(object):
         if first_periods_amount == 0:
             # We are having a freemium business models, no discounts.
             if not descr_suffix:
-                descr_suffix = "free"
+                descr_suffix = _("free")
             option_items += [Transaction.objects.new_subscription_order(
                 subscription, 1, prorated_amount, created_at,
                 discount_percent=discount_percent,
@@ -399,7 +401,7 @@ class UserMixin(object):
 
     @property
     def user(self):
-        if not hasattr(self, "_user"):
+        if not hasattr(self, '_user'):
             self._user = None
             username = self.kwargs.get(self.user_url_kwarg, None)
             if username:
@@ -433,7 +435,7 @@ class UserMixin(object):
                 # XXX Always add link to "More..." so a user can request access.
                 top_accessibles += [{
                     'slug': None,
-                    'printable_name': "More ...",
+                    'printable_name': _("More ..."),
                     'location': reverse(
                         'saas_user_product_list', args=(self.user,))}]
             context.update({'top_accessibles': top_accessibles})
@@ -844,7 +846,7 @@ class RoleDescriptionMixin(OrganizationMixin):
                 self._role_description = self.organization.get_role_description(
                     self.kwargs.get('role'))
             except RoleDescription.DoesNotExist:
-                raise Http404("RoleDescription '%s' does not exist."
+                raise Http404(_("RoleDescription '%s' does not exist.")
                     % self.kwargs.get('role'))
         return self._role_description
 
@@ -859,7 +861,7 @@ class RoleMixin(RoleDescriptionMixin):
 
     @property
     def user(self):
-        if not hasattr(self, "_user"):
+        if not hasattr(self, '_user'):
             self._user = get_object_or_404(get_user_model().objects.all(),
                 username=self.kwargs.get(self.user_url_kwarg))
         return self._user

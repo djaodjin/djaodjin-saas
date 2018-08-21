@@ -25,6 +25,7 @@
 """
 Forms shown by the saas application
 """
+from __future__ import unicode_literals
 
 from decimal import Decimal
 
@@ -59,7 +60,7 @@ class PostalFormMixin(object):
     def add_postal_country(self, field_name='country', required=True):
         self.fields[field_name] = forms.CharField(
             widget=forms.widgets.Select(choices=countries),
-            label='Country', required=required)
+            label=_("Country"), required=required)
 
     def add_postal_region(self, field_name='region',
                           country=None, required=True):
@@ -70,8 +71,8 @@ class PostalFormMixin(object):
         if field_name in self.fields:
             self.fields[field_name].widget = widget()
         else:
-            self.fields[field_name] = forms.CharField(
-                widget=widget, label='State/Province/County', required=required)
+            self.fields[field_name] = forms.CharField(widget=widget,
+                label=_("State/Province/County"), required=required)
 
 
 
@@ -89,14 +90,14 @@ class CreditCardForm(PostalFormMixin, forms.Form):
         super(CreditCardForm, self).__init__(*args, **kwargs)
         #define other fields dynamically:
         self.fields['card_name'] = forms.CharField(
-            label='Card Holder', required=False)
+            label=_("Card Holder"), required=False)
         self.fields['card_city'] = forms.CharField(
-            label='City', required=False)
+            label=_("City"), required=False)
         self.fields['card_address_line1'] = forms.CharField(
-            label='Street', required=False)
+            label=_("Street"), required=False)
         self.add_postal_region(country=self.initial['country'], required=False)
         self.fields['card_address_zip'] = forms.CharField(
-            label='Zip/Postal Code', required=False)
+            label=_("Zip/Postal Code"), required=False)
         self.add_postal_country(required=False)
         for item in self.initial:
             if item.startswith('cart-'):
@@ -120,7 +121,7 @@ class VTChargeForm(CreditCardForm):
         try:
             self.cleaned_data['amount'] = int(Decimal(amount) * 100)
         except (TypeError, ValueError) as err:
-            raise forms.ValidationError("'%s' is an invalid amount (%s)"
+            raise forms.ValidationError(_("'%s' is an invalid amount (%s)")
                 % (amount, err))
         return self.cleaned_data['amount']
 
@@ -145,7 +146,7 @@ class ImportTransactionForm(forms.Form):
         parts = self.cleaned_data['subscription'].split(Subscription.SEP)
         if len(parts) != 2:
             raise forms.ValidationError(
-                "subscription should be of the form subscriber:plan")
+                _("subscription should be of the form subscriber:plan"))
         return self.cleaned_data['subscription']
 
     def clean_amount(self):
@@ -153,7 +154,7 @@ class ImportTransactionForm(forms.Form):
         try:
             self.cleaned_data['amount'] = int(Decimal(amount) * 100)
         except (TypeError, ValueError):
-            raise forms.ValidationError("invalid amount")
+            raise forms.ValidationError(_("invalid amount"))
         return self.cleaned_data['amount']
 
 
@@ -192,8 +193,8 @@ class OrganizationForm(PostalFormMixin, forms.ModelForm):
                 initial = self.instance.is_bulk_buyer
             self.fields['is_bulk_buyer'] = forms.BooleanField(required=False,
                 initial=initial,
-                label=mark_safe('Enable GroupBuy '\
-'(<a href="/docs/#group-billing" target="_blank">what is it?</a>)'))
+                label=mark_safe(_("Enable GroupBuy "\
+"(<a href=\"/docs/#group-billing\" target=\"_blank\">what is it?</a>)")))
         if 'extra' in self.initial:
             initial = self.initial['extra']
             if self.instance:
@@ -205,7 +206,7 @@ class OrganizationForm(PostalFormMixin, forms.ModelForm):
 
 class OrganizationCreateForm(OrganizationForm):
 
-    slug = forms.SlugField(label="ShortID",
+    slug = forms.SlugField(label=_("ShortID"),
         help_text=_("Unique identifier shown in the URL bar."))
 
     class Meta:
@@ -226,7 +227,7 @@ class PlanForm(forms.ModelForm):
     """
     Form to create or update a ``Plan``.
     """
-    submit_title = 'Update'
+    submit_title = _("Update")
 
     unit = forms.ChoiceField(choices=(
         ('usd', 'usd'), ('cad', 'cad'), ('eur', 'eur')))
@@ -239,22 +240,23 @@ class PlanForm(forms.ModelForm):
                   'period_length', 'advance_discount',
                   'auto_renew', 'is_not_priced')
 
-    def __init__(self, initial=None, instance=None, *args, **kwargs):
+    def __init__(self, *args, **kwargs):
+        initial = kwargs.get('initial', None)
         if initial:
             period_amount = initial.get('period_amount', 0)
             advance_discount = initial.get('advance_discount', 0)
+        instance = kwargs.get('instance', None)
         if instance:
             period_amount = instance.period_amount
             advance_discount = instance.advance_discount
         else:
-            self.submit_title = 'Create'
+            self.submit_title = _("Create")
         period_amount = Decimal(period_amount).scaleb(-2)
         advance_discount = Decimal(advance_discount).scaleb(-2)
         initial.update({
             'period_amount':period_amount,
             'advance_discount': advance_discount})
-        super(PlanForm, self).__init__(
-            initial=initial, instance=instance, *args, **kwargs)
+        super(PlanForm, self).__init__(*args, **kwargs)
 
     def clean_advance_discount(self):
         try:
@@ -297,9 +299,9 @@ class RedeemCouponForm(forms.Form):
     """
     Form used to redeem a coupon.
     """
-    submit_title = 'Redeem'
+    submit_title = _("Redeem")
 
-    code = forms.CharField(label="Registration code")
+    code = forms.CharField(label=_("Registration code"))
 
 
 class UserRelationForm(forms.Form):
@@ -313,5 +315,5 @@ class WithdrawForm(BankForm):
     """
     Withdraw amount from ``Funds`` to a bank account
     """
-    submit_title = 'Withdraw'
-    amount = forms.DecimalField(label="Amount (in $)", required=False)
+    submit_title = _("Withdraw")
+    amount = forms.DecimalField(label=_("Amount (in $)"), required=False)

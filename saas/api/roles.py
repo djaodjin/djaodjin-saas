@@ -84,7 +84,7 @@ def _create_user(username, email=None, first_name="", last_name=""):
 class ForceSerializer(NoModelSerializer):
 
     force = serializers.BooleanField(required=False,
-        help_text="Invite if not registered.")
+        help_text=_("Invite if not registered."))
 
 
 class OrganizationRoleCreateSerializer(NoModelSerializer):
@@ -92,7 +92,7 @@ class OrganizationRoleCreateSerializer(NoModelSerializer):
 
     slug = serializers.CharField(required=False, validators=[
         validators.RegexValidator(settings.ACCT_REGEX,
-            _('Enter a valid organization slug.'), 'invalid')])
+            _("Enter a valid organization slug."), 'invalid')])
     email = serializers.EmailField(required=False)
     message = serializers.CharField(max_length=255, required=False)
 
@@ -102,7 +102,7 @@ class UserRoleCreateSerializer(serializers.Serializer):
 
     slug = serializers.CharField(validators=[
         validators.RegexValidator(settings.ACCT_REGEX,
-            _('Enter a valid username.'), 'invalid')])
+            _("Enter a valid username."), 'invalid')])
     email = serializers.EmailField(
         max_length=get_user_model()._meta.get_field('email').max_length,
         required=False)
@@ -190,7 +190,7 @@ class OptinBase(object):
         with transaction.atomic():
             if organizations.count() == 0:
                 if not request.GET.get('force', False):
-                    raise Http404("%s not found" % slug)
+                    raise Http404(_("%s not found") % slug)
                 email = serializer.validated_data.get('email',
                     organization_data.get('email', None))
                 full_name = serializer.validated_data.get('full_name',
