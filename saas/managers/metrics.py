@@ -114,13 +114,13 @@ def aggregate_transactions_by_period(organization, account, date_periods,
     counts = []
     amounts = []
     period_start = date_periods[0]
-    valid_unit = settings.DEFAULT_UNIT
+    unit = None
     for period_end in date_periods[1:]:
         # A bit ugly but it does the job ...
         kwargs.update({'%s_organization' % orig: organization,
             '%s_account' % orig: account})
 
-        count, amount, unit = 0, 0, None
+        count, amount, _unit = 0, 0, None
         query_result = Transaction.objects.filter(
             created_at__gte=period_start,
             created_at__lt=period_end, **kwargs).values('orig_unit').annotate(
@@ -129,20 +129,15 @@ def aggregate_transactions_by_period(organization, account, date_periods,
         if query_result:
             count = query_result[0]['count']
             amount = query_result[0]['sum']
-            unit = query_result[0]['orig_unit']
-            valid_unit = unit
+            _unit = query_result[0]['orig_unit']
+            if _unit:
+                unit = _unit
         period = period_end
         counts += [(period, count)]
-        amounts += [(period, int(amount or 0), unit)]
+        amounts += [(period, int(amount or 0))]
         period_start = period_end
 
-    for i, amount in enumerate(amounts):
-        if not amount[2]:
-            lst = list(amount)
-            lst[2] = valid_unit
-            amounts[i] = tuple(lst)
-
-    return (counts, amounts)
+    return (counts, amounts, unit)
 
 
 def _aggregate_transactions_change_by_period(organization, account,
@@ -157,9 +152,7 @@ def _aggregate_transactions_change_by_period(organization, account,
     new_receivables = []
     churn_customers = []
     churn_receivables = []
-    receivables_unit = settings.DEFAULT_UNIT
-    new_receivables_unit = settings.DEFAULT_UNIT
-    churn_receivables_unit = settings.DEFAULT_UNIT
+    unit = None
     period_start = date_periods[0]
     for period_end in date_periods[1:]:
         delta = Plan.get_natural_period(1, organization.natural_interval)
@@ -200,7 +193,8 @@ def _aggregate_transactions_change_by_period(organization, account,
                     "organization_id": organization.id,
                     "account": account}, router.db_for_read(Transaction))
             churn_customer, churn_receivable, churn_receivable_unit = next(iter(churn_query))
-            churn_receivables_unit = churn_receivable_unit
+            if churn_receivable_unit:
+                unit = churn_receivable_unit
         except StopIteration:
             churn_customer, churn_receivable, churn_receivable_unit = 0, 0, None
 
@@ -224,7 +218,8 @@ def _aggregate_transactions_change_by_period(organization, account,
             customer = query_result[0]['count']
             receivable = query_result[0]['sum']
             receivable_unit = query_result[0]['orig_unit']
-            receivables_unit = receivable_unit
+            if receivable_unit:
+                unit = receivable_unit
 
         try:
             new_query = RawQuery(
@@ -254,39 +249,27 @@ def _aggregate_transactions_change_by_period(organization, account,
                     "organization_id": organization.id,
                     "account": account}, router.db_for_read(Transaction))
             new_customer, new_receivable, new_receivable_unit = next(iter(new_query))
-            new_receivables_unit = new_receivable_unit
+            if new_receivable_unit:
+                unit = new_receivable_unit
         except StopIteration:
             new_customer, new_receivable, new_receivable_unit = 0, 0, None
+
+        units = get_different_units(churn_receivable_unit,
+            receivable_unit, new_receivable_unit)
+        if units:
+            LOGGER.error("different units: %s", units)
+
         period = period_end
         churn_customers += [(period, churn_customer)]
-        churn_receivables += [(period, int(churn_receivable or 0), churn_receivable_unit)]
+        churn_receivables += [(period, int(churn_receivable or 0))]
         customers += [(period, customer)]
-        receivables += [(period, int(receivable or 0), receivable_unit)]
+        receivables += [(period, int(receivable or 0))]
         new_customers += [(period, new_customer)]
-        new_receivables += [(period, int(new_receivable or 0), new_receivable_unit)]
+        new_receivables += [(period, int(new_receivable or 0))]
         period_start = period_end
 
-    # plugging valid unit values for records that don't have a unit
-    for i, receivable in enumerate(receivables):
-        if not receivable[2]:
-            lst = list(receivable)
-            lst[2] = receivables_unit
-            receivables[i] = tuple(lst)
-
-    for i, churn_receivable in enumerate(churn_receivables):
-        if not churn_receivable[2]:
-            lst = list(churn_receivable)
-            lst[2] = churn_receivables_unit
-            churn_receivables[i] = tuple(lst)
-
-    for i, new_receivable in enumerate(new_receivables):
-        if not new_receivable[2]:
-            lst = list(new_receivable)
-            lst[2] = new_receivables_unit
-            new_receivables[i] = tuple(lst)
-
     return ((churn_customers, customers, new_customers),
-            (churn_receivables, receivables, new_receivables))
+            (churn_receivables, receivables, new_receivables), unit)
 
 
 def aggregate_transactions_change_by_period(organization, account, date_periods,
@@ -298,7 +281,7 @@ def aggregate_transactions_change_by_period(organization, account, date_periods,
     #pylint: disable=too-many-locals,too-many-arguments,invalid-name
     if not account_title:
         account_title = str(account)
-    customers, account_totals = _aggregate_transactions_change_by_period(
+    customers, account_totals, unit = _aggregate_transactions_change_by_period(
         organization, account, date_periods=date_periods, orig=orig, dest=dest)
     churned_custs, total_custs, new_custs = customers
     churned_account, total_account, new_account = account_totals
@@ -343,7 +326,7 @@ def aggregate_transactions_change_by_period(organization, account, date_periods,
                        "values": cust_churn_percent
                        },
                       ]
-    return account_table, customer_table, customer_extra
+    return account_table, customer_table, customer_extra, unit
 
 
 def active_subscribers(plan, from_date=None, tz=None):
@@ -402,3 +385,10 @@ def churn_subscribers(plan=None, from_date=None, tz=None):
             start_period, end_period, **kwargs).count()])
         start_period = end_period
     return values
+
+def get_different_units(*args):
+    # removing None values
+    units = {_unit for _unit in args if _unit is not None}
+    # if elements are not identical
+    if len(units) > 1:
+        return units

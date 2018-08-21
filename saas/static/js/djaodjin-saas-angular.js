@@ -18,7 +18,7 @@ angular.module("saasFilters", [])
     .filter('unsafe', function($sce) {
       return function(val) {
         return $sce.trustAsHtml(val);
-      };
+      }
     }).filter("monthHeading", function() {
         "use strict";
 
@@ -121,6 +121,22 @@ couponServices.factory("Coupon", ["$resource", "settings",
              update: {method: "PUT", isArray: false}});
   }]);
 
+/*=============================================================================
+  Helpers
+  ============================================================================*/
+
+function currencyToSymbol(currency) {
+    if(currency){
+        return new Intl.NumberFormat('en-US', {
+            style: 'currency',
+            currency: currency,
+            useGrouping: false,
+            minimumFractionDigits: 0,
+            maximumFractionDigits: 0
+        }).format(1).replace('1', '')
+    }
+    return '';
+}
 
 //=============================================================================
 // Controllers
@@ -1062,7 +1078,7 @@ metricsControllers.controller("metricsCtrl",
             // add "extra" rows at the end
             var extra = resp.data.extra || [];
 
-            queryset.unit = unit;
+            queryset.unit = currencyToSymbol(unit);
             queryset.scale = scale;
             queryset.data = resp.data.table;
             convertDatetime(queryset.data, $scope.timezone === 'utc');
