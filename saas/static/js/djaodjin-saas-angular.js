@@ -38,6 +38,20 @@ angular.module("saasFilters", [])
     .filter("humanizeCell", function(currencyFilter, numberFilter) {
         "use strict";
 
+        function currencyToSymbol(currency) {
+            if(currency){
+                return new Intl.NumberFormat('en-US', {
+                    style: 'currency',
+                    currency: currency,
+                    useGrouping: false,
+                    minimumFractionDigits: 0,
+                    maximumFractionDigits: 0
+                }).format(1).replace('1', '')
+            }
+            return '';
+        }
+
+
         return function(cell, unit, scale, abbreviate) {
             if(typeof abbreviate === "undefined"){
                 abbreviate = true;
@@ -45,8 +59,8 @@ angular.module("saasFilters", [])
             scale = scale || 1;
             var value = cell * scale;
             if(unit) {
-                if( unit === 'usd' ) { unit = '$' }
-                return currencyFilter(value, unit, 2);
+                var symbol = currencyToSymbol(unit)
+                return currencyFilter(value, symbol, 2);
             }
             return numberFilter(value);
         };
@@ -120,23 +134,6 @@ couponServices.factory("Coupon", ["$resource", "settings",
              create: {method: "POST"},
              update: {method: "PUT", isArray: false}});
   }]);
-
-/*=============================================================================
-  Helpers
-  ============================================================================*/
-
-function currencyToSymbol(currency) {
-    if(currency){
-        return new Intl.NumberFormat('en-US', {
-            style: 'currency',
-            currency: currency,
-            useGrouping: false,
-            minimumFractionDigits: 0,
-            maximumFractionDigits: 0
-        }).format(1).replace('1', '')
-    }
-    return '';
-}
 
 //=============================================================================
 // Controllers
@@ -1078,7 +1075,7 @@ metricsControllers.controller("metricsCtrl",
             // add "extra" rows at the end
             var extra = resp.data.extra || [];
 
-            queryset.unit = currencyToSymbol(unit);
+            queryset.unit = unit;
             queryset.scale = scale;
             queryset.data = resp.data.table;
             convertDatetime(queryset.data, $scope.timezone === 'utc');

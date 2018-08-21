@@ -33,7 +33,6 @@ from django.utils import six
 
 from ..models import Plan, Subscription, Transaction
 from ..utils import datetime_or_now, parse_tz, convert_dates_to_utc
-from .. import settings
 
 LOGGER = logging.getLogger(__name__)
 
