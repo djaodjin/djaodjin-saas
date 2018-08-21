@@ -35,10 +35,10 @@ angular.module("saasFilters", [])
             return d.clone().subtract(1, 'months').format("MMM'YY");
         };
     })
-    .filter("humanizeCell", function(currencyFilter, numberFilter) {
+    .filter("currencyToSymbol", function() {
         "use strict";
 
-        function currencyToSymbol(currency) {
+        return function(currency) {
             if(currency){
                 return new Intl.NumberFormat('en-US', {
                     style: 'currency',
@@ -50,7 +50,9 @@ angular.module("saasFilters", [])
             }
             return '';
         }
-
+    })
+    .filter("humanizeCell", function(currencyFilter, numberFilter, currencyToSymbolFilter) {
+        "use strict";
 
         return function(cell, unit, scale, abbreviate) {
             if(typeof abbreviate === "undefined"){
@@ -59,7 +61,7 @@ angular.module("saasFilters", [])
             scale = scale || 1;
             var value = cell * scale;
             if(unit) {
-                var symbol = currencyToSymbol(unit)
+                var symbol = currencyToSymbolFilter(unit)
                 return currencyFilter(value, symbol, 2);
             }
             return numberFilter(value);
