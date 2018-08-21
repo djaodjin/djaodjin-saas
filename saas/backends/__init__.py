@@ -61,11 +61,11 @@ class CardError(ProcessorError):
 
     def __str__(self):
         if self.code == 'card_declined':
-            return _("Your card was declined. We are taking your security"\
+            return str(_("Your card was declined. We are taking your security"\
 " seriously. When we submit a charge to your bank, they have automated"\
 " systems that determine whether or not to accept the charge. Check you"\
 " entered the card  number, expiration date, CVC and address correctly."\
-" If problems persist, please contact your bank.")
+" If problems persist, please contact your bank."))
         return super(CardError, self).__str__()
 
 
