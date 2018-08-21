@@ -450,7 +450,7 @@ class CustomerMetricAPIView(BeforeMixin, ProviderMixin, GenericAPIView):
 
         dates = convert_dates_to_utc(
             month_periods(12, self.ends_at, tz=self.timezone))
-        _, customer_table, customer_extra = \
+        _, customer_table, customer_extra, unit = \
             aggregate_transactions_change_by_period(self.provider, account,
                 account_title=account_title,
                 date_periods=dates)

@@ -1123,7 +1123,7 @@ metricsControllers.controller("metricsCtrl",
         }
     });
 
-    $scope.refreshTable();
+    $scope.prefetch();
 
 }]);
 
