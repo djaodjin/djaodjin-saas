@@ -3787,7 +3787,7 @@ class BalanceLine(models.Model):
     """
     report = models.SlugField()
     title = models.CharField(max_length=255)
-    selector = models.CharField(max_length=255)
+    selector = models.CharField(max_length=255, blank=True)
     is_positive = models.BooleanField(default=False)
     rank = models.IntegerField()
     moved = models.BooleanField(default=False)
