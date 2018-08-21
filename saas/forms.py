@@ -121,8 +121,9 @@ class VTChargeForm(CreditCardForm):
         try:
             self.cleaned_data['amount'] = int(Decimal(amount) * 100)
         except (TypeError, ValueError) as err:
-            raise forms.ValidationError(_("'%s' is an invalid amount (%s)")
-                % (amount, err))
+            raise forms.ValidationError(
+                _("'%(amount)s' is an invalid amount (%(err)s)") % {
+                    'amount': amount, 'err': err})
         return self.cleaned_data['amount']
 
 

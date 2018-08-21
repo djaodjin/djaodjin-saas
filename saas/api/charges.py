@@ -267,8 +267,9 @@ class ChargeRefundAPIView(RetrieveChargeMixin, CreateAPIView):
                             refunded_amount=int(line.get('refunded_amount', 0)),
                             user=request.user)
                     except ValueError:
-                        raise Http404(_("Unable to retrieve line '%s' in %s")
-                            % (line, self.object))
+                        raise Http404(
+                         _("Unable to retrieve line '%(lineno)s' in %(charge)s")
+                            % {'lineno': line, 'charge': self.object})
             except InsufficientFunds as insufficient_funds_err:
                 return Response({"detail": str(insufficient_funds_err)},
                     status=status.HTTP_405_METHOD_NOT_ALLOWED)

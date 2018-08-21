@@ -68,9 +68,10 @@ class EnumField(serializers.Field):
         if result is None:
             if not data:
                 raise ValidationError(_("This field cannot be blank."))
-            raise ValidationError(
-                _("'%s' is not a valid choice. Expected one of %s.") % (
-                data, [choice for choice in six.itervalues(self.choices)]))
+            raise ValidationError(_("'%(data)s' is not a valid choice."\
+                " Expected one of %(choices)s.") % {
+                    'data': data, 'choices': [
+                        choice for choice in six.itervalues(self.choices)]})
         return result
 
 
