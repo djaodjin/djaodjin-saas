@@ -81,10 +81,10 @@ class BrokerBalancesAPIView(DateRangeMixin, GenericAPIView):
                 balances_func = abs_monthly_balances
             else:
                 balances_func = monthly_balances
-            values = balances_func(
+            values, _unit = balances_func(
                 like_account=line.selector, until=self.ends_at)
-            if values and len(values[0]) > 2:
-                unit = values[0][2]
+            if _unit:
+                unit = _unit
 
             result += [{
                 'key': line.title,
