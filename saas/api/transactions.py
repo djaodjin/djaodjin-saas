@@ -401,7 +401,8 @@ class ImportTransactionsAPIView(ProviderMixin, CreateAPIView):
 
     def perform_create(self, serializer):
         parts = serializer.validated_data['subscription'].split(Subscription.SEP)
-        assert len(parts) == 2
+        if len(parts) != 2:
+            raise ValidationError({'detail': 'wrong subscription/plan field format'})
         subscriber = parts[0]
         plan = parts[1]
         subscriber = Organization.objects.filter(slug=subscriber).first()

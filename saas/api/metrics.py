@@ -271,11 +271,12 @@ class RevenueMetricAPIView(BeforeMixin, ProviderMixin, GenericAPIView):
             date_periods=dates)
 
         units = get_different_units(table_unit, payments_unit, refund_unit)
-        if units:
+
+        if len(units) > 1:
             LOGGER.error("different units: %s", units)
 
-        if table_unit:
-            unit = table_unit
+        if units:
+            unit = units[0]
 
         account_table += [
             {"key": "Payments", "values": payment_amounts},
@@ -450,7 +451,7 @@ class CustomerMetricAPIView(BeforeMixin, ProviderMixin, GenericAPIView):
 
         dates = convert_dates_to_utc(
             month_periods(12, self.ends_at, tz=self.timezone))
-        _, customer_table, customer_extra, unit = \
+        _, customer_table, customer_extra, _ = \
             aggregate_transactions_change_by_period(self.provider, account,
                 account_title=account_title,
                 date_periods=dates)

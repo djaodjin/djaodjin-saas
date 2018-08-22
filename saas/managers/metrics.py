@@ -122,13 +122,13 @@ def aggregate_transactions_by_period(organization, account, date_periods,
         count, amount, _unit = 0, 0, None
         query_result = Transaction.objects.filter(
             created_at__gte=period_start,
-            created_at__lt=period_end, **kwargs).values('orig_unit').annotate(
+            created_at__lt=period_end, **kwargs).values('%s_unit' % dest).annotate(
                 count=Count('%s_organization' % dest, distinct=True),
                 sum=Sum('%s_amount' % dest))
         if query_result:
             count = query_result[0]['count']
             amount = query_result[0]['sum']
-            _unit = query_result[0]['orig_unit']
+            _unit = query_result[0]['%s_unit' % dest]
             if _unit:
                 unit = _unit
         period = period_end
@@ -166,7 +166,7 @@ def _aggregate_transactions_change_by_period(organization, account,
             churn_query = RawQuery(
     """SELECT COUNT(DISTINCT(prev.%(dest)s_organization_id)),
               SUM(prev.%(dest)s_amount),
-              prev.%(orig)s_unit
+              prev.%(dest)s_unit
            FROM saas_transaction prev
            LEFT OUTER JOIN (
              SELECT distinct(%(dest)s_organization_id), %(orig)s_unit
@@ -224,7 +224,7 @@ def _aggregate_transactions_change_by_period(organization, account,
             new_query = RawQuery(
     """SELECT count(distinct(curr.%(dest)s_organization_id)),
               SUM(curr.%(dest)s_amount),
-              orig_unit
+              curr.%(dest)s_unit
        FROM saas_transaction curr
            LEFT OUTER JOIN (
              SELECT distinct(%(dest)s_organization_id)
@@ -255,7 +255,7 @@ def _aggregate_transactions_change_by_period(organization, account,
 
         units = get_different_units(churn_receivable_unit,
             receivable_unit, new_receivable_unit)
-        if units:
+        if len(units) > 1:
             LOGGER.error("different units: %s", units)
 
         period = period_end
@@ -344,21 +344,26 @@ def active_subscribers(plan, from_date=None, tz=None):
 def abs_monthly_balances(organization=None, account=None, like_account=None,
                          until=None, step_months=1, tz=None):
     #pylint:disable=invalid-name,too-many-arguments
-    return [(item[0], abs(item[1]), item[2]) for item in monthly_balances(
-        organization=organization, account=account, like_account=like_account,
-        until=until, step_months=step_months, tz=tz)]
+    balances, unit = monthly_balances(organization=organization,
+        account=account, like_account=like_account,
+        until=until, step_months=step_months, tz=tz)
+    return [(item[0], abs(item[1])) for item in balances]
 
 
 def monthly_balances(organization=None, account=None, like_account=None,
                      until=None, step_months=1, tz=None):
     #pylint:disable=invalid-name,too-many-arguments
     values = []
+    unit = None
     for end_period in convert_dates_to_utc(month_periods(
             from_date=until, step_months=step_months, tz=tz)):
         balance = Transaction.objects.get_balance(organization=organization,
             account=account, like_account=like_account, ends_at=end_period)
-        values.append([end_period, balance['amount'], balance['unit']])
-    return values
+        values.append([end_period, balance['amount']])
+        _unit = balance.get('unit')
+        if _unit:
+            unit = _unit
+    return values, unit
 
 
 def quaterly_balances(organization=None, account=None, like_account=None,
@@ -386,8 +391,6 @@ def churn_subscribers(plan=None, from_date=None, tz=None):
     return values
 
 def get_different_units(*args):
-    # removing None values
+    # removing None and duplicate values
     units = {_unit for _unit in args if _unit is not None}
-    # if elements are not identical
-    if len(units) > 1:
-        return units
+    return list(units)
