@@ -181,7 +181,6 @@ class RevenueMetricsView(MetricsMixin, TemplateView):
             "tables": json.dumps(
                 [{"key": "cash",
                         "title": "Amounts",
-                        "unit": "$",
                         "location": reverse('saas_api_revenue',
                             args=(self.organization,))},
                        {"key": "customer",
@@ -190,7 +189,6 @@ class RevenueMetricsView(MetricsMixin, TemplateView):
                             args=(self.organization,))},
                        {"key": "balances",
                         "title": "Balances",
-                        "unit": "$",
                         "location": reverse('saas_api_balances',
                             args=(self.organization,))}])})
         return context

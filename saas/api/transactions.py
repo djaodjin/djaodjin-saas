@@ -29,15 +29,16 @@ from django.db.models import Q
 from extra_views.contrib.mixins import SearchableListMixin, SortableListMixin
 from rest_framework import status
 from rest_framework.exceptions import ValidationError
-from rest_framework.generics import ListAPIView, DestroyAPIView
+from rest_framework.generics import ListAPIView, DestroyAPIView, CreateAPIView
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .serializers import TransactionSerializer
+from .serializers import TransactionSerializer, OfflineTransactionSerializer
 from ..filters import SortableDateRangeSearchableFilterBackend
 from ..mixins import DateRangeMixin, OrganizationMixin, ProviderMixin
-from ..models import Transaction, sum_orig_amount
+from ..models import (Transaction, sum_orig_amount, Subscription,
+    Organization, Plan)
 from ..backends import ProcessorError
 from ..pagination import BalancePagination
 
@@ -388,6 +389,38 @@ class TransferListAPIView(SmartTransactionListMixin, TransferQuerysetMixin,
             raise ValidationError({'detail': "The latest transfers might"\
                 " not be shown because there was an error with the backend"\
                 " processor (ie. %s)." % str(err)})
+
+
+class ImportTransactionsAPIView(ProviderMixin, CreateAPIView):
+    """
+    Insert transactions that were done offline for the purpose of computing
+    accurate metrics.
+
+    """
+    serializer_class = OfflineTransactionSerializer
+
+    def perform_create(self, serializer):
+        parts = serializer.validated_data['subscription'].split(Subscription.SEP)
+        if len(parts) != 2:
+            raise ValidationError({'detail': 'wrong subscription/plan field format'})
+        subscriber = parts[0]
+        plan = parts[1]
+        subscriber = Organization.objects.filter(slug=subscriber).first()
+        if subscriber is None:
+            raise ValidationError({'detail': "Invalid subscriber"})
+        plan = Plan.objects.filter(
+            slug=plan, organization=self.organization).first()
+        if plan is None:
+            raise ValidationError({'detail': "Invalid plan"})
+        subscription = Subscription.objects.active_for(
+            organization=subscriber).filter(plan=plan).first()
+        if subscription is None:
+            raise ValidationError({'detail': "Invalid combination of subscriber and plan,"\
+" or the subscription is no longer active."})
+        Transaction.objects.offline_payment(
+            subscription, serializer.validated_data['amount'],
+            descr=serializer.validated_data['descr'], user=self.request.user,
+            created_at=serializer.validated_data['created_at'])
 
 
 class StatementBalanceAPIView(OrganizationMixin, APIView):

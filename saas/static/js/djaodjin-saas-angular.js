@@ -18,7 +18,7 @@ angular.module("saasFilters", [])
     .filter('unsafe', function($sce) {
       return function(val) {
         return $sce.trustAsHtml(val);
-      };
+      }
     }).filter("monthHeading", function() {
         "use strict";
 
@@ -35,7 +35,23 @@ angular.module("saasFilters", [])
             return d.clone().subtract(1, 'months').format("MMM'YY");
         };
     })
-    .filter("humanizeCell", function(currencyFilter, numberFilter) {
+    .filter("currencyToSymbol", function() {
+        "use strict";
+
+        return function(currency) {
+            if(currency){
+                return new Intl.NumberFormat('en-US', {
+                    style: 'currency',
+                    currency: currency,
+                    useGrouping: false,
+                    minimumFractionDigits: 0,
+                    maximumFractionDigits: 0
+                }).format(1).replace('1', '')
+            }
+            return '';
+        }
+    })
+    .filter("humanizeCell", function(currencyFilter, numberFilter, currencyToSymbolFilter) {
         "use strict";
 
         return function(cell, unit, scale, abbreviate) {
@@ -45,8 +61,8 @@ angular.module("saasFilters", [])
             scale = scale || 1;
             var value = cell * scale;
             if(unit) {
-                if( unit === 'usd' ) { unit = '$' }
-                return currencyFilter(value, unit, 2);
+                var symbol = currencyToSymbolFilter(unit)
+                return currencyFilter(value, symbol, 2);
             }
             return numberFilter(value);
         };
@@ -120,7 +136,6 @@ couponServices.factory("Coupon", ["$resource", "settings",
              create: {method: "POST"},
              update: {method: "PUT", isArray: false}});
   }]);
-
 
 //=============================================================================
 // Controllers
@@ -1108,7 +1123,7 @@ metricsControllers.controller("metricsCtrl",
         }
     });
 
-    $scope.refreshTable();
+    $scope.prefetch();
 
 }]);
 
