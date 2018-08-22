@@ -124,11 +124,12 @@ class BalancesAPIView(BeforeMixin, ProviderMixin, GenericAPIView):
         unit = settings.DEFAULT_UNIT
         for key in [Transaction.INCOME, Transaction.BACKLOG,
                     Transaction.RECEIVABLE]:
-            values = abs_monthly_balances(
+            values, _unit = abs_monthly_balances(
                 organization=self.provider, account=key,
                 until=self.ends_at, tz=self.timezone)
-            if values and len(values[0]) > 2:
-                unit = values[0][2]
+
+            if _unit:
+                unit = _unit
 
             result += [{
                 'key': key,

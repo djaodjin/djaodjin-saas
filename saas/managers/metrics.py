@@ -347,7 +347,7 @@ def abs_monthly_balances(organization=None, account=None, like_account=None,
     balances, unit = monthly_balances(organization=organization,
         account=account, like_account=like_account,
         until=until, step_months=step_months, tz=tz)
-    return [(item[0], abs(item[1])) for item in balances]
+    return [(item[0], abs(item[1])) for item in balances], unit
 
 
 def monthly_balances(organization=None, account=None, like_account=None,
