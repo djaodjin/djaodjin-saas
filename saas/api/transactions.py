@@ -411,23 +411,26 @@ class ImportTransactionsAPIView(ProviderMixin, CreateAPIView):
     serializer_class = OfflineTransactionSerializer
 
     def perform_create(self, serializer):
-        parts = serializer.validated_data['subscription'].split(Subscription.SEP)
+        parts = serializer.validated_data['subscription'].split(
+            Subscription.SEP)
         if len(parts) != 2:
-            raise ValidationError({'detail': 'wrong subscription/plan field format'})
+            raise ValidationError({
+                'detail': _("Invalid subscription/plan field format")})
         subscriber = parts[0]
         plan = parts[1]
         subscriber = Organization.objects.filter(slug=subscriber).first()
         if subscriber is None:
-            raise ValidationError({'detail': "Invalid subscriber"})
+            raise ValidationError({'detail': _("Invalid subscriber")})
         plan = Plan.objects.filter(
             slug=plan, organization=self.organization).first()
         if plan is None:
-            raise ValidationError({'detail': "Invalid plan"})
+            raise ValidationError({'detail': _("Invalid plan")})
         subscription = Subscription.objects.active_for(
             organization=subscriber).filter(plan=plan).first()
         if subscription is None:
-            raise ValidationError({'detail': "Invalid combination of subscriber and plan,"\
-" or the subscription is no longer active."})
+            raise ValidationError({
+                'detail': _("Invalid combination of subscriber and plan,"\
+" or the subscription is no longer active.")})
         Transaction.objects.offline_payment(
             subscription, serializer.validated_data['amount'],
             descr=serializer.validated_data['descr'], user=self.request.user,
