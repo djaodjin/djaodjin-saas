@@ -21,11 +21,13 @@
 # WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+from __future__ import unicode_literals
 
 from collections import OrderedDict
 
 import dateutil
 from django.db.models import Q
+from django.utils.translation import ugettext_lazy as _
 from extra_views.contrib.mixins import SearchableListMixin, SortableListMixin
 from rest_framework import status
 from rest_framework.exceptions import ValidationError
@@ -93,7 +95,7 @@ class TotalAnnotateMixin(object):
         queryset = super(TotalAnnotateMixin, self).get_queryset()
         balances = sum_orig_amount(queryset)
         if len(balances) > 1:
-            raise ValueError("balances with multiple currency units (%s)" %
+            raise ValueError(_("balances with multiple currency units (%s)") %
                 str(balances))
         # `sum_orig_amount` guarentees at least one result.
         self.totals = balances[0]
@@ -140,14 +142,15 @@ class TransactionQuerysetMixin(object):
 class TransactionListAPIView(SmartTransactionListMixin,
                              TransactionQuerysetMixin, ListAPIView):
     """
-    Queries a page (``PAGE_SIZE`` records) of ``Transaction`` from the ledger.
+    Queries a page (``PAGE_SIZE`` records) of ``Transaction`` from
+    the :doc:`ledger <ledger>`.
 
-    The queryset can be filtered to a range of dates. The queryset can be
-    further filtered to only include ``Transaction`` where at least one
-    field is matching a specified search text.
+    The queryset can be filtered to a range of dates
+    ([``start_at``, ``ends_at``]) and for at least one field to match a search
+    term (``q``).
 
-    Query results can be ordered by natural fields in either ascending
-    or descending order.
+    Query results can be ordered by natural fields (``o``) in either ascending
+    or descending order (``ot``).
 
     **Examples
 
@@ -202,8 +205,7 @@ class BillingsAPIView(SmartTransactionListMixin,
                       BillingsQuerysetMixin, ListAPIView):
     """
     Queries a page (``PAGE_SIZE`` records) of ``Transaction`` associated
-    to ``{organization}`` while the organization acts as a subscriber
-    in the relation.
+    to ``{organization}`` while the organization acts as a subscriber.
 
     The queryset can be filtered to a range of dates
     ([``start_at``, ``ends_at``]) and for at least one field to match a search
@@ -211,6 +213,9 @@ class BillingsAPIView(SmartTransactionListMixin,
 
     Query results can be ordered by natural fields (``o``) in either ascending
     or descending order (``ot``).
+
+    This API end point is typically used to display orders, payments and refunds
+    of a subscriber (see :ref:`subscribers pages <_pages_subscribers>`)
 
     **Examples
 
@@ -264,7 +269,7 @@ class ReceivablesListAPIView(SortableListMixin, TotalAnnotateMixin,
     """
     Queries a page (``PAGE_SIZE`` records) of ``Transaction`` marked
     as receivables associated to ``{organization}`` while the organization
-    acts as a provider in the relation.
+    acts as a provider.
 
     The queryset can be filtered to a range of dates
     ([``start_at``, ``ends_at``]) and for at least one field to match a search
@@ -272,6 +277,9 @@ class ReceivablesListAPIView(SortableListMixin, TotalAnnotateMixin,
 
     Query results can be ordered by natural fields (``o``) in either ascending
     or descending order (``ot``).
+
+    This API endpoint is typically used to find all sales for ``{organization}``
+    whether it was paid or not.
 
     **Examples
 
@@ -337,8 +345,7 @@ class TransferListAPIView(SmartTransactionListMixin, TransferQuerysetMixin,
                           ListAPIView):
     """
     Queries a page (``PAGE_SIZE`` records) of ``Transaction`` associated
-    to ``:organization`` while the organization acts as a provider in the
-    relation.
+    to ``{organization}`` while the organization acts as a provider.
 
     The queryset can be filtered to a range of dates
     ([``start_at``, ``ends_at``]) and for at least one field to match a search
@@ -346,6 +353,10 @@ class TransferListAPIView(SmartTransactionListMixin, TransferQuerysetMixin,
 
     Query results can be ordered by natural fields (``o``) in either ascending
     or descending order (``ot``).
+
+    This API endpoint is typically used to find sales, payments, refunds
+    and bank deposits for a provider.
+    (see :ref:`provider pages <_pages_provider_transactions>`)
 
     **Examples
 
@@ -386,9 +397,9 @@ class TransferListAPIView(SmartTransactionListMixin, TransferQuerysetMixin,
             return super(TransferListAPIView, self).list(
                 request, *args, **kwargs)
         except ProcessorError as err:
-            raise ValidationError({'detail': "The latest transfers might"\
+            raise ValidationError({'detail': _("The latest transfers might"\
                 " not be shown because there was an error with the backend"\
-                " processor (ie. %s)." % str(err)})
+                " processor (ie. %s).") % str(err)})
 
 
 class ImportTransactionsAPIView(ProviderMixin, CreateAPIView):
@@ -400,23 +411,26 @@ class ImportTransactionsAPIView(ProviderMixin, CreateAPIView):
     serializer_class = OfflineTransactionSerializer
 
     def perform_create(self, serializer):
-        parts = serializer.validated_data['subscription'].split(Subscription.SEP)
+        parts = serializer.validated_data['subscription'].split(
+            Subscription.SEP)
         if len(parts) != 2:
-            raise ValidationError({'detail': 'wrong subscription/plan field format'})
+            raise ValidationError({
+                'detail': _("Invalid subscription/plan field format")})
         subscriber = parts[0]
         plan = parts[1]
         subscriber = Organization.objects.filter(slug=subscriber).first()
         if subscriber is None:
-            raise ValidationError({'detail': "Invalid subscriber"})
+            raise ValidationError({'detail': _("Invalid subscriber")})
         plan = Plan.objects.filter(
             slug=plan, organization=self.organization).first()
         if plan is None:
-            raise ValidationError({'detail': "Invalid plan"})
+            raise ValidationError({'detail': _("Invalid plan")})
         subscription = Subscription.objects.active_for(
             organization=subscriber).filter(plan=plan).first()
         if subscription is None:
-            raise ValidationError({'detail': "Invalid combination of subscriber and plan,"\
-" or the subscription is no longer active."})
+            raise ValidationError({
+                'detail': _("Invalid combination of subscriber and plan,"\
+" or the subscription is no longer active.")})
         Transaction.objects.offline_payment(
             subscription, serializer.validated_data['amount'],
             descr=serializer.validated_data['descr'], user=self.request.user,

@@ -1,5 +1,5 @@
-Transactions
-============
+Transaction ledger
+==================
 
 Transactions are recorded in an append-only double-entry book keeping ledger
 using the following ``Transaction`` Model:
@@ -14,18 +14,18 @@ event_id          Tie-in to other models or third-party systems (optional)
 dest_account      Target account (Funds, Income, Expenses, etc.)
 dest_organization Target ``Organization``
 dest_amount       Target amount in ``dest_unit``
-dest_unit         Unit of the target amount (defaults to 'usd')
+dest_unit         Currency unit of the target amount (defaults to 'usd')
 
 orig_account      Source account (Funds, Income, Expenses, etc.)
 orig_organization Source ``Organization``
 orig_amount       Source amount in ``orig_unit``
-orig_unit         Unit of the source amount (defaults to 'usd')
+orig_unit         Currency unit of the source amount (defaults to 'usd')
 ================= ===========
 
 A ``Transaction`` records the movement of an *amount* from an *source*
 to a *target*.
 
-All transactions can be expored in `ledger-cli <http://www.ledger-cli.org>`
+All transactions can be expored in `ledger-cli <http://www.ledger-cli.org>`_
 format using the export command::
 
     python manage.py ledger export

@@ -21,8 +21,10 @@
 # WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+from __future__ import unicode_literals
 
 from django.contrib import messages
+from django.utils.translation import ugettext_lazy as _
 from rest_framework import serializers, status
 from rest_framework.generics import (GenericAPIView,
     ListCreateAPIView, RetrieveUpdateDestroyAPIView)
@@ -49,7 +51,7 @@ class RedeemCouponSerializer(serializers.Serializer):
     Serializer to redeem a ``Coupon``.
     """
 
-    code = serializers.CharField(help_text="Coupon code to redeem")
+    code = serializers.CharField(help_text=_("Coupon code to redeem"))
 
     def create(self, validated_data):
         return validated_data
@@ -256,7 +258,7 @@ class CouponRedeemAPIView(GenericAPIView):
             coupon_code = serializer.data['code']
             if CartItem.objects.redeem(request.user, coupon_code):
                 details = {"details": (
-                        "Coupon '%s' was successfully applied." % coupon_code)}
+                    _("Coupon '%s' was successfully applied.") % coupon_code)}
                 headers = {}
                 # XXX Django 1.7: 500 error, argument must be an HttpRequest
                 # object, not 'Request'. Not an issue with Django 1.6.2
@@ -267,6 +269,6 @@ class CouponRedeemAPIView(GenericAPIView):
                 return Response(details, status=status.HTTP_200_OK,
                                 headers=headers)
             details = {"details": (
-"No items can be discounted using this coupon: %s." % coupon_code)}
+_("No items can be discounted using this coupon: %s.") % coupon_code)}
             return Response(details, status=status.HTTP_400_BAD_REQUEST)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

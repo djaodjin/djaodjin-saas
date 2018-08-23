@@ -22,6 +22,7 @@
 # WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+from __future__ import unicode_literals
 
 from datetime import datetime, timedelta
 import re
@@ -33,6 +34,7 @@ from django.template.defaultfilters import stringfilter
 from django.utils.safestring import mark_safe
 from django.utils import six
 from django.utils.timezone import utc
+from django.utils.translation import ugettext_lazy as _
 
 from ..decorators import fail_direct, _valid_manager
 from ..humanize import as_money
@@ -81,17 +83,17 @@ def humanize_money(amount_unit_tuple):
 
 @register.filter()
 def humanize_period(period):
-    result = "per ?"
+    result = _("per ?")
     if period == Plan.INTERVAL_CHOICES[0][0]:
-        result = "per hour"
+        result = _("per hour")
     elif period == Plan.INTERVAL_CHOICES[1][0]:
-        result = "per day"
+        result = _("per day")
     elif period == Plan.INTERVAL_CHOICES[2][0]:
-        result = "per week"
+        result = _("per week")
     elif period == Plan.INTERVAL_CHOICES[3][0]:
-        result = "per month"
+        result = _("per month")
     elif period == Plan.INTERVAL_CHOICES[4][0]:
-        result = "per year"
+        result = _("per year")
     return result
 
 

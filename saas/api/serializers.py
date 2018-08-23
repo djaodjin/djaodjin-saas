@@ -21,11 +21,12 @@
 # WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+from __future__ import unicode_literals
 
 from django.core import validators
 from django.contrib.auth import get_user_model
-from django.utils.translation import ugettext_lazy as _
 from django.utils import six
+from django.utils.translation import ugettext_lazy as _
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
 from rest_framework.generics import get_object_or_404
@@ -66,10 +67,11 @@ class EnumField(serializers.Field):
             result = self.inverted_choices.get(data, None)
         if result is None:
             if not data:
-                raise ValidationError("This field cannot be blank.")
-            raise ValidationError(
-                "'%s' is not a valid choice. Expected one of %s." % (
-                data, [choice for choice in six.itervalues(self.choices)]))
+                raise ValidationError(_("This field cannot be blank."))
+            raise ValidationError(_("'%(data)s' is not a valid choice."\
+                " Expected one of %(choices)s.") % {
+                    'data': data, 'choices': [
+                        choice for choice in six.itervalues(self.choices)]})
         return result
 
 
@@ -122,13 +124,14 @@ class BankSerializer(NoModelSerializer):
     Information to verify a deposit account
     """
     bank_name = serializers.CharField(
-        help_text="Name of the deposit account")
+        help_text=_("Name of the deposit account"))
     last4 = serializers.CharField(
-        help_text="Last 4 characters of the deposit account identifier")
+        help_text=_("Last 4 characters of the deposit account identifier"))
     balance_amount = serializers.IntegerField(
-       help_text="Amount available to transfer to the provider deposit account")
+        help_text=_("Amount available to transfer to the provider"\
+            " deposit account"))
     balance_unit = serializers.CharField(
-        help_text="three-letter ISO 4217 code for currency unit (ex: usd)")
+        help_text=_("three-letter ISO 4217 code for currency unit (ex: usd)"))
 
 
 class CardSerializer(NoModelSerializer):
@@ -136,17 +139,17 @@ class CardSerializer(NoModelSerializer):
     Information to verify a credit card
     """
     last4 = serializers.CharField(
-        help_text="Last 4 digits of the credit card on file")
+        help_text=_("Last 4 digits of the credit card on file"))
     exp_date = serializers.CharField(
-        help_text="Expiration date of the credit card on file")
+        help_text=_("Expiration date of the credit card on file"))
 
 
 class ChargeSerializer(serializers.ModelSerializer):
 
     state = serializers.CharField(source='get_state_display',
-        help_text="current state (created, done, failed, disputed)")
+        help_text=_("current state (created, done, failed, disputed)"))
     readable_amount = serializers.SerializerMethodField(
-        help_text="Amount and unit in a commonly accepted readable format")
+        help_text=_("Amount and unit in a commonly accepted readable format"))
 
     @staticmethod
     def get_readable_amount(charge):
@@ -163,9 +166,10 @@ class EmailChargeReceiptSerializer(NoModelSerializer):
     Response for the API call to send an e-mail duplicate to the customer.
     """
     charge_id = serializers.CharField(read_only=True,
-        help_text="Charge identifier (i.e. matches the URL {charge} parameter)")
+        help_text=_("Charge identifier (i.e. matches the URL {charge}"\
+            " parameter)"))
     email = serializers.EmailField(read_only=True,
-        help_text="Email address to which the receipt was sent.")
+        help_text=_("Email address to which the receipt was sent."))
 
 
 class TableSerializer(NoModelSerializer):
@@ -188,11 +192,11 @@ class RefundChargeItemSerializer(NoModelSerializer):
     One item to refund on a `Charge`.
     """
     num = serializers.IntegerField(
-        help_text="line item index counting from zero.")
+        help_text=_("line item index counting from zero."))
     refunded_amount = serializers.IntegerField(required=False,
-        help_text="The amount to refund cannot be higher than the amount"\
+        help_text=_("The amount to refund cannot be higher than the amount"\
         " of the line item minus the total amount already refunded on that"\
-        " line item.")
+        " line item."))
 
 
 class RefundChargeSerializer(NoModelSerializer):
@@ -311,13 +315,14 @@ class TransactionSerializer(serializers.ModelSerializer):
     """
 
     orig_organization = serializers.SlugRelatedField(
-        read_only=True, slug_field='slug', help_text="slug of the origin"\
-        " Organization from which funds are withdrawn")
+        read_only=True, slug_field='slug', help_text=_("slug of the origin"\
+            " Organization from which funds are withdrawn"))
     dest_organization = serializers.SlugRelatedField(
-        read_only=True, slug_field='slug', help_text="slug of the destination"\
-        " Organization to which funds are deposited")
+        read_only=True, slug_field='slug',
+        help_text=_("slug of the destination Organization to which funds"\
+            " are deposited"))
     description = serializers.CharField(source='descr', read_only=True,
-        help_text="free-form text description for the Transaction")
+        help_text=_("free-form text description for the Transaction"))
     amount = serializers.CharField(source='dest_amount', read_only=True)
     is_debit = serializers.CharField(source='dest_amount', read_only=True)
 

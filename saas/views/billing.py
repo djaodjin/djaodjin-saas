@@ -35,6 +35,7 @@ policy.
 2. ``BalanceView`` for subscriptions with balance dues
 """
 #pylint:disable=too-many-lines
+from __future__ import unicode_literals
 
 import copy, logging
 
@@ -44,6 +45,7 @@ from django.db import transaction
 from django.db.models import Q
 from django.contrib import messages
 from django.shortcuts import get_object_or_404
+from django.utils.translation import ugettext_lazy as _
 from django.views.generic import (DetailView, FormView, ListView, TemplateView,
     UpdateView)
 from django.utils.http import urlencode
@@ -118,8 +120,8 @@ class CardFormMixin(OrganizationMixin):
         try:
             context.update(self.organization.retrieve_card())
         except ProcessorConnectionError:
-            messages.error(self.request, "The payment processor is "\
-                "currently unreachable. Sorry for the inconvienience.")
+            messages.error(self.request, _("The payment processor is "\
+                "currently unreachable. Sorry for the inconvienience."))
         self.update_context_urls(context,
             {'organization': {
                 'update_card': reverse(
@@ -145,7 +147,7 @@ class BankUpdateView(BankMixin, UpdateView):
 
     def get_success_url(self):
         messages.success(self.request,
-            "Connection to your deposit account was successfully updated.")
+            _("Connection to your deposit account was successfully updated."))
         redirect_path = validate_redirect_url(
             self.request.GET.get(REDIRECT_FIELD_NAME, None))
         if redirect_path:
@@ -184,7 +186,7 @@ djaodjin-saas/tree/master/saas/templates/saas/billing/bank.html>`__).
     def form_valid(self, form):
         processor_token = form.cleaned_data[self.processor_token_id]
         if not processor_token:
-            messages.error(self.request, "Missing processor token.")
+            messages.error(self.request, _("Missing processor token."))
             return self.form_invalid(form)
         # Since all fields are optional, we cannot assume the card token
         # will be present (i.e. in case of erroneous POST request).
@@ -213,8 +215,8 @@ djaodjin-saas/tree/master/saas/templates/saas/billing/bank.html>`__).
                 self.object.processor_backend.connect_auth(
                     self.object, auth_code)
                 self.object.save()
-                messages.success(self.request,
-                  "Connection to your deposit account was successfully updated")
+                messages.success(self.request, _("Connection to your deposit"\
+                    " account was successfully updated"))
                 # XXX maybe redirect to same page here to remove query params.
         return super(BankAuthorizeView, self).get(request, *args, **kwargs)
 
@@ -314,8 +316,8 @@ class CardInvoicablesFormMixin(CardFormMixin, InvoicablesFormMixin):
             LOGGER.error("No invoicables for user %s", self.request.user,
                 extra={'request': self.request})
             messages.info(self.request,
-              "There are no items invoicable at this point. Please select an"\
-" item before checking out.")
+              _("There are no items invoicable at this point. Please select an"\
+" item before checking out."))
             return http.HttpResponseRedirect(reverse('saas_cart_plan_list'))
         invoicables = copy.deepcopy(self.invoicables)
         for invoicable in invoicables:
@@ -348,8 +350,8 @@ class CardInvoicablesFormMixin(CardFormMixin, InvoicablesFormMixin):
                 invoicables, self.request.user,
                 token=processor_token, remember_card=remember_card)
             if self.charge and self.charge.invoiced_total.amount > 0:
-                messages.info(self.request, "A receipt will be sent to"\
-" %(email)s once the charge has been processed. Thank you."
+                messages.info(self.request, _("A receipt will be sent to"\
+" %(email)s once the charge has been processed. Thank you.")
                           % {'email': self.organization.email})
         except ProcessorError as err:
             messages.error(self.request, err)
@@ -403,7 +405,7 @@ class CardUpdateView(CardFormMixin, FormView):
                 self.organization.update_card(
                     processor_token, self.request.user)
                 messages.success(self.request,
-                    "Your credit card on file was sucessfully updated")
+                    _("Your credit card on file was sucessfully updated"))
             except ProcessorError as err:
                 messages.error(self.request, err)
                 return self.form_invalid(form)
@@ -577,7 +579,7 @@ class CartBaseView(InvoicablesFormMixin, CartMixin, FormView):
     def get_context_data(self, **kwargs):
         context = super(CartBaseView, self).get_context_data(**kwargs)
         context.update({'coupon_form': RedeemCouponForm(),
-            'submit_title': "Subscribe"})
+            'submit_title': _("Subscribe")})
         return context
 
     def get_queryset(self):
@@ -646,8 +648,8 @@ class CartPeriodsView(CartBaseView):
     def get(self, request, *args, **kwargs):
         if not self.cart_items.exists():
             messages.info(self.request,
-              "Your Cart is empty. Please add some items to your cart before"
-" you check out.")
+              _("Your Cart is empty. Please add some items to your cart before"
+" you check out."))
             return http.HttpResponseRedirect(reverse('saas_cart_plan_list'))
         return super(CartPeriodsView, self).get(request, *args, **kwargs)
 
@@ -783,8 +785,8 @@ class VTChargeView(CardFormMixin, FormView):
                     self.organization, [invoiced_item], user=self.request.user,
                     token=processor_token, remember_card=remember_card)
             if self.charge and self.charge.invoiced_total.amount > 0:
-                messages.info(self.request, "A receipt will be sent to"\
-" %(email)s once the charge has been processed. Thank you."
+                messages.info(self.request, _("A receipt will be sent to"\
+" %(email)s once the charge has been processed. Thank you.")
                           % {'email': self.organization.email})
         except ProcessorError as err:
             messages.error(self.request, err)
@@ -1071,16 +1073,16 @@ djaodjin-saas/tree/master/saas/templates/saas/billing/import.html>`__).
         plan = parts[1]
         subscriber = Organization.objects.filter(slug=subscriber).first()
         if subscriber is None:
-            form.add_error(None, "Invalid subscriber")
+            form.add_error(None, _("Invalid subscriber"))
         plan = Plan.objects.filter(
             slug=plan, organization=self.organization).first()
         if plan is None:
-            form.add_error(None, "Invalid plan")
+            form.add_error(None, _("Invalid plan"))
         subscription = Subscription.objects.active_for(
             organization=subscriber).filter(plan=plan).first()
         if subscription is None:
-            form.add_error(None, "Invalid combination of subscriber and plan,"\
-" or the subscription is no longer active.")
+            form.add_error(None, _("Invalid combination of subscriber and"\
+                " plan, or the subscription is no longer active."))
         if form.errors:
             # We haven't found either the subscriber or the plan.
             return self.form_invalid(form)

@@ -26,7 +26,7 @@ a provider through a processor.
 
 .. _api_billing_payments:
 
-.. http:get:: /api/billing/:organization/billings/
+.. http:get:: /api/billing/:organization/history/
 
 .. autoclass:: saas.api.transactions.BillingsAPIView
 

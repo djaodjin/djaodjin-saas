@@ -21,9 +21,11 @@
 # WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+from __future__ import unicode_literals
 
 from django.http import Http404
 from django.db import transaction
+from django.utils.translation import ugettext_lazy as _
 from extra_views.contrib.mixins import SearchableListMixin, SortableListMixin
 from rest_framework import status
 from rest_framework.generics import (CreateAPIView, ListAPIView,
@@ -265,8 +267,9 @@ class ChargeRefundAPIView(RetrieveChargeMixin, CreateAPIView):
                             refunded_amount=int(line.get('refunded_amount', 0)),
                             user=request.user)
                     except ValueError:
-                        raise Http404("Unable to retrieve line '%s' in %s"
-                            % (line, self.object))
+                        raise Http404(
+                         _("Unable to retrieve line '%(lineno)s' in %(charge)s")
+                            % {'lineno': line, 'charge': self.object})
             except InsufficientFunds as insufficient_funds_err:
                 return Response({"detail": str(insufficient_funds_err)},
                     status=status.HTTP_405_METHOD_NOT_ALLOWED)

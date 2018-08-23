@@ -21,12 +21,14 @@
 # WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+from __future__ import unicode_literals
 
 from collections import OrderedDict
 
 from django.http import Http404
 from django.shortcuts import get_object_or_404
 from django.utils import six
+from django.utils.translation import ugettext_lazy as _
 
 # Implementation Note:
 #
@@ -62,7 +64,7 @@ class OrganizationMixinBase(object):
         if not organization:
             # If we don't even have a broker/provider for a site.
             raise Http404(
-                "It seems a broker was not defined, or defined incorrectly.")
+                _("It seems a broker was not defined, or defined incorrectly."))
         context.update({'organization': organization})
         # XXX These might be moved to a higher-level
         urls = {

@@ -122,9 +122,10 @@ def aggregate_transactions_by_period(organization, account, date_periods,
         count, amount, _unit = 0, 0, None
         query_result = Transaction.objects.filter(
             created_at__gte=period_start,
-            created_at__lt=period_end, **kwargs).values('%s_unit' % dest).annotate(
-                count=Count('%s_organization' % dest, distinct=True),
-                sum=Sum('%s_amount' % dest))
+            created_at__lt=period_end, **kwargs).values(
+                '%s_unit' % dest).annotate(
+                    count=Count('%s_organization' % dest, distinct=True),
+                    sum=Sum('%s_amount' % dest))
         if query_result:
             count = query_result[0]['count']
             amount = query_result[0]['sum']
@@ -144,7 +145,8 @@ def _aggregate_transactions_change_by_period(organization, account,
     """
     Returns a table of records over a period of 12 months *from_date*.
     """
-    #pylint: disable=too-many-locals,too-many-arguments,invalid-name
+    #pylint:disable=too-many-locals,too-many-arguments,too-many-statements
+    #pylint:disable=invalid-name
     customers = []
     receivables = []
     new_customers = []
@@ -191,7 +193,8 @@ def _aggregate_transactions_change_by_period(organization, account,
                     "period_end": period_end,
                     "organization_id": organization.id,
                     "account": account}, router.db_for_read(Transaction))
-            churn_customer, churn_receivable, churn_receivable_unit = next(iter(churn_query))
+            churn_customer, churn_receivable, churn_receivable_unit = next(
+                iter(churn_query))
             if churn_receivable_unit:
                 unit = churn_receivable_unit
         except StopIteration:
@@ -247,7 +250,8 @@ def _aggregate_transactions_change_by_period(organization, account,
                     "period_end": period_end,
                     "organization_id": organization.id,
                     "account": account}, router.db_for_read(Transaction))
-            new_customer, new_receivable, new_receivable_unit = next(iter(new_query))
+            new_customer, new_receivable, new_receivable_unit = next(
+                iter(new_query))
             if new_receivable_unit:
                 unit = new_receivable_unit
         except StopIteration:

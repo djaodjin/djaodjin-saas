@@ -21,12 +21,14 @@
 # WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+from __future__ import unicode_literals
 
 from importlib import import_module
 
 from django.conf import settings as django_settings
 from django.core.exceptions import ImproperlyConfigured
 from django.utils.encoding import python_2_unicode_compatible
+from django.utils.translation import ugettext_lazy as _
 from stripe.error import APIConnectionError as ProcessorConnectionError
 
 from .. import settings
@@ -59,11 +61,11 @@ class CardError(ProcessorError):
 
     def __str__(self):
         if self.code == 'card_declined':
-            return "Your card was declined. We are taking your security"\
+            return str(_("Your card was declined. We are taking your security"\
 " seriously. When we submit a charge to your bank, they have automated"\
 " systems that determine whether or not to accept the charge. Check you"\
 " entered the card  number, expiration date, CVC and address correctly."\
-" If problems persist, please contact your bank."
+" If problems persist, please contact your bank."))
         return super(CardError, self).__str__()
 
 
