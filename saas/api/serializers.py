@@ -459,3 +459,10 @@ class ValidationErrorSerializer(NoModelSerializer):
     """
     detail = serializers.CharField(help_text=_("describes the reason for"\
         " the error in plain text"))
+
+class OfflineTransactionSerializer(NoModelSerializer):
+
+    subscription = serializers.CharField()
+    created_at = serializers.DateTimeField()
+    amount = serializers.DecimalField(None, 2)
+    descr = serializers.CharField(required=False)
