@@ -107,6 +107,7 @@ class Command(BaseCommand):
 
     @staticmethod
     def get_weekly_perf_data(provider, prev_week, prev_year):
+        #pylint:disable=too-many-locals
         account_table, _, _, table_unit = \
             aggregate_transactions_change_by_period(provider,
                 Transaction.RECEIVABLE, account_title='Sales',
