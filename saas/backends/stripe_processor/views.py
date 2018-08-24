@@ -97,6 +97,7 @@ class StripeWebhook(APIView):
             return Response(status=400)
 
         processor_backend = get_processor_backend(get_broker())
+        stripe.api_key = processor_backend.priv_key
         event_type = event.type
         if not event:
             LOGGER.error("Posted stripe '%s' event %s FAIL",
