@@ -80,6 +80,9 @@ class StripeWebhook(APIView):
         #pylint:disable=unused-argument,no-self-use
         from saas.models import Charge
 
+        processor_backend = get_processor_backend(get_broker())
+        stripe.api_key = processor_backend.priv_key
+
         endpoint_secret = django_settings.STRIPE_ENDPOINT_SECRET
         payload = request.body
         sig_header = request.META['HTTP_STRIPE_SIGNATURE']
@@ -96,8 +99,6 @@ class StripeWebhook(APIView):
             # Invalid signature
             return Response(status=400)
 
-        processor_backend = get_processor_backend(get_broker())
-        stripe.api_key = processor_backend.priv_key
         event_type = event.type
         if not event:
             LOGGER.error("Posted stripe '%s' event %s FAIL",
