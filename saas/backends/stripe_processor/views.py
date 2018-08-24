@@ -83,7 +83,7 @@ class StripeWebhook(APIView):
         processor_backend = get_processor_backend(get_broker())
         stripe.api_key = processor_backend.priv_key
 
-        endpoint_secret = django_settings.STRIPE_ENDPOINT_SECRET
+        endpoint_secret = settings.STRIPE_ENDPOINT_SECRET
         payload = request.body
         sig_header = request.META['HTTP_STRIPE_SIGNATURE']
         event = None
@@ -99,15 +99,12 @@ class StripeWebhook(APIView):
             # Invalid signature
             return Response(status=400)
 
-        event_type = event.type
-        if not event:
-            LOGGER.error("Posted stripe '%s' event %s FAIL",
-                event.type, request.data['id'])
-            raise Http404
         LOGGER.info("Posted stripe '%s' event %s PASS", event.type, event.id,
             extra={'processor': 'stripe', 'event': event.type,
                 'event_id': event.id,
                 'request': request})
+
+        event_type = event.type
         if event_type in ['charge.succeeded', 'charge.failed',
                           'charge.refunded', 'charge.captured']:
             charge = get_object_or_404(Charge,
