@@ -84,6 +84,7 @@ urlpatterns += [
             login_url=reverse_lazy('registration_register')),
         name='saas_cart'),
     # saas urls with provider key to implement marketplace.
+    url_prefixed(r'api/', include('saas.backends.urls.api')),
     url_prefixed(r'api/', include('saas.urls.api.cart')),
     url_prefixed(r'api/', include('saas.urls.api.users'),
         decorators=['saas.decorators.requires_self_provider']),
@@ -118,6 +119,7 @@ urlpatterns += [
     url_prefixed(r'', include('saas.urls.subscriber'),
         decorators=['saas.decorators.requires_provider',
                     'saas.decorators.requires_agreement']),
+    url_prefixed(r'', include('saas.backends.urls.views')),
     url_prefixed(r'app/',
         AppView.as_view(template_name='app.html'), name='app',
         decorators=['django.contrib.auth.decorators.login_required']),
