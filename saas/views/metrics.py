@@ -27,6 +27,7 @@ from datetime import datetime
 
 from django.views.generic import TemplateView
 
+from .. import settings
 from ..compat import reverse
 from ..mixins import CouponMixin, ProviderMixin, MetricsMixin
 from ..models import CartItem, Plan
@@ -176,11 +177,16 @@ class RevenueMetricsView(MetricsMixin, TemplateView):
 
     def get_context_data(self, **kwargs):
         context = super(RevenueMetricsView, self).get_context_data(**kwargs)
+        unit = settings.DEFAULT_UNIT
+        a_receivable = self.organization.receivables().first()
+        if a_receivable:
+            unit = a_receivable.orig_unit
         context.update({
             "title": "Sales",
             "tables": json.dumps(
                 [{"key": "cash",
                         "title": "Amounts",
+                        "unit": unit,
                         "location": reverse('saas_api_revenue',
                             args=(self.organization,))},
                        {"key": "customer",
@@ -189,6 +195,7 @@ class RevenueMetricsView(MetricsMixin, TemplateView):
                             args=(self.organization,))},
                        {"key": "balances",
                         "title": "Balances",
+                        "unit": unit,
                         "location": reverse('saas_api_balances',
                             args=(self.organization,))}])})
         return context

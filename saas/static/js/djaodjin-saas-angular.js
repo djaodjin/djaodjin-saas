@@ -18,10 +18,9 @@ angular.module("saasFilters", [])
     .filter('unsafe', function($sce) {
       return function(val) {
         return $sce.trustAsHtml(val);
-      }
+      };
     }).filter("monthHeading", function() {
         "use strict";
-
         return function(d) {
             // shift each period by 1 month unless this is
             // current month and not a first day of the month
@@ -37,23 +36,14 @@ angular.module("saasFilters", [])
     })
     .filter("currencyToSymbol", function() {
         "use strict";
-
         return function(currency) {
-            if(currency){
-                return new Intl.NumberFormat('en-US', {
-                    style: 'currency',
-                    currency: currency,
-                    useGrouping: false,
-                    minimumFractionDigits: 0,
-                    maximumFractionDigits: 0
-                }).format(1).replace('1', '')
-            }
-            return '';
-        }
+            if( currency === "usd" || currency === "cad" ) { return "$"; }
+            else if( currency === "eur" ) { return "\u20ac"; }
+            return currency;
+        };
     })
     .filter("humanizeCell", function(currencyFilter, numberFilter, currencyToSymbolFilter) {
         "use strict";
-
         return function(cell, unit, scale, abbreviate) {
             if(typeof abbreviate === "undefined"){
                 abbreviate = true;
@@ -61,12 +51,11 @@ angular.module("saasFilters", [])
             scale = scale || 1;
             var value = cell * scale;
             if(unit) {
-                var symbol = currencyToSymbolFilter(unit)
+                var symbol = currencyToSymbolFilter(unit);
                 return currencyFilter(value, symbol, 2);
             }
             return numberFilter(value);
         };
-
     }).filter('groupBy', ['$parse', function ($parse) {
     //http://stackoverflow.com/questions/19992090/angularjs-group-by-directive
     return function (list, group_by) {
@@ -1123,7 +1112,7 @@ metricsControllers.controller("metricsCtrl",
         }
     });
 
-    $scope.prefetch();
+    $scope.refreshTable();
 
 }]);
 
