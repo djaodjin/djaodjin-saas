@@ -184,7 +184,7 @@ def _aggregate_transactions_change_by_period(organization, account,
              AND prev.%(orig)s_organization_id = '%(organization_id)s'
              AND prev.%(orig)s_account = '%(account)s'
              AND curr.%(dest)s_organization_id IS NULL
-             GROUP BY prev.%(orig)s_unit
+             GROUP BY prev.%(dest)s_unit
              """ % {
                     "orig": orig, "dest": dest,
                     "prev_period_start": prev_period_start,
@@ -213,13 +213,14 @@ def _aggregate_transactions_change_by_period(organization, account,
         receivable_unit = None
         query_result = Transaction.objects.filter(
             created_at__gte=period_start,
-            created_at__lt=period_end, **kwargs).values('orig_unit').annotate(
-                count=Count('%s_organization' % dest, distinct=True),
-                sum=Sum('%s_amount' % dest))
+            created_at__lt=period_end, **kwargs).values(
+                '%s_unit' % dest).annotate(
+                    count=Count('%s_organization' % dest, distinct=True),
+                    sum=Sum('%s_amount' % dest))
         if query_result:
             customer = query_result[0]['count']
             receivable = query_result[0]['sum']
-            receivable_unit = query_result[0]['orig_unit']
+            receivable_unit = query_result[0]['%s_unit' % dest]
             if receivable_unit:
                 unit = receivable_unit
 
@@ -242,7 +243,7 @@ def _aggregate_transactions_change_by_period(organization, account,
              AND curr.%(orig)s_organization_id = '%(organization_id)s'
              AND curr.%(orig)s_account = '%(account)s'
              AND prev.%(dest)s_organization_id IS NULL
-             GROUP BY orig_unit""" % {
+             GROUP BY curr.%(dest)s_unit""" % {
                     "orig": orig, "dest": dest,
                     "prev_period_start": prev_period_start,
                     "prev_period_end": prev_period_end,
