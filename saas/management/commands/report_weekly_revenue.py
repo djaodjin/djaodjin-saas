@@ -24,6 +24,8 @@
 
 """Command for the cron job. Send revenue report for the last week"""
 
+import logging
+
 from dateutil.relativedelta import relativedelta, SU
 from django.core.management.base import BaseCommand
 
@@ -32,8 +34,11 @@ from ...managers.metrics import (aggregate_transactions_by_period,
 from ...models import Organization, Transaction
 from ...utils import datetime_or_now, parse_tz
 from ...humanize import as_money
+from ...managers.metrics import get_different_units
+from ... import settings
 from ... import signals
 
+LOGGER = logging.getLogger(__name__)
 
 class Command(BaseCommand):
     """Send past week revenue report in email"""
@@ -77,7 +82,7 @@ class Command(BaseCommand):
         return prev_week, prev_year
 
     @staticmethod
-    def construct_table(table):
+    def construct_table(table, unit):
         for row in table:
             val = row['values']
             try:
@@ -95,31 +100,32 @@ class Command(BaseCommand):
                     prev_year = '+' + prev_year
             except ZeroDivisionError:
                 prev_year = 'N/A'
-            val['last'] = as_money(val['last'])
+            val['last'] = as_money(val['last'], unit)
             val['prev'] = prev
             val['prev_year'] = prev_year
         return table
 
     @staticmethod
     def get_weekly_perf_data(provider, prev_week, prev_year):
-        account_table, _, _ = \
+        account_table, _, _, table_unit = \
             aggregate_transactions_change_by_period(provider,
                 Transaction.RECEIVABLE, account_title='Sales',
                 orig='orig', dest='dest',
                 date_periods=prev_week)
-        account_table_prev_year, _, _ = \
+        account_table_prev_year, _, _, _ = \
             aggregate_transactions_change_by_period(provider,
                 Transaction.RECEIVABLE, account_title='Sales',
                 orig='orig', dest='dest',
                 date_periods=prev_year)
 
-        _, payment_amounts = aggregate_transactions_by_period(
-            provider, Transaction.RECEIVABLE,
-            orig='dest', dest='dest',
-            orig_account=Transaction.BACKLOG,
-            orig_organization=provider,
-            date_periods=prev_week)
-        _, payment_amounts_prev_year = \
+        _, payment_amounts, payments_unit = \
+            aggregate_transactions_by_period(
+                provider, Transaction.RECEIVABLE,
+                orig='dest', dest='dest',
+                orig_account=Transaction.BACKLOG,
+                orig_organization=provider,
+                date_periods=prev_week)
+        _, payment_amounts_prev_year, _ = \
             aggregate_transactions_by_period(
                 provider, Transaction.RECEIVABLE,
                 orig='dest', dest='dest',
@@ -127,15 +133,26 @@ class Command(BaseCommand):
                 orig_organization=provider,
                 date_periods=prev_year)
 
-        _, refund_amounts = aggregate_transactions_by_period(
-            provider, Transaction.REFUND,
-            orig='dest', dest='dest',
-            date_periods=prev_week)
-        _, refund_amounts_prev_year = \
+        _, refund_amounts, refund_unit = \
+            aggregate_transactions_by_period(
+                provider, Transaction.REFUND,
+                orig='dest', dest='dest',
+                date_periods=prev_week)
+        _, refund_amounts_prev_year, _ = \
             aggregate_transactions_by_period(
                 provider, Transaction.REFUND,
                 orig='dest', dest='dest',
                 date_periods=prev_year)
+
+        unit = settings.DEFAULT_UNIT
+
+        units = get_different_units(table_unit, payments_unit, refund_unit)
+
+        if len(units) > 1:
+            LOGGER.error("different units: %s", units)
+
+        if units:
+            unit = units[0]
 
         table = [
             {'key': "Total Sales",
@@ -170,7 +187,7 @@ class Command(BaseCommand):
             }}
         ]
 
-        return table
+        return (table, unit)
 
     def handle(self, *args, **options):
         # aware utc datetime object
@@ -191,8 +208,8 @@ class Command(BaseCommand):
             self.stdout.write("Same week last year:\n"\
                 "                            %s %s" % (
                 prev_year[0].isoformat(), prev_year[1].isoformat()))
-            data = self.get_weekly_perf_data(
+            data, unit = self.get_weekly_perf_data(
                 provider, prev_week, prev_year)
-            table = self.construct_table(data)
+            table = self.construct_table(data, unit)
             signals.weekly_sales_report_created.send(sender=__name__,
                 provider=provider, dates=dates, data=table)
