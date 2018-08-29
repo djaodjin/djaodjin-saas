@@ -203,6 +203,14 @@ class StripeBackend(object):
         return distribute_amount, distribute_unit, fee_amount, fee_unit
 
     def connect_auth(self, organization, code):
+        # setting those values to None in case the code has been used
+        # before, which would result in an error and leave us with
+        # invalid values
+        organization.processor_pub_key = None
+        organization.processor_priv_key = None
+        organization.processor_deposit_key = None
+        organization.processor_refresh_token = None
+
         data = {'grant_type': 'authorization_code',
                 'client_id': self.client_id,
                 'client_secret': self.priv_key,
