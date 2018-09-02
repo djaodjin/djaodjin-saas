@@ -72,7 +72,8 @@ import requests, stripe
 
 from .. import CardError, ProcessorError
 from ... import settings, signals
-from ...utils import datetime_to_utctimestamp, utctimestamp_to_datetime
+from ...utils import (datetime_to_utctimestamp, utctimestamp_to_datetime,
+    datetime_or_now)
 
 
 LOGGER = logging.getLogger(__name__)
@@ -591,7 +592,7 @@ class StripeBackend(object):
         key = ''
         if data:
             hsh = sha512()
-            today = datetime.datetime.utcnow()
+            today = datetime_or_now()
             data = list(data)
             data.append(today)
             items = [str(value) for value in data if value is not None]
