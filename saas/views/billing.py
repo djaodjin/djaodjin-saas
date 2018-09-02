@@ -218,9 +218,10 @@ djaodjin-saas/tree/master/saas/templates/saas/billing/bank.html>`__).
                     self.object.save()
                     messages.success(self.request, _("Connection to your deposit"\
                         " account was successfully updated"))
-                except:
+                except ProcessorError as err:
+                    LOGGER.exception("There was an error with processor authentication %s", err)
                     messages.error(self.request, _("An error occured while saving"\
-                        " your deposit account settings")
+                        " your deposit account settings"))
                 # XXX maybe redirect to same page here to remove query params.
         return super(BankAuthorizeView, self).get(request, *args, **kwargs)
 
