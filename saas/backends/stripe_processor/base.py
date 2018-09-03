@@ -233,10 +233,8 @@ class StripeBackend(object):
         data = resp.json()
         if resp.status_code != 200:
             LOGGER.info("[connect_auth] error headers: %s", resp.headers)
-            raise stripe.error.AuthenticationError(
-                message="%s: %s" % (data['error'], data['error_description']),
-                http_body=resp.content, http_status=resp.status_code,
-                json_body=data)
+            raise ProcessorError(
+                message="%s: %s" % (data['error'], data['error_description']))
         LOGGER.info("%s authorized. %s", organization, data,
             extra={'event': 'connect-authorized', 'processor': 'stripe',
                 'organization': organization.slug})

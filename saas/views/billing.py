@@ -219,6 +219,7 @@ djaodjin-saas/tree/master/saas/templates/saas/billing/bank.html>`__).
                     messages.success(self.request, _("Connection to your deposit"\
                         " account was successfully updated"))
                 except ProcessorError as err:
+                    self.object.save()
                     LOGGER.exception("There was an error with processor authentication %s", err)
                     messages.error(self.request, _("An error occured while saving"\
                         " your deposit account settings"))
