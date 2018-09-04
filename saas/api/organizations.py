@@ -28,7 +28,8 @@ from django.conf import settings as django_settings
 from django.contrib.auth import logout as auth_logout
 from django.db import transaction
 from rest_framework import status
-from rest_framework.generics import ListAPIView, RetrieveUpdateDestroyAPIView
+from rest_framework.generics import (ListAPIView, ListCreateAPIView,
+    RetrieveUpdateDestroyAPIView)
 from rest_framework.response import Response
 
 from .. import signals
@@ -162,7 +163,7 @@ class OrganizationQuerysetMixin(object):
 
 
 class OrganizationListAPIView(OrganizationSmartListMixin,
-                              OrganizationQuerysetMixin, ListAPIView):
+                              OrganizationQuerysetMixin, ListCreateAPIView):
     """
     Queries all ``Organization``.
 
@@ -195,6 +196,25 @@ class OrganizationListAPIView(OrganizationSmartListMixin,
         if self.sort_param_name not in self.request.GET:
             queryset = queryset.order_by(self.sort_fields_aliases[0][0])
         return queryset
+
+    def post(self, request, *args, **kwargs):
+        """
+        Creates an``Organization``
+
+        **Examples
+
+        .. code-block:: http
+
+            POST /api/profile/xia/ HTTP/1.1
+
+        .. code-block:: json
+
+            {
+              "email": "xia@locahost.localdomain",
+              "full_name": "Xia Lee"
+            }
+        """
+        return self.create(request, *args, **kwargs)
 
 
 class SubscribersQuerysetMixin(ProviderMixin):
