@@ -1,0 +1,105 @@
+[
+{
+    "fields": {
+      "date_joined": "2018-01-01T00:00:00+00:00",
+      "email": "user-13@localhost.localdomain",
+      "first_name": "User 13",
+      "is_active": true,
+      "is_staff": true,
+      "is_superuser": true,
+      "last_name": "",
+      "password": "!",
+      "username": "user-13"
+    },
+    "model": "auth.User", "pk": 13
+},
+{
+    "fields": {
+      "date_joined": "2018-01-01T00:00:00+00:00",
+      "email": "user-14@localhost.localdomain",
+      "first_name": "User 14",
+      "is_active": true,
+      "is_staff": true,
+      "is_superuser": true,
+      "last_name": "",
+      "password": "pbkdf2_sha256$10000$z0MBiWn0Rlem$iZdC6uHomlE07qGK/TqfcfxNzKJtFp03c0JILF1frRc=",
+      "username": "user-14"
+    },
+    "model": "auth.User", "pk": 14
+},
+{
+    "fields": {
+      "slug": "org-8",
+      "full_name": "Organization 8",
+      "created_at": "2018-01-01T00:00:00+00:00",
+      "email": "org-8@localhost.localdomain",
+      "phone": "555-555-5555",
+      "street_address": "1 ABC loop",
+      "locality":  "San Francisco",
+      "region": "CA",
+      "postal_code": "94102",
+      "country": "US",
+      "processor": 1,
+      "is_provider": false,
+      "is_active": true
+    },
+    "model": "saas.Organization", "pk": 8
+},
+{
+    "fields": {
+      "slug": "org-9",
+      "full_name": "Organization 9",
+      "created_at": "2018-01-01T00:00:00+00:00",
+      "email": "org-9@localhost.localdomain",
+      "phone": "555-555-5555",
+      "street_address": "1 ABC loop",
+      "locality":  "San Francisco",
+      "region": "CA",
+      "postal_code": "94102",
+      "country": "US",
+      "processor": 1,
+      "is_provider": false,
+      "is_active": true
+    },
+    "model": "saas.Organization", "pk": 9
+},
+{
+    "fields":{
+      "created_at": "2018-01-01T00:00:00+00:00",
+      "role_description": 1,
+      "organization": 2,
+      "user": 13,
+       "grant_key": "GRANT"
+    },
+    "model": "saas.Role", "pk": 13
+},
+{
+    "fields":{
+      "created_at": "2018-01-01T00:00:00+00:00",
+      "role_description": 1,
+      "organization": 2,
+      "user": 14,
+       "request_key": "REQUEST"
+    },
+    "model": "saas.Role", "pk": 14
+},
+{
+    "fields": {
+      "created_at": "2018-01-01T00:00:00+00:00",
+      "ends_at": "2019-01-01T00:00:00+00:00",
+      "organization": 8,
+      "plan": 3,
+      "grant_key": "GRANT"
+    },
+    "model": "saas.subscription", "pk": 8
+},
+{
+    "fields": {
+      "created_at": "2018-01-01T00:00:00+00:00",
+      "ends_at": "2019-01-01T00:00:00+00:00",
+      "organization": 9,
+      "plan": 3,
+      "request_key": "REQUEST"
+    },
+    "model": "saas.subscription", "pk": 9
+}]
