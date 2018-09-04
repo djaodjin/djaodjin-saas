@@ -489,6 +489,8 @@ class StripeBackend(object):
                     event_type = 'charge.succeeded'
                 elif stripe_charge.status == 'failed':
                     event_type = 'charge.failed'
+            if stripe_charge.disputed:
+                event_type = 'charge.dispute.created'
         # Record state transition
         if event_type:
             if event_type == 'charge.succeeded':
@@ -504,7 +506,11 @@ class StripeBackend(object):
             elif event_type == 'charge.captured':
                 charge.capture()
             elif event_type == 'charge.dispute.created':
-                charge.dispute_created()
+                if charge.is_disputed:
+                    LOGGER.warning(
+                        "Already received a state update event for %s", charge)
+                else:
+                    charge.dispute_created()
             elif event_type == 'charge.dispute.updated':
                 charge.dispute_updated()
             elif event_type == 'charge.dispute.closed.won':
