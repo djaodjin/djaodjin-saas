@@ -67,7 +67,7 @@ display:none;
           <td>{{line.invoiced.dest_price|humanize_money}}</td>
           <td>{{line.invoiced|describe}}</td>
           <td>
-            {% if line.refundable %}
+            {% if line.refundable and charge.state == charge.DONE %}
             <button class="charge-refund btn btn-default"
                     data-toggle="modal" data-target="#charge-refund"
                     data-available-amount="{{line.invoiced.dest_amount}}"
@@ -97,12 +97,16 @@ display:none;
 <!-- modal dialog for Refunds -->
 <div id="charge-refund">
   <h4>Refund</h4>
-  <input class="form-control form-control" name="amount" maxlength="32"
+  {% if charge.state == charge.DONE %}
+    <input class="form-control form-control" name="amount" maxlength="32"
          type="text" value="0" />
-  <p>
-Please specify the amount you would like refunded.
-  </p>
-  <button type="submit" class="submit-refund">OK</button>
+    <p>
+      Please specify the amount you would like refunded.
+    </p>
+    <button type="submit" class="submit-refund">OK</button>
+  {% else %}
+    You cannot refund a disputed charge
+  {% endif %}
 </div>
 <!-- end of modal dialog for Refunds -->
 {% endblock %}

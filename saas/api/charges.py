@@ -259,6 +259,9 @@ class ChargeRefundAPIView(RetrieveChargeMixin, CreateAPIView):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         self.object = self.get_object()
+        if self.object.state != self.object.DONE:
+            return Response({"detail": "You cannot refund a disputed charge"},
+                status=status.HTTP_405_METHOD_NOT_ALLOWED)
         with transaction.atomic():
             try:
                 for line in serializer.validated_data.get('lines', []):
