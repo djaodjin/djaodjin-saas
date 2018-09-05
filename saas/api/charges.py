@@ -259,8 +259,15 @@ class ChargeRefundAPIView(RetrieveChargeMixin, CreateAPIView):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         self.object = self.get_object()
-        if self.object.state != self.object.DONE:
-            return Response({"detail": "You cannot refund a disputed charge"},
+        charge = self.object
+        if charge.state != charge.DONE:
+            if charge.state == charge.DISPUTED:
+                msg = _("You cannot refund a disputed charge")
+            elif charge.state == charge.CREATED:
+                msg = _("You cannot refund a pending charge")
+            else:
+                msg = _("You cannot refund a failed charge")
+            return Response({"detail": msg},
                 status=status.HTTP_405_METHOD_NOT_ALLOWED)
         with transaction.atomic():
             try:
