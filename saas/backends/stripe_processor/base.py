@@ -489,7 +489,7 @@ class StripeBackend(object):
                     event_type = 'charge.succeeded'
                 elif stripe_charge.status == 'failed':
                     event_type = 'charge.failed'
-            if stripe_charge.disputed:
+            if stripe_charge.dispute:
                 event_type = 'charge.dispute.created'
         # Record state transition
         if event_type:
