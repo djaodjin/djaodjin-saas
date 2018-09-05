@@ -284,7 +284,8 @@ class Organization(models.Model):
     processor_refresh_token = models.CharField(max_length=60, null=True,
         blank=True)
 
-    extra = settings.get_extra_field_class()(null=True)
+    extra = settings.get_extra_field_class()(null=True,
+        help_text=_("Extra meta data (can be stringify JSON)"))
 
     def __str__(self):
         return str(self.slug)
@@ -1069,7 +1070,8 @@ class RoleDescription(models.Model):
         help_text=_("Short description of the role. Grammatical rules to"\
         " pluralize the title might be used in User Interfaces."))
     skip_optin_on_grant = models.BooleanField(default=False)
-    extra = settings.get_extra_field_class()(null=True)
+    extra = settings.get_extra_field_class()(null=True,
+        help_text=_("Extra meta data (can be stringify JSON)"))
 
     class Meta:
         unique_together = ('organization', 'slug')
@@ -1142,7 +1144,8 @@ class Role(models.Model):
         on_delete=models.CASCADE)
     request_key = models.CharField(max_length=40, null=True, blank=True)
     grant_key = models.CharField(max_length=40, null=True, blank=True)
-    extra = settings.get_extra_field_class()(null=True)
+    extra = settings.get_extra_field_class()(null=True,
+        help_text=_("Extra meta data (can be stringify JSON)"))
 
     class Meta:
         unique_together = ('organization', 'user')
@@ -1410,7 +1413,8 @@ class Charge(models.Model):
     state = models.PositiveSmallIntegerField(
         choices=CHARGE_STATES, default=CREATED,
         help_text=_("current state ('created', 'done', 'failed', 'disputed')"))
-    extra = settings.get_extra_field_class()(null=True)
+    extra = settings.get_extra_field_class()(null=True,
+        help_text=_("Extra meta data (can be stringify JSON)"))
 
     # XXX unique together paid and invoiced.
     # customer and invoiced_items account payble should match.
@@ -2144,7 +2148,8 @@ class Coupon(models.Model):
             " to purchase subscriptions"))
     nb_attempts = models.IntegerField(null=True, blank=True,
         help_text=_("number of times the coupon can be used"))
-    extra = settings.get_extra_field_class()(null=True)
+    extra = settings.get_extra_field_class()(null=True,
+        help_text=_("Extra meta data (can be stringify JSON)"))
 
     class Meta:
         unique_together = ('organization', 'code')
@@ -2306,7 +2311,8 @@ class Plan(SlugTitleMixin, models.Model):
     # Pb with next : maybe create an other model for it
     next_plan = models.ForeignKey("Plan", null=True, on_delete=models.CASCADE,
         blank=True)
-    extra = settings.get_extra_field_class()(null=True)
+    extra = settings.get_extra_field_class()(null=True,
+        help_text=_("Extra meta data (can be stringify JSON)"))
 
     class Meta:
         unique_together = ('slug', 'organization')
@@ -2517,7 +2523,8 @@ class UseCharge(SlugTitleMixin, models.Model):
     plan = models.ForeignKey(Plan, on_delete=models.CASCADE,
         related_name='plans')
     use_amount = models.PositiveIntegerField(default=0)
-    extra = settings.get_extra_field_class()(null=True)
+    extra = settings.get_extra_field_class()(null=True,
+        help_text=_("Extra meta data (can be stringify JSON)"))
 
     class Meta:
         unique_together = ('slug', 'plan')
@@ -2738,7 +2745,8 @@ class Subscription(models.Model):
     plan = models.ForeignKey(Plan, on_delete=models.CASCADE)
     request_key = models.CharField(max_length=40, null=True, blank=True)
     grant_key = models.CharField(max_length=40, null=True, blank=True)
-    extra = settings.get_extra_field_class()(null=True)
+    extra = settings.get_extra_field_class()(null=True,
+        help_text=_("Extra meta data (can be stringify JSON)"))
 
     def __str__(self):
         return '%s%s%s' % (str(self.organization), Subscription.SEP,

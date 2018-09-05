@@ -232,13 +232,15 @@ class OrganizationSerializer(serializers.ModelSerializer):
         help_text=_("Zip/Postal Code"))
     country = serializers.CharField(required=False,
         help_text=_("Country"))
+    extra = serializers.CharField(required=False,
+        help_text=_("Extra meta data (can be stringify JSON)"))
     printable_name = serializers.CharField(read_only=True)
 
     class Meta:
         model = Organization
         fields = ('slug', 'created_at', 'full_name', 'default_timezone',
             'email', 'phone', 'street_address', 'locality',
-            'region', 'postal_code', 'country',
+            'region', 'postal_code', 'country', 'extra',
             'printable_name')
         read_only_fields = ('created_at',)
 
@@ -270,7 +272,7 @@ class OrganizationWithSubscriptionsSerializer(serializers.ModelSerializer):
         model = Organization
         fields = ('slug', 'created_at', 'full_name', 'default_timezone',
             'email', 'phone', 'street_address', 'locality',
-            'region', 'postal_code', 'country',
+            'region', 'postal_code', 'country', 'extra',
             'printable_name', 'subscriptions', )
         read_only_fields = ('slug', 'created_at')
 
