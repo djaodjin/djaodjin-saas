@@ -212,13 +212,35 @@ class OrganizationSerializer(serializers.ModelSerializer):
     # when one creates an opt-in subscription.
     # If we don't define ``slug`` here, the serializer validators will raise
     # an exception "Organization already exists in database".
-    slug = serializers.CharField()
-    email = serializers.CharField(required=False)
+    slug = serializers.CharField(
+        help_text=_("Unique identifier shown in the URL bar."))
+    full_name = serializers.CharField(required=False,
+        help_text=_("Organization name"))
+    default_timezone = serializers.CharField(required=False,
+         help_text=_("Timezone to use when reporting metrics"))
+    email = serializers.CharField(required=False,
+        help_text=_("E-mail address for the organization"))
+    phone = serializers.CharField(required=False,
+        help_text=_("Phone number to contact the organization"))
+    street_address = serializers.CharField(required=False,
+        help_text=_("Street address"))
+    locality = serializers.CharField(required=False,
+        help_text=_("City/Town"))
+    region = serializers.CharField(required=False,
+        help_text=_("State/Province/County"))
+    postal_code = serializers.CharField(required=False,
+        help_text=_("Zip/Postal Code"))
+    country = serializers.CharField(required=False,
+        help_text=_("Country"))
     printable_name = serializers.CharField(read_only=True)
 
     class Meta:
         model = Organization
-        fields = ('slug', 'full_name', 'printable_name', 'created_at', 'email')
+        fields = ('slug', 'created_at', 'full_name', 'default_timezone',
+            'email', 'phone', 'street_address', 'locality',
+            'region', 'postal_code', 'country',
+            'printable_name')
+        read_only_fields = ('created_at',)
 
 
 class WithEndsAtByPlanSerializer(NoModelSerializer):
@@ -246,9 +268,11 @@ class OrganizationWithSubscriptionsSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Organization
-        fields = ('slug', 'full_name', 'printable_name', 'created_at',
-            'email', 'subscriptions', )
-        read_only_fields = ('slug', )
+        fields = ('slug', 'created_at', 'full_name', 'default_timezone',
+            'email', 'phone', 'street_address', 'locality',
+            'region', 'postal_code', 'country',
+            'printable_name', 'subscriptions', )
+        read_only_fields = ('slug', 'created_at')
 
 
 class OrganizationWithEndsAtByPlanSerializer(serializers.ModelSerializer):

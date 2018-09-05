@@ -234,22 +234,28 @@ class Organization(models.Model):
         "<a href=\"/docs/#group-billing\" target=\"_blank\">what is it?</a>)")))
     is_provider = models.BooleanField(default=False,
         help_text=_("Can fulfill the provider side of a subscription."))
-    full_name = models.CharField(_("Organization name"),
-        max_length=100, blank=True)
+    full_name = models.CharField(_("Organization name"), max_length=100,
+        blank=True, help_text=_("Organization name"))
     default_timezone = models.CharField(
-        max_length=100, default=settings.TIME_ZONE)
+        max_length=100, default=settings.TIME_ZONE,
+        help_text=_("Timezone to use when reporting metrics"))
     # contact by e-mail
     email = models.EmailField(# XXX if we use unique=True here, the project
                               #     wizard must be changed.
-    )
+        help_text=_("E-mail address for the organization"))
     # contact by phone
-    phone = models.CharField(max_length=50)
+    phone = models.CharField(max_length=50,
+        help_text=_("Phone number to contact the organization"))
     # contact by physical mail
-    street_address = models.CharField(max_length=150)
-    locality = models.CharField(_("City/Town"), max_length=50)
-    region = models.CharField(_("State/Province/County"), max_length=50)
-    postal_code = models.CharField(_("Zip/Postal Code"), max_length=50)
-    country = CountryField()
+    street_address = models.CharField(_("Street address"), max_length=150,
+        help_text=_("Street address"))
+    locality = models.CharField(_("City/Town"), max_length=50,
+        help_text=_("City/Town"))
+    region = models.CharField(_("State/Province/County"), max_length=50,
+        help_text=_("State/Province/County"))
+    postal_code = models.CharField(_("Zip/Postal Code"), max_length=50,
+        help_text=_("Zip/Postal Code"))
+    country = CountryField(help_text=_("Country"))
 
     # Payment Processing
     # ------------------
