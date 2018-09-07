@@ -2509,8 +2509,9 @@ class UseCharge(SlugTitleMixin, models.Model):
     description = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
     plan = models.ForeignKey(Plan, on_delete=models.CASCADE,
-        related_name='plans')
+        related_name='use_charges')
     use_amount = models.PositiveIntegerField(default=0)
+    quota = models.PositiveIntegerField(default=0)
     extra = settings.get_extra_field_class()(null=True)
 
     class Meta:
@@ -3384,12 +3385,13 @@ class TransactionManager(models.Manager):
             # Minimum quantity for a use charge is one.
             quantity = 1
         amount = use_charge.use_amount * quantity
+        event_id = "sub_%d_%d" % (subscription.id, use_charge.id)
         if not descr:
             descr = humanize.describe_buy_use(use_charge, quantity)
         return self.new_payable(
             subscription.organization, Price(amount, subscription.plan.unit),
             subscription.plan.organization, descr,
-            event_id=subscription.id, created_at=created_at)
+            event_id=event_id, created_at=created_at)
 
     def new_subscription_order(self, subscription, nb_natural_periods,
         prorated_amount=0, created_at=None, descr=None, discount_percent=0,
@@ -3456,6 +3458,24 @@ class TransactionManager(models.Manager):
             orig_amount=price.amount,
             orig_unit=price.unit,
             orig_account=Transaction.RECEIVABLE,
+            orig_organization=provider)
+
+    @staticmethod
+    def new_receivable(customer, price, provider, descr,
+                    event_id=None, created_at=None):
+        #pylint:disable=too-many-arguments
+        created_at = datetime_or_now(created_at)
+        return Transaction(
+            created_at=created_at,
+            descr=descr,
+            event_id=event_id,
+            dest_amount=price.amount,
+            dest_unit=price.unit,
+            dest_account=Transaction.RECEIVABLE,
+            dest_organization=customer,
+            orig_amount=price.amount,
+            orig_unit=price.unit,
+            orig_account=Transaction.PAYABLE,
             orig_organization=provider)
 
     def new_subscription_later(self, subscription, created_at=None):
@@ -3953,3 +3973,16 @@ def sum_orig_amount(transactions):
         results = [{'amount': 0, 'unit': settings.DEFAULT_UNIT,
             'created_at': datetime_or_now()}]
     return results
+
+
+def get_period_usage(subscription, use_charge, starts_at, ends_at):
+    return Transaction.objects.filter(
+        orig_account=Transaction.RECEIVABLE, dest_account=Transaction.PAYABLE,
+        created_at__lt=ends_at,
+        created_at__gte=starts_at,
+        event_id="sub_%d_%d" % (subscription.id, use_charge.id)).count()
+
+def record_use_charge(subscription, use_charge):
+    return Transaction.objects.record_order([
+        Transaction.objects.new_use_charge(
+            subscription, use_charge, 1)])

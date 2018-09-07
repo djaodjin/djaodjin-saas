@@ -35,7 +35,7 @@ from django.utils import six
 
 from . import humanize, signals
 from .models import (Charge, Organization, Plan, Subscription, Transaction,
-    sum_dest_amount)
+    Price, sum_dest_amount, get_period_usage)
 from .utils import datetime_or_now
 
 LOGGER = logging.getLogger(__name__)
@@ -173,11 +173,24 @@ def extend_subscriptions(at_time=None, dry_run=False):
                             '- %s' % subscription.organization.printable_name)
                     else:
                         descr_suffix = None
+                    items = [Transaction.objects.new_subscription_order(
+                        subscription, 1, created_at=at_time,
+                        descr_suffix=descr_suffix)]
+                    plan = subscription.plan
+                    uses = plan.use_charges
+                    for use in uses:
+                        quota = use.quota
+                        quantity = get_period_usage(subscription, use,
+                            subscription.created_at, subscription.ends_at)
+                        event_id = "sub_%d_%d" % (subscription.id, use.id)
+                        if quantity > quota:
+                            price = Price(use.amount * quota, plan.unit)
+                            items.append(Transaction.objects.new_receivable(
+                                subscription.organization, price,
+                                plan.organization, None,
+                                event_id=event_id, created_at=at_time))
                     with transaction.atomic():
-                        Transaction.objects.record_order([
-                            Transaction.objects.new_subscription_order(
-                                subscription, 1, created_at=at_time,
-                                descr_suffix=descr_suffix)])
+                        Transaction.objects.record_order(items)
                 except Exception as err: #pylint:disable=broad-except
                     # logs any kind of errors
                     # and move on to the next subscription.
