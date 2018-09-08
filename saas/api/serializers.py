@@ -290,7 +290,7 @@ class OrganizationWithEndsAtByPlanSerializer(serializers.ModelSerializer):
         model = Organization
         fields = ('slug', 'printable_name', 'created_at',
             'email', 'subscriptions', )
-        read_only_fields = ('slug', )
+        read_only_fields = ('slug', 'created_at')
 
 
 class PlanSerializer(serializers.ModelSerializer):

@@ -240,7 +240,9 @@ def fail_paid_subscription(request, organization=None, plan=None):
 
 def _fail_direct(request, organization=None, roledescription=None,
                  strength=NORMAL):
-    if isinstance(organization, Charge):
+    if organization is None:
+        organization = get_broker()
+    elif isinstance(organization, Charge):
         # implicit natural conversion
         organization = organization.customer
     elif organization and not isinstance(organization, Organization):
@@ -249,8 +251,6 @@ def _fail_direct(request, organization=None, roledescription=None,
         except Organization.DoesNotExist:
             charge = get_object_or_404(Charge, processor_key=organization)
             organization = charge.customer
-    else:
-        organization = get_broker()
     result = not(organization and _has_valid_access(
         request, [organization],
         strength=strength, roledescription=roledescription))
@@ -294,6 +294,41 @@ def fail_direct_strong(request, organization=None):
     Direct Managers for :organization
     """
     return _fail_direct(request, organization=organization, strength=STRONG)
+
+
+def fail_provider_readable(request, organization=None, roledescription=None):
+    #pylint:disable=line-too-long
+    """
+    Direct %(saas.RoleDescription)s for :organization or provider restricted to GET
+
+    Returns False if the authenticated ``request.user`` is a direct
+    ``roledescription`` (ex: contributor) or manager for ``organization``,
+    or to a provider of ``organization`` and ``request.method`` is GET.
+    """
+    if isinstance(organization, Charge):
+        # implicit natural conversion
+        organization = organization.customer
+    elif organization and not isinstance(organization, Organization):
+        try:
+            organization = Organization.objects.get(slug=organization)
+        except Organization.DoesNotExist:
+            charge = get_object_or_404(Charge, processor_key=organization)
+            organization = charge.customer
+    if organization:
+        redirect_url = _fail_direct(request, organization=organization,
+            roledescription=roledescription, strength=NORMAL)
+        if not redirect_url:
+            # We found a manager or `roledescription` for `organization`.
+            return False
+    if request.method.lower() not in ("get", "options"):
+        # Not a direct manager/`roledescription`
+        # and not a read-only method? Don't even bother.
+        return True
+    candidates = []
+    if organization:
+        candidates = list(Organization.objects.providers_to(organization))
+    return not _has_valid_access(request, candidates,
+        strength=NORMAL, roledescription=roledescription)
 
 
 def _fail_provider(request, organization=None,
@@ -433,7 +468,7 @@ def _fail_self_provider(request, user=None, strength=NORMAL,
 
 def fail_self_provider(request, user=None, roledescription=None):
     """
-    Self or %(saas.RoleDescription)s Associated to :user restricted to GET
+    Self or %(saas.RoleDescription)s associated to :user restricted to GET
 
     Returns False if the authenticated ``request.user`` is the ``user``
     passed as an argument and the request.user's role allows for
