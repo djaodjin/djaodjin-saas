@@ -463,8 +463,7 @@ class Organization(models.Model):
         # OK to use ``filter`` in both subsequent queries as we are dealing
         # with the whole QuerySet related to a user.
         queryset = get_role_model().objects.db_manager(
-            using=self._state.db).filter(organization=self, user=user,
-                role_description=role_descr)
+            using=self._state.db).filter(organization=self, user=user)
         if not queryset.exists():
             queryset = get_role_model().objects.db_manager(
                 using=self._state.db).filter(organization=self, user=user,

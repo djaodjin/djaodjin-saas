@@ -26,13 +26,14 @@ from __future__ import unicode_literals
 import logging
 
 from django.contrib import messages
+from django.contrib.auth import REDIRECT_FIELD_NAME
 from django.utils.translation import ugettext_lazy as _
 from django.views.generic.base import RedirectView
 from rest_framework.generics import get_object_or_404
 
 from .. import signals
 from ..mixins import SubscriptionMixin
-from ..models import Role
+from ..utils import get_role_model, validate_redirect_url
 
 LOGGER = logging.getLogger(__name__)
 
@@ -45,12 +46,24 @@ class RoleGrantAcceptView(RedirectView):
     @property
     def role(self):
         if not hasattr(self, '_role'):
-            self._role = get_object_or_404(Role.objects.all(),
+            self._role = get_object_or_404(get_role_model().objects.all(),
                 grant_key=self.kwargs.get('verification_key'))
         return self._role
 
     def get(self, request, *args, **kwargs):
         obj = self.role
+        existing_role = get_role_model().objects.filter(
+            organization=self.role.organization, user=request.user).exclude(
+            pk=obj.pk).first()
+        if existing_role:
+            messages.error(request, _("You already have a %s role on %s."\
+                " Please drop this role first if you want to accept a role"\
+                " of %s instead.") % (obj.role_description.title,
+                obj.organization.printable_name,
+                existing_role.role_description.title))
+            return super(RoleGrantAcceptView, self).get(
+                request, *args, organization=obj.organization)
+
         obj.user = request.user       # We appropriate the Role here.
         grant_key = obj.grant_key
         obj.grant_key = None
@@ -66,10 +79,18 @@ class RoleGrantAcceptView(RedirectView):
         signals.role_grant_accepted.send(sender=__name__,
             role=obj, grant_key=grant_key, request=request)
         messages.success(request,
-            "%s role to %s accepted." % (
+            _("%s role to %s accepted.") % (
                 obj.role_description.title, obj.organization.printable_name))
         return super(RoleGrantAcceptView, self).get(
             request, *args, organization=obj.organization)
+
+    def get_redirect_url(self, *args, **kwargs):
+        redirect_path = validate_redirect_url(
+            self.request.GET.get(REDIRECT_FIELD_NAME, None))
+        if redirect_path:
+            return redirect_path
+        return super(RoleGrantAcceptView, self).get_redirect_url(
+            *args, **kwargs)
 
 
 class SubscriptionGrantAcceptView(SubscriptionMixin, RedirectView):
