@@ -214,7 +214,7 @@ class OrganizationSerializer(serializers.ModelSerializer):
     # an exception "Organization already exists in database".
     slug = serializers.CharField(
         help_text=_("Unique identifier shown in the URL bar."))
-    full_name = serializers.CharField(required=False,
+    full_name = serializers.CharField(required=False, allow_blank=True,
         help_text=_("Organization name"))
     default_timezone = serializers.CharField(required=False,
          help_text=_("Timezone to use when reporting metrics"))
@@ -232,7 +232,7 @@ class OrganizationSerializer(serializers.ModelSerializer):
         help_text=_("Zip/Postal Code"))
     country = serializers.CharField(required=False,
         help_text=_("Country"))
-    extra = serializers.CharField(required=False,
+    extra = serializers.CharField(required=False, allow_null=True,
         help_text=_("Extra meta data (can be stringify JSON)"))
     printable_name = serializers.CharField(read_only=True)
 

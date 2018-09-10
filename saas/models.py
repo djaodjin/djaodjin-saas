@@ -284,7 +284,7 @@ class Organization(models.Model):
     processor_refresh_token = models.CharField(max_length=60, null=True,
         blank=True)
 
-    extra = settings.get_extra_field_class()(null=True,
+    extra = settings.get_extra_field_class()(null=True, blank=True,
         help_text=_("Extra meta data (can be stringify JSON)"))
 
     def __str__(self):
