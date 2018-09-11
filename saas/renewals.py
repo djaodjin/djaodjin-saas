@@ -35,7 +35,7 @@ from django.utils import six
 
 from . import humanize, signals
 from .models import (Charge, Organization, Plan, Subscription, Transaction,
-    Price, sum_dest_amount, get_period_usage)
+    get_period_usage)
 from .utils import datetime_or_now
 
 LOGGER = logging.getLogger(__name__)
@@ -85,7 +85,15 @@ def _recognize_subscription_income(subscription, until=None):
             assert isinstance(to_recognize_amount, six.integer_types)
             balance = Transaction.objects.get_subscription_income_balance(
                 subscription, starts_at=recognize_start, ends_at=recognize_end)
-            recognized_amount = balance['amount']
+            use_charges = subscription.plan.use_charges
+            use_charge_amount = 0
+            for use_charge in use_charges:
+                quantity = get_period_usage(subscription, use_charge,
+                    recognize_start, recognize_end)
+                extra = quantity - use_charge.quota
+                if extra > 0:
+                    use_charge_amount += extra * use_charge.use_amount
+            recognized_amount = balance['amount'] + use_charge_amount
             # We are not computing a balance sheet here but looking for
             # a positive amount to compare with the revenue that should
             # have been recognized.
@@ -173,24 +181,11 @@ def extend_subscriptions(at_time=None, dry_run=False):
                             '- %s' % subscription.organization.printable_name)
                     else:
                         descr_suffix = None
-                    items = [Transaction.objects.new_subscription_order(
-                        subscription, 1, created_at=at_time,
-                        descr_suffix=descr_suffix)]
-                    plan = subscription.plan
-                    uses = plan.use_charges
-                    for use in uses:
-                        quota = use.quota
-                        quantity = get_period_usage(subscription, use,
-                            subscription.created_at, subscription.ends_at)
-                        event_id = "sub_%d_%d" % (subscription.id, use.id)
-                        if quantity > quota:
-                            price = Price(use.amount * quota, plan.unit)
-                            items.append(Transaction.objects.new_receivable(
-                                subscription.organization, price,
-                                plan.organization, None,
-                                event_id=event_id, created_at=at_time))
                     with transaction.atomic():
-                        Transaction.objects.record_order(items)
+                        Transaction.objects.record_order([
+                            Transaction.objects.new_subscription_order(
+                                subscription, 1, created_at=at_time,
+                                descr_suffix=descr_suffix)])
                 except Exception as err: #pylint:disable=broad-except
                     # logs any kind of errors
                     # and move on to the next subscription.

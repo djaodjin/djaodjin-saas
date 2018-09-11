@@ -3385,7 +3385,7 @@ class TransactionManager(models.Manager):
             # Minimum quantity for a use charge is one.
             quantity = 1
         amount = use_charge.use_amount * quantity
-        event_id = "sub_%d_%d" % (subscription.id, use_charge.id)
+        event_id = get_sub_event_id(subscription, use_charge)
         if not descr:
             descr = humanize.describe_buy_use(use_charge, quantity)
         return self.new_payable(
@@ -3458,24 +3458,6 @@ class TransactionManager(models.Manager):
             orig_amount=price.amount,
             orig_unit=price.unit,
             orig_account=Transaction.RECEIVABLE,
-            orig_organization=provider)
-
-    @staticmethod
-    def new_receivable(customer, price, provider, descr,
-                    event_id=None, created_at=None):
-        #pylint:disable=too-many-arguments
-        created_at = datetime_or_now(created_at)
-        return Transaction(
-            created_at=created_at,
-            descr=descr,
-            event_id=event_id,
-            dest_amount=price.amount,
-            dest_unit=price.unit,
-            dest_account=Transaction.RECEIVABLE,
-            dest_organization=customer,
-            orig_amount=price.amount,
-            orig_unit=price.unit,
-            orig_account=Transaction.PAYABLE,
             orig_organization=provider)
 
     def new_subscription_later(self, subscription, created_at=None):
@@ -3980,9 +3962,21 @@ def get_period_usage(subscription, use_charge, starts_at, ends_at):
         orig_account=Transaction.RECEIVABLE, dest_account=Transaction.PAYABLE,
         created_at__lt=ends_at,
         created_at__gte=starts_at,
-        event_id="sub_%d_%d" % (subscription.id, use_charge.id)).count()
+        event_id=get_sub_event_id(subscription, use_charge)).count()
 
 def record_use_charge(subscription, use_charge):
+    usage = get_period_usage(subscription, use_charge,
+        subscription.created_at, subscription.ends_at)
+    amount = 0
+    if usage > use_charge.quota:
+        amount = 1
     return Transaction.objects.record_order([
         Transaction.objects.new_use_charge(
-            subscription, use_charge, 1)])
+            subscription, use_charge, amount)])
+
+def get_sub_event_id(subscription, use_charge=None):
+    substr = "sub_%d" % subscription.id
+    if use_charge:
+        substr += str(use_charge.id)
+
+    return substr
