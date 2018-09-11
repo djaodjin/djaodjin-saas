@@ -35,7 +35,7 @@ from django.utils import six
 
 from . import humanize, signals
 from .models import (Charge, Organization, Plan, Subscription, Transaction,
-    get_period_usage)
+    sum_dest_amount, get_period_usage)
 from .utils import datetime_or_now
 
 LOGGER = logging.getLogger(__name__)
@@ -85,15 +85,7 @@ def _recognize_subscription_income(subscription, until=None):
             assert isinstance(to_recognize_amount, six.integer_types)
             balance = Transaction.objects.get_subscription_income_balance(
                 subscription, starts_at=recognize_start, ends_at=recognize_end)
-            use_charges = subscription.plan.use_charges
-            use_charge_amount = 0
-            for use_charge in use_charges:
-                quantity = get_period_usage(subscription, use_charge,
-                    recognize_start, recognize_end)
-                extra = quantity - use_charge.quota
-                if extra > 0:
-                    use_charge_amount += extra * use_charge.use_amount
-            recognized_amount = balance['amount'] + use_charge_amount
+            recognized_amount = balance['amount']
             # We are not computing a balance sheet here but looking for
             # a positive amount to compare with the revenue that should
             # have been recognized.
@@ -124,11 +116,26 @@ def _recognize_subscription_income(subscription, until=None):
                         'nb_periods': nb_periods,
                         'period_start': descr_period_start,
                         'period_end': descr_period_end})
+
             recognize_period_idx += 1
             recognize_start = (subscription.created_at
                 + relativedelta(months=recognize_period_idx))
             recognize_end = (subscription.created_at
                 + relativedelta(months=recognize_period_idx + 1))
+        use_charges = subscription.plan.use_charges.all()
+        use_charge_amount = 0
+        for use_charge in use_charges:
+            quantity = get_period_usage(subscription, use_charge,
+                recognize_start, recognize_end)
+            extra = quantity - use_charge.quota
+            if extra > 0:
+                use_charge_amount += extra * use_charge.use_amount
+        if use_charge_amount > 0:
+            descr = "use charge for plan %d" % subscription.plan.id
+            Transaction.objects.create_income_recognized(
+                subscription, amount=use_charge_amount,
+                starts_at=recognize_start, ends_at=recognize_end,
+                descr=descr)
         order_subscribe_beg = order_subscribe_end
         if recognize_end >= until:
             break

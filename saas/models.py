@@ -3977,6 +3977,6 @@ def record_use_charge(subscription, use_charge):
 def get_sub_event_id(subscription, use_charge=None):
     substr = "sub_%d" % subscription.id
     if use_charge:
-        substr += str(use_charge.id)
+        substr += "_%d" % use_charge.id
 
     return substr
