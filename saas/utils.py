@@ -61,8 +61,7 @@ class SlugTitleMixin(object):
             except IntegrityError as err:
                 if 'uniq' not in str(err).lower():
                     raise
-                suffix = '-%s' % "".join([random.choice("abcdef0123456789")
-                    for _ in range(7)])
+                suffix = '-%s' % generate_random_slug(length=7)
                 if len(slug_base) + len(suffix) > max_length:
                     self.slug = slug_base[:(max_length - len(suffix))] + suffix
                 else:
@@ -152,7 +151,7 @@ def generate_random_slug(length=40, prefix=None):
     """
     if prefix:
         length = length - len(prefix)
-    suffix = "".join([random.choice("abcdefghijklmnopqrstuvwxyz0123456789-")
+    suffix = "".join([random.choice("abcdef0123456789")
                       for _ in range(length)]) # Generated coupon codes are
                              # stored as ``Transaction.event_id`` we a 'cpn_'
                              # prefix. The total event_id must be less than 50

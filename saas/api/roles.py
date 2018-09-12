@@ -679,9 +679,9 @@ class RoleFilteredListAPIView(RoleSmartListMixin, RoleByDescrQuerysetMixin,
                 serializer.validated_data['slug'],
                 email=serializer.validated_data['email'],
                 first_name=first_name, last_name=last_name)
-            grant_key = self.organization.generate_role_key(user)
+            grant_key = generate_random_slug()
         if not (self.role_description.skip_optin_on_grant or grant_key):
-            grant_key = self.organization.generate_role_key(user)
+            grant_key = generate_random_slug()
         reason = serializer.validated_data.get('message', None)
         if reason:
             reason = force_text(reason)

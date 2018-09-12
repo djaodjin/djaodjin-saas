@@ -61,7 +61,7 @@ and contributors (for details see :doc:`Security <security>`).
 """
 from __future__ import unicode_literals
 
-import datetime, hashlib, logging, random, re
+import datetime, logging, re
 
 from dateutil.relativedelta import relativedelta
 from django.contrib.auth import get_user_model
@@ -247,15 +247,11 @@ class Organization(models.Model):
     phone = models.CharField(max_length=50,
         help_text=_("Phone number to contact the organization"))
     # contact by physical mail
-    street_address = models.CharField(_("Street address"), max_length=150,
-        help_text=_("Street address"))
-    locality = models.CharField(_("City/Town"), max_length=50,
-        help_text=_("City/Town"))
-    region = models.CharField(_("State/Province/County"), max_length=50,
-        help_text=_("State/Province/County"))
-    postal_code = models.CharField(_("Zip/Postal Code"), max_length=50,
-        help_text=_("Zip/Postal Code"))
-    country = CountryField(help_text=_("Country"))
+    street_address = models.CharField(_("Street address"), max_length=150)
+    locality = models.CharField(_("City/Town"), max_length=50)
+    region = models.CharField(_("State/Province/County"), max_length=50)
+    postal_code = models.CharField(_("Zip/Postal Code"), max_length=50)
+    country = CountryField()
 
     # Payment Processing
     # ------------------
@@ -438,14 +434,6 @@ class Organization(models.Model):
         return get_role_model().objects.db_manager(using=self._state.db).filter(
             organization=self, role_description=role_descr)
 
-    @staticmethod
-    def generate_role_key(user=None):
-        random_key = str(random.random()).encode('utf-8')
-        salt = hashlib.sha1(random_key).hexdigest()[:5]
-        salted = (salt + user.username) if user else salt
-        verification_key = hashlib.sha1(salted.encode('utf-8')).hexdigest()
-        return verification_key
-
     def add_role(self, user, role_descr,
                  grant_key=None, at_time=None, reason=None, extra=None,
                  request_user=None):
@@ -495,7 +483,7 @@ class Organization(models.Model):
             at_time = datetime_or_now(at_time)
             m2m = get_role_model()(created_at=at_time,
                 organization=self, user=user,
-                request_key=self.generate_role_key(user))
+                request_key=generate_random_slug())
             m2m.save(using=self._state.db, force_insert=True)
             return True
         return False
@@ -1136,9 +1124,10 @@ class Role(models.Model):
     objects = RoleManager()
 
     created_at = models.DateTimeField(auto_now_add=True)
-    organization = models.ForeignKey(Organization, on_delete=models.CASCADE)
+    organization = models.ForeignKey(Organization, on_delete=models.CASCADE,
+        related_name='roles')
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE,
-        db_column='user_id')
+        db_column='user_id', related_name='roles')
     role_description = models.ForeignKey(RoleDescription, null=True,
         on_delete=models.CASCADE)
     request_key = models.CharField(max_length=40, null=True, blank=True)
@@ -3203,8 +3192,7 @@ class TransactionManager(models.Manager):
                     subscription.ends_at,
                     subscription.plan.period_number(invoiced_item.descr))
                 if subscription.plan.optin_on_request:
-                    subscription.request_key = \
-                        subscription.organization.generate_role_key(user)
+                    subscription.request_key = generate_random_slug()
                 subscription.save()
                 if (subscription.plan.unlock_event
                     and invoiced_item.dest_amount == 0):

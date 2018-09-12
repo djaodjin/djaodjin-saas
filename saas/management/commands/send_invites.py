@@ -25,6 +25,7 @@
 """Command for sending invites"""
 
 from django.core.management.base import BaseCommand
+from django.db.models import Q
 
 from ...models import Subscription
 from ...utils import get_role_model
@@ -111,12 +112,16 @@ class Command(BaseCommand):
 
     def send_subscription_grants(self,
                                 organizations=None, emails=None, dry_run=False):
+        kwargs = {}
         subscriptions = Subscription.objects.filter(grant_key__isnull=False)
         if organizations:
             subscriptions = subscriptions.filter(
                 plan__organization__slug__in=organizations)
         if emails:
-            subscriptions = subscriptions.filter(organization__email__in=emails)
+            kwargs.update({'emails': emails})
+            subscriptions = subscriptions.filter(
+                Q(organization__email__in=emails) |
+                Q(organization__roles__user__email__in=emails)).distinct()
 
         self.stdout.write("%ssending %d subscription grant invites..." % (
             "(dry run) " if dry_run else "", len(subscriptions)))
@@ -125,16 +130,20 @@ class Command(BaseCommand):
                 subscription.plan.organization.full_name))
             if not dry_run:
                 signals.subscription_grant_created.send(
-                    sender=__name__, subscription=subscription)
+                    sender=__name__, subscription=subscription, **kwargs)
 
     def send_subscription_requests(self,
                                 organizations=None, emails=None, dry_run=False):
+        kwargs = {}
         subscriptions = Subscription.objects.filter(request_key__isnull=False)
         if organizations:
             subscriptions = subscriptions.filter(
                 plan__organization__slug__in=organizations)
         if emails:
-            subscriptions = subscriptions.filter(organization__email__in=emails)
+            kwargs.update({'emails': emails})
+            subscriptions = subscriptions.filter(
+                Q(organization__email__in=emails) |
+                Q(organization__roles__user__email__in=emails)).distinct()
 
         self.stdout.write("%ssending %d subscription request invites..." % (
             "(dry run) " if dry_run else "", len(subscriptions)))
@@ -143,4 +152,4 @@ class Command(BaseCommand):
                 subscription.plan.organization.full_name))
             if not dry_run:
                 signals.subscription_request_created.send(
-                    sender=__name__, subscription=subscription)
+                    sender=__name__, subscription=subscription, **kwargs)

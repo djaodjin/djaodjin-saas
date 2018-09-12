@@ -31,8 +31,9 @@ from rest_framework.generics import (get_object_or_404, ListAPIView,
 from ..decorators import _valid_manager
 from ..mixins import (ChurnedQuerysetMixin, PlanMixin, ProviderMixin,
     SubscriptionMixin, SubscriptionSmartListMixin, SubscribedQuerysetMixin)
-from ..models import Subscription
 from .. import signals
+from ..models import Subscription
+from ..utils import generate_random_slug
 from .roles import OptinBase
 from .serializers import OrganizationSerializer, SubscriptionSerializer
 
@@ -44,8 +45,7 @@ LOGGER = logging.getLogger(__name__)
 class SubscriptionCreateSerializer(serializers.ModelSerializer):
 
     organization = OrganizationSerializer()
-    message = serializers.CharField(
-        max_length=1024, required=False, allow_null=True)
+    message = serializers.CharField(required=False, allow_null=True)
 
     class Meta:
         model = Subscription
@@ -251,8 +251,7 @@ class PlanSubscriptionsAPIView(SubscriptionSmartListMixin,
                 subscription = Subscription.objects.new_instance(
                     organization, plan=self.plan)
                 if not self.plan.skip_optin_on_grant:
-                    subscription.grant_key = \
-                        self.plan.organization.generate_role_key(user)
+                    subscription.grant_key = generate_random_slug()
                 subscription.save()
                 subscriptions += [subscription]
         return subscriptions, created
