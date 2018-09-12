@@ -121,7 +121,7 @@ class Command(BaseCommand):
             kwargs.update({'emails': emails})
             subscriptions = subscriptions.filter(
                 Q(organization__email__in=emails) |
-                Q(organization__roles__user__email__in=emails)).distinct()
+                Q(organization__role__user__email__in=emails)).distinct()
 
         self.stdout.write("%ssending %d subscription grant invites..." % (
             "(dry run) " if dry_run else "", len(subscriptions)))
@@ -143,7 +143,7 @@ class Command(BaseCommand):
             kwargs.update({'emails': emails})
             subscriptions = subscriptions.filter(
                 Q(organization__email__in=emails) |
-                Q(organization__roles__user__email__in=emails)).distinct()
+                Q(organization__role__user__email__in=emails)).distinct()
 
         self.stdout.write("%ssending %d subscription request invites..." % (
             "(dry run) " if dry_run else "", len(subscriptions)))
