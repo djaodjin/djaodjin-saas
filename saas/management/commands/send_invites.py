@@ -126,11 +126,19 @@ class Command(BaseCommand):
         self.stdout.write("%ssending %d subscription grant invites..." % (
             "(dry run) " if dry_run else "", len(subscriptions)))
         for subscription in subscriptions:
-            self.stdout.write("\t%s to %s" % (subscription.organization.email,
-                subscription.plan.organization.full_name))
-            if not dry_run:
-                signals.subscription_grant_created.send(
-                    sender=__name__, subscription=subscription, **kwargs)
+            try:
+                self.stdout.write("\t%s to %s" % (
+                    subscription.organization.printable_name,
+                    subscription.plan.organization.full_name))
+                if not dry_run:
+                    signals.subscription_grant_created.send(
+                        sender=__name__, subscription=subscription, **kwargs)
+            except Exception as err: #pylint:disable=broad-except
+                self.stderr.write("error:%s:%s: %s" % (
+                    subscription.organization.printable_name,
+                    subscription.plan.organization.full_name,
+                    err))
+
 
     def send_subscription_requests(self,
                                 organizations=None, emails=None, dry_run=False):
