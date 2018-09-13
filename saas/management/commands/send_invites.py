@@ -23,6 +23,7 @@
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 """Command for sending invites"""
+import time
 
 from django.core.management.base import BaseCommand
 from django.db.models import Q
@@ -126,6 +127,7 @@ class Command(BaseCommand):
         self.stdout.write("%ssending %d subscription grant invites..." % (
             "(dry run) " if dry_run else "", len(subscriptions)))
         for subscription in subscriptions:
+            starts_at = time.monotonic()
             try:
                 self.stdout.write("\t%s to %s" % (
                     subscription.organization.printable_name,
@@ -138,6 +140,10 @@ class Command(BaseCommand):
                     subscription.organization.printable_name,
                     subscription.plan.organization.full_name,
                     err))
+            # dealing with smtpd limit rate
+            delta = time.monotonic() - starts_at
+            if delta < 1.0:
+                time.sleep(1.0 - delta)
 
 
     def send_subscription_requests(self,
