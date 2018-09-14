@@ -220,17 +220,17 @@ class OrganizationSerializer(serializers.ModelSerializer):
          help_text=_("Timezone to use when reporting metrics"))
     email = serializers.CharField(required=False,
         help_text=_("E-mail address for the organization"))
-    phone = serializers.CharField(required=False,
+    phone = serializers.CharField(required=False, allow_blank=True,
         help_text=_("Phone number to contact the organization"))
-    street_address = serializers.CharField(required=False,
+    street_address = serializers.CharField(required=False, allow_blank=True,
         help_text=_("Street address"))
-    locality = serializers.CharField(required=False,
+    locality = serializers.CharField(required=False, allow_blank=True,
         help_text=_("City/Town"))
-    region = serializers.CharField(required=False,
+    region = serializers.CharField(required=False, allow_blank=True,
         help_text=_("State/Province/County"))
-    postal_code = serializers.CharField(required=False,
+    postal_code = serializers.CharField(required=False, allow_blank=True,
         help_text=_("Zip/Postal Code"))
-    country = serializers.CharField(required=False,
+    country = serializers.CharField(required=False, allow_blank=True,
         help_text=_("Country"))
     extra = serializers.CharField(required=False, allow_null=True,
         help_text=_("Extra meta data (can be stringify JSON)"))
