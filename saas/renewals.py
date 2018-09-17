@@ -35,7 +35,7 @@ from django.utils import six
 
 from . import humanize, signals
 from .models import (Charge, Organization, Plan, Subscription, Transaction,
-    sum_dest_amount, get_period_usage)
+    sum_dest_amount, get_period_usage, get_sub_event_id)
 from .utils import datetime_or_now
 
 LOGGER = logging.getLogger(__name__)
@@ -117,25 +117,52 @@ def _recognize_subscription_income(subscription, until=None):
                         'period_start': descr_period_start,
                         'period_end': descr_period_end})
 
+            # recognizing use charges for subscription
+            use_charges = subscription.plan.use_charges.all()
+            for use_charge in use_charges:
+                quantity = get_period_usage(subscription, use_charge,
+                    recognize_start, recognize_end)
+                extra = quantity - use_charge.quota
+                to_recognize_amount = 0
+                if extra > 0:
+                    to_recognize_amount = extra * use_charge.use_amount
+
+                balance = Transaction.objects.get_use_charge_balance(
+                    subscription, use_charge, recognize_start, recognize_end)
+                recognized_amount = balance['amount']
+                recognized_amount = abs(recognized_amount)
+
+                if to_recognize_amount > recognized_amount:
+                    amount = to_recognize_amount - recognized_amount
+                    event_id = get_sub_event_id(subscription, use_charge)
+
+                    # creating a liability for a customer
+                    Transaction.objects.create(
+                        event_id=event_id,
+                        created_at=recognize_end - relativedelta(seconds=1),
+                        descr=event_id,
+                        dest_unit=subscription.plan.unit,
+                        dest_amount=amount,
+                        dest_account=Transaction.LIABILITY,
+                        dest_organization=subscription.organization,
+                        orig_unit=subscription.plan.unit,
+                        orig_amount=amount,
+                        orig_account=Transaction.PAYABLE,
+                        orig_organization=subscription.organization)
+
+                    # recognizing an income for a provider
+                    descr = "%s income recognized" % event_id
+                    Transaction.objects.create_income_recognized(
+                        subscription, amount=amount, event_id=event_id,
+                        starts_at=recognize_start, ends_at=recognize_end,
+                        descr=descr)
+
             recognize_period_idx += 1
             recognize_start = (subscription.created_at
                 + relativedelta(months=recognize_period_idx))
             recognize_end = (subscription.created_at
                 + relativedelta(months=recognize_period_idx + 1))
-        use_charges = subscription.plan.use_charges.all()
-        use_charge_amount = 0
-        for use_charge in use_charges:
-            quantity = get_period_usage(subscription, use_charge,
-                recognize_start, recognize_end)
-            extra = quantity - use_charge.quota
-            if extra > 0:
-                use_charge_amount += extra * use_charge.use_amount
-        if use_charge_amount > 0:
-            descr = "use charge for plan %d" % subscription.plan.id
-            Transaction.objects.create_income_recognized(
-                subscription, amount=use_charge_amount,
-                starts_at=recognize_start, ends_at=recognize_end,
-                descr=descr)
+
         order_subscribe_beg = order_subscribe_end
         if recognize_end >= until:
             break

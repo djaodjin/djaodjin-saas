@@ -3323,6 +3323,16 @@ class TransactionManager(models.Manager):
         return self.get_event_balance(subscription.id,
             account=Transaction.INCOME, starts_at=starts_at, ends_at=ends_at)
 
+    def get_use_charge_balance(self, subscription, use_charge,
+                                        starts_at=None, ends_at=None):
+        """
+        Returns the recognized income balance on a use charge
+        for the period [starts_at, ends_at[ as a tuple (amount, unit).
+        """
+        event_id = get_sub_event_id(subscription, use_charge)
+        return self.get_event_balance(event_id,
+            account=Transaction.INCOME, starts_at=starts_at, ends_at=ends_at)
+
     def get_subscription_invoiceables(self, subscription, until=None):
         """
         Returns a set of payable or liability ``Transaction`` since
@@ -3364,7 +3374,7 @@ class TransactionManager(models.Manager):
             created_at__lt=until, **kwargs).order_by('created_at')
 
     def new_use_charge(self, subscription, use_charge, quantity,
-                       created_at=None, descr=None):
+                       custom_amount=None, created_at=None, descr=None):
         """
         Each time a subscriber places an order through
         the /billing/:organization/cart/ page, a ``Transaction``
@@ -3384,7 +3394,10 @@ class TransactionManager(models.Manager):
         if quantity <= 0:
             # Minimum quantity for a use charge is one.
             quantity = 1
-        amount = use_charge.use_amount * quantity
+        if custom_amount is not None:
+            amount = custom_amount * quantity
+        else:
+            amount = use_charge.use_amount * quantity
         event_id = get_sub_event_id(subscription, use_charge)
         if not descr:
             descr = humanize.describe_buy_use(use_charge, quantity)
@@ -3540,7 +3553,8 @@ class TransactionManager(models.Manager):
             event_id=subscription.id)
 
     def create_income_recognized(self, subscription,
-        amount=0, starts_at=None, ends_at=None, descr=None, dry_run=False):
+        amount=0, starts_at=None, ends_at=None, descr=None,
+        event_id=None, dry_run=False):
         """
         When a period ends and we either have a ``Backlog`` (payment
         was made before the period starts) or a ``Receivable`` (invoice
@@ -3564,14 +3578,16 @@ class TransactionManager(models.Manager):
         #pylint:disable=unused-argument,too-many-arguments,too-many-locals
         created_transactions = []
         ends_at = datetime_or_now(ends_at)
+        if not event_id:
+            event_id = subscription.id
         # ``created_at`` is set just before ``ends_at``
         # so we do not include the newly created transaction
         # in the subsequent period.
         created_at = ends_at - relativedelta(seconds=1)
-        balance = self.get_event_balance(subscription.id,
+        balance = self.get_event_balance(event_id,
             account=Transaction.BACKLOG, ends_at=ends_at)
         backlog_amount = - balance['amount'] # def. balance must be negative
-        balance = self.get_event_balance(subscription.id,
+        balance = self.get_event_balance(event_id,
             account=Transaction.RECEIVABLE, ends_at=ends_at)
         receivable_amount = - balance['amount'] # def. balance must be negative
         LOGGER.debug("recognize %dc(%s) with %dc(%s) backlog available,"\
@@ -3592,7 +3608,7 @@ class TransactionManager(models.Manager):
             recognized = Transaction(
                 created_at=created_at,
                 descr=descr,
-                event_id=subscription.id,
+                event_id=event_id,
                 dest_amount=available,
                 dest_unit=subscription.plan.unit,
                 dest_account=Transaction.BACKLOG,
@@ -3618,7 +3634,7 @@ class TransactionManager(models.Manager):
             recognized = Transaction(
                 created_at=created_at,
                 descr=descr,
-                event_id=subscription.id,
+                event_id=event_id,
                 dest_amount=available,
                 dest_unit=subscription.plan.unit,
                 dest_account=Transaction.RECEIVABLE,
@@ -3959,20 +3975,23 @@ def sum_orig_amount(transactions):
 
 def get_period_usage(subscription, use_charge, starts_at, ends_at):
     return Transaction.objects.filter(
-        orig_account=Transaction.RECEIVABLE, dest_account=Transaction.PAYABLE,
-        created_at__lt=ends_at,
+        orig_account=Transaction.RECEIVABLE,
+        dest_account=Transaction.PAYABLE, created_at__lt=ends_at,
         created_at__gte=starts_at,
         event_id=get_sub_event_id(subscription, use_charge)).count()
 
 def record_use_charge(subscription, use_charge):
     usage = get_period_usage(subscription, use_charge,
         subscription.created_at, subscription.ends_at)
-    amount = 0
-    if usage > use_charge.quota:
-        amount = 1
+    amount = None
+    event_id = get_sub_event_id(subscription, use_charge)
+    descr = event_id
+    if usage < use_charge.quota:
+        amount = 0
+        descr = '%s (complimentary in plan)' % event_id
     return Transaction.objects.record_order([
-        Transaction.objects.new_use_charge(
-            subscription, use_charge, amount)])
+        Transaction.objects.new_use_charge(subscription,
+            use_charge, 1, custom_amount=amount, descr=descr)])
 
 def get_sub_event_id(subscription, use_charge=None):
     substr = "sub_%d" % subscription.id
