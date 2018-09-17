@@ -115,7 +115,7 @@ class StripeBackend(object):
         return broker.processor_deposit_key == settings.PROCESSOR['PRIV_KEY']
 
     def _prepare_request(self):
-        stripe.api_version = '2015-10-16'
+        stripe.api_version = '2018-09-06'
         stripe.api_key = self.priv_key
         return {}
 
@@ -340,7 +340,7 @@ class StripeBackend(object):
         if key:
             kwargs.update({'idempotency_key': key})
         try:
-            transfer = stripe.Transfer.create(
+            transfer = stripe.Payout.create(
                 amount=amount,
                 currency=currency, destination='default_for_currency',
                 description=descr,
@@ -557,7 +557,7 @@ class StripeBackend(object):
         LOGGER.info("reconcile transfers from Stripe at %s", created_at)
         try:
             offset = 0
-            transfers = stripe.Transfer.list(
+            transfers = stripe.Payout.list(
                 created={'gt': timestamp}, status='paid',
                 offset=offset, **kwargs)
             while transfers.data:
@@ -571,7 +571,7 @@ class StripeBackend(object):
                 if limit_to_one_request:
                     break
                 offset = offset + len(transfers.data)
-                transfers = stripe.Transfer.list(
+                transfers = stripe.Payout.list(
                     created={'gt': timestamp}, status='paid',
                     offset=offset, **kwargs)
         except stripe.error.StripeError as err:
