@@ -56,9 +56,12 @@ class ProductListView(ProviderMixin, TemplateView):
                 'saas_api_accessibles', args=(self.user,)),
         }}
         try:
-            # optional
+            # optional (see signup.mixins.UserMixin)
             urls['user'].update({
-                'profile': reverse('users_profile', args=(self.user,))})
+                'notifications': reverse(
+                    'users_notifications', args=(self.user,)),
+                'profile': reverse('users_profile', args=(self.user,)),
+            })
         except NoReverseMatch:
             pass
         self.update_context_urls(context, urls)

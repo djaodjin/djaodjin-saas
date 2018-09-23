@@ -439,6 +439,11 @@ class UserMixin(object):
                     'location': reverse(
                         'saas_user_product_list', args=(self.user,))}]
             context.update({'top_accessibles': top_accessibles})
+            self.update_context_urls(context, {
+                'user': {
+                    'accessibles': reverse('saas_user_product_list',
+                        args=(self.user,))
+            }})
         return context
 
 
