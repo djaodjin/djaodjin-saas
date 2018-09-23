@@ -9,7 +9,7 @@ djangorestframework==3.7.0
 Markdown==2.6.6
 python-dateutil==2.5.3
 razorpay==0.2.0
-stripe==1.61.0
+stripe==2.6.0
 
 # testsite-only
 coverage==4.0.3

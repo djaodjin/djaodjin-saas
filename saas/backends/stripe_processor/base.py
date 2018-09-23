@@ -63,6 +63,8 @@ Edit the redirect_url and copy/paste the keys into your project settings.py
 from __future__ import unicode_literals
 
 import datetime, logging, re
+from hashlib import sha512
+from base64 import b64encode
 
 from django.utils import six
 from django.utils.translation import ugettext_lazy as _
@@ -70,7 +72,8 @@ import requests, stripe
 
 from .. import CardError, ProcessorError
 from ... import settings, signals
-from ...utils import datetime_to_utctimestamp, utctimestamp_to_datetime
+from ...utils import (datetime_to_utctimestamp, utctimestamp_to_datetime,
+    datetime_or_now)
 
 
 LOGGER = logging.getLogger(__name__)
@@ -112,7 +115,7 @@ class StripeBackend(object):
         return broker.processor_deposit_key == settings.PROCESSOR['PRIV_KEY']
 
     def _prepare_request(self):
-        stripe.api_version = '2015-10-16'
+        stripe.api_version = '2018-09-06'
         stripe.api_key = self.priv_key
         return {}
 
@@ -146,7 +149,7 @@ class StripeBackend(object):
         kwargs = self._prepare_charge_request(broker)
         customers = []
         nb_customers_listed = 0
-        response = stripe.Customer.all(**kwargs)
+        response = stripe.Customer.list(**kwargs)
         all_custs = response['data']
         while all_custs:
             for cust in all_custs:
@@ -155,7 +158,7 @@ class StripeBackend(object):
                 if re.match(org_pat, cust.description):
                     customers.append(cust)
             nb_customers_listed = nb_customers_listed + len(all_custs)
-            response = stripe.Customer.all(offset=nb_customers_listed, **kwargs)
+            response = stripe.Customer.list(offset=nb_customers_listed, **kwargs)
             all_custs = response['data']
         return customers
 
@@ -164,7 +167,7 @@ class StripeBackend(object):
         if charge.unit != unit:
             # Avoids an HTTP request to Stripe API when we can compute it.
             stripe_charge, kwargs = self.get_processor_charge(charge)
-            balance_transactions = stripe.BalanceTransaction.all(
+            balance_transactions = stripe.BalanceTransaction.list(
                 source=charge.processor_key, **kwargs)
             # You would think to get all BalanceTransaction related to
             # the charge here but it is incorrect. You only get
@@ -203,6 +206,14 @@ class StripeBackend(object):
         return distribute_amount, distribute_unit, fee_amount, fee_unit
 
     def connect_auth(self, organization, code):
+        # setting those values to None in case the code has been used
+        # before, which would result in an error and leave us with
+        # invalid values
+        organization.processor_pub_key = None
+        organization.processor_priv_key = None
+        organization.processor_deposit_key = None
+        organization.processor_refresh_token = None
+
         data = {'grant_type': 'authorization_code',
                 'client_id': self.client_id,
                 'client_secret': self.priv_key,
@@ -225,10 +236,8 @@ class StripeBackend(object):
         data = resp.json()
         if resp.status_code != 200:
             LOGGER.info("[connect_auth] error headers: %s", resp.headers)
-            raise stripe.error.AuthenticationError(
-                message="%s: %s" % (data['error'], data['error_description']),
-                http_body=resp.content, http_status=resp.status_code,
-                json_body=data)
+            raise ProcessorError(
+                message="%s: %s" % (data['error'], data['error_description']))
         LOGGER.info("%s authorized. %s", organization, data,
             extra={'event': 'connect-authorized', 'processor': 'stripe',
                 'organization': organization.slug})
@@ -255,6 +264,12 @@ class StripeBackend(object):
             kwargs.update({'card': card})
         if stmt_descr is None and broker is not None:
             stmt_descr = broker.printable_name
+
+        key = self.generate_idempotent_key(amount,
+            unit, broker, descr, stmt_descr, created_at,
+            customer, card)
+        if key:
+            kwargs.update({'idempotency_key': key})
         try:
             processor_charge = stripe.Charge.create(
                 amount=amount, currency=unit,
@@ -284,6 +299,8 @@ class StripeBackend(object):
             raise CardError(str(err), err.code,
                 charge_processor_key=err.json_body['error']['charge'],
                 backend_except=err)
+        except stripe.error.IdempotencyError as err:
+            LOGGER.error(err)
         return (processor_key, created_at, receipt_info)
 
     def create_charge(self, customer, amount, unit,
@@ -318,12 +335,19 @@ class StripeBackend(object):
         # XXX Stripe won't allow a Transfer to a Connect account.
         #     "Cannot create transfers with an OAuth key."
         kwargs = self._prepare_transfer_request(provider)
-        transfer = stripe.Transfer.create(
-            amount=amount,
-            currency=currency, destination='default_for_currency',
-            description=descr,
-            statement_descriptor=provider.printable_name[:15],
-            **kwargs)
+        key = self.generate_idempotent_key(provider, amount,
+            currency, descr)
+        if key:
+            kwargs.update({'idempotency_key': key})
+        try:
+            transfer = stripe.Payout.create(
+                amount=amount,
+                currency=currency, destination='default_for_currency',
+                description=descr,
+                statement_descriptor=provider.printable_name[:15],
+                **kwargs)
+        except stripe.error.IdempotencyError as err:
+            LOGGER.error(err)
         created_at = utctimestamp_to_datetime(transfer.created)
         return (transfer.id, created_at)
 
@@ -386,11 +410,17 @@ class StripeBackend(object):
             try:
                 # XXX Seems either pylint or Stripe is wrong here...
                 #pylint:disable=redefined-variable-type
+                key = self.generate_idempotent_key(subscriber,
+                    card_token, user, broker)
+                if key:
+                    kwargs.update({'idempotency_key': key})
                 p_customer = stripe.Customer.create(
                     email=subscriber.email, description=subscriber.slug,
                     card=card_token, **kwargs)
             except stripe.error.CardError as err:
                 raise CardError(str(err), err.code, backend_except=err)
+            except stripe.error.IdempotencyError as err:
+                LOGGER.error(err)
             subscriber.processor_card_key = p_customer.id
             # We rely on ``update_card`` to do the ``save``.
 
@@ -489,6 +519,8 @@ class StripeBackend(object):
                     event_type = 'charge.succeeded'
                 elif stripe_charge.status == 'failed':
                     event_type = 'charge.failed'
+            if stripe_charge.dispute:
+                event_type = 'charge.dispute.created'
         # Record state transition
         if event_type:
             if event_type == 'charge.succeeded':
@@ -504,7 +536,11 @@ class StripeBackend(object):
             elif event_type == 'charge.captured':
                 charge.capture()
             elif event_type == 'charge.dispute.created':
-                charge.dispute_created()
+                if charge.is_disputed:
+                    LOGGER.warning(
+                        "Already received a state update event for %s", charge)
+                else:
+                    charge.dispute_created()
             elif event_type == 'charge.dispute.updated':
                 charge.dispute_updated()
             elif event_type == 'charge.dispute.closed.won':
@@ -521,7 +557,7 @@ class StripeBackend(object):
         LOGGER.info("reconcile transfers from Stripe at %s", created_at)
         try:
             offset = 0
-            transfers = stripe.Transfer.all(
+            transfers = stripe.Payout.list(
                 created={'gt': timestamp}, status='paid',
                 offset=offset, **kwargs)
             while transfers.data:
@@ -535,7 +571,7 @@ class StripeBackend(object):
                 if limit_to_one_request:
                     break
                 offset = offset + len(transfers.data)
-                transfers = stripe.Transfer.all(
+                transfers = stripe.Payout.list(
                     created={'gt': timestamp}, status='paid',
                     offset=offset, **kwargs)
         except stripe.error.StripeError as err:
@@ -563,3 +599,15 @@ class StripeBackend(object):
                 # integer division
                 return (amount * 50 + 5000) // 10000
         return 0
+
+    def generate_idempotent_key(self, *data):
+        key = ''
+        if data:
+            hsh = sha512()
+            today = datetime_or_now()
+            data = list(data)
+            data.append(today)
+            items = [str(value) for value in data if value is not None]
+            hsh.update('|'.join(items).encode())
+            key = b64encode(hsh.digest()).decode()
+        return key

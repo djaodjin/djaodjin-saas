@@ -1519,8 +1519,8 @@ class Charge(models.Model):
                     "Charge is currently being updated by another transaction")
             for charge_item in self.line_items:
                 refunded_amount = min(refund_available,
-                    charge_item.invoiced_item.dest_amount)
-                provider = charge_item.invoiced_item.orig_organization
+                    charge_item.invoiced.dest_amount)
+                provider = charge_item.invoiced.orig_organization
                 if not provider in providers:
                     provider.create_processor_fee(
                         self.processor_backend.dispute_fee(self.amount),

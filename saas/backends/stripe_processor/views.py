@@ -79,22 +79,32 @@ class StripeWebhook(APIView):
     def post(self, request, *args, **kwargs):
         #pylint:disable=unused-argument,no-self-use
         from saas.models import Charge
+
         processor_backend = get_processor_backend(get_broker())
         stripe.api_key = processor_backend.priv_key
-        # Attempt to validate the event by posting it back to Stripe.
-        if django_settings.DEBUG:
-            event = stripe.Event.construct_from(request.DATA, stripe.api_key)
-        else:
-            event = stripe.Event.retrieve(request.DATA['id'])
-        event_type = event.type
-        if not event:
-            LOGGER.error("Posted stripe '%s' event %s FAIL",
-                event.type, request.DATA['id'])
-            raise Http404
+
+        endpoint_secret = settings.PROCESSOR_HOOK_SECRET
+        payload = request.body
+        sig_header = request.META['HTTP_STRIPE_SIGNATURE']
+        event = None
+
+        try:
+            event = stripe.Webhook.construct_event(
+                payload, sig_header, endpoint_secret
+            )
+        except ValueError as e:
+            # Invalid payload
+            return Response(status=400)
+        except stripe.error.SignatureVerificationError as e:
+            # Invalid signature
+            return Response(status=400)
+
         LOGGER.info("Posted stripe '%s' event %s PASS", event.type, event.id,
             extra={'processor': 'stripe', 'event': event.type,
                 'event_id': event.id,
                 'request': request})
+
+        event_type = event.type
         if event_type in ['charge.succeeded', 'charge.failed',
                           'charge.refunded', 'charge.captured']:
             charge = get_object_or_404(Charge,

@@ -211,12 +211,18 @@ djaodjin-saas/tree/master/saas/templates/saas/billing/bank.html>`__).
         else:
             auth_code = request.GET.get('code', None)
             if auth_code:
-                self.object = self.get_object()
-                self.object.processor_backend.connect_auth(
-                    self.object, auth_code)
-                self.object.save()
-                messages.success(self.request, _("Connection to your deposit"\
-                    " account was successfully updated"))
+                try:
+                    self.object = self.get_object()
+                    self.object.processor_backend.connect_auth(
+                        self.object, auth_code)
+                    self.object.save()
+                    messages.success(self.request, _("Connection to your deposit"\
+                        " account was successfully updated"))
+                except ProcessorError as err:
+                    self.object.save()
+                    LOGGER.exception("There was an error with processor authentication %s", err)
+                    messages.error(self.request, _("An error occured while saving"\
+                        " your deposit account settings"))
                 # XXX maybe redirect to same page here to remove query params.
         return super(BankAuthorizeView, self).get(request, *args, **kwargs)
 
