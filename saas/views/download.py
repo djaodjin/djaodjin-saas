@@ -113,8 +113,9 @@ class BalancesDownloadView(MetricsMixin, CSVDownloadView):
         else:
             balances_func = monthly_balances
         if balance_line.selector:
-            row = [balance_line.title] + [item[1] for item in balances_func(
-            like_account=balance_line.selector, until=self.ends_at)]
+            balances, _ = balances_func(
+                like_account=balance_line.selector, until=self.ends_at)
+            row = [balance_line.title] + [item[1] for item in balances]
         else:
             # means we have a heading only
             row = [balance_line.title]
