@@ -24,8 +24,6 @@
 
 import logging
 
-from django.conf import settings as django_settings
-from django.http import Http404
 from django.shortcuts import get_object_or_404
 from django.views.generic import RedirectView
 from rest_framework.response import Response
@@ -92,11 +90,9 @@ class StripeWebhook(APIView):
             event = stripe.Webhook.construct_event(
                 payload, sig_header, endpoint_secret
             )
-        except ValueError as e:
-            # Invalid payload
-            return Response(status=400)
-        except stripe.error.SignatureVerificationError as e:
-            # Invalid signature
+        except (ValueError, stripe.error.SignatureVerificationError) as err:
+            # Invalid payload or invalid signature
+            LOGGER.warning("Received %s on Stripe webhook", err)
             return Response(status=400)
 
         LOGGER.info("Posted stripe '%s' event %s PASS", event.type, event.id,

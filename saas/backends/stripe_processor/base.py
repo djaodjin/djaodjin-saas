@@ -158,7 +158,8 @@ class StripeBackend(object):
                 if re.match(org_pat, cust.description):
                     customers.append(cust)
             nb_customers_listed = nb_customers_listed + len(all_custs)
-            response = stripe.Customer.list(offset=nb_customers_listed, **kwargs)
+            response = stripe.Customer.list(
+                offset=nb_customers_listed, **kwargs)
             all_custs = response['data']
         return customers
 
@@ -334,6 +335,7 @@ class StripeBackend(object):
         """
         # XXX Stripe won't allow a Transfer to a Connect account.
         #     "Cannot create transfers with an OAuth key."
+        # This needs to be revisited now because of Payouts API.
         kwargs = self._prepare_transfer_request(provider)
         key = self.generate_idempotent_key(provider, amount,
             currency, descr)
@@ -342,7 +344,7 @@ class StripeBackend(object):
         try:
             transfer = stripe.Payout.create(
                 amount=amount,
-                currency=currency, destination='default_for_currency',
+                currency=currency,
                 description=descr,
                 statement_descriptor=provider.printable_name[:15],
                 **kwargs)

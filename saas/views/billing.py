@@ -216,13 +216,15 @@ djaodjin-saas/tree/master/saas/templates/saas/billing/bank.html>`__).
                     self.object.processor_backend.connect_auth(
                         self.object, auth_code)
                     self.object.save()
-                    messages.success(self.request, _("Connection to your deposit"\
+                    messages.success(self.request, _(
+                        "Connection to your deposit"\
                         " account was successfully updated"))
                 except ProcessorError as err:
                     self.object.save()
-                    LOGGER.exception("There was an error with processor authentication %s", err)
-                    messages.error(self.request, _("An error occured while saving"\
-                        " your deposit account settings"))
+                    LOGGER.exception("There was an error with processor"\
+                        " authentication %s", err)
+                    messages.error(self.request, _("An error occured while"\
+                        " saving your deposit account settings"))
                 # XXX maybe redirect to same page here to remove query params.
         return super(BankAuthorizeView, self).get(request, *args, **kwargs)
 
@@ -987,8 +989,7 @@ class BalanceView(CardInvoicablesFormMixin, FormView):
         balances = Transaction.objects.get_statement_balances(
             self.organization, until=created_at)
         for event_id in six.iterkeys(balances):
-            # XXX Are we sure that all event_id here are `Subscription`?
-            subscription = Subscription.objects.get(pk=event_id)
+            subscription = Subscription.objects.get_by_event_id(event_id)
             options = self.get_invoicable_options(subscription,
                 created_at=created_at)
             if len(options) > 0:

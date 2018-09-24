@@ -229,29 +229,27 @@ class Organization(models.Model):
     created_at = models.DateTimeField(auto_now_add=True,
         help_text=_("Date/time of creation in ISO format"))
     is_active = models.BooleanField(default=True)
-    is_bulk_buyer = models.BooleanField(default=False,
-        help_text=mark_safe(_("Enable GroupBuy ("\
-        "<a href=\"/docs/#group-billing\" target=\"_blank\">what is it?</a>)")))
-    is_provider = models.BooleanField(default=False,
-        help_text=_("Can fulfill the provider side of a subscription."))
     full_name = models.CharField(_("Organization name"), max_length=100,
-        blank=True, help_text=_("Organization name"))
-    default_timezone = models.CharField(
-        max_length=100, default=settings.TIME_ZONE,
-        help_text=_("Timezone to use when reporting metrics"))
+        blank=True)
     # contact by e-mail
-    email = models.EmailField(# XXX if we use unique=True here, the project
-                              #     wizard must be changed.
-        help_text=_("E-mail address for the organization"))
+    email = models.EmailField()
     # contact by phone
-    phone = models.CharField(max_length=50,
-        help_text=_("Phone number to contact the organization"))
+    phone = models.CharField(max_length=50)
     # contact by physical mail
     street_address = models.CharField(_("Street address"), max_length=150)
     locality = models.CharField(_("City/Town"), max_length=50)
     region = models.CharField(_("State/Province/County"), max_length=50)
     postal_code = models.CharField(_("Zip/Postal Code"), max_length=50)
     country = CountryField()
+
+    is_bulk_buyer = models.BooleanField(default=False,
+        help_text=mark_safe(_("Enable GroupBuy ("\
+        "<a href=\"/docs/#group-billing\" target=\"_blank\">what is it?</a>)")))
+    is_provider = models.BooleanField(default=False,
+        help_text=_("Can fulfill the provider side of a subscription."))
+    default_timezone = models.CharField(
+        max_length=100, default=settings.TIME_ZONE,
+        help_text=_("Timezone to use when reporting metrics"))
 
     # Payment Processing
     # ------------------
@@ -674,11 +672,11 @@ class Organization(models.Model):
         for invoicable in invoicables:
             subscription = invoicable['subscription']
             if subscription.id:
-                event_id = subscription.id
+                event_id = get_sub_event_id(subscription)
             else:
-                # We do not use id's here. Integers are reserved
-                # to match ``Subscription.id``.
                 coupon = coupons[subscription.provider.id]
+                # XXX should we not use a `cpn_` prefixed event_id here?
+                #     see also InvoicedItem.get_event()
                 event_id = coupon.code
             for invoiced_item in invoicable['lines']:
                 # definitely invoice_key should be set by then.
@@ -784,11 +782,13 @@ class Organization(models.Model):
         We record one straightforward ``Transaction`` for the withdrawal
         and an additional one in case there is a processor transfer fee::
 
-            yyyy/mm/dd withdrawal to provider bank account
+            yyyy/mm/dd po_***** withdrawal to provider bank account
                 processor:Withdraw                       amount
                 provider:Funds
 
-            yyyy/mm/dd processor fee paid by provider (Stripe: 25 cents)
+            ; With StripeConnect there are no processor fees anymore
+            ; for Payouts.
+            yyyy/mm/dd processor fee paid by provider
                 processor:Funds                          processor_fee
                 provider:Funds
 
@@ -797,11 +797,7 @@ class Organization(models.Model):
             2014/09/10 withdraw from cowork
                 stripe:Withdraw                          $174.52
                 cowork:Funds
-
-            2014/09/10 transfer fee to Stripe
-                stripe:Funds                               $0.25
-                cowork:Funds
-        """
+       """
         #pylint:disable=too-many-arguments
         # We use ``get_or_create`` here because the method is also called
         # when transfers are reconciled with the payment processor.
@@ -927,15 +923,15 @@ class Organization(models.Model):
         be recovered from a subscriber. At that point the receivables are
         written off.::
 
-            yyyy/mm/dd balance ledger
+            yyyy/mm/dd sub_***** balance ledger
                 subscriber:Liability                       payable_amount
                 subscriber:Payable
 
-            yyyy/mm/dd write off liability
+            yyyy/mm/dd sub_***** write off liability
                 provider:Writeoff                          liability_amount
                 subscriber:Liability
 
-            yyyy/mm/dd write off receivable
+            yyyy/mm/dd sub_***** write off receivable
                 subscriber:Canceled                        liability_amount
                 provider:Receivable
 
@@ -968,14 +964,15 @@ class Organization(models.Model):
         for balance in orig_balances:
             orig_amounts[balance['event_id']] = balance['orig_amount__sum']
         for balance in dest_balances:
-            subscription_id = balance['event_id']
+            sub_event_id = balance['event_id']
             balance_due = (balance['dest_amount__sum']
-                - orig_amounts.get(subscription_id, 0))
+                - orig_amounts.get(sub_event_id, 0))
             if balance_due > 0:
                 dest_unit = balance['dest_unit']
-                subscription = Subscription.objects.get(pk=subscription_id)
+                subscription = Subscription.objects.get_by_event_id(
+                    sub_event_id)
                 event_balance = Transaction.objects.get_event_balance(
-                    subscription_id, account=Transaction.PAYABLE)
+                    sub_event_id, account=Transaction.PAYABLE)
                 balance_payable = event_balance['amount']
                 with transaction.atomic():
                     if balance_payable > 0:
@@ -984,7 +981,7 @@ class Organization(models.Model):
                         #     xia:Liability                            15800
                         #     xia:Payable
                         Transaction.objects.create(
-                            event_id=subscription_id,
+                            event_id=sub_event_id,
                             created_at=at_time,
                             descr=humanize.DESCRIBE_DOUBLE_ENTRY_MATCH,
                             dest_unit=dest_unit,
@@ -1000,7 +997,7 @@ class Organization(models.Model):
                     #     cowork:Writeoff                              15800
                     #     xia:Liability
                     Transaction.objects.create(
-                        event_id=subscription_id,
+                        event_id=sub_event_id,
                         created_at=at_time,
                         descr=humanize.DESCRIBE_WRITEOFF_LIABILITY % {
                             'event': subscription},
@@ -1017,7 +1014,7 @@ class Organization(models.Model):
                     #     xia:Cancelled                             15800
                     #     cowork:Receivable
                     Transaction.objects.create(
-                        event_id=subscription_id,
+                        event_id=sub_event_id,
                         created_at=at_time,
                         descr=humanize.DESCRIBE_WRITEOFF_RECEIVABLE % {
                             'event': subscription},
@@ -1525,7 +1522,8 @@ class Charge(models.Model):
                     provider.create_processor_fee(
                         self.processor_backend.dispute_fee(self.amount),
                         Transaction.CHARGEBACK,
-                        event_id=self.id, created_at=created_at)
+                        event_id=get_charge_event_id(self),
+                        created_at=created_at)
                     providers |= set([provider])
                 charge_item.create_refund_transactions(
                     refunded_amount,
@@ -1607,27 +1605,27 @@ class Charge(models.Model):
 
             ; Record the charge
 
-            yyyy/mm/dd charge event
+            yyyy/mm/dd cha_***** charge event
                 processor:Funds                          charge_amount
                 subscriber:Liability
 
             ; Compensate for atomicity of charge record (when necessary)
 
-            yyyy/mm/dd invoiced-item event
+            yyyy/mm/dd sub_***** invoiced-item event
                 subscriber:Liability           min(invoiced_item_amount,
                 subscriber:Payable                      balance_payable)
 
             ; Distribute processor fee and funds to the provider
 
-            yyyy/mm/dd processor fee paid by provider
+            yyyy/mm/dd cha_***** processor fee paid by provider
                 provider:Expenses                        processor_fee
                 processor:Backlog
 
-            yyyy/mm/dd distribution to provider (backlog accounting)
+            yyyy/mm/dd sub_***** distribution to provider (backlog accounting)
                 provider:Receivable                      plan_amount
                 provider:Backlog
 
-            yyyy/mm/dd distribution to provider
+            yyyy/mm/dd cha_***** distribution to provider
                 provider:Funds                           distribute_amount
                 processor:Funds
 
@@ -1674,7 +1672,7 @@ class Charge(models.Model):
                 = self.processor_backend.charge_distribution(self)
 
             charge_transaction = Transaction.objects.create(
-                event_id=self.id,
+                event_id=get_charge_event_id(self),
                 descr=self.description,
                 created_at=self.created_at,
                 dest_unit=self.unit,
@@ -1717,13 +1715,14 @@ class Charge(models.Model):
                         orig_account=Transaction.PAYABLE,
                         orig_organization=invoiced_item.dest_organization)
 
-                # XXX event is used for provider and in description.
-                event = invoiced_item.get_event()
+                # XXX event_id is used for provider and in description.
+                event = None
+                event_id = invoiced_item.event_id
+                if invoiced_item.event_id:
+                    event = invoiced_item.get_event()
                 if event:
-                    event_id = event.id
                     provider = event.provider
                 else:
-                    event_id = None
                     provider = get_broker()
                 orig_item_amount = invoiced_item.dest_amount
                 # Has long as we have only one item and charge/funds are using
@@ -1757,8 +1756,8 @@ class Charge(models.Model):
                     charge_item.invoiced_fee = Transaction.objects.create(
                         created_at=self.created_at,
                         descr=humanize.DESCRIBE_CHARGED_CARD_PROCESSOR % {
-                            'charge': self.processor_key, 'event': event},
-                        event_id=self.id,
+                            'charge': self.processor_key, 'event': event_id},
+                        event_id=get_charge_event_id(self),
                         dest_unit=funds_unit,
                         dest_amount=fee_amount,
                         dest_account=Transaction.EXPENSES,
@@ -1783,7 +1782,7 @@ class Charge(models.Model):
                     event_id=event_id,
                     created_at=self.created_at,
                     descr=humanize.DESCRIBE_CHARGED_CARD_PROVIDER % {
-                            'charge': self.processor_key, 'event': event},
+                            'charge': self.processor_key, 'event': event_id},
                     dest_unit=self.unit,
                     dest_amount=orig_item_amount,
                     dest_account=Transaction.RECEIVABLE,
@@ -1797,10 +1796,10 @@ class Charge(models.Model):
                     orig_organization=provider)
 
                 charge_item.invoiced_distribute = Transaction.objects.create(
-                    event_id=self.id,
+                    event_id=get_charge_event_id(self),
                     created_at=self.created_at,
                     descr=humanize.DESCRIBE_CHARGED_CARD_PROVIDER % {
-                            'charge': self.processor_key, 'event': event},
+                            'charge': self.processor_key, 'event': event_id},
                     dest_unit=funds_unit,
                     dest_amount=distribute_amount,
                     dest_account=Transaction.FUNDS,
@@ -1951,7 +1950,8 @@ class ChargeItem(models.Model):
         All ``Transaction`` which are part of a refund for this ``ChargeItem``.
         """
         return Transaction.objects.filter(
-            event_id=str(self.id), orig_account=Transaction.REFUNDED)
+            event_id=get_charge_event_id(self.charge, self),
+            orig_account=Transaction.REFUNDED)
 
     def create_refund_transactions(self, refunded_amount,
         charge_available_amount, charge_fee_amount,
@@ -1961,15 +1961,15 @@ class ChargeItem(models.Model):
         """
         Each ``ChargeItem`` can be partially refunded::
 
-            yyyy/mm/dd refund to subscriber
+            yyyy/mm/dd cha_*****_*** refund to subscriber
                 provider:Refund                          refunded_amount
                 subscriber:Refunded
 
-            yyyy/mm/dd refund of processor fee
+            yyyy/mm/dd cha_*****_*** refund of processor fee
                 processor:Refund                         processor_fee
                 processor:Funds
 
-            yyyy/mm/dd refund of processor fee
+            yyyy/mm/dd cha_*****_*** refund of processor fee
                 processor:Refund                         distribute_amount
                 provider:Funds
 
@@ -2049,7 +2049,7 @@ class ChargeItem(models.Model):
                 'refund_type': refund_type.lower(),
                 'descr': invoiced_item.descr}
             Transaction.objects.create(
-                event_id=self.id,
+                event_id=get_charge_event_id(self.charge, self),
                 descr=descr,
                 created_at=created_at,
                 dest_unit=provider_unit,
@@ -2064,7 +2064,7 @@ class ChargeItem(models.Model):
             if invoiced_fee:
                 # Refund the processor fee (if exists)
                 Transaction.objects.create(
-                    event_id=self.id,
+                    event_id=get_charge_event_id(self.charge, self),
                     # The Charge id is already included in the description here.
                     descr=invoiced_fee.descr.replace(
                         'processor fee', 'refund processor fee'),
@@ -2082,7 +2082,7 @@ class ChargeItem(models.Model):
 
             # cancel payment to provider
             Transaction.objects.create(
-                event_id=self.id,
+                event_id=get_charge_event_id(self.charge, self),
                 descr=descr,
                 created_at=created_at,
                 dest_unit=processor_unit,
@@ -2509,8 +2509,9 @@ class UseCharge(SlugTitleMixin, models.Model):
     description = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
     plan = models.ForeignKey(Plan, on_delete=models.CASCADE,
-        related_name='plans')
+        related_name='use_charges')
     use_amount = models.PositiveIntegerField(default=0)
+    quota = models.PositiveIntegerField(default=0)
     extra = settings.get_extra_field_class()(null=True,
         help_text=_("Extra meta data (can be stringify JSON)"))
 
@@ -2675,12 +2676,6 @@ class SubscriptionManager(models.Manager):
         return self.valid_for(
             ends_at__gte=start_period, ends_at__lt=end_period, **kwargs)
 
-    def valid_for(self, **kwargs):
-        """
-        Returns valid (i.e. fully opted-in) subscriptions.
-        """
-        return self.filter(grant_key=None, request_key=None, **kwargs)
-
     def create(self, **kwargs):
         if 'ends_at' not in kwargs:
             created_at = datetime_or_now(kwargs.get('created_at', None))
@@ -2688,6 +2683,15 @@ class SubscriptionManager(models.Manager):
             return super(SubscriptionManager, self).create(
                 ends_at=plan.end_of_period(created_at), **kwargs)
         return super(SubscriptionManager, self).create(**kwargs)
+
+    def get_by_event_id(self, event_id):
+        """
+        Returns a `Subscription` based on a `Transaction.event_id` key.
+        """
+        look = re.match(r'sub_(\d+)(_(\d+))?', event_id)
+        assert look is not None   # We have a big pb if this is not
+                                  # an subscription-formatted event_id
+        return self.get(pk=int(look.group(1)))
 
     def new_instance(self, organization, plan, ends_at=None):
         #pylint: disable=no-self-use
@@ -2699,6 +2703,12 @@ class SubscriptionManager(models.Manager):
                 datetime_or_now(), nb_periods=plan.period_length)
         return Subscription(organization=organization, plan=plan,
             auto_renew=plan.auto_renew, ends_at=ends_at)
+
+    def valid_for(self, **kwargs):
+        """
+        Returns valid (i.e. fully opted-in) subscriptions.
+        """
+        return self.filter(grant_key=None, request_key=None, **kwargs)
 
 
 @python_2_unicode_compatible
@@ -2971,15 +2981,9 @@ class TransactionManager(models.Manager):
         """
         Returns all transactions associated to a charge.
         """
-        # XXX This might return ``Subscription`` but it is OK because
-        # we later filter for movement on specific accounts
-        # a ``Subscription`` cannot create.
-        #
-        # Implementation Note:
-        # We have to explicitely cast item.pk here otherwise PostgreSQL
-        # is not happy.
-        return self.filter(Q(event_id=charge) | Q(
-            event_id__in=[str(item.pk) for item in charge.charge_items.all()]))
+        return self.filter(event_id__in=[get_charge_event_id(charge)] + [
+            get_charge_event_id(charge, item)
+            for item in charge.charge_items.all()])
 
     def by_customer(self, organization):
         """
@@ -3018,7 +3022,8 @@ class TransactionManager(models.Manager):
         """
         queryset = self.filter(
             dest_account=Transaction.PAYABLE,
-            event_id__in=subscriptions)
+            event_id__in=[get_sub_event_id(subscription)
+                for subscription in subscriptions])
         if at_time:
             queryset = queryset.filter(created_at=at_time)
         return queryset.order_by('created_at')
@@ -3036,29 +3041,29 @@ class TransactionManager(models.Manager):
 
             ; Record an order
 
-            yyyy/mm/dd description
+            yyyy/mm/dd sub_***** description
                 subscriber:Payable                       amount
                 provider:Receivable
 
             ; Record the off-line payment
 
-            yyyy/mm/dd charge event
+            yyyy/mm/dd (no event) charge event
                 provider:Funds                           amount
                 subscriber:Liability
 
             ; Compensate for atomicity of charge record (when necessary)
 
-            yyyy/mm/dd invoiced-item event
+            yyyy/mm/dd sub_***** invoiced-item event
                 subscriber:Liability           min(invoiced_item_amount,
                 subscriber:Payable                      balance_payable)
 
             ; Distribute funds to the provider
 
-            yyyy/mm/dd distribution to provider (backlog accounting)
+            yyyy/mm/dd sub_***** distribution to provider (backlog accounting)
                 provider:Receivable                      amount
                 provider:Backlog
 
-            yyyy/mm/dd mark the amount as offline payment
+            yyyy/mm/dd sub_***** mark the amount as offline payment
                 provider:Offline                         amount
                 provider:Funds
 
@@ -3090,10 +3095,11 @@ class TransactionManager(models.Manager):
             descr += ' (%s)' % user.username
         created_at = datetime_or_now(created_at)
         with transaction.atomic():
+            event_id = get_sub_event_id(subscription)
             self.create(
                 created_at=created_at,
                 descr=descr,
-                event_id=subscription.id,
+                event_id=event_id,
                 dest_amount=amount,
                 dest_unit=subscription.plan.unit,
                 dest_account=Transaction.PAYABLE,
@@ -3119,13 +3125,13 @@ class TransactionManager(models.Manager):
             # we create Payable to Liability transaction in order to correct
             # the accounts amounts. This is a side effect of the atomicity
             # requirement for a ``Transaction`` associated to offline payment.
-            balance = self.get_event_balance(subscription.id,
-                account=Transaction.PAYABLE)
+            balance = self.get_event_balance(
+                event_id, account=Transaction.PAYABLE)
             balance_payable = balance['amount']
             if balance_payable > 0:
                 available = min(amount, balance_payable)
                 Transaction.objects.create(
-                    event_id=subscription.id,
+                    event_id=event_id,
                     created_at=created_at,
                     descr=humanize.DESCRIBE_DOUBLE_ENTRY_MATCH,
                     dest_amount=available,
@@ -3140,7 +3146,7 @@ class TransactionManager(models.Manager):
             self.create(
                 created_at=created_at,
                 descr=descr,
-                event_id=subscription.id,
+                event_id=event_id,
                 dest_amount=amount,
                 dest_unit=subscription.plan.unit,
                 dest_account=Transaction.RECEIVABLE,
@@ -3153,7 +3159,7 @@ class TransactionManager(models.Manager):
             self.create(
                 created_at=created_at,
                 descr="%s - %s" % (descr, humanize.DESCRIBE_DOUBLE_ENTRY_MATCH),
-                event_id=subscription.id,
+                event_id=event_id,
                 dest_amount=amount,
                 dest_unit=subscription.plan.unit,
                 dest_account=Transaction.OFFLINE,
@@ -3296,7 +3302,7 @@ class TransactionManager(models.Manager):
         # just filtering by account and event_id.
         balances = sum_dest_amount(
             self.get_invoiceables(subscription.organization).filter(
-                event_id=subscription.id))
+                event_id=get_sub_event_id(subscription)))
         if len(balances) > 1:
             raise ValueError(_("balances with multiple currency units (%s)") %
                 str(balances))
@@ -3320,7 +3326,18 @@ class TransactionManager(models.Manager):
         Returns the recognized income balance on a subscription
         for the period [starts_at, ends_at[ as a tuple (amount, unit).
         """
-        return self.get_event_balance(subscription.id,
+        event_id = get_sub_event_id(subscription)
+        return self.get_event_balance(event_id,
+            account=Transaction.INCOME, starts_at=starts_at, ends_at=ends_at)
+
+    def get_use_charge_balance(self, subscription, use_charge,
+                                        starts_at=None, ends_at=None):
+        """
+        Returns the recognized income balance on a use charge
+        for the period [starts_at, ends_at[ as a tuple (amount, unit).
+        """
+        event_id = get_sub_event_id(subscription, use_charge)
+        return self.get_event_balance(event_id,
             account=Transaction.INCOME, starts_at=starts_at, ends_at=ends_at)
 
     def get_subscription_invoiceables(self, subscription, until=None):
@@ -3329,10 +3346,11 @@ class TransactionManager(models.Manager):
         the last successful payment on a subscription.
         """
         until = datetime_or_now(until)
+        event_id = get_sub_event_id(subscription)
         last_payment = self.filter(
             Q(orig_account=Transaction.PAYABLE)
             | Q(orig_account=Transaction.LIABILITY),
-            event_id=subscription.id,
+            event_id=event_id,
             orig_organization=subscription.organization,
             dest_account=Transaction.FUNDS,
             created_at__lt=until).order_by('created_at').first()
@@ -3345,7 +3363,7 @@ class TransactionManager(models.Manager):
         return self.filter(
             Q(dest_account=Transaction.PAYABLE)
             | Q(dest_account=Transaction.LIABILITY),
-            event_id=subscription.id,
+            event_id=event_id,
             dest_organization=subscription.organization, **kwargs)
 
     def get_subscription_receivable(self, subscription,
@@ -3360,17 +3378,17 @@ class TransactionManager(models.Manager):
         until = datetime_or_now(until)
         return self.filter(
             orig_account=Transaction.RECEIVABLE,
-            event_id=subscription.id,
+            event_id=get_sub_event_id(subscription),
             created_at__lt=until, **kwargs).order_by('created_at')
 
     def new_use_charge(self, subscription, use_charge, quantity,
-                       created_at=None, descr=None):
+                       custom_amount=None, created_at=None, descr=None):
         """
         Each time a subscriber places an order through
         the /billing/:organization/cart/ page, a ``Transaction``
         is recorded as follow::
 
-            yyyy/mm/dd description
+            yyyy/mm/dd sub_*****_*** description
                 subscriber:Payable                       amount
                 provider:Receivable
 
@@ -3384,13 +3402,17 @@ class TransactionManager(models.Manager):
         if quantity <= 0:
             # Minimum quantity for a use charge is one.
             quantity = 1
-        amount = use_charge.use_amount * quantity
+        if custom_amount is not None:
+            amount = custom_amount * quantity
+        else:
+            amount = use_charge.use_amount * quantity
+        event_id = get_sub_event_id(subscription, use_charge)
         if not descr:
             descr = humanize.describe_buy_use(use_charge, quantity)
         return self.new_payable(
             subscription.organization, Price(amount, subscription.plan.unit),
             subscription.plan.organization, descr,
-            event_id=subscription.id, created_at=created_at)
+            event_id=event_id, created_at=created_at)
 
     def new_subscription_order(self, subscription, nb_natural_periods,
         prorated_amount=0, created_at=None, descr=None, discount_percent=0,
@@ -3401,7 +3423,7 @@ class TransactionManager(models.Manager):
         the /billing/:organization/cart/ page, a ``Transaction``
         is recorded as follow::
 
-            yyyy/mm/dd description
+            yyyy/mm/dd sub_***** description
                 subscriber:Payable                       amount
                 provider:Receivable
 
@@ -3436,10 +3458,15 @@ class TransactionManager(models.Manager):
             # If we already have a description, all bets are off on
             # what the amount represents (see unlock_event).
             amount = prorated_amount
+        event_id = None
+        if subscription.id:
+            # If the subscription has not yet been recorded in the database
+            # we don't have an id for it (see order/checkout pages).
+            event_id = get_sub_event_id(subscription)
         return self.new_payable(
             subscription.organization, Price(amount, subscription.plan.unit),
             subscription.plan.organization, descr,
-            event_id=subscription.id, created_at=created_at)
+            event_id=event_id, created_at=created_at)
 
     @staticmethod
     def new_payable(customer, price, provider, descr,
@@ -3477,7 +3504,7 @@ class TransactionManager(models.Manager):
         when a ``Charge`` is created for payment of a balance due
         by a subcriber::
 
-            yyyy/mm/dd description
+            yyyy/mm/dd sub_***** description
                 subscriber:Settled                        amount
                 provider:Settled
 
@@ -3494,7 +3521,7 @@ class TransactionManager(models.Manager):
         if descr_pat is None:
             descr_pat = humanize.DESCRIBE_BALANCE
         return Transaction(
-            event_id=subscription.id,
+            event_id=get_sub_event_id(subscription),
             created_at=created_at,
             descr=descr_pat % {'amount': humanize.as_money(balance, unit),
                 'plan': subscription.plan},
@@ -3513,7 +3540,7 @@ class TransactionManager(models.Manager):
         for a subscription, we transfer it to a ``Liability``
         account, recorded as follow::
 
-            yyyy/mm/dd description
+            yyyy/mm/dd sub_***** description
                 subscriber:Liability                     period_amount
                 subscriber:Payable
 
@@ -3536,21 +3563,22 @@ class TransactionManager(models.Manager):
             orig_unit=subscription.plan.unit,
             orig_account=Transaction.PAYABLE,
             orig_organization=subscription.organization,
-            event_id=subscription.id)
+            event_id=get_sub_event_id(subscription))
 
     def create_income_recognized(self, subscription,
-        amount=0, starts_at=None, ends_at=None, descr=None, dry_run=False):
+        amount=0, starts_at=None, ends_at=None, descr=None,
+        event_id=None, dry_run=False):
         """
         When a period ends and we either have a ``Backlog`` (payment
         was made before the period starts) or a ``Receivable`` (invoice
         is submitted after the period ends). Either way we must recognize
         income for that period since the subscription was serviced::
 
-            yyyy/mm/dd When payment was made at begining of period
+            yyyy/mm/dd sub_***** When payment was made at begining of period
                 provider:Backlog                   period_amount
                 provider:Income
 
-            yyyy/mm/dd When service is invoiced after period ends
+            yyyy/mm/dd sub_***** When service is invoiced after period ends
                 provider:Receivable                period_amount
                 provider:Income
 
@@ -3563,14 +3591,16 @@ class TransactionManager(models.Manager):
         #pylint:disable=unused-argument,too-many-arguments,too-many-locals
         created_transactions = []
         ends_at = datetime_or_now(ends_at)
+        if not event_id:
+            event_id = get_sub_event_id(subscription)
         # ``created_at`` is set just before ``ends_at``
         # so we do not include the newly created transaction
         # in the subsequent period.
         created_at = ends_at - relativedelta(seconds=1)
-        balance = self.get_event_balance(subscription.id,
+        balance = self.get_event_balance(event_id,
             account=Transaction.BACKLOG, ends_at=ends_at)
         backlog_amount = - balance['amount'] # def. balance must be negative
-        balance = self.get_event_balance(subscription.id,
+        balance = self.get_event_balance(event_id,
             account=Transaction.RECEIVABLE, ends_at=ends_at)
         receivable_amount = - balance['amount'] # def. balance must be negative
         LOGGER.debug("recognize %dc(%s) with %dc(%s) backlog available,"\
@@ -3591,7 +3621,7 @@ class TransactionManager(models.Manager):
             recognized = Transaction(
                 created_at=created_at,
                 descr=descr,
-                event_id=subscription.id,
+                event_id=event_id,
                 dest_amount=available,
                 dest_unit=subscription.plan.unit,
                 dest_account=Transaction.BACKLOG,
@@ -3617,7 +3647,7 @@ class TransactionManager(models.Manager):
             recognized = Transaction(
                 created_at=created_at,
                 descr=descr,
-                event_id=subscription.id,
+                event_id=event_id,
                 dest_amount=available,
                 dest_unit=subscription.plan.unit,
                 dest_account=Transaction.RECEIVABLE,
@@ -3768,10 +3798,9 @@ class Transaction(models.Model):
         if available.
         """
         if self.event_id:
-            try:
-                return Subscription.objects.get(id=self.event_id)
-            except (Subscription.DoesNotExist, ValueError):
-                pass
+            look = re.match(r'sub_(\d+)(_(\d+))?', self.event_id)
+            if look:
+                return Subscription.objects.get_by_event_id(self.event_id)
             try:
                 return Coupon.objects.get(code=self.event_id)
             except (Coupon.DoesNotExist, ValueError):
@@ -3954,3 +3983,48 @@ def sum_orig_amount(transactions):
         results = [{'amount': 0, 'unit': settings.DEFAULT_UNIT,
             'created_at': datetime_or_now()}]
     return results
+
+
+def get_period_usage(subscription, use_charge, starts_at, ends_at):
+    return Transaction.objects.filter(
+        orig_account=Transaction.RECEIVABLE,
+        dest_account=Transaction.PAYABLE, created_at__lt=ends_at,
+        created_at__gte=starts_at,
+        event_id=get_sub_event_id(subscription, use_charge)).count()
+
+
+def get_charge_event_id(charge, charge_item=None):
+    """
+    Returns a formatted id for a charge (or a charge_item
+    on that charge) that can be used as `event_id` in a `Transaction`.
+    """
+    substr = "cha_%d" % charge.id
+    if charge_item:
+        substr += "_%d" % charge_item.id
+    return substr
+
+
+def get_sub_event_id(subscription, use_charge=None):
+    """
+    Returns a formatted id for a subscription (or a use_charge
+    on that subscription) that can be used as `event_id` in a `Transaction`.
+    """
+    substr = "sub_%d" % subscription.id
+    if use_charge:
+        substr += "_%d" % use_charge.id
+    return substr
+
+
+def record_use_charge(subscription, use_charge):
+    usage = get_period_usage(subscription, use_charge,
+        subscription.created_at, subscription.ends_at)
+    amount = None
+    event_id = get_sub_event_id(subscription, use_charge)
+    descr = event_id
+    if usage < use_charge.quota:
+        amount = 0
+        descr = (humanize.describe_buy_use(use_charge, 1)
+            + " (complimentary in plan)")
+    return Transaction.objects.record_order([
+        Transaction.objects.new_use_charge(subscription,
+            use_charge, 1, custom_amount=amount, descr=descr)])
