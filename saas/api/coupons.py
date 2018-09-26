@@ -23,16 +23,13 @@
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 from __future__ import unicode_literals
 
-from django.contrib import messages
-from django.utils.translation import ugettext_lazy as _
-from rest_framework import serializers, status
-from rest_framework.generics import (GenericAPIView,
-    ListCreateAPIView, RetrieveUpdateDestroyAPIView)
-from rest_framework.response import Response
+from rest_framework import serializers
+from rest_framework.generics import (ListCreateAPIView,
+    RetrieveUpdateDestroyAPIView)
 from extra_views.contrib.mixins import SearchableListMixin, SortableListMixin
 
 from ..filters import SortableDateRangeSearchableFilterBackend
-from ..models import CartItem, Coupon
+from ..models import Coupon
 from ..mixins import CouponMixin, ProviderMixin
 
 #pylint: disable=no-init
@@ -45,19 +42,6 @@ class CouponSerializer(serializers.ModelSerializer):
         model = Coupon
         fields = ('code', 'percent', 'created_at', 'ends_at', 'description')
 
-
-class RedeemCouponSerializer(serializers.Serializer):
-    """
-    Serializer to redeem a ``Coupon``.
-    """
-
-    code = serializers.CharField(help_text=_("Coupon code to redeem"))
-
-    def create(self, validated_data):
-        return validated_data
-
-    def update(self, instance, validated_data):
-        raise RuntimeError('`update()` should not have been called.')
 
 
 class SmartCouponListMixin(SortableListMixin, SearchableListMixin):
@@ -139,6 +123,9 @@ class CouponListAPIView(SmartCouponListMixin, CouponQuerysetMixin,
         """
         Creates a ``Coupon`` to be used on provider's plans.
 
+        Customers will be able to use the `code` until `ends_at`
+        to subscribe to plans from the Coupon's provider at a discount.
+
         **Examples
 
         .. code-block:: http
@@ -207,6 +194,11 @@ class CouponDetailAPIView(CouponMixin, RetrieveUpdateDestroyAPIView):
         """
         Deletes a ``Coupon``.
 
+        Only coupons which have never been applied to an oder will
+        be permanently deleted. Coupons which have already be used
+        at least once will be de-activated and still available for
+        performance measurements.
+
         **Examples
 
         .. code-block:: http
@@ -223,52 +215,3 @@ class CouponDetailAPIView(CouponMixin, RetrieveUpdateDestroyAPIView):
             serializer.save(organization=self.organization)
         else:
             serializer.save(organization=self.organization, ends_at='never')
-
-
-class CouponRedeemAPIView(GenericAPIView):
-    """
-    Redeem a ``Coupon`` and apply the discount to the eligible items
-    in the cart.
-
-    **Examples
-
-    .. code-block:: http
-
-         POST /api/redeem HTTP/1.1
-
-    .. code-block:: json
-
-        {
-            "code": "LABORDAY"
-        }
-
-    responds
-
-    .. code-block:: json
-
-        {
-            "details": "Coupon 'LABORDAY' was successfully applied."
-        }
-    """
-    serializer_class = RedeemCouponSerializer
-
-    def post(self, request, *args, **kwargs): #pylint: disable=unused-argument
-        serializer = self.get_serializer(data=request.data)
-        if serializer.is_valid():
-            coupon_code = serializer.data['code']
-            if CartItem.objects.redeem(request.user, coupon_code):
-                details = {"details": (
-                    _("Coupon '%s' was successfully applied.") % coupon_code)}
-                headers = {}
-                # XXX Django 1.7: 500 error, argument must be an HttpRequest
-                # object, not 'Request'. Not an issue with Django 1.6.2
-                # Since we rely on the message to appear after reload of
-                # the cart page in the casperjs tests, we can't get rid
-                # of this statement just yet.
-                messages.success(request._request, details['details'])#pylint: disable=protected-access
-                return Response(details, status=status.HTTP_200_OK,
-                                headers=headers)
-            details = {"details": (
-_("No items can be discounted using this coupon: %s.") % coupon_code)}
-            return Response(details, status=status.HTTP_400_BAD_REQUEST)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

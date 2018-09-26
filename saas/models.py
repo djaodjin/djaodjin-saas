@@ -235,14 +235,14 @@ class Organization(models.Model):
     is_provider = models.BooleanField(default=False,
         help_text=_("Can fulfill the provider side of a subscription."))
     full_name = models.CharField(_("Organization name"), max_length=100,
-        blank=True, help_text=_("Organization name"))
+        blank=True)
     default_timezone = models.CharField(
         max_length=100, default=settings.TIME_ZONE,
         help_text=_("Timezone to use when reporting metrics"))
     # contact by e-mail
     email = models.EmailField(# XXX if we use unique=True here, the project
                               #     wizard must be changed.
-        help_text=_("E-mail address for the organization"))
+    )
     # contact by phone
     phone = models.CharField(max_length=50,
         help_text=_("Phone number to contact the organization"))
@@ -438,7 +438,10 @@ class Organization(models.Model):
                  grant_key=None, at_time=None, reason=None, extra=None,
                  request_user=None):
         """
-        Add user with a role to organization.
+        Adds ``user`` as a ``role_descr`` (ex: manager) on the organization.
+
+        If ``user`` already had a role on the organization, it is removed
+        to only keep one role per user per organization.
         """
         #pylint:disable=unused-argument,too-many-arguments
         # Implementation Note:
@@ -452,26 +455,21 @@ class Organization(models.Model):
         # with the whole QuerySet related to a user.
         queryset = get_role_model().objects.db_manager(
             using=self._state.db).filter(organization=self, user=user)
-        if not queryset.exists():
-            queryset = get_role_model().objects.db_manager(
-                using=self._state.db).filter(organization=self, user=user,
-                request_key__isnull=False)
-            if queryset.exists():
-                # We have a request. Let's use it.
-                m2m = queryset.get()
-                force_insert = False
-            else:
-                m2m = get_role_model()(
-                    organization=self, user=user, grant_key=grant_key)
-                force_insert = True
-            m2m.role_description = role_descr
-            m2m.request_key = None
+        if queryset.exists():
+            # We have a role for the user on this organization. Let's update it.
+            m2m = queryset.get()
+            force_insert = False
+        else:
+            m2m = get_role_model()(
+                organization=self, user=user, grant_key=grant_key)
             m2m.extra = extra
-            m2m.save(using=self._state.db, force_insert=force_insert)
-            signals.user_relation_added.send(sender=__name__,
-                role=m2m, reason=reason, request_user=request_user)
-            return True
-        return False
+            force_insert = True
+        m2m.role_description = role_descr
+        m2m.request_key = None
+        m2m.save(using=self._state.db, force_insert=force_insert)
+        signals.user_relation_added.send(sender=__name__,
+            role=m2m, reason=reason, request_user=request_user)
+        return force_insert
 
     def add_role_request(self, user, at_time=None):
         # OK to use ``filter`` in both subsequent queries as we are dealing
@@ -2602,7 +2600,8 @@ class CartItem(models.Model):
 
     # The following fields are for number of periods pre-paid in advance
     # or a quantity in UseCharge units.
-    quantity = models.PositiveIntegerField(default=0)
+    quantity = models.PositiveIntegerField(default=0,
+        help_text=_("number of periods to be paid in advance"))
 
     # The following fields are used for the GroupBuy feature. They do not
     # refer to a User nor Organization key because those might not yet exist
@@ -2614,8 +2613,16 @@ class CartItem(models.Model):
     # that will be passed back on successful charge notifications.
     # `sync_on`` will be used for notifications. It needs to be a valid
     # User or Organization slug or an e-mail address.
-    first_name = models.CharField(_('first name'), max_length=30, blank=True)
-    last_name = models.CharField(_('last name'), max_length=30, blank=True)
+    # XXX first_name / last_name should be a full_name because we only
+    #     subscribes organization. On the other end an actual user needs
+    #     to invited and the User model only supports first_name/last_name.
+    first_name = models.CharField(_('first name'), max_length=30, blank=True,
+        help_text=_("First name of the person that will benefit from"\
+            " the subscription (GroupBuy)"))
+    last_name = models.CharField(_('last name'), max_length=30, blank=True,
+        help_text=_("Last name of the person that will benefit from"\
+            " the subscription (GroupBuy)"))
+    # XXX Explain sync_on and claim_code
     sync_on = models.CharField(max_length=255, null=True, blank=True)
     claim_code = models.SlugField(db_index=True, null=True, blank=True)
 
@@ -2725,12 +2732,20 @@ class Subscription(models.Model):
 
     objects = SubscriptionManager()
 
-    auto_renew = models.BooleanField(default=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    ends_at = models.DateTimeField()
-    description = models.TextField(null=True, blank=True)
-    organization = models.ForeignKey(Organization, on_delete=models.CASCADE)
-    plan = models.ForeignKey(Plan, on_delete=models.CASCADE)
+    auto_renew = models.BooleanField(default=True,
+        help_text=_("The subscription is set to auto-renew at the end of"\
+        " the period"))
+    created_at = models.DateTimeField(auto_now_add=True,
+        help_text=_("date/time of creation in ISO format"))
+    ends_at = models.DateTimeField(
+        help_text=_("date/time when the subscription period currently ends"\
+        " in ISO format"))
+    description = models.TextField(null=True, blank=True,
+        help_text=_("free-form text description for the subscription"))
+    organization = models.ForeignKey(Organization, on_delete=models.CASCADE,
+        help_text=_("organization subscribed to the plan"))
+    plan = models.ForeignKey(Plan, on_delete=models.CASCADE,
+        help_text=_("plan the organization is subscribed to"))
     request_key = models.CharField(max_length=40, null=True, blank=True)
     grant_key = models.CharField(max_length=40, null=True, blank=True)
     extra = settings.get_extra_field_class()(null=True,
@@ -3788,10 +3803,14 @@ class BalanceLine(models.Model):
     When ``is_positive`` is ``True``, the absolute value will be reported.
     """
     report = models.SlugField()
-    title = models.CharField(max_length=255)
-    selector = models.CharField(max_length=255, blank=True)
+    title = models.CharField(max_length=255,
+        help_text=_("Title for the row"))
+    selector = models.CharField(max_length=255, blank=True,
+        help_text=_("filter on the Transaction accounts"))
     is_positive = models.BooleanField(default=False)
-    rank = models.IntegerField()
+    rank = models.IntegerField(
+        help_text=_("absolute position of the row in the list of rows"\
+        " for the table"))
     moved = models.BooleanField(default=False)
 
     class Meta:

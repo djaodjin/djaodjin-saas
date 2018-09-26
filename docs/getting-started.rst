@@ -53,7 +53,7 @@ to define ``PAGE_SIZE`` in your settings.py
             'rest_framework.pagination.PageNumberPagination',
     }
 
-There is no access polcies by default on the djaodjin-saas URLs. It is thus
+There is no access policies by default on the djaodjin-saas URLs. It is thus
 your responsability to add the appropriate decorators to restrict which users
 can access which URL. A set of common decorators in Software-as-a-Service
 setups is provided as part of the :doc:`Flexible Security Framework <security>`.

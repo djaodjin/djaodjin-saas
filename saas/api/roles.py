@@ -665,7 +665,8 @@ class RoleFilteredListAPIView(RoleSmartListMixin, RoleByDescrQuerysetMixin,
                 # The following SQL query is not folded into the previous
                 # one so we can have a priority of username over email.
                 user = user_model.objects.get(
-                    email=serializer.validated_data['slug'])
+                    email=serializer.validated_data.get('email',
+                        serializer.validated_data['slug']))
             except user_model.DoesNotExist:
                 if not request.GET.get('force', False):
                     raise Http404("%s not found"
@@ -676,7 +677,7 @@ class RoleFilteredListAPIView(RoleSmartListMixin, RoleByDescrQuerysetMixin,
             # The slug is neither a username nor an email address
             # at this point.
             user = _create_user(
-                serializer.validated_data['slug'],
+                slugify(serializer.validated_data['slug'].split('@')[0]),
                 email=serializer.validated_data['email'],
                 first_name=first_name, last_name=last_name)
             grant_key = generate_random_slug()

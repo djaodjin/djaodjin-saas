@@ -70,6 +70,8 @@ function _showErrorMessages(resp) {
                                 message += sep + messagePart;
                                 sep = ", ";
                             }
+                        } else if( data[key].hasOwnProperty('detail') ) {
+                            message = data[key].detail;
                         }
                         messages.push(key + ": " + message);
                         $("[name=\"" + key + "\"]").parents('.form-group').addClass("has-error");

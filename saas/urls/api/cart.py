@@ -29,8 +29,7 @@ URLs for the cart API of djaodjin saas.
 from django.conf.urls import url
 
 from ...api.billing import (CartItemAPIView, CartItemUploadAPIView,
-                            CartItemDestroyAPIView)
-from ...api.coupons import CouponRedeemAPIView
+                            CartItemDestroyAPIView, CouponRedeemAPIView)
 from ...settings import ACCT_REGEX
 
 urlpatterns = [

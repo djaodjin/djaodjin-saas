@@ -827,6 +827,13 @@ class ChurnedQuerysetMixin(ProviderMixin):
 class SubscribedQuerysetMixin(ProviderMixin):
     """
     ``QuerySet`` of ``Subscription`` which are currently active.
+
+    Optionnaly when an ``ends_at`` query parameter is specified,
+    returns a ``QuerySet`` of ``Subscription`` that were active
+    at ``ends_at``.
+
+    Optionnaly when a ``start_at`` query parameter is specified,
+    only considers ``Subscription`` that were created after ``start_at``.
     """
 
     model = Subscription

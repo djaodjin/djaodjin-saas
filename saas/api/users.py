@@ -65,15 +65,15 @@ class RegisteredBaseAPIView(RegisteredQuerysetMixin, ListAPIView):
 
 class RegisteredAPIView(UserSmartListMixin, RegisteredBaseAPIView):
     """
-    GET queries all ``User`` which have no associated role or a role
+    Lists all ``User`` which have no associated role or a role
     to an ``Organization`` which has no Subscription, active or inactive.
 
-    The queryset can be further filtered to a range of dates between
-    ``start_at`` and ``ends_at``.
+    The queryset can be filtered to a range of dates
+    ([``start_at``, ``ends_at``]) and for at least one field to match a search
+    term (``q``).
 
-    The queryset can be further filtered by passing a ``q`` parameter.
-
-    The result queryset can be ordered.
+    Query results can be ordered by natural fields (``o``) in either ascending
+    or descending order (``ot``).
 
     **Examples
 

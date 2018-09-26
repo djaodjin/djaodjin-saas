@@ -174,16 +174,24 @@ class EmailChargeReceiptSerializer(NoModelSerializer):
 
 class TableSerializer(NoModelSerializer):
 
-    key = serializers.CharField()
-    selector = serializers.CharField()
-    values = serializers.CharField()
+    # XXX use `key` instead of `slug` here?
+    key = serializers.CharField(
+        help_text=_("unique key in the table for the data series"))
+    selector = serializers.CharField(
+        help_text=_("filter on the Transaction accounts"))
+    values = serializers.CharField(
+        help_text=_("datapoints in the serie"))
 
 
 class MetricsSerializer(NoModelSerializer):
 
-    scale = serializers.FloatField()
-    unit = serializers.CharField()
-    title = serializers.CharField()
+    scale = serializers.FloatField(
+        help_text=_("The scale of the number reported in the tables (ex: 1000"\
+        " when numbers are reported in thousands of dollars)"))
+    unit = serializers.CharField(
+        help_text=_("three-letter ISO 4217 code for currency unit (ex: usd)"))
+    title = serializers.CharField(
+        help_text=_("Title for the table"))
     table = TableSerializer(many=True)
 
 
@@ -295,21 +303,29 @@ class OrganizationWithEndsAtByPlanSerializer(serializers.ModelSerializer):
 
 class PlanSerializer(serializers.ModelSerializer):
 
-    title = serializers.CharField(required=False)
-    description = serializers.CharField(required=False)
-    is_active = serializers.BooleanField(required=False)
-    setup_amount = serializers.IntegerField(required=False)
-    period_amount = serializers.IntegerField(required=False)
-    interval = EnumField(choices=Plan.INTERVAL_CHOICES, required=False)
+    title = serializers.CharField(required=False,
+        help_text=_("Title for the plan"))
+    description = serializers.CharField(required=False,
+        help_text=_("free-form text description for the plan"))
+    is_active = serializers.BooleanField(required=False,
+        help_text=_("True when customers can subscribe to the plan"))
+    setup_amount = serializers.IntegerField(required=False,
+        help_text=_("One-time amount to pay when the subscription starts"))
+    period_amount = serializers.IntegerField(required=False,
+        help_text=_("Amount billed every period"))
+    # XXX rename `interval` to `period`
+    interval = EnumField(choices=Plan.INTERVAL_CHOICES, required=False,
+        help_text=_("natural period for the subscription"))
     app_url = serializers.SerializerMethodField()
     organization = serializers.SlugRelatedField(
-        read_only=True, slug_field='slug')
+        read_only=True, slug_field='slug',
+        help_text=_("provider of the plan"))
 
     class Meta:
         model = Plan
         fields = ('slug', 'title', 'description', 'is_active',
                   'setup_amount', 'period_amount', 'interval', 'app_url',
-                  'organization')
+                  'organization', 'extra')
         read_only_fields = ('slug', 'app_url')
 
     @staticmethod
@@ -321,13 +337,16 @@ class SubscriptionSerializer(serializers.ModelSerializer):
 
     organization = OrganizationSerializer(read_only=True)
     plan = PlanSerializer(read_only=True)
-    editable = serializers.SerializerMethodField()
+    editable = serializers.SerializerMethodField(
+        help_text=_("True if the request user is able to update"\
+        " the subscription. Typically a manager for the plan provider."))
 
     class Meta:
         model = Subscription
         fields = ('created_at', 'ends_at', 'description',
-                  'organization', 'plan', 'grant_key', 'request_key',
-                  'auto_renew', 'editable')
+                  'organization', 'plan', 'auto_renew',
+                  'editable', 'extra', 'grant_key', 'request_key')
+        # XXX grant_key and request_key should probably be removed.
         read_only_fields = ('grant_key', 'request_key')
 
     def get_editable(self, subscription):
@@ -390,9 +409,17 @@ class UserSerializer(serializers.ModelSerializer):
     # interested to create new instances here.
     slug = serializers.CharField(source='username', validators=[
         validators.RegexValidator(r'^[\w.@+-]+$', _('Enter a valid username.'),
-            'invalid')])
-    created_at = serializers.DateTimeField(source='date_joined', required=False)
-    full_name = serializers.SerializerMethodField()
+            'invalid')],
+        help_text=_("Effectively the username. The variable is named `slug`"\
+            " such that front-end code can be re-used between Organization"\
+            " and User records."))
+    email = serializers.EmailField(read_only=True,
+        help_text=_("Email for the user"))
+    created_at = serializers.DateTimeField(source='date_joined', required=False,
+        help_text=_("Date/time of creation in ISO format"))
+    full_name = serializers.SerializerMethodField(
+        help_text=_("Full name for the contact (effectively first name"\
+        " followed by last name)"))
 
     class Meta:
         model = get_user_model()
@@ -423,7 +450,7 @@ class InvoicableSerializer(NoModelSerializer):
     """
     subscription = SubscriptionSerializer(read_only=True, help_text=_(
         "subscription lines and options refer to."))
-    lines = TransactionSerializer(read_only=True, many=True, help_text=_(
+    lines = TransactionSerializer(many=True, help_text=_(
         "line items to charge on checkout."))
     options = TransactionSerializer(read_only=True, many=True, help_text=(
         "options to replace line items."))
@@ -485,10 +512,3 @@ class ValidationErrorSerializer(NoModelSerializer):
     """
     detail = serializers.CharField(help_text=_("describes the reason for"\
         " the error in plain text"))
-
-class OfflineTransactionSerializer(NoModelSerializer):
-
-    subscription = serializers.CharField()
-    created_at = serializers.DateTimeField()
-    amount = serializers.DecimalField(None, 2)
-    descr = serializers.CharField(required=False)

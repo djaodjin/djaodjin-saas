@@ -24,7 +24,7 @@
 
 from django.db.models import F, Q, Max
 from django.db import transaction
-from rest_framework.generics import (
+from rest_framework.generics import (get_object_or_404,
     GenericAPIView, ListCreateAPIView, RetrieveUpdateDestroyAPIView)
 from rest_framework.response import Response
 
@@ -38,7 +38,9 @@ from .serializers import BalanceLineSerializer, MetricsSerializer
 
 class BrokerBalancesAPIView(DateRangeMixin, GenericAPIView):
     """
-    GET queries a balance sheet named ``:report`` for the broker.
+    Queries a balance sheet named ``{report}`` for the broker.
+
+    To add lines in the report see `/api/metrics/balances/{report}/lines/`.
 
     **Examples
 
@@ -97,14 +99,13 @@ class BrokerBalancesAPIView(DateRangeMixin, GenericAPIView):
 
 class BalanceLineListAPIView(ListCreateAPIView):
     """
-    GET queries the list of rows reported on the balance sheet
-    named ``:report`` for the broker.
+    Queries the list of rows reported on a balance sheet named `{report}`.
 
     **Examples
 
     .. code-block:: http
 
-        GET  /api/metrics/lines/taxes/ HTTP/1.1
+        GET  /api/metrics/balances/taxes/lines/ HTTP/1.1
 
     responds
 
@@ -124,9 +125,10 @@ class BalanceLineListAPIView(ListCreateAPIView):
         }
     """
     serializer_class = BalanceLineSerializer
+    queryset = BalanceLine.objects.all()
 
     def get_queryset(self):
-        return BalanceLine.objects.filter(
+        return self.queryset.filter(
             report=self.kwargs.get('report')).order_by('rank')
 
     def perform_create(self, serializer):
@@ -138,13 +140,13 @@ class BalanceLineListAPIView(ListCreateAPIView):
 
     def post(self, request, *args, **kwargs):
         """
-        POST adds a new row on the ``:report`` balance sheet.
+        Adds a new row on the ``{report}`` balance sheet.
 
         **Examples
 
         .. code-block:: http
 
-            POST /api/metrics/lines/taxes/ HTTP/1.1
+            POST /api/metrics/balances/taxes/lines/ HTTP/1.1
 
         .. code-block:: json
 
@@ -197,5 +199,72 @@ class BalanceLineListAPIView(ListCreateAPIView):
 
 
 class BalanceLineDetailAPIView(RetrieveUpdateDestroyAPIView):
+    """
+    Describes a row reported on a balance sheet named `{report}`.
 
+    **Examples
+
+    .. code-block:: http
+
+        GET  /api/metrics/balances/taxes/lines/1/ HTTP/1.1
+
+    responds
+
+    .. code-block:: json
+
+        {
+            "title": "Sales",
+            "selector": "Receivable",
+            "rank": 1
+        }
+    """
     serializer_class = BalanceLineSerializer
+
+    def put(self, request, *args, **kwargs):
+        """
+        Updates a row reported on a balance sheet named `{report}`.
+
+        **Examples
+
+        .. code-block:: http
+
+            PUT /api/metrics/balances/taxes/lines/1/ HTTP/1.1
+
+        .. code-block:: json
+
+            {
+              "title": "Sales",
+              "selector": "Receivable",
+              "rank": 1
+            }
+
+        responds
+
+        .. code-block:: json
+
+            {
+              "title": "Sales",
+              "selector": "Receivable",
+              "rank": 1
+            }
+        """
+        return super(BalanceLineDetailAPIView, self).put(
+            request, *args, **kwargs)
+
+    def delete(self, request, *args, **kwargs):
+        """
+        Deletes a row reported on a balance sheet named `{report}`.
+
+        **Examples
+
+        .. code-block:: http
+
+            DELETE /api/metrics/balances/taxes/lines/1/ HTTP/1.1
+        """
+        return super(BalanceLineDetailAPIView, self).put(
+            request, *args, **kwargs)
+
+    def get_object(self):
+        return get_object_or_404(self.get_queryset(),
+            report=self.kwargs.get('report'),
+            rank=self.kwargs.get('rank'))

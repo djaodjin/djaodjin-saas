@@ -30,6 +30,7 @@ from __future__ import unicode_literals
 import csv, logging
 
 from django.core.exceptions import MultipleObjectsReturned
+from django.contrib import messages
 from django.shortcuts import get_object_or_404
 from django.utils.translation import ugettext_lazy as _
 from rest_framework.generics import (CreateAPIView, DestroyAPIView,
@@ -44,7 +45,7 @@ from ..docs import swagger_auto_schema, OpenAPIResponse
 from ..mixins import CartMixin, OrganizationMixin
 from ..models import CartItem
 from .serializers import (ChargeSerializer, InvoicableSerializer,
-    NoModelSerializer, PlanRelatedField)
+    NoModelSerializer, PlanRelatedField, ValidationErrorSerializer)
 
 #pylint: disable=no-init,old-style-class
 LOGGER = logging.getLogger(__name__)
@@ -54,7 +55,8 @@ class CartItemCreateSerializer(serializers.ModelSerializer):
     """
     Serializer to build a request.user set of plans to subscribe to (i.e. cart).
     """
-    plan = PlanRelatedField(read_only=False, required=True)
+    plan = PlanRelatedField(read_only=False, required=True,
+        help_text=_("The plan to add into the request.user cart."))
 
     class Meta:
         model = CartItem
@@ -69,7 +71,9 @@ class OrganizationCartSerializer(NoModelSerializer):
 
 
 class CheckoutSerializer(NoModelSerializer):
-
+    """
+    Processor token to charge the cart items.
+    """
     remember_card = serializers.BooleanField(required=False,
         help_text=_("attaches the payment card to the Organization when true"))
     processor_token = serializers.CharField(max_length=255,
@@ -79,7 +83,7 @@ class CheckoutSerializer(NoModelSerializer):
 
 class CartItemAPIView(CartMixin, CreateAPIView):
     """
-    Add a ``Plan`` into the subscription cart of the ``request.user``.
+    Adds a ``Plan`` into the cart of the ``request.user``.
 
     The cart can later be checked out and paid by an ``Organization``,
     either through the :ref:`HTML page<pages_cart>`
@@ -92,6 +96,12 @@ class CartItemAPIView(CartMixin, CreateAPIView):
     For anonymous users, the cart is stored in an HTTP Cookie.
 
     The end-point accepts a single item or a list of items.
+
+    ``quantity`` is optional. When it is not specified, subsquent checkout
+    screens will provide choices to pay multiple periods in advance
+    When additional ``first_name``, ``last_name`` and ``sync_on`` are specified,
+    payment can be made by one ``Organization`` for another ``Organization``
+    to be subscribed (see :ref:`GroupBuy orders<group_buy>`).
 
     **Examples
 
@@ -114,12 +124,6 @@ class CartItemAPIView(CartMixin, CreateAPIView):
             "plan": "open-space",
             "quantity": 1
         }
-
-    ``quantity`` is optional. When it is not specified, subsquent checkout
-    screens will provide choices to pay multiple periods in advance
-    When additional ``first_name``, ``last_name`` and ``sync_on`` are specified,
-    payment can be made by one ``Organization`` for another ``Organization``
-    to be subscribed (see :ref:`GroupBuy orders<group_buy>`).
     """
     #pylint: disable=no-member
 
@@ -309,10 +313,79 @@ class CartItemDestroyAPIView(DestroyAPIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
+class RedeemCouponSerializer(NoModelSerializer):
+    """
+    Serializer to redeem a ``Coupon``.
+    """
+
+    code = serializers.CharField(help_text=_("Coupon code to redeem"))
+
+    def create(self, validated_data):
+        return validated_data
+
+
+class CouponRedeemAPIView(GenericAPIView):
+    """
+    Redeems a ``Coupon`` and applies the discount to the eligible items
+    in the cart.
+
+    **Examples
+
+    .. code-block:: http
+
+         POST /api/redeem HTTP/1.1
+
+    .. code-block:: json
+
+        {
+            "code": "LABORDAY"
+        }
+
+    responds
+
+    .. code-block:: json
+
+        {
+            "details": "Coupon 'LABORDAY' was successfully applied."
+        }
+    """
+    serializer_class = RedeemCouponSerializer
+
+    # XXX This is not a ValidationErrorSerializer but we return a message.
+    # XXX Should many return the updated cart but we are dealing with users,
+    # not organizations here.
+    @swagger_auto_schema(responses={
+        200: OpenAPIResponse("", ValidationErrorSerializer)})
+    def post(self, request, *args, **kwargs): #pylint: disable=unused-argument
+        serializer = self.get_serializer(data=request.data)
+        if serializer.is_valid():
+            coupon_code = serializer.data['code']
+            if CartItem.objects.redeem(request.user, coupon_code):
+                details = {"details": (
+                    _("Coupon '%s' was successfully applied.") % coupon_code)}
+                headers = {}
+                # XXX Django 1.7: 500 error, argument must be an HttpRequest
+                # object, not 'Request'. Not an issue with Django 1.6.2
+                # Since we rely on the message to appear after reload of
+                # the cart page in the casperjs tests, we can't get rid
+                # of this statement just yet.
+                messages.success(request._request, details['details'])#pylint: disable=protected-access
+                return Response(details, status=status.HTTP_200_OK,
+                                headers=headers)
+            details = {"details": (
+_("No items can be discounted using this coupon: %s.") % coupon_code)}
+            return Response(details, status=status.HTTP_400_BAD_REQUEST)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
 class CheckoutAPIView(CartMixin, OrganizationMixin,
                       CreateModelMixin, RetrieveAPIView):
     """
-    Get items which are in the cart of an `Organization`.
+    Get a list indexed by plans of items that will be charged
+    (`lines`) and options that could be charged instead.
+
+    In many subscription businesses, it is possible to buy multiple
+    period in advance at a discount. The options reflects that.
 
     **Examples
 
@@ -367,6 +440,7 @@ class CheckoutAPIView(CartMixin, OrganizationMixin,
         }]
         }
     """
+    # XXX replace key `items` by `results` to match other serializers?
     serializer_class = OrganizationCartSerializer
 
     @swagger_auto_schema(request_body=CheckoutSerializer, responses={
@@ -377,6 +451,12 @@ class CheckoutAPIView(CartMixin, OrganizationMixin,
         a ``Charge`` on the ``{organization}`` payment card.
 
         If the charge fails a balance is due, to be collected later.
+
+        The cart is manipulated through various API endpoints:
+
+        - `/api/cart/redeem/' applies a coupon code for a potential discount.
+        - `/api/cart/` adds or updates a cart item.
+        - `/api/cart/{plan}` removes a cart item.
 
         **Examples
 

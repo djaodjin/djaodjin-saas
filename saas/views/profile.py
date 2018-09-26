@@ -77,9 +77,12 @@ class RoleDetailView(RoleDescriptionMixin, TemplateView):
         context = super(RoleDetailView, self).get_context_data(**kwargs)
         role = self.kwargs.get('role', None)
         context.update({'role_descr': self.role_description})
-        urls = {'organization': {
-            'api_roles': reverse(
-                'saas_api_role_filtered_list', args=(self.organization, role)),
+        urls = {
+            'api_candidates': reverse('saas_api_users'),
+            'organization': {
+                'api_roles': reverse(
+                    'saas_api_role_filtered_list', args=(
+                        self.organization, role)),
         }}
         self.update_context_urls(context, urls)
         return context

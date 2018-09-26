@@ -29,14 +29,14 @@ import dateutil
 from django.db.models import Q
 from django.utils.translation import ugettext_lazy as _
 from extra_views.contrib.mixins import SearchableListMixin, SortableListMixin
-from rest_framework import status
+from rest_framework import status, serializers
 from rest_framework.exceptions import ValidationError
 from rest_framework.generics import ListAPIView, DestroyAPIView, CreateAPIView
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .serializers import TransactionSerializer, OfflineTransactionSerializer
+from .serializers import NoModelSerializer, TransactionSerializer
 from ..filters import SortableDateRangeSearchableFilterBackend
 from ..mixins import DateRangeMixin, OrganizationMixin, ProviderMixin
 from ..models import (Transaction, sum_orig_amount, Subscription,
@@ -402,11 +402,39 @@ class TransferListAPIView(SmartTransactionListMixin, TransferQuerysetMixin,
                 " processor (ie. %s).") % str(err)})
 
 
+class OfflineTransactionSerializer(NoModelSerializer):
+
+    subscription = serializers.CharField(
+        help_text="The subscription the offline transaction refers to.")
+    created_at = serializers.DateTimeField(read_only=True,
+        help_text=_("date/time of creation in ISO format"))
+    # XXX Shouldn't this be same format as TransactionSerializer.amount?
+    amount = serializers.DecimalField(None, 2)
+    descr = serializers.CharField(required=False,
+        help_text=_("free-form text description for the Transaction"))
+
+
 class ImportTransactionsAPIView(ProviderMixin, CreateAPIView):
     """
-    Insert transactions that were done offline for the purpose of computing
-    accurate metrics.
+    Inserts transactions that were done offline.
 
+    The primary purpose of this API call is for a provider to keep
+    accurate metrics for the performance of the product sold, regardless
+    of payment options (online or offline).
+
+    **Examples
+
+    .. code-block:: http
+
+         POST /api/billing/cowork/transfers/import/ HTTP/1.1
+
+    .. code-block:: json
+
+        {
+            "subscription": "demo562-open-plus",
+            "amount": "10.00",
+            "descr": "Paid by check"
+        }
     """
     serializer_class = OfflineTransactionSerializer
 

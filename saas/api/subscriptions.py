@@ -29,6 +29,7 @@ from rest_framework.generics import (get_object_or_404, ListAPIView,
     ListCreateAPIView, RetrieveUpdateDestroyAPIView, UpdateAPIView)
 
 from ..decorators import _valid_manager
+from ..filters import SortableDateRangeSearchableFilterBackend
 from ..mixins import (ChurnedQuerysetMixin, PlanMixin, ProviderMixin,
     SubscriptionMixin, SubscriptionSmartListMixin, SubscribedQuerysetMixin)
 from .. import signals
@@ -350,14 +351,18 @@ class ActiveSubscriptionAPIView(SubscriptionSmartListMixin,
                                 ActiveSubscriptionBaseAPIView):
     """
     Lists all ``Subscription`` to a plan whose provider is
-    ``:organization`` which are currently in progress.
+    ``{organization}`` and which are currently in progress.
 
-    The queryset can be further filtered to a range of dates between
-    ``start_at`` and ``ends_at``.
+    Optionnaly when an ``ends_at`` query parameter is specified,
+    returns a queryset of ``Subscription`` that were active
+    at ``ends_at``. When a ``start_at`` query parameter is specified,
+    only considers ``Subscription`` that were created after ``start_at``.
 
-    The queryset can be further filtered by passing a ``q`` parameter.
+    The queryset can be filtered for at least one field to match a search
+    term (``q``).
 
-    The result queryset can be ordered.
+    Query results can be ordered by natural fields (``o``) in either ascending
+    or descending order (``ot``).
 
     **Examples
 
@@ -399,6 +404,9 @@ class ActiveSubscriptionAPIView(SubscriptionSmartListMixin,
         }
     """
     serializer_class = SubscriptionSerializer
+    filter_backends = (SortableDateRangeSearchableFilterBackend(
+        SubscriptionSmartListMixin.sort_fields_aliases,
+        SubscriptionSmartListMixin.search_fields),)
 
 
 class ChurnedSubscriptionBaseAPIView(ChurnedQuerysetMixin, ListAPIView):
