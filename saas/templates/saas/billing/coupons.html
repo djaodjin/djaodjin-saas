@@ -1,43 +1,43 @@
 {% extends "saas/base_dashboard.html" %}
 
 {% block saas_content %}
-<div ng-app="saasApp">
+<div id="coupon-list-container">
     <h1>Coupons</h1>
-    <div ng-controller="CouponListCtrl">
-        <a id="download" href="{{urls.provider.download_coupons}}?q=[[filterExpr]]" role="button">CSV Download</a>
-    <h1 ng-hide="coupons.$resolved">Please wait...</h1>
-    <h2 ng-show="coupons.$resolved && coupons.results.length == 0">No Coupons yet</h2>
-        <table ng-show="coupons.$resolved && coupons.results.length > 0">
+    <div>
+        <a id="download" :href="'{{urls.provider.download_coupons}}?q=' + params.q" role="button">CSV Download</a>
+    <h1 v-show="!itemsLoaded">Please wait...</h1>
+    <h2 v-show="itemsLoaded && items.results.length == 0">No Coupons yet</h2>
+        <table v-show="itemsLoaded && items.results.length > 0">
             <thead>
                 <tr>
-                    <th>Code<button ng-click="sortBy('code')">[[dir.code ? dir.code : 'sort']]</button></th>
-                    <th>Percent<button ng-click="sortBy('percent')">[[dir.percent ? dir.percent : 'sort']]</button></th>
-                    <th>Expires At<button ng-click="sortBy('ends_at')">[[dir.ends_at ? dir.ends_at : 'sort']]</button></th>
-                    <th>Description<button ng-click="sortBy('description')">[[dir.description ? dir.description : 'sort']]</button></th>
-                    <th>Created At<button ng-click="sortBy('created_at')">[[dir.created_at ? dir.created_at : 'sort']]</button></th>
+                    <th>Code<button @click="sortBy('code')">[[params.o === 'code' ? params.ot : 'sort']]</button></th>
+                    <th>Percent<button @click="sortBy('percent')">[[params.o === 'percent' ? params.ot : 'sort']]</button></th>
+                    <th>Expires At<button @click="sortBy('ends_at')">[[params.o === 'ends_at' ? params.ot : 'sort']]</button></th>
+                    <th>Description<button @click="sortBy('description')">[[params.o === 'description' ? params.ot : 'sort']]</button></th>
+                    <th>Created At<button @click="sortBy('created_at')">[[params.o === 'created_at' ? params.ot : 'sort']]</button></th>
                     <th></th>
                 </tr>
             </thead>
             <tr>
                 <form>
                     <td>
-                        <input type="text" ng-model="newCoupon.code" placeholder="Code">
+                        <input type="text" v-model="newCoupon.code" placeholder="Code">
                     </td>
                     <td>
-                        <input type="text" ng-model="newCoupon.percent" placeholder="Percent">
+                        <input type="text" v-model="newCoupon.percent" placeholder="Percent">
                     </td>
                     <td>
-                        <button ng-click="save()">Create Coupon</button>
+                        <button @click="save">Create Coupon</button>
                     </td>
                 </form>
             </tr>
-            <tr ng-repeat="coupon in coupons.results" ng-cloak>
-            <td><a id="[[coupon.code]]" href="{{urls.provider.metrics_coupons}}[[coupon.code]]/">[[coupon.code]]</a></td>
+            <tr v-for="(coupon, index) in items.results" v-cloak>
+            <td><a :href="'{{urls.provider.metrics_coupons}}' + coupon.code + '/'">[[coupon.code]]</a></td>
                 <td>[[coupon.percent]]</td>
-                <td>[[coupon.ends_at ? (coupon.ends_at | date : mediumDate) : "Never"]]</td>
+                <td>[[coupon.ends_at ? ($options.filters.formatDate(coupon.ends_at, 'MMM D, Y')) : "Never"]]</td>
                 <td>[[coupon.description]]</td>
-                <td>[[coupon.created_at | date : mediumDate]]</td>
-                <td><button ng-click="remove($index)">Remove</button></td>
+                <td>[[coupon.created_at | formatDate('MMM D, Y')]]</td>
+                <td><button @click="remove(index)">Remove</button></td>
             </tr>
         </table>
     </div>

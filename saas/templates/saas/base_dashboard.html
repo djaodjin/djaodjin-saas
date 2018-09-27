@@ -9,6 +9,7 @@
 <script type="text/javascript" charset="utf-8" src="/static/vendor/js/angular-dragdrop.js"></script>
 <script type="text/javascript" charset="utf-8" src="/static/vendor/js/ui-bootstrap-tpls.js"></script>
 <script type="text/javascript" charset="utf-8" src="/static/js/djaodjin-saas-angular.js"></script>
+
 {% if organization %}
 {# XXX /users/:user/roles/ page does not define ``organization``. #}
 <script type="text/javascript">
@@ -25,7 +26,7 @@ reopenSaasApp.config(['$interpolateProvider', '$httpProvider',
     $interpolateProvider.startSymbol('[[');
     $interpolateProvider.endSymbol(']]');
 }]);
-reopenSaasApp.constant('settings', {
+var djaodjinSettings = {
 urls: {
     api_balance_lines: "{{urls.api_balance_lines}}",
     api_broker_balances: "{{urls.api_broker_balances}}",
@@ -94,8 +95,14 @@ user: {
     first_name: "{{request.user.first_name}}",
     last_name: "{{request.user.last_name}}"
 }
-});
+};
+reopenSaasApp.constant('settings', djaodjinSettings);
 </script>
+<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+<script type="text/javascript" charset="utf-8" src="/static/vendor/js/vue.js"></script>
+<script type="text/javascript" charset="utf-8" src="/static/vendor/js/uiv.min.js"></script>
+<script type="text/javascript" charset="utf-8" src="/static/vendor/js/vue2-filters.js"></script>
+<script type="text/javascript" charset="utf-8" src="/static/js/djaodjin-vue.js"></script>
 {% endif %}
 {% block dashboard_bodyscripts %}{% endblock %}
 {% endblock %}

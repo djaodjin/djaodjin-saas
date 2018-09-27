@@ -1,127 +1,228 @@
 {% extends "saas/base_dashboard.html" %}
 
 {% block saas_content %}
-<section id="subscribers" ng-app="saasApp" ng-cloak>
-  <div ng-controller="subscriberListCtrl" ng-init="prefetch()">
-    <div id="registered-users">
-      <a href="#registered-users"><h2>Registered</h2></a>
-      <div>
-        <label>Filter</label> <input type="text" ng-model="filterExpr" ng-change="filterList(filterExpr)" />
-        <a id="download-registered" href="{{registered.urls.download}}?q=[[filterExpr]]">CSV Download</a>
-      </div>
-      <table>
-        <thead>
-          <tr>
-            <th>Full name</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody ng-hide="registered.$resolved">
-          <tr>
-            <td colspan="2">
-              <h4>Loading ...</h4>
-            </td>
-          </tr>
-        </tbody>
-        <tbody ng-show="registered.$resolved && registered.count == 0">
-          <tr>
-            <td colspan="2">
-              <h4>No registered users<span ng-show="filterExpr">with filter '[[filterExpr]]'</span></h4>
-            </td>
-          </tr>
-        </tbody>
-        <tbody class="has-results" ng-repeat="entry in registered.results" ng-cloak ng-show="registered.$resolved && registered.results.length > 0">
-          <tr>
-            <td>
-              [[entry.first_name]] [[entry.last_name]]
-            </td>
-            <td>
-              [[relativeDate(entry.created_at)]]
-            </td>
-          </tr>
-        </tbody>
-      </table>
-      <div>
-        <ul uib-pagination ng-model="currentPage"
-                    total-items="registered.count"
-                    items-per-page="itemsPerPage"
-                    boundary-links="true"
-                    max-size="maxSize"
-                    previous-text="&lsaquo;"
-                    next-text="&rsaquo;"
-                    first-text="&laquo;"
-                    last-text="&raquo;"
-                    ng-change="pageChanged(registered)"
-                    ng-show="registered.$resolved && registered.results.length > 0"></ul>
-      </div>
-    </div>
-    {% for tab in tabs %}
-    <div id="{{tab.slug}}">
-      <a href="#{{tab.slug}}"><h2>{{tab.title}}</h2></a>
-      <div>
-        <label>Filter</label> <input type="text" ng-model="filterExpr" ng-change="filterList(filterExpr)" />
-        <a id="download-{{tab.slug}}" href="{{ tab.urls.download }}?q=[[filterExpr]]">CSV Download</a>
-      </div>
-      <table>
-        <thead>
-          <tr>
-            <th>Subscriber<button ng-click="sortBy('organization')"></button></th>
-            <th>Plan<button ng-click="sortBy('plan')"></button></th>
-            <th>Since<button ng-click="sortBy('created_at')"></button></th>
-            <th>Ends At<button ng-click="sortBy('ends_at')"></button></th>
+<section id="subscribers-list-container">
+  <div>
+<tabs v-model="currentTab" :transition-duration="0" @change="tabChanged">
+        {% if registered %}
+        <tab title="Registered">
+            <div>
+                <label>Filter</label> <input type="text" v-model="params.q" @input="filterList" />
+                <a id="download-registered" :href="'{{registered.urls.download}}?q=' + params.q" role="button">CSV Download</a>
+            </div>
+            <div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Full name</th>
+                        <th class="text-right">
+                        </th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr v-show="!registered.loaded">
+                        <td colspan="2">
+                            <h3  class="text-center"><i class="fa fa-refresh fa-spin fa-2x"></i></h3>
+                        </td>
+                    </tr>
+                    <tr v-show="registered.loaded && registered.count == 0">
+                        <td colspan="2">
+                            <h4 class="text-center"><em>No registered users<span v-show="params.q"> [[params.q]]</span></em></h4>
+                        </td>
+                    </tr>
+                </tbody>
+                <tbody class="has-results" v-for="entry in registered.results" v-cloak v-show="registered.loaded && registered.results.length > 0">
+                    <tr>
+                        <td>
+                            <a :href="'{{urls.user.profile_redirect}}' + entry.slug + '/'">[[entry.full_name]]</a>
+                        </td>
+                        <td>
+                        [[entry.created_at | relativeDate]]
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+            </div>
+            <div class="text-center" v-show="registered.loaded && totalItems > itemsPerPage">
+                <uiv-pagination v-model="params.page" :total-page="pageCount" @change="get" boundary-links/>
+            </div>
+        </tab>
+        {% endif %}
+
+
+        {% for tab in tabs %}
+        <tab title="{{tab.title}}">
+<div>
+    <input type="text" v-model="params.q" @input="filterList" placeholder="Filter" />
+    <a id="download-{{tab.slug}}" :href="'{{tab.urls.download}}?q=' + params.q" role="button">CSV Download</a>
+</div>
+<div>
+<table>
+    <thead>
+        <tr v-show="params.o === 'organization'">
+            <th>Subscriber<button @click="sortBy('organization')"><i :class="sortIcon('organization')"></i></button></th>
+            <th>Plan<button @click="sortBy('plan')"><i :class="sortIcon('plan')"></i></button></th>
+            <th>Since<button @click="sortBy('created_at')"><i :class="sortIcon('created_at')"></i></button></th>
+            <th>Ends At<button @click="sortBy('ends_at')"><i :class="sortIcon('ends_at')"></i></button></th>
             <th>Description</th>
-          </tr>
-        </thead>
-        <tbody ng-hide="{{tab.slug}}.$resolved">
-          <tr>
+        </tr>
+        <tr v-show="params.o === 'plan'">
+            <th>Plan<button @click="sortBy('plan')"><i :class="sortIcon('plan')"></i></button></th>
+            <th>Subscriber<button @click="sortBy('organization')"><i :class="sortIcon('organization')"></i></button></th>
+            <th>Since<button @click="sortBy('created_at')"><i :class="sortIcon('created_at')"></i></button></th>
+            <th>Ends At<button @click="sortBy('ends_at')"><i :class="sortIcon('ends_at')"></i></button></th>
+            <th>Description</th>
+        </tr>
+        <tr v-show="params.o === 'created_at'">
+            <th>Since<button @click="sortBy('created_at')"><i :class="sortIcon('created_at')"></i></button></th>
+            <th>Subscriber<button @click="sortBy('organization')"><i :class="sortIcon('organization')"></i></button></th>
+            <th>Plan<button @click="sortBy('plan')"><i :class="sortIcon('plan')"></i></button></th>
+            <th>Ends At<button @click="sortBy('ends_at')"><i :class="sortIcon('ends_at')"></i></button></th>
+            <th>Description</th>
+        </tr>
+        <tr v-show="params.o === 'ends_at'">
+            <th>Ends At<button @click="sortBy('ends_at')"><i :class="sortIcon('ends_at')"></i></button></th>
+            <th>Subscriber<button @click="sortBy('organization')"><i :class="sortIcon('organization')"></i></button></th>
+            <th>Plan<button @click="sortBy('plan')"><i :class="sortIcon('plan')"></i></button></th>
+            <th>Since<button @click="sortBy('created_at')"><i :class="sortIcon('created_at')"></i></button></th>
+            <th>Description</th>
+        </tr>
+    </thead>
+    <tbody class="fetching-results" v-show="!{{tab.slug}}.loaded">
+        <tr>
             <td colspan="5">
-              <h4>Loading ...</h4>
+                <h3  class="text-center"><i class="fa fa-refresh fa-spin fa-2x"></i></h3>
             </td>
-          </tr>
-        </tbody>
-        <tbody class="has-no-results" ng-show="{{tab.slug}}.$resolved && {{tab.slug}}.results.length == 0">
-          <tr>
+        </tr>
+    </tbody>
+    <tbody class="has-no-results" v-show="{{tab.slug}}.loaded && {{tab.slug}}.results.length == 0">
+        <tr>
             <td colspan="5">
-              <h4>No subscribers<span ng-show="filterExpr"> with filter: '[[filterExpr]]'</span></h4>
+                <h4 class="text-center"><em>No subscribers<span v-show="params.q"> with filter: '[[params.q]]'</span></em></h4>
             </td>
-          </tr>
-        </tbody>
-        <tbody class="has-results" ng-repeat="entry in {{tab.slug}}.results" ng-show="{{tab.slug}}.$resolved && {{tab.slug}}.results.length > 0">
-          <tr ng-class="endsSoon(entry)">
-            <td>
-              <a id="[[entry.organization.slug]]" href="{{urls.organization.profile_base}}[[entry.organization.slug]]/subscriptions/">[[entry.organization.printable_name]]</a>
-            </td>
+        </tr>
+    </tbody>
+    <tbody v-for="(group, key) in groupBy({{tab.slug}}.results, 'organization.printable_name')" v-show="params.o === 'organization' && {{tab.slug}}.loaded && {{tab.slug}}.results.length > 0" v-cloak>
+        <tr>
+            <td colspan="5">
+                <a :href="'{{urls.organization.profile_base}}' + group[0].organization.slug + '/subscriptions/'">[[group[0].organization.printable_name]]</a></td>
+        </tr>
+        <tr v-for="(entry, index) in group" :class="endsSoon(entry)">
+            <td></td>
             <td>[[entry.plan.title]]</td>
-            <td>[[entry.created_at | date: mediumDate]]</td>
-            <td>[[entry.ends_at |date: mediumDate]]</td>
-            <td id="[[entry.id]]">
-              <span ng-hide="entry.editDescription"
-                    ng-click="editDescription($event, entry)">[[entry.description]]
-                <input ng-show="entry.editDescription" type="text"
-                       ng-blur="saveDescription($event, entry)"
-                       ng-model="entry.description"
+            <td>[[entry.created_at | formatDate('MMM D, Y')]]</td>
+            <td>[[entry.ends_at | formatDate('MMM D, Y')]]</td>
+            <td class="description editable">
+                <span v-show="!entry.edit_description" @click="editDescription(entry, group[0].organization.slug)">
+                    [[entry.description]] <i class="fa fa-pencil"></i>
+                </span>
+                <input v-show="entry.edit_description" type="text"
+                       class="form-control"
+                       @blur="saveDescription(entry)"
+                       @keyup.13="saveDescription(entry)"
+                       v-model="entry.description"
+                       :ref="refId(entry, group[0].organization.slug)"
                        tooltip="Edit description here"
                        tooltip-trigger="focus"
                        tooltip-placement="top">
             </td>
-          </tr>
-        </tbody>
-      </table>
-      <div>
-        <ul uib-pagination ng-model="currentPage"
-                    total-items="{{tab.slug}}.count"
-                    items-per-page="itemsPerPage"
-                    boundary-links="true"
-                    max-size="maxSize"
-                    previous-text="&lsaquo;"
-                    next-text="&rsaquo;"
-                    first-text="&laquo;"
-                    last-text="&raquo;"
-                    ng-change="pageChanged({{tab.slug}})"
-                    ng-show="{{tab.slug}}.$resolved && {{tab.slug}}.results.length > 0"></ul>
-      </div>
-    </div>
-    {% endfor %}
+        </tr>
+    </tbody>
+    <tbody v-for="(group, key) in groupBy({{tab.slug}}.results, 'plan.title')" v-cloak v-show="params.o === 'plan'">
+        <tr>
+            <td colspan="5">
+                [[group[0].plan.title]]
+            </td>
+        </tr>
+        <tr v-for="entry in group" :class="endsSoon(entry)">
+            <td></td>
+            <td>
+                <a :href="'{{urls.organization.profile_base}}' + entry.organization.slug + '/subscriptions/'">[[entry.organization.printable_name]]</a>
+            </td>
+            <td>[[entry.created_at | formatDate('MMM D, Y')]]</td>
+            <td>[[entry.ends_at | formatDate('MMM D, Y')]]</td>
+            <td class="description editable">
+                <span v-show="!entry.edit_description" @click="editDescription(entry, group[0].plan.slug)">
+                    [[entry.description]] <i class="fa fa-pencil"></i>
+                </span>
+                <input v-show="entry.edit_description" type="text"
+                       class="form-control"
+                       @blur="saveDescription(entry)"
+                       @keyup.13="saveDescription(entry)"
+                       v-model="entry.description"
+                       :ref="refId(entry, group[0].plan.slug)"
+                       tooltip="Edit description here"
+                       tooltip-trigger="focus"
+                       tooltip-placement="top">
+            </td>
+        </tr>
+    </tbody>
+    <tbody v-for="(group, top_i) in groupBy({{tab.slug}}.results, 'created_at')" v-cloak v-show="params.o === 'created_at'">
+        <tr>
+            <td colspan="5">
+                [[group[0].created_at | formatDate('MMM D, Y')]]
+            </td>
+        </tr>
+        <tr v-for="(entry, index) in group" :class="endsSoon(entry)">
+            <td></td>
+            <td>
+                <a :href="'{{urls.organization.profile_base}}' + entry.organization.slug + '/subscriptions/'">[[entry.organization.printable_name]]</a>
+            </td>
+            <td>[[entry.plan.title]]</td>
+            <td>[[entry.ends_at | formatDate('MMM D, Y')]]</td>
+            <td class="description editable">
+                <span v-show="!entry.edit_description" @click="editDescription(entry, group[0].created_at)">
+                    [[entry.description]] <i class="fa fa-pencil"></i>
+                </span>
+                <input v-show="entry.edit_description" type="text"
+                       class="form-control"
+                       @blur="saveDescription(entry)"
+                       @keyup.13="saveDescription(entry)"
+                       v-model="entry.description"
+                       :ref="refId(entry, group[0].created_at)"
+                       tooltip="Edit description here"
+                       tooltip-trigger="focus"
+                       tooltip-placement="top">
+            </td>
+        </tr>
+    </tbody>
+    <tbody v-for="(group, key) in groupBy({{tab.slug}}.results, 'ends_at')" v-cloak v-show="params.o === 'ends_at'">
+        <tr>
+            <td colspan="5">
+                [[group[0].ends_at | formatDate('MMM D, Y')]]
+            </td>
+        </tr>
+        <tr v-for="entry in group" :class="endsSoon(entry)">
+            <td></td>
+            <td>
+                <a :href="'{{urls.organization.profile_base}}' + entry.organization.slug + '/subscriptions/'">[[entry.organization.printable_name]]</a>
+            </td>
+            <td>[[entry.plan.title]]</td>
+            <td>[[entry.created_at | formatDate('MMM D, Y')]]</td>
+            <td class="description editable">
+                <span v-show="!entry.edit_description" @click="editDescription(entry, group[0].ends_at)">
+                    [[entry.description]] <i class="fa fa-pencil"></i>
+                </span>
+                <input v-show="entry.edit_description" type="text"
+                       class="form-control"
+                       @blur="saveDescription(entry)"
+                       @keyup.13="saveDescription(entry)"
+                       v-model="entry.description"
+                       :ref="refId(entry, group[0].ends_at)"
+                       tooltip="Edit description here"
+                       tooltip-trigger="focus"
+                       tooltip-placement="top">
+            </td>
+        </tr>
+    </tbody>
+</table>
+</div>
+<div class="text-center" v-show="{{tab.slug}}.loaded && totalItems > itemsPerPage">
+    <uiv-pagination v-model="params.page" :total-page="pageCount" @change="get" size="sm" boundary-links/>
+</div>
+            </tab>
+        {% endfor %}
+    </tabs>
   </div>
   <div>
     <a id="new-subscriber" href="{{urls.organization_create}}">New Billing Profile</a>

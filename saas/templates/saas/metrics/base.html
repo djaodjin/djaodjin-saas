@@ -5,58 +5,49 @@
 {% endblock %}
 
 {% block saas_content %}
-<section id="metrics_table" ng-app="saasApp" ng-cloak>
-  <div ng-controller="metricsCtrl">
-    <!-- Tab panes -->
-    <div>
+<section id="metrics-container">
       <div id="metrics-table">
-        <div class="date-chooser">
-          <span>To</span>
-          <span
-            class="date"
-            uib-datepicker-popup="[[format]]"
-            ng-model="ends_at"
-            is-open="opened"
-            datepicker-options="dateOptions"
-            ng-required="true"
-            close-text="Close"
-            datepicker-mode="'month'"
-            max-date="maxDate"
-            show-button-bar="false"
-            data-trip
-            data-trip-index="2"
-            data-trip-content="<p>Look back through time.</p>"
-            data-trip-position="s">[[ends_at | date : mediumDate]]</span>
-          <span>
-            <button type="button" ng-click="open($event, 'ends_at')">Pick date</button>
-          </span>
-        </div>
-        <select ng-model="timezone">
-            <option value="local">Local</option>
-            <option value="utc">UTC</option>
-        </select>
-
-        <div ng-repeat="table in tables">
-          <a href="#[[table.key]]"><h2>[[table.key]]</h2></a>
-          <div id="metrics-chart">
-          </div>
-          <!-- Display as a table -->
-          <table>
-          <tr>
-            <td></td>
-            <td ng-repeat="col in table.data[0].values">[[col[0] | monthHeading]]</td>
-          </tr>
-          <tr ng-repeat="row in table.data">
-            <td ng-if="row.location"><span>[[row.is_active ? 'Active': 'Inactive' ]]</span> <a id="[[row.key]]" href="[[row.location]]">[[row.key]]</a></td>
-            <td ng-if="!row.location">[[row.key]]</td>
-            <td ng-repeat="col in row.values">[[col[1]|humanizeCell : table.unit : table.scale]]</td>
-          </tr>
-          {% block metrics_extra_data %}
-          {% endblock %}
-        </table>
+        <tabs v-model="currentTab" :transition-duration="0" @change="prepareCurrentTabData">
+            <tab v-for="tab in tables" v-bind:title="tabTitle(tab)" v-bind:key="tab.key">
+                <div class="date-chooser pull-right">
+                  <span>To</span>
+                  <select  class="form-control" v-model="timezone" @change="prepareCurrentTabData" style="display:inline-block; width:80px;">
+                    <option value="local">Local</option>
+                    <option value="utc">UTC</option>
+                  </select>
+                    <uiv-dropdown class="form-group" append-to-body menu-right>
+                      <btn class="dropdown-toggle"><i class="fa fa-calendar"></i></btn>
+                      <template slot="dropdown">
+                        <li>
+                          <uiv-date-picker
+                            v-model="ends_at"
+                            v-on:input="prepareCurrentTabData"
+                            icon-control-left="fa fa-caret-left"
+                            icon-control-right="fa fa-caret-right" />
+                        </li>
+                      </template>
+                    </uiv-dropdown>
+                  <span class="date">[[ends_at | formatDate('MMM D, Y')]]</span>
+                </div>
+                <div :id="'metrics-chart-' + tab.key" class="chart-content">
+                </div>
+                <!-- Display as a table -->
+                <table>
+                  <tr>
+                    <td></td>
+                    <td v-for="col in currentTableDates">[[col[0] | monthHeading]]</td>
+                  </tr>
+                  <tr v-for="row in currentTableData.data" :key="row.key">
+                    <td v-if="row.location"><span :class="{ 'text-success': row.is_active, 'text-danger': !row.is_active }"><i class="fa fa-circle"></i></span> <a :href="row.location">[[row.key]]</a></td>
+                    <td v-if="!row.location">[[row.key]]</td>
+                    <td v-for="col in row.values" :key="col[0].toISOString()" :title="col[1]|humanizeCell(currentTableData.unit, currentTableData.scale, false)">[[col[1]|humanizeCell(currentTableData.unit, currentTableData.scale)]]</td>
+                  </tr>
+                  {% block metrics_extra_data %}
+                  {% endblock %}
+                </table>
+            </tab>
+        </tabs>
       </div>
-    </div>
-  </div>
   {% block metrics_extra_info %}
   {% endblock %}
 </section>

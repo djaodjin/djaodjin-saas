@@ -1,43 +1,34 @@
 {% extends "saas/base_dashboard.html" %}
 
 {% block saas_content %}
-<section id="coupon-performance" ng-app="saasApp">
-    <div ng-controller="cartItemListCtrl">
-        <p ng-show="items.$resolved">
+<section id="coupon-performance">
+    <div id="coupon-users-container">
+        <p v-show="itemsLoaded">
 {{coupon.code}} was used [[totalItems]] time[[totalItems > 0 ? "s" : ""]].
         </p>
         <table>
             <thead>
                 <tr>
-                    <th><button ng-click="sortBy('slug')">User</button></th>
-                    <th><button ng-click="sortBy('plan')">Plan</button></th>
-                    <th><button ng-click="sortBy('created_at')">Used at</button></th>
+                    <th><button @click="sortBy('slug')">User</button></th>
+                    <th><button @click="sortBy('plan')">Plan</button></th>
+                    <th><button @click="sortBy('created_at')">Used at</button></th>
                 </tr>
             </thead>
             <tbody>
-              <tr ng-show="items.$resolved && items.results.length == 0">
+              <tr v-show="itemsLoaded && items.results.length == 0">
                 <td colspan="3">
                   <h4>No use of {{coupon.code}} coupon</h4>
                 </td>
               </tr>
-              <tr ng-repeat="item in items.results"
-                  ng-show="items.$resolved && items.results.length > 0" >
-                <td><a id="[[item.user.slug]]" href="{{urls.user.profile_redirect}}[[item.user.slug]]/">[[item.user.full_name]]</a></td>
+              <tr v-for="item in items.results"
+                  v-show="itemsLoaded && items.results.length > 0" >
+                <td><a :href="'{{urls.user.profile_redirect}}' + item.user.slug + '/'">[[item.user.full_name]]</a></td>
                 <td>[[item.plan]]</td>
-                <td>[[item.created_at | date: mediumDate]]</td>
+                <td>[[item.created_at | formatDate('MMM D, Y')]]</td>
               </tr>
         </table>
-        <div ng-show="items.$resolved && totalItems > itemsPerPage">
-          <ul uib-pagination class="pagination-sm" ng-model="currentPage"
-                      total-items="totalItems"
-                      items-per-page="itemsPerPage"
-                      boundary-links="true"
-                      max-size="maxSize"
-                      previous-text="&lsaquo;"
-                      next-text="&rsaquo;"
-                      first-text="&laquo;"
-                      last-text="&raquo;"
-                      ng-change="pageChanged()"></ul>
+        <div class="text-center" v-cloak v-show="itemsLoaded && totalItems > itemsPerPage">
+            <uiv-pagination v-model="params.page" :total-page="pageCount" @change="get" size="sm" boundary-links/>
         </div>
     </div>
 </section>
