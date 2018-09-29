@@ -602,7 +602,8 @@ class StripeBackend(object):
                 return (amount * 50 + 5000) // 10000
         return 0
 
-    def generate_idempotent_key(self, *data):
+    @staticmethod
+    def generate_idempotent_key(*data):
         key = ''
         if data:
             hsh = sha512()

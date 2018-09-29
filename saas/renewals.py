@@ -47,7 +47,7 @@ class DryRun(RuntimeError):
 
 
 def _recognize_subscription_income(subscription, until=None):
-    #pylint:disable=too-many-locals
+    #pylint:disable=too-many-locals,too-many-statements
     until = datetime_or_now(until)
     # [``recognize_start``, ``recognize_end``[ is one period over which
     # revenue is recognized. It will slide over the subscription
