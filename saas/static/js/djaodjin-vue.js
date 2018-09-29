@@ -11,8 +11,24 @@ Vue.filter('formatDate', function(value, format) {
     if(!format){
         format = 'MM/DD/YYYY hh:mm'
     }
-    return moment(String(value)).format(format)
+    if(!(value instanceof Date)){
+        value = String(value);
+    }
+    return moment(value).format(format)
   }
+});
+
+Vue.filter("monthHeading", function(d) {
+    // shift each period by 1 month unless this is
+    // current month and not a first day of the month
+    if( typeof d === 'string' ) {
+        d = moment(d);
+    }
+    if(d.date() !== 1 || d.hour() !== 0
+       || d.minute() !== 0 || d.second() !== 0 ) {
+        return d.format("MMM'YY*");
+    }
+    return d.clone().subtract(1, 'months').format("MMM'YY");
 });
 
 Vue.filter('currencyToSymbol', function(currency) {
@@ -73,9 +89,6 @@ Vue.component('user-typeahead', {
 if($('#coupon-list-container').length > 0){
 var app = new Vue({
     el: "#coupon-list-container",
-    components: {
-        paginate: VuejsPaginate
-    },
     data: {
         currentPage: 1,
         itemsPerPage: djaodjinSettings.itemsPerPage,
@@ -221,9 +234,6 @@ var app = new Vue({
 }
 
 var itemListMixin = {
-    components: {
-        paginate: VuejsPaginate
-    },
     data: function(){
         data = {
             filterExpr: '',
@@ -336,9 +346,6 @@ var app = new Vue({
 }
 
 var userRelationMixin = {
-    components: {
-        paginate: VuejsPaginate
-    },
     mixins: [itemListMixin],
     data: function(){
         return {
@@ -438,14 +445,128 @@ if($('#user-relation-list-container').length > 0){
 var app = new Vue({
     el: "#user-relation-list-container",
     mixins: [userRelationMixin],
-    methods: {
-    },
     mounted: function(){
         this.get()
-        var vm = this;
-        vm.$on('form-submit', function(){
-            vm.$refs.modalForm.submit()
-        })
+    }
+})
+}
+
+if($('#metrics-container').length > 0){
+var app = new Vue({
+    el: "#metrics-container",
+    mixins: [],
+    data: function(){
+        var data = {
+            tables: djaodjinSettings.tables,
+            currentTab: 0,
+            timezone: 'local',
+            tableData: {},
+        }
+        var ends_at = moment(djaodjinSettings.date_range.ends_at);
+        if(ends_at.isValid()){
+            data.ends_at = ends_at.toDate();
+        }
+        else {
+            data.ends_at = moment().toDate();
+        }
+        return data;
+    },
+    methods: {
+        fetchTableData: function(table, cb){
+            var vm = this;
+            var params = {"ends_at": moment(vm.ends_at).format()};
+            if( vm.timezone !== 'utc' ) {
+                params["timezone"] = moment.tz.guess();
+            }
+            $.get(table.location, params, function(resp){
+                var unit = resp.unit;
+                var scale = resp.scale;
+                scale = parseFloat(scale);
+                if( isNaN(scale) ) {
+                    scale = 1.0;
+                }
+                // add "extra" rows at the end
+                var extra = resp.extra || [];
+
+                var tableData = {
+                    unit: unit,
+                    scale: scale,
+                    data: resp.table
+                }
+                vm.convertDatetime(tableData.data, vm.timezone === 'utc');
+                vm.$set(vm.tableData, table.key, tableData)
+
+                if(cb) cb();
+            });
+        },
+        convertDatetime: function(data, isUTC){
+            // Convert datetime string to moment object in-place because we want
+            // to keep extra keys and structure in the JSON returned by the API.
+            return data.map(function(f){
+                var values = f.values.map(function(v){
+                    // localizing the period to local browser time
+                    // unless showing reports in UTC.
+                    v[0] = isUTC ? moment.parseZone(v[0]) : moment(v[0]);
+                });
+            });
+        },
+        endOfMonth: function(date) {
+            return new Date(
+                date.getFullYear(),
+                date.getMonth() + 1,
+                0
+            );
+        },
+        prepareCurrentTabData: function(){
+            var vm = this;
+            var table = vm.currentTable;
+            vm.fetchTableData(table, function(){
+                var tableData = vm.currentTableData;
+                 // manual binding - trigger updates to the graph
+                if( table.key === "balances") {
+                    // XXX Hard-coded.
+                    updateBarChart("#metrics-chart-" + table.key,
+                        tableData.data, tableData.unit, tableData.scale, tableData.extra);
+                } else {
+                    updateChart("#metrics-chart-" + table.key,
+                        tableData.data, tableData.unit, tableData.scale, tableData.extra);
+                }
+            });
+        },
+        tabTitle: function(table){
+            var filter = Vue.filter('currencyToSymbol');
+            var unit = '';
+            var tableData = this.tableData[table.key];
+            if(tableData && tableData.unit){
+                unit = ' (' + filter(tableData.unit) + ')';
+            }
+            return table.title + unit;
+        },
+    },
+    computed: {
+        currentTable: function(){
+            return this.tables[this.currentTab];
+        },
+        currentTableData: function(){
+            var res = {data: []}
+            var key = this.currentTable.key;
+            var data = this.tableData[key];
+            if(data){
+                res = data;
+            }
+            return res;
+        },
+        currentTableDates: function(){
+            var res = [];
+            var data = this.currentTableData.data;
+            if(data && data.length > 0){
+                res = data[0].values;
+            }
+            return res;
+        }
+    },
+    mounted: function(){
+        this.prepareCurrentTabData()
     }
 })
 }
