@@ -3998,9 +3998,9 @@ def get_charge_event_id(charge, charge_item=None):
     Returns a formatted id for a charge (or a charge_item
     on that charge) that can be used as `event_id` in a `Transaction`.
     """
-    substr = "cha_%d" % charge.id
+    substr = "cha_%d/" % charge.id
     if charge_item:
-        substr += "_%d" % charge_item.id
+        substr += "%d/" % charge_item.id
     return substr
 
 
@@ -4009,9 +4009,9 @@ def get_sub_event_id(subscription, use_charge=None):
     Returns a formatted id for a subscription (or a use_charge
     on that subscription) that can be used as `event_id` in a `Transaction`.
     """
-    substr = "sub_%d" % subscription.id
+    substr = "sub_%d/" % subscription.id
     if use_charge:
-        substr += "_%d" % use_charge.id
+        substr += "%d/" % use_charge.id
     return substr
 
 
