@@ -177,6 +177,8 @@ SAAS = {
       'PRIV_KEY': getattr(sys.modules[__name__], "STRIPE_PRIV_KEY", None),
       'PUB_KEY': getattr(sys.modules[__name__], "STRIPE_PUB_KEY", None),
       'CLIENT_ID': getattr(sys.modules[__name__], "STRIPE_CLIENT_ID", None),
+      'WEBHOOK_SECRET': getattr(
+          sys.modules[__name__], "STRIPE_ENDPOINT_SECRET", None),
 # Comment above and uncomment below to use RazorPay instead.
 #      'BACKEND': 'saas.backends.razorpay_processor.RazorpayBackend',
 #      'PRIV_KEY': getattr(sys.modules[__name__], "RAZORPAY_PRIV_KEY", None),

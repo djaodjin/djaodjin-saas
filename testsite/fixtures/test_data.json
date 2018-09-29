@@ -543,7 +543,7 @@
       "orig_unit": "usd",
       "orig_account": "Receivable",
       "orig_organization": 2,
-      "event_id": 7
+      "event_id": "sub_7"
     },
     "model": "saas.transaction", "pk": 1
 },
@@ -558,7 +558,7 @@
       "orig_unit": "usd",
       "orig_account": "Payable",
       "orig_organization": 7,
-      "event_id": 7
+      "event_id": "sub_7"
     },
     "model": "saas.transaction", "pk": 2
 },
