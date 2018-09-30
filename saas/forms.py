@@ -92,12 +92,12 @@ class CreditCardForm(PostalFormMixin, forms.Form):
         self.fields['card_name'] = forms.CharField(
             label=_("Card Holder"), required=False)
         self.fields['card_city'] = forms.CharField(
-            label=_("City"), required=False)
+            label=_("City/Town"), required=False)
         self.fields['card_address_line1'] = forms.CharField(
-            label=_("Street"), required=False)
+            label=_("Street address"), required=False)
         self.add_postal_region(country=self.initial['country'], required=False)
         self.fields['card_address_zip'] = forms.CharField(
-            label=_("Zip/Postal Code"), required=False)
+            label=_("Zip/Postal code"), required=False)
         self.add_postal_country(required=False)
         for item in self.initial:
             if item.startswith('cart-'):
@@ -147,7 +147,7 @@ class ImportTransactionForm(forms.Form):
         parts = self.cleaned_data['subscription'].split(Subscription.SEP)
         if len(parts) != 2:
             raise forms.ValidationError(
-                _("subscription should be of the form subscriber:plan"))
+                _("Subscription should be of the form subscriber:plan."))
         return self.cleaned_data['subscription']
 
     def clean_amount(self):
@@ -155,7 +155,7 @@ class ImportTransactionForm(forms.Form):
         try:
             self.cleaned_data['amount'] = int(Decimal(amount) * 100)
         except (TypeError, ValueError):
-            raise forms.ValidationError(_("invalid amount"))
+            raise forms.ValidationError(_("Invalid amount"))
         return self.cleaned_data['amount']
 
 
@@ -208,7 +208,7 @@ class OrganizationForm(PostalFormMixin, forms.ModelForm):
 class OrganizationCreateForm(OrganizationForm):
 
     slug = forms.SlugField(label=_("ShortID"),
-        help_text=_("Unique identifier shown in the URL bar."))
+        help_text=_("Unique identifier shown in the URL bar"))
 
     class Meta:
         model = Organization
@@ -285,7 +285,7 @@ class PlanForm(forms.ModelForm):
             if self.instance is None or exists.pk != self.instance.pk:
                 # Rename is ok.
                 raise forms.ValidationError(
-                    _("A Plan with this title already exists."))
+                    _("A plan with this title already exists."))
         except Plan.DoesNotExist:
             pass
         return self.cleaned_data['title']
@@ -317,4 +317,6 @@ class WithdrawForm(BankForm):
     Withdraw amount from ``Funds`` to a bank account
     """
     submit_title = _("Withdraw")
-    amount = forms.DecimalField(label=_("Amount (in $)"), required=False)
+    amount = forms.DecimalField(label=_("Amount (in $)"), # XXX fix to be
+        # derived from unit as well as matching other input (i.e. cents vs. $)
+        required=False)

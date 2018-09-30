@@ -34,7 +34,7 @@ Account identified by settings.PROCESSOR['PRIV_KEY']. All transfers are made to
 the bank account associated to that account.
 
 In FORWARD mode, Stripe Customer and Charge objects are also created on
-the Stripe Account identified by settings.PROCESSOR['PRIV_KEY'] but each
+the Stripe account identified by settings.PROCESSOR['PRIV_KEY'] but each
 Charge is tied automatically to a Stripe Transfer to a Stripe Connect Account.
 
 In REMOTE mode, Stripe Customer and Charge objects are created on
@@ -125,7 +125,8 @@ class StripeBackend(object):
             # We generate Stripe data into the StripeConnect account.
             if not broker.processor_deposit_key:
                 raise ProcessorError(
-                    _("%s is not connected to a Stripe Account.") % broker)
+                    _("%(organization)s is not connected to a Stripe account."
+                    ) % {'organization': broker})
             kwargs.update({'stripe_account': broker.processor_deposit_key})
         return kwargs
 
@@ -136,7 +137,8 @@ class StripeBackend(object):
             # We generate Stripe data into the StripeConnect account.
             if not provider.processor_deposit_key:
                 raise ProcessorError(
-                    _("%s is not connected to a Stripe Account.") % provider)
+                    _("%(organization)s is not connected to a Stripe account."
+                    ) % {'organization': provider})
             kwargs.update({'stripe_account': provider.processor_deposit_key})
         return kwargs
 
@@ -257,7 +259,8 @@ class StripeBackend(object):
             # We generate Stripe data into the StripeConnect account.
             if not broker.processor_deposit_key:
                 raise ProcessorError(
-                    _("%s is not connected to a Stripe Account.") % broker)
+                    _("%(organization)s is not connected to a Stripe account."
+                    ) % {'organization': broker})
             kwargs.update({'destination': broker.processor_deposit_key})
         if customer is not None:
             kwargs.update({'customer': customer})
@@ -460,7 +463,7 @@ class StripeBackend(object):
         try:
             kwargs = self._prepare_transfer_request(provider)
             # The platform provider (i.e. broker)
-            # is always connected to a Stripe Account
+            # is always connected to a Stripe account
             if provider.processor_deposit_key or self._is_platform(provider):
                 if provider.processor_deposit_key:
                     last4 = provider.processor_deposit_key[-4:]

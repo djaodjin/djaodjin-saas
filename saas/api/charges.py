@@ -262,11 +262,11 @@ class ChargeRefundAPIView(RetrieveChargeMixin, CreateAPIView):
         charge = self.object
         if charge.state != charge.DONE:
             if charge.state == charge.DISPUTED:
-                msg = _("You cannot refund a disputed charge")
+                msg = _("You cannot refund a disputed charge.")
             elif charge.state == charge.CREATED:
-                msg = _("You cannot refund a pending charge")
+                msg = _("You cannot refund a pending charge.")
             else:
-                msg = _("You cannot refund a failed charge")
+                msg = _("You cannot refund a failed charge.")
             return Response({"detail": msg},
                 status=status.HTTP_405_METHOD_NOT_ALLOWED)
         with transaction.atomic():

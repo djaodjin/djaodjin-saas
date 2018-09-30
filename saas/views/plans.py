@@ -166,7 +166,8 @@ djaodjin-saas/tree/master/saas/templates/saas/profile/plans.html>`__).
 
     def get_success_url(self):
         messages.success(
-            self.request, _("Successfully created '%s' plan.") % self.object)
+            self.request, _("Successfully created plan titled '%(title)s'.") % {
+                'title': self.object.title})
         return reverse('saas_metrics_plans', args=(self.organization,))
 
 
@@ -192,7 +193,8 @@ djaodjin-saas/tree/master/saas/templates/saas/profile/plans.html>`__).
 
     def get_success_url(self):
         messages.success(self.request,
-            _("Successfully updated plan titled '%s'.") % self.object.title)
+            _("Successfully updated plan titled '%(title)s'.") % {
+                'title': self.object.title})
         return reverse('saas_plan_edit', kwargs=self.get_url_kwargs())
 
     def get_context_data(self, **kwargs):

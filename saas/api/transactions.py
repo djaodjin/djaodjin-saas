@@ -399,7 +399,7 @@ class TransferListAPIView(SmartTransactionListMixin, TransferQuerysetMixin,
         except ProcessorError as err:
             raise ValidationError({'detail': _("The latest transfers might"\
                 " not be shown because there was an error with the backend"\
-                " processor (ie. %s).") % str(err)})
+                " processor (ie. %(err)s).") % {'err': str(err)}})
 
 
 class OfflineTransactionSerializer(NoModelSerializer):
@@ -407,11 +407,11 @@ class OfflineTransactionSerializer(NoModelSerializer):
     subscription = serializers.CharField(
         help_text="The subscription the offline transaction refers to.")
     created_at = serializers.DateTimeField(read_only=True,
-        help_text=_("date/time of creation in ISO format"))
+        help_text=_("Date/time of creation (in ISO format)"))
     # XXX Shouldn't this be same format as TransactionSerializer.amount?
     amount = serializers.DecimalField(None, 2)
     descr = serializers.CharField(required=False,
-        help_text=_("free-form text description for the Transaction"))
+        help_text=_("Free-form text description for the Transaction"))
 
 
 class ImportTransactionsAPIView(ProviderMixin, CreateAPIView):

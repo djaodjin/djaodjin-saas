@@ -131,7 +131,7 @@ class BankSerializer(NoModelSerializer):
         help_text=_("Amount available to transfer to the provider"\
             " deposit account"))
     balance_unit = serializers.CharField(
-        help_text=_("three-letter ISO 4217 code for currency unit (ex: usd)"))
+        help_text=_("Three-letter ISO 4217 code for currency unit (ex: usd)"))
 
 
 class CardSerializer(NoModelSerializer):
@@ -147,7 +147,7 @@ class CardSerializer(NoModelSerializer):
 class ChargeSerializer(serializers.ModelSerializer):
 
     state = serializers.CharField(source='get_state_display',
-        help_text=_("current state (created, done, failed, disputed)"))
+        help_text=_("Current state (i.e. created, done, failed, disputed)"))
     readable_amount = serializers.SerializerMethodField(
         help_text=_("Amount and unit in a commonly accepted readable format"))
 
@@ -169,18 +169,18 @@ class EmailChargeReceiptSerializer(NoModelSerializer):
         help_text=_("Charge identifier (i.e. matches the URL {charge}"\
             " parameter)"))
     email = serializers.EmailField(read_only=True,
-        help_text=_("Email address to which the receipt was sent."))
+        help_text=_("E-mail address to which the receipt was sent."))
 
 
 class TableSerializer(NoModelSerializer):
 
     # XXX use `key` instead of `slug` here?
     key = serializers.CharField(
-        help_text=_("unique key in the table for the data series"))
+        help_text=_("Unique key in the table for the data series"))
     selector = serializers.CharField(
-        help_text=_("filter on the Transaction accounts"))
+        help_text=_("Filter on the Transaction accounts"))
     values = serializers.CharField(
-        help_text=_("datapoints in the serie"))
+        help_text=_("Datapoints in the serie"))
 
 
 class MetricsSerializer(NoModelSerializer):
@@ -189,7 +189,7 @@ class MetricsSerializer(NoModelSerializer):
         help_text=_("The scale of the number reported in the tables (ex: 1000"\
         " when numbers are reported in thousands of dollars)"))
     unit = serializers.CharField(
-        help_text=_("three-letter ISO 4217 code for currency unit (ex: usd)"))
+        help_text=_("Three-letter ISO 4217 code for currency unit (ex: usd)"))
     title = serializers.CharField(
         help_text=_("Title for the table"))
     table = TableSerializer(many=True)
@@ -200,7 +200,7 @@ class RefundChargeItemSerializer(NoModelSerializer):
     One item to refund on a `Charge`.
     """
     num = serializers.IntegerField(
-        help_text=_("line item index counting from zero."))
+        help_text=_("Line item index counting from zero."))
     refunded_amount = serializers.IntegerField(required=False,
         help_text=_("The amount to refund cannot be higher than the amount"\
         " of the line item minus the total amount already refunded on that"\
@@ -221,15 +221,15 @@ class OrganizationSerializer(serializers.ModelSerializer):
     # If we don't define ``slug`` here, the serializer validators will raise
     # an exception "Organization already exists in database".
     slug = serializers.CharField(
-        help_text=_("Unique identifier shown in the URL bar."))
+        help_text=_("Unique identifier shown in the URL bar"))
     full_name = serializers.CharField(required=False, allow_blank=True,
-        help_text=_("Organization name"))
+        help_text=_("Full name"))
     default_timezone = serializers.CharField(required=False,
          help_text=_("Timezone to use when reporting metrics"))
     email = serializers.CharField(required=False,
         help_text=_("E-mail address for the organization"))
     phone = serializers.CharField(required=False, allow_blank=True,
-        help_text=_("Phone number to contact the organization"))
+        help_text=_("Phone number"))
     street_address = serializers.CharField(required=False, allow_blank=True,
         help_text=_("Street address"))
     locality = serializers.CharField(required=False, allow_blank=True,
@@ -237,7 +237,7 @@ class OrganizationSerializer(serializers.ModelSerializer):
     region = serializers.CharField(required=False, allow_blank=True,
         help_text=_("State/Province/County"))
     postal_code = serializers.CharField(required=False, allow_blank=True,
-        help_text=_("Zip/Postal Code"))
+        help_text=_("Zip/Postal code"))
     country = serializers.CharField(required=False, allow_blank=True,
         help_text=_("Country"))
     extra = serializers.CharField(required=False, allow_null=True,
@@ -306,7 +306,7 @@ class PlanSerializer(serializers.ModelSerializer):
     title = serializers.CharField(required=False,
         help_text=_("Title for the plan"))
     description = serializers.CharField(required=False,
-        help_text=_("free-form text description for the plan"))
+        help_text=_("Free-form text description for the plan"))
     is_active = serializers.BooleanField(required=False,
         help_text=_("True when customers can subscribe to the plan"))
     setup_amount = serializers.IntegerField(required=False,
@@ -315,11 +315,11 @@ class PlanSerializer(serializers.ModelSerializer):
         help_text=_("Amount billed every period"))
     # XXX rename `interval` to `period`
     interval = EnumField(choices=Plan.INTERVAL_CHOICES, required=False,
-        help_text=_("natural period for the subscription"))
+        help_text=_("Natural period for the subscription"))
     app_url = serializers.SerializerMethodField()
     organization = serializers.SlugRelatedField(
         read_only=True, slug_field='slug',
-        help_text=_("provider of the plan"))
+        help_text=_("Provider of the plan"))
 
     class Meta:
         model = Plan
@@ -360,16 +360,18 @@ class TransactionSerializer(serializers.ModelSerializer):
     """
 
     orig_organization = serializers.SlugRelatedField(
-        read_only=True, slug_field='slug', help_text=_("slug of the origin"\
-            " Organization from which funds are withdrawn"))
+        read_only=True, slug_field='slug', help_text=_("Source organization"\
+        " from which funds are withdrawn"))
     dest_organization = serializers.SlugRelatedField(
-        read_only=True, slug_field='slug',
-        help_text=_("slug of the destination Organization to which funds"\
-            " are deposited"))
+        read_only=True, slug_field='slug', help_text=_("Target organization"\
+        " to which funds are deposited"))
     description = serializers.CharField(source='descr', read_only=True,
-        help_text=_("free-form text description for the Transaction"))
-    amount = serializers.CharField(source='dest_amount', read_only=True)
-    is_debit = serializers.CharField(source='dest_amount', read_only=True)
+        help_text=_("Free-form text description for the transaction"))
+    amount = serializers.CharField(source='dest_amount', read_only=True,
+        help_text=_("Amount being transfered"))
+    is_debit = serializers.CharField(source='dest_amount', read_only=True,
+        help_text=_("True if the transaction is indentified as a debit in"\
+        " the API context"))
 
     def _is_debit(self, transaction):
         """
@@ -414,9 +416,9 @@ class UserSerializer(serializers.ModelSerializer):
             " such that front-end code can be re-used between Organization"\
             " and User records."))
     email = serializers.EmailField(read_only=True,
-        help_text=_("Email for the user"))
+        help_text=_("E-mail address for the user"))
     created_at = serializers.DateTimeField(source='date_joined', required=False,
-        help_text=_("Date/time of creation in ISO format"))
+        help_text=_("Date/time of creation (in ISO format)"))
     full_name = serializers.SerializerMethodField(
         help_text=_("Full name for the contact (effectively first name"\
         " followed by last name)"))
@@ -449,11 +451,11 @@ class InvoicableSerializer(NoModelSerializer):
     serializer for an invoicable item with available options.
     """
     subscription = SubscriptionSerializer(read_only=True, help_text=_(
-        "subscription lines and options refer to."))
+        "Subscription lines and options refer to."))
     lines = TransactionSerializer(many=True, help_text=_(
-        "line items to charge on checkout."))
+        "Line items to charge on checkout."))
     options = TransactionSerializer(read_only=True, many=True, help_text=(
-        "options to replace line items."))
+        "Options to replace line items."))
 
 
 class RoleDescriptionSerializer(serializers.ModelSerializer):
@@ -510,5 +512,5 @@ class ValidationErrorSerializer(NoModelSerializer):
     """
     Details on why token is invalid.
     """
-    detail = serializers.CharField(help_text=_("describes the reason for"\
+    detail = serializers.CharField(help_text=_("Describes the reason for"\
         " the error in plain text"))

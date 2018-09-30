@@ -84,7 +84,8 @@ def _create_user(username, email=None, first_name="", last_name=""):
 class ForceSerializer(NoModelSerializer):
 
     force = serializers.BooleanField(required=False,
-        help_text=_("Invite if not registered."))
+        help_text=_("Forces invite of user/organization that could"\
+        " not be found"))
 
 
 class OrganizationRoleCreateSerializer(NoModelSerializer):
@@ -190,7 +191,8 @@ class OptinBase(object):
         with transaction.atomic():
             if organizations.count() == 0:
                 if not request.GET.get('force', False):
-                    raise Http404(_("%s not found") % slug)
+                    raise Http404(_("Profile %(organization)s does not exist."
+                    ) % {'organization': slug})
                 email = serializer.validated_data.get('email',
                     organization_data.get('email', None))
                 full_name = serializer.validated_data.get('full_name',
@@ -669,8 +671,8 @@ class RoleFilteredListAPIView(RoleSmartListMixin, RoleByDescrQuerysetMixin,
                         serializer.validated_data['slug']))
             except user_model.DoesNotExist:
                 if not request.GET.get('force', False):
-                    raise Http404("%s not found"
-                        % serializer.validated_data['slug'])
+                    raise Http404("User %(username)s does not exist."
+                        % {'username': serializer.validated_data['slug']})
         if not user:
             full_name = serializer.validated_data.get('full_name', '')
             first_name, _, last_name = full_name_natural_split(full_name)

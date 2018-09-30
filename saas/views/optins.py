@@ -56,11 +56,12 @@ class RoleGrantAcceptView(RedirectView):
             organization=self.role.organization, user=request.user).exclude(
             pk=obj.pk).first()
         if existing_role:
-            messages.error(request, _("You already have a %s role on %s."\
-                " Please drop this role first if you want to accept a role"\
-                " of %s instead.") % (obj.role_description.title,
-                obj.organization.printable_name,
-                existing_role.role_description.title))
+            messages.error(request, _("You already have a %(existing_role)s"\
+                " role on %(organization)s. Please drop this role first if"\
+                " you want to accept a role of %(role)s instead.") % {
+                    'role': obj.role_description.title,
+                    'organization': obj.organization.printable_name,
+                    'existing_role': existing_role.role_description.title})
             return super(RoleGrantAcceptView, self).get(
                 request, *args, organization=obj.organization)
 
@@ -79,8 +80,9 @@ class RoleGrantAcceptView(RedirectView):
         signals.role_grant_accepted.send(sender=__name__,
             role=obj, grant_key=grant_key, request=request)
         messages.success(request,
-            _("%s role to %s accepted.") % (
-                obj.role_description.title, obj.organization.printable_name))
+            _("%(role)s role to %(organization)s accepted.") % {
+                'role': obj.role_description.title,
+                'organization': obj.organization.printable_name})
         return super(RoleGrantAcceptView, self).get(
             request, *args, organization=obj.organization)
 

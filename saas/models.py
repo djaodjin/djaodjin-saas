@@ -224,10 +224,10 @@ class Organization(models.Model):
 
     objects = OrganizationManager()
     slug = models.SlugField(unique=True,
-        help_text=_("Unique identifier shown in the URL bar."))
+        help_text=_("Unique identifier shown in the URL bar"))
 
     created_at = models.DateTimeField(auto_now_add=True,
-        help_text=_("Date/time of creation in ISO format"))
+        help_text=_("Date/time of creation (in ISO format)"))
     is_active = models.BooleanField(default=True)
     full_name = models.CharField(_("Organization name"), max_length=100,
         blank=True)
@@ -239,14 +239,15 @@ class Organization(models.Model):
     street_address = models.CharField(_("Street address"), max_length=150)
     locality = models.CharField(_("City/Town"), max_length=50)
     region = models.CharField(_("State/Province/County"), max_length=50)
-    postal_code = models.CharField(_("Zip/Postal Code"), max_length=50)
+    postal_code = models.CharField(_("Zip/Postal code"), max_length=50)
     country = CountryField()
 
     is_bulk_buyer = models.BooleanField(default=False,
         help_text=mark_safe(_("Enable GroupBuy ("\
         "<a href=\"/docs/#group-billing\" target=\"_blank\">what is it?</a>)")))
     is_provider = models.BooleanField(default=False,
-        help_text=_("Can fulfill the provider side of a subscription."))
+        help_text=_("The organization can fulfill the provider side"\
+        " of a subscription."))
     default_timezone = models.CharField(
         max_length=100, default=settings.TIME_ZONE,
         help_text=_("Timezone to use when reporting metrics"))
@@ -265,7 +266,7 @@ class Organization(models.Model):
     billing_start = models.DateField(null=True, auto_now_add=True)
 
     funds_balance = models.PositiveIntegerField(default=0,
-        help_text=_("Funds escrowed in cents"))
+        help_text=_("Funds escrowed in currency unit"))
     processor = models.ForeignKey(
         'Organization', null=True, blank=True, on_delete=models.SET_NULL,
         related_name='processes',)
@@ -1042,9 +1043,9 @@ class RoleDescription(models.Model):
     """
 
     created_at = models.DateTimeField(auto_now_add=True,
-        help_text=_("Date/time of creation in ISO format"))
+        help_text=_("Date/time of creation (in ISO format)"))
     slug = models.SlugField(
-        help_text=_("Unique identifier, typically used in URLs."))
+        help_text=_("Unique identifier shown in the URL bar"))
     organization = models.ForeignKey(
         Organization, null=True, on_delete=models.CASCADE,
         related_name="role_descriptions")
@@ -1307,8 +1308,9 @@ class ChargeManager(models.Manager):
                      token, amount, unit, broker=broker, descr=descr,
                      created_at=created_at)
             else:
-                raise ProcessorError(_("%s is not connected to a processor"
-                    " backend customer and no token passed.") % customer)
+                raise ProcessorError(_("%(organization)s is not associated"\
+                    " to an account on the processor and no token was passed."
+                ) % {'organization': customer})
             # Create record of the charge in our database
             descr = humanize.DESCRIBE_CHARGED_CARD % {
                 'charge': processor_charge_id,
@@ -1372,30 +1374,30 @@ class Charge(models.Model):
     objects = ChargeManager()
 
     created_at = models.DateTimeField(
-        help_text=_("date/time of creation in ISO format"))
+        help_text=_("Date/time of creation (in ISO format)"))
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL, null=True, on_delete=models.PROTECT,
         db_column='user_id')
     amount = models.PositiveIntegerField(default=0,
-        help_text=_("total amount in cents (i.e. 100ths) of unit"))
+        help_text=_("Total amount in currency unit"))
     unit = models.CharField(max_length=3, default=settings.DEFAULT_UNIT,
-        help_text=_("three-letter ISO 4217 code for currency unit (ex: usd)"))
+        help_text=_("Three-letter ISO 4217 code for currency unit (ex: usd)"))
     customer = models.ForeignKey(Organization, on_delete=models.PROTECT,
-        help_text=_("organization charged"))
+        help_text=_("Organization charged"))
     description = models.TextField(null=True,
-        help_text=_("description for the Charge as appears on billing"\
+        help_text=_("Description for the Charge as appears on billing"\
             " statements"))
     last4 = models.PositiveSmallIntegerField(
-        help_text=_("last 4 digits of the credit card used"))
+        help_text=_("Last 4 digits of the credit card used"))
     exp_date = models.DateField(
-        help_text=_("expiration date of the credit card used"))
+        help_text=_("Expiration date of the credit card used"))
     card_name = models.CharField(max_length=50, null=True)
     processor = models.ForeignKey('Organization', on_delete=models.PROTECT,
         related_name='charges')
     processor_key = models.SlugField(unique=True, db_index=True)
     state = models.PositiveSmallIntegerField(
         choices=CHARGE_STATES, default=CREATED,
-        help_text=_("current state ('created', 'done', 'failed', 'disputed')"))
+        help_text=_("Current state (i.e. created, done, failed, disputed)"))
     extra = settings.get_extra_field_class()(null=True,
         help_text=_("Extra meta data (can be stringify JSON)"))
 
@@ -1920,16 +1922,16 @@ class ChargeItem(models.Model):
     # XXX could be a ``Subscription`` or a balance.
     invoiced = models.ForeignKey('Transaction', on_delete=models.PROTECT,
         related_name='invoiced_item',
-        help_text=_("transaction invoiced through this charge"))
+        help_text=_("Transaction invoiced through this charge"))
     invoiced_fee = models.ForeignKey('Transaction', null=True,
         on_delete=models.PROTECT,
         related_name='invoiced_fee_item',
-        help_text=_("fee transaction to process the transaction invoiced"\
+        help_text=_("Fee transaction to process the transaction invoiced"\
 " through this charge"))
     invoiced_distribute = models.ForeignKey('Transaction', null=True,
         on_delete=models.PROTECT,
         related_name='invoiced_distribute',
-        help_text=_("transaction recording the distribution from processor"\
+        help_text=_("Transaction recording the distribution from processor"\
 " to provider."))
 
     # 3rd party notification
@@ -2033,7 +2035,7 @@ class ChargeItem(models.Model):
         if refunded_distribute_amount > provider.funds_balance:
             raise InsufficientFunds(
                 _("%(provider)s has %(funds_available)s of funds available."\
-" %(funds_required)s are required to refund \"%(descr)s\"") % {
+" %(funds_required)s are required to refund '%(descr)s'") % {
     'provider': provider,
     'funds_available': humanize.as_money(provider.funds_balance, provider_unit),
     'funds_required': humanize.as_money(
@@ -2114,26 +2116,26 @@ class Coupon(models.Model):
     objects = CouponManager()
 
     created_at = models.DateTimeField(auto_now_add=True,
-        help_text=_("date/time of creation in ISO format"))
+        help_text=_("Date/time of creation (in ISO format)"))
     code = models.SlugField(
-        help_text=_("unique identifier per provider, typically used in URLs"))
+        help_text=_("Unique identifier per provider, typically used in URLs"))
     description = models.TextField(null=True, blank=True,
-        help_text=_("free-form text description for the Coupon"))
+        help_text=_("Free-form text description for the Coupon"))
     percent = models.PositiveSmallIntegerField(default=0,
         validators=[MaxValueValidator(100)],
-        help_text=_("percentage discounted"))
+        help_text=_("Percentage discounted"))
     # restrict use in scope
     organization = models.ForeignKey(Organization, on_delete=models.CASCADE,
-        help_text=_("coupon will only apply to purchased plans"\
+        help_text=_("Coupon will only apply to purchased plans"\
             " from this provider"))
     plan = models.ForeignKey('saas.Plan', on_delete=models.CASCADE, null=True,
-        blank=True, help_text=_("coupon will only apply to this plan"))
+        blank=True, help_text=_("Coupon will only apply to this plan"))
     # restrict use in time and count.
     ends_at = models.DateTimeField(null=True, blank=True,
-        help_text=_("date/time in ISO format at which the code expires"\
-            " to purchase subscriptions"))
+        help_text=_("Date/time at which the coupon code expires"\
+        " (in ISO format)"))
     nb_attempts = models.IntegerField(null=True, blank=True,
-        help_text=_("number of times the coupon can be used"))
+        help_text=_("Number of times the coupon can be used"))
     extra = settings.get_extra_field_class()(null=True,
         help_text=_("Extra meta data (can be stringify JSON)"))
 
@@ -2275,24 +2277,27 @@ class Plan(SlugTitleMixin, models.Model):
     skip_optin_on_grant = models.BooleanField(default=False)
     optin_on_request = models.BooleanField(default=False)
     setup_amount = models.PositiveIntegerField(default=0,
-        help_text=_('One-time charge amount (in cents).'))
+        help_text=_('One-time charge amount in currency unit'))
     # period billing
     period_amount = models.PositiveIntegerField(default=0,
-        help_text=_('Recurring amount per period (in cents).'))
+        help_text=_('Recurring amount per period in currency unit'))
     transaction_fee = models.PositiveIntegerField(default=0,
         help_text=_('Fee per transaction (in per 10000).'))
     interval = models.PositiveSmallIntegerField(
         choices=INTERVAL_CHOICES, default=YEARLY)
     period_length = models.PositiveSmallIntegerField(default=1,
-        help_text=_('Natural number of months/years/etc. before the plan ends'))
+        help_text=_('Natural period length of a subscription to the plan'\
+        ' (monthly, yearly, etc.)'))
     unlock_event = models.CharField(max_length=128, null=True, blank=True,
         help_text=_('Payment required to access full service'))
     advance_discount = models.PositiveIntegerField(default=333,
         validators=[MaxValueValidator(10000)], # 100.00%
-        help_text=_('incr discount for payment of multiple periods (in %%).'))
+        help_text=_('Incremental discount for payment of multiple periods'\
+        ' (in %%).'))
     # end game
     length = models.PositiveSmallIntegerField(null=True, blank=True,
-        help_text=_('Number of intervals the plan before the plan ends.'))
+        help_text=_('Number of natural periods before a subscription to'\
+        ' the plan ends (default to 1)'))
     auto_renew = models.BooleanField(default=True)
     # Pb with next : maybe create an other model for it
     next_plan = models.ForeignKey("Plan", null=True, on_delete=models.CASCADE,
@@ -2581,28 +2586,28 @@ class CartItem(models.Model):
     objects = CartItemManager()
 
     created_at = models.DateTimeField(auto_now_add=True,
-        help_text=_("date/time at which the item was added to the cart."))
+        help_text=_("Date/time of creation (in ISO format)"))
     user = models.ForeignKey(settings.AUTH_USER_MODEL, null=True,
         on_delete=models.CASCADE,
         db_column='user_id', related_name='cart_items',
-        help_text=_("user who added the item to the cart. ``None`` means"\
-" the item could be claimed."))
+        help_text=_("User who added the item to the cart (``None`` means"\
+" the item could be claimed)"))
     plan = models.ForeignKey(Plan, null=True,
         on_delete=models.CASCADE,
-        help_text=_("item added to the cart (if plan)."))
+        help_text=_("Item added to the cart (if plan)"))
     use = models.ForeignKey(UseCharge, null=True,
         on_delete=models.CASCADE,
-        help_text=_("item added to the cart (if use charge)."))
+        help_text=_("Item added to the cart (if use charge)"))
     coupon = models.ForeignKey(Coupon, null=True,
         on_delete=models.CASCADE,
-        blank=True, help_text=_("coupon to apply to the plan."))
+        blank=True, help_text=_("Coupon to apply to the order"))
     recorded = models.BooleanField(default=False,
-        help_text=_("whever the item has been checked out or not."))
+        help_text=_("Whever the item has been checked out or not"))
 
     # The following fields are for number of periods pre-paid in advance
     # or a quantity in UseCharge units.
     quantity = models.PositiveIntegerField(default=0,
-        help_text=_("number of periods to be paid in advance"))
+        help_text=_("Number of periods to be paid in advance"))
 
     # The following fields are used for the GroupBuy feature. They do not
     # refer to a User nor Organization key because those might not yet exist
@@ -2617,10 +2622,10 @@ class CartItem(models.Model):
     # XXX first_name / last_name should be a full_name because we only
     #     subscribes organization. On the other end an actual user needs
     #     to invited and the User model only supports first_name/last_name.
-    first_name = models.CharField(_('first name'), max_length=30, blank=True,
+    first_name = models.CharField(_('First name'), max_length=30, blank=True,
         help_text=_("First name of the person that will benefit from"\
             " the subscription (GroupBuy)"))
-    last_name = models.CharField(_('last name'), max_length=30, blank=True,
+    last_name = models.CharField(_('Last name'), max_length=30, blank=True,
         help_text=_("Last name of the person that will benefit from"\
             " the subscription (GroupBuy)"))
     # XXX Explain sync_on and claim_code
@@ -2746,16 +2751,16 @@ class Subscription(models.Model):
         help_text=_("The subscription is set to auto-renew at the end of"\
         " the period"))
     created_at = models.DateTimeField(auto_now_add=True,
-        help_text=_("date/time of creation in ISO format"))
+        help_text=_("Date/time of creation (in ISO format)"))
     ends_at = models.DateTimeField(
-        help_text=_("date/time when the subscription period currently ends"\
-        " in ISO format"))
+        help_text=_("Date/time when the subscription period currently ends"\
+        " (in ISO format)"))
     description = models.TextField(null=True, blank=True,
-        help_text=_("free-form text description for the subscription"))
+        help_text=_("Free-form text description for the subscription"))
     organization = models.ForeignKey(Organization, on_delete=models.CASCADE,
-        help_text=_("organization subscribed to the plan"))
+        help_text=_("Organization subscribed to the plan"))
     plan = models.ForeignKey(Plan, on_delete=models.CASCADE,
-        help_text=_("plan the organization is subscribed to"))
+        help_text=_("Plan the organization is subscribed to"))
     request_key = models.CharField(max_length=40, null=True, blank=True)
     grant_key = models.CharField(max_length=40, null=True, blank=True)
     extra = settings.get_extra_field_class()(null=True,
@@ -3755,37 +3760,37 @@ class Transaction(models.Model):
     # Implementation Note:
     # An exact created_at is too important to let auto_now_add mess with it.
     created_at = models.DateTimeField(
-        help_text=_("date/time of creation in ISO format"))
+        help_text=_("Date/time of creation (in ISO format)"))
 
     orig_account = models.CharField(max_length=255, default="unknown",
-        help_text=_("source account from which funds are withdrawn"))
+        help_text=_("Source account from which funds are withdrawn"))
     orig_organization = models.ForeignKey(Organization,
         on_delete=models.PROTECT,
         related_name="outgoing",
-        help_text=_("source Organization from which funds are withdrawn"))
+        help_text=_("Source organization from which funds are withdrawn"))
     orig_amount = models.PositiveIntegerField(default=0,
-        help_text=_("amount withdrawn from source in orig_unit"))
+        help_text=_("Amount withdrawn from source in orig_unit"))
     orig_unit = models.CharField(max_length=3, default=settings.DEFAULT_UNIT,
-        help_text=_("three-letter ISO 4217 code for source currency unit"\
+        help_text=_("Three-letter ISO 4217 code for source currency unit"\
             " (ex: usd)"))
     dest_account = models.CharField(max_length=255, default="unknown",
-        help_text=_("target account to which funds are deposited"))
+        help_text=_("Target account to which funds are deposited"))
     dest_organization = models.ForeignKey(Organization,
         on_delete=models.PROTECT,
         related_name="incoming",
-        help_text=_("target Organization to which funds are deposited"))
+        help_text=_("Target organization to which funds are deposited"))
     dest_amount = models.PositiveIntegerField(default=0,
-        help_text=_("amount deposited into target in dest_unit"))
+        help_text=_("Amount deposited into target in dest_unit"))
     dest_unit = models.CharField(max_length=3, default=settings.DEFAULT_UNIT,
-        help_text=_("three-letter ISO 4217 code for target currency unit"\
+        help_text=_("Three-letter ISO 4217 code for target currency unit"\
             " (ex: usd)"))
 
     # Optional
     descr = models.TextField(default="N/A",
-        help_text=_("free-form text description for the Transaction"))
+        help_text=_("Free-form text description for the Transaction"))
     event_id = models.SlugField(null=True,
-        help_text=_('Event at the origin of this transaction"\
-        " (ex. subscription, charge, etc.)'))
+        help_text=_("Event at the origin of this transaction"\
+        " (ex. subscription, charge, etc.)"))
 
     def __str__(self):
         return str(self.id)
@@ -3835,10 +3840,10 @@ class BalanceLine(models.Model):
     title = models.CharField(max_length=255,
         help_text=_("Title for the row"))
     selector = models.CharField(max_length=255, blank=True,
-        help_text=_("filter on the Transaction accounts"))
+        help_text=_("Filter on the Transaction accounts"))
     is_positive = models.BooleanField(default=False)
     rank = models.IntegerField(
-        help_text=_("absolute position of the row in the list of rows"\
+        help_text=_("Absolute position of the row in the list of rows"\
         " for the table"))
     moved = models.BooleanField(default=False)
 

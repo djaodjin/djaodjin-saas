@@ -6,7 +6,7 @@
 <section id="roles" ng-app="saasApp">
   <div ng-controller="userRelationListCtrl">
     <form>
-      <input name="user" type="text" ng-model="item.slug" placeholder="Username or Email" />
+      <input name="user" type="text" ng-model="item.slug" placeholder="Username or e-mail" />
       <input type="submit" ng-click="save($event)" />
     </form>
     <h2 ng-hide="items.$resolved">Please wait...</h2>
