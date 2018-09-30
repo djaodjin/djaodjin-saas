@@ -190,6 +190,27 @@ def start_of_day(dtime_at=None):
         dtime_at.day, tzinfo=get_current_timezone())
 
 
+def update_context_urls(context, urls):
+    if 'urls' in context:
+        for key, val in six.iteritems(urls):
+            if key in context['urls']:
+                if isinstance(val, dict):
+                    context['urls'][key].update(val)
+                else:
+                    # Because organization_create url is added in this mixin
+                    # and in ``OrganizationRedirectView``.
+                    context['urls'][key] = val
+            else:
+                context['urls'].update({key: val})
+    else:
+        context.update({'urls': urls})
+    return context
+
+
+def utctimestamp_to_datetime(timestamp):
+    return datetime_or_now(datetime.datetime.utcfromtimestamp(timestamp))
+
+
 def validate_redirect_url(next_url):
     """
     Returns the next_url path if next_url matches allowed hosts.
@@ -207,7 +228,3 @@ def validate_redirect_url(next_url):
         if not (domain and validate_host(domain, allowed_hosts)):
             return None
     return parts.path
-
-
-def utctimestamp_to_datetime(timestamp):
-    return datetime_or_now(datetime.datetime.utcfromtimestamp(timestamp))

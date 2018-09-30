@@ -45,6 +45,8 @@ from .. import settings
 from ..compat import reverse, NoReverseMatch
 from ..decorators import fail_direct
 from ..models import CartItem, Coupon, Plan, Organization, get_broker
+from ..utils import update_context_urls
+
 
 LOGGER = logging.getLogger(__name__)
 
@@ -182,18 +184,6 @@ class OrganizationRedirectView(TemplateResponseMixin, ContextMixin,
     explicit_create_on_none = False
     query_string = True
 
-    @staticmethod
-    def update_context_urls(context, urls):
-        if 'urls' in context:
-            for key, val in six.iteritems(urls):
-                if key in context['urls']:
-                    context['urls'][key].update(val)
-                else:
-                    context['urls'].update({key: val})
-        else:
-            context.update({'urls': urls})
-        return context
-
     def create_organization_from_user(self, user):#pylint:disable=no-self-use
         with transaction.atomic():
             organization = Organization.objects.create(
@@ -246,7 +236,7 @@ class OrganizationRedirectView(TemplateResponseMixin, ContextMixin,
             redirects += [(url, organization.printable_name, organization.slug)]
         context = self.get_context_data(**kwargs)
         context.update({'redirects': redirects})
-        self.update_context_urls(context, {'organization_create': create_url})
+        update_context_urls(context, {'organization_create': create_url})
         return self.render_to_response(context)
 
 

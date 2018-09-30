@@ -41,7 +41,7 @@ from ..forms import (OrganizationForm, OrganizationCreateForm,
 from ..mixins import (OrganizationMixin, ProviderMixin, RoleDescriptionMixin,
     PlanMixin)
 from ..models import Plan, Subscription, get_broker, is_broker
-from ..utils import get_organization_model
+from ..utils import get_organization_model, update_context_urls
 
 
 class RoleDetailView(RoleDescriptionMixin, TemplateView):
@@ -84,7 +84,7 @@ class RoleDetailView(RoleDescriptionMixin, TemplateView):
                     'saas_api_role_filtered_list', args=(
                         self.organization, role)),
         }}
-        self.update_context_urls(context, urls)
+        update_context_urls(context, urls)
         return context
 
 
@@ -104,7 +104,7 @@ class RoleListView(OrganizationMixin, TemplateView):
             'api_role_descriptions': reverse(
                 'saas_api_role_description_list', args=(self.organization,)),
         }}
-        self.update_context_urls(context, urls)
+        update_context_urls(context, urls)
         return context
 
 
@@ -297,7 +297,7 @@ class DashboardView(OrganizationMixin, DetailView):
                 'provider': {
                     'api_accounts': reverse(
                         'saas_api_subscribers', args=(self.organization,))}}
-        self.update_context_urls(context, urls)
+        update_context_urls(context, urls)
         return context
 
     def get_object(self, queryset=None):

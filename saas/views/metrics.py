@@ -31,7 +31,7 @@ from .. import settings
 from ..compat import reverse
 from ..mixins import CouponMixin, ProviderMixin, MetricsMixin
 from ..models import CartItem, Plan
-from ..utils import datetime_or_now
+from ..utils import datetime_or_now, update_context_urls
 
 
 class BalancesView(ProviderMixin, TemplateView):
@@ -59,7 +59,7 @@ djaodjin-saas/tree/master/saas/templates/saas/metrics/balances.html>`__).
             year = int(year)
             ends_at = datetime_or_now(datetime(year=year + 1, month=1, day=1))
             context.update({'ends_at': ends_at})
-        self.update_context_urls(context, {
+        update_context_urls(context, {
             'api_balance_lines': reverse(
                 'saas_api_balance_lines', kwargs={'report': report}),
             'api_broker_balances': reverse(
@@ -97,7 +97,7 @@ class CouponMetricsView(CouponMixin, TemplateView):
             'api_metrics_coupon_uses': reverse(
                 'saas_api_coupon_uses',
                 args=(self.provider, self.coupon.code))}}
-        self.update_context_urls(context, urls)
+        update_context_urls(context, urls)
         return context
 
 

@@ -62,7 +62,7 @@ from ..mixins import (CartMixin, ChargeMixin, DateRangeMixin, OrganizationMixin,
     ProviderMixin, product_url)
 from ..models import (CartItem, Charge, Coupon, Organization, Plan, Price,
     Subscription, Transaction, UseCharge, get_broker, is_broker)
-from ..utils import datetime_or_now, validate_redirect_url
+from ..utils import datetime_or_now, update_context_urls, validate_redirect_url
 from ..views import session_cart_to_database
 
 
@@ -122,7 +122,7 @@ class CardFormMixin(OrganizationMixin):
         except ProcessorConnectionError:
             messages.error(self.request, _("The payment processor is "\
                 "currently unreachable. Sorry for the inconvienience."))
-        self.update_context_urls(context,
+        update_context_urls(context,
             {'organization': {
                 'update_card': reverse(
                     'saas_update_card', args=(self.organization,))}})
@@ -137,7 +137,7 @@ class BankUpdateView(BankMixin, UpdateView):
     def get_context_data(self, **kwargs):
         context = super(BankUpdateView, self).get_context_data(**kwargs)
         context.update({'force_update': True})
-        self.update_context_urls(context, {'provider': {
+        update_context_urls(context, {'provider': {
             'deauthorize_bank': reverse(
                 'saas_deauthorize_bank', args=(self.provider,))}})
         return context
@@ -195,7 +195,7 @@ djaodjin-saas/tree/master/saas/templates/saas/billing/bank.html>`__).
 
     def get_context_data(self, **kwargs):
         context = super(BankAuthorizeView, self).get_context_data(**kwargs)
-        self.update_context_urls(context, {
+        update_context_urls(context, {
             'authorize_processor': self.get_authorize_url()})
         return context
 
@@ -493,7 +493,7 @@ class BillingStatementView(OrganizationMixin, TransactionBaseView):
                 'saas_api_billings', args=(self.organization,)),
             'download_url': reverse(
                 'saas_statement_download', kwargs=self.get_url_kwargs())})
-        self.update_context_urls(context,
+        update_context_urls(context,
             {'organization': {
                 'balance': reverse(
                     'saas_organization_balance', args=(self.organization,)),
@@ -542,7 +542,7 @@ djaodjin-saas/tree/master/saas/templates/saas/billing/transfers.html>`__).
             'withdraw_funds': reverse(
                 'saas_withdraw_funds', args=(self.provider,)),
         }}
-        self.update_context_urls(context, urls)
+        update_context_urls(context, urls)
         return context
 
 
@@ -828,7 +828,7 @@ class ChargeListView(ProviderMixin, TemplateView):
         urls = {'broker': {
             'api_charges': reverse('saas_api_charges'),
         }}
-        self.update_context_urls(context, urls)
+        update_context_urls(context, urls)
         return context
 
 

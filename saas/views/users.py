@@ -26,6 +26,7 @@ from django.views.generic import TemplateView
 
 from ..compat import NoReverseMatch, reverse
 from ..mixins import ProviderMixin
+from ..utils import update_context_urls
 
 
 class ProductListView(ProviderMixin, TemplateView):
@@ -64,5 +65,5 @@ class ProductListView(ProviderMixin, TemplateView):
             })
         except NoReverseMatch:
             pass
-        self.update_context_urls(context, urls)
+        update_context_urls(context, urls)
         return context

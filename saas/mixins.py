@@ -44,7 +44,8 @@ from .humanize import (as_money, DESCRIBE_BUY_PERIODS, DESCRIBE_BUY_USE,
 from .models import (CartItem, Charge, Coupon, Organization, Plan,
     RoleDescription, Subscription, Transaction, UseCharge,
     get_broker, is_broker)
-from .utils import datetime_or_now, get_role_model, start_of_day
+from .utils import (datetime_or_now, get_role_model, start_of_day,
+    update_context_urls)
 from .extras import OrganizationMixinBase
 
 
@@ -388,7 +389,7 @@ class ChargeMixin(SingleObjectMixin):
                 args=(charge.customer, charge,))})
         except NoReverseMatch:
             pass
-        self.update_context_urls(context, urls)
+        update_context_urls(context, urls)
         return context
 
 
@@ -439,7 +440,7 @@ class UserMixin(object):
                     'location': reverse(
                         'saas_user_product_list', args=(self.user,))}]
             context.update({'top_accessibles': top_accessibles})
-            self.update_context_urls(context, {
+            update_context_urls(context, {
                 'user': {
                     'accessibles': reverse('saas_user_product_list',
                         args=(self.user,))
