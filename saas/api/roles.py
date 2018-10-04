@@ -27,7 +27,7 @@ import logging
 from django.core import validators
 from django.core.exceptions import ValidationError
 from django.contrib.auth import get_user_model
-from django.db import transaction
+from django.db import transaction, IntegrityError
 from django.db.models import Q
 from django.http import Http404
 from django.template.defaultfilters import slugify
@@ -71,14 +71,39 @@ def _clean_field(user_model, field_name, value):
             orig, field_name, value)
     return value
 
-def _create_user(username, email=None, first_name="", last_name=""):
+
+def _create_user_from_email(email, password=None, **kwargs):
+    #pylint:disable=unused-argument,unused-variable,protected-access
     user_model = get_user_model()
-    username = _clean_field(user_model, 'username', username)
-    # The e-mail address was already validated by the Serializer.
+    first_name = kwargs.get('first_name', "")
+    last_name = kwargs.get('last_name', "")
+    if not (first_name or last_name):
+        first_name, middle, last_name = full_name_natural_split(
+            kwargs.get('full_name', ''))
     first_name = _clean_field(user_model, 'first_name', first_name)
     last_name = _clean_field(user_model, 'last_name', last_name)
-    return user_model.objects.create_user(username,
-        email=email, first_name=first_name, last_name=last_name)
+    # The e-mail address was already validated by the Serializer.
+    username = _clean_field(user_model, 'username', email.split('@')[0])
+    field = user_model._meta.get_field('username')
+    max_length = field.max_length
+    err = IntegrityError()
+    trials = 0
+    username_base = username
+    while trials < 10:
+        try:
+            return user_model.objects.create_user(username,
+                email=email, first_name=first_name, last_name=last_name)
+        except IntegrityError as exp:
+            err = exp
+            suffix = '-%s' % generate_random_slug(3)
+            if len(username_base) + len(suffix) > max_length:
+                username = '%s%s' % (
+                    username_base[:(max_length - len(suffix))],
+                    suffix)
+            else:
+                username = '%s%s' % (username_base, suffix)
+            trials = trials + 1
+    raise err
 
 
 class ForceSerializer(NoModelSerializer):
@@ -205,7 +230,7 @@ class OptinBase(object):
                 try:
                     manager = user_model.objects.get(email=email)
                 except user_model.DoesNotExist:
-                    manager = _create_user(email, email=email)
+                    manager = _create_user_from_email(email)
                 organization.add_manager(manager, request_user=request.user)
                 organizations = [organization]
                 invite = True
@@ -674,14 +699,9 @@ class RoleFilteredListAPIView(RoleSmartListMixin, RoleByDescrQuerysetMixin,
                     raise Http404("User %(username)s does not exist."
                         % {'username': serializer.validated_data['slug']})
         if not user:
-            full_name = serializer.validated_data.get('full_name', '')
-            first_name, _, last_name = full_name_natural_split(full_name)
-            # The slug is neither a username nor an email address
-            # at this point.
-            user = _create_user(
-                slugify(serializer.validated_data['slug'].split('@')[0]),
-                email=serializer.validated_data['email'],
-                first_name=first_name, last_name=last_name)
+            user = _create_user_from_email(
+                serializer.validated_data['email'],
+                full_name=serializer.validated_data.get('full_name', ''))
             grant_key = generate_random_slug()
         if not (self.role_description.skip_optin_on_grant or grant_key):
             grant_key = generate_random_slug()

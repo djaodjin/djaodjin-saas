@@ -5,9 +5,10 @@
 {% block saas_content %}
 <section id="roles" ng-app="saasApp">
   <div ng-controller="userRelationListCtrl">
-    <form>
+    <form ng-submit="save($event)">
+      <input type="hidden" name="csrfmiddlewaretoken" value="{{csrf_token}}">
       <input name="user" type="text" ng-model="item.slug" placeholder="Username or e-mail" />
-      <input type="submit" ng-click="save($event)" />
+      <input type="submit" />
     </form>
     <h2 ng-hide="items.$resolved">Please wait...</h2>
     <h2 ng-show="items.$resolved && items.results.length == 0"><em>No roles assigned yet</em></h2>
