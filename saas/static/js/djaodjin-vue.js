@@ -253,25 +253,7 @@ var app = new Vue({
 
 var itemListMixin = {
     data: function(){
-        data = {
-            filterExpr: '',
-            o: djaodjinSettings.sortByField,
-            ot: djaodjinSettings.sortDirection || "desc",
-            q: '',
-            currentPage: 1,
-            itemsLoaded: false,
-            itemsPerPage: djaodjinSettings.itemsPerPage,
-            items: {
-                results: [],
-                count: 0
-            },
-            url: djaodjinSettings.urls.api_accounts
-        }
-
-        if(djaodjinSettings.date_range.ends_at ) {
-            data['ends_at'] = moment(djaodjinSettings.date_range.ends_at).toDate()
-        }
-        return data
+        return this.getInitData();
     },
     computed: {
         params: function(){
@@ -291,6 +273,34 @@ var itemListMixin = {
         }
     },
     methods: {
+        getInitData: function(){
+            data = {
+                filterExpr: '',
+                o: djaodjinSettings.sortByField,
+                ot: djaodjinSettings.sortDirection || "desc",
+                q: '',
+                currentPage: 1,
+                itemsLoaded: false,
+                itemsPerPage: djaodjinSettings.itemsPerPage,
+                items: {
+                    results: [],
+                    count: 0
+                },
+                url: djaodjinSettings.urls.api_accounts
+            }
+            if(djaodjinSettings.date_range.start_at ) {
+                data['start_at'] = moment(djaodjinSettings.date_range.start_at).toDate()
+            }
+            if(djaodjinSettings.date_range.ends_at ) {
+                data['ends_at'] = moment(djaodjinSettings.date_range.ends_at).toDate()
+            }
+            return data;
+        },
+        resetDefaults: function(overrides){
+            if(!overrides) overrides = {}
+            var data = Object.assign(this.getInitData(), overrides);
+            Object.assign(this.$data, data);
+        },
         get: function(){
             var vm = this;
             $.get(vm.url, vm.params, function(res){
@@ -990,15 +1000,8 @@ var app = new Vue({
             url: djaodjinSettings.urls.api_transactions,
             last4: "N/A",
             exp_date: "N/A",
-            bank_name: "N/A",
-            balance_amount: "N/A",
-            balanceUrl: null,
-            balanceLoaded: false,
+            cardLoaded: false,
             modalOpen: false,
-
-            // TODO this should be in itemsMixin
-            starts_at: '',
-            ends_at: ''
         }
         return res;
     },
@@ -1008,33 +1011,41 @@ var app = new Vue({
             if(this.ot){
                 res.ot = this.ot
             }
+            if(this.dir && this.dir[this.o]){
+                res.ot = this.dir[this.o];
+            }
             if(this.currentPage > 1) res.page = this.currentPage;
             if(this.q) res.q = this.q;
+            if(this.start_at){
+                res.start_at = moment(this.start_at).toISOString();
+            }
+            if(this.ends_at){
+                res.ends_at = moment(this.ends_at).toISOString();
+            }
             return res
         }
     },
     methods: {
-        getBalance: function() {
+        getCard: function(){
             var vm = this;
-            if(!vm.balanceUrl) return;
-            $.get(vm.balanceUrl, function(resp){
-                if( resp.balance_amount ) {
-                    vm.balance_amount = resp.balance_amount;
-                }
-                if( resp.balance_unit ) {
-                    vm.balance_unit = resp.balance_unit;
-                }
-                if( resp.last4 ) {
+            $.get(djaodjinSettings.saas_api_user_card, function(resp){
+                if(resp.last4) {
                     vm.last4 = resp.last4;
                 }
-                if( resp.exp_date ) {
+                if(resp.exp_date) {
                     vm.exp_date = resp.exp_date;
                 }
-                if( resp.bank_name ) {
-                    vm.bank_name = resp.bank_name;
-                }
-                vm.balanceLoaded = true;
+                vm.cardLoaded = true;
             });
+        },
+        reload: function(){
+            this.resetDefaults({
+                o: 'created_at',
+                ot: 'desc',
+                ends_at: moment().toDate(),
+                url: djaodjinSettings.urls.api_transactions
+            });
+            this.get();
         },
         cancelBalance: function(){
             var vm = this;
@@ -1042,21 +1053,71 @@ var app = new Vue({
                 method: 'DELETE',
                 url: djaodjinSettings.urls.api_cancel_balance_due,
             }).done(function() {
-                vm.get();
-                vm.getBalance();
+                vm.reload()
+                vm.modalOpen = false
             }).fail(function(resp){
+                vm.reload()
                 showErrorMessages(resp);
             });
         }
     },
     mounted: function(){
-        // TODO this is a hack
-        var cont = this.$refs.billing_container;
-        if(cont && cont.dataset.apiUrl){
-            this.balanceUrl = cont.dataset.apiUrl;
-            this.getBalance();
-        }
-        this.get()
+        this.getCard();
+        this.get();
     }
+})
+}
+
+
+if($('#transfers-container').length > 0){
+var app = new Vue({
+    el: "#transfers-container",
+    mixins: [itemListMixin, sortableMixin],
+    data: {
+        o: 'created_at',
+        ot: "desc",
+        url: djaodjinSettings.urls.api_transactions,
+        balanceLoaded: false,
+        last4: "N/A",
+        bank_name: "N/A",
+        balance_amount: "N/A",
+        balance_unit: '',
+    },
+    methods: {
+        getBalance: function() {
+            var vm = this;
+            $.get(djaodjinSettings.urls.saas_api_bank, function(resp){
+                vm.balance_amount = resp.balance_amount;
+                vm.balance_unit = resp.balance_unit;
+                vm.last4 = resp.last4;
+                vm.bank_name = resp.bank_name;
+                vm.balanceLoaded = true;
+            });
+        },
+    },
+    computed: {
+        params: function(){
+            res = {o: this.o}
+            if(this.ot){
+                res.ot = this.ot
+            }
+            if(this.dir && this.dir[this.o]){
+                res.ot = this.dir[this.o];
+            }
+            if(this.currentPage > 1) res.page = this.currentPage;
+            if(this.q) res.q = this.q;
+            if(this.start_at){
+                res.start_at = moment(this.start_at).toISOString();
+            }
+            if(this.ends_at){
+                res.ends_at = moment(this.ends_at).toISOString();
+            }
+            return res
+        }
+    },
+    mounted: function(){
+        this.getBalance();
+        this.get();
+    },
 })
 }
