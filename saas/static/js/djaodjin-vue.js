@@ -64,9 +64,9 @@ Vue.filter('relativeDate', function(at_time) {
 
 Vue.component('user-typeahead', {
     template: "",
+    props: ['url'],
     data: function(){
         return {
-            url: djaodjinSettings.urls.api_users,
             searching: false,
             // used in a http request
             typeaheadQuery: '',
@@ -364,6 +364,7 @@ var userRelationMixin = {
     data: function(){
         return {
             url: djaodjinSettings.urls.saas_api_user_roles_url,
+            typeaheadUrl: djaodjinSettings.urls.api_users,
             modalOpen: false,
             unregistered: {
                 slug: '',
@@ -373,16 +374,10 @@ var userRelationMixin = {
         }
     },
     methods: {
-        get: function(){
-            var vm = this;
-            $.get(vm.url, vm.params, function(res){
-                vm.items = res
-                vm.itemsLoaded = true;
-            });
-        },
         remove: function(idx){
             var vm = this;
-            var slug = this.items.results[idx].user.slug;
+            var ob = this.items.results[idx]
+            var slug = (ob.user ? ob.user.slug : ob.slug);
             if( djaodjinSettings.user && djaodjinSettings.user.slug === slug ) {
                 if( !confirm("You are about to delete yourself from this" +
                              " role. it's possible that you no longer can manage" +
@@ -601,6 +596,30 @@ var paginationMixin = {
 }
 
 var filterableMixin = {
+    data: function(){
+        return {
+            filterExpr: '',
+        }
+    },
+    methods: {
+        filterList: function(cb){
+            if(this.filterExpr) {
+                if ("page" in this.params){
+                    this.currentPage = 1;
+                }
+                this.q = this.filterExpr;
+            } else {
+                this.q = null;
+            }
+            this.itemsLoaded = false;
+            if(cb){
+                cb();
+            }
+            else {
+                if(this.get) this.get();
+            }
+        },
+    },
 }
 
 var sortableMixin = {
@@ -1119,5 +1138,55 @@ var app = new Vue({
         this.getBalance();
         this.get();
     },
+})
+}
+
+if($('#accessible-list-container').length > 0){
+var app = new Vue({
+    el: "#accessible-list-container",
+    mixins: [userRelationMixin, sortableMixin],
+    data: {
+        o: "slug",
+        ot: "asc",
+        url: djaodjinSettings.urls.api_accessibles,
+        typeaheadUrl: djaodjinSettings.urls.api_organizations,
+    },
+    mounted: function(){
+        this.get()
+    },
+    computed: {
+        params: function(){
+            res = {o: this.o}
+            if(this.ot){
+                res.ot = this.ot
+            }
+            if(this.dir && this.dir[this.o]){
+                res.ot = this.dir[this.o];
+            }
+            if(this.currentPage > 1) res.page = this.currentPage;
+            if(this.q) res.q = this.q;
+
+            return res;
+        },
+    },
+})
+}
+
+if($('#plan-subscribers-container').length > 0){
+var app = new Vue({
+    el: "#plan-subscribers-container",
+    mixins: [
+        subscriptionsMixin,
+        paginationMixin,
+        sortableMixin,
+        filterableMixin,
+        itemListMixin,
+    ],
+    data: {
+        url: djaodjinSettings.urls.saas_api_plan_subscribers,
+    },
+    mounted: function(){
+        this.get();
+    }
 })
 }
