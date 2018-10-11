@@ -72,7 +72,7 @@ def _clean_field(user_model, field_name, value):
     return value
 
 
-def _create_user_from_email(email, password=None, **kwargs):
+def create_user_from_email(email, password=None, **kwargs):
     #pylint:disable=unused-argument,unused-variable,protected-access
     user_model = get_user_model()
     first_name = kwargs.get('first_name', "")
@@ -230,7 +230,7 @@ class OptinBase(object):
                 try:
                     manager = user_model.objects.get(email=email)
                 except user_model.DoesNotExist:
-                    manager = _create_user_from_email(email)
+                    manager = create_user_from_email(email)
                 organization.add_manager(manager, request_user=request.user)
                 organizations = [organization]
                 invite = True
@@ -699,7 +699,7 @@ class RoleFilteredListAPIView(RoleSmartListMixin, RoleByDescrQuerysetMixin,
                     raise Http404("User %(username)s does not exist."
                         % {'username': serializer.validated_data['slug']})
         if not user:
-            user = _create_user_from_email(
+            user = create_user_from_email(
                 serializer.validated_data['email'],
                 full_name=serializer.validated_data.get('full_name', ''))
             grant_key = generate_random_slug()
