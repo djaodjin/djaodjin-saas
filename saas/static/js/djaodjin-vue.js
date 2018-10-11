@@ -663,6 +663,7 @@ var subscriptionsMixin = {
     data: function(){
         var res = {
             o: 'created_at',
+            ends_at: moment().endOf("day").toDate(),
             dir: {},
         }
         res.dir[res.o] = 'desc';
@@ -682,6 +683,7 @@ var subscriptionsMixin = {
             }
             return "";
         },
+        
     },
     computed: {
         params: function(){
@@ -692,16 +694,57 @@ var subscriptionsMixin = {
     },
 }
 
+var subscribersMixin = {
+    methods: {
+        editDescription: function(item, id){
+            var vm = this;
+            vm.$set(item, 'edit_description', true);
+            // at this point the input is rendered and visible
+            vm.$nextTick(function(){
+                var ref = vm.refId(item, id);
+                vm.$refs[ref][0].focus();
+            });
+        },
+        saveDescription: function(item){
+            // this solves a problem where user hits an enter
+            // which saves the description and then once they
+            // click somewhere this callback is triggered again
+            // due to the fact that the input is blurred even
+            // though it is hidden by that time
+            if(!item.edit_description) return;
+            this.$set(item, 'edit_description', false);
+            delete item.edit_description;
+            this.update(item)
+        },
+        refId: function(item, id){
+            var ids = [item.organization.slug,
+                item.plan.slug, id];
+            return ids.join('_').replace(new RegExp('[-:]', 'g'), '');
+        },
+        update: function(item){
+            var vm = this;
+            var url = vm.subscriptionURL(
+                item.organization.slug, item.plan.slug);
+            $.ajax({
+                method: 'PATCH',
+                url: url,
+                data: {description: item.description},
+            }).fail(function(resp){
+                showErrorMessages(resp);
+            });
+        },
+    }
+}
+
 if($('#subscribers-list-container').length > 0){
 var app = new Vue({
     el: "#subscribers-list-container",
-    mixins: [subscriptionsMixin],
+    mixins: [subscriptionsMixin, subscribersMixin],
     data: {
         currentTab: 1,
         currentPage: 1,
         itemsPerPage: djaodjinSettings.itemsPerPage,
         filterExpr: '',
-        ends_at: moment().endOf("day").toDate(),
         registered: {
             url: djaodjinSettings.urls.api_registered,
             results: [],
@@ -720,7 +763,6 @@ var app = new Vue({
             count: 0,
             loaded: false
         },
-        edit_description: [],
     },
     methods: {
         get: function(){
@@ -784,48 +826,10 @@ var app = new Vue({
             this.dir = dir;
             this.q = '';
             this.currentPage = 1;
-            this.editDescription = [];
         },
         tabChanged: function(){
             this.clearFilters();
             this.get();
-        },
-        update: function(item){
-            var vm = this;
-            var url = vm.subscriptionURL(
-                item.organization.slug, item.plan.slug);
-            $.ajax({
-                method: 'PATCH',
-                url: url,
-                data: {description: item.description},
-            }).fail(function(resp){
-                showErrorMessages(resp);
-            });
-        },
-        refId: function(item, group){
-            var ids = [item.organization.slug,
-                item.plan.slug, group];
-            return ids.join('_').replace(new RegExp('[-:]', 'g'), '');
-        },
-        editDescription: function(item, group){
-            var vm = this;
-            vm.$set(item, 'edit_description', true);
-            // at this point the input is rendered and visible
-            vm.$nextTick(function(){
-                var ref = vm.refId(item, group);
-                vm.$refs[ref][0].focus();
-            });
-        },
-        saveDescription: function(item){
-            // this solves a problem where user hits an enter
-            // which saves the description and then once they
-            // click somewhere this callback is triggered again
-            // due to the fact that the input is blurred even
-            // though it is hidden by that time
-            if(!item.edit_description) return;
-            this.$set(item, 'edit_description', false);
-            delete item.edit_description;
-            this.update(item)
         },
     },
     computed: {
@@ -1177,6 +1181,7 @@ var app = new Vue({
     el: "#plan-subscribers-container",
     mixins: [
         subscriptionsMixin,
+        subscribersMixin,
         paginationMixin,
         sortableMixin,
         filterableMixin,
@@ -1184,6 +1189,21 @@ var app = new Vue({
     ],
     data: {
         url: djaodjinSettings.urls.saas_api_plan_subscribers,
+    },
+    computed: {
+        params: function(){
+            res = {o: this.o}
+            if(this.ot){
+                res.ot = this.ot
+            }
+            if(this.dir && this.dir[this.o]){
+                res.ot = this.dir[this.o];
+            }
+            if(this.currentPage > 1) res.page = this.currentPage;
+            if(this.q) res.q = this.q;
+
+            return res;
+        },
     },
     mounted: function(){
         this.get();
