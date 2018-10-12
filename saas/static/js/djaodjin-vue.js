@@ -62,231 +62,19 @@ Vue.filter('relativeDate', function(at_time) {
     }
 });
 
-Vue.component('user-typeahead', {
-    template: "",
-    props: ['url'],
-    data: function(){
-        return {
-            searching: false,
-            // used in a http request
-            typeaheadQuery: '',
-            // used to hold the selected item
-            itemSelected: '',
-        }
-    },
-    computed: {
-        params: function(){
-            res = {}
-            if(this.typeaheadQuery) res.q = this.typeaheadQuery;
-            return res
-        },
-    },
-    methods: {
-        // called by typeahead when a user enters input
-        getUsers: function(query, done) {
-            var vm = this;
-            if(!vm.url) {
-                done([]);
-            }
-            else {
-                vm.searching = true;
-                vm.typeaheadQuery = query;
-                $.get(vm.url, vm.params, function(res){
-                    vm.searching = false;
-                    done(res.results)
-                });
-            }
-        },
-        submit: function(){
-            this.$emit('item-save', this.itemSelected);
-            this.itemSelected = '';
-        }
-    },
-});
-
-if($('#coupon-list-container').length > 0){
-var app = new Vue({
-    el: "#coupon-list-container",
-    data: {
-        currentPage: 1,
-        itemsPerPage: djaodjinSettings.itemsPerPage,
-        filterExpr: "",
-        couponsLoaded: false,
-        dir: {
-            code: "asc"
-        },
-        o: "code",
-        ot: null,
-        q: "",
-        coupons: {
-            results:[],
-            count: 0
-        },
-        newCoupon: {
-            code: '',
-            percent: ''
-        },
-        edit_description: [],
-        date: null
-    },
-    computed: {
-        params: function(){
-            res = {o: this.o}
-            if(this.ot){
-                res.ot = this.ot
-            } else {
-                res.ot = this.dir.code
-            }
-            if(this.currentPage > 1) res.page = this.currentPage;
-            if(this.q) res.q = this.q;
-            return res
-        },
-        totalItems: function(){
-            return this.coupons.count
-        },
-        pageCount: function(){
-            return Math.ceil(this.totalItems / this.itemsPerPage)
-        }
-    },
-    methods: {
-        get: function(){
-            var vm = this;
-            $.get(djaodjinSettings.urls.saas_api_coupon_url, vm.params, function(res){
-                vm.coupons = res
-                vm.couponsLoaded = true;
-            })
-        },
-        remove: function(idx){
-            var vm = this;
-            var code = this.coupons.results[idx].code;
-            $.ajax({
-                method: 'DELETE',
-                url: djaodjinSettings.urls.saas_api_coupon_url + '/' + code,
-            }).done(function() {
-                vm.get()
-            }).fail(function(resp){
-                showErrorMessages(resp);
-            });
-        },
-        update: function(coupon){
-            var vm = this;
-            $.ajax({
-                method: 'PUT',
-                url: djaodjinSettings.urls.saas_api_coupon_url + '/' + coupon.code,
-                data: coupon,
-            }).done(function (resp) {
-                vm.get()
-            }).fail(function(resp){
-                showErrorMessages(resp);
-            });
-        },
-        save: function(){
-            var vm = this;
-            $.ajax({
-                method: 'POST',
-                url: djaodjinSettings.urls.saas_api_coupon_url,
-                data: vm.newCoupon,
-            }).done(function (resp) {
-                vm.get()
-                vm.newCoupon = {
-                    code: '',
-                    percent: ''
-                }
-            }).fail(function(resp){
-                showErrorMessages(resp);
-            });
-        },
-        editDescription: function(idx){
-            var vm = this;
-            vm.edit_description = Array.apply(
-                null, new Array(vm.coupons.results.length)).map(function() {
-                return false;
-            });
-            vm.$set(vm.edit_description, idx, true)
-            // at this point the input is rendered and visible
-            vm.$nextTick(function(){
-                vm.$refs.edit_description_input[idx].focus();
-            });
-        },
-        saveDescription: function(coupon, idx, event){
-            if (event.which === 13 || event.type === "blur" ){
-                this.$set(this.edit_description, idx, false)
-                this.update(this.coupons.results[idx])
-            }
-        },
-        selected: function(idx){
-            var coupon = this.coupons.results[idx]
-            coupon.ends_at = (new Date(coupon.ends_at)).toISOString()
-            this.update(coupon)
-        },
-        filterList: function(){
-            if(this.filterExpr) {
-                if ("page" in this.params){
-                    this.currentPage = 1;
-                }
-                this.q = this.filterExpr;
-            } else {
-                this.q = null;
-            }
-            this.couponsLoaded = false;
-            this.get()
-        },
-        sortBy: function(fieldName) {
-            if(this.dir[fieldName] === "asc" ) {
-                this.dir = {};
-                this.dir[fieldName] = "desc";
-            } else {
-                this.dir = {};
-                this.dir[fieldName] = "asc";
-            }
-            this.o = fieldName;
-            this.ot = this.dir[fieldName];
-            this.currentPage = 1;
-            this.get()
-        }
-    },
-    mounted: function(){
-        this.get()
-    }
-})
-}
-
 var itemListMixin = {
     data: function(){
         return this.getInitData();
     },
-    computed: {
-        params: function(){
-            res = {o: this.o}
-            if(this.ot){
-                res.ot = this.ot
-            }
-            if(this.currentPage > 1) res.page = this.currentPage;
-            if(this.q) res.q = this.q;
-            return res
-        },
-        totalItems: function(){
-            return this.items.count
-        },
-        pageCount: function(){
-            return Math.ceil(this.totalItems / this.itemsPerPage)
-        }
-    },
     methods: {
         getInitData: function(){
             data = {
-                filterExpr: '',
-                o: djaodjinSettings.sortByField,
-                ot: djaodjinSettings.sortDirection || "desc",
-                q: '',
-                currentPage: 1,
+                url: '',
                 itemsLoaded: false,
-                itemsPerPage: djaodjinSettings.itemsPerPage,
                 items: {
                     results: [],
                     count: 0
                 },
-                url: djaodjinSettings.urls.api_accounts
             }
             if(djaodjinSettings.date_range.start_at ) {
                 data['start_at'] = moment(djaodjinSettings.date_range.start_at).toDate()
@@ -303,64 +91,99 @@ var itemListMixin = {
         },
         get: function(){
             var vm = this;
-            $.get(vm.url, vm.params, function(res){
+            if(!vm.url) return
+            $.get(vm.url, vm.getParams(), function(res){
                 vm.items = res
                 vm.itemsLoaded = true;
             });
         },
-        filterList: function(){
-            if(this.filterExpr) {
-                if ("page" in this.params){
-                    this.currentPage = 1;
-                }
-                this.q = this.filterExpr;
-            } else {
-                this.q = null;
-            }
-            this.itemsLoaded = false;
-            this.get();
+        getParams: function(){
+            return this.params
+        }
+    },
+}
+
+var paginationMixin = {
+    data: function(){
+        return {
+            params: {
+                page: 1,
+            },
+            itemsPerPage: djaodjinSettings.itemsPerPage,
+        }
+    },
+    computed: {
+        totalItems: function(){
+            return this.items.count
         },
+        pageCount: function(){
+            return Math.ceil(this.totalItems / this.itemsPerPage)
+        }
     }
 }
 
-if($('#search-list-container').length > 0){
-var app = new Vue({
-    el: "#search-list-container",
-    mixins: [itemListMixin],
-})
-}
-
-if($('#today-sales-container').length > 0){
-var app = new Vue({
-    el: "#today-sales-container",
-    mixins: [itemListMixin],
-    data: {
-        o: 'created_at',
-        ot: "desc",
-        url: djaodjinSettings.urls.api_receivables
+var filterableMixin = {
+    data: function(){
+        return {
+            params: {
+                q: '',
+            },
+            mixinFilterCb: 'get',
+        }
     },
-    mounted: function(){
-        this.get()
-    }
-})
+    methods: {
+        filterList: function(){
+            if(this.params.q) {
+                if ("page" in this.params){
+                    this.params.page = 1;
+                }
+            } 
+            if(this[this.mixinFilterCb]){
+                this[this.mixinFilterCb]();
+            }
+        },
+    },
 }
 
-if($('#user-list-container').length > 0){
-var app = new Vue({
-    el: "#user-list-container",
-    mixins: [itemListMixin],
-    data: {
-        o: 'created_at',
-        ot: "desc",
+var sortableMixin = {
+    data: function(){
+        return {
+            params: {
+                o: djaodjinSettings.sortByField || 'created_at',
+                ot: djaodjinSettings.sortDirection || 'desc',
+            },
+            mixinSortCb: 'get'
+        }
     },
-    mounted: function(){
-        this.get()
-    }
-})
+    methods: {
+        sortBy: function(fieldName) {
+            if(this.params.o === fieldName) {
+                if(this.params.ot === "asc") {
+                    this.params.ot = "desc";
+                } else {
+                    this.params.ot = "asc";
+                }
+            }
+            else {
+                this.params.o = fieldName
+                this.params.ot = "asc";
+            }
+            if(this[this.mixinSortCb]){
+                this[this.mixinSortCb]();
+            }
+        },
+        sortIcon: function(fieldName){
+            var res = 'fa fa-sort';
+            if(fieldName === this.params.o){
+                res += ('-' + this.params.ot);
+            }
+            return res;
+        }
+    },
 }
 
 var userRelationMixin = {
-    mixins: [itemListMixin],
+    mixins: [itemListMixin, paginationMixin],
     data: function(){
         return {
             url: djaodjinSettings.urls.saas_api_user_roles_url,
@@ -448,6 +271,239 @@ var userRelationMixin = {
             });
         }
     },
+}
+
+var subscriptionsMixin = {
+    data: function(){
+        return {
+            ends_at: moment().endOf("day").toDate(),
+        }
+    },
+    methods: {
+        subscriptionURL: function(organization, plan) {
+            return djaodjinSettings.urls.api_organizations
+                + organization + "/subscriptions/" + plan;
+        },
+        endsSoon: function(subscription) {
+            var cutOff = new Date(this.ends_at);
+            cutOff.setDate(this.ends_at.getDate() + 5);
+            var subEndsAt = new Date(subscription.ends_at);
+            if( subEndsAt < cutOff ) {
+                return "ends-soon";
+            }
+            return "";
+        },
+        
+    },
+}
+
+var subscribersMixin = {
+    methods: {
+        editDescription: function(item, id){
+            var vm = this;
+            vm.$set(item, 'edit_description', true);
+            // at this point the input is rendered and visible
+            vm.$nextTick(function(){
+                var ref = vm.refId(item, id);
+                vm.$refs[ref][0].focus();
+            });
+        },
+        saveDescription: function(item){
+            // this solves a problem where user hits an enter
+            // which saves the description and then once they
+            // click somewhere this callback is triggered again
+            // due to the fact that the input is blurred even
+            // though it is hidden by that time
+            if(!item.edit_description) return;
+            this.$set(item, 'edit_description', false);
+            delete item.edit_description;
+            this.update(item)
+        },
+        refId: function(item, id){
+            var ids = [item.organization.slug,
+                item.plan.slug, id];
+            return ids.join('_').replace(new RegExp('[-:]', 'g'), '');
+        },
+        update: function(item){
+            var vm = this;
+            var url = vm.subscriptionURL(
+                item.organization.slug, item.plan.slug);
+            $.ajax({
+                method: 'PATCH',
+                url: url,
+                data: {description: item.description},
+            }).fail(function(resp){
+                showErrorMessages(resp);
+            });
+        },
+    }
+}
+
+Vue.component('user-typeahead', {
+    template: "",
+    props: ['url'],
+    data: function(){
+        return {
+            searching: false,
+            // used in a http request
+            typeaheadQuery: '',
+            // used to hold the selected item
+            itemSelected: '',
+        }
+    },
+    computed: {
+        params: function(){
+            res = {}
+            if(this.typeaheadQuery) res.q = this.typeaheadQuery;
+            return res
+        },
+    },
+    methods: {
+        // called by typeahead when a user enters input
+        getUsers: function(query, done) {
+            var vm = this;
+            if(!vm.url) {
+                done([]);
+            }
+            else {
+                vm.searching = true;
+                vm.typeaheadQuery = query;
+                $.get(vm.url, vm.params, function(res){
+                    vm.searching = false;
+                    done(res.results)
+                });
+            }
+        },
+        submit: function(){
+            this.$emit('item-save', this.itemSelected);
+            this.itemSelected = '';
+        }
+    },
+});
+
+if($('#coupon-list-container').length > 0){
+var app = new Vue({
+    el: "#coupon-list-container",
+    mixins: [
+        itemListMixin,
+        paginationMixin,
+        filterableMixin,
+        sortableMixin
+    ],
+    data: {
+        url: djaodjinSettings.urls.saas_api_coupon_url,
+        newCoupon: {
+            code: '',
+            percent: ''
+        },
+        edit_description: [],
+        date: null
+    },
+    methods: {
+        remove: function(idx){
+            var vm = this;
+            var code = this.items.results[idx].code;
+            $.ajax({
+                method: 'DELETE',
+                url: vm.url + '/' + code,
+            }).done(function() {
+                vm.get()
+            }).fail(function(resp){
+                showErrorMessages(resp);
+            });
+        },
+        update: function(coupon){
+            var vm = this;
+            $.ajax({
+                method: 'PUT',
+                url: vm.url + '/' + coupon.code,
+                data: coupon,
+            }).done(function (resp) {
+                vm.get()
+            }).fail(function(resp){
+                showErrorMessages(resp);
+            });
+        },
+        save: function(){
+            var vm = this;
+            $.ajax({
+                method: 'POST',
+                url: vm.url,
+                data: vm.newCoupon,
+            }).done(function (resp) {
+                vm.get()
+                vm.newCoupon = {
+                    code: '',
+                    percent: ''
+                }
+            }).fail(function(resp){
+                showErrorMessages(resp);
+            });
+        },
+        editDescription: function(idx){
+            var vm = this;
+            vm.edit_description = Array.apply(
+                null, new Array(vm.items.results.length)).map(function() {
+                return false;
+            });
+            vm.$set(vm.edit_description, idx, true)
+            // at this point the input is rendered and visible
+            vm.$nextTick(function(){
+                vm.$refs.edit_description_input[idx].focus();
+            });
+        },
+        saveDescription: function(coupon, idx, event){
+            if (event.which === 13 || event.type === "blur" ){
+                this.$set(this.edit_description, idx, false)
+                this.update(this.items.results[idx])
+            }
+        },
+        selected: function(idx){
+            var coupon = this.items.results[idx]
+            coupon.ends_at = (new Date(coupon.ends_at)).toISOString()
+            this.update(coupon)
+        },
+    },
+    mounted: function(){
+        this.get()
+    }
+})
+}
+
+if($('#search-list-container').length > 0){
+var app = new Vue({
+    el: "#search-list-container",
+    mixins: [itemListMixin, paginationMixin, filterableMixin],
+    data: {
+        url: djaodjinSettings.urls.api_accounts
+    },
+})
+}
+
+if($('#today-sales-container').length > 0){
+var app = new Vue({
+    el: "#today-sales-container",
+    mixins: [itemListMixin, paginationMixin],
+    data: {
+        url: djaodjinSettings.urls.api_receivables
+    },
+    mounted: function(){
+        this.get()
+    }
+})
+}
+
+if($('#user-list-container').length > 0){
+var app = new Vue({
+    el: "#user-list-container",
+    mixins: [itemListMixin, paginationMixin],
+    data: {
+        url: djaodjinSettings.urls.api_accounts
+    },
+    mounted: function(){
+        this.get()
+    }
+})
 }
 
 if($('#user-relation-list-container').length > 0){
@@ -580,171 +636,18 @@ var app = new Vue({
 })
 }
 
-var paginationMixin = {
-    data: {
-        currentPage: 1,
-        itemsPerPage: djaodjinSettings.itemsPerPage,
-    },
-    computed: {
-        totalItems: function(){
-            return this.items.count
-        },
-        pageCount: function(){
-            return Math.ceil(this.totalItems / this.itemsPerPage)
-        }
-    }
-}
-
-var filterableMixin = {
-    data: function(){
-        return {
-            filterExpr: '',
-        }
-    },
-    methods: {
-        filterList: function(cb){
-            if(this.filterExpr) {
-                if ("page" in this.params){
-                    this.currentPage = 1;
-                }
-                this.q = this.filterExpr;
-            } else {
-                this.q = null;
-            }
-            this.itemsLoaded = false;
-            if(cb){
-                cb();
-            }
-            else {
-                if(this.get) this.get();
-            }
-        },
-    },
-}
-
-var sortableMixin = {
-    data: function(){
-        var res = {
-            o: djaodjinSettings.sortByField || 'created_at',
-            ot: djaodjinSettings.sortDirection || 'desc',
-            dir: {},
-        }
-        res.dir[res.o] = res.ot;
-        return res;
-    },
-    methods: {
-        sortBy: function(fieldName) {
-            var dir = {}
-            if( this.dir[fieldName] === "asc" ) {
-                dir[fieldName] = "desc";
-            } else {
-                dir[fieldName] = "asc";
-            }
-            this.dir = dir;
-            this.o = fieldName;
-            if(this.currentPage){
-                this.currentPage = 1;
-            }
-            if(this.get){
-                this.get();
-            }
-        }
-    },
-    computed: {
-        params: function(){
-            var res = {o: this.o, ot: this.dir[this.o]}
-            if(this.currentPage > 1) res.page = this.currentPage;
-            return res;
-        }
-    }
-}
-
-var subscriptionsMixin = {
-    data: function(){
-        var res = {
-            o: 'created_at',
-            ends_at: moment().endOf("day").toDate(),
-            dir: {},
-        }
-        res.dir[res.o] = 'desc';
-        return res;
-    },
-    methods: {
-        subscriptionURL: function(organization, plan) {
-            return djaodjinSettings.urls.api_organizations
-                + organization + "/subscriptions/" + plan;
-        },
-        endsSoon: function(subscription) {
-            var cutOff = new Date(this.ends_at);
-            cutOff.setDate(this.ends_at.getDate() + 5);
-            var subEndsAt = new Date(subscription.ends_at);
-            if( subEndsAt < cutOff ) {
-                return "ends-soon";
-            }
-            return "";
-        },
-        
-    },
-    computed: {
-        params: function(){
-            var res = {o: this.o, ot: this.dir[this.o]}
-            if(this.currentPage > 1) res.page = this.currentPage;
-            return res;
-        },
-    },
-}
-
-var subscribersMixin = {
-    methods: {
-        editDescription: function(item, id){
-            var vm = this;
-            vm.$set(item, 'edit_description', true);
-            // at this point the input is rendered and visible
-            vm.$nextTick(function(){
-                var ref = vm.refId(item, id);
-                vm.$refs[ref][0].focus();
-            });
-        },
-        saveDescription: function(item){
-            // this solves a problem where user hits an enter
-            // which saves the description and then once they
-            // click somewhere this callback is triggered again
-            // due to the fact that the input is blurred even
-            // though it is hidden by that time
-            if(!item.edit_description) return;
-            this.$set(item, 'edit_description', false);
-            delete item.edit_description;
-            this.update(item)
-        },
-        refId: function(item, id){
-            var ids = [item.organization.slug,
-                item.plan.slug, id];
-            return ids.join('_').replace(new RegExp('[-:]', 'g'), '');
-        },
-        update: function(item){
-            var vm = this;
-            var url = vm.subscriptionURL(
-                item.organization.slug, item.plan.slug);
-            $.ajax({
-                method: 'PATCH',
-                url: url,
-                data: {description: item.description},
-            }).fail(function(resp){
-                showErrorMessages(resp);
-            });
-        },
-    }
-}
-
 if($('#subscribers-list-container').length > 0){
 var app = new Vue({
     el: "#subscribers-list-container",
-    mixins: [subscriptionsMixin, subscribersMixin],
+    mixins: [
+        subscriptionsMixin,
+        subscribersMixin,
+        paginationMixin,
+        filterableMixin,
+        sortableMixin,
+    ],
     data: {
         currentTab: 1,
-        currentPage: 1,
-        itemsPerPage: djaodjinSettings.itemsPerPage,
-        filterExpr: '',
         registered: {
             url: djaodjinSettings.urls.api_registered,
             results: [],
@@ -797,35 +700,14 @@ var app = new Vue({
             });
             return ordered_res;
         },
-        sortBy: function(fieldName) {
-            var dir = {}
-            if( this.dir[fieldName] === "asc" ) {
-                dir[fieldName] = "desc";
-            } else {
-                dir[fieldName] = "asc";
-            }
-            this.dir = dir;
-            this.o = fieldName;
-            this.currentPage = 1;
-            this.get();
-        },
-        filterList: function() {
-            if( this.filterExpr ) {
-                this.currentPage = 1;
-                this.q = this.filterExpr;
-            } else {
-                this.q = null;
-            }
-            this.get();
-        },
         clearFilters: function(){
-            var o = 'created_at';
-            var dir = {};
-            dir[o] = 'desc';
-            this.o = o;
-            this.dir = dir;
-            this.q = '';
-            this.currentPage = 1;
+            var params = {
+                o: 'created_at',
+                ot: 'desc',
+                q: '',
+                page: 1,
+            }
+            this.params = params;
         },
         tabChanged: function(){
             this.clearFilters();
@@ -833,17 +715,8 @@ var app = new Vue({
         },
     },
     computed: {
-        params: function(){
-            var res = {o: this.o, ot: this.dir[this.o]}
-            if(this.currentPage > 1) res.page = this.currentPage;
-            if(this.filterExpr) res.q = this.filterExpr;
-            return res;
-        },
         totalItems: function(){
             return this[this.currentQueryset].count
-        },
-        pageCount: function(){
-            return Math.ceil(this.totalItems / this.itemsPerPage)
         },
         currentQueryset: function(){
             var sets = ['registered', 'subscribed', 'churned']
@@ -859,14 +732,9 @@ var app = new Vue({
 if($('#subscriptions-list-container').length > 0){
 var app = new Vue({
     el: "#subscriptions-list-container",
-    mixins: [subscriptionsMixin, paginationMixin],
+    mixins: [subscriptionsMixin, paginationMixin, itemListMixin],
     data: {
         url: djaodjinSettings.urls.saas_api_subscriptions,
-        items: {
-            results: [],
-            count: 0
-        },
-        itemsLoaded: false,
         modalOpen: false,
         plan: {},
         toDelete: {
@@ -875,13 +743,6 @@ var app = new Vue({
         },
     },
     methods: {
-        get: function(){
-            var vm = this;
-            $.get(vm.url, vm.params, function(resp){
-                vm.items = resp;
-                vm.itemsLoaded = true;
-            });
-        },
         update: function(item){
             var vm = this;
             var url = vm.subscriptionURL(
@@ -941,6 +802,7 @@ var app = new Vue({
                 method: 'DELETE',
                 url: url,
             }).done(function (){
+                vm.params.page = 1;
                 vm.get();
                 vm.modalOpen = false;
             }).fail(function(resp){
@@ -974,7 +836,6 @@ var app = new Vue({
     data: {
         url: djaodjinSettings.urls.saas_api_subscriptions,
         created_at: moment().format("YYYY-MM-DD"),
-        itemsLoaded: false,
         itemSelected: '',
         searching: false,
     },
@@ -1000,10 +861,12 @@ var app = new Vue({
 if($('#coupon-users-container').length > 0){
 var app = new Vue({
     el: "#coupon-users-container",
-    mixins: [itemListMixin, sortableMixin],
+    mixins: [itemListMixin, sortableMixin, paginationMixin],
     data: {
-        o: 'created_at',
-        ot: "desc",
+        params: {
+            o: 'created_at',
+            ot: "desc",
+        },
         url: djaodjinSettings.urls.api_metrics_coupon_uses
     },
     mounted: function(){
@@ -1015,11 +878,14 @@ var app = new Vue({
 if($('#billing-statement-container').length > 0){
 var app = new Vue({
     el: "#billing-statement-container",
-    mixins: [itemListMixin, sortableMixin],
+    mixins: [
+        itemListMixin,
+        sortableMixin,
+        paginationMixin,
+        filterableMixin
+    ],
     data: function(){
         var res = {
-            o: 'created_at',
-            ot: "desc",
             url: djaodjinSettings.urls.api_transactions,
             last4: "N/A",
             exp_date: "N/A",
@@ -1028,27 +894,13 @@ var app = new Vue({
         }
         return res;
     },
-    computed: {
-        params: function(){
-            res = {o: this.o}
-            if(this.ot){
-                res.ot = this.ot
-            }
-            if(this.dir && this.dir[this.o]){
-                res.ot = this.dir[this.o];
-            }
-            if(this.currentPage > 1) res.page = this.currentPage;
-            if(this.q) res.q = this.q;
-            if(this.start_at){
-                res.start_at = moment(this.start_at).toISOString();
-            }
-            if(this.ends_at){
-                res.ends_at = moment(this.ends_at).toISOString();
-            }
-            return res
-        }
-    },
     methods: {
+        getParams: function(){
+            var params = this.params;
+            params.start_at = moment(params.start_at).toISOString();
+            params.ends_at = moment(params.ends_at).toISOString();
+            return params;
+        },
         getCard: function(){
             var vm = this;
             $.get(djaodjinSettings.saas_api_user_card, function(resp){
@@ -1063,9 +915,11 @@ var app = new Vue({
         },
         reload: function(){
             this.resetDefaults({
+                /*
+                TODO
                 o: 'created_at',
                 ot: 'desc',
-                ends_at: moment().toDate(),
+                ends_at: moment().toDate(),*/
                 url: djaodjinSettings.urls.api_transactions
             });
             this.get();
@@ -1091,14 +945,11 @@ var app = new Vue({
 })
 }
 
-
 if($('#transfers-container').length > 0){
 var app = new Vue({
     el: "#transfers-container",
-    mixins: [itemListMixin, sortableMixin],
+    mixins: [itemListMixin, sortableMixin, paginationMixin, filterableMixin],
     data: {
-        o: 'created_at',
-        ot: "desc",
         url: djaodjinSettings.urls.api_transactions,
         balanceLoaded: false,
         last4: "N/A",
@@ -1117,26 +968,12 @@ var app = new Vue({
                 vm.balanceLoaded = true;
             });
         },
-    },
-    computed: {
-        params: function(){
-            res = {o: this.o}
-            if(this.ot){
-                res.ot = this.ot
-            }
-            if(this.dir && this.dir[this.o]){
-                res.ot = this.dir[this.o];
-            }
-            if(this.currentPage > 1) res.page = this.currentPage;
-            if(this.q) res.q = this.q;
-            if(this.start_at){
-                res.start_at = moment(this.start_at).toISOString();
-            }
-            if(this.ends_at){
-                res.ends_at = moment(this.ends_at).toISOString();
-            }
-            return res
-        }
+        getParams: function(){
+            var params = this.params;
+            params.start_at = moment(params.start_at).toISOString();
+            params.ends_at = moment(params.ends_at).toISOString();
+            return params;
+        },
     },
     mounted: function(){
         this.getBalance();
@@ -1148,30 +985,17 @@ var app = new Vue({
 if($('#accessible-list-container').length > 0){
 var app = new Vue({
     el: "#accessible-list-container",
-    mixins: [userRelationMixin, sortableMixin],
+    mixins: [userRelationMixin, sortableMixin, filterableMixin],
     data: {
-        o: "slug",
-        ot: "asc",
+        params: {
+            o: "slug",
+            ot: "asc",
+        },
         url: djaodjinSettings.urls.api_accessibles,
         typeaheadUrl: djaodjinSettings.urls.api_organizations,
     },
     mounted: function(){
         this.get()
-    },
-    computed: {
-        params: function(){
-            res = {o: this.o}
-            if(this.ot){
-                res.ot = this.ot
-            }
-            if(this.dir && this.dir[this.o]){
-                res.ot = this.dir[this.o];
-            }
-            if(this.currentPage > 1) res.page = this.currentPage;
-            if(this.q) res.q = this.q;
-
-            return res;
-        },
     },
 })
 }
@@ -1190,23 +1014,31 @@ var app = new Vue({
     data: {
         url: djaodjinSettings.urls.saas_api_plan_subscribers,
     },
-    computed: {
-        params: function(){
-            res = {o: this.o}
-            if(this.ot){
-                res.ot = this.ot
-            }
-            if(this.dir && this.dir[this.o]){
-                res.ot = this.dir[this.o];
-            }
-            if(this.currentPage > 1) res.page = this.currentPage;
-            if(this.q) res.q = this.q;
-
-            return res;
-        },
-    },
     mounted: function(){
         this.get();
     }
+})
+}
+
+if($('#remove-profile-container').length > 0){
+var app = new Vue({
+    el: "#remove-profile-container",
+    data: {
+        modalOpen: false,
+    },
+    methods: {
+        deleteProfile: function(){
+            var vm = this;
+            $.ajax({
+                method: 'DELETE',
+                url: djaodjinSettings.urls.saas_api_organization,
+            }).done(function() {
+                vm.modalOpen = false;
+                window.location = djaodjinSettings.urls.user_profile_redirect;
+            }).fail(function(resp){
+                showErrorMessages(resp);
+            });
+        }
+    },
 })
 }
