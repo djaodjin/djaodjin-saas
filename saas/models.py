@@ -1435,7 +1435,7 @@ class Charge(models.Model):
     @property
     def invoiced_total(self):
         """
-        Returns the total amount of all invoiced items.
+        Returns the total amount and unit of all invoiced items.
         """
         balances = sum_dest_amount(Transaction.objects.filter(
             invoiced_item__charge=self))
@@ -1446,6 +1446,27 @@ class Charge(models.Model):
         amount = balances[0]['amount']
         unit = balances[0]['unit']
         return Price(amount, unit)
+
+    @property
+    def invoiced_total_after_refund(self):
+        """
+        Returns the total amount and unit charged after refunds
+        have been deducted.
+        """
+        invoiced_total = self.invoiced_total
+        refund_balances = sum_dest_amount(self.refunded)
+        if len(refund_balances) > 1:
+            raise ValueError(
+                _("balances with multiple currency units (%s)") %
+                str(refund_balances))
+        # `sum_dest_amount` guarentees at least one result.
+        refund_amount = refund_balances[0]['amount']
+        refund_unit = refund_balances[0]['unit']
+        if refund_amount and invoiced_total.unit != refund_unit:
+            raise ValueError(
+                _("charge and refunds have different units (%s vs. %s)") % (
+                invoiced_total.unit, refund_unit))
+        return Price(invoiced_total.amount - refund_amount, invoiced_total.unit)
 
     @property
     def is_disputed(self):
@@ -3206,7 +3227,7 @@ class TransactionManager(models.Manager):
 
         Constraints: All invoiced_items to same customer
         """
-        invoiced_items_ids = []
+        order_executed_items = []
         for invoiced_item in invoiced_items:
             # When an customer pays on behalf of an organization
             # which does not exist in the database, we cannot create
@@ -3227,10 +3248,10 @@ class TransactionManager(models.Manager):
                     pay_now = False
             if pay_now:
                 invoiced_item.save()
-                invoiced_items_ids += [invoiced_item.id]
-        if invoiced_items_ids:
+                order_executed_items += [invoiced_item]
+        if order_executed_items:
             signals.order_executed.send(
-                sender=__name__, invoiced_items=invoiced_items_ids, user=user)
+                sender=__name__, invoiced_items=order_executed_items, user=user)
 
     def get_invoiceables(self, organization, until=None):
         """
