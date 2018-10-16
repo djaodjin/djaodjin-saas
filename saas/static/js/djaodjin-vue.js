@@ -75,12 +75,13 @@ var itemListMixin = {
                     results: [],
                     count: 0
                 },
+                params: {},
             }
             if(djaodjinSettings.date_range.start_at ) {
-                data['start_at'] = moment(djaodjinSettings.date_range.start_at).toDate()
+                data.params['start_at'] = moment(djaodjinSettings.date_range.start_at).toDate()
             }
             if(djaodjinSettings.date_range.ends_at ) {
-                data['ends_at'] = moment(djaodjinSettings.date_range.ends_at).toDate()
+                data.params['ends_at'] = moment(djaodjinSettings.date_range.ends_at).toDate()
             }
             return data;
         },
@@ -179,6 +180,27 @@ var sortableMixin = {
             }
             return res;
         }
+    },
+}
+
+var timezoneMixin = {
+    data: function(){
+        return {
+            timezone: 'local',
+        }
+    },
+    methods: {
+        convertDatetime: function(data, isUTC){
+            // Convert datetime string to moment object in-place because we want
+            // to keep extra keys and structure in the JSON returned by the API.
+            return data.map(function(f){
+                var values = f.values.map(function(v){
+                    // localizing the period to local browser time
+                    // unless showing reports in UTC.
+                    v[0] = isUTC ? moment.parseZone(v[0]) : moment(v[0]);
+                });
+            });
+        },
     },
 }
 
@@ -341,9 +363,10 @@ var subscribersMixin = {
 
 Vue.component('user-typeahead', {
     template: "",
-    props: ['url'],
+    props: ['url', 'role'],
     data: function(){
         return {
+            target: null,
             searching: false,
             // used in a http request
             typeaheadQuery: '',
@@ -378,6 +401,50 @@ Vue.component('user-typeahead', {
             this.$emit('item-save', this.itemSelected);
             this.itemSelected = '';
         }
+    },
+    mounted: function() {
+        // TODO we should probably use one interface everywhere
+        if(this.$refs.tphd)
+            this.target = this.$refs.tphd[0];
+    }
+});
+
+// TODO it probably makes sense to use this component in other
+// places where user relations are needed
+Vue.component('user-relation', {
+    template: "",
+    props: {
+        roleUrl: '',
+        role: {
+            type: Object,
+            default: function(){
+                return {
+                    slug: '',
+                    title: ''
+                }
+            }
+        },
+    },
+    mixins: [userRelationMixin],
+    data: function(){
+        return {
+            url: this.roleUrl,
+        }
+    },
+    watch: {
+        // this should have been a computed propery, however
+        // vue doesn't allow to have computed properties with
+        // the same name as in data
+        roleUrl: function (newVal, oldVal) {
+            if(newVal != oldVal){
+                this.url = newVal;
+                this.params.page = 1;
+                this.get();
+            }
+        }
+    },
+    mounted: function(){
+        this.get();
     },
 });
 
@@ -519,12 +586,11 @@ var app = new Vue({
 if($('#metrics-container').length > 0){
 var app = new Vue({
     el: "#metrics-container",
-    mixins: [],
+    mixins: [timezoneMixin],
     data: function(){
         var data = {
             tables: djaodjinSettings.tables,
             currentTab: 0,
-            timezone: 'local',
             tableData: {},
         }
         var ends_at = moment(djaodjinSettings.date_range.ends_at);
@@ -562,17 +628,6 @@ var app = new Vue({
                 vm.$set(vm.tableData, table.key, tableData)
 
                 if(cb) cb();
-            });
-        },
-        convertDatetime: function(data, isUTC){
-            // Convert datetime string to moment object in-place because we want
-            // to keep extra keys and structure in the JSON returned by the API.
-            return data.map(function(f){
-                var values = f.values.map(function(v){
-                    // localizing the period to local browser time
-                    // unless showing reports in UTC.
-                    v[0] = isUTC ? moment.parseZone(v[0]) : moment(v[0]);
-                });
             });
         },
         endOfMonth: function(date) {
@@ -1040,5 +1095,136 @@ var app = new Vue({
             });
         }
     },
+})
+}
+
+if($('#charge-list-container').length > 0){
+var app = new Vue({
+    el: "#charge-list-container",
+    mixins: [
+        itemListMixin,
+    ],
+    data: {
+        url: djaodjinSettings.urls.api_charges,
+    },
+    mounted: function(){
+        this.get();
+    }
+})
+}
+
+if($('#role-list-container').length > 0){
+var app = new Vue({
+    el: "#role-list-container",
+    mixins: [
+        itemListMixin,
+        paginationMixin,
+    ],
+    data: {
+        url: djaodjinSettings.urls.saas_api_role_descriptions_url,
+        role: {
+            title: '',
+        },
+        modalOpen: false,
+    },
+    methods: {
+        create: function(){
+            var vm = this;
+            $.ajax({
+                method: 'POST',
+                url: vm.url,
+                data: vm.role,
+            }).done(function(resp) {
+                vm.role.title = '';
+                vm.params.page = 1;
+                vm.get()
+                vm.modalOpen = false;
+            }).fail(function(resp){
+                showErrorMessages(resp);
+            });
+        },
+        remove: function(role){
+            var vm = this;
+            var url = vm.url + "/" + role.slug
+            $.ajax({
+                method: 'DELETE',
+                url: url,
+            }).done(function() {
+                vm.params.page = 1;
+                vm.get()
+            }).fail(function(resp){
+                showErrorMessages(resp);
+            });
+        },
+    },
+    mounted: function(){
+        this.get();
+    },
+})
+}
+
+if($('#balance-list-container').length > 0){
+var app = new Vue({
+    el: "#balance-list-container",
+    mixins: [
+        itemListMixin,
+        timezoneMixin,
+    ],
+    data: {
+        url: djaodjinSettings.urls.api_broker_balances,
+        startPeriod: moment().subtract(1, 'months'),
+        balanceLine: {
+            title: '',
+            selector: '',
+            rank: 0,
+        },
+    },
+    methods: {
+        getParams: function(){
+            var params = this.params;
+            params.start_at = moment(params.start_at).toISOString();
+            params.ends_at = moment(params.ends_at).toISOString();
+            return params;
+        },
+        create: function(){
+            var vm = this;
+            $.ajax({
+                method: 'POST',
+                url: vm.url,
+                data: vm.balanceLine,
+            }).done(function (resp) {
+                vm.get()
+            }).fail(function(resp){
+                showErrorMessages(resp);
+            });
+        },
+        update: function(){
+            var vm = this;
+            $.ajax({
+                method: 'PUT',
+                url: vm.url,
+                data: vm.balanceLine,
+            }).done(function (resp) {
+                vm.get()
+            }).fail(function(resp){
+                showErrorMessages(resp);
+            });
+        },
+        remove: function(idx){
+            var id = '';
+            var vm = this;
+            $.ajax({
+                method: 'DELETE',
+                url: vm.url + id,
+            }).done(function() {
+                vm.get()
+            }).fail(function(resp){
+                showErrorMessages(resp);
+            });
+        },
+    },
+    mounted: function(){
+        this.get();
+    }
 })
 }
