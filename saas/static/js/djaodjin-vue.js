@@ -1037,6 +1037,27 @@ var app = new Vue({
 })
 }
 
+if($('#transactions-container').length > 0){
+var app = new Vue({
+    el: "#transactions-container",
+    mixins: [itemListMixin, sortableMixin, paginationMixin, filterableMixin],
+    data: {
+        url: djaodjinSettings.urls.api_transactions,
+    },
+    methods: {
+        getParams: function(){
+            var params = this.params;
+            params.start_at = moment(params.start_at).toISOString();
+            params.ends_at = moment(params.ends_at).toISOString();
+            return params;
+        },
+    },
+    mounted: function(){
+        this.get();
+    },
+})
+}
+
 if($('#accessible-list-container').length > 0){
 var app = new Vue({
     el: "#accessible-list-container",
