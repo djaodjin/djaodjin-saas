@@ -5,19 +5,18 @@ Provider Dashboard
 {% endblock %}
 
 {% block saas_content %}
-<div ng-app="saasApp">
 <div>
-    <div ng-controller="searchListCtrl">
+    <div id="search-list-container">
         <div>
-            <input type="text" placeholder="Search..." ng-model="filterExpr" ng-change="filterList(filterExpr)" />
+            <input type="text" placeholder="Search..." v-model="params.q" @input="filterList" />
         </div>
         <table>
-            <tbody id="has-registered" ng-cloak ng-show="items.$resolved && items.results.length > 0">
-                <tr ng-repeat="entry in items.results">
-                    <td><a href="{{urls.user.profile_redirect}}[[entry.username]]/">[[entry.username]]</td>
+            <tbody id="has-registered" v-cloak v-show="itemsLoaded && items.results.length > 0">
+                <tr v-for="entry in items.results">
+                    <td><a :href="'{{urls.user.profile_redirect}}' + entry.username + '/'">[[entry.username]]</td>
                     <td>[[entry.first_name]] [[entry.last_name]]</td>
                     <td>[[entry.email]]</td>
-                    <td>[[relativeDate(entry.created_at)]]</td>
+                    <td>[[entry.created_at | relativeDate]]</td>
                 </tr>
             </tbody>
         </table>
@@ -32,46 +31,45 @@ Provider Dashboard
 No items to take care of Today.
         </p>
     </div>
-    <div ng-controller="userListCtrl">
+    <div id="user-list-container">
         <div>
             <h4>Recently registered</h4>
         </div>
         <table>
-            <tbody ng-hide="items.$resolved">
+            <tbody v-show="!itemsLoaded">
                 <tr>
                     <td colspan="2">
                         <h3>Loading ...</h3>
                     </td>
                 </tr>
             </tbody>
-            <tbody id="has-registered" ng-cloak ng-show="items.$resolved && items.results.length > 0">
-                <tr ng-repeat="entry in items.results">
-                    <td><a href="{{urls.user.profile_redirect}}[[entry.slug]]/">[[entry.slug]]</td>
-                    <td>[[relativeDate(entry.created_at)]]</td>
+            <tbody id="has-registered" v-cloak v-show="itemsLoaded && items.results.length > 0">
+                <tr v-for="entry in items.results">
+                    <td><a :href="'{{urls.user.profile_redirect}}' + entry.slug + '/'">[[entry.slug]]</td>
+                    <td>[[entry.created_at | relativeDate]]</td>
                 </tr>
             </tbody>
         </table>
     </div>
-    <div ng-controller="receivableListCtrl">
+    <div id="today-sales-container">
         <div>
-            <h4>Today Sales<span ng-show="items.$resolved">: [[items.total|humanizeCell : items.unit : 0.01]]</span></h4>
+            <h4>Today Sales<span v-show="itemsLoaded">: [[items.total | humanizeCell(items.unit, 0.01)]]</span></h4>
         </div>
         <table>
-            <tbody ng-hide="items.$resolved">
+            <tbody v-show="!itemsLoaded">
                 <tr>
                     <td colspan="2">
                         <h3>Loading ...</h3>
                     </td>
                 </tr>
             </tbody>
-            <tbody id="has-items" ng-cloak ng-show="items.$resolved && items.results.length > 0">
-                <tr ng-repeat="entry in items.results">
-                    <td><a href="{{urls.organization.profile_base}}[[entry.dest_organization]]/billing/">[[entry.amount]]</a></td>
-                    <td>[[relativeDate(entry.created_at)]]</td>
+            <tbody id="has-items" v-cloak ng-show="itemsLoaded && items.results.length > 0">
+                <tr v-for="entry in items.results">
+                    <td><a :href="'{{urls.organization.profile_base}}' + entry.dest_organization + '/billing/'">[[entry.amount]]</a></td>
+                    <td>[[entry.created_at | relativeDate]]</td>
                 </tr>
             </tbody>
         </table>
     </div>
-</div>
 </div>
 {% endblock %}

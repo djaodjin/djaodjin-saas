@@ -1,27 +1,27 @@
 <section id="transactions">
   <h1>Transactions</h1>
-  <a id="download" href="{{download_url}}?q=[[filterExpr]]&start_at=[[params.start_at]]&ends_at=[[params.ends_at]]" role="button">CSV Download</a>
+  <a id="download" :href="'{{download_url}}?q=' + params.q + '&start_at=' + params.start_at + '&ends_at=' + params.ends_at" role="button">CSV Download</a>
   <table>
     <thead>
       <tr>
         <th>Date</th>
         <th>Amount</th>
         <th>Description</th>
-        <th><label>Filter</label> <input type="text" ng-model="filterExpr" ng-change="filterList(filterExpr)" /></th>
+        <th><label>Filter</label> <input type="text" v-model="params.q" @input="filterList" /></th>
       </tr>
     </thead>
-    <tbody ng-show="items.$resolved && items.results.length == 0">
+    <tbody v-show="itemsLoaded && items.results.length == 0">
       <tr>
         <td colspan="3">
-          <h4 class="text-center"><em>No transactions<span ng-show="filterExpr"> [[filterExpr]]</span></em></h4>
+          <h4 class="text-center"><em>No transactions<span v-show="params.q"> [[params.q]]</span></em></h4>
         </td>
       </tr>
     </tbody>
-    <tbody id="has-transactions" ng-show="items.$resolved && items.results.length > 0">
-      <tr ng-repeat="entry in items.results">
-        <td>[[entry.created_at | date : mediumDate]]</td>
-        <td class="[[ entry.is_debit ? 'text-danger' : '']]">[[entry.amount]]</td>
-        <td colspan="2" ng-bind-html="entry.description | unsafe"></td>
+    <tbody id="has-transactions" v-show="itemsLoaded && items.results.length > 0">
+      <tr v-for="entry in items.results">
+        <td>[[entry.created_at | formatDate('MMM D, Y')]]</td>
+        <td :class="entry.is_debit ? 'text-danger' : ''">[[entry.amount]]</td>
+        <td colspan="2" v-html="entry.description"></td>
       </tr>
     </tbody>
   </table>

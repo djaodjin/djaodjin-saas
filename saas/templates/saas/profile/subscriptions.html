@@ -1,8 +1,8 @@
 {% extends "saas/base_dashboard.html" %}
 
 {% block saas_content %}
-<section id="subscriptions" ng-app="saasApp" ng-cloak>
-  <div ng-controller="subscriptionListCtrl">
+<section id="subscriptions">
+  <div id="subscriptions-list-container">
     <table>
       <thead>
         <tr>
@@ -16,13 +16,13 @@
         {% if plans %}
         <tr>
           <td colspan="4">
-            <form id="subscribe" ng-submit="subscribe('{{organization}}')">
+            <form id="subscribe" @submit="subscribe('{{organization}}')">
               <div>
-                <select name="plan" ng-model="plan">
-                  <option selected value="">Select a plan...</option>
-                  {% for choice in plans %}
-                  <option value='{"slug":"{{choice.slug}}","organization":"{{choice.organization.slug}}"}'>{{choice.title}}</option>
-                  {% endfor %}
+                <select name="plan" v-model="plan">
+                    <option selected :value="{}">Select a plan...</option>
+                      {% for choice in plans %}
+                      <option :value='{"slug":"{{choice.slug}}","organization":"{{choice.organization.slug}}"}'>{{choice.title}}</option>
+                      {% endfor %}
                 </select>
                 <button type="submit">Subscribe</button>
               </div>
@@ -30,64 +30,70 @@
           </td>
         </tr>
         {% endif %}
-        <tr ng-hide="subscribed.$resolved">
+        <tr v-show="!itemsLoaded">
           <td colspan="4">
             <h4>Loading ...</h4>
           </td>
         </tr>
-        <tr ng-show="subscribed.$resolved && subscribed.count == 0">
+        <tr v-show="itemsLoaded && items.count == 0">
           <td colspan="4">
-            <h4>No subcriptions<span ng-show="filterExpr"> [[filterExpr]]</span></h4>
+            <h4>No subcriptions<span v-show="params.q"> [[params.q]]</span></h4>
           </td>
         </tr>
       </tbody>
-      <tbody ng-repeat="entry in subscribed.results" ng-cloak ng-show="subscribed.$resolved && subscribed.results.length > 0">
-        <tr id="[[entry.plan.slug]]" ng-class="endsSoon(entry)">
+      <tbody v-for="entry in items.results" v-cloak v-show="itemsLoaded && items.results.length > 0">
+        <tr :class="endsSoon(entry)">
           <td>
-            <a href="[[entry.plan.app_url]][[entry.organization.slug]]/[[entry.plan.slug]]/">[[entry.plan.title]]</a>
-          </td>
-          <td>
-            [[entry.ends_at|date: mediumDate]]
+            <a :href="entry.plan.app_url + entry.organization.slug + '/' + entry.plan.slug + '/'">[[entry.plan.title]]</a>
           </td>
           <td>
-            [[relativeDate(entry.ends_at)]]
+            [[entry.ends_at | formatDate('MMM D, Y')]]
           </td>
-          <td ng-if="!entry.request_key">
-            <button class="unsubscribe"
-               data-toggle="modal" data-target="#unsubscribe-action"
-               ng-click="unsubscribe(entry.organization.slug, entry.plan.slug, '#unsubscribe-action')">
-              Unsubscribe Now
-            </button>
+          <td>
+            [[entry.ends_at | relativeDate]]
           </td>
-          <td ng-if="entry.request_key && entry.editable">
-            <button class="unsubscribe"
-                    data-toggle="modal" data-target="#unsubscribe-action"
-                    ng-click="unsubscribe(entry.organization.slug, entry.plan.slug, '#unsubscribe-action')">
-              Deny
-            </button>
-            <button ng-click="acceptRequest(entry.plan.organization, entry.request_key)">
-              Accept
-            </button>
-          </td>
-          <td ng-if="entry.request_key && !entry.editable">
-            Request pending approval ...
-          </td>
+          <td v-if="!entry.request_key" style="text-align: right;">
+               <button @click="unsubscribeConfirm(entry.organization.slug, entry.plan.slug)">
+                   Unsubscribe Now
+               </button>
+           </td>
+           <td v-if="entry.request_key && entry.editable" style="text-align: right;">
+               <button @click="unsubscribeConfirm(entry.organization.slug, entry.plan.slug)">
+                   Deny
+               </button>
+               <button @click="acceptRequest(entry.plan.organization, entry.request_key)">
+                   Accept
+               </button>
+           </td>
+           <td v-if="entry.request_key && !entry.editable" style="text-align: right;">
+               Request pending approval ...
+           </td>
         </tr>
       </tbody>
     </table>
-    <div>
-      <ul uib-pagination ng-model="currentPage"
-                  total-items="subscribed.count"
-                  items-per-page="itemsPerPage"
-                  boundary-links="true"
-                  max-size="maxSize"
-                  previous-text="&lsaquo;"
-                  next-text="&rsaquo;"
-                  first-text="&laquo;"
-                  last-text="&raquo;"
-                  ng-change="pageChanged(subscribed)"
-                  ng-show="subscribed.$resolved && subscribed.results.length > 0"></ul>
+    <div class="text-center" v-show="itemsLoaded && totalItems > itemsPerPage">
+        <uiv-pagination v-model="params.page" :total-page="pageCount" @change="get" size="sm" boundary-links/>
     </div>
+    <!-- modal dialog to confirm unsubscribe -->
+    <modal v-model="modalOpen" title="Unsubscribe ...">
+        <p>
+            You are about to delete the profile and account
+            for <em>{{organization.printable_name}}</em>.
+            This operation cannot be reversed.
+        </p>
+        <p>
+            Are you sure you want to continue?
+        </p>
+        <div slot="footer">
+            <button id="cancel-unsubscribe"
+                    class="btn btn-default"
+                    @click="modalOpen=false">Cancel</button>
+            <button type="submit" id="unsubscribe-btn"
+                    class="btn btn-danger"
+                    @click="unsubscribe">Unsubscribe</button>
+        </div>
+    </modal>
+    <!-- /modal dialog to confirm unsubscribe -->
   </div>
 </section>
 {% endblock %}

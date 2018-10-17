@@ -1103,6 +1103,7 @@ var app = new Vue({
     el: "#charge-list-container",
     mixins: [
         itemListMixin,
+        filterableMixin
     ],
     data: {
         url: djaodjinSettings.urls.api_charges,
