@@ -1194,12 +1194,21 @@ var app = new Vue({
     ],
     data: {
         url: djaodjinSettings.urls.api_broker_balances,
-        startPeriod: moment().subtract(1, 'months'),
+        balanceLineUrl : djaodjinSettings.urls.api_balance_lines,
+        startPeriod: moment().subtract(1, 'months').toISOString(),
         balanceLine: {
             title: '',
             selector: '',
             rank: 0,
         },
+    },
+    computed: {
+        values: function(){
+            if(this.items.table && this.items.table.length > 0){
+                return this.items.table[0].values
+            }
+            return [];
+        }
     },
     methods: {
         getParams: function(){
@@ -1212,32 +1221,24 @@ var app = new Vue({
             var vm = this;
             $.ajax({
                 method: 'POST',
-                url: vm.url,
+                url: vm.balanceLineUrl,
                 data: vm.balanceLine,
             }).done(function (resp) {
                 vm.get()
+                vm.balanceLine = {
+                    title: '',
+                    selector: '',
+                    rank: 0,
+                }
             }).fail(function(resp){
                 showErrorMessages(resp);
             });
         },
-        update: function(){
-            var vm = this;
-            $.ajax({
-                method: 'PUT',
-                url: vm.url,
-                data: vm.balanceLine,
-            }).done(function (resp) {
-                vm.get()
-            }).fail(function(resp){
-                showErrorMessages(resp);
-            });
-        },
-        remove: function(idx){
-            var id = '';
+        remove: function(id){
             var vm = this;
             $.ajax({
                 method: 'DELETE',
-                url: vm.url + id,
+                url: vm.balanceLineUrl + '/' + id,
             }).done(function() {
                 vm.get()
             }).fail(function(resp){
