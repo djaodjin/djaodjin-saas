@@ -1,4 +1,9 @@
-$.ajaxSetup({ cache: false });
+$.ajaxSetup({
+    cache: false,
+    headers: {
+        'X-CSRFTOKEN': djaodjinSettings.csrf
+    }
+});
 
 Vue.mixin({
     delimiters: ['[[',']]'],
