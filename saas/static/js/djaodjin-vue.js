@@ -1,7 +1,14 @@
+function csrfSafeMethod(method) {
+    // these HTTP methods do not require CSRF protection
+    return (/^(GET|HEAD|OPTIONS|TRACE)$/.test(method));
+}
 $.ajaxSetup({
     cache: false,
-    headers: {
-        'X-CSRFTOKEN': djaodjinSettings.csrf
+    crossDomain: false, // obviates need for sameOrigin test
+    beforeSend: function(xhr, settings) {
+        if (!csrfSafeMethod(settings.type)) {
+            xhr.setRequestHeader("X-CSRFToken", djaodjinSettings.csrf);
+        }
     }
 });
 
