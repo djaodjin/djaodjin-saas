@@ -73,6 +73,7 @@ on credit cards"""
             help='Specifies the time at which the command runs')
 
     def handle(self, *args, **options):
+        #pylint:disable=broad-except
         dry_run = options['dry_run']
         no_charges = options['no_charges']
         end_period = datetime_or_now(options['at_time'])
@@ -80,10 +81,19 @@ on credit cards"""
             LOGGER.warning("dry_run: no changes will be committed.")
         if no_charges:
             LOGGER.warning("no_charges: no charges will be submitted.")
-
-        recognize_income(end_period, dry_run=dry_run)
-        extend_subscriptions(end_period, dry_run=dry_run)
-        create_charges_for_balance(end_period, dry_run=dry_run or no_charges)
+        try:
+            recognize_income(end_period, dry_run=dry_run)
+        except Exception as err:
+            LOGGER.exception("recognize_income: %s", err)
+        try:
+            extend_subscriptions(end_period, dry_run=dry_run)
+        except Exception as err:
+            LOGGER.exception("extend_subscriptions: %s", err)
+        try:
+            create_charges_for_balance(
+                end_period, dry_run=dry_run or no_charges)
+        except Exception as err:
+            LOGGER.exception("create_charges_for_balance: %s", err)
         if not (dry_run or no_charges):
             # Let's complete the in flight charges after we have given
             # them time to settle.
