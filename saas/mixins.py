@@ -298,13 +298,14 @@ class CartMixin(object):
                         cart_item.first_name, cart_item.last_name]).strip()
                 for_descr = ', for %s (%s)' % (full_name, cart_item.sync_on)
                 organization_queryset = Organization.objects.filter(
-                    Q(slug=cart_item.sync_on) | Q(email=cart_item.sync_on))
+                    Q(slug=cart_item.sync_on)
+                    | Q(email__iexact=cart_item.sync_on))
                 if organization_queryset.exists():
                     organization = organization_queryset.get()
                 else:
                     user_queryset = get_user_model().objects.filter(
                         Q(username=cart_item.sync_on)
-                        | Q(email=cart_item.sync_on))
+                        | Q(email__iexact=cart_item.sync_on))
                     if not user_queryset.exists():
                         # XXX Hacky way to determine GroupBuy vs. notify.
                         organization = Organization(

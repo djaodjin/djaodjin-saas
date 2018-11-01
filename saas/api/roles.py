@@ -209,7 +209,7 @@ class OptinBase(object):
                 organization_data.get('email', None))
             if email:
                 organizations = self.organization_model.objects.filter(
-                    email=email)
+                    email__iexact=email)
             else:
                 organizations = self.organization_model.objects.none()
         invite = False
@@ -228,7 +228,7 @@ class OptinBase(object):
                     full_name=full_name, email=email)
                 user_model = get_user_model()
                 try:
-                    manager = user_model.objects.get(email=email)
+                    manager = user_model.objects.get(email__iexact=email)
                 except user_model.DoesNotExist:
                     manager = create_user_from_email(email)
                 organization.add_manager(manager, request_user=request.user)
@@ -692,7 +692,7 @@ class RoleFilteredListAPIView(RoleSmartListMixin, RoleByDescrQuerysetMixin,
                 # The following SQL query is not folded into the previous
                 # one so we can have a priority of username over email.
                 user = user_model.objects.get(
-                    email=serializer.validated_data.get('email',
+                    email__iexact=serializer.validated_data.get('email',
                         serializer.validated_data['slug']))
             except user_model.DoesNotExist:
                 if not request.GET.get('force', False):
