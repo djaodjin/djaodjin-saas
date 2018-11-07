@@ -583,7 +583,40 @@ var app = new Vue({
     el: "#search-list-container",
     mixins: [itemListMixin, paginationMixin, filterableMixin],
     data: {
-        url: djaodjinSettings.urls.provider.api_accounts
+        url: djaodjinSettings.urls.provider.api_accounts,
+        mixinFilterCb: 'getUsersAndOrgs',
+        usersLoaded: false,
+        // a hack, but easier then doing pagination for both
+        itemsPerPage: 50,
+        users: {
+            results: [],
+            count: 0,
+        },
+    },
+    methods: {
+        getUsersAndOrgs: function(){
+            this.get();
+            this.getUsers();
+        },
+        getUsers: function(){
+            var vm = this;
+            $.get(djaodjinSettings.urls.api_users, vm.getParams(), function(res){
+                vm.users = res
+                vm.usersLoaded = true;
+            });
+        }
+    },
+    computed: {
+        combined: function(){
+            var first = this.items,
+                second = this.users;
+            var results = first.results.concat(second.results);
+            var count = first.count + second.count;
+            return {
+                results: results ? results : [],
+                count: count ? count : 0,
+            }
+        }
     },
 })
 }
