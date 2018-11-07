@@ -13,6 +13,7 @@ stripe==2.6.0
 
 # testsite-only
 coverage==4.0.3
+django-extensions==2.1.3
 django-urldecorators==0.6
 whitenoise==3.3.0
 

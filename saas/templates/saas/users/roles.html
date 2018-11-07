@@ -3,112 +3,104 @@
 {% block saas_title %}Accessible by {{user}}{% endblock %}
 
 {% block saas_content %}
-<section id="accessible-list-container">
-  <div>
-    <span>Filter</span> <input type="text" v-model="params.q" @input="filterList" />
-  </div>
-  <table>
-    <thead>
-      <tr>
-        <th>Name<button @click="sortBy('slug')"><i :class="sortIcon('slug')"></i></button></th>
-        <th>Role<button @click="sortBy('role_name')"><i :class="sortIcon('role_name')"></i></button></th>
-        <th></th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr>
-        <td colspan="3">
-            <form class="form-horizontal" @submit.prevent="create">
-                <uiv-modal v-model="modalOpen" v-cloak title="Request access...">
-                    <div class="modal-body">
-                        <p class="text-danger">
+<section id="accessible-list-container" ng-app="saasApp">
+  <div ng-controller="accessibleListCtrl">
+    <div>
+      <span>Filter</span> <input type="text" ng-model="params.q" ng-change="filterList(params.q)" v-model="params.q" @input="filterList" />
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th>Name<button ng-click="sortBy('slug')" @click="sortBy('slug')">[[params.o === 'slug' ? params.ot : 'sort']]</button></th>
+          <th>Role<button ng-click="sortBy('role_name')" @click="sortBy('role_name')">[[params.o === 'role_name' ? params.ot : 'sort']]</button></th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr ng-show="!items.$resolved"
+            v-show="!itemsLoaded">
+          <td colspan="3">
+            <h3>Loading...</h3>
+          </td>
+        </tr>
+        <tr ng-show="items.$resolved && items.results.length == 0"
+            v-show="itemsLoaded && items.results.length == 0">
+          <td colspan="3">No organization accessible for {{user}}</td>
+        </tr>
+        <tr ng-prop-id="entry.slug" ng-repeat="entry in items.results" ng-show="items.$resolved && items.results.length > 0" ng-cloak
+            v-bind:id="entry.slug" v-for="(entry, index) in items.results" v-show="itemsLoaded && items.results.length > 0" v-cloak>
+          <td>
+            <a ng-prop-href="'{{urls.organization.profile_base}}' + entry.slug + '/'"
+               v-bind:href="'{{urls.organization.profile_base}}' + entry.slug + '/'">[[entry.printable_name]]</a>
+          </td>
+          <td>
+            [[entry.request_key ? "requested" : entry.role_description]]
+          </td>
+          <td><button ng-click="remove($event, $index)" @click="remove(index)">remove</button></td>
+        </tr>
+      </tbody>
+    </table>
+    <div ng-show="items.$resolved && totalItems > itemsPerPage" ng-cloak
+         v-show="itemsLoaded && totalItems > itemsPerPage" v-cloak>
+      <ul uib-pagination
+          ng-model="currentPage"
+          total-items="totalItems"
+          items-per-page="itemsPerPage"
+          boundary-links="true"
+          max-size="maxSize"
+          previous-text="&lsaquo;"
+          next-text="&rsaquo;"
+          first-text="&laquo;"
+          last-text="&raquo;"
+          ng-change="pageChanged()"></ul>
+      <uiv-pagination
+         v-model="params.page"
+         :total-page="pageCount"
+         @change="get"
+         boundary-links />
+    </div>
+    <!-- modal dialog to add a request to add a role to a user
+         on an organization. -->
+    <div>
+      <h4>Request access ...</h4>
+      <form @submit.prevent="save(unregistered)" ng-submit="save($event)">
+        <input id="userTypeahead" type="text"
+               name="organization" placeholder="Name or email"
+               autocomplete="off"
+               ng-model="unregistered.slug"
+               v-model="unregistered.slug"
+               uib-typeahead="item.slug for item in getCandidates($viewValue)"
+               uib-typeahead-loading="loadingOrganizations"
+               uib-typeahead-template-url="customTemplate.html" />
+        <button type="submit" name="submit">Add</button>
+      </form>
+      <div class="add-role-modal">
+        <form @submit.prevent="create" ng-submit="create($event)">
+          <p ng-model="unregistered">
 [[unregistered.full_name]] was not found. This is an opportunity to invite
 a manager for [[unregistered.full_name]] to join {{site.printable_name}}.
-                        </p>
-                        <div class="row form-group">
-                            <div class="col-sm-2">
-                                <label>To</label>
-                            </div>
-                            <div class="controls col-sm-10">
-                                <input type="email"
-                                    class="form-control" style="width:100%;"
-                                    v-model="unregistered.email"
-                                    name="email" type="text" max-length="150"
-                                    placeholder="invitee@example.com"
-                                    required autofocus />
-                            </div>
-                        </div>
-                        <div class="form-group">
-                            <div class="controls">
-                                <label>The following invite message will be sent:</label>
-                                <textarea class="form-control"
-                                    name="message"
-                                    maxlength="255" type="text" rows="10" ref="modalText">
+          </p>
+          <label>To</label>
+          <input id="new-request-email" name="email"
+                 type="text" max-length="150"
+                 placeholder="invitee@example.com" autofocus
+                 ng-model="unregistered.email"
+                 v-model="unregistered.email" />
+          <label>The following invite message will be sent:</label>
+          <textarea name="message"
+                    maxlength="255" type="text" rows="10">
 Hello,
 
 I would like to request access to [[unregistered.full_name]].
 
 Thank you,
 - {{request.user.first_name}}
-                                </textarea>
-                            </div>
-                        </div>
-                    </div>
-                    <div slot="footer">
-                      <button type="button" class="btn btn-default"
-                              @click="modalOpen=false">Cancel</button>
-                      <button id="new-rule-submit"
-                              type="submit" class="btn btn-primary">Request access</button>
-                    </div>
-                </uiv-modal>
-            </form>
-            <user-typeahead @item-save="save" :url="typeaheadUrl" inline-template>
-                <div>
-                    <form class="form-inline" @submit.prevent="submit">
-                        <div class="input-group">
-                            <div>
-                                <input id="userTypeahead" class="form-control input-sm" style="width: 100%;" type="text" placeholder="Name or email"/>
-                                <uiv-typeahead
-                                v-model="itemSelected"
-                                target="#userTypeahead"
-                                :async-function="getUsers"
-                                item-key="slug"
-                                :open-on-focus="false"
-                                 />
-                            </div>
-                            <div class="input-group-btn">
-                                <button class="btn btn-primary btn-sm" type="submit">Add</button>
-                            </div>
-                        </div>
-                        <div style="height:14px">
-                            <i v-show="searching" class="fa fa-spinner"></i>
-                        </div>
-                    </form>
-                </div>
-            </user-typeahead>
-        </td>
-      </tr>
-      <tr v-show="!itemsLoaded">
-        <td colspan="3">
-            <h3  class="text-center"><i class="fa fa-refresh fa-spin fa-2x"></i></h3>
-        </td>
-      </tr>
-      <tr v-show="itemsLoaded && items.results.length == 0">
-          <td colspan="3">No organization accessible for {{user}}</td>
-      </tr>
-      <tr v-for="(entry, index) in items.results" v-cloak v-show="itemsLoaded && items.results.length > 0">
-        <td>
-          <a :href="'{{urls.organization.profile_base}}' + entry.slug + '/'">[[entry.printable_name]]</a>
-        </td>
-        <td class="text-center">
-          [[entry.request_key ? "requested" : entry.role_description]]
-        </td>
-        <td><button @click="remove(index)">remove</button></td>
-      </tr>
-    </tbody>
-  </table>
-  <div class="text-center" v-cloak v-show="itemsLoaded && totalItems > itemsPerPage">
-    <uiv-pagination v-model="params.page" :total-page="pageCount" @change="get" boundary-links/>
+          </textarea>
+          <button type="submit">Request access</button>
+        </form>
+      </div>
+    </div>
+    <!-- end of modal dialog -->
   </div>
 </section>
 {% endblock %}

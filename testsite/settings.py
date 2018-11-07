@@ -9,6 +9,9 @@ from saas.compat import reverse_lazy
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 RUN_DIR = os.getcwd()
 
+#JS_FRAMEWORK = 'angularjs'
+JS_FRAMEWORK = 'vuejs'
+
 def load_config(confpath):
     '''
     Given a path to a file, parse its lines in ini-like format, and then
@@ -58,6 +61,7 @@ INSTALLED_APPS = (
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'django_extensions',
     # Uncomment the next line to enable the admin:
     'django.contrib.admin',
     # Uncomment the next line to enable admin documentation:
@@ -262,6 +266,7 @@ if TEMPLATE_REVERT_TO_DJANGO:
     'django.contrib.auth.context_processors.auth', # because of admin/
     'django.template.context_processors.request',
     'django.template.context_processors.media',
+    'testsite.context_processors.js_framework'
             ],
             'loaders': [
                 'django.template.loaders.filesystem.Loader',

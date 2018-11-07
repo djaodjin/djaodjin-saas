@@ -86,10 +86,10 @@ def convert_dates_to_utc(dates):
 
 
 def datetime_or_now(dtime_at=None):
-    if not dtime_at:
-        return datetime.datetime.utcnow().replace(tzinfo=utc)
     if isinstance(dtime_at, six.string_types):
         dtime_at = parse_datetime(dtime_at)
+    if not dtime_at:
+        dtime_at = datetime.datetime.utcnow().replace(tzinfo=utc)
     if dtime_at.tzinfo is None:
         dtime_at = dtime_at.replace(tzinfo=utc)
     return dtime_at

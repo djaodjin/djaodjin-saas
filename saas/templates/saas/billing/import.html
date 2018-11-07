@@ -3,8 +3,9 @@
 {% block saas_title %}Add offline transaction{% endblock %}
 
 {% block saas_content %}
-<section id="import-transaction-container">
-<form action="." method="post">
+<section id="import-transaction-container" ng-app="saasApp" ng-cloak>
+<div ng-controller="importTransactionsCtrl">
+  <form action="." method="post">
   <input type="hidden" name="csrfmiddlewaretoken" value="{{csrf_token}}">
   <fieldset>
         <div class="{% if form.subscription.errors %} has-error{% endif %}">
@@ -13,15 +14,16 @@
             </label>
             <div>
             <input
-                id="typeahead"
+                id="subscription"
                 class="form-control"
                 type="text"
                 placeholder="Subscriber name or email"
                 name="subscription"
-                autocomplete="off"/>
+                autocomplete="off"
+                ng-model="subscription" />
             <uiv-typeahead
                 v-model="itemSelected"
-                target="#typeahead"
+                target="#subscription"
                 item-key="itemKey"
                 :async-function="getSubscriptions"
                 :open-on-focus="false"/>
@@ -47,6 +49,7 @@
     <div>
         <button type="submit">Add Off-line Payment</button>
     </div>
-</form>
+  </form>
+</div>
 </section>
 {% endblock %}

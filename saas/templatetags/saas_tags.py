@@ -44,17 +44,46 @@ from ..models import Organization, Subscription, Plan, get_broker
 
 register = template.Library()
 
+@register.filter
+def active_with_provider(organization, provider):
+    """
+    Returns a list of active subscriptions for organization for which provider
+    is the owner of the plan.
+    """
+    return Subscription.objects.active_with(provider).filter(
+        organization=organization)
+
+
+@register.filter()
+def date_in_future(value, arg=None):
+    if value:
+        if arg:
+            base = arg
+        else:
+            base = datetime.utcnow().replace(tzinfo=utc)
+        if isinstance(value, six.integer_types):
+            value = datetime.fromtimestamp(value).replace(tzinfo=utc)
+        if value > base:
+            return True
+    return False
+
+
+@register.filter(needs_autoescape=False)
+def describe(transaction):
+    return mark_safe(as_html_description(transaction))
+
+
 @register.filter()
 def isoformat(val):
     if isinstance(val, datetime):
         return val.isoformat()
     return val
 
+
 @register.filter()
-def short_date(val):
-    if isinstance(val, datetime):
-        return val.strftime("%b %d, %Y")
-    return val
+def iteritems(val):
+    return six.iteritems(val)
+
 
 @register.filter()
 def htmlize_money(amount_unit_tuple):
@@ -168,35 +197,13 @@ def products(subscriptions):
     return []
 
 
-@register.filter
-def active_with_provider(organization, provider):
-    """
-    Returns a list of active subscriptions for organization for which provider
-    is the owner of the plan.
-    """
-    return Subscription.objects.active_with(provider).filter(
-        organization=organization)
-
-
-@register.filter(needs_autoescape=False)
-def describe(transaction):
-    return mark_safe(as_html_description(transaction))
-
-
-@register.filter()
-def date_in_future(value, arg=None):
-    if value:
-        if arg:
-            base = arg
-        else:
-            base = datetime.utcnow().replace(tzinfo=utc)
-        if isinstance(value, six.integer_types):
-            value = datetime.fromtimestamp(value).replace(tzinfo=utc)
-        if value > base:
-            return True
-    return False
-
-
 @register.filter(needs_autoescape=False)
 def product_url(organization, subscriber=None):
     return utils_product_url(organization, subscriber)
+
+
+@register.filter()
+def short_date(val):
+    if isinstance(val, datetime):
+        return val.strftime("%b %d, %Y")
+    return val

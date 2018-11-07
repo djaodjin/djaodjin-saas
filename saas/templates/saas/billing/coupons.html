@@ -1,43 +1,87 @@
 {% extends "saas/base_dashboard.html" %}
 
 {% block saas_content %}
-<div id="coupon-list-container">
+<div id="coupon-list-container" ng-app="saasApp">
     <h1>Coupons</h1>
-    <div>
-        <a id="download" :href="'{{urls.provider.download_coupons}}?q=' + params.q" role="button">CSV Download</a>
-    <h1 v-show="!itemsLoaded">Please wait...</h1>
-    <h2 v-show="itemsLoaded && items.results.length == 0">No Coupons yet</h2>
-        <table v-show="itemsLoaded && items.results.length > 0">
-            <thead>
-                <tr>
-                    <th>Code<button @click="sortBy('code')">[[params.o === 'code' ? params.ot : 'sort']]</button></th>
-                    <th>Percent<button @click="sortBy('percent')">[[params.o === 'percent' ? params.ot : 'sort']]</button></th>
-                    <th>Expires At<button @click="sortBy('ends_at')">[[params.o === 'ends_at' ? params.ot : 'sort']]</button></th>
-                    <th>Description<button @click="sortBy('description')">[[params.o === 'description' ? params.ot : 'sort']]</button></th>
-                    <th>Created At<button @click="sortBy('created_at')">[[params.o === 'created_at' ? params.ot : 'sort']]</button></th>
-                    <th></th>
-                </tr>
-            </thead>
+    <div ng-controller="CouponListCtrl">
+      <div>
+          <label>Filter</label>
+          <input type="text"
+              ng-model="params.q" ng-change="filterList(params.q)"
+              v-model="params.q" @input="filterList" />
+      <a id="download" role="button"
+         ng-prop-href="'{{urls.provider.download_coupons}}?q=' + params.q"
+         v-bind:href="'{{urls.provider.download_coupons}}' + getQueryString(['page'])">CSV Download</a>
+      </div>
+      <h2 ng-show="!coupons.$resolved"
+          v-show="!itemsLoaded">Please wait...</h2>
+      <h2
+          ng-show="coupons.$resolved && coupons.results.length == 0"
+          v-show="itemsLoaded && items.results.length == 0">No Coupons yet</h2>
+      <table
+          ng-show="coupons.$resolved && coupons.results.length > 0"
+          v-show="itemsLoaded && items.results.length > 0">
+          <thead>
             <tr>
+              <th>Code<button ng-click="sortBy('code')" @click="sortBy('code')">[[params.o === 'code' ? params.ot : 'sort']]</button></th>
+              <th>Percent<button ng-click="sortBy('percent')" @click="sortBy('percent')">[[params.o === 'percent' ? params.ot : 'sort']]</button></th>
+              <th>Expires At<button ng-click="sortBy('ends_at')" @click="sortBy('ends_at')">[[params.o === 'ends_at' ? params.ot : 'sort']]</button></th>
+              <th>Description<button ng-click="sortBy('description')" @click="sortBy('description')">[[params.o === 'description' ? params.ot : 'sort']]</button></th>
+              <th>Created At<button ng-click="sortBy('created_at')" @click="sortBy('created_at')">[[params.o === 'created_at' ? params.ot : 'sort']]</button></th>
+              <th></th>
+            </tr>
+          </thead>
+          <tr>
                 <form>
                     <td>
-                        <input type="text" v-model="newCoupon.code" placeholder="Code">
+                        <input type="text" placeholder="Code"
+                               ng-model="newCoupon.code"
+                               v-model="newCoupon.code">
                     </td>
                     <td>
-                        <input type="text" v-model="newCoupon.percent" placeholder="Percent">
+                        <input type="text" placeholder="Percent"
+                            ng-model="newCoupon.percent"
+                            v-model="newCoupon.percent">
                     </td>
                     <td>
-                        <button @click="save">Create Coupon</button>
+                        <button ng-click="save()" @click="save">Create Coupon</button>
                     </td>
                 </form>
             </tr>
-            <tr v-for="(coupon, index) in items.results" v-cloak>
-            <td><a :href="'{{urls.provider.metrics_coupons}}' + coupon.code + '/'">[[coupon.code]]</a></td>
+            <tr ng-prop-id="coupon.code" ng-repeat="coupon in coupons.results" ng-cloak
+                v-bind:id="coupon.code" v-for="(coupon, index) in items.results" v-cloak>
+            <td><a ng-prop-href="getCouponUrl(coupon)"
+                   v-bind:href="'{{urls.provider.metrics_coupons}}' + coupon.code + '/'">[[coupon.code]]</a></td>
                 <td>[[coupon.percent]]</td>
-                <td>[[coupon.ends_at ? ($options.filters.formatDate(coupon.ends_at, 'MMM D, Y')) : "Never"]]</td>
-                <td>[[coupon.description]]</td>
-                <td>[[coupon.created_at | formatDate('MMM D, Y')]]</td>
-                <td><button @click="remove(index)">Remove</button></td>
+                <td ng-if="coupon.ends_at"
+                    v-if="coupon.ends_at">[[coupon.ends_at | formatDate]]
+                </td>
+                <td ng-if="!coupon.ends_at"
+                    v-if="!coupon.ends_at">Never
+                </td>
+                <td>
+                    <span ng-show="!edit_description[$index]"
+                          ng-click="editDescription($index)"
+                          v-show="!coupon.edit_description"
+                          @click="editDescription(coupon, index)">[[coupon.description]] (click to edit)</span>
+                    <input id="input_description" type="text"
+                           ng-show="edit_description[$index]"
+                           ng-keydown="saveDescription($event, coupon, $index)"
+                           ng-blur="saveDescription($event, coupon, $index)"
+                           ng-model="coupon.description"
+                           uib-tooltip="Edit description and press 'Enter'"
+                           uib-tooltip-trigger="focus"
+                           uib-tooltip-placement="top"
+                           v-show="coupon.edit_description"
+                           @blur="saveDescription(coupon)"
+                           @keyup.13="saveDescription(coupon)"
+                           v-model="coupon.description"
+                           tooltip="Edit description here"
+                           tooltip-trigger="focus"
+                           tooltip-placement="top">
+                </td>
+                <td>[[coupon.created_at | formatDate]]</td>
+                <td><button ng-click="remove($index)" @click="remove(index)">Remove</button></td>
             </tr>
         </table>
     </div>

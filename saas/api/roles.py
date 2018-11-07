@@ -200,30 +200,32 @@ class OptinBase(object):
         organization_data = serializer.validated_data.get('organization', {})
         slug = serializer.validated_data.get('slug',
             organization_data.get('slug', None))
+        email = serializer.validated_data.get('email',
+            organization_data.get('email', None))
         if slug:
             # XXX slugify because we actually pass a full_name when doesnt exist
             organizations = self.organization_model.objects.filter(
                 slug=slugify(slug))
+        elif email:
+            organizations = self.organization_model.objects.filter(
+                email__iexact=email)
         else:
-            email = serializer.validated_data.get('email',
-                organization_data.get('email', None))
-            if email:
-                organizations = self.organization_model.objects.filter(
-                    email__iexact=email)
-            else:
-                organizations = self.organization_model.objects.none()
+            organizations = self.organization_model.objects.none()
         invite = False
         with transaction.atomic():
             if organizations.count() == 0:
                 if not request.GET.get('force', False):
                     raise Http404(_("Profile %(organization)s does not exist."
                     ) % {'organization': slug})
-                email = serializer.validated_data.get('email',
-                    organization_data.get('email', None))
+                if not email:
+                    raise ValidationError({
+                        'email': _("We cannot invite an organization"\
+                            " without an e-mail address.")})
+                default_full_name = slug
+                if not default_full_name:
+                    default_full_name = email.split('@')[-1].split('.')[-2]
                 full_name = serializer.validated_data.get('full_name',
-                    organization_data.get('full_name', None))
-                if not full_name:
-                    full_name = slug
+                    organization_data.get('full_name', default_full_name))
                 organization = self.organization_model.objects.create(
                     full_name=full_name, email=email)
                 user_model = get_user_model()

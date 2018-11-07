@@ -1,9 +1,12 @@
 {% extends "saas/base_dashboard.html" %}
 
 {% block saas_content %}
-<div id="balance-list-container">
+<div id="balance-list-container" ng-app="saasApp" ng-cloak>
+  <div ng-controller="BalanceListCtrl">
     <div class="date-chooser">
-      <a id="download" :href="'{{urls.download_balances}}?start_at=' + params.start_at + '&ends_at=' + params.ends_at" role="button">Download</a>
+      <a id="download" role="button"
+        ng-prop-href="'{{urls.download_balances}}?start_at=' + params.start_at + '&ends_at=' + params.ends_at"
+        v-bind:href="'{{urls.download_balances}}' + getQueryString(['page'])">Download</a>
         <div>
             <uiv-dropdown class="form-group" append-to-body>
               <btn>date</btn>
@@ -17,8 +20,13 @@
                 </li>
               </template>
             </uiv-dropdown>
+            <span>To</span>
+            <span datepicker-popup="[[format]]" ng-model="ends_at" is-open="opened" datepicker-options="dateOptions" ng-required="true" close-text="Close" datepicker-mode="'month'" max-date="maxDate" show-button-bar="false">[[ends_at | date : mediumDate]]</span>
+            <span>
+              <button type="button" ng-click="open($event, 'ends_at')">Calendar</button>
+            </span>
         </div>
-        <span>[[params.ends_at | formatDate('MMM D, Y') ]]</span>
+        <span>[[params.ends_at | formatDate]]</span>
     </div>
     <table>
         <thead>
@@ -26,51 +34,60 @@
                 <th>Rank</th>
                 <th>Delete</th>
                 <th>Title</th>
-                <td style="text-align:right;" v-for="col in values" v-cloak>
+                <td style="text-align:right;"
+                    ng-repeat="col in balances.table[0].values" ng-cloak
+                    v-for="col in values" v-cloak>
                     [[col[0] | monthHeading]]
                 </td>
             </tr>
         </thead>
-      <tbody v-show="!itemsLoaded">
+      <tbody ng-show="!items.$resolved" v-show="!itemsLoaded">
         <tr>
           <td colspan="16">
             <h3 class="text-center"><i class="fa fa-refresh fa-spin fa-2x"></i></h3>
           </td>
         </tr>
       </tbody>
-      <tbody v-show="itemsLoaded && items.table.length == 0">
+      <tbody
+        ng-show="items.$resolved && items.table.length > 0" ng-cloak
+        v-show="itemsLoaded && items.table.length == 0" v-cloak>
         <tr>
           <td colspan="16">
             <h4 class="text-center"><em>No aggregated balances defined for this report. Add the first one with the form below.</em></h4>
           </td>
         </tr>
       </tbody>
-        <tbody v-cloak v-show="itemsLoaded && items.table.length > 0">
-            <tr v-for="(row, index) in items.table" v-cloak>
-                <td></td>
+        <tbody saas-dnd-list="balances"
+            ng-show="items.$resolved && items.table.length > 0" ng-cloak
+            v-show="itemsLoaded && items.table.length > 0" v-cloak>
+            <tr ng-repeat="row in balances.table"
+                v-for="(row, index) in items.table">
+                <td>Move</td>
                 <td>
-                    <button @click="remove(row.key)">
-                        remove</button>
+                    <button ng-click="remove($index)" @click="remove(row.key)">
+                        Delete</button>
                 </td>
                 <td>[[row.key]]</td>
-                <td style="text-align:right;" v-for="col in row.values">
-                    <a target="_blank" :href="'{{urls.broker_transactions}}' + row.selector + '/?start_at=' + startPeriod + '&ends_at=' + col[0] ">
-                    [[col[1]|humanizeCell(items.unit, items.scale)]]
+                <td style="text-align:right;"
+                    ng-repeat="col in row.values" ng-show="row.selector !== ''"
+                    v-for="col in row.values">
+                    <a target="_blank"
+                      ng-prop-href="'{{urls.broker_transactions}}' + row.selector + '/?start_at=' + startPeriod + '&ends_at=' + col[0] "
+                      v-bind:href="'{{urls.broker_transactions}}' + row.selector + '/?start_at=' + startPeriod + '&ends_at=' + col[0] ">
+                    [[humanizeCell(col[1])]]
                     </a>
                 </td>
             </tr>
         </tbody>
     </table>
-    <div class="row">
-        <div class="col-sm-3">
-            <input type="text" v-model="balanceLine.title" placeholder="Title">
-        </div>
-        <div class="col-sm-3">
-            <input type="text" v-model="balanceLine.selector" placeholder="Selector">
-        </div>
-        <div class="col-sm-2">
-            <button @click="create">Add Line</button>
-        </div>
+    <div>
+        <input type="text" placeholder="Title"
+            ng-model="newBalanceLine.title"
+            v-model="balanceLine.title">
+        <input type="text" placeholder="Selector"
+            ng-model="newBalanceLine.selector"
+            v-model="balanceLine.selector">
+        <button ng-click="create()" @click="create">Add Line</button>
     </div>
 </div>
 {% endblock %}

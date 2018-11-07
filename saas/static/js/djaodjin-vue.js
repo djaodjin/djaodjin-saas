@@ -97,22 +97,53 @@ var itemListMixin = {
             }
             return data;
         },
-        resetDefaults: function(overrides){
-            if(!overrides) overrides = {}
-            var data = Object.assign(this.getInitData(), overrides);
-            Object.assign(this.$data, data);
-        },
         get: function(){
             var vm = this;
-            if(!vm.url) return
+            if(!vm.url) return;
             $.get(vm.url, vm.getParams(), function(res){
                 vm.items = res
                 vm.itemsLoaded = true;
             });
         },
-        getParams: function(){
-            return this.params
-        }
+        getParams: function(excludes){
+            var vm = this;
+            var params = {};
+            for( var key in vm.params ) {
+                if( vm.params.hasOwnProperty(key) && vm.params[key] ) {
+                    if( excludes && key in excludes ) continue;
+                    if( key === 'start_at' || key === 'ends_at' ) {
+                        params[key] = moment(vm.params[key]).toISOString();
+                    } else {
+                        params[key] = vm.params[key];
+                    }
+                }
+            }
+            return params;
+        },
+        getQueryString: function(excludes){
+            var vm = this;
+            var result = "";
+            var params = vm.getParams(excludes);
+            for( var key in params ) {
+                if( params.hasOwnProperty(key) ) {
+                    result += key + '=' + params[key].toString();
+                }
+            }
+            if( result ) {
+                result = '?' + result;
+            }
+            return result;
+        },
+        humanizeTotal: function() {
+            var vm = this;
+            var filter = Vue.filter('humanizeCell');
+            return filter(vm.items.total, vm.items.unit, 0.01);
+        },
+        humanizeBalance: function() {
+            var vm = this;
+            var filter = Vue.filter('humanizeCell');
+            return filter(vm.items.balance, vm.items.unit, 0.01);
+        },
     },
 }
 
@@ -150,7 +181,7 @@ var filterableMixin = {
                 if ("page" in this.params){
                     this.params.page = 1;
                 }
-            } 
+            }
             if(this[this.mixinFilterCb]){
                 this[this.mixinFilterCb]();
             }
@@ -220,8 +251,8 @@ var userRelationMixin = {
     mixins: [itemListMixin, paginationMixin],
     data: function(){
         return {
-            url: djaodjinSettings.urls.saas_api_user_roles_url,
-            typeaheadUrl: djaodjinSettings.urls.api_users,
+            url: djaodjinSettings.urls.organization.api_roles,
+            typeaheadUrl: null, //djaodjinSettings.urls.broker.api_users,
             modalOpen: false,
             unregistered: {
                 slug: '',
@@ -265,33 +296,32 @@ var userRelationMixin = {
             }).done(function (resp) {
                 vm.get()
             }).fail(function(resp){
-                showErrorMessages(resp);
+                vm.handleNewUser(slug);
             });
         },
         handleNewUser: function(str){
+            var vm = this;
             if(str.length > 0){
-                this.unregistered = {
+                vm.unregistered = {
                     slug: str,
                     email: str,
                     full_name: str
                 }
-                this.modalOpen = true;
+                vm.modalOpen = true;
             }
         },
         save: function(item){
+            var vm = this;
             if(item.slug !== undefined){
-                this.saveUserRelation(item.slug)
+                vm.saveUserRelation(item.slug)
             }
             else {
-                this.handleNewUser(item)
+                vm.handleNewUser(item)
             }
         },
         create: function(){
             var vm = this;
-            var data = Object.assign({
-                message: vm.$refs.modalText.value
-            }, vm.unregistered)
-
+            var data = vm.unregistered;
             $.ajax({
                 method: 'POST',
                 url: vm.url + "?force=1",
@@ -315,7 +345,7 @@ var subscriptionsMixin = {
     },
     methods: {
         subscriptionURL: function(organization, plan) {
-            return djaodjinSettings.urls.api_organizations
+            return djaodjinSettings.urls.organization.api_profile_base
                 + organization + "/subscriptions/" + plan;
         },
         endsSoon: function(subscription) {
@@ -327,7 +357,6 @@ var subscriptionsMixin = {
             }
             return "";
         },
-        
     },
 }
 
@@ -470,7 +499,7 @@ var app = new Vue({
         sortableMixin
     ],
     data: {
-        url: djaodjinSettings.urls.saas_api_coupon_url,
+        url: djaodjinSettings.urls.provider.api_coupons,
         newCoupon: {
             code: '',
             percent: ''
@@ -554,7 +583,7 @@ var app = new Vue({
     el: "#search-list-container",
     mixins: [itemListMixin, paginationMixin, filterableMixin],
     data: {
-        url: djaodjinSettings.urls.api_accounts
+        url: djaodjinSettings.urls.provider.api_accounts
     },
 })
 }
@@ -564,7 +593,7 @@ var app = new Vue({
     el: "#today-sales-container",
     mixins: [itemListMixin, paginationMixin],
     data: {
-        url: djaodjinSettings.urls.api_receivables
+        url: djaodjinSettings.urls.provider.api_receivables
     },
     mounted: function(){
         this.get()
@@ -577,7 +606,7 @@ var app = new Vue({
     el: "#user-list-container",
     mixins: [itemListMixin, paginationMixin],
     data: {
-        url: djaodjinSettings.urls.api_accounts
+        url: djaodjinSettings.urls.provider.api_accounts
     },
     mounted: function(){
         this.get()
@@ -603,7 +632,6 @@ var app = new Vue({
         var data = {
             tables: djaodjinSettings.tables,
             currentTab: 0,
-            tableData: {},
         }
         var ends_at = moment(djaodjinSettings.date_range.ends_at);
         if(ends_at.isValid()){
@@ -632,13 +660,20 @@ var app = new Vue({
                 var extra = resp.extra || [];
 
                 var tableData = {
+                    key: table.key,
+                    title: table.title,
+                    location: table.location,
                     unit: unit,
                     scale: scale,
                     data: resp.table
                 }
                 vm.convertDatetime(tableData.data, vm.timezone === 'utc');
-                vm.$set(vm.tableData, table.key, tableData)
-
+                for( var idx = 0; idx < vm.tables.length; ++idx ) {
+                    if( vm.tables[idx].key === table.key ) {
+                        vm.$set(vm.tables, idx, tableData);
+                        break;
+                    }
+                }
                 if(cb) cb();
             });
         },
@@ -657,10 +692,10 @@ var app = new Vue({
                  // manual binding - trigger updates to the graph
                 if( table.key === "balances") {
                     // XXX Hard-coded.
-                    updateBarChart("#metrics-chart-" + table.key,
+                    updateBarChart("#metrics-chart",
                         tableData.data, tableData.unit, tableData.scale, tableData.extra);
                 } else {
-                    updateChart("#metrics-chart-" + table.key,
+                    updateChart("#metrics-chart",
                         tableData.data, tableData.unit, tableData.scale, tableData.extra);
                 }
             });
@@ -668,11 +703,15 @@ var app = new Vue({
         tabTitle: function(table){
             var filter = Vue.filter('currencyToSymbol');
             var unit = '';
-            var tableData = this.tableData[table.key];
-            if(tableData && tableData.unit){
-                unit = ' (' + filter(tableData.unit) + ')';
+            if(table && table.unit){
+                unit = ' (' + filter(table.unit) + ')';
             }
             return table.title + unit;
+        },
+        humanizeCell: function(value, unit, scale) {
+            var vm = this;
+            var filter = Vue.filter('humanizeCell');
+            return filter(value, unit, scale);
         },
     },
     computed: {
@@ -680,17 +719,17 @@ var app = new Vue({
             return this.tables[this.currentTab];
         },
         currentTableData: function(){
+            var vm = this;
             var res = {data: []}
-            var key = this.currentTable.key;
-            var data = this.tableData[key];
-            if(data){
-                res = data;
+            if(vm.currentTable.data){
+                res = vm.currentTable;
             }
             return res;
         },
         currentTableDates: function(){
+            var vm = this;
             var res = [];
-            var data = this.currentTableData.data;
+            var data = vm.currentTableData.data;
             if(data && data.length > 0){
                 res = data[0].values;
             }
@@ -698,7 +737,12 @@ var app = new Vue({
         }
     },
     mounted: function(){
-        this.prepareCurrentTabData()
+        var vm = this;
+        vm.prepareCurrentTabData();
+        for( var idx = 1; idx < vm.tables.length; ++idx ) {
+            var table = vm.tables[(vm.currentTab + idx) % vm.tables.length];
+            vm.fetchTableData(table);
+        }
     }
 })
 }
@@ -716,33 +760,70 @@ var app = new Vue({
     data: {
         currentTab: 1,
         registered: {
-            url: djaodjinSettings.urls.api_registered,
+            url: djaodjinSettings.urls.broker.api_users_registered,
             results: [],
             count: 0,
             loaded: false
         },
         subscribed: {
-            url: djaodjinSettings.urls.saas_api_active_subscribers,
+            url: djaodjinSettings.urls.provider.api_subscribers_active,
             results: [],
             count: 0,
             loaded: false
         },
         churned: {
-            url: djaodjinSettings.urls.saas_api_churned,
+            url: djaodjinSettings.urls.provider.api_subscribers_churned,
             results: [],
             count: 0,
             loaded: false
         },
     },
     methods: {
+        getParams: function(excludes){
+            var vm = this;
+            var params = {};
+            for( var key in vm.params ) {
+                if( vm.params.hasOwnProperty(key) && vm.params[key] ) {
+                    if( excludes && key in excludes ) continue;
+                    if( key === 'start_at' || key === 'ends_at' ) {
+                        params[key] = moment(vm.params[key]).toISOString();
+                    } else {
+                        params[key] = vm.params[key];
+                    }
+                }
+            }
+            return params;
+        },
+        getQueryString: function(excludes){
+            var vm = this;
+            var result = "";
+            var params = vm.getParams(excludes);
+            for( var key in params ) {
+                if( params.hasOwnProperty(key) ) {
+                    result += key + '=' + params[key].toString();
+                }
+            }
+            if( result ) {
+                result = '?' + result;
+            }
+            return result;
+        },
         get: function(){
             var vm = this;
-            var queryset = vm[vm.currentQueryset];
+            var sets = ['registered', 'subscribed', 'churned'];
+            for( var idx = 0; idx < sets.length; ++idx ) {
+                var querysetKey = sets[(vm.currentTab + idx) % sets.length];
+                vm.fetch(querysetKey);
+            }
+        },
+        fetch: function(querysetKey) {
+            var vm = this;
+            var queryset = vm[querysetKey];
             $.get(queryset.url, vm.params, function(resp){
                 queryset.results = resp.results;
                 queryset.count = resp.count;
                 queryset.loaded = true;
-                vm[vm.currentQueryset] = queryset;
+                vm[querysetKey] = queryset;
             });
         },
         resolve: function (o, s){
@@ -786,7 +867,7 @@ var app = new Vue({
             return this[this.currentQueryset].count
         },
         currentQueryset: function(){
-            var sets = ['registered', 'subscribed', 'churned']
+            var sets = ['registered', 'subscribed', 'churned'];
             return sets[this.currentTab];
         }
     },
@@ -801,7 +882,7 @@ var app = new Vue({
     el: "#subscriptions-list-container",
     mixins: [subscriptionsMixin, paginationMixin, itemListMixin],
     data: {
-        url: djaodjinSettings.urls.saas_api_subscriptions,
+        url: djaodjinSettings.urls.organization.api_subscriptions,
         modalOpen: false,
         plan: {},
         toDelete: {
@@ -832,7 +913,7 @@ var app = new Vue({
             this.update(item);
         },
         subscribersURL: function(provider, plan) {
-            return djaodjinSettings.urls.api_organizations + provider + "/plans/" + plan + "/subscriptions/";
+            return djaodjinSettings.organization.api_profile_base + provider + "/plans/" + plan + "/subscriptions/";
         },
         subscribe: function(org){
             var vm = this;
@@ -879,7 +960,7 @@ var app = new Vue({
         },
         acceptRequest: function(organization, request_key) {
             var vm = this;
-            var url = (djaodjinSettings.urls.api_organizations +
+            var url = (djaodjinSettings.urls.organization.api_profile_base +
                 organization + "/subscribers/accept/" + request_key + "/");
             $.ajax({
                 method: 'PUT',
@@ -901,7 +982,7 @@ if($('#import-transaction-container').length > 0){
 var app = new Vue({
     el: "#import-transaction-container",
     data: {
-        url: djaodjinSettings.urls.saas_api_subscriptions,
+        url: djaodjinSettings.urls.organization.api_subscriptions,
         created_at: moment().format("YYYY-MM-DD"),
         itemSelected: '',
         searching: false,
@@ -934,7 +1015,7 @@ var app = new Vue({
             o: 'created_at',
             ot: "desc",
         },
-        url: djaodjinSettings.urls.api_metrics_coupon_uses
+        url: djaodjinSettings.urls.provider.api_metrics_coupon_uses
     },
     mounted: function(){
         this.get()
@@ -953,7 +1034,7 @@ var app = new Vue({
     ],
     data: function(){
         var res = {
-            url: djaodjinSettings.urls.api_transactions,
+            url: djaodjinSettings.urls.organization.api_transactions,
             last4: "N/A",
             exp_date: "N/A",
             cardLoaded: false,
@@ -962,15 +1043,9 @@ var app = new Vue({
         return res;
     },
     methods: {
-        getParams: function(){
-            var params = this.params;
-            params.start_at = moment(params.start_at).toISOString();
-            params.ends_at = moment(params.ends_at).toISOString();
-            return params;
-        },
         getCard: function(){
             var vm = this;
-            $.get(djaodjinSettings.saas_api_user_card, function(resp){
+            $.get(djaodjinSettings.urls.organization.api_card, function(resp){
                 if(resp.last4) {
                     vm.last4 = resp.last4;
                 }
@@ -981,21 +1056,20 @@ var app = new Vue({
             });
         },
         reload: function(){
-            this.resetDefaults({
-                /*
-                TODO
-                o: 'created_at',
-                ot: 'desc',
-                ends_at: moment().toDate(),*/
-                url: djaodjinSettings.urls.api_transactions
-            });
-            this.get();
+            var vm = this;
+            // We want to make sure the 'Write off...' transaction will display.
+            vm.params.o = 'created_at';
+            vm.params.ot = 'desc';
+            if( vm.params.ends_at ) {
+                delete vm.params['ends_at'];
+            }
+            vm.get();
         },
         cancelBalance: function(){
             var vm = this;
             $.ajax({
                 method: 'DELETE',
-                url: djaodjinSettings.urls.api_cancel_balance_due,
+                url: djaodjinSettings.urls.organization.api_cancel_balance_due,
             }).done(function() {
                 vm.reload()
                 vm.modalOpen = false
@@ -1017,7 +1091,7 @@ var app = new Vue({
     el: "#transfers-container",
     mixins: [itemListMixin, sortableMixin, paginationMixin, filterableMixin],
     data: {
-        url: djaodjinSettings.urls.api_transactions,
+        url: djaodjinSettings.urls.organization.api_transactions,
         balanceLoaded: false,
         last4: "N/A",
         bank_name: "N/A",
@@ -1027,7 +1101,7 @@ var app = new Vue({
     methods: {
         getBalance: function() {
             var vm = this;
-            $.get(djaodjinSettings.urls.saas_api_bank, function(resp){
+            $.get(djaodjinSettings.urls.provider.api_bank, function(resp){
                 vm.balance_amount = resp.balance_amount;
                 vm.balance_unit = resp.balance_unit;
                 vm.last4 = resp.last4;
@@ -1035,11 +1109,10 @@ var app = new Vue({
                 vm.balanceLoaded = true;
             });
         },
-        getParams: function(){
-            var params = this.params;
-            params.start_at = moment(params.start_at).toISOString();
-            params.ends_at = moment(params.ends_at).toISOString();
-            return params;
+        humanizeBalance: function() {
+            var vm = this;
+            var filter = Vue.filter('humanizeCell');
+            return filter(vm.balance_amount, vm.balance_unit, 0.01);
         },
     },
     mounted: function(){
@@ -1054,15 +1127,7 @@ var app = new Vue({
     el: "#transactions-container",
     mixins: [itemListMixin, sortableMixin, paginationMixin, filterableMixin],
     data: {
-        url: djaodjinSettings.urls.api_transactions,
-    },
-    methods: {
-        getParams: function(){
-            var params = this.params;
-            params.start_at = moment(params.start_at).toISOString();
-            params.ends_at = moment(params.ends_at).toISOString();
-            return params;
-        },
+        url: djaodjinSettings.urls.organization.api_transactions,
     },
     mounted: function(){
         this.get();
@@ -1079,8 +1144,8 @@ var app = new Vue({
             o: "slug",
             ot: "asc",
         },
-        url: djaodjinSettings.urls.api_accessibles,
-        typeaheadUrl: djaodjinSettings.urls.api_organizations,
+        url: djaodjinSettings.urls.user.api_accessibles,
+        typeaheadUrl: djaodjinSettings.urls.organization.api_profile_base,
     },
     mounted: function(){
         this.get()
@@ -1100,7 +1165,7 @@ var app = new Vue({
         itemListMixin,
     ],
     data: {
-        url: djaodjinSettings.urls.saas_api_plan_subscribers,
+        url: djaodjinSettings.urls.provider.api_plan_subscribers,
     },
     mounted: function(){
         this.get();
@@ -1119,10 +1184,10 @@ var app = new Vue({
             var vm = this;
             $.ajax({
                 method: 'DELETE',
-                url: djaodjinSettings.urls.saas_api_organization,
+                url: djaodjinSettings.urls.organization.api_base,
             }).done(function() {
                 vm.modalOpen = false;
-                window.location = djaodjinSettings.urls.user_profile_redirect;
+                window.location = djaodjinSettings.urls.profile_redirect;
             }).fail(function(resp){
                 showErrorMessages(resp);
             });
@@ -1139,7 +1204,7 @@ var app = new Vue({
         filterableMixin
     ],
     data: {
-        url: djaodjinSettings.urls.api_charges,
+        url: djaodjinSettings.urls.broker.api_charges,
     },
     mounted: function(){
         this.get();
@@ -1155,7 +1220,7 @@ var app = new Vue({
         paginationMixin,
     ],
     data: {
-        url: djaodjinSettings.urls.saas_api_role_descriptions_url,
+        url: djaodjinSettings.urls.organization.api_role_descriptions,
         role: {
             title: '',
         },
@@ -1223,12 +1288,6 @@ var app = new Vue({
         }
     },
     methods: {
-        getParams: function(){
-            var params = this.params;
-            params.start_at = moment(params.start_at).toISOString();
-            params.ends_at = moment(params.ends_at).toISOString();
-            return params;
-        },
         create: function(){
             var vm = this;
             $.ajax({

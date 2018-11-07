@@ -1,9 +1,10 @@
 {% extends "saas/base_dashboard.html" %}
 
 {% block saas_content %}
-<div id="billing-statement-container">
-  <div>
-    <section id="info">
+<div id="billing-statement-container" ng-app="saasApp">
+  <div ng-controller="billingStatementCtrl">
+    <section id="info" ng-controller="billingSummaryCtrl"
+             data-api-url="{{urls.organization.api_card}}">
       <h1>Credit Card</h1>
       <a href="{{urls.organization.update_card}}">Update</a>
       <dl>
@@ -17,38 +18,41 @@
     </section>
     <section id="balance">
       <h1>Balance</h1>
-      <div v-show="!itemsLoaded">Please wait...</div>
-      <div v-show="itemsLoaded">
+      <div ng-show="!items.$resolved" v-show="!itemsLoaded">Please wait...</div>
+      <div ng-show="items.$resolved" v-show="itemsLoaded">
         {% if urls.organization.api_cancel_balance_due %}
-        <button @click="modalOpen=true" v-cloak>cancel balance due</button>
+        <button id="cancel-balance-btn" @click="modalOpen=true" v-cloak>cancel balance due</button>
         {% endif %}
         {% if urls.organization.vtcharge %}
         <a id="one-time-charge" href="{{urls.organization.vtcharge}}">one-time charge</a>
         {% endif %}
-        <dl v-show="items.balance >= 0">
-          <dt>[[items.balance | humanizeCell(items.unit, 0.01)]]</dt>
-          <dd v-show="items.balance >= 0">
+        <dl ng-show="items.balance >= 0" v-show="items.balance >= 0">
+          <dt>[[humanizeBalance()]]</dt>
+          <dd ng-show="items.balance >= 0" v-show="items.balance >= 0">
             {% spaceless %}
             Balance due
-            <span v-if="items.balance > 0">
+            <span ng-if="items.balance > 0" v-if="items.balance > 0">
               (<a href="{{ urls.organization.balance }}">pay now</a>)
             </span>
             {% endspaceless %}
           </dd>
-          <dd v-show="items.balance < 0">Balance Credits</dd>
+          <dd ng-show="items.balance < 0" v-show="items.balance < 0">Balance Credits</dd>
         </dl>
       </div>
       {% if urls.organization.api_cancel_balance_due %}
       <!-- modal dialog for cancelling balance due -->
-      <modal v-model="modalOpen" title="Cancel balance due">
-            <p>
-                Are you sure you would like to cancel the whole balance of [[items.balance | humanizeCell(items.unit, 0.01)]] ?
-            </p>
-            <div slot="footer">
-                <button class="btn btn-default" @click.prevent="modalOpen=false">Cancel</button>
-                <button class="btn btn-primary" @click.prevent="cancelBalance">OK</button>
-            </div>
-        </modal>
+      <div>
+        <form id="cancel-balance" method="post" ng-submit="cancelBalance($event)" @submit.prevent="cancelBalance">
+          <h4>Cancel balance due</h4>
+          <p>
+Are you sure you would like to cancel the whole balance of [[humanizeBalance()]] ?
+          </p>
+          <div slot="footer">
+            <button @click.prevent="modalOpen=false">Cancel</button>
+            <button type="submit">OK</button>
+          </div>
+        </form>
+      </div>
       <!-- end of modal dialog -->
       {% endif %}
     </section>

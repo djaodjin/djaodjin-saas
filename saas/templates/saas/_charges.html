@@ -7,22 +7,33 @@
         <th>Amount</th>
         <th>State</th>
         <th>Description</th>
-        <th><label>Filter</label> <input type="text" v-model="params.q" @input="filterList" /></th>
+        <th><label>Filter</label>
+          <input type="text"
+              ng-model="params.q" ng-change="filterList(params.q)"
+              v-model="params.q" @input="filterList" /></th>
       </tr>
     </thead>
-    <tbody v-show="itemsLoaded && items.results.length == 0">
+    <tbody
+       ng-show="items.$resolved && items.results.length == 0"
+       v-show="itemsLoaded && items.results.length == 0">
       <tr>
         <td colspan="3">
-          <h4 class="text-center"><em>No charges<span v-show="params.q"> [[params.q]]</span></em></h4>
+          <h4 class="text-center"><em>No charges<span ng-show="params.q" v-show="params.q"> [[params.q]]</span></em></h4>
         </td>
       </tr>
     </tbody>
-    <tbody id="has-charges" v-show="itemsLoaded && items.results.length > 0">
-      <tr v-for="entry in items.results">
-        <td>[[entry.created_at | formatDate('MMM D, Y')]]</td>
+    <tbody id="has-charges"
+      ng-show="items.$resolved && items.results.length > 0"
+      v-show="itemsLoaded && items.results.length > 0">
+      <tr
+        ng-repeat="entry in items.results"
+        v-for="entry in items.results">
+        <td>[[entry.created_at | formatDate]]</td>
         <td>[[entry.readable_amount]]</td>
         <td>[[entry.state]]</td>
-        <td colspan="2" v-html="entry.description"></td>
+        <td colspan="2"
+          ng-bind-html="entry.description | unsafe"
+          v-html="entry.description"></td>
       </tr>
     </tbody>
   </table>

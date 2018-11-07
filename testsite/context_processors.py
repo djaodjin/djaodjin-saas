@@ -22,29 +22,7 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from __future__ import absolute_import
+from django.conf import settings
 
-import django.template.defaultfilters
-from jinja2.sandbox import SandboxedEnvironment as Jinja2Environment
-import saas.templatetags.saas_tags
-
-import testsite.templatetags.testsite_tags
-
-
-def environment(**options):
-    env = Jinja2Environment(**options)
-    # Generic filters to render pages
-    env.filters['is_authenticated'] = \
-        testsite.templatetags.testsite_tags.is_authenticated
-    env.filters['messages'] = testsite.templatetags.testsite_tags.messages
-    env.filters['pluralize'] = django.template.defaultfilters.pluralize
-    env.filters['url_profile'] = testsite.templatetags.testsite_tags.url_profile
-
-    # Specific to SaaS
-    env.filters['humanize_money'] = saas.templatetags.saas_tags.humanize_money
-    env.filters['humanize_period'] = saas.templatetags.saas_tags.humanize_period
-    env.filters['date_in_future'] = saas.templatetags.saas_tags.date_in_future
-    env.filters['md'] = saas.templatetags.saas_tags.md
-    env.filters['describe'] = saas.templatetags.saas_tags.describe
-
-    return env
+def js_framework(request):#pylint:disable=unused-argument
+    return {'VUEJS': settings.JS_FRAMEWORK == 'vuejs'}

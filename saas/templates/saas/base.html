@@ -12,16 +12,16 @@
     {% block sidebar %}
     {# Subscriptions for the organization #}
     <div>
-      <a id="saas_provider_profile" href="{{urls.organization.profile}}">profile</a>
-      | <a id="saas_billing_info" href="{{urls.organization.billing}}">billing</a>
-      | <a id="saas_subscription_list" href="{{urls.organization.subscriptions}}">subscriptions</a>
+      <a id="saas_provider_profile" href="{{urls.organization.profile}}">Profile</a>
+      | <a id="saas_billing_info" href="{{urls.organization.billing}}">Billing</a>
+      | <a id="saas_subscription_list" href="{{urls.organization.subscriptions}}">Subscriptions</a>
       {% if urls.organization.roles %}
-      {% for role_title, role_url in urls.organization.roles.items %}
-      | <a href="{{role_url}}">{{role_title|pluralize}}</a>
+      {% for role_title, role_url in urls.organization.roles|iteritems %}
+      | <a href="{{role_url}}">{{role_title}}</a>
       {% endfor %}
       {% endif %}
-      {% if urls and urls.organization and urls.organization.roles %}
-      | <a id="saas_role_list" href="{{urls.organization.roles}}">roles</a>
+      {% if urls and urls.organization and urls.organization.role_description %}
+      | <a id="saas_role_list" href="{{urls.organization.role_description}}">Roles</a>
       {% endif %}
     </div>
     {% if organization.is_provider %}

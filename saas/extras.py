@@ -146,6 +146,9 @@ class OrganizationMixinBase(object):
                 'api_users_registered': reverse('saas_api_registered'),
                 'charges': reverse('saas_charges'),
             }})
+            urls['organization'].update({
+                'role_description': reverse('saas_role_list', args=(provider,)),
+            })
 
         if is_authenticated(self.request):
             urls.update({'profiles': [{

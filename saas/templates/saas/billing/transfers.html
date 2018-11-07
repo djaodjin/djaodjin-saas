@@ -1,8 +1,9 @@
 {% extends "saas/base_dashboard.html" %}
 
 {% block saas_content %}
-<div id="transfers-container">
-  <div>
+<div id="transfers-container" ng-app="saasApp">
+  <div ng-controller="billingSummaryCtrl"
+       data-api-url="{{urls.provider.api_bank}}">
     <section id="info">
       <h1>Deposit Information <a id="update_bank" href="{{urls.provider.bank}}">Update</a></h1>
       <dl>
@@ -18,11 +19,11 @@
       <h1>Funds</h1>
       <dl>
         <dt>Available</dt>
-        <dd><span id="balance-amount">[[balance_amount | humanizeCell(balance_unit, 0.01)]]</span> (<a href="{{urls.provider.withdraw_funds}}">withdraw</a>)</dd>
+        <dd><span id="balance-amount">[[humanizeBalance()]]</span> (<a href="{{urls.provider.withdraw_funds}}">withdraw</a>)</dd>
       </dl>
     </section>
   </div>
-  <div>
+  <div ng-controller="transactionListCtrl">
     {% include "saas/_transactions.html" %}
   </div>
   <div>

@@ -42,6 +42,19 @@ angular.module("saasFilters", [])
             return currency;
         };
     })
+    .filter('formatDate', function() {
+        return function(at_time, format) {
+            if (at_time) {
+                if(!format){
+                    format = 'MM/DD/YYYY hh:mm'
+                }
+                if(!(at_time instanceof Date)){
+                    at_time = String(at_time);
+                }
+                return moment(at_time).format(format)
+            }
+        };
+    })
     .filter("humanizeCell", function(currencyFilter, numberFilter, currencyToSymbolFilter) {
         "use strict";
         return function(cell, unit, scale, abbreviate) {
@@ -57,58 +70,63 @@ angular.module("saasFilters", [])
             return numberFilter(value);
         };
     }).filter('groupBy', ['$parse', function ($parse) {
-    //http://stackoverflow.com/questions/19992090/angularjs-group-by-directive
-    return function (list, group_by) {
+      //http://stackoverflow.com/questions/19992090/angularjs-group-by-directive
+        return function (list, group_by) {
+            var filtered = [];
+            var prev_item = null;
+            var group_changed = false;
+            // this is a new field which is added to each item where we append
+            // "_CHANGED" to indicate a field change in the list
+            // force group_by into Array
+            group_by = angular.isArray(group_by) ? group_by : [group_by];
 
-        var filtered = [];
-        var prev_item = null;
-        var group_changed = false;
-        // this is a new field which is added to each item where we append
-        // "_CHANGED" to indicate a field change in the list
-        // force group_by into Array
-        group_by = angular.isArray(group_by) ? group_by : [group_by];
+            var new_field = group_by.join('_').replace('.', '_') + '_CHANGED';
 
-        var new_field = group_by.join('_').replace('.', '_') + '_CHANGED';
-
-        // loop through each item in the list
-        angular.forEach(list, function (item) {
-
-            group_changed = false;
-
-            // if not the first item
-            if (prev_item !== null) {
-
-                // check if any of the group by field changed
-
-                //check each group by parameter
-                for (var i = 0, len = group_by.length; i < len; i++) {
-                    if ($parse(group_by[i])(prev_item) !== $parse(group_by[i])(item)) {
-                        group_changed = true;
+            // loop through each item in the list
+            angular.forEach(list, function (item) {
+                group_changed = false;
+                // if not the first item
+                if (prev_item !== null) {
+                    // check if any of the group by field changed
+                    //check each group by parameter
+                    for (var i = 0, len = group_by.length; i < len; i++) {
+                        if ($parse(group_by[i])(prev_item) !== $parse(group_by[i])(item)) {
+                            group_changed = true;
+                        }
                     }
+                }// otherwise we have the first item in the list which is new
+                else {
+                    group_changed = true;
                 }
 
+                // if the group changed, then add a new field to the item
+                // to indicate this
+                if (group_changed) {
+                    item[new_field] = true;
+                } else {
+                    item[new_field] = false;
+                }
 
-            }// otherwise we have the first item in the list which is new
-            else {
-                group_changed = true;
+                filtered.push(item);
+                prev_item = item;
+            });
+            return filtered;
+        };
+    }]).filter('relativeDate', ["settings", function(settings) {
+        // Generate a relative date for an instance with a ``created_at`` field.
+        return function(at_time) {
+            var cutOff = new Date();
+            if( settings.date_range.ends_at ) {
+                cutOff = new Date(settings.date_range.ends_at);
             }
-
-            // if the group changed, then add a new field to the item
-            // to indicate this
-            if (group_changed) {
-                item[new_field] = true;
+            var dateTime = new Date(at_time);
+            if( dateTime <= cutOff ) {
+                return moment.duration(cutOff - dateTime).humanize() + " ago";
             } else {
-                item[new_field] = false;
+                return moment.duration(dateTime - cutOff).humanize() + " left";
             }
-
-            filtered.push(item);
-            prev_item = item;
-
-        });
-
-        return filtered;
-    };
-}]);
+        };
+    }]);
 
 /*=============================================================================
   Services
@@ -120,7 +138,7 @@ couponServices.factory("Coupon", ["$resource", "settings",
   function($resource, settings){
     "use strict";
     return $resource(
-        settings.urls.saas_api_coupon_url + "/:coupon", {coupon: "@code"},
+        settings.urls.provider.api_coupons + "/:coupon", {coupon: "@code"},
             {query: {method: "GET"},
              create: {method: "POST"},
              update: {method: "PUT", isArray: false}});
@@ -139,19 +157,25 @@ var profileControllers = angular.module("profileControllers", []);
 
 
 transactionControllers.controller("itemsListCtrl",
-    ["$scope", "$http", "$timeout", "settings",
-     function($scope, $http, $timeout, settings) {
+    ["$scope", "$http", "$timeout", "$filter", "settings",
+     function($scope, $http, $timeout, $filter, settings) {
     "use strict";
     $scope.items = {};
     $scope.totalItems = 0;
 
+    $scope.humanizeTotal = function() {
+        return $filter('humanizeCell')($scope.items.total, $scope.items.unit, 0.01);
+    }
+
+    $scope.humanizeBalance = function() {
+        return $filter('humanizeCell')($scope.items.balance, $scope.items.unit, 0.01);
+    }
+
     $scope.resetDefaults = function(overrides) {
-        $scope.dir = {};
-        var opts = {};
+        var opts = {q: ""};
         if( settings.sortByField ) {
             opts['o'] = settings.sortByField;
             opts['ot'] = settings.sortDirection || "desc";
-            $scope.dir[settings.sortByField] = opts['ot'];
         }
         if( settings.date_range ) {
             if( settings.date_range.start_at ) {
@@ -161,7 +185,6 @@ transactionControllers.controller("itemsListCtrl",
                 opts['ends_at'] = moment(settings.date_range.ends_at).toDate()
             }
         }
-        $scope.filterExpr = "";
         $scope.itemsPerPage = settings.itemsPerPage; // Must match server-side
         $scope.maxSize = 5;               // Total number of direct pages link
         $scope.currentPage = 1;
@@ -183,20 +206,6 @@ transactionControllers.controller("itemsListCtrl",
         $event.preventDefault();
         $event.stopPropagation();
         $scope.opened[date_at] = true;
-    };
-
-    // Generate a relative date for an instance with a ``created_at`` field.
-    $scope.relativeDate = function(at_time) {
-        var cutOff = new Date();
-        if( $scope.params.ends_at ) {
-            cutOff = new Date($scope.params.ends_at);
-        }
-        var dateTime = new Date(at_time);
-        if( dateTime <= cutOff ) {
-            return moment.duration(cutOff - dateTime).humanize() + " ago";
-        } else {
-            return moment.duration(dateTime - cutOff).humanize() + " left";
-        }
     };
 
     $scope.$watch("params", function(newVal, oldVal, scope) {
@@ -250,15 +259,17 @@ transactionControllers.controller("itemsListCtrl",
     };
 
     $scope.sortBy = function(fieldName) {
-        if( $scope.dir[fieldName] == "asc" ) {
-            $scope.dir = {};
-            $scope.dir[fieldName] = "desc";
+        if( $scope.params.o === fieldName ) {
+            if( $scope.params.ot == "asc" ) {
+                $scope.params.ot = "desc";
+            } else {
+                $scope.params.ot = "asc";
+            }
         } else {
-            $scope.dir = {};
-            $scope.dir[fieldName] = "asc";
+            // sorting by new field.
+            $scope.params.ot = "asc";
         }
         $scope.params.o = fieldName;
-        $scope.params.ot = $scope.dir[fieldName];
         $scope.currentPage = 1;
         // pageChanged only called on click?
         delete $scope.params.page;
@@ -307,7 +318,7 @@ transactionControllers.controller("relationListCtrl",
     $controller("itemsListCtrl", {
         $scope: $scope, $http: $http, $timeout:$timeout, settings: settings});
 
-    $scope.item = null;
+    $scope.unregistered = null;
 
     $scope.getCandidates = function(val) {
         if( typeof settings.urls.api_candidates === "undefined" ) {
@@ -338,20 +349,20 @@ transactionControllers.controller("relationListCtrl",
             emailFieldGroup.addClass("has-error");
             return;
         }
-        if( !$scope.item ) {
-            $scope.item = {};
+        if( !$scope.unregistered ) {
+            $scope.unregistered = {};
         }
-        if( !$scope.item.hasOwnProperty('email')
-              || typeof $scope.item.email === "undefined" ) {
-            $scope.item.email = emailField.val();
+        if( !$scope.unregistered.hasOwnProperty('email')
+              || typeof $scope.unregistered.email === "undefined" ) {
+            $scope.unregistered.email = emailField.val();
         }
-        $scope.item.message = dialog.find("[name='message']").val();
-        $http.post(settings.urls.api_items + "?force=1", $scope.item).then(
+        $scope.unregistered.message = dialog.find("[name='message']").val();
+        $http.post(settings.urls.api_items + "?force=1", $scope.unregistered).then(
             function success(resp) {
                 // XXX Couldn't figure out how to get the status code
                 //   here so we just reload the list.
                 $scope.refresh();
-                $scope.item = null;
+                $scope.unregistered = null;
             },
             function error(resp) {
                 showErrorMessages(resp);
@@ -361,21 +372,21 @@ transactionControllers.controller("relationListCtrl",
     $scope.save = function($event, item) {
         $event.preventDefault();
         if( typeof item !== "undefined" ) {
-            $scope.item = item;
+            $scope.unregistered = item;
         }
-        $http.post(settings.urls.api_items, $scope.item).then(
+        $http.post(settings.urls.api_items, $scope.unregistered).then(
             function(success) {
                 // XXX Couldn't figure out how to get the status code
                 // here so we just reload the list.
                 $scope.refresh();
-                $scope.item = null;
+                $scope.unregistered = null;
             },
             function(resp) {
                 if( resp.status === 404 ) {
                     // XXX hack to set full_name when org does not exist.
-                    $scope.item.full_name = $scope.item.slug;
+                    $scope.unregistered.full_name = $scope.unregistered.slug;
                     // XXX hack to set email when user does not exist.
-                    $scope.item.email = $scope.item.slug;
+                    $scope.unregistered.email = $scope.unregistered.slug;
                     var dialog = $element.find(settings.modalSelector);
                     if( dialog && jQuery().modal ) {
                         dialog.modal("show");
@@ -417,8 +428,7 @@ couponControllers.controller("CouponListCtrl",
      function($scope, $http, $timeout, Coupon, settings) {
     "use strict";
     $scope.totalItems = 0;
-    $scope.dir = {code: "asc"};
-    $scope.params = {o: "code", ot: $scope.dir.code};
+    $scope.params = {o: "code", ot: "asc"};
     $scope.coupons = Coupon.query($scope.params, function() {
         // We cannot watch coupons.count otherwise things start
         // to snowball. We must update totalItems only when it truly changed.
@@ -428,7 +438,6 @@ couponControllers.controller("CouponListCtrl",
     });
     $scope.newCoupon = new Coupon();
 
-    $scope.filterExpr = "";
     $scope.itemsPerPage = settings.itemsPerPage; // Must match server-side
     $scope.maxSize = 5;               // Total number of direct pages link
     $scope.currentPage = 1;
@@ -482,6 +491,10 @@ couponControllers.controller("CouponListCtrl",
         });
     };
 
+    $scope.getCouponUrl = function(coupon) {
+        return settings.urls.provider.metrics_coupons + coupon.code + '/';
+    };
+
     $scope.remove = function (idx) {
         Coupon.remove({ coupon: $scope.coupons.results[idx].code },
         function (success) {
@@ -494,7 +507,7 @@ couponControllers.controller("CouponListCtrl",
     };
 
     $scope.save = function() {
-        $http.post(settings.urls.saas_api_coupon_url, $scope.newCoupon).then(
+        $http.post(settings.urls.provider.api_coupons, $scope.newCoupon).then(
         function success(resp) {
             $scope.coupons.results.push(new Coupon(resp.data));
             // Reset our editor to a new blank post
@@ -505,15 +518,17 @@ couponControllers.controller("CouponListCtrl",
     };
 
     $scope.sortBy = function(fieldName) {
-        if( $scope.dir[fieldName] === "asc" ) {
-            $scope.dir = {};
-            $scope.dir[fieldName] = "desc";
+        if( $scope.params.o === fieldName ) {
+            if( $scope.params.ot == "asc" ) {
+                $scope.params.ot = "desc";
+            } else {
+                $scope.params.ot = "asc";
+            }
         } else {
-            $scope.dir = {};
-            $scope.dir[fieldName] = "asc";
+            // sorting by new field.
+            $scope.params.ot = "asc";
         }
         $scope.params.o = fieldName;
-        $scope.params.ot = $scope.dir[fieldName];
         $scope.currentPage = 1;
         // pageChanged only called on click?
         delete $scope.params.page;
@@ -570,14 +585,14 @@ transactionControllers.controller("userRelationListCtrl",
     var apiUrl = ($attrs.apiUrl && $scope.roleDescription
                   && $scope.roleDescription.slug) ?
         ($attrs.apiUrl + '/' + $scope.roleDescription.slug)
-        : settings.urls.saas_api_user_roles_url;
+        : settings.urls.organization.api_roles;
     var opts = angular.merge({
         autoload: true,
         sortByField: "username",
         sortDirection: "desc",
         modalSelector: ".add-role-modal",
         urls: {api_items: apiUrl,
-               api_candidates: settings.urls.api_users}}, settings);
+               api_candidates: settings.urls.broker.api_users}}, settings);
     $controller("relationListCtrl", {
         $scope: $scope, $element: $element, $controller: $controller,
         $http: $http, $timeout:$timeout, settings: opts});
@@ -596,7 +611,7 @@ transactionControllers.controller("userRoleDescriptionCtrl",
 
     var opts = angular.merge({
         autoload: true,
-        urls: {api_items: settings.urls.saas_api_role_descriptions_url}}, settings);
+        urls: {api_items: settings.urls.organization.api_role_descriptions}}, settings);
     $controller("itemsListCtrl", {
         $scope: $scope, $http: $http, $timeout: $timeout,
         settings: opts});
@@ -607,7 +622,7 @@ transactionControllers.controller("userRoleDescriptionCtrl",
     };
 
     $scope.createRoleDescription = function() {
-        $http.post(settings.urls.saas_api_role_descriptions_url,
+        $http.post(settings.urls.organization.api_role_descriptions,
                    $scope.newRoleDescription).then(function() {
             var dialog = angular.element("#new-role-description");
             if (dialog.data("bs.modal")) {
@@ -618,7 +633,7 @@ transactionControllers.controller("userRoleDescriptionCtrl",
     };
 
     $scope.deleteRoleDescription = function(roleDescription) {
-        var url = settings.urls.saas_api_role_descriptions_url +
+        var url = settings.urls.organization.api_role_descriptions +
                   "/" + roleDescription.slug;
 
         $http.delete(url).then(function() {
@@ -637,7 +652,7 @@ subscriptionControllers.controller("planSubscribersListCtrl",
 
     $scope.subscribers = {
         $resolved: false, count: 0,
-        location: settings.urls.saas_api_plan_subscribers};
+        location: settings.urls.provider.api_plan_subscribers};
 
     $scope.active = $scope.subscribers;
 
@@ -654,11 +669,7 @@ subscriptionControllers.controller("subscriptionListCtrl",
     function($scope, $http, $timeout, settings) {
     "use strict";
     var defaultSortByField = "created_at";
-    $scope.dir = {};
-    $scope.dir[defaultSortByField] = "desc";
-    $scope.params = {o: defaultSortByField, ot: $scope.dir[defaultSortByField]};
-
-    $scope.filterExpr = "";
+    $scope.params = {o: defaultSortByField, ot: "desc"};
     $scope.itemsPerPage = settings.itemsPerPage; // Must match server-side
     $scope.maxSize = 5;               // Total number of direct pages link
     $scope.currentPage = 1;
@@ -681,22 +692,22 @@ subscriptionControllers.controller("subscriptionListCtrl",
 
     $scope.registered = {
         $resolved: false, count: 0,
-        location: settings.urls.api_registered};
+        location: settings.urls.broker.api_users_registered};
     $scope.subscribed = {
         $resolved: false, count: 0,
-        location: settings.urls.saas_api_subscriptions};
+        location: settings.urls.organization.api_subscriptions};
     $scope.churned = {
         $resolved: false, count: 0,
-        location: settings.urls.saas_api_churned};
+        location: settings.urls.provider.api_subscribers_churned};
 
     $scope.active = $scope.subscribed;
 
     $scope.subscribersURL = function(provider, plan) {
-        return settings.urls.api_organizations + provider + "/plans/" + plan + "/subscriptions/";
+        return settings.urls.organization.api_profile_base + provider + "/plans/" + plan + "/subscriptions/";
     };
 
     $scope.subscriptionURL = function(organization, plan) {
-        return settings.urls.api_organizations
+        return settings.urls.organization.api_profile_base
             + organization + "/subscriptions/" + plan;
     };
 
@@ -775,30 +786,21 @@ subscriptionControllers.controller("subscriptionListCtrl",
       $scope.query($scope.churned);
     };
 
-    // Generate a relative date for an instance with a ``created_at`` field.
-    $scope.relativeDate = function(at_time) {
-        var cutOff = new Date($scope.ends_at);
-        var dateTime = new Date(at_time);
-        if( dateTime <= cutOff ) {
-            return moment.duration(cutOff - dateTime).humanize() + " ago";
-        } else {
-            return moment.duration(dateTime - cutOff).humanize() + " left";
-        }
-    };
-
     $scope.sortBy = function(fieldName) {
-        if( $scope.dir[fieldName] === "asc" ) {
-            $scope.dir = {};
-            $scope.dir[fieldName] = "desc";
+        if( $scope.params.o === fieldName ) {
+            if( $scope.params.ot == "asc" ) {
+                $scope.params.ot = "desc";
+            } else {
+                $scope.params.ot = "asc";
+            }
         } else {
-            $scope.dir = {};
-            $scope.dir[fieldName] = "asc";
+            // sorting by new field.
+            $scope.params.ot = "asc";
         }
         $scope.params.o = fieldName;
-        $scope.params.ot = $scope.dir[fieldName];
         $scope.currentPage = 1;
         // pageChanged only called on click?
-        delete $scope.paramspage;
+        delete $scope.params.page;
         $scope.query($scope.active);
     };
 
@@ -868,7 +870,7 @@ subscriptionControllers.controller("subscriptionListCtrl",
     };
 
     $scope.acceptRequest = function(organization, request_key) {
-        $http.put(settings.urls.api_organizations
+        $http.put(settings.urls.organization.api_profile_base
             + organization + "/subscribers/accept/" + request_key + "/").then(
         function success(resp) {
             $scope.query($scope.active);
@@ -901,7 +903,7 @@ subscriptionControllers.controller("subscriptionListCtrl",
 subscriptionControllers.controller("subscriberListCtrl",
     ["$scope", "$controller", "$http", "$timeout", "settings",
     function($scope, $controller, $http, $timeout, settings) {
-    settings.urls.saas_api_subscriptions = settings.urls.saas_api_active_subscribers;
+    settings.urls.organization.api_subscriptions = settings.urls.provider.api_subscribers_active;
     $controller('subscriptionListCtrl', {
         $scope: $scope, $http: $http, $timeout:$timeout,
         settings: settings});
@@ -915,7 +917,8 @@ transactionControllers.controller("transactionListCtrl",
         autoload: true,
         sortByField: "created_at",
         sortDirection: "desc",
-        urls: {api_items: settings.urls.api_transactions}}, settings);
+        urls: {api_items: settings.urls.organization.api_transactions}},
+        settings);
     $controller("itemsListCtrl", {
         $scope: $scope, $http: $http, $timeout:$timeout,
         settings: opts});
@@ -927,9 +930,13 @@ transactionControllers.controller("billingStatementCtrl",
     function($scope, $controller, $http, $timeout, settings) {
     $scope.cancelBalance = function($event) {
         $event.preventDefault();
-        $http.delete(settings.urls.api_cancel_balance_due).then(
+        $http.delete(settings.urls.organization.api_cancel_balance_due).then(
             function success(resp) {
-                $scope.resetDefaults({'ends_at': moment().toDate()});
+                $scope.resetDefaults();
+                if( $scope.params.ends_at ) {
+                    delete $scope.params['ends_at'];
+                }
+                $scope.refresh();
             },
             function error(resp) {
                 showErrorMessages(resp);
@@ -944,15 +951,20 @@ transactionControllers.controller("billingStatementCtrl",
 
 
 transactionControllers.controller("billingSummaryCtrl",
-    ["$scope", "$attrs", "$controller", "$http", "$timeout", "settings",
-    function($scope, $attrs, $controller, $http, $timeout, settings) {
+    ["$scope", "$attrs", "$controller", "$http", "$timeout", "$filter", "settings",
+    function($scope, $attrs, $controller, $http, $timeout, $filter, settings) {
     "use strict";
-    var apiUrl = $attrs.apiUrl ? $attrs.apiUrl : settings.urls.saas_api_bank;
+    var apiUrl = $attrs.apiUrl ? $attrs.apiUrl : settings.urls.provider.api_bank;
 
     $scope.last4 = "N/A";
     $scope.exp_date = "N/A";
     $scope.bank_name = "N/A";
     $scope.balance_amount = "N/A";
+    $scope.balance_unit = "N/A";
+
+    $scope.humanizeBalance = function() {
+        return $filter('humanizeCell')($scope.balance_amount, $scope.balance_unit, 0.01);
+    }
 
     if( apiUrl ) {
         $http.get(apiUrl).then(
@@ -977,7 +989,7 @@ transactionControllers.controller("chargeListCtrl",
         autoload: true,
         sortByField: "created_at",
         sortDirection: "desc",
-        urls: {api_items: settings.urls.api_charges}}, settings);
+        urls: {api_items: settings.urls.broker.api_charges}}, settings);
     $controller("itemsListCtrl", {
         $scope: $scope, $http: $http, $timeout:$timeout,
         settings: opts});
@@ -985,8 +997,8 @@ transactionControllers.controller("chargeListCtrl",
 
 
 metricsControllers.controller("metricsCtrl",
-    ["$scope", "$http", "settings",
-    function($scope, $http, settings) {
+    ["$scope", "$http", "$filter", "settings",
+    function($scope, $http, $filter, settings) {
     "use strict";
 
     $scope.tables = settings.tables;
@@ -1034,6 +1046,10 @@ metricsControllers.controller("metricsCtrl",
             });
         });
     }
+
+    $scope.humanizeCell = function(value, unit, scale) {
+        return $filter('humanizeCell')(value, unit, scale);
+    };
 
     $scope.getTable = function(key) {
         for( var i = 0; i < $scope.tables.length; ++i ) {
@@ -1143,7 +1159,7 @@ importTransactionsControllers.controller("importTransactionsCtrl",
     };
 
     $scope.getSubscriptions = function(val) {
-        return $http.get(settings.urls.saas_api_subscriptions, {
+        return $http.get(settings.urls.organization.api_subscriptions, {
             params: {q: val}
         }).then(function success(resp){
             return resp.data.results;
@@ -1249,8 +1265,8 @@ balanceServices.factory("BalanceLine", ["BalanceResource", "settings",
   ============================================================================*/
 var balanceControllers = angular.module("balanceControllers", []);
 balanceControllers.controller("BalanceListCtrl",
-    ["$scope", "$http", "BalanceLine", "settings",
-     function($scope, $http, BalanceLine, settings) {
+    ["$scope", "$http", "$filter", "BalanceLine", "settings",
+     function($scope, $http, $filter, BalanceLine, settings) {
     "use strict";
 
     $scope.params = {
@@ -1286,7 +1302,11 @@ balanceControllers.controller("BalanceListCtrl",
                 v[0] = isUTC ? moment.parseZone(v[0]) : moment(v[0]);
             });
         });
-    }
+    };
+
+    $scope.humanizeCell = function(value) {
+        return $filter('humanizeCell')(value, $scope.items.unit, $scope.items.scale);
+    };
 
     $scope.endOfMonth = function(date) {
         return new Date(
@@ -1389,8 +1409,8 @@ transactionControllers.controller("accessibleListCtrl",
         sortByField: "slug",
         sortDirection: "asc",
         modalSelector: ".add-role-modal",
-        urls: {api_items: settings.urls.api_accessibles,
-               api_candidates: settings.urls.api_organizations}}, settings);
+        urls: {api_items: settings.urls.user.api_accessibles,
+               api_candidates: settings.urls.organization.api_profile_base}}, settings);
     $controller("relationListCtrl", {
         $scope: $scope, $element: $element, $controller: $controller,
         $http: $http, $timeout:$timeout, settings: opts});
@@ -1404,7 +1424,7 @@ transactionControllers.controller("cartItemListCtrl",
         autoload: true,
         sortByField: "created_at",
         sortDirection: "desc",
-        urls: {api_items: settings.urls.api_metrics_coupon_uses}}, settings);
+        urls: {api_items: settings.urls.provider.api_metrics_coupon_uses}}, settings);
     $controller("itemsListCtrl", {
         $scope: $scope, $http: $http, $timeout:$timeout,
         settings: opts});
@@ -1418,7 +1438,7 @@ transactionControllers.controller("receivableListCtrl",
         autoload: true,
         sortByField: "created_at",
         sortDirection: "desc",
-        urls: {api_items: settings.urls.api_receivables}}, settings);
+        urls: {api_items: settings.urls.provider.api_receivables}}, settings);
     $controller("itemsListCtrl", {
         $scope: $scope, $http: $http, $timeout:$timeout,
         settings: opts});
@@ -1429,7 +1449,7 @@ transactionControllers.controller("searchListCtrl",
     ["$scope", "$controller", "$http", "$timeout", "settings",
     function($scope, $controller, $http, $timeout, settings) {
     var opts = angular.merge({
-        urls: {api_items: settings.urls.api_accounts}}, settings);
+        urls: {api_items: settings.urls.provider.api_accounts}}, settings);
     $controller("itemsListCtrl", {
         $scope: $scope, $http: $http, $timeout:$timeout,
         settings: opts});
@@ -1443,7 +1463,7 @@ transactionControllers.controller("userListCtrl",
         autoload: true,
         sortByField: "created_at",
         sortDirection: "desc",
-        urls: {api_items: settings.urls.api_accounts}}, settings);
+        urls: {api_items: settings.urls.provider.api_accounts}}, settings);
     $controller("itemsListCtrl", {
         $scope: $scope, $http: $http, $timeout:$timeout,
         settings: opts});
@@ -1456,13 +1476,13 @@ profileControllers.controller("organizationProfileCtrl",
 
     $scope.deleteProfile = function(event) {
         event.preventDefault();
-        $http.delete(settings.urls.saas_api_organization).then(
+        $http.delete(settings.urls.organization.api_base).then(
         function(resp) { // success
             // When we DELETE the request.user profile, it will lead
             // to a logout. When we delete a different profile, a reload
             // of the page leads to a 404. In either cases, moving on
             // to the redirect_to_profile page is a safe bet. */
-            window.location = settings.urls.user_profile_redirect;
+            window.location = settings.urls.profile_redirect;
         }, function(resp) { // error
             showErrorMessages(resp);
         });

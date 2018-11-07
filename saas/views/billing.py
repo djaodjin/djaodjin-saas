@@ -453,8 +453,12 @@ class TransactionBaseView(DateRangeMixin, TemplateView):
             api_location += '?%s' % urlencode({'selector': self.selector})
         context.update({
             'organization': get_broker(),
-            'saas_api_transactions': api_location,
             'sort_by_field': 'created_at'})
+        update_context_urls(context, {
+            'organization': {
+                'api_transactions': api_location,
+            }
+        })
         return context
 
 
@@ -483,18 +487,19 @@ class BillingStatementView(OrganizationMixin, TransactionBaseView):
       - ``organization`` The subscriber object
       - ``request`` The HTTP request object
     """
+    clip = False
     template_name = 'saas/billing/index.html'
 
     def get_context_data(self, **kwargs):
         context = super(BillingStatementView, self).get_context_data(**kwargs)
         context.update({
             'organization': self.organization,
-            'saas_api_transactions': reverse(
-                'saas_api_billings', args=(self.organization,)),
             'download_url': reverse(
                 'saas_statement_download', kwargs=self.get_url_kwargs())})
         update_context_urls(context,
             {'organization': {
+                'api_transactions': reverse(
+                    'saas_api_billings', args=(self.organization,)),
                 'balance': reverse(
                     'saas_organization_balance', args=(self.organization,)),
                 'update_card': reverse(
@@ -531,16 +536,19 @@ djaodjin-saas/tree/master/saas/templates/saas/billing/transfers.html>`__).
     def get_context_data(self, **kwargs):
         context = super(TransferListView, self).get_context_data(**kwargs)
         context.update({
-            'saas_api_transactions': reverse(
-                'saas_api_transfer_list', args=(self.provider,)),
             'download_url': reverse(
                 'saas_transfers_download', kwargs=self.get_url_kwargs())})
-        urls = {'provider': {
-            'bank': reverse('saas_update_bank', args=(self.provider,)),
-            'import_transactions': reverse(
-                'saas_import_transactions', args=(self.provider,)),
-            'withdraw_funds': reverse(
-                'saas_withdraw_funds', args=(self.provider,)),
+        urls = {
+            'organization': {
+                'api_transactions': reverse(
+                'saas_api_transfer_list', args=(self.provider,)),
+            },
+            'provider': {
+                'bank': reverse('saas_update_bank', args=(self.provider,)),
+                'import_transactions': reverse(
+                    'saas_import_transactions', args=(self.provider,)),
+                'withdraw_funds': reverse(
+                    'saas_withdraw_funds', args=(self.provider,)),
         }}
         update_context_urls(context, urls)
         return context

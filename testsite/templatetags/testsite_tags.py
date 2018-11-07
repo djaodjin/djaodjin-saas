@@ -22,9 +22,13 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+import json
+
 from django import template
 from django.contrib.messages.api import get_messages
 from django.forms import BaseForm
+from django.utils import six
+from django.utils.safestring import mark_safe
 from saas.compat import is_authenticated as is_authenticated_base, reverse
 from saas.templatetags.saas_tags import attached_organization
 
@@ -45,6 +49,13 @@ def messages(obj):
     if isinstance(obj, BaseForm):
         return obj.non_field_errors()
     return get_messages(obj)
+
+
+@register.filter
+def to_json(value):
+    if isinstance(value, six.string_types):
+        return value
+    return mark_safe(json.dumps(value))
 
 
 @register.filter()

@@ -3,109 +3,66 @@
 {% block saas_title %}Roles{% endblock %}
 
 {% block saas_content %}
-<section>
-    <div id="user-relation-list-container">
-        <form class="form-horizontal" @submit.prevent="create">
-            <uiv-modal v-model="modalOpen" v-cloak title="Invite {{role_descr}}">
-                <div class="modal-body">
-                    <p class="text-danger">
-                        [[unregistered.slug]] is not yet registered. This is an opportunity to invite and
-                        add her/him as a {{role_descr}} for {{organization.printable_name}}.
-                    </p>
-                    <div class="row form-group">
-                        <div class="col-sm-2">
-                            <label>To</label>
-                        </div>
-                        <div class="controls col-sm-10">
-                            <input type="email"
-                                class="form-control" style="width:100%;"
-                                v-model="unregistered.email"
-                                name="email" type="text" max-length="150"
-                                placeholder="invitee@example.com"
-                                required autofocus />
-                        </div>
-                    </div>
-                    <div class="form-group">
-                        <div class="controls">
-                            <label>The following invite message will be sent:</label>
-                            <textarea class="form-control"
-                                name="message"
-                                maxlength="255" type="text" rows="10" ref="modalText">
-Hi [[unregistered.email]],
+<section id="user-relation-list-container" ng-app="saasApp">
+  <div ng-controller="userRelationListCtrl">
+    <h2 ng-show="!items.$resolved" v-show="!itemsLoaded">Please wait...</h2>
+    <h2 ng-show="items.$resolved && items.results.length == 0" ng-cloak
+        v-show="itemsLoaded && items.results.length == 0" v-cloak>No roles assigned yet</h2>
+    <table ng-show="items.$resolved && items.results.length > 0" ng-cloak
+           v-show="itemsLoaded && items.results.length > 0" v-cloak>
+      <thead>
+        <tr>
+          <th>Username</th>
+          <th>Role</th>
+          <th>Email</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr ng-prop-id="item.user.slug" ng-repeat="item in items.results"
+            v-bind:id="item.user.slug" v-for="(item, index) in items.results">
+          <td>[[item.user.slug]]</td>
+          <td>[[item.role_description.title]]</td>
+          <td>[[item.user.email]]</td>
+          <td><button ng-click="remove($event, $index)"
+                      @click="remove(index)">Remove</button></td>
+        </tr>
+      </tbody>
+    </table>
+    <!-- modal -->
+    <div>
+      <h2>Add {{role_descr}}</h2>
+      <form ng-submit="save($event)"
+            @submit.prevent="save(unregistered)">
+        <input type="hidden" name="csrfmiddlewaretoken" value="{{csrf_token}}">
+        <input type="text" name="user" placeholder="Username or e-mail"
+               ng-model="unregistered.slug" v-model="unregistered.slug" />
+        <input type="submit" />
+      </form>
+      <form class="add-role-modal"
+            ng-click="create($event)"
+            @submit.prevent="create(unregistered)">
+        <p>
+If the user couldn't be found in the system, it is a great occasion to invite
+them.
+        </p>
+        <label>The following invite message will be sent:</label>
+        <input type="text" max-length="150"
+               name="email" placeholder="invitee@example.com"
+               ng-model="unregistered.email"
+               v-model="unregistered.email "/>
+        <textarea name="message" maxlength="255" type="text" rows="10"
+               >
+Hello,
 
 I am adding you as a {{role_descr}} to {{organization.printable_name}}.
 
 Thank you,
-- {{request.user.first_name}}</textarea>
-                        </div>
-                    </div>
-                </div>
-                <div slot="footer">
-                  <button type="button" class="btn btn-default"
-                          @click="modalOpen=false">Cancel</button>
-                  <button id="new-rule-submit"
-                          type="submit" class="btn btn-primary">Invite {{role_descr}}</button>
-                </div>
-            </uiv-modal>
-        </form>
-        <user-typeahead @item-save="save" :url="typeaheadUrl" inline-template>
-            <div>
-                <form class="form-inline" @submit.prevent="submit">
-                    <div class="input-group">
-                        <div>
-                            <input id="userTypeahead" class="form-control input-sm" style="width: 100%;" type="text" placeholder="Username or Email"/>
-                            <uiv-typeahead
-                            v-model="itemSelected"
-                            target="#userTypeahead"
-                            :async-function="getUsers"
-                            item-key="slug"
-                            :open-on-focus="false"
-                             />
-                        </div>
-                        <div class="input-group-btn">
-                            <button class="btn btn-primary btn-sm" type="submit">Add {{role_descr.title}}</button>
-                        </div>
-                    </div>
-                    <div style="height:14px">
-                        <i v-show="searching" class="fa fa-spinner"></i>
-                    </div>
-                </form>
-
-            </div>
-        </user-typeahead>
-        <div>
-            <table>
-                <thead>
-                    <tr>
-                    <th>Username</th>
-                    <th>Email</th>
-                    <th></th>
-                    <th></th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr v-show="!itemsLoaded">
-                        <td colspan="3">
-                            <h3  class="text-center"><i class="fa fa-refresh fa-spin fa-2x"></i></h3>
-                        </td>
-                    </tr>
-                    <tr v-show="itemsLoaded && items.results.length == 0">
-                        <td colspan="3">
-                            <h4 class="text-center"><em>No {{role_descr.title}}</em></h4>
-                        </td>
-                    </tr>
-                    <tr :class="item.request_key ? 'disabled' : 'active'" v-for="(item, index) in items.results" v-cloak v-show="itemsLoaded && items.results.length > 0">
-                        <td>[[item.user.slug]]</td>
-                        <td>[[item.user.email]] <button class="btn btn-default btn-sm" v-if="item.request_key" @click="save(item.user)">grant</button></td>
-                        <td><i>[[item.grant_key ? "invited" : ""]]</i></td>
-                        <td><button @click="remove(index)">remove</button></td>
-                    </tr>
-                </tbody>
-              </table>
-          </div>
-          <div class="text-center" v-cloak v-show="itemsLoaded && totalItems > itemsPerPage">
-            <uiv-pagination v-model="params.page" :total-page="pageCount" @change="get" boundary-links/>
-          </div>
-      </div>
-    </section>
+- {{request.user.first_name}}
+        </textarea>
+        <button type="submit">Invite user</button>
+      </form>
+    </div>
+  </div>
+</section>
 {% endblock %}

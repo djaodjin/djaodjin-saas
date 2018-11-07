@@ -446,6 +446,8 @@ class UserMixin(object):
                     'accessibles': reverse('saas_user_product_list',
                         args=(self.user,))
             }})
+        update_context_urls(context, {
+            'profile_redirect': reverse('users_profile_base')})
         return context
 
 

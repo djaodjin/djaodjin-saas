@@ -1,6 +1,31 @@
 {% extends "saas/base.html" %}
 
 {% block saas_bodyscripts %}
+{% if VUEJS %}
+<script type="text/javascript">
+var djaodjinSettings = {
+    urls: {% if urls %}{{urls|to_json}}{% else %}{}{% endif %},
+    itemsPerPage: {% if items_per_page %}{{items_per_page}}{% else %}25{% endif %},
+    tables: {% if tables %}{{tables|safe}}{% else %}{}{% endif %}, // XXX
+    date_range: {
+      start_at: "{% if start_at %}{{start_at|isoformat}}{% endif %}",
+      ends_at: "{% if ends_at %}{{ends_at|isoformat}}{% endif %}"
+    },
+    user: {
+      username: "{{request.user.username}}",
+      slug: "{{request.user.username}}",
+      first_name: "{{request.user.first_name}}",
+      last_name: "{{request.user.last_name}}"
+    },
+    csrf: '{{csrf_token}}',
+};
+</script>
+<script type="text/javascript" charset="utf-8" src="/static/vendor/js/vue.js"></script>
+<script type="text/javascript" charset="utf-8" src="/static/vendor/js/uiv.min.js"></script>
+<script type="text/javascript" charset="utf-8" src="/static/vendor/js/vue2-filters.js"></script>
+<script type="text/javascript" charset="utf-8" src="/static/js/djaodjin-saas-vue.js"></script>
+
+{% else %}
 <script type="text/javascript" charset="utf-8" src="/static/vendor/js/angular.js"></script>
 <script type="text/javascript" charset="utf-8" src="/static/vendor/js/angular-touch.js"></script>
 <script type="text/javascript" charset="utf-8" src="/static/vendor/js/angular-animate.js"></script>
@@ -9,8 +34,6 @@
 <script type="text/javascript" charset="utf-8" src="/static/vendor/js/angular-dragdrop.js"></script>
 <script type="text/javascript" charset="utf-8" src="/static/vendor/js/ui-bootstrap-tpls.js"></script>
 <script type="text/javascript" charset="utf-8" src="/static/js/djaodjin-saas-angular.js"></script>
-
-{% if organization %}
 {# XXX /users/:user/roles/ page does not define ``organization``. #}
 <script type="text/javascript">
 /* Implementation Note: Not including a list of dependent modules
@@ -26,83 +49,23 @@ reopenSaasApp.config(['$interpolateProvider', '$httpProvider',
     $interpolateProvider.startSymbol('[[');
     $interpolateProvider.endSymbol(']]');
 }]);
-var djaodjinSettings = {
-urls: {
-    api_balance_lines: "{{urls.api_balance_lines}}",
-    api_broker_balances: "{{urls.api_broker_balances}}",
-    api_transactions: "{{saas_api_transactions}}",
-{% if urls.organization %}
-{% if urls.organization.api_roles %}
-    saas_api_user_roles_url: "{{ urls.organization.api_roles }}",
-{% endif %}
-{% if urls.organization.api_role_descriptions %}
-    saas_api_role_descriptions_url: "{{ urls.organization.api_role_descriptions }}",
-{% endif %}
-{% if urls.organization.api_cancel_balance_due %}
-    api_cancel_balance_due: "{{ urls.organization.api_cancel_balance_due }}",
-{% endif %}
-    /* subscriptions */
-    api_organizations: "{{ urls.organization.api_profile_base }}",
-    saas_api_subscriptions: "{{ urls.organization.api_subscriptions }}",
-{% endif %}
-{% if urls.provider %}
-    saas_api_coupon_url: "{{ urls.provider.api_coupons }}",
-    saas_metrics_coupons_url: "{{ urls.provider.coupons }}",
-    saas_api_plans: "{{ urls.provider.api_plans }}",
-    /* subscribers */
-    saas_api_plan_subscribers: "{{ urls.provider.api_plan_subscribers }}",
-    saas_api_churned: "{{ urls.provider.api_subscribers_churned }}",
-    saas_api_active_subscribers: "{{ urls.provider.api_subscribers_active }}",
-    /* transactions */
-    api_receivables: "{{urls.provider.api_receivables}}",
-    saas_api_bank: "{{ urls.provider.api_bank }}",
-    {% if urls.provider.api_metrics_coupon_uses %}
-        api_metrics_coupon_uses: "{{urls.provider.api_metrics_coupon_uses}}",
-    {% endif %}
-{% endif %}
-    /* users */
-{% if urls.broker %}
-    api_registered: "{{ urls.broker.api_users_registered }}",
-    api_users: "{{urls.broker.api_users }}",
-    api_charges: "{{urls.broker.api_charges}}",
-{% endif %}
-    /* accounts */
-{% if urls.accounts_base and urls.provider and urls.provider.api_accounts %}
-    accounts_base: "{{ urls.accounts_base }}",
-    api_accounts: "{{ urls.provider.api_accounts }}",
-{% endif %}
-{% if urls and urls.organization and urls.organization.api_base %}
-    saas_api_organization: "{{ urls.organization.api_base }}",
-{% endif %}
-{% if urls.user %}
-    api_accessibles: "{{urls.user.api_accessibles}}",
-{% endif %}
-{% if urls and urls.user and urls.user.profile_redirect %}
-    user_profile_redirect: "{{urls.user.profile_redirect}}",
-{% else %}
-    user_profile_redirect: "/users/",
-{% endif %}
-},
-itemsPerPage: {% if items_per_page %}{{items_per_page}}{% else %}25{% endif %},
-tables: {% if tables %}{{tables|safe}}{% else %}{}{% endif %}, // XXX
-date_range: {
+reopenSaasApp.constant('settings', {
+  urls: {% if urls %}{{urls|to_json}}{% else %}{}{% endif %},
+  itemsPerPage: {% if items_per_page %}{{items_per_page}}{% else %}25{% endif %},
+  tables: {% if tables %}{{tables|safe}}{% else %}{}{% endif %}, // XXX
+  date_range: {
     start_at: "{% if start_at %}{{start_at|isoformat}}{% endif %}",
     ends_at: "{% if ends_at %}{{ends_at|isoformat}}{% endif %}"
-},
-user: {
+  },
+  user: {
     username: "{{request.user.username}}",
     slug: "{{request.user.username}}",
     first_name: "{{request.user.first_name}}",
     last_name: "{{request.user.last_name}}"
-}
-};
-reopenSaasApp.constant('settings', djaodjinSettings);
+  }
+});
 </script>
-<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
-<script type="text/javascript" charset="utf-8" src="/static/vendor/js/vue.js"></script>
-<script type="text/javascript" charset="utf-8" src="/static/vendor/js/uiv.min.js"></script>
-<script type="text/javascript" charset="utf-8" src="/static/vendor/js/vue2-filters.js"></script>
-<script type="text/javascript" charset="utf-8" src="/static/js/djaodjin-vue.js"></script>
 {% endif %}
+
 {% block dashboard_bodyscripts %}{% endblock %}
 {% endblock %}
