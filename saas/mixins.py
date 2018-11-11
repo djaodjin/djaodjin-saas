@@ -447,7 +447,7 @@ class UserMixin(object):
                         args=(self.user,))
             }})
         update_context_urls(context, {
-            'profile_redirect': reverse('users_profile_base')})
+            'profile_redirect': reverse('accounts_profile')})
         return context
 
 

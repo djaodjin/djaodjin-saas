@@ -68,7 +68,7 @@ urlpatterns += [
         UserProfileView.as_view(), name='users_profile',
         decorators=['django.contrib.auth.decorators.login_required']),
     url_prefixed(r'users/',
-        UserRedirectView.as_view(), name='users_profile_base',
+        UserRedirectView.as_view(), name='accounts_profile',
         decorators=['django.contrib.auth.decorators.login_required']),
     url_prefixed(r'', include('django.contrib.auth.urls')),
     url_prefixed(r'saas/$',

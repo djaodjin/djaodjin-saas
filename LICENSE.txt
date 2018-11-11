@@ -26,18 +26,25 @@ The following files are copyright of their respective owners and are included
 in the repo purely for convienience:
 
 - From http://jquery.com/
-  - testsite/static/vendor/js/jquery.js
+  - testsite/static/vendor/jquery.js
 
 - From http://momentjs.com/
-  - testsite/static/vendor/js/moment.js
+  - testsite/static/vendor/moment.js
 
 - From https://angular-ui.github.io/bootstrap/
-  - testsite/static/vendor/js/ui-bootstrap-tpls.js
+  - testsite/static/vendor/ui-bootstrap-tpls.js
 
 - From https://angularjs.org/
-  - testsite/static/vendor/js/angular-animate.js
-  - testsite/static/vendor/js/angular-resource.js
-  - testsite/static/vendor/js/angular-route.js
-  - testsite/static/vendor/js/angular-touch.js
-  - testsite/static/vendor/js/angular.js
+  - testsite/static/vendor/angular-animate.js
+  - testsite/static/vendor/angular-resource.js
+  - testsite/static/vendor/angular-route.js
+  - testsite/static/vendor/angular-touch.js
+  - testsite/static/vendor/angular.js
+
+- From https://vuejs.org/
+  - testsite/static/vendor/vue.js
+  - testsite/static/vendor/vue2-filters.js
+  - testsite/static/vendor/uiv.min.js
+
+
 
