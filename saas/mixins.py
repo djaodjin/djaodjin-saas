@@ -53,12 +53,14 @@ class CartMixin(object):
 
     @staticmethod
     def insert_item(request, **kwargs):
-        #pylint: disable=too-many-statements
+        #pylint: disable=too-many-statements,too-many-nested-blocks
+        #pylint: disable=too-many-locals
         created = False
         inserted_item = None
         template_item = None
         invoice_key = kwargs.get('invoice_key', None)
         sync_on = kwargs.get('sync_on', "")
+        option = kwargs.get('option', 0)
         plan = kwargs['plan']
         if not isinstance(plan, Plan):
             plan = get_object_or_404(Plan.objects.all(), slug=plan)
@@ -82,12 +84,15 @@ class CartMixin(object):
                         if sync_on != template_item.sync_on:
                             # Copy/Replace in template CartItem
                             created = True
+                            template_option = template_item.option
+                            if option > 0:
+                                template_option = option
                             inserted_item = CartItem.objects.create(
                                 user=request.user,
                                 plan=template_item.plan,
                                 use=template_item.use,
                                 coupon=template_item.coupon,
-                                quantity=template_item.quantity,
+                                option=template_option,
                                 first_name=kwargs.get('first_name', ''),
                                 last_name=kwargs.get('last_name', ''),
                                 sync_on=sync_on,
@@ -96,8 +101,15 @@ class CartMixin(object):
                         # Use template CartItem
                         inserted_item.first_name = kwargs.get('first_name', '')
                         inserted_item.last_name = kwargs.get('last_name', '')
+                        inserted_item.option = option
                         inserted_item.sync_on = sync_on
                         inserted_item.save()
+                else:
+                    # Use template CartItem
+                    inserted_item.first_name = kwargs.get('first_name', '')
+                    inserted_item.last_name = kwargs.get('last_name', '')
+                    inserted_item.option = option
+                    inserted_item.save()
             else:
                 # New CartItem
                 created = True
@@ -113,7 +125,7 @@ class CartMixin(object):
                     inserted_item = CartItem.objects.create(
                         plan=plan, use=use, coupon=redeemed,
                         user=request.user,
-                        quantity=kwargs.get('quantity', 0),
+                        option=option,
                         first_name=kwargs.get('first_name', ''),
                         last_name=kwargs.get('last_name', ''),
                         sync_on=sync_on, claim_code=invoice_key)
@@ -142,7 +154,7 @@ class CartMixin(object):
                             created = True
                             cart_items += [{'plan': template_item['plan'],
                                 'use': template_item['use'],
-                                'quantity': template_item['quantity'],
+                                'option': template_item['option'],
                                 'first_name': kwargs.get('first_name', ''),
                                 'last_name': kwargs.get('last_name', ''),
                                 'sync_on': sync_on,
@@ -158,7 +170,7 @@ class CartMixin(object):
                 # (anonymous) New item
                 created = True
                 cart_items += [{'plan': str(plan), 'use': str(use),
-                    'quantity': kwargs.get('quantity', 0),
+                    'option': kwargs.get('option', 0),
                     'first_name': kwargs.get('first_name', ''),
                     'last_name': kwargs.get('last_name', ''),
                     'sync_on': sync_on,
@@ -225,21 +237,7 @@ class CartMixin(object):
                         'plan': plan, 'unlock_event': plan.unlock_event})]
 
         else:
-            natural_periods = [1]
-            if cart_item.quantity > 0:
-                natural_periods = [cart_item.quantity]
-            elif plan.advance_discount > 0:
-                # Give a chance for discount when paying periods in advance
-                if plan.interval == Plan.MONTHLY:
-                    if plan.period_length == 1:
-                        natural_periods = [1, 3, 6, 12]
-                    elif plan.period_length == 4:
-                        natural_periods = [1, 2, 3]
-                    else:
-                        natural_periods = [1, 2, 3, 4]
-                else:
-                    natural_periods = [1, 2, 3, 4]
-
+            natural_periods = plan.natural_options()
             for nb_periods in natural_periods:
                 if nb_periods > 1:
                     descr_suffix = ""
@@ -333,22 +331,19 @@ class CartMixin(object):
                 # We are dealing with an additional use charge instead
                 # of the base subscription.
                 lines += [Transaction.objects.new_use_charge(subscription,
-                    cart_item.use, cart_item.quantity)]
+                    cart_item.use, cart_item.option)]
             else:
-                # Base subscription to plan.
                 options = self.get_invoicable_options(subscription,
                     created_at=created_at, prorate_to=prorate_to,
                     cart_item=cart_item)
-                if cart_item.quantity > 0:
+                # option is selected
+                if (cart_item.option > 0 and
+                    (cart_item.option - 1) < len(options)):
                     # The number of periods was already selected so we generate
                     # a line instead.
-                    for line in options:
-                        plan = subscription.plan
-                        nb_periods = plan.period_number(line.descr)
-                        if nb_periods == cart_item.quantity:
-                            lines += [line]
-                            options = []
-                            break
+                    line = options[cart_item.option - 1]
+                    lines += [line]
+                    options = []
             # Both ``TransactionManager.new_use_charge``
             # and ``TransactionManager.new_subscription_order`` will have
             # created a ``Transaction`` with the ultimate subscriber

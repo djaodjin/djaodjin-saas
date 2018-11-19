@@ -67,7 +67,7 @@ def session_cart_to_database(request):
         with transaction.atomic():
             for item in request.session['cart_items']:
                 coupon = item.get('coupon', None)
-                quantity = item.get('quantity', 0)
+                option = item.get('option', 0)
                 first_name = item.get('first_name', '')
                 last_name = item.get('last_name', '')
                 email = item.get('sync_on', '')
@@ -86,8 +86,8 @@ def session_cart_to_database(request):
                     if coupon and not cart_item.coupon:
                         cart_item.coupon = coupon
                         updated = True
-                    if quantity and not cart_item.quantity:
-                        cart_item.quantity = quantity
+                    if option and not cart_item.option:
+                        cart_item.option = option
                         updated = True
                     if first_name and not cart_item.first_name:
                         cart_item.first_name = first_name
@@ -105,7 +105,7 @@ def session_cart_to_database(request):
                     CartItem.objects.create(
                         user=request.user, plan=plan,
                         first_name=first_name, last_name=last_name,
-                        sync_on=email, coupon=coupon, quantity=quantity)
+                        sync_on=email, coupon=coupon, option=option)
             del request.session['cart_items']
     redeemed = request.session.get('redeemed', None)
     if redeemed:

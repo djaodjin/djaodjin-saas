@@ -465,7 +465,7 @@
             for( var i = 0; i < candidates.length; ++i ) {
                 var radio = $(candidates[i]);
                 if( radio.is(":checked") ) {
-                    totalAmount += parseInt(radio.val());
+                    totalAmount += parseInt(radio.attr('data-amount'));
                 }
             }
             candidates = self.element.find(".invoice-item td:nth-child(2)");

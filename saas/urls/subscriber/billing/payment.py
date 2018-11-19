@@ -31,10 +31,12 @@ from django.conf.urls import url
 
 from ....settings import ACCT_REGEX
 from ....views.billing import (CartPeriodsView, CartSeatsView,
-    CardUpdateView, CartView, BalanceView)
+    CardUpdateView, CartView, BalanceView, CheckoutView)
 
 
 urlpatterns = [
+    url(r'^billing/(?P<organization>%s)/checkout/' % ACCT_REGEX,
+        CheckoutView.as_view(), name='saas_checkout'),
     url(r'^billing/(?P<organization>%s)/cart-seats/' % ACCT_REGEX,
         CartSeatsView.as_view(), name='saas_cart_seats'),
     url(r'^billing/(?P<organization>%s)/cart-periods/' % ACCT_REGEX,

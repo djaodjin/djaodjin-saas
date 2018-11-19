@@ -2,29 +2,6 @@
 
 {% block saas_bodyscripts %}
 {% if VUEJS %}
-<script type="text/javascript">
-var djaodjinSettings = {
-    urls: {% if urls %}{{urls|to_json}}{% else %}{}{% endif %},
-    itemsPerPage: {% if items_per_page %}{{items_per_page}}{% else %}25{% endif %},
-    tables: {% if tables %}{{tables|safe}}{% else %}{}{% endif %}, // XXX
-    date_range: {
-      start_at: "{% if start_at %}{{start_at|isoformat}}{% endif %}",
-      ends_at: "{% if ends_at %}{{ends_at|isoformat}}{% endif %}"
-    },
-    user: {
-      username: "{{request.user.username}}",
-      slug: "{{request.user.username}}",
-      first_name: "{{request.user.first_name}}",
-      last_name: "{{request.user.last_name}}"
-    },
-    csrf: '{{csrf_token}}',
-};
-</script>
-<script type="text/javascript" charset="utf-8" src="/static/vendor/vue.js"></script>
-<script type="text/javascript" charset="utf-8" src="/static/vendor/uiv.min.js"></script>
-<script type="text/javascript" charset="utf-8" src="/static/vendor/vue2-filters.js"></script>
-<script type="text/javascript" charset="utf-8" src="/static/js/djaodjin-saas-vue.js"></script>
-
 {% else %}
 <script type="text/javascript" charset="utf-8" src="/static/vendor/angular.js"></script>
 <script type="text/javascript" charset="utf-8" src="/static/vendor/angular-touch.js"></script>
