@@ -1703,12 +1703,13 @@ var app = new Vue({
     el: "#checkout-container",
     mixins: [itemListMixin],
     data: {
-        url: djaodjinSettings.urls.api_checkout,
+        url: djaodjinSettings.urls.organization.api_checkout,
         isBulkBuyer: djaodjinSettings.bulkBuyer,
         plansOption: {},
-        plansPayer: {},
+        plansUser: {},
         coupon: '',
         optionsConfirmed: false,
+        seatsConfirmed: false,
         getCb: 'getAndPrepareData',
         cardNumber: '',
         cardCvc: '',
@@ -1724,6 +1725,7 @@ var app = new Vue({
         savedCard: {},
         countries: countries,
         regions: regions,
+        init: true,
     },
     methods: {
         getOptions: function(){
@@ -1763,8 +1765,40 @@ var app = new Vue({
                 showErrorMessages(resp);
             });
         },
-        addPlanUser: function(plan, user){
+        getAndPrepareData: function(res){
             var vm = this;
+            var results = res.items
+            var periods = {}
+            var users = {}
+            var optionsConfirmed = results.length > 0 ? true : false;
+            results.map(function(e){
+                var plan = e.subscription.plan.slug;
+                if(e.options.length > 0){
+                    optionsConfirmed = false;
+                    if(vm.init){
+                        periods[plan] = 1;
+                    }
+                }
+                users[plan] = {
+                    firstName: '', lastName: '', email: ''
+                }
+            });
+
+            this.items = {
+                results: results,
+                count: results.length
+            }
+            this.itemsLoaded = true;
+            if(this.init){
+                this.plansOption = periods;
+                this.plansUser = users;
+                this.optionsConfirmed = optionsConfirmed;
+                this.seatsConfirmed = false;
+            }
+        },
+        addPlanUser: function(plan){
+            var vm = this;
+            var user = this.planUser(plan);
             var data = {
                 plan: plan,
                 first_name: user.firstName,
@@ -1781,38 +1815,33 @@ var app = new Vue({
                 data: data,
             }).done(function(resp) {
                 showMessages(["User was added."], "success");
-                vm.get()
+                vm.init = false;
+                vm.$set(vm.plansUser, plan, {
+                    firstName: '',
+                    lastName: '',
+                    email: ''
+                });
+                vm.get();
             }).fail(function(resp){
                 showErrorMessages(resp);
             });
         },
-        getAndPrepareData: function(res){
-            var results = res.items
-            var periods = {}
-            var payers = {}
-            var optionsConfirmed = results.length > 0 ? true : false;
-            results.map(function(e){
-                var plan = e.subscription.plan.slug;
-                if(e.options.length > 0){
-                    optionsConfirmed = false;
-                    periods[plan] = 1;
-                }
-                payers[plan] = {
-                    firstName: '', lastName: '', email: ''
+        planUser: function(plan){
+            return this.plansUser[plan] && this.plansUser[plan] || {}
+        },
+        getLastUserPlanIndex: function(plan){
+            var lastItemIndex = -1;
+            this.items.results.map(function(e, i){
+                if(e.subscription.plan.slug === plan){
+                    lastItemIndex = i;
                 }
             });
-
-            this.items = {
-                results: results,
-                count: results.length
-            }
-            this.plansOption = periods;
-            this.plansPayer = payers;
-            this.itemsLoaded = true;
-            this.optionsConfirmed = optionsConfirmed;
+            return lastItemIndex;
         },
-        planPayer: function(plan){
-            return this.plansPayer[plan] && this.plansPayer[plan] || {}
+        isLastUserPlan: function(index){
+            var plan = this.items.results[index].subscription.plan.slug;
+            var lastItemIndex = this.getLastUserPlanIndex(plan);
+            return lastItemIndex === index;
         },
         activeOption: function(item){
             var index = this.plansOption[item.subscription.plan.slug];
@@ -1828,6 +1857,19 @@ var app = new Vue({
         isOptionSelected: function(plan, index){
             var selected = this.plansOption[plan];
             return selected !== undefined && selected == index;
+        },
+        saveChanges: function(){
+            if(this.optionsConfirmed){
+                if(this.isBulkBuyer){
+                    this.seatsConfirmed = true;
+                }
+            }
+            else {
+                this.optionsConfirmed = true;
+                if(!this.isBulkBuyer){
+                    this.seatsConfirmed = true;
+                }
+            }
         },
         getCardToken: function(cb){
             var vm = this;
@@ -1855,7 +1897,7 @@ var app = new Vue({
             var vm = this;
             $.ajax({
                 method: 'GET',
-                url: djaodjinSettings.urls.api_card,
+                url: djaodjinSettings.urls.organization.api_card,
             }).done(function(resp) {
                 if(resp.last4){
                     var savedCard = {
@@ -1885,14 +1927,13 @@ var app = new Vue({
             }
             $.ajax({
                 method: 'POST',
-                url: djaodjinSettings.urls.api_checkout,
+                url: djaodjinSettings.urls.organization.api_checkout,
                 contentType: 'application/json',
                 data: JSON.stringify(data),
             }).done(function(resp) {
-                vm.optionsConfirmed = false;
                 showMessages(["Success."], "success");
                 var id = resp.processor_key;
-                location = djaodjinSettings.urls.receipt.replace('_', id);
+                location = djaodjinSettings.urls.organization.receipt.replace('_', id);
             }).fail(function(resp){
                 showErrorMessages(resp);
             });
@@ -1909,8 +1950,9 @@ var app = new Vue({
             var vm = this;
             $.ajax({
                 method: 'GET',
-                url: djaodjinSettings.urls.saas_api_organization,
+                url: djaodjinSettings.urls.organization.api_base,
             }).done(function(org) {
+                console.log(org);
                 if(org.street_address){
                     vm.addressLine1 = org.street_address;
                 }
@@ -1960,4 +2002,3 @@ var app = new Vue({
     }
 })
 }
-
