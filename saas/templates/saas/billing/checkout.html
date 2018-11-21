@@ -6,10 +6,10 @@
             <input name="code" type="text" placeholder="Coupon code" v-model="coupon">
             <button type="submit" class="submit-code">Redeem</button>
         </form>
-        <form @submit.prevent="optionsConfirmed = true">
+        <form @submit.prevent="saveChanges">
             <table>
                 <tbody>
-                    <tr v-for="item in items.results">
+                    <tr v-for="(item, itemIndex) in items.results">
                         <td>
                             <em>[[item.subscription.plan.title]] from
                           [[item.subscription.plan.organization]]</em>
@@ -21,14 +21,6 @@
                                         <td>[[line.amount]]</td>
                                         <td v-html="line.description"></td>
                                     </tr>
-                                    <tr class="seat" v-show="optionsConfirmed && isBulkBuyer">
-                                      <td colspan="3">
-                                        <input type="text" v-model="planPayer(item.subscription.plan.slug).firstName" placeholder="First Name" />
-                                        <input type="text" v-model="planPayer(item.subscription.plan.slug).lastName" placeholder="Last Name" />
-                                        <input type="text" v-model="planPayer(item.subscription.plan.slug).email" placeholder="Email" />
-                                        <button @click.prevent="addPlanUser(item.subscription.plan.slug, planPayer(item.subscription.plan.slug))" type="button">Add</button>
-                                      </td>
-                                    </tr>
                                     <tr v-show="optionsConfirmed">
                                         <td></td>
                                         <td>[[activeOption(item).amount]]</td>
@@ -38,6 +30,14 @@
                                         <td><input type="radio" @change="optionSelected(item.subscription.plan.slug, index + 1)" :checked="isOptionSelected(item.subscription.plan.slug, index + 1)"></input></td>
                                         <td>[[option.amount]]</td>
                                         <td v-html="option.description"></td>
+                                    </tr>
+                                    <tr class="seat" v-show="optionsConfirmed && !seatsConfirmed && isLastUserPlan(itemIndex)">
+                                      <td colspan="3">
+                                        <input type="text" v-model="planUser(item.subscription.plan.slug).firstName" placeholder="First Name" />
+                                        <input type="text" v-model="planUser(item.subscription.plan.slug).lastName" placeholder="Last Name" />
+                                        <input type="text" v-model="planUser(item.subscription.plan.slug).email" placeholder="Email" />
+                                        <button @click.prevent="addPlanUser(item.subscription.plan.slug)" type="button">Add</button>
+                                      </td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -51,9 +51,9 @@
                     </tfoot>
                 </tbody>
             </table>
-            <button v-show="!optionsConfirmed" type="submit">next &raquo;</button>
+            <button v-show="!seatsConfirmed" type="submit">next &raquo;</button>
         </form>
-        <div v-show="optionsConfirmed">
+        <div v-show="seatsConfirmed">
             <fieldset>
                 <legend>Credit Card Information</legend>
                 <div v-show="haveCardData" v-cloak>
