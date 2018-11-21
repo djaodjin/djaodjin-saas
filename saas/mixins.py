@@ -79,14 +79,14 @@ class CartMixin(object):
                 created = False
                 inserted_item = template_item
                 if sync_on:
+                    template_option = template_item.option
+                    if option > 0:
+                        template_option = option
                     # Bulk buyer subscribes someone else than request.user
                     if template_item.sync_on:
                         if sync_on != template_item.sync_on:
                             # Copy/Replace in template CartItem
                             created = True
-                            template_option = template_item.option
-                            if option > 0:
-                                template_option = option
                             inserted_item = CartItem.objects.create(
                                 user=request.user,
                                 plan=template_item.plan,
@@ -101,7 +101,7 @@ class CartMixin(object):
                         # Use template CartItem
                         inserted_item.first_name = kwargs.get('first_name', '')
                         inserted_item.last_name = kwargs.get('last_name', '')
-                        inserted_item.option = option
+                        inserted_item.option = template_option
                         inserted_item.sync_on = sync_on
                         inserted_item.save()
                 else:

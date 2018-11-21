@@ -328,11 +328,9 @@ class CardInvoicablesFormMixin(CardFormMixin, InvoicablesFormMixin):
             return http.HttpResponseRedirect(reverse('saas_cart_plan_list'))
         invoicables = copy.deepcopy(self.invoicables)
         for invoicable in invoicables:
-            # We use two conventions here:
-            # 1. POST parameters prefixed with cart- correspond to an entry
-            #    in the invoicables
-            # 2. Amounts for each line in a entry are unique and are what
-            #    is passed for the value of the matching POST parameter.
+            # We use the following convention here:
+            # POST parameters prefixed with cart- correspond to an entry
+            # in the invoicables
             plan = invoicable['subscription'].plan
             plan_key = invoicable['name']
             if self.sole_provider is None:
