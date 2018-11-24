@@ -261,6 +261,10 @@ class InvoicablesFormMixin(OrganizationMixin):
         lines_amount = 0
         lines_unit = settings.DEFAULT_UNIT
         for invoicable in self.invoicables:
+            if len(invoicable['options']) > 0:
+                # In case it is pure options, no lines.
+                lines_unit = invoicable['options'][0].dest_unit
+                invoicable['selected_option'] = 1
             for line in invoicable['lines']:
                 lines_amount += line.dest_amount
                 lines_unit = line.dest_unit
