@@ -1,6 +1,6 @@
 # Until django-urldecorators is updated for ``patterns`` being deprecated,
 # we cannot move the testsite to Django 1.10.
-Django==1.11.12
+Django==1.11.16
 django-countries==4.6.1
 django-extra-views==0.8.0
 django-localflavor==1.3

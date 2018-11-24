@@ -29,6 +29,7 @@ run at least once a day. It will
 - recognize revenue for past periods (see :doc:`ledger <ledger>`).
 - extends active subscriptions
 - create charges for new periods
+- trigger expiration notices
 
 Every functions part of the renewals script are explicitly written to be
 idempotent. Calling the scripts multiple times for the same timestamp

@@ -26,6 +26,7 @@ Contents:
    ledger
    security
    relations
+   periodic-tasks
    pages
    api
    models
