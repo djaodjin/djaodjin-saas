@@ -971,7 +971,9 @@ transactionControllers.controller("billingSummaryCtrl",
         function success(resp) {
             $scope.balance_amount = resp.data.balance_amount;
             $scope.balance_unit = resp.data.balance_unit;
-            $scope.last4 = resp.data.last4;
+            if( resp.data.last4 ) {
+                $scope.last4 = resp.data.last4;
+            }
             if( resp.data.exp_date ) {
                 $scope.exp_date = resp.data.exp_date;
             }
@@ -1060,6 +1062,14 @@ metricsControllers.controller("metricsCtrl",
         return null;
     };
 
+    $scope.tabTitle = function(table) {
+        var result = table.title;
+        if( table.unit ) {
+            result += "("+ $filter('currencyToSymbol')(table.unit) + ")";
+        }
+        return result;
+    }
+
     $scope.prefetch = function() {
         for( var i = 0; i < $scope.tables.length; ++i ) {
             $scope.query($scope.tables[i]);
@@ -1089,10 +1099,10 @@ metricsControllers.controller("metricsCtrl",
             // manual binding - trigger updates to the graph
             if( queryset.key === "balances") {
                 // XXX Hard-coded.
-                updateBarChart("#metrics-chart",
+                updateBarChart("#" + queryset.key +  " .chart-content",
                     queryset.data, unit, scale, extra);
             } else {
-                updateChart("#metrics-chart",
+                updateChart("#" + queryset.key +  " .chart-content",
                     queryset.data, unit, scale, extra);
             }
         });
@@ -1103,8 +1113,8 @@ metricsControllers.controller("metricsCtrl",
     };
 
     // change the selected tab
-    $scope.tabClicked = function($event) {
-        $scope.activeTab = $event.target.getAttribute("href").replace(/^#/, "");
+    $scope.tabClicked = function(table) {
+        $scope.activeTab = table.key;
         $scope.refreshTable();
     };
 

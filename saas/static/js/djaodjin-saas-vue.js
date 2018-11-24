@@ -464,11 +464,13 @@ var itemListMixin = {
         },
         getQueryString: function(excludes){
             var vm = this;
+            var sep = "";
             var result = "";
             var params = vm.getParams(excludes);
             for( var key in params ) {
                 if( params.hasOwnProperty(key) ) {
-                    result += key + '=' + params[key].toString();
+                    result += sep + key + '=' + params[key].toString();
+                    sep = "&";
                 }
             }
             if( result ) {
@@ -593,9 +595,9 @@ var userRelationMixin = {
     mixins: [itemListMixin, paginationMixin],
     data: function(){
         return {
+            modalSelector: ".add-role-modal",
             url: djaodjinSettings.urls.organization.api_roles,
-            typeaheadUrl: null, //djaodjinSettings.urls.broker.api_users,
-            modalOpen: false,
+            typeaheadUrl: null,
             unregistered: {
                 slug: '',
                 email: '',
@@ -604,6 +606,13 @@ var userRelationMixin = {
         }
     },
     methods: {
+        modalShow: function() {
+            var vm = this;
+            var dialog = $(vm.modalSelector);
+            if( dialog && jQuery().modal ) {
+                dialog.modal("show");
+            }
+        },
         remove: function(idx){
             var vm = this;
             var ob = this.items.results[idx]
@@ -649,17 +658,12 @@ var userRelationMixin = {
                     email: str,
                     full_name: str
                 }
-                vm.modalOpen = true;
+                vm.modalShow();
             }
         },
         save: function(item){
             var vm = this;
-            if(item.slug !== undefined){
-                vm.saveUserRelation(item.slug)
-            }
-            else {
-                vm.handleNewUser(item)
-            }
+            vm.saveUserRelation(item.slug ? item.slug : item.toString());
         },
         create: function(){
             var vm = this;
@@ -669,10 +673,8 @@ var userRelationMixin = {
                 url: vm.url + "?force=1",
                 data: data,
             }).done(function (resp) {
-                vm.modalOpen = false;
                 vm.get()
             }).fail(function(resp){
-                vm.modalOpen = false;
                 showErrorMessages(resp);
             });
         }
@@ -812,6 +814,7 @@ Vue.component('user-relation', {
     data: function(){
         return {
             url: this.roleUrl,
+            typeaheadUrl: djaodjinSettings.urls.broker.api_users,
         }
     },
     watch: {
@@ -993,6 +996,11 @@ if($('#user-relation-list-container').length > 0){
 var app = new Vue({
     el: "#user-relation-list-container",
     mixins: [userRelationMixin],
+    data: function(){
+        return {
+            typeaheadUrl: djaodjinSettings.urls.broker.api_users,
+        }
+    },
     mounted: function(){
         this.get()
     }
@@ -1006,7 +1014,7 @@ var app = new Vue({
     data: function(){
         var data = {
             tables: djaodjinSettings.tables,
-            currentTab: 0,
+            activeTab: 0,
         }
         var ends_at = moment(djaodjinSettings.date_range.ends_at);
         if(ends_at.isValid()){
@@ -1067,13 +1075,18 @@ var app = new Vue({
                  // manual binding - trigger updates to the graph
                 if( table.key === "balances") {
                     // XXX Hard-coded.
-                    updateBarChart("#metrics-chart",
+                    updateBarChart("#" + table.key +  " .chart-content",
                         tableData.data, tableData.unit, tableData.scale, tableData.extra);
                 } else {
-                    updateChart("#metrics-chart",
+                    updateChart("#" + table.key +  " .chart-content",
                         tableData.data, tableData.unit, tableData.scale, tableData.extra);
                 }
             });
+        },
+        tabClicked: function(index) {
+            var vm = this;
+            vm.activeTab = index;
+            vm.prepareCurrentTabData();
         },
         tabTitle: function(table){
             var filter = Vue.filter('currencyToSymbol');
@@ -1083,6 +1096,10 @@ var app = new Vue({
             }
             return table.title + unit;
         },
+        activeClass: function(index) {
+            var vm = this;
+            return (index === vm.activeTab) ? "active" : "";
+        },
         humanizeCell: function(value, unit, scale) {
             var vm = this;
             var filter = Vue.filter('humanizeCell');
@@ -1091,7 +1108,7 @@ var app = new Vue({
     },
     computed: {
         currentTable: function(){
-            return this.tables[this.currentTab];
+            return this.tables[this.activeTab];
         },
         currentTableData: function(){
             var vm = this;
@@ -1115,7 +1132,7 @@ var app = new Vue({
         var vm = this;
         vm.prepareCurrentTabData();
         for( var idx = 1; idx < vm.tables.length; ++idx ) {
-            var table = vm.tables[(vm.currentTab + idx) % vm.tables.length];
+            var table = vm.tables[(vm.activeTab + idx) % vm.tables.length];
             vm.fetchTableData(table);
         }
     }
@@ -1171,11 +1188,13 @@ var app = new Vue({
         },
         getQueryString: function(excludes){
             var vm = this;
+            var sep = "";
             var result = "";
             var params = vm.getParams(excludes);
             for( var key in params ) {
                 if( params.hasOwnProperty(key) ) {
-                    result += key + '=' + params[key].toString();
+                    result += sep + key + '=' + params[key].toString();
+                    sep = "&";
                 }
             }
             if( result ) {
@@ -1209,18 +1228,17 @@ var app = new Vue({
         groupBy: function (list, groupBy) {
             var vm = this;
             var res = {};
-            var keys = [];
             list.forEach(function(item){
                 var value = vm.resolve(item, groupBy);
-                keys.push(value);
                 res[value] = res[value] || [];
                 res[value].push(item);
             });
-            var unique_keys = Array.from(new Set(keys));
             var ordered_res = [];
-            unique_keys.forEach(function(key){
-                ordered_res.push(res[key])
-            });
+            for( var key in res ) {
+                if( res.hasOwnProperty(key) ) {
+                    ordered_res.push(res[key]);
+                }
+            }
             return ordered_res;
         },
         clearFilters: function(){
@@ -1258,7 +1276,6 @@ var app = new Vue({
     mixins: [subscriptionsMixin, paginationMixin, itemListMixin],
     data: {
         url: djaodjinSettings.urls.organization.api_subscriptions,
-        modalOpen: false,
         plan: {},
         toDelete: {
             plan: null,
@@ -1314,7 +1331,6 @@ var app = new Vue({
                 org: org,
                 plan: plan
             }
-            this.modalOpen = true;
         },
         unsubscribe: function() {
             var vm = this;
@@ -1327,10 +1343,8 @@ var app = new Vue({
             }).done(function (){
                 vm.params.page = 1;
                 vm.get();
-                vm.modalOpen = false;
             }).fail(function(resp){
                 showErrorMessages(resp);
-                vm.modalOpen = false;
             });
         },
         acceptRequest: function(organization, request_key) {
@@ -1413,7 +1427,6 @@ var app = new Vue({
             last4: "N/A",
             exp_date: "N/A",
             cardLoaded: false,
-            modalOpen: false,
         }
         return res;
     },
@@ -1447,7 +1460,6 @@ var app = new Vue({
                 url: djaodjinSettings.urls.organization.api_cancel_balance_due,
             }).done(function() {
                 vm.reload()
-                vm.modalOpen = false
             }).fail(function(resp){
                 vm.reload()
                 showErrorMessages(resp);
@@ -1552,7 +1564,6 @@ if($('#remove-profile-container').length > 0){
 var app = new Vue({
     el: "#remove-profile-container",
     data: {
-        modalOpen: false,
     },
     methods: {
         deleteProfile: function(){
@@ -1561,7 +1572,6 @@ var app = new Vue({
                 method: 'DELETE',
                 url: djaodjinSettings.urls.organization.api_base,
             }).done(function() {
-                vm.modalOpen = false;
                 window.location = djaodjinSettings.urls.profile_redirect;
             }).fail(function(resp){
                 showErrorMessages(resp);
@@ -1599,7 +1609,6 @@ var app = new Vue({
         role: {
             title: '',
         },
-        modalOpen: false,
     },
     methods: {
         create: function(){
@@ -1612,7 +1621,6 @@ var app = new Vue({
                 vm.role.title = '';
                 vm.params.page = 1;
                 vm.get()
-                vm.modalOpen = false;
             }).fail(function(resp){
                 showErrorMessages(resp);
             });

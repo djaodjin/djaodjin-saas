@@ -40,45 +40,50 @@
         <option value="utc">UTC</option>
       </select>
     </div><!-- /choose report date -->
-    <div ng-repeat="table in tables"
-         v-for="table in tables" v-bind:key="table.key">
+    <div ng-prop-id="table.key"
+         ng-repeat="table in tables"
+         v-bind:id="table.key"
+         v-for="table in tables"
+         v-bind:key="table.key">
       <a ng-prop-href="'#' + table.key"
-         v-bind:href="'#' + table.key"><h2>[[table.key]]</h2></a>
-      <!-- Display as a table -->
-      <div v-if="!table.data">
-        Loading ...
-      </div>
-      <div v-if="table.data">
-        <table>
-          <tr>
-            <td></td>
-            <td ng-repeat="col in table.data[0].values"
-                v-for="col in table.data[0].values">[[col[0] | monthHeading]]</td>
-          </tr>
-          <tr ng-repeat="row in table.data"
-              v-for="row in table.data">
-            <td ng-if="row.location" v-if="row.location">
-              <span>[[row.is_active ? 'Active': 'Inactive' ]]</span>
-              <a ng-prop-id="row.key" ng-prop-href="row.location"
-                v-bind:id="row.key" v-bind:href="row.location">[[row.key]]</a>
-            </td>
-            <td ng-if="!row.location"
-                v-if="!row.location">[[row.key]]</td>
-            <td ng-repeat="col in row.values"
-                v-for="col in row.values">
-              [[humanizeCell(col[1], table.unit, table.scale)]]
-            </td>
-          </tr>
-          {% block metrics_extra_data %}
+         ng-click="tabClicked(table)"
+         v-bind:href="'#' + table.key"
+         @click="tabClicked(index)"><h2>[[table.key]]</h2></a>
+      <div class="chart-content">
+        <!-- Display as a table -->
+        <div ng-if="!table.data" v-if="!table.data">
+          Loading ...
+        </div>
+        <div ng-if="table.data" v-if="table.data">
+          <table>
+            <tr>
+              <td></td>
+              <td ng-repeat="col in table.data[0].values"
+                  v-for="col in table.data[0].values">[[col[0] | monthHeading]]</td>
+            </tr>
+            <tr ng-prop-id="row.key"
+                ng-repeat="row in table.data"
+                v-bind:id="row.key"
+                v-for="row in table.data">
+              <td ng-if="row.location" v-if="row.location">
+                <span>[[row.is_active ? 'Active': 'Inactive' ]]</span>
+                <a ng-prop-href="row.location"
+                   v-bind:href="row.location">[[row.key]]</a>
+              </td>
+              <td ng-if="!row.location"
+                  v-if="!row.location">[[row.key]]</td>
+              <td ng-repeat="col in row.values"
+                  v-for="col in row.values">
+                [[humanizeCell(col[1], table.unit, table.scale)]]
+              </td>
+            </tr>
+            {% block metrics_extra_data %}
+            {% endblock %}
+          </table>
+          {% block metrics_extra_info %}
           {% endblock %}
-        </table>
-        {% block metrics_extra_info %}
-        {% endblock %}
+        </div>
       </div>
-    </div>
-    <div>
-      <h2>Callback output</h2>
-      <div id="metrics-chart"></div>
     </div>
   </div>
 </section>

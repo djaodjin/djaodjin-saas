@@ -722,6 +722,9 @@
         var self = this;
         $.ajax({ type: "DELETE",
                  url: self.options.saas_api_plan + "/" + self.id + "/",
+                 beforeSend: function(xhr) {
+                     xhr.setRequestHeader("X-CSRFToken", self._getCSRFToken());
+                 },
                  async: false,
                  success: function(data) {
                      window.location.href = self.options.saas_metrics_plans;
