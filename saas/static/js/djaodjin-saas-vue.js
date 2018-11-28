@@ -1960,7 +1960,6 @@ var app = new Vue({
                 method: 'GET',
                 url: djaodjinSettings.urls.organization.api_base,
             }).done(function(org) {
-                console.log(org);
                 if(org.street_address){
                     vm.addressLine1 = org.street_address;
                 }

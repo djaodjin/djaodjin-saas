@@ -46,7 +46,8 @@ angular.module("saasFilters", [])
         return function(at_time, format) {
             if (at_time) {
                 if(!format){
-                    format = 'MM/DD/YYYY hh:mm'
+                    //format = 'MM/DD/YYYY hh:mm'
+                    format = "MMM D, YYYY";
                 }
                 if(!(at_time instanceof Date)){
                     at_time = String(at_time);
@@ -189,8 +190,7 @@ transactionControllers.controller("itemsListCtrl",
         $scope.maxSize = 5;               // Total number of direct pages link
         $scope.currentPage = 1;
         // currentPage will be saturated at maxSize when maxSize is defined.
-        $scope.formats = ["dd-MMMM-yyyy", "yyyy/MM/dd",
-            "dd.MM.yyyy", "shortDate"];
+        $scope.formats = ["MMM dd, yyyy", "yyyy/MM/dd"];
         $scope.format = $scope.formats[0];
         $scope.opened = { "start_at": false, "ends_at": false };
         if( typeof overrides === "undefined" ) {
@@ -453,7 +453,7 @@ couponControllers.controller("CouponListCtrl",
         minDate: moment().startOf('day').toDate(),
         initDate: moment().add(1, "months").toDate()
     };
-    $scope.format = "yyyy/MM/dd";
+    $scope.format = "MMM dd, yyyy";
 
     $scope.filterList = function(regex) {
         if( regex ) {
@@ -686,7 +686,7 @@ subscriptionControllers.controller("subscriptionListCtrl",
         minDate: moment().startOf('day').toDate(),
         initDate: moment().add(1, "months").toDate()
     };
-    $scope.format = "yyyy/MM/dd";
+    $scope.format = "MMM dd, yyyy";
 
     $scope.ends_at = moment().endOf("day").toDate();
 
@@ -1026,7 +1026,7 @@ metricsControllers.controller("metricsCtrl",
     }
 
     // these aren't documented; do they do anything?
-    $scope.formats = ["MM-yyyy", "yyyy/MM", "MM.yyyy"];
+    $scope.formats = ["MMM dd, yyyy", "yyyy/MM/dd"];
     $scope.format = $scope.formats[0];
     $scope.dateOptions = {
         formatYear: "yyyy",
@@ -1108,6 +1108,12 @@ metricsControllers.controller("metricsCtrl",
         });
     };
 
+    $scope.prepareCurrentTabData = function(ends_at, timezone) {
+        $scope.ends_at = ends_at;
+        $scope.timezone = timezone;
+        $scope.refreshTable();
+    };
+
     $scope.refreshTable = function() {
         $scope.query($scope.getTable($scope.activeTab));
     };
@@ -1124,19 +1130,6 @@ metricsControllers.controller("metricsCtrl",
         $event.stopPropagation();
         $scope.opened = !$scope.opened;
     };
-
-    $scope.$watch("ends_at", function(newVal, oldVal, scope) {
-        if (newVal !== oldVal) {
-            $scope.ends_at = $scope.endOfMonth(newVal);
-            $scope.refreshTable();
-        }
-    }, true);
-
-    $scope.$watch("timezone", function(newVal, oldVal, scope) {
-        if (newVal !== oldVal) {
-            $scope.refreshTable();
-        }
-    });
 
     $scope.refreshTable();
 
@@ -1193,7 +1186,7 @@ saasApp.directive("saasDndList", function() {
 
         // watch the model, so we always know what element
         // is at a specific position
-        scope.$watch(attrs.dndList, function(value) {
+        scope.$watch(attrs.saasDndList, function(value) {
             toUpdate = value;
         }, true);
 
@@ -1211,9 +1204,7 @@ saasApp.directive("saasDndList", function() {
                     // on stop we determine the new index of the
                     // item and store it there
                     var newIndex = ($(ui.item).index());
-                    var oldRank = toUpdate[startIndex].rank;
-                    var newRank = toUpdate[newIndex].rank;
-                    scope.saveOrder(oldRank, newRank);
+                    scope.saveOrder(startIndex, newIndex);
                 },
                 axis: "y"
             });
@@ -1291,7 +1282,7 @@ balanceControllers.controller("BalanceListCtrl",
     }
 
     // these aren't documented; do they do anything?
-    $scope.formats = ["MM-yyyy", "yyyy/MM", "MM.yyyy"];
+    $scope.formats = ["MMM dd, yyyy", "yyyy/MM/dd"];
     $scope.format = $scope.formats[0];
     $scope.dateOptions = {
         formatYear: "yyyy",
