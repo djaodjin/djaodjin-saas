@@ -28,6 +28,7 @@ from django.views.generic import TemplateView
 from saas.backends import ProcessorConnectionError
 from saas.compat import reverse
 from saas.models import Organization
+from saas.settings import MANAGER
 
 
 class AppView(TemplateView):
@@ -36,15 +37,18 @@ class AppView(TemplateView):
 
     @property
     def organization(self):
-        return Organization.objects.attached(self.request.user)
+        organization_slug = self.kwargs.get('organization')
+        if organization_slug:
+            return Organization.objects.get(slug=organization_slug)
+        return Organization.objects.accessible_by(
+            self.request.user, role_descr=MANAGER).first()
 
     def get_context_data(self, **kwargs):
         context = super(AppView, self).get_context_data(**kwargs)
         organization = self.organization
         if organization is None:
             messages.error(self.request, "The user '%s' is not manager "\
-                "of an attached payment profile (i.e. Organization with "\
-                "self.request.user.username == Organization.slug)"
+                "of an attached payment profile (i.e. Organization"
                 % self.request.user)
             return context
         try:
@@ -55,7 +59,8 @@ class AppView(TemplateView):
         context.update({'organization': organization})
         urls = {'saas_api_checkout': reverse(
             'saas_api_checkout', args=(organization,)),
-                'saas_api_cart': reverse('saas_api_cart')}
+                'saas_api_cart': reverse('saas_api_cart'),
+                'broker': {'api_charges': reverse('saas_api_charges')}}
         if 'urls' in context:
             for key, val in urls.iteritems():
                 if key in context['urls']:

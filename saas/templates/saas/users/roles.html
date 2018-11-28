@@ -78,7 +78,7 @@
         <form @submit.prevent="create" ng-submit="create($event)">
           <p ng-model="unregistered">
 [[unregistered.full_name]] was not found. This is an opportunity to invite
-a manager for [[unregistered.full_name]] to join {{site.printable_name}}.
+a manager for [[unregistered.full_name]] to join {{organization.printable_name}}.
           </p>
           <label>To</label>
           <input id="new-request-email" name="email"

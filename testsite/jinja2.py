@@ -24,6 +24,7 @@
 
 from __future__ import absolute_import
 
+from django.conf import settings
 import django.template.defaultfilters
 from jinja2.sandbox import SandboxedEnvironment as Jinja2Environment
 import saas.templatetags.saas_tags
@@ -36,8 +37,11 @@ def environment(**options):
     # Generic filters to render pages
     env.filters['is_authenticated'] = \
         testsite.templatetags.testsite_tags.is_authenticated
+    env.filters['iteritems'] = saas.templatetags.saas_tags.iteritems
+    env.filters['isoformat'] = saas.templatetags.saas_tags.isoformat
     env.filters['messages'] = testsite.templatetags.testsite_tags.messages
     env.filters['pluralize'] = django.template.defaultfilters.pluralize
+    env.filters['to_json'] = testsite.templatetags.testsite_tags.to_json
     env.filters['url_profile'] = testsite.templatetags.testsite_tags.url_profile
 
     # Specific to SaaS
@@ -46,5 +50,10 @@ def environment(**options):
     env.filters['date_in_future'] = saas.templatetags.saas_tags.date_in_future
     env.filters['md'] = saas.templatetags.saas_tags.md
     env.filters['describe'] = saas.templatetags.saas_tags.describe
+
+    env.globals.update({
+        'VUEJS': (settings.JS_FRAMEWORK == 'vuejs'),
+        'DATETIME_FORMAT': "MMM dd, yyyy",
+    })
 
     return env

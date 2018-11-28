@@ -1,6 +1,7 @@
-{% extends "saas/base.html" %}
+{% extends "base.html" %}
 
-{% block saas_content %}
+{% block content %}
+<h1>Create a new organization ...</h1>
 <form method="post" action=".">
     <input type="hidden" name="csrfmiddlewaretoken" value="{{csrf_token}}">
     {{ form.as_p }}

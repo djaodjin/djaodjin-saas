@@ -24,7 +24,7 @@
       | <a id="saas_role_list" href="{{urls.organization.role_description}}">Roles</a>
       {% endif %}
     </div>
-    {% if organization.is_provider %}
+    {% if urls.provider %}
     <div>
       {# We are dealing with the site owner. #}
       <a id="saas_dashboard" href="{{urls.provider.dashboard}}">Dashboard</a>

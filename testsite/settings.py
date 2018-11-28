@@ -9,6 +9,7 @@ from saas.compat import reverse_lazy
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 RUN_DIR = os.getcwd()
 
+TEMPLATE_REVERT_TO_DJANGO = True
 JS_FRAMEWORK = 'angularjs'
 #JS_FRAMEWORK = 'vuejs'
 
@@ -62,6 +63,7 @@ INSTALLED_APPS = (
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'django_extensions',
+    'debug_toolbar',
     # Uncomment the next line to enable the admin:
     'django.contrib.admin',
     # Uncomment the next line to enable admin documentation:
@@ -77,6 +79,7 @@ WSGI_APPLICATION = 'testsite.wsgi.application'
 ROOT_URLCONF = 'testsite.urls'
 
 MIDDLEWARE = (
+    'debug_toolbar.middleware.DebugToolbarMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -142,6 +145,15 @@ MESSAGE_STORAGE = 'django.contrib.messages.storage.session.SessionStorage'
 MESSAGE_TAGS = {
     messages.ERROR: 'danger'
 }
+
+DEBUG_TOOLBAR_PATCH_SETTINGS = False
+DEBUG_TOOLBAR_CONFIG = {
+    'JQUERY_URL': '/static/vendor/jquery.js',
+    'SHOW_COLLAPSED': True,
+    'SHOW_TEMPLATE_CONTEXT': True,
+}
+
+INTERNAL_IPS = ('127.0.0.1', '::1')
 
 # Local time zone for this installation. Choices can be found here:
 # http://en.wikipedia.org/wiki/List_of_tz_zones_by_name
@@ -252,8 +264,6 @@ if logging.getLogger('gunicorn.error').handlers:
 
 # Templates (Django 1.8+)
 # ----------------------
-TEMPLATE_REVERT_TO_DJANGO = True
-
 if TEMPLATE_REVERT_TO_DJANGO:
     sys.stderr.write("Use Django templates engine.\n")
     TEMPLATES = [

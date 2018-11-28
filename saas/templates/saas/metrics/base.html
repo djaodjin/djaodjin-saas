@@ -12,8 +12,9 @@
         <span>To</span>
         <span
            class="date"
-           ng-attr-uib-datepicker-popup="format"
+           uib-datepicker-popup="{{DATETIME_FORMAT}}"
            ng-model="ends_at"
+           ng-change="prepareCurrentTabData(ends_at, timezone)"
            is-open="opened"
            datepicker-options="dateOptions"
            ng-required="true"
@@ -35,7 +36,9 @@
         </uiv-dropdown>
       </div>
       <select ng-model="timezone"
-              v-model="timezone" @change="prepareCurrentTabData">
+              ng-change="prepareCurrentTabData(ends_at, timezone)"
+              v-model="timezone"
+              @change="prepareCurrentTabData">
         <option value="local">Local</option>
         <option value="utc">UTC</option>
       </select>
@@ -50,39 +53,39 @@
          v-bind:href="'#' + table.key"
          @click="tabClicked(index)"><h2>[[table.key]]</h2></a>
       <div class="chart-content">
-        <!-- Display as a table -->
-        <div ng-if="!table.data" v-if="!table.data">
-          Loading ...
-        </div>
-        <div ng-if="table.data" v-if="table.data">
-          <table>
-            <tr>
-              <td></td>
-              <td ng-repeat="col in table.data[0].values"
-                  v-for="col in table.data[0].values">[[col[0] | monthHeading]]</td>
-            </tr>
-            <tr ng-prop-id="row.key"
-                ng-repeat="row in table.data"
-                v-bind:id="row.key"
-                v-for="row in table.data">
-              <td ng-if="row.location" v-if="row.location">
-                <span>[[row.is_active ? 'Active': 'Inactive' ]]</span>
-                <a ng-prop-href="row.location"
-                   v-bind:href="row.location">[[row.key]]</a>
-              </td>
-              <td ng-if="!row.location"
-                  v-if="!row.location">[[row.key]]</td>
-              <td ng-repeat="col in row.values"
-                  v-for="col in row.values">
-                [[humanizeCell(col[1], table.unit, table.scale)]]
-              </td>
-            </tr>
-            {% block metrics_extra_data %}
-            {% endblock %}
-          </table>
-          {% block metrics_extra_info %}
+      </div>
+      <!-- Display as a table -->
+      <div ng-if="!table.data" v-if="!table.data">
+        Loading ...
+      </div>
+      <div ng-if="table.data" v-if="table.data">
+        <table>
+          <tr>
+            <td></td>
+            <td ng-repeat="col in table.data[0].values"
+                v-for="col in table.data[0].values">[[col[0] | monthHeading]]</td>
+          </tr>
+          <tr ng-prop-id="row.key"
+              ng-repeat="row in table.data"
+              v-bind:id="row.key"
+              v-for="row in table.data">
+            <td ng-if="row.location" v-if="row.location">
+              <span>[[row.is_active ? 'Active': 'Inactive' ]]</span>
+              <a ng-prop-href="row.location"
+                 v-bind:href="row.location">[[row.key]]</a>
+            </td>
+            <td ng-if="!row.location"
+                v-if="!row.location">[[row.key]]</td>
+            <td ng-repeat="col in row.values"
+                v-for="col in row.values">
+              [[humanizeCell(col[1], table.unit, table.scale)]]
+            </td>
+          </tr>
+          {% block metrics_extra_data %}
           {% endblock %}
-        </div>
+        </table>
+        {% block metrics_extra_info %}
+        {% endblock %}
       </div>
     </div>
   </div>

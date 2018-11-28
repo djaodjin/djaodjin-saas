@@ -29,12 +29,7 @@
         <dl ng-show="items.balance >= 0" v-show="items.balance >= 0">
           <dt>[[humanizeBalance()]]</dt>
           <dd ng-show="items.balance >= 0" v-show="items.balance >= 0">
-            {% spaceless %}
-            Balance due
-            <span ng-if="items.balance > 0" v-if="items.balance > 0">
-              (<a href="{{ urls.organization.balance }}">pay now</a>)
-            </span>
-            {% endspaceless %}
+            Balance due<span ng-if="items.balance > 0" v-if="items.balance > 0">(<a href="{{ urls.organization.balance }}">pay now</a>)</span>
           </dd>
           <dd ng-show="items.balance < 0" v-show="items.balance < 0">Balance Credits</dd>
         </dl>

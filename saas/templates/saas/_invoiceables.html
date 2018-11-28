@@ -44,7 +44,7 @@
       {% endfor %}
       {% for line in entry.options %}
       <tr>
-        <td><input type="radio" name="{{entry.name}}" data-amount="{{line.dest_amount}}" value="{{forloop.counter}}" {% if forloop.counter == 1 %}checked="1"{% endif %}></input></td>
+        <td><input type="radio" name="{{entry.name}}" data-amount="{{line.dest_amount}}" value="{{line.rank}}" {% if line.rank == entry.selected_option %}checked="1"{% endif %}></input></td>
         <td>{{line.dest_price|humanize_money}}</td>
         <td>{{line.descr}}
         </td>

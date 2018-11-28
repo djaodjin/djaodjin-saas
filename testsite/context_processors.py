@@ -25,4 +25,7 @@
 from django.conf import settings
 
 def js_framework(request):#pylint:disable=unused-argument
-    return {'VUEJS': settings.JS_FRAMEWORK == 'vuejs'}
+    return {
+        'VUEJS': settings.JS_FRAMEWORK == 'vuejs',
+        'DATETIME_FORMAT': "MMM dd, yyyy",
+    }

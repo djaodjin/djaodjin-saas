@@ -265,6 +265,8 @@ class InvoicablesFormMixin(OrganizationMixin):
                 # In case it is pure options, no lines.
                 lines_unit = invoicable['options'][0].dest_unit
                 invoicable['selected_option'] = 1
+                for rank, line in enumerate(invoicable['options']):
+                    setattr(line, 'rank', rank + 1)
             for line in invoicable['lines']:
                 lines_amount += line.dest_amount
                 lines_unit = line.dest_unit

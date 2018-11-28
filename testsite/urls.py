@@ -22,6 +22,7 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+import debug_toolbar
 from django.core.exceptions import ImproperlyConfigured
 from django.contrib.auth.decorators import login_required
 from django.views.generic import TemplateView
@@ -58,6 +59,7 @@ except ImproperlyConfigured: # Django <= 1.9
     ]
 
 urlpatterns += [
+    url(r'^__debug__/', include(debug_toolbar.urls)),
     url_prefixed(r'register/$',
         PersonalRegistrationView.as_view(
             success_url=reverse_lazy('home')),
@@ -120,7 +122,7 @@ urlpatterns += [
         decorators=['saas.decorators.requires_provider',
                     'saas.decorators.requires_agreement']),
     url_prefixed(r'', include('saas.backends.urls.views')),
-    url_prefixed(r'app/',
+    url_prefixed(r'app/((?P<organization>[a-zA-Z0-9_-]+)/)?',
         AppView.as_view(template_name='app.html'), name='app',
         decorators=['django.contrib.auth.decorators.login_required']),
 ]

@@ -44,10 +44,12 @@
             <input id="id_is_bulk_buyer" name="is_bulk_buyer" type="checkbox" {% if form.is_bulk_buyer.value %}checked{% endif %}>
         </label>
     </div>
+    {% if form.extra %}
     <div>
         <label for="id_extra">Notes:</label>
         <textarea cols="40" id="id_extra" name="extra" rows="10">{% if form.extra.value %}{{form.extra.value}}{% endif %}</textarea>
     </div>
+    {% endif %}
     <div>
         <input type="submit" name="submit" value="Update Profile">
     </div>
