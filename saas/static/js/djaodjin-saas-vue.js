@@ -21,7 +21,8 @@ Vue.use(uiv, {prefix: 'uiv'});
 Vue.filter('formatDate', function(value, format) {
   if (value) {
     if(!format){
-        format = 'MM/DD/YYYY hh:mm'
+//        format = 'MM/DD/YYYY hh:mm'
+        format = "MMM D, YYYY";
     }
     if(!(value instanceof Date)){
         value = String(value);
