@@ -19,8 +19,8 @@ Provider Dashboard
                 <tr ng-repeat="entry in items.results"
                     v-for="entry in items.results">
                     <td>
-                      <a ng-prop-href="'{{urls.user.profile_redirect}}' + entry.username + '/'"
-                          v-bind:href="'{{urls.user.profile_redirect}}' + entry.username + '/'">[[entry.username]]</td>
+                      <a ng-prop-href="'{{urls.profile_redirect}}' + entry.username + '/'"
+                          v-bind:href="'{{urls.profile_redirect}}' + entry.username + '/'">[[entry.username]]</td>
                     <td>[[entry.first_name]] [[entry.last_name]]</td>
                     <td>[[entry.email]]</td>
                     <td>[[entry.created_at | relativeDate]]</td>

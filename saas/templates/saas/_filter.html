@@ -1,0 +1,56 @@
+<div>
+    <div>
+        <span>From</span>
+        <input type="text"
+           uib-datepicker-popup="{{DATETIME_FORMAT}}"
+           ng-model="params.start_at"
+           is-open="opened.start_at"
+           datepicker-options="dateOptions"
+           ng-required="true"
+           close-text="Close"
+           max-date="maxDate"
+           show-button-bar="false"
+           v-model="params.start_at"></input>
+        <uiv-dropdown append-to-body menu-right>
+          <button type="button" ng-click="open($event, 'start_at')">Calendar</button>
+          <template slot="dropdown">
+            <li>
+              <uiv-date-picker
+                 v-model="params.start_at"
+                 icon-control-left="fa fa-caret-left"
+                 icon-control-right="fa fa-caret-right" />
+            </li>
+          </template>
+        </uiv-dropdown>
+    </div>
+    <div>
+        <span>To</span>
+        <input type="text"
+           uib-datepicker-popup="{{DATETIME_FORMAT}}"
+           ng-model="params.ends_at"
+           is-open="opened.ends_at"
+           datepicker-options="dateOptions"
+           ng-required="true"
+           close-text="Close"
+           max-date="maxDate"
+           show-button-bar="false"
+           v-model="params.ends_at"></input>
+        <uiv-dropdown append-to-body menu-right>
+          <button type="button" ng-click="open($event, 'ends_at')">Calendar</button>
+          <template slot="dropdown">
+            <li>
+              <uiv-date-picker
+                 v-model="params.ends_at"
+                 icon-control-left="fa fa-caret-left"
+                 icon-control-right="fa fa-caret-right" />
+            </li>
+          </template>
+        </uiv-dropdown>
+    </div>
+    <div>
+        <label>Filter</label>
+        <input type="text"
+               ng-model="params.q" ng-change="filterList(params.q)"
+               v-model="params.q" @input="filterList" />
+    </div>
+</div>

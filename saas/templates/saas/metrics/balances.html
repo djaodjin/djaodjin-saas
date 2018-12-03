@@ -3,30 +3,11 @@
 {% block saas_content %}
 <div id="balance-list-container" ng-app="saasApp" ng-cloak>
   <div ng-controller="BalanceListCtrl">
-    <div class="date-chooser">
+    {% include "saas/_filter.html" %}
+    <div>
       <a id="download" role="button"
         ng-prop-href="'{{urls.download_balances}}?start_at=' + params.start_at + '&ends_at=' + params.ends_at"
         v-bind:href="'{{urls.download_balances}}' + getQueryString(['page'])">Download</a>
-        <div>
-            <uiv-dropdown class="form-group" append-to-body>
-              <btn>date</btn>
-              <template slot="dropdown">
-                <li>
-                  <uiv-date-picker
-                    v-model="params.ends_at"
-                    @input="get"
-                    icon-control-left="fa fa-caret-left"
-                    icon-control-right="fa fa-caret-right" />
-                </li>
-              </template>
-            </uiv-dropdown>
-            <span>To</span>
-            <span datepicker-popup="[[format]]" ng-model="ends_at" is-open="opened" datepicker-options="dateOptions" ng-required="true" close-text="Close" datepicker-mode="'month'" max-date="maxDate" show-button-bar="false">[[ends_at | date : mediumDate]]</span>
-            <span>
-              <button type="button" ng-click="open($event, 'ends_at')">Calendar</button>
-            </span>
-        </div>
-        <span>[[params.ends_at | formatDate]]</span>
     </div>
     <table>
         <thead>

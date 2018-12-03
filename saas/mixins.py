@@ -804,7 +804,7 @@ class UserSmartListMixin(SortableListMixin, BeforeMixin, SearchableListMixin):
         sort_fields_aliases, search_fields),)
 
 
-class ChurnedQuerysetMixin(ProviderMixin):
+class ChurnedQuerysetMixin(DateRangeMixin, ProviderMixin):
     """
     ``QuerySet`` of ``Subscription`` which are no longer active.
     """
@@ -815,15 +815,15 @@ class ChurnedQuerysetMixin(ProviderMixin):
         kwargs = {}
         start_at = self.request.GET.get('start_at', None)
         if start_at:
-            start_at = datetime_or_now(start_at)
-            kwargs.update({'ends_at__gte': start_at})
-        ends_at = datetime_or_now(self.request.GET.get('ends_at', None))
+            # We don't want to constraint the start date if it is not
+            # explicitely set.
+            kwargs.update({'ends_at__gte': self.start_at})
         return Subscription.objects.valid_for(
             plan__organization=self.provider,
-            ends_at__lt=ends_at, **kwargs).order_by('-ends_at')
+            ends_at__lt=self.ends_at, **kwargs).order_by('-ends_at')
 
 
-class SubscribedQuerysetMixin(ProviderMixin):
+class SubscribedQuerysetMixin(DateRangeMixin, ProviderMixin):
     """
     ``QuerySet`` of ``Subscription`` which are currently active.
 
@@ -841,11 +841,11 @@ class SubscribedQuerysetMixin(ProviderMixin):
         kwargs = {}
         start_at = self.request.GET.get('start_at', None)
         if start_at:
-            start_at = datetime_or_now(start_at)
-            kwargs.update({'created_at__lt': start_at})
-        ends_at = datetime_or_now(self.request.GET.get('ends_at', None))
+            # We don't want to constraint the start date if it is not
+            # explicitely set.
+            kwargs.update({'created_at__lt': self.start_at})
         return Subscription.objects.active_with(
-            self.provider, ends_at=ends_at, **kwargs).order_by('-ends_at')
+            self.provider, ends_at=self.ends_at, **kwargs).order_by('-ends_at')
 
 
 class RoleDescriptionMixin(OrganizationMixin):

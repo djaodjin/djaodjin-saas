@@ -8,7 +8,6 @@ var saasApp = angular.module("saasApp", [
     "couponControllers", "couponServices",
     "metricsControllers",
     "importTransactionsControllers",
-    "subscriptionControllers",
     "transactionControllers", "profileControllers", "saasFilters"]);
 
 /*=============================================================================
@@ -117,7 +116,7 @@ angular.module("saasFilters", [])
         // Generate a relative date for an instance with a ``created_at`` field.
         return function(at_time) {
             var cutOff = new Date();
-            if( settings.date_range.ends_at ) {
+            if( settings.date_range && settings.date_range.ends_at ) {
                 cutOff = new Date(settings.date_range.ends_at);
             }
             var dateTime = new Date(at_time);
@@ -150,7 +149,6 @@ couponServices.factory("Coupon", ["$resource", "settings",
 //============================================================================
 
 var couponControllers = angular.module("couponControllers", []);
-var subscriptionControllers = angular.module("subscriptionControllers", []);
 var transactionControllers = angular.module("transactionControllers", []);
 var metricsControllers = angular.module("metricsControllers", []);
 var importTransactionsControllers = angular.module("importTransactionsControllers", []);
@@ -642,92 +640,36 @@ transactionControllers.controller("userRoleDescriptionCtrl",
     }
 }]);
 
-subscriptionControllers.controller("planSubscribersListCtrl",
-    ["$scope", "$controller", "$http", "$timeout", "settings",
-    function($scope, $controller, $http, $timeout, settings) {
-    "use strict";
-    $controller('subscriptionListCtrl', {
-        $scope: $scope, $http: $http, $timeout:$timeout,
-        settings: settings});
-
-    $scope.subscribers = {
-        $resolved: false, count: 0,
-        location: settings.urls.provider.api_plan_subscribers};
-
-    $scope.active = $scope.subscribers;
-
-    $scope.prefetch = function() {
-      $scope.query($scope.subscribers);
-    };
-}]);
-
 
 // XXX Currently most of the functionality of subscriberListCtrl is actually
 // included here.
-subscriptionControllers.controller("subscriptionListCtrl",
-    ["$scope", "$http", "$timeout", "settings",
-    function($scope, $http, $timeout, settings) {
+transactionControllers.controller("subscriptionListCtrl",
+    ["$scope", "$controller", "$http", "$timeout", "settings",
+    function($scope, $controller, $http, $timeout, settings) {
     "use strict";
-    var defaultSortByField = "created_at";
-    $scope.params = {o: defaultSortByField, ot: "desc"};
-    $scope.itemsPerPage = settings.itemsPerPage; // Must match server-side
-    $scope.maxSize = 5;               // Total number of direct pages link
-    $scope.currentPage = 1;
 
-    // settings for datepicker in angular-ui-bootstrap@2.5.6
-    // when a subscription ends.
-    // (https://angular-ui.github.io/bootstrap/#datepicker)
-    // We cannot set the end date in the past (`minDate` > now()) but do
-    // not prevent an en date far in the future (`maxDate` = null).
-    // The default end date is a month from now (initDate = now() + 1.month)
-    // by default.
-    $scope.dateOptions = {
-        formatYear: "yy",
-        minDate: moment().startOf('day').toDate(),
-        initDate: moment().add(1, "months").toDate()
-    };
-    $scope.format = "MMM dd, yyyy";
+    var opts = angular.merge({
+        sortByField: "created_at",
+        sortDirection: "desc",
+        date_range: {ends_at: moment().endOf("day").toDate()}}, settings);
 
-    $scope.ends_at = moment().endOf("day").toDate();
+    $controller('itemsListCtrl', {
+        $scope: $scope, $controller: $controller, $http: $http,
+        $timeout:$timeout, settings: opts});
 
-    $scope.registered = {
-        $resolved: false, count: 0,
-        location: settings.urls.broker.api_users_registered};
-    $scope.subscribed = {
-        $resolved: false, count: 0,
-        location: settings.urls.organization.api_subscriptions};
-    $scope.churned = {
-        $resolved: false, count: 0,
-        location: settings.urls.provider.api_subscribers_churned};
-
-    $scope.active = $scope.subscribed;
-
-    $scope.subscribersURL = function(provider, plan) {
-        return settings.urls.organization.api_profile_base + provider + "/plans/" + plan + "/subscriptions/";
+    $scope.tables = {
+        registered: {
+            $resolved: false, count: 0,
+            location: settings.urls.broker.api_users_registered},
+        subscribed: {
+            $resolved: false, count: 0,
+            location: settings.urls.organization.api_subscriptions},
+        churned: {
+            $resolved: false, count: 0,
+            location: settings.urls.provider.api_subscribers_churned}
     };
 
-    $scope.subscriptionURL = function(organization, plan) {
-        return settings.urls.organization.api_profile_base
-            + organization + "/subscriptions/" + plan;
-    };
-
-    // calendar for expiration date
-    $scope.open = function($event, entry) {
-        $event.preventDefault();
-        $event.stopPropagation();
-        entry.opened = true;
-    };
-
-    // Returns ends-soon when the subscription is about to end.
-    $scope.endsSoon = function(subscription) {
-        var cutOff = new Date($scope.ends_at);
-        cutOff.setDate($scope.ends_at.getDate() + 5);
-        var subEndsAt = new Date(subscription.ends_at);
-        if( subEndsAt < cutOff ) {
-            return "ends-soon";
-        }
-        return "";
-    };
+    $scope.active = $scope.tables.subscribed;
 
     $scope.query = function(queryset) {
         queryset.$resolved = false;
@@ -738,6 +680,36 @@ subscriptionControllers.controller("subscriptionListCtrl",
             queryset.count = resp.data.count;
             queryset.$resolved = true;
         });
+    };
+
+    $scope.refresh = function() {
+        $scope.query($scope.active);
+        for( var table in $scope.tables ) {
+            if( $scope.tables.hasOwnProperty(table)
+                && $scope.tables[table] !=  $scope.active ) {
+                $scope.query($scope.tables[table]);
+            }
+        }
+    };
+
+    $scope.subscribersURL = function(provider, plan) {
+        return settings.urls.organization.api_profile_base + provider + "/plans/" + plan + "/subscriptions/";
+    };
+
+    $scope.subscriptionURL = function(organization, plan) {
+        return settings.urls.organization.api_profile_base
+            + organization + "/subscriptions/" + plan;
+    };
+
+    // Returns ends-soon when the subscription is about to end.
+    $scope.endsSoon = function(subscription) {
+        var cutOff = new Date($scope.params.ends_at);
+        cutOff.setDate($scope.params.ends_at + 5);
+        var subEndsAt = new Date(subscription.ends_at);
+        if( subEndsAt < cutOff ) {
+            return "ends-soon";
+        }
+        return "";
     };
 
     $scope.editDescription = function (event, entry) {
@@ -760,51 +732,7 @@ subscriptionControllers.controller("subscriptionListCtrl",
         }
     };
 
-    $scope.filterList = function(regex) {
-        if( regex ) {
-            if ("page" in $scope.params){
-                delete $scope.params.page;
-            }
-            $scope.params.q = regex;
-        } else {
-            delete $scope.params.q;
-        }
-        $scope.query($scope.active);
-    };
-
-    $scope.pageChanged = function(queryset) {
-        if( $scope.currentPage > 1 ) {
-            $scope.params.page = $scope.currentPage;
-        } else {
-            delete $scope.params.page;
-        }
-        $scope.query(queryset);
-    };
-
-    $scope.prefetch = function() {
-      $scope.query($scope.registered);
-      $scope.query($scope.churned);
-    };
-
-    $scope.sortBy = function(fieldName) {
-        if( $scope.params.o === fieldName ) {
-            if( $scope.params.ot == "asc" ) {
-                $scope.params.ot = "desc";
-            } else {
-                $scope.params.ot = "asc";
-            }
-        } else {
-            // sorting by new field.
-            $scope.params.ot = "asc";
-        }
-        $scope.params.o = fieldName;
-        $scope.currentPage = 1;
-        // pageChanged only called on click?
-        delete $scope.params.page;
-        $scope.query($scope.active);
-    };
-
-    $scope.$watch("subscribed", function(newVal, oldVal, scope) {
+    $scope.$watch("tables.subscribed", function(newVal, oldVal, scope) {
         if( newVal.hasOwnProperty("results") &&
             oldVal.hasOwnProperty("results") ) {
             var length = ( oldVal.results.length < newVal.results.length ) ?
@@ -833,21 +761,11 @@ subscriptionControllers.controller("subscriptionListCtrl",
     // XXX We need this method because filters are "global" accross all tabs.
     $scope.tabClicked = function($event) {
         var newActiveTab = $event.target.getAttribute("href").replace(/^#/, "");
-        if( newActiveTab === "registered-users" ) {
-            if( !$scope.registered.hasOwnProperty("results") ) {
-                $scope.query($scope.registered);
+        for( var table in $scope.tables ) {
+            if( $scope.tables.hasOwnProperty(table)
+                && newActiveTab === table ) {
+                $scope.active = $scope.tables[table];
             }
-            $scope.active = $scope.registered;
-        } else if( newActiveTab === "subscribed" ) {
-            if( !$scope.subscribed.hasOwnProperty("results") ) {
-                $scope.query($scope.subscribed);
-            }
-            $scope.active = $scope.subscribed;
-        } else if( newActiveTab === "churned" ) {
-            if( !$scope.churned.hasOwnProperty("results") ) {
-                $scope.query($scope.churned);
-            }
-            $scope.active = $scope.churned;
         }
     };
 
@@ -861,7 +779,7 @@ subscriptionControllers.controller("subscriptionListCtrl",
             }
         }).then(
         function success(resp) {
-            $scope.query($scope.active);
+            $scope.refresh();
         }, function error(resp) {
             showErrorMessages(resp);
         });
@@ -873,7 +791,7 @@ subscriptionControllers.controller("subscriptionListCtrl",
         $http.put(settings.urls.organization.api_profile_base
             + organization + "/subscribers/accept/" + request_key + "/").then(
         function success(resp) {
-            $scope.query($scope.active);
+            $scope.refresh();
         }, function error(resp) {
             showErrorMessages(resp);
         });
@@ -891,22 +809,41 @@ subscriptionControllers.controller("subscriptionListCtrl",
         var plan = elm.attr("data-plan");
         $http.delete($scope.subscriptionURL(organization, plan)).then(
         function success(resp) {
-            $scope.query($scope.active);
+            $scope.refresh();
         }, function error(resp) {
             showErrorMessages(resp);
         });
     };
-
-    $scope.query($scope.subscribed);
 }]);
 
-subscriptionControllers.controller("subscriberListCtrl",
+
+transactionControllers.controller("subscriberListCtrl",
     ["$scope", "$controller", "$http", "$timeout", "settings",
     function($scope, $controller, $http, $timeout, settings) {
     settings.urls.organization.api_subscriptions = settings.urls.provider.api_subscribers_active;
     $controller('subscriptionListCtrl', {
         $scope: $scope, $http: $http, $timeout:$timeout,
         settings: settings});
+}]);
+
+
+transactionControllers.controller("planSubscribersListCtrl",
+    ["$scope", "$controller", "$http", "$timeout", "settings",
+    function($scope, $controller, $http, $timeout, settings) {
+    "use strict";
+    $controller('subscriptionListCtrl', {
+        $scope: $scope, $http: $http, $timeout:$timeout,
+        settings: settings});
+
+    $scope.subscribers = {
+        $resolved: false, count: 0,
+        location: settings.urls.provider.api_plan_subscribers};
+
+    $scope.active = $scope.subscribers;
+
+    $scope.refresh = function() {
+      $scope.query($scope.subscribers);
+    };
 }]);
 
 
@@ -1018,11 +955,12 @@ metricsControllers.controller("metricsCtrl",
         );
     };
 
-    $scope.ends_at = moment(settings.date_range.ends_at);
-    if( $scope.ends_at.isValid() ) {
-        $scope.ends_at = $scope.ends_at.toDate();
-    } else {
-        $scope.ends_at = moment().toDate();
+    $scope.ends_at = moment().toDate();
+    if( settings.date_range && settings.date_range.ends_at ) {
+        $scope.ends_at = moment(settings.date_range.ends_at);
+        if( $scope.ends_at.isValid() ) {
+            $scope.ends_at = $scope.ends_at.toDate();
+        }
     }
 
     // these aren't documented; do they do anything?

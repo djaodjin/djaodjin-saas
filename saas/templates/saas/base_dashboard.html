@@ -30,10 +30,12 @@ reopenSaasApp.constant('settings', {
   urls: {% if urls %}{{urls|to_json}}{% else %}{}{% endif %},
   itemsPerPage: {% if items_per_page %}{{items_per_page}}{% else %}25{% endif %},
   tables: {% if tables %}{{tables|safe}}{% else %}{}{% endif %}, // XXX
+  {% if start_at or ends_at %}
   date_range: {
     start_at: "{% if start_at %}{{start_at|isoformat}}{% endif %}",
     ends_at: "{% if ends_at %}{{ends_at|isoformat}}{% endif %}"
   },
+  {% endif %}
   user: {
     username: "{{request.user.username}}",
     slug: "{{request.user.username}}",

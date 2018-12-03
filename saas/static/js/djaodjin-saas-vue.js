@@ -427,11 +427,15 @@ var itemListMixin = {
                 params: {},
                 getCb: null,
             }
-            if(djaodjinSettings.date_range.start_at ) {
-                data.params['start_at'] = moment(djaodjinSettings.date_range.start_at).toDate()
-            }
-            if(djaodjinSettings.date_range.ends_at ) {
-                data.params['ends_at'] = moment(djaodjinSettings.date_range.ends_at).toDate()
+            if( djaodjinSettings.date_range ) {
+                if( djaodjinSettings.date_range.start_at ) {
+                    data.params['start_at'] = moment(
+                        djaodjinSettings.date_range.start_at).toDate();
+                }
+                if( djaodjinSettings.date_range.ends_at ) {
+                    data.params['ends_at'] = moment(
+                        djaodjinSettings.date_range.ends_at).toDate();
+                }
             }
             return data;
         },
@@ -1017,12 +1021,13 @@ var app = new Vue({
             tables: djaodjinSettings.tables,
             activeTab: 0,
         }
-        var ends_at = moment(djaodjinSettings.date_range.ends_at);
-        if(ends_at.isValid()){
-            data.ends_at = ends_at.toDate();
-        }
-        else {
-            data.ends_at = moment().toDate();
+        data.ends_at = moment().toDate();
+        if( djaodjinSettings.date_range
+            && djaodjinSettings.date_range.ends_at ) {
+            var ends_at = moment(djaodjinSettings.date_range.ends_at);
+            if(ends_at.isValid()){
+                data.ends_at = ends_at.toDate();
+            }
         }
         return data;
     },
@@ -1132,9 +1137,13 @@ var app = new Vue({
     mounted: function(){
         var vm = this;
         vm.prepareCurrentTabData();
-        for( var idx = 1; idx < vm.tables.length; ++idx ) {
-            var table = vm.tables[(vm.activeTab + idx) % vm.tables.length];
-            vm.fetchTableData(table);
+        if( false ) {
+            // XXX donot pretetch other tabs to match angularjs code
+            //     and pass tests.
+            for( var idx = 1; idx < vm.tables.length; ++idx ) {
+                var table = vm.tables[(vm.activeTab + idx) % vm.tables.length];
+                vm.fetchTableData(table);
+            }
         }
     }
 })
@@ -1152,23 +1161,25 @@ var app = new Vue({
     ],
     data: {
         currentTab: 1,
-        registered: {
-            url: djaodjinSettings.urls.broker.api_users_registered,
-            results: [],
-            count: 0,
-            loaded: false
-        },
-        subscribed: {
-            url: djaodjinSettings.urls.provider.api_subscribers_active,
-            results: [],
-            count: 0,
-            loaded: false
-        },
-        churned: {
-            url: djaodjinSettings.urls.provider.api_subscribers_churned,
-            results: [],
-            count: 0,
-            loaded: false
+        tables: {
+            registered: {
+                url: djaodjinSettings.urls.broker.api_users_registered,
+                results: [],
+                count: 0,
+                loaded: false
+            },
+            subscribed: {
+                url: djaodjinSettings.urls.provider.api_subscribers_active,
+                results: [],
+                count: 0,
+                loaded: false
+            },
+            churned: {
+                url: djaodjinSettings.urls.provider.api_subscribers_churned,
+                results: [],
+                count: 0,
+                loaded: false
+            }
         },
     },
     methods: {
@@ -1213,12 +1224,12 @@ var app = new Vue({
         },
         fetch: function(querysetKey) {
             var vm = this;
-            var queryset = vm[querysetKey];
+            var queryset = vm.tables[querysetKey];
             $.get(queryset.url, vm.params, function(resp){
                 queryset.results = resp.results;
                 queryset.count = resp.count;
                 queryset.loaded = true;
-                vm[querysetKey] = queryset;
+                vm.tables[querysetKey] = queryset;
             });
         },
         resolve: function (o, s){
@@ -1258,11 +1269,13 @@ var app = new Vue({
     },
     computed: {
         totalItems: function(){
-            return this[this.currentQueryset].count
+            var vm = this;
+            return vm.tables[vm.currentQueryset].count
         },
         currentQueryset: function(){
+            var vm = this;
             var sets = ['registered', 'subscribed', 'churned'];
-            return sets[this.currentTab];
+            return sets[vm.currentTab];
         }
     },
     mounted: function(){

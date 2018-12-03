@@ -4,12 +4,9 @@
 <div id="coupon-list-container" ng-app="saasApp">
     <h1>Coupons</h1>
     <div ng-controller="CouponListCtrl">
+      {% include "saas/_filter.html" %}
       <div>
-          <label>Filter</label>
-          <input type="text"
-              ng-model="params.q" ng-change="filterList(params.q)"
-              v-model="params.q" @input="filterList" />
-      <a id="download" role="button"
+        <a id="download" role="button"
          ng-prop-href="'{{urls.provider.download_coupons}}?q=' + params.q"
          v-bind:href="'{{urls.provider.download_coupons}}' + getQueryString(['page'])">CSV Download</a>
       </div>

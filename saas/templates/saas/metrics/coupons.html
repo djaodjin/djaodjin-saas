@@ -31,8 +31,8 @@
                   v-for="item in items.results"
                   v-show="itemsLoaded && items.results.length > 0" >
                 <td>
-                  <a ng-prop-href="'{{urls.user.profile_redirect}}' + item.user.slug + '/'"
-                      v-bind:href="'{{urls.user.profile_redirect}}' + item.user.slug + '/'">[[item.user.full_name]]</a>
+                  <a ng-prop-href="'{{urls.profile_redirect}}' + item.user.slug + '/'"
+                      v-bind:href="'{{urls.profile_redirect}}' + item.user.slug + '/'">[[item.user.full_name]]</a>
                 </td>
                 <td>[[item.plan]]</td>
                 <td>[[item.created_at | formatDate]]</td>

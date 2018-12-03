@@ -1,12 +1,11 @@
 <section id="transactions">
   <h1>Transactions</h1>
-  <label>Filter</label>
-  <input type="text"
-         ng-model="params.q" ng-change="filterList(params.q)"
-         v-model="params.q" @input="filterList" />
-  <a id="download" role="button"
-     ng-prop-href="'{{download_url}}?q=' + params.q + '&start_at=' + params.start_at + '&ends_at=' + params.ends_at"
-     v-bind:href="'{{download_url}}' + getQueryString(['page'])">CSV Download</a>
+  {% include "saas/_filter.html" %}
+  <div>
+    <a id="download" role="button"
+       ng-prop-href="'{{download_url}}?q=' + params.q + '&start_at=' + params.start_at + '&ends_at=' + params.ends_at"
+       v-bind:href="'{{download_url}}' + getQueryString(['page'])">CSV Download</a>
+  </div>
   <table>
     <thead>
       <tr>

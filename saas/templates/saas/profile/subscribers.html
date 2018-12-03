@@ -2,12 +2,12 @@
 
 {% block saas_content %}
 <section id="subscribers-list-container" ng-app="saasApp">
-  <div ng-controller="subscriberListCtrl" ng-init="prefetch()">
+  <div ng-controller="subscriberListCtrl" ng-init="refresh()">
     {% if registered %}
-    <div id="registered-users" name="registered-users" href="#registered-users">
-      <h2>Registered</h2>
+    <div id="registered">
+      <a name="registered" href="#registered"><h2>Registered</h2></a>
+      {% include "saas/_filter.html" %}
       <div>
-        <label>Filter</label> <input type="text" ng-model="params.q" ng-change="filterList(params.q)" v-model="params.q" @input="filterList" />
         <a id="download-registered" role="button"
            ng-prop-href="'{{registered.urls.download}}?q=' + params.q"
            v-bind:href="'{{registered.urls.download}}' + getQueryString(['page'])">CSV Download</a>
@@ -21,26 +21,26 @@
             </tr>
           </thead>
           <tbody>
-            <tr ng-show="!registered.$resolved"
-                v-show="!registered.loaded">
+            <tr ng-show="!tables.registered.$resolved"
+                v-show="!tables.registered.loaded">
               <td colspan="2">
                 <h3>Loading ...</h3>
               </td>
             </tr>
-            <tr ng-show="registered.$resolved && registered.count == 0" ng-cloak
-                v-show="registered.loaded && registered.count == 0" v-cloak>
+            <tr ng-show="tables.registered.$resolved && tables.registered.count == 0" ng-cloak
+                v-show="tables.registered.loaded && tables.registered.count == 0" v-cloak>
               <td colspan="2">
                 <h4><em>No registered users<span ng-show="params.q" v-show="params.q"> [[params.q]]</span></em></h4>
               </td>
             </tr>
           </tbody>
           <tbody class="has-results"
-                 ng-repeat="entry in registered.results" ng-show="registered.$resolved && registered.results.length > 0" ng-cloak
-                 v-for="entry in registered.results" v-show="registered.loaded && registered.results.length > 0" v-cloak>
+                 ng-repeat="entry in tables.registered.results" ng-show="tables.registered.$resolved && tables.registered.results.length > 0" ng-cloak
+                 v-for="entry in tables.registered.results" v-show="tables.registered.loaded && tables.registered.results.length > 0" v-cloak>
             <tr>
               <td>
-                <a ng-prop-href="'{{urls.user.profile_redirect}}' + entry.slug + '/'"
-                   v-bind:href="'{{urls.user.profile_redirect}}' + entry.slug + '/'">[[entry.full_name]]</a>
+                <a ng-prop-href="'{{urls.profile_redirect}}' + entry.slug + '/'"
+                   v-bind:href="'{{urls.profile_redirect}}' + entry.slug + '/'">[[entry.full_name]]</a>
               </td>
               <td>
                 [[entry.created_at | relativeDate]]
@@ -49,10 +49,10 @@
           </tbody>
         </table>
       </div>
-      <div ng-show="registered.$resolved && registered.results.length > 0"
-           v-show="registered.loaded && totalItems > itemsPerPage">
+      <div ng-show="tables.registered.$resolved && tables.registered.results.length > 0"
+           v-show="tables.registered.loaded && totalItems > itemsPerPage">
         <ul uib-pagination ng-model="currentPage"
-            total-items="registered.count"
+            total-items="tables.registered.count"
             items-per-page="itemsPerPage"
             boundary-links="true"
             max-size="maxSize"
@@ -70,12 +70,10 @@
     </div>
     {% endif %}
     {% for tab in tabs %}
-    <div id="{{tab.slug}}" name="{{tab.slug}}" href="#{{tab.slug}}">
-      <h2>{{tab.title}}</h2>
+    <div id="{{tab.slug}}">
+      <a name="{{tab.slug}}" href="#{{tab.slug}}"><h2>{{tab.title}}</h2></a>
+      {% include "saas/_filter.html" %}
       <div>
-        <input type="text" placeholder="Filter"
-               ng-model="params.q" ng-change="filterList(params.q)"
-               v-model="params.q" @input="filterList" />
         <a id="download-{{tab.slug}}" role="button"
            ng-prop-href="'{{tab.urls.download}}?q=' + params.q"
            v-bind:href="'{{tab.urls.download}}' + getQueryString(['page'])">CSV Download</a>
@@ -90,8 +88,8 @@
               <th>Ends At<button ng-click="sortBy('ends_at')" @click="sortBy('ends_at')">[[params.o === 'ends_at' ? params.ot : 'sort']]</button></th>
             </tr>
           </thead>
-          <tbody ng-show="!{{tab.slug}}.$resolved"
-                 v-show="!{{tab.slug}}.loaded">
+          <tbody ng-show="!tables.{{tab.slug}}.$resolved"
+                 v-show="!tables.{{tab.slug}}.loaded">
             <tr>
               <td colspan="5">
                 <h4>Loading ...</h4>
@@ -99,8 +97,8 @@
             </tr>
           </tbody>
           <tbody class="has-no-results"
-                 ng-show="{{tab.slug}}.$resolved && {{tab.slug}}.results.length == 0" ng-cloak
-                 v-show="{{tab.slug}}.loaded && {{tab.slug}}.results.length == 0" v-cloak>
+                 ng-show="tables.{{tab.slug}}.$resolved && tables.{{tab.slug}}.results.length == 0" ng-cloak
+                 v-show="tables.{{tab.slug}}.loaded && tables.{{tab.slug}}.results.length == 0" v-cloak>
             <tr>
               <td colspan="5">
                 <h4>No subscribers<span ng-show="params.q"> with filter: '[[params.q]]'</span></h4>
@@ -108,10 +106,10 @@
             </tr>
           </tbody>
           <tbody class="has-results"
-                 ng-repeat="entry in {{tab.slug}}.results"
-                 ng-show="{{tab.slug}}.$resolved && {{tab.slug}}.results.length > 0" ng-cloak
-                 v-for="entry in {{tab.slug}}.results"
-                 v-show="{{tab.slug}}.loaded && {{tab.slug}}.results.length > 0" v-cloak>
+                 ng-repeat="entry in tables.{{tab.slug}}.results"
+                 ng-show="tables.{{tab.slug}}.$resolved && tables.{{tab.slug}}.results.length > 0" ng-cloak
+                 v-for="entry in tables.{{tab.slug}}.results"
+                 v-show="tables.{{tab.slug}}.loaded && tables.{{tab.slug}}.results.length > 0" v-cloak>
             <tr ng-class="endsSoon(entry)">
               <td>
                 <a ng-prop-id="entry.organization.slug"
@@ -135,10 +133,10 @@
           </tbody>
         </table>
       </div>
-      <div ng-show="{{tab.slug}}.$resolved && {{tab.slug}}.results.length > 0"
-           v-show="{{tab.slug}}.loaded && totalItems > itemsPerPage">
+      <div ng-show="tables.{{tab.slug}}.$resolved && tables.{{tab.slug}}.results.length > 0"
+           v-show="tables.{{tab.slug}}.loaded && totalItems > itemsPerPage">
         <ul uib-pagination ng-model="currentPage"
-            total-items="{{tab.slug}}.count"
+            total-items="tables.{{tab.slug}}.count"
             items-per-page="itemsPerPage"
             boundary-links="true"
             max-size="maxSize"

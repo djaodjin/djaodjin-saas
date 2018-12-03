@@ -46,7 +46,7 @@
     <div ng-prop-id="table.key"
          ng-repeat="table in tables"
          v-bind:id="table.key"
-         v-for="table in tables"
+         v-for="(table, index) in tables"
          v-bind:key="table.key">
       <a ng-prop-href="'#' + table.key"
          ng-click="tabClicked(table)"

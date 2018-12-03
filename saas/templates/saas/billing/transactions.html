@@ -9,25 +9,7 @@
     <section id="transactions">
       <div>
         <h1>Transactions</h1>
-        <div>
-          <span>From</span>
-          <span datepicker-popup="[[format]]" ng-model="params.start_at" is-open="opened.start_at" ng-required="true" close-text="Close">[[params.start_at | date : mediumDate]]
-          </span>
-          <span>
-            <button type="button" ng-click="open($event, 'start_at')">Calendar</button>
-          </span>
-          <span>To</span>
-          <span datepicker-popup="[[format]]" ng-model="params.ends_at" is-open="opened.ends_at" ng-required="true" close-text="Close">[[params.ends_at | date : mediumDate]]</span>
-          <span>
-            <button type="button" ng-click="open($event, 'ends_at')">Calendar</button>
-          </span>
-          <div>
-            <label>Filter</label> <input type="text" ng-model="filterExpr" ng-change="filterList(filterExpr)" />
-          </div>
-          <div>
-            <a id="download" href="{{download_url}}?q=[[filterExpr]]&start_at=[[params.start_at]]&ends_at=[[params.ends_at]]" role="button">CSV Download</a>
-          </div>
-        </div>
+        {% include "saas/_filter.html" %}
         <table>
           <thead>
             <tr>
