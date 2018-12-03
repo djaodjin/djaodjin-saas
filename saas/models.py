@@ -1815,8 +1815,12 @@ class Charge(models.Model):
                 Transaction.objects.create(
                     event_id=event_id,
                     created_at=self.created_at,
+                    # Implementation Note: We use `event` here instead
+                    # of `event_id` such that the plan name shows up
+                    # in the description. This was the previous behavior
+                    # and customers are relying on this do their accounting.
                     descr=humanize.DESCRIBE_CHARGED_CARD_PROVIDER % {
-                            'charge': self.processor_key, 'event': event_id},
+                            'charge': self.processor_key, 'event': event},
                     dest_unit=self.unit,
                     dest_amount=orig_item_amount,
                     dest_account=Transaction.RECEIVABLE,
