@@ -240,21 +240,20 @@ def fail_paid_subscription(request, organization=None, plan=None):
 
 def _fail_direct(request, organization=None, roledescription=None,
                  strength=NORMAL):
-    if organization is None:
-        organization = get_broker()
-    elif isinstance(organization, Charge):
-        # implicit natural conversion
-        organization = organization.customer
-    elif organization and not isinstance(organization, Organization):
-        try:
-            organization = Organization.objects.get(slug=organization)
-        except Organization.DoesNotExist:
-            charge = get_object_or_404(Charge, processor_key=organization)
-            organization = charge.customer
-    result = not(organization and _has_valid_access(
-        request, [organization],
+    candidates = [get_broker()]
+    if organization:
+        if isinstance(organization, Charge):
+            # implicit natural conversion
+            organization = organization.customer
+        elif not isinstance(organization, Organization):
+            try:
+                organization = Organization.objects.get(slug=organization)
+            except Organization.DoesNotExist:
+                charge = get_object_or_404(Charge, processor_key=organization)
+                organization = charge.customer
+        candidates += [organization]
+    return not(_has_valid_access(request, candidates,
         strength=strength, roledescription=roledescription))
-    return result
 
 
 def fail_direct(request, organization=None, roledescription=None):
@@ -268,6 +267,9 @@ def fail_direct(request, organization=None, roledescription=None):
     Managers can issue all types of requests (GET, POST, etc.) while
     ``request.user`` with a ``roledescription`` (ex: contributors)
     are restricted to GET requests.
+
+    Note: In order to handle support requests effectively, a manager
+    for the broker will always have access to the URL end-point.
     """
     return _fail_direct(request, organization=organization,
         strength=NORMAL, roledescription=roledescription)
@@ -283,6 +285,9 @@ def fail_direct_weak(request, organization=None, roledescription=None):
     Both ``roledescription`` and managers can issue all types of requests
     (GET, POST, etc.).
 
+    Note: In order to handle support requests effectively, a manager
+    for the broker will always have access to the URL end-point.
+
     .. image:: perms-contrib.*
     """
     return _fail_direct(request, organization=organization,
@@ -292,6 +297,9 @@ def fail_direct_weak(request, organization=None, roledescription=None):
 def fail_direct_strong(request, organization=None):
     """
     Direct Managers for :organization
+
+    Note: In order to handle support requests effectively, a manager
+    for the broker will always have access to the URL end-point.
     """
     return _fail_direct(request, organization=organization, strength=STRONG)
 
@@ -333,20 +341,19 @@ def fail_provider_readable(request, organization=None, roledescription=None):
 
 def _fail_provider(request, organization=None,
                    strength=NORMAL, roledescription=None):
-    if isinstance(organization, Charge):
-        # implicit natural conversion
-        organization = organization.customer
-    elif organization and not isinstance(organization, Organization):
-        try:
-            organization = Organization.objects.get(slug=organization)
-        except Organization.DoesNotExist:
-            charge = get_object_or_404(Charge, processor_key=organization)
-            organization = charge.customer
     candidates = [get_broker()]
     if organization:
-        candidates = ([organization]
-            + list(Organization.objects.providers_to(organization))
-            + candidates)
+        if isinstance(organization, Charge):
+            # implicit natural conversion
+            organization = organization.customer
+        elif not isinstance(organization, Organization):
+            try:
+                organization = Organization.objects.get(slug=organization)
+            except Organization.DoesNotExist:
+                charge = get_object_or_404(Charge, processor_key=organization)
+                organization = charge.customer
+        candidates += ([organization]
+                + list(Organization.objects.providers_to(organization)))
     return not _has_valid_access(request, candidates,
         strength=strength, roledescription=roledescription)
 
@@ -395,19 +402,18 @@ def fail_provider_strong(request, organization=None):
 
 def _fail_provider_only(request, organization=None, strength=NORMAL,
                         roledescription=None):
-    if isinstance(organization, Charge):
-        # implicit natural conversion
-        organization = organization.customer
-    elif organization and not isinstance(organization, Organization):
-        try:
-            organization = Organization.objects.get(slug=organization)
-        except Organization.DoesNotExist:
-            charge = get_object_or_404(Charge, processor_key=organization)
-            organization = charge.customer
     candidates = [get_broker()]
     if organization:
-        candidates = (list(Organization.objects.providers_to(organization))
-            + candidates)
+        if isinstance(organization, Charge):
+            # implicit natural conversion
+            organization = organization.customer
+        elif not isinstance(organization, Organization):
+            try:
+                organization = Organization.objects.get(slug=organization)
+            except Organization.DoesNotExist:
+                charge = get_object_or_404(Charge, processor_key=organization)
+                organization = charge.customer
+        candidates += list(Organization.objects.providers_to(organization))
     return not _has_valid_access(request, candidates,
         strength=strength, roledescription=roledescription)
 
