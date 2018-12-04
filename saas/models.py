@@ -2297,15 +2297,14 @@ class Plan(SlugTitleMixin, models.Model):
         (YEARLY, "YEARLY"),
         ]
 
-    ONE_TIME = 1
+    ONE_TIME = 0
+    AUTO_RENEW = 1
     REPEAT = 2
-    AUTO_RENEW = 3
 
     RENEWAL_CHOICES = [
         (ONE_TIME, "ONE_TIME"),
-        (REPEAT, "REPEAT"),
         (AUTO_RENEW, "AUTO_RENEW"),
-        ]
+        (REPEAT, "REPEAT")]
 
     PRICE_ROUND_NONE = 0
     PRICE_ROUND_WHOLE = 1

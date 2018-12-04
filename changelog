@@ -1,3 +1,9 @@
+0.3.2
+
+  * Compatible with Django 2.0.x
+  * Adds command to reconcile payouts with processor
+  * Generates revenue reports in utc and local time
+
 0.3.0
 
   * Grants and requests for double opt-in on roles and subscriptions.
