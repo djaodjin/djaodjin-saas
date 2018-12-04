@@ -187,7 +187,8 @@ SAAS = {
 #      'BACKEND': 'saas.backends.razorpay_processor.RazorpayBackend',
 #      'PRIV_KEY': getattr(sys.modules[__name__], "RAZORPAY_PRIV_KEY", None),
 #      'PUB_KEY': getattr(sys.modules[__name__], "RAZORPAY_PUB_KEY", None),
-    }
+    },
+    'EXPIRE_NOTICE_DAYS': [90, 60, 30, 15, 1],
 }
 
 # A sample logging configuration. The only tangible logging

@@ -37,6 +37,9 @@ order_executed = Signal(providing_args=['invoiced_items', 'user'])
 claim_code_generated = Signal(providing_args=[
     'subscriber', 'claim_code', 'user'])
 expires_soon = Signal(providing_args=['subscription', 'nb_days'])
+card_expires_soon = Signal(providing_args=['organization', 'nb_days'])
+subscription_upgrade = Signal(providing_args=['subscription', 'nb_days'])
+payment_method_absent = Signal(providing_args=['organization'])
 user_relation_added = Signal(providing_args=['role', 'reason'])
 user_relation_requested = Signal(providing_args=[
     'organization', 'user', 'reason'])

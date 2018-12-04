@@ -49,6 +49,7 @@ appropriate ``Transaction`` and ``Charge`` only once.
 import logging, time
 
 from django.core.management.base import BaseCommand
+from django.conf import settings
 
 from ...renewals import (create_charges_for_balance, complete_charges,
     extend_subscriptions, recognize_income, trigger_expiration_notices)
@@ -102,4 +103,6 @@ on credit cards"""
             complete_charges()
 
         # Trigger 'expires soon' notifications
-        trigger_expiration_notices(end_period, dry_run=dry_run)
+        expiration_periods = settings.SAAS.get('EXPIRE_NOTICE_DAYS')
+        for period in expiration_periods:
+            trigger_expiration_notices(end_period, nb_days=period, dry_run=dry_run)
