@@ -134,7 +134,7 @@ class Migration(migrations.Migration):
                 ('unlock_event', models.CharField(blank=True, help_text='Payment required to access full service', max_length=128, null=True)),
                 ('advance_discount', models.PositiveIntegerField(default=333, help_text='incr discount for payment of multiple periods (in %%).', validators=[django.core.validators.MaxValueValidator(10000)])),
                 ('length', models.PositiveSmallIntegerField(blank=True, help_text='Number of intervals the plan before the plan ends.', null=True)),
-                ('auto_renew', models.BooleanField(default=True)),
+                ('renewal_type', models.PositiveSmallIntegerField(choices=[(1, 'ONE_TIME'), (2, 'REPEAT'), (3, 'AUTO_RENEW')], default=3)),
                 ('extra', models.TextField(null=True)),
                 ('next_plan', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, to='saas.Plan')),
                 ('organization', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='plans', to='saas.Organization')),

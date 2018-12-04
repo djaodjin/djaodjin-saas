@@ -2297,6 +2297,16 @@ class Plan(SlugTitleMixin, models.Model):
         (YEARLY, "YEARLY"),
         ]
 
+    ONE_TIME = 1
+    REPEAT = 2
+    AUTO_RENEW = 3
+
+    RENEWAL_CHOICES = [
+        (ONE_TIME, "ONE_TIME"),
+        (REPEAT, "REPEAT"),
+        (AUTO_RENEW, "AUTO_RENEW"),
+        ]
+
     PRICE_ROUND_NONE = 0
     PRICE_ROUND_WHOLE = 1
     PRICE_ROUND_99 = 2
@@ -2336,7 +2346,8 @@ class Plan(SlugTitleMixin, models.Model):
     length = models.PositiveSmallIntegerField(null=True, blank=True,
         help_text=_('Number of natural periods before a subscription to'\
         ' the plan ends (default to 1)'))
-    auto_renew = models.BooleanField(default=True)
+    renewal_type = models.PositiveSmallIntegerField(
+        choices=RENEWAL_CHOICES, default=AUTO_RENEW)
     # Pb with next : maybe create an other model for it
     next_plan = models.ForeignKey("Plan", null=True, on_delete=models.CASCADE,
         blank=True)
@@ -2774,7 +2785,7 @@ class SubscriptionManager(models.Manager):
             ends_at = plan.end_of_period(
                 datetime_or_now(), nb_periods=plan.period_length)
         return Subscription(organization=organization, plan=plan,
-            auto_renew=plan.auto_renew, ends_at=ends_at)
+            auto_renew=plan.renewal_type == plan.AUTO_RENEW, ends_at=ends_at)
 
     def valid_for(self, **kwargs):
         """

@@ -63,9 +63,9 @@
     </fieldset>
     <fieldset>
         <legend>Extra Options</legend>
-        <div class="{% if form.auto_renew.errors %}has-error{% endif %}">
-            <input type="text" name="{{form.auto_renew.name}}" value="{{form.auto_renew.value}}">
-            {% for error in form.auto_renew.errors %}
+        <div class="{% if form.renewal_type.errors %}has-error{% endif %}">
+            <input type="text" name="{{form.renewal_type.name}}" value="{{form.renewal_type.value}}">
+            {% for error in form.renewal_type.errors %}
             <span class="help-block"><strong>{{error}}</strong></span>
             {% endfor %}
         </div>

@@ -44,11 +44,11 @@ subscriptions or auto-renewal subscriptions.
 |                 | explicitely take action in           | rates              |
 |                 | the product.                         |                    |
 +-----------------+--------------------------------------+--------------------+
-|AUTO_RENEWAL     | The service is provided continuoulsly| web hosting        |
+|AUTO_RENEW       | The service is provided continuoulsly| web hosting        |
 |                 | until canceled.                      |                    |
 +-----------------+--------------------------------------+--------------------+
 
-When a ``Subscription`` for a ``Plan`` where ``renewal_type == AUTO_RENEWAL``
+When a ``Subscription`` for a ``Plan`` where ``renewal_type == AUTO_RENEW``
 is created, ``Subscription.auto_renew`` is set to ``True`` to tell
 the :doc:`periodic renewal task <periodic-tasks>` to automatically extends
 the subscription for one more period in the day before it ends.
@@ -89,7 +89,7 @@ valid or expired. The payment method status is determined at the time
 a renewal ``Charge`` would be created.
 
 There would be 18 (3 * 2 * 3) combinations of expiration notices if a
-a few combinations could not happen.
+few combinations could not happen.
 
 - ``Subscription.auto_renew`` shall be false when ``Plan.renewal_type`` is
 ``ONE_TIME`` because it does not make sense to have a subscription that
@@ -107,7 +107,7 @@ an auto-renew behavior. Thus, instead of adding another state variable, we use
 to detect cancelations of auto-renewals.
 
 
-The signals triggered by `saas.renewals.trigger_expiration_notices`
+The signals triggered by ``saas.renewals.trigger_expiration_notices``
 are such for the available combinations
 
 +----------+----------------+----------------+---------------------------------+
