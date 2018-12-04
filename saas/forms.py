@@ -239,7 +239,7 @@ class PlanForm(forms.ModelForm):
         model = Plan
         fields = ('title', 'description', 'period_amount', 'unit', 'interval',
                   'period_length', 'advance_discount',
-                  'auto_renew', 'is_not_priced')
+                  'renewal_type', 'is_not_priced')
 
     def __init__(self, *args, **kwargs):
         initial = kwargs.get('initial', None)

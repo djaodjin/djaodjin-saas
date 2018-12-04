@@ -29,6 +29,7 @@ in batch mode.
 
 import logging
 
+from datetime import datetime
 from dateutil.relativedelta import relativedelta
 from django.db import transaction
 from django.utils import six
@@ -242,19 +243,61 @@ def trigger_expiration_notices(at_time=None, nb_days=15, dry_run=False):
     LOGGER.info(
         "trigger notifications for subscription expiring within [%s,%s[ ...",
         lower, upper)
+    orgs_processed = []
     for subscription in Subscription.objects.valid_for(
-            auto_renew=False, ends_at__gte=lower, ends_at__lt=upper,
-            plan__auto_renew=True):
-        LOGGER.info("trigger expires soon for %s", subscription)
-        if not dry_run:
-            try:
-                signals.expires_soon.send(sender=__name__,
-                    subscription=subscription, nb_days=nb_days)
-            except Exception as err: #pylint:disable=broad-except
-                # We use `Exception` because the email server might be
-                # unavailable but ConnectionRefusedError is not a subclass
-                # of RuntimeError.
-                LOGGER.exception("error: %s", err)
+            auto_renew=False, ends_at__gte=lower, ends_at__lt=upper):
+        org = subscription.organization
+        plan = subscription.plan
+
+        if subscription.auto_renew == True:
+            if plan.renewal_type == plan.AUTO_RENEW and org.id not in orgs_processed:
+                if org.processor_card_key:
+                    card = org.retrieve_card()
+                    try:
+                        exp_month, exp_year = card['exp_date'].split('/')
+                        exp_date = datetime(year=int(exp_year),
+                            month=int(exp_month), day=1, tzinfo=at_time.tzinfo)
+                        if lower >= exp_date:
+                            LOGGER.info("payment method expires soon for %s", org)
+                            if not dry_run:
+                                try:
+                                    signals.card_expires_soon.send(
+                                        sender=__name__, organization=org,
+                                        days=nb_days)
+                                except Exception as err: #pylint:disable=broad-except
+                                    LOGGER.exception("error: %s", err)
+                    except (KeyError, ValueError):
+                        # exp info is missing or the format is incorrect
+                        pass
+                else:
+                    LOGGER.info("%s doesn't have a payment method attached",
+                        org)
+                    if not dry_run:
+                        try:
+                            signals.payment_method_absent.send(sender=__name__,
+                                organization=org)
+                        except Exception as err: #pylint:disable=broad-except
+                            LOGGER.exception("error: %s", err)
+
+                orgs_processed.append(org.id)
+        else:
+            if plan.renewal_type == plan.ONE_TIME:
+                LOGGER.info("trigger upgrade soon for %s", subscription)
+                if not dry_run:
+                    try:
+                        signals.subscription_upgrade.send(sender=__name__,
+                            subscription=subscription, nb_days=nb_days)
+                    except Exception as err: #pylint:disable=broad-except
+                        LOGGER.exception("error: %s", err)
+
+            elif plan.renewal_type == plan.REPEAT:
+                LOGGER.info("trigger expires soon for %s", subscription)
+                if not dry_run:
+                    try:
+                        signals.expires_soon.send(sender=__name__,
+                            subscription=subscription, nb_days=nb_days)
+                    except Exception as err: #pylint:disable=broad-except
+                        LOGGER.exception("error: %s", err)
 
 
 def create_charges_for_balance(until=None, dry_run=False):
