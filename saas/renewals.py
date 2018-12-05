@@ -244,7 +244,8 @@ def trigger_expiration_notices(at_time=None, nb_days=15, dry_run=False):
         "trigger notifications for subscription expiring within [%s,%s[ ...",
         lower, upper)
     prev_organization = None
-    for subscription in Subscription.objects.valid_for().order_by('organization'):
+    for subscription in Subscription.objects.valid_for(ends_at__gte=lower,
+            ends_at__lt=upper).order_by('organization'):
         org = subscription.organization
         plan = subscription.plan
 
