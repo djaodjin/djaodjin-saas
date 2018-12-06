@@ -237,6 +237,31 @@ def trigger_expiration_notices(at_time=None, nb_days=15, dry_run=False):
     """
     Trigger a signal for all subscriptions which are near the expiration date.
     """
+
+    def _handle_organization_notices(organization):
+        if organization.processor_card_key:
+            card = organization.retrieve_card()
+            try:
+                exp_month, exp_year = card['exp_date'].split('/')
+                exp_date = datetime(year=int(exp_year),
+                    month=int(exp_month), day=1, tzinfo=at_time.tzinfo)
+                if lower >= exp_date:
+                    LOGGER.info("payment method expires soon for %s",
+                        organization)
+                    if not dry_run:
+                        signals.card_expires_soon.send(
+                            sender=__name__, organization=organization,
+                            days=nb_days)
+            except (KeyError, ValueError):
+                # exp info is missing or the format is incorrect
+                pass
+        else:
+            LOGGER.info("%s doesn't have a payment method attached",
+                organization)
+            if not dry_run:
+                signals.payment_method_absent.send(sender=__name__,
+                    organization=organization)
+
     at_time = datetime_or_now(at_time)
     lower = at_time + relativedelta(days=nb_days)
     upper = at_time + relativedelta(days=nb_days + 1)
@@ -244,6 +269,7 @@ def trigger_expiration_notices(at_time=None, nb_days=15, dry_run=False):
         "trigger notifications for subscription expiring within [%s,%s[ ...",
         lower, upper)
     prev_organization = None
+    subscription = None
     for subscription in Subscription.objects.valid_for(ends_at__gte=lower,
             ends_at__lt=upper).order_by('organization'):
         org = subscription.organization
@@ -251,31 +277,11 @@ def trigger_expiration_notices(at_time=None, nb_days=15, dry_run=False):
 
         try:
             if subscription.auto_renew == True:
-                if plan.renewal_type == plan.AUTO_RENEW and \
-                        org.id != prev_organization:
-                    if org.processor_card_key:
-                        card = org.retrieve_card()
-                        try:
-                            exp_month, exp_year = card['exp_date'].split('/')
-                            exp_date = datetime(year=int(exp_year),
-                                month=int(exp_month), day=1, tzinfo=at_time.tzinfo)
-                            if lower >= exp_date:
-                                LOGGER.info("payment method expires soon for %s", org)
-                                if not dry_run:
-                                    signals.card_expires_soon.send(
-                                        sender=__name__, organization=org,
-                                        days=nb_days)
-                        except (KeyError, ValueError):
-                            # exp info is missing or the format is incorrect
-                            pass
-                    else:
-                        LOGGER.info("%s doesn't have a payment method attached",
-                            org)
-                        if not dry_run:
-                            signals.payment_method_absent.send(sender=__name__,
-                                organization=org)
+                if plan.renewal_type == plan.AUTO_RENEW:
+                    if org.id != prev_organization:
+                        _handle_organization_notices(org)
 
-                prev_organization = org.id
+                    prev_organization = org.id
             else:
                 if plan.renewal_type == plan.ONE_TIME:
                     LOGGER.info("trigger upgrade soon for %s", subscription)
@@ -294,6 +300,10 @@ def trigger_expiration_notices(at_time=None, nb_days=15, dry_run=False):
             # unavailable but ConnectionRefusedError is not a subclass
             # of RuntimeError.
             LOGGER.exception("error: %s", err)
+
+    # flushing the last organization
+    if subscription and subscription.organization.id != prev_organization:
+        _handle_organization_notices(subscription.organization)
 
 
 def create_charges_for_balance(until=None, dry_run=False):
