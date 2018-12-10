@@ -450,7 +450,13 @@ var itemListMixin = {
                     vm.itemsLoaded = true;
                 }
             }
-            $.get(vm.url, vm.getParams(), cb);
+            $.get(vm.url, vm.getParams(), cb).fail(function(res) {
+                if(res.responseJSON && res.responseJSON.detail){
+                    showErrorMessages(res.responseJSON.detail);
+                } else {
+                    showErrorMessages(res.responseText);
+                }
+            });
         },
         getParams: function(excludes){
             var vm = this;
