@@ -105,4 +105,5 @@ on credit cards"""
         # Trigger 'expires soon' notifications
         expiration_periods = settings.SAAS.get('EXPIRE_NOTICE_DAYS')
         for period in expiration_periods:
-            trigger_expiration_notices(end_period, nb_days=period, dry_run=dry_run)
+            trigger_expiration_notices(
+                end_period, nb_days=period, dry_run=dry_run)
