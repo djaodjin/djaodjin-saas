@@ -409,7 +409,7 @@ var regions = {
     }
 }
 
-
+var DATE_FORMAT = 'MMM DD, YYYY';
 
 var itemListMixin = {
     data: function(){
@@ -430,11 +430,11 @@ var itemListMixin = {
             if( djaodjinSettings.date_range ) {
                 if( djaodjinSettings.date_range.start_at ) {
                     data.params['start_at'] = moment(
-                        djaodjinSettings.date_range.start_at).toDate();
+                        djaodjinSettings.date_range.start_at).format(DATE_FORMAT);
                 }
                 if( djaodjinSettings.date_range.ends_at ) {
                     data.params['ends_at'] = moment(
-                        djaodjinSettings.date_range.ends_at).toDate();
+                        djaodjinSettings.date_range.ends_at).format(DATE_FORMAT);
                 }
             }
             return data;
@@ -459,7 +459,7 @@ var itemListMixin = {
                 if( vm.params.hasOwnProperty(key) && vm.params[key] ) {
                     if( excludes && key in excludes ) continue;
                     if( key === 'start_at' || key === 'ends_at' ) {
-                        params[key] = moment(vm.params[key]).toISOString();
+                        params[key] = moment(vm.params[key], DATE_FORMAT).toISOString();
                     } else {
                         params[key] = vm.params[key];
                     }
@@ -1021,12 +1021,12 @@ var app = new Vue({
             tables: djaodjinSettings.tables,
             activeTab: 0,
         }
-        data.ends_at = moment().toDate();
+        data.ends_at = moment().format(DATE_FORMAT);
         if( djaodjinSettings.date_range
             && djaodjinSettings.date_range.ends_at ) {
             var ends_at = moment(djaodjinSettings.date_range.ends_at);
             if(ends_at.isValid()){
-                data.ends_at = ends_at.toDate();
+                data.ends_at = ends_at.format(DATE_FORMAT);
             }
         }
         return data;
@@ -1034,7 +1034,7 @@ var app = new Vue({
     methods: {
         fetchTableData: function(table, cb){
             var vm = this;
-            var params = {"ends_at": moment(vm.ends_at).format()};
+            var params = {"ends_at": moment(vm.ends_at, DATE_FORMAT).format()};
             if( vm.timezone !== 'utc' ) {
                 params["timezone"] = moment.tz.guess();
             }
