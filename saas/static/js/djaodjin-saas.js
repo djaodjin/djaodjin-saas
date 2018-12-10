@@ -31,7 +31,7 @@
             var self = this;
             self.item = {};
             var restricted = ["plan", "quantity",
-                "first_name", "last_name", "sync_on", "invoice_key"];
+                "full_name", "sync_on", "invoice_key"];
             for(var i = 0; i < restricted.length; ++i ) {
                 var key = restricted[i];
                 if( key in self.options ) {
@@ -372,8 +372,7 @@
                 var seatEmail = subscription.find(".seat-email");
                 var item = {
                     plan: subscription.attr("data-plan"),
-                    first_name: seatFirstName.val(),
-                    last_name: seatLastName.val(),
+                    full_name: seatFirstName.val() + ' ' + seatLastName.val(),
                     sync_on: seatEmail.val()
                 };
                 seatFirstName.val("");
@@ -514,7 +513,7 @@
         },
 
         createLineMessage: function(data) {
-            return data.first_name + " " + data.last_name + " (" + data.sync_on + ")";
+            return data.full_name + " (" + data.sync_on + ")";
         },
 
         insertLine: function(data) {

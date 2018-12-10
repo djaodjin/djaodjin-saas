@@ -60,7 +60,7 @@ class CartItemCreateSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = CartItem
-        fields = ('plan', 'option', 'first_name', 'last_name', 'sync_on')
+        fields = ('plan', 'option', 'full_name', 'sync_on')
 
 
 class OrganizationCartSerializer(NoModelSerializer):
@@ -115,7 +115,7 @@ class CartItemAPIView(CartMixin, CreateAPIView):
 
     ``quantity`` is optional. When it is not specified, subsquent checkout
     screens will provide choices to pay multiple periods in advance
-    When additional ``first_name``, ``last_name`` and ``sync_on`` are specified,
+    When additional ``full_name`` and ``sync_on`` are specified,
     payment can be made by one ``Organization`` for another ``Organization``
     to be subscribed (see :ref:`GroupBuy orders<group_buy>`).
 
@@ -143,7 +143,7 @@ class CartItemAPIView(CartMixin, CreateAPIView):
 
     ``option`` is optional. When it is not specified, subsquent checkout
     screens will provide choices to pay multiple periods in advance
-    When additional ``first_name``, ``last_name`` and ``sync_on`` are specified,
+    When additional ``full_name`` and ``sync_on`` are specified,
     payment can be made by one ``Organization`` for another ``Organization``
     to be subscribed (see :ref:`GroupBuy orders<group_buy>`).
     """
@@ -254,6 +254,7 @@ class CartItemUploadAPIView(CartMixin, GenericAPIView):
 
         for row in filed:
             try:
+                # TODO should I change the interface here too?
                 first_name, last_name, email = row
             except csv.Error:
                 response['failed'].append({'data': {'raw': row},
@@ -261,8 +262,7 @@ class CartItemUploadAPIView(CartMixin, GenericAPIView):
             else:
                 serializer = CartItemCreateSerializer(
                     data={'plan': plan,
-                          'first_name': first_name,
-                          'last_name': last_name,
+                          'full_name': first_name + ' ' + last_name,
                           'sync_on': email})
                 if serializer.is_valid():
                     cart_item, created = self.insert_item(

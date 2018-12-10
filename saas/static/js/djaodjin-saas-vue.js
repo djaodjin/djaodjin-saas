@@ -1799,8 +1799,7 @@ var app = new Vue({
             var user = this.planUser(plan);
             var data = {
                 plan: plan,
-                first_name: user.firstName,
-                last_name: user.lastName,
+                full_name: user.firstName + ' ' + user.lastName,
                 sync_on: user.email
             }
             var option = vm.plansOption[plan];

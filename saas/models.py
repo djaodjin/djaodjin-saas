@@ -646,8 +646,7 @@ class Organization(models.Model):
             for cart_item in cart_items:
                 cart_item.sync_on = ""
                 cart_item.user = None
-                cart_item.first_name = ''
-                cart_item.last_name = self.printable_name
+                cart_item.full_name = self.printable_name
                 if cart_item.claim_code:
                     claim_codes.update({key: cart_item.claim_code})
                 else:
@@ -2689,14 +2688,8 @@ class CartItem(models.Model):
     # that will be passed back on successful charge notifications.
     # `sync_on`` will be used for notifications. It needs to be a valid
     # User or Organization slug or an e-mail address.
-    # XXX first_name / last_name should be a full_name because we only
-    #     subscribes organization. On the other end an actual user needs
-    #     to invited and the User model only supports first_name/last_name.
-    first_name = models.CharField(_('First name'), max_length=30, blank=True,
-        help_text=_("First name of the person that will benefit from"\
-            " the subscription (GroupBuy)"))
-    last_name = models.CharField(_('Last name'), max_length=30, blank=True,
-        help_text=_("Last name of the person that will benefit from"\
+    full_name = models.CharField(_('Full name'), max_length=150, blank=True,
+        help_text=_("Full name of the person that will benefit from"\
             " the subscription (GroupBuy)"))
     # XXX Explain sync_on and claim_code
     sync_on = models.CharField(max_length=255, null=True, blank=True)
@@ -2710,7 +2703,7 @@ class CartItem(models.Model):
         result = '%s from %s' % (
             self.plan.printable_name, self.plan.organization.printable_name)
         if self.sync_on:
-            full_name = ' '.join([self.first_name, self.last_name]).strip()
+            full_name = self.full_name.strip()
             result = 'Subscribe %s (%s) to %s' % (full_name,
                 self.sync_on, result)
         return result
@@ -3955,7 +3948,7 @@ def is_broker(organization):
         return import_string(settings.IS_BROKER_CALLABLE)(organization_slug)
     return get_broker().slug == organization_slug
 
-
+# TODO seems like there is a duplicate in utils.py:full_name_natural_split
 def split_full_name(full_name):
     """
     Split a full_name into most likely first_name and last_name.
