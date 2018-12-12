@@ -28,6 +28,7 @@ APIs for cart and checkout functionality.
 from __future__ import unicode_literals
 
 import csv, logging
+from six import StringIO
 
 from django.core.exceptions import MultipleObjectsReturned
 from django.contrib import messages
@@ -247,22 +248,32 @@ class CartItemUploadAPIView(CartMixin, GenericAPIView):
     def post(self, request, *args, **kwargs):
         #pylint:disable=unused-argument
         plan = kwargs.get('plan')
-        filed = csv.reader(request.FILES['file'])
         response = {'created': [],
                     'updated': [],
                     'failed': []}
+        stream = StringIO()
+        fl = request.FILES.get('file')
+        if fl:
+            data = fl.read().decode('utf-8', 'ignore')
+            stream = StringIO(data)
+        filed = csv.reader(stream)
 
         for row in filed:
             try:
-                # TODO should I change the interface here too?
-                first_name, last_name, email = row
+                if len(row) == 2:
+                    full_name, email = row
+                elif len(row) == 3:
+                    first_name, last_name, email = row
+                    full_name = '%s %s' % (first_name, last_name)
+                else:
+                    raise csv.Error()
             except csv.Error:
                 response['failed'].append({'data': {'raw': row},
                                            'error': 'Unable to parse row'})
             else:
                 serializer = CartItemCreateSerializer(
                     data={'plan': plan,
-                          'full_name': first_name + ' ' + last_name,
+                          'full_name': full_name,
                           'sync_on': email})
                 if serializer.is_valid():
                     cart_item, created = self.insert_item(
