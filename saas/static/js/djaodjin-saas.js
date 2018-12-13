@@ -547,7 +547,7 @@
             if(dup){
                 prevLine = dup;
             } else {
-                prevLine = prevLine.last();
+                prevLine = prevLine.first();
             }
             var newLine = prevLine;
             var descrNode = $(newLine.children("td")[2]);
