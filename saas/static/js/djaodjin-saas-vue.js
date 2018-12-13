@@ -1744,10 +1744,13 @@ var app = new Vue({
         },
         remove: function(plan){
             var vm = this;
-            var url = djaodjinSettings.urls.api_cart + plan + '/';
+            var url = djaodjinSettings.urls.api_cart;
             $.ajax({
                 method: 'DELETE',
                 url: url,
+                data: {
+                    plan: plan,
+                },
             }).done(function() {
                 vm.get()
             }).fail(handleRequestError);

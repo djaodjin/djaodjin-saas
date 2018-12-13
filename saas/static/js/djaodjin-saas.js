@@ -373,7 +373,8 @@
                 var item = {
                     plan: subscription.attr("data-plan"),
                     full_name: seatFirstName.val() + ' ' + seatLastName.val(),
-                    sync_on: seatEmail.val()
+                    sync_on: seatEmail.val(),
+                    email: seatEmail.val(),
                 };
                 seatFirstName.val("");
                 seatLastName.val("");

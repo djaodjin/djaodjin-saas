@@ -61,7 +61,7 @@ class CartItemCreateSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = CartItem
-        fields = ('plan', 'option', 'full_name', 'sync_on')
+        fields = ('plan', 'option', 'full_name', 'sync_on', 'email')
 
 
 class OrganizationCartSerializer(NoModelSerializer):
@@ -116,7 +116,7 @@ class CartItemAPIView(CartMixin, CreateAPIView):
 
     ``quantity`` is optional. When it is not specified, subsquent checkout
     screens will provide choices to pay multiple periods in advance
-    When additional ``full_name`` and ``sync_on`` are specified,
+    When additional ``full_name``, ``email`` and ``sync_on`` are specified,
     payment can be made by one ``Organization`` for another ``Organization``
     to be subscribed (see :ref:`GroupBuy orders<group_buy>`).
 
@@ -187,6 +187,49 @@ class CartItemAPIView(CartMixin, CreateAPIView):
             return Response(cart_items, status=status_code, headers=headers)
         headers = self.get_success_headers(cart_items[0])
         return Response(cart_items[0], status=status_code, headers=headers)
+
+    def destroy_in_session(self, request, *args, **kwargs):
+        #pylint: disable=unused-argument
+        plan = self.request.data.get('plan')
+        email = self.request.data.get('email')
+        cart_items = []
+        if 'cart_items' in request.session and plan:
+            cart_items = request.session['cart_items']
+        serialized_cart_items = []
+        found = False
+        for item in cart_items:
+            if item['plan'] == plan:
+                if email:
+                    if item['email'] == email:
+                        found = True
+                        continue
+                else:
+                    found = True
+                    continue
+            serialized_cart_items += [item]
+        request.session['cart_items'] = serialized_cart_items
+        return found
+
+    def get_objects_to_delete(self):
+        plan = self.request.data.get('plan')
+        email = self.request.data.get('email')
+        queryset = CartItem.objects.filter(user=self.request.user,
+            recorded=False)
+        if plan:
+            queryset = queryset.filter(plan__slug=plan)
+        if email:
+            queryset = queryset.filter(email=email)
+        return queryset
+
+    def delete(self, request, *args, **kwargs):
+        destroyed = self.destroy_in_session(request, *args, **kwargs)
+        # We found the items in the session cart, nothing else to do.
+        if not destroyed and is_authenticated(self.request):
+            # If the user is authenticated, we delete the cart items
+            # from the database.
+            objects = self.get_objects_to_delete()
+            objects.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class CartItemUploadSerializer(NoModelSerializer):
@@ -274,7 +317,8 @@ class CartItemUploadAPIView(CartMixin, GenericAPIView):
                 serializer = CartItemCreateSerializer(
                     data={'plan': plan,
                           'full_name': full_name,
-                          'sync_on': email})
+                          'sync_on': email,
+                          'email': email})
                 if serializer.is_valid():
                     cart_item, created = self.insert_item(
                         request, **serializer.data)
@@ -289,61 +333,6 @@ class CartItemUploadAPIView(CartMixin, GenericAPIView):
                                                'error': serializer.errors})
 
         return Response(response)
-
-
-class CartItemDestroyAPIView(DestroyAPIView):
-    """
-    Remove a ``Plan`` from the subscription cart of the ``request.user``.
-
-    **Examples
-
-    .. code-block:: http
-
-        DELETE /api/cart/open-space/ HTTP/1.1
-    """
-
-    model = CartItem
-
-    @staticmethod
-    def destroy_in_session(request, *args, **kwargs):
-        #pylint: disable=unused-argument
-        cart_items = []
-        if 'cart_items' in request.session:
-            cart_items = request.session['cart_items']
-        candidate = kwargs.get('plan')
-        serialized_cart_items = []
-        found = False
-        for item in cart_items:
-            if item['plan'] == candidate:
-                found = True
-                continue
-            serialized_cart_items += [item]
-        request.session['cart_items'] = serialized_cart_items
-        return found
-
-    def get_object(self):
-        result = None
-        try:
-            result = get_object_or_404(CartItem,
-                plan__slug=self.kwargs.get('plan'),
-                user=self.request.user, recorded=False)
-        except MultipleObjectsReturned as err:
-            # This should not happen but in case the db is corrupted,
-            # we want to do something acceptable to the user.
-            LOGGER.exception(err)
-            result = CartItem.objects.filter(
-                plan__slug=self.kwargs.get('plan'),
-                user=self.request.user, recorded=False).first()
-        return result
-
-    def delete(self, request, *args, **kwargs):
-        destroyed = self.destroy_in_session(request, *args, **kwargs)
-        # We found the items in the session cart, nothing else to do.
-        if not destroyed and is_authenticated(self.request):
-            # If the user is authenticated, we delete the cart items
-            # from the database.
-            return self.destroy(request, *args, **kwargs)
-        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class RedeemCouponSerializer(NoModelSerializer):

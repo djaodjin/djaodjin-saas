@@ -2691,6 +2691,7 @@ class CartItem(models.Model):
     full_name = models.CharField(_('Full name'), max_length=150, blank=True,
         help_text=_("Full name of the person that will benefit from"\
             " the subscription (GroupBuy)"))
+    email = models.CharField(max_length=255, null=True, blank=True)
     # XXX Explain sync_on and claim_code
     sync_on = models.CharField(max_length=255, null=True, blank=True)
     claim_code = models.SlugField(db_index=True, null=True, blank=True)
