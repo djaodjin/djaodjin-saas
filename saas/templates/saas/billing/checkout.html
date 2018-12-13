@@ -37,6 +37,11 @@
                                         <input type="text" v-model="planUser(item.subscription.plan.slug).lastName" placeholder="Last Name" />
                                         <input type="text" v-model="planUser(item.subscription.plan.slug).email" placeholder="Email" />
                                         <button @click.prevent="addPlanUser(item.subscription.plan.slug)" type="button">Add</button>
+                                        <div>
+                                            <label>Upload CSV:</label>
+                                            <input @change="fileChanged(item.subscription.plan.slug, $event)" type="file" />
+                                            <button type="button" @click="bulkImport(item.subscription.plan.slug)">Upload</button>
+                                        </div>
                                       </td>
                                     </tr>
                                 </tbody>

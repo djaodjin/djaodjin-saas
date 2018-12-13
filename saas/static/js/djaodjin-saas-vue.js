@@ -1728,6 +1728,7 @@ var app = new Vue({
         countries: countries,
         regions: regions,
         init: true,
+        csvFiles: {},
     },
     methods: {
         getOptions: function(){
@@ -1964,6 +1965,31 @@ var app = new Vue({
                     vm.addressRegion = org.region;
                 }
                 vm.organization = org;
+            });
+        },
+        fileChanged: function(plan, e){
+            var file = e.target.files.length > 0 ?
+                e.target.files[0] : null;
+            if(file)
+                this.$set(this.csvFiles, plan, file);
+        },
+        bulkImport: function(plan){
+            var vm = this;
+            if(!vm.csvFiles[plan]) return;
+            var formData = new FormData();
+            formData.append("file", vm.csvFiles[plan]);
+            $.ajax({
+                type: "POST",
+                url: "/api/cart/" + plan + "/upload/",
+                data: formData,
+                processData: false,
+                contentType: false,
+                success: function(data) {
+                    vm.get();
+                },
+                error: function(response) {
+                    showErrorMessages(response, "error");
+                }
             });
         },
     },
