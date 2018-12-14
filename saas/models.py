@@ -82,7 +82,8 @@ from django_countries.fields import CountryField
 from . import humanize, settings, signals
 from .backends import get_processor_backend, ProcessorError, CardError
 from .utils import (SlugTitleMixin, datetime_or_now,
-    extract_full_exception_stack, generate_random_slug, get_role_model)
+    extract_full_exception_stack, generate_random_slug, get_role_model,
+    full_name_natural_split)
 
 
 LOGGER = logging.getLogger(__name__)
@@ -336,7 +337,7 @@ class Organization(models.Model):
             user = self.attached_user()
             if user:
                 user.first_name, user.last_name \
-                    = split_full_name(self.full_name)
+                    = full_name_natural_split(self.full_name)
                 if self.email:
                     user.email = self.email
                 user.save()
@@ -3948,22 +3949,6 @@ def is_broker(organization):
         from saas.compat import import_string
         return import_string(settings.IS_BROKER_CALLABLE)(organization_slug)
     return get_broker().slug == organization_slug
-
-# TODO seems like there is a duplicate in utils.py:full_name_natural_split
-def split_full_name(full_name):
-    """
-    Split a full_name into most likely first_name and last_name.
-
-    XXX This is not perfect.
-    """
-    name_parts = full_name.split(' ')
-    if len(name_parts) > 1:
-        first_name = name_parts[0]
-        last_name = ' '.join(name_parts[1:])
-    else:
-        first_name = full_name
-        last_name = ''
-    return first_name, last_name
 
 
 def sum_balance_amount(dest_balances, orig_balances):
