@@ -12,7 +12,7 @@
          v-show="itemsLoaded" v-cloak>
       <div ng-repeat="roleDescription in items.results"
            v-for="roleDescription in items.results">
-        <h3>[[roleDescription.title]]</h3>
+        <h3>[[roleDescription.title]]s</h3>
         <button type="button"
                 ng-show="!roleDescription.is_global"
                 ng-click="deleteRoleDescription(roleDescription)"
@@ -54,7 +54,7 @@ them.
                       name="message" maxlength="255" type="text" rows="10">
 Hello,
 
-I am adding you as a [[role.slug]] to {{organization.printable_name}}.
+I am adding you as a [[role.title]] to {{organization.printable_name}}.
 
 Thank you,
 - {{request.user.first_name}}</textarea>
@@ -65,7 +65,7 @@ Thank you,
                       <button type="button" class="btn btn-default"
                               @click="modalOpen=false">Cancel</button>
                       <button id="new-rule-submit"
-                              type="submit" class="btn btn-primary">Invite [[role.slug]]</button>
+                              type="submit" class="btn btn-primary">Invite [[role.title]]</button>
                     </div>
                 </uiv-modal>
             </form>
