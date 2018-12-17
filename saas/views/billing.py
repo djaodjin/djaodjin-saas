@@ -344,7 +344,7 @@ class CardInvoicablesFormMixin(CardFormMixin, InvoicablesFormMixin):
             elif self.sole_provider != plan.organization:
                 self.sole_provider = False
             if plan_key in data:
-                selected_line = int(data[plan_key])
+                selected_line = int(data[plan_key]) - 1
                 if (selected_line > 0 and
                     (selected_line - 1) < len(invoicable['options'])):
                     line = invoicable['options'][selected_line]

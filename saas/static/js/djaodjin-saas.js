@@ -30,7 +30,7 @@
         init: function() {
             var self = this;
             self.item = {};
-            var restricted = ["plan", "quantity",
+            var restricted = ["plan", "option",
                 "first_name", "last_name", "sync_on", "invoice_key"];
             for(var i = 0; i < restricted.length; ++i ) {
                 var key = restricted[i];
