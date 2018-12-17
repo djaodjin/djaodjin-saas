@@ -306,7 +306,9 @@ class Organization(models.Model):
 
     def get_changes(self, update_fields):
         changes = {}
-        for field_name in ('full_name',):
+        for field_name in ('slug', 'full_name', 'email', 'phone',
+            'street_address', 'locality', 'region', 'postal_code', 'country',
+            'is_bulk_buyer', 'is_provider', 'default_timezone'):
             pre_value = getattr(self, field_name, None)
             post_value = update_fields.get(field_name, None)
             if post_value is not None and pre_value != post_value:
