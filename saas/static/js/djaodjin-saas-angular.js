@@ -590,7 +590,7 @@ transactionControllers.controller("userRelationListCtrl",
         sortDirection: "desc",
         modalSelector: ".add-role-modal",
         urls: {api_items: apiUrl,
-               api_candidates: settings.urls.broker.api_users}}, settings);
+               api_candidates: settings.urls.api_candidates}}, settings);
     $controller("relationListCtrl", {
         $scope: $scope, $element: $element, $controller: $controller,
         $http: $http, $timeout:$timeout, settings: opts});
