@@ -660,13 +660,17 @@ transactionControllers.controller("subscriptionListCtrl",
     $scope.tables = {
         registered: {
             $resolved: false, count: 0,
-            location: settings.urls.broker.api_users_registered},
+            location: ((settings.urls.broker
+              && settings.urls.broker.api_users_registered) ?
+                settings.urls.broker.api_users_registered : null)},
         subscribed: {
             $resolved: false, count: 0,
             location: settings.urls.organization.api_subscriptions},
         churned: {
             $resolved: false, count: 0,
-            location: settings.urls.provider.api_subscribers_churned}
+            location: ((settings.urls.provider
+              && settings.urls.provider.api_subscribers_churned) ?
+                settings.urls.provider.api_subscribers_churned : null)}
     };
 
     $scope.active = $scope.tables.subscribed;
@@ -674,12 +678,14 @@ transactionControllers.controller("subscriptionListCtrl",
     $scope.query = function(queryset) {
         queryset.$resolved = false;
         queryset.results = [];
-        $http.get(queryset.location, {params: $scope.params}).then(
-        function success(resp) {
-            queryset.results = resp.data.results;
-            queryset.count = resp.data.count;
-            queryset.$resolved = true;
-        });
+        if( queryset.location ) {
+            $http.get(queryset.location, {params: $scope.params}).then(
+            function success(resp) {
+                queryset.results = resp.data.results;
+                queryset.count = resp.data.count;
+                queryset.$resolved = true;
+            });
+        }
     };
 
     $scope.refresh = function() {
