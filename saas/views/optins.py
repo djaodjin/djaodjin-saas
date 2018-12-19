@@ -70,7 +70,7 @@ class RoleGrantAcceptView(RedirectView):
         obj.grant_key = None
         obj.save()
         LOGGER.info("%s accepted role of %s to %s (grant_key=%s)",
-            request.user, obj.role_description.title, obj.organization,
+            request.user, obj.role_description, obj.organization,
             grant_key, extra={
                 'request': request, 'event': 'accept',
                 'user': str(request.user),

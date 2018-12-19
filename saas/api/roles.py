@@ -770,7 +770,7 @@ class RoleDetailAPIView(RoleMixin, DestroyAPIView):
 
     def destroy(self, request, *args, **kwargs):
         queryset = self.get_queryset()
-        roles = [role.role_description.title for role in queryset]
+        roles = [str(role.role_description) for role in queryset]
         LOGGER.info("Remove roles %s for user '%s' on organization '%s'",
             roles, self.user, self.organization,
             extra={'event': 'remove-roles', 'user': self.user,
