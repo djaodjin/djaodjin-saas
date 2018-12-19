@@ -1389,6 +1389,8 @@ var app = new Vue({
         created_at: moment().format("YYYY-MM-DD"),
         itemSelected: '',
         searching: false,
+        amount: 0,
+        description: '',
     },
     methods: {
         getSubscriptions: function(query, done) {
@@ -1405,6 +1407,26 @@ var app = new Vue({
                 done(res.results)
             });
         },
+        addPayment: function(){
+            var vm = this;
+            var sel = vm.itemSelected
+            var sub = sel.organization.slug + ':' + sel.plan.slug;
+            $.ajax({
+                method: 'POST',
+                data: {
+                    subscription: sub,
+                    amount: vm.amount,
+                    descr: vm.description,
+                },
+                url: djaodjinSettings.urls.organization.api_import,
+            }).done(function (){
+                vm.subscription = '';
+                vm.amount = '';
+                vm.description = '';
+            }).fail(function(resp){
+                showErrorMessages(resp);
+            });
+        }
     },
 });
 }
@@ -2018,6 +2040,83 @@ var app = new Vue({
     },
     mounted: function(){
         this.get()
+        this.getUserCard();
+        this.getOrgAddress();
+    }
+})
+}
+
+if($('#update-card-container').length > 0){
+var app = new Vue({
+    el: "#update-card-container",
+    mixins: [],
+    data: {
+        last4: '',
+        exp_date: '',
+        haveCardData: false,
+        card_name: '',
+        cardNumber: '',
+        cardCvc: '',
+        cardExpMonth: '',
+        cardExpYear: '',
+        name: '',
+        savedCard: {},
+        countries: countries,
+        regions: regions,
+        addressLine1: '',
+        addressCity: '',
+        addressZip: '',
+        addressCountry: '',
+        addressRegion: '',
+        updateCard: false,
+    },
+    methods: {
+        getUserCard: function(){
+            var vm = this;
+            $.ajax({
+                method: 'GET',
+                url: djaodjinSettings.urls.organization.api_card,
+            }).done(function(resp) {
+                if(resp.last4){
+                    var savedCard = {
+                        last4: resp.last4,
+                        exp_date: resp.exp_date,
+                        card_name: resp.card_name,
+                    }
+                    vm.savedCard = savedCard;
+                    vm.haveCardData = true;
+                }
+            });
+        },
+        getOrgAddress: function(){
+            var vm = this;
+            $.ajax({
+                method: 'GET',
+                url: djaodjinSettings.urls.organization.api_base,
+            }).done(function(org) {
+                if(org.full_name){
+                    vm.name = org.full_name;
+                }
+                if(org.street_address){
+                    vm.addressLine1 = org.street_address;
+                }
+                if(org.locality){
+                    vm.addressCity = org.locality;
+                }
+                if(org.postal_code){
+                    vm.addressZip = org.postal_code;
+                }
+                if(org.country){
+                    vm.addressCountry = org.country;
+                }
+                if(org.region){
+                    vm.addressRegion = org.region;
+                }
+                vm.organization = org;
+            });
+        },
+    },
+    mounted: function(){
         this.getUserCard();
         this.getOrgAddress();
     }

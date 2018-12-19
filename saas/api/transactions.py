@@ -462,7 +462,7 @@ class ImportTransactionsAPIView(ProviderMixin, CreateAPIView):
         Transaction.objects.offline_payment(
             subscription, serializer.validated_data['amount'],
             descr=serializer.validated_data['descr'], user=self.request.user,
-            created_at=serializer.validated_data['created_at'])
+            created_at=serializer.validated_data.get('created_at'))
 
 
 class StatementBalanceAPIView(OrganizationMixin, APIView):

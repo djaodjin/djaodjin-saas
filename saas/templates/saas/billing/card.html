@@ -1,7 +1,7 @@
 {% extends "saas/base_dashboard.html" %}
 
 {% block saas_content %}
-<section id="update_card">
+<section id="update-card-container">
     <h1>Update Card for {{ organization }}</h1>
     <form method="post" id="payment-form"
           action=".{% if next %}/?next={{ next }}{% endif %}">
