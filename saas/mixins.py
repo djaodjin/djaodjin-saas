@@ -337,11 +337,16 @@ class CartMixin(object):
                     created_at=created_at, prorate_to=prorate_to,
                     cart_item=cart_item)
                 # option is selected
-                if (cart_item.option > 0 and
+                selected_option = None
+                if len(options) == 1:
+                    selected_option = 0
+                elif (cart_item.option > 0 and
                     (cart_item.option - 1) < len(options)):
                     # The number of periods was already selected so we generate
                     # a line instead.
-                    line = options[cart_item.option - 1]
+                    selected_option = cart_item.option - 1
+                if selected_option is not None:
+                    line = options[selected_option]
                     lines += [line]
                     options = []
             # Both ``TransactionManager.new_use_charge``

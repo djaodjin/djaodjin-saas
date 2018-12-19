@@ -951,7 +951,7 @@ metricsControllers.controller("metricsCtrl",
     for( var i = 0; i < $scope.tables.length; ++i ) {
         $scope.tabs.push($scope.tables[i].key);
     }
-    $scope.activeTab = $scope.tabs[0];
+    $scope.currentTableData = $scope.tables[0];
 
     $scope.endOfMonth = function(date) {
         return new Date(
@@ -995,15 +995,6 @@ metricsControllers.controller("metricsCtrl",
 
     $scope.humanizeCell = function(value, unit, scale) {
         return $filter('humanizeCell')(value, unit, scale);
-    };
-
-    $scope.getTable = function(key) {
-        for( var i = 0; i < $scope.tables.length; ++i ) {
-            if( $scope.tables[i].key === key ) {
-                return $scope.tables[i];
-            }
-        }
-        return null;
     };
 
     $scope.tabTitle = function(table) {
@@ -1059,12 +1050,12 @@ metricsControllers.controller("metricsCtrl",
     };
 
     $scope.refreshTable = function() {
-        $scope.query($scope.getTable($scope.activeTab));
+        $scope.query($scope.currentTableData);
     };
 
     // change the selected tab
     $scope.tabClicked = function(table) {
-        $scope.activeTab = table.key;
+        $scope.currentTableData = table;
         $scope.refreshTable();
     };
 
