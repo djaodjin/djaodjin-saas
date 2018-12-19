@@ -28,7 +28,7 @@ APIs for cart and checkout functionality.
 from __future__ import unicode_literals
 
 import csv, logging
-from six import StringIO
+from django.utils.six import StringIO
 
 from django.core.exceptions import MultipleObjectsReturned
 from django.contrib import messages
