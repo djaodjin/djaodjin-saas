@@ -244,7 +244,8 @@ class Organization(models.Model):
 
     is_bulk_buyer = models.BooleanField(default=False,
         help_text=mark_safe(_("Enable GroupBuy ("\
-        "<a href=\"/docs/#group-billing\" target=\"_blank\">what is it?</a>)")))
+        "<a href=\"https://djaodjin.com/docs/#group-billing\""\
+        " target=\"_blank\">what is it?</a>)")))
     is_provider = models.BooleanField(default=False,
         help_text=_("The organization can fulfill the provider side"\
         " of a subscription."))
@@ -2339,7 +2340,7 @@ class Plan(SlugTitleMixin, models.Model):
         ' (monthly, yearly, etc.)'))
     unlock_event = models.CharField(max_length=128, null=True, blank=True,
         help_text=_('Payment required to access full service'))
-    advance_discount = models.PositiveIntegerField(default=333,
+    advance_discount = models.PositiveIntegerField(default=0,
         validators=[MaxValueValidator(10000)], # 100.00%
         help_text=_('Incremental discount for payment of multiple periods'\
         ' (in %%).'))

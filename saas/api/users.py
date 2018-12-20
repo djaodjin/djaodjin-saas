@@ -115,9 +115,14 @@ class UserQuerysetMixin(object):
 
 class UserListAPIView(UserSmartListMixin, UserQuerysetMixin, ListAPIView):
     """
-    GET queries all ``User``.
+    Queries a page (``PAGE_SIZE`` records) of ``User``.
 
-    .. autoclass:: saas.mixins.UserSmartListMixin
+    The queryset can be filtered to a range of dates
+    ([``start_at``, ``ends_at``]) and for at least one field to match a search
+    term (``q``).
+
+    Query results can be ordered by natural fields (``o``) in either ascending
+    or descending order (``ot``).
 
     **Examples
 

@@ -477,7 +477,7 @@ class CheckoutAPIView(CartMixin, OrganizationMixin,
 
         The cart is manipulated through various API endpoints:
 
-        - `/api/cart/redeem/' applies a coupon code for a potential discount.
+        - `/api/cart/redeem/` applies a coupon code for a potential discount.
         - `/api/cart/` adds or updates a cart item.
         - `/api/cart/{plan}` removes a cart item.
 
