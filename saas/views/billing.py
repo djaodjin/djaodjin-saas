@@ -345,8 +345,8 @@ class CardInvoicablesFormMixin(CardFormMixin, InvoicablesFormMixin):
                 self.sole_provider = False
             if plan_key in data:
                 selected_line = int(data[plan_key]) - 1
-                if (selected_line > 0 and
-                    (selected_line - 1) < len(invoicable['options'])):
+                if (selected_line >= 0 and
+                    selected_line < len(invoicable['options'])):
                     line = invoicable['options'][selected_line]
                     # Normalize unlock line description to
                     # "subscribe <plan> until ..."
