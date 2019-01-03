@@ -1836,11 +1836,12 @@ class Charge(models.Model):
                     orig_account=Transaction.BACKLOG,
                     orig_organization=provider)
 
+                # See comment above for use of `event`.
                 charge_item.invoiced_distribute = Transaction.objects.create(
                     event_id=get_charge_event_id(self),
                     created_at=self.created_at,
                     descr=humanize.DESCRIBE_CHARGED_CARD_PROVIDER % {
-                            'charge': self.processor_key, 'event': event_id},
+                            'charge': self.processor_key, 'event': event},
                     dest_unit=funds_unit,
                     dest_amount=distribute_amount,
                     dest_account=Transaction.FUNDS,

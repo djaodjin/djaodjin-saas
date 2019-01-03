@@ -249,7 +249,7 @@ class OrganizationSerializer(serializers.ModelSerializer):
         fields = ('slug', 'created_at', 'full_name', 'default_timezone',
             'email', 'phone', 'street_address', 'locality',
             'region', 'postal_code', 'country', 'extra',
-            'printable_name')
+            'printable_name', 'is_bulk_buyer')
         read_only_fields = ('created_at',)
 
 
@@ -324,8 +324,8 @@ class PlanSerializer(serializers.ModelSerializer):
     class Meta:
         model = Plan
         fields = ('slug', 'title', 'description', 'is_active',
-                  'setup_amount', 'period_amount', 'interval', 'app_url',
-                  'organization', 'extra')
+                  'setup_amount', 'period_amount', 'interval',
+                  'advance_discount', 'app_url', 'organization', 'extra')
         read_only_fields = ('slug', 'app_url')
 
     @staticmethod

@@ -194,8 +194,9 @@ class OrganizationForm(PostalFormMixin, forms.ModelForm):
                 initial = self.instance.is_bulk_buyer
             self.fields['is_bulk_buyer'] = forms.BooleanField(required=False,
                 initial=initial,
-                label=mark_safe(_("Enable GroupBuy "\
-"(<a href=\"/docs/#group-billing\" target=\"_blank\">what is it?</a>)")))
+                label=mark_safe(_("Enable GroupBuy (<a href=\""\
+"https://djaodjin.com/docs/#group-billing\" target=\"_blank\">what is it?</a>)"
+                )))
         if 'extra' in self.initial:
             initial = self.initial['extra']
             if self.instance:

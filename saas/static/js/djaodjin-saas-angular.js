@@ -248,6 +248,27 @@ transactionControllers.controller("itemsListCtrl",
         }
     };
 
+    $scope.getQueryString = function(excludes){
+        var sep = "";
+        var result = "";
+        for( var key in $scope.params ) {
+            if( $scope.params.hasOwnProperty(key) && $scope.params[key] ) {
+                if( excludes && key in excludes ) continue;
+                if( key === 'start_at' || key === 'ends_at' ) {
+                    result += sep + key + '=' + moment(
+                        $scope.params[key], $scope.format).toISOString();
+                } else {
+                    result += sep + key + '=' + $scope.params[key];
+                }
+                sep = "&";
+            }
+        }
+        if( result ) {
+            result = '?' + result;
+        }
+        return result;
+    };
+
     $scope.pageChanged = function() {
         if( $scope.currentPage > 1 ) {
             $scope.params.page = $scope.currentPage;
@@ -1241,7 +1262,7 @@ balanceControllers.controller("BalanceListCtrl",
     };
 
     $scope.humanizeCell = function(value) {
-        return $filter('humanizeCell')(value, $scope.items.unit, $scope.items.scale);
+        return $filter('humanizeCell')(value, $scope.balances.unit, $scope.balances.scale);
     };
 
     $scope.endOfMonth = function(date) {
