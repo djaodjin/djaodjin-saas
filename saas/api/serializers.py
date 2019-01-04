@@ -443,7 +443,7 @@ class CartItemSerializer(serializers.ModelSerializer):
     class Meta:
         model = CartItem
         fields = ('created_at', 'user', 'plan',
-            'option', 'first_name', 'last_name', 'sync_on')
+            'option', 'full_name', 'sync_on')
 
 
 class InvoicableSerializer(NoModelSerializer):

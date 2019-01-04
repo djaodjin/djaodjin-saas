@@ -30,8 +30,8 @@
         init: function() {
             var self = this;
             self.item = {};
-            var restricted = ["plan", "option",
-                "first_name", "last_name", "sync_on", "invoice_key"];
+            var restricted = ["plan",  "option",
+                "full_name", "sync_on", "invoice_key"];
             for(var i = 0; i < restricted.length; ++i ) {
                 var key = restricted[i];
                 if( key in self.options ) {
@@ -372,9 +372,9 @@
                 var seatEmail = subscription.find(".seat-email");
                 var item = {
                     plan: subscription.attr("data-plan"),
-                    first_name: seatFirstName.val(),
-                    last_name: seatLastName.val(),
-                    sync_on: seatEmail.val()
+                    full_name: seatFirstName.val() + ' ' + seatLastName.val(),
+                    sync_on: seatEmail.val(),
+                    email: seatEmail.val(),
                 };
                 seatFirstName.val("");
                 seatLastName.val("");
@@ -514,7 +514,7 @@
         },
 
         createLineMessage: function(data) {
-            return data.first_name + " " + data.last_name + " (" + data.sync_on + ")";
+            return data.full_name + " (" + data.sync_on + ")";
         },
 
         insertLine: function(data) {
@@ -525,8 +525,8 @@
             var clonedNode = $(newLine.children("td")[2]);
 
             prevLine.removeClass("alert alert-info");
-            clonedNode.text(clonedNode.text().replace(
-                /, for .*/, ", for " + msg));
+            var txt = clonedNode.text().split(', for');
+            clonedNode.text(txt[0] + ", for " + msg);
             newLine.insertAfter(prevLine);
             newLine.addClass("alert alert-info");
 
@@ -536,11 +536,24 @@
         updateLine: function(data) {
             var msg = this.createLineMessage(data);
             var prevLine = this.element.find("tbody[data-plan='" +
-                data.plan + "'] .invoice-item").last();
+                data.plan + "'] .invoice-item")
+            var dup = null;
+            prevLine.each(function(i){
+                var $t = $(this);
+                if($t.find('td:last-child').text().indexOf(data.sync_on) !== -1){
+                    dup = $t;
+                }
+            });
+            if(dup){
+                prevLine = dup;
+            } else {
+                prevLine = prevLine.first();
+            }
             var newLine = prevLine;
             var descrNode = $(newLine.children("td")[2]);
 
-            descrNode.text(descrNode.text() + ", for " + msg);
+            var txt = descrNode.text().split(', for');
+            descrNode.text(txt[0] + ", for " + msg);
             newLine.addClass("alert alert-info");
 
             this.updateTotalAmount();
