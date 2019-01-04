@@ -83,7 +83,7 @@
     "fields": {
       "created_at": "2012-08-14T15:00:00-09:00",
       "slug": "manager",
-      "title": "Managers"
+      "title": "Profile Manager"
     },
     "model": "saas.RoleDescription", "pk": 1
 },
@@ -92,7 +92,7 @@
       "created_at": "2012-08-14T15:00:00-09:00",
       "organization": 2,
       "slug": "contributor",
-      "title": "Contributors"
+      "title": "Contributor"
     },
     "model": "saas.RoleDescription", "pk": 2
 },
