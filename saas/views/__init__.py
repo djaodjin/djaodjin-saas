@@ -210,8 +210,6 @@ class OrganizationRedirectView(TemplateResponseMixin, ContextMixin,
         else:
             create_url = reverse('saas_organization_create')
         if count == 0:
-            if self.explicit_create_on_none:
-                return http.HttpResponseRedirect(create_url)
             if self.get_implicit_create_on_none():
                 try:
                     kwargs.update({self.slug_url_kwarg: str(
@@ -222,6 +220,8 @@ class OrganizationRedirectView(TemplateResponseMixin, ContextMixin,
                     LOGGER.warning("tried to implicitely create"\
                         " an organization that already exists.",
                         extra={'request': request})
+            elif self.explicit_create_on_none:
+                return http.HttpResponseRedirect(create_url)
             raise http.Http404(_("No organizations are accessible by user."))
         if count == 1 and not self.create_more:
             organization = accessibles.get()
