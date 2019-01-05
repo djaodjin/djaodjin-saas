@@ -367,17 +367,25 @@
             self.element.find(".add-seat").click(function(event) {
                 event.preventDefault();
                 var subscription = $(this).parents("tbody");
-                var seatFirstName = subscription.find(".seat-first-name");
-                var seatLastName = subscription.find(".seat-last-name");
+                var seatFullname = subscription.find(".seat-fullname");
+                var fullname = "";
+                if( seatFullname ) {
+                    fullname = seatFullname.val();
+                    seatFullname.val("");
+                } else {
+                    var seatFirstName = subscription.find(".seat-first-name");
+                    var seatLastName = subscription.find(".seat-last-name");
+                    fullname = seatFirstName.val() + ' ' + seatLastName.val();
+                    seatFirstName.val("");
+                    seatLastName.val("");
+                }
                 var seatEmail = subscription.find(".seat-email");
                 var item = {
                     plan: subscription.attr("data-plan"),
-                    full_name: seatFirstName.val() + ' ' + seatLastName.val(),
+                    full_name: fullname,
                     sync_on: seatEmail.val(),
                     email: seatEmail.val(),
                 };
-                seatFirstName.val("");
-                seatLastName.val("");
                 seatEmail.val("");
                 $.ajax({
                     type: "POST", // XXX Might still prefer to do PUT on list.

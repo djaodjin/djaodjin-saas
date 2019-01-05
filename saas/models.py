@@ -339,7 +339,7 @@ class Organization(models.Model):
         with transaction.atomic():
             user = self.attached_user()
             if user:
-                user.first_name, user.last_name \
+                user.first_name, _, user.last_name \
                     = full_name_natural_split(self.full_name)
                 if self.email:
                     user.email = self.email
