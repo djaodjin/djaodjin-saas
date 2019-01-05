@@ -88,7 +88,7 @@
             var self = this;
             $.ajax({
                 type: "DELETE",
-                url: self.options.api_cart + self.item.plan + "/",
+                url: self.options.api_cart + "?plan=" + self.item.plan,
                 beforeSend: function(xhr) {
                     xhr.setRequestHeader("X-CSRFToken", self._getCSRFToken());
                 },

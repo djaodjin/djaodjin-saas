@@ -186,47 +186,52 @@ class CartItemAPIView(CartMixin, CreateAPIView):
         headers = self.get_success_headers(cart_items[0])
         return Response(cart_items[0], status=status_code, headers=headers)
 
-    def destroy_in_session(self, request, *args, **kwargs):
-        #pylint: disable=unused-argument
-        plan = self.request.data.get('plan')
-        email = self.request.data.get('email')
-        cart_items = []
-        if 'cart_items' in request.session and plan:
-            cart_items = request.session['cart_items']
+    @staticmethod
+    def destroy_in_session(request, plan=None, email=None):
+        cart_items = request.session.get('cart_items', [])
         serialized_cart_items = []
-        found = False
+        is_deleted = False
         for item in cart_items:
-            if item['plan'] == plan:
-                if email:
-                    if item['email'] == email:
-                        found = True
-                        continue
-                else:
-                    found = True
-                    continue
+            if plan and item['plan'] == plan:
+                is_deleted = True
+                continue
+            if email and item['email'] == email:
+                is_deleted = True
+                continue
             serialized_cart_items += [item]
-        request.session['cart_items'] = serialized_cart_items
-        return found
+        if is_deleted:
+            request.session['cart_items'] = serialized_cart_items
+        return is_deleted
 
-    def get_objects_to_delete(self):
-        plan = self.request.data.get('plan')
-        email = self.request.data.get('email')
-        queryset = CartItem.objects.filter(user=self.request.user,
-            recorded=False)
+    @staticmethod
+    def destroy_in_db(request, plan=None, email=None):
+        kwargs = {}
         if plan:
-            queryset = queryset.filter(plan__slug=plan)
+            kwargs.update({'plan__slug': plan})
         if email:
-            queryset = queryset.filter(email=email)
-        return queryset
+            kwargs.update({'email': email})
+        CartItem.objects.get_cart(request.user, **kwargs).delete()
 
     def delete(self, request, *args, **kwargs):
-        destroyed = self.destroy_in_session(request, *args, **kwargs)
-        # We found the items in the session cart, nothing else to do.
-        if not destroyed and is_authenticated(self.request):
+        """
+        Removes an item from the ``request.user`` cart.
+
+        **Examples
+
+        .. code-block:: http
+
+            DELETE /api/cart/?plan=open-space HTTP/1.1
+        """
+        #pylint:disable=unused-argument
+        plan = None
+        email = None
+        plan = request.query_params.get('plan')
+        email = request.query_params.get('email')
+        self.destroy_in_session(request, plan=plan, email=email)
+        if is_authenticated(request):
             # If the user is authenticated, we delete the cart items
             # from the database.
-            objects = self.get_objects_to_delete()
-            objects.delete()
+            self.destroy_in_db(request, plan=plan, email=email)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
