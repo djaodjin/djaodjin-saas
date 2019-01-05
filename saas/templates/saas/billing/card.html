@@ -6,7 +6,7 @@
     <form method="post" id="payment-form"
           action=".{% if next %}/?next={{ next }}{% endif %}">
         <input type="hidden" name="csrfmiddlewaretoken" value="{{csrf_token}}">
-        {% include "saas/_card_use.html" %}
+        {% include "saas/_card_use_vue.html" %}
     </form>
 </section>
 {% endblock %}

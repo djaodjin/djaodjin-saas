@@ -1410,6 +1410,10 @@ var app = new Vue({
         addPayment: function(){
             var vm = this;
             var sel = vm.itemSelected
+            if(!sel.plan){
+                alert('select a subscription from dropdown');
+                return;
+            }
             var sub = sel.organization.slug + ':' + sel.plan.slug;
             $.ajax({
                 method: 'POST',
@@ -1596,12 +1600,87 @@ var app = new Vue({
 })
 }
 
-if($('#remove-profile-container').length > 0){
+if($('#profile-container').length > 0){
 var app = new Vue({
-    el: "#remove-profile-container",
+    el: "#profile-container",
     data: {
+        name: '',
+        email: '',
+        phone: '',
+        addressLine1: '',
+        addressCity: '',
+        addressZip: '',
+        addressCountry: '',
+        addressRegion: '',
+        isBulkBuyer: false,
+        organization: {},
+        timezone: '',
+        countries: countries,
+        regions: regions,
     },
     methods: {
+        get: function(){
+            var vm = this;
+            $.ajax({
+                method: 'GET',
+                url: djaodjinSettings.urls.organization.api_base,
+            }).done(function(org) {
+                if(org.street_address){
+                    vm.addressLine1 = org.street_address;
+                }
+                if(org.locality){
+                    vm.addressCity = org.locality;
+                }
+                if(org.postal_code){
+                    vm.addressZip = org.postal_code;
+                }
+                if(org.country){
+                    vm.addressCountry = org.country;
+                }
+                if(org.region){
+                    vm.addressRegion = org.region;
+                }
+                if(org.full_name){
+                    vm.name = org.full_name;
+                }
+                if(org.email){
+                    vm.email = org.email;
+                }
+                if(org.phone){
+                    vm.phone = org.phone;
+                }
+                if(org.is_bulk_buyer){
+                    vm.isBulkBuyer = org.is_bulk_buyer;
+                }
+                if(org.is_bulk_buyer){
+                    vm.timezone = org.default_timezone;
+                }
+                vm.organization = org;
+            });
+        },
+        updateProfile: function(){
+            var vm = this;
+            var data = {
+                full_name: vm.name,
+                default_timezone: vm.timezone,
+                email: vm.email,
+                phone: vm.phone,
+                street_address: vm.addressLine1,
+                locality: vm.addressCity,
+                postal_code: vm.addressZip,
+                country: vm.addressCountry,
+                region: vm.addressRegion,
+                is_bulk_buyer: vm.isBulkBuyer,
+            }
+            $.ajax({
+                method: 'PUT',
+                url: djaodjinSettings.urls.organization.api_base,
+                data: data,
+            }).done(function() {
+            }).fail(function(resp){
+                showErrorMessages(resp);
+            });
+        },
         deleteProfile: function(){
             var vm = this;
             $.ajax({
@@ -1613,6 +1692,9 @@ var app = new Vue({
                 showErrorMessages(resp);
             });
         }
+    },
+    mounted: function(){
+        this.get();
     },
 })
 }
@@ -1770,6 +1852,7 @@ var app = new Vue({
         countries: countries,
         regions: regions,
         init: true,
+        organization: {},
     },
     methods: {
         getOptions: function(){
@@ -1904,9 +1987,7 @@ var app = new Vue({
         },
         saveChanges: function(){
             if(this.optionsConfirmed){
-                if(this.isBulkBuyer){
-                    this.seatsConfirmed = true;
-                }
+                this.seatsConfirmed = true;
             }
             else {
                 this.optionsConfirmed = true;
