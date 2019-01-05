@@ -58,9 +58,10 @@ class CartMixin(object):
         created = False
         inserted_item = None
         template_item = None
-        invoice_key = kwargs.get('invoice_key', None)
-        sync_on = kwargs.get('sync_on', "")
+        invoice_key = kwargs.get('invoice_key')
+        sync_on = kwargs.get('sync_on', '')
         option = kwargs.get('option', 0)
+        email = kwargs.get('email', '')
         plan = kwargs['plan']
         if not isinstance(plan, Plan):
             plan = get_object_or_404(Plan.objects.all(), slug=plan)
@@ -79,6 +80,10 @@ class CartMixin(object):
                 created = False
                 inserted_item = template_item
                 if sync_on:
+                    account = queryset.filter(email=email)
+                    if account.exists():
+                        inserted_item = template_item = account.first()
+
                     template_option = template_item.option
                     if option > 0:
                         template_option = option
@@ -93,21 +98,20 @@ class CartMixin(object):
                                 use=template_item.use,
                                 coupon=template_item.coupon,
                                 option=template_option,
-                                first_name=kwargs.get('first_name', ''),
-                                last_name=kwargs.get('last_name', ''),
+                                full_name=kwargs.get('full_name', ''),
                                 sync_on=sync_on,
+                                email=email,
                                 claim_code=invoice_key)
                     else:
                         # Use template CartItem
-                        inserted_item.first_name = kwargs.get('first_name', '')
-                        inserted_item.last_name = kwargs.get('last_name', '')
+                        inserted_item.full_name = kwargs.get('full_name', '')
                         inserted_item.option = template_option
                         inserted_item.sync_on = sync_on
+                        inserted_item.email = email
                         inserted_item.save()
                 else:
                     # Use template CartItem
-                    inserted_item.first_name = kwargs.get('first_name', '')
-                    inserted_item.last_name = kwargs.get('last_name', '')
+                    inserted_item.full_name = kwargs.get('full_name', '')
                     inserted_item.option = option
                     inserted_item.save()
             else:
@@ -115,6 +119,8 @@ class CartMixin(object):
                 created = True
                 item_queryset = CartItem.objects.get_cart(user=request.user,
                     plan=plan, sync_on=sync_on)
+                # TODO this conditional is not necessary: at this point
+                # we have already checked that there is no such CartItem, right?
                 if item_queryset.exists():
                     inserted_item = item_queryset.get()
                 else:
@@ -126,8 +132,7 @@ class CartMixin(object):
                         plan=plan, use=use, coupon=redeemed,
                         user=request.user,
                         option=option,
-                        first_name=kwargs.get('first_name', ''),
-                        last_name=kwargs.get('last_name', ''),
+                        full_name=kwargs.get('full_name', ''),
                         sync_on=sync_on, claim_code=invoice_key)
 
         else:
@@ -155,25 +160,24 @@ class CartMixin(object):
                             cart_items += [{'plan': template_item['plan'],
                                 'use': template_item['use'],
                                 'option': template_item['option'],
-                                'first_name': kwargs.get('first_name', ''),
-                                'last_name': kwargs.get('last_name', ''),
+                                'full_name': kwargs.get('full_name', ''),
                                 'sync_on': sync_on,
+                                'email': email,
                                 'invoice_key': invoice_key}]
                     else:
                         # (anonymous) Use template item
-                        inserted_item['first_name'] = kwargs.get(
-                            'first_name', '')
-                        inserted_item['last_name'] = kwargs.get(
-                            'last_name', '')
+                        inserted_item['full_name'] = kwargs.get(
+                            'full_name', '')
                         inserted_item['sync_on'] = sync_on
+                        inserted_item['email'] = email
             else:
                 # (anonymous) New item
                 created = True
                 cart_items += [{'plan': str(plan), 'use': str(use),
                     'option': kwargs.get('option', 0),
-                    'first_name': kwargs.get('first_name', ''),
-                    'last_name': kwargs.get('last_name', ''),
+                    'full_name': kwargs.get('full_name', ''),
                     'sync_on': sync_on,
+                    'email': email,
                     'invoice_key': invoice_key}]
             request.session['cart_items'] = cart_items
         return inserted_item, created
@@ -292,8 +296,7 @@ class CartMixin(object):
             for_descr = ''
             organization = customer
             if cart_item.sync_on:
-                full_name = ' '.join([
-                        cart_item.first_name, cart_item.last_name]).strip()
+                full_name = cart_item.full_name.strip()
                 for_descr = ', for %s (%s)' % (full_name, cart_item.sync_on)
                 organization_queryset = Organization.objects.filter(
                     Q(slug=cart_item.sync_on)
@@ -307,8 +310,7 @@ class CartMixin(object):
                     if not user_queryset.exists():
                         # XXX Hacky way to determine GroupBuy vs. notify.
                         organization = Organization(
-                            full_name='%s %s' % (
-                                cart_item.first_name, cart_item.last_name),
+                            full_name=cart_item.full_name,
                             email=cart_item.sync_on)
             try:
                 # If we can extend a current ``Subscription`` we will.

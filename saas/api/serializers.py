@@ -443,7 +443,7 @@ class CartItemSerializer(serializers.ModelSerializer):
     class Meta:
         model = CartItem
         fields = ('created_at', 'user', 'plan',
-            'option', 'first_name', 'last_name', 'sync_on')
+            'option', 'full_name', 'sync_on')
 
 
 class InvoicableSerializer(NoModelSerializer):
@@ -474,8 +474,7 @@ class AccessibleSerializer(serializers.ModelSerializer):
     slug = serializers.SlugField(source='organization.slug')
     printable_name = serializers.CharField(source='organization.printable_name')
     email = serializers.CharField(source='organization.email')
-    role_description = serializers.SlugRelatedField(
-        slug_field='slug', read_only=True, allow_null=True)
+    role_description = RoleDescriptionSerializer(read_only=True)
 
     class Meta:
         model = get_role_model()
