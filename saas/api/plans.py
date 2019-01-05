@@ -32,7 +32,7 @@ from ..models import Plan, Subscription
 from .. import settings
 
 
-class PlanCreateAPIView(ProviderMixin, CreateAPIView):
+class PlanCreateAPIView(PlanMixin, CreateAPIView):
     """
     Create a ``Plan`` for a provider.
 
@@ -70,6 +70,7 @@ class PlanCreateAPIView(ProviderMixin, CreateAPIView):
     def perform_create(self, serializer):
         unit = serializer.validated_data.get('unit', None)
         if unit is None:
+            # TODO there is no get_queryset() method on this class
             first_plan = self.get_queryset().first()
             if first_plan:
                 unit = first_plan.unit

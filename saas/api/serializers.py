@@ -325,7 +325,7 @@ class PlanSerializer(serializers.ModelSerializer):
         model = Plan
         fields = ('slug', 'title', 'description', 'is_active',
                   'setup_amount', 'period_amount', 'interval', 'app_url',
-                  'organization', 'extra')
+                  'organization', 'unit', 'extra')
         read_only_fields = ('slug', 'app_url')
 
     @staticmethod

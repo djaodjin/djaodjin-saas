@@ -1677,6 +1677,7 @@ var app = new Vue({
                 url: djaodjinSettings.urls.organization.api_base,
                 data: data,
             }).done(function() {
+                showMessages(["Profile was updated."], "success");
             }).fail(function(resp){
                 showErrorMessages(resp);
             });
@@ -2201,5 +2202,44 @@ var app = new Vue({
         this.getUserCard();
         this.getOrgAddress();
     }
+})
+}
+
+if($('#new-plan-container').length > 0){
+var app = new Vue({
+    el: "#new-plan-container",
+    data: {
+        title: '',
+        description: '',
+        unit: '',
+        periodAmount: '',
+        setupAmount: '',
+        interval: '',
+        periodLength: '',
+        advanceDiscount: '',
+        isActive: false,
+    },
+    methods: {
+        createPlan: function(){
+            var vm = this;
+            $.ajax({
+                method: 'POST',
+                data: {
+                    title: vm.title,
+                    description: vm.description,
+                    unit: vm.unit,
+                    period_amount: vm.periodAmount,
+                    setup_amount: vm.setupAmount,
+                    interval: vm.interval,
+                    period_length: vm.periodLength,
+                    advance_discount: vm.advanceDiscount,
+                    is_active: vm.isActive,
+                },
+                url: djaodjinSettings.urls.provider.api_plans,
+            }).done(function(res) {
+                showMessages(["Plan was created."], "success");
+            });
+        },
+    },
 })
 }

@@ -162,7 +162,7 @@ djaodjin-saas/tree/master/saas/templates/saas/profile/plans.html>`__).
       - ``organization`` The provider for the plans
       - ``request`` The HTTP request object
     """
-    template_name = 'saas/profile/plans.html'
+    template_name = 'saas/profile/plans-vue.html'
 
     def get_success_url(self):
         messages.success(
