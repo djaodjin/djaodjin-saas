@@ -30,11 +30,9 @@ from __future__ import unicode_literals
 import csv, logging
 from django.utils.six import StringIO
 
-from django.core.exceptions import MultipleObjectsReturned
 from django.contrib import messages
-from django.shortcuts import get_object_or_404
 from django.utils.translation import ugettext_lazy as _
-from rest_framework.generics import (CreateAPIView, DestroyAPIView,
+from rest_framework.generics import (CreateAPIView,
     GenericAPIView, RetrieveAPIView)
 from rest_framework.mixins import CreateModelMixin
 from rest_framework.response import Response
@@ -289,17 +287,14 @@ class CartItemUploadAPIView(CartMixin, GenericAPIView):
     serializer_class = CartItemUploadSerializer
 
     def post(self, request, *args, **kwargs):
-        #pylint:disable=unused-argument
+        #pylint:disable=unused-argument,too-many-locals
         plan = kwargs.get('plan')
         response = {'created': [],
                     'updated': [],
                     'failed': []}
-        stream = StringIO()
-        fl = request.FILES.get('file')
-        if fl:
-            data = fl.read().decode('utf-8', 'ignore')
-            stream = StringIO(data)
-        filed = csv.reader(stream)
+        uploaded = request.FILES.get('file')
+        filed = csv.reader(StringIO(uploaded.read().decode(
+            'utf-8', 'ignore')) if uploaded else StringIO())
 
         for row in filed:
             try:

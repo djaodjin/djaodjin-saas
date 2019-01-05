@@ -103,7 +103,8 @@ def session_cart_to_database(request):
                     plan = get_object_or_404(Plan, slug=item['plan'])
                     CartItem.objects.create(
                         user=request.user, plan=plan,
-                        full_name=full_name, sync_on=sync_on, email=email, coupon=coupon,
+                        full_name=full_name, email=email,
+                        sync_on=sync_on, coupon=coupon,
                         option=option)
             del request.session['cart_items']
     redeemed = request.session.get('redeemed', None)
