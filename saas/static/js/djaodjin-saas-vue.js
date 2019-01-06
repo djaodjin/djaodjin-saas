@@ -1315,7 +1315,7 @@ var app = new Vue({
             this.update(item);
         },
         subscribersURL: function(provider, plan) {
-            return djaodjinSettings.organization.api_profile_base + provider + "/plans/" + plan + "/subscriptions/";
+            return djaodjinSettings.urls.organization.api_profile_base + provider + "/plans/" + plan + "/subscriptions/";
         },
         subscribe: function(org){
             var vm = this;
@@ -2211,12 +2211,12 @@ var app = new Vue({
     data: {
         title: '',
         description: '',
-        unit: '',
-        periodAmount: '',
-        setupAmount: '',
-        interval: '',
-        periodLength: '',
-        advanceDiscount: '',
+        unit: 'usd',
+        periodAmount: '0.00',
+        setupAmount: '0.00',
+        interval: 'YEARLY',
+        periodLength: 1,
+        advanceDiscount: '0.00',
         isActive: false,
     },
     methods: {
@@ -2237,6 +2237,15 @@ var app = new Vue({
                 },
                 url: djaodjinSettings.urls.provider.api_plans,
             }).done(function(res) {
+                vm.title = '';
+                vm.description = '';
+                vm.unit = 'usd';
+                vm.periodAmount = '0.00';
+                vm.setupAmount = '0.00';
+                vm.interval = 'YEARLY';
+                vm.periodLength = 1;
+                vm.advanceDiscount = '0.00';
+                vm.isActive = false;
                 showMessages(["Plan was created."], "success");
             });
         },
