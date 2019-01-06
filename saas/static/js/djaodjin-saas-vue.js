@@ -1642,7 +1642,7 @@ var app = new Vue({
                 if(org.is_bulk_buyer){
                     vm.isBulkBuyer = org.is_bulk_buyer;
                 }
-                if(org.is_bulk_buyer){
+                if(org.default_timezone){
                     vm.timezone = org.default_timezone;
                 }
                 vm.organization = org;
