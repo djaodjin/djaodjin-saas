@@ -28,12 +28,11 @@ APIs for cart and checkout functionality.
 from __future__ import unicode_literals
 
 import csv, logging
+from django.utils.six import StringIO
 
-from django.core.exceptions import MultipleObjectsReturned
 from django.contrib import messages
-from django.shortcuts import get_object_or_404
 from django.utils.translation import ugettext_lazy as _
-from rest_framework.generics import (CreateAPIView, DestroyAPIView,
+from rest_framework.generics import (CreateAPIView,
     GenericAPIView, RetrieveAPIView)
 from rest_framework.mixins import CreateModelMixin
 from rest_framework.response import Response
@@ -60,7 +59,7 @@ class CartItemCreateSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = CartItem
-        fields = ('plan', 'option', 'first_name', 'last_name', 'sync_on')
+        fields = ('plan', 'option', 'full_name', 'sync_on', 'email')
 
 
 class OrganizationCartSerializer(NoModelSerializer):
@@ -115,7 +114,7 @@ class CartItemAPIView(CartMixin, CreateAPIView):
 
     ``quantity`` is optional. When it is not specified, subsquent checkout
     screens will provide choices to pay multiple periods in advance
-    When additional ``first_name``, ``last_name`` and ``sync_on`` are specified,
+    When additional ``full_name``, ``email`` and ``sync_on`` are specified,
     payment can be made by one ``Organization`` for another ``Organization``
     to be subscribed (see :ref:`GroupBuy orders<group_buy>`).
 
@@ -143,7 +142,7 @@ class CartItemAPIView(CartMixin, CreateAPIView):
 
     ``option`` is optional. When it is not specified, subsquent checkout
     screens will provide choices to pay multiple periods in advance
-    When additional ``first_name``, ``last_name`` and ``sync_on`` are specified,
+    When additional ``full_name`` and ``sync_on`` are specified,
     payment can be made by one ``Organization`` for another ``Organization``
     to be subscribed (see :ref:`GroupBuy orders<group_buy>`).
     """
@@ -186,6 +185,54 @@ class CartItemAPIView(CartMixin, CreateAPIView):
             return Response(cart_items, status=status_code, headers=headers)
         headers = self.get_success_headers(cart_items[0])
         return Response(cart_items[0], status=status_code, headers=headers)
+
+    @staticmethod
+    def destroy_in_session(request, plan=None, email=None):
+        cart_items = request.session.get('cart_items', [])
+        serialized_cart_items = []
+        is_deleted = False
+        for item in cart_items:
+            if plan and item['plan'] == plan:
+                is_deleted = True
+                continue
+            if email and item['email'] == email:
+                is_deleted = True
+                continue
+            serialized_cart_items += [item]
+        if is_deleted:
+            request.session['cart_items'] = serialized_cart_items
+        return is_deleted
+
+    @staticmethod
+    def destroy_in_db(request, plan=None, email=None):
+        kwargs = {}
+        if plan:
+            kwargs.update({'plan__slug': plan})
+        if email:
+            kwargs.update({'email': email})
+        CartItem.objects.get_cart(request.user, **kwargs).delete()
+
+    def delete(self, request, *args, **kwargs):
+        """
+        Removes an item from the ``request.user`` cart.
+
+        **Examples
+
+        .. code-block:: http
+
+            DELETE /api/cart/?plan=open-space HTTP/1.1
+        """
+        #pylint:disable=unused-argument
+        plan = None
+        email = None
+        plan = request.query_params.get('plan')
+        email = request.query_params.get('email')
+        self.destroy_in_session(request, plan=plan, email=email)
+        if is_authenticated(request):
+            # If the user is authenticated, we delete the cart items
+            # from the database.
+            self.destroy_in_db(request, plan=plan, email=email)
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class CartItemUploadSerializer(NoModelSerializer):
@@ -245,25 +292,33 @@ class CartItemUploadAPIView(CartMixin, GenericAPIView):
     serializer_class = CartItemUploadSerializer
 
     def post(self, request, *args, **kwargs):
-        #pylint:disable=unused-argument
+        #pylint:disable=unused-argument,too-many-locals
         plan = kwargs.get('plan')
-        filed = csv.reader(request.FILES['file'])
         response = {'created': [],
                     'updated': [],
                     'failed': []}
+        uploaded = request.FILES.get('file')
+        filed = csv.reader(StringIO(uploaded.read().decode(
+            'utf-8', 'ignore')) if uploaded else StringIO())
 
         for row in filed:
             try:
-                first_name, last_name, email = row
+                if len(row) == 2:
+                    full_name, email = row
+                elif len(row) == 3:
+                    first_name, last_name, email = row
+                    full_name = '%s %s' % (first_name, last_name)
+                else:
+                    raise csv.Error()
             except csv.Error:
                 response['failed'].append({'data': {'raw': row},
                                            'error': 'Unable to parse row'})
             else:
                 serializer = CartItemCreateSerializer(
                     data={'plan': plan,
-                          'first_name': first_name,
-                          'last_name': last_name,
-                          'sync_on': email})
+                          'full_name': full_name,
+                          'sync_on': email,
+                          'email': email})
                 if serializer.is_valid():
                     cart_item, created = self.insert_item(
                         request, **serializer.data)
@@ -278,61 +333,6 @@ class CartItemUploadAPIView(CartMixin, GenericAPIView):
                                                'error': serializer.errors})
 
         return Response(response)
-
-
-class CartItemDestroyAPIView(DestroyAPIView):
-    """
-    Remove a ``Plan`` from the subscription cart of the ``request.user``.
-
-    **Examples
-
-    .. code-block:: http
-
-        DELETE /api/cart/open-space/ HTTP/1.1
-    """
-
-    model = CartItem
-
-    @staticmethod
-    def destroy_in_session(request, *args, **kwargs):
-        #pylint: disable=unused-argument
-        cart_items = []
-        if 'cart_items' in request.session:
-            cart_items = request.session['cart_items']
-        candidate = kwargs.get('plan')
-        serialized_cart_items = []
-        found = False
-        for item in cart_items:
-            if item['plan'] == candidate:
-                found = True
-                continue
-            serialized_cart_items += [item]
-        request.session['cart_items'] = serialized_cart_items
-        return found
-
-    def get_object(self):
-        result = None
-        try:
-            result = get_object_or_404(CartItem,
-                plan__slug=self.kwargs.get('plan'),
-                user=self.request.user, recorded=False)
-        except MultipleObjectsReturned as err:
-            # This should not happen but in case the db is corrupted,
-            # we want to do something acceptable to the user.
-            LOGGER.exception(err)
-            result = CartItem.objects.filter(
-                plan__slug=self.kwargs.get('plan'),
-                user=self.request.user, recorded=False).first()
-        return result
-
-    def delete(self, request, *args, **kwargs):
-        destroyed = self.destroy_in_session(request, *args, **kwargs)
-        # We found the items in the session cart, nothing else to do.
-        if not destroyed and is_authenticated(self.request):
-            # If the user is authenticated, we delete the cart items
-            # from the database.
-            return self.destroy(request, *args, **kwargs)
-        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class RedeemCouponSerializer(NoModelSerializer):
@@ -477,7 +477,7 @@ class CheckoutAPIView(CartMixin, OrganizationMixin,
 
         The cart is manipulated through various API endpoints:
 
-        - `/api/cart/redeem/' applies a coupon code for a potential discount.
+        - `/api/cart/redeem/` applies a coupon code for a potential discount.
         - `/api/cart/` adds or updates a cart item.
         - `/api/cart/{plan}` removes a cart item.
 

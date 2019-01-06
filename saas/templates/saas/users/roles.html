@@ -34,7 +34,7 @@
                v-bind:href="'{{urls.organization.profile_base}}' + entry.slug + '/'">[[entry.printable_name]]</a>
           </td>
           <td>
-            [[entry.request_key ? "requested" : entry.role_description]]
+            [[entry.request_key ? "requested" : entry.role_description.title]]
           </td>
           <td><button ng-click="remove($event, $index)" @click="remove(index)">remove</button></td>
         </tr>

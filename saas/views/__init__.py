@@ -68,16 +68,15 @@ def session_cart_to_database(request):
             for item in request.session['cart_items']:
                 coupon = item.get('coupon', None)
                 option = item.get('option', 0)
-                first_name = item.get('first_name', '')
-                last_name = item.get('last_name', '')
-                email = item.get('sync_on', '')
+                full_name = item.get('full_name', '')
+                sync_on = item.get('sync_on', '')
+                email = item.get('email', '')
                 # We use ``filter(...).first()`` instead of ``get_or_create()``
                 # here just in case the database is inconsistent and multiple
                 # ``CartItem`` are already present.
                 cart_item = CartItem.objects.get_cart(
                     user=request.user, plan__slug=item['plan']).filter(
-                    first_name=first_name, last_name=last_name,
-                    sync_on=email).first()
+                    full_name=full_name, email=email, sync_on=sync_on).first()
                 # if the item is already in the cart, it is OK to forget about
                 # any additional count of it. We are just going to constraint
                 # the available one further.
@@ -89,14 +88,14 @@ def session_cart_to_database(request):
                     if option and not cart_item.option:
                         cart_item.option = option
                         updated = True
-                    if first_name and not cart_item.first_name:
-                        cart_item.first_name = first_name
+                    if full_name and not cart_item.full_name:
+                        cart_item.full_name = full_name
                         updated = True
-                    if last_name and not cart_item.last_name:
-                        cart_item.last_name = last_name
+                    if sync_on and not cart_item.sync_on:
+                        cart_item.sync_on = sync_on
                         updated = True
-                    if email and not cart_item.sync_on:
-                        cart_item.sync_on = email
+                    if email and not cart_item.email:
+                        cart_item.email = email
                         updated = True
                     if updated:
                         cart_item.save()
@@ -104,8 +103,9 @@ def session_cart_to_database(request):
                     plan = get_object_or_404(Plan, slug=item['plan'])
                     CartItem.objects.create(
                         user=request.user, plan=plan,
-                        first_name=first_name, last_name=last_name,
-                        sync_on=email, coupon=coupon, option=option)
+                        full_name=full_name, email=email,
+                        sync_on=sync_on, coupon=coupon,
+                        option=option)
             del request.session['cart_items']
     redeemed = request.session.get('redeemed', None)
     if redeemed:
@@ -210,8 +210,6 @@ class OrganizationRedirectView(TemplateResponseMixin, ContextMixin,
         else:
             create_url = reverse('saas_organization_create')
         if count == 0:
-            if self.explicit_create_on_none:
-                return http.HttpResponseRedirect(create_url)
             if self.get_implicit_create_on_none():
                 try:
                     kwargs.update({self.slug_url_kwarg: str(
@@ -222,6 +220,8 @@ class OrganizationRedirectView(TemplateResponseMixin, ContextMixin,
                     LOGGER.warning("tried to implicitely create"\
                         " an organization that already exists.",
                         extra={'request': request})
+            elif self.explicit_create_on_none:
+                return http.HttpResponseRedirect(create_url)
             raise http.Http404(_("No organizations are accessible by user."))
         if count == 1 and not self.create_more:
             organization = accessibles.get()

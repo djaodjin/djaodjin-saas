@@ -276,7 +276,7 @@ def trigger_expiration_notices(at_time=None, nb_days=15, dry_run=False):
         plan = subscription.plan
 
         try:
-            if subscription.auto_renew == True:
+            if subscription.auto_renew:
                 if plan.renewal_type == plan.AUTO_RENEW:
                     if org.id != prev_organization:
                         _handle_organization_notices(org)

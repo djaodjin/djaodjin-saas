@@ -411,6 +411,16 @@ var regions = {
 
 var DATE_FORMAT = 'MMM DD, YYYY';
 
+function handleRequestError(res){
+    if(res.responseJSON && res.responseJSON.detail){
+        showErrorMessages(res.responseJSON.detail);
+    } else if(res.responseText) {
+        showErrorMessages(res.responseText);
+    } else {
+        showErrorMessages('Something went wrong');
+    }
+}
+
 var itemListMixin = {
     data: function(){
         return this.getInitData();
@@ -450,7 +460,7 @@ var itemListMixin = {
                     vm.itemsLoaded = true;
                 }
             }
-            $.get(vm.url, vm.getParams(), cb);
+            $.get(vm.url, vm.getParams(), cb).fail(handleRequestError);
         },
         getParams: function(excludes){
             var vm = this;
@@ -639,9 +649,7 @@ var userRelationMixin = {
                 // splicing instead of refetching because
                 // subsequent fetch might fail due to 403
                 vm.items.results.splice(idx, 1);
-            }).fail(function(resp){
-                showErrorMessages(resp);
-            });
+            }).fail(handleRequestError);
         },
         saveUserRelation: function(slug){
             var vm = this;
@@ -679,9 +687,7 @@ var userRelationMixin = {
                 data: data,
             }).done(function (resp) {
                 vm.get()
-            }).fail(function(resp){
-                showErrorMessages(resp);
-            });
+            }).fail(handleRequestError);
         }
     },
 }
@@ -744,9 +750,7 @@ var subscribersMixin = {
                 method: 'PATCH',
                 url: url,
                 data: {description: item.description},
-            }).fail(function(resp){
-                showErrorMessages(resp);
-            });
+            }).fail(handleRequestError);
         },
     }
 }
@@ -866,9 +870,7 @@ var app = new Vue({
                 url: vm.url + '/' + code,
             }).done(function() {
                 vm.get()
-            }).fail(function(resp){
-                showErrorMessages(resp);
-            });
+            }).fail(handleRequestError);
         },
         update: function(coupon){
             var vm = this;
@@ -878,9 +880,7 @@ var app = new Vue({
                 data: coupon,
             }).done(function (resp) {
                 vm.get()
-            }).fail(function(resp){
-                showErrorMessages(resp);
-            });
+            }).fail(handleRequestError);
         },
         save: function(){
             var vm = this;
@@ -894,9 +894,7 @@ var app = new Vue({
                     code: '',
                     percent: ''
                 }
-            }).fail(function(resp){
-                showErrorMessages(resp);
-            });
+            }).fail(handleRequestError);
         },
         editDescription: function(idx){
             var vm = this;
@@ -1309,9 +1307,7 @@ var app = new Vue({
                 method: 'PATCH',
                 url: url,
                 data: data,
-            }).fail(function(resp){
-                showErrorMessages(resp);
-            });
+            }).fail(handleRequestError);
         },
         selected: function(idx){
             var item = this.items.results[idx];
@@ -1336,9 +1332,7 @@ var app = new Vue({
                 data: JSON.stringify(data),
             }).done(function (){
                 vm.get();
-            }).fail(function(resp){
-                showErrorMessages(resp);
-            });
+            }).fail(handleRequestError);
         },
         unsubscribeConfirm: function(org, plan) {
             this.toDelete = {
@@ -1357,9 +1351,7 @@ var app = new Vue({
             }).done(function (){
                 vm.params.page = 1;
                 vm.get();
-            }).fail(function(resp){
-                showErrorMessages(resp);
-            });
+            }).fail(handleRequestError);
         },
         acceptRequest: function(organization, request_key) {
             var vm = this;
@@ -1370,9 +1362,7 @@ var app = new Vue({
                 url: url,
             }).done(function (){
                 vm.get();
-            }).fail(function(resp){
-                showErrorMessages(resp);
-            });
+            }).fail(handleRequestError);
         },
     },
     mounted: function(){
@@ -1502,7 +1492,7 @@ var app = new Vue({
                 vm.reload()
             }).fail(function(resp){
                 vm.reload()
-                showErrorMessages(resp);
+                handleRequestError(resp);
             });
         }
     },
@@ -1689,9 +1679,7 @@ var app = new Vue({
                 url: djaodjinSettings.urls.organization.api_base,
             }).done(function() {
                 window.location = djaodjinSettings.urls.profile_redirect;
-            }).fail(function(resp){
-                showErrorMessages(resp);
-            });
+            }).fail(handleRequestError);
         }
     },
     mounted: function(){
@@ -1740,9 +1728,7 @@ var app = new Vue({
                 vm.role.title = '';
                 vm.params.page = 1;
                 vm.get()
-            }).fail(function(resp){
-                showErrorMessages(resp);
-            });
+            }).fail(handleRequestError);
         },
         remove: function(role){
             var vm = this;
@@ -1753,9 +1739,7 @@ var app = new Vue({
             }).done(function() {
                 vm.params.page = 1;
                 vm.get()
-            }).fail(function(resp){
-                showErrorMessages(resp);
-            });
+            }).fail(handleRequestError);
         },
     },
     mounted: function(){
@@ -1803,9 +1787,7 @@ var app = new Vue({
                     selector: '',
                     rank: 0,
                 }
-            }).fail(function(resp){
-                showErrorMessages(resp);
-            });
+            }).fail(handleRequestError);
         },
         remove: function(id){
             var vm = this;
@@ -1814,9 +1796,7 @@ var app = new Vue({
                 url: vm.balanceLineUrl + '/' + id,
             }).done(function() {
                 vm.get()
-            }).fail(function(resp){
-                showErrorMessages(resp);
-            });
+            }).fail(handleRequestError);
         },
     },
     mounted: function(){
@@ -1854,6 +1834,7 @@ var app = new Vue({
         regions: regions,
         init: true,
         organization: {},
+        csvFiles: {},
     },
     methods: {
         getOptions: function(){
@@ -1870,15 +1851,16 @@ var app = new Vue({
         },
         remove: function(plan){
             var vm = this;
-            var url = djaodjinSettings.urls.api_cart + plan + '/';
+            var url = djaodjinSettings.urls.api_cart;
             $.ajax({
                 method: 'DELETE',
                 url: url,
+                data: {
+                    plan: plan,
+                },
             }).done(function() {
                 vm.get()
-            }).fail(function(resp){
-                showErrorMessages(resp);
-            });
+            }).fail(handleRequestError);
         },
         redeem: function(){
             var vm = this;
@@ -1889,9 +1871,7 @@ var app = new Vue({
             }).done(function(resp) {
                 showMessages(["Coupon was successfully applied."], "success");
                 vm.get()
-            }).fail(function(resp){
-                showErrorMessages(resp);
-            });
+            }).fail(handleRequestError);
         },
         getAndPrepareData: function(res){
             var vm = this;
@@ -1929,8 +1909,7 @@ var app = new Vue({
             var user = this.planUser(plan);
             var data = {
                 plan: plan,
-                first_name: user.firstName,
-                last_name: user.lastName,
+                full_name: user.firstName + ' ' + user.lastName,
                 sync_on: user.email
             }
             var option = vm.plansOption[plan];
@@ -1950,9 +1929,7 @@ var app = new Vue({
                     email: ''
                 });
                 vm.get();
-            }).fail(function(resp){
-                showErrorMessages(resp);
-            });
+            }).fail(handleRequestError);
         },
         planUser: function(plan){
             return this.plansUser[plan] && this.plansUser[plan] || {}
@@ -2060,9 +2037,7 @@ var app = new Vue({
                 showMessages(["Success."], "success");
                 var id = resp.processor_key;
                 location = djaodjinSettings.urls.organization.receipt.replace('_', id);
-            }).fail(function(resp){
-                showErrorMessages(resp);
-            });
+            }).fail(handleRequestError);
         },
         checkout: function(){
             var vm = this;
@@ -2094,6 +2069,31 @@ var app = new Vue({
                     vm.addressRegion = org.region;
                 }
                 vm.organization = org;
+            });
+        },
+        fileChanged: function(plan, e){
+            var file = e.target.files.length > 0 ?
+                e.target.files[0] : null;
+            if(file)
+                this.$set(this.csvFiles, plan, file);
+        },
+        bulkImport: function(plan){
+            var vm = this;
+            if(!vm.csvFiles[plan]) return;
+            var formData = new FormData();
+            formData.append("file", vm.csvFiles[plan]);
+            $.ajax({
+                type: "POST",
+                url: "/api/cart/" + plan + "/upload/",
+                data: formData,
+                processData: false,
+                contentType: false,
+                success: function(data) {
+                    vm.get();
+                },
+                error: function(response) {
+                    showErrorMessages(response, "error");
+                }
             });
         },
     },

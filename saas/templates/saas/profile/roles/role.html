@@ -31,7 +31,7 @@
     </table>
     <!-- modal -->
     <div>
-      <h2>Add {{role_descr}}</h2>
+      <h2>Add {{role_descr.title}}</h2>
       <form ng-submit="save($event)"
             @submit.prevent="save(unregistered)">
         <input type="hidden" name="csrfmiddlewaretoken" value="{{csrf_token}}">
@@ -55,7 +55,7 @@ them.
                >
 Hello,
 
-I am adding you as a {{role_descr}} to {{organization.printable_name}}.
+I am adding you as a {{role_descr.title}} to {{organization.printable_name}}.
 
 Thank you,
 - {{request.user.first_name}}

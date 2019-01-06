@@ -105,11 +105,6 @@ a provider through a processor.
 .. autoclass:: saas.api.coupons.CouponRedeemAPIView
 
 
-.. http:delete:: /api/cart/<plan>/
-
-.. autoclass:: saas.api.billing.CartItemDestroyAPIView
-
-
 .. http:delete:: /api/cart/:plan/upload/
 
 .. autoclass:: saas.api.billing.CartItemUploadAPIView

@@ -167,17 +167,12 @@ def get_organization_model():
     from .compat import get_model_class
     return get_model_class(settings.ORGANIZATION_MODEL, 'ORGANIZATION_MODEL')
 
+
 def get_role_model():
     # delayed import so we can load ``OrganizationMixinBase`` in django.conf
     from . import settings
     from .compat import get_model_class
     return get_model_class(settings.ROLE_RELATION, 'ROLE_RELATION')
-
-
-def normalize_role_name(role_name):
-    if role_name.endswith('s'):
-        role_name = role_name[:-1]
-    return role_name
 
 
 def start_of_day(dtime_at=None):

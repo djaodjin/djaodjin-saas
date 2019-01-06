@@ -183,27 +183,16 @@ def fail_subscription(request, organization=None, plan=None):
         # Bypass if a manager for the broker.
         return False
     if organization and not isinstance(organization, Organization):
-        organization = get_object_or_404(Organization, slug=organization)
-    subscriptions = Subscription.objects.valid_for(
-        organization=organization).order_by("ends_at")
-    # ``order_by("ends_at")`` will get the subscription that ends the earliest,
-    # yet is greater than Today (``subscribed_at``).
+        candidates = [get_object_or_404(Organization, slug=organization)]
+    else:
+        candidates = get_role_model().objects.filter(
+            user=request.user).values('organization').distinct()
+    subscriptions = Subscription.objects.valid_for(organization__in=candidates)
     if plan:
         if not isinstance(plan, Plan):
             plan = get_object_or_404(Plan, slug=plan)
         subscriptions = subscriptions.filter(plan=plan)
-        active_subscription = subscriptions.first()
-        if active_subscription is None:
-            return "%s?plan=%s" % (
-                reverse('saas_organization_cart', args=(organization,)), plan)
-    else:
-        active_subscription = subscriptions.first()
-        if active_subscription is None:
-            return reverse('saas_cart_plan_list')
-        plan = active_subscription.plan
-    if active_subscription.is_locked:
-        return reverse('saas_organization_balance', args=(organization, plan))
-    return False
+    return not subscriptions.exists()
 
 
 def fail_paid_subscription(request, organization=None, plan=None):

@@ -249,7 +249,7 @@ class OrganizationSerializer(serializers.ModelSerializer):
         fields = ('slug', 'created_at', 'full_name', 'default_timezone',
             'email', 'phone', 'street_address', 'locality',
             'region', 'postal_code', 'country', 'extra',
-            'printable_name')
+            'printable_name', 'is_bulk_buyer')
         read_only_fields = ('created_at',)
 
 
@@ -325,7 +325,7 @@ class PlanSerializer(serializers.ModelSerializer):
         model = Plan
         fields = ('slug', 'title', 'description', 'is_active',
                   'setup_amount', 'period_amount', 'interval', 'app_url',
-                  'organization', 'unit', 'extra')
+                  'advance_discount', 'unit', 'organization', 'extra')
         read_only_fields = ('slug', 'app_url')
 
     @staticmethod
@@ -443,7 +443,7 @@ class CartItemSerializer(serializers.ModelSerializer):
     class Meta:
         model = CartItem
         fields = ('created_at', 'user', 'plan',
-            'option', 'first_name', 'last_name', 'sync_on')
+            'option', 'full_name', 'sync_on')
 
 
 class InvoicableSerializer(NoModelSerializer):
@@ -474,8 +474,7 @@ class AccessibleSerializer(serializers.ModelSerializer):
     slug = serializers.SlugField(source='organization.slug')
     printable_name = serializers.CharField(source='organization.printable_name')
     email = serializers.CharField(source='organization.email')
-    role_description = serializers.SlugRelatedField(
-        slug_field='slug', read_only=True, allow_null=True)
+    role_description = RoleDescriptionSerializer(read_only=True)
 
     class Meta:
         model = get_role_model()

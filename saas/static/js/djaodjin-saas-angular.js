@@ -248,6 +248,27 @@ transactionControllers.controller("itemsListCtrl",
         }
     };
 
+    $scope.getQueryString = function(excludes){
+        var sep = "";
+        var result = "";
+        for( var key in $scope.params ) {
+            if( $scope.params.hasOwnProperty(key) && $scope.params[key] ) {
+                if( excludes && key in excludes ) continue;
+                if( key === 'start_at' || key === 'ends_at' ) {
+                    result += sep + key + '=' + moment(
+                        $scope.params[key], $scope.format).toISOString();
+                } else {
+                    result += sep + key + '=' + $scope.params[key];
+                }
+                sep = "&";
+            }
+        }
+        if( result ) {
+            result = '?' + result;
+        }
+        return result;
+    };
+
     $scope.pageChanged = function() {
         if( $scope.currentPage > 1 ) {
             $scope.params.page = $scope.currentPage;
@@ -590,7 +611,7 @@ transactionControllers.controller("userRelationListCtrl",
         sortDirection: "desc",
         modalSelector: ".add-role-modal",
         urls: {api_items: apiUrl,
-               api_candidates: settings.urls.broker.api_users}}, settings);
+               api_candidates: settings.urls.api_candidates}}, settings);
     $controller("relationListCtrl", {
         $scope: $scope, $element: $element, $controller: $controller,
         $http: $http, $timeout:$timeout, settings: opts});
@@ -660,13 +681,17 @@ transactionControllers.controller("subscriptionListCtrl",
     $scope.tables = {
         registered: {
             $resolved: false, count: 0,
-            location: settings.urls.broker.api_users_registered},
+            location: ((settings.urls.broker
+              && settings.urls.broker.api_users_registered) ?
+                settings.urls.broker.api_users_registered : null)},
         subscribed: {
             $resolved: false, count: 0,
             location: settings.urls.organization.api_subscriptions},
         churned: {
             $resolved: false, count: 0,
-            location: settings.urls.provider.api_subscribers_churned}
+            location: ((settings.urls.provider
+              && settings.urls.provider.api_subscribers_churned) ?
+                settings.urls.provider.api_subscribers_churned : null)}
     };
 
     $scope.active = $scope.tables.subscribed;
@@ -674,12 +699,14 @@ transactionControllers.controller("subscriptionListCtrl",
     $scope.query = function(queryset) {
         queryset.$resolved = false;
         queryset.results = [];
-        $http.get(queryset.location, {params: $scope.params}).then(
-        function success(resp) {
-            queryset.results = resp.data.results;
-            queryset.count = resp.data.count;
-            queryset.$resolved = true;
-        });
+        if( queryset.location ) {
+            $http.get(queryset.location, {params: $scope.params}).then(
+            function success(resp) {
+                queryset.results = resp.data.results;
+                queryset.count = resp.data.count;
+                queryset.$resolved = true;
+            });
+        }
     };
 
     $scope.refresh = function() {
@@ -945,7 +972,7 @@ metricsControllers.controller("metricsCtrl",
     for( var i = 0; i < $scope.tables.length; ++i ) {
         $scope.tabs.push($scope.tables[i].key);
     }
-    $scope.activeTab = $scope.tabs[0];
+    $scope.currentTableData = $scope.tables[0];
 
     $scope.endOfMonth = function(date) {
         return new Date(
@@ -989,15 +1016,6 @@ metricsControllers.controller("metricsCtrl",
 
     $scope.humanizeCell = function(value, unit, scale) {
         return $filter('humanizeCell')(value, unit, scale);
-    };
-
-    $scope.getTable = function(key) {
-        for( var i = 0; i < $scope.tables.length; ++i ) {
-            if( $scope.tables[i].key === key ) {
-                return $scope.tables[i];
-            }
-        }
-        return null;
     };
 
     $scope.tabTitle = function(table) {
@@ -1053,12 +1071,12 @@ metricsControllers.controller("metricsCtrl",
     };
 
     $scope.refreshTable = function() {
-        $scope.query($scope.getTable($scope.activeTab));
+        $scope.query($scope.currentTableData);
     };
 
     // change the selected tab
     $scope.tabClicked = function(table) {
-        $scope.activeTab = table.key;
+        $scope.currentTableData = table;
         $scope.refreshTable();
     };
 
@@ -1244,7 +1262,7 @@ balanceControllers.controller("BalanceListCtrl",
     };
 
     $scope.humanizeCell = function(value) {
-        return $filter('humanizeCell')(value, $scope.items.unit, $scope.items.scale);
+        return $filter('humanizeCell')(value, $scope.balances.unit, $scope.balances.scale);
     };
 
     $scope.endOfMonth = function(date) {

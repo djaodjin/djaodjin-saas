@@ -82,7 +82,8 @@ from django_countries.fields import CountryField
 from . import humanize, settings, signals
 from .backends import get_processor_backend, ProcessorError, CardError
 from .utils import (SlugTitleMixin, datetime_or_now,
-    extract_full_exception_stack, generate_random_slug, get_role_model)
+    extract_full_exception_stack, generate_random_slug, get_role_model,
+    full_name_natural_split)
 
 
 LOGGER = logging.getLogger(__name__)
@@ -244,7 +245,8 @@ class Organization(models.Model):
 
     is_bulk_buyer = models.BooleanField(default=False,
         help_text=mark_safe(_("Enable GroupBuy ("\
-        "<a href=\"/docs/#group-billing\" target=\"_blank\">what is it?</a>)")))
+        "<a href=\"https://djaodjin.com/docs/#group-billing\""\
+        " target=\"_blank\">what is it?</a>)")))
     is_provider = models.BooleanField(default=False,
         help_text=_("The organization can fulfill the provider side"\
         " of a subscription."))
@@ -306,7 +308,9 @@ class Organization(models.Model):
 
     def get_changes(self, update_fields):
         changes = {}
-        for field_name in ('full_name',):
+        for field_name in ('slug', 'full_name', 'email', 'phone',
+            'street_address', 'locality', 'region', 'postal_code', 'country',
+            'is_bulk_buyer', 'is_provider', 'default_timezone'):
             pre_value = getattr(self, field_name, None)
             post_value = update_fields.get(field_name, None)
             if post_value is not None and pre_value != post_value:
@@ -335,8 +339,8 @@ class Organization(models.Model):
         with transaction.atomic():
             user = self.attached_user()
             if user:
-                user.first_name, user.last_name \
-                    = split_full_name(self.full_name)
+                user.first_name, _, user.last_name \
+                    = full_name_natural_split(self.full_name)
                 if self.email:
                     user.email = self.email
                 user.save()
@@ -646,8 +650,7 @@ class Organization(models.Model):
             for cart_item in cart_items:
                 cart_item.sync_on = ""
                 cart_item.user = None
-                cart_item.first_name = ''
-                cart_item.last_name = self.printable_name
+                cart_item.full_name = self.printable_name
                 if cart_item.claim_code:
                     claim_codes.update({key: cart_item.claim_code})
                 else:
@@ -1833,11 +1836,12 @@ class Charge(models.Model):
                     orig_account=Transaction.BACKLOG,
                     orig_organization=provider)
 
+                # See comment above for use of `event`.
                 charge_item.invoiced_distribute = Transaction.objects.create(
                     event_id=get_charge_event_id(self),
                     created_at=self.created_at,
                     descr=humanize.DESCRIBE_CHARGED_CARD_PROVIDER % {
-                            'charge': self.processor_key, 'event': event_id},
+                            'charge': self.processor_key, 'event': event},
                     dest_unit=funds_unit,
                     dest_amount=distribute_amount,
                     dest_account=Transaction.FUNDS,
@@ -2337,7 +2341,7 @@ class Plan(SlugTitleMixin, models.Model):
         ' (monthly, yearly, etc.)'))
     unlock_event = models.CharField(max_length=128, null=True, blank=True,
         help_text=_('Payment required to access full service'))
-    advance_discount = models.PositiveIntegerField(default=333,
+    advance_discount = models.PositiveIntegerField(default=0,
         validators=[MaxValueValidator(10000)], # 100.00%
         help_text=_('Incremental discount for payment of multiple periods'\
         ' (in %%).'))
@@ -2689,15 +2693,10 @@ class CartItem(models.Model):
     # that will be passed back on successful charge notifications.
     # `sync_on`` will be used for notifications. It needs to be a valid
     # User or Organization slug or an e-mail address.
-    # XXX first_name / last_name should be a full_name because we only
-    #     subscribes organization. On the other end an actual user needs
-    #     to invited and the User model only supports first_name/last_name.
-    first_name = models.CharField(_('First name'), max_length=30, blank=True,
-        help_text=_("First name of the person that will benefit from"\
+    full_name = models.CharField(_('Full name'), max_length=150, blank=True,
+        help_text=_("Full name of the person that will benefit from"\
             " the subscription (GroupBuy)"))
-    last_name = models.CharField(_('Last name'), max_length=30, blank=True,
-        help_text=_("Last name of the person that will benefit from"\
-            " the subscription (GroupBuy)"))
+    email = models.CharField(max_length=255, null=True, blank=True)
     # XXX Explain sync_on and claim_code
     sync_on = models.CharField(max_length=255, null=True, blank=True)
     claim_code = models.SlugField(db_index=True, null=True, blank=True)
@@ -2710,7 +2709,7 @@ class CartItem(models.Model):
         result = '%s from %s' % (
             self.plan.printable_name, self.plan.organization.printable_name)
         if self.sync_on:
-            full_name = ' '.join([self.first_name, self.last_name]).strip()
+            full_name = self.full_name.strip()
             result = 'Subscribe %s (%s) to %s' % (full_name,
                 self.sync_on, result)
         return result
@@ -3954,22 +3953,6 @@ def is_broker(organization):
         from saas.compat import import_string
         return import_string(settings.IS_BROKER_CALLABLE)(organization_slug)
     return get_broker().slug == organization_slug
-
-
-def split_full_name(full_name):
-    """
-    Split a full_name into most likely first_name and last_name.
-
-    XXX This is not perfect.
-    """
-    name_parts = full_name.split(' ')
-    if len(name_parts) > 1:
-        first_name = name_parts[0]
-        last_name = ' '.join(name_parts[1:])
-    else:
-        first_name = full_name
-        last_name = ''
-    return first_name, last_name
 
 
 def sum_balance_amount(dest_balances, orig_balances):
