@@ -30,6 +30,7 @@ from django.utils.translation import ugettext_lazy as _
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
 from rest_framework.generics import get_object_or_404
+from django_countries.serializer_fields import CountryField
 
 from ..decorators import _valid_manager
 from ..humanize import as_money
@@ -275,6 +276,7 @@ class OrganizationWithSubscriptionsSerializer(serializers.ModelSerializer):
 
     subscriptions = WithSubscriptionSerializer(
         source='subscription_set', many=True, read_only=True)
+    country = CountryField()
 
     class Meta:
         model = Organization

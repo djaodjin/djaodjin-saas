@@ -77,7 +77,7 @@ class PlanCreateAPIView(PlanMixin, CreateAPIView):
             else:
                 unit = settings.DEFAULT_UNIT
         serializer.save(organization=self.provider,
-            slug=self.slugify(serializer.validated_data['title']),
+            slug=self.slugify(serializer.validated_data.get('title')),
             unit=unit)
 
 
