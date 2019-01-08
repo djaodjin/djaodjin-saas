@@ -10,13 +10,13 @@
          ng-prop-href="'{{urls.provider.download_coupons}}?q=' + params.q"
          v-bind:href="'{{urls.provider.download_coupons}}' + getQueryString(['page'])">CSV Download</a>
       </div>
-      <h2 ng-show="!coupons.$resolved"
+      <h2 ng-show="!items.$resolved"
           v-show="!itemsLoaded">Please wait...</h2>
       <h2
-          ng-show="coupons.$resolved && coupons.results.length == 0"
+          ng-show="items.$resolved && items.results.length == 0"
           v-show="itemsLoaded && items.results.length == 0">No Coupons yet</h2>
       <table
-          ng-show="coupons.$resolved && coupons.results.length > 0"
+          ng-show="items.$resolved && items.results.length > 0"
           v-show="itemsLoaded && items.results.length > 0">
           <thead>
             <tr>
@@ -45,7 +45,7 @@
                     </td>
                 </form>
             </tr>
-            <tr ng-prop-id="coupon.code" ng-repeat="coupon in coupons.results" ng-cloak
+            <tr ng-prop-id="coupon.code" ng-repeat="coupon in items.results" ng-cloak
                 v-bind:id="coupon.code" v-for="(coupon, index) in items.results" v-cloak>
             <td><a ng-prop-href="getCouponUrl(coupon)"
                    v-bind:href="'{{urls.provider.metrics_coupons}}' + coupon.code + '/'">[[coupon.code]]</a></td>

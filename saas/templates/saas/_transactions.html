@@ -25,7 +25,7 @@
       </tr>
     </tbody>
     <tbody id="has-transactions"
-      ng-show="items.$resolved && items.results.length > 0"
+      ng-show="items.$resolved && items.count > 0"
       v-show="itemsLoaded && items.results.length > 0">
       <tr
          ng-repeat="entry in items.results"

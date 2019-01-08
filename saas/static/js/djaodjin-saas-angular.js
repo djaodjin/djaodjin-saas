@@ -5,9 +5,7 @@
 var saasApp = angular.module("saasApp", [
     "ui.bootstrap", "ngDragDrop", "ngRoute",
     "balanceControllers", "balanceServices",
-    "couponControllers", "couponServices",
-    "metricsControllers",
-    "importTransactionsControllers",
+    "metricsControllers", "importTransactionsControllers",
     "transactionControllers", "profileControllers", "saasFilters"]);
 
 /*=============================================================================
@@ -128,27 +126,10 @@ angular.module("saasFilters", [])
         };
     }]);
 
-/*=============================================================================
-  Services
-  ============================================================================*/
-var couponServices = angular.module("couponServices", ["ngResource"]);
-
-
-couponServices.factory("Coupon", ["$resource", "settings",
-  function($resource, settings){
-    "use strict";
-    return $resource(
-        settings.urls.provider.api_coupons + "/:coupon", {coupon: "@code"},
-            {query: {method: "GET"},
-             create: {method: "POST"},
-             update: {method: "PUT", isArray: false}});
-  }]);
-
 //=============================================================================
 // Controllers
 //============================================================================
 
-var couponControllers = angular.module("couponControllers", []);
 var transactionControllers = angular.module("transactionControllers", []);
 var metricsControllers = angular.module("metricsControllers", []);
 var importTransactionsControllers = angular.module("importTransactionsControllers", []);
@@ -442,53 +423,21 @@ transactionControllers.controller("relationListCtrl",
 }]);
 
 
-couponControllers.controller("CouponListCtrl",
-    ["$scope", "$http", "$timeout", "Coupon", "settings",
-     function($scope, $http, $timeout, Coupon, settings) {
+transactionControllers.controller("CouponListCtrl",
+    ["$scope", "$controller", "$http", "$timeout", "settings",
+     function($scope, $controller, $http, $timeout, settings) {
     "use strict";
-    $scope.totalItems = 0;
-    $scope.params = {o: "code", ot: "asc"};
-    $scope.coupons = Coupon.query($scope.params, function() {
-        // We cannot watch coupons.count otherwise things start
-        // to snowball. We must update totalItems only when it truly changed.
-        if( $scope.coupons.count !== $scope.totalItems ) {
-            $scope.totalItems = $scope.coupons.count;
-        }
-    });
-    $scope.newCoupon = new Coupon();
+    var opts = angular.merge({
+        autoload: true,
+        sortByField: "code",
+        sortDirection: "asc",
+        urls: {api_items: settings.urls.provider.api_coupons}},
+        settings);
+    $controller("itemsListCtrl", {
+        $scope: $scope, $http: $http, $timeout: $timeout,
+        settings: opts});
 
-    $scope.itemsPerPage = settings.itemsPerPage; // Must match server-side
-    $scope.maxSize = 5;               // Total number of direct pages link
-    $scope.currentPage = 1;
-
-    // settings for coupon expiration datepicker in angular-ui-bootstrap@2.5.6
-    // (https://angular-ui.github.io/bootstrap/#datepicker)
-    // We cannot set the expiration date in the past (`minDate` > now()) but do
-    // not prevent an expiration date far in the future (`maxDate` = null).
-    // The coupon expires a month from now (initDate = now() + 1.month)
-    // by default.
-    $scope.dateOptions = {
-        formatYear: "yy",
-        minDate: moment().startOf('day').toDate(),
-        initDate: moment().add(1, "months").toDate()
-    };
-    $scope.format = "MMM dd, yyyy";
-
-    $scope.filterList = function(regex) {
-        if( regex ) {
-            if ("page" in $scope.params){
-                delete $scope.params.page;
-            }
-            $scope.params.q = regex;
-        } else {
-            delete $scope.params.q;
-        }
-        $scope.coupons = Coupon.query($scope.params, function() {
-            if( $scope.coupons.count !== $scope.totalItems ) {
-                $scope.totalItems = $scope.coupons.count;
-            }
-        });
-    };
+    $scope.newCoupon = {code: "", percent: ""};
 
     // calendar for expiration date
     $scope.open = function($event, coupon) {
@@ -497,17 +446,8 @@ couponControllers.controller("CouponListCtrl",
         coupon.opened = true;
     };
 
-    $scope.pageChanged = function() {
-        if( $scope.currentPage > 1 ) {
-            $scope.params.page = $scope.currentPage;
-        } else {
-            delete $scope.params.page;
-        }
-        $scope.coupons = Coupon.query($scope.params, function() {
-            if( $scope.coupons.count !== $scope.totalItems ) {
-                $scope.totalItems = $scope.coupons.count;
-            }
-        });
+    $scope.getCouponApi = function(coupon) {
+        return settings.urls.provider.api_coupons + '/' + coupon.code + '/';
     };
 
     $scope.getCouponUrl = function(coupon) {
@@ -515,50 +455,24 @@ couponControllers.controller("CouponListCtrl",
     };
 
     $scope.remove = function (idx) {
-        Coupon.remove({ coupon: $scope.coupons.results[idx].code },
-        function (success) {
-            $scope.coupons = Coupon.query($scope.params, function() {
-                if( $scope.coupons.count !== $scope.totalItems ) {
-                    $scope.totalItems = $scope.coupons.count;
-                }
-            });
+        $http.delete($scope.getCouponApi($scope.items.results[idx])).then(
+        function success(resp) {
+            $scope.refresh();
         });
     };
 
     $scope.save = function() {
         $http.post(settings.urls.provider.api_coupons, $scope.newCoupon).then(
         function success(resp) {
-            $scope.coupons.results.push(new Coupon(resp.data));
+            $scope.items.results.push(resp.data);
             // Reset our editor to a new blank post
-            $scope.newCoupon = new Coupon();
+            $scope.newCoupon = {code: "", percent: ""};
         }, function error(resp){
             showErrorMessages(resp);
         });
     };
 
-    $scope.sortBy = function(fieldName) {
-        if( $scope.params.o === fieldName ) {
-            if( $scope.params.ot == "asc" ) {
-                $scope.params.ot = "desc";
-            } else {
-                $scope.params.ot = "asc";
-            }
-        } else {
-            // sorting by new field.
-            $scope.params.ot = "asc";
-        }
-        $scope.params.o = fieldName;
-        $scope.currentPage = 1;
-        // pageChanged only called on click?
-        delete $scope.params.page;
-        $scope.coupons = Coupon.query($scope.params, function() {
-            if( $scope.coupons.count !== $scope.totalItems ) {
-                $scope.totalItems = $scope.coupons.count;
-            }
-        });
-    };
-
-    $scope.$watch("coupons", function(newVal, oldVal, scope) {
+    $scope.$watch("items", function(newVal, oldVal, scope) {
         if( newVal.hasOwnProperty("results") &&
             oldVal.hasOwnProperty("results") ) {
             var length = ( oldVal.results.length < newVal.results.length ) ?
@@ -566,7 +480,8 @@ couponControllers.controller("CouponListCtrl",
             for( var i = 0; i < length; ++i ) {
                 if( (oldVal.results[i].ends_at !== newVal.results[i].ends_at)
                     || (oldVal.results[i].description !== newVal.results[i].description)) {
-                    Coupon.update(newVal.results[i], function(result) {
+                    $http.put($scope.getCouponApi(newVal.results[i]), newVal.results[i]).then(
+                    function success() {
                         // XXX We don't show messages here because it becomes
                         // quickly annoying if they do not disappear
                         // automatically.
@@ -579,7 +494,7 @@ couponControllers.controller("CouponListCtrl",
 
     $scope.editDescription = function (idx){
         $scope.edit_description = Array.apply(
-            null, new Array($scope.coupons.results.length)).map(function() {
+            null, new Array($scope.items.results.length)).map(function() {
             return false;
         });
         $scope.edit_description[idx] = true;
@@ -796,7 +711,7 @@ transactionControllers.controller("subscriptionListCtrl",
         }
     };
 
-    $scope.plan = null;
+    $scope.plan = "{}"; // plan to subscribe to.
 
     $scope.subscribe = function(organization) {
         var plan = JSON.parse($scope.plan);
