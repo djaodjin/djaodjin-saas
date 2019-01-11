@@ -178,6 +178,10 @@ def fail_agreement(request, agreement=settings.TERMS_OF_USE):
 def fail_subscription(request, organization=None, plan=None):
     """
     Subscribed or was subscribed to %(saas.Plan)s
+
+    When a ``plan`` is specified, providers of the plan will also pass
+    this check. Without a ``plan``, only users with valid access to the broker
+    will also pass the check.
     """
     if _has_valid_access(request, [get_broker()]):
         # Bypass if a manager for the broker.
@@ -188,11 +192,14 @@ def fail_subscription(request, organization=None, plan=None):
         candidates = get_role_model().objects.filter(
             user=request.user).values('organization').distinct()
     subscriptions = Subscription.objects.valid_for(organization__in=candidates)
+    is_provider = False
     if plan:
         if not isinstance(plan, Plan):
             plan = get_object_or_404(Plan, slug=plan)
         subscriptions = subscriptions.filter(plan=plan)
-    return not subscriptions.exists()
+        is_provider = Plan.objects.filter(
+            pk=plan.pk, organization__in=candidates).exists()
+    return not (subscriptions.exists() or is_provider)
 
 
 def fail_paid_subscription(request, organization=None, plan=None):
