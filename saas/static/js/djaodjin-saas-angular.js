@@ -478,8 +478,9 @@ transactionControllers.controller("CouponListCtrl",
             var length = ( oldVal.results.length < newVal.results.length ) ?
                 oldVal.results.length : newVal.results.length;
             for( var i = 0; i < length; ++i ) {
-                if( (oldVal.results[i].ends_at !== newVal.results[i].ends_at)
-                    || (oldVal.results[i].description !== newVal.results[i].description)) {
+                if( oldVal.results[i].code == newVal.results[i].code &&
+                    ((oldVal.results[i].ends_at !== newVal.results[i].ends_at)
+                    || (oldVal.results[i].description !== newVal.results[i].description)) ) {
                     $http.put($scope.getCouponApi(newVal.results[i]), newVal.results[i]).then(
                     function success() {
                         // XXX We don't show messages here because it becomes

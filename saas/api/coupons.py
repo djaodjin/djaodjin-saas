@@ -211,7 +211,7 @@ class CouponDetailAPIView(CouponMixin, RetrieveUpdateDestroyAPIView):
         return self.coupon
 
     def perform_update(self, serializer):
-        if 'ends_at' in serializer.validated_data:
+        if serializer.validated_data.get('ends_at', None):
             serializer.save(organization=self.organization)
         else:
             serializer.save(organization=self.organization, ends_at='never')
