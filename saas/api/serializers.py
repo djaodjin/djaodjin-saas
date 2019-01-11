@@ -145,6 +145,12 @@ class CardSerializer(NoModelSerializer):
         help_text=_("Expiration date of the credit card on file"))
 
 
+class CardTokenSerializer(NoModelSerializer):
+
+    token = serializers.CharField(
+        help_text=_("Processor token to retrieve the card"))
+
+
 class ChargeSerializer(serializers.ModelSerializer):
 
     state = serializers.CharField(source='get_state_display',

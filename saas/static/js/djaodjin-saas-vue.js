@@ -2131,12 +2131,10 @@ var app = new Vue({
 if($('#update-card-container').length > 0){
 var app = new Vue({
     el: "#update-card-container",
-    mixins: [],
     data: {
         last4: '',
-        exp_date: '',
+        expDate: '',
         haveCardData: false,
-        card_name: '',
         cardNumber: '',
         cardCvc: '',
         cardExpMonth: '',
@@ -2162,8 +2160,7 @@ var app = new Vue({
                 if(resp.last4){
                     var savedCard = {
                         last4: resp.last4,
-                        exp_date: resp.exp_date,
-                        card_name: resp.card_name,
+                        expDate: resp.exp_date,
                     }
                     vm.savedCard = savedCard;
                     vm.haveCardData = true;
@@ -2195,6 +2192,43 @@ var app = new Vue({
                     vm.addressRegion = org.region;
                 }
                 vm.organization = org;
+            });
+        },
+        getCardToken: function(cb){
+            var vm = this;
+            Stripe.setPublishableKey(djaodjinSettings.stripePubKey);
+            Stripe.createToken({
+                number: vm.cardNumber,
+                cvc: vm.cardCvc,
+                exp_month: vm.cardExpMonth,
+                exp_year: vm.cardExpYear,
+                name: vm.name,
+                address_line1: vm.addressLine1,
+                address_city: vm.addressCity,
+                address_state: vm.addressRegion,
+                address_zip: vm.addressZip,
+                address_country: vm.addressCountry
+            }, function(code, res){
+                if(code === 200) {
+                    if(cb) cb(res.id)
+                } else {
+                    showMessages([res.error.message], "error");
+                }
+            });
+        },
+        saveCard: function(){
+            var vm = this;
+            vm.getCardToken(function(token){
+                $.ajax({
+                    method: 'PUT',
+                    url: djaodjinSettings.urls.organization.api_card,
+                    data: {
+                        token: token,
+                    },
+                }).done(function(resp) {
+                    vm.getUserCard();
+                    vm.updateCard = false;
+                });
             });
         },
     },

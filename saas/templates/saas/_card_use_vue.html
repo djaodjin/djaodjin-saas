@@ -10,7 +10,7 @@
             </dl>
             <dl>
                   <dt>expires</dt>
-                  <dd>[[savedCard.exp_date]]</dd>
+                  <dd>[[savedCard.expDate]]</dd>
             </dl>
         </div>
     </div>
@@ -67,5 +67,5 @@
 </fieldset>
 </div> <!-- #card-use -->
 <div>
-      <button type="submit" class="payment-submit">{% if submit_title %}{{submit_title}}{% else %}{% if force_update %}Update{% else %}Submit{% endif %}{% endif %}</button>
+      <button type="submit" class="payment-submit" @click.prevent="saveCard">Update</button>
 </div>
