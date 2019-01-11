@@ -164,20 +164,14 @@ class PlanCreateView(PlanFormMixin, CreateView):
     Template:
 
     To edit the layout of this page, create a local \
-    ``saas/profile/plans.html`` (`example <https://github.com/djaodjin/\
-djaodjin-saas/tree/master/saas/templates/saas/profile/plans.html>`__).
+    ``saas/profile/plans/new.html`` (`example <https://github.com/djaodjin/\
+djaodjin-saas/tree/master/saas/templates/saas/profile/plans/new.html>`__).
 
     Template context:
       - ``organization`` The provider for the plans
       - ``request`` The HTTP request object
     """
-    template_name = 'saas/profile/plans-vue.html'
-
-    def get_success_url(self):
-        messages.success(
-            self.request, _("Successfully created plan titled '%(title)s'.") % {
-                'title': self.object.title})
-        return reverse('saas_metrics_plans', args=(self.organization,))
+    template_name = 'saas/profile/plans/new.html'
 
 
 class PlanUpdateView(PlanFormMixin, UpdateView):
@@ -187,8 +181,8 @@ class PlanUpdateView(PlanFormMixin, UpdateView):
     Template:
 
     To edit the layout of this page, create a local \
-    ``saas/profile/plans.html`` (`example <https://github.com/djaodjin/\
-djaodjin-saas/tree/master/saas/templates/saas/profile/plans.html>`__).
+    ``saas/profile/plans/edit.html`` (`example <https://github.com/djaodjin/\
+djaodjin-saas/tree/master/saas/templates/saas/profile/plans/edit.html>`__).
 
     Template context:
       - ``plan`` The plan to update
@@ -196,15 +190,9 @@ djaodjin-saas/tree/master/saas/templates/saas/profile/plans.html>`__).
       - ``organization`` The provider of the plan
       - ``request`` The HTTP request object
     """
-    template_name = 'saas/profile/plans.html'
+    template_name = 'saas/profile/plans/edit.html'
 
     slug_url_kwarg = 'plan'
-
-    def get_success_url(self):
-        messages.success(self.request,
-            _("Successfully updated plan titled '%(title)s'.") % {
-                'title': self.object.title})
-        return reverse('saas_plan_edit', kwargs=self.get_url_kwargs())
 
     def get_context_data(self, **kwargs):
         context = super(PlanUpdateView, self).get_context_data(**kwargs)

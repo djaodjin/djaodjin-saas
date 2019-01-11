@@ -1,0 +1,15 @@
+{% extends "saas/base_dashboard.html" %}
+
+{% block saas_content %}
+<div id="new-plan-container">
+    <form method="post" @submit.prevent="createPlan">
+        {% include "saas/profile/plans/_form.html" %}
+        <div>
+            <label for="is_active">Activate Plan?
+                <input id="is_active" name="is_active" type="checkbox" v-model="isActive">
+            </label>
+        </div>
+        <button type="submit" name="submit" value="Submit">Submit</button>
+    </form>
+</div>
+{% endblock %}
