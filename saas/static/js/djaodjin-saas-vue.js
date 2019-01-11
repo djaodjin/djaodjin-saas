@@ -2287,6 +2287,89 @@ var app = new Vue({
 })
 }
 
+if($('#plan-update-container').length > 0){
+var app = new Vue({
+    el: "#plan-update-container",
+    data: {
+        title: '',
+        description: '',
+        unit: 'usd',
+        periodAmount: '0.00',
+        setupAmount: '0.00',
+        interval: 'YEARLY',
+        periodLength: 1,
+        advanceDiscount: '0.00',
+        isActive: false,
+    },
+    methods: {
+        get: function(){
+            var vm = this;
+            $.ajax({
+                method: 'GET',
+                url: djaodjinSettings.urls.plan.api_plan,
+            }).done(function(resp) {
+                vm.title = resp.title;
+                vm.description = resp.description;
+                vm.unit = resp.unit;
+                vm.periodAmount = resp.period_amount;
+                vm.setupAmount = resp.setup_amount;
+                vm.interval = resp.interval;
+                vm.periodLength = resp.period_length;
+                vm.advanceDiscount = resp.advance_discount;
+                vm.isActive = resp.is_active;
+            });
+        },
+        updatePlan: function(){
+            var vm = this;
+            $.ajax({
+                method: 'PUT',
+                data: {
+                    title: vm.title,
+                    description: vm.description,
+                    unit: vm.unit,
+                    period_amount: vm.periodAmount,
+                    setup_amount: vm.setupAmount,
+                    interval: vm.interval,
+                    period_length: vm.periodLength,
+                    advance_discount: vm.advanceDiscount,
+                    is_active: vm.isActive,
+                },
+                url: djaodjinSettings.urls.plan.api_plan,
+            }).done(function(res) {
+                vm.get()
+                showMessages(["Plan was updated."], "success");
+            });
+        },
+        togglePlanStatus: function(){
+            var vm = this;
+            var next = !vm.isActive;
+            $.ajax({
+                method: 'PUT',
+                data: {
+                    is_active: next,
+                },
+                url: djaodjinSettings.urls.plan.api_plan,
+            }).done(function(res) {
+                vm.isActive = next;
+            });
+        },
+        deletePlan: function(){
+            var vm = this;
+            $.ajax({
+                method: 'DELETE',
+                url: djaodjinSettings.urls.plan.api_plan,
+            }).done(function(res) {
+                window.location = djaodjinSettings.urls.provider.dashboard;
+            });
+        },
+    },
+    mounted: function(){
+        this.get();
+    },
+})
+}
+
+
 if($('#plan-list-container').length > 0){
 var app = new Vue({
     el: "#plan-list-container",

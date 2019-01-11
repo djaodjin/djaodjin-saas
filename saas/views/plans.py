@@ -38,7 +38,7 @@ from ..compat import is_authenticated, reverse, reverse_lazy
 from ..forms import PlanForm
 from ..mixins import CartMixin, OrganizationMixin, ProviderMixin
 from ..models import CartItem, Coupon, Plan
-from ..utils import get_role_model
+from ..utils import get_role_model, update_context_urls
 
 
 class PlanFormMixin(OrganizationMixin, SingleObjectMixin):
@@ -57,6 +57,14 @@ class PlanFormMixin(OrganizationMixin, SingleObjectMixin):
     def get_context_data(self, **kwargs):
         context = super(PlanFormMixin, self).get_context_data(**kwargs)
         context.update({'organization': self.organization})
+        if self.object:
+            urls = {
+                'plan': {
+                    'api_plan': reverse('saas_api_plan', args=(
+                        self.organization, self.object.slug)),
+                }
+            }
+            update_context_urls(context, urls)
         return context
 
     def get_url_kwargs(self):
