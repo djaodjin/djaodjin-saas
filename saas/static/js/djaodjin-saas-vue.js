@@ -2286,3 +2286,18 @@ var app = new Vue({
     },
 })
 }
+
+if($('#plan-list-container').length > 0){
+var app = new Vue({
+    el: "#plan-list-container",
+    mixins: [
+        itemListMixin,
+    ],
+    data: {
+        url: djaodjinSettings.urls.provider.api_plans,
+    },
+    mounted: function(){
+        this.get();
+    }
+})
+}

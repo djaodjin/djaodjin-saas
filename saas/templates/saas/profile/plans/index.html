@@ -1,0 +1,11 @@
+{% extends "saas/base_dashboard.html" %}
+
+{% block saas_content %}
+<div id="plan-list-container">
+    <h2>Plan list</h2>
+    <div v-for="item in items.results">
+        <!-- TODO just basic template instead of an error page -->
+        [[item]]
+    </div>
+</div>
+{% endblock %}

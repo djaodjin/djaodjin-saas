@@ -27,7 +27,8 @@ from django import forms
 from django.contrib import messages
 from django.http import HttpResponseRedirect
 from django.utils.translation import ugettext_lazy as _
-from django.views.generic import CreateView, ListView, UpdateView
+from django.views.generic import (CreateView, ListView, UpdateView,
+    TemplateView)
 from django.views.generic.detail import SingleObjectMixin
 from django.template.context_processors import csrf
 
@@ -202,3 +203,20 @@ djaodjin-saas/tree/master/saas/templates/saas/profile/plans.html>`__).
         plan = self.get_object()
         context['show_delete'] = plan.subscription_set.count() == 0
         return context
+
+
+class PlanListView(OrganizationMixin, TemplateView):
+    """
+    List ``Plan``s for an ``Organization``.
+
+    Template:
+
+    To edit the layout of this page, create a local \
+    ``saas/profile/plans/index..html`` (`example <https://github.com/djaodjin/\
+djaodjin-saas/tree/master/saas/templates/saas/profile/plans/index.html>`__).
+
+    Template context:
+      - ``organization`` The provider for the plans
+      - ``request`` The HTTP request object
+    """
+    template_name = 'saas/profile/plans/index.html'

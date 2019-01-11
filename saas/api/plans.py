@@ -23,7 +23,8 @@
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 from rest_framework import status
-from rest_framework.generics import CreateAPIView, RetrieveUpdateDestroyAPIView
+from rest_framework.generics import (ListCreateAPIView,
+    RetrieveUpdateDestroyAPIView)
 from rest_framework.response import Response
 
 from .serializers import PlanSerializer
@@ -32,7 +33,7 @@ from ..models import Plan, Subscription
 from .. import settings
 
 
-class PlanCreateAPIView(PlanMixin, CreateAPIView):
+class PlanCreateAPIView(PlanMixin, ListCreateAPIView):
     """
     Create a ``Plan`` for a provider.
 
@@ -66,6 +67,9 @@ class PlanCreateAPIView(PlanMixin, CreateAPIView):
     """
 
     serializer_class = PlanSerializer
+
+    def get_queryset(self):
+        return self.organization.plans.all()
 
     def perform_create(self, serializer):
         unit = serializer.validated_data.get('unit', None)
