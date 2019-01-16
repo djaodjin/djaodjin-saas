@@ -1976,6 +1976,10 @@ var app = new Vue({
         },
         getCardToken: function(cb){
             var vm = this;
+            if(!djaodjinSettings.stripePubKey){
+                showMessages(["You haven't set a valid Stripe public key"], "error");
+                return;
+            }
             Stripe.setPublishableKey(djaodjinSettings.stripePubKey);
             Stripe.createToken({
                 number: vm.cardNumber,
@@ -2196,6 +2200,10 @@ var app = new Vue({
         },
         getCardToken: function(cb){
             var vm = this;
+            if(!djaodjinSettings.stripePubKey){
+                showMessages(["You haven't set a valid Stripe public key"], "error");
+                return;
+            }
             Stripe.setPublishableKey(djaodjinSettings.stripePubKey);
             Stripe.createToken({
                 number: vm.cardNumber,
