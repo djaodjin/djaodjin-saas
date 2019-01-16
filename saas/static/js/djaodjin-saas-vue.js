@@ -1376,7 +1376,7 @@ var app = new Vue({
     el: "#import-transaction-container",
     data: {
         url: djaodjinSettings.urls.provider.api_subscribers_active,
-        created_at: moment().format("YYYY-MM-DD"),
+        createdAt: moment().format("YYYY-MM-DD"),
         itemSelected: '',
         searching: false,
         amount: 0,
@@ -1411,12 +1411,15 @@ var app = new Vue({
                     subscription: sub,
                     amount: vm.amount,
                     descr: vm.description,
+                    created_at: moment(vm.createdAt).toISOString(),
                 },
                 url: djaodjinSettings.urls.organization.api_import,
             }).done(function (){
-                vm.subscription = '';
+                vm.itemSelected = '';
                 vm.amount = '';
                 vm.description = '';
+                vm.createdAt = moment().format("YYYY-MM-DD");
+                showMessages(["Profile was updated."], "success");
             }).fail(function(resp){
                 showErrorMessages(resp);
             });
