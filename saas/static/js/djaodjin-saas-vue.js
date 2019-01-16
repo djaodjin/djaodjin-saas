@@ -2226,6 +2226,7 @@ var app = new Vue({
         },
         saveCard: function(){
             var vm = this;
+            if(!vm.cardNumber) return;
             vm.getCardToken(function(token){
                 $.ajax({
                     method: 'PUT',
@@ -2234,11 +2235,34 @@ var app = new Vue({
                         token: token,
                     },
                 }).done(function(resp) {
+                    showMessages(["The payment info was updated."], "success");
                     vm.getUserCard();
                     vm.updateCard = false;
                 });
             });
         },
+        saveBillingAddress: function(){
+            var vm = this;
+            var data = {
+                full_name: vm.name,
+                street_address: vm.addressLine1,
+                locality: vm.addressCity,
+                postal_code: vm.addressZip,
+                country: vm.addressCountry,
+                region: vm.addressRegion,
+            }
+            $.ajax({
+                method: 'PUT',
+                url: djaodjinSettings.urls.organization.api_base + '/',
+                data: data,
+            }).done(function(resp) {
+                showMessages(["The billing address was updated."], "success");
+            }).fail(handleRequestError);
+        },
+        save: function(){
+            this.saveCard()
+            this.saveBillingAddress()
+        }
     },
     mounted: function(){
         this.getUserCard();

@@ -283,6 +283,8 @@ class OrganizationWithSubscriptionsSerializer(serializers.ModelSerializer):
     subscriptions = WithSubscriptionSerializer(
         source='subscription_set', many=True, read_only=True)
     country = CountryField()
+    email = serializers.EmailField(required=False)
+    phone = serializers.CharField(required=False)
 
     class Meta:
         model = Organization
