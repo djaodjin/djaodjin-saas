@@ -1375,7 +1375,7 @@ if($('#import-transaction-container').length > 0){
 var app = new Vue({
     el: "#import-transaction-container",
     data: {
-        url: djaodjinSettings.urls.organization.api_subscriptions,
+        url: djaodjinSettings.urls.provider.api_subscribers_active,
         created_at: moment().format("YYYY-MM-DD"),
         itemSelected: '',
         searching: false,
