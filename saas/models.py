@@ -314,8 +314,13 @@ class Organization(models.Model):
             pre_value = getattr(self, field_name, None)
             post_value = update_fields.get(field_name, None)
             if post_value is not None and pre_value != post_value:
-                changes[field_name] = {
-                    'pre': pre_value, 'post': post_value}
+                if field_name == 'is_bulk_buyer':
+                    changes['GroupBuy'] = {
+                        'pre': _('enabled') if pre_value else _('disabled'),
+                        'post': _('enabled') if post_value else _('disabled')}
+                else:
+                    changes[field_name] = {
+                        'pre': pre_value, 'post': post_value}
         return changes
 
     def validate_processor(self):
