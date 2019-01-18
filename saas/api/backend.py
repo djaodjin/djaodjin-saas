@@ -25,6 +25,7 @@
 from rest_framework import status
 from rest_framework.generics import RetrieveAPIView
 from rest_framework.response import Response
+from django.utils.translation import ugettext_lazy as _
 
 from ..mixins import OrganizationMixin
 from .serializers import (BankSerializer, CardSerializer,
@@ -98,7 +99,7 @@ class RetrieveCardAPIView(OrganizationMixin, RetrieveAPIView):
                 self.organization.update_card(token, self.request.user)
             except ProcessorError as err:
                 raise ValidationError(err)
-        return Response({'detail': 'ok'})
+        return Response({'detail': _('Your credit card on file was sucessfully updated')})
 
     def retrieve(self, request, *args, **kwargs):
         #pylint: disable=unused-argument

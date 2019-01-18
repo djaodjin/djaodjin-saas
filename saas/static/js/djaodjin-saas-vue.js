@@ -2135,9 +2135,9 @@ var app = new Vue({
 })
 }
 
-if($('#update-card-container').length > 0){
+if($('#update_card').length > 0){
 var app = new Vue({
-    el: "#update-card-container",
+    el: "#update_card",
     data: {
         last4: '',
         expDate: '',

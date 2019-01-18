@@ -74,7 +74,6 @@ class PlanCreateAPIView(PlanMixin, ListCreateAPIView):
     def perform_create(self, serializer):
         unit = serializer.validated_data.get('unit', None)
         if unit is None:
-            # TODO there is no get_queryset() method on this class
             first_plan = self.get_queryset().first()
             if first_plan:
                 unit = first_plan.unit

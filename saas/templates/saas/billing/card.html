@@ -1,12 +1,12 @@
 {% extends "saas/base_dashboard.html" %}
 
 {% block saas_content %}
-<section id="update-card-container">
+<section id="update_card">
     <h1>Update Card for {{ organization }}</h1>
     <form method="post" id="payment-form"
           action=".{% if next %}/?next={{ next }}{% endif %}">
         <input type="hidden" name="csrfmiddlewaretoken" value="{{csrf_token}}">
-        {% include "saas/_card_use_vue.html" %}
+        {% include "saas/_card_use.html" %}
     </form>
 </section>
 {% endblock %}
