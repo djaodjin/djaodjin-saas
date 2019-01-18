@@ -32,19 +32,16 @@
         <input type="text" name="advance_discount" placeholder="Advance discount" v-model="advanceDiscount">
     </div>
 </fieldset>
-<!-- TODO what should we do here? there is no such fields in the API docs
 <fieldset>
     <legend>Extra Options</legend>
-    <div class="{ if form.renewal_type.errors }has-error{ endif }">
-        <input type="text" name="{form.renewal_type.name}" value="{form.renewal_type.value}">
-        { for error in form.renewal_type.errors }
-        <span class="help-block"><strong>{error}</strong></span>
-        { endfor }
+    <div>
+        <select v-model="renewalType" name="renewal_type">
+            <option value="0">ONE_TIME</option>
+            <option value="1">AUTO_RENEW</option>
+            <option value="2">REPEAT</option>
+        </select>
     </div>
-    <div class="{ if form.is_not_priced.errors }has-error{ endif }">
-        <input type="text" name="{form.is_not_priced.name}" value="{form.is_not_priced.value}">
-        { for error in form.is_not_priced.errors }
-        <span class="help-block"><strong>{error}</strong></span>
-        { endfor }
+    <div>
+        <label>Is not Priced? <input type="checkbox" name="is_not_priced" v-model="isNotPriced"></label>
     </div>
-</fieldset>-->
+</fieldset>

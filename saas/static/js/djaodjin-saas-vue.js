@@ -2287,6 +2287,8 @@ var app = new Vue({
         periodLength: 1,
         advanceDiscount: '0.00',
         isActive: false,
+        isNotPriced: false,
+        renewalType: 1 // AUTO_RENEW,
     },
     methods: {
         createPlan: function(){
@@ -2303,6 +2305,8 @@ var app = new Vue({
                     period_length: vm.periodLength,
                     advance_discount: vm.advanceDiscount,
                     is_active: vm.isActive,
+                    is_not_priced: vm.isNotPriced,
+                    renewal_type: vm.renewalType,
                 },
                 url: djaodjinSettings.urls.provider.api_plans,
             }).done(function(res) {
@@ -2315,6 +2319,8 @@ var app = new Vue({
                 vm.periodLength = 1;
                 vm.advanceDiscount = '0.00';
                 vm.isActive = false;
+                vm.isNotPriced = false;
+                vm.renewalType = 1;
                 showMessages(["Plan was created."], "success");
             });
         },
