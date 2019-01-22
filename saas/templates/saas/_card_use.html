@@ -1,54 +1,71 @@
 <div id="card-use">
 <fieldset>
-      <legend>Credit Card Information{% if last4 and not force_update %}<a id="card-update" href="{{urls.organization.update_card}}">Update</a>{% endif %}</legend>
-      {% if last4 %}
-      <div>
+    <legend>Credit Card Information</legend>
+    <div v-show="haveCardData" v-cloak>
+        <button type="button" @click="updateCard = true">Update</button>
+        <div>
             <dl>
                   <dt>card</dt>
-                  <dd>{{last4}}</dd>
+                  <dd>[[savedCard.last4]]</dd>
             </dl>
             <dl>
                   <dt>expires</dt>
-                  <dd>{{exp_date}}</dd>
+                  <dd>[[savedCard.expDate]]</dd>
             </dl>
-      </div>
-      {% endif %}
-      {% if not last4 or force_update %}
+        </div>
+    </div>
+    <div v-show="!haveCardData || updateCard" v-cloak>
       <!-- BE CAREFULL: Do not add name="" to these <input> nodes, else
            values will hit the server and break PCI compliance. -->
       <div class="form-group">
             <label for="card-number">Card Number</label>
-            <input id="card-number"
+            <input id="card-number" v-model="cardNumber"
                    type="text" size="16" placeholder="Card number"
                    autocomplete="off" />
       </div>
       <div class="form-group">
             <label>Expiration</label>
-            <input id="card-exp-month"
+            <input v-model="cardExpMonth"
                    type="text" maxlength="2" size="2" placeholder="MM" />
-            <input id="card-exp-year"
+            <input v-model="cardExpYear"
                    type="text" maxlength="4" size="4" placeholder="YYYY" />
       </div>
       <div class="form-group">
             <label>Security Code</label>
-            <input id="card-cvc"
-                   type="text" maxlength="4" size="3" placeholder="CVC"
+            <input v-model="cardCvc"
+                   type="text" maxlength="3" size="3" placeholder="CVC"
                    autocomplete="off" />
       </div>
-</fieldset>
-<fieldset>
-      <legend>Billing Address</legend>
-      {{form.card_name}}
-      {{form.card_address_line1}}
-      {{form.card_city}}
-      {{form.region}}
-      {{form.card_address_zip}}
-      {{form.country}}
-{% endif %}
-{# Previous endif before fieldset closing tag #}
-{# so the "Credit Card Information" fieldset is closed correctly both ways. #}
+
+        <legend>Billing Address</legend>
+      <div class="form-group">
+        <input v-model="name" type="text" placeholder="Name">
+      </div>
+      <div class="form-group">
+        <input v-model="addressLine1" type="text" placeholder="Address line">
+      </div>
+      <div class="form-group">
+        <input v-model="addressCity" type="text" placeholder="City">
+      </div>
+      <div class="form-group">
+        <input v-model="addressZip" type="text" placeholder="ZIP">
+      </div>
+      <div class="form-group">
+        <select v-model="addressCountry" @change="addressRegion = ''">
+            <option value="">select country</option>
+            <option :value="code" v-for="(country, code) in countries">[[country]]</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <select v-model="addressRegion" v-show="addressCountry == 'US' || addressCountry == 'CA'">
+            <option value="">select state</option>
+            <option :value="code" v-for="(region, code) in regions[addressCountry]">[[region]]</option>
+        </select>
+        <input v-model="addressRegion" type="text" placeholder="Region" v-show="addressCountry != 'US' && addressCountry != 'CA'">
+      </div>
+    </div>
 </fieldset>
 </div> <!-- #card-use -->
 <div>
-      <button type="submit" class="payment-submit">{% if submit_title %}{{submit_title}}{% else %}{% if force_update %}Update{% else %}Submit{% endif %}{% endif %}</button>
+      <button type="submit" class="payment-submit" @click.prevent="save">Update</button>
 </div>

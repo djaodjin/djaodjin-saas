@@ -27,7 +27,8 @@ from django import forms
 from django.contrib import messages
 from django.http import HttpResponseRedirect
 from django.utils.translation import ugettext_lazy as _
-from django.views.generic import CreateView, ListView, UpdateView
+from django.views.generic import (CreateView, ListView, UpdateView,
+    TemplateView)
 from django.views.generic.detail import SingleObjectMixin
 from django.template.context_processors import csrf
 
@@ -37,7 +38,7 @@ from ..compat import is_authenticated, reverse, reverse_lazy
 from ..forms import PlanForm
 from ..mixins import CartMixin, OrganizationMixin, ProviderMixin
 from ..models import CartItem, Coupon, Plan
-from ..utils import get_role_model
+from ..utils import get_role_model, update_context_urls
 
 
 class PlanFormMixin(OrganizationMixin, SingleObjectMixin):
@@ -56,6 +57,14 @@ class PlanFormMixin(OrganizationMixin, SingleObjectMixin):
     def get_context_data(self, **kwargs):
         context = super(PlanFormMixin, self).get_context_data(**kwargs)
         context.update({'organization': self.organization})
+        if self.object:
+            urls = {
+                'plan': {
+                    'api_plan': reverse('saas_api_plan', args=(
+                        self.organization, self.object.slug)),
+                }
+            }
+            update_context_urls(context, urls)
         return context
 
     def get_url_kwargs(self):
@@ -155,20 +164,14 @@ class PlanCreateView(PlanFormMixin, CreateView):
     Template:
 
     To edit the layout of this page, create a local \
-    ``saas/profile/plans.html`` (`example <https://github.com/djaodjin/\
-djaodjin-saas/tree/master/saas/templates/saas/profile/plans.html>`__).
+    ``saas/profile/plans/new.html`` (`example <https://github.com/djaodjin/\
+djaodjin-saas/tree/master/saas/templates/saas/profile/plans/new.html>`__).
 
     Template context:
       - ``organization`` The provider for the plans
       - ``request`` The HTTP request object
     """
-    template_name = 'saas/profile/plans.html'
-
-    def get_success_url(self):
-        messages.success(
-            self.request, _("Successfully created plan titled '%(title)s'.") % {
-                'title': self.object.title})
-        return reverse('saas_metrics_plans', args=(self.organization,))
+    template_name = 'saas/profile/plans/new.html'
 
 
 class PlanUpdateView(PlanFormMixin, UpdateView):
@@ -178,8 +181,8 @@ class PlanUpdateView(PlanFormMixin, UpdateView):
     Template:
 
     To edit the layout of this page, create a local \
-    ``saas/profile/plans.html`` (`example <https://github.com/djaodjin/\
-djaodjin-saas/tree/master/saas/templates/saas/profile/plans.html>`__).
+    ``saas/profile/plans/edit.html`` (`example <https://github.com/djaodjin/\
+djaodjin-saas/tree/master/saas/templates/saas/profile/plans/edit.html>`__).
 
     Template context:
       - ``plan`` The plan to update
@@ -187,18 +190,29 @@ djaodjin-saas/tree/master/saas/templates/saas/profile/plans.html>`__).
       - ``organization`` The provider of the plan
       - ``request`` The HTTP request object
     """
-    template_name = 'saas/profile/plans.html'
+    template_name = 'saas/profile/plans/edit.html'
 
     slug_url_kwarg = 'plan'
-
-    def get_success_url(self):
-        messages.success(self.request,
-            _("Successfully updated plan titled '%(title)s'.") % {
-                'title': self.object.title})
-        return reverse('saas_plan_edit', kwargs=self.get_url_kwargs())
 
     def get_context_data(self, **kwargs):
         context = super(PlanUpdateView, self).get_context_data(**kwargs)
         plan = self.get_object()
         context['show_delete'] = plan.subscription_set.count() == 0
         return context
+
+
+class PlanListView(OrganizationMixin, TemplateView):
+    """
+    List ``Plan``s for an ``Organization``.
+
+    Template:
+
+    To edit the layout of this page, create a local \
+    ``saas/profile/plans/index..html`` (`example <https://github.com/djaodjin/\
+djaodjin-saas/tree/master/saas/templates/saas/profile/plans/index.html>`__).
+
+    Template context:
+      - ``organization`` The provider for the plans
+      - ``request`` The HTTP request object
+    """
+    template_name = 'saas/profile/plans/index.html'

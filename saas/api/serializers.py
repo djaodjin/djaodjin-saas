@@ -30,6 +30,7 @@ from django.utils.translation import ugettext_lazy as _
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
 from rest_framework.generics import get_object_or_404
+from django_countries.serializer_fields import CountryField
 
 from ..decorators import _valid_manager
 from ..humanize import as_money
@@ -142,6 +143,12 @@ class CardSerializer(NoModelSerializer):
         help_text=_("Last 4 digits of the credit card on file"))
     exp_date = serializers.CharField(
         help_text=_("Expiration date of the credit card on file"))
+
+
+class CardTokenSerializer(NoModelSerializer):
+
+    token = serializers.CharField(
+        help_text=_("Processor token to retrieve the card"))
 
 
 class ChargeSerializer(serializers.ModelSerializer):
@@ -275,13 +282,16 @@ class OrganizationWithSubscriptionsSerializer(serializers.ModelSerializer):
 
     subscriptions = WithSubscriptionSerializer(
         source='subscription_set', many=True, read_only=True)
+    country = CountryField()
+    email = serializers.EmailField(required=False)
+    phone = serializers.CharField(required=False)
 
     class Meta:
         model = Organization
         fields = ('slug', 'created_at', 'full_name', 'default_timezone',
             'email', 'phone', 'street_address', 'locality',
             'region', 'postal_code', 'country', 'extra',
-            'printable_name', 'subscriptions', )
+            'printable_name', 'subscriptions', 'is_bulk_buyer', )
         read_only_fields = ('slug', 'created_at')
 
 
@@ -324,8 +334,9 @@ class PlanSerializer(serializers.ModelSerializer):
     class Meta:
         model = Plan
         fields = ('slug', 'title', 'description', 'is_active',
-                  'setup_amount', 'period_amount', 'interval',
-                  'advance_discount', 'app_url', 'organization', 'extra')
+                  'setup_amount', 'period_amount', 'interval', 'app_url',
+                  'advance_discount', 'unit', 'organization', 'extra',
+                  'period_length', 'renewal_type', 'is_not_priced')
         read_only_fields = ('slug', 'app_url')
 
     @staticmethod

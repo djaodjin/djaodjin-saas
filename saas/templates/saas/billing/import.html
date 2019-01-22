@@ -5,7 +5,7 @@
 {% block saas_content %}
 <section id="import-transaction-container" ng-app="saasApp" ng-cloak>
 <div ng-controller="importTransactionsCtrl">
-  <form action="." method="post">
+  <form @submit.prevent="addPayment">
   <input type="hidden" name="csrfmiddlewaretoken" value="{{csrf_token}}">
   <fieldset>
         <div class="{% if form.subscription.errors %} has-error{% endif %}">
@@ -29,20 +29,20 @@
                 :open-on-focus="false"/>
             </div>
         </div>
-        <div class="{% if form.amount.errors %} has-error{% endif %}">
+        <div>
             <label for="amount">
                 Amount
             </label>
             <div>
-                <input name="amount" type="number" min="0" step="any" placeholder="amount">
+                <input name="amount" type="number" min="0" step="any" placeholder="amount" v-model="amount">
             </div>
         </div>
-        <div class="{% if form.descr.errors %} has-error{% endif %}">
+        <div>
             <label for="descr">
                 Description
             </label>
             <div>
-                <input name="descr" type="text" placeholder="description">
+                <input name="descr" type="text" placeholder="description" v-model="description">
             </div>
         </div>
     </fieldset>

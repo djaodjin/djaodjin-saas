@@ -1,0 +1,47 @@
+<div>
+    <input type="text" name="title" placeholder="Title" v-model="title">
+</div>
+<div>
+    <input type="text" name="description" placeholder="Description" v-model="description">
+</div>
+<fieldset>
+    <legend>Pricing</legend>
+    <div>
+        <input type="text" name="unit" placeholder="Unit" v-model="unit">
+    </div>
+    <div>
+        <input type="text" name="setup_amount" placeholder="Setup Amount" v-model="setupAmount">
+    </div>
+    <div>
+        <input type="text" name="period_amount" placeholder="Period Amount" v-model="periodAmount">
+    </div>
+    <div>
+        <select v-model="interval" name="interval">
+            <option value="">select interval</option>
+            <option value="HOURLY">Hourly</option>
+            <option value="DAILY">Daily</option>
+            <option value="WEEKLY">Weekly</option>
+            <option value="MONTHLY">Monthly</option>
+            <option value="YEARLY">Yearly</option>
+        </select>
+    </div>
+    <div>
+        <input type="text" name="period_length" placeholder="Period length" v-model="periodLength">
+    </div>
+    <div>
+        <input type="text" name="advance_discount" placeholder="Advance discount" v-model="advanceDiscount">
+    </div>
+</fieldset>
+<fieldset>
+    <legend>Extra Options</legend>
+    <div>
+        <select v-model="renewalType" name="renewal_type">
+            <option value="0">ONE_TIME</option>
+            <option value="1">AUTO_RENEW</option>
+            <option value="2">REPEAT</option>
+        </select>
+    </div>
+    <div>
+        <label>Is not Priced? <input type="checkbox" name="is_not_priced" v-model="isNotPriced"></label>
+    </div>
+</fieldset>
