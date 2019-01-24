@@ -2,7 +2,7 @@
 <fieldset>
     <legend>Credit Card Information</legend>
     <div v-show="haveCardData" v-cloak>
-        <button type="button" @click="updateCard = true">Update</button>
+        <button type="button" @click="updateCard = !updateCard">Update</button>
         <div>
             <dl>
                   <dt>card</dt>
@@ -63,9 +63,9 @@
         </select>
         <input v-model="addressRegion" type="text" placeholder="Region" v-show="addressCountry != 'US' && addressCountry != 'CA'">
       </div>
+      <button type="submit" class="payment-submit" @click.prevent="save">Save</button>
     </div>
 </fieldset>
 </div> <!-- #card-use -->
 <div>
-      <button type="submit" class="payment-submit" @click.prevent="save">Update</button>
 </div>
