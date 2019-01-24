@@ -32,7 +32,10 @@ If you have a coupon code, it is time to redeem it now!
         {% if RAZORPAY_PUB_KEY %}
         {% include "saas/_razorpay_checkout.html" %}
         {% else %}
-        {% include "saas/_card_use.html" %}
+        <section id="update_card">
+            {% include "saas/_card_use.html" %}
+        </section>
+        <button type="submit">Submit</button>
         {% endif %}
         {% endblock %}
     </form>

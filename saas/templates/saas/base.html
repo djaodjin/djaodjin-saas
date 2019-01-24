@@ -101,13 +101,6 @@ jQuery(document).ready(function($) {
              saas_api_cart: "{{ urls.api_cart }}" });
     }
 {% endif %}
-{% if STRIPE_PUB_KEY %}
-    cardForm.card({
-        stripePubKey: "{{ STRIPE_PUB_KEY }}",
-        saas_api_card: "{{ urls.organization.api_card }}"
-    });
-    $("#bank-form").bank({stripePubKey: "{{STRIPE_PUB_KEY}}"});
-{% endif %}
 {% if charge %}
     $(".charge-refund").click(function () {
         var self = $(this);
