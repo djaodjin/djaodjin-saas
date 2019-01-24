@@ -25,9 +25,11 @@
 from rest_framework import status
 from rest_framework.generics import RetrieveAPIView
 from rest_framework.response import Response
+from django.utils.translation import ugettext_lazy as _
 
 from ..mixins import OrganizationMixin
-from .serializers import BankSerializer, CardSerializer
+from .serializers import (BankSerializer, CardSerializer,
+    CardTokenSerializer)
 
 #pylint: disable=no-init
 #pylint: disable=old-style-class
@@ -64,7 +66,7 @@ class RetrieveBankAPIView(OrganizationMixin, RetrieveAPIView):
     def retrieve(self, request, *args, **kwargs):
         #pylint: disable=unused-argument
         return Response(
-            self.organization.retrieve_bank(), status=status.HTTP_200_OK)
+            self.organization.retrieve_bank())
 
 
 class RetrieveCardAPIView(OrganizationMixin, RetrieveAPIView):
@@ -89,7 +91,17 @@ class RetrieveCardAPIView(OrganizationMixin, RetrieveAPIView):
     """
     serializer_class = CardSerializer
 
+    def put(self, request, *args, **kwargs):
+        serializer = CardTokenSerializer(data=request.data)
+        if serializer.is_valid():
+            token = serializer.validated_data['token']
+            try:
+                self.organization.update_card(token, self.request.user)
+            except ProcessorError as err:
+                raise ValidationError(err)
+        return Response({'detail': _('Your credit card on file was sucessfully updated')})
+
     def retrieve(self, request, *args, **kwargs):
         #pylint: disable=unused-argument
         return Response(
-            self.organization.retrieve_card(), status=status.HTTP_200_OK)
+            self.organization.retrieve_card())

@@ -1,0 +1,16 @@
+{% extends "saas/base_dashboard.html" %}
+
+{% block saas_content %}
+<div id="plan-update-container">
+    <div>
+        <button @click="togglePlanStatus" class="activate" v-text="isActive ? 'Deactivate' : 'Activate'"></button>
+    </div>
+    <div>
+        <button @click="deletePlan">Delete</button>
+    </div>
+    <form method="post" @submit.prevent="updatePlan">
+        {% include "saas/profile/plans/_form.html" %}
+        <button type="submit" name="submit" value="Submit">Update</button>
+    </form>
+</div>
+{% endblock %}

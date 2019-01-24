@@ -33,7 +33,7 @@ from ...settings import ACCT_REGEX, VERIFICATION_KEY_RE
 from ...views.download import (ActiveSubscriptionDownloadView,
     ChurnedSubscriptionDownloadView)
 from ...views.optins import SubscriptionRequestAcceptView
-from ...views.plans import PlanCreateView, PlanUpdateView
+from ...views.plans import PlanCreateView, PlanUpdateView, PlanListView
 from ...views.profile import SubscriberListView, PlanSubscribersListView
 
 urlpatterns = [
@@ -46,7 +46,7 @@ urlpatterns = [
         % (ACCT_REGEX, ACCT_REGEX),
         PlanUpdateView.as_view(), name='saas_plan_edit'),
     url(r'^profile/(?P<organization>%s)/plans/' % ACCT_REGEX,
-        TemplateView.as_view(), name='saas_plan_base'),
+        PlanListView.as_view(), name='saas_plan_base'),
     url(r'^profile/(?P<organization>%s)/subscribers/active/download/?'
         % ACCT_REGEX,
         ActiveSubscriptionDownloadView.as_view(),

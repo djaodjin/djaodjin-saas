@@ -406,7 +406,7 @@ class OfflineTransactionSerializer(NoModelSerializer):
 
     subscription = serializers.CharField(
         help_text="The subscription the offline transaction refers to.")
-    created_at = serializers.DateTimeField(read_only=True,
+    created_at = serializers.DateTimeField(
         help_text=_("Date/time of creation (in ISO format)"))
     # XXX Shouldn't this be same format as TransactionSerializer.amount?
     amount = serializers.DecimalField(None, 2)
@@ -462,7 +462,7 @@ class ImportTransactionsAPIView(ProviderMixin, CreateAPIView):
         Transaction.objects.offline_payment(
             subscription, serializer.validated_data['amount'],
             descr=serializer.validated_data['descr'], user=self.request.user,
-            created_at=serializer.validated_data['created_at'])
+            created_at=serializer.validated_data.get('created_at'))
 
 
 class StatementBalanceAPIView(OrganizationMixin, APIView):
