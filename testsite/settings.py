@@ -10,8 +10,8 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 RUN_DIR = os.getcwd()
 
 TEMPLATE_REVERT_TO_DJANGO = True
-JS_FRAMEWORK = 'angularjs'
-#JS_FRAMEWORK = 'vuejs'
+#JS_FRAMEWORK = 'angularjs'
+JS_FRAMEWORK = 'vuejs'
 
 def load_config(confpath):
     '''
