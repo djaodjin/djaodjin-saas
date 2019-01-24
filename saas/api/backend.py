@@ -22,11 +22,12 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from rest_framework import status
+from rest_framework.exceptions import ValidationError
 from rest_framework.generics import RetrieveAPIView
 from rest_framework.response import Response
 from django.utils.translation import ugettext_lazy as _
 
+from ..backends import ProcessorError
 from ..mixins import OrganizationMixin
 from .serializers import (BankSerializer, CardSerializer,
     CardTokenSerializer)
@@ -92,6 +93,7 @@ class RetrieveCardAPIView(OrganizationMixin, RetrieveAPIView):
     serializer_class = CardSerializer
 
     def put(self, request, *args, **kwargs):
+        #pylint:disable=unused-argument
         serializer = CardTokenSerializer(data=request.data)
         if serializer.is_valid():
             token = serializer.validated_data['token']
@@ -99,9 +101,9 @@ class RetrieveCardAPIView(OrganizationMixin, RetrieveAPIView):
                 self.organization.update_card(token, self.request.user)
             except ProcessorError as err:
                 raise ValidationError(err)
-        return Response({'detail': _('Your credit card on file was sucessfully updated')})
+        return Response({
+            'detail': _('Your credit card on file was sucessfully updated')})
 
     def retrieve(self, request, *args, **kwargs):
         #pylint: disable=unused-argument
-        return Response(
-            self.organization.retrieve_card())
+        return Response(self.organization.retrieve_card())

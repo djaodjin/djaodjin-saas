@@ -1,4 +1,4 @@
-# Copyright (c) 2018, DjaoDjin inc.
+# Copyright (c) 2019, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -27,7 +27,6 @@ URLs related to provider bank account information.
 """
 
 from django.conf.urls import url
-from django.views.generic import TemplateView
 
 from ...settings import ACCT_REGEX, VERIFICATION_KEY_RE
 from ...views.download import (ActiveSubscriptionDownloadView,

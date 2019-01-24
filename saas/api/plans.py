@@ -28,7 +28,7 @@ from rest_framework.generics import (ListCreateAPIView,
 from rest_framework.response import Response
 
 from .serializers import PlanSerializer
-from ..mixins import ProviderMixin, PlanMixin
+from ..mixins import PlanMixin
 from ..models import Plan, Subscription
 from .. import settings
 

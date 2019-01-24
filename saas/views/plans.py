@@ -24,9 +24,7 @@
 from __future__ import unicode_literals
 
 from django import forms
-from django.contrib import messages
 from django.http import HttpResponseRedirect
-from django.utils.translation import ugettext_lazy as _
 from django.views.generic import (CreateView, ListView, UpdateView,
     TemplateView)
 from django.views.generic.detail import SingleObjectMixin

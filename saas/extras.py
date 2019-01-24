@@ -1,4 +1,4 @@
-# Copyright (c) 2018, DjaoDjin inc.
+# Copyright (c) 2019, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -77,7 +77,8 @@ class OrganizationMixinBase(object):
         urls.update({'organization': {
             'api_base': reverse('saas_api_organization', args=(organization,)),
             'api_card': reverse('saas_api_card', args=(organization,)),
-            'api_import': reverse('saas_api_import_transactions', args=(organization,)),
+            'api_import': reverse(
+                'saas_api_import_transactions', args=(organization,)),
             'api_profile_base': reverse('saas_api_profile'),
             'api_subscriptions': reverse(
                 'saas_api_subscription_list', args=(organization,)),
