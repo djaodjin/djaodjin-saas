@@ -1001,7 +1001,7 @@ var app = new Vue({
     mixins: [userRelationMixin],
     data: function(){
         return {
-            typeaheadUrl: djaodjinSettings.urls.broker.api_users,
+            typeaheadUrl: djaodjinSettings.urls.api_candidates,
         }
     },
     mounted: function(){
