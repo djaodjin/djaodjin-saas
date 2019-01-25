@@ -3,10 +3,11 @@
 {% block saas_content %}
 <section id="subscriptions" ng-app="saasApp">
   <div id="subscriptions-list-container" ng-controller="subscriptionListCtrl">
+    <h2>Active subscriptions</h2>
     <table>
       <thead>
         <tr>
-          <th>Subscribed to</th>
+          <th>Plan</th>
           <th>Until</th>
           <th></th>
           <th></th>
@@ -99,16 +100,17 @@
                   next-text="&rsaquo;"
                   first-text="&laquo;"
                   last-text="&raquo;"
-                  ng-change="pageChanged(subscribed)"
-          uiv-pagination
+                  ng-change="pageChanged(subscribed)">
+     </ul>
+     <uiv-pagination
               v-model="params.page"
               :total-page="pageCount"
               @change="get"
               size="sm"
-              boundary-links></ul>
+              boundary-links></uiv-pagination>
     </div>
     <!-- modal dialog to confirm unsubscribe -->
-    <modal v-model="modalOpen" title="Unsubscribe ...">
+    <modal title="Unsubscribe ...">
         <p>
             You are about to delete the profile and account
             for <em>{{organization.printable_name}}</em>.
@@ -125,6 +127,51 @@
         </div>
     </modal>
     <!-- /modal dialog to confirm unsubscribe -->
+  </div>
+  <div id="expired-subscriptions-list-container">
+    <h2>Expired subscriptions</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Plan</th>
+          <th>Expired</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr v-show="!itemsLoaded">
+          <td colspan="4">
+            <h4>Loading ...</h4>
+          </td>
+        </tr>
+        <tr v-show="itemsLoaded && items.count == 0">
+          <td colspan="4">
+            <h4>No subcriptions<span v-show="params.q"> [[params.q]]</span></h4>
+          </td>
+        </tr>
+      </tbody>
+      <tbody v-for="entry in items.results" v-show="itemsLoaded && items.results.length > 0" v-cloak>
+        <tr>
+          <td>
+            <a :href="entry.plan.app_url + entry.organization.slug + '/' + entry.plan.slug + '/'">[[entry.plan.title]]</a>
+          </td>
+          <td>
+            [[entry.ends_at | formatDate]]
+          </td>
+          <td>
+            [[entry.ends_at | relativeDate]]
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <div v-show="itemsLoaded && totalItems > itemsPerPage">
+     <uiv-pagination
+              v-model="params.page"
+              :total-page="pageCount"
+              @change="get"
+              size="sm"
+              boundary-links></uiv-pagination>
+    </div>
   </div>
 </section>
 {% endblock %}
