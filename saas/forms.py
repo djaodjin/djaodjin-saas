@@ -30,7 +30,6 @@ from __future__ import unicode_literals
 from decimal import Decimal
 
 from django import forms
-from django.template.defaultfilters import slugify
 from django.utils.safestring import mark_safe
 from django.utils.translation import ugettext_lazy as _
 from django_countries import countries

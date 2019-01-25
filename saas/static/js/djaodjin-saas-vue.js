@@ -2397,7 +2397,7 @@ var app = new Vue({
                 method: 'DELETE',
                 url: djaodjinSettings.urls.plan.api_plan,
             }).done(function(res) {
-                window.location = djaodjinSettings.urls.provider.dashboard;
+                window.location = djaodjinSettings.urls.provider.metrics_plans;
             });
         },
     },
