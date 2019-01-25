@@ -75,6 +75,8 @@ function _showErrorMessages(resp) {
                         }
                         messages.push(key + ": " + message);
                         $("[name=\"" + key + "\"]").parents('.form-group').addClass("has-error");
+                        var help = $("[name=\"" + key + "\"]").parents('.form-group').find('.help-block');
+                        if( help.length > 0 ) { help.text(message); }
                     }
                 }
             }

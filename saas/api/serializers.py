@@ -343,6 +343,21 @@ class PlanSerializer(serializers.ModelSerializer):
     def get_app_url(obj):
         return product_url(obj.organization)
 
+    def validate_title(self, title):
+        kwargs = {}
+        if 'provider' in self.context:
+            kwargs.update({'organization': self.context['provider']})
+        try:
+            exists = Plan.objects.get(title=title, **kwargs)
+            if self.instance is None or exists.pk != self.instance.pk:
+                # Rename is ok.
+                raise ValidationError(
+                    _("A plan with this title already exists."))
+        except Plan.DoesNotExist:
+            pass
+        return title
+
+
 
 class SubscriptionSerializer(serializers.ModelSerializer):
 

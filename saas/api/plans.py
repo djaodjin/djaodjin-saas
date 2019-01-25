@@ -73,15 +73,13 @@ class PlanCreateAPIView(PlanMixin, ListCreateAPIView):
 
     def perform_create(self, serializer):
         unit = serializer.validated_data.get('unit', None)
-        if unit is None:
+        if not unit:
             first_plan = self.get_queryset().first()
             if first_plan:
                 unit = first_plan.unit
             else:
                 unit = settings.DEFAULT_UNIT
-        serializer.save(organization=self.provider,
-            slug=self.slugify(serializer.validated_data.get('title')),
-            unit=unit)
+        serializer.save(organization=self.provider, unit=unit)
 
 
 class PlanResourceView(PlanMixin, RetrieveUpdateDestroyAPIView):
@@ -149,9 +147,16 @@ class PlanResourceView(PlanMixin, RetrieveUpdateDestroyAPIView):
         self.perform_destroy(instance)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
+    def get_serializer_context(self):
+        context = super(PlanResourceView, self).get_serializer_context()
+        context.update({'provider': self.provider})
+        return context
+
     def perform_update(self, serializer):
-        if ('title' in serializer.validated_data and
-            not Subscription.objects.filter(plan=self.get_object()).exists()):
+        title = serializer.validated_data.get('title', None)
+        if (title and
+            title != serializer.instance.title and
+            not Subscription.objects.filter(plan=serializer.instance).exists()):
             # OK to use ``filter`` here since grants/requests should also be
             # included.
             # In case no subscription has ever been created for this ``Plan``
@@ -160,8 +165,7 @@ class PlanResourceView(PlanMixin, RetrieveUpdateDestroyAPIView):
             # slug, we don't want to perform an update and get inconsistent
             # look of the derived URLs.
             # pylint: disable=protected-access
-            serializer._validated_data['slug'] \
-                = self.slugify(serializer.validated_data['title'])
+            serializer.instance.slug = None
         # We use PUT instead of PATCH otherwise we cannot run test units
         # on phantomjs. PUT would override the is_active if not present.
         serializer.save(organization=self.provider,

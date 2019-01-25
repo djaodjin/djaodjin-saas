@@ -2301,30 +2301,19 @@ var app = new Vue({
                     title: vm.title,
                     description: vm.description,
                     unit: vm.unit,
-                    period_amount: vm.periodAmount,
-                    setup_amount: vm.setupAmount,
+                    period_amount: Math.round(vm.periodAmount * 100),
+                    setup_amount: Math.round(vm.setupAmount * 100),
                     interval: vm.interval,
                     period_length: vm.periodLength,
-                    advance_discount: vm.advanceDiscount,
+                    advance_discount: Math.round(vm.advanceDiscount * 100),
                     is_active: vm.isActive,
                     is_not_priced: vm.isNotPriced,
                     renewal_type: vm.renewalType,
                 },
                 url: djaodjinSettings.urls.provider.api_plans,
             }).done(function(res) {
-                vm.title = '';
-                vm.description = '';
-                vm.unit = 'usd';
-                vm.periodAmount = '0.00';
-                vm.setupAmount = '0.00';
-                vm.interval = 'YEARLY';
-                vm.periodLength = 1;
-                vm.advanceDiscount = '0.00';
-                vm.isActive = false;
-                vm.isNotPriced = false;
-                vm.renewalType = 1;
-                showMessages(["Plan was created."], "success");
-            });
+                window.location = djaodjinSettings.urls.provider.metrics_plans;
+            }).fail(handleRequestError);
         },
     },
 })
@@ -2374,11 +2363,11 @@ var app = new Vue({
                     title: vm.title,
                     description: vm.description,
                     unit: vm.unit,
-                    period_amount: vm.periodAmount,
-                    setup_amount: vm.setupAmount,
+                    period_amount: Math.round(vm.periodAmount * 100),
+                    setup_amount: Math.round(vm.setupAmount * 100),
                     interval: vm.interval,
                     period_length: vm.periodLength,
-                    advance_discount: vm.advanceDiscount,
+                    advance_discount: Math.round(vm.advanceDiscount * 100),
                     is_active: vm.isActive,
                     is_not_priced: vm.isNotPriced,
                     renewal_type: vm.renewalType,
@@ -2386,8 +2375,8 @@ var app = new Vue({
                 url: djaodjinSettings.urls.plan.api_plan,
             }).done(function(res) {
                 vm.get()
-                showMessages(["Plan was updated."], "success");
-            });
+                showMessages(["Successfully updated plan titled '" + vm.title + "'."], "success");
+            }).fail(handleRequestError);
         },
         togglePlanStatus: function(){
             var vm = this;

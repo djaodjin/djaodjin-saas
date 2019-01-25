@@ -282,7 +282,7 @@ class PlanForm(forms.ModelForm):
             kwargs.update({'organization': self.initial['organization']})
         try:
             exists = Plan.objects.get(
-                slug=slugify(self.cleaned_data['title']), **kwargs)
+                title=self.cleaned_data['title'], **kwargs)
             if self.instance is None or exists.pk != self.instance.pk:
                 # Rename is ok.
                 raise forms.ValidationError(

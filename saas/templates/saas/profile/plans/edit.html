@@ -3,10 +3,13 @@
 {% block saas_content %}
 <div id="plan-update-container">
     <div>
-        <button @click="togglePlanStatus" class="activate" v-text="isActive ? 'Deactivate' : 'Activate'"></button>
+        <button id="activate-plan"
+            @click="togglePlanStatus"
+            v-bind:class="isActive ? 'activated' : ''"
+            v-text="isActive ? 'Deactivate' : 'Activate'"></button>
     </div>
     <div>
-        <button @click="deletePlan">Delete</button>
+        <button id="delete-plan" @click="deletePlan">Delete</button>
     </div>
     <form method="post" @submit.prevent="updatePlan">
         {% include "saas/profile/plans/_form.html" %}
