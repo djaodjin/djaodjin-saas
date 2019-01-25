@@ -2160,6 +2160,12 @@ var app = new Vue({
                 }
             }
             else {
+                var totalAmount = vm.$refs.totalAmount;
+                if(totalAmount && totalAmount.textContent === '0.00'){
+                    // a hack where there is a 100% discount
+                    vm.doCheckoutForm();
+                    return;
+                }
                 if(!vm.validateForm()) return;
                 vm.getCardToken(vm.doCheckoutForm);
             }
