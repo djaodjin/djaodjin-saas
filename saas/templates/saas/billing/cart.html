@@ -21,7 +21,7 @@ If you have a coupon code, it is time to redeem it now!
 </div>
 {% endblock %}
 <div id="checkout-container">
-    <form method="post" id="payment-form" action=".{% if next %}/?next={{ next }}{% endif %}" @submit.prevent="checkoutForm()">
+    <form method="post" id="payment-form" action=".{% if next %}/?next={{ next }}{% endif %}" @submit.prevent="checkoutForm">
         <input type="hidden" name="csrfmiddlewaretoken" value="{{csrf_token}}">
         {% if invoicables %}
         {% include "saas/_invoiceables.html" %}

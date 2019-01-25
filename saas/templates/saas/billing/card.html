@@ -3,10 +3,10 @@
 {% block saas_content %}
 <section id="update_card">
     <h1>Update Card for {{ organization }}</h1>
-    <form method="post" id="payment-form">
+    <form method="post" id="payment-form" @submit.prevent="save">
         <input type="hidden" name="csrfmiddlewaretoken" value="{{csrf_token}}">
         {% include "saas/_card_use.html" %}
-        <button type="submit" class="payment-submit" @click.prevent="save">Save</button>
+        <button type="submit" class="payment-submit">Save</button>
     </form>
 </section>
 {% endblock %}
