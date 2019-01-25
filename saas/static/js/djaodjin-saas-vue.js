@@ -1,20 +1,4 @@
-function csrfSafeMethod(method) {
-    // these HTTP methods do not require CSRF protection
-    return (/^(GET|HEAD|OPTIONS|TRACE)$/.test(method));
-}
-$.ajaxSetup({
-    cache: false,
-    crossDomain: false, // obviates need for sameOrigin test
-    beforeSend: function(xhr, settings) {
-        if (!csrfSafeMethod(settings.type)) {
-            xhr.setRequestHeader("X-CSRFToken", djaodjinSettings.csrf);
-        }
-    }
-});
 
-Vue.mixin({
-    delimiters: ['[[',']]'],
-});
 
 Vue.use(uiv, {prefix: 'uiv'});
 
@@ -1013,7 +997,7 @@ var app = new Vue({
             tables: djaodjinSettings.tables,
             activeTab: 0,
         }
-        data.ends_at = moment().format(DATE_FORMAT);
+        data.ends_at = moment().toISOString();
         if( djaodjinSettings.date_range
             && djaodjinSettings.date_range.ends_at ) {
             var ends_at = moment(djaodjinSettings.date_range.ends_at);
@@ -1414,9 +1398,7 @@ var app = new Vue({
                 vm.description = '';
                 vm.createdAt = moment().format("YYYY-MM-DD");
                 showMessages(["Profile was updated."], "success");
-            }).fail(function(resp){
-                showErrorMessages(resp);
-            });
+            }).fail(handleRequestError);
         }
     },
 });
@@ -1643,7 +1625,7 @@ var app = new Vue({
                     vm.timezone = org.default_timezone;
                 }
                 vm.organization = org;
-            });
+            }).fail(handleRequestError);
         },
         updateProfile: function(){
             var vm = this;
@@ -1665,9 +1647,7 @@ var app = new Vue({
                 data: data,
             }).done(function() {
                 showMessages(["Profile was updated."], "success");
-            }).fail(function(resp){
-                showErrorMessages(resp);
-            });
+            }).fail(handleRequestError);
         },
         deleteProfile: function(){
             var vm = this;
@@ -1870,7 +1850,7 @@ var cardMixin = {
                 } else {
                     vm.validationEnabled = true;
                 }
-            });
+            }).fail(handleRequestError);
         },
         getCardToken: function(cb){
             var vm = this;
@@ -1929,7 +1909,7 @@ var cardMixin = {
                     vm.addressRegion = org.region;
                 }
                 vm.organization = org;
-            });
+            }).fail(handleRequestError);
         },
         validateForm: function(){
             var vm = this;
@@ -2181,13 +2161,9 @@ var app = new Vue({
                 data: formData,
                 processData: false,
                 contentType: false,
-                success: function(data) {
-                    vm.get();
-                },
-                error: function(response) {
-                    showErrorMessages(response, "error");
-                }
-            });
+            }).done(function(){
+                vm.get();
+            }).fail(handleRequestError);
         },
     },
     computed: {
@@ -2276,52 +2252,9 @@ var app = new Vue({
 })
 }
 
-if($('#new-plan-container').length > 0){
+if($('#plan-container').length > 0){
 var app = new Vue({
-    el: "#new-plan-container",
-    data: {
-        title: '',
-        description: '',
-        unit: 'usd',
-        periodAmount: '0.00',
-        setupAmount: '0.00',
-        interval: 'YEARLY',
-        periodLength: 1,
-        advanceDiscount: '0.00',
-        isActive: false,
-        isNotPriced: false,
-        renewalType: 1 // AUTO_RENEW,
-    },
-    methods: {
-        createPlan: function(){
-            var vm = this;
-            $.ajax({
-                method: 'POST',
-                data: {
-                    title: vm.title,
-                    description: vm.description,
-                    unit: vm.unit,
-                    period_amount: Math.round(vm.periodAmount * 100),
-                    setup_amount: Math.round(vm.setupAmount * 100),
-                    interval: vm.interval,
-                    period_length: vm.periodLength,
-                    advance_discount: Math.round(vm.advanceDiscount * 100),
-                    is_active: vm.isActive,
-                    is_not_priced: vm.isNotPriced,
-                    renewal_type: vm.renewalType,
-                },
-                url: djaodjinSettings.urls.provider.api_plans,
-            }).done(function(res) {
-                window.location = djaodjinSettings.urls.provider.metrics_plans;
-            }).fail(handleRequestError);
-        },
-    },
-})
-}
-
-if($('#plan-update-container').length > 0){
-var app = new Vue({
-    el: "#plan-update-container",
+    el: "#plan-container",
     data: {
         title: '',
         description: '',
@@ -2337,6 +2270,7 @@ var app = new Vue({
     },
     methods: {
         get: function(){
+            if(!djaodjinSettings.urls.plan.api_plan) return;
             var vm = this;
             $.ajax({
                 method: 'GET',
@@ -2345,15 +2279,18 @@ var app = new Vue({
                 vm.title = resp.title;
                 vm.description = resp.description;
                 vm.unit = resp.unit;
-                vm.periodAmount = resp.period_amount;
-                vm.setupAmount = resp.setup_amount;
+                vm.periodAmount = vm.formatNumber(resp.period_amount);
+                vm.setupAmount = vm.formatNumber(resp.setup_amount);
                 vm.interval = resp.interval;
                 vm.periodLength = resp.period_length;
-                vm.advanceDiscount = resp.advance_discount;
+                vm.advanceDiscount = vm.formatNumber(resp.advance_discount);
                 vm.isActive = resp.is_active;
                 vm.isNotPriced = resp.is_not_priced;
                 vm.renewalType = resp.renewal_type;
-            });
+            }).fail(handleRequestError);
+        },
+        formatNumber: function(num){
+            return (parseFloat(num) / 100).toFixed(2);
         },
         updatePlan: function(){
             var vm = this;
@@ -2389,7 +2326,7 @@ var app = new Vue({
                 url: djaodjinSettings.urls.plan.api_plan,
             }).done(function(res) {
                 vm.isActive = next;
-            });
+            }).fail(handleRequestError);
         },
         deletePlan: function(){
             var vm = this;
@@ -2398,7 +2335,29 @@ var app = new Vue({
                 url: djaodjinSettings.urls.plan.api_plan,
             }).done(function(res) {
                 window.location = djaodjinSettings.urls.provider.dashboard;
-            });
+            }).fail(handleRequestError);
+        },
+        createPlan: function(){
+            var vm = this;
+            $.ajax({
+                method: 'POST',
+                data: {
+                    title: vm.title,
+                    description: vm.description,
+                    unit: vm.unit,
+                    period_amount: Math.round(vm.periodAmount * 100),
+                    setup_amount: Math.round(vm.setupAmount * 100),
+                    interval: vm.interval,
+                    period_length: vm.periodLength,
+                    advance_discount: Math.round(vm.advanceDiscount * 100),
+                    is_active: vm.isActive,
+                    is_not_priced: vm.isNotPriced,
+                    renewal_type: vm.renewalType,
+                },
+                url: djaodjinSettings.urls.provider.api_plans,
+            }).done(function(res) {
+                window.location = djaodjinSettings.urls.provider.metrics_plans;
+            }).fail(handleRequestError);
         },
     },
     mounted: function(){

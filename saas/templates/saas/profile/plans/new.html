@@ -1,7 +1,7 @@
 {% extends "saas/base_dashboard.html" %}
 
 {% block saas_content %}
-<div id="new-plan-container">
+<div id="plan-container">
     <form method="post" @submit.prevent="createPlan">
         {% include "saas/profile/plans/_form.html" %}
         <div>
