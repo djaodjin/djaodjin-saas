@@ -1999,7 +1999,103 @@ var app = new Vue({
                 if(code === 200) {
                     if(cb) cb(res.id)
                 } else {
-                    showMessages([res.error.message], "error");
+                    var errorMessages = "";
+                    var cardUse = $("#card-use");
+                    /* BE CAREFULL: Do not add name="" to these <input> nodes,
+                       else they will hit our server and break PCI compliance. */
+                    var numberElement = cardUse.find("#card-number");
+                    var number = numberElement.val();
+                    if( number === "" ) {
+                        if( errorMessages ) { errorMessages += ", "; }
+                        errorMessages += "Card Number";
+                        numberElement.parents(".form-group").addClass(
+                            "has-error");
+                        valid = false;
+                    }
+                    var cvcElement = cardUse.find("#card-cvc");
+                    var cvc = cvcElement.val();
+                    if( cvc === "" ) {
+                        if( errorMessages ) { errorMessages += ", "; }
+                        errorMessages += "Card Security Code";
+                        cvcElement.parents(".form-group").addClass("has-error");
+                        valid = false;
+                    }
+                    var expMonthElement = cardUse.find("#card-exp-month");
+                    var expYearElement = cardUse.find("#card-exp-year");
+                    var expMonth = expMonthElement.val();
+                    var expYear = expYearElement.val();
+                    if( expMonth === "" || expYear === "" ) {
+                        if( errorMessages ) { errorMessages += ", "; }
+                        errorMessages += "Expiration";
+                        expMonthElement.parents(".form-group").addClass(
+                            "has-error");
+                        expYearElement.parents(".form-group").addClass(
+                            "has-error");
+                        valid = false;
+                    }
+
+                    /* These are OK to forward to our server. */
+                    var nameElement = cardUse.find("[name='card_name']");
+                    var name = nameElement.val();
+                    if( name === "" ) {
+                        if( errorMessages ) { errorMessages += ", "; }
+                        errorMessages += "Card Holder";
+                        nameElement.parents(".form-group").addClass(
+                            "has-error");
+                        valid = false;
+                    }
+                    var addressLine1Element = cardUse.find(
+                        "[name='card_address_line1']");
+                    var addressLine1 = addressLine1Element.val();
+                    if( addressLine1 === "" ) {
+                        if( errorMessages ) { errorMessages += ", "; }
+                        errorMessages += "Street";
+                        addressLine1Element.parents(
+                            ".form-group").addClass("has-error");
+                        valid = false;
+                    }
+                    var addressCityElement = cardUse.find("[name='card_city']");
+                    var addressCity = addressCityElement.val();
+                    if( addressCity === "" ) {
+                        if( errorMessages ) { errorMessages += ", "; }
+                        errorMessages += "City";
+                        addressCityElement.parents(".form-group").addClass(
+                            "has-error");
+                        valid = false;
+                    }
+                    var addressStateElement = cardUse.find("[name='region']");
+                    var addressState = addressStateElement.val();
+                    if( addressState === "" ) {
+                        if( errorMessages ) { errorMessages += ", "; }
+                        errorMessages += "State/Province";
+                        addressStateElement.parents(
+                            ".form-group").addClass("has-error");
+                        valid = false;
+                    }
+                    var addressZipElement = cardUse.find(
+                        "[name='card_address_zip']");
+                    var addressZip = addressZipElement.val();
+                    if( addressZip === "" ) {
+                        if( errorMessages ) { errorMessages += ", "; }
+                        errorMessages += "Zip";
+                        addressZipElement.parents(".form-group").addClass(
+                            "has-error");
+                        valid = false;
+                    }
+                    var addressCountryElement = cardUse.find(
+                        "[name='country']");
+                    var addressCountry = addressCountryElement.val();
+                    if( addressCountry === "" ) {
+                        if( errorMessages ) { errorMessages += ", "; }
+                        errorMessages += "Country";
+                        addressCountryElement.parents(
+                            ".form-group").addClass("has-error");
+                        valid = false;
+                    }
+                    if( errorMessages ) {
+                        errorMessages += " field(s) cannot be empty.";
+                    }
+                    showMessages([errorMessages], "error");
                 }
             });
         },
@@ -2054,12 +2150,36 @@ var app = new Vue({
                 vm.getCardToken(vm.doCheckout);
             }
         },
+        doCheckoutForm: function(token) {
+            var self = $('#checkout-container form');
+            // insert the token into the form so it gets submitted to the server
+            self.append("<input type='hidden' name='stripeToken' value='" + token + "'/>");
+            // and submit
+            self.get(0).submit();
+        },
+        checkoutForm: function() {
+            var vm = this;
+            cardUse = $('#card-use');
+            if( cardUse.length > 0 && cardUse.is(":visible") ) {
+                if(vm.haveCardData){
+                    vm.doCheckoutForm();
+                } else {
+                    vm.getCardToken(vm.doCheckoutForm);
+                }
+            } else {
+                var self = $('#checkout-container form');
+                self.get(0).submit();
+            }
+        },
         getOrgAddress: function(){
             var vm = this;
             $.ajax({
                 method: 'GET',
                 url: djaodjinSettings.urls.organization.api_base,
             }).done(function(org) {
+                if(org.full_name ) {
+                    vm.name = org.full_name;
+                }
                 if(org.street_address){
                     vm.addressLine1 = org.street_address;
                 }
@@ -2129,8 +2249,10 @@ var app = new Vue({
     },
     mounted: function(){
         this.get()
-        this.getUserCard();
-        this.getOrgAddress();
+        if( $('#card-use').length > 0 ) {
+            this.getUserCard();
+            this.getOrgAddress();
+        }
     }
 })
 }
@@ -2223,7 +2345,103 @@ var app = new Vue({
                 if(code === 200) {
                     if(cb) cb(res.id)
                 } else {
-                    showMessages([res.error.message], "error");
+                    var errorMessages = "";
+                    var cardUse = $("#card-use");
+                    /* BE CAREFULL: Do not add name="" to these <input> nodes,
+                       else they will hit our server and break PCI compliance. */
+                    var numberElement = cardUse.find("#card-number");
+                    var number = numberElement.val();
+                    if( number === "" ) {
+                        if( errorMessages ) { errorMessages += ", "; }
+                        errorMessages += "Card Number";
+                        numberElement.parents(".form-group").addClass(
+                            "has-error");
+                        valid = false;
+                    }
+                    var cvcElement = cardUse.find("#card-cvc");
+                    var cvc = cvcElement.val();
+                    if( cvc === "" ) {
+                        if( errorMessages ) { errorMessages += ", "; }
+                        errorMessages += "Card Security Code";
+                        cvcElement.parents(".form-group").addClass("has-error");
+                        valid = false;
+                    }
+                    var expMonthElement = cardUse.find("#card-exp-month");
+                    var expYearElement = cardUse.find("#card-exp-year");
+                    var expMonth = expMonthElement.val();
+                    var expYear = expYearElement.val();
+                    if( expMonth === "" || expYear === "" ) {
+                        if( errorMessages ) { errorMessages += ", "; }
+                        errorMessages += "Expiration";
+                        expMonthElement.parents(".form-group").addClass(
+                            "has-error");
+                        expYearElement.parents(".form-group").addClass(
+                            "has-error");
+                        valid = false;
+                    }
+
+                    /* These are OK to forward to our server. */
+                    var nameElement = cardUse.find("[name='card_name']");
+                    var name = nameElement.val();
+                    if( name === "" ) {
+                        if( errorMessages ) { errorMessages += ", "; }
+                        errorMessages += "Card Holder";
+                        nameElement.parents(".form-group").addClass(
+                            "has-error");
+                        valid = false;
+                    }
+                    var addressLine1Element = cardUse.find(
+                        "[name='card_address_line1']");
+                    var addressLine1 = addressLine1Element.val();
+                    if( addressLine1 === "" ) {
+                        if( errorMessages ) { errorMessages += ", "; }
+                        errorMessages += "Street";
+                        addressLine1Element.parents(
+                            ".form-group").addClass("has-error");
+                        valid = false;
+                    }
+                    var addressCityElement = cardUse.find("[name='card_city']");
+                    var addressCity = addressCityElement.val();
+                    if( addressCity === "" ) {
+                        if( errorMessages ) { errorMessages += ", "; }
+                        errorMessages += "City";
+                        addressCityElement.parents(".form-group").addClass(
+                            "has-error");
+                        valid = false;
+                    }
+                    var addressStateElement = cardUse.find("[name='region']");
+                    var addressState = addressStateElement.val();
+                    if( addressState === "" ) {
+                        if( errorMessages ) { errorMessages += ", "; }
+                        errorMessages += "State/Province";
+                        addressStateElement.parents(
+                            ".form-group").addClass("has-error");
+                        valid = false;
+                    }
+                    var addressZipElement = cardUse.find(
+                        "[name='card_address_zip']");
+                    var addressZip = addressZipElement.val();
+                    if( addressZip === "" ) {
+                        if( errorMessages ) { errorMessages += ", "; }
+                        errorMessages += "Zip";
+                        addressZipElement.parents(".form-group").addClass(
+                            "has-error");
+                        valid = false;
+                    }
+                    var addressCountryElement = cardUse.find(
+                        "[name='country']");
+                    var addressCountry = addressCountryElement.val();
+                    if( addressCountry === "" ) {
+                        if( errorMessages ) { errorMessages += ", "; }
+                        errorMessages += "Country";
+                        addressCountryElement.parents(
+                            ".form-group").addClass("has-error");
+                        valid = false;
+                    }
+                    if( errorMessages ) {
+                        errorMessages += " field(s) cannot be empty.";
+                    }
+                    showMessages([errorMessages], "error");
                 }
             });
         },

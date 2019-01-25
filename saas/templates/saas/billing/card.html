@@ -6,6 +6,7 @@
     <form method="post" id="payment-form">
         <input type="hidden" name="csrfmiddlewaretoken" value="{{csrf_token}}">
         {% include "saas/_card_use.html" %}
+        <button type="submit" class="payment-submit" @click.prevent="save">Save</button>
     </form>
 </section>
 {% endblock %}

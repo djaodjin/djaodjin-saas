@@ -20,8 +20,8 @@ If you have a coupon code, it is time to redeem it now!
     </form>
 </div>
 {% endblock %}
-<div>
-    <form method="post" id="payment-form" action=".{% if next %}/?next={{ next }}{% endif %}">
+<div id="checkout-container">
+    <form method="post" id="payment-form" action=".{% if next %}/?next={{ next }}{% endif %}" @submit.prevent="checkoutForm()">
         <input type="hidden" name="csrfmiddlewaretoken" value="{{csrf_token}}">
         {% if invoicables %}
         {% include "saas/_invoiceables.html" %}
@@ -31,11 +31,9 @@ If you have a coupon code, it is time to redeem it now!
         {% block order_card %}
         {% if RAZORPAY_PUB_KEY %}
         {% include "saas/_razorpay_checkout.html" %}
-        {% else %}
-        <section id="update_card">
-            {% include "saas/_card_use.html" %}
-        </section>
-        <button type="submit">Submit</button>
+        {% elif STRIPE_PUB_KEY %}
+        {% include "saas/_card_use.html" %}
+        <button type="submit" class="payment-submit">Submit</button>
         {% endif %}
         {% endblock %}
     </form>

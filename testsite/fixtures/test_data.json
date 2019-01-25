@@ -73,6 +73,7 @@
     "setup_amount": 0,
     "period_amount": 18900,
     "interval": 4,
+    "advance_discount": 81,
     "description": "Premium Plan",
     "organization": 2,
     "is_active": 1

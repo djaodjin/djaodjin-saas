@@ -209,7 +209,7 @@ class CartMixin(object):
             if coupon:
                 discount_percent = coupon.percent
                 if coupon.code.startswith('cpn_'):
-                    descr_suffix = ', complimentary of %s' % cart_item.last_name
+                    descr_suffix = ', complimentary of %s' % cart_item.full_name
                 else:
                     descr_suffix = '(code: %s)' % coupon.code
 
