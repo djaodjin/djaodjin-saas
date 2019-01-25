@@ -2,7 +2,7 @@
 <fieldset>
     <legend>Credit Card Information</legend>
     <div v-show="haveCardData" v-cloak>
-        <button type="button" @click="updateCard = !updateCard; validationEnabled = !validationEnabled">Update</button>
+        <button type="button" @click="clearCardData()" v-show="!updateCard">Update</button>
         <div>
             <dl>
                   <dt>card</dt>
@@ -38,25 +38,37 @@
       </div>
       <legend>Billing Address</legend>
       <div :class="inputClass('name')">
-        <input name="card_name" type="text" placeholder="Name" v-model="name">
+        <input name="card_name" type="text" placeholder="Name"
+            value="{{organization.full_name}}"
+            v-model="name">
       </div>
       <div :class="inputClass('addressLine1')">
-        <input name="card_address_line1" type="text" placeholder="Address line" v-model="addressLine1">
+        <input name="card_address_line1" type="text" placeholder="Address line"
+            value="{{organization.street_address}}"
+            v-model="addressLine1">
       </div>
       <div :class="inputClass('addressCity')">
-        <input name="card_city" type="text" placeholder="City" v-model="addressCity">
+        <input name="card_city" type="text" placeholder="City"
+            value="{{organization.location}}"
+            v-model="addressCity">
       </div>
       <div :class="inputClass('addressZip')">
-        <input name="card_address_zip" type="text" placeholder="ZIP" v-model="addressZip">
+        <input name="card_address_zip" type="text" placeholder="ZIP"
+            value="{{organization.postal_code}}"
+            v-model="addressZip">
       </div>
       <div :class="inputClass('addressCountry')">
-        <select name="country" v-model="addressCountry" @change="addressRegion = ''">
+        <select name="country"
+            data-init="{{organization.country}}"
+            v-model="addressCountry" @change="addressRegion = ''">
             <option value="">select country</option>
             <option :value="code" v-for="(country, code) in countries">[[country]]</option>
         </select>
       </div>
       <div :class="inputClass('addressRegion')">
-        <select name="region" v-model="addressRegion" v-show="addressCountry == 'US' || addressCountry == 'CA'">
+        <select name="region"
+            data-init="{{organization.region}}"
+            v-model="addressRegion" v-show="addressCountry == 'US' || addressCountry == 'CA'">
             <option value="">select state</option>
             <option :value="code" v-for="(region, code) in regions[addressCountry]">[[region]]</option>
         </select>

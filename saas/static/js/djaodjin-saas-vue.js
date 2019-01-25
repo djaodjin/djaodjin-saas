@@ -1821,6 +1821,21 @@ var app = new Vue({
 })
 }
 
+function getCardValue(fieldName) {
+    var cardForm = $("#card-use");
+    if( cardForm.length > 0 ) {
+        var field = cardForm.find("[name='" + fieldName + "']");
+        if( field.length > 0 ) {
+            var val = field.val();
+            if( !val ) {
+                val = field.data('init');
+            }
+            return val;
+        }
+    }
+    return "";
+}
+
 var cardMixin = {
     data: {
         last4: '',
@@ -1830,16 +1845,16 @@ var cardMixin = {
         cardCvc: '',
         cardExpMonth: '',
         cardExpYear: '',
-        name: '',
         savedCard: {},
         countries: countries,
         regions: regions,
         organization: {},
-        addressLine1: '',
-        addressCity: '',
-        addressZip: '',
-        addressCountry: '',
-        addressRegion: '',
+        name: getCardValue('card_name'),
+        addressLine1: getCardValue('card_address_line1'),
+        addressCity: getCardValue('card_city'),
+        addressZip: getCardValue('card_address_zip'),
+        addressCountry: getCardValue('country'),
+        addressRegion: getCardValue('region'),
         errors: {},
         validate: [
             'cardNumber',
@@ -1857,6 +1872,17 @@ var cardMixin = {
         updateCard: false, //used in legacy checkout
     },
     methods: {
+        clearCardData: function() {
+            var vm = this;
+            vm.last4 = '';
+            vm.expDate = '';
+            vm.haveCardData = false;
+            vm.cardNumber = '';
+            vm.cardCvc = '';
+            vm.cardExpMonth = '';
+            vm.cardExpYear = '';
+            vm.savedCard = {};
+        },
         inputClass: function(name){
             var vm = this;
             var cls = ['form-group'];
@@ -1955,15 +1981,56 @@ var cardMixin = {
             var valid = true;
             if(!vm.validationEnabled) return valid;
             var errors = {}
-            vm.validate.forEach(function(e){
-                if(vm[e] === ''){
+            var errorMessages = "";
+            vm.validate.forEach(function(field){
+                if(vm[field] === ''){
                     valid = false;
-                    errors[e] = ["This field shouldn't be empty"];
+                    errors[field] = ["This field shouldn't be empty"];
                 }
             });
             vm.errors = errors;
             if(Object.keys(vm.errors).length > 0){
-                showErrorMessages(vm.errors);
+                if( vm.errors['cardNumber'] ) {
+                    if( errorMessages ) { errorMessages += ", "; }
+                    errorMessages += "Card Number";
+                }
+                if( vm.errors['cardCvc'] ) {
+                    if( errorMessages ) { errorMessages += ", "; }
+                    errorMessages += "Card Security Code";
+                }
+                if( vm.errors['cardExpMonth']
+                         || vm.errors['cardExpYear'] ) {
+                    if( errorMessages ) { errorMessages += ", "; }
+                    errorMessages += "Expiration";
+                }
+                if( vm.errors['name'] ) {
+                    if( errorMessages ) { errorMessages += ", "; }
+                    errorMessages += "Card Holder";
+                }
+                if( vm.errors['addressLine1'] ) {
+                    if( errorMessages ) { errorMessages += ", "; }
+                    errorMessages += "Street";
+                }
+                if( vm.errors['addressCity'] ) {
+                    if( errorMessages ) { errorMessages += ", "; }
+                    errorMessages += "City";
+                }
+                if( vm.errors['addressZip'] ) {
+                    if( errorMessages ) { errorMessages += ", "; }
+                    errorMessages += "Zip";
+                }
+                if( vm.errors['addressCountry'] ) {
+                    if( errorMessages ) { errorMessages += ", "; }
+                    errorMessages += "Country";
+                }
+                if( vm.errors['addressRegion'] ) {
+                    if( errorMessages ) { errorMessages += ", "; }
+                    errorMessages += "State/Province";
+                }
+                if( errorMessages ) {
+                    errorMessages += " field(s) cannot be empty.";
+                }
+                showErrorMessages(errorMessages);
             }
             return valid;
         },
@@ -2170,23 +2237,21 @@ var app = new Vue({
         // used in legacy checkout
         checkoutForm: function() {
             var vm = this;
-            if(vm.haveCardData){
-                if(vm.updateCard){
+            cardUse = $('#card-use');
+            if( cardUse.length > 0 && cardUse.is(":visible") ) {
+                if(vm.haveCardData){
+                    if(vm.updateCard){
+                        if(!vm.validateForm()) return;
+                        vm.getCardToken(vm.doCheckoutForm);
+                    } else {
+                        vm.doCheckoutForm();
+                    }
+                } else {
                     if(!vm.validateForm()) return;
                     vm.getCardToken(vm.doCheckoutForm);
-                } else {
-                    vm.doCheckoutForm();
                 }
-            }
-            else {
-                var totalAmount = vm.$refs.totalAmount;
-                if(totalAmount && totalAmount.textContent === '0.00'){
-                    // a hack where there is a 100% discount
-                    vm.doCheckoutForm();
-                    return;
-                }
-                if(!vm.validateForm()) return;
-                vm.getCardToken(vm.doCheckoutForm);
+            } else {
+                vm.doCheckoutForm();
             }
         },
         fileChanged: function(plan, e){
@@ -2239,9 +2304,22 @@ var app = new Vue({
         }
     },
     mounted: function(){
-        this.get()
-        this.getUserCard();
-        this.getOrgAddress();
+        var vm = this;
+        vm.get()
+        vm.getUserCard();
+        var cardForm = $("#card-use");
+        if( cardForm.length > 0 ) {
+/*
+            vm.name = cardForm.find("[name='card_name']").val();
+            vm.addressLine1 = cardForm.find("card_address_line1").val();
+            vm.addressCity = cardForm.find("card_city").val();
+            vm.addressZip = cardForm.find("card_address_zip").val();
+            vm.addressCountry = cardForm.find("country").val();
+            vm.addressRegion = cardForm.find("region").val();
+*/
+        } else {
+            vm.getOrgAddress();
+        }
     }
 })
 }
@@ -2251,13 +2329,12 @@ var app = new Vue({
     el: "#update_card",
     mixins: [cardMixin],
     data: {
-        updateCard: false,
+        updateCard: true,
     },
     methods: {
         saveCard: function(){
             var vm = this;
             if(!vm.validateForm()) return;
-            if(!vm.updateCard) return;
             vm.getCardToken(function(token){
                 $.ajax({
                     method: 'PUT',
@@ -2268,8 +2345,6 @@ var app = new Vue({
                 }).done(function(resp) {
                     showMessages(["The payment info was updated."], "success");
                     vm.saveBillingAddress();
-                    vm.updateCard = false;
-                    vm.validationEnabled = false;
                 }).fail(handleRequestError);
             });
         },
