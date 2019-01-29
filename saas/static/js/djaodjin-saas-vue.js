@@ -2458,7 +2458,6 @@ var app = new Vue({
             }).done(function(res) {
                 window.location = djaodjinSettings.urls.provider.metrics_plans;
             }).fail(handleRequestError);
->>>>>>> 5508be18d079553b1e8f22a9f95fa838118507a6
         },
     },
     mounted: function(){
