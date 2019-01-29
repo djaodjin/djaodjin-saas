@@ -51,6 +51,7 @@ class StatementBalancePagination(PageNumberPagination):
     """
 
     def paginate_queryset(self, queryset, request, view=None):
+        self.start_at = view.start_at
         self.ends_at = view.ends_at
         self.balance_amount, self.balance_unit \
             = Transaction.objects.get_statement_balance(view.organization)
@@ -59,6 +60,7 @@ class StatementBalancePagination(PageNumberPagination):
 
     def get_paginated_response(self, data):
         return Response(OrderedDict([
+            ('start_at', self.start_at),
             ('ends_at', self.ends_at),
             ('balance', self.balance_amount),
             ('unit', self.balance_unit),
@@ -72,6 +74,7 @@ class StatementBalancePagination(PageNumberPagination):
 class TotalPagination(PageNumberPagination):
 
     def paginate_queryset(self, queryset, request, view=None):
+        self.start_at = view.start_at
         self.ends_at = view.ends_at
         self.totals = view.totals
         return super(TotalPagination, self).paginate_queryset(
@@ -79,6 +82,7 @@ class TotalPagination(PageNumberPagination):
 
     def get_paginated_response(self, data):
         return Response(OrderedDict([
+            ('start_at', self.start_at),
             ('ends_at', self.ends_at),
             ('total', self.totals['amount']),
             ('unit', self.totals['unit']),

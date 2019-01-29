@@ -151,6 +151,16 @@ transactionControllers.controller("itemsListCtrl",
         return $filter('humanizeCell')($scope.items.balance, $scope.items.unit, 0.01);
     }
 
+    $scope.setDataRange = function(params, start_at, ends_at) {
+        if( start_at ) {
+            params['start_at'] = moment(start_at).toDate();
+        }
+        if( ends_at ) {
+            params['ends_at'] = moment(ends_at).toDate()
+        }
+        return params;
+    }
+
     $scope.resetDefaults = function(overrides) {
         var opts = {q: ""};
         if( settings.sortByField ) {
@@ -158,12 +168,8 @@ transactionControllers.controller("itemsListCtrl",
             opts['ot'] = settings.sortDirection || "desc";
         }
         if( settings.date_range ) {
-            if( settings.date_range.start_at ) {
-                opts['start_at'] = moment(settings.date_range.start_at).toDate();
-            }
-            if( settings.date_range.ends_at ) {
-                opts['ends_at'] = moment(settings.date_range.ends_at).toDate()
-            }
+            $scope.setDataRange(opts,
+                settings.date_range.start_at, settings.date_range.ends_at);
         }
         $scope.itemsPerPage = settings.itemsPerPage; // Must match server-side
         $scope.maxSize = 5;               // Total number of direct pages link
@@ -184,7 +190,11 @@ transactionControllers.controller("itemsListCtrl",
     $scope.open = function($event, date_at) {
         $event.preventDefault();
         $event.stopPropagation();
-        $scope.opened[date_at] = true;
+        if( date_at === "start_at" || date_at === "ends_at") {
+            $scope.opened[date_at] = true;
+        } else {
+            date_at.opened = true;
+        }
     };
 
     $scope.$watch("params", function(newVal, oldVal, scope) {
@@ -285,6 +295,8 @@ transactionControllers.controller("itemsListCtrl",
                 if( resp.data.count != $scope.totalItems ) {
                     $scope.totalItems = resp.data.count;
                 }
+                $scope.setDataRange($scope.params,
+                    resp.data.start_at, resp.data.ends_at);
                 $scope.items = resp.data;
                 $scope.items.$resolved = true;
             }, function(resp) {
