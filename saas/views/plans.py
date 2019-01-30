@@ -1,4 +1,4 @@
-# Copyright (c) 2018, DjaoDjin inc.
+# Copyright (c) 2019, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -24,7 +24,9 @@
 from __future__ import unicode_literals
 
 from django import forms
+from django.contrib import messages
 from django.http import HttpResponseRedirect
+from django.utils.translation import ugettext_lazy as _
 from django.views.generic import (CreateView, ListView, UpdateView,
     TemplateView)
 from django.views.generic.detail import SingleObjectMixin
@@ -171,6 +173,12 @@ djaodjin-saas/tree/master/saas/templates/saas/profile/plans/new.html>`__).
     """
     template_name = 'saas/profile/plans/new.html'
 
+    def get_success_url(self):
+        messages.success(
+            self.request, _("Successfully created plan titled '%(title)s'.") % {
+                'title': self.object.title})
+        return reverse('saas_metrics_plans', args=(self.organization,))
+
 
 class PlanUpdateView(PlanFormMixin, UpdateView):
     """
@@ -189,8 +197,13 @@ djaodjin-saas/tree/master/saas/templates/saas/profile/plans/edit.html>`__).
       - ``request`` The HTTP request object
     """
     template_name = 'saas/profile/plans/edit.html'
-
     slug_url_kwarg = 'plan'
+
+    def get_success_url(self):
+        messages.success(self.request,
+            _("Successfully updated plan titled '%(title)s'.") % {
+                'title': self.object.title})
+        return reverse('saas_plan_edit', kwargs=self.get_url_kwargs())
 
     def get_context_data(self, **kwargs):
         context = super(PlanUpdateView, self).get_context_data(**kwargs)
