@@ -1,4 +1,4 @@
-# Copyright (c) 2018, DjaoDjin inc.
+# Copyright (c) 2019, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -73,7 +73,13 @@ def _clean_field(user_model, field_name, value):
 
 
 def create_user_from_email(email, password=None, **kwargs):
-    #pylint:disable=unused-argument,unused-variable,protected-access
+    #pylint:disable=too-many-locals,unused-variable
+    #
+    # Implementation Note: This code is very similar to
+    # `signup.models.ActivatedUserManager.create_user_from_email`.
+    # Its purpose here instead of calling the above is to have
+    # djaodjin-saas works as a stand-alone project (no dependency on signup).
+    user = None
     user_model = get_user_model()
     first_name = kwargs.get('first_name', "")
     last_name = kwargs.get('last_name', "")
@@ -83,27 +89,46 @@ def create_user_from_email(email, password=None, **kwargs):
     first_name = _clean_field(user_model, 'first_name', first_name)
     last_name = _clean_field(user_model, 'last_name', last_name)
     # The e-mail address was already validated by the Serializer.
-    username = _clean_field(user_model, 'username', email.split('@')[0])
-    field = user_model._meta.get_field('username')
-    max_length = field.max_length
     err = IntegrityError()
-    trials = 0
-    username_base = username
-    while trials < 10:
-        try:
-            return user_model.objects.create_user(username,
-                email=email, first_name=first_name, last_name=last_name)
-        except IntegrityError as exp:
-            err = exp
-            suffix = '-%s' % generate_random_slug(3)
-            if len(username_base) + len(suffix) > max_length:
-                username = '%s%s' % (
-                    username_base[:(max_length - len(suffix))],
-                    suffix)
-            else:
-                username = '%s%s' % (username_base, suffix)
-            trials = trials + 1
-    raise err
+    if hasattr(user_model.objects, 'create_user_from_email'):
+        # Implementation Note:
+        # calling `signup.models.ActivatedUserManager.create_user_from_email`
+        # directly bypasses sending a `user_registered` signal.
+        user = user_model.objects.create_user_from_email(
+            email, password=password,
+            first_name=first_name, last_name=last_name)
+    else:
+        username = _clean_field(user_model, 'username', email.split('@')[0])
+        #pylint:disable=protected-access
+        field = user_model._meta.get_field('username')
+        max_length = field.max_length
+        trials = 0
+        username_base = username
+        while trials < 10:
+            try:
+                user = user_model.objects.create_user(username,
+                    email=email, first_name=first_name, last_name=last_name)
+                break
+            except IntegrityError as exp:
+                err = exp
+                suffix = '-%s' % generate_random_slug(3)
+                if len(username_base) + len(suffix) > max_length:
+                    username = '%s%s' % (
+                        username_base[:(max_length - len(suffix))],
+                        suffix)
+                else:
+                    username = '%s%s' % (username_base, suffix)
+                trials = trials + 1
+    if not user:
+        raise err
+    request = kwargs.get('request', None)
+    invited_by = request.user if request else None
+    LOGGER.info("'%s %s <%s>' invited by '%s'",
+        user.first_name, user.last_name, user.email, invited_by,
+        extra={'event': 'invited', 'user': user, 'invited_by': invited_by})
+    signals.user_invited.send(
+        sender=__name__, user=user, invited_by=invited_by)
+    return user
 
 
 class ForceSerializer(NoModelSerializer):
@@ -232,7 +257,7 @@ class OptinBase(object):
                 try:
                     manager = user_model.objects.get(email__iexact=email)
                 except user_model.DoesNotExist:
-                    manager = create_user_from_email(email)
+                    manager = create_user_from_email(email, request=request)
                 organization.add_manager(manager, request_user=request.user)
                 organizations = [organization]
                 invite = True
@@ -703,7 +728,8 @@ class RoleFilteredListAPIView(RoleSmartListMixin, RoleByDescrQuerysetMixin,
         if not user:
             user = create_user_from_email(
                 serializer.validated_data['email'],
-                full_name=serializer.validated_data.get('full_name', ''))
+                full_name=serializer.validated_data.get('full_name', ''),
+                request=request)
             grant_key = generate_random_slug()
         if not (self.role_description.skip_optin_on_grant or grant_key):
             grant_key = generate_random_slug()

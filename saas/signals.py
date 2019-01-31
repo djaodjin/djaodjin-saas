@@ -1,4 +1,4 @@
-# Copyright (c) 2018, DjaoDjin inc.
+# Copyright (c) 2019, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -40,6 +40,7 @@ expires_soon = Signal(providing_args=['subscription', 'nb_days'])
 card_expires_soon = Signal(providing_args=['organization', 'nb_days'])
 subscription_upgrade = Signal(providing_args=['subscription', 'nb_days'])
 payment_method_absent = Signal(providing_args=['organization'])
+user_invited = Signal(providing_args=['user', 'invited_by'])
 user_relation_added = Signal(providing_args=['role', 'reason'])
 user_relation_requested = Signal(providing_args=[
     'organization', 'user', 'reason'])
