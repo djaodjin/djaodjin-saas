@@ -1,4 +1,4 @@
-# Copyright (c) 2018, DjaoDjin inc.
+# Copyright (c) 2019, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -230,8 +230,8 @@ class OrganizationCreateView(RedirectFormMixin, CreateView):
     Template:
 
     To edit the layout of this page, create a local \
-    ``saas/app/new.html`` (`example <https://github.com/djaodjin\
-/djaodjin-saas/tree/master/saas/templates/saas/app/new.html>`__).
+    ``saas/profile/new.html`` (`example <https://github.com/djaodjin\
+/djaodjin-saas/tree/master/saas/templates/saas/profile/new.html>`__).
 
     Template context:
       - ``request`` The HTTP request object
@@ -240,7 +240,7 @@ class OrganizationCreateView(RedirectFormMixin, CreateView):
     model = get_organization_model()
     form_class = OrganizationCreateForm
     pattern_name = 'saas_organization_cart'
-    template_name = "saas/app/new.html"
+    template_name = "saas/profile/new.html"
 
     def form_valid(self, form):
         with transaction.atomic():
@@ -344,6 +344,10 @@ class OrganizationProfileView(OrganizationMixin, UpdateView):
             self.object.is_bulk_buyer = False
         if 'extra' in validated_data:
             self.object.extra = validated_data['extra']
+        is_provider = self.object.is_provider
+        if _valid_manager(self.request, [get_broker()]):
+            self.object.is_provider = validated_data.get(
+                'is_provider', is_provider)
         result = super(OrganizationProfileView, self).form_valid(form)
         signals.organization_updated.send(sender=__name__,
                 organization=self.object, changes=changes,
@@ -363,7 +367,9 @@ class OrganizationProfileView(OrganizationMixin, UpdateView):
             # Do not display the bulk buying option if there are no plans.
             kwargs.update({'is_bulk_buyer': self.object.is_bulk_buyer})
         if _valid_manager(self.request, [get_broker()]):
-            kwargs.update({'extra': self.object.extra})
+            kwargs.update({
+                'is_provider': self.object.is_provider,
+                'extra': self.object.extra})
         return kwargs
 
     def get_success_url(self):

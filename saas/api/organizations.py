@@ -1,4 +1,4 @@
-# Copyright (c) 2018, DjaoDjin inc.
+# Copyright (c) 2019, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -33,10 +33,12 @@ from rest_framework.generics import (ListAPIView, ListCreateAPIView,
 from rest_framework.response import Response
 
 from .. import signals
+from ..decorators import _valid_manager
 from .serializers import (
     OrganizationSerializer, OrganizationWithSubscriptionsSerializer)
 from ..mixins import (OrganizationMixin, OrganizationSmartListMixin,
     ProviderMixin)
+from ..models import get_broker
 from ..utils import get_organization_model
 
 #pylint: disable=no-init
@@ -116,6 +118,9 @@ class OrganizationDetailAPIView(OrganizationMixin,
         return self.organization
 
     def perform_update(self, serializer):
+        is_provider = serializer.instance.is_provider
+        if _valid_manager(self.request, [get_broker()]):
+            is_provider = serializer.validated_data('is_provider', is_provider)
         changes = serializer.instance.get_changes(serializer.validated_data)
         user = serializer.instance.attached_user()
         if user:
@@ -123,7 +128,7 @@ class OrganizationDetailAPIView(OrganizationMixin,
                 'slug', user.username)
         serializer.instance.slug = serializer.validated_data.get(
             'slug', serializer.instance.slug)
-        super(OrganizationDetailAPIView, self).perform_update(serializer)
+        serializer.save(is_provider=is_provider)
         signals.organization_updated.send(sender=__name__,
                 organization=serializer.instance, changes=changes,
                 user=self.request.user)

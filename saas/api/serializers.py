@@ -1,4 +1,4 @@
-# Copyright (c) 2018, DjaoDjin inc.
+# Copyright (c) 2019, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -256,7 +256,7 @@ class OrganizationSerializer(serializers.ModelSerializer):
         fields = ('slug', 'created_at', 'full_name', 'default_timezone',
             'email', 'phone', 'street_address', 'locality',
             'region', 'postal_code', 'country', 'extra',
-            'printable_name', 'is_bulk_buyer')
+            'printable_name', 'is_provider', 'is_bulk_buyer')
         read_only_fields = ('created_at',)
 
 

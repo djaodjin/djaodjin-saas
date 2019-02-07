@@ -1,4 +1,4 @@
-# Copyright (c) 2018, DjaoDjin inc.
+# Copyright (c) 2019, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -196,6 +196,13 @@ class OrganizationForm(PostalFormMixin, forms.ModelForm):
                 label=mark_safe(_("Enable GroupBuy (<a href=\""\
 "https://djaodjin.com/docs/#group-billing\" target=\"_blank\">what is it?</a>)"
                 )))
+        if 'is_provider' in self.initial:
+            initial = self.initial['is_provider']
+            if self.instance:
+                initial = self.instance.is_provider
+            self.fields['is_provider'] = forms.BooleanField(required=False,
+                label=_("Enable creation of subscription plans"),
+                initial=initial)
         if 'extra' in self.initial:
             initial = self.initial['extra']
             if self.instance:

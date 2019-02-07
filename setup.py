@@ -1,4 +1,4 @@
-# Copyright (c) 2018, DjaoDjin inc.
+# Copyright (c) 2019, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -63,7 +63,6 @@ setup(
                            'static/js/*.js',
                            'templates/saas/*.html',
                            'templates/saas/agreements/*.md',
-                           'templates/saas/app/*.html',
                            'templates/saas/billing/*.html',
                            'templates/saas/legal/*.html',
                            'templates/saas/metrics/*.html',
