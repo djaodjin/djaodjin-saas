@@ -926,7 +926,7 @@ var app = new Vue({
         },
         getUsers: function(){
             var vm = this;
-            $.get(djaodjinSettings.urls.api_users, vm.getParams(), function(res){
+            $.get(djaodjinSettings.urls.broker.api_users, vm.getParams(), function(res){
                 vm.users = res
                 vm.usersLoaded = true;
             });
