@@ -995,14 +995,15 @@ var app = new Vue({
             tables: djaodjinSettings.tables,
             activeTab: 0,
         }
-        data.ends_at = moment().toISOString();
+        data.ends_at = moment();
         if( djaodjinSettings.date_range
             && djaodjinSettings.date_range.ends_at ) {
             var ends_at = moment(djaodjinSettings.date_range.ends_at);
             if(ends_at.isValid()){
-                data.ends_at = ends_at.format(DATE_FORMAT);
+                data.ends_at = ends_at;
             }
         }
+        data.ends_at = data.ends_at.format(DATE_FORMAT);
         return data;
     },
     methods: {
