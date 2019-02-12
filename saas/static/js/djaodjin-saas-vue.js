@@ -1,5 +1,3 @@
-
-
 Vue.use(uiv, {prefix: 'uiv'});
 
 Vue.filter('formatDate', function(value, format) {
@@ -1080,7 +1078,8 @@ var app = new Vue({
         },
         activeClass: function(index) {
             var vm = this;
-            return (index === vm.activeTab) ? "active" : "";
+            var base = 'nav-link';
+            return (index === vm.activeTab) ? base + " active" : base;
         },
         humanizeCell: function(value, unit, scale) {
             var vm = this;
