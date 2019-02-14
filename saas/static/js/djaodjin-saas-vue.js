@@ -1,5 +1,3 @@
-
-
 Vue.use(uiv, {prefix: 'uiv'});
 
 Vue.filter('formatDate', function(value, format) {
@@ -40,10 +38,12 @@ Vue.filter('humanizeCell', function(cell, unit, scale) {
     scale = scale || 1;
     var value = cell * scale;
     var symbol = '';
+    var precision = 0;
     if(unit) {
         symbol = currencyToSymbolFilter(unit);
+        precision = 2;
     }
-    return currencyFilter(value, symbol, 2);
+    return currencyFilter(value, symbol, precision);
 });
 
 Vue.filter('relativeDate', function(at_time) {
@@ -686,7 +686,7 @@ var subscriptionsMixin = {
             cutOff.setDate(this.ends_at.getDate() + 5);
             var subEndsAt = new Date(subscription.ends_at);
             if( subEndsAt < cutOff ) {
-                return "ends-soon";
+                return "bg-warning";
             }
             return "";
         },
@@ -926,7 +926,7 @@ var app = new Vue({
         },
         getUsers: function(){
             var vm = this;
-            $.get(djaodjinSettings.urls.api_users, vm.getParams(), function(res){
+            $.get(djaodjinSettings.urls.broker.api_users, vm.getParams(), function(res){
                 vm.users = res
                 vm.usersLoaded = true;
             });
@@ -997,14 +997,15 @@ var app = new Vue({
             tables: djaodjinSettings.tables,
             activeTab: 0,
         }
-        data.ends_at = moment().toISOString();
+        data.ends_at = moment();
         if( djaodjinSettings.date_range
             && djaodjinSettings.date_range.ends_at ) {
             var ends_at = moment(djaodjinSettings.date_range.ends_at);
             if(ends_at.isValid()){
-                data.ends_at = ends_at.format(DATE_FORMAT);
+                data.ends_at = ends_at;
             }
         }
+        data.ends_at = data.ends_at.format(DATE_FORMAT);
         return data;
     },
     methods: {
@@ -1080,7 +1081,8 @@ var app = new Vue({
         },
         activeClass: function(index) {
             var vm = this;
-            return (index === vm.activeTab) ? "active" : "";
+            var base = 'nav-link';
+            return (index === vm.activeTab) ? base + " active" : base;
         },
         humanizeCell: function(value, unit, scale) {
             var vm = this;
