@@ -79,6 +79,7 @@ WSGI_APPLICATION = 'testsite.wsgi.application'
 ROOT_URLCONF = 'testsite.urls'
 
 MIDDLEWARE = (
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'debug_toolbar.middleware.DebugToolbarMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
