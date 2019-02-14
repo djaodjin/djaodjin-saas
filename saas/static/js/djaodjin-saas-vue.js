@@ -38,10 +38,12 @@ Vue.filter('humanizeCell', function(cell, unit, scale) {
     scale = scale || 1;
     var value = cell * scale;
     var symbol = '';
+    var precision = 0;
     if(unit) {
         symbol = currencyToSymbolFilter(unit);
+        precision = 2;
     }
-    return currencyFilter(value, symbol, 2);
+    return currencyFilter(value, symbol, precision);
 });
 
 Vue.filter('relativeDate', function(at_time) {
@@ -684,7 +686,7 @@ var subscriptionsMixin = {
             cutOff.setDate(this.ends_at.getDate() + 5);
             var subEndsAt = new Date(subscription.ends_at);
             if( subEndsAt < cutOff ) {
-                return "ends-soon";
+                return "bg-warning";
             }
             return "";
         },
