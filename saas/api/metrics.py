@@ -571,6 +571,7 @@ class PlanMetricAPIView(BeforeMixin, ProviderMixin, GenericAPIView):
                 plan, from_date=self.ends_at, tz=self.timezone)
             table.append({
                 "key": plan.slug,
+                "title": plan.title,
                 "values": values,
                 "location": reverse(
                     'saas_plan_edit', args=(self.provider, plan)),
