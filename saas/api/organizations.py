@@ -120,7 +120,8 @@ class OrganizationDetailAPIView(OrganizationMixin,
     def perform_update(self, serializer):
         is_provider = serializer.instance.is_provider
         if _valid_manager(self.request, [get_broker()]):
-            is_provider = serializer.validated_data('is_provider', is_provider)
+            is_provider = serializer.validated_data.get(
+                'is_provider', is_provider)
         changes = serializer.instance.get_changes(serializer.validated_data)
         user = serializer.instance.attached_user()
         if user:
