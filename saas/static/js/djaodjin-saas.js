@@ -270,8 +270,8 @@
             refundedInput.val(availableAmount);
             var submitButton = self.element.find("[type='submit']");
             // Make sure we unbind the previous handler to avoid double submits
-            submitButton.off("click");
-            submitButton.click(function() {
+            submitButton.off("click.refund");
+            submitButton.on("click.refund", function() {
                 return self.submit();
             });
         },
