@@ -254,20 +254,15 @@
         </form>
      */
     function Refund(el, options){
-        this.element = $(el);
-        this.options = options;
-        this.init();
+        var self = this;
+        self.element = $(el);
+        self.setOptions(options);
+        self.init();
     }
 
     Refund.prototype = {
         init: function () {
             var self = this;
-            var refundedInput = self.element.find("[name='amount']");
-            var availableAmount =
-                (self.options.availableAmount / 100).toFixed(2);
-            refundedInput.attr("max", availableAmount);
-            refundedInput.attr("data-linenum", self.options.linenum);
-            refundedInput.val(availableAmount);
             var submitButton = self.element.find("[type='submit']");
             // Make sure we unbind the previous handler to avoid double submits
             submitButton.off("click.refund");
@@ -283,6 +278,17 @@
                 return crsfNode.val();
             }
             return getMetaCSRFToken();
+        },
+
+        setOptions: function(opts) {
+            var self = this;
+            self.options = opts;
+            var refundedInput = self.element.find("[name='amount']");
+            var availableAmount =
+                (self.options.availableAmount / 100).toFixed(2);
+            refundedInput.attr("max", availableAmount);
+            refundedInput.attr("data-linenum", self.options.linenum);
+            refundedInput.val(availableAmount);
         },
 
         submit: function() {
@@ -338,7 +344,15 @@
 
     $.fn.refund = function(options) {
         var opts = $.extend({}, $.fn.refund.defaults, options);
-        return new Refund($(this), opts);
+        return this.each(function() {
+            var element = $(this)[0];
+            var refund = $.data(element, "refund");
+            if( !refund ) {
+                var v = $.data(element, "refund", new Refund(element, opts));
+            } else {
+                refund.setOptions(opts);
+            }
+        });
     };
 
     $.fn.refund.defaults = {

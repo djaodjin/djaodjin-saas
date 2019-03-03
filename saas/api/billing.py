@@ -256,7 +256,7 @@ class CartItemUploadAPIView(CartMixin, GenericAPIView):
 
     Content of ``names.csv``:
 
-    .. sourcecode
+    .. code-block:: csv
 
         Joe,Smith,joesmith@example.com
         Marie,Johnson,mariejohnson@example.com
