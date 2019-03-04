@@ -3002,14 +3002,19 @@ class TransactionQuerySet(models.QuerySet):
             dest_organization=organization,
             created_at__lt=until).values(
                 'event_id', 'dest_unit').annotate(
-                dest_balance=Sum('dest_amount'))
+                dest_balance=Sum('dest_amount'),
+                last_activity_at=Max('created_at')).order_by(
+                    'last_activity_at')
         orig_balances = self.filter(
             Q(orig_account=Transaction.PAYABLE)
             | Q(orig_account=Transaction.LIABILITY),
             orig_organization=organization,
             created_at__lt=until).values(
                 'event_id', 'orig_unit').annotate(
-                orig_balance=Sum('orig_amount'))
+                orig_balance=Sum('orig_amount'),
+                last_activity_at=Max('created_at')).order_by(
+                    'last_activity_at', '-event_id')
+
         dest_balance_per_events = {}
         for dest_balance in dest_balances:
             event_id = dest_balance['event_id']
@@ -3025,8 +3030,21 @@ class TransactionQuerySet(models.QuerySet):
             dest_balance_per_events.update({
                 event_id: Price(
                     dest_balance['dest_balance'], dest_balance['dest_unit'])})
+        prev_event_id = None
         for orig_balance in orig_balances:
             event_id = orig_balance['event_id']
+            if event_id.startswith('sub_'):
+                # We could have events for subscriptions (Receivable, Payable),
+                # or charges (Liability, Funds) here.
+                prev_event_id = event_id
+            elif prev_event_id:
+                # XXX Quick workaround: assign the amount of the charge
+                #     to the previous subscription. We should really load
+                #     the charge items and assign amounts accordingly.
+                # p.s. We should always have a (Receivable, Payable) before
+                # a charge so an undefined variable exception should not be
+                # raised.
+                event_id = prev_event_id
             dest_total = dest_balance_per_events.get(event_id,
                 Price(0, orig_balance['orig_unit']))
             dest_balance = dest_total.amount
@@ -3379,7 +3397,7 @@ class TransactionManager(models.Manager):
         return self.get_queryset().get_statement_balance(
             organization, until=until)
 
-    def get_subscription_statement_balance(self, subscription):
+    def get_subscription_statement_balance(self, subscription, until=None):
         # XXX A little long but no better so far.
         #pylint:disable=invalid-name
         """
@@ -3395,7 +3413,8 @@ class TransactionManager(models.Manager):
         # amount due on a subscription by itself is more complicated than
         # just filtering by account and event_id.
         balances = sum_dest_amount(
-            self.get_invoiceables(subscription.organization).filter(
+            self.get_invoiceables(
+                subscription.organization, until=until).filter(
                 event_id=get_sub_event_id(subscription)))
         if len(balances) > 1:
             raise ValueError(_("balances with multiple currency units (%s)") %
@@ -3609,7 +3628,8 @@ class TransactionManager(models.Manager):
                 cowork:Settled
         """
         created_at = datetime_or_now(created_at)
-        balance, unit = self.get_subscription_statement_balance(subscription)
+        balance, unit = self.get_subscription_statement_balance(
+            subscription, until=created_at)
         if balance_now is None:
             balance_now = balance
         if descr_pat is None:
