@@ -209,6 +209,10 @@ djaodjin-saas/tree/master/saas/templates/saas/profile/plans/edit.html>`__).
         context = super(PlanUpdateView, self).get_context_data(**kwargs)
         plan = self.get_object()
         context['show_delete'] = plan.subscription_set.count() == 0
+        context = update_context_urls(context, {
+            'plan_subscribers': reverse('saas_plan_subscribers',
+                args=(self.organization, self.object))
+        })
         return context
 
 
