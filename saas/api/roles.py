@@ -705,6 +705,14 @@ class RoleFilteredListAPIView(RoleSmartListMixin, RoleByDescrQuerysetMixin,
     """
     serializer_class = RoleSerializer
 
+    def get_queryset(self):
+        queryset = super(RoleFilteredListAPIView, self).get_queryset()
+        status = self.request.query_params.get('role_status')
+        if status:
+            active = status == 'active'
+            return queryset.filter(grant_key__isnull=active)
+        return queryset
+
     def create(self, request, *args, **kwargs): #pylint:disable=unused-argument
         grant_key = None
         serializer = UserRoleCreateSerializer(data=request.data)
