@@ -802,6 +802,14 @@ class RoleDetailAPIView(RoleMixin, DestroyAPIView):
         DELETE /api/profile/cowork/roles/managers/xia/ HTTP/1.1
     """
 
+    def post(self, request, *args, **kwargs):
+        # TODO add docs
+        queryset = self.get_queryset()
+        for role in queryset:
+            signals.user_relation_added.send(sender=__name__,
+                role=role, reason=None, request_user=request.user)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
     def destroy(self, request, *args, **kwargs):
         queryset = self.get_queryset()
         roles = [str(role.role_description) for role in queryset]
