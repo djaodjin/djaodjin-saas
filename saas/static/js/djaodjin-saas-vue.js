@@ -1003,6 +1003,18 @@ var app = new Vue({
             }
         }
     },
+    methods: {
+        sendInvite: function(slug){
+            var vm = this;
+            var url = vm.url + '/' + slug + '/';
+            $.ajax({
+                method: 'POST',
+                url: url,
+            }).done(function(res) {
+                showMessages(["Invite for " + slug + " has been sent"], "success");
+            }).fail(handleRequestError);
+        },
+    },
     mounted: function(){
         this.get()
     }
