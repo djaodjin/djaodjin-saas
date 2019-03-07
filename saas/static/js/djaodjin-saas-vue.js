@@ -1262,8 +1262,10 @@ var app = new Vue({
 })
 }
 
+var subscriptionsListVM;
+
 if($('#subscriptions-list-container').length > 0){
-var app = new Vue({
+subscriptionsListVM = new Vue({
     el: "#subscriptions-list-container",
     mixins: [subscriptionsMixin, paginationMixin, itemListMixin],
     data: {
@@ -1332,6 +1334,7 @@ var app = new Vue({
                 method: 'DELETE',
                 url: url,
             }).done(function (){
+                vm.$emit('expired');
                 vm.params.page = 1;
                 vm.get();
             }).fail(handleRequestError);
@@ -1354,8 +1357,10 @@ var app = new Vue({
 })
 }
 
+var expiredSubscriptionsListVM;
+
 if($('#expired-subscriptions-list-container').length > 0){
-var app = new Vue({
+expiredSubscriptionsListVM = new Vue({
     el: "#expired-subscriptions-list-container",
     mixins: [subscriptionsMixin, paginationMixin, itemListMixin],
     data: {
@@ -1366,6 +1371,7 @@ var app = new Vue({
     },
     mounted: function(){
         this.get();
+        subscriptionsListVM.$on('expired', this.get);
     }
 })
 }
