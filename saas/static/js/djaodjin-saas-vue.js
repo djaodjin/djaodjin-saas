@@ -1681,7 +1681,8 @@ var app = new Vue({
         }
     },
     mounted: function(){
-        this.get();
+//   XXX the form is populated on page load.
+//        this.get();
     },
 })
 }
