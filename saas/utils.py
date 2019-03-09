@@ -22,8 +22,9 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-import datetime, inspect, random, sys
+import datetime, inspect, random, re, sys
 
+from django.core.exceptions import NON_FIELD_ERRORS
 from django.conf import settings as django_settings
 from django.db import transaction, IntegrityError
 from django.http.request import split_domain_port, validate_host
@@ -31,7 +32,9 @@ from django.template.defaultfilters import slugify
 from django.utils import six
 from django.utils.dateparse import parse_datetime
 from django.utils.timezone import utc, get_current_timezone
+from django.utils.translation import ugettext_lazy as _
 from rest_framework.exceptions import ValidationError
+from rest_framework.settings import api_settings
 from pytz import timezone, UnknownTimeZoneError
 from pytz.tzinfo import DstTzInfo
 
@@ -152,7 +155,7 @@ def generate_random_slug(length=40, prefix=None):
     if prefix:
         length = length - len(prefix)
     suffix = "".join([random.choice("abcdef0123456789")
-                      for _ in range(length)]) # Generated coupon codes are
+                      for val in range(length)]) # Generated coupon codes are
                              # stored as ``Transaction.event_id`` we a 'cpn_'
                              # prefix. The total event_id must be less than 50
                              # chars.
@@ -223,3 +226,74 @@ def validate_redirect_url(next_url):
         if not (domain and validate_host(domain, allowed_hosts)):
             return None
     return parts.path
+
+
+def update_db_row(instance, form):
+    """
+    Updates the record in the underlying database, or adds a validation
+    error in the form. When an error is added, the form is returned otherwise
+    this function returns `None`.
+    """
+    try:
+        try:
+            instance.save()
+        except IntegrityError as err:
+            handle_uniq_error(err)
+    except ValidationError as err:
+        fill_form_errors(form, err)
+        return form
+    return None
+
+
+def fill_form_errors(form, err):
+    """
+    Fill a Django form from DRF ValidationError exceptions.
+    """
+    if isinstance(err.detail, dict):
+        for field, msg in six.iteritems(err.detail):
+            if field in form.fields:
+                form.add_error(field, msg)
+            elif field == api_settings.NON_FIELD_ERRORS_KEY:
+                form.add_error(NON_FIELD_ERRORS, msg)
+            else:
+                form.add_error(NON_FIELD_ERRORS,
+                    _("No field '%(field)s': %(msg)s" % {
+                    'field': field, 'msg': msg}))
+
+
+def handle_uniq_error(err, renames=None):
+    """
+    Will raise a ``ValidationError`` with the appropriate error message.
+    """
+    field_name = None
+    err_msg = str(err).splitlines().pop()
+    # PostgreSQL unique constraint.
+    look = re.match(
+        r'DETAIL:\s+Key \(([a-z_]+)\)=\(.*\) already exists\.', err_msg)
+    if look:
+        field_name = look.group(1)
+    else:
+        look = re.match(
+          r'DETAIL:\s+Key \(lower\(([a-z_]+)::text\)\)=\(.*\) already exists\.',
+            err_msg)
+        if look:
+            field_name = look.group(1)
+        else:
+            # SQLite unique constraint.
+            look = re.match(
+                r'UNIQUE constraint failed: [a-z_]+\.([a-z_]+)', err_msg)
+            if look:
+                field_name = look.group(1)
+            else:
+                # On CentOS 7, installed sqlite 3.7.17
+                # returns differently-formatted error message.
+                look = re.match(
+                    r'column ([a-z_]+) is not unique', err_msg)
+                if look:
+                    field_name = look.group(1)
+    if field_name:
+        if renames and field_name in renames:
+            field_name = renames[field_name]
+        raise ValidationError({field_name:
+            _("This %(field)s is already taken.") % {'field': field_name}})
+    raise err

@@ -41,7 +41,7 @@ from ..forms import (OrganizationForm, OrganizationCreateForm,
 from ..mixins import (OrganizationMixin, ProviderMixin, RoleDescriptionMixin,
     PlanMixin)
 from ..models import Plan, Subscription, get_broker, is_broker
-from ..utils import get_organization_model, update_context_urls
+from ..utils import get_organization_model, update_context_urls, update_db_row
 
 
 class RoleDetailView(RoleDescriptionMixin, TemplateView):
@@ -348,11 +348,14 @@ class OrganizationProfileView(OrganizationMixin, UpdateView):
         if _valid_manager(self.request, [get_broker()]):
             self.object.is_provider = validated_data.get(
                 'is_provider', is_provider)
-        result = super(OrganizationProfileView, self).form_valid(form)
+
+        form.save(commit=False)
+        if update_db_row(self.object, form):
+            return self.form_invalid(form)
         signals.organization_updated.send(sender=__name__,
                 organization=self.object, changes=changes,
                 user=self.request.user)
-        return result
+        return HttpResponseRedirect(self.get_success_url())
 
     def get_form_class(self):
         if self.object.attached_user():
