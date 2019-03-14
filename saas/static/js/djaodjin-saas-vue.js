@@ -1136,31 +1136,81 @@ var app = new Vue({
         paginationMixin,
         filterableMixin,
         sortableMixin,
+        timezoneMixin
     ],
-    data: {
-        currentTab: 1,
-        tables: {
-            registered: {
-                url: djaodjinSettings.urls.broker.api_users_registered,
-                results: [],
-                count: 0,
-                loaded: false
+    data: function(){
+        var data = {
+            currentTab: 1,
+            tables: {
+                registered: {
+                    url: djaodjinSettings.urls.broker.api_users_registered,
+                    results: [],
+                    count: 0,
+                    loaded: false
+                },
+                subscribed: {
+                    url: djaodjinSettings.urls.provider.api_subscribers_active,
+                    results: [],
+                    count: 0,
+                    loaded: false
+                },
+                churned: {
+                    url: djaodjinSettings.urls.provider.api_subscribers_churned,
+                    results: [],
+                    count: 0,
+                    loaded: false
+                },
             },
-            subscribed: {
-                url: djaodjinSettings.urls.provider.api_subscribers_active,
-                results: [],
-                count: 0,
-                loaded: false
+            plansUrl: djaodjinSettings.urls.provider.api_metrics_plans,
+            plansData: {
+                data: []
             },
-            churned: {
-                url: djaodjinSettings.urls.provider.api_subscribers_churned,
-                results: [],
-                count: 0,
-                loaded: false
+        }
+
+        data.endsAt = moment();
+        if( djaodjinSettings.date_range
+            && djaodjinSettings.date_range.ends_at ) {
+            var ends_at = moment(djaodjinSettings.date_range.ends_at);
+            if(ends_at.isValid()){
+                data.endsAt = ends_at;
             }
-        },
+        }
+        data.endsAt = data.endsAt.format(DATE_FORMAT);
+
+        return data;
     },
     methods: {
+        getPlansData: function(){
+            var vm = this;
+            var params = {"ends_at": moment(vm.endsAt, DATE_FORMAT).format()};
+            if( vm.timezone !== 'utc' ) {
+                params["timezone"] = moment.tz.guess();
+            }
+            $.get(vm.plansUrl, params, function(resp){
+                var unit = resp.unit;
+                var scale = resp.scale;
+                scale = parseFloat(scale);
+                if( isNaN(scale) ) {
+                    scale = 1.0;
+                }
+                // add "extra" rows at the end
+                var extra = resp.extra || [];
+
+                var tableData = {
+                    key: 'plan',
+                    title: resp.title,
+                    unit: unit,
+                    scale: scale,
+                    data: resp.table,
+                    extra: resp.extra
+                }
+                vm.convertDatetime(tableData.data, vm.timezone === 'utc');
+                vm.plansData = tableData
+
+                updateChart(".chart-content",
+                    tableData.data, tableData.unit, tableData.scale, tableData.extra);
+            });
+        },
         getParams: function(excludes){
             var vm = this;
             var params = {};
@@ -1244,6 +1294,11 @@ var app = new Vue({
             this.clearFilters();
             this.get();
         },
+        humanizeCell: function(value, unit, scale) {
+            var vm = this;
+            var filter = Vue.filter('humanizeCell');
+            return filter(value, unit, scale);
+        },
     },
     computed: {
         totalItems: function(){
@@ -1254,10 +1309,18 @@ var app = new Vue({
             var vm = this;
             var sets = ['registered', 'subscribed', 'churned'];
             return sets[vm.currentTab];
-        }
+        },
+        planTableDates: function(){
+            var res = this.plansData.data;
+            if(res.length > 0){
+                return res[0].values;
+            }
+            return []
+        },
     },
     mounted: function(){
         this.get();
+        this.getPlansData();
     }
 })
 }
