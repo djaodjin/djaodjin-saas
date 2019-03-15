@@ -412,7 +412,10 @@ var itemListMixin = {
                     results: [],
                     count: 0
                 },
-                params: {},
+                params: {
+                    start_at: null,
+                    ends_at: null
+                },
                 getCb: null,
             }
             if( djaodjinSettings.date_range ) {
@@ -2474,6 +2477,8 @@ var app = new Vue({
     el: "#plan-list-container",
     mixins: [
         itemListMixin,
+        paginationMixin,
+        filterableMixin
     ],
     data: {
         url: djaodjinSettings.urls.provider.api_plans,

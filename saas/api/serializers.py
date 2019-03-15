@@ -336,7 +336,8 @@ class PlanSerializer(serializers.ModelSerializer):
         fields = ('slug', 'title', 'description', 'is_active',
                   'setup_amount', 'period_amount', 'interval', 'app_url',
                   'advance_discount', 'unit', 'organization', 'extra',
-                  'period_length', 'renewal_type', 'is_not_priced')
+                  'period_length', 'renewal_type', 'is_not_priced',
+                  'created_at')
         read_only_fields = ('slug', 'app_url')
 
     @staticmethod
