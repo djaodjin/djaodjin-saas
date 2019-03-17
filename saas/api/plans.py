@@ -28,12 +28,14 @@ from rest_framework.generics import (ListCreateAPIView,
 from rest_framework.response import Response
 
 from .serializers import PlanSerializer
-from ..mixins import PlanMixin
+from ..mixins import PlanMixin, DateRangeMixin
+from ..filters import SortableDateRangeSearchableFilterBackend
 from ..models import Plan, Subscription
 from .. import settings
 
 
-class PlanCreateAPIView(PlanMixin, ListCreateAPIView):
+class PlanCreateAPIView(DateRangeMixin, PlanMixin,
+    ListCreateAPIView):
     """
     Create a ``Plan`` for a provider.
 
@@ -69,7 +71,8 @@ class PlanCreateAPIView(PlanMixin, ListCreateAPIView):
     serializer_class = PlanSerializer
 
     def get_queryset(self):
-        return self.organization.plans.all()
+        self.queryset = self.organization.plans.all()
+        return super(PlanCreateAPIView, self).get_queryset()
 
     def perform_create(self, serializer):
         unit = serializer.validated_data.get('unit', None)
