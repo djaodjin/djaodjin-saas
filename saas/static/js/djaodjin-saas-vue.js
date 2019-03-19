@@ -822,7 +822,7 @@ Vue.component('user-relation', {
 });
 
 if($('#coupon-list-container').length > 0){
-var app = new Vue({
+new Vue({
     el: "#coupon-list-container",
     mixins: [
         itemListMixin,
@@ -905,7 +905,7 @@ var app = new Vue({
 }
 
 if($('#search-list-container').length > 0){
-var app = new Vue({
+new Vue({
     el: "#search-list-container",
     mixins: [itemListMixin, paginationMixin, filterableMixin],
     data: {
@@ -948,7 +948,7 @@ var app = new Vue({
 }
 
 if($('#today-sales-container').length > 0){
-var app = new Vue({
+new Vue({
     el: "#today-sales-container",
     mixins: [itemListMixin, paginationMixin],
     data: {
@@ -961,7 +961,7 @@ var app = new Vue({
 }
 
 if($('#user-list-container').length > 0){
-var app = new Vue({
+new Vue({
     el: "#user-list-container",
     mixins: [itemListMixin, paginationMixin],
     data: {
@@ -974,7 +974,7 @@ var app = new Vue({
 }
 
 if($('#user-relation-list-container').length > 0){
-var app = new Vue({
+new Vue({
     el: "#user-relation-list-container",
     mixins: [userRelationMixin],
     data: function(){
@@ -989,7 +989,7 @@ var app = new Vue({
 }
 
 if($('#metrics-container').length > 0){
-var app = new Vue({
+new Vue({
     el: "#metrics-container",
     mixins: [timezoneMixin],
     data: function(){
@@ -1128,7 +1128,7 @@ var app = new Vue({
 }
 
 if($('#subscribers-list-container').length > 0){
-var app = new Vue({
+new Vue({
     el: "#subscribers-list-container",
     mixins: [
         subscriptionsMixin,
@@ -1262,6 +1262,13 @@ var app = new Vue({
 })
 }
 
+/*
+    XXX
+    We define a global here because another VM needs to be able
+    to communicate with this one, specifically when a user is
+    unsubscribed, an event is triggered which causes another VM
+    to reload its list of objects
+*/
 var subscriptionsListVM;
 
 if($('#subscriptions-list-container').length > 0){
@@ -1357,10 +1364,8 @@ subscriptionsListVM = new Vue({
 })
 }
 
-var expiredSubscriptionsListVM;
-
 if($('#expired-subscriptions-list-container').length > 0){
-expiredSubscriptionsListVM = new Vue({
+new Vue({
     el: "#expired-subscriptions-list-container",
     mixins: [subscriptionsMixin, paginationMixin, itemListMixin],
     data: {
@@ -1377,7 +1382,7 @@ expiredSubscriptionsListVM = new Vue({
 }
 
 if($('#import-transaction-container').length > 0){
-var app = new Vue({
+new Vue({
     el: "#import-transaction-container",
     data: {
         url: djaodjinSettings.urls.provider.api_subscribers_active,
@@ -1432,7 +1437,7 @@ var app = new Vue({
 }
 
 if($('#coupon-users-container').length > 0){
-var app = new Vue({
+new Vue({
     el: "#coupon-users-container",
     mixins: [itemListMixin, sortableMixin, paginationMixin],
     data: {
@@ -1449,7 +1454,7 @@ var app = new Vue({
 }
 
 if($('#billing-statement-container').length > 0){
-var app = new Vue({
+new Vue({
     el: "#billing-statement-container",
     mixins: [
         itemListMixin,
@@ -1510,7 +1515,7 @@ var app = new Vue({
 }
 
 if($('#transfers-container').length > 0){
-var app = new Vue({
+new Vue({
     el: "#transfers-container",
     mixins: [itemListMixin, sortableMixin, paginationMixin, filterableMixin],
     data: {
@@ -1546,7 +1551,7 @@ var app = new Vue({
 }
 
 if($('#transactions-container').length > 0){
-var app = new Vue({
+new Vue({
     el: "#transactions-container",
     mixins: [itemListMixin, sortableMixin, paginationMixin, filterableMixin],
     data: {
@@ -1559,7 +1564,7 @@ var app = new Vue({
 }
 
 if($('#accessible-list-container').length > 0){
-var app = new Vue({
+new Vue({
     el: "#accessible-list-container",
     mixins: [userRelationMixin, sortableMixin, filterableMixin],
     data: {
@@ -1577,7 +1582,7 @@ var app = new Vue({
 }
 
 if($('#plan-subscribers-container').length > 0){
-var app = new Vue({
+new Vue({
     el: "#plan-subscribers-container",
     mixins: [
         subscriptionsMixin,
@@ -1597,7 +1602,7 @@ var app = new Vue({
 }
 
 if($('#profile-container').length > 0){
-var app = new Vue({
+new Vue({
     el: "#profile-container",
     data: {
         name: '',
@@ -1693,7 +1698,7 @@ var app = new Vue({
 }
 
 if($('#charge-list-container').length > 0){
-var app = new Vue({
+new Vue({
     el: "#charge-list-container",
     mixins: [
         itemListMixin,
@@ -1709,7 +1714,7 @@ var app = new Vue({
 }
 
 if($('#role-list-container').length > 0){
-var app = new Vue({
+new Vue({
     el: "#role-list-container",
     mixins: [
         itemListMixin,
@@ -1753,7 +1758,7 @@ var app = new Vue({
 }
 
 if($('#balance-list-container').length > 0){
-var app = new Vue({
+new Vue({
     el: "#balance-list-container",
     mixins: [
         itemListMixin,
@@ -2026,7 +2031,7 @@ var cardMixin = {
 }
 
 if($('#checkout-container').length > 0){
-var app = new Vue({
+new Vue({
     el: "#checkout-container",
     mixins: [itemListMixin, cardMixin],
     data: {
@@ -2309,7 +2314,7 @@ var app = new Vue({
 }
 
 if($('#update_card').length > 0){
-var app = new Vue({
+new Vue({
     el: "#update_card",
     mixins: [cardMixin],
     data: {
@@ -2361,7 +2366,7 @@ var app = new Vue({
 }
 
 if($('#plan-container').length > 0){
-var app = new Vue({
+new Vue({
     el: "#plan-container",
     data: {
         title: '',
@@ -2476,7 +2481,7 @@ var app = new Vue({
 
 
 if($('#plan-list-container').length > 0){
-var app = new Vue({
+new Vue({
     el: "#plan-list-container",
     mixins: [
         itemListMixin,
