@@ -47,7 +47,7 @@ from ..models import RoleDescription
 from ..utils import (full_name_natural_split, get_organization_model,
     get_role_model, generate_random_slug)
 from .serializers import (AccessibleSerializer, BaseRoleSerializer,
-    NoModelSerializer, RoleSerializer)
+    NoModelSerializer, RoleSerializer, RoleAccessibleSerializer)
 
 
 LOGGER = logging.getLogger(__name__)
@@ -790,27 +790,62 @@ class RoleFilteredListAPIView(RoleSmartListMixin, RoleByDescrQuerysetMixin,
 
 
 class RoleDetailAPIView(RoleMixin, DestroyAPIView):
-    """
-    Dettach a user from one or all roles with regards to an organization,
-    typically resulting in revoking permissions from this user to manage
-    part of an organization profile.
-
-    **Examples
-
-    .. code-block:: http
-
-        DELETE /api/profile/cowork/roles/managers/xia/ HTTP/1.1
-    """
-
     def post(self, request, *args, **kwargs):
-        # TODO add docs
-        queryset = self.get_queryset()
-        for role in queryset:
-            signals.user_relation_added.send(sender=__name__,
-                role=role, reason=None, request_user=request.user)
-        return Response(status=status.HTTP_204_NO_CONTENT)
+        """
+        Re-sends the invite e-mail that the user was granted a role on the organization.
+
+        **Examples
+
+        .. code-block:: http
+
+            POST /api/profile/cowork/roles/manager/xia/ HTTP/1.1
+
+       responds
+
+        .. code-block:: json
+
+            {
+                "created_at": "2018-01-01T00:00:00Z",
+                "role_description": {
+                    "name": "Manager",
+                    "slug": "manager",
+                    "organization": {
+                        "slug": "cowork",
+                        "full_name": "ABC Corp.",
+                        "printable_name": "ABC Corp.",
+                        "created_at": "2018-01-01T00:00:00Z",
+                        "email": "support@localhost.localdomain"
+                    }
+                },
+                "user": {
+                    "slug": "alice",
+                    "email": "alice@localhost.localdomain",
+                    "full_name": "Alice Doe",
+                    "created_at": "2018-01-01T00:00:00Z"
+                },
+                "request_key": "1",
+                "grant_key": null
+            }
+        """
+        role = self.get_object()
+        signals.user_relation_added.send(sender=__name__,
+            role=role, reason=None, request_user=request.user)
+        serializer = RoleAccessibleSerializer(role)
+        return Response(serializer.data)
 
     def destroy(self, request, *args, **kwargs):
+        """
+        Dettach a user from one or all roles with regards to an organization,
+        typically resulting in revoking permissions from this user to manage
+        part of an organization profile.
+
+        **Examples
+
+        .. code-block:: http
+
+            DELETE /api/profile/cowork/roles/managers/xia/ HTTP/1.1
+        """
+
         queryset = self.get_queryset()
         roles = [str(role.role_description) for role in queryset]
         LOGGER.info("Remove roles %s for user '%s' on organization '%s'",

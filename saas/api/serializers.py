@@ -533,6 +533,15 @@ class RoleSerializer(BaseRoleSerializer):
             'role_description',)
 
 
+class RoleAccessibleSerializer(BaseRoleSerializer):
+    role_description = RoleDescriptionSerializer(read_only=True)
+
+    class Meta:
+        model = get_role_model()
+        fields = ('created_at', 'request_key', 'grant_key',
+            'role_description', 'user')
+
+
 class ValidationErrorSerializer(NoModelSerializer):
     """
     Details on why token is invalid.
