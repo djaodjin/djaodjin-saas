@@ -807,8 +807,10 @@ class RoleDetailAPIView(RoleMixin, DestroyAPIView):
             {
                 "created_at": "2018-01-01T00:00:00Z",
                 "role_description": {
-                    "name": "Manager",
+                    "created_at": "2018-01-01T00:00:00Z",
+                    "title": "Profile Manager",
                     "slug": "manager",
+                    "is_global": true,
                     "organization": {
                         "slug": "cowork",
                         "full_name": "ABC Corp.",
