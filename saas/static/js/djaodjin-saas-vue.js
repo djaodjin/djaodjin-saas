@@ -976,10 +976,13 @@ var app = new Vue({
 if($('#user-relation-list-container').length > 0){
 var app = new Vue({
     el: "#user-relation-list-container",
-    mixins: [userRelationMixin],
+    mixins: [userRelationMixin, filterableMixin],
     data: function(){
         return {
             typeaheadUrl: djaodjinSettings.urls.api_candidates,
+            params: {
+                role_status: 'active',
+            }
         }
     },
     mounted: function(){
@@ -987,6 +990,37 @@ var app = new Vue({
     }
 })
 }
+
+if($('#user-relation-pending-list-container').length > 0){
+var app = new Vue({
+    el: "#user-relation-pending-list-container",
+    mixins: [userRelationMixin],
+    data: function(){
+        return {
+            showPending: false,
+            params: {
+                role_status: 'pending',
+            }
+        }
+    },
+    methods: {
+        sendInvite: function(slug){
+            var vm = this;
+            var url = vm.url + '/' + slug + '/';
+            $.ajax({
+                method: 'POST',
+                url: url,
+            }).done(function(res) {
+                showMessages(["Invite for " + slug + " has been sent"], "success");
+            }).fail(handleRequestError);
+        },
+    },
+    mounted: function(){
+        this.get()
+    }
+})
+}
+
 
 if($('#metrics-container').length > 0){
 var app = new Vue({
