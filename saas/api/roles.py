@@ -42,7 +42,7 @@ from rest_framework.response import Response
 from .. import settings, signals
 from ..docs import swagger_auto_schema
 from ..mixins import (OrganizationMixin, RoleDescriptionMixin, RoleMixin,
-    RoleSmartListMixin, UserMixin)
+    RoleSmartListMixin, UserMixin, DateRangeMixin)
 from ..models import RoleDescription
 from ..utils import (full_name_natural_split, get_organization_model,
     get_role_model, generate_random_slug)
@@ -284,7 +284,7 @@ class AccessibleByQuerysetMixin(UserMixin):
         return get_role_model().objects.filter(user=self.user)
 
 
-class AccessibleByListAPIView(RoleSmartListMixin,
+class AccessibleByListAPIView(DateRangeMixin, RoleSmartListMixin,
                               AccessibleByQuerysetMixin, OptinBase,
                               ListCreateAPIView):
     """

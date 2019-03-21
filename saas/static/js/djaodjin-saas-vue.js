@@ -412,7 +412,10 @@ var itemListMixin = {
                     results: [],
                     count: 0
                 },
-                params: {},
+                params: {
+                    start_at: null,
+                    ends_at: null
+                },
                 getCb: null,
             }
             if( djaodjinSettings.date_range ) {
@@ -1421,7 +1424,7 @@ var app = new Vue({
 if($('#coupon-users-container').length > 0){
 var app = new Vue({
     el: "#coupon-users-container",
-    mixins: [itemListMixin, sortableMixin, paginationMixin],
+    mixins: [itemListMixin, sortableMixin, paginationMixin, filterableMixin],
     data: {
         params: {
             o: 'created_at',
@@ -2468,6 +2471,8 @@ var app = new Vue({
     el: "#plan-list-container",
     mixins: [
         itemListMixin,
+        paginationMixin,
+        filterableMixin
     ],
     data: {
         url: djaodjinSettings.urls.provider.api_plans,

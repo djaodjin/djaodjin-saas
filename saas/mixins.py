@@ -469,8 +469,7 @@ class BeforeMixin(object):
             self._ends_at = self.request.GET.get('ends_at', None)
             if self.clip or self._ends_at:
                 if self._ends_at is not None:
-                    self._ends_at = self._ends_at.strip('"')
-                self._ends_at = datetime_or_now(self._ends_at)
+                    self._ends_at = datetime_or_now(self._ends_at.strip('"'))
         return self._ends_at
 
     @property
@@ -502,15 +501,9 @@ class DateRangeMixin(BeforeMixin):
     @property
     def start_at(self):
         if not hasattr(self, '_start_at'):
-            self._start_at = None
-            if self.ends_at:
-                self._start_at = self.request.GET.get('start_at', None)
-                if self._start_at:
-                    self._start_at = datetime_or_now(self._start_at.strip('"'))
-                else:
-                    self._start_at = (
-                        start_of_day(self.ends_at + self.natural_period)
-                        + dateutil.relativedelta.relativedelta(days=1))
+            self._start_at = self.request.GET.get('start_at', None)
+            if self._start_at:
+                self._start_at = datetime_or_now(self._start_at.strip('"'))
         return self._start_at
 
     def get_queryset(self):

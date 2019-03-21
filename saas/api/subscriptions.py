@@ -31,7 +31,8 @@ from rest_framework.generics import (get_object_or_404, ListAPIView,
 from ..decorators import _valid_manager
 from ..filters import SortableDateRangeSearchableFilterBackend
 from ..mixins import (ChurnedQuerysetMixin, PlanMixin, ProviderMixin,
-    SubscriptionMixin, SubscriptionSmartListMixin, SubscribedQuerysetMixin)
+    SubscriptionMixin, SubscriptionSmartListMixin, SubscribedQuerysetMixin,
+    DateRangeMixin)
 from .. import signals
 from ..models import Subscription
 from ..utils import generate_random_slug
@@ -209,7 +210,7 @@ class PlanSubscriptionsQuerysetMixin(PlanMixin):
             plan__organization=self.provider)
 
 
-class PlanSubscriptionsAPIView(SubscriptionSmartListMixin,
+class PlanSubscriptionsAPIView(DateRangeMixin, SubscriptionSmartListMixin,
                              PlanSubscriptionsQuerysetMixin,
                              OptinBase, ListCreateAPIView):
     """
