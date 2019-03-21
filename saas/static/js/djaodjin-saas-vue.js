@@ -1830,6 +1830,17 @@ new Vue({
                 }
             }).fail(handleRequestError);
         },
+        humanizeCell: function(value, unit, scale) {
+            var vm = this;
+            if( typeof unit == 'undefined' ) {
+                unit = vm.items.unit;
+            }
+            if( typeof scale == 'undefined' ) {
+                scale = vm.items.scale;
+            }
+            var filter = Vue.filter('humanizeCell');
+            return filter(value, unit, scale);
+        },
         remove: function(id){
             var vm = this;
             $.ajax({
