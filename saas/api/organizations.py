@@ -25,24 +25,55 @@
 import re
 
 from django.conf import settings as django_settings
-from django.contrib.auth import logout as auth_logout
-from django.db import transaction
-from rest_framework import status
-from rest_framework.generics import (ListAPIView, ListCreateAPIView,
-    RetrieveUpdateDestroyAPIView)
+from django.contrib.auth import get_user_model, logout as auth_logout
+from django.db import transaction, IntegrityError
+from django.db.models import Count, Q
+from django.http import Http404
+from rest_framework import filters, status
+from rest_framework.settings import api_settings
+from rest_framework.generics import (get_object_or_404, ListAPIView,
+    ListCreateAPIView, RetrieveUpdateDestroyAPIView)
 from rest_framework.response import Response
 
+from .serializers import (CreateOrganizationSerializer,
+    OrganizationSerializer, OrganizationWithSubscriptionsSerializer)
 from .. import signals
 from ..decorators import _valid_manager
-from .serializers import (
-    OrganizationSerializer, OrganizationWithSubscriptionsSerializer)
+from ..docs import swagger_auto_schema
 from ..mixins import (OrganizationMixin, OrganizationSmartListMixin,
     ProviderMixin)
 from ..models import get_broker
-from ..utils import get_organization_model
+from ..utils import (full_name_natural_split, get_organization_model,
+    handle_uniq_error)
 
 #pylint: disable=no-init
 #pylint: disable=old-style-class
+
+def get_order_func(fields):
+    """
+    Builds a lambda function that can be used to order two records
+    based on a sequence of fields.
+
+    When a field name is preceeded by '-', the order is reversed.
+    """
+    if len(fields) == 1:
+        if fields[0].startswith('-'):
+            field_name = fields[0][1:]
+            return lambda left, right: (
+                getattr(left, field_name) > getattr(right, field_name))
+        field_name = fields[0]
+        return lambda left, right: (
+            getattr(left, field_name) < getattr(right, field_name))
+    if fields[0].startswith('-'):
+        field_name = fields[0][1:]
+        return lambda left, right: (
+            getattr(left, field_name) > getattr(right, field_name) or
+            get_order_func(fields[1:])(left, right))
+    field_name = fields[0]
+    return lambda left, right: (
+        getattr(left, field_name) < getattr(right, field_name) or
+        get_order_func(fields[1:])(left, right))
+
 
 class OrganizationDetailAPIView(OrganizationMixin,
                                 RetrieveUpdateDestroyAPIView):
@@ -75,9 +106,10 @@ class OrganizationDetailAPIView(OrganizationMixin,
             ]
         }
     """
-
-    queryset = get_organization_model().objects.all()
+    queryset = get_organization_model().objects.all().select_related(
+        'subscriptions')
     serializer_class = OrganizationWithSubscriptionsSerializer
+    user_model = get_user_model()
 
     def put(self, request, *args, **kwargs):
         """
@@ -115,7 +147,16 @@ class OrganizationDetailAPIView(OrganizationMixin,
         return self.destroy(request, *args, **kwargs)
 
     def get_object(self):
-        return self.organization
+        try:
+            obj = super(OrganizationDetailAPIView, self).get_object()
+        except Http404:
+            # We might still have a `User` model that matches.
+            lookup_url_kwarg = self.lookup_url_kwarg or self.lookup_field
+            filter_kwargs = {'username': self.kwargs[lookup_url_kwarg]}
+            user = get_object_or_404(self.user_model.objects.filter(
+                is_active=True), **filter_kwargs)
+            obj = self.as_organization(user)
+        return obj
 
     def perform_update(self, serializer):
         is_provider = serializer.instance.is_provider
@@ -165,7 +206,12 @@ class OrganizationQuerysetMixin(object):
 
     @staticmethod
     def get_queryset():
-        return get_organization_model().objects.all()
+        # Adds a boolean `is_personal` if there exists a User such that
+        # `Organization.slug == User.username`.
+        queryset = get_organization_model().objects.annotate(
+            nb_roles=Count('role__user__username')).extra(
+                select={'is_personal': "slug = username"})
+        return queryset
 
 
 class OrganizationListAPIView(OrganizationSmartListMixin,
@@ -194,15 +240,9 @@ class OrganizationListAPIView(OrganizationSmartListMixin,
         }
     """
     serializer_class = OrganizationSerializer
+    user_model = get_user_model()
 
-    def get_queryset(self):
-        # If there are no sort order, we sort by ``full_name``
-        # since /api/profile/ is used by typeahead inputs.
-        queryset = super(OrganizationListAPIView, self).get_queryset()
-        if self.sort_param_name not in self.request.GET:
-            queryset = queryset.order_by(self.sort_fields_aliases[0][0])
-        return queryset
-
+    @swagger_auto_schema(request_body=CreateOrganizationSerializer)
     def post(self, request, *args, **kwargs):
         """
         Creates an``Organization``
@@ -221,6 +261,131 @@ class OrganizationListAPIView(OrganizationSmartListMixin,
             }
         """
         return self.create(request, *args, **kwargs)
+
+    @staticmethod
+    def as_organization(user):
+        return get_organization_model()(slug=user.username, email=user.email,
+            full_name=user.get_full_name(), created_at=user.date_joined)
+
+    def get_users_queryset(self):
+        # All users not already picked up as an Organization.
+        return self.user_model.objects.filter(is_active=True).exclude(
+            pk__in=self.user_model.objects.extra(
+                tables=['saas_organization'],
+                where=["username = slug"]).values('pk'))
+
+    def list(self, request, *args, **kwargs):
+        #pylint:disable=too-many-locals
+        organizations_queryset = self.filter_queryset(self.get_queryset())
+        organizations_page = self.paginate_queryset(organizations_queryset)
+        # XXX When we use a `rest_framework.PageNumberPagination`,
+        # it will hold a reference to the page created by a `DjangoPaginator`.
+        # The `LimitOffsetPagination` paginator holds its own count.
+        if hasattr(self.paginator, 'page'):
+            organizations_count = self.paginator.page.paginator.count
+        else:
+            organizations_count = self.paginator.count
+
+        users_queryset = self.filter_queryset(self.get_users_queryset())
+        users_page = self.paginate_queryset(users_queryset)
+        # Since we run a second `paginate_queryset`, the paginator.count
+        # is not the number of users.
+        if hasattr(self.paginator, 'page'):
+            self.paginator.page.paginator.count += organizations_count
+        else:
+            self.paginator.count += organizations_count
+
+        order_func = get_order_func(filters.OrderingFilter().get_ordering(
+            self.request, users_queryset, self))
+
+        # XXX merge `users_page` into page.
+        page = []
+        user = None
+        organization = None
+        users_iterator = iter(users_page)
+        organizations_iterator = iter(organizations_page)
+        try:
+            organization = next(organizations_iterator)
+            user = self.as_organization(next(users_iterator))
+            while organization and user:
+                if order_func(organization, user):
+                    page += [organization]
+                    organization = None
+                    organization = next(organizations_iterator)
+                elif order_func(user, organization):
+                    page += [user]
+                    user = None
+                    user = self.as_organization(next(users_iterator))
+                else:
+                    page += [organization]
+                    organization = None
+                    organization = next(organizations_iterator)
+                    page += [user]
+                    user = None
+                    user = self.as_organization(next(users_iterator))
+        except StopIteration:
+            pass
+        try:
+            while organization:
+                page += [organization]
+                organization = next(organizations_iterator)
+        except StopIteration:
+            pass
+        try:
+            while user:
+                page += [user]
+                user = self.as_organization(next(users_iterator))
+        except StopIteration:
+            pass
+
+        # XXX It could be faster to stop previous loops early but it is not
+        # clear. The extra check at each iteration might in fact be slower.
+        page = page[:api_settings.PAGE_SIZE]
+
+        serializer = self.get_serializer(page, many=True)
+        return self.get_paginated_response(serializer.data)
+
+    def create(self, request, *args, **kwargs):
+        serializer = CreateOrganizationSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        # creates profile
+        full_name = serializer.validated_data.get('full_name')
+        email = serializer.validated_data.get('email')
+        organization_model = get_organization_model()
+        organization = organization_model(
+            full_name=full_name, email=email,
+            slug=serializer.validated_data.get('slug', None),
+            default_timezone=serializer.validated_data.get(
+                'default_timezone', ""),
+            phone=serializer.validated_data.get('phone', ""),
+            street_address=serializer.validated_data.get('street_address', ""),
+            locality=serializer.validated_data.get('locality', ""),
+            region=serializer.validated_data.get('region', ""),
+            postal_code=serializer.validated_data.get('postal_code', ""),
+            country=serializer.validated_data.get('country', ""),
+            extra=serializer.validated_data.get('extra'))
+        with transaction.atomic():
+            try:
+                organization.save()
+                organization.is_personal = (
+                    serializer.validated_data.get('type') == 'personal')
+                if organization.is_personal:
+                    first_name, mid, last_name = full_name_natural_split(
+                        full_name)
+                    user = self.user_model.objects.create_user(
+                        username=organization.slug,
+                        email=email, first_name=first_name, last_name=last_name)
+                    organization.add_manager(
+                        user, request_user=self.request.user)
+            except IntegrityError as err:
+                handle_uniq_error(err)
+
+        # returns created profile
+        serializer = self.get_serializer(instance=organization)
+        headers = self.get_success_headers(serializer.data)
+        return Response(serializer.data,
+            status=status.HTTP_201_CREATED, headers=headers)
 
 
 class SubscribersQuerysetMixin(ProviderMixin):
@@ -258,8 +423,7 @@ class SubscribersAPIView(OrganizationSmartListMixin,
 
     .. code-block:: http
 
-        GET /api/profile/:organization/subscribers/\
-?o=created_at&ot=desc HTTP/1.1
+        GET /api/profile/cowork/subscribers/?o=created_at&ot=desc HTTP/1.1
 
     .. code-block:: json
 

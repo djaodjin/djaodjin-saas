@@ -39,15 +39,15 @@ from rest_framework.generics import get_object_or_404
 
 from . import settings
 from .compat import NoReverseMatch, is_authenticated, reverse
-from .filters import (SortableSearchableFilterBackend,
-    SortableDateRangeSearchableFilterBackend)
+from .filters import (OrderingFilter, SearchFilter,
+    SortableSearchableFilterBackend, SortableDateRangeSearchableFilterBackend)
 from .humanize import (as_money, DESCRIBE_BUY_PERIODS, DESCRIBE_BUY_USE,
     DESCRIBE_UNLOCK_NOW, DESCRIBE_UNLOCK_LATER, DESCRIBE_BALANCE)
 from .models import (CartItem, Charge, Coupon, Organization, Plan,
     RoleDescription, Subscription, Transaction, UseCharge,
     get_broker, is_broker)
-from .utils import (datetime_or_now, get_role_model, start_of_day,
-    update_context_urls)
+from .utils import (datetime_or_now, get_organization_model, get_role_model,
+    start_of_day, update_context_urls)
 from .extras import OrganizationMixinBase
 
 
@@ -451,7 +451,11 @@ class UserMixin(object):
 
 
 class OrganizationMixin(UserMixin, OrganizationMixinBase, settings.EXTRA_MIXIN):
-    pass
+
+    @staticmethod
+    def as_organization(user):
+        return get_organization_model()(slug=user.username, email=user.email,
+            full_name=user.get_full_name(), created_at=user.date_joined)
 
 
 class BeforeMixin(object):
@@ -673,8 +677,7 @@ class CartItemSmartListMixin(SortableListMixin,
         sort_fields_aliases, search_fields),)
 
 
-class OrganizationSmartListMixin(SortableListMixin,
-                                 DateRangeMixin, SearchableListMixin):
+class OrganizationSmartListMixin(DateRangeMixin):
     """
     The queryset can be further filtered to a range of dates between
     ``start_at`` and ``ends_at``.
@@ -701,22 +704,25 @@ class OrganizationSmartListMixin(SortableListMixin,
     """
     clip = False
 
-    search_fields = ['slug',
-                     'full_name',
-                     'email',
-                     'phone',
-                     'street_address',
-                     'locality',
-                     'region',
-                     'postal_code',
-                     'country']
+    search_fields = (
+        'slug',
+        'full_name',
+        'email',
+        'phone',
+        'street_address',
+        'locality',
+        'region',
+        'postal_code',
+        'country')
 
-    sort_fields_aliases = [('full_name', 'full_name'),
-                           ('created_at', 'created_at')]
+    ordering_fields = (
+        'full_name',
+        'created_at')
 
+    ordering = ('full_name',)
+    alternate_ordering = ('first_name', 'last_name')
 
-    filter_backends = (SortableSearchableFilterBackend(
-        sort_fields_aliases, search_fields),)
+    filter_backends = (SearchFilter, OrderingFilter)
 
 
 class RoleSmartListMixin(SortableListMixin, SearchableListMixin):

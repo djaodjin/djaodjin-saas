@@ -1,4 +1,4 @@
-# Copyright (c) 2018, DjaoDjin inc.
+# Copyright (c) 2019, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -31,10 +31,9 @@ from ..compat import reverse
 from .. import settings
 from ..mixins import (BeforeMixin, CartItemSmartListMixin, CouponMixin,
     ProviderMixin)
-from ..models import CartItem, Organization, Plan, Transaction
-from ..utils import datetime_or_now, convert_dates_to_utc
-from .serializers import (CartItemSerializer,
-    OrganizationWithSubscriptionsSerializer)
+from ..models import CartItem, Plan, Transaction
+from ..utils import convert_dates_to_utc
+from .serializers import CartItemSerializer
 from ..managers.metrics import (abs_monthly_balances, active_subscribers,
     aggregate_transactions_by_period, month_periods, churn_subscribers,
     aggregate_transactions_change_by_period, get_different_units)
@@ -583,24 +582,3 @@ class PlanMetricAPIView(BeforeMixin, ProviderMixin, GenericAPIView):
         return Response(
             {"title": "Active Subscribers",
                 "table": table, "extra": extra})
-
-
-class OrganizationListAPIView(ProviderMixin, GenericAPIView):
-
-    model = Organization
-    serializer_class = OrganizationWithSubscriptionsSerializer
-
-    def get(self, request, *args, **kwargs):
-        #pylint: disable=no-member,unused-argument
-        start_at = datetime_or_now(request.GET.get('start_at', None))
-        ends_at = datetime_or_now(request.GET.get('ends_at', None))
-        queryset = self.get_range_queryset(start_at, ends_at)
-        page_object_list = self.paginate_queryset(queryset)
-        serializer = self.serializer_class()
-        return Response({
-            'start_at': start_at,
-            'ends_at': ends_at,
-            'count': queryset.count(),
-            self.queryset_name: [serializer.to_representation(organization)
-                for organization in page_object_list],
-            })

@@ -35,9 +35,9 @@ from django_countries.serializer_fields import CountryField
 from ..decorators import _valid_manager
 from ..humanize import as_money
 from ..mixins import as_html_description, product_url
-from ..models import (BalanceLine, CartItem, Charge, Organization, Plan,
+from ..models import (BalanceLine, CartItem, Charge, Plan,
     RoleDescription, Subscription, Transaction)
-from ..utils import get_role_model
+from ..utils import get_organization_model, get_role_model
 
 #pylint: disable=no-init,old-style-class
 
@@ -227,13 +227,13 @@ class OrganizationSerializer(serializers.ModelSerializer):
     # when one creates an opt-in subscription.
     # If we don't define ``slug`` here, the serializer validators will raise
     # an exception "Organization already exists in database".
-    slug = serializers.CharField(
+    slug = serializers.CharField(required=False, allow_blank=True,
         help_text=_("Unique identifier shown in the URL bar"))
-    full_name = serializers.CharField(required=False, allow_blank=True,
+    full_name = serializers.CharField(
         help_text=_("Full name"))
     default_timezone = serializers.CharField(required=False,
          help_text=_("Timezone to use when reporting metrics"))
-    email = serializers.CharField(required=False,
+    email = serializers.EmailField(
         help_text=_("E-mail address for the organization"))
     phone = serializers.CharField(required=False, allow_blank=True,
         help_text=_("Phone number"))
@@ -245,19 +245,68 @@ class OrganizationSerializer(serializers.ModelSerializer):
         help_text=_("State/Province/County"))
     postal_code = serializers.CharField(required=False, allow_blank=True,
         help_text=_("Zip/Postal code"))
-    country = serializers.CharField(required=False, allow_blank=True,
+    country = CountryField(required=False, allow_blank=True,
         help_text=_("Country"))
     extra = serializers.CharField(required=False, allow_null=True,
         help_text=_("Extra meta data (can be stringify JSON)"))
     printable_name = serializers.CharField(read_only=True)
 
     class Meta:
-        model = Organization
-        fields = ('slug', 'created_at', 'full_name', 'default_timezone',
+        model = get_organization_model()
+        fields = ('slug', 'created_at', 'full_name',
             'email', 'phone', 'street_address', 'locality',
-            'region', 'postal_code', 'country', 'extra',
-            'printable_name', 'is_provider', 'is_bulk_buyer')
+            'region', 'postal_code', 'country', 'default_timezone',
+            'printable_name', 'is_provider', 'is_bulk_buyer', 'type', 'extra')
         read_only_fields = ('created_at',)
+
+    def get_type(self, obj):
+        if not obj.pk:
+            return 'user'
+        if hasattr(obj, 'is_personal') and obj.is_personal:
+            return 'personal'
+        return 'organization'
+
+OrganizationSerializer._declared_fields["type"] = \
+    serializers.SerializerMethodField(
+        help_text=_("One of 'organization', 'personal' or 'user'"))
+
+
+class CreateOrganizationSerializer(NoModelSerializer):
+    # We have a special serializer for Create (i.e. POST request)
+    # because we want to include the `type` field.
+
+    slug = serializers.CharField(required=False, allow_blank=True,
+        help_text=_("Unique identifier shown in the URL bar"))
+    full_name = serializers.CharField(
+        help_text=_("Full name"))
+    default_timezone = serializers.CharField(required=False,
+         help_text=_("Timezone to use when reporting metrics"))
+    email = serializers.EmailField(
+        help_text=_("E-mail address for the organization"))
+    phone = serializers.CharField(required=False, allow_blank=True,
+        help_text=_("Phone number"))
+    street_address = serializers.CharField(required=False, allow_blank=True,
+        help_text=_("Street address"))
+    locality = serializers.CharField(required=False, allow_blank=True,
+        help_text=_("City/Town"))
+    region = serializers.CharField(required=False, allow_blank=True,
+        help_text=_("State/Province/County"))
+    postal_code = serializers.CharField(required=False, allow_blank=True,
+        help_text=_("Zip/Postal code"))
+    country = CountryField(required=False, allow_blank=True,
+        help_text=_("Country"))
+    extra = serializers.CharField(required=False, allow_null=True,
+        help_text=_("Extra meta data (can be stringify JSON)"))
+
+    def validate_type(self, value):
+        if value not in ('personal', 'organization'):
+            raise ValidationError(
+                _("type must be one of 'personal' or 'organization'."))
+        return value
+
+CreateOrganizationSerializer._declared_fields["type"] = \
+    serializers.CharField(
+        help_text=_("One of 'organization', 'personal' or 'user'"))
 
 
 class WithEndsAtByPlanSerializer(NoModelSerializer):
@@ -278,21 +327,19 @@ class WithSubscriptionSerializer(serializers.ModelSerializer):
         fields = ('created_at', 'ends_at', 'plan', 'auto_renew')
 
 
-class OrganizationWithSubscriptionsSerializer(serializers.ModelSerializer):
+class OrganizationWithSubscriptionsSerializer(OrganizationSerializer):
 
     subscriptions = WithSubscriptionSerializer(
         source='subscription_set', many=True, read_only=True)
-    country = CountryField()
-    email = serializers.EmailField(required=False)
-    phone = serializers.CharField(required=False)
 
     class Meta:
-        model = Organization
-        fields = ('slug', 'created_at', 'full_name', 'default_timezone',
+        model = get_organization_model()
+        fields = ('slug', 'created_at', 'full_name',
             'email', 'phone', 'street_address', 'locality',
-            'region', 'postal_code', 'country', 'extra',
-            'printable_name', 'subscriptions', 'is_bulk_buyer', )
-        read_only_fields = ('slug', 'created_at')
+            'region', 'postal_code', 'country', 'default_timezone',
+            'printable_name', 'is_provider', 'is_bulk_buyer', 'type', 'extra',
+            'subscriptions')
+        read_only_fields = ('slug', 'created_at',)
 
 
 class OrganizationWithEndsAtByPlanSerializer(serializers.ModelSerializer):
@@ -305,7 +352,7 @@ class OrganizationWithEndsAtByPlanSerializer(serializers.ModelSerializer):
         source='get_ends_at_by_plan', many=True, read_only=True)
 
     class Meta:
-        model = Organization
+        model = get_organization_model()
         fields = ('slug', 'printable_name', 'created_at',
             'email', 'subscriptions', )
         read_only_fields = ('slug', 'created_at')

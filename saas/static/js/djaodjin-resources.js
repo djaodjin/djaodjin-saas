@@ -42,12 +42,18 @@ function showMessages(messages, style) {
 };
 
 
+/**
+ Decorates elements when details exist, otherwise return messages to be shown
+ globally.
+
+ This method takes a `resp` argument as passed by jQuery ajax calls.
+ */
 function _showErrorMessages(resp) {
     var messages = [];
     if( typeof resp === "string" ) {
         messages = [resp];
     } else {
-        var data = resp.data || resp.responseJSON || resp;
+        var data = resp.data || resp.responseJSON;
         if( data && typeof data === "object" ) {
             if( data.detail ) {
                 messages = ["Error: " + data.detail];
