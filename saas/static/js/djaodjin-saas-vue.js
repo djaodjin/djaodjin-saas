@@ -1259,8 +1259,12 @@ var app = new Vue({
                 vm.convertDatetime(tableData.data, vm.timezone === 'utc');
                 vm.plansData = tableData
 
-                updateChart(".chart-content",
-                    tableData.data, tableData.unit, tableData.scale, tableData.extra);
+                if(window.updateChart){
+                    // in djaodjin-saas there is no metrics code, that's
+                    // why we need to check if there is a global defined
+                    updateChart(".chart-content", tableData.data,
+                        tableData.unit, tableData.scale, tableData.extra);
+                }
             });
         },
         humanizeCell: function(value, unit, scale) {
