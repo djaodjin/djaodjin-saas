@@ -972,7 +972,8 @@ new Vue({
         return {
             typeaheadUrl: djaodjinSettings.urls.api_candidates,
             params: {
-                role_status: 'active',
+// XXX The `role_status` parameter needs to be read from a DOM configuration
+//              role_status: 'active',
             }
         }
     },

@@ -16,6 +16,7 @@
           <th>Role</th>
           <th>Email</th>
           <th></th>
+          <th></th>
         </tr>
       </thead>
       <tbody>
@@ -24,6 +25,7 @@
           <td>[[item.user.slug]]</td>
           <td>[[item.role_description.title]]</td>
           <td>[[item.user.email]]</td>
+          <td>[[item.grant_key ? "invited" : ""]]</td>
           <td><button ng-click="remove($event, $index)"
                       @click="remove(index)">Remove</button></td>
         </tr>
