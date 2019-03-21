@@ -95,11 +95,10 @@ display:none;
   {% endif %}
 </div>
 <!-- modal dialog for Refunds -->
-<div id="charge-refund">
+<div id="charge-refund" class="show">
   <h4>Refund</h4>
   {% if charge.state == charge.DONE %}
-    <input class="form-control form-control" name="amount" maxlength="32"
-         type="text" value="0" />
+    <input name="amount" maxlength="32" type="text" value="0" />
     <p>
       Please specify the amount you would like refunded.
     </p>
