@@ -134,6 +134,8 @@ class OrganizationMixinBase(object):
                     'saas_metrics_coupons', args=(provider,)),
                 'metrics_plans': reverse(
                     'saas_metrics_plans', args=(provider,)),
+                'plans': reverse(
+                    'saas_plan_base', args=(provider,)),
                 'metrics_sales': reverse(
                     'saas_metrics_summary', args=(provider,)),
                 'profile': reverse('saas_provider_profile'),

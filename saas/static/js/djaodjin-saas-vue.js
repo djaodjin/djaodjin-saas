@@ -730,6 +730,27 @@ var subscribersMixin = {
                 data: {description: item.description},
             }).fail(handleRequestError);
         },
+        resolve: function (o, s){
+            return s.split('.').reduce(function(a, b) {
+                return a[b];
+            }, o);
+        },
+        groupBy: function (list, groupBy) {
+            var vm = this;
+            var res = {};
+            list.forEach(function(item){
+                var value = vm.resolve(item, groupBy);
+                res[value] = res[value] || [];
+                res[value].push(item);
+            });
+            var ordered_res = [];
+            for( var key in res ) {
+                if( res.hasOwnProperty(key) ) {
+                    ordered_res.push(res[key]);
+                }
+            }
+            return ordered_res;
+        },
     }
 }
 
@@ -1094,10 +1115,29 @@ var app = new Vue({
 })
 }
 
-if($('#subscribers-list-container').length > 0){
+if($('#registered-tab-container').length > 0){
 var app = new Vue({
-    el: "#subscribers-list-container",
+    el: "#registered-tab-container",
     mixins: [
+        itemListMixin,
+        paginationMixin,
+        filterableMixin,
+        sortableMixin,
+    ],
+    data: {
+        url: djaodjinSettings.urls.broker.api_users_registered,
+    },
+    mounted: function(){
+        this.get();
+    },
+})
+}
+
+if($('#subscribed-tab-container').length > 0){
+var app = new Vue({
+    el: "#subscribed-tab-container",
+    mixins: [
+        itemListMixin,
         subscriptionsMixin,
         subscribersMixin,
         paginationMixin,
@@ -1105,127 +1145,113 @@ var app = new Vue({
         sortableMixin,
     ],
     data: {
-        currentTab: 1,
-        tables: {
-            registered: {
-                url: djaodjinSettings.urls.broker.api_users_registered,
-                results: [],
-                count: 0,
-                loaded: false
-            },
-            subscribed: {
-                url: djaodjinSettings.urls.provider.api_subscribers_active,
-                results: [],
-                count: 0,
-                loaded: false
-            },
-            churned: {
-                url: djaodjinSettings.urls.provider.api_subscribers_churned,
-                results: [],
-                count: 0,
-                loaded: false
-            }
-        },
-    },
-    methods: {
-        getParams: function(excludes){
-            var vm = this;
-            var params = {};
-            for( var key in vm.params ) {
-                if( vm.params.hasOwnProperty(key) && vm.params[key] ) {
-                    if( excludes && key in excludes ) continue;
-                    if( key === 'start_at' || key === 'ends_at' ) {
-                        params[key] = moment(vm.params[key]).toISOString();
-                    } else {
-                        params[key] = vm.params[key];
-                    }
-                }
-            }
-            return params;
-        },
-        getQueryString: function(excludes){
-            var vm = this;
-            var sep = "";
-            var result = "";
-            var params = vm.getParams(excludes);
-            for( var key in params ) {
-                if( params.hasOwnProperty(key) ) {
-                    result += sep + key + '=' + params[key].toString();
-                    sep = "&";
-                }
-            }
-            if( result ) {
-                result = '?' + result;
-            }
-            return result;
-        },
-        get: function(){
-            var vm = this;
-            var sets = ['registered', 'subscribed', 'churned'];
-            for( var idx = 0; idx < sets.length; ++idx ) {
-                var querysetKey = sets[(vm.currentTab + idx) % sets.length];
-                vm.fetch(querysetKey);
-            }
-        },
-        fetch: function(querysetKey) {
-            var vm = this;
-            var queryset = vm.tables[querysetKey];
-            $.get(queryset.url, vm.params, function(resp){
-                queryset.results = resp.results;
-                queryset.count = resp.count;
-                queryset.loaded = true;
-                vm.tables[querysetKey] = queryset;
-            });
-        },
-        resolve: function (o, s){
-            return s.split('.').reduce(function(a, b) {
-                return a[b];
-            }, o);
-        },
-        groupBy: function (list, groupBy) {
-            var vm = this;
-            var res = {};
-            list.forEach(function(item){
-                var value = vm.resolve(item, groupBy);
-                res[value] = res[value] || [];
-                res[value].push(item);
-            });
-            var ordered_res = [];
-            for( var key in res ) {
-                if( res.hasOwnProperty(key) ) {
-                    ordered_res.push(res[key]);
-                }
-            }
-            return ordered_res;
-        },
-        clearFilters: function(){
-            var params = {
-                o: 'created_at',
-                ot: 'desc',
-                q: '',
-                page: 1,
-            }
-            this.params = params;
-        },
-        tabChanged: function(){
-            this.clearFilters();
-            this.get();
-        },
-    },
-    computed: {
-        totalItems: function(){
-            var vm = this;
-            return vm.tables[vm.currentQueryset].count
-        },
-        currentQueryset: function(){
-            var vm = this;
-            var sets = ['registered', 'subscribed', 'churned'];
-            return sets[vm.currentTab];
-        }
+        url: djaodjinSettings.urls.provider.api_subscribers_active,
     },
     mounted: function(){
         this.get();
-    }
+    },
+})
+}
+
+if($('#churned-tab-container').length > 0){
+var app = new Vue({
+    el: "#churned-tab-container",
+    mixins: [
+        itemListMixin,
+        subscriptionsMixin,
+        subscribersMixin,
+        paginationMixin,
+        filterableMixin,
+        sortableMixin,
+    ],
+    data: {
+        url: djaodjinSettings.urls.provider.api_subscribers_churned,
+    },
+    mounted: function(){
+        this.get();
+    },
+})
+}
+
+if($('#plans-tab-container').length > 0){
+var app = new Vue({
+    el: "#plans-tab-container",
+    mixins: [
+        timezoneMixin
+    ],
+    data: function(){
+        var data = {
+            url: djaodjinSettings.urls.provider.api_metrics_plans,
+            endsAt: moment(),
+            plansData: {
+                data: []
+            },
+        }
+        if( djaodjinSettings.date_range
+            && djaodjinSettings.date_range.ends_at ) {
+            var ends_at = moment(djaodjinSettings.date_range.ends_at);
+            if(ends_at.isValid()){
+                data.endsAt = ends_at;
+            }
+        }
+        data.endsAt = data.endsAt.format(DATE_FORMAT);
+
+        return data;
+    },
+    methods: {
+        get: function(){
+            var vm = this;
+            var params = {"ends_at": moment(vm.endsAt, DATE_FORMAT).format()};
+            if( vm.timezone !== 'utc' ) {
+                params["timezone"] = moment.tz.guess();
+            }
+            $.get(vm.url, params, function(resp){
+                var unit = resp.unit;
+                var scale = resp.scale;
+                scale = parseFloat(scale);
+                if( isNaN(scale) ) {
+                    scale = 1.0;
+                }
+                // add "extra" rows at the end
+                var extra = resp.extra || [];
+
+                var tableData = {
+                    key: 'plan',
+                    title: resp.title,
+                    unit: unit,
+                    scale: scale,
+                    data: resp.table,
+                    extra: resp.extra
+                }
+                vm.convertDatetime(tableData.data, vm.timezone === 'utc');
+                vm.plansData = tableData
+
+                if(window.updateChart){
+                    // in djaodjin-saas there is no metrics code, that's
+                    // why we need to check if there is a global defined
+                    updateChart(".chart-content", tableData.data,
+                        tableData.unit, tableData.scale, tableData.extra);
+                }
+            });
+        },
+        humanizeCell: function(value, unit, scale) {
+            var vm = this;
+            var filter = Vue.filter('humanizeCell');
+            return filter(value, unit, scale);
+        },
+    },
+    computed: {
+        planTableDates: function(){
+            var res = this.plansData.data;
+            if(res.length > 0){
+                return res[0].values;
+            }
+            return []
+        },
+    },
+    mounted: function(){
+        this.get();
+    },
 })
 }
 
