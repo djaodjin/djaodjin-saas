@@ -469,7 +469,8 @@ class BeforeMixin(object):
             self._ends_at = self.request.GET.get('ends_at', None)
             if self.clip or self._ends_at:
                 if self._ends_at is not None:
-                    self._ends_at = datetime_or_now(self._ends_at.strip('"'))
+                    self._ends_at = self._ends_at.strip('"')
+                self._ends_at = datetime_or_now(self._ends_at)
         return self._ends_at
 
     @property

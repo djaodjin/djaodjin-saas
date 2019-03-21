@@ -3,8 +3,25 @@
 {% block saas_content %}
 <section id="subscribers-list-container">
   <div>
+    <div id="plans-tab-container">
+        <h2>Plans</h2>
+        <table>
+          <tr>
+            <td></td>
+            <td v-for="col in planTableDates">[[col[0] | monthHeading]]</td>
+          </tr>
+          <tr :id="row.key" v-for="row in plansData.data" :key="row.key">
+            <td v-if="row.location">
+                <a :href="row.location">[[row.title ? row.title : row.key]]</a>
+            </td>
+            <td v-if="!row.location">[[row.title ? row.title : row.key]]</td>
+            <td v-for="col in row.values" :key="col[0].toISOString()" :title="humanizeCell(col[1], plansData.unit, plansData.scale, false)">[[humanizeCell(col[1], plansData.unit, plansData.scale)]]</td>
+          </tr>
+        </table>
+    </div>
     {% if registered %}
     <div id="registered-tab-container">
+    <div id="registered">
       <a name="registered" href="#registered"><h2>Registered</h2></a>
       {% include "saas/_filter.html" %}
       <div>
@@ -51,25 +68,11 @@
            boundary-links />
       </div>
     </div>
-    {% endif %}
-    <div id="plans-tab-container">
-        <h2>Revenue</h2>
-        <table>
-          <tr>
-            <td></td>
-            <td v-for="col in planTableDates">[[col[0] | monthHeading]]</td>
-          </tr>
-          <tr :id="row.key" v-for="row in plansData.data" :key="row.key">
-            <td v-if="row.location">
-                <a :href="row.location">[[row.title ? row.title : row.key]]</a>
-            </td>
-            <td v-if="!row.location">[[row.title ? row.title : row.key]]</td>
-            <td v-for="col in row.values" :key="col[0].toISOString()" :title="humanizeCell(col[1], plansData.unit, plansData.scale, false)">[[humanizeCell(col[1], plansData.unit, plansData.scale)]]</td>
-          </tr>
-        </table>
     </div>
+    {% endif %}
     {% for tab in tabs %}
     <div id="{{tab.slug}}-tab-container">
+    <div id="{{tab.slug}}">
       <a name="{{tab.slug}}" href="#{{tab.slug}}"><h2>{{tab.title}}</h2></a>
       {% include "saas/_filter.html" %}
       <div>
@@ -131,6 +134,7 @@
            @change="get"
            boundary-links />
       </div>
+    </div>
     </div>
     {% endfor %}
   </div>

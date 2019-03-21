@@ -106,7 +106,9 @@ class OrganizationDetailAPIView(OrganizationMixin,
             ]
         }
     """
-    queryset = get_organization_model().objects.all().select_related(
+    lookup_field = 'slug'
+    lookup_url_kwarg = 'organization'
+    queryset = get_organization_model().objects.all().prefetch_related(
         'subscriptions')
     serializer_class = OrganizationWithSubscriptionsSerializer
     user_model = get_user_model()
