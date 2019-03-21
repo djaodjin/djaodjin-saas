@@ -1431,7 +1431,7 @@ var app = new Vue({
 if($('#coupon-users-container').length > 0){
 var app = new Vue({
     el: "#coupon-users-container",
-    mixins: [itemListMixin, sortableMixin, paginationMixin],
+    mixins: [itemListMixin, sortableMixin, paginationMixin, filterableMixin],
     data: {
         params: {
             o: 'created_at',

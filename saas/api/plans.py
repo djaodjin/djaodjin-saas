@@ -29,7 +29,6 @@ from rest_framework.response import Response
 
 from .serializers import PlanSerializer
 from ..mixins import PlanMixin, DateRangeMixin
-from ..filters import SortableDateRangeSearchableFilterBackend
 from ..models import Plan, Subscription
 from .. import settings
 

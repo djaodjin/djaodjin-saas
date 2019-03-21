@@ -30,7 +30,7 @@ from extra_views.contrib.mixins import SearchableListMixin, SortableListMixin
 
 from ..filters import SortableDateRangeSearchableFilterBackend
 from ..models import Coupon
-from ..mixins import CouponMixin, ProviderMixin
+from ..mixins import CouponMixin, ProviderMixin, DateRangeMixin
 
 #pylint: disable=no-init
 #pylint: disable=old-style-class
@@ -71,7 +71,7 @@ class CouponQuerysetMixin(ProviderMixin):
         return Coupon.objects.filter(organization=self.organization)
 
 
-class CouponListAPIView(SmartCouponListMixin, CouponQuerysetMixin,
+class CouponListAPIView(DateRangeMixin, SmartCouponListMixin, CouponQuerysetMixin,
                         ListCreateAPIView):
     """
     Queries a page (``PAGE_SIZE`` records) of ``Coupon`` associated
