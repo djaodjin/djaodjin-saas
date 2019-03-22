@@ -107,8 +107,8 @@
     };
 
     $.fn.cartItem.defaults = {
-        addLabel: "Add to Cart",
-        removeLabel: "Remove from Cart",
+        addLabel: $.i18n("Add to Cart"),
+        removeLabel: $.i18n("Remove from Cart"),
         nb_periods: 1,
         api_cart: null
     };
@@ -225,10 +225,12 @@
                     datatype: "json",
                     contentType: "application/json; charset=utf-8",
                     success: function(data) {
-                        showMessages(["A copy of the receipt was sent to " + data.email + "."], "info");
+                        showMessages([$.i18n("A copy of the receipt was sent to $1.", data.email)], "info");
                     },
                     error: function(data) {
-                        showMessages(["An error occurred while emailing a copy of the receipt (" + data.status + " " + data.statusText + "). Please accept our apologies."], "error");
+                        showMessages([
+                            $.i18n("An error occurred while emailing a copy of the receipt ($1 $2). Please accept our apologies.", data.status, data.statusText)
+                        ], "error");
                     }
                 });
             }
@@ -319,12 +321,12 @@
                     datatype: "json",
                     contentType: "application/json; charset=utf-8",
                     success: function(data) {
-                        var message = "Amount refunded.";
+                        var message = $.i18n("Amount refunded.");
                         if( data.responseJSON ) {
                             message = data.responseJSON.detail;
                         }
                         showMessages([message], "info");
-                        refundButton.replaceWith("<em>Refunded</em>");
+                        refundButton.replaceWith("<em>" + $.i18n("Refunded") + "</em>");
                     },
                     error: function(data) {
                         var message = data.statusText;
@@ -332,9 +334,9 @@
                             message = data.responseJSON.detail;
                         }
                         showMessages([
-                         "An error occurred while refunding the charge ("
-                         + data.status + " - " +
-                         message + "). Please accept our apologies."], "error");
+                            $.i18n("An error occurred while refunding the charge ($1 - $2). Please accept our apologies.",
+                                data.status, message)
+                        ], "error");
                         refundButton.removeAttr("disabled");
                     }
                 });
@@ -714,22 +716,22 @@
                      xhr.setRequestHeader("X-CSRFToken", self._getCSRFToken());
                  },
                  data: JSON.stringify({
-                     "title": "New Plan",
-                     "description": "Write the description of the plan here.",
+                     "title": $.i18n("New Plan"),
+                     "description": $.i18n("Write the description of the plan here."),
                      "interval": 4,
                      "is_active": 1}),
                  datatype: "json",
                  contentType: "application/json; charset=utf-8",
                  success: function(data) {
                      showMessages([
-                         "Plan was created successfully."], "success");
+                         $.i18n("Plan was created successfully.")], "success");
                      if( reload ) { location.reload(true); }
                  },
                  error: function(data) {
                      showMessages([
-                         "An error occurred while creating the plan (" +
-                         data.status + " " + data.statusText +
-                         "). Please accept our apologies."], "error");
+                         $.i18n("An error occurred while creating the plan ($1 $2). Please accept our apologies.",
+                            data.status, data.statusText)
+                     ], "error");
                  }
                });
       },
@@ -764,13 +766,13 @@
                  success: function(data) {
                      window.location.href = self.options.saas_metrics_plans;
                      showMessages([
-                         "Plan was successfully deleted."], "success");
+                         $.i18n("Plan was successfully deleted.")], "success");
                  },
                  error: function(data) {
                      showMessages([
-                         "An error occurred while deleting the plan (" +
-                         data.status + " " + data.statusText +
-                         "). Please accept our apologies."], "error");
+                         $.i18n("An error occurred while deleting the plan ($1 $2). Please accept our apologies.",
+                             data.status, data.statusText)
+                     ], "error");
                  }
                });
       },
@@ -810,9 +812,9 @@
                  },
                  error: function(data) {
                      showMessages([
-                         "An error occurred while creating the plan (" +
-                         data.status + " " + data.statusText +
-                         "). Please accept our apologies."], "error");
+                        $.i18n("An error occurred while creating the plan ($1 $2). Please accept our apologies.",
+                            data.status, data.statusText)
+                     ], "error");
                  },
           });
       }

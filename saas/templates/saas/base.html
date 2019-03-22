@@ -47,7 +47,6 @@
 {% block bodyscripts %}
 <script type="text/javascript" charset="utf-8" src="/static/vendor/moment.js"></script>
 <script type="text/javascript" charset="utf-8" src="/static/vendor/moment-timezone-with-data.js"></script>
-<script type="text/javascript" charset="utf-8" src="/static/js/djaodjin-resources.js"></script>
 <!-- i18n code -->
 <script src="/static/vendor/CLDRPluralRuleParser.js"></script>
 <script src="/static/vendor/jquery.i18n/src/jquery.i18n.js"></script>
@@ -56,10 +55,27 @@
 <script src="/static/vendor/jquery.i18n/src/jquery.i18n.parser.js"></script>
 <script src="/static/vendor/jquery.i18n/src/jquery.i18n.emitter.js"></script>
 <script src="/static/vendor/jquery.i18n/src/jquery.i18n.language.js"></script>
-<script src="/static/vendor/jquery.i18n/src/languages/ru.js"></script>
 <script>
     // TODO not sure how to approach this one, move to json file or render from server?
     var map = {
+        "Error $1: $2. We have been notified and have started on fixing the error. We apologize for the inconvinience.": "Error $1: $2. We have been notified and have started on fixing the error. We apologize for the inconvinience.",
+        "Error $1:": "Error $1:",
+        "Error:": "Error:",
+        "Add to Cart": "Add to Cart",
+        "Remove from Cart": "Remove from Cart",
+        "A copy of the receipt was sent to $1.": "A copy of the receipt was sent to $1.",
+        "An error occurred while emailing a copy of the receipt ($1 $2). Please accept our apologies.": "An error occurred while emailing a copy of the receipt ($1 $2). Please accept our apologies.",
+        "Amount refunded.": "Amount refunded.",
+        "Refunded": "Refunded",
+        "An error occurred while refunding the charge ($1 - $2). Please accept our apologies.": "An error occurred while refunding the charge ($1 - $2). Please accept our apologies.",
+        "New Plan": "New Plan",
+        "Write the description of the plan here.": "Write the description of the plan here.",
+        "Plan was created successfully.": "Plan was created successfully.",
+        "An error occurred while creating the plan ($1 $2). Please accept our apologies.": "An error occurred while creating the plan ($1 $2). Please accept our apologies.",
+        "Plan was successfully deleted.": "Plan was successfully deleted.",
+        "An error occurred while deleting the plan ($1 $2). Please accept our apologies.": "An error occurred while deleting the plan ($1 $2). Please accept our apologies.",
+        "Account Number": "Account Number",
+        "Routing Number": "Routing Number",
         "ago": "ago",
         "left": "left",
         "You are about to delete yourself from this role. it's possible that you no longer can manage this organization after performing this action.\n\nDo you want to remove yourself from this organization?": "You are about to delete yourself from this role. it's possible that you no longer can manage this organization after performing this action.\n\nDo you want to remove yourself from this organization?",
@@ -88,6 +104,7 @@
     $.i18n().load(map, 'en');
 </script>
 <!-- /i18n code -->
+<script type="text/javascript" charset="utf-8" src="/static/js/djaodjin-resources.js"></script>
 <script type="text/javascript">
 var djaodjinSettings = {
     urls: {% if urls %}{{urls|to_json}}{% else %}{}{% endif %},
