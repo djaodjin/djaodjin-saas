@@ -138,7 +138,6 @@ class OrganizationDetailAPIView(OrganizationMixin,
             name = '%s.%s' % (sha256(picture.read()).hexdigest(), 'jpg')
             storage.save(name, picture)
             request.data['picture'] = storage.url(name)
-            import pdb; pdb.set_trace()
         return self.update(request, *args, **kwargs)
 
     def delete(self, request, *args, **kwargs):
