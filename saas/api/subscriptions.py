@@ -1,4 +1,4 @@
-# Copyright (c) 2018, DjaoDjin inc.
+# Copyright (c) 2019, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -66,6 +66,8 @@ class SubscriptionListAPIView(SubscriptionSmartListMixin,
     can be further refined to match a search filter (``q``) and sorted
     on a specific field. The returned queryset is always paginated.
 
+    **Tags: subscriptions
+
     **Examples
 
     .. code-block:: http
@@ -112,6 +114,8 @@ class SubscriptionListAPIView(SubscriptionSmartListMixin,
         """
         Subscribes the organization to a plan.
 
+        **Tags: subscriptions
+
         **Examples
 
         .. code-block:: http
@@ -134,6 +138,8 @@ class SubscriptionDetailAPIView(SubscriptionMixin,
     """
     Retrieves a ``Subscription``.
 
+    **Tags: subscriptions
+
     **Examples
 
     .. code-block:: http
@@ -151,6 +157,8 @@ class SubscriptionDetailAPIView(SubscriptionMixin,
     def delete(self, request, *args, **kwargs):
         """
         Unsubscribe an organization from a plan.
+
+        **Tags: subscriptions
 
         **Examples
 
@@ -176,6 +184,8 @@ class SubscriptionDetailAPIView(SubscriptionMixin,
     def put(self, request, *args, **kwargs):
         """
         Updates an organization subscription.
+
+        **Tags: subscriptions
 
         **Examples
 
@@ -216,6 +226,8 @@ class PlanSubscriptionsAPIView(DateRangeMixin, SubscriptionSmartListMixin,
     """
     A GET request will list all ``Subscription`` to
     a specified ``:plan`` provided by ``:organization``.
+
+    **Tags: subscriptions
 
     **Examples
 
@@ -261,6 +273,8 @@ class PlanSubscriptionsAPIView(DateRangeMixin, SubscriptionSmartListMixin,
     def post(self, request, *args, **kwargs):
         """
         A POST request will subscribe an organization to the ``:plan``.
+
+        **Tags: subscriptions
 
         **Examples
 
@@ -323,6 +337,8 @@ class PlanSubscriptionDetailAPIView(ProviderMixin, SubscriptionDetailAPIView):
     """
     Unsubscribe an organization from a plan.
 
+    **Tags: subscriptions
+
     **Examples
 
     .. code-block:: http
@@ -364,6 +380,8 @@ class ActiveSubscriptionAPIView(SubscriptionSmartListMixin,
 
     Query results can be ordered by natural fields (``o``) in either ascending
     or descending order (``ot``).
+
+    **Tags: metrics
 
     **Examples
 
@@ -426,6 +444,8 @@ class ChurnedSubscriptionAPIView(SubscriptionSmartListMixin,
 
     The queryset can be further filtered by passing a ``q`` parameter.
     The result queryset can be ordered.
+
+    **Tags: metrics
 
     **Examples
 

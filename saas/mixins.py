@@ -707,7 +707,11 @@ class OrganizationSmartListMixin(DateRangeMixin):
         'locality',
         'region',
         'postal_code',
-        'country')
+        'country',
+        # fields in User model:
+        'username',
+        'first_name',
+        'last_name')
 
     ordering_fields = (
         'full_name',

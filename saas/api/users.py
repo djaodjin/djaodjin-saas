@@ -76,6 +76,8 @@ class RegisteredAPIView(UserSmartListMixin, RegisteredBaseAPIView):
     Query results can be ordered by natural fields (``o``) in either ascending
     or descending order (``ot``).
 
+    **Tags: metrics
+
     **Examples
 
     .. code-block:: http
@@ -123,6 +125,8 @@ class UserListAPIView(UserSmartListMixin, UserQuerysetMixin, ListAPIView):
 
     Query results can be ordered by natural fields (``o``) in either ascending
     or descending order (``ot``).
+
+    **Tags: profile
 
     **Examples
 

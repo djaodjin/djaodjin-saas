@@ -84,6 +84,8 @@ class CouponListAPIView(DateRangeMixin, SmartCouponListMixin, CouponQuerysetMixi
     Query results can be ordered by natural fields (``o``) in either ascending
     or descending order (``ot``).
 
+    **Tags: billing
+
     **Examples
 
     .. code-block:: http
@@ -152,6 +154,8 @@ class CouponDetailAPIView(CouponMixin, RetrieveUpdateDestroyAPIView):
     """
     Retrieves a ``Coupon``.
 
+    **Tags: billing
+
     **Examples
 
     .. code-block:: http
@@ -173,6 +177,8 @@ class CouponDetailAPIView(CouponMixin, RetrieveUpdateDestroyAPIView):
     def put(self, request, *args, **kwargs):
         """
         Updates a ``Coupon``.
+
+        **Tags: billing
 
         **Examples
 
@@ -198,6 +204,8 @@ class CouponDetailAPIView(CouponMixin, RetrieveUpdateDestroyAPIView):
         be permanently deleted. Coupons which have already be used
         at least once will be de-activated and still available for
         performance measurements.
+
+        **Tags: billing
 
         **Examples
 

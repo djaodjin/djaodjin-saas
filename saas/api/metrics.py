@@ -46,6 +46,8 @@ class BalancesAPIView(BeforeMixin, ProviderMixin, GenericAPIView):
     """
     Generate a table of revenue (rows) per months (columns).
 
+    **Tags: metrics
+
     **Examples
 
     .. code-block:: http
@@ -141,6 +143,8 @@ class BalancesAPIView(BeforeMixin, ProviderMixin, GenericAPIView):
 class RevenueMetricAPIView(BeforeMixin, ProviderMixin, GenericAPIView):
     """
     Produces sales, payments and refunds over a period of time.
+
+    **Tags: metrics
 
     **Examples
 
@@ -305,6 +309,8 @@ class CouponUsesAPIView(CartItemSmartListMixin, CouponUsesQuerysetMixin,
     The result queryset can be ordered by passing an ``o`` (field name)
     and ``ot`` (asc or desc) parameter.
 
+    **Tags: metrics
+
     **Examples
 
     .. code-block:: http
@@ -338,6 +344,8 @@ class CouponUsesAPIView(CartItemSmartListMixin, CouponUsesQuerysetMixin,
 class CustomerMetricAPIView(BeforeMixin, ProviderMixin, GenericAPIView):
     """
     Produce revenue stats
+
+    **Tags: metrics
 
     **Examples
 
@@ -464,6 +472,8 @@ class CustomerMetricAPIView(BeforeMixin, ProviderMixin, GenericAPIView):
 class PlanMetricAPIView(BeforeMixin, ProviderMixin, GenericAPIView):
     """
     Produce plan stats
+
+    **Tags: metrics
 
     **Examples
 

@@ -1,4 +1,4 @@
-# Copyright (c) 2018, DjaoDjin inc.
+# Copyright (c) 2019, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -118,6 +118,8 @@ class CartItemAPIView(CartMixin, CreateAPIView):
     payment can be made by one ``Organization`` for another ``Organization``
     to be subscribed (see :ref:`GroupBuy orders<group_buy>`).
 
+    **Tags: billing
+
     **Examples
 
     .. code-block:: http
@@ -216,6 +218,8 @@ class CartItemAPIView(CartMixin, CreateAPIView):
         """
         Removes an item from the ``request.user`` cart.
 
+        **Tags: billing
+
         **Examples
 
         .. code-block:: http
@@ -251,6 +255,8 @@ class CartItemUploadAPIView(CartMixin, GenericAPIView):
     uploaded file must be a CSV containing the fields ``first_name``,
     ``last_name`` and email. The CSV file must not contain a header
     line, only data.
+
+    **Tags: billing
 
     **Examples
 
@@ -351,6 +357,8 @@ class CouponRedeemAPIView(GenericAPIView):
     Redeems a ``Coupon`` and applies the discount to the eligible items
     in the cart.
 
+    **Tags: billing
+
     **Examples
 
     .. code-block:: http
@@ -409,6 +417,8 @@ class CheckoutAPIView(CartMixin, OrganizationMixin,
 
     In many subscription businesses, it is possible to buy multiple
     period in advance at a discount. The options reflects that.
+
+    **Tags: billing
 
     **Examples
 
@@ -480,6 +490,8 @@ class CheckoutAPIView(CartMixin, OrganizationMixin,
         - `/api/cart/redeem/` applies a coupon code for a potential discount.
         - `/api/cart/` adds or updates a cart item.
         - `/api/cart/{plan}` removes a cart item.
+
+        **Tags: billing
 
         **Examples
 

@@ -294,6 +294,8 @@ class AccessibleByListAPIView(DateRangeMixin, RoleSmartListMixin,
 
     see :doc:`Flexible Security Framework <security>`.
 
+    **Tags: rbac
+
     **Examples
 
     .. code-block:: http
@@ -327,6 +329,8 @@ class AccessibleByListAPIView(DateRangeMixin, RoleSmartListMixin,
         Creates a request to attach a user to a role on an organization
 
         see :doc:`Flexible Security Framework <security>`.
+
+        **Tags: rbac
 
         **Examples
 
@@ -376,6 +380,8 @@ class RoleDescriptionListCreateView(RoleDescriptionQuerysetMixin,
     Lists roles by description``RoleDescription``.
 
     see :doc:`Flexible Security Framework <security>`.
+
+    **Tags: rbac
 
     **Examples
 
@@ -428,6 +434,8 @@ class RoleDescriptionListCreateView(RoleDescriptionQuerysetMixin,
         Creates a new role that users can take on an organization.
 
         see :doc:`Flexible Security Framework <security>`.
+
+        **Tags: rbac
 
         **Examples
 
@@ -491,6 +499,8 @@ class RoleDescriptionDetailView(RoleDescriptionQuerysetMixin,
 
     see :doc:`Flexible Security Framework <security>`.
 
+    **Tags: rbac
+
     **Examples
 
     .. code-block:: http
@@ -532,6 +542,8 @@ class RoleDescriptionDetailView(RoleDescriptionQuerysetMixin,
 
         see :doc:`Flexible Security Framework <security>`.
 
+        **Tags: rbac
+
         **Examples
 
         .. code-block:: http
@@ -546,6 +558,8 @@ class RoleDescriptionDetailView(RoleDescriptionQuerysetMixin,
         Updates ``RoleDescription``.
 
         see :doc:`Flexible Security Framework <security>`.
+
+        **Tags: rbac
 
         **Examples
 
@@ -607,6 +621,8 @@ class RoleListAPIView(RoleSmartListMixin, RoleQuerysetMixin, ListAPIView):
     """
     Lists all roles for an organization
 
+    **Tags: rbac
+
     **Examples
 
     .. code-block:: http
@@ -662,6 +678,8 @@ class RoleFilteredListAPIView(RoleSmartListMixin, RoleByDescrQuerysetMixin,
                               ListAPIView, CreateAPIView):
     """
     ``GET`` lists the specified role assignments for an organization.
+
+    **Tags: rbac
 
     **Examples
 
@@ -765,6 +783,8 @@ class RoleFilteredListAPIView(RoleSmartListMixin, RoleByDescrQuerysetMixin,
         permissions to the user with regards to managing an organization profile
         (see :doc:`Flexible Security Framework <security>`).
 
+        **Tags: rbac
+
         **Examples
 
         .. code-block:: http
@@ -790,9 +810,15 @@ class RoleFilteredListAPIView(RoleSmartListMixin, RoleByDescrQuerysetMixin,
 
 
 class RoleDetailAPIView(RoleMixin, DestroyAPIView):
+
+    serializer_class = RoleAccessibleSerializer
+
     def post(self, request, *args, **kwargs):
         """
-        Re-sends the invite e-mail that the user was granted a role on the organization.
+        Re-sends the invite e-mail that the user was granted a role
+        on the organization.
+
+        **Tags: rbac
 
         **Examples
 
@@ -800,7 +826,7 @@ class RoleDetailAPIView(RoleMixin, DestroyAPIView):
 
             POST /api/profile/cowork/roles/manager/xia/ HTTP/1.1
 
-       responds
+        responds
 
         .. code-block:: json
 
@@ -832,14 +858,16 @@ class RoleDetailAPIView(RoleMixin, DestroyAPIView):
         role = self.get_object()
         signals.user_relation_added.send(sender=__name__,
             role=role, reason=None, request_user=request.user)
-        serializer = RoleAccessibleSerializer(role)
+        serializer = self.get_serializer(role)
         return Response(serializer.data)
 
-    def destroy(self, request, *args, **kwargs):
+    def delete(self, request, *args, **kwargs):
         """
         Dettach a user from one or all roles with regards to an organization,
         typically resulting in revoking permissions from this user to manage
         part of an organization profile.
+
+        **Tags: rbac
 
         **Examples
 
@@ -847,7 +875,9 @@ class RoleDetailAPIView(RoleMixin, DestroyAPIView):
 
             DELETE /api/profile/cowork/roles/managers/xia/ HTTP/1.1
         """
+        return super(RoleDetailAPIView, self).delete(request, *args, **kwargs)
 
+    def destroy(self, request, *args, **kwargs):
         queryset = self.get_queryset()
         roles = [str(role.role_description) for role in queryset]
         LOGGER.info("Remove roles %s for user '%s' on organization '%s'",

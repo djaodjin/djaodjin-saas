@@ -1,4 +1,4 @@
-# Copyright (c) 2018, DjaoDjin inc.
+# Copyright (c) 2019, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -68,6 +68,8 @@ class ChargeResourceView(RetrieveChargeMixin, RetrieveAPIView):
     """
     Pass through to the processor and returns details about a ``Charge``.
 
+    **Tags: billing
+
     **Examples
 
     .. code-block:: http
@@ -130,6 +132,8 @@ class ChargeListAPIView(SmartChargeListMixin,
     Query results can be ordered by natural fields (``o``) in either ascending
     or descending order (``ot``).
 
+    **Tags: billing
+
     **Examples
 
     .. code-block:: http
@@ -177,6 +181,8 @@ class OrganizationChargeListAPIView(SmartChargeListMixin,
     """
     List all ``Charge`` for a subscriber.
 
+    **Tags: billing
+
     **Examples
 
     .. code-block:: http
@@ -211,6 +217,8 @@ class OrganizationChargeListAPIView(SmartChargeListMixin,
 class ChargeRefundAPIView(RetrieveChargeMixin, CreateAPIView):
     """
     Partially or totally refund all or a subset of line items on a ``Charge``.
+
+    **Tags: billing
 
     **Example
 
@@ -289,6 +297,8 @@ class ChargeRefundAPIView(RetrieveChargeMixin, CreateAPIView):
 class EmailChargeReceiptAPIView(RetrieveChargeMixin, GenericAPIView):
     """
     Email the charge receipt to the customer email address on file.
+
+    **Tags: billing
 
     **Example
 

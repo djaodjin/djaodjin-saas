@@ -80,6 +80,8 @@ class OrganizationDetailAPIView(OrganizationMixin,
     """
     Retrieves profile information on an ``Organization``.
 
+    **Tags: profile
+
     **Examples
 
     .. code-block:: http
@@ -139,6 +141,8 @@ class OrganizationDetailAPIView(OrganizationMixin,
         We anonymize the organization instead of purely deleting
         it from the database because we don't want to loose history
         on subscriptions and transactions.
+
+        **Tags: profile
 
         **Examples
 
@@ -220,6 +224,8 @@ class OrganizationListAPIView(OrganizationSmartListMixin,
                               OrganizationQuerysetMixin, ListCreateAPIView):
     """
     Queries all ``Organization``.
+
+    **Tags: profile
 
     **Examples
 
@@ -410,22 +416,7 @@ class SubscribersAPIView(OrganizationSmartListMixin,
     List all ``Organization`` which have or had a subscription to a plan
     provided by ``:organization``.
 
-    The value passed in the ``q`` parameter will be matched against:
-
-      - Organization.slug
-      - Organization.full_name
-      - Organization.email
-      - Organization.phone
-      - Organization.street_address
-      - Organization.locality
-      - Organization.region
-      - Organization.postal_code
-      - Organization.country
-
-    The result queryset can be ordered by:
-
-      - Organization.created_at
-      - Organization.full_name
+    **Tags: subscriptions
 
     **Examples
 

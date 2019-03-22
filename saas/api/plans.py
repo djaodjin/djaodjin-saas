@@ -1,4 +1,4 @@
-# Copyright (c) 2018, DjaoDjin inc.
+# Copyright (c) 2019, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -33,10 +33,11 @@ from ..models import Plan, Subscription
 from .. import settings
 
 
-class PlanCreateAPIView(DateRangeMixin, PlanMixin,
-    ListCreateAPIView):
+class PlanCreateAPIView(DateRangeMixin, PlanMixin, ListCreateAPIView):
     """
     Create a ``Plan`` for a provider.
+
+    **Tags: subscriptions
 
     **Examples
 
@@ -91,6 +92,8 @@ class PlanResourceView(PlanMixin, RetrieveUpdateDestroyAPIView):
     The ``is_active`` boolean is used to activate a plan, enabling users
     to subscribe to it, or deactivate a plan, disabling users from subscribing
     to it.
+
+    **Tags: subscriptions
 
     **Examples
 
@@ -181,6 +184,8 @@ class PlanResourceView(PlanMixin, RetrieveUpdateDestroyAPIView):
         The ``is_active`` boolean is used to activate a plan, enabling users
         to subscribe to it, or deactivate a plan, disabling users
         from subscribing to it.
+
+        **Tags: subscriptions
 
         **Examples
 
