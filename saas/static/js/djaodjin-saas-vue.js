@@ -1643,6 +1643,8 @@ new Vue({
 }
 
 if($('#profile-container').length > 0){
+Vue.use(Croppa);
+
 new Vue({
     el: "#profile-container",
     data: {
@@ -1659,9 +1661,11 @@ new Vue({
         timezone: '',
         countries: countries,
         regions: regions,
+        currentPicture: null,
+        picture: null,
     },
     methods: {
-        get: function(){
+        get: function(cb){
             var vm = this;
             $.ajax({
                 method: 'GET',
@@ -1697,7 +1701,11 @@ new Vue({
                 if(org.default_timezone){
                     vm.timezone = org.default_timezone;
                 }
+                if(org.picture){
+                    vm.currentPicture = org.picture;
+                }
                 vm.organization = org;
+                if(cb) cb();
             }).fail(handleRequestError);
         },
         updateProfile: function(){
@@ -1714,6 +1722,13 @@ new Vue({
                 region: vm.addressRegion,
                 is_bulk_buyer: vm.isBulkBuyer,
             }
+            if(vm.imageSelected){
+                vm.saveProfileWithPicture(data);
+            } else {
+                vm.saveProfile(data);
+            }
+        },
+        saveProfile: function(data){
             $.ajax({
                 method: 'PUT',
                 url: djaodjinSettings.urls.organization.api_base,
@@ -1721,6 +1736,29 @@ new Vue({
             }).done(function() {
                 showMessages(["Profile was updated."], "success");
             }).fail(handleRequestError);
+        },
+        saveProfileWithPicture: function(data){
+            var vm = this;
+            this.picture.generateBlob(function(blob){
+                if(!blob) return;
+                var form = new FormData();
+                form.append('picture', blob);
+                for(var key in data){
+                    form.append(key, data[key]);
+                }
+                $.ajax({
+                    method: 'PUT',
+                    url: djaodjinSettings.urls.organization.api_base,
+                    contentType: false,
+                    processData: false,
+                    data: form,
+                }).done(function() {
+                    vm.get(function(){
+                        vm.picture.remove();
+                    });
+                    showMessages(["Profile was updated."], "success");
+                }).fail(handleRequestError);
+            }, 'image/jpeg');
         },
         deleteProfile: function(){
             var vm = this;
@@ -1730,11 +1768,16 @@ new Vue({
             }).done(function() {
                 window.location = djaodjinSettings.urls.profile_redirect;
             }).fail(handleRequestError);
+        },
+    },
+    computed: {
+        imageSelected: function(){
+            return this.picture.hasImage();
         }
     },
     mounted: function(){
 //   XXX the form is populated on page load.
-//        this.get();
+        this.get();
     },
 })
 }

@@ -111,6 +111,7 @@ _SETTINGS = {
     'PROCESSOR_BACKEND_CALLABLE': None,
     'ROLE_RELATION': 'saas.Role',
     'TERMS_OF_USE': 'terms-of-use',
+    'PICTURE_STORAGE_CALLABLE': None,
 }
 _SETTINGS.update(getattr(settings, 'SAAS', {}))
 
@@ -150,6 +151,8 @@ LOGIN_URL = getattr(settings, 'LOGIN_URL')
 TIME_ZONE = getattr(settings, 'TIME_ZONE')
 MANAGER = 'manager'
 CONTRIBUTOR = 'contributor'
+
+PICTURE_STORAGE_CALLABLE = _SETTINGS.get('PICTURE_STORAGE_CALLABLE')
 
 
 def get_extra_field_class():
