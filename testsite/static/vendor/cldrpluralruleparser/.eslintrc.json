@@ -1,0 +1,17 @@
+{
+	"extends": "eslint:recommended",
+	"parserOptions": {
+		"ecmaVersion": 6
+	},
+	"env": {
+		"es6": true,
+		"browser": true,
+		"jquery": true,
+		"qunit": true,
+		"node": true,
+		"mocha": true
+	},
+	"globals": {
+		"define": false
+	}
+}

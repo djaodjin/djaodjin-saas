@@ -1,0 +1,61 @@
+{
+  "_from": "cldrpluralruleparser",
+  "_id": "cldrpluralruleparser@1.3.1",
+  "_inBundle": false,
+  "_integrity": "sha1-QLiKugVtpgtV/vt15wA/zxEVY20=",
+  "_location": "/cldrpluralruleparser",
+  "_phantomChildren": {},
+  "_requested": {
+    "type": "tag",
+    "registry": true,
+    "raw": "cldrpluralruleparser",
+    "name": "cldrpluralruleparser",
+    "escapedName": "cldrpluralruleparser",
+    "rawSpec": "",
+    "saveSpec": null,
+    "fetchSpec": "latest"
+  },
+  "_requiredBy": [
+    "#USER",
+    "/"
+  ],
+  "_resolved": "https://registry.npmjs.org/cldrpluralruleparser/-/cldrpluralruleparser-1.3.1.tgz",
+  "_shasum": "40b88aba056da60b55fefb75e7003fcf1115636d",
+  "_spec": "cldrpluralruleparser",
+  "_where": "/Users/knivets/Projects/qw",
+  "author": {
+    "name": "Santhosh Thottingal"
+  },
+  "bin": {
+    "cldrpluralruleparser": "./bin/cldrpluralruleparser.js"
+  },
+  "bugs": {
+    "url": "https://github.com/santhoshtr/CLDRPluralRuleParser/issues"
+  },
+  "bundleDependencies": false,
+  "dependencies": {},
+  "deprecated": false,
+  "description": "Node module to find out the plural form for a given number in a language by parsing CLDR plural form rules.",
+  "devDependencies": {
+    "chai": "^3.5.0",
+    "cldr-data": ">=32",
+    "eslint": "^4.11.0",
+    "mocha": "^4.0.1",
+    "mocha-eslint": "^4.1.0",
+    "nsp": "^3.1.0"
+  },
+  "engines": {
+    "node": ">=6.11.1"
+  },
+  "homepage": "https://github.com/santhoshtr/CLDRPluralRuleParser#readme",
+  "license": "MIT",
+  "main": "./src/CLDRPluralRuleParser.js",
+  "name": "cldrpluralruleparser",
+  "repository": {
+    "url": "git+https://github.com/santhoshtr/CLDRPluralRuleParser.git"
+  },
+  "scripts": {
+    "test": "mocha && nsp check"
+  },
+  "version": "1.3.1"
+}

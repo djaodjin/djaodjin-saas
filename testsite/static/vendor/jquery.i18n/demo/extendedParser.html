@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="utf-8">
+
+<title>jQuery i18n Demo</title>
+<meta name="author" content="Santhosh Thottingal">
+<!-- Libs -->
+<script
+<script
+	src="https://code.jquery.com/jquery-3.2.1.min.js"
+	integrity="sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4="
+	crossorigin="anonymous"></script>
+<script src="../libs/CLDRPluralRuleParser/src/CLDRPluralRuleParser.js"></script>
+<!-- Source -->
+<script src="../src/jquery.i18n.js"></script>
+<script src="../src/jquery.i18n.messagestore.js"></script>
+<script src="../src/jquery.i18n.fallbacks.js"></script>
+<script src="../src/jquery.i18n.parser.js"></script>
+<script src="../src/jquery.i18n.emitter.js"></script>
+<script src="../src/jquery.i18n.language.js"></script>
+<!-- Demo -->
+<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+<script>
+$.i18n.debug = true;
+
+	$( document ).ready( function ( $ ) {
+		$.extend( $.i18n.parser.emitter, {
+			// Handle SITENAME keywords
+			sitename: function () {
+				return 'Wikipedia';
+			},
+			// Handle LINK keywords
+			link: function ( nodes ) {
+				return '<a href="' + nodes[1] + '">' + nodes[0] + '</a>';
+			}
+		} );
+		$.i18n();
+		$( 'span.sitename' ) .i18n();
+		$( 'span.sitelink' ) .html( $.i18n( '{{link:{{SITENAME}}|http://en.wikipedia.org}}' ) );
+	} );
+	</script>
+</head>
+
+<body>
+	<div class="container">
+		<header id="overview" class="subhead well">
+			<h1>jQuery i18n Demo</h1>
+			<p class="lead">Extended Emitter</p>
+		</header>
+		<div class="content">
+			<p>
+				{{SITENAME}} => <span class='sitename' data-i18n="{{SITENAME}}"></span>
+			</p>
+			<p>
+				{{link:{{SITENAME}}|http://en.wikipedia.org}} => <span
+					class='sitelink' data-i18n=""></span>
+			</p>
+		</div>
+		<hr />
+		<footer>
+			<p>
+				&copy; Copyright by Santhosh Thottingal ( santhosh dot thottingal at
+				gmail dot com ). <a href="https://github.com/wikimedia/jquery.i18n">jquery.i18n</a>
+			</p>
+		</footer>
+	</div>
+</body>
+</html>
