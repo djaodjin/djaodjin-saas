@@ -1,7 +1,7 @@
 {% extends "saas/base_dashboard.html" %}
 
 {% block saas_content %}
-<div id="profile-container" ng-app="saasApp">
+<div id="profile-container">
 <form method="post" @submit.prevent="updateProfile">
     <div>
       <label for="id_full_name">Organization name:</label>
@@ -50,6 +50,10 @@
         <label for="id_is_bulk_buyer">Enable GroupBuy:
             <input id="id_is_bulk_buyer" name="is_bulk_buyer" type="checkbox" v-model="isBulkBuyer">
         </label>
+    </div>
+    <div>
+        <img :src="currentPicture" v-show="currentPicture && !imageSelected" width="100" height="100">
+        <croppa v-model="picture" :width="100" :height="100"></croppa>
     </div>
     {# TODO how should we handle this with vue #}
     {% if form.extra and false %}

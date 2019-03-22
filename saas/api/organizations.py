@@ -23,7 +23,6 @@
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import re
-from hashlib import sha256
 
 from django.conf import settings as django_settings
 from django.contrib.auth import get_user_model, logout as auth_logout
@@ -45,7 +44,7 @@ from ..mixins import (OrganizationMixin, OrganizationSmartListMixin,
     ProviderMixin)
 from ..models import get_broker
 from ..utils import (full_name_natural_split, get_organization_model,
-    handle_uniq_error, get_picture_storage)
+    handle_uniq_error)
 
 
 #pylint: disable=no-init
@@ -132,12 +131,6 @@ class OrganizationDetailAPIView(OrganizationMixin,
               "full_name": "Xia Lee"
             }
         """
-        storage = get_picture_storage()
-        picture = request.data.get('picture')
-        if picture:
-            name = '%s.%s' % (sha256(picture.read()).hexdigest(), 'jpg')
-            storage.save(name, picture)
-            request.data['picture'] = storage.url(name)
         return self.update(request, *args, **kwargs)
 
     def delete(self, request, *args, **kwargs):

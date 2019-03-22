@@ -22,6 +22,7 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 from __future__ import unicode_literals
+from hashlib import sha256
 
 from django.core import validators
 from django.contrib.auth import get_user_model
@@ -37,7 +38,8 @@ from ..humanize import as_money
 from ..mixins import as_html_description, product_url
 from ..models import (BalanceLine, CartItem, Charge, Plan,
     RoleDescription, Subscription, Transaction)
-from ..utils import get_organization_model, get_role_model
+from ..utils import (get_organization_model, get_role_model,
+    get_picture_storage)
 
 #pylint: disable=no-init,old-style-class
 
@@ -331,6 +333,19 @@ class OrganizationWithSubscriptionsSerializer(OrganizationSerializer):
 
     subscriptions = WithSubscriptionSerializer(
         source='subscription_set', many=True, read_only=True)
+
+    def __init__(self, *args, **kwargs):
+        super(OrganizationWithSubscriptionsSerializer, self).__init__(
+            *args, **kwargs)
+        obj = kwargs.get('data')
+        if obj:
+            # means serializer was populated with data
+            storage = get_picture_storage()
+            picture = obj.get('picture')
+            if picture:
+                name = '%s.%s' % (sha256(picture.read()).hexdigest(), 'jpg')
+                storage.save(name, picture)
+                kwargs['data']['picture'] = storage.url(name)
 
     class Meta:
         model = get_organization_model()
