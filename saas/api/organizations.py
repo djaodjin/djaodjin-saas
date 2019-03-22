@@ -308,7 +308,13 @@ class OrganizationListAPIView(OrganizationSmartListMixin,
         organizations_iterator = iter(organizations_page)
         try:
             organization = next(organizations_iterator)
+        except StopIteration:
+            pass
+        try:
             user = self.as_organization(next(users_iterator))
+        except StopIteration:
+            pass
+        try:
             while organization and user:
                 if order_func(organization, user):
                     page += [organization]
