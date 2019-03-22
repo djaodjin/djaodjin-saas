@@ -111,6 +111,12 @@ _SETTINGS = {
     'PROCESSOR_BACKEND_CALLABLE': None,
     'ROLE_RELATION': 'saas.Role',
     'TERMS_OF_USE': 'terms-of-use',
+    'AWS_ACCOUNT_ID': None,
+    'AWS_EXTERNAL_ID': "",
+    'AWS_REGION': getattr(settings, 'AWS_REGION', None),
+    'AWS_UPLOAD_ROLE': None,
+    'AWS_S3_BUCKET_NAME': getattr(settings, 'AWS_S3_BUCKET_NAME', None),
+    'PICTURE_STORAGE_CALLABLE': None,
 }
 _SETTINGS.update(getattr(settings, 'SAAS', {}))
 
@@ -150,6 +156,13 @@ LOGIN_URL = getattr(settings, 'LOGIN_URL')
 TIME_ZONE = getattr(settings, 'TIME_ZONE')
 MANAGER = 'manager'
 CONTRIBUTOR = 'contributor'
+
+AWS_REGION = _SETTINGS.get('AWS_REGION')
+AWS_UPLOAD_ROLE = _SETTINGS.get('AWS_UPLOAD_ROLE')
+AWS_ACCOUNT_ID = _SETTINGS.get('AWS_ACCOUNT_ID')
+AWS_EXTERNAL_ID = _SETTINGS.get('AWS_EXTERNAL_ID')
+AWS_S3_BUCKET_NAME = _SETTINGS.get('AWS_S3_BUCKET_NAME')
+PICTURE_STORAGE_CALLABLE = _SETTINGS.get('PICTURE_STORAGE_CALLABLE')
 
 
 def get_extra_field_class():

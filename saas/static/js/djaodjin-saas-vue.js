@@ -1649,9 +1649,10 @@ new Vue({
         timezone: '',
         countries: countries,
         regions: regions,
+        picture: null,
     },
     methods: {
-        get: function(){
+        get: function(cb){
             var vm = this;
             $.ajax({
                 method: 'GET',
@@ -1688,6 +1689,7 @@ new Vue({
                     vm.timezone = org.default_timezone;
                 }
                 vm.organization = org;
+                if(cb) cb();
             }).fail(handleRequestError);
         },
         updateProfile: function(){
@@ -1720,6 +1722,30 @@ new Vue({
             }).done(function() {
                 window.location = djaodjinSettings.urls.profile_redirect;
             }).fail(handleRequestError);
+        },
+        uploadImage() {
+            var vm = this;
+            this.picture.generateBlob(function(blob){
+                if(!blob) return;
+                var data = new FormData();
+                data.append('picture', blob);
+                $.ajax({
+                    method: 'PUT',
+                    contentType: false,
+                    processData: false,
+                    url: djaodjinSettings.urls.organization.api_base,
+                    data: data,
+                }).done(function(res) {
+                    vm.get(function(){
+                        vm.picture.remove();
+                    });
+                }).fail(handleRequestError);
+            }, 'image/jpeg');
+        }
+    },
+    computed: function(){
+        imageSelected: function(){
+            return this.picture.hasImage();
         }
     },
     mounted: function(){

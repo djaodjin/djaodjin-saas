@@ -253,6 +253,11 @@ class Organization(models.Model):
     default_timezone = models.CharField(
         max_length=100, default=settings.TIME_ZONE,
         help_text=_("Timezone to use when reporting metrics"))
+    # 2083 number is used because it is a safe option to choose based
+    # on some older browsers behavior
+    # https://stackoverflow.com/q/417142/1491475
+    picture = models.URLField(_("Profile picture"), max_length=2083,
+        null=True, blank=True, help_text=_("Profile picture"))
 
     # Payment Processing
     # ------------------
