@@ -964,35 +964,12 @@ new Vue({
 })
 }
 
-if($('#user-relation-list-container').length > 0){
-new Vue({
-    el: "#user-relation-list-container",
+var userRelationListMixin = {
     mixins: [userRelationMixin, filterableMixin],
     data: function(){
         return {
-            typeaheadUrl: djaodjinSettings.urls.api_candidates,
-            params: {
-// XXX The `role_status` parameter needs to be read from a DOM configuration
-//              role_status: 'active',
-            }
-        }
-    },
-    mounted: function(){
-        this.get()
-    }
-})
-}
-
-if($('#user-relation-pending-list-container').length > 0){
-var app = new Vue({
-    el: "#user-relation-pending-list-container",
-    mixins: [userRelationMixin],
-    data: function(){
-        return {
             showPending: false,
-            params: {
-                role_status: 'pending',
-            }
+            typeaheadUrl: djaodjinSettings.urls.api_candidates,
         }
     },
     methods: {
@@ -1010,9 +987,42 @@ var app = new Vue({
     mounted: function(){
         this.get()
     }
+}
+
+if($('#user-relation-list-container').length > 0){
+new Vue({
+    el: "#user-relation-list-container",
+    mixins: [userRelationListMixin],
 })
 }
 
+if($('#user-relation-active-list-container').length > 0){
+var app = new Vue({
+    el: "#user-relation-active-list-container",
+    mixins: [userRelationListMixin],
+    data: function(){
+        return {
+            params: {
+                role_status: 'active',
+            }
+        }
+    },
+})
+}
+
+if($('#user-relation-pending-list-container').length > 0){
+var app = new Vue({
+    el: "#user-relation-pending-list-container",
+    mixins: [userRelationListMixin],
+    data: function(){
+        return {
+            params: {
+                role_status: 'pending',
+            }
+        }
+    },
+})
+}
 
 if($('#metrics-container').length > 0){
 new Vue({
