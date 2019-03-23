@@ -1,0 +1,213 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the PACKAGE package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: PACKAGE VERSION\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2019-03-23 15:05-0500\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#: static/js/djaodjin-resources.js:59 static/js/djaodjin-resources.js:90
+msgid "Error:"
+msgstr ""
+
+#: static/js/djaodjin-resources.js:100
+#, javascript-format
+msgid ""
+"Error %s: %s. We have been notified and have started on fixing the error. We "
+"apologize for the inconvinience."
+msgstr ""
+
+#: static/js/djaodjin-resources.js:106
+#, javascript-format
+msgid "Error %s:"
+msgstr ""
+
+#: static/js/djaodjin-saas-vue.js:56
+msgid "ago"
+msgstr ""
+
+#: static/js/djaodjin-saas-vue.js:58
+msgid "left"
+msgstr ""
+
+#: static/js/djaodjin-saas-vue.js:617
+msgid ""
+"You are about to delete yourself from this role. it's possible that you no "
+"longer can manage this organization after performing this action.\n"
+"\n"
+"Do you want to remove yourself from this organization?"
+msgstr ""
+
+#: static/js/djaodjin-saas-vue.js:979
+#, javascript-format
+msgid "Invite for %s has been sent"
+msgstr ""
+
+#: static/js/djaodjin-saas-vue.js:1452
+msgid "select a subscription from dropdown"
+msgstr ""
+
+#: static/js/djaodjin-saas-vue.js:1470 static/js/djaodjin-saas-vue.js:1719
+msgid "Profile was updated."
+msgstr ""
+
+#: static/js/djaodjin-saas-vue.js:1506 static/js/djaodjin-saas-vue.js:1507
+#: static/js/djaodjin-saas-vue.js:1562 static/js/djaodjin-saas-vue.js:1563
+#: static/js/djaodjin-saas-vue.js:1564
+msgid "N/A"
+msgstr ""
+
+#: static/js/djaodjin-saas-vue.js:1956
+msgid "You haven't set a valid Stripe public key"
+msgstr ""
+
+#: static/js/djaodjin-saas-vue.js:2022
+msgid "This field shouldn't be empty"
+msgstr ""
+
+#: static/js/djaodjin-saas-vue.js:2029 static/js/djaodjin-stripe.js:274
+msgid "Card Number"
+msgstr ""
+
+#: static/js/djaodjin-saas-vue.js:2033 static/js/djaodjin-stripe.js:282
+msgid "Card Security Code"
+msgstr ""
+
+#: static/js/djaodjin-saas-vue.js:2038 static/js/djaodjin-stripe.js:292
+msgid "Expiration"
+msgstr ""
+
+#: static/js/djaodjin-saas-vue.js:2042 static/js/djaodjin-stripe.js:303
+msgid "Card Holder"
+msgstr ""
+
+#: static/js/djaodjin-saas-vue.js:2046 static/js/djaodjin-stripe.js:311
+msgid "Street"
+msgstr ""
+
+#: static/js/djaodjin-saas-vue.js:2050 static/js/djaodjin-stripe.js:320
+msgid "City"
+msgstr ""
+
+#: static/js/djaodjin-saas-vue.js:2054 static/js/djaodjin-stripe.js:337
+msgid "Zip"
+msgstr ""
+
+#: static/js/djaodjin-saas-vue.js:2058 static/js/djaodjin-stripe.js:76
+#: static/js/djaodjin-stripe.js:345
+msgid "Country"
+msgstr ""
+
+#: static/js/djaodjin-saas-vue.js:2062 static/js/djaodjin-stripe.js:328
+msgid "State/Province"
+msgstr ""
+
+#: static/js/djaodjin-saas-vue.js:2065 static/js/djaodjin-stripe.js:100
+#: static/js/djaodjin-stripe.js:351
+msgid "field(s) cannot be empty."
+msgstr ""
+
+#: static/js/djaodjin-saas-vue.js:2123
+msgid "Coupon was successfully applied."
+msgstr ""
+
+#: static/js/djaodjin-saas-vue.js:2176
+msgid "User was added."
+msgstr ""
+
+#: static/js/djaodjin-saas-vue.js:2250
+msgid "Success."
+msgstr ""
+
+#: static/js/djaodjin-saas-vue.js:2377
+msgid "The payment info was updated."
+msgstr ""
+
+#: static/js/djaodjin-saas-vue.js:2471
+#, javascript-format
+msgid "Successfully updated plan titled '%s'."
+msgstr ""
+
+#: static/js/djaodjin-saas.js:110
+msgid "Add to Cart"
+msgstr ""
+
+#: static/js/djaodjin-saas.js:111
+msgid "Remove from Cart"
+msgstr ""
+
+#: static/js/djaodjin-saas.js:228
+#, javascript-format
+msgid "A copy of the receipt was sent to %s."
+msgstr ""
+
+#: static/js/djaodjin-saas.js:232
+#, javascript-format
+msgid ""
+"An error occurred while emailing a copy of the receipt (%s %s). Please "
+"accept our apologies."
+msgstr ""
+
+#: static/js/djaodjin-saas.js:324
+msgid "Amount refunded."
+msgstr ""
+
+#: static/js/djaodjin-saas.js:329
+msgid "Refunded"
+msgstr ""
+
+#: static/js/djaodjin-saas.js:337
+#, javascript-format
+msgid ""
+"An error occurred while refunding the charge (%s - %s). Please accept our "
+"apologies."
+msgstr ""
+
+#: static/js/djaodjin-saas.js:719
+msgid "New Plan"
+msgstr ""
+
+#: static/js/djaodjin-saas.js:720
+msgid "Write the description of the plan here."
+msgstr ""
+
+#: static/js/djaodjin-saas.js:727
+msgid "Plan was created successfully."
+msgstr ""
+
+#: static/js/djaodjin-saas.js:732 static/js/djaodjin-saas.js:815
+#, javascript-format
+msgid ""
+"An error occurred while creating the plan (%s %s). Please accept our "
+"apologies."
+msgstr ""
+
+#: static/js/djaodjin-saas.js:769
+msgid "Plan was successfully deleted."
+msgstr ""
+
+#: static/js/djaodjin-saas.js:773
+#, javascript-format
+msgid ""
+"An error occurred while deleting the plan (%s %s). Please accept our "
+"apologies."
+msgstr ""
+
+#: static/js/djaodjin-stripe.js:86
+msgid "Account Number"
+msgstr ""
+
+#: static/js/djaodjin-stripe.js:94
+msgid "Routing Number"
+msgstr ""

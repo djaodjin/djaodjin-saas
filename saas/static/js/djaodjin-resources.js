@@ -56,7 +56,7 @@ function _showErrorMessages(resp) {
         var data = resp.data || resp.responseJSON;
         if( data && typeof data === "object" ) {
             if( data.detail ) {
-                messages = [$.i18n("Error:") + " " + data.detail];
+                messages = [gettext("Error:") + " " + data.detail];
             } else if( $.isArray(data) ) {
                 for( var idx = 0; idx < data.length; ++idx ) {
                     messages = messages.concat(_showErrorMessages(data[idx]));
@@ -87,7 +87,7 @@ function _showErrorMessages(resp) {
                 }
             }
         } else if( resp.detail ) {
-            messages = [$.i18n("Error:") + " " + resp.detail];
+            messages = [gettext("Error:") + " " + resp.detail];
         }
     }
     return messages;
@@ -97,17 +97,19 @@ function _showErrorMessages(resp) {
 function showErrorMessages(resp) {
     if( resp.status >= 500 && resp.status < 600 ) {
         messages = [
-            $.i18n("Error $1: $2. We have been notified and have started" +
-            " on fixing the error. We apologize for the inconvinience.", resp.status, resp.statusText)
+            interpolate(gettext("Error %s: %s. We have been notified and have started" +
+            " on fixing the error. We apologize for the inconvinience."), [resp.status, resp.statusText])
         ];
     } else {
         var messages = _showErrorMessages(resp);
         if( messages.length === 0 ) {
-            messages = [$.i18n("Error $1:", resp.status) + " " + resp.statusText];
+            messages = [interpolate(gettext("Error %s:"), [resp.status]) + " " + resp.statusText];
         }
     }
     showMessages(messages, "error");
 };
+
+showErrorMessages({status: 500, statusText: 'hello'});
 
 /** Retrieves the csrf-token from a <head> meta tag.
 

@@ -53,9 +53,9 @@ Vue.filter('relativeDate', function(at_time) {
     }
     var dateTime = new Date(at_time);
     if( dateTime <= cutOff ) {
-        return moment.duration(cutOff - dateTime).humanize() + " " + $.i18n('ago');
+        return moment.duration(cutOff - dateTime).humanize() + " " + gettext('ago');
     } else {
-        return moment.duration(dateTime - cutOff).humanize() + " " + $.i18n('left');
+        return moment.duration(dateTime - cutOff).humanize() + " " + gettext('left');
     }
 });
 
@@ -614,7 +614,7 @@ var userRelationMixin = {
             var ob = this.items.results[idx]
             var slug = (ob.user ? ob.user.slug : ob.slug);
             if( djaodjinSettings.user && djaodjinSettings.user.slug === slug ) {
-                if( !confirm($.i18n("You are about to delete yourself from this role. it's possible that you no longer can manage this organization after performing this action.\n\nDo you want to remove yourself from this organization?")) ) {
+                if( !confirm(gettext("You are about to delete yourself from this role. it's possible that you no longer can manage this organization after performing this action.\n\nDo you want to remove yourself from this organization?")) ) {
                     return;
                 }
             }
@@ -976,7 +976,7 @@ var userRelationListMixin = {
                 method: 'POST',
                 url: url,
             }).done(function(res) {
-                showMessages([$.i18n('Invite for $1 has been sent', slug)],
+                showMessages([interpolate(gettext('Invite for %s has been sent'), [slug])],
                     "success");
             }).fail(handleRequestError);
         },
@@ -1449,7 +1449,7 @@ new Vue({
             var vm = this;
             var sel = vm.itemSelected
             if(!sel.plan){
-                alert($.i18n('select a subscription from dropdown'));
+                alert(gettext('select a subscription from dropdown'));
                 return;
             }
             var sub = sel.organization.slug + ':' + sel.plan.slug;
@@ -1467,7 +1467,7 @@ new Vue({
                 vm.amount = '';
                 vm.description = '';
                 vm.createdAt = moment().format("YYYY-MM-DD");
-                showMessages([$.i18n("Profile was updated.")], "success");
+                showMessages([gettext("Profile was updated.")], "success");
             }).fail(handleRequestError);
         }
     },
@@ -1503,8 +1503,8 @@ new Vue({
     data: function(){
         var res = {
             url: djaodjinSettings.urls.organization.api_transactions,
-            last4: $.i18n("N/A"),
-            exp_date: $.i18n("N/A"),
+            last4: gettext("N/A"),
+            exp_date: gettext("N/A"),
             cardLoaded: false,
         }
         return res;
@@ -1559,9 +1559,9 @@ new Vue({
     data: {
         url: djaodjinSettings.urls.organization.api_transactions,
         balanceLoaded: false,
-        last4: $.i18n("N/A"),
-        bank_name: $.i18n("N/A"),
-        balance_amount: $.i18n("N/A"),
+        last4: gettext("N/A"),
+        bank_name: gettext("N/A"),
+        balance_amount: gettext("N/A"),
         balance_unit: '',
     },
     methods: {
@@ -1716,7 +1716,7 @@ new Vue({
                 url: djaodjinSettings.urls.organization.api_base,
                 data: data,
             }).done(function() {
-                showMessages([$.i18n("Profile was updated.")], "success");
+                showMessages([gettext("Profile was updated.")], "success");
             }).fail(handleRequestError);
         },
         deleteProfile: function(){
@@ -1953,7 +1953,7 @@ var cardMixin = {
             var vm = this;
             if(!djaodjinSettings.stripePubKey){
                 showMessages([
-                    $.i18n("You haven't set a valid Stripe public key")
+                    gettext("You haven't set a valid Stripe public key")
                 ], "error");
                 return;
             }
@@ -2019,50 +2019,50 @@ var cardMixin = {
             vm.validate.forEach(function(field){
                 if(vm[field] === ''){
                     valid = false;
-                    errors[field] = [$.i18n("This field shouldn't be empty")];
+                    errors[field] = [gettext("This field shouldn't be empty")];
                 }
             });
             vm.errors = errors;
             if(Object.keys(vm.errors).length > 0){
                 if( vm.errors['cardNumber'] ) {
                     if( errorMessages ) { errorMessages += ", "; }
-                    errorMessages += $.i18n("Card Number");
+                    errorMessages += gettext("Card Number");
                 }
                 if( vm.errors['cardCvc'] ) {
                     if( errorMessages ) { errorMessages += ", "; }
-                    errorMessages += $.i18n("Card Security Code");
+                    errorMessages += gettext("Card Security Code");
                 }
                 if( vm.errors['cardExpMonth']
                          || vm.errors['cardExpYear'] ) {
                     if( errorMessages ) { errorMessages += ", "; }
-                    errorMessages += $.i18n("Expiration");
+                    errorMessages += gettext("Expiration");
                 }
                 if( vm.errors['name'] ) {
                     if( errorMessages ) { errorMessages += ", "; }
-                    errorMessages += $.i18n("Card Holder");
+                    errorMessages += gettext("Card Holder");
                 }
                 if( vm.errors['addressLine1'] ) {
                     if( errorMessages ) { errorMessages += ", "; }
-                    errorMessages += $.i18n("Street");
+                    errorMessages += gettext("Street");
                 }
                 if( vm.errors['addressCity'] ) {
                     if( errorMessages ) { errorMessages += ", "; }
-                    errorMessages += $.i18n("City");
+                    errorMessages += gettext("City");
                 }
                 if( vm.errors['addressZip'] ) {
                     if( errorMessages ) { errorMessages += ", "; }
-                    errorMessages += $.i18n("Zip");
+                    errorMessages += gettext("Zip");
                 }
                 if( vm.errors['addressCountry'] ) {
                     if( errorMessages ) { errorMessages += ", "; }
-                    errorMessages += $.i18n("Country");
+                    errorMessages += gettext("Country");
                 }
                 if( vm.errors['addressRegion'] ) {
                     if( errorMessages ) { errorMessages += ", "; }
-                    errorMessages += $.i18n("State/Province");
+                    errorMessages += gettext("State/Province");
                 }
                 if( errorMessages ) {
-                    errorMessages += " " + $.i18n("field(s) cannot be empty.");
+                    errorMessages += " " + gettext("field(s) cannot be empty.");
                 }
                 showErrorMessages(errorMessages);
             }
@@ -2120,7 +2120,7 @@ new Vue({
                 url: djaodjinSettings.urls.api_redeem_coupon,
                 data: {code: vm.coupon},
             }).done(function(resp) {
-                showMessages([$.i18n("Coupon was successfully applied.")],
+                showMessages([gettext("Coupon was successfully applied.")],
                     "success");
                 vm.get()
             }).fail(handleRequestError);
@@ -2173,7 +2173,7 @@ new Vue({
                 url: djaodjinSettings.urls.api_cart,
                 data: data,
             }).done(function(resp) {
-                showMessages([$.i18n("User was added.")], "success");
+                showMessages([gettext("User was added.")], "success");
                 vm.init = false;
                 vm.$set(vm.plansUser, plan, {
                     firstName: '',
@@ -2247,7 +2247,7 @@ new Vue({
                 contentType: 'application/json',
                 data: JSON.stringify(data),
             }).done(function(resp) {
-                showMessages([$.i18n("Success.")], "success");
+                showMessages([gettext("Success.")], "success");
                 var id = resp.processor_key;
                 location = djaodjinSettings.urls.organization.receipt.replace('_', id);
             }).fail(handleRequestError);
@@ -2374,7 +2374,7 @@ new Vue({
                         token: token,
                     },
                 }).done(function(resp) {
-                    showMessages([$.i18n("The payment info was updated.")], "success");
+                    showMessages([gettext("The payment info was updated.")], "success");
                     vm.saveBillingAddress();
                 }).fail(handleRequestError);
             });
@@ -2468,7 +2468,7 @@ new Vue({
             }).done(function(res) {
                 vm.get()
                 showMessages([
-                    $.i18n("Successfully updated plan titled '$1'.", vm.title)
+                    interpolate(gettext("Successfully updated plan titled '%s'."), [vm.title])
                 ], "success");
             }).fail(handleRequestError);
         },
