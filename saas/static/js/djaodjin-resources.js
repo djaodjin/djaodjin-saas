@@ -109,7 +109,6 @@ function showErrorMessages(resp) {
     showMessages(messages, "error");
 };
 
-showErrorMessages({status: 500, statusText: 'hello'});
 
 /** Retrieves the csrf-token from a <head> meta tag.
 
