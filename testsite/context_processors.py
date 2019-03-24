@@ -23,9 +23,11 @@
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 from django.conf import settings
+from saas.utils import generate_i18n_js
 
 def js_framework(request):#pylint:disable=unused-argument
     return {
         'VUEJS': settings.JS_FRAMEWORK == 'vuejs',
         'DATETIME_FORMAT': "MMM dd, yyyy",
+        'I18N_JS': generate_i18n_js(),
     }

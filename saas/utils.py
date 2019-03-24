@@ -22,17 +22,21 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-import datetime, inspect, random, re, sys
+import datetime, inspect, random, re, sys, json
 
 from django.core.exceptions import NON_FIELD_ERRORS
 from django.conf import settings as django_settings
 from django.db import transaction, IntegrityError
 from django.http.request import split_domain_port, validate_host
+from django.views.i18n import JavaScriptCatalog, js_catalog_template
+from django.template import Context, Engine
 from django.template.defaultfilters import slugify
 from django.utils import six
 from django.utils.dateparse import parse_datetime
 from django.utils.timezone import utc, get_current_timezone
-from django.utils.translation import ugettext_lazy as _
+from django.utils.translation import (get_language,
+    ugettext_lazy as _)
+from django.utils.translation.trans_real import DjangoTranslation
 from rest_framework.exceptions import ValidationError
 from rest_framework.settings import api_settings
 from pytz import timezone, UnknownTimeZoneError
@@ -297,3 +301,23 @@ def handle_uniq_error(err, renames=None):
         raise ValidationError({field_name:
             _("This %(field)s is already taken.") % {'field': field_name}})
     raise err
+
+
+def generate_i18n_js():
+    class InlineJavaScriptCatalog(JavaScriptCatalog):
+        def render_to_str(self):
+            def indent(s):
+                return s.replace('\n', '\n  ')
+
+            locale = get_language()
+            self.translation = DjangoTranslation(locale, domain=self.domain)
+            context = self.get_context_data()
+            template = Engine().from_string(js_catalog_template)
+            context['catalog_str'] = indent(
+                json.dumps(context['catalog'], sort_keys=True, indent=2)
+            ) if context['catalog'] else None
+            context['formats_str'] = indent(json.dumps(context['formats'],
+                sort_keys=True, indent=2))
+            return template.render(Context(context))
+
+    return InlineJavaScriptCatalog().render_to_str()
