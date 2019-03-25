@@ -943,7 +943,12 @@ new Vue({
     el: "#today-sales-container",
     mixins: [itemListMixin, paginationMixin],
     data: {
-        url: djaodjinSettings.urls.provider.api_receivables
+        url: djaodjinSettings.urls.provider.api_receivables,
+        params: {
+            start_at: moment().startOf('day'),
+            o: 'created_at',
+            ot: 'desc'
+        }
     },
     mounted: function(){
         this.get()
@@ -956,7 +961,11 @@ new Vue({
     el: "#user-list-container",
     mixins: [itemListMixin, paginationMixin],
     data: {
-        url: djaodjinSettings.urls.provider.api_accounts
+        url: djaodjinSettings.urls.provider.api_accounts,
+        params: {
+            start_at: moment().startOf('day'),
+            o: '-created_at'
+        }
     },
     mounted: function(){
         this.get()

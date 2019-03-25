@@ -715,7 +715,8 @@ class OrganizationSmartListMixin(DateRangeMixin):
 
     ordering_fields = (
         'full_name',
-        'created_at')
+        'created_at',
+        'date_joined')
 
     ordering = ('full_name',)
     alternate_ordering = ('first_name', 'last_name')

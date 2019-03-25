@@ -90,6 +90,13 @@ class OrderingFilter(BaseOrderingFilter):
         params = request.query_params.get(self.ordering_param)
         if params:
             fields = [param.strip() for param in params.split(',')]
+            if 'created_at' in fields or '-created_at' in fields:
+                model_fields = set([
+                    field.name for field in queryset.model._meta.get_fields()])
+                if 'date_joined' in model_fields:
+                    fields = ['date_joined' if field == 'created_at' else (
+                        '-date_joined' if field == '-created_at' else field)
+                        for field in fields]
             ordering = self.remove_invalid_fields(
                 queryset, fields, view, request)
         if not ordering:
