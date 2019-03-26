@@ -38,7 +38,7 @@ class Command(BaseCommand):
     help = 'Generate JavaScript file for i18n purposes'
 
     def add_arguments(self, parser):
-        parser.add_argument('path', nargs=1, type=str)
+        parser.add_argument('PATH', nargs=1, type=str)
 
     def handle(self, *args, **options):
         contents = self.generate_i18n_js()
