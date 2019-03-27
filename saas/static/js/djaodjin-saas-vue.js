@@ -406,17 +406,55 @@ var httpRequestMixin = {
             if(!failCb) failCb = handleRequestError;
             return $.ajax(params).done(doneCb).fail(failCb);
         },
-        reqGet: function(url, params, doneCb, failCb){
-            var args = [{url: url}]
-            if(params instanceof Function){
+        _conditionalParams: function(orig){
+            if(orig.length < 1) return [];
+            var args = [{url: orig[0]}]
+            if(orig[1] instanceof Function){
                 // shortcut form like $.get, where params=doneCb
                 // and doneCb=failCb
-                args.push(params);
-                if(doneCb) args.push(doneCb)
+                args.push(orig[1]);
+                if(orig[2]) args.push(orig[2]);
             } else {
-                args[0].data = params;
-                if(doneCb) args.push(doneCb)
-                if(failCb) args.push(failCb)
+                if(orig[1]) args[0].data = orig[1];
+                if(orig[2]) args.push(orig[2]); // doneCb
+                if(orig[3]) args.push(orig[3]) // failCb
+            }
+            return args;
+        },
+        reqGet: function(url, data, doneCb, failCb){
+            var vm = this;
+            var args = vm._conditionalParams(arguments);
+            return this.req.apply(this, args);
+        },
+        reqPost: function(url, data, doneCb, failCb){
+            var vm = this;
+            var args = vm._conditionalParams(arguments);
+            if(args[0]){
+                args[0].method = 'POST';
+            }
+            return this.req.apply(this, args);
+        },
+        reqPut: function(url, data, doneCb, failCb){
+            var vm = this;
+            var args = vm._conditionalParams(arguments);
+            if(args[0]){
+                args[0].method = 'PUT';
+            }
+            return this.req.apply(this, args);
+        },
+        reqPatch: function(url, data, doneCb, failCb){
+            var vm = this;
+            var args = vm._conditionalParams(arguments);
+            if(args[0]){
+                args[0].method = 'PATCH';
+            }
+            return this.req.apply(this, args);
+        },
+        reqDelete: function(url, data, doneCb, failCb){
+            var vm = this;
+            var args = vm._conditionalParams(arguments);
+            if(args[0]){
+                args[0].method = 'DELETE';
             }
             return this.req.apply(this, args);
         },
@@ -648,10 +686,7 @@ var userRelationMixin = {
                 }
             }
             var url = vm.url + '/' + encodeURIComponent(slug);
-            vm.req({
-                method: 'DELETE',
-                url: url,
-            }, function() {
+            vm.reqDelete(url, function() {
                 // splicing instead of refetching because
                 // subsequent fetch might fail due to 403
                 vm.items.results.splice(idx, 1);
@@ -659,15 +694,13 @@ var userRelationMixin = {
         },
         saveUserRelation: function(slug){
             var vm = this;
-            vm.req({
-                method: 'POST',
-                url: vm.url,
-                data: {slug: slug},
-            }, function (resp) {
-                vm.get()
-            }, function(resp){
-                vm.handleNewUser(slug);
-            });
+            vm.reqPost(vm.url, {slug: slug},
+                function(resp){
+                    vm.get()
+                }, function(resp){
+                    vm.handleNewUser(slug);
+                }
+            );
         },
         handleNewUser: function(str){
             var vm = this;
@@ -687,11 +720,7 @@ var userRelationMixin = {
         create: function(){
             var vm = this;
             var data = vm.unregistered;
-            vm.req({
-                method: 'POST',
-                url: vm.url + "?force=1",
-                data: data,
-            }, function (resp) {
+            vm.reqPost(vm.url + "?force=1", data, function(resp){
                 vm.get()
             });
         }
@@ -755,11 +784,7 @@ var subscribersMixin = {
             var vm = this;
             var url = vm.subscriptionURL(
                 item.organization.slug, item.plan.slug);
-            vm.req({
-                method: 'PATCH',
-                url: url,
-                data: {description: item.description},
-            })
+            vm.reqPatch(url, {description: item.description})
         },
         resolve: function (o, s){
             return s.split('.').reduce(function(a, b) {
@@ -896,31 +921,20 @@ new Vue({
         remove: function(idx){
             var vm = this;
             var code = this.items.results[idx].code;
-            vm.req({
-                method: 'DELETE',
-                url: vm.url + '/' + code,
-            }, function() {
-                vm.get()
+            vm.reqDelete(vm.url + '/' + code, function() {
+                vm.get();
             });
         },
         update: function(coupon){
             var vm = this;
-            vm.req({
-                method: 'PUT',
-                url: vm.url + '/' + coupon.code,
-                data: coupon,
-            }, function (resp) {
-                vm.get()
+            vm.reqPut(vm.url + '/' + coupon.code, coupon, function(resp){
+                vm.get();
             });
         },
         save: function(){
             var vm = this;
-            vm.req({
-                method: 'POST',
-                url: vm.url,
-                data: vm.newCoupon,
-            }, function (resp) {
-                vm.get()
+            vm.reqPost(vm.url, vm.newCoupon, function(resp){
+                vm.get();
                 vm.newCoupon = {
                     code: '',
                     percent: ''
@@ -1005,10 +1019,7 @@ var userRelationListMixin = {
         sendInvite: function(slug){
             var vm = this;
             var url = vm.url + '/' + slug + '/';
-            vm.req({
-                method: 'POST',
-                url: url,
-            }, function(res) {
+            vm.reqPost(url, function(res){
                 showMessages(["Invite for " + slug + " has been sent"], "success");
             });
         },
@@ -1364,11 +1375,7 @@ subscriptionsListVM = new Vue({
                 description: item.description,
                 ends_at: item.ends_at
             };
-            vm.req({
-                method: 'PATCH',
-                url: url,
-                data: data,
-            });
+            vm.reqPatch(url, data);
         },
         selected: function(idx){
             var item = this.items.results[idx];
@@ -1406,10 +1413,7 @@ subscriptionsListVM = new Vue({
             var data = vm.toDelete;
             if(!(data.org && data.plan)) return;
             var url = vm.subscriptionURL(data.org, data.plan);
-            vm.req({
-                method: 'DELETE',
-                url: url,
-            }, function (){
+            vm.reqDelete(url, function (){
                 vm.$emit('expired');
                 vm.params.page = 1;
                 vm.get();
@@ -1419,10 +1423,7 @@ subscriptionsListVM = new Vue({
             var vm = this;
             var url = (djaodjinSettings.urls.organization.api_profile_base +
                 organization + "/subscribers/accept/" + request_key + "/");
-            vm.req({
-                method: 'PUT',
-                url: url,
-            }, function (){
+            vm.reqPut(url, function (){
                 vm.get();
             });
         },
@@ -1485,22 +1486,21 @@ new Vue({
                 return;
             }
             var sub = sel.organization.slug + ':' + sel.plan.slug;
-            vm.req({
-                method: 'POST',
-                data: {
+            vm.reqPost(djaodjinSettings.urls.organization.api_import,
+                {
                     subscription: sub,
                     amount: vm.amount,
                     descr: vm.description,
                     created_at: moment(vm.createdAt).toISOString(),
                 },
-                url: djaodjinSettings.urls.organization.api_import,
-            }, function (){
-                vm.itemSelected = '';
-                vm.amount = '';
-                vm.description = '';
-                vm.createdAt = moment().format("YYYY-MM-DD");
-                showMessages(["Profile was updated."], "success");
-            });
+                function(){
+                    vm.itemSelected = '';
+                    vm.amount = '';
+                    vm.description = '';
+                    vm.createdAt = moment().format("YYYY-MM-DD");
+                    showMessages(["Profile was updated."], "success");
+                }
+            );
         }
     },
 });
@@ -1566,15 +1566,15 @@ new Vue({
         },
         cancelBalance: function(){
             var vm = this;
-            vm.req({
-                method: 'DELETE',
-                url: djaodjinSettings.urls.organization.api_cancel_balance_due,
-            }, function() {
-                vm.reload()
-            }, function(resp){
-                vm.reload()
-                handleRequestError(resp);
-            });
+            vm.reqDelete(djaodjinSettings.urls.organization.api_cancel_balance_due,
+                function() {
+                    vm.reload()
+                },
+                function(resp){
+                    vm.reload()
+                    handleRequestError(resp);
+                }
+            );
         }
     },
     mounted: function(){
@@ -1760,13 +1760,12 @@ new Vue({
             }
         },
         saveProfile: function(data){
-            vm.req({
-                method: 'PUT',
-                url: djaodjinSettings.urls.organization.api_base,
-                data: data,
-            }, function() {
-                showMessages(["Profile was updated."], "success");
-            });
+            vm.reqPut(djaodjinSettings.urls.organization.api_base,
+                data,
+                function() {
+                    showMessages(["Profile was updated."], "success");
+                }
+            );
         },
         saveProfileWithPicture: function(data){
             var vm = this;
@@ -1793,12 +1792,11 @@ new Vue({
         },
         deleteProfile: function(){
             var vm = this;
-            vm.req({
-                method: 'DELETE',
-                url: djaodjinSettings.urls.organization.api_base,
-            }, function() {
-                window.location = djaodjinSettings.urls.profile_redirect;
-            });
+            vm.reqDelete(djaodjinSettings.urls.organization.api_base,
+                function() {
+                    window.location = djaodjinSettings.urls.profile_redirect;
+                }
+            );
         },
     },
     computed: {
@@ -1845,11 +1843,7 @@ new Vue({
     methods: {
         create: function(){
             var vm = this;
-            vm.req({
-                method: 'POST',
-                url: vm.url,
-                data: vm.role,
-            }, function(resp) {
+            vm.reqPost(vm.url, vm.role, function(resp) {
                 vm.role.title = '';
                 vm.params.page = 1;
                 vm.get()
@@ -1858,10 +1852,7 @@ new Vue({
         remove: function(role){
             var vm = this;
             var url = vm.url + "/" + role.slug
-            vm.req({
-                method: 'DELETE',
-                url: url,
-            }, function() {
+            vm.reqDelete(url, function() {
                 vm.params.page = 1;
                 vm.get()
             });
@@ -1901,11 +1892,7 @@ new Vue({
     methods: {
         create: function(){
             var vm = this;
-            vm.req({
-                method: 'POST',
-                url: vm.balanceLineUrl,
-                data: vm.balanceLine,
-            }, function (resp) {
+            vm.reqPost(vm.balanceLineUrl, vm.balanceLine, function(resp){
                 vm.get()
                 vm.balanceLine = {
                     title: '',
@@ -1916,10 +1903,7 @@ new Vue({
         },
         remove: function(id){
             var vm = this;
-            vm.req({
-                method: 'DELETE',
-                url: vm.balanceLineUrl + '/' + id,
-            }, function() {
+            vm.reqDelete(vm.balanceLineUrl + '/' + id, function() {
                 vm.get()
             });
         },
@@ -2011,10 +1995,7 @@ var cardMixin = {
         },
         getUserCard: function(){
             var vm = this;
-            vm.req({
-                method: 'GET',
-                url: djaodjinSettings.urls.organization.api_card,
-            }, function(resp) {
+            vm.reqGet(djaodjinSettings.urls.organization.api_card, function(resp){
                 if(resp.last4){
                     var savedCard = {
                         last4: resp.last4,
@@ -2176,26 +2157,19 @@ new Vue({
         remove: function(plan){
             var vm = this;
             var url = djaodjinSettings.urls.api_cart;
-            vm.req({
-                method: 'DELETE',
-                url: url,
-                data: {
-                    plan: plan,
-                },
-            }, function() {
+            vm.reqDelete(url, {plan: plan}, function() {
                 vm.get()
             });
         },
         redeem: function(){
             var vm = this;
-            vm.req({
-                method: 'POST',
-                url: djaodjinSettings.urls.api_redeem_coupon,
-                data: {code: vm.coupon},
-            }, function(resp) {
-                showMessages(["Coupon was successfully applied."], "success");
-                vm.get()
-            });
+            vm.reqPost(djaodjinSettings.urls.api_redeem_coupon,
+                {code: vm.coupon},
+                function(resp) {
+                    showMessages(["Coupon was successfully applied."], "success");
+                    vm.get()
+                }
+            );
         },
         getAndPrepareData: function(res){
             var vm = this;
@@ -2240,11 +2214,7 @@ new Vue({
             if(option){
                 data.option = option
             }
-            vm.req({
-                method: 'POST',
-                url: djaodjinSettings.urls.api_cart,
-                data: data,
-            }, function(resp) {
+            vm.reqPost(djaodjinSettings.urls.api_cart, data, function(resp){
                 showMessages(["User was added."], "success");
                 vm.init = false;
                 vm.$set(vm.plansUser, plan, {
@@ -2439,16 +2409,15 @@ new Vue({
             var vm = this;
             if(!vm.validateForm()) return;
             vm.getCardToken(function(token){
-                vm.req({
-                    method: 'PUT',
-                    url: djaodjinSettings.urls.organization.api_card,
-                    data: {
+                vm.reqPut(djaodjinSettings.urls.organization.api_card,
+                    {
                         token: token,
                     },
-                }, function(resp) {
-                    showMessages(["The payment info was updated."], "success");
-                    vm.saveBillingAddress();
-                });
+                    function(resp) {
+                        showMessages(["The payment info was updated."], "success");
+                        vm.saveBillingAddress();
+                    }
+                );
             });
         },
         saveBillingAddress: function(){
@@ -2461,11 +2430,7 @@ new Vue({
                 country: vm.addressCountry,
                 region: vm.addressRegion,
             }
-            vm.req({
-                method: 'PUT',
-                url: djaodjinSettings.urls.organization.api_base + '/',
-                data: data,
-            });
+            vm.reqPut(djaodjinSettings.urls.organization.api_base + '/', data);
         },
         save: function(){
             this.saveCard();
@@ -2518,9 +2483,8 @@ new Vue({
         },
         updatePlan: function(){
             var vm = this;
-            vm.req({
-                method: 'PUT',
-                data: {
+            vm.reqPut(djaodjinSettings.urls.plan.api_plan,
+                {
                     title: vm.title,
                     description: vm.description,
                     unit: vm.unit,
@@ -2533,39 +2497,29 @@ new Vue({
                     is_not_priced: vm.isNotPriced,
                     renewal_type: vm.renewalType,
                 },
-                url: djaodjinSettings.urls.plan.api_plan,
-            }, function(res) {
-                vm.get()
-                showMessages(["Successfully updated plan titled '" + vm.title + "'."], "success");
-            });
+                function(res) {
+                    vm.get()
+                    showMessages(["Successfully updated plan titled '" + vm.title + "'."], "success");
+                }
+            );
         },
         togglePlanStatus: function(){
             var vm = this;
             var next = !vm.isActive;
-            vm.req({
-                method: 'PUT',
-                data: {
-                    is_active: next,
-                },
-                url: djaodjinSettings.urls.plan.api_plan,
-            }, function(res) {
+            vm.reqPut(djaodjinSettings.urls.plan.api_plan, {is_active: next}, function(res){
                 vm.isActive = next;
             });
         },
         deletePlan: function(){
             var vm = this;
-            vm.req({
-                method: 'DELETE',
-                url: djaodjinSettings.urls.plan.api_plan,
-            }, function(res) {
+            vm.reqDelete(djaodjinSettings.urls.plan.api_plan, function(res) {
                 window.location = djaodjinSettings.urls.provider.metrics_plans;
             });
         },
         createPlan: function(){
             var vm = this;
-            vm.req({
-                method: 'POST',
-                data: {
+            vm.reqPost(djaodjinSettings.urls.provider.api_plans,
+                {
                     title: vm.title,
                     description: vm.description,
                     unit: vm.unit,
@@ -2578,10 +2532,10 @@ new Vue({
                     is_not_priced: vm.isNotPriced,
                     renewal_type: vm.renewalType,
                 },
-                url: djaodjinSettings.urls.provider.api_plans,
-            }, function(res) {
-                window.location = djaodjinSettings.urls.provider.metrics_plans;
-            });
+                function(res) {
+                    window.location = djaodjinSettings.urls.provider.metrics_plans;
+                }
+            );
         },
     },
     mounted: function(){
