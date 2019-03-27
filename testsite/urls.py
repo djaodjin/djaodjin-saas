@@ -26,6 +26,7 @@ import debug_toolbar
 from django.core.exceptions import ImproperlyConfigured
 from django.contrib.auth.decorators import login_required
 from django.views.generic import TemplateView
+from django.views.i18n import JavaScriptCatalog
 from saas.compat import reverse_lazy
 from saas.views import OrganizationRedirectView, UserRedirectView
 from saas.views.plans import CartPlanListView
@@ -59,6 +60,7 @@ except ImproperlyConfigured: # Django <= 1.9
     ]
 
 urlpatterns += [
+    url(r'^jsi18n/', JavaScriptCatalog.as_view(), name='javascript-catalog'),
     url(r'^__debug__/', include(debug_toolbar.urls)),
     url_prefixed(r'register/$',
         PersonalRegistrationView.as_view(
