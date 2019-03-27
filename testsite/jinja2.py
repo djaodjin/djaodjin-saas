@@ -29,7 +29,6 @@ import django.template.defaultfilters
 from django.utils.translation import gettext, ngettext
 from jinja2.sandbox import SandboxedEnvironment as Jinja2Environment
 import saas.templatetags.saas_tags
-from saas.utils import generate_i18n_js
 
 import testsite.templatetags.testsite_tags
 
@@ -63,7 +62,6 @@ def environment(**options):
     env.globals.update({
         'VUEJS': (settings.JS_FRAMEWORK == 'vuejs'),
         'DATETIME_FORMAT': "MMM dd, yyyy",
-        'I18N_JS': generate_i18n_js(),
     })
 
     return env
