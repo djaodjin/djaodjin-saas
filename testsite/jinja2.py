@@ -26,6 +26,7 @@ from __future__ import absolute_import
 
 from django.conf import settings
 import django.template.defaultfilters
+from django.utils.translation import gettext, ngettext
 from jinja2.sandbox import SandboxedEnvironment as Jinja2Environment
 import saas.templatetags.saas_tags
 
@@ -33,7 +34,14 @@ import testsite.templatetags.testsite_tags
 
 
 def environment(**options):
+    options['extensions'] = ['jinja2.ext.i18n']
+
     env = Jinja2Environment(**options)
+
+    # i18n
+    env.install_gettext_callables(gettext=gettext, ngettext=ngettext,
+        newstyle=True)
+
     # Generic filters to render pages
     env.filters['is_authenticated'] = \
         testsite.templatetags.testsite_tags.is_authenticated
