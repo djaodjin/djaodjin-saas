@@ -752,9 +752,9 @@ class RoleSmartListMixin(SortableListMixin, SearchableListMixin):
                      'role_description__title',
                      'role_description__slug']
 
-    sort_fields_aliases = [('full_name', 'organization__full_name'),
-                           ('username', 'user__username'),
-                           ('role_name', 'role_description__title'),
+    sort_fields_aliases = [('organization__full_name', 'full_name'),
+                           ('user__username', 'username'),
+                           ('role_description__title', 'role_name'),
                            ('created_at', 'created_at')]
 
     filter_backends = (SortableSearchableFilterBackend(

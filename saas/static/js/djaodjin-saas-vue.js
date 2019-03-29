@@ -1001,6 +1001,8 @@ var app = new Vue({
         return {
             params: {
                 role_status: 'active',
+                o: 'username',
+                ot: 'asc',
             }
         }
     },
@@ -1015,6 +1017,8 @@ var app = new Vue({
         return {
             params: {
                 role_status: 'pending',
+                o: 'username',
+                ot: 'asc',
             }
         }
     },
