@@ -413,10 +413,73 @@ function handleRequestError(resp){
     showErrorMessages(resp);
 }
 
+var httpRequestMixin = {
+    // basically a wrapper around jQuery ajax functions
+    methods: {
+        req: function(params, doneCb, failCb){
+            if(!failCb) failCb = handleRequestError;
+            return $.ajax(params).done(doneCb).fail(failCb);
+        },
+        _conditionalParams: function(orig){
+            if(orig.length < 1) return [];
+            var args = [{url: orig[0]}]
+            if(orig[1] instanceof Function){
+                // shortcut form like $.get, where params=doneCb
+                // and doneCb=failCb
+                args.push(orig[1]);
+                if(orig[2]) args.push(orig[2]);
+            } else {
+                if(orig[1]) args[0].data = orig[1];
+                if(orig[2]) args.push(orig[2]); // doneCb
+                if(orig[3]) args.push(orig[3]) // failCb
+            }
+            return args;
+        },
+        reqGet: function(url, data, doneCb, failCb){
+            var vm = this;
+            var args = vm._conditionalParams(arguments);
+            return this.req.apply(this, args);
+        },
+        reqPost: function(url, data, doneCb, failCb){
+            var vm = this;
+            var args = vm._conditionalParams(arguments);
+            if(args[0]){
+                args[0].method = 'POST';
+            }
+            return this.req.apply(this, args);
+        },
+        reqPut: function(url, data, doneCb, failCb){
+            var vm = this;
+            var args = vm._conditionalParams(arguments);
+            if(args[0]){
+                args[0].method = 'PUT';
+            }
+            return this.req.apply(this, args);
+        },
+        reqPatch: function(url, data, doneCb, failCb){
+            var vm = this;
+            var args = vm._conditionalParams(arguments);
+            if(args[0]){
+                args[0].method = 'PATCH';
+            }
+            return this.req.apply(this, args);
+        },
+        reqDelete: function(url, data, doneCb, failCb){
+            var vm = this;
+            var args = vm._conditionalParams(arguments);
+            if(args[0]){
+                args[0].method = 'DELETE';
+            }
+            return this.req.apply(this, args);
+        },
+    }
+}
+
 var itemListMixin = {
     data: function(){
         return this.getInitData();
     },
+    mixins: [httpRequestMixin],
     methods: {
         getInitData: function(){
             data = {
@@ -455,7 +518,7 @@ var itemListMixin = {
                     vm.itemsLoaded = true;
                 }
             }
-            $.get(vm.url, vm.getParams(), cb).fail(handleRequestError);
+            vm.reqGet(vm.url, vm.getParams(), cb);
         },
         getParams: function(excludes){
             var vm = this;
@@ -637,26 +700,21 @@ var userRelationMixin = {
                 }
             }
             var url = vm.url + '/' + encodeURIComponent(slug);
-            $.ajax({
-                method: 'DELETE',
-                url: url,
-            }).done(function() {
+            vm.reqDelete(url, function() {
                 // splicing instead of refetching because
                 // subsequent fetch might fail due to 403
                 vm.items.results.splice(idx, 1);
-            }).fail(handleRequestError);
+            });
         },
         saveUserRelation: function(slug){
             var vm = this;
-            $.ajax({
-                method: 'POST',
-                url: vm.url,
-                data: {slug: slug},
-            }).done(function (resp) {
-                vm.get()
-            }).fail(function(resp){
-                vm.handleNewUser(slug);
-            });
+            vm.reqPost(vm.url, {slug: slug},
+                function(resp){
+                    vm.get()
+                }, function(resp){
+                    vm.handleNewUser(slug);
+                }
+            );
         },
         handleNewUser: function(str){
             var vm = this;
@@ -676,13 +734,9 @@ var userRelationMixin = {
         create: function(){
             var vm = this;
             var data = vm.unregistered;
-            $.ajax({
-                method: 'POST',
-                url: vm.url + "?force=1",
-                data: data,
-            }).done(function (resp) {
+            vm.reqPost(vm.url + "?force=1", data, function(resp){
                 vm.get()
-            }).fail(handleRequestError);
+            });
         }
     },
 }
@@ -711,6 +765,9 @@ var subscriptionsMixin = {
 }
 
 var subscribersMixin = {
+    mixins: [
+        itemListMixin,
+    ],
     methods: {
         editDescription: function(item, id){
             var vm = this;
@@ -741,11 +798,7 @@ var subscribersMixin = {
             var vm = this;
             var url = vm.subscriptionURL(
                 item.organization.slug, item.plan.slug);
-            $.ajax({
-                method: 'PATCH',
-                url: url,
-                data: {description: item.description},
-            }).fail(handleRequestError);
+            vm.reqPatch(url, {description: item.description})
         },
         resolve: function (o, s){
             return s.split('.').reduce(function(a, b) {
@@ -784,6 +837,7 @@ Vue.component('user-typeahead', {
             itemSelected: '',
         }
     },
+    mixins: [httpRequestMixin],
     computed: {
         params: function(){
             res = {}
@@ -801,7 +855,7 @@ Vue.component('user-typeahead', {
             else {
                 vm.searching = true;
                 vm.typeaheadQuery = query;
-                $.get(vm.url, vm.params, function(res){
+                vm.reqGet(vm.url, vm.params, function(res){
                     vm.searching = false;
                     done(res.results)
                 });
@@ -881,36 +935,25 @@ new Vue({
         remove: function(idx){
             var vm = this;
             var code = this.items.results[idx].code;
-            $.ajax({
-                method: 'DELETE',
-                url: vm.url + '/' + code,
-            }).done(function() {
-                vm.get()
-            }).fail(handleRequestError);
+            vm.reqDelete(vm.url + '/' + code, function() {
+                vm.get();
+            });
         },
         update: function(coupon){
             var vm = this;
-            $.ajax({
-                method: 'PUT',
-                url: vm.url + '/' + coupon.code,
-                data: coupon,
-            }).done(function (resp) {
-                vm.get()
-            }).fail(handleRequestError);
+            vm.reqPut(vm.url + '/' + coupon.code, coupon, function(resp){
+                vm.get();
+            });
         },
         save: function(){
             var vm = this;
-            $.ajax({
-                method: 'POST',
-                url: vm.url,
-                data: vm.newCoupon,
-            }).done(function (resp) {
-                vm.get()
+            vm.reqPost(vm.url, vm.newCoupon, function(resp){
+                vm.get();
                 vm.newCoupon = {
                     code: '',
                     percent: ''
                 }
-            }).fail(handleRequestError);
+            });
         },
         editDescription: function(idx){
             var vm = this;
@@ -989,14 +1032,11 @@ var userRelationListMixin = {
     methods: {
         sendInvite: function(slug){
             var vm = this;
-            var url = vm.url + '/' + slug + '/';
-            $.ajax({
-                method: 'POST',
-                url: url,
-            }).done(function(res) {
-                showMessages([interpolate(gettext('Invite for %s has been sent'), [slug])],
+            vm.reqPost(vm.url + '/' + slug + '/', {}, function(res){
+                showMessages([interpolate(gettext(
+                    "Invite for %s has been sent"), [slug])],
                     "success");
-            }).fail(handleRequestError);
+            });
         },
     },
     mounted: function(){
@@ -1042,7 +1082,7 @@ var app = new Vue({
 if($('#metrics-container').length > 0){
 new Vue({
     el: "#metrics-container",
-    mixins: [timezoneMixin],
+    mixins: [httpRequestMixin, timezoneMixin],
     data: function(){
         var data = {
             tables: djaodjinSettings.tables,
@@ -1066,7 +1106,7 @@ new Vue({
             if( vm.timezone !== 'utc' ) {
                 params["timezone"] = moment.tz.guess();
             }
-            $.get(table.location, params, function(resp){
+            vm.reqGet(table.location, params, function(resp){
                 var unit = resp.unit;
                 var scale = resp.scale;
                 scale = parseFloat(scale);
@@ -1200,7 +1240,6 @@ if($('#subscribed').length > 0){
 var app = new Vue({
     el: "#subscribed",
     mixins: [
-        itemListMixin,
         subscriptionsMixin,
         subscribersMixin,
         paginationMixin,
@@ -1220,7 +1259,6 @@ if($('#churned').length > 0){
 var app = new Vue({
     el: "#churned",
     mixins: [
-        itemListMixin,
         subscriptionsMixin,
         subscribersMixin,
         paginationMixin,
@@ -1240,6 +1278,7 @@ if($('#plans-tab-container').length > 0){
 var app = new Vue({
     el: "#plans-tab-container",
     mixins: [
+        httpRequestMixin,
         timezoneMixin
     ],
     data: function(){
@@ -1268,7 +1307,7 @@ var app = new Vue({
             if( vm.timezone !== 'utc' ) {
                 params["timezone"] = moment.tz.guess();
             }
-            $.get(vm.url, params, function(resp){
+            vm.reqGet(vm.url, params, function(resp){
                 var unit = resp.unit;
                 var scale = resp.scale;
                 scale = parseFloat(scale);
@@ -1351,11 +1390,7 @@ subscriptionsListVM = new Vue({
                 description: item.description,
                 ends_at: item.ends_at
             };
-            $.ajax({
-                method: 'PATCH',
-                url: url,
-                data: data,
-            }).fail(handleRequestError);
+            vm.reqPatch(url, data);
         },
         selected: function(idx){
             var item = this.items.results[idx];
@@ -1373,14 +1408,14 @@ subscriptionsListVM = new Vue({
                   slug: org
                 }
             }
-            $.ajax({
+            vm.req({
                 method: 'POST',
                 url: url,
                 contentType: 'application/json',
                 data: JSON.stringify(data),
-            }).done(function (){
+            }, function (){
                 vm.get();
-            }).fail(handleRequestError);
+            });
         },
         unsubscribeConfirm: function(org, plan) {
             this.toDelete = {
@@ -1393,25 +1428,19 @@ subscriptionsListVM = new Vue({
             var data = vm.toDelete;
             if(!(data.org && data.plan)) return;
             var url = vm.subscriptionURL(data.org, data.plan);
-            $.ajax({
-                method: 'DELETE',
-                url: url,
-            }).done(function (){
+            vm.reqDelete(url, function (){
                 vm.$emit('expired');
                 vm.params.page = 1;
                 vm.get();
-            }).fail(handleRequestError);
+            });
         },
         acceptRequest: function(organization, request_key) {
             var vm = this;
             var url = (djaodjinSettings.urls.organization.api_profile_base +
                 organization + "/subscribers/accept/" + request_key + "/");
-            $.ajax({
-                method: 'PUT',
-                url: url,
-            }).done(function (){
+            vm.reqPut(url, function (){
                 vm.get();
-            }).fail(handleRequestError);
+            });
         },
     },
     mounted: function(){
@@ -1448,11 +1477,12 @@ new Vue({
         amount: 0,
         description: '',
     },
+    mixins: [httpRequestMixin],
     methods: {
         getSubscriptions: function(query, done) {
             var vm = this;
             vm.searching = true;
-            $.get(vm.url, {q: query}, function(res){
+            vm.reqGet(vm.url, {q: query}, function(res){
                 vm.searching = false;
                 // current typeahead implementation does not
                 // support dynamic keys that's why we are
@@ -1471,22 +1501,18 @@ new Vue({
                 return;
             }
             var sub = sel.organization.slug + ':' + sel.plan.slug;
-            $.ajax({
-                method: 'POST',
-                data: {
-                    subscription: sub,
-                    amount: vm.amount,
-                    descr: vm.description,
-                    created_at: moment(vm.createdAt).toISOString(),
-                },
-                url: djaodjinSettings.urls.organization.api_import,
-            }).done(function (){
+            vm.reqPost(djaodjinSettings.urls.organization.api_import, {
+                subscription: sub,
+                amount: vm.amount,
+                descr: vm.description,
+                created_at: moment(vm.createdAt).toISOString(),
+            }, function () {
                 vm.itemSelected = '';
                 vm.amount = '';
                 vm.description = '';
                 vm.createdAt = moment().format("YYYY-MM-DD");
                 showMessages([gettext("Profile was updated.")], "success");
-            }).fail(handleRequestError);
+            });
         }
     },
 });
@@ -1530,7 +1556,8 @@ new Vue({
     methods: {
         getCard: function(){
             var vm = this;
-            $.get(djaodjinSettings.urls.organization.api_card, function(resp){
+            vm.reqGet(djaodjinSettings.urls.organization.api_card,
+            function(resp){
                 if(resp.last4) {
                     vm.last4 = resp.last4;
                 }
@@ -1552,15 +1579,15 @@ new Vue({
         },
         cancelBalance: function(){
             var vm = this;
-            $.ajax({
-                method: 'DELETE',
-                url: djaodjinSettings.urls.organization.api_cancel_balance_due,
-            }).done(function() {
-                vm.reload()
-            }).fail(function(resp){
-                vm.reload()
-                handleRequestError(resp);
-            });
+            vm.reqDelete(djaodjinSettings.urls.organization.api_cancel_balance_due,
+                function() {
+                    vm.reload()
+                },
+                function(resp){
+                    vm.reload()
+                    handleRequestError(resp);
+                }
+            );
         }
     },
     mounted: function(){
@@ -1573,7 +1600,12 @@ new Vue({
 if($('#transfers-container').length > 0){
 new Vue({
     el: "#transfers-container",
-    mixins: [itemListMixin, sortableMixin, paginationMixin, filterableMixin],
+    mixins: [
+        itemListMixin,
+        sortableMixin,
+        paginationMixin,
+        filterableMixin
+    ],
     data: {
         url: djaodjinSettings.urls.organization.api_transactions,
         balanceLoaded: false,
@@ -1585,7 +1617,8 @@ new Vue({
     methods: {
         getBalance: function() {
             var vm = this;
-            $.get(djaodjinSettings.urls.provider.api_bank, function(resp){
+            vm.reqGet(djaodjinSettings.urls.provider.api_bank,
+            function(resp){
                 vm.balance_amount = resp.balance_amount;
                 vm.balance_unit = resp.balance_unit;
                 vm.last4 = resp.last4;
@@ -1646,7 +1679,6 @@ new Vue({
         paginationMixin,
         sortableMixin,
         filterableMixin,
-        itemListMixin,
     ],
     data: {
         url: djaodjinSettings.urls.provider.api_plan_subscribers,
@@ -1669,16 +1701,15 @@ new Vue({
         currentPicture: null,
         picture: null,
     },
+    mixins: [httpRequestMixin],
     methods: {
         get: function(cb){
             var vm = this;
-            $.ajax({
-                method: 'GET',
-                url: djaodjinSettings.urls.organization.api_base,
-            }).done(function(resp) {
+            vm.reqGet(djaodjinSettings.urls.organization.api_base,
+            function(resp) {
                 vm.formFields = resp;
                 if(cb) cb();
-            }).fail(handleRequestError);
+            });
         },
         updateProfile: function(){
             var vm = this;
@@ -1710,13 +1741,10 @@ new Vue({
             return !isEmpty;
         },
         saveProfile: function(data){
-            $.ajax({
-                method: 'PUT',
-                url: djaodjinSettings.urls.organization.api_base,
-                data: data,
-            }).done(function() {
+            vm.reqPut(djaodjinSettings.urls.organization.api_base, data,
+            function(resp) {
                 showMessages([gettext("Profile was updated.")], "success");
-            }).fail(handleRequestError);
+            });
         },
         saveProfileWithPicture: function(data){
             var vm = this;
@@ -1727,28 +1755,27 @@ new Vue({
                 for(var key in data){
                     form.append(key, data[key]);
                 }
-                $.ajax({
+                vm.req({
                     method: 'PUT',
                     url: djaodjinSettings.urls.organization.api_base,
                     contentType: false,
                     processData: false,
                     data: form,
-                }).done(function() {
+                }, function() {
                     vm.get(function(){
                         vm.picture.remove();
                     });
                     showMessages(["Profile was updated."], "success");
-                }).fail(handleRequestError);
+                });
             }, 'image/jpeg');
         },
         deleteProfile: function(){
             var vm = this;
-            $.ajax({
-                method: 'DELETE',
-                url: djaodjinSettings.urls.organization.api_base,
-            }).done(function() {
-                window.location = djaodjinSettings.urls.profile_redirect;
-            }).fail(handleRequestError);
+            vm.reqDelete(djaodjinSettings.urls.organization.api_base,
+                function() {
+                    window.location = djaodjinSettings.urls.profile_redirect;
+                }
+            );
         },
     },
     computed: {
@@ -1799,26 +1826,19 @@ new Vue({
     methods: {
         create: function(){
             var vm = this;
-            $.ajax({
-                method: 'POST',
-                url: vm.url,
-                data: vm.role,
-            }).done(function(resp) {
+            vm.reqPost(vm.url, vm.role, function(resp) {
                 vm.role.title = '';
                 vm.params.page = 1;
                 vm.get()
-            }).fail(handleRequestError);
+            });
         },
         remove: function(role){
             var vm = this;
             var url = vm.url + "/" + role.slug
-            $.ajax({
-                method: 'DELETE',
-                url: url,
-            }).done(function() {
+            vm.reqDelete(url, function() {
                 vm.params.page = 1;
                 vm.get()
-            }).fail(handleRequestError);
+            });
         },
     },
     mounted: function(){
@@ -1855,27 +1875,20 @@ new Vue({
     methods: {
         create: function(){
             var vm = this;
-            $.ajax({
-                method: 'POST',
-                url: vm.balanceLineUrl,
-                data: vm.balanceLine,
-            }).done(function (resp) {
+            vm.reqPost(vm.balanceLineUrl, vm.balanceLine, function(resp){
                 vm.get()
                 vm.balanceLine = {
                     title: '',
                     selector: '',
                     rank: 0,
                 }
-            }).fail(handleRequestError);
+            });
         },
         remove: function(id){
             var vm = this;
-            $.ajax({
-                method: 'DELETE',
-                url: vm.balanceLineUrl + '/' + id,
-            }).done(function() {
+            vm.reqDelete(vm.balanceLineUrl + '/' + id, function() {
                 vm.get()
-            }).fail(handleRequestError);
+            });
         },
     },
     mounted: function(){
@@ -1918,6 +1931,7 @@ var cardMixin = {
         ],
         updateCard: false, //used in legacy checkout
     },
+    mixins: [httpRequestMixin],
     methods: {
         clearCardData: function() {
             var vm = this;
@@ -1946,15 +1960,13 @@ var cardMixin = {
         },
         getUserCard: function(){
             var vm = this;
-            $.ajax({
-                method: 'GET',
-                url: djaodjinSettings.urls.organization.api_card,
-            }).done(function(resp) {
+            vm.reqGet(djaodjinSettings.urls.organization.api_card,
+            function(resp){
                 if(resp.last4){
                     vm.savedCard.last4 = resp.last4;
                     vm.savedCard.exp_date = resp.exp_date;
                 }
-            }).fail(handleRequestError);
+            });
         },
         getCardToken: function(cb){
             var vm = this;
@@ -1989,10 +2001,7 @@ var cardMixin = {
         },
         getOrgAddress: function(){
             var vm = this;
-            $.ajax({
-                method: 'GET',
-                url: djaodjinSettings.urls.organization.api_base,
-            }).done(function(org) {
+            vm.reqGet(djaodjinSettings.urls.organization.api_base, function(org) {
                 if(org.full_name){
                     vm.card_name = org.full_name;
                 }
@@ -2126,27 +2135,19 @@ new Vue({
         remove: function(plan){
             var vm = this;
             var url = djaodjinSettings.urls.api_cart;
-            $.ajax({
-                method: 'DELETE',
-                url: url,
-                data: {
-                    plan: plan,
-                },
-            }).done(function() {
+            vm.reqDelete(url, {plan: plan}, function() {
                 vm.get()
-            }).fail(handleRequestError);
+            });
         },
         redeem: function(){
             var vm = this;
-            $.ajax({
-                method: 'POST',
-                url: djaodjinSettings.urls.api_redeem_coupon,
-                data: {code: vm.coupon},
-            }).done(function(resp) {
+            vm.reqPost(djaodjinSettings.urls.api_redeem_coupon, {
+                code: vm.coupon },
+            function(resp) {
                 showMessages([gettext("Coupon was successfully applied.")],
                     "success");
-                vm.get()
-            }).fail(handleRequestError);
+                vm.get();
+            });
         },
         getAndPrepareData: function(res){
             var vm = this;
@@ -2191,11 +2192,8 @@ new Vue({
             if(option){
                 data.option = option
             }
-            $.ajax({
-                method: 'POST',
-                url: djaodjinSettings.urls.api_cart,
-                data: data,
-            }).done(function(resp) {
+            vm.reqPost(djaodjinSettings.urls.api_cart, data,
+            function(resp) {
                 showMessages([gettext("User was added.")], "success");
                 vm.init = false;
                 vm.$set(vm.plansUser, plan, {
@@ -2204,7 +2202,7 @@ new Vue({
                     email: ''
                 });
                 vm.get();
-            }).fail(handleRequestError);
+            });
         },
         planUser: function(plan){
             return this.plansUser[plan] && this.plansUser[plan] || {}
@@ -2264,16 +2262,12 @@ new Vue({
             if(token){
                 data.processor_token = token;
             }
-            $.ajax({
-                method: 'POST',
-                url: djaodjinSettings.urls.organization.api_checkout,
-                contentType: 'application/json',
-                data: JSON.stringify(data),
-            }).done(function(resp) {
+            vm.reqPost(djaodjinSettings.urls.organization.api_checkout, data,
+            function(resp) {
                 showMessages([gettext("Success.")], "success");
                 var id = resp.processor_key;
                 location = djaodjinSettings.urls.organization.receipt.replace('_', id);
-            }).fail(handleRequestError);
+            });
         },
         checkout: function(){
             var vm = this;
@@ -2323,15 +2317,15 @@ new Vue({
             if(!vm.csvFiles[plan]) return;
             var formData = new FormData();
             formData.append("file", vm.csvFiles[plan]);
-            $.ajax({
+            vm.req({
                 type: "POST",
                 url: "/api/cart/" + plan + "/upload/",
                 data: formData,
                 processData: false,
                 contentType: false,
-            }).done(function(){
+            }, function(){
                 vm.get();
-            }).fail(handleRequestError);
+            });
         },
     },
     computed: {
@@ -2388,38 +2382,35 @@ new Vue({
             var vm = this;
             if(!vm.validateForm()) return;
             vm.getCardToken(function(token){
-                $.ajax({
-                    method: 'PUT',
-                    url: djaodjinSettings.urls.organization.api_card,
-                    data: {
-                        token: token,
-                        full_name: vm.card_name,
-                        street_address: vm.card_address_line1,
-                        locality: vm.card_city,
-                        postal_code: vm.card_adress_zip,
-                        country: vm.country,
-                        region: vm.region,
-                    },
-                }).done(function(resp) {
-                    vm.clearCardData();
-                    if( resp.last4 ){
-                        vm.savedCard.last4 = resp.last4;
-                    }
-                    if( resp.exp_date ) {
-                        vm.savedCard.exp_date = resp.exp_date;
-                    }
-                    // matching the code in `CardUpdateView` for redirects.
-                    var redirectUrl = getUrlParameter('next');
-                    if( !redirectUrl ) {
-                        redirectUrl = document.referrer;
-                    }
-                    if( redirectUrl ) {
-                        window.location = redirectUrl;
-                    }
-                    showMessages([gettext(
-                        "Your credit card on file was sucessfully updated.")],
-                        "success");
-                }).fail(handleRequestError);
+                vm.reqPut(djaodjinSettings.urls.organization.api_card, {
+                    token: token,
+                    full_name: vm.card_name,
+                    street_address: vm.card_address_line1,
+                    locality: vm.card_city,
+                    postal_code: vm.card_adress_zip,
+                    country: vm.country,
+                    region: vm.region,
+                },
+            function(resp) {
+                vm.clearCardData();
+                if( resp.last4 ){
+                    vm.savedCard.last4 = resp.last4;
+                }
+                if( resp.exp_date ) {
+                    vm.savedCard.exp_date = resp.exp_date;
+                }
+                // matching the code in `CardUpdateView` for redirects.
+                var redirectUrl = getUrlParameter('next');
+                if( !redirectUrl ) {
+                    redirectUrl = document.referrer;
+                }
+                if( redirectUrl ) {
+                    window.location = redirectUrl;
+                }
+                showMessages([gettext(
+                    "Your credit card on file was sucessfully updated.")],
+                    "success");
+                });
             });
         },
         save: function(){
@@ -2427,15 +2418,13 @@ new Vue({
         },
         remove: function() {
             var vm = this;
-            $.ajax({
-                method: 'DELETE',
-                url: djaodjinSettings.urls.organization.api_card,
-            }).done(function(resp) {
+            vm.reqDelete(djaodjinSettings.urls.organization.api_card,
+            function(resp) {
                 vm.clearCardData();
                 showMessages([gettext(
                     "Your credit card is no longer on file with us.")],
                     "success");
-            }).fail(handleRequestError);
+            });
         }
     },
     mounted: function(){
@@ -2465,14 +2454,13 @@ new Vue({
         isNotPriced: false,
         renewalType: 1 // AUTO_RENEW,
     },
+    mixins: [httpRequestMixin],
     methods: {
         get: function(){
             if(!djaodjinSettings.urls.plan.api_plan) return;
             var vm = this;
-            $.ajax({
-                method: 'GET',
-                url: djaodjinSettings.urls.plan.api_plan,
-            }).done(function(resp) {
+            vm.reqGet(djaodjinSettings.urls.plan.api_plan,
+            function(resp) {
                 vm.formFields = resp;
                 vm.formFields.period_amount = vm.formatNumber(
                     resp.period_amount);
@@ -2481,7 +2469,7 @@ new Vue({
                 vm.formFields.advance_discount = vm.formatNumber(
                     resp.advance_discount);
                 vm.isActive = resp.is_active;
-            }).fail(handleRequestError);
+            });
         },
         formatNumber: function(num){
             return (parseFloat(num) / 100).toFixed(2);
@@ -2506,16 +2494,13 @@ new Vue({
             }
             if( djaodjinSettings.urls.plan &&
                 djaodjinSettings.urls.plan.api_plan ) {
-                $.ajax({
-                    method: 'PUT',
-                    url: djaodjinSettings.urls.plan.api_plan,
-                    data: data
-                }).done(function(res) {
+                vm.reqPut(djaodjinSettings.urls.plan.api_plan, data,
+                function(res) {
                     showMessages([interpolate(gettext(
                         "Successfully updated plan titled '%s'."), [
                             vm.formFields.title])
                                  ], "success");
-                }).fail(handleRequestError);
+                });
             } else {
                 vm.createPlan();
             }
@@ -2542,24 +2527,15 @@ new Vue({
         togglePlanStatus: function(){
             var vm = this;
             var next = !vm.isActive;
-            $.ajax({
-                method: 'PUT',
-                data: {
-                    is_active: next,
-                },
-                url: djaodjinSettings.urls.plan.api_plan,
-            }).done(function(res) {
+            vm.reqPut(djaodjinSettings.urls.plan.api_plan, {is_active: next}, function(res){
                 vm.isActive = next;
-            }).fail(handleRequestError);
+            });
         },
         deletePlan: function(){
             var vm = this;
-            $.ajax({
-                method: 'DELETE',
-                url: djaodjinSettings.urls.plan.api_plan,
-            }).done(function(res) {
+            vm.reqDelete(djaodjinSettings.urls.plan.api_plan, function(res) {
                 window.location = djaodjinSettings.urls.provider.metrics_plans;
-            }).fail(handleRequestError);
+            });
         },
         createPlan: function(){
             var vm = this;
@@ -2579,13 +2555,10 @@ new Vue({
             if( data.advance_discount ) {
                 data.advance_discount = Math.round(data.advance_discount * 100);
             }
-            $.ajax({
-                method: 'POST',
-                url: djaodjinSettings.urls.provider.api_plans,
-                data: data,
-            }).done(function(res) {
+            vm.reqPost(djaodjinSettings.urls.provider.api_plans, data,
+            function(resp) {
                 window.location = djaodjinSettings.urls.provider.metrics_plans;
-            }).fail(handleRequestError);
+            });
         },
     },
     mounted: function(){
