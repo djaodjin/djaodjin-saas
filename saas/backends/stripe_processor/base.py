@@ -356,6 +356,29 @@ class StripeBackend(object):
         created_at = utctimestamp_to_datetime(transfer.created)
         return (transfer.id, created_at)
 
+    def delete_card(self, subscriber, broker=None):
+        """
+        Removes a card associated to an subscriber.
+        """
+        kwargs = self._prepare_charge_request(broker)
+        # Save customer on the platform
+        p_customer = None
+        if subscriber.processor_card_key:
+            try:
+                p_customer = stripe.Customer.retrieve(
+                    subscriber.processor_card_key,
+                    expand=['default_source'],
+                    **kwargs)
+                p_customer.default_source.delete()
+            except stripe.error.CardError as err:
+                raise CardError(str(err), err.code, backend_except=err)
+            except stripe.error.InvalidRequestError:
+                # Can't find the customer on Stripe. This can be related to
+                # a switch from using devel to production keys.
+                # We will seamlessly create a new customer on Stripe.
+                LOGGER.warning("Retrieve customer %s on Stripe for %s",
+                    subscriber.processor_card_key, subscriber)
+
     def update_bank(self, provider, bank_token):
         """
         Create or update a bank account associated to a provider on Stripe.

@@ -566,6 +566,13 @@ class Organization(models.Model):
                     'processor_deposit_key': self.processor_deposit_key})
         signals.bank_updated.send(self)
 
+    def delete_card(self):
+        self.processor_backend.delete_card(self, broker=get_broker())
+        self.processor_card_key = None
+        self.save()
+        LOGGER.info("Processor debit key for %s was deleted.",
+            self, extra={'event': 'delete-debit', 'organization': self.slug})
+
     def update_card(self, card_token, user):
         self.processor_backend.create_or_update_card(
             self, card_token, user=user, broker=get_broker())
@@ -2316,8 +2323,8 @@ class Plan(SlugTitleMixin, models.Model):
     REPEAT = 2
 
     RENEWAL_CHOICES = [
-        (ONE_TIME, "ONE_TIME"),
-        (AUTO_RENEW, "AUTO_RENEW"),
+        (ONE_TIME, "ONE-TIME"),
+        (AUTO_RENEW, "AUTO-RENEW"),
         (REPEAT, "REPEAT")]
 
     PRICE_ROUND_NONE = 0

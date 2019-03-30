@@ -1,12 +1,15 @@
 {% extends "saas/base_dashboard.html" %}
 
 {% block saas_content %}
-<section id="update_card">
+<section>
     <h1>Update Card for {{ organization }}</h1>
-    <form method="post" id="payment-form" @submit.prevent="save">
+    <form id="payment-form" method="post"
+        action=".{% if next %}/?next={{next}}{% endif %}"
+        v-on:submit.prevent="save">
         <input type="hidden" name="csrfmiddlewaretoken" value="{{csrf_token}}">
         {% include "saas/_card_use.html" %}
         <button type="submit" class="payment-submit">Save</button>
+        <button @click.prevent="remove">Remove</button>
     </form>
 </section>
 {% endblock %}

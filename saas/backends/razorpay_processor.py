@@ -113,6 +113,12 @@ class RazorpayBackend(object):
             'card_name': ""}
         return (processor_charge['id'], created_at, receipt_info)
 
+    def delete_card(self, subscriber, broker=None):
+        """
+        Removes a card associated to an subscriber.
+        """
+        raise NotImplementedError()
+
     def get_deposit_context(self):
         context = {
             'RAZORPAY_PUB_KEY': self.pub_key

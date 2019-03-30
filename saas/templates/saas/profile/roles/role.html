@@ -3,11 +3,13 @@
 {% block saas_title %}Roles{% endblock %}
 
 {% block saas_content %}
-<section id="user-relation-active-list-container">
-  <div>
-    <h2 v-show="!itemsLoaded">Please wait...</h2>
-    <h2 v-show="itemsLoaded && items.results.length == 0" v-cloak>No roles assigned yet</h2>
-    <table v-show="itemsLoaded && items.results.length > 0" v-cloak>
+<section id="user-relation-list-container" ng-app="saasApp">
+  <div ng-controller="userRelationListCtrl">
+    <h2 ng-show="!items.$resolved" v-show="!itemsLoaded">Please wait...</h2>
+    <h2 ng-show="items.$resolved && items.results.length == 0" ng-cloak
+        v-show="itemsLoaded && items.results.length == 0" v-cloak>No roles assigned yet</h2>
+    <table ng-show="items.$resolved && items.results.length > 0" ng-cloak
+           v-show="itemsLoaded && items.results.length > 0" v-cloak>
       <thead>
         <tr>
           <th>Username</th>
@@ -18,25 +20,30 @@
         </tr>
       </thead>
       <tbody>
-        <tr :id="item.user.slug" v-for="(item, index) in items.results">
+        <tr ng-prop-id="item.user.slug" ng-repeat="item in items.results"
+            v-bind:id="item.user.slug" v-for="(item, index) in items.results">
           <td>[[item.user.slug]]</td>
           <td>[[item.role_description.title]]</td>
           <td>[[item.user.email]]</td>
           <td>[[item.grant_key ? "invited" : ""]]</td>
-          <td><button @click="remove(index)">Remove</button></td>
+          <td><button ng-click="remove($event, $index)"
+                      @click="remove(index)">Remove</button></td>
         </tr>
       </tbody>
     </table>
     <!-- modal -->
     <div>
       <h2>Add {{role_descr.title}}</h2>
-      <form @submit.prevent="save(unregistered)">
+      <form ng-submit="save($event)"
+            @submit.prevent="save(unregistered)">
         <input type="hidden" name="csrfmiddlewaretoken" value="{{csrf_token}}">
         <input type="text" name="user" placeholder="Username or e-mail"
-               v-model="unregistered.slug" />
+               ng-model="unregistered.slug" v-model="unregistered.slug" />
         <input type="submit" />
       </form>
-      <form class="add-role-modal" @submit.prevent="create(unregistered)">
+      <form class="add-role-modal"
+            ng-click="create($event)"
+            @submit.prevent="create(unregistered)">
         <p>
 If the user couldn't be found in the system, it is a great occasion to invite
 them.
@@ -44,6 +51,7 @@ them.
         <label>The following invite message will be sent:</label>
         <input type="text" max-length="150"
                name="email" placeholder="invitee@example.com"
+               ng-model="unregistered.email"
                v-model="unregistered.email "/>
         <textarea name="message" maxlength="255" type="text" rows="10"
                >
@@ -57,34 +65,6 @@ Thank you,
         <button type="submit">Invite user</button>
       </form>
     </div>
-  </div>
-</section>
-
-<section id="user-relation-pending-list-container">
-  <div>
-    <h2>Pending Users</h2>
-    <h2 v-show="!itemsLoaded">Please wait...</h2>
-    <h2 v-show="itemsLoaded && items.results.length == 0" v-cloak>No roles assigned yet</h2>
-    <table v-show="itemsLoaded && items.results.length > 0" v-cloak>
-      <thead>
-        <tr>
-          <th>Username</th>
-          <th>Role</th>
-          <th>Email</th>
-          <th></th>
-          <th></th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr :id="item.user.slug" v-for="(item, index) in items.results">
-          <td>[[item.user.slug]]</td>
-          <td>[[item.role_description.title]]</td>
-          <td>[[item.user.email]]</td>
-          <td>[[item.grant_key ? "invited" : ""]]</td>
-          <td><button @click="remove(index)">Remove</button></td>
-        </tr>
-      </tbody>
-    </table>
   </div>
 </section>
 {% endblock %}

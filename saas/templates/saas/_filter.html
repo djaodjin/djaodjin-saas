@@ -1,36 +1,14 @@
 <div>
     <div>
         <span>From</span>
-        <input type="text" v-model="params.start_at"></input>
-        <uiv-dropdown append-to-body menu-right>
-          <button type="button">Calendar</button>
-          <template slot="dropdown">
-            <li>
-              <uiv-date-picker
-                 v-model="params.start_at"
-                 icon-control-left="fa fa-caret-left"
-                 icon-control-right="fa fa-caret-right" />
-            </li>
-          </template>
-        </uiv-dropdown>
+        <input type="text" ng-model="params.start_at" v-model="params.start_at"></input>
     </div>
     <div>
         <span>To</span>
-        <input type="text" v-model="params.ends_at"></input>
-        <uiv-dropdown append-to-body menu-right>
-          <button type="button">Calendar</button>
-          <template slot="dropdown">
-            <li>
-              <uiv-date-picker
-                 v-model="params.ends_at"
-                 icon-control-left="fa fa-caret-left"
-                 icon-control-right="fa fa-caret-right" />
-            </li>
-          </template>
-        </uiv-dropdown>
+        <input type="text" ng-model="params.ends_at" v-model="params.ends_at"></input>
     </div>
     <div>
         <label>Filter</label>
-        <input type="text" v-model="params.q" @input="filterList" />
+        <input type="text" ng-model="params.q" v-model="params.q" @input="filterList" />
     </div>
 </div>

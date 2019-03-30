@@ -26,6 +26,7 @@ from hashlib import sha256
 
 from django.core import validators
 from django.contrib.auth import get_user_model
+from django.template.defaultfilters import slugify
 from django.utils import six
 from django.utils.translation import ugettext_lazy as _
 from rest_framework import serializers
@@ -53,14 +54,14 @@ class EnumField(serializers.Field):
     def __init__(self, choices, *args, **kwargs):
         self.choices = dict(choices)
         self.inverted_choices = {
-            val: key for key, val in six.iteritems(self.choices)}
+            slugify(val): key for key, val in six.iteritems(self.choices)}
         super(EnumField, self).__init__(*args, **kwargs)
 
     def to_representation(self, obj):
         if isinstance(obj, list):
-            result = [self.choices.get(item, None) for item in obj]
+            result = [slugify(self.choices.get(item, None)) for item in obj]
         else:
-            result = self.choices.get(obj, None)
+            result = slugify(self.choices.get(obj, None))
         return result
 
     def to_internal_value(self, data):
@@ -73,8 +74,8 @@ class EnumField(serializers.Field):
                 raise ValidationError(_("This field cannot be blank."))
             raise ValidationError(_("'%(data)s' is not a valid choice."\
                 " Expected one of %(choices)s.") % {
-                    'data': data, 'choices': [
-                        choice for choice in six.itervalues(self.choices)]})
+                    'data': data, 'choices': [choice
+                    for choice in six.iterkeys(self.inverted_choices)]})
         return result
 
 
@@ -148,9 +149,27 @@ class CardSerializer(NoModelSerializer):
 
 
 class CardTokenSerializer(NoModelSerializer):
-
+    """
+    Updates a payment method on file.
+    """
     token = serializers.CharField(
-        help_text=_("Processor token to retrieve the card"))
+        help_text=_("Processor token to retrieve the payment method"))
+    full_name = serializers.CharField(required=False,
+        help_text=_("Full name"))
+    email = serializers.EmailField(required=False,
+        help_text=_("E-mail address for the account"))
+    phone = serializers.CharField(required=False, allow_blank=True,
+        help_text=_("Phone number"))
+    street_address = serializers.CharField(required=False, allow_blank=True,
+        help_text=_("Street address"))
+    locality = serializers.CharField(required=False, allow_blank=True,
+        help_text=_("City/Town"))
+    region = serializers.CharField(required=False, allow_blank=True,
+        help_text=_("State/Province/County"))
+    postal_code = serializers.CharField(required=False, allow_blank=True,
+        help_text=_("Zip/Postal code"))
+    country = CountryField(required=False, allow_blank=True,
+        help_text=_("Country"))
 
 
 class ChargeSerializer(serializers.ModelSerializer):
@@ -387,6 +406,8 @@ class PlanSerializer(serializers.ModelSerializer):
         help_text=_("Amount billed every period"))
     # XXX rename `interval` to `period`
     interval = EnumField(choices=Plan.INTERVAL_CHOICES, required=False,
+        help_text=_("Natural period for the subscription"))
+    renewal_type = EnumField(choices=Plan.RENEWAL_CHOICES, required=False,
         help_text=_("Natural period for the subscription"))
     app_url = serializers.SerializerMethodField()
     organization = serializers.SlugRelatedField(

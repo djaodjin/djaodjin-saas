@@ -9,11 +9,15 @@
       <a href="{{urls.organization.update_card}}">Update</a>
       <dl>
         <dt>card</dt>
-        <dd id="last4">{% if last4 %}{{last4}}{% else %}N/A{% endif %}</dd>
+        <dd id="last4">
+          <span v-if="cardLoaded">[[last4]]</span>
+        </dd>
       </dl>
       <dl>
         <dt>expires</dt>
-        <dd id="exp_date">{% if exp_date %}{{exp_date}}{% else %}N/A{% endif %}</dd>
+        <dd id="exp_date">
+          <span v-if="cardLoaded">[[exp_date]]</span>
+        </dd>
       </dl>
     </section>
     <section id="balance">

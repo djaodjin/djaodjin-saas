@@ -98,6 +98,12 @@ class FakeProcessorBackend(object):
         created_at = datetime_or_now()
         return (generate_random_slug(), created_at)
 
+    def delete_card(self, subscriber, broker=None):
+        """
+        Removes a card associated to an subscriber.
+        """
+        pass
+
     @staticmethod
     def reconcile_transfers(provider, created_at, dry_run=False):
         #pylint:disable=unused-argument

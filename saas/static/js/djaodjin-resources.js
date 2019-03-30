@@ -80,8 +80,9 @@ function _showErrorMessages(resp) {
                             message = data[key].detail;
                         }
                         messages.push(key + ": " + message);
-                        $("[name=\"" + key + "\"]").parents('.form-group').addClass("has-error");
-                        var help = $("[name=\"" + key + "\"]").parents('.form-group').find('.help-block');
+                        var parent = $("[name=\"" + key + "\"]").parents('.form-group');
+                        parent.addClass("has-error");
+                        var help = parent.find('.help-block');
                         if( help.length > 0 ) { help.text(message); }
                     }
                 }
@@ -124,4 +125,17 @@ function getMetaCSRFToken() {
         }
     }
     return "";
+};
+
+/** Retrieves an URL query argument.
+
+    Example:
+
+        window.location = getUrlParameter('next');
+*/
+function getUrlParameter(name) {
+    name = name.replace(/[\[]/, '\\[').replace(/[\]]/, '\\]');
+    var regex = new RegExp('[\\?&]' + name + '=([^&#]*)');
+    var results = regex.exec(location.search);
+    return results === null ? '' : decodeURIComponent(results[1].replace(/\+/g, ' '));
 };

@@ -7,7 +7,7 @@
         the form with that token.
 
         usage:
-            $("payment-form").bank({stripePubKey: *YourStripePublicKey*});
+            $("#payment-form").bank({stripePubKey: *YourStripePublicKey*});
 
         HTML requirements:
             <form>
@@ -131,7 +131,7 @@
         the form with that token.
 
         usage:
-            $("payment-form").card({stripePubKey: *YourStripePublicKey*});
+            $("#payment-form").card({stripePubKey: *YourStripePublicKey*});
 
         HTML requirements:
             <form>

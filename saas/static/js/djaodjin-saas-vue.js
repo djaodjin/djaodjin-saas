@@ -1,3 +1,17 @@
+function getInitValue(form, fieldName) {
+    if( form.length > 0 ) {
+        var field = form.find("[name='" + fieldName + "']");
+        if( field.length > 0 ) {
+            var val = field.val();
+            if( !val ) {
+                val = field.data('init');
+            }
+            return val;
+        }
+    }
+    return "";
+}
+
 Vue.use(uiv, {prefix: 'uiv'});
 
 Vue.filter('formatDate', function(value, format) {
@@ -614,7 +628,11 @@ var userRelationMixin = {
             var ob = this.items.results[idx]
             var slug = (ob.user ? ob.user.slug : ob.slug);
             if( djaodjinSettings.user && djaodjinSettings.user.slug === slug ) {
-                if( !confirm(gettext("You are about to delete yourself from this role. it's possible that you no longer can manage this organization after performing this action.\n\nDo you want to remove yourself from this organization?")) ) {
+                if( !confirm(gettext("You are about to delete yourself from" +
+                    " this role. it's possible that you no longer can manage" +
+                    " this organization after performing this" +
+                    " action.\n\nDo you want to remove yourself" +
+                    " from this organization?")) ) {
                     return;
                 }
             }
@@ -1160,9 +1178,9 @@ new Vue({
 })
 }
 
-if($('#registered-tab-container').length > 0){
+if($('#registered').length > 0){
   new Vue({
-    el: "#registered-tab-container",
+    el: "#registered",
     mixins: [
         itemListMixin,
         paginationMixin,
@@ -1178,9 +1196,9 @@ if($('#registered-tab-container').length > 0){
 })
 }
 
-if($('#subscribed-tab-container').length > 0){
+if($('#subscribed').length > 0){
 var app = new Vue({
-    el: "#subscribed-tab-container",
+    el: "#subscribed",
     mixins: [
         itemListMixin,
         subscriptionsMixin,
@@ -1198,9 +1216,9 @@ var app = new Vue({
 })
 }
 
-if($('#churned-tab-container').length > 0){
+if($('#churned').length > 0){
 var app = new Vue({
-    el: "#churned-tab-container",
+    el: "#churned",
     mixins: [
         itemListMixin,
         subscriptionsMixin,
@@ -1505,7 +1523,7 @@ new Vue({
             url: djaodjinSettings.urls.organization.api_transactions,
             last4: gettext("N/A"),
             exp_date: gettext("N/A"),
-            cardLoaded: false,
+            cardLoaded: false
         }
         return res;
     },
@@ -1645,17 +1663,7 @@ Vue.use(Croppa);
 new Vue({
     el: "#profile-container",
     data: {
-        name: '',
-        email: '',
-        phone: '',
-        addressLine1: '',
-        addressCity: '',
-        addressZip: '',
-        addressCountry: '',
-        addressRegion: '',
-        isBulkBuyer: false,
-        organization: {},
-        timezone: '',
+        formFields: {},
         countries: countries,
         regions: regions,
         currentPicture: null,
@@ -1667,63 +1675,39 @@ new Vue({
             $.ajax({
                 method: 'GET',
                 url: djaodjinSettings.urls.organization.api_base,
-            }).done(function(org) {
-                if(org.street_address){
-                    vm.addressLine1 = org.street_address;
-                }
-                if(org.locality){
-                    vm.addressCity = org.locality;
-                }
-                if(org.postal_code){
-                    vm.addressZip = org.postal_code;
-                }
-                if(org.country){
-                    vm.addressCountry = org.country;
-                }
-                if(org.region){
-                    vm.addressRegion = org.region;
-                }
-                if(org.full_name){
-                    vm.name = org.full_name;
-                }
-                if(org.email){
-                    vm.email = org.email;
-                }
-                if(org.phone){
-                    vm.phone = org.phone;
-                }
-                if(org.is_bulk_buyer){
-                    vm.isBulkBuyer = org.is_bulk_buyer;
-                }
-                if(org.default_timezone){
-                    vm.timezone = org.default_timezone;
-                }
-                if(org.picture){
-                    vm.currentPicture = org.picture;
-                }
-                vm.organization = org;
+            }).done(function(resp) {
+                vm.formFields = resp;
                 if(cb) cb();
             }).fail(handleRequestError);
         },
         updateProfile: function(){
             var vm = this;
-            var data = {
-                full_name: vm.name,
-                default_timezone: vm.timezone,
-                email: vm.email,
-                phone: vm.phone,
-                street_address: vm.addressLine1,
-                locality: vm.addressCity,
-                postal_code: vm.addressZip,
-                country: vm.addressCountry,
-                region: vm.addressRegion,
-                is_bulk_buyer: vm.isBulkBuyer,
-            }
+            vm.validateForm();
+            var data = vm.formFields;
             if(vm.imageSelected){
                 vm.saveProfileWithPicture(data);
             } else {
                 vm.saveProfile(data);
             }
+        },
+        validateForm: function(){
+            var vm = this;
+            var isEmpty = true;
+            var fields = $(vm.$el).find('[name]').not(
+                '[name="csrfmiddlewaretoken"]');
+            for( var fieldIdx = 0; fieldIdx < fields.length; ++fieldIdx ) {
+                var fieldName = $(fields[fieldIdx]).attr('name');
+                var fieldValue = $(fields[fieldIdx]).val();
+                if( vm.formFields[fieldName] !== fieldValue ) {
+                    vm.formFields[fieldName] = fieldValue;
+                }
+                if( vm.formFields[fieldName] ) {
+                    // We have at least one piece of information
+                    // about the plan already available.
+                    isEmpty = false;
+                }
+            }
+            return !isEmpty;
         },
         saveProfile: function(data){
             $.ajax({
@@ -1769,14 +1753,18 @@ new Vue({
     },
     computed: {
         imageSelected: function(){
-            return this.picture.hasImage();
+            return this.picture && this.picture.hasImage();
         }
     },
-    mounted: function(){
-//   XXX the form is populated on page load.
-        this.get();
+    mounted: function() {
+        var vm = this;
+        if( !vm.validateForm() ) {
+            // It seems the form is completely blank. Let's attempt
+            // to load the profile from the API then.
+            vm.get();
+        }
     },
-})
+});
 }
 
 if($('#charge-list-container').length > 0){
@@ -1896,71 +1884,52 @@ new Vue({
 })
 }
 
-function getCardValue(fieldName) {
-    var cardForm = $("#card-use");
-    if( cardForm.length > 0 ) {
-        var field = cardForm.find("[name='" + fieldName + "']");
-        if( field.length > 0 ) {
-            var val = field.val();
-            if( !val ) {
-                val = field.data('init');
-            }
-            return val;
-        }
-    }
-    return "";
-}
-
 var cardMixin = {
     data: {
-        last4: '',
-        expDate: '',
-        haveCardData: false,
         cardNumber: '',
         cardCvc: '',
         cardExpMonth: '',
         cardExpYear: '',
-        savedCard: {},
+        savedCard: {
+          last4: '',
+          exp_date: '',
+        },
         countries: countries,
         regions: regions,
         organization: {},
-        name: getCardValue('card_name'),
-        addressLine1: getCardValue('card_address_line1'),
-        addressCity: getCardValue('card_city'),
-        addressZip: getCardValue('card_address_zip'),
-        addressCountry: getCardValue('country'),
-        addressRegion: getCardValue('region'),
+        card_name: getInitValue($("#card-use"), 'card_name'),
+        card_address_line1: getInitValue($("#card-use"), 'card_address_line1'),
+        card_city: getInitValue($("#card-use"), 'card_city'),
+        card_adress_zip: getInitValue($("#card-use"), 'card_address_zip'),
+        country: getInitValue($("#card-use"), 'country'),
+        region: getInitValue($("#card-use"), 'region'),
         errors: {},
         validate: [
             'cardNumber',
             'cardCvc',
             'cardExpMonth',
             'cardExpYear',
-            'name',
-            'addressLine1',
-            'addressCity',
-            'addressZip',
-            'addressCountry',
-            'addressRegion',
+            'card_name',
+            'card_address_line1',
+            'card_city',
+            'card_adress_zip',
+            'country',
+            'region',
         ],
-        validationEnabled: false,
         updateCard: false, //used in legacy checkout
     },
     methods: {
         clearCardData: function() {
             var vm = this;
-            vm.last4 = '';
-            vm.expDate = '';
-            vm.haveCardData = false;
+            vm.savedCard.last4 = '';
+            vm.savedCard.exp_date = '';
             vm.cardNumber = '';
             vm.cardCvc = '';
             vm.cardExpMonth = '';
             vm.cardExpYear = '';
-            vm.savedCard = {};
         },
         inputClass: function(name){
             var vm = this;
-            var cls = ['form-group'];
             var field = this.errors[name];
             if(name === 'cardExp'){
                 // a hack to validate card expiration year and month as
@@ -1969,7 +1938,8 @@ var cardMixin = {
                     field = true;
                 }
             }
-            if(field && vm.validationEnabled){
+            cls = [];
+            if( field ){
                 cls.push('has-error');
             }
             return cls;
@@ -1981,14 +1951,8 @@ var cardMixin = {
                 url: djaodjinSettings.urls.organization.api_card,
             }).done(function(resp) {
                 if(resp.last4){
-                    var savedCard = {
-                        last4: resp.last4,
-                        expDate: resp.exp_date,
-                    }
-                    vm.savedCard = savedCard;
-                    vm.haveCardData = true;
-                } else {
-                    vm.validationEnabled = true;
+                    vm.savedCard.last4 = resp.last4;
+                    vm.savedCard.exp_date = resp.exp_date;
                 }
             }).fail(handleRequestError);
         },
@@ -2006,20 +1970,17 @@ var cardMixin = {
                 cvc: vm.cardCvc,
                 exp_month: vm.cardExpMonth,
                 exp_year: vm.cardExpYear,
-                name: vm.name,
-                address_line1: vm.addressLine1,
-                address_city: vm.addressCity,
-                address_state: vm.addressRegion,
-                address_zip: vm.addressZip,
-                address_country: vm.addressCountry
+                name: vm.card_name,
+                address_line1: vm.card_address_line1,
+                address_city: vm.card_city,
+                address_state: vm.region,
+                address_zip: vm.card_adress_zip,
+                address_country: vm.country
             }, function(code, res){
                 if(code === 200) {
-                    var savedCard = {
-                        last4: '***-' + res.card.last4,
-                        expDate: res.card.exp_month + '/' + res.card.exp_year,
-                    }
-                    vm.savedCard = savedCard;
-                    vm.haveCardData = true;
+                    vm.savedCard.last4 = '***-' + res.card.last4;
+                    vm.savedCard.exp_date = (
+                        res.card.exp_month + '/' + res.card.exp_year);
                     if(cb) cb(res.id)
                 } else {
                     showMessages([res.error.message], "error");
@@ -2033,22 +1994,22 @@ var cardMixin = {
                 url: djaodjinSettings.urls.organization.api_base,
             }).done(function(org) {
                 if(org.full_name){
-                    vm.name = org.full_name;
+                    vm.card_name = org.full_name;
                 }
                 if(org.street_address){
-                    vm.addressLine1 = org.street_address;
+                    vm.card_address_line1 = org.street_address;
                 }
                 if(org.locality){
-                    vm.addressCity = org.locality;
+                    vm.card_city = org.locality;
                 }
                 if(org.postal_code){
-                    vm.addressZip = org.postal_code;
+                    vm.card_adress_zip = org.postal_code;
                 }
                 if(org.country){
-                    vm.addressCountry = org.country;
+                    vm.country = org.country;
                 }
                 if(org.region){
-                    vm.addressRegion = org.region;
+                    vm.region = org.region;
                 }
                 vm.organization = org;
             }).fail(handleRequestError);
@@ -2056,11 +2017,13 @@ var cardMixin = {
         validateForm: function(){
             var vm = this;
             var valid = true;
-            if(!vm.validationEnabled) return valid;
             var errors = {}
             var errorMessages = "";
             vm.validate.forEach(function(field){
                 if(vm[field] === ''){
+                    vm[field] = getInitValue($(vm.$el), field);
+                }
+                if( vm[field] === '') {
                     valid = false;
                     errors[field] = [gettext("This field shouldn't be empty")];
                 }
@@ -2080,27 +2043,27 @@ var cardMixin = {
                     if( errorMessages ) { errorMessages += ", "; }
                     errorMessages += gettext("Expiration");
                 }
-                if( vm.errors['name'] ) {
+                if( vm.errors['card_name'] ) {
                     if( errorMessages ) { errorMessages += ", "; }
                     errorMessages += gettext("Card Holder");
                 }
-                if( vm.errors['addressLine1'] ) {
+                if( vm.errors['card_address_line1'] ) {
                     if( errorMessages ) { errorMessages += ", "; }
                     errorMessages += gettext("Street");
                 }
-                if( vm.errors['addressCity'] ) {
+                if( vm.errors['card_city'] ) {
                     if( errorMessages ) { errorMessages += ", "; }
                     errorMessages += gettext("City");
                 }
-                if( vm.errors['addressZip'] ) {
+                if( vm.errors['card_adress_zip'] ) {
                     if( errorMessages ) { errorMessages += ", "; }
                     errorMessages += gettext("Zip");
                 }
-                if( vm.errors['addressCountry'] ) {
+                if( vm.errors['country'] ) {
                     if( errorMessages ) { errorMessages += ", "; }
                     errorMessages += gettext("Country");
                 }
-                if( vm.errors['addressRegion'] ) {
+                if( vm.errors['region'] ) {
                     if( errorMessages ) { errorMessages += ", "; }
                     errorMessages += gettext("State/Province");
                 }
@@ -2112,6 +2075,23 @@ var cardMixin = {
             return valid;
         },
     },
+    computed: {
+        haveCardData: function() {
+            var vm = this;
+            return vm.savedCard.last4 && vm.savedCard.exp_date;
+        }
+    },
+    mounted: function() {
+        var vm = this;
+        var elements = vm.$el.querySelectorAll('[data-last4]');
+        if( elements.length > 0 ) {
+            vm.savedCard.last4 = elements[0].getAttribute('data-last4');
+        }
+        var elements = vm.$el.querySelectorAll('[data-exp-date]');
+        if( elements.length > 0 ) {
+            vm.savedCard.exp_date = elements[0].getAttribute('data-exp-date');
+        }
+    }
 }
 
 if($('#checkout-container').length > 0){
@@ -2275,11 +2255,11 @@ new Vue({
             var data = {
                 remember_card: true,
                 items: opts,
-                street_address: vm.addressLine1,
-                locality: vm.addressCity,
-                postal_code: vm.addressZip,
-                country: vm.addressCountry,
-                region: vm.addressRegion,
+                street_address: vm.card_address_line1,
+                locality: vm.card_city,
+                postal_code: vm.card_adress_zip,
+                country: vm.country,
+                region: vm.region,
             }
             if(token){
                 data.processor_token = token;
@@ -2383,14 +2363,12 @@ new Vue({
         vm.getUserCard();
         var cardForm = $("#card-use");
         if( cardForm.length > 0 ) {
-/*
-            vm.name = cardForm.find("[name='card_name']").val();
-            vm.addressLine1 = cardForm.find("card_address_line1").val();
-            vm.addressCity = cardForm.find("card_city").val();
-            vm.addressZip = cardForm.find("card_address_zip").val();
-            vm.addressCountry = cardForm.find("country").val();
-            vm.addressRegion = cardForm.find("region").val();
-*/
+            vm.card_name = getInitValue(cardForm, 'card_name');
+            vm.card_address_line1 = getInitValue(cardForm, 'card_address_line1');
+            vm.card_city = getInitValue(cardForm, 'card_city');
+            vm.card_adress_zip = getInitValue(cardForm, 'card_address_zip');
+            vm.country = getInitValue(cardForm, 'country');
+            vm.region = getInitValue(cardForm, 'region');
         } else {
             vm.getOrgAddress();
         }
@@ -2398,9 +2376,9 @@ new Vue({
 })
 }
 
-if($('#update_card').length > 0){
+if($('#payment-form').length > 0){
 new Vue({
-    el: "#update_card",
+    el: "#payment-form",
     mixins: [cardMixin],
     data: {
         updateCard: true,
@@ -2415,37 +2393,55 @@ new Vue({
                     url: djaodjinSettings.urls.organization.api_card,
                     data: {
                         token: token,
+                        full_name: vm.card_name,
+                        street_address: vm.card_address_line1,
+                        locality: vm.card_city,
+                        postal_code: vm.card_adress_zip,
+                        country: vm.country,
+                        region: vm.region,
                     },
                 }).done(function(resp) {
-                    showMessages([gettext("The payment info was updated.")], "success");
-                    vm.saveBillingAddress();
+                    vm.clearCardData();
+                    if( resp.last4 ){
+                        vm.savedCard.last4 = resp.last4;
+                    }
+                    if( resp.exp_date ) {
+                        vm.savedCard.exp_date = resp.exp_date;
+                    }
+                    // matching the code in `CardUpdateView` for redirects.
+                    var redirectUrl = getUrlParameter('next');
+                    if( !redirectUrl ) {
+                        redirectUrl = document.referrer;
+                    }
+                    if( redirectUrl ) {
+                        window.location = redirectUrl;
+                    }
+                    showMessages([gettext(
+                        "Your credit card on file was sucessfully updated.")],
+                        "success");
                 }).fail(handleRequestError);
             });
         },
-        saveBillingAddress: function(){
-            var vm = this;
-            var data = {
-                full_name: vm.name,
-                street_address: vm.addressLine1,
-                locality: vm.addressCity,
-                postal_code: vm.addressZip,
-                country: vm.addressCountry,
-                region: vm.addressRegion,
-            }
-            $.ajax({
-                method: 'PUT',
-                url: djaodjinSettings.urls.organization.api_base + '/',
-                data: data,
-            }).done(function(resp) {
-            }).fail(handleRequestError);
-        },
         save: function(){
             this.saveCard();
+        },
+        remove: function() {
+            var vm = this;
+            $.ajax({
+                method: 'DELETE',
+                url: djaodjinSettings.urls.organization.api_card,
+            }).done(function(resp) {
+                vm.clearCardData();
+                showMessages([gettext(
+                    "Your credit card is no longer on file with us.")],
+                    "success");
+            }).fail(handleRequestError);
         }
     },
     mounted: function(){
-        this.getUserCard();
-        this.getOrgAddress();
+// XXX This shouldn't be called on billing
+//        this.getUserCard();
+//        this.getOrgAddress();
     }
 })
 }
@@ -2454,6 +2450,9 @@ if($('#plan-container').length > 0){
 new Vue({
     el: "#plan-container",
     data: {
+        formFields: {
+            unit: 'usd',
+        },
         title: '',
         description: '',
         unit: 'usd',
@@ -2474,17 +2473,14 @@ new Vue({
                 method: 'GET',
                 url: djaodjinSettings.urls.plan.api_plan,
             }).done(function(resp) {
-                vm.title = resp.title;
-                vm.description = resp.description;
-                vm.unit = resp.unit;
-                vm.periodAmount = vm.formatNumber(resp.period_amount);
-                vm.setupAmount = vm.formatNumber(resp.setup_amount);
-                vm.interval = resp.interval;
-                vm.periodLength = resp.period_length;
-                vm.advanceDiscount = vm.formatNumber(resp.advance_discount);
+                vm.formFields = resp;
+                vm.formFields.period_amount = vm.formatNumber(
+                    resp.period_amount);
+                vm.formFields.setup_amount = vm.formatNumber(
+                    resp.setup_amount);
+                vm.formFields.advance_discount = vm.formatNumber(
+                    resp.advance_discount);
                 vm.isActive = resp.is_active;
-                vm.isNotPriced = resp.is_not_priced;
-                vm.renewalType = resp.renewal_type;
             }).fail(handleRequestError);
         },
         formatNumber: function(num){
@@ -2492,28 +2488,56 @@ new Vue({
         },
         updatePlan: function(){
             var vm = this;
-            $.ajax({
-                method: 'PUT',
-                data: {
-                    title: vm.title,
-                    description: vm.description,
-                    unit: vm.unit,
-                    period_amount: Math.round(vm.periodAmount * 100),
-                    setup_amount: Math.round(vm.setupAmount * 100),
-                    interval: vm.interval,
-                    period_length: vm.periodLength,
-                    advance_discount: Math.round(vm.advanceDiscount * 100),
-                    is_active: vm.isActive,
-                    is_not_priced: vm.isNotPriced,
-                    renewal_type: vm.renewalType,
-                },
-                url: djaodjinSettings.urls.plan.api_plan,
-            }).done(function(res) {
-                vm.get()
-                showMessages([
-                    interpolate(gettext("Successfully updated plan titled '%s'."), [vm.title])
-                ], "success");
-            }).fail(handleRequestError);
+            vm.validateForm();
+            var data = {};
+            for( var field in vm.formFields ) {
+                if( vm.formFields.hasOwnProperty(field) ) {
+                    data[field] = vm.formFields[field];
+                }
+            }
+            if( data.period_amount ) {
+                data.period_amount = Math.round(data.period_amount * 100);
+            }
+            if( data.setup_amount ) {
+                data.setup_amount = Math.round(data.setup_amount * 100);
+            }
+            if( data.advance_discount ) {
+                data.advance_discount = Math.round(data.advance_discount * 100);
+            }
+            if( djaodjinSettings.urls.plan &&
+                djaodjinSettings.urls.plan.api_plan ) {
+                $.ajax({
+                    method: 'PUT',
+                    url: djaodjinSettings.urls.plan.api_plan,
+                    data: data
+                }).done(function(res) {
+                    showMessages([interpolate(gettext(
+                        "Successfully updated plan titled '%s'."), [
+                            vm.formFields.title])
+                                 ], "success");
+                }).fail(handleRequestError);
+            } else {
+                vm.createPlan();
+            }
+        },
+        validateForm: function(){
+            var vm = this;
+            var isEmpty = true;
+            var fields = $(vm.$el).find('[name]').not(
+                '[name="csrfmiddlewaretoken"]');
+            for( var fieldIdx = 0; fieldIdx < fields.length; ++fieldIdx ) {
+                var fieldName = $(fields[fieldIdx]).attr('name');
+                var fieldValue = $(fields[fieldIdx]).val();
+                if( vm.formFields[fieldName] !== fieldValue ) {
+                    vm.formFields[fieldName] = fieldValue;
+                }
+                if( vm.formFields[fieldName] ) {
+                    // We have at least one piece of information
+                    // about the plan already available.
+                    isEmpty = false;
+                }
+            }
+            return !isEmpty;
         },
         togglePlanStatus: function(){
             var vm = this;
@@ -2539,31 +2563,40 @@ new Vue({
         },
         createPlan: function(){
             var vm = this;
+            vm.validateForm();
+            var data = {};
+            for( var field in vm.formFields ) {
+                if( vm.formFields.hasOwnProperty(field) ) {
+                    data[field] = vm.formFields[field];
+                }
+            }
+            if( data.period_amount ) {
+                data.period_amount = Math.round(data.period_amount * 100);
+            }
+            if( data.setup_amount ) {
+                data.setup_amount = Math.round(data.setup_amount * 100);
+            }
+            if( data.advance_discount ) {
+                data.advance_discount = Math.round(data.advance_discount * 100);
+            }
             $.ajax({
                 method: 'POST',
-                data: {
-                    title: vm.title,
-                    description: vm.description,
-                    unit: vm.unit,
-                    period_amount: Math.round(vm.periodAmount * 100),
-                    setup_amount: Math.round(vm.setupAmount * 100),
-                    interval: vm.interval,
-                    period_length: vm.periodLength,
-                    advance_discount: Math.round(vm.advanceDiscount * 100),
-                    is_active: vm.isActive,
-                    is_not_priced: vm.isNotPriced,
-                    renewal_type: vm.renewalType,
-                },
                 url: djaodjinSettings.urls.provider.api_plans,
+                data: data,
             }).done(function(res) {
                 window.location = djaodjinSettings.urls.provider.metrics_plans;
             }).fail(handleRequestError);
         },
     },
     mounted: function(){
-        this.get();
+        var vm = this;
+        if( !vm.validateForm() ) {
+            // It seems the form is completely blank. Let's attempt
+            // to load the form fields from the API then.
+            vm.get();
+        }
     },
-})
+});
 }
 
 if($('#plan-list-container').length > 0){

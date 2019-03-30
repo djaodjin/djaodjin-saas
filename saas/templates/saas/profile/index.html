@@ -2,73 +2,30 @@
 
 {% block saas_content %}
 <div id="profile-container">
-<form method="post" @submit.prevent="updateProfile">
-    <div>
-      <label for="id_full_name">Organization name:</label>
-      <input id="id_full_name" maxlength="60" name="full_name" type="text" v-model="name">
-    </div>
-    <div>
-        <label for="id_email">Email:</label>
-        <input id="id_email" maxlength="254" name="email" type="email" v-model="email">
-    </div>
-    <div>
-        <label for="id_phone">Phone:</label>
-        <input id="id_phone" name="phone" type="text" v-model="phone">
-    </div>
-    <div>
-        <label for="id_country">Country:</label>
-        <select v-model="addressCountry" @change="addressRegion = ''">
-            <option value="">select country</option>
-            <option :value="code" v-for="(country, code) in countries">[[country]]</option>
-        </select>
-    </div>
-    <div>
-        <label for="id_region">State/Province/County:</label>
-        <select v-model="addressRegion" v-show="addressCountry == 'US' || addressCountry == 'CA'">
-            <option value="">select state</option>
-            <option :value="code" v-for="(region, code) in regions[addressCountry]">[[region]]</option>
-        </select>
-        <input v-model="addressRegion" type="text" placeholder="Region" v-show="addressCountry != 'US' && addressCountry != 'CA'">
-    </div>
-    <div>
-        <label for="id_locality">City/Town:</label>
-        <input id="id_locality" maxlength="50" name="locality" type="text" v-model="addressCity">
-    </div>
-    <div>
-        <label for="id_street_address">Street address:</label>
-        <input id="id_street_address" name="street_address" type="text" v-model="addressLine1">
-    </div>
-    <div>
-        <label for="id_postal_code">Postal Code:</label>
-        <input id="id_postal_code" maxlength="50" name="postal_code" type="text" v-model="addressZip">
-    </div>
-    <div>
-        <label for="id_timezone">Default Timezone:</label>
-        <input id="id_timezone" maxlength="50" name="timezone" type="text" v-model="timezone">
-    </div>
-    <div>
-        <label for="id_is_bulk_buyer">Enable GroupBuy:
-            <input id="id_is_bulk_buyer" name="is_bulk_buyer" type="checkbox" v-model="isBulkBuyer">
-        </label>
-    </div>
-    <div>
-        <img :src="currentPicture" v-show="currentPicture && !imageSelected" width="100" height="100">
-        <croppa v-model="picture" :width="100" :height="100"></croppa>
-    </div>
-    {# TODO how should we handle this with vue #}
-    {% if form.extra and false %}
-    <div>
-        <label for="id_extra">Notes:</label>
-        <textarea cols="40" id="id_extra" name="extra" rows="10">{% if form.extra.value %}{{form.extra.value}}{% endif %}</textarea>
-    </div>
+<form method="post" action="." @submit.prevent="updateProfile">
+    <input type="hidden" name="csrfmiddlewaretoken" value="{{csrf_token}}">
+    {{form.full_name}}
+    {{form.email}}
+    {{form.phone}}
+    {{form.street_address}}
+    {{form.locality}}
+    {{form.postal_code}}
+    {{form.country}}
+    {{form.region}}
+    {{form.is_bulk_buyer}}
+    {% if form.extra %}
+    {{form.extra}}
     {% endif %}
     <div>
-        <input type="submit" name="submit" value="Update Profile">
+        <button type="submit">Update Profile</button>
     </div>
 </form>
+<div id="remove-profile-container" ng-app="saasApp">
   <div id="delete-action" ng-controller="organizationProfileCtrl">
-    <button id="delete-action-open">Delete</button>
-    <button type="button" id="delete-organization-btn" ng-click="deleteProfile($event)" @click="deleteProfile">Delete</button>
+    <div id="delete-action-open">
+        <button type="button" id="delete-organization-btn" ng-click="deleteProfile($event)" @click="deleteProfile">Delete</button>
+    </div>
   </div>
+</div>
 </div>
 {% endblock %}
