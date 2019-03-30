@@ -1,57 +1,46 @@
 {% extends "saas/base_dashboard.html" %}
 
 {% block saas_content %}
-<section id="subscribers-list-container">
-  <div>
-    <div id="plans-tab-container">
-        <h2>Plans</h2>
-        <table>
-          <tr>
-            <td></td>
-            <td v-for="col in planTableDates">[[col[0] | monthHeading]]</td>
-          </tr>
-          <tr :id="row.key" v-for="row in plansData.data" :key="row.key">
-            <td v-if="row.location">
-                <a :href="row.location">[[row.title ? row.title : row.key]]</a>
-            </td>
-            <td v-if="!row.location">[[row.title ? row.title : row.key]]</td>
-            <td v-for="col in row.values" :key="col[0].toISOString()" :title="humanizeCell(col[1], plansData.unit, plansData.scale, false)">[[humanizeCell(col[1], plansData.unit, plansData.scale)]]</td>
-          </tr>
-        </table>
-    </div>
+<section id="subscribers-list-container" ng-app="saasApp">
+  <div ng-controller="subscriberListCtrl" ng-init="refresh()">
     {% if registered %}
-    <div id="registered-tab-container">
     <div id="registered">
       <a name="registered" href="#registered"><h2>Registered</h2></a>
       {% include "saas/_filter.html" %}
       <div>
         <a id="download-registered" role="button"
-           :href="'{{registered.urls.download}}' + getQueryString(['page'])">CSV Download</a>
+           ng-prop-href="'{{registered.urls.download}}?q=' + params.q"
+           v-bind:href="'{{registered.urls.download}}' + getQueryString(['page'])">CSV Download</a>
       </div>
       <div>
         <table>
           <thead>
             <tr>
               <th>Full name</th>
-              <th></th>
+              <th>Registered at</th>
             </tr>
           </thead>
           <tbody>
-            <tr v-show="!itemsLoaded">
+            <tr ng-show="!tables.registered.$resolved"
+                v-show="!itemsLoaded">
               <td colspan="2">
                 <h3>Loading ...</h3>
               </td>
             </tr>
-            <tr v-show="itemsLoaded && items.results.count == 0" v-cloak>
+            <tr ng-show="tables.registered.$resolved && tables.registered.count == 0" ng-cloak
+                v-show="itemsLoaded && items.results.count == 0" v-cloak>
               <td colspan="2">
-                <h4><em>No registered users<span v-show="params.q"> [[params.q]]</span></em></h4>
+                <h4><em>No registered users<span ng-show="params.q" v-show="params.q"> [[params.q]]</span></em></h4>
               </td>
             </tr>
           </tbody>
-          <tbody class="has-results" v-show="itemsLoaded && items.results.length > 0" v-cloak>
-            <tr v-for="entry in items.results">
+          <tbody class="has-results"
+                 ng-repeat="entry in tables.registered.results" ng-show="tables.registered.$resolved && tables.registered.results.length > 0" ng-cloak
+                 v-for="entry in items.results" v-show="itemsLoaded && items.results.length > 0" v-cloak>
+            <tr>
               <td>
-                <a :href="'{{urls.profile_redirect}}' + entry.slug + '/'">[[entry.full_name]]</a>
+                <a ng-prop-href="'{{urls.profile_redirect}}' + entry.slug + '/'"
+                   v-bind:href="'{{urls.profile_redirect}}' + entry.slug + '/'">[[entry.full_name]]</a>
               </td>
               <td>
                 [[entry.created_at | relativeDate]]
@@ -60,7 +49,18 @@
           </tbody>
         </table>
       </div>
-      <div v-show="itemsLoaded && totalItems > itemsPerPage" v-cloak>
+      <div ng-show="tables.registered.$resolved && tables.registered.results.length > 0"
+           v-show="itemsLoaded && totalItems > itemsPerPage">
+        <ul uib-pagination ng-model="currentPage"
+            total-items="tables.registered.count"
+            items-per-page="itemsPerPage"
+            boundary-links="true"
+            max-size="maxSize"
+            previous-text="&lsaquo;"
+            next-text="&rsaquo;"
+            first-text="&laquo;"
+            last-text="&raquo;"
+            ng-change="pageChanged(registered)"></ul>
         <uiv-pagination
            v-model="params.page"
            :total-page="pageCount"
@@ -68,73 +68,89 @@
            boundary-links />
       </div>
     </div>
-    </div>
     {% endif %}
     {% for tab in tabs %}
-    <div id="{{tab.slug}}-tab-container">
     <div id="{{tab.slug}}">
       <a name="{{tab.slug}}" href="#{{tab.slug}}"><h2>{{tab.title}}</h2></a>
       {% include "saas/_filter.html" %}
       <div>
-        <a id="download-{{tab.slug}}" role="button" :href="'{{tab.urls.download}}' + getQueryString(['page'])">CSV Download</a>
+        <a id="download-{{tab.slug}}" role="button"
+           ng-prop-href="'{{tab.urls.download}}?q=' + params.q"
+           v-bind:href="'{{tab.urls.download}}' + getQueryString(['page'])">CSV Download</a>
       </div>
       <div>
         <table>
           <thead>
             <tr>
-              <th>Subscriber<button @click="sortBy('organization')">[[params.o === 'organization' ? params.ot : 'sort']]</button></th>
-              <th>Plan<button @click="sortBy('plan')">[[params.o === 'plan' ? params.ot : 'sort']]</button></th>
-              <th>Since<button @click="sortBy('created_at')">[[params.o === 'created_at' ? params.ot : 'sort']]</button></th>
-              <th>Ends At<button @click="sortBy('ends_at')">[[params.o === 'ends_at' ? params.ot : 'sort']]</button></th>
+              <th>Subscriber<button ng-click="sortBy('organization')" @click="sortBy('organization')">[[params.o === 'organization' ? params.ot : 'sort']]</button></th>
+              <th>Plan<button ng-click="sortBy('plan')" @click="sortBy('plan')">[[params.o === 'plan' ? params.ot : 'sort']]</button></th>
+              <th>Since<button ng-click="sortBy('created_at')" @click="sortBy('created_at')">[[params.o === 'created_at' ? params.ot : 'sort']]</button></th>
+              <th>Ends At<button ng-click="sortBy('ends_at')" @click="sortBy('ends_at')">[[params.o === 'ends_at' ? params.ot : 'sort']]</button></th>
             </tr>
           </thead>
-          <tbody v-show="!itemsLoaded">
+          <tbody ng-show="!tables.{{tab.slug}}.$resolved"
+                 v-show="!itemsLoaded">
             <tr>
               <td colspan="5">
                 <h4>Loading ...</h4>
               </td>
             </tr>
           </tbody>
-          <tbody class="has-no-results" v-show="itemsLoaded && items.results.length == 0" v-cloak>
+          <tbody class="has-no-results"
+                 ng-show="tables.{{tab.slug}}.$resolved && tables.{{tab.slug}}.results.length == 0" ng-cloak
+                 v-show="itemsLoaded && items.results.length == 0" v-cloak>
             <tr>
               <td colspan="5">
-                <h4>No subscribers<span v-show="params.q"> with filter: '[[params.q]]'</span></h4>
+                <h4>No subscribers<span ng-show="params.q"> with filter: '[[params.q]]'</span></h4>
               </td>
             </tr>
           </tbody>
-          <tbody class="has-results" v-show="itemsLoaded && items.results.length > 0" v-cloak>
-            <tr v-for="entry in items.results" :class="endsSoon(entry)">
+          <tbody class="has-results"
+                 ng-repeat="entry in tables.{{tab.slug}}.results"
+                 ng-show="tables.{{tab.slug}}.$resolved && tables.{{tab.slug}}.results.length > 0" ng-cloak
+                 v-for="entry in items.results"
+                 v-show="itemsLoaded && items.results.length > 0" v-cloak>
+            <tr ng-class="endsSoon(entry)">
               <td>
-                <a :id="entry.organization.slug"
-                   :href="'{{urls.organization.profile_base}}' + entry.organization.slug + '/subscriptions/'"
+                <a ng-prop-id="entry.organization.slug"
+                   ng-prop-href="'{{urls.organization.profile_base}}' + entry.organization.slug + '/subscriptions/'"
+                   v-bind:id="entry.organization.slug"
+                   v-bind:href="'{{urls.organization.profile_base}}' + entry.organization.slug + '/subscriptions/'"
                    >[[entry.organization.printable_name]]</a>
               </td>
               <td>[[entry.plan.title]]</td>
               <td>[[entry.created_at | formatDate]]</td>
               <td>[[entry.ends_at | formatDate]]</td>
-              <td class="description editable">
-                <span v-show="!entry.edit_description" @click="editDescription(entry, entry.plan.slug)">
-                    descr: [[entry.description]]</i>
-                </span>
-                <input type="text"
-                       @blur="saveDescription(entry)"
-                       @keyup.13="saveDescription(entry)"
-                       v-model="entry.description"
-                       :ref="refId(entry, entry.plan.slug)"
-                       v-show="entry.edit_description">
+              <td ng-prop-id="entry.id"
+                  v-bind:id="entry.id">
+                <span ng-show="!entry.editDescription"
+                      ng-click="editDescription($event, entry)">[[entry.description]]
+                  <input ng-show="entry.editDescription" type="text"
+                         ng-blur="saveDescription($event, entry)"
+                         ng-model="entry.description">
               </td>
             </tr>
           </tbody>
         </table>
       </div>
-      <div v-show="itemsLoaded && totalItems > itemsPerPage">
+      <div ng-show="tables.{{tab.slug}}.$resolved && tables.{{tab.slug}}.results.length > 0"
+           v-show="itemsLoaded && totalItems > itemsPerPage">
+        <ul uib-pagination ng-model="currentPage"
+            total-items="tables.{{tab.slug}}.count"
+            items-per-page="itemsPerPage"
+            boundary-links="true"
+            max-size="maxSize"
+            previous-text="&lsaquo;"
+            next-text="&rsaquo;"
+            first-text="&laquo;"
+            last-text="&raquo;"
+            ng-change="pageChanged({{tab.slug}})"></ul>
         <uiv-pagination
            v-model="params.page"
            :total-page="pageCount"
            @change="get"
            boundary-links />
       </div>
-    </div>
     </div>
     {% endfor %}
   </div>

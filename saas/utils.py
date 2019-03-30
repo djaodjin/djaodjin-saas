@@ -25,6 +25,7 @@
 import datetime, inspect, random, re, sys
 
 from django.core.exceptions import NON_FIELD_ERRORS
+from django.core.files.storage import default_storage
 from django.conf import settings as django_settings
 from django.db import transaction, IntegrityError
 from django.http.request import split_domain_port, validate_host
@@ -37,6 +38,7 @@ from rest_framework.exceptions import ValidationError
 from rest_framework.settings import api_settings
 from pytz import timezone, UnknownTimeZoneError
 from pytz.tzinfo import DstTzInfo
+from .compat import import_string
 
 
 class SlugTitleMixin(object):
@@ -297,3 +299,13 @@ def handle_uniq_error(err, renames=None):
         raise ValidationError({field_name:
             _("This %(field)s is already taken.") % {'field': field_name}})
     raise err
+
+def get_picture_storage():
+    from . import settings
+
+    if settings.PICTURE_STORAGE_CALLABLE:
+        try:
+            return import_string(settings.PICTURE_STORAGE_CALLABLE)()
+        except ImportError:
+            pass
+    return default_storage

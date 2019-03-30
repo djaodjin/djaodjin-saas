@@ -164,14 +164,14 @@ class PlanCreateView(PlanFormMixin, CreateView):
     Template:
 
     To edit the layout of this page, create a local \
-    ``saas/profile/plans/new.html`` (`example <https://github.com/djaodjin/\
-djaodjin-saas/tree/master/saas/templates/saas/profile/plans/new.html>`__).
+    ``saas/profile/plans/plan.html`` (`example <https://github.com/djaodjin/\
+djaodjin-saas/tree/master/saas/templates/saas/profile/plans/plan.html>`__).
 
     Template context:
       - ``organization`` The provider for the plans
       - ``request`` The HTTP request object
     """
-    template_name = 'saas/profile/plans/new.html'
+    template_name = 'saas/profile/plans/plan.html'
 
     def get_success_url(self):
         messages.success(
@@ -187,8 +187,8 @@ class PlanUpdateView(PlanFormMixin, UpdateView):
     Template:
 
     To edit the layout of this page, create a local \
-    ``saas/profile/plans/edit.html`` (`example <https://github.com/djaodjin/\
-djaodjin-saas/tree/master/saas/templates/saas/profile/plans/edit.html>`__).
+    ``saas/profile/plans/plan.html`` (`example <https://github.com/djaodjin/\
+djaodjin-saas/tree/master/saas/templates/saas/profile/plans/plan.html>`__).
 
     Template context:
       - ``plan`` The plan to update
@@ -196,7 +196,7 @@ djaodjin-saas/tree/master/saas/templates/saas/profile/plans/edit.html>`__).
       - ``organization`` The provider of the plan
       - ``request`` The HTTP request object
     """
-    template_name = 'saas/profile/plans/edit.html'
+    template_name = 'saas/profile/plans/plan.html'
     slug_url_kwarg = 'plan'
 
     def get_success_url(self):

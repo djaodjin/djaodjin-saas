@@ -1,4 +1,4 @@
-# Copyright (c) 2018, DjaoDjin inc.
+# Copyright (c) 2019, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -22,12 +22,15 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+from rest_framework import status
 from rest_framework.exceptions import ValidationError
-from rest_framework.generics import RetrieveAPIView
+from rest_framework.generics import (RetrieveAPIView,
+    RetrieveUpdateDestroyAPIView)
 from rest_framework.response import Response
 from django.utils.translation import ugettext_lazy as _
 
 from ..backends import ProcessorError
+from ..docs import swagger_auto_schema, OpenAPIResponse
 from ..mixins import OrganizationMixin
 from .serializers import (BankSerializer, CardSerializer,
     CardTokenSerializer)
@@ -70,7 +73,7 @@ class RetrieveBankAPIView(OrganizationMixin, RetrieveAPIView):
             self.organization.retrieve_bank())
 
 
-class RetrieveCardAPIView(OrganizationMixin, RetrieveAPIView):
+class RetrieveCardAPIView(OrganizationMixin, RetrieveUpdateDestroyAPIView):
     """
     Pass through to the processor to retrieve some details about
     the payment method (ex: credit card) associated to a subscriber.
@@ -87,23 +90,69 @@ class RetrieveCardAPIView(OrganizationMixin, RetrieveAPIView):
 
         {
           "last4": "1234",
-          "exp_date": "12/2015"
+          "exp_date": "12/2019"
         }
     """
     serializer_class = CardSerializer
 
+    def delete(self, request, *args, **kwargs):
+        """
+        Pass through to the processor to remove the payment method (ex: credit
+        card) associated to a subscriber.
+
+        **Examples
+
+        .. code-block:: http
+
+            DELETE /api/billing/cowork/card/ HTTP/1.1
+        """
+        return super(RetrieveCardAPIView, self).delete(request, *args, **kwargs)
+
+    @swagger_auto_schema(request_boby=CardTokenSerializer, responses={
+        200: OpenAPIResponse("", CardSerializer)})
     def put(self, request, *args, **kwargs):
-        #pylint:disable=unused-argument
-        serializer = CardTokenSerializer(data=request.data)
-        if serializer.is_valid():
-            token = serializer.validated_data['token']
-            try:
-                self.organization.update_card(token, self.request.user)
-            except ProcessorError as err:
-                raise ValidationError(err)
-        return Response({
-            'detail': _('Your credit card on file was sucessfully updated')})
+        """
+        Pass through to the processor to update some details about
+        the payment method (ex: credit card) associated to a subscriber.
+
+        **Examples
+
+        .. code-block:: http
+
+            PUT /api/billing/cowork/card/ HTTP/1.1
+
+        .. code-block:: json
+
+            {
+              "token": "xyz",
+            }
+
+        responds
+
+        .. code-block:: json
+
+            {
+              "last4": "1234",
+              "exp_date": "12/2019"
+            }
+        """
+        return super(RetrieveCardAPIView, self).put(request, *args, **kwargs)
+
+    def destroy(self, request, *args, **kwargs):
+        self.organization.delete_card()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
     def retrieve(self, request, *args, **kwargs):
         #pylint: disable=unused-argument
         return Response(self.organization.retrieve_card())
+
+    def update(self, request, *args, **kwargs):
+        partial = kwargs.pop('partial', False)
+        serializer = CardTokenSerializer(data=request.data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+        token = serializer.validated_data['token']
+        try:
+            self.organization.update_card(token, self.request.user)
+        except ProcessorError as err:
+            raise ValidationError(err)
+        return self.retrieve(request, *args, **kwargs)

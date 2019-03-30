@@ -56,7 +56,7 @@ function _showErrorMessages(resp) {
         var data = resp.data || resp.responseJSON;
         if( data && typeof data === "object" ) {
             if( data.detail ) {
-                messages = ["Error: " + data.detail];
+                messages = [gettext("Error:") + " " + data.detail];
             } else if( $.isArray(data) ) {
                 for( var idx = 0; idx < data.length; ++idx ) {
                     messages = messages.concat(_showErrorMessages(data[idx]));
@@ -80,14 +80,15 @@ function _showErrorMessages(resp) {
                             message = data[key].detail;
                         }
                         messages.push(key + ": " + message);
-                        $("[name=\"" + key + "\"]").parents('.form-group').addClass("has-error");
-                        var help = $("[name=\"" + key + "\"]").parents('.form-group').find('.help-block');
+                        var parent = $("[name=\"" + key + "\"]").parents('.form-group');
+                        parent.addClass("has-error");
+                        var help = parent.find('.help-block');
                         if( help.length > 0 ) { help.text(message); }
                     }
                 }
             }
         } else if( resp.detail ) {
-            messages = ["Error: " + resp.detail];
+            messages = [gettext("Error:") + " " + resp.detail];
         }
     }
     return messages;
@@ -96,13 +97,15 @@ function _showErrorMessages(resp) {
 
 function showErrorMessages(resp) {
     if( resp.status >= 500 && resp.status < 600 ) {
-        messages = ["Error " + resp.status + ": " + resp.statusText
-            + ". We have been notified and have started on fixing"
-            + " the error. We apologize for the inconvinience."];
+        messages = [interpolate(gettext("Error %s: %s. We have been notified"
+            + " and have started on fixing the error. We apologize for the"
+            + " inconvinience."), [resp.status, resp.statusText])
+        ];
     } else {
         var messages = _showErrorMessages(resp);
         if( messages.length === 0 ) {
-            messages = ["Error " + resp.status + ": " + resp.statusText];
+            messages = [interpolate(gettext("Error %s:"), [resp.status])
+                + " " + resp.statusText];
         }
     }
     showMessages(messages, "error");
@@ -122,4 +125,17 @@ function getMetaCSRFToken() {
         }
     }
     return "";
+};
+
+/** Retrieves an URL query argument.
+
+    Example:
+
+        window.location = getUrlParameter('next');
+*/
+function getUrlParameter(name) {
+    name = name.replace(/[\[]/, '\\[').replace(/[\]]/, '\\]');
+    var regex = new RegExp('[\\?&]' + name + '=([^&#]*)');
+    var results = regex.exec(location.search);
+    return results === null ? '' : decodeURIComponent(results[1].replace(/\+/g, ' '));
 };

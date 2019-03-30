@@ -1,7 +1,3 @@
-{% extends "notification/base.eml" %}
-{% load assets %}
-{% load saas_tags %}
-
 {% block subject %}
 {{user.get_full_name}} requested an additional role on {{organization.printable_name}}
 {% endblock %}

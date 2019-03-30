@@ -30,6 +30,7 @@ from __future__ import unicode_literals
 from decimal import Decimal
 
 from django import forms
+from django.template.defaultfilters import slugify
 from django.utils.safestring import mark_safe
 from django.utils.translation import ugettext_lazy as _
 from django_countries import countries
@@ -237,6 +238,10 @@ class PlanForm(forms.ModelForm):
     """
     submit_title = _("Update")
 
+    interval = forms.ChoiceField(choices=[
+        (slugify(choice[1]), choice[1]) for choice in Plan.INTERVAL_CHOICES])
+    renewal_type = forms.ChoiceField(choices=[
+        (slugify(choice[1]), choice[1]) for choice in Plan.RENEWAL_CHOICES])
     unit = forms.ChoiceField(choices=(
         ('usd', 'usd'), ('cad', 'cad'), ('eur', 'eur')))
     period_amount = forms.DecimalField(max_digits=7, decimal_places=2)
@@ -274,6 +279,16 @@ class PlanForm(forms.ModelForm):
             self.cleaned_data['advance_discount'] = 0
         return self.cleaned_data['advance_discount']
 
+    def clean_interval(self):
+        period = self.cleaned_data['interval']
+        for period_choice in Plan.INTERVAL_CHOICES:
+            if period == slugify(period_choice[1]):
+                self.cleaned_data['interval'] = period_choice[0]
+                return self.cleaned_data['interval']
+        raise forms.ValidationError(
+            _("period must be one of %s" % ([
+                period_choice[1] for period_choice in Plan.INTERVAL_CHOICES])))
+
     def clean_period_amount(self):
         try:
             self.cleaned_data['period_amount'] = \
@@ -281,6 +296,16 @@ class PlanForm(forms.ModelForm):
         except (TypeError, ValueError):
             self.cleaned_data['period_amount'] = 0
         return self.cleaned_data['period_amount']
+
+    def clean_renewal_type(self):
+        renewal_type = self.cleaned_data['renewal_type']
+        for renewal_type_choice in Plan.RENEWAL_CHOICES:
+            if renewal_type == slugify(renewal_type_choice[1]):
+                self.cleaned_data['renewal_type'] = renewal_type_choice[0]
+                return self.cleaned_data['renewal_type']
+        raise forms.ValidationError(
+            _("renewal must be one of %s" % ([renewal_type_choice[1]
+            for renewal_type_choice in Plan.RENEWAL_CHOICES])))
 
     def clean_title(self):
         kwargs = {}

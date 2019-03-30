@@ -7,7 +7,7 @@
         the form with that token.
 
         usage:
-            $("payment-form").bank({stripePubKey: *YourStripePublicKey*});
+            $("#payment-form").bank({stripePubKey: *YourStripePublicKey*});
 
         HTML requirements:
             <form>
@@ -73,7 +73,7 @@
             var country = countryElement.val();
             if( country === "" ) {
                 if( errorMessages ) { errorMessages += ", "; }
-                errorMessages += "Country";
+                errorMessages += gettext("Country");
                 countryElement.parents(".form-group").addClass("has-error");
                 valid = false;
             }
@@ -83,7 +83,7 @@
             var accountNumber = accountNumberElement.val();
             if(!Stripe.bankAccount.validateAccountNumber(accountNumber, country)) {
                 if( errorMessages ) { errorMessages += ", "; }
-                errorMessages += "Account Number";
+                errorMessages += gettext("Account Number");
                 accountNumberElement.parents(".form-group").addClass("has-error");
                 valid = false;
             }
@@ -91,13 +91,13 @@
             var routingNumber = routingNumberElement.val();
             if(!Stripe.bankAccount.validateRoutingNumber(routingNumber, country)) {
                 if( errorMessages ) { errorMessages += ", "; }
-                errorMessages += "Routing Number";
+                errorMessages += gettext("Routing Number");
                 routingNumberElement.parents(
                     ".form-group").addClass("has-error");
                 valid = false;
             }
             if( errorMessages ) {
-                errorMessages += " field(s) cannot be empty.";
+                errorMessages += " " + gettext("field(s) cannot be empty.");
             }
             if( valid ) {
                 // this identifies your website in the createToken call below
@@ -131,7 +131,7 @@
         the form with that token.
 
         usage:
-            $("payment-form").card({stripePubKey: *YourStripePublicKey*});
+            $("#payment-form").card({stripePubKey: *YourStripePublicKey*});
 
         HTML requirements:
             <form>
@@ -271,7 +271,7 @@
             var number = numberElement.val();
             if( number === "" ) {
                 if( errorMessages ) { errorMessages += ", "; }
-                errorMessages += "Card Number";
+                errorMessages += gettext("Card Number");
                 numberElement.parents(".form-group").addClass("has-error");
                 valid = false;
             }
@@ -279,7 +279,7 @@
             var cvc = cvcElement.val();
             if( cvc === "" ) {
                 if( errorMessages ) { errorMessages += ", "; }
-                errorMessages += "Card Security Code";
+                errorMessages += gettext("Card Security Code");
                 cvcElement.parents(".form-group").addClass("has-error");
                 valid = false;
             }
@@ -289,7 +289,7 @@
             var expYear = expYearElement.val();
             if( expMonth === "" || expYear === "" ) {
                 if( errorMessages ) { errorMessages += ", "; }
-                errorMessages += "Expiration";
+                errorMessages += gettext("Expiration");
                 expMonthElement.parents(".form-group").addClass("has-error");
                 expYearElement.parents(".form-group").addClass("has-error");
                 valid = false;
@@ -300,7 +300,7 @@
             var name = nameElement.val();
             if( name === "" ) {
                 if( errorMessages ) { errorMessages += ", "; }
-                errorMessages += "Card Holder";
+                errorMessages += gettext("Card Holder");
                 nameElement.parents(".form-group").addClass("has-error");
                 valid = false;
             }
@@ -308,7 +308,7 @@
             var addressLine1 = addressLine1Element.val();
             if( addressLine1 === "" ) {
                 if( errorMessages ) { errorMessages += ", "; }
-                errorMessages += "Street";
+                errorMessages += gettext("Street");
                 addressLine1Element.parents(
                     ".form-group").addClass("has-error");
                 valid = false;
@@ -317,7 +317,7 @@
             var addressCity = addressCityElement.val();
             if( addressCity === "" ) {
                 if( errorMessages ) { errorMessages += ", "; }
-                errorMessages += "City";
+                errorMessages += gettext("City");
                 addressCityElement.parents(".form-group").addClass("has-error");
                 valid = false;
             }
@@ -325,7 +325,7 @@
             var addressState = addressStateElement.val();
             if( addressState === "" ) {
                 if( errorMessages ) { errorMessages += ", "; }
-                errorMessages += "State/Province";
+                errorMessages += gettext("State/Province");
                 addressStateElement.parents(
                     ".form-group").addClass("has-error");
                 valid = false;
@@ -334,7 +334,7 @@
             var addressZip = addressZipElement.val();
             if( addressZip === "" ) {
                 if( errorMessages ) { errorMessages += ", "; }
-                errorMessages += "Zip";
+                errorMessages += gettext("Zip");
                 addressZipElement.parents(".form-group").addClass("has-error");
                 valid = false;
             }
@@ -342,13 +342,13 @@
             var addressCountry = addressCountryElement.val();
             if( addressCountry === "" ) {
                 if( errorMessages ) { errorMessages += ", "; }
-                errorMessages += "Country";
+                errorMessages += gettext("Country");
                 addressCountryElement.parents(
                     ".form-group").addClass("has-error");
                 valid = false;
             }
             if( errorMessages ) {
-                errorMessages += " field(s) cannot be empty.";
+                errorMessages += " " + gettext("field(s) cannot be empty.");
             }
             if( valid ) {
                 // this identifies your website in the createToken call below

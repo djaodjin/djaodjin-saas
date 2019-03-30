@@ -253,6 +253,11 @@ class Organization(models.Model):
     default_timezone = models.CharField(
         max_length=100, default=settings.TIME_ZONE,
         help_text=_("Timezone to use when reporting metrics"))
+    # 2083 number is used because it is a safe option to choose based
+    # on some older browsers behavior
+    # https://stackoverflow.com/q/417142/1491475
+    picture = models.URLField(_("Profile picture"), max_length=2083,
+        null=True, blank=True, help_text=_("Profile picture"))
 
     # Payment Processing
     # ------------------
@@ -560,6 +565,13 @@ class Organization(models.Model):
                 extra={'event': 'update-deposit', 'organization': self.slug,
                     'processor_deposit_key': self.processor_deposit_key})
         signals.bank_updated.send(self)
+
+    def delete_card(self):
+        self.processor_backend.delete_card(self, broker=get_broker())
+        self.processor_card_key = None
+        self.save()
+        LOGGER.info("Processor debit key for %s was deleted.",
+            self, extra={'event': 'delete-debit', 'organization': self.slug})
 
     def update_card(self, card_token, user):
         self.processor_backend.create_or_update_card(
@@ -2311,8 +2323,8 @@ class Plan(SlugTitleMixin, models.Model):
     REPEAT = 2
 
     RENEWAL_CHOICES = [
-        (ONE_TIME, "ONE_TIME"),
-        (AUTO_RENEW, "AUTO_RENEW"),
+        (ONE_TIME, "ONE-TIME"),
+        (AUTO_RENEW, "AUTO-RENEW"),
         (REPEAT, "REPEAT")]
 
     PRICE_ROUND_NONE = 0

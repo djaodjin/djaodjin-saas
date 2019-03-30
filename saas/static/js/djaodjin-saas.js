@@ -107,8 +107,8 @@
     };
 
     $.fn.cartItem.defaults = {
-        addLabel: "Add to Cart",
-        removeLabel: "Remove from Cart",
+        addLabel: gettext("Add to Cart"),
+        removeLabel: gettext("Remove from Cart"),
         nb_periods: 1,
         api_cart: null
     };
@@ -225,10 +225,12 @@
                     datatype: "json",
                     contentType: "application/json; charset=utf-8",
                     success: function(data) {
-                        showMessages(["A copy of the receipt was sent to " + data.email + "."], "info");
+                        showMessages([interpolate(gettext(
+                            "A copy of the receipt was sent to %s."),
+                            [data.email])], "info");
                     },
-                    error: function(data) {
-                        showMessages(["An error occurred while emailing a copy of the receipt (" + data.status + " " + data.statusText + "). Please accept our apologies."], "error");
+                    error: function(resp) {
+                        showErrorMessages(resp);
                     }
                 });
             }
@@ -319,22 +321,16 @@
                     datatype: "json",
                     contentType: "application/json; charset=utf-8",
                     success: function(data) {
-                        var message = "Amount refunded.";
+                        var message = gettext("Amount refunded.");
                         if( data.responseJSON ) {
                             message = data.responseJSON.detail;
                         }
                         showMessages([message], "info");
-                        refundButton.replaceWith("<em>Refunded</em>");
+                        refundButton.replaceWith(
+                            "<em>" + gettext("Refunded") + "</em>");
                     },
-                    error: function(data) {
-                        var message = data.statusText;
-                        if( data.responseJSON ) {
-                            message = data.responseJSON.detail;
-                        }
-                        showMessages([
-                         "An error occurred while refunding the charge ("
-                         + data.status + " - " +
-                         message + "). Please accept our apologies."], "error");
+                    error: function(resp) {
+                        showErrorMessages(resp);
                         refundButton.removeAttr("disabled");
                     }
                 });
@@ -434,7 +430,8 @@
                         type: "POST",
                         url: "/api/cart/" + plan + "/upload/",
                         beforeSend: function(xhr) {
-                            xhr.setRequestHeader("X-CSRFToken", self._getCSRFToken());
+                            xhr.setRequestHeader(
+                                "X-CSRFToken", self._getCSRFToken());
                         },
                         data: formData,
                         processData: false,
@@ -448,8 +445,8 @@
                             }
                             file.val("").change();
                         },
-                        error: function(response) {
-                            showErrorMessages(response, "error");
+                        error: function(resp) {
+                            showErrorMessages(resp);
                         }
                     });
                 }
@@ -495,7 +492,8 @@
                 var lineAmountText = $(candidates[i]).text().replace(',','');
                 var first = lineAmountText.search("[0-9]");
                 if( first > 0 ) {
-                    var lineAmount = parseFloat(lineAmountText.substring(first)) * 100;
+                    var lineAmount = parseFloat(
+                        lineAmountText.substring(first)) * 100;
                     totalAmount += lineAmount;
                 }
             }
@@ -714,22 +712,19 @@
                      xhr.setRequestHeader("X-CSRFToken", self._getCSRFToken());
                  },
                  data: JSON.stringify({
-                     "title": "New Plan",
-                     "description": "Write the description of the plan here.",
+                     "title": gettext("New Plan"),
+                     "description": gettext("Write the description of the plan here."),
                      "interval": 4,
                      "is_active": 1}),
                  datatype: "json",
                  contentType: "application/json; charset=utf-8",
                  success: function(data) {
                      showMessages([
-                         "Plan was created successfully."], "success");
+                         gettext("Plan was created successfully.")], "success");
                      if( reload ) { location.reload(true); }
                  },
-                 error: function(data) {
-                     showMessages([
-                         "An error occurred while creating the plan (" +
-                         data.status + " " + data.statusText +
-                         "). Please accept our apologies."], "error");
+                 error: function(resp) {
+                     showErrorMessages(resp);
                  }
                });
       },
@@ -764,13 +759,10 @@
                  success: function(data) {
                      window.location.href = self.options.saas_metrics_plans;
                      showMessages([
-                         "Plan was successfully deleted."], "success");
+                         gettext("Plan was successfully deleted.")], "success");
                  },
-                 error: function(data) {
-                     showMessages([
-                         "An error occurred while deleting the plan (" +
-                         data.status + " " + data.statusText +
-                         "). Please accept our apologies."], "error");
+                 error: function(resp) {
+                     showErrorMessages(resp);
                  }
                });
       },
@@ -808,11 +800,8 @@
                          button.text("Activate");
                      }
                  },
-                 error: function(data) {
-                     showMessages([
-                         "An error occurred while creating the plan (" +
-                         data.status + " " + data.statusText +
-                         "). Please accept our apologies."], "error");
+                 error: function(resp) {
+                     showErrorMessages(resp);
                  },
           });
       }
