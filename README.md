@@ -28,24 +28,24 @@ Development
 After cloning the repository, create a virtualenv environment and install
 the prerequisites:
 
-```
-    $ virtualenv _installTop_
-    $ source _installTop_/bin/activate
+<pre><code>
+    $ virtualenv <em>installTop</em>
+    $ source <em>installTop</em>/bin/activate
     $ pip install -r testsite/requirements.txt
-```
+</code></pre>
 
 To use the testsite, you will need to add the payment processor keys
 (see [Processor Backends](http://djaodjin-saas.readthedocs.io/en/latest/backends.html))
 and Django secret key into a credentials file. Example with
 [Stripe](https://stripe.com/):
 
-```
+<pre><code>
     $ cat ./credentials
 
-    SECRET_KEY = "_enough_random_data_"
-    STRIPE_PUB_KEY = "_your_stripe_public_api_key_"
-    STRIPE_PRIV_KEY = "_your_stripe_private_api_key_"
-```
+    SECRET_KEY = "<em>enough_random_data</em>"
+    STRIPE_PUB_KEY = "<em>your_stripe_public_api_key</em>"
+    STRIPE_PRIV_KEY = "<em>your_stripe_private_api_key</em>"
+</code></pre>
 
 It remains to create the database and populate it with test data.
 
