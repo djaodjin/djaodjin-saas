@@ -18,7 +18,8 @@ and Jinja2 template engines. To see djaodjin-saas in action as part
 of a full-fledged subscription-based session proxy, take a look
 at [djaoapp](https://github.com/djaodjin/djaoapp/).
 
-Full documentation for the project is available at [Read-the-Docs](http://djaodjin-saas.readthedocs.org/)
+Full documentation for the project is available at
+[Read-the-Docs](http://djaodjin-saas.readthedocs.org/)
 
 
 Development
@@ -27,21 +28,24 @@ Development
 After cloning the repository, create a virtualenv environment and install
 the prerequisites:
 
+```
     $ virtualenv _installTop_
     $ source _installTop_/bin/activate
     $ pip install -r testsite/requirements.txt
+```
 
 To use the testsite, you will need to add the payment processor keys
 (see [Processor Backends](http://djaodjin-saas.readthedocs.io/en/latest/backends.html))
 and Django secret key into a credentials file. Example with
 [Stripe](https://stripe.com/):
 
+```
     $ cat ./credentials
 
     SECRET_KEY = "_enough_random_data_"
     STRIPE_PUB_KEY = "_your_stripe_public_api_key_"
     STRIPE_PRIV_KEY = "_your_stripe_private_api_key_"
-
+```
 
 It remains to create the database and populate it with test data.
 
@@ -88,11 +92,14 @@ saas/templates/notification/ directory.
 Release Notes
 =============
 
-0.3.4
-
-  * Experimental vue.js front-end
-  * trigger more signals when getting closer to renewal time
-  * uses broker as a candidate in fail_direct
+0.4.0
+  * defaults to vuejs front-end
+  * merges Organization and User profile APIs
+  * adds i18n translations to javascript
+  * adds picture field to Organization
+  * adds API endpoint to re-send an invitation.
+  * removes default natural `start_at` date on queries. it wasn't so natural
+    after all.
 
 [previous release notes](changelog)
 

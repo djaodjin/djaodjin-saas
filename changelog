@@ -1,8 +1,18 @@
+0.3.4
+
+  * adds experimental vue.js front-end
+  * triggers more signals when getting closer to renewal time
+  * uses broker as a candidate in fail_direct
+
+ -- Sebastien Mirolo <smirolo@djaodjin.com>  Tue, 4 Dec 2018 14:26:47 -0800
+
 0.3.2
 
   * Compatible with Django 2.0.x
   * Adds command to reconcile payouts with processor
   * Generates revenue reports in utc and local time
+
+ -- Sebastien Mirolo <smirolo@djaodjin.com>  Fri, 27 Apr 2018 08:25:09 -0700
 
 0.3.0
 
