@@ -76,7 +76,19 @@ def get_order_func(fields):
         get_order_func(fields[1:])(left, right))
 
 
-class OrganizationDetailAPIView(OrganizationMixin,
+class OrganizationQuerysetMixin(object):
+
+    @staticmethod
+    def get_queryset():
+        # Adds a boolean `is_personal` if there exists a User such that
+        # `Organization.slug == User.username`.
+        queryset = get_organization_model().objects.annotate(
+            nb_roles=Count('role__user__username')).extra(
+                select={'is_personal': "slug = username"})
+        return queryset
+
+
+class OrganizationDetailAPIView(OrganizationMixin, OrganizationQuerysetMixin,
                                 RetrieveUpdateDestroyAPIView):
     """
     Retrieves profile information on an ``Organization``.
@@ -111,8 +123,6 @@ class OrganizationDetailAPIView(OrganizationMixin,
     """
     lookup_field = 'slug'
     lookup_url_kwarg = 'organization'
-    queryset = get_organization_model().objects.all().prefetch_related(
-        'subscriptions')
     serializer_class = OrganizationWithSubscriptionsSerializer
     user_model = get_user_model()
 
@@ -165,6 +175,10 @@ class OrganizationDetailAPIView(OrganizationMixin,
             obj = self.as_organization(user)
         return obj
 
+    def get_queryset(self):
+        return super(OrganizationDetailAPIView,
+            self).get_queryset().prefetch_related('subscriptions')
+
     def perform_update(self, serializer):
         is_provider = serializer.instance.is_provider
         if _valid_manager(self.request, [get_broker()]):
@@ -207,18 +221,6 @@ class OrganizationDetailAPIView(OrganizationMixin,
             if request.user == user:
                 auth_logout(request)
         return Response(status=status.HTTP_204_NO_CONTENT)
-
-
-class OrganizationQuerysetMixin(object):
-
-    @staticmethod
-    def get_queryset():
-        # Adds a boolean `is_personal` if there exists a User such that
-        # `Organization.slug == User.username`.
-        queryset = get_organization_model().objects.annotate(
-            nb_roles=Count('role__user__username')).extra(
-                select={'is_personal': "slug = username"})
-        return queryset
 
 
 class OrganizationListAPIView(OrganizationSmartListMixin,

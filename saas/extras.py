@@ -45,6 +45,12 @@ class OrganizationMixinBase(object):
 
     organization_url_kwarg = 'organization'
 
+    @property
+    def organization(self):
+        if not hasattr(self, '_organization'):
+            self._organization = self.get_organization()
+        return self._organization
+
     def get_organization(self):
         return get_object_or_404(get_organization_model(),
             slug=self.kwargs.get(self.organization_url_kwarg))
@@ -180,9 +186,3 @@ class OrganizationMixinBase(object):
         else:
             context.update({'urls': urls})
         return context
-
-    @property
-    def organization(self):
-        if not hasattr(self, '_organization'):
-            self._organization = self.get_organization()
-        return self._organization
