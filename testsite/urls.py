@@ -94,6 +94,8 @@ urlpatterns += [
         decorators=['saas.decorators.requires_self_provider']),
     url_prefixed(r'api/', include('saas.urls.api.broker'),
         decorators=['saas.decorators.requires_provider_only']),
+    url_prefixed(r'api/', include('saas.urls.api.search'),
+        decorators=['django.contrib.auth.decorators.login_required']),
     # api/charges/:charge/refund must be before api/charges/
     url_prefixed(r'api/',
         include('saas.urls.api.provider.charges'),

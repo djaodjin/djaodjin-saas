@@ -29,7 +29,7 @@ from django.contrib.auth import get_user_model, logout as auth_logout
 from django.db import transaction, IntegrityError
 from django.db.models import Count, Q
 from django.http import Http404
-from rest_framework import filters, status
+from rest_framework import status
 from rest_framework.settings import api_settings
 from rest_framework.generics import (get_object_or_404, ListAPIView,
     ListCreateAPIView, RetrieveUpdateDestroyAPIView)
@@ -37,7 +37,7 @@ from rest_framework.response import Response
 
 from .serializers import (CreateOrganizationSerializer,
     OrganizationSerializer, OrganizationWithSubscriptionsSerializer)
-from .. import signals
+from .. import filters, signals
 from ..decorators import _valid_manager
 from ..docs import swagger_auto_schema
 from ..mixins import (OrganizationMixin, OrganizationSmartListMixin,

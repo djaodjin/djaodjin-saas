@@ -23,35 +23,13 @@
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 """
-URLs API for resources available typically only to the broker platform.
+URLs to populate type-ahead candidate lists
 """
 
 from django.conf.urls import url
 
-from ... import settings
-from ...api.balances import (BalanceLineListAPIView, BrokerBalancesAPIView,
-    BalanceLineDetailAPIView)
-from ...api.charges import ChargeListAPIView
-from ...api.transactions import (CancelStatementBalanceAPIView,
-    TransactionListAPIView)
-from ...api.users import RegisteredAPIView
-
+from ...api.users import UserListAPIView
 
 urlpatterns = [
-    url(r'^billing/transactions/?',
-        TransactionListAPIView.as_view(), name='saas_api_transactions'),
-    url(r'^billing/(?P<organization>%s)/balance/cancel/?' % settings.ACCT_REGEX,
-        CancelStatementBalanceAPIView.as_view(),
-        name='saas_api_cancel_balance_due'),
-    url(r'^billing/charges/?$', ChargeListAPIView.as_view(),
-        name='saas_api_charges'),
-    url(r'^metrics/balances/(?P<report>%s)/?' % settings.ACCT_REGEX,
-        BrokerBalancesAPIView.as_view(), name='saas_api_broker_balances'),
-    url(r'^metrics/balances/(?P<report>%s)/lines/(?P<rank>\d+)/?' % (
-        settings.ACCT_REGEX), BalanceLineDetailAPIView.as_view(),
-        name='saas_api_balance_line'),
-    url(r'^metrics/balances/(?P<report>%s)/lines/?' % settings.ACCT_REGEX,
-        BalanceLineListAPIView.as_view(), name='saas_api_balance_lines'),
-    url(r'^metrics/registered/?',
-        RegisteredAPIView.as_view(), name='saas_api_registered'),
+    url(r'^users/$', UserListAPIView.as_view(), name='saas_api_users'),
 ]
