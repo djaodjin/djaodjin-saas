@@ -124,18 +124,14 @@ class OrganizationManager(models.Manager):
 
     def attached(self, user):
         """
-        Returns the person ``Organization`` associated to the user or None
-        in none can be reliably found.
+        Returns the personal profile (``Organization``) associated to the user
+        or None if none can be reliably found.
         """
+        user = None
         if isinstance(user, get_user_model()):
-            username = user.username
+            return self.filter(role__user=user, slug=user.username).first()
         elif isinstance(user, six.string_types):
-            username = user
-        else:
-            return None
-        queryset = self.filter(slug=username)
-        if queryset.exists():
-            return queryset.get()
+            return self.filter(role__user__username=user, slug=user).first()
         return None
 
     def accessible_by(self, user, role_descr=None):
@@ -533,14 +529,9 @@ class Organization(models.Model):
         from a customer perspective user auth and billing profile are
         one and the same.
         """
-        users = get_user_model().objects.db_manager(
+        return get_user_model().objects.db_manager(
             using=self._state.db).filter(
-            role__organization=self).distinct()
-        if users.count() == 1:
-            user = users.get()
-            if self.slug == user.username:
-                return user
-        return None
+            role__organization=self, username=self.slug).first()
 
     def receivables(self):
         """
