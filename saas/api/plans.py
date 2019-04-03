@@ -117,6 +117,8 @@ class PlanResourceView(PlanMixin, RetrieveUpdateDestroyAPIView):
         """
         Deletes a ``Plan``.
 
+        **Tags: subscriptions
+
         **Examples
 
         .. code-block:: http

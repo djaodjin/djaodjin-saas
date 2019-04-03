@@ -494,6 +494,22 @@ class SubscriptionRequestAcceptAPIView(UpdateAPIView):
     provider_url_kwarg = 'organization'
     serializer_class = SubscriptionSerializer
 
+    def put(self, request, *args, **kwargs):
+        """
+        Accepts a subscription request.
+
+        **Tags: rbac
+
+        **Examples
+
+        .. code-block:: http
+
+            PUT /api/profile/xia/subscribers/accept/abcdef12 HTTP/1.1
+
+        """
+        return super(SubscriptionRequestAcceptAPIView, self).put(
+            request, *args, **kwargs)
+
     def get_queryset(self):
         return Subscription.objects.active_with(
             self.kwargs.get(self.provider_url_kwarg))

@@ -371,8 +371,8 @@ class OrganizationWithSubscriptionsSerializer(OrganizationSerializer):
         fields = ('slug', 'created_at', 'full_name',
             'email', 'phone', 'street_address', 'locality',
             'region', 'postal_code', 'country', 'default_timezone',
-            'printable_name', 'is_provider', 'is_bulk_buyer', 'type', 'extra',
-            'subscriptions', 'picture')
+            'printable_name', 'is_provider', 'is_bulk_buyer', 'type',
+            'picture', 'extra', 'subscriptions')
         read_only_fields = ('slug', 'created_at',)
 
 

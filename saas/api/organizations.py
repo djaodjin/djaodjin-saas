@@ -91,7 +91,7 @@ class OrganizationQuerysetMixin(object):
 class OrganizationDetailAPIView(OrganizationMixin, OrganizationQuerysetMixin,
                                 RetrieveUpdateDestroyAPIView):
     """
-    Retrieves profile information on an ``Organization``.
+    Retrieves an organization, personal or user profile.
 
     **Tags: profile
 
@@ -128,7 +128,7 @@ class OrganizationDetailAPIView(OrganizationMixin, OrganizationQuerysetMixin,
 
     def put(self, request, *args, **kwargs):
         """
-        Updates profile information for an ``Organization``
+        Updates an organization, personal or user profile.
 
         **Examples
 
@@ -147,7 +147,7 @@ class OrganizationDetailAPIView(OrganizationMixin, OrganizationQuerysetMixin,
 
     def delete(self, request, *args, **kwargs):
         """
-        Deletes an `Organization``.
+        Deletes a profile.
 
         We anonymize the organization instead of purely deleting
         it from the database because we don't want to loose history
@@ -226,7 +226,16 @@ class OrganizationDetailAPIView(OrganizationMixin, OrganizationQuerysetMixin,
 class OrganizationListAPIView(OrganizationSmartListMixin,
                               OrganizationQuerysetMixin, ListCreateAPIView):
     """
-    Queries all ``Organization``.
+    Queries a page (``PAGE_SIZE`` records) of organization and user profiles.
+
+    The queryset can be filtered for at least one field to match a search
+    term (``q``).
+
+    The queryset can be ordered by a field by adding an HTTP query parameter
+    ``o=`` followed by the field name. A sequence of fields can be used
+    to create a complete ordering by adding a sequence of ``o`` HTTP query
+    parameters. To reverse the natural order of a field, prefix the field
+    name by a minus (-) sign.
 
     **Tags: profile
 
@@ -234,9 +243,11 @@ class OrganizationListAPIView(OrganizationSmartListMixin,
 
     .. code-block:: http
 
-        GET /api/profile/?o=created_at&ot=desc HTTP/1.1
+        GET /api/profile/?o=created_at HTTP/1.1
 
-    .. code-block:: http
+    responds
+
+    .. code-block:: json
 
         {
             "count": 1,
@@ -256,13 +267,13 @@ class OrganizationListAPIView(OrganizationSmartListMixin,
     @swagger_auto_schema(request_body=CreateOrganizationSerializer)
     def post(self, request, *args, **kwargs):
         """
-        Creates an``Organization``
+        Creates an organization, personal or user profile.
 
         **Examples
 
         .. code-block:: http
 
-            POST /api/profile/xia/ HTTP/1.1
+            POST /api/profile/ HTTP/1.1
 
         .. code-block:: json
 
