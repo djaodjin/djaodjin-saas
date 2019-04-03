@@ -2602,7 +2602,8 @@ new Vue({
     mixins: [
         itemListMixin,
         paginationMixin,
-        filterableMixin
+        filterableMixin,
+        sortableMixin,
     ],
     data: {
         url: djaodjinSettings.urls.provider.api_plans,

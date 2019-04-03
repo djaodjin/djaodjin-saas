@@ -26,14 +26,17 @@ from rest_framework import status
 from rest_framework.generics import (ListCreateAPIView,
     RetrieveUpdateDestroyAPIView)
 from rest_framework.response import Response
+from extra_views.contrib.mixins import SortableListMixin
 
 from .serializers import PlanSerializer
 from ..mixins import PlanMixin, DateRangeMixin
+from ..filters import SortableSearchableFilterBackend
 from ..models import Plan, Subscription
 from .. import settings
 
 
-class PlanCreateAPIView(DateRangeMixin, PlanMixin, ListCreateAPIView):
+class PlanCreateAPIView(SortableListMixin, DateRangeMixin, PlanMixin,
+    ListCreateAPIView):
     """
     Create a ``Plan`` for a provider.
 
@@ -69,6 +72,14 @@ class PlanCreateAPIView(DateRangeMixin, PlanMixin, ListCreateAPIView):
     """
 
     serializer_class = PlanSerializer
+
+    search_fields = []
+    sort_fields_aliases = [('title', 'title'),
+                           ('period_amount', 'period_amount'),
+                           ('is_active', 'is_active'),
+                           ('created_at', 'created_at')]
+    filter_backends = (SortableSearchableFilterBackend(
+        sort_fields_aliases, search_fields),)
 
     def get_queryset(self):
         self.queryset = self.organization.plans.all()
