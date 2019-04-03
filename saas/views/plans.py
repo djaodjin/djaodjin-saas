@@ -231,3 +231,11 @@ djaodjin-saas/tree/master/saas/templates/saas/profile/plans/index.html>`__).
       - ``request`` The HTTP request object
     """
     template_name = 'saas/profile/plans/index.html'
+
+    def get_context_data(self, **kwargs):
+        context = super(PlanListView, self).get_context_data(**kwargs)
+        context.update({
+            'download_url': reverse(
+                'saas_subscriber_pipeline_download_subscribed',
+                kwargs=self.get_url_kwargs())})
+        return context
