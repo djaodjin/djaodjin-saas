@@ -113,12 +113,12 @@ class OrganizationQuerysetMixin(object):
         # Unfortunately that adds `is_personal` to the GROUP BY clause
         # which leads to an exception.
         personal_qs = get_organization_model().objects.filter(
-            role__user__username=F('slug')).extra(select={'is_personal':True,
+            role__user__username=F('slug')).extra(select={'is_personal': 1,
             'credentials':
                 "NOT (password LIKE '" + UNUSABLE_PASSWORD_PREFIX + "%%')"})
         organization_qs = get_organization_model().objects.exclude(
-            role__user__username=F('slug')).extra(select={'is_personal':False,
-            'credentials': False})
+            role__user__username=F('slug')).extra(select={'is_personal': 0,
+            'credentials': 0})
         queryset = personal_qs.union(organization_qs)
         return queryset
 
