@@ -321,7 +321,7 @@ class OrganizationListAPIView(OrganizationSmartListMixin,
             self.paginator.count += organizations_count
 
         order_func = get_order_func(filters.OrderingFilter().get_ordering(
-            self.request, users_queryset, self))
+            self.request, organizations_queryset, self))
 
         # XXX merge `users_page` into page.
         page = []
