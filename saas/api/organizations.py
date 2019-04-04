@@ -79,6 +79,8 @@ def get_order_func(fields):
 
 class OrganizationQuerysetMixin(object):
 
+    queryset = get_organization_model().objects.all()
+
     @staticmethod
     def as_organization(user):
         organization = get_organization_model()(
@@ -88,7 +90,7 @@ class OrganizationQuerysetMixin(object):
         return organization
 
     @staticmethod
-    def get_queryset():
+    def decorate_personal(page):
         # Adds a boolean `is_personal` if there exists a User such that
         # `Organization.slug == User.username`.
         # Implementation Note:
@@ -110,17 +112,32 @@ class OrganizationQuerysetMixin(object):
         #        Count('role__user__username')).extra(
         #        select={'is_personal': "count(slug=username) > 0"})
         #
-        # Unfortunately that adds `is_personal` to the GROUP BY clause
-        # which leads to an exception.
-        personal_qs = get_organization_model().objects.filter(
-            role__user__username=F('slug')).extra(select={'is_personal': 1,
-            'credentials':
-                "NOT (password LIKE '" + UNUSABLE_PASSWORD_PREFIX + "%%')"})
-        organization_qs = get_organization_model().objects.exclude(
-            role__user__username=F('slug')).extra(select={'is_personal': 0,
-            'credentials': 0})
-        queryset = personal_qs.union(organization_qs)
-        return queryset
+        # Unfortunately that adds `is_personal` and `credentials` to the GROUP
+        # BY clause, which leads to an exception.
+        #
+        # The UNION implementation below cannot be furthered filtered
+        # (https://docs.djangoproject.com/en/2.2/ref/models/querysets/#union)
+        #personal_qs = get_organization_model().objects.filter(
+        #    role__user__username=F('slug')).extra(select={'is_personal': 1,
+        #    'credentials':
+        #        "NOT (password LIKE '" + UNUSABLE_PASSWORD_PREFIX + "%%')"})
+        #organization_qs = get_organization_model().objects.exclude(
+        #    role__user__username=F('slug')).extra(select={'is_personal': 0,
+        #    'credentials': 0})
+        #queryset = personal_qs.union(organization_qs)
+        #
+        # A raw query cannot be furthered filtered either.
+        records = page if isinstance(page, list) else [page]
+        personal = dict(get_organization_model().objects.filter(
+            pk__in=[profile.pk for profile in records if profile.pk],
+            role__user__username=F('slug')).extra(select={
+            'credentials': ("NOT (password LIKE '" + UNUSABLE_PASSWORD_PREFIX
+            + "%%')")}).values_list('pk', 'credentials'))
+        for profile in records:
+            if profile.pk in personal:
+                profile.is_personal = True
+                profile.credentials = personal[profile.pk]
+        return page
 
 
 class OrganizationDetailAPIView(OrganizationMixin, OrganizationQuerysetMixin,
@@ -201,6 +218,7 @@ class OrganizationDetailAPIView(OrganizationMixin, OrganizationQuerysetMixin,
     def get_object(self):
         try:
             obj = super(OrganizationDetailAPIView, self).get_object()
+            self.decorate_personal(obj)
         except Http404:
             # We might still have a `User` model that matches.
             lookup_url_kwarg = self.lookup_url_kwarg or self.lookup_field
@@ -399,6 +417,7 @@ class OrganizationListAPIView(OrganizationSmartListMixin,
         # XXX It could be faster to stop previous loops early but it is not
         # clear. The extra check at each iteration might in fact be slower.
         page = page[:api_settings.PAGE_SIZE]
+        self.decorate_personal(page)
 
         serializer = self.get_serializer(page, many=True)
         return self.get_paginated_response(serializer.data)
