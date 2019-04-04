@@ -92,7 +92,9 @@ class OrganizationQuerysetMixin(object):
         # `Organization.slug == User.username`.
         queryset = get_organization_model().objects.annotate(
             nb_roles=Count('role__user__username')).extra(
-                select={'is_personal': "slug = username"})
+                select={
+                    'is_personal': "slug = username",
+                    'credentials': "not (password like '!%')"})
         return queryset
 
 
