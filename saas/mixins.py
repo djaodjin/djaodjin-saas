@@ -452,10 +452,7 @@ class UserMixin(object):
 
 class OrganizationMixin(UserMixin, OrganizationMixinBase, settings.EXTRA_MIXIN):
 
-    @staticmethod
-    def as_organization(user):
-        return get_organization_model()(slug=user.username, email=user.email,
-            full_name=user.get_full_name(), created_at=user.date_joined)
+    pass
 
 
 class BeforeMixin(object):

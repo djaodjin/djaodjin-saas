@@ -79,6 +79,14 @@ def get_order_func(fields):
 class OrganizationQuerysetMixin(object):
 
     @staticmethod
+    def as_organization(user):
+        organization = get_organization_model()(
+            slug=user.username, email=user.email,
+            full_name=user.get_full_name(), created_at=user.date_joined)
+        organization.user = user
+        return organization
+
+    @staticmethod
     def get_queryset():
         # Adds a boolean `is_personal` if there exists a User such that
         # `Organization.slug == User.username`.
@@ -283,11 +291,6 @@ class OrganizationListAPIView(OrganizationSmartListMixin,
             }
         """
         return self.create(request, *args, **kwargs)
-
-    @staticmethod
-    def as_organization(user):
-        return get_organization_model()(slug=user.username, email=user.email,
-            full_name=user.get_full_name(), created_at=user.date_joined)
 
     def get_users_queryset(self):
         # All users not already picked up as an Organization.
