@@ -26,8 +26,9 @@ import re
 
 from django.conf import settings as django_settings
 from django.contrib.auth import get_user_model, logout as auth_logout
+from django.contrib.auth.hashers import UNUSABLE_PASSWORD_PREFIX
 from django.db import transaction, IntegrityError
-from django.db.models import Count, Q
+from django.db.models import F
 from django.http import Http404
 from rest_framework import status
 from rest_framework.settings import api_settings
@@ -90,11 +91,35 @@ class OrganizationQuerysetMixin(object):
     def get_queryset():
         # Adds a boolean `is_personal` if there exists a User such that
         # `Organization.slug == User.username`.
-        queryset = get_organization_model().objects.annotate(
-            nb_roles=Count('role__user__username')).extra(
-                select={
-                    'is_personal': "slug = username",
-                    'credentials': "not (password like '!%')"})
+        # Implementation Note:
+        # The SQL we wanted to generate looks like the following.
+        #
+        # SELECT slug,
+        #   (Count(slug=username) > 0) AS is_personal
+        #   (Count(slug=username
+        #      AND NOT (password LIKE '!%')) > 0) AS credentials
+        # FROM saas_organization LEFT OUTER JOIN (
+        #   SELECT organization_id, username FROM auth_user INNER JOIN saas_role
+        #   ON auth_user.id = saas_role.user_id) AS roles
+        # ON saas_organization.id = roles.organization_id
+        # GROUP BY saas_organization.id;
+        #
+        # I couldn't figure out a way to get Django ORM to do this. The closest
+        # attempts was
+        #    queryset = get_organization_model().objects.annotate(
+        #        Count('role__user__username')).extra(
+        #        select={'is_personal': "count(slug=username) > 0"})
+        #
+        # Unfortunately that adds `is_personal` to the GROUP BY clause
+        # which leads to an exception.
+        personal_qs = get_organization_model().objects.filter(
+            role__user__username=F('slug')).extra(select={'is_personal':True,
+            'credentials':
+                "NOT (password LIKE '" + UNUSABLE_PASSWORD_PREFIX + "%%')"})
+        organization_qs = get_organization_model().objects.exclude(
+            role__user__username=F('slug')).extra(select={'is_personal':False,
+            'credentials': False})
+        queryset = personal_qs.union(organization_qs)
         return queryset
 
 

@@ -26,6 +26,7 @@ from hashlib import sha256
 
 from django.core import validators
 from django.contrib.auth import get_user_model
+from django.contrib.auth.hashers import is_password_usable
 from django.template.defaultfilters import slugify
 from django.utils import six
 from django.utils.translation import ugettext_lazy as _
@@ -271,14 +272,25 @@ class OrganizationSerializer(serializers.ModelSerializer):
     extra = serializers.CharField(required=False, allow_null=True,
         help_text=_("Extra meta data (can be stringify JSON)"))
     printable_name = serializers.CharField(read_only=True)
+    credentials = serializers.SerializerMethodField(read_only=True)
 
     class Meta:
         model = get_organization_model()
         fields = ('slug', 'created_at', 'full_name',
             'email', 'phone', 'street_address', 'locality',
-            'region', 'postal_code', 'country', 'default_timezone',
-            'printable_name', 'is_provider', 'is_bulk_buyer', 'type', 'extra')
+            'region', 'postal_code', 'country',
+            'default_timezone', 'printable_name',
+            'is_provider', 'is_bulk_buyer', 'type', 'credentials',
+            'extra')
         read_only_fields = ('created_at',)
+
+    @staticmethod
+    def get_credentials(obj):
+        if hasattr(obj, 'credentials'):
+            return bool(obj.credentials)
+        if hasattr(obj, 'user'):
+            return is_password_usable(obj.user.password)
+        return False
 
     def get_type(self, obj):
         if not obj.pk:

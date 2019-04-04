@@ -27,7 +27,6 @@ from rest_framework.exceptions import ValidationError
 from rest_framework.generics import (RetrieveAPIView,
     RetrieveUpdateDestroyAPIView)
 from rest_framework.response import Response
-from django.utils.translation import ugettext_lazy as _
 
 from ..backends import ProcessorError
 from ..docs import swagger_auto_schema, OpenAPIResponse

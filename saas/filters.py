@@ -32,6 +32,7 @@ from django.utils.encoding import force_text
 from rest_framework.compat import coreapi, coreschema
 from rest_framework.filters import (OrderingFilter as BaseOrderingFilter,
     SearchFilter as BaseSearchFilter)
+from rest_framework.compat import distinct
 
 class SearchFilter(BaseSearchFilter):
 
