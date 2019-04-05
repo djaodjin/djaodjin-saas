@@ -11,7 +11,7 @@ Tested with
 
 - **Python:** 2.7, **Django:** 1.11.20 ([LTS](https://www.djangoproject.com/download/)), **Django Rest Framework:** 3.8.2
 - **Python:** 3.6, **Django:** 1.11.20 ([LTS](https://www.djangoproject.com/download/)), **Django Rest Framework:** 3.8.2
-- **Python:** 3.6, **Django:** 2.1.7 (latest),       **Django Rest Framework:** 3.8.2
+- **Python:** 3.6, **Django:** 2.1.8 (latest),       **Django Rest Framework:** 3.8.2
 
 This project contains bare bone templates which are compatible with Django
 and Jinja2 template engines. To see djaodjin-saas in action as part
@@ -92,14 +92,10 @@ saas/templates/notification/ directory.
 Release Notes
 =============
 
-0.4.0
-  * defaults to vuejs front-end
-  * merges Organization and User profile APIs
-  * adds i18n translations to javascript
-  * adds picture field to Organization
-  * adds API endpoint to re-send an invitation.
-  * removes default natural `start_at` date on queries. it wasn't so natural
-    after all.
+0.4.1
+  * separates search api for type-ahead candidate lists
+  * adds filter and sort to plans API
+  * fixes #180
 
 [previous release notes](changelog)
 

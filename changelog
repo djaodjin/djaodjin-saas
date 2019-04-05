@@ -1,3 +1,14 @@
+0.4.0
+  * defaults to vuejs front-end
+  * merges Organization and User profile APIs
+  * adds i18n translations to javascript
+  * adds picture field to Organization
+  * adds API endpoint to re-send an invitation.
+  * removes default natural `start_at` date on queries. it wasn't so natural
+    after all.
+
+ -- Sebastien Mirolo <smirolo@djaodjin.com>  Sun, 31 Mar 2019 09:38:37 -0700
+
 0.3.4
 
   * adds experimental vue.js front-end
