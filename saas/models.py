@@ -127,7 +127,6 @@ class OrganizationManager(models.Manager):
         Returns the personal profile (``Organization``) associated to the user
         or None if none can be reliably found.
         """
-        user = None
         if isinstance(user, get_user_model()):
             return self.filter(role__user=user, slug=user.username).first()
         elif isinstance(user, six.string_types):
