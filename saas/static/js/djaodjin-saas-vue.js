@@ -985,7 +985,7 @@ Vue.component('user-relation', {
     data: function(){
         return {
             url: this.roleUrl,
-            typeaheadUrl: djaodjinSettings.urls.broker.api_users,
+            typeaheadUrl: djaodjinSettings.urls.api_candidates,
         }
     },
     watch: {

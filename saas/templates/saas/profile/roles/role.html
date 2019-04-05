@@ -34,7 +34,7 @@
     <!-- modal -->
     <div>
       <h2>Add {{role_descr.title}}</h2>
-      <form ng-submit="save($event)"
+      <form id="add-user" ng-submit="save($event)"
             @submit.prevent="save(unregistered)">
         <input type="hidden" name="csrfmiddlewaretoken" value="{{csrf_token}}">
         <input type="text" name="user" placeholder="Username or e-mail"
