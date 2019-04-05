@@ -435,11 +435,48 @@ var httpRequestMixin = {
             }
             return args;
         },
+        /** This method generates a GET HTTP request to `url` with a query
+            string built of a `queryParams` dictionnary.
+
+            It supports the following prototypes:
+
+            - reqGet(url)
+            - reqGet(url, queryParams)
+            - reqGet(url, queryParams, successCallback)
+            - reqGet(url, queryParams, successCallback, failureCallback)
+            - reqGet(url, successCallback)
+            - reqGet(url, successCallback, failureCallback)
+
+            `queryParams` when it is specified is a dictionnary
+            of (key, value) pairs that is converted to an HTTP
+            query string.
+
+            `successCallback` and `failureCallback` must be Javascript
+            functions (i.e. instance of type `Function`).
+         */
         reqGet: function(url, data, doneCb, failCb){
             var vm = this;
             var args = vm._conditionalParams(arguments);
             return this.req.apply(this, args);
         },
+        /** This method generates a POST HTTP request to `url` with
+            contentType 'application/json'.
+
+            It supports the following prototypes:
+
+            - reqPOST(url)
+            - reqPOST(url, data)
+            - reqPOST(url, data, successCallback)
+            - reqPOST(url, data, successCallback, failureCallback)
+            - reqPOST(url, successCallback)
+            - reqPOST(url, successCallback, failureCallback)
+
+            `data` when it is specified is a dictionnary of (key, value) pairs
+            that is passed as a JSON encoded body.
+
+            `successCallback` and `failureCallback` must be Javascript
+            functions (i.e. instance of type `Function`).
+         */
         reqPost: function(url, data, doneCb, failCb){
             var vm = this;
             var args = vm._conditionalParams(arguments);
@@ -448,6 +485,24 @@ var httpRequestMixin = {
             }
             return this.req.apply(this, args);
         },
+        /** This method generates a PUT HTTP request to `url` with
+            contentType 'application/json'.
+
+            It supports the following prototypes:
+
+            - reqPUT(url)
+            - reqPUT(url, data)
+            - reqPUT(url, data, successCallback)
+            - reqPUT(url, data, successCallback, failureCallback)
+            - reqPUT(url, successCallback)
+            - reqPUT(url, successCallback, failureCallback)
+
+            `data` when it is specified is a dictionnary of (key, value) pairs
+            that is passed as a JSON encoded body.
+
+            `successCallback` and `failureCallback` must be Javascript
+            functions (i.e. instance of type `Function`).
+         */
         reqPut: function(url, data, doneCb, failCb){
             var vm = this;
             var args = vm._conditionalParams(arguments);
@@ -456,6 +511,24 @@ var httpRequestMixin = {
             }
             return this.req.apply(this, args);
         },
+        /** This method generates a PATCH HTTP request to `url` with
+            contentType 'application/json'.
+
+            It supports the following prototypes:
+
+            - reqPATCH(url)
+            - reqPATCH(url, data)
+            - reqPATCH(url, data, successCallback)
+            - reqPATCH(url, data, successCallback, failureCallback)
+            - reqPATCH(url, successCallback)
+            - reqPATCH(url, successCallback, failureCallback)
+
+            `data` when it is specified is a dictionnary of (key, value) pairs
+            that is passed as a JSON encoded body.
+
+            `successCallback` and `failureCallback` must be Javascript
+            functions (i.e. instance of type `Function`).
+         */
         reqPatch: function(url, data, doneCb, failCb){
             var vm = this;
             var args = vm._conditionalParams(arguments);
@@ -464,6 +537,25 @@ var httpRequestMixin = {
             }
             return this.req.apply(this, args);
         },
+        /** This method generates a DELETE HTTP request to `url` with a query
+            string built of a `queryParams` dictionnary.
+
+            It supports the following prototypes:
+
+            - reqDELETE(url)
+            - reqDELETE(url, queryParams)
+            - reqDELETE(url, queryParams, successCallback)
+            - reqDELETE(url, queryParams, successCallback, failureCallback)
+            - reqDELETE(url, successCallback)
+            - reqDELETE(url, successCallback, failureCallback)
+
+            `queryParams` when it is specified is a dictionnary
+            of (key, value) pairs that is converted to an HTTP
+            query string.
+
+            `successCallback` and `failureCallback` must be Javascript
+            functions (i.e. instance of type `Function`).
+        */
         reqDelete: function(url, data, doneCb, failCb){
             var vm = this;
             var args = vm._conditionalParams(arguments);
