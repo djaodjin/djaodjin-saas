@@ -188,6 +188,11 @@ class OrganizationDetailAPIView(OrganizationMixin, OrganizationQuerysetMixin,
         """
         return self.destroy(request, *args, **kwargs)
 
+    def get_object(self):
+        obj = super(OrganizationDetailAPIView, self).get_object()
+        self.decorate_personal(obj)
+        return obj
+
     def get_queryset(self):
         return super(OrganizationDetailAPIView,
             self).get_queryset().prefetch_related('subscriptions')
@@ -275,6 +280,7 @@ class OrganizationListAPIView(OrganizationSmartListMixin,
         }
     """
     serializer_class = OrganizationSerializer
+    user_model = get_user_model()
 
     @swagger_auto_schema(request_body=CreateOrganizationSerializer)
     def post(self, request, *args, **kwargs):
