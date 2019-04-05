@@ -29,16 +29,14 @@ from django.contrib.auth import get_user_model, logout as auth_logout
 from django.contrib.auth.hashers import UNUSABLE_PASSWORD_PREFIX
 from django.db import transaction, IntegrityError
 from django.db.models import F
-from django.http import Http404
 from rest_framework import status
-from rest_framework.settings import api_settings
-from rest_framework.generics import (get_object_or_404, ListAPIView,
-    ListCreateAPIView, RetrieveUpdateDestroyAPIView)
+from rest_framework.generics import (ListAPIView, ListCreateAPIView,
+    RetrieveUpdateDestroyAPIView)
 from rest_framework.response import Response
 
 from .serializers import (CreateOrganizationSerializer,
     OrganizationSerializer, OrganizationWithSubscriptionsSerializer)
-from .. import filters, signals
+from .. import signals
 from ..decorators import _valid_manager
 from ..docs import swagger_auto_schema
 from ..mixins import (OrganizationMixin, OrganizationSmartListMixin,
@@ -50,31 +48,6 @@ from ..utils import (full_name_natural_split, get_organization_model,
 
 #pylint: disable=no-init
 #pylint: disable=old-style-class
-
-def get_order_func(fields):
-    """
-    Builds a lambda function that can be used to order two records
-    based on a sequence of fields.
-
-    When a field name is preceeded by '-', the order is reversed.
-    """
-    if len(fields) == 1:
-        if fields[0].startswith('-'):
-            field_name = fields[0][1:]
-            return lambda left, right: (
-                getattr(left, field_name) > getattr(right, field_name))
-        field_name = fields[0]
-        return lambda left, right: (
-            getattr(left, field_name) < getattr(right, field_name))
-    if fields[0].startswith('-'):
-        field_name = fields[0][1:]
-        return lambda left, right: (
-            getattr(left, field_name) > getattr(right, field_name) or
-            get_order_func(fields[1:])(left, right))
-    field_name = fields[0]
-    return lambda left, right: (
-        getattr(left, field_name) < getattr(right, field_name) or
-        get_order_func(fields[1:])(left, right))
 
 
 class OrganizationQuerysetMixin(object):
@@ -215,19 +188,6 @@ class OrganizationDetailAPIView(OrganizationMixin, OrganizationQuerysetMixin,
         """
         return self.destroy(request, *args, **kwargs)
 
-    def get_object(self):
-        try:
-            obj = super(OrganizationDetailAPIView, self).get_object()
-            self.decorate_personal(obj)
-        except Http404:
-            # We might still have a `User` model that matches.
-            lookup_url_kwarg = self.lookup_url_kwarg or self.lookup_field
-            filter_kwargs = {'username': self.kwargs[lookup_url_kwarg]}
-            user = get_object_or_404(self.user_model.objects.filter(
-                is_active=True), **filter_kwargs)
-            obj = self.as_organization(user)
-        return obj
-
     def get_queryset(self):
         return super(OrganizationDetailAPIView,
             self).get_queryset().prefetch_related('subscriptions')
@@ -315,7 +275,6 @@ class OrganizationListAPIView(OrganizationSmartListMixin,
         }
     """
     serializer_class = OrganizationSerializer
-    user_model = get_user_model()
 
     @swagger_auto_schema(request_body=CreateOrganizationSerializer)
     def post(self, request, *args, **kwargs):
@@ -337,90 +296,10 @@ class OrganizationListAPIView(OrganizationSmartListMixin,
         """
         return self.create(request, *args, **kwargs)
 
-    def get_users_queryset(self):
-        # All users not already picked up as an Organization.
-        return self.user_model.objects.filter(is_active=True).exclude(
-            pk__in=self.user_model.objects.extra(
-                tables=['saas_organization'],
-                where=["username = slug"]).values('pk'))
-
-    def list(self, request, *args, **kwargs):
-        #pylint:disable=too-many-locals
-        organizations_queryset = self.filter_queryset(self.get_queryset())
-        organizations_page = self.paginate_queryset(organizations_queryset)
-        # XXX When we use a `rest_framework.PageNumberPagination`,
-        # it will hold a reference to the page created by a `DjangoPaginator`.
-        # The `LimitOffsetPagination` paginator holds its own count.
-        if hasattr(self.paginator, 'page'):
-            organizations_count = self.paginator.page.paginator.count
-        else:
-            organizations_count = self.paginator.count
-
-        users_queryset = self.filter_queryset(self.get_users_queryset())
-        users_page = self.paginate_queryset(users_queryset)
-        # Since we run a second `paginate_queryset`, the paginator.count
-        # is not the number of users.
-        if hasattr(self.paginator, 'page'):
-            self.paginator.page.paginator.count += organizations_count
-        else:
-            self.paginator.count += organizations_count
-
-        order_func = get_order_func(filters.OrderingFilter().get_ordering(
-            self.request, organizations_queryset, self))
-
-        # XXX merge `users_page` into page.
-        page = []
-        user = None
-        organization = None
-        users_iterator = iter(users_page)
-        organizations_iterator = iter(organizations_page)
-        try:
-            organization = next(organizations_iterator)
-        except StopIteration:
-            pass
-        try:
-            user = self.as_organization(next(users_iterator))
-        except StopIteration:
-            pass
-        try:
-            while organization and user:
-                if order_func(organization, user):
-                    page += [organization]
-                    organization = None
-                    organization = next(organizations_iterator)
-                elif order_func(user, organization):
-                    page += [user]
-                    user = None
-                    user = self.as_organization(next(users_iterator))
-                else:
-                    page += [organization]
-                    organization = None
-                    organization = next(organizations_iterator)
-                    page += [user]
-                    user = None
-                    user = self.as_organization(next(users_iterator))
-        except StopIteration:
-            pass
-        try:
-            while organization:
-                page += [organization]
-                organization = next(organizations_iterator)
-        except StopIteration:
-            pass
-        try:
-            while user:
-                page += [user]
-                user = self.as_organization(next(users_iterator))
-        except StopIteration:
-            pass
-
-        # XXX It could be faster to stop previous loops early but it is not
-        # clear. The extra check at each iteration might in fact be slower.
-        page = page[:api_settings.PAGE_SIZE]
-        self.decorate_personal(page)
-
-        serializer = self.get_serializer(page, many=True)
-        return self.get_paginated_response(serializer.data)
+    def paginate_queryset(self, queryset):
+        page = super(OrganizationListAPIView, self).paginate_queryset(queryset)
+        page = self.decorate_personal(page)
+        return page
 
     def create(self, request, *args, **kwargs):
         serializer = CreateOrganizationSerializer(data=request.data)

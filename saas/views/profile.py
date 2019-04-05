@@ -78,7 +78,7 @@ class RoleDetailView(RoleDescriptionMixin, TemplateView):
         role = self.kwargs.get('role', None)
         context.update({'role_descr': self.role_description})
         urls = {
-            'api_candidates': reverse('saas_api_users'),
+            'api_candidates': reverse('saas_api_search_users'),
             'organization': {
                 'api_roles': reverse(
                     'saas_api_role_filtered_list', args=(
@@ -290,7 +290,7 @@ class DashboardView(OrganizationMixin, DetailView):
             urls = {
                 'accounts_base': reverse('saas_profile'),
                 'provider': {
-                    'api_accounts': reverse('saas_api_profile')}}
+                    'api_accounts': reverse('saas_api_search_accounts')}}
         else:
             urls = {
                 'accounts_base': reverse('saas_profile'),

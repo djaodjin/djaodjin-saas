@@ -725,9 +725,9 @@ class RoleFilteredListAPIView(RoleSmartListMixin, RoleByDescrQuerysetMixin,
 
     def get_queryset(self):
         queryset = super(RoleFilteredListAPIView, self).get_queryset()
-        status = self.request.query_params.get('role_status')
-        if status:
-            active = status == 'active'
+        role_status = self.request.query_params.get('role_status')
+        if role_status:
+            active = (role_status == 'active')
             return queryset.filter(grant_key__isnull=active)
         return queryset
 

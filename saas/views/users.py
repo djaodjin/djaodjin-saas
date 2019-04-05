@@ -52,9 +52,11 @@ class ProductListView(ProviderMixin, TemplateView):
 
     def get_context_data(self, **kwargs):
         context = super(ProductListView, self).get_context_data(**kwargs)
-        urls = {'user': {
-            'api_accessibles': reverse(
-                'saas_api_accessibles', args=(self.user,)),
+        urls = {
+            'api_candidates': reverse('saas_api_search_profiles'),
+            'user': {
+                'api_accessibles': reverse(
+                    'saas_api_accessibles', args=(self.user,)),
         }}
         try:
             # optional (see signup.mixins.UserMixin)

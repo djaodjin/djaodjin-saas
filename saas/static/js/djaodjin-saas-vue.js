@@ -1675,7 +1675,7 @@ new Vue({
             ot: "asc",
         },
         url: djaodjinSettings.urls.user.api_accessibles,
-        typeaheadUrl: djaodjinSettings.urls.organization.api_profile_base,
+        typeaheadUrl: djaodjinSettings.urls.api_candidates,
     },
     mounted: function(){
         this.get()

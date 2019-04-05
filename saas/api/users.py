@@ -1,4 +1,4 @@
-# Copyright (c) 2018, DjaoDjin inc.
+# Copyright (c) 2019, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -83,56 +83,6 @@ class RegisteredAPIView(UserSmartListMixin, RegisteredBaseAPIView):
     .. code-block:: http
 
         GET  /api/metrics/registered?o=created_at&ot=desc HTTP/1.1
-
-    responds
-
-    .. code-block:: json
-
-        {
-            "count": 1,
-            "next": null,
-            "previous": null,
-            "results": [
-                {
-                    "slug": "alice",
-                    "email": "alice@djaodjin.com",
-                    "full_name": "Alice Cooper",
-                    "created_at": "2014-01-01T00:00:00Z"
-                }
-            ]
-        }
-    """
-    serializer_class = UserSerializer
-
-
-class UserQuerysetMixin(object):
-    """
-    All ``User``.
-    """
-
-    @staticmethod
-    def get_queryset():
-        return get_user_model().objects.all()
-
-
-class UserListAPIView(UserSmartListMixin, UserQuerysetMixin, ListAPIView):
-    """
-    Queries a page (``PAGE_SIZE`` records) of ``User``.
-
-    The queryset can be filtered to a range of dates
-    ([``start_at``, ``ends_at``]) and for at least one field to match a search
-    term (``q``).
-
-    Query results can be ordered by natural fields (``o``) in either ascending
-    or descending order (``ot``).
-
-    **Tags: profile
-
-    **Examples
-
-    .. code-block:: http
-
-        GET  /api/users/?o=created_at&ot=desc HTTP/1.1
 
     responds
 

@@ -28,8 +28,15 @@ URLs to populate type-ahead candidate lists
 
 from django.conf.urls import url
 
-from ...api.users import UserListAPIView
+from ...api.accounts import (AccountsSearchAPIView, ProfilesSearchAPIView,
+    UsersSearchAPIView)
+
 
 urlpatterns = [
-    url(r'^users/$', UserListAPIView.as_view(), name='saas_api_users'),
+    url(r'^accounts/users/$', UsersSearchAPIView.as_view(),
+        name='saas_api_search_users'),
+    url(r'^accounts/profiles/$', ProfilesSearchAPIView.as_view(),
+        name='saas_api_search_profiles'),
+    url(r'^accounts/$', AccountsSearchAPIView.as_view(),
+        name='saas_api_search_accounts'),
 ]
