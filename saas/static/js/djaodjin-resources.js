@@ -80,9 +80,11 @@ function _showErrorMessages(resp) {
                             message = data[key].detail;
                         }
                         messages.push(key + ": " + message);
-                        var parent = $("[name=\"" + key + "\"]").parents('.form-group');
+                        var inputField = $("[name=\"" + key + "\"]");
+                        var parent = inputField.parents('.form-group');
+                        inputField.addClass("is-invalid");
                         parent.addClass("has-error");
-                        var help = parent.find('.help-block');
+                        var help = parent.find('.help-block .invalid-feedback');
                         if( help.length > 0 ) { help.text(message); }
                     }
                 }
