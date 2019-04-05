@@ -84,7 +84,7 @@ function _showErrorMessages(resp) {
                         var parent = inputField.parents('.form-group');
                         inputField.addClass("is-invalid");
                         parent.addClass("has-error");
-                        var help = parent.find('.help-block .invalid-feedback');
+                        var help = parent.find('.invalid-feedback');
                         if( help.length > 0 ) { help.text(message); }
                     }
                 }
