@@ -714,7 +714,7 @@
                  data: JSON.stringify({
                      "title": gettext("New Plan"),
                      "description": gettext("Write the description of the plan here."),
-                     "interval": 4,
+                     "interval": "monthly",
                      "is_active": 1}),
                  datatype: "json",
                  contentType: "application/json; charset=utf-8",
