@@ -61,15 +61,15 @@ Vue.filter('humanizeCell', function(cell, unit, scale) {
 });
 
 Vue.filter('relativeDate', function(at_time) {
-    var cutOff = new Date();
-    if(this.ends_at ) {
-        cutOff = new Date(this.ends_at);
+    var cutOff = moment();
+    if( this.ends_at ) {
+        cutOff = moment(this.ends_at, DATE_FORMAT);
     }
-    var dateTime = new Date(at_time);
+    var dateTime = moment(at_time);
     if( dateTime <= cutOff ) {
-        return moment.duration(cutOff - dateTime).humanize() + " " + gettext('ago');
+        return moment.duration(cutOff.diff(dateTime)).humanize() + " " + gettext('ago');
     } else {
-        return moment.duration(dateTime - cutOff).humanize() + " " + gettext('left');
+        return moment.duration(dateTime.diff(cutOff)).humanize() + " " + gettext('left');
     }
 });
 
@@ -582,6 +582,9 @@ var itemListMixin = {
                     count: 0
                 },
                 params: {
+                    // The following dates will be stored as `String` objects
+                    // as oppossed to `moment` or `Date` objects because this
+                    // is how uiv-date-picker will update them.
                     start_at: null,
                     ends_at: null
                 },
@@ -593,8 +596,14 @@ var itemListMixin = {
                         djaodjinSettings.date_range.start_at).format(DATE_FORMAT);
                 }
                 if( djaodjinSettings.date_range.ends_at ) {
+                    // uiv-date-picker will expect ends_at as a String
+                    // but DATE_FORMAT will literally cut the hour part,
+                    // regardless of timezone. We don't want an empty list
+                    // as a result.
+                    // If we use moment `endOfDay` we get 23:59:59 so we
+                    // add a full day instead.
                     data.params['ends_at'] = moment(
-                        djaodjinSettings.date_range.ends_at).format(DATE_FORMAT);
+                        djaodjinSettings.date_range.ends_at).add(1,'days').format(DATE_FORMAT);
                 }
             }
             return data;
@@ -836,7 +845,7 @@ var userRelationMixin = {
 var subscriptionsMixin = {
     data: function(){
         return {
-            ends_at: moment().endOf("day").toDate(),
+            ends_at: moment().endOf("day").format(DATE_FORMAT),
         }
     },
     methods: {
@@ -845,9 +854,9 @@ var subscriptionsMixin = {
                 + organization + "/subscriptions/" + plan;
         },
         endsSoon: function(subscription) {
-            var cutOff = new Date(this.ends_at);
-            cutOff.setDate(this.ends_at.getDate() + 5);
-            var subEndsAt = new Date(subscription.ends_at);
+            var vm = this;
+            var cutOff = moment(vm.ends_at, DATE_FORMAT).add(5, 'days');
+            var subEndsAt = moment(subscription.ends_at);
             if( subEndsAt < cutOff ) {
                 return "bg-warning";
             }
@@ -1207,7 +1216,7 @@ new Vue({
     methods: {
         fetchTableData: function(table, cb){
             var vm = this;
-            var params = {"ends_at": moment(vm.ends_at, DATE_FORMAT).format()};
+            var params = {"ends_at": moment(vm.ends_at, DATE_FORMAT).toISOString()};
             if( vm.timezone !== 'utc' ) {
                 params["timezone"] = moment.tz.guess();
             }
