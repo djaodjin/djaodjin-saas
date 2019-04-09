@@ -40,8 +40,9 @@ from ..forms import (OrganizationForm, OrganizationCreateForm,
     ManagerAndOrganizationForm)
 from ..mixins import (OrganizationMixin, ProviderMixin, RoleDescriptionMixin,
     PlanMixin)
-from ..models import Plan, Subscription, get_broker, is_broker
-from ..utils import get_organization_model, update_context_urls, update_db_row
+from ..models import Plan, Subscription, get_broker
+from ..utils import (get_organization_model, is_broker, update_context_urls,
+    update_db_row)
 
 
 class RoleDetailView(RoleDescriptionMixin, TemplateView):

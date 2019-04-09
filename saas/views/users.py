@@ -25,11 +25,11 @@
 from django.views.generic import TemplateView
 
 from ..compat import NoReverseMatch, reverse
-from ..mixins import ProviderMixin
+from ..mixins import UserMixin
 from ..utils import update_context_urls
 
 
-class ProductListView(ProviderMixin, TemplateView):
+class ProductListView(UserMixin, TemplateView):
     """
     List of organizations a ``:user`` has a role with.
 

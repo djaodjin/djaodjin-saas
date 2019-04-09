@@ -32,10 +32,10 @@ from django.utils.translation import ugettext_lazy as _
 
 # Implementation Note:
 #
-# saas.settings cannot be imported at this point because this file will
-# be imported before ``django.conf.settings`` is fully initialized.
+# saas.settings cannot be imported at this point because this file (extras.py)
+# will be imported before ``django.conf.settings`` is fully initialized.
 from .compat import NoReverseMatch, is_authenticated, reverse
-from .utils import get_organization_model
+from .utils import get_organization_model, is_broker
 
 
 class OrganizationMixinBase(object):
@@ -80,21 +80,20 @@ class OrganizationMixinBase(object):
         }
 
         # URLs for both sides (subscriber and provider).
-        urls.update({'organization': {
-            'api_base': reverse('saas_api_organization', args=(organization,)),
-            'api_card': reverse('saas_api_card', args=(organization,)),
-            'api_import': reverse(
-                'saas_api_import_transactions', args=(organization,)),
-            'api_profile_base': reverse('saas_api_profile'),
-            'api_subscriptions': reverse(
-                'saas_api_subscription_list', args=(organization,)),
-            'billing_base': reverse('saas_billing_base'),
+        urls.update({
             'profile_base': reverse('saas_profile'),
-            'profile': reverse(
-                'saas_organization_profile', args=(organization,)),
-            'billing': reverse('saas_billing_info', args=(organization,)),
-            'subscriptions': reverse(
-                'saas_subscription_list', args=(organization,)),
+            'organization': {
+                'api_base': reverse(
+                    'saas_api_organization', args=(organization,)),
+                'api_card': reverse('saas_api_card', args=(organization,)),
+                'api_import': reverse(
+                    'saas_api_import_transactions', args=(organization,)),
+                'api_profile_base': reverse('saas_api_profile'),
+                'api_subscriptions': reverse(
+                    'saas_api_subscription_list', args=(organization,)),
+                'billing_base': reverse('saas_billing_base'),
+                'profile': reverse(
+                    'saas_organization_profile', args=(organization,)),
         }})
 
         # The following `attached_user` will trigger a db query
@@ -167,6 +166,17 @@ class OrganizationMixinBase(object):
                         self.request.user)]})
 
         self.update_context_urls(context, urls)
+
+        if not is_broker(organization):
+            # A broker does not have subscriptions.
+            self.update_context_urls(context, {
+                'organization': {
+                    'billing': reverse(
+                        'saas_billing_info', args=(organization,)),
+                    'subscriptions': reverse(
+                        'saas_subscription_list', args=(organization,)),
+            }})
+
         return context
 
     @staticmethod

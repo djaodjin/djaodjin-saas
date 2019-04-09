@@ -1,3 +1,15 @@
+(0.5.0)
+  * moves is_broker from saas.models to saas.utils
+  * inserts only views related to the type of organization in `urls` context
+        such that it is simpler to generate menu bars.
+
+0.4.1
+  * separates search api for type-ahead candidate lists
+  * adds filter and sort to plans API
+  * fixes #180
+
+ -- Sebastien Mirolo <smirolo@djaodjin.com>   Fri, 5 Apr 2019 12:04:48 -0700
+
 0.4.0
   * defaults to vuejs front-end
   * merges Organization and User profile APIs

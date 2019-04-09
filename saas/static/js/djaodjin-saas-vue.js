@@ -770,7 +770,7 @@ var userRelationMixin = {
     data: function(){
         return {
             modalSelector: ".add-role-modal",
-            url: djaodjinSettings.urls.organization.api_roles,
+            url: null,
             typeaheadUrl: null,
             unregistered: {
                 slug: '',
@@ -1136,6 +1136,7 @@ var userRelationListMixin = {
     data: function(){
         return {
             showPending: false,
+            url: djaodjinSettings.urls.organization.api_roles,
             typeaheadUrl: djaodjinSettings.urls.api_candidates,
         }
     },

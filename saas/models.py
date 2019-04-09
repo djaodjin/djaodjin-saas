@@ -3963,25 +3963,6 @@ def get_broker():
     return Organization.objects.get(slug=settings.BROKER_CALLABLE)
 
 
-def is_broker(organization):
-    """
-    Returns ``True`` if the organization is the hosting platform
-    for the service.
-    """
-    # We do a string compare here because both ``Organization`` might come
-    # from a different db. That is if the organization parameter is not
-    # a unicode string itself.
-    organization_slug = ''
-    if isinstance(organization, six.string_types):
-        organization_slug = organization
-    elif organization:
-        organization_slug = organization.slug
-    if settings.IS_BROKER_CALLABLE:
-        from saas.compat import import_string
-        return import_string(settings.IS_BROKER_CALLABLE)(organization_slug)
-    return get_broker().slug == organization_slug
-
-
 def sum_balance_amount(dest_balances, orig_balances):
     """
     `dest_balances` and `orig_balances` are mostly the results
