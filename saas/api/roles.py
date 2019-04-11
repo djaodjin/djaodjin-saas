@@ -670,8 +670,7 @@ class RoleByDescrQuerysetMixin(RoleDescriptionMixin, RoleQuerysetMixin):
 
     def get_queryset(self):
         return super(RoleByDescrQuerysetMixin, self).get_queryset().filter(
-            Q(role_description=self.role_description)
-            | Q(request_key__isnull=False))
+            role_description=self.role_description)
 
 
 class RoleFilteredListAPIView(RoleSmartListMixin, RoleByDescrQuerysetMixin,
@@ -723,13 +722,30 @@ class RoleFilteredListAPIView(RoleSmartListMixin, RoleByDescrQuerysetMixin,
     """
     serializer_class = RoleSerializer
 
+    def get(self, request, *args, **kwargs):
+        res = super(RoleFilteredListAPIView, self).get(
+            request, *args, **kwargs)
+        res.data['invited_count'] = self.invited_count
+        res.data['requested_count'] = self.requested_count
+        return res
+
     def get_queryset(self):
-        queryset = super(RoleFilteredListAPIView, self).get_queryset()
-        role_status = self.request.query_params.get('role_status')
-        if role_status:
-            active = (role_status == 'active')
-            return queryset.filter(grant_key__isnull=active)
-        return queryset
+        base = super(RoleFilteredListAPIView, self).get_queryset()
+        self.requested_count = 0
+        self.invited_count = 0
+        for item in base:
+            if item.grant_key:
+                self.invited_count += 1
+            if item.request_key:
+                self.requested_count += 1
+        qry = {}
+        role_status = self.request.query_params.get('role_status', '')
+        stts = role_status.split(',')
+        if 'invited' not in stts:
+            qry['grant_key__isnull'] = True
+        if 'requested' not in stts:
+            qry['request_key__isnull'] = True
+        return base.filter(**qry)
 
     def create(self, request, *args, **kwargs): #pylint:disable=unused-argument
         grant_key = None
