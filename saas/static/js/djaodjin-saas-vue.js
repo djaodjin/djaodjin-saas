@@ -1165,8 +1165,18 @@ new Vue({
         params: {
             role_status: null,
         },
+        getCb: 'getRoles',
     },
     methods: {
+        getRoles: function(res){
+            var vm = this;
+            vm.items = {
+                results: res.results.data,
+                invited_count: res.results.invited_count,
+                requested_count: res.results.requested_count,
+            }
+            vm.itemsLoaded = true;
+        },
         updateParams: function(){
             var vm = this;
             vm.params.role_status = vm.roleStatus;

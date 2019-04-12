@@ -723,11 +723,15 @@ class RoleFilteredListAPIView(RoleSmartListMixin, RoleByDescrQuerysetMixin,
     serializer_class = RoleSerializer
 
     def get(self, request, *args, **kwargs):
-        res = super(RoleFilteredListAPIView, self).get(
+        response = super(RoleFilteredListAPIView, self).get(
             request, *args, **kwargs)
-        res.data['invited_count'] = self.invited_count
-        res.data['requested_count'] = self.requested_count
-        return res
+        data = {
+            'data': response.data['results'],
+            'invited_count': self.invited_count,
+            'requested_count': self.requested_count,
+        }
+        response.data['results'] = data
+        return response
 
     def get_queryset(self):
         base = super(RoleFilteredListAPIView, self).get_queryset()
