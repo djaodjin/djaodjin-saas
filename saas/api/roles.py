@@ -23,6 +23,7 @@
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import logging
+from collections import OrderedDict
 
 from django.core import validators
 from django.core.exceptions import ValidationError
@@ -38,6 +39,7 @@ from rest_framework.exceptions import PermissionDenied
 from rest_framework.generics import (ListAPIView, CreateAPIView,
     ListCreateAPIView, DestroyAPIView, RetrieveUpdateDestroyAPIView)
 from rest_framework.response import Response
+from rest_framework.pagination import PageNumberPagination
 
 from .. import settings, signals
 from ..docs import swagger_auto_schema
@@ -673,6 +675,34 @@ class RoleByDescrQuerysetMixin(RoleDescriptionMixin, RoleQuerysetMixin):
             role_description=self.role_description)
 
 
+class RoleListPagination(PageNumberPagination):
+
+    def paginate_queryset(self, queryset, request, view=None):
+        self.invited_count = queryset.filter(
+            grant_key__isnull=False).count()
+        self.requested_count = queryset.filter(
+            request_key__isnull=False).count()
+        qry = {}
+        role_status = request.query_params.get('role_status', '')
+        stts = role_status.split(',')
+        if 'invited' not in stts:
+            qry['grant_key__isnull'] = True
+        if 'requested' not in stts:
+            qry['request_key__isnull'] = True
+        return super(RoleListPagination, self).paginate_queryset(
+            queryset.filter(**qry), request, view=view)
+
+    def get_paginated_response(self, data):
+        return Response(OrderedDict([
+            ('invited_count', self.invited_count),
+            ('requested_count', self.requested_count),
+            ('count', self.page.paginator.count),
+            ('next', self.get_next_link()),
+            ('previous', self.get_previous_link()),
+            ('results', data)
+        ]))
+
+
 class RoleFilteredListAPIView(RoleSmartListMixin, RoleByDescrQuerysetMixin,
                               ListAPIView, CreateAPIView):
     """
@@ -721,35 +751,7 @@ class RoleFilteredListAPIView(RoleSmartListMixin, RoleByDescrQuerysetMixin,
         }
     """
     serializer_class = RoleSerializer
-
-    def get(self, request, *args, **kwargs):
-        response = super(RoleFilteredListAPIView, self).get(
-            request, *args, **kwargs)
-        data = {
-            'data': response.data['results'],
-            'invited_count': self.invited_count,
-            'requested_count': self.requested_count,
-        }
-        response.data['results'] = data
-        return response
-
-    def get_queryset(self):
-        base = super(RoleFilteredListAPIView, self).get_queryset()
-        self.requested_count = 0
-        self.invited_count = 0
-        for item in base:
-            if item.grant_key:
-                self.invited_count += 1
-            if item.request_key:
-                self.requested_count += 1
-        qry = {}
-        role_status = self.request.query_params.get('role_status', '')
-        stts = role_status.split(',')
-        if 'invited' not in stts:
-            qry['grant_key__isnull'] = True
-        if 'requested' not in stts:
-            qry['request_key__isnull'] = True
-        return base.filter(**qry)
+    pagination_class = RoleListPagination
 
     def create(self, request, *args, **kwargs): #pylint:disable=unused-argument
         grant_key = None
