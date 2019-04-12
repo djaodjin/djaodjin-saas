@@ -166,6 +166,8 @@ class OrganizationMixinBase(object):
                         self.request.user)]})
 
         self.update_context_urls(context, urls)
+        self.update_context_urls(context, {
+            'profile_redirect': reverse('accounts_profile')})
 
         if not is_broker(organization):
             # A broker does not have subscriptions.
