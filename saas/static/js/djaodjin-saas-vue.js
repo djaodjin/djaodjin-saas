@@ -2008,6 +2008,8 @@ new Vue({
                 for(var key in data){
                     form.append(key, data[key]);
                 }
+                // we're using raw $.ajax call here because we need to pass
+                // the data as multipart/form-data
                 $.ajax({
                     method: 'PUT',
                     url: djaodjinSettings.urls.organization.api_base,
@@ -2581,6 +2583,8 @@ new Vue({
             if(!vm.csvFiles[plan]) return;
             var formData = new FormData();
             formData.append("file", vm.csvFiles[plan]);
+            // we're using raw $.ajax call here because we need to pass
+            // the data as multipart/form-data
             $.ajax({
                 type: "POST",
                 url: "/api/cart/" + plan + "/upload/",
