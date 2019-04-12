@@ -19,7 +19,7 @@
     <input type="hidden" name="csrfmiddlewaretoken" value="{{csrf_token}}">
     <div class="form-group{% if form.title.errors %} has-error{% endif %}">{# testing .has-error decoration #}
         {{form.title}}
-        <div class="help-block">{% for error in form.title.errors %}{{error}}{% endfor %}</div>
+        <div class="help-block invalid-feedback">{% for error in form.title.errors %}{{error}}{% endfor %}</div>
     </div>
     {{form.description}}
     {{form.unit}}
