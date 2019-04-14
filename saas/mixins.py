@@ -444,7 +444,19 @@ class UserMixin(object):
                     'accessibles': reverse('saas_user_product_list',
                         args=(self.user,))
             }})
+            try:
+                # optional (see signup.mixins.UserMixin)
+                update_context_urls(context, {
+                'user': {
+                    'notifications': reverse(
+                        'users_notifications', args=(self.user,)),
+                    'profile': reverse('users_profile', args=(self.user,)),
+                }})
+            except NoReverseMatch:
+                pass
+
         update_context_urls(context, {
+            'profile_base': reverse('saas_profile'),
             'profile_redirect': reverse('accounts_profile')})
         return context
 

@@ -1,7 +1,1 @@
 {% extends "saas/base.html" %}
-
-{% block sidebar %}
-{% for organization in top_accessibles %}
-  <a href="{{organization.location}}">{{organization.printable_name}}</a>
-{% endfor %}
-{% endblock %}
