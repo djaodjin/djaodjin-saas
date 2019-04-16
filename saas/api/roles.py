@@ -671,31 +671,34 @@ class RoleListAPIView(RoleSmartListMixin, RoleQuerysetMixin, ListAPIView):
 class RoleByDescrQuerysetMixin(RoleDescriptionMixin, RoleQuerysetMixin):
 
     def get_queryset(self):
-        return super(RoleByDescrQuerysetMixin, self).get_queryset().filter(
+        queryset = super(RoleByDescrQuerysetMixin, self).get_queryset().filter(
             role_description=self.role_description)
+        self.request.invited_count = queryset.filter(
+            grant_key__isnull=False).count()
+        self.request.requested_count = queryset.filter(
+            request_key__isnull=False).count()
+        qry = {}
+        role_status = self.request.query_params.get('role_status', '')
+        stts = role_status.split(',')
+        if 'active' in stts and 'invited' not in stts:
+            qry['grant_key__isnull'] = True
+        if 'active' not in stts and 'invited' in stts:
+            qry['grant_key__isnull'] = False
+
+        if 'active' in stts and 'requested' not in stts:
+            qry['request_key__isnull'] = True
+        if 'active' not in stts and 'requested' in stts:
+            qry['request_key__isnull'] = False
+
+        return queryset.filter(**qry)
 
 
 class RoleListPagination(PageNumberPagination):
 
-    def paginate_queryset(self, queryset, request, view=None):
-        self.invited_count = queryset.filter(
-            grant_key__isnull=False).count()
-        self.requested_count = queryset.filter(
-            request_key__isnull=False).count()
-        qry = {}
-        role_status = request.query_params.get('role_status', '')
-        stts = role_status.split(',')
-        if 'invited' not in stts:
-            qry['grant_key__isnull'] = True
-        if 'requested' not in stts:
-            qry['request_key__isnull'] = True
-        return super(RoleListPagination, self).paginate_queryset(
-            queryset.filter(**qry), request, view=view)
-
     def get_paginated_response(self, data):
         return Response(OrderedDict([
-            ('invited_count', self.invited_count),
-            ('requested_count', self.requested_count),
+            ('invited_count', self.request.invited_count),
+            ('requested_count', self.request.requested_count),
             ('count', self.page.paginator.count),
             ('next', self.get_next_link()),
             ('previous', self.get_previous_link()),
