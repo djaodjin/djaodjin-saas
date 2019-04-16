@@ -19,7 +19,7 @@ function isFunction(f){
 
 function isObject(o){
     // https://stackoverflow.com/a/46663081/1491475
-    return data instanceof Object && data.constructor === Object
+    return o instanceof Object && o.constructor === Object
 }
 
 Vue.use(uiv, {prefix: 'uiv'});
