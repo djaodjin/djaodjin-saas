@@ -680,15 +680,21 @@ class RoleByDescrQuerysetMixin(RoleDescriptionMixin, RoleQuerysetMixin):
         qry = {}
         role_status = self.request.query_params.get('role_status', '')
         stts = role_status.split(',')
-        if 'active' in stts and 'invited' not in stts:
-            qry['grant_key__isnull'] = True
-        if 'active' not in stts and 'invited' in stts:
-            qry['grant_key__isnull'] = False
+        if 'active' in stts:
+            if 'invited' in stts:
+                pass
+            else:
+                qry['grant_key__isnull'] = True
 
-        if 'active' in stts and 'requested' not in stts:
-            qry['request_key__isnull'] = True
-        if 'active' not in stts and 'requested' in stts:
-            qry['request_key__isnull'] = False
+            if 'requested' in stts:
+                pass
+            else:
+                qry['request_key__isnull'] = True
+        else:
+            if 'invited' in stts:
+                qry['grant_key__isnull'] = False
+            if 'requested' in stts:
+                qry['request_key__isnull'] = False
 
         return queryset.filter(**qry)
 
