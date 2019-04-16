@@ -491,6 +491,7 @@ class BeforeMixin(object):
         before_qs = super(BeforeMixin, self).filter_queryset(queryset)
         kwargs = {}
         if self.ends_at:
+            #pylint:disable=protected-access
             model_fields = set([
                 field.name for field in queryset.model._meta.get_fields()])
             if self.date_field in model_fields:
@@ -534,6 +535,7 @@ class DateRangeMixin(BeforeMixin):
         after_qs = super(DateRangeMixin, self).filter_queryset(queryset)
         kwargs = {}
         if self.start_at:
+            #pylint:disable=protected-access
             model_fields = set([
                 field.name for field in queryset.model._meta.get_fields()])
             if self.date_field in model_fields:

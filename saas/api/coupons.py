@@ -71,8 +71,8 @@ class CouponQuerysetMixin(ProviderMixin):
         return Coupon.objects.filter(organization=self.organization)
 
 
-class CouponListAPIView(DateRangeMixin, SmartCouponListMixin, CouponQuerysetMixin,
-                        ListCreateAPIView):
+class CouponListAPIView(DateRangeMixin, SmartCouponListMixin,
+                        CouponQuerysetMixin, ListCreateAPIView):
     """
     Queries a page (``PAGE_SIZE`` records) of ``Coupon`` associated
     to a provider.

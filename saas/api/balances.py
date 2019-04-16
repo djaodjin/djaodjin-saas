@@ -22,6 +22,8 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+#pylint:disable=useless-super-delegation
+
 from django.db.models import F, Q, Max
 from django.db import transaction
 from rest_framework.generics import (get_object_or_404,
