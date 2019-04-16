@@ -61,8 +61,9 @@ from ..humanize import describe_buy_periods, match_unlock
 from ..mixins import (CartMixin, ChargeMixin, DateRangeMixin, OrganizationMixin,
     ProviderMixin, product_url)
 from ..models import (CartItem, Charge, Coupon, Organization, Plan, Price,
-    Subscription, Transaction, UseCharge, get_broker, is_broker)
-from ..utils import datetime_or_now, update_context_urls, validate_redirect_url
+    Subscription, Transaction, UseCharge, get_broker)
+from ..utils import (datetime_or_now, is_broker, update_context_urls,
+    validate_redirect_url)
 from ..views import session_cart_to_database
 
 

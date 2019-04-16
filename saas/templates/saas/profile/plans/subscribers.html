@@ -39,8 +39,8 @@
                v-for="(entry, index) in items.results" v-show="itemsLoaded && items.results.length > 0">
           <tr ng-class="endsSoon(entry)" v-bind:class="endsSoon(entry)">
             <td>
-              <a ng-prop-href="'{{urls.organization.profile_base}}' + entry.organization.slug + '/subscriptions/'"
-                 v-bind:href="'{{urls.organization.profile_base}}' + entry.organization.slug + '/subscriptions/'">[[entry.organization.printable_name]]</a>
+              <a ng-prop-href="'{{urls.profile_base}}' + entry.organization.slug + '/subscriptions/'"
+                 v-bind:href="'{{urls.profile_base}}' + entry.organization.slug + '/subscriptions/'">[[entry.organization.printable_name]]</a>
             </td>
             <td>[[entry.plan.title]]</td>
             <td>[[entry.created_at | formatDate]]</td>

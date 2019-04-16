@@ -1,4 +1,4 @@
-# Copyright (c) 2018, DjaoDjin inc.
+# Copyright (c) 2019, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -24,12 +24,12 @@
 
 from django.views.generic import TemplateView
 
-from ..compat import NoReverseMatch, reverse
-from ..mixins import ProviderMixin
+from ..compat import reverse
+from ..mixins import UserMixin
 from ..utils import update_context_urls
 
 
-class ProductListView(ProviderMixin, TemplateView):
+class ProductListView(UserMixin, TemplateView):
     """
     List of organizations a ``:user`` has a role with.
 
@@ -58,14 +58,5 @@ class ProductListView(ProviderMixin, TemplateView):
                 'api_accessibles': reverse(
                     'saas_api_accessibles', args=(self.user,)),
         }}
-        try:
-            # optional (see signup.mixins.UserMixin)
-            urls['user'].update({
-                'notifications': reverse(
-                    'users_notifications', args=(self.user,)),
-                'profile': reverse('users_profile', args=(self.user,)),
-            })
-        except NoReverseMatch:
-            pass
         update_context_urls(context, urls)
         return context

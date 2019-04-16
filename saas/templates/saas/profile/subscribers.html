@@ -113,9 +113,9 @@
             <tr ng-class="endsSoon(entry)">
               <td>
                 <a ng-prop-id="entry.organization.slug"
-                   ng-prop-href="'{{urls.organization.profile_base}}' + entry.organization.slug + '/subscriptions/'"
+                   ng-prop-href="'{{urls.profile_base}}' + entry.organization.slug + '/subscriptions/'"
                    v-bind:id="entry.organization.slug"
-                   v-bind:href="'{{urls.organization.profile_base}}' + entry.organization.slug + '/subscriptions/'"
+                   v-bind:href="'{{urls.profile_base}}' + entry.organization.slug + '/subscriptions/'"
                    >[[entry.organization.printable_name]]</a>
               </td>
               <td>[[entry.plan.title]]</td>

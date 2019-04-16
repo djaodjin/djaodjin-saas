@@ -44,9 +44,9 @@ from .filters import (OrderingFilter, SearchFilter,
 from .humanize import (as_money, DESCRIBE_BUY_PERIODS, DESCRIBE_BUY_USE,
     DESCRIBE_UNLOCK_NOW, DESCRIBE_UNLOCK_LATER, DESCRIBE_BALANCE)
 from .models import (CartItem, Charge, Coupon, Organization, Plan,
-    RoleDescription, Subscription, Transaction, UseCharge,
-    get_broker, is_broker)
-from .utils import datetime_or_now, get_role_model, update_context_urls
+    RoleDescription, Subscription, Transaction, UseCharge, get_broker)
+from .utils import (datetime_or_now, is_broker, get_role_model,
+    update_context_urls)
 from .extras import OrganizationMixinBase
 
 
@@ -444,12 +444,24 @@ class UserMixin(object):
                     'accessibles': reverse('saas_user_product_list',
                         args=(self.user,))
             }})
+            try:
+                # optional (see signup.mixins.UserMixin)
+                update_context_urls(context, {
+                'user': {
+                    'notifications': reverse(
+                        'users_notifications', args=(self.user,)),
+                    'profile': reverse('users_profile', args=(self.user,)),
+                }})
+            except NoReverseMatch:
+                pass
+
         update_context_urls(context, {
+            'profile_base': reverse('saas_profile'),
             'profile_redirect': reverse('accounts_profile')})
         return context
 
 
-class OrganizationMixin(UserMixin, OrganizationMixinBase, settings.EXTRA_MIXIN):
+class OrganizationMixin(OrganizationMixinBase, settings.EXTRA_MIXIN):
 
     pass
 
