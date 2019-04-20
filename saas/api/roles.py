@@ -283,7 +283,31 @@ class AccessibleByQuerysetMixin(UserMixin):
 
     def get_queryset(self):
         # OK to use filter here since we want to see the requests as well.
-        return get_role_model().objects.filter(user=self.user)
+        queryset = get_role_model().objects.filter(user=self.user)
+        self.request.invited_count = queryset.filter(
+            grant_key__isnull=False).count()
+        self.request.requested_count = queryset.filter(
+            request_key__isnull=False).count()
+        qry = {}
+        role_status = self.request.query_params.get('role_status', '')
+        stts = role_status.split(',')
+        if 'active' in stts:
+            if 'invited' in stts:
+                pass
+            else:
+                qry['grant_key__isnull'] = True
+
+            if 'requested' in stts:
+                pass
+            else:
+                qry['request_key__isnull'] = True
+        else:
+            if 'invited' in stts:
+                qry['grant_key__isnull'] = False
+            if 'requested' in stts:
+                qry['request_key__isnull'] = False
+
+        return queryset.filter(**qry)
 
 
 class AccessibleByListAPIView(DateRangeMixin, RoleSmartListMixin,
