@@ -270,7 +270,7 @@ class PlanForm(forms.ModelForm):
             self.submit_title = _("Create")
         period_amount = Decimal(period_amount).scaleb(-2)
         advance_discount = Decimal(advance_discount).scaleb(-2)
-        interval = slugify(Plan.INTERVAL_CHOICES[interval][1])
+        interval = slugify(Plan.INTERVAL_CHOICES[interval - 1][1])
         renewal_type = slugify(Plan.RENEWAL_CHOICES[renewal_type][1])
         initial.update({
             'period_amount':period_amount,
