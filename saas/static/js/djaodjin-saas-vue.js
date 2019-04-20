@@ -1299,6 +1299,47 @@ if($('#user-relation-list-container').length > 0){
 new Vue({
     el: "#user-relation-list-container",
     mixins: [userRelationListMixin],
+    data: {
+        showInvited: false,
+        showRequested: false,
+        params: {
+            role_status: null,
+        },
+    },
+    methods: {
+        updateParams: function(){
+            var vm = this;
+            vm.params.role_status = vm.roleStatus;
+            if(vm.showInvited || vm.showRequested){
+                // django-extra-views doesn't support sorting
+                // by multiple columns so we always use the
+                // first one
+                if(vm.showInvited){
+                    vm.params.o = 'grant_key';
+                } else if(vm.showRequested){
+                    vm.params.o = 'request_key';
+                }
+                vm.params.ot = 'desc';
+            }
+            vm.get();
+        }
+    },
+    computed: {
+        roleStatus: function(){
+            var args = [];
+            if(this.showInvited) args.push('invited');
+            if(this.showRequested) args.push('requested');
+            return args.join(',');
+        },
+    },
+    watch: {
+        showInvited: function(){
+            this.updateParams();
+        },
+        showRequested: function(val){
+            this.updateParams();
+        },
+    },
 })
 }
 
