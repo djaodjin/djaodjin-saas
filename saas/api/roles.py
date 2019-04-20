@@ -279,11 +279,9 @@ class OptinBase(object):
             headers=self.get_success_headers(serializer.validated_data))
 
 
-class AccessibleByQuerysetMixin(UserMixin):
-
+class RoleListFiltersMixin(object):
     def get_queryset(self):
-        # OK to use filter here since we want to see the requests as well.
-        queryset = get_role_model().objects.filter(user=self.user)
+        queryset = super(RoleListFiltersMixin, self).get_queryset()
         self.request.invited_count = queryset.filter(
             grant_key__isnull=False).count()
         self.request.requested_count = queryset.filter(
@@ -310,9 +308,16 @@ class AccessibleByQuerysetMixin(UserMixin):
         return queryset.filter(**qry)
 
 
+class AccessibleByQuerysetMixin(UserMixin):
+
+    def get_queryset(self):
+        # OK to use filter here since we want to see the requests as well.
+        return get_role_model().objects.filter(user=self.user)
+
+
 class AccessibleByListAPIView(DateRangeMixin, RoleSmartListMixin,
-                              AccessibleByQuerysetMixin, OptinBase,
-                              ListCreateAPIView):
+                              RoleListFiltersMixin, AccessibleByQuerysetMixin,
+                              OptinBase, ListCreateAPIView):
     """
     Lists all relations where an ``Organization`` is accessible by
     a ``User``. Typically the user was granted specific permissions through
@@ -695,32 +700,8 @@ class RoleListAPIView(RoleSmartListMixin, RoleQuerysetMixin, ListAPIView):
 class RoleByDescrQuerysetMixin(RoleDescriptionMixin, RoleQuerysetMixin):
 
     def get_queryset(self):
-        queryset = super(RoleByDescrQuerysetMixin, self).get_queryset().filter(
+        return super(RoleByDescrQuerysetMixin, self).get_queryset().filter(
             role_description=self.role_description)
-        self.request.invited_count = queryset.filter(
-            grant_key__isnull=False).count()
-        self.request.requested_count = queryset.filter(
-            request_key__isnull=False).count()
-        qry = {}
-        role_status = self.request.query_params.get('role_status', '')
-        stts = role_status.split(',')
-        if 'active' in stts:
-            if 'invited' in stts:
-                pass
-            else:
-                qry['grant_key__isnull'] = True
-
-            if 'requested' in stts:
-                pass
-            else:
-                qry['request_key__isnull'] = True
-        else:
-            if 'invited' in stts:
-                qry['grant_key__isnull'] = False
-            if 'requested' in stts:
-                qry['request_key__isnull'] = False
-
-        return queryset.filter(**qry)
 
 
 class RoleListPagination(PageNumberPagination):
@@ -736,8 +717,9 @@ class RoleListPagination(PageNumberPagination):
         ]))
 
 
-class RoleFilteredListAPIView(RoleSmartListMixin, RoleByDescrQuerysetMixin,
-                              ListAPIView, CreateAPIView):
+class RoleFilteredListAPIView(RoleSmartListMixin, RoleListFiltersMixin,
+                              RoleByDescrQuerysetMixin, ListAPIView,
+                              CreateAPIView):
     """
     ``GET`` lists the specified role assignments for an organization.
 
