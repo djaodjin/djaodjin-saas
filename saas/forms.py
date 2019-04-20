@@ -258,17 +258,25 @@ class PlanForm(forms.ModelForm):
         if initial:
             period_amount = initial.get('period_amount', 0)
             advance_discount = initial.get('advance_discount', 0)
+            interval = initial.get('interval', Plan.MONTHLY)
+            renewal_type = initial.get('renewal_type', Plan.AUTO_RENEW)
         instance = kwargs.get('instance', None)
         if instance:
             period_amount = instance.period_amount
             advance_discount = instance.advance_discount
+            interval = instance.interval
+            renewal_type = instance.renewal_type
         else:
             self.submit_title = _("Create")
         period_amount = Decimal(period_amount).scaleb(-2)
         advance_discount = Decimal(advance_discount).scaleb(-2)
+        interval = slugify(Plan.INTERVAL_CHOICES[interval][1])
+        renewal_type = slugify(Plan.RENEWAL_CHOICES[renewal_type][1])
         initial.update({
             'period_amount':period_amount,
-            'advance_discount': advance_discount})
+            'advance_discount': advance_discount,
+            'interval': interval,
+            'renewal_type': renewal_type})
         super(PlanForm, self).__init__(*args, **kwargs)
 
     def clean_advance_discount(self):
