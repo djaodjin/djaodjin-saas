@@ -455,12 +455,12 @@ var httpRequestMixin = {
                 if(isFunction(arg2)){
                     // We are parsing reqGet(url, successCallback, errorCallback)
                     failureCallback = arg2;
-                } else {
+                } else if( arg2 !== undefined ) {
                     throw 'arg2 should be a failureCallback function';
                 }
             } else if(isObject(arg)){
-                // We are parsing reqGet(url, queryParams)
-                // or reqGet(url, queryParams, successCallback)
+                // We are parsing
+                // reqGet(url, queryParams, successCallback)
                 // or reqGet(url, queryParams, successCallback, errorCallback).
                 queryParams = arg;
                 if(isFunction(arg2)){
@@ -470,7 +470,7 @@ var httpRequestMixin = {
                     if(isFunction(arg3)){
                         // We are parsing reqGet(url, queryParams, successCallback, errorCallback)
                         failureCallback = arg3;
-                    } else if (arg3 !== undefined){
+                    } else if( arg3 !== undefined ){
                         throw 'arg3 should be a failureCallback function';
                     }
                 } else {
@@ -490,7 +490,6 @@ var httpRequestMixin = {
 
             It supports the following prototypes:
 
-            - reqPOST(url)
             - reqPOST(url, data)
             - reqPOST(url, data, successCallback)
             - reqPOST(url, data, successCallback, failureCallback)
@@ -519,7 +518,7 @@ var httpRequestMixin = {
                     throw 'arg2 should be a failureCallback function';
                 }
             } else if(isObject(arg)){
-                // We are parsing reqGet(url, queryParams)
+                // We are parsing reqPost(url, data)
                 // or reqPost(url, data, successCallback)
                 // or reqPost(url, data, successCallback, errorCallback).
                 data = arg;
@@ -552,7 +551,6 @@ var httpRequestMixin = {
 
             It supports the following prototypes:
 
-            - reqPUT(url)
             - reqPUT(url, data)
             - reqPUT(url, data, successCallback)
             - reqPUT(url, data, successCallback, failureCallback)
@@ -581,7 +579,7 @@ var httpRequestMixin = {
                     throw 'arg2 should be a failureCallback function';
                 }
             } else if(isObject(arg)){
-                // We are parsing reqPut(url, queryParams)
+                // We are parsing reqPut(url, data)
                 // or reqPut(url, data, successCallback)
                 // or reqPut(url, data, successCallback, errorCallback).
                 data = arg;
@@ -614,7 +612,6 @@ var httpRequestMixin = {
 
             It supports the following prototypes:
 
-            - reqPATCH(url)
             - reqPATCH(url, data)
             - reqPATCH(url, data, successCallback)
             - reqPATCH(url, data, successCallback, failureCallback)
@@ -643,7 +640,7 @@ var httpRequestMixin = {
                     throw 'arg2 should be a failureCallback function';
                 }
             } else if(isObject(arg)){
-                // We are parsing reqPatch(url, queryParams)
+                // We are parsing reqPatch(url, data)
                 // or reqPatch(url, data, successCallback)
                 // or reqPatch(url, data, successCallback, errorCallback).
                 data = arg;
