@@ -470,6 +470,7 @@ class BeforeMixin(object):
 
     clip = True
     date_field = 'created_at'
+    alternate_date_field = 'date_joined'
 
     @property
     def ends_at(self):
@@ -488,13 +489,29 @@ class BeforeMixin(object):
         return self._timezone
 
     def get_queryset(self):
-        """
-        Implements before date filtering on ``date_field``
-        """
+        # XXX This method should be removed once we make sure
+        # filter_queryset fully replaces it.
         kwargs = {}
         if self.ends_at:
             kwargs.update({'%s__lt' % self.date_field: self.ends_at})
         return super(BeforeMixin, self).get_queryset().filter(**kwargs)
+
+    def filter_queryset(self, queryset):
+        """
+        Implements before date filtering on ``date_field``
+        """
+        before_qs = super(BeforeMixin, self).filter_queryset(queryset)
+        kwargs = {}
+        if self.ends_at:
+            #pylint:disable=protected-access
+            model_fields = set([
+                field.name for field in queryset.model._meta.get_fields()])
+            if self.date_field in model_fields:
+                kwargs.update({'%s__lt' % self.date_field: self.ends_at})
+            else:
+                kwargs.update({
+                    '%s__lt' % self.alternate_date_field: self.ends_at})
+        return before_qs.filter(**kwargs)
 
     def get_context_data(self, **kwargs):
         context = super(BeforeMixin, self).get_context_data(**kwargs)
@@ -516,13 +533,29 @@ class DateRangeMixin(BeforeMixin):
         return self._start_at
 
     def get_queryset(self):
-        """
-        Implements date range filtering on ``created_at``
-        """
+        # XXX This method should be removed once we make sure
+        # filter_queryset fully replaces it.
         kwargs = {}
         if self.start_at:
             kwargs.update({'%s__gte' % self.date_field: self.start_at})
         return super(DateRangeMixin, self).get_queryset().filter(**kwargs)
+
+    def filter_queryset(self, queryset):
+        """
+        Implements date range filtering on ``date_field``
+        """
+        after_qs = super(DateRangeMixin, self).filter_queryset(queryset)
+        kwargs = {}
+        if self.start_at:
+            #pylint:disable=protected-access
+            model_fields = set([
+                field.name for field in queryset.model._meta.get_fields()])
+            if self.date_field in model_fields:
+                kwargs.update({'%s__gte' % self.date_field: self.start_at})
+            else:
+                kwargs.update({
+                    '%s__gte' % self.alternate_date_field: self.start_at})
+        return after_qs.filter(**kwargs)
 
     def get_context_data(self, **kwargs):
         context = super(DateRangeMixin, self).get_context_data(**kwargs)

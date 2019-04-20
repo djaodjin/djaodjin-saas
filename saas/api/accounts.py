@@ -26,7 +26,7 @@ from django.contrib.auth import get_user_model
 from rest_framework.settings import api_settings
 from rest_framework.generics import ListAPIView
 
-from .organizations import OrganizationQuerysetMixin, OrganizationListAPIView
+from .organizations import OrganizationQuerysetMixin
 from .serializers import (OrganizationSerializer, UserSerializer)
 from .. import filters
 from ..mixins import (OrganizationSmartListMixin, UserSmartListMixin)
@@ -188,9 +188,51 @@ class AccountsSearchAPIView(OrganizationSmartListMixin,
         return self.get_paginated_response(serializer.data)
 
 
-class ProfilesSearchAPIView(OrganizationListAPIView):
+class ProfilesSearchAPIView(OrganizationSmartListMixin,
+                            OrganizationQuerysetMixin, ListAPIView):
+    """
+    Queries a page (``PAGE_SIZE`` records) of candidate profiles based
+    of a search criteria (``q``).
 
-    pass
+    This API differs from /api/profile in that it is designed to be used
+    in auto-completion input fields instead of designed to list all profiles.
+
+    The queryset can be ordered by a field by adding an HTTP query parameter
+    ``o=`` followed by the field name. A sequence of fields can be used
+    to create a complete ordering by adding a sequence of ``o`` HTTP query
+    parameters. To reverse the natural order of a field, prefix the field
+    name by a minus (-) sign.
+
+    **Tags: profile
+
+    **Examples
+
+    .. code-block:: http
+
+        GET /api/accounts/profile/?q=xia HTTP/1.1
+
+    responds
+
+    .. code-block:: json
+
+        {
+            "count": 1,
+            "next": null,
+            "previous": null,
+            "results": [{
+                "slug": "xia",
+                "full_name": "Xia Lee",
+                "printable_name": "Xia Lee",
+                "created_at": "2016-01-14T23:16:55Z"
+            }]
+        }
+    """
+    serializer_class = OrganizationSerializer
+
+    def paginate_queryset(self, queryset):
+        page = super(ProfilesSearchAPIView, self).paginate_queryset(queryset)
+        page = self.decorate_personal(page)
+        return page
 
 
 class UserQuerysetMixin(object):
