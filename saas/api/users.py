@@ -22,6 +22,7 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+from django.http import Http404
 from django.contrib.auth import get_user_model
 from django.utils.translation import ugettext_lazy as _
 from rest_framework.response import Response
@@ -29,7 +30,7 @@ from rest_framework.generics import ListAPIView, GenericAPIView
 from rest_framework.exceptions import ValidationError
 
 from .serializers import UserSerializer, AgreementSignSerializer
-from ..models import Signature
+from ..models import Agreement, Signature
 from ..mixins import ProviderMixin, UserSmartListMixin
 from ..utils import get_role_model
 
@@ -117,8 +118,12 @@ class AgreementSignAPIView(GenericAPIView):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         if serializer.data['read_terms']:
-            record = Signature.objects.create_signature(
-                self.kwargs.get(self.slug_url_kwarg), self.request.user)
+            slug = self.kwargs.get(self.slug_url_kwarg)
+            try:
+                record = Signature.objects.create_signature(
+                    slug, self.request.user)
+            except Agreement.DoesNotExist:
+                raise Http404
             return Response({'last_signed': record.last_signed})
         else:
             raise ValidationError(_('You have to agree with the terms'))
