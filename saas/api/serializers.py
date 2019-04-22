@@ -644,3 +644,8 @@ class ValidationErrorSerializer(NoModelSerializer):
     """
     detail = serializers.CharField(help_text=_("Describes the reason for"\
         " the error in plain text"))
+
+
+class AgreementSignSerializer(NoModelSerializer):
+    read_terms = serializers.BooleanField(help_text=_(
+        "I have read and understand these terms and conditions"))
