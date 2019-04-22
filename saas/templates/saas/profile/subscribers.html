@@ -49,24 +49,7 @@
           </tbody>
         </table>
       </div>
-      <div ng-show="tables.registered.$resolved && tables.registered.results.length > 0"
-           v-show="itemsLoaded && totalItems > itemsPerPage">
-        <ul uib-pagination ng-model="currentPage"
-            total-items="tables.registered.count"
-            items-per-page="itemsPerPage"
-            boundary-links="true"
-            max-size="maxSize"
-            previous-text="&lsaquo;"
-            next-text="&rsaquo;"
-            first-text="&laquo;"
-            last-text="&raquo;"
-            ng-change="pageChanged(registered)"></ul>
-        <uiv-pagination
-           v-model="params.page"
-           :total-page="pageCount"
-           @change="get"
-           boundary-links />
-      </div>
+      {% include "saas/_paginator.html" %}
     </div>
     {% endif %}
     {% for tab in tabs %}
@@ -133,24 +116,7 @@
           </tbody>
         </table>
       </div>
-      <div ng-show="tables.{{tab.slug}}.$resolved && tables.{{tab.slug}}.results.length > 0"
-           v-show="itemsLoaded && totalItems > itemsPerPage">
-        <ul uib-pagination ng-model="currentPage"
-            total-items="tables.{{tab.slug}}.count"
-            items-per-page="itemsPerPage"
-            boundary-links="true"
-            max-size="maxSize"
-            previous-text="&lsaquo;"
-            next-text="&rsaquo;"
-            first-text="&laquo;"
-            last-text="&raquo;"
-            ng-change="pageChanged({{tab.slug}})"></ul>
-        <uiv-pagination
-           v-model="params.page"
-           :total-page="pageCount"
-           @change="get"
-           boundary-links />
-      </div>
+      {% include "saas/_paginator.html" %}
     </div>
     {% endfor %}
   </div>

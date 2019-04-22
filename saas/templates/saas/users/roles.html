@@ -40,25 +40,7 @@
         </tr>
       </tbody>
     </table>
-    <div ng-show="items.$resolved && totalItems > itemsPerPage" ng-cloak
-         v-show="itemsLoaded && totalItems > itemsPerPage" v-cloak>
-      <ul uib-pagination
-          ng-model="currentPage"
-          total-items="totalItems"
-          items-per-page="itemsPerPage"
-          boundary-links="true"
-          max-size="maxSize"
-          previous-text="&lsaquo;"
-          next-text="&rsaquo;"
-          first-text="&laquo;"
-          last-text="&raquo;"
-          ng-change="pageChanged()"></ul>
-      <uiv-pagination
-         v-model="params.page"
-         :total-page="pageCount"
-         @change="get"
-         boundary-links />
-    </div>
+    {% include "saas/_paginator.html" %}
     <!-- modal dialog to add a request to add a role to a user
          on an organization. -->
     <div>

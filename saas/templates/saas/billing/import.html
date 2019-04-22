@@ -14,19 +14,14 @@
             </label>
             <div>
             <input
-                id="subscription"
-                class="form-control"
-                type="text"
-                placeholder="Subscriber name or email"
-                name="subscription"
-                autocomplete="off"
-                ng-model="subscription" />
-            <uiv-typeahead
-                v-model="itemSelected"
-                target="#subscription"
-                item-key="itemKey"
-                :async-function="getSubscriptions"
-                :open-on-focus="false"/>
+               id="subscription"
+               class="form-control"
+               type="text"
+               placeholder="Subscriber name or email"
+               name="subscription"
+               autocomplete="off"
+               ng-model="subscription"
+               v-model="itemSelected" />
             </div>
         </div>
         <div>

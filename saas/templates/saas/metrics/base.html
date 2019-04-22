@@ -10,38 +10,19 @@
     <div><!-- choose report date -->
       <div class="date-chooser">
         <span>To</span>
-        <span
-           class="date"
-           uib-datepicker-popup="{{DATETIME_FORMAT}}"
+        <input type="date"
            ng-model="ends_at"
            ng-change="prepareCurrentTabData(ends_at, timezone)"
-           is-open="opened"
-           datepicker-options="dateOptions"
-           ng-required="true"
-           close-text="Close"
-           datepicker-mode="'month'"
-           max-date="maxDate"
-           show-button-bar="false">[[ends_at | formatDate]]</span>
-        <uiv-dropdown append-to-body menu-right>
-          <button type="button" ng-click="open($event, 'ends_at')">Pick date</button>
-          <template slot="dropdown">
-            <li>
-              <uiv-date-picker
-                 v-model="ends_at"
-                 v-on:input="prepareCurrentTabData"
-                 icon-control-left="fa fa-caret-left"
-                 icon-control-right="fa fa-caret-right" />
-            </li>
-          </template>
-        </uiv-dropdown>
-      </div>
-      <select ng-model="timezone"
+           v-model="ends_at"
+           v-on:input="prepareCurrentTabData"></input>
+        <select ng-model="timezone"
               ng-change="prepareCurrentTabData(ends_at, timezone)"
               v-model="timezone"
               @change="prepareCurrentTabData">
-        <option value="local">Local</option>
-        <option value="utc">UTC</option>
-      </select>
+          <option value="local">Local</option>
+          <option value="utc">UTC</option>
+        </select>
+      </div>
     </div><!-- /choose report date -->
     <div ng-prop-id="table.key"
          ng-repeat="table in tables"

@@ -22,7 +22,6 @@ function isObject(o){
     return o instanceof Object && o.constructor === Object
 }
 
-Vue.use(uiv, {prefix: 'uiv'});
 
 Vue.filter('formatDate', function(value, format) {
   if (value) {

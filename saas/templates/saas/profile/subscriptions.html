@@ -77,14 +77,7 @@
         </tr>
       </tbody>
     </table>
-    <div v-show="itemsLoaded && totalItems > itemsPerPage">
-        <uiv-pagination
-              v-model="params.page"
-              :total-page="pageCount"
-              @change="get"
-              size="sm"
-              boundary-links></uiv-pagination>
-    </div>
+    {% include "saas/_paginator.html" %}
     <!-- modal dialog to confirm unsubscribe -->
     <modal title="Unsubscribe ...">
         <p>
@@ -135,14 +128,7 @@
         </tr>
       </tbody>
     </table>
-    <div v-show="itemsLoaded && totalItems > itemsPerPage">
-     <uiv-pagination
-              v-model="params.page"
-              :total-page="pageCount"
-              @change="get"
-              size="sm"
-              boundary-links></uiv-pagination>
-    </div>
+    {% include "saas/_paginator.html" %}
   </div>
 </section>
 {% endblock %}
