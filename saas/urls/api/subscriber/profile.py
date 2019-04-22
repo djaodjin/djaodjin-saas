@@ -1,4 +1,4 @@
-# Copyright (c) 2018, DjaoDjin inc.
+# Copyright (c) 2019, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -32,7 +32,7 @@ from ....api.organizations import (
     OrganizationDetailAPIView, OrganizationListAPIView)
 from ....api.subscriptions import (SubscriptionDetailAPIView,
     SubscriptionListAPIView)
-from ....api.roles import (RoleListAPIView, RoleFilteredListAPIView,
+from ....api.roles import (RoleListAPIView, RoleByDescrListAPIView,
     RoleDetailAPIView)
 from ....settings import ACCT_REGEX, MAYBE_EMAIL_REGEX
 
@@ -43,7 +43,8 @@ urlpatterns = [
         RoleDetailAPIView.as_view(), name='saas_api_role_detail'),
     url(r'^(?P<organization>%s)/roles/(?P<role>%s)/?'
         % (ACCT_REGEX, ACCT_REGEX),
-        RoleFilteredListAPIView.as_view(), name='saas_api_role_filtered_list'),
+        RoleByDescrListAPIView.as_view(),
+        name='saas_api_role_by_descr_list'),
     url(r'^(?P<organization>%s)/roles/?' % ACCT_REGEX,
         RoleListAPIView.as_view(), name='saas_api_role_list'),
     url(r'^(?P<organization>%s)/subscriptions/(?P<subscribed_plan>%s)/?'

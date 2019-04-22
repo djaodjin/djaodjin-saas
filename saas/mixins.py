@@ -765,7 +765,7 @@ class OrganizationSmartListMixin(DateRangeMixin):
     filter_backends = (SearchFilter, OrderingFilter)
 
 
-class RoleSmartListMixin(SortableListMixin, SearchableListMixin):
+class RoleSmartListMixin(DateRangeMixin):
     """
     The queryset can be further filtered to a range of dates between
     ``start_at`` and ``ends_at``.
@@ -790,23 +790,26 @@ class RoleSmartListMixin(SortableListMixin, SearchableListMixin):
       - role_name
       - created_at
     """
-    search_fields = ['organization__slug',
-                     'organization__full_name',
-                     'organization__email',
-                     'user__username',
-                     'user__email',
-                     'role_description__title',
-                     'role_description__slug']
-
-    sort_fields_aliases = [('organization__full_name', 'full_name'),
-                           ('user__username', 'username'),
-                           ('role_description__title', 'role_name'),
-                           ('grant_key', 'grant_key'),
-                           ('request_key', 'request_key'),
-                           ('created_at', 'created_at')]
-
-    filter_backends = (SortableSearchableFilterBackend(
-        sort_fields_aliases, search_fields),)
+    search_fields = [
+        'organization__slug',
+        'organization__full_name',
+        'organization__email',
+        'user__username',
+        'user__email',
+        'role_description__title',
+        'role_description__slug'
+    ]
+    ordering_fields = [
+        ('organization__full_name', 'full_name'),
+        ('user__username', 'username'),
+        ('role_description__title', 'role_name'),
+        ('grant_key', 'grant_key'),
+        ('request_key', 'request_key'),
+        ('created_at', 'created_at')
+    ]
+    ordering = ('user__username',)
+    alternate_ordering = ordering
+    filter_backends = (SearchFilter, OrderingFilter)
 
 
 class SubscriptionSmartListMixin(SortableListMixin, SearchableListMixin):

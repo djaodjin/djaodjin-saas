@@ -10,155 +10,41 @@
         v-show="!itemsLoaded">Please wait...</h2>
     <div ng-show="items.$resolved" ng-cloak
          v-show="itemsLoaded" v-cloak>
-      <div ng-repeat="roleDescription in items.results"
-           v-for="roleDescription in items.results">
-        <h3>[[roleDescription.title]]s</h3>
-        <button type="button"
-                ng-show="!roleDescription.is_global"
-                ng-click="deleteRoleDescription(roleDescription)"
-                v-show="!roleDescription.is_global">Delete</button>
-        <div ng-prop-id="roleDescription.slug"
-             ng-controller="userRelationListCtrl"
-             ng-repeat="entry in roleDescription.roles"
-             data-api-url="{{urls.organization.api_roles}}"
-             v-bind:id="roleDescription.slug"
-             v-for="entry in roleDescription.roles">
-          <table>
-            <thead>
-              <tr>
-                <th>Username</th>
-                <th>Email</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr ng-prop-id="entry.user.slug"
-                  v-bind:id="entry.user.slug">
-                <td>[[entry.user.slug]]</td>
-                <td>[[entry.user.email]]</td>
-                <td><button ng-click="remove($event, $index)">Remove</button></td>
-              </tr>
-            </tbody>
-          </table>
-          <!-- modal -->
-          <div id="add-role-modal">
-            <p>
-If the user couldn't be found in the system, it is a great occasion to invite
-them.
-            </p>
-            <label>The following invite message will be sent:</label>
-            <input ng-model="item.email" name="email" type="text" max-length="150"
-                   placeholder="invitee@example.com" />
-            <select ng-model="item.email" />
-            <textarea class="form-control form-control"
-                      name="message" maxlength="255" type="text" rows="10">
-Hello,
-
-I am adding you as a [[role.title]] to {{organization.printable_name}}.
-
-Thank you,
-- {{request.user.first_name}}</textarea>
-                            </div>
-                        </div>
-                    </div>
-                    <div slot="footer">
-                      <button type="button" class="btn btn-default"
-                              @click="modalOpen=false">Cancel</button>
-                      <button id="new-rule-submit"
-                              type="submit" class="btn btn-primary">Invite [[role.title]]</button>
-                    </div>
-                </uiv-modal>
-            </form>
-            <user-typeahead @item-save="save" :url="typeaheadUrl" :role="role" inline-template>
-                <div>
-                    <form class="form-inline" @submit.prevent="submit">
-                        <div class="input-group">
-                            <div>
-                                <input ref="tphd" class="form-control input-sm" style="width: 100%;" type="text" placeholder="Username or Email"/>
-                                <uiv-typeahead
-                                v-model="itemSelected"
-                                :target="target"
-                                :async-function="getUsers"
-                                item-key="slug"
-                                :open-on-focus="false"
-                                 />
-                            </div>
-                            <div class="input-group-btn">
-                                <button class="btn btn-primary btn-sm" type="submit">Add [[role.title]]</button>
-                            </div>
-                        </div>
-                        <div style="height:14px">
-                            <i v-show="searching" class="fa fa-spinner"></i>
-                        </div>
-                    </form>
-                </div>
-            </user-typeahead>
-            <div>
-                <table>
-                    <thead>
-                        <tr>
-                        <th>Username</th>
-                        <th>Email</th>
-                        <th></th>
-                        <th></th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr v-show="!itemsLoaded">
-                            <td colspan="3">
-                                <h3  class="text-center"><i class="fa fa-refresh fa-spin fa-2x"></i></h3>
-                            </td>
-                        </tr>
-                        <tr v-show="itemsLoaded && items.results.length == 0">
-                            <td colspan="3">
-                                <h4 class="text-center"><em>No [[role.title]]</em></h4>
-                            </td>
-                        </tr>
-                        <tr :class="item.request_key ? 'disabled' : 'active'" v-for="(item, index) in items.results" v-cloak v-show="itemsLoaded && items.results.length > 0">
-                            <td>[[item.user.slug]]</td>
-                            <td>[[item.user.email]] <button class="btn btn-default btn-sm" v-if="item.request_key" @click="save(item.user)">grant</button></td>
-                            <td><i>[[item.grant_key ? "invited" : ""]]</i></td>
-                            <td><button @click="remove(index)">remove</button></td>
-                        </tr>
-                    </tbody>
-                  </table>
-              </div>
-              <div class="text-center" v-cloak v-show="itemsLoaded && totalItems > itemsPerPage">
-                <uiv-pagination v-model="params.page" :total-page="pageCount" @change="get" boundary-links/>
-              </div>
-          </div>
-        </user-relation>
-        </div>
-      </div>
-      <button class="btn btn-primary" @click="modalOpen=true">Create role ...</button>
+      <table>
+        <thead>
+          <tr>
+            <th>Title</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr ng-repeat="entry in items.results"
+           v-for="entry in items.results">
+            <td><a ng-href="entry.slug"
+                   v-bind:href="entry.slug">[[entry.title]]</a></td>
+            <td><button type="button"
+                ng-show="!entry.is_global"
+                ng-click="deleteRoleDescription(entry)"
+                v-show="!entry.is_global">Delete</button>
+              <span v-show="entry.is_global">Globally defined</span>
+            </td>
+          </tr>
+        </tbody>
+      </table>
     </div>
-      <div class="text-center" v-cloak v-show="itemsLoaded && totalItems > itemsPerPage">
-        <uiv-pagination v-model="params.page" :total-page="pageCount" @change="get" boundary-links/>
-      </div>
-
+    <!-- modals -->
+    <hr />
     <form class="form-horizontal" @submit.prevent="create">
-        <uiv-modal v-model="modalOpen" v-cloak title="Create role ...">
-            <div class="modal-body">
-                <div class="row form-group">
-                    <div class="col-sm-2">
-                      <label class="control-label">Title</label>
-                    </div>
-                    <div class="col-sm-10">
-                      <input class="form-control" style="width:100%;"
-                             v-model="role.title"
-                             name="name" type="text" max-length="150"
-                             placeholder="ex: Sales associate"
-                             autofocus />
-                    </div>
-                </div>
-            </div>
-            <div slot="footer">
-              <button type="button" class="btn btn-default"
-                      @click="modalOpen=false">Cancel</button>
-              <button type="submit" class="btn btn-primary">Create role</button>
-            </div>
-        </uiv-modal>
-      </form>
+      <h2>Add a new type of role</h2>
+      <div>
+        <label>Title</label>
+        <input v-model="role.title"
+               name="name" type="text" max-length="150"
+               placeholder="ex: Sales associate"
+               autofocus />
+      </div>
+      <button type="submit">Create role</button>
+    </form>
   </div>
 </section>
 {% endblock %}

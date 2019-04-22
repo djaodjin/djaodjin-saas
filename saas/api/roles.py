@@ -46,7 +46,7 @@ from rest_framework.pagination import PageNumberPagination
 from .. import settings, signals
 from ..docs import swagger_auto_schema
 from ..mixins import (OrganizationMixin, RoleDescriptionMixin, RoleMixin,
-    RoleSmartListMixin, UserMixin, DateRangeMixin)
+    RoleSmartListMixin, UserMixin)
 from ..models import RoleDescription
 from ..utils import (full_name_natural_split, get_organization_model,
     get_role_model, generate_random_slug)
@@ -202,6 +202,19 @@ class RoleDescriptionCRUDSerializer(serializers.ModelSerializer):
         read_only_fields = ('created_at', 'slug', 'is_global')
 
 
+class RoleListPagination(PageNumberPagination):
+
+    def get_paginated_response(self, data):
+        return Response(OrderedDict([
+            ('invited_count', self.request.invited_count),
+            ('requested_count', self.request.requested_count),
+            ('count', self.page.paginator.count),
+            ('next', self.get_next_link()),
+            ('previous', self.get_previous_link()),
+            ('results', data)
+        ]))
+
+
 class OptinBase(object):
 
     organization_model = get_organization_model()
@@ -281,13 +294,14 @@ class OptinBase(object):
             headers=self.get_success_headers(serializer.validated_data))
 
 
-class RoleListFiltersMixin(object):
+class RoleInvitedListMixin(object):
+    """
+    Filters invitations for a specific role on an organization.
+    """
     def get_queryset(self):
-        queryset = super(RoleListFiltersMixin, self).get_queryset()
+        queryset = super(RoleInvitedListMixin, self).get_queryset()
         self.request.invited_count = queryset.filter(
             grant_key__isnull=False).count()
-        self.request.requested_count = queryset.filter(
-            request_key__isnull=False).count()
         qry = {}
         role_status = self.request.query_params.get('role_status', '')
         stts = role_status.split(',')
@@ -296,29 +310,40 @@ class RoleListFiltersMixin(object):
                 pass
             else:
                 qry['grant_key__isnull'] = True
+        elif 'invited' in stts:
+            qry['grant_key__isnull'] = False
+        return queryset.filter(**qry)
 
+
+class RoleRequestedListMixin(object):
+    """
+    Filters requests for any role on an organization.
+    """
+    def get_queryset(self):
+        queryset = super(RoleRequestedListMixin, self).get_queryset()
+        self.request.requested_count = queryset.filter(
+            request_key__isnull=False).count()
+        qry = {}
+        role_status = self.request.query_params.get('role_status', '')
+        stts = role_status.split(',')
+        if 'active' in stts:
             if 'requested' in stts:
                 pass
             else:
                 qry['request_key__isnull'] = True
-        else:
-            if 'invited' in stts:
-                qry['grant_key__isnull'] = False
-            if 'requested' in stts:
-                qry['request_key__isnull'] = False
-
+        elif 'requested' in stts:
+            qry['request_key__isnull'] = False
         return queryset.filter(**qry)
 
 
 class AccessibleByQuerysetMixin(UserMixin):
 
     def get_queryset(self):
-        # OK to use filter here since we want to see the requests as well.
         return get_role_model().objects.filter(user=self.user)
 
 
-class AccessibleByListAPIView(DateRangeMixin, RoleSmartListMixin,
-                              RoleListFiltersMixin, AccessibleByQuerysetMixin,
+class AccessibleByListAPIView(RoleSmartListMixin, RoleInvitedListMixin,
+                              RoleRequestedListMixin, AccessibleByQuerysetMixin,
                               OptinBase, ListCreateAPIView):
     """
     Lists all relations where an ``Organization`` is accessible by
@@ -356,6 +381,7 @@ class AccessibleByListAPIView(DateRangeMixin, RoleSmartListMixin,
         }
     """
     serializer_class = AccessibleSerializer
+    pagination_class = RoleListPagination
 
     def post(self, request, *args, **kwargs):
         """
@@ -643,14 +669,20 @@ class RoleDescriptionDetailView(RoleDescriptionQuerysetMixin,
         super(RoleDescriptionDetailView, self).perform_destroy(instance)
 
 
-class RoleQuerysetMixin(OrganizationMixin):
+class RoleQuerysetBaseMixin(OrganizationMixin):
 
     def get_queryset(self):
-        # OK to use filter here since we want to see the requests as well.
         return get_role_model().objects.filter(organization=self.organization)
 
 
-class RoleListAPIView(RoleSmartListMixin, RoleQuerysetMixin, ListAPIView):
+class RoleQuerysetMixin(RoleRequestedListMixin, RoleQuerysetBaseMixin):
+    # The requested_count has to be populated for all roles available
+    # on an organization because `role_description` is not set at this point.
+    pass
+
+
+class RoleListAPIView(RoleSmartListMixin, RoleInvitedListMixin,
+                      RoleQuerysetMixin, ListAPIView):
     """
     Lists all roles for an organization
 
@@ -697,6 +729,7 @@ class RoleListAPIView(RoleSmartListMixin, RoleQuerysetMixin, ListAPIView):
         }
     """
     serializer_class = RoleSerializer
+    pagination_class = RoleListPagination
 
 
 class RoleByDescrQuerysetMixin(RoleDescriptionMixin, RoleQuerysetMixin):
@@ -706,22 +739,8 @@ class RoleByDescrQuerysetMixin(RoleDescriptionMixin, RoleQuerysetMixin):
             role_description=self.role_description)
 
 
-class RoleListPagination(PageNumberPagination):
-
-    def get_paginated_response(self, data):
-        return Response(OrderedDict([
-            ('invited_count', self.request.invited_count),
-            ('requested_count', self.request.requested_count),
-            ('count', self.page.paginator.count),
-            ('next', self.get_next_link()),
-            ('previous', self.get_previous_link()),
-            ('results', data)
-        ]))
-
-
-class RoleFilteredListAPIView(RoleSmartListMixin, RoleListFiltersMixin,
-                              RoleByDescrQuerysetMixin, ListAPIView,
-                              CreateAPIView):
+class RoleByDescrListAPIView(RoleSmartListMixin, RoleInvitedListMixin,
+                              RoleByDescrQuerysetMixin, ListCreateAPIView):
     """
     ``GET`` lists the specified role assignments for an organization.
 
@@ -844,7 +863,7 @@ class RoleFilteredListAPIView(RoleSmartListMixin, RoleListFiltersMixin,
               "slug": "xia"
             }
         """
-        return super(RoleFilteredListAPIView, self).post(
+        return super(RoleByDescrListAPIView, self).post(
             request, *args, **kwargs)
 
 

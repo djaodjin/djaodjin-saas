@@ -6,7 +6,7 @@
 {% endif %}
 {% if urls.organization and urls.organization.roles %}
 {% for role_title, role_url in urls.organization.roles|iteritems %}
-<a href="{{role_url}}">{{role_title|pluralize}}</a>
+<a href="{{role_url}}">{{role_title}}</a>
 {% endfor %}
 {% endif %}
 
