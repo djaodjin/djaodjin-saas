@@ -117,13 +117,15 @@ class AgreementSignAPIView(GenericAPIView):
     def post(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        if serializer.data['read_terms']:
+        if serializer.validated_data['read_terms']:
             slug = self.kwargs.get(self.slug_url_kwarg)
             try:
                 record = Signature.objects.create_signature(
                     slug, self.request.user)
             except Agreement.DoesNotExist:
                 raise Http404
-            return Response({'last_signed': record.last_signed})
+            return Response(AgreementSignSerializer().to_representation({
+                'read_terms': serializer.validated_data['read_terms'],
+                'last_signed': record.last_signed}))
         else:
             raise ValidationError(_('You have to agree with the terms'))

@@ -649,3 +649,4 @@ class ValidationErrorSerializer(NoModelSerializer):
 class AgreementSignSerializer(NoModelSerializer):
     read_terms = serializers.BooleanField(help_text=_(
         "I have read and understand these terms and conditions"))
+    last_signed = serializers.DateTimeField(read_only=True)
