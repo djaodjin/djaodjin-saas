@@ -28,8 +28,9 @@ from rest_framework.generics import ListAPIView
 
 from .organizations import OrganizationQuerysetMixin
 from .serializers import (OrganizationSerializer, UserSerializer)
-from .. import filters
+from .. import filters, settings
 from ..mixins import (OrganizationSmartListMixin, UserSmartListMixin)
+from ..pagination import TypeaheadPagination
 
 
 #pylint: disable=no-init
@@ -100,6 +101,7 @@ class AccountsSearchAPIView(OrganizationSmartListMixin,
         }
     """
     serializer_class = OrganizationSerializer
+    pagination_class = TypeaheadPagination
     user_model = get_user_model()
 
     def get_users_queryset(self):
@@ -181,7 +183,12 @@ class AccountsSearchAPIView(OrganizationSmartListMixin,
 
         # XXX It could be faster to stop previous loops early but it is not
         # clear. The extra check at each iteration might in fact be slower.
-        page = page[:api_settings.PAGE_SIZE]
+        if len(page) > settings.MIN_CUT_OFF:
+            # Returning an empty set if the number of results is greater than
+            # MIN_CUT_OFF
+            page = []
+            self.paginator.count = 0
+
         self.decorate_personal(page)
 
         serializer = self.get_serializer(page, many=True)
@@ -228,6 +235,7 @@ class ProfilesSearchAPIView(OrganizationSmartListMixin,
         }
     """
     serializer_class = OrganizationSerializer
+    pagination_class = TypeaheadPagination
 
     def paginate_queryset(self, queryset):
         page = super(ProfilesSearchAPIView, self).paginate_queryset(queryset)
@@ -283,3 +291,4 @@ class UsersSearchAPIView(UserSmartListMixin, UserQuerysetMixin, ListAPIView):
         }
     """
     serializer_class = UserSerializer
+    pagination_class = TypeaheadPagination

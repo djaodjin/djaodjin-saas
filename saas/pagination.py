@@ -28,6 +28,7 @@ from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 
 from .models import sum_dest_amount, sum_orig_amount, sum_balance_amount
+from . import settings
 
 
 class BalancePagination(PageNumberPagination):
@@ -79,5 +80,25 @@ class TotalPagination(PageNumberPagination):
             ('count', self.page.paginator.count),
             ('next', self.get_next_link()),
             ('previous', self.get_previous_link()),
+            ('results', data)
+        ]))
+
+
+class TypeaheadPagination(PageNumberPagination):
+
+    page_size = settings.MIN_CUT_OFF
+
+    def paginate_queryset(self, queryset, request, view=None):
+        self.count = queryset.count()
+        if self.count > self.page_size:
+            # returning an empty set if the number of results is greater than
+            # MIN_CUT_OFF
+            queryset = queryset.none()
+            self.count = 0
+        return list(queryset)
+
+    def get_paginated_response(self, data):
+        return Response(OrderedDict([
+            ('count', self.count),
             ('results', data)
         ]))
