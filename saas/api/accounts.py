@@ -183,9 +183,9 @@ class AccountsSearchAPIView(OrganizationSmartListMixin,
 
         # XXX It could be faster to stop previous loops early but it is not
         # clear. The extra check at each iteration might in fact be slower.
-        if len(page) > settings.MIN_CUT_OFF:
+        if len(page) > settings.MAX_TYPEAHEAD_CANDIDATES:
             # Returning an empty set if the number of results is greater than
-            # MIN_CUT_OFF
+            # MAX_TYPEAHEAD_CANDIDATES
             page = []
             self.paginator.count = 0
 

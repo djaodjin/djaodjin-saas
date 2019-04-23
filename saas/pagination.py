@@ -86,13 +86,13 @@ class TotalPagination(PageNumberPagination):
 
 class TypeaheadPagination(PageNumberPagination):
 
-    page_size = settings.MIN_CUT_OFF
+    page_size = settings.MAX_TYPEAHEAD_CANDIDATES
 
     def paginate_queryset(self, queryset, request, view=None):
         self.count = queryset.count()
         if self.count > self.page_size:
             # returning an empty set if the number of results is greater than
-            # MIN_CUT_OFF
+            # MAX_TYPEAHEAD_CANDIDATES
             queryset = queryset.none()
             self.count = 0
         return list(queryset)
