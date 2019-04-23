@@ -82,7 +82,7 @@ class AccountsSearchAPIView(OrganizationSmartListMixin,
 
     .. code-block:: http
 
-        GET /api/profile/?o=created_at HTTP/1.1
+        GET /api/accounts/?o=created_at HTTP/1.1
 
     responds
 

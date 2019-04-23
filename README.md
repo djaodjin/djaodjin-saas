@@ -92,10 +92,13 @@ saas/templates/notification/ directory.
 Release Notes
 =============
 
-0.4.1
-  * separates search api for type-ahead candidate lists
-  * adds filter and sort to plans API
-  * fixes #180
+0.5.0
+  * adss role_status filter (active/invited/requested) to roles APIs
+  * improves support of search accounts APIs for typeahead
+  * adds sign agreement API
+  * moves is_broker from saas.models to saas.utils
+  * inserts only views related to the type of organization in `urls` context
+        such that it is simpler to generate menu bars.
 
 [previous release notes](changelog)
 
