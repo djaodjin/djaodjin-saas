@@ -1,4 +1,4 @@
-# Copyright (c) 2018, DjaoDjin inc.
+# Copyright (c) 2019, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -79,6 +79,12 @@ import os
 from django.conf import settings
 
 _SETTINGS = {
+    'BROKER': {
+        'GET_INSTANCE': os.path.basename(
+            getattr(settings, 'BASE_DIR', "broker")),
+        'IS_INSTANCE_CALLABLE': None,
+        'BUILD_ABSOLUTE_URI_CALLABLE': None
+    },
     'BYPASS_PERMISSION_CHECK': False,
     # Do not check the auth token against the processor to set processor keys.
     # (useful while testing).
@@ -87,15 +93,10 @@ _SETTINGS = {
     'EXPIRE_NOTICE_DAYS': [15],
     'EXTRA_MIXIN': object,
     'EXTRA_FIELD': None,
+    'MAX_TYPEAHEAD_CANDIDATES': 5,
     'ORGANIZATION_MODEL': 'saas.Organization',
     'PAGE_SIZE': 25,
-    'SEARCH_FIELDS_PARAM': 'q_f',
-    'BROKER': {
-        'GET_INSTANCE': os.path.basename(
-            getattr(settings, 'BASE_DIR', "broker")),
-        'IS_INSTANCE_CALLABLE': None,
-        'BUILD_ABSOLUTE_URI_CALLABLE': None
-    },
+    'PICTURE_STORAGE_CALLABLE': None,
     'PROCESSOR': {
         'BACKEND': 'saas.backends.stripe_processor.StripeBackend',
         'CLIENT_ID': None,
@@ -111,8 +112,8 @@ _SETTINGS = {
     },
     'PROCESSOR_BACKEND_CALLABLE': None,
     'ROLE_RELATION': 'saas.Role',
+    'SEARCH_FIELDS_PARAM': 'q_f',
     'TERMS_OF_USE': 'terms-of-use',
-    'PICTURE_STORAGE_CALLABLE': None,
 }
 _SETTINGS.update(getattr(settings, 'SAAS', {}))
 
@@ -124,26 +125,27 @@ VERIFICATION_KEY_RE = r'[a-f0-9]{40}'
 AUTH_USER_MODEL = getattr(
     settings, 'AUTH_USER_MODEL', 'django.contrib.auth.models.User')
 
+BROKER_CALLABLE = _SETTINGS.get('BROKER').get('GET_INSTANCE', None)
+BUILD_ABSOLUTE_URI_CALLABLE = _SETTINGS.get('BROKER').get(
+    'BUILD_ABSOLUTE_URI_CALLABLE')
 BYPASS_PROCESSOR_AUTH = _SETTINGS.get('BYPASS_PROCESSOR_AUTH')
 CREDIT_ON_CREATE = _SETTINGS.get('CREDIT_ON_CREATE')
+DEFAULT_UNIT = _SETTINGS.get('DEFAULT_UNIT')
 EXPIRE_NOTICE_DAYS = _SETTINGS.get('EXPIRE_NOTICE_DAYS')
 EXTRA_MIXIN = _SETTINGS.get('EXTRA_MIXIN')
+IS_BROKER_CALLABLE = _SETTINGS.get('BROKER').get('IS_INSTANCE_CALLABLE', None)
+MAX_TYPEAHEAD_CANDIDATES = _SETTINGS.get('MAX_TYPEAHEAD_CANDIDATES')
 ORGANIZATION_MODEL = _SETTINGS.get('ORGANIZATION_MODEL')
 PAGE_SIZE = _SETTINGS.get('PAGE_SIZE')
-SEARCH_FIELDS_PARAM = _SETTINGS.get('SEARCH_FIELDS_PARAM')
 PROCESSOR = _SETTINGS.get('PROCESSOR')
 PROCESSOR_BACKEND_CALLABLE = _SETTINGS.get('PROCESSOR_BACKEND_CALLABLE')
 PROCESSOR_FALLBACK = PROCESSOR.get('FALLBACK', [])
 PROCESSOR_ID = PROCESSOR.get('INSTANCE_PK', 1)
 PROCESSOR_HOOK_URL = PROCESSOR.get('WEBHOOK_URL', 'stripe/postevent')
 PROCESSOR_HOOK_SECRET = PROCESSOR.get('WEBHOOK_SECRET')
-BROKER_CALLABLE = _SETTINGS.get('BROKER').get('GET_INSTANCE', None)
-IS_BROKER_CALLABLE = _SETTINGS.get('BROKER').get('IS_INSTANCE_CALLABLE', None)
-BUILD_ABSOLUTE_URI_CALLABLE = _SETTINGS.get('BROKER').get(
-    'BUILD_ABSOLUTE_URI_CALLABLE')
 ROLE_RELATION = _SETTINGS.get('ROLE_RELATION')
+SEARCH_FIELDS_PARAM = _SETTINGS.get('SEARCH_FIELDS_PARAM')
 TERMS_OF_USE = _SETTINGS.get('TERMS_OF_USE')
-DEFAULT_UNIT = _SETTINGS.get('DEFAULT_UNIT')
 
 # BE EXTRA CAREFUL! This variable is used to bypass PermissionDenied
 # exceptions. It is solely intended as a debug flexibility nob.
