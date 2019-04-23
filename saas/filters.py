@@ -34,15 +34,33 @@ from rest_framework.filters import (OrderingFilter as BaseOrderingFilter,
     SearchFilter as BaseSearchFilter)
 from rest_framework.compat import distinct
 
+from . import settings
+
 class SearchFilter(BaseSearchFilter):
+
+    search_field_param = settings.SEARCH_FIELDS_PARAM
+
+    def get_query_fields(self, request):
+        fields = request.query_params.get(self.search_field_param, '')
+        return fields.replace(',', ' ').split()
+
+    def filter_valid_fields(self, model_fields, fields):
+        return tuple([
+            field for field in fields if field in model_fields])
 
     def get_valid_fields(self, queryset, view, context={}):
         model_fields = set([
             field.name for field in queryset.model._meta.get_fields()])
-        base_fields = getattr(view, 'search_fields', [])
-        valid_fields = tuple([
-            field for field in base_fields if field in model_fields])
-        return valid_fields
+        fields = self.get_query_fields(view.request)
+        # client-supplied fields take precedence
+        if fields:
+            fields = self.filter_valid_fields(model_fields, fields)
+        # if there are no fields (due to empty query params or wrong
+        # fields we fallback to fields specified in the view
+        if not fields:
+            fields = getattr(view, 'search_fields', [])
+            fields = self.filter_valid_fields(model_fields, fields)
+        return fields
 
     def filter_queryset(self, request, queryset, view):
         search_fields = self.get_valid_fields(queryset, view)
