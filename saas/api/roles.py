@@ -953,7 +953,6 @@ class RoleAcceptAPIView(CreateAPIView):
     serializer_class = AcceptRoleSerializer
 
     def perform_create(self, serializer):
-        #import pdb; pdb.set_trace()
         request = self.request
         obj = get_object_or_404(get_role_model().objects.all(),
                 grant_key=serializer.validated_data['verification_key'])
