@@ -30,6 +30,7 @@ from django.contrib.auth.hashers import is_password_usable
 from django.template.defaultfilters import slugify
 from django.utils import six
 from django.utils.translation import ugettext_lazy as _
+from django.urls.exceptions import NoReverseMatch
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
 from rest_framework.generics import get_object_or_404
@@ -623,9 +624,13 @@ class AccessibleSerializer(serializers.ModelSerializer):
         return settings_location
 
     def get_home_url(self, obj):
-        return self.context['request'].build_absolute_uri(
-            reverse('organization_app',
-            args=(obj.organization.slug,)))
+        try:
+            return self.context['request'].build_absolute_uri(
+                reverse('organization_app',
+                args=(obj.organization.slug,)))
+        except NoReverseMatch:
+            # serializer used in djaodjin-saas not in djaoapp
+            pass
 
 
 class BaseRoleSerializer(serializers.ModelSerializer):
@@ -671,3 +676,7 @@ class AgreementSignSerializer(NoModelSerializer):
     read_terms = serializers.BooleanField(help_text=_(
         "I have read and understand these terms and conditions"))
     last_signed = serializers.DateTimeField(read_only=True)
+
+
+class AcceptRoleSerializer(NoModelSerializer):
+    verification_key = serializers.CharField()

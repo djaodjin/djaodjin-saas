@@ -39,7 +39,8 @@ from django.utils.translation import ugettext_lazy as _
 from rest_framework import serializers, status
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.generics import (ListAPIView, CreateAPIView,
-    ListCreateAPIView, DestroyAPIView, RetrieveUpdateDestroyAPIView)
+    ListCreateAPIView, DestroyAPIView, RetrieveUpdateDestroyAPIView,
+    get_object_or_404)
 from rest_framework.response import Response
 from rest_framework.pagination import PageNumberPagination
 
@@ -51,7 +52,8 @@ from ..models import RoleDescription
 from ..utils import (full_name_natural_split, get_organization_model,
     get_role_model, generate_random_slug)
 from .serializers import (AccessibleSerializer, BaseRoleSerializer,
-    NoModelSerializer, RoleSerializer, RoleAccessibleSerializer)
+    NoModelSerializer, RoleSerializer, RoleAccessibleSerializer,
+    AcceptRoleSerializer)
 
 
 LOGGER = logging.getLogger(__name__)
@@ -944,3 +946,41 @@ class RoleDetailAPIView(RoleMixin, DestroyAPIView):
                 'organization': self.organization.slug, 'roles': roles})
         queryset.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class RoleAcceptAPIView(CreateAPIView):
+
+    serializer_class = AcceptRoleSerializer
+
+    def perform_create(self, serializer):
+        #import pdb; pdb.set_trace()
+        request = self.request
+        obj = get_object_or_404(get_role_model().objects.all(),
+                grant_key=serializer.validated_data['verification_key'])
+        existing_role = get_role_model().objects.filter(
+            organization=obj.organization, user=request.user).exclude(
+            pk=obj.pk).first()
+        if existing_role:
+            raise ValidationError(_("You already have a %(existing_role)s"\
+                " role on %(organization)s. Please drop this role first if"\
+                " you want to accept a role of %(role)s instead.") % {
+                    'role': obj.role_description.title,
+                    'organization': obj.organization.printable_name,
+                    'existing_role': existing_role.role_description.title})
+
+        obj.user = request.user       # We appropriate the Role here.
+        grant_key = obj.grant_key
+        obj.grant_key = None
+        obj.save()
+        LOGGER.info("%s accepted role of %s to %s (grant_key=%s)",
+            request.user, obj.role_description, obj.organization,
+            grant_key, extra={
+                'request': request, 'event': 'accept',
+                'user': str(request.user),
+                'organization': str(obj.organization),
+                'role_description': str(obj.role_description),
+                'grant_key': grant_key})
+        signals.role_grant_accepted.send(sender=__name__,
+            role=obj, grant_key=grant_key, request=request)
+
+        return Response(serializer.validated_data, status=status.HTTP_200_OK)
