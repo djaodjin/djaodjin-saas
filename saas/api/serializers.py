@@ -42,6 +42,7 @@ from ..models import (BalanceLine, CartItem, Charge, Plan,
     RoleDescription, Subscription, Transaction)
 from ..utils import (get_organization_model, get_role_model,
     get_picture_storage)
+from ..compat import reverse
 
 #pylint: disable=no-init,old-style-class
 
@@ -597,14 +598,34 @@ class AccessibleSerializer(serializers.ModelSerializer):
     printable_name = serializers.CharField(source='organization.printable_name')
     email = serializers.CharField(source='organization.email')
     role_description = RoleDescriptionSerializer(read_only=True)
+    home_url = serializers.SerializerMethodField()
+    settings_url = serializers.SerializerMethodField()
 
     class Meta:
         model = get_role_model()
         fields = ('created_at', 'request_key', 'grant_key',
+            'home_url', 'settings_url',
             'slug', 'printable_name', 'email', # Organization
             'role_description')                # RoleDescription
         read_only_fields = ('created_at', 'request_key', 'grant_key',
             'printable_name')
+
+    def get_settings_url(self, obj):
+        org = obj.organization
+        abs_uri = self.context['request'].build_absolute_uri
+        if org.is_provider:
+            settings_location = abs_uri(reverse('saas_dashboard',
+                args=(org.slug,)))
+        else:
+            settings_location = abs_uri(reverse(
+                'saas_organization_profile',
+                args=(org.slug,)))
+        return settings_location
+
+    def get_home_url(self, obj):
+        return self.context['request'].build_absolute_uri(
+            reverse('organization_app',
+            args=(obj.organization.slug,)))
 
 
 class BaseRoleSerializer(serializers.ModelSerializer):
