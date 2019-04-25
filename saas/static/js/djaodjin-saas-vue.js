@@ -1954,6 +1954,16 @@ new Vue({
         url: djaodjinSettings.urls.user.api_accessibles,
         typeaheadUrl: djaodjinSettings.urls.api_candidates,
     },
+    methods: {
+        acceptGrant: function(grantKey){
+            var vm = this;
+            vm.reqPost(djaodjinSettings.urls.user.role_accept, {
+                verification_key: grantKey
+            }, function(res){
+                vm.get();
+            });
+        }
+    },
     mounted: function(){
         this.get()
     },

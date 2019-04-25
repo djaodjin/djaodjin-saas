@@ -164,6 +164,12 @@ class OrganizationMixinBase(object):
                 args=(account,)), 'printable_name': account.printable_name}
                 for account in get_organization_model().objects.accessible_by(
                         self.request.user)]})
+            urls.update({
+                # to mirror the same interface as in djaoapp
+                'user': {
+                    'role_accept': reverse(
+                        'saas_api_accessibles_accept', args=(self.request.user,)),
+                }})
 
         self.update_context_urls(context, urls)
         self.update_context_urls(context, {
