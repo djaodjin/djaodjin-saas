@@ -1957,9 +1957,10 @@ new Vue({
     methods: {
         acceptGrant: function(grantKey){
             var vm = this;
-            vm.reqPost(djaodjinSettings.urls.user.role_accept, {
-                verification_key: grantKey
-            }, function(res){
+            var placeholder = 'a'.repeat(40);
+            var url = djaodjinSettings.urls.user.role_accept.replace(
+                placeholder, grantKey);
+            vm.reqGet(url, function(res){
                 vm.get();
             });
         }

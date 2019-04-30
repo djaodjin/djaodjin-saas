@@ -168,7 +168,10 @@ class OrganizationMixinBase(object):
                 # to mirror the same interface as in djaoapp
                 'user': {
                     'role_accept': reverse(
-                        'saas_api_accessibles_accept', args=(self.request.user,)),
+                        'saas_api_accessibles_accept', args=(self.request.user,
+                            # TODO how should I specify a placeholder for the
+                            # frontend code? We don't have a base user endpoint
+                            'a' * 40)),
                 }})
 
         self.update_context_urls(context, urls)

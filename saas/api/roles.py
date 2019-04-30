@@ -40,7 +40,7 @@ from rest_framework import serializers, status
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.generics import (ListAPIView, CreateAPIView,
     ListCreateAPIView, DestroyAPIView, RetrieveUpdateDestroyAPIView,
-    get_object_or_404)
+    GenericAPIView, get_object_or_404)
 from rest_framework.response import Response
 from rest_framework.pagination import PageNumberPagination
 
@@ -948,16 +948,17 @@ class RoleDetailAPIView(RoleMixin, DestroyAPIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
-class RoleAcceptAPIView(CreateAPIView):
+class RoleAcceptAPIView(UserMixin, GenericAPIView):
 
-    serializer_class = AcceptRoleSerializer
+    # XXX still waiting for clarification
+    #serializer_class = AcceptRoleSerializer
 
-    def perform_create(self, serializer):
-        request = self.request
+    def get(self, request, *args, **kwargs):
+        key = kwargs.get('verification_key')
         obj = get_object_or_404(get_role_model().objects.all(),
-                grant_key=serializer.validated_data['verification_key'])
+                grant_key=key)
         existing_role = get_role_model().objects.filter(
-            organization=obj.organization, user=request.user).exclude(
+            organization=obj.organization, user=self.user).exclude(
             pk=obj.pk).first()
         if existing_role:
             raise ValidationError(_("You already have a %(existing_role)s"\
@@ -967,19 +968,19 @@ class RoleAcceptAPIView(CreateAPIView):
                     'organization': obj.organization.printable_name,
                     'existing_role': existing_role.role_description.title})
 
-        obj.user = request.user       # We appropriate the Role here.
+        obj.user = self.user       # We appropriate the Role here.
         grant_key = obj.grant_key
         obj.grant_key = None
         obj.save()
         LOGGER.info("%s accepted role of %s to %s (grant_key=%s)",
-            request.user, obj.role_description, obj.organization,
+            self.user, obj.role_description, obj.organization,
             grant_key, extra={
                 'request': request, 'event': 'accept',
-                'user': str(request.user),
+                'user': str(self.user),
                 'organization': str(obj.organization),
                 'role_description': str(obj.role_description),
                 'grant_key': grant_key})
         signals.role_grant_accepted.send(sender=__name__,
             role=obj, grant_key=grant_key, request=request)
 
-        return Response(serializer.validated_data, status=status.HTTP_200_OK)
+        return Response({'verification_key': key}, status=status.HTTP_200_OK)
