@@ -310,6 +310,19 @@ def get_picture_storage():
     return default_storage
 
 
+# XXX same prototype as djaodjin-multitier.mixins.build_absolute_uri
+def build_absolute_uri(request, location='/', site=None, with_scheme=True):
+    # delayed import so we can load ``OrganizationMixinBase`` in django.conf
+    from . import settings
+    if settings.BUILD_ABSOLUTE_URI_CALLABLE:
+        try:
+            return import_string(
+                settings.BUILD_ABSOLUTE_URI_CALLABLE)(location)
+        except ImportError:
+            pass
+    return request.build_absolute_uri(location)
+
+
 def is_broker(organization):
     """
     Returns ``True`` if the organization is the hosting platform

@@ -1955,12 +1955,11 @@ new Vue({
         typeaheadUrl: djaodjinSettings.urls.api_candidates,
     },
     methods: {
-        acceptGrant: function(grantKey){
+        acceptGrant: function(accessible){
             var vm = this;
-            var placeholder = 'a'.repeat(40);
-            var url = djaodjinSettings.urls.user.role_accept.replace(
-                placeholder, grantKey);
-            vm.reqGet(url, function(res){
+            var url = accessible.accept_grant_api_url;
+            if(!url) return;
+            vm.reqPut(url, function(res){
                 vm.get();
             });
         }

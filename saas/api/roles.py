@@ -52,8 +52,7 @@ from ..models import RoleDescription
 from ..utils import (full_name_natural_split, get_organization_model,
     get_role_model, generate_random_slug)
 from .serializers import (AccessibleSerializer, BaseRoleSerializer,
-    NoModelSerializer, RoleSerializer, RoleAccessibleSerializer,
-    AcceptRoleSerializer)
+    NoModelSerializer, RoleSerializer, RoleAccessibleSerializer)
 
 
 LOGGER = logging.getLogger(__name__)
@@ -950,10 +949,7 @@ class RoleDetailAPIView(RoleMixin, DestroyAPIView):
 
 class RoleAcceptAPIView(UserMixin, GenericAPIView):
 
-    # XXX still waiting for clarification
-    #serializer_class = AcceptRoleSerializer
-
-    def get(self, request, *args, **kwargs):
+    def put(self, request, *args, **kwargs):
         key = kwargs.get('verification_key')
         obj = get_object_or_404(get_role_model().objects.all(),
                 grant_key=key)
