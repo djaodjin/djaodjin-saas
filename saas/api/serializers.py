@@ -30,6 +30,7 @@ from django.contrib.auth.hashers import is_password_usable
 from django.template.defaultfilters import slugify
 from django.utils import six
 from django.utils.translation import ugettext_lazy as _
+from django.urls.exceptions import NoReverseMatch
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
 from rest_framework.generics import get_object_or_404
@@ -41,7 +42,8 @@ from ..mixins import as_html_description, product_url
 from ..models import (BalanceLine, CartItem, Charge, Plan,
     RoleDescription, Subscription, Transaction)
 from ..utils import (get_organization_model, get_role_model,
-    get_picture_storage)
+    get_picture_storage, build_absolute_uri)
+from ..compat import reverse
 
 #pylint: disable=no-init,old-style-class
 
@@ -597,14 +599,43 @@ class AccessibleSerializer(serializers.ModelSerializer):
     printable_name = serializers.CharField(source='organization.printable_name')
     email = serializers.CharField(source='organization.email')
     role_description = RoleDescriptionSerializer(read_only=True)
+    home_url = serializers.SerializerMethodField()
+    settings_url = serializers.SerializerMethodField()
+    accept_grant_api_url = serializers.SerializerMethodField()
 
     class Meta:
         model = get_role_model()
         fields = ('created_at', 'request_key', 'grant_key',
+            'home_url', 'settings_url', 'accept_grant_api_url',
             'slug', 'printable_name', 'email', # Organization
             'role_description')                # RoleDescription
         read_only_fields = ('created_at', 'request_key', 'grant_key',
             'printable_name')
+
+    def get_accept_grant_api_url(self, obj):
+        if obj.grant_key:
+            return build_absolute_uri(self.context['request'], reverse(
+                'saas_api_accessibles_accept', args=(
+                self.context['view'].user, obj.grant_key)))
+
+    def get_settings_url(self, obj):
+        req = self.context['request']
+        org = obj.organization
+        if org.is_provider:
+            settings_location = build_absolute_uri(req, reverse(
+                'saas_dashboard', args=(org.slug,)))
+        else:
+            settings_location = build_absolute_uri(req, reverse(
+                'saas_organization_profile', args=(org.slug,)))
+        return settings_location
+
+    def get_home_url(self, obj):
+        try:
+            return build_absolute_uri(self.context['request'], reverse(
+                'organization_app', args=(obj.organization.slug,)))
+        except NoReverseMatch:
+            # serializer used in djaodjin-saas not in djaoapp
+            pass
 
 
 class BaseRoleSerializer(serializers.ModelSerializer):
@@ -621,12 +652,18 @@ class RoleSerializer(BaseRoleSerializer):
 
     organization = OrganizationSerializer(read_only=True)
     role_description = RoleDescriptionRelatedField(read_only=True)
+    accept_request_api_url = serializers.SerializerMethodField()
 
     class Meta(BaseRoleSerializer.Meta):
-        fields = BaseRoleSerializer.Meta.fields + (
-            'organization', 'role_description')
+        fields = BaseRoleSerializer.Meta.fields + ('organization',
+             'accept_request_api_url', 'role_description')
         read_only_fields = BaseRoleSerializer.Meta.read_only_fields + (
             'role_description',)
+
+    def get_accept_request_api_url(self, obj):
+        return build_absolute_uri(self.context['request'], reverse(
+            'saas_api_role_by_descr_list', args=(
+            obj.organization, obj.role_description)))
 
 
 class RoleAccessibleSerializer(BaseRoleSerializer):

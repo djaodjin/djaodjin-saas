@@ -39,7 +39,8 @@ from django.utils.translation import ugettext_lazy as _
 from rest_framework import serializers, status
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.generics import (ListAPIView, CreateAPIView,
-    ListCreateAPIView, DestroyAPIView, RetrieveUpdateDestroyAPIView)
+    ListCreateAPIView, DestroyAPIView, RetrieveUpdateDestroyAPIView,
+    GenericAPIView, get_object_or_404)
 from rest_framework.response import Response
 from rest_framework.pagination import PageNumberPagination
 
@@ -944,3 +945,38 @@ class RoleDetailAPIView(RoleMixin, DestroyAPIView):
                 'organization': self.organization.slug, 'roles': roles})
         queryset.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class RoleAcceptAPIView(UserMixin, GenericAPIView):
+
+    def put(self, request, *args, **kwargs):
+        key = kwargs.get('verification_key')
+        obj = get_object_or_404(get_role_model().objects.all(),
+                grant_key=key)
+        existing_role = get_role_model().objects.filter(
+            organization=obj.organization, user=self.user).exclude(
+            pk=obj.pk).first()
+        if existing_role:
+            raise ValidationError(_("You already have a %(existing_role)s"\
+                " role on %(organization)s. Please drop this role first if"\
+                " you want to accept a role of %(role)s instead.") % {
+                    'role': obj.role_description.title,
+                    'organization': obj.organization.printable_name,
+                    'existing_role': existing_role.role_description.title})
+
+        obj.user = self.user       # We appropriate the Role here.
+        grant_key = obj.grant_key
+        obj.grant_key = None
+        obj.save()
+        LOGGER.info("%s accepted role of %s to %s (grant_key=%s)",
+            self.user, obj.role_description, obj.organization,
+            grant_key, extra={
+                'request': request, 'event': 'accept',
+                'user': str(self.user),
+                'organization': str(obj.organization),
+                'role_description': str(obj.role_description),
+                'grant_key': grant_key})
+        signals.role_grant_accepted.send(sender=__name__,
+            role=obj, grant_key=grant_key, request=request)
+
+        return Response({'verification_key': key}, status=status.HTTP_200_OK)
