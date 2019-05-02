@@ -1,4 +1,4 @@
-# Copyright (c) 2018, DjaoDjin inc.
+# Copyright (c) 2019, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -37,7 +37,7 @@ from .. import settings
 from ..compat import reverse
 from ..mixins import ProviderMixin
 from ..models import Agreement, Signature, get_broker
-from ..utils import validate_redirect_url
+from ..utils import build_absolute_uri, validate_redirect_url
 
 
 class AgreementDetailView(DetailView):
@@ -115,13 +115,10 @@ class SignatureForm(forms.ModelForm):
 
 def _read_agreement_file(slug, context=None, request=None):
     import markdown
-    from ..compat import import_string
     if not context:
         broker = get_broker()
         context = {'organization': broker}
         if settings.BUILD_ABSOLUTE_URI_CALLABLE:
-            build_absolute_uri = import_string(
-                settings.BUILD_ABSOLUTE_URI_CALLABLE)
             context.update({'site_url': build_absolute_uri(request)})
     # We use context and not context=context in the following statement
     # such that the code is compatible with Django 1.7 and Django 1.8

@@ -45,8 +45,8 @@ from .humanize import (as_money, DESCRIBE_BUY_PERIODS, DESCRIBE_BUY_USE,
     DESCRIBE_UNLOCK_NOW, DESCRIBE_UNLOCK_LATER, DESCRIBE_BALANCE)
 from .models import (CartItem, Charge, Coupon, Organization, Plan,
     RoleDescription, Subscription, Transaction, UseCharge, get_broker)
-from .utils import (datetime_or_now, is_broker, get_role_model,
-    update_context_urls)
+from .utils import (build_absolute_uri, datetime_or_now, is_broker,
+    get_role_model, update_context_urls)
 from .extras import OrganizationMixinBase
 
 
@@ -1046,13 +1046,11 @@ def product_url(provider, subscriber=None, request=None):
     We cannot use a basic ``reverse('product_default_start')`` here because
     *organization* and ``get_broker`` might be different.
     """
-    from .compat import import_string
     location = '/app/'
     if subscriber:
         location += '%s/' % subscriber
     if settings.BUILD_ABSOLUTE_URI_CALLABLE:
-        build_absolute_url = import_string(settings.BUILD_ABSOLUTE_URI_CALLABLE)
-        return build_absolute_url(request, provider=provider, location=location)
+        return build_absolute_uri(request, location=location, provider=provider)
     elif not is_broker(provider):
         location = '/%s' % provider + location
     return location

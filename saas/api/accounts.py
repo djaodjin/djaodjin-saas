@@ -23,7 +23,6 @@
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 from django.contrib.auth import get_user_model
-from rest_framework.settings import api_settings
 from rest_framework.generics import ListAPIView
 
 from .organizations import OrganizationQuerysetMixin

@@ -41,8 +41,8 @@ from ..humanize import as_money
 from ..mixins import as_html_description, product_url
 from ..models import (BalanceLine, CartItem, Charge, Plan,
     RoleDescription, Subscription, Transaction)
-from ..utils import (get_organization_model, get_role_model,
-    get_picture_storage, build_absolute_uri)
+from ..utils import (build_absolute_uri, get_organization_model, get_role_model,
+    get_picture_storage)
 from ..compat import reverse
 
 #pylint: disable=no-init,old-style-class
@@ -294,7 +294,8 @@ class OrganizationSerializer(serializers.ModelSerializer):
             return is_password_usable(obj.user.password)
         return False
 
-    def get_type(self, obj):
+    @staticmethod
+    def get_type(obj):
         if not obj.pk:
             return 'user'
         if hasattr(obj, 'is_personal') and obj.is_personal:
@@ -614,28 +615,30 @@ class AccessibleSerializer(serializers.ModelSerializer):
 
     def get_accept_grant_api_url(self, obj):
         if obj.grant_key:
-            return build_absolute_uri(self.context['request'], reverse(
+            return build_absolute_uri(self.context['request'], location=reverse(
                 'saas_api_accessibles_accept', args=(
                 self.context['view'].user, obj.grant_key)))
+        return None
 
     def get_settings_url(self, obj):
         req = self.context['request']
         org = obj.organization
         if org.is_provider:
-            settings_location = build_absolute_uri(req, reverse(
+            settings_location = build_absolute_uri(req, location=reverse(
                 'saas_dashboard', args=(org.slug,)))
         else:
-            settings_location = build_absolute_uri(req, reverse(
+            settings_location = build_absolute_uri(req, location=reverse(
                 'saas_organization_profile', args=(org.slug,)))
         return settings_location
 
     def get_home_url(self, obj):
         try:
-            return build_absolute_uri(self.context['request'], reverse(
+            return build_absolute_uri(self.context['request'], location=reverse(
                 'organization_app', args=(obj.organization.slug,)))
         except NoReverseMatch:
             # serializer used in djaodjin-saas not in djaoapp
             pass
+        return None
 
 
 class BaseRoleSerializer(serializers.ModelSerializer):
@@ -661,7 +664,7 @@ class RoleSerializer(BaseRoleSerializer):
             'role_description',)
 
     def get_accept_request_api_url(self, obj):
-        return build_absolute_uri(self.context['request'], reverse(
+        return build_absolute_uri(self.context['request'], location=reverse(
             'saas_api_role_by_descr_list', args=(
             obj.organization, obj.role_description)))
 

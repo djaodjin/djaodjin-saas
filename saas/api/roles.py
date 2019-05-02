@@ -38,8 +38,8 @@ from django.utils.encoding import force_text
 from django.utils.translation import ugettext_lazy as _
 from rest_framework import serializers, status
 from rest_framework.exceptions import PermissionDenied
-from rest_framework.generics import (ListAPIView, CreateAPIView,
-    ListCreateAPIView, DestroyAPIView, RetrieveUpdateDestroyAPIView,
+from rest_framework.generics import (ListAPIView, ListCreateAPIView,
+    DestroyAPIView, RetrieveUpdateDestroyAPIView,
     GenericAPIView, get_object_or_404)
 from rest_framework.response import Response
 from rest_framework.pagination import PageNumberPagination
@@ -301,8 +301,6 @@ class RoleInvitedListMixin(object):
     """
     def get_queryset(self):
         queryset = super(RoleInvitedListMixin, self).get_queryset()
-        self.request.invited_count = queryset.filter(
-            grant_key__isnull=False).count()
         qry = {}
         role_status = self.request.query_params.get('role_status', '')
         stts = role_status.split(',')
@@ -320,10 +318,16 @@ class RoleRequestedListMixin(object):
     """
     Filters requests for any role on an organization.
     """
+
     def get_queryset(self):
         queryset = super(RoleRequestedListMixin, self).get_queryset()
         self.request.requested_count = queryset.filter(
             request_key__isnull=False).count()
+        # Because we must count the number of invited
+        # in `RoleByDescrQuerysetMixin.get_queryset`, we also need to compute
+        # here instead of later in RoleInvitedListMixin.
+        self.request.invited_count = queryset.filter(
+            grant_key__isnull=False).count()
         qry = {}
         role_status = self.request.query_params.get('role_status', '')
         stts = role_status.split(',')
@@ -676,14 +680,9 @@ class RoleQuerysetBaseMixin(OrganizationMixin):
         return get_role_model().objects.filter(organization=self.organization)
 
 
-class RoleQuerysetMixin(RoleRequestedListMixin, RoleQuerysetBaseMixin):
-    # The requested_count has to be populated for all roles available
-    # on an organization because `role_description` is not set at this point.
-    pass
-
-
 class RoleListAPIView(RoleSmartListMixin, RoleInvitedListMixin,
-                      RoleQuerysetMixin, ListAPIView):
+                      RoleRequestedListMixin, RoleQuerysetBaseMixin,
+                      ListAPIView):
     """
     Lists all roles for an organization
 
@@ -733,11 +732,34 @@ class RoleListAPIView(RoleSmartListMixin, RoleInvitedListMixin,
     pagination_class = RoleListPagination
 
 
-class RoleByDescrQuerysetMixin(RoleDescriptionMixin, RoleQuerysetMixin):
+class RoleByDescrQuerysetMixin(RoleDescriptionMixin, RoleQuerysetBaseMixin):
+    # We cannot use `RoleRequestedListMixin` here because `role_description`
+    # will be None on requested roles. We thus need a `role_description = X
+    # *OR* request_key IS NOT NULL`. Calls to more and more refined `filter`
+    # through class inheritence only allows us to implement `*AND*`.
 
     def get_queryset(self):
-        return super(RoleByDescrQuerysetMixin, self).get_queryset().filter(
-            role_description=self.role_description)
+        queryset = super(RoleByDescrQuerysetMixin, self).get_queryset()
+        self.request.requested_count = queryset.filter(
+            request_key__isnull=False).count()
+        # We have to get the count of invited here otherwise
+        # `GET /api/profile/{organization}/roles/manager?role_status=requested`
+        # will always return zero invited users.
+        self.request.invited_count = queryset.filter(
+            role_description=self.role_description,
+            grant_key__isnull=False).count()
+        role_status = self.request.query_params.get('role_status', '')
+        stts = role_status.split(',')
+        if 'active' in stts:
+            if 'requested' in stts:
+                pass
+            else:
+                return queryset.filter(role_description=self.role_description)
+        elif 'requested' in stts:
+            return queryset.filter(request_key__isnull=False)
+        return queryset.filter(
+            Q(role_description=self.role_description)
+            | Q(request_key__isnull=False))
 
 
 class RoleByDescrListAPIView(RoleSmartListMixin, RoleInvitedListMixin,
@@ -948,6 +970,9 @@ class RoleDetailAPIView(RoleMixin, DestroyAPIView):
 
 
 class RoleAcceptAPIView(UserMixin, GenericAPIView):
+    """
+    XXX missing doc.
+    """
 
     def put(self, request, *args, **kwargs):
         key = kwargs.get('verification_key')
