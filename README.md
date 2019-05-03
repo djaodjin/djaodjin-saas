@@ -92,13 +92,9 @@ saas/templates/notification/ directory.
 Release Notes
 =============
 
-0.5.0
-  * adss role_status filter (active/invited/requested) to roles APIs
-  * improves support of search accounts APIs for typeahead
-  * adds sign agreement API
-  * moves is_broker from saas.models to saas.utils
-  * inserts only views related to the type of organization in `urls` context
-        such that it is simpler to generate menu bars.
+0.5.1
+  * adss API to accept a role grant
+  * fixes calculations of `invited_count` and `requested_count` through filters
 
 [previous release notes](changelog)
 

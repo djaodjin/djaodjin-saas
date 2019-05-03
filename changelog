@@ -1,3 +1,9 @@
+0.5.1
+  * adss API to accept a role grant
+  * fixes calculations of `invited_count` and `requested_count` through filters
+
+ -- Sebastien Mirolo <smirolo@djaodjin.com>   Fri, 3 May 2019 13:33:00 -0700
+
 0.5.0
   * adss role_status filter (active/invited/requested) to roles APIs
   * improves support of search accounts APIs for typeahead
