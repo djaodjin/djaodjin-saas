@@ -82,7 +82,7 @@ class RoleDetailView(RoleDescriptionMixin, TemplateView):
             'api_candidates': reverse('saas_api_search_users'),
             'organization': {
                 'api_roles': reverse(
-                    'saas_api_role_by_descr_list', args=(
+                    'saas_api_roles_by_descr', args=(
                         self.organization, role)),
         }}
         update_context_urls(context, urls)
@@ -101,7 +101,7 @@ class RoleListView(OrganizationMixin, TemplateView):
         context = super(RoleListView, self).get_context_data(**kwargs)
         urls = {'organization': {
             'api_roles': reverse(
-                'saas_api_role_list', args=(self.organization,)),
+                'saas_api_roles', args=(self.organization,)),
             'api_role_descriptions': reverse(
                 'saas_api_role_description_list', args=(self.organization,)),
         }}

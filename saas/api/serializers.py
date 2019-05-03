@@ -675,7 +675,7 @@ class RoleSerializer(BaseRoleSerializer):
 
     def get_accept_request_api_url(self, obj):
         return build_absolute_uri(self.context['request'], location=reverse(
-            'saas_api_role_by_descr_list', args=(
+            'saas_api_roles_by_descr', args=(
             obj.organization, obj.role_description)))
 
     def get_remove_api_url(self, obj):
@@ -707,3 +707,8 @@ class AgreementSignSerializer(NoModelSerializer):
     read_terms = serializers.BooleanField(help_text=_(
         "I have read and understand these terms and conditions"))
     last_signed = serializers.DateTimeField(read_only=True)
+
+
+class AccessibleOrganizationSerializer(NoModelSerializer):
+    organization = serializers.CharField()
+    message = serializers.CharField(max_length=255, required=False)
