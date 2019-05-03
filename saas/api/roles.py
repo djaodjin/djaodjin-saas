@@ -435,10 +435,13 @@ class AccessibleByListAPIView(RoleSmartListMixin, RoleInvitedListMixin,
         return self.perform_optin(serializer, request, user=self.user)
 
 
-class AccessibleByDescrListAPIView(AccessibleByDescrQuerysetMixin, UserMixin,
-                                   RoleSmartListMixin, ListCreateAPIView):
+class AccessibleByDescrListAPIView(RoleSmartListMixin, RoleInvitedListMixin,
+                                   RoleRequestedListMixin,
+                                   AccessibleByDescrQuerysetMixin, UserMixin,
+                                   ListCreateAPIView):
 
     serializer_class = AccessibleSerializer
+    pagination_class = RoleListPagination
 
     def create(self, request, *args, **kwargs): #pylint:disable=unused-argument
         serializer = AccessibleOrganizationSerializer(data=request.data)
@@ -457,17 +460,8 @@ class AccessibleByDescrListAPIView(AccessibleByDescrQuerysetMixin, UserMixin,
             raise Http404("Role Description %(slug)s does not exist."
                 % {'slug': self.kwargs.get('role')})
 
-        created = False
-        if not get_role_model().objects.filter(
-                organization=organization, user=self.user,
-                role_description=role_descr).exists():
-            # Otherwise a role already exists
-            # or a request was previously sent.
-            role = get_role_model()(organization=organization, user=self.user,
-                role_description=role_descr,
-                request_key=generate_random_slug())
-            role.save()
-            created = True
+        created = organization.add_role_request(self.user,
+            role_description=role_descr)
 
         signals.user_relation_requested.send(sender=__name__,
             organization=organization, user=self.user, reason=reason)

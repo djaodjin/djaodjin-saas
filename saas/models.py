@@ -479,7 +479,7 @@ class Organization(models.Model):
             role=m2m, reason=reason, request_user=request_user)
         return force_insert
 
-    def add_role_request(self, user, at_time=None):
+    def add_role_request(self, user, at_time=None, role_description=None):
         # OK to use ``filter`` in both subsequent queries as we are dealing
         # with the whole QuerySet related to a user.
         if not get_role_model().objects.filter(
@@ -487,8 +487,8 @@ class Organization(models.Model):
             # Otherwise a role already exists
             # or a request was previously sent.
             at_time = datetime_or_now(at_time)
-            m2m = get_role_model()(created_at=at_time,
-                organization=self, user=user,
+            m2m = get_role_model()(created_at=at_time, organization=self,
+                user=user, role_description=role_description,
                 request_key=generate_random_slug())
             m2m.save(using=self._state.db, force_insert=True)
             return True
