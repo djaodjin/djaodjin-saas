@@ -690,3 +690,8 @@ class AgreementSignSerializer(NoModelSerializer):
     read_terms = serializers.BooleanField(help_text=_(
         "I have read and understand these terms and conditions"))
     last_signed = serializers.DateTimeField(read_only=True)
+
+
+class AccessibleOrganizationSerializer(NoModelSerializer):
+    organization = serializers.CharField()
+    message = serializers.CharField(max_length=255, required=False)

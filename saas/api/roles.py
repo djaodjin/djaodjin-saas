@@ -52,7 +52,8 @@ from ..models import RoleDescription
 from ..utils import (full_name_natural_split, get_organization_model,
     get_role_model, generate_random_slug)
 from .serializers import (AccessibleSerializer, BaseRoleSerializer,
-    NoModelSerializer, RoleSerializer, RoleAccessibleSerializer)
+    NoModelSerializer, RoleSerializer, RoleAccessibleSerializer,
+    AccessibleOrganizationSerializer)
 
 
 LOGGER = logging.getLogger(__name__)
@@ -347,6 +348,13 @@ class AccessibleByQuerysetMixin(UserMixin):
         return get_role_model().objects.filter(user=self.user)
 
 
+class AccessibleByDescrQuerysetMixin(AccessibleByQuerysetMixin):
+
+    def get_queryset(self):
+        return super(AccessibleByDescrQuerysetMixin, self).get_queryset(
+            ).filter(role_description__slug=self.kwargs.get('role'))
+
+
 class AccessibleByListAPIView(RoleSmartListMixin, RoleInvitedListMixin,
                               RoleRequestedListMixin, AccessibleByQuerysetMixin,
                               OptinBase, ListCreateAPIView):
@@ -425,6 +433,51 @@ class AccessibleByListAPIView(RoleSmartListMixin, RoleInvitedListMixin,
         serializer = OrganizationRoleCreateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         return self.perform_optin(serializer, request, user=self.user)
+
+
+class AccessibleByDescrListAPIView(AccessibleByDescrQuerysetMixin, UserMixin,
+                                   RoleSmartListMixin, ListCreateAPIView):
+
+    serializer_class = AccessibleSerializer
+
+    def create(self, request, *args, **kwargs): #pylint:disable=unused-argument
+        serializer = AccessibleOrganizationSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        reason = serializer.validated_data.get('message')
+        organization_slug = serializer.validated_data.get('organization')
+        organization = get_object_or_404(
+            get_organization_model().objects.all(), slug=organization_slug)
+        if not self.user:
+            raise Http404("User %(username)s does not exist."
+                % {'username': self.kwargs.get('user')})
+        try:
+            role_descr = organization.get_role_description(
+                self.kwargs.get('role'))
+        except RoleDescription.DoesNotExist:
+            raise Http404("Role Description %(slug)s does not exist."
+                % {'slug': self.kwargs.get('role')})
+
+        created = False
+        if not get_role_model().objects.filter(
+                organization=organization, user=self.user,
+                role_description=role_descr).exists():
+            # Otherwise a role already exists
+            # or a request was previously sent.
+            role = get_role_model()(organization=organization, user=self.user,
+                role_description=role_descr,
+                request_key=generate_random_slug())
+            role.save()
+            created = True
+
+        signals.user_relation_requested.send(sender=__name__,
+            organization=organization, user=self.user, reason=reason)
+        if created:
+            resp_status = status.HTTP_201_CREATED
+        else:
+            resp_status = status.HTTP_200_OK
+
+        return Response(serializer.validated_data, status=resp_status,
+            headers=self.get_success_headers(serializer.validated_data))
 
 
 class RoleDescriptionQuerysetMixin(OrganizationMixin):
