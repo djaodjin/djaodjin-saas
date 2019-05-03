@@ -44,9 +44,9 @@ urlpatterns = [
     url(r'^(?P<organization>%s)/roles/(?P<role>%s)/?'
         % (ACCT_REGEX, ACCT_REGEX),
         RoleByDescrListAPIView.as_view(),
-        name='saas_api_role_by_descr_list'),
+        name='saas_api_roles_by_descr'),
     url(r'^(?P<organization>%s)/roles/?' % ACCT_REGEX,
-        RoleListAPIView.as_view(), name='saas_api_role_list'),
+        RoleListAPIView.as_view(), name='saas_api_roles'),
     url(r'^(?P<organization>%s)/subscriptions/(?P<subscribed_plan>%s)/?'
         % (ACCT_REGEX, ACCT_REGEX),
         SubscriptionDetailAPIView.as_view(),
