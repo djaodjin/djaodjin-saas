@@ -37,7 +37,7 @@
             [[entry.request_key ? "requested" : entry.role_description.title]]
             <button @click="acceptGrant(entry)" v-if="entry.accept_grant_api_url">accept</button>
           </td>
-          <td><button ng-click="remove($event, $index)" @click="remove(index)">remove</button></td>
+          <td><button class="remove" ng-click="remove($event, $index)" @click="remove(index)">remove</button></td>
         </tr>
       </tbody>
     </table>

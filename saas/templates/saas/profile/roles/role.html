@@ -10,7 +10,6 @@
       <thead>
         <tr>
           <th>Username</th>
-          <th>Role</th>
           <th>Email</th>
           <th></th>
           <th></th>
@@ -23,7 +22,7 @@
       </tbody>
       <tbody ng-show="items.$resolved && items.results.length == 0" ng-cloak
         v-show="itemsLoaded && items.results.length == 0" v-cloak>
-        <tr colspan="5">
+        <tr colspan="4">
           <td>No users with role {{role_descr.title}} yet.</td>
         </tr>
       </tbody>
@@ -32,10 +31,13 @@
         <tr ng-prop-id="item.user.slug" ng-repeat="item in items.results"
             v-bind:id="item.user.slug" v-for="(item, index) in items.results">
           <td>[[item.user.slug]]</td>
-          <td>[[item.role_description.title]]</td>
           <td>[[item.user.email]]</td>
-          <td>[[item.grant_key ? "invited" : ""]]</td>
-          <td><button ng-click="remove($event, $index)"
+          <td>
+            <button @click="sendInvite(item.user.slug)"
+                v-if="item.grant_key">Resend Invite</button>
+            <button @click="save(item.user)" v-if="item.accept_request_api_url">Grant</button>
+          </td>
+          <td><button class="remove" ng-click="remove($event, $index)"
                       @click="remove(index)">Remove</button></td>
         </tr>
       </tbody>

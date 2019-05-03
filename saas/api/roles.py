@@ -435,11 +435,72 @@ class AccessibleByDescrListAPIView(RoleSmartListMixin,
                                    InvitedRequestedListMixin,
                                    AccessibleByDescrQuerysetMixin, UserMixin,
                                    ListCreateAPIView):
+    """
+    Lists all relations where a ``User`` has a specified ``Role``
+    on an ``Organization``.
 
+    see :doc:`Flexible Security Framework <security>`.
+
+    **Tags: rbac
+
+    **Examples
+
+    .. code-block:: http
+
+        GET  /api/users/alice/accessibles/manager HTTP/1.1
+
+    responds
+
+    .. code-block:: json
+
+        {
+            "count": 1,
+            "next": null,
+            "previous": null,
+            "results": [
+                {
+                    "created_at": "2018-01-01T00:00:00Z",
+                    "slug": "cowork",
+                    "printable_name": "ABC Corp.",
+                    "role_description": "manager",
+                    "request_key": null,
+                    "grant_key": null
+                }
+            ]
+        }
+    """
     serializer_class = AccessibleSerializer
     pagination_class = RoleListPagination
 
     def create(self, request, *args, **kwargs): #pylint:disable=unused-argument
+        """
+        Creates a request to attach a user to an organization
+        with a specified role.
+
+        see :doc:`Flexible Security Framework <security>`.
+
+        **Tags: rbac
+
+        **Examples
+
+        .. code-block:: http
+
+            POST /api/users/xia/accessibles/manager/ HTTP/1.1
+
+        .. code-block:: json
+
+            {
+              "slug": "cowork"
+            }
+
+        responds
+
+        .. code-block:: json
+
+            {
+              "slug": "cowork"
+            }
+        """
         serializer = AccessibleOrganizationSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         reason = serializer.validated_data.get('message')
@@ -1162,4 +1223,4 @@ class RoleAcceptAPIView(UserMixin, GenericAPIView):
         signals.role_grant_accepted.send(sender=__name__,
             role=obj, grant_key=grant_key, request=request)
 
-        return Response(self.get_serializer(instance=role))
+        return Response(self.get_serializer(instance=obj).data)

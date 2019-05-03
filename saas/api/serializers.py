@@ -674,9 +674,11 @@ class RoleSerializer(BaseRoleSerializer):
             'role_description',)
 
     def get_accept_request_api_url(self, obj):
-        return build_absolute_uri(self.context['request'], location=reverse(
-            'saas_api_roles_by_descr', args=(
-            obj.organization, obj.role_description)))
+        if obj.request_key:
+            return build_absolute_uri(self.context['request'], location=reverse(
+                'saas_api_roles_by_descr', args=(
+                    obj.organization, obj.role_description)))
+        return None
 
     def get_remove_api_url(self, obj):
         role_description = (obj.role_description
