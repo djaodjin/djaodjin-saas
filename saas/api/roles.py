@@ -300,32 +300,13 @@ class OptinBase(object):
             headers=self.get_success_headers(serializer.validated_data))
 
 
-class RoleInvitedListMixin(object):
-    """
-    Filters invitations for a specific role on an organization.
-    """
-    def get_queryset(self):
-        queryset = super(RoleInvitedListMixin, self).get_queryset()
-        qry = {}
-        role_status = self.request.query_params.get('role_status', '')
-        stts = role_status.split(',')
-        if 'active' in stts:
-            if 'invited' in stts:
-                pass
-            else:
-                qry['grant_key__isnull'] = True
-        elif 'invited' in stts:
-            qry['grant_key__isnull'] = False
-        return queryset.filter(**qry)
-
-
-class RoleRequestedListMixin(object):
+class InvitedRequestedListMixin(object):
     """
     Filters requests for any role on an organization.
     """
 
     def get_queryset(self):
-        queryset = super(RoleRequestedListMixin, self).get_queryset()
+        queryset = super(InvitedRequestedListMixin, self).get_queryset()
         self.request.requested_count = queryset.filter(
             request_key__isnull=False).count()
         # Because we must count the number of invited
@@ -336,14 +317,25 @@ class RoleRequestedListMixin(object):
         qry = {}
         role_status = self.request.query_params.get('role_status', '')
         stts = role_status.split(',')
+        flt = None
         if 'active' in stts:
+            flt = Q(grant_key__isnull=True) & Q(request_key__isnull=True)
+            if 'invited' in stts:
+                flt = Q(request_key__isnull=True)
+                if 'requested' in stts:
+                    flt = None
+            elif 'requested' in stts:
+                flt = Q(grant_key__isnull=True)
+        elif 'invited' in stts:
+            flt = Q(grant_key__isnull=False)
             if 'requested' in stts:
-                pass
-            else:
-                qry['request_key__isnull'] = True
+                flt = flt | Q(request_key__isnull=False)
         elif 'requested' in stts:
-            qry['request_key__isnull'] = False
-        return queryset.filter(**qry)
+            flt = Q(request_key__isnull=False)
+
+        if flt is not None:
+            return queryset.filter(flt)
+        return queryset
 
 
 class AccessibleByQuerysetMixin(UserMixin):
@@ -359,8 +351,8 @@ class AccessibleByDescrQuerysetMixin(AccessibleByQuerysetMixin):
             ).filter(role_description__slug=self.kwargs.get('role'))
 
 
-class AccessibleByListAPIView(RoleSmartListMixin, RoleInvitedListMixin,
-                              RoleRequestedListMixin, AccessibleByQuerysetMixin,
+class AccessibleByListAPIView(RoleSmartListMixin, InvitedRequestedListMixin,
+                              AccessibleByQuerysetMixin,
                               OptinBase, ListCreateAPIView):
     """
     Lists all relations where an ``Organization`` is accessible by
@@ -439,8 +431,8 @@ class AccessibleByListAPIView(RoleSmartListMixin, RoleInvitedListMixin,
         return self.perform_optin(serializer, request, user=self.user)
 
 
-class AccessibleByDescrListAPIView(RoleSmartListMixin, RoleInvitedListMixin,
-                                   RoleRequestedListMixin,
+class AccessibleByDescrListAPIView(RoleSmartListMixin,
+                                   InvitedRequestedListMixin,
                                    AccessibleByDescrQuerysetMixin, UserMixin,
                                    ListCreateAPIView):
 
@@ -731,9 +723,8 @@ class RoleQuerysetBaseMixin(OrganizationMixin):
         return get_role_model().objects.filter(organization=self.organization)
 
 
-class RoleListAPIView(RoleSmartListMixin, RoleInvitedListMixin,
-                      RoleRequestedListMixin, RoleQuerysetBaseMixin,
-                      ListAPIView):
+class RoleListAPIView(RoleSmartListMixin, InvitedRequestedListMixin,
+                      RoleQuerysetBaseMixin, ListAPIView):
     """
     Lists all roles for an organization
 
@@ -784,7 +775,7 @@ class RoleListAPIView(RoleSmartListMixin, RoleInvitedListMixin,
 
 
 class RoleByDescrQuerysetMixin(RoleDescriptionMixin, RoleQuerysetBaseMixin):
-    # We cannot use `RoleRequestedListMixin` here because `role_description`
+    # We cannot use `InvitedRequestedListMixin` here because `role_description`
     # will be None on requested roles. We thus need a `role_description = X
     # *OR* request_key IS NOT NULL`. Calls to more and more refined `filter`
     # through class inheritence only allows us to implement `*AND*`.
@@ -801,20 +792,28 @@ class RoleByDescrQuerysetMixin(RoleDescriptionMixin, RoleQuerysetBaseMixin):
             grant_key__isnull=False).count()
         role_status = self.request.query_params.get('role_status', '')
         stts = role_status.split(',')
+        flt = (Q(role_description=self.role_description) |
+            Q(request_key__isnull=False))
         if 'active' in stts:
+            flt = (Q(role_description=self.role_description) &
+                Q(grant_key__isnull=True) & Q(request_key__isnull=True))
+            if 'invited' in stts:
+                flt = Q(role_description=self.role_description)
             if 'requested' in stts:
-                pass
-            else:
-                return queryset.filter(role_description=self.role_description)
-        elif 'requested' in stts:
-            return queryset.filter(request_key__isnull=False)
-        return queryset.filter(
-            Q(role_description=self.role_description)
-            | Q(request_key__isnull=False))
+                flt = flt | Q(request_key__isnull=False)
+        else:
+            if 'invited' in stts:
+                flt = (Q(role_description=self.role_description) &
+                    Q(grant_key__isnull=False))
+                if 'requested' in stts:
+                    flt = flt | Q(request_key__isnull=False)
+            elif 'requested' in stts:
+                flt = Q(request_key__isnull=False)
+        return queryset.filter(flt)
 
 
-class RoleByDescrListAPIView(RoleSmartListMixin, RoleInvitedListMixin,
-                              RoleByDescrQuerysetMixin, ListCreateAPIView):
+class RoleByDescrListAPIView(RoleSmartListMixin, RoleByDescrQuerysetMixin,
+                             ListCreateAPIView):
     """
     ``GET`` lists the specified role assignments for an organization.
 

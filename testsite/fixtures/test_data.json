@@ -679,10 +679,19 @@
 {
     "fields": {
       "created_at": "2019-01-01T00:00:00-00:00",
-      "role_description": 1,
       "organization": 5,
       "user": 13,
       "request_key": "b0e000e00e0001234567890123456789012345"
     },
     "model": "saas.Role", "pk": 15
+},
+{
+    "fields": {
+      "created_at": "2019-01-01T00:00:00-00:00",
+      "role_description": 1,
+      "organization": 6,
+      "user": 13,
+      "request_key": "1234567890123456789012345b0e000e00e000"
+    },
+    "model": "saas.Role", "pk": 16
 }]
