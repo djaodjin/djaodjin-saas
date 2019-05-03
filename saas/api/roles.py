@@ -1082,6 +1082,12 @@ class RoleDetailAPIView(RoleMixin, DestroyAPIView):
 
 class AccessibleDetailAPIView(RoleDetailAPIView):
 
+    def get_queryset(self):
+        # We never take the `role_description` into account when removing
+        # on the accessibles page.
+        return get_role_model().objects.filter(
+            organization=self.organization, user=self.user)
+
     def post(self, request, *args, **kwargs):
         """
         Re-sends the request e-mail that the user is requested a role
@@ -1126,8 +1132,7 @@ class AccessibleDetailAPIView(RoleDetailAPIView):
         """
         role = self.get_object()
         signals.role_request_created.send(sender=__name__,
-            role=role, reason=None,
-            request_user=request.user)
+            role=role, reason=None, request_user=request.user)
         serializer = self.get_serializer(role)
         return Response(serializer.data)
 
@@ -1223,4 +1228,5 @@ class RoleAcceptAPIView(UserMixin, GenericAPIView):
         signals.role_grant_accepted.send(sender=__name__,
             role=obj, grant_key=grant_key, request=request)
 
-        return Response(self.get_serializer(instance=obj).data)
+        serializer = self.get_serializer(instance=obj)
+        return Response(serializer.data)
