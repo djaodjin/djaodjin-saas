@@ -939,8 +939,7 @@ var userRelationMixin = {
                     return;
                 }
             }
-            var url = vm.url + '/' + encodeURIComponent(slug);
-            vm.reqDelete(url, function() {
+            vm.reqDelete(ob.remove_api_url, function() {
                 // splicing instead of refetching because
                 // subsequent fetch might fail due to 403
                 vm.items.results.splice(idx, 1);
