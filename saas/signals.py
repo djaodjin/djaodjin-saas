@@ -41,11 +41,11 @@ card_expires_soon = Signal(providing_args=['organization', 'nb_days'])
 subscription_upgrade = Signal(providing_args=['subscription', 'nb_days'])
 payment_method_absent = Signal(providing_args=['organization'])
 user_invited = Signal(providing_args=['user', 'invited_by'])
-user_relation_added = Signal(providing_args=['role', 'reason'])
-user_relation_requested = Signal(providing_args=[
-    'organization', 'user', 'reason'])
-role_grant_accepted = Signal(providing_args=[
-    'role', 'grant_key'])
+role_grant_accepted = Signal(providing_args=['role', 'grant_key'])
+role_grant_created = Signal(providing_args=['role', 'reason'])
+# There is no `role_request_accepted` because a `role_grant_created`
+# will already be triggered when the request is accepted.
+role_request_created = Signal(providing_args=['role', 'reason'])
 subscription_grant_accepted = Signal(providing_args=[
     'subscription', 'grant_key'])
 subscription_grant_created = Signal(providing_args=[

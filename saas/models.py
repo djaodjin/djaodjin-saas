@@ -475,7 +475,7 @@ class Organization(models.Model):
         m2m.role_description = role_descr
         m2m.request_key = None
         m2m.save(using=self._state.db, force_insert=force_insert)
-        signals.user_relation_added.send(sender=__name__,
+        signals.role_grant_created.send(sender=__name__,
             role=m2m, reason=reason, request_user=request_user)
         return force_insert
 
@@ -491,8 +491,8 @@ class Organization(models.Model):
                 organization=self, user=user,
                 request_key=generate_random_slug())
             m2m.save(using=self._state.db, force_insert=True)
-            return True
-        return False
+            return m2m
+        return None
 
     def add_manager(self, user, at_time=None, reason=None, extra=None,
                     request_user=None):

@@ -28,7 +28,7 @@ URLs for API related to users accessible by.
 
 from django.conf.urls import url
 
-from ...api.roles import (AccessibleByListAPIView, RoleDetailAPIView,
+from ...api.roles import (AccessibleByListAPIView, AccessibleDetailAPIView,
     RoleAcceptAPIView)
 from ...api.users import AgreementSignAPIView
 from ... import settings
@@ -39,10 +39,9 @@ urlpatterns = [
     url(r'^users/(?P<user>%s)/accessibles/accept/(?P<verification_key>%s)/' % (
         settings.MAYBE_EMAIL_REGEX, settings.VERIFICATION_KEY_RE),
         RoleAcceptAPIView.as_view(), name='saas_api_accessibles_accept'),
-    url(r'^users/(?P<user>%s)/accessibles/(?P<organization>%s)'\
-        '(/(?P<role>%s))?/?' % (settings.ACCT_REGEX, settings.ACCT_REGEX,
-        settings.ACCT_REGEX),
-        RoleDetailAPIView.as_view(), name='saas_api_accessible_detail'),
+    url(r'^users/(?P<user>%s)/accessibles/(?P<role>%s)/(?P<organization>%s)/?'
+        % (settings.ACCT_REGEX, settings.ACCT_REGEX, settings.ACCT_REGEX),
+        AccessibleDetailAPIView.as_view(), name='saas_api_accessible_detail'),
     url(r'^users/(?P<user>%s)/accessibles/?' % settings.MAYBE_EMAIL_REGEX,
         AccessibleByListAPIView.as_view(), name='saas_api_accessibles'),
 ]

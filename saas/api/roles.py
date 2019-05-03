@@ -222,16 +222,20 @@ class OptinBase(object):
 
     def add_relations(self, organizations, user):
         #pylint:disable=no-self-use,unused-argument
+        roles = []
         created = False
         for organization in organizations:
-            created |= organization.add_role_request(user)
-        return organizations, created
+            role = organization.add_role_request(user)
+            if role:
+                created = True
+                roles += [role]
+        return roles, created
 
-    def send_signals(self, organizations, user, reason=None, invite=False):
+    def send_signals(self, relations, user, reason=None, invite=False):
         #pylint:disable=no-self-use,unused-argument
-        for organization in organizations:
-            signals.user_relation_requested.send(sender=__name__,
-                organization=organization, user=user, reason=reason)
+        for role in relations:
+            signals.role_request_created.send(sender=__name__,
+                role=role, reason=reason)
 
     def perform_optin(self, serializer, request, user=None):
         #pylint:disable=too-many-locals
@@ -937,7 +941,7 @@ class RoleDetailAPIView(RoleMixin, DestroyAPIView):
             }
         """
         role = self.get_object()
-        signals.user_relation_added.send(sender=__name__,
+        signals.role_grant_created.send(sender=__name__,
             role=role, reason=None, request_user=request.user)
         serializer = self.get_serializer(role)
         return Response(serializer.data)
@@ -969,12 +973,121 @@ class RoleDetailAPIView(RoleMixin, DestroyAPIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
+class AccessibleDetailAPIView(RoleDetailAPIView):
+
+    def post(self, request, *args, **kwargs):
+        """
+        Re-sends the request e-mail that the user is requested a role
+        on the organization.
+
+        **Tags: rbac
+
+        **Examples
+
+        .. code-block:: http
+
+            POST /api/users/xia/accessibles/manager/cowork/ HTTP/1.1
+
+        responds
+
+        .. code-block:: json
+
+            {
+                "created_at": "2018-01-01T00:00:00Z",
+                "role_description": {
+                    "created_at": "2018-01-01T00:00:00Z",
+                    "title": "Profile Manager",
+                    "slug": "manager",
+                    "is_global": true,
+                    "organization": {
+                        "slug": "cowork",
+                        "full_name": "ABC Corp.",
+                        "printable_name": "ABC Corp.",
+                        "created_at": "2018-01-01T00:00:00Z",
+                        "email": "support@localhost.localdomain"
+                    }
+                },
+                "user": {
+                    "slug": "alice",
+                    "email": "alice@localhost.localdomain",
+                    "full_name": "Alice Doe",
+                    "created_at": "2018-01-01T00:00:00Z"
+                },
+                "request_key": "1",
+                "grant_key": null
+            }
+        """
+        role = self.get_object()
+        signals.role_request_created.send(sender=__name__,
+            role=role, reason=None,
+            request_user=request.user)
+        serializer = self.get_serializer(role)
+        return Response(serializer.data)
+
+
+    def delete(self, request, *args, **kwargs):
+        """
+        Dettach a user from one or all roles with regards to an organization,
+        typically resulting in revoking permissions from this user to manage
+        part of an organization profile.
+
+        **Tags: rbac
+
+        **Examples
+
+        .. code-block:: http
+
+            DELETE /api/users/xia/accessibles/manager/cowork/ HTTP/1.1
+        """
+        return super(AccessibleDetailAPIView, self).delete(
+            request, *args, **kwargs)
+
+
 class RoleAcceptAPIView(UserMixin, GenericAPIView):
-    """
-    XXX missing doc.
-    """
+
+    serializer_class = AccessibleSerializer
 
     def put(self, request, *args, **kwargs):
+        """
+        Accepts a role on an organization.
+
+        **Tags: rbac
+
+        **Examples
+
+        .. code-block:: http
+
+            PUT /api/users/xia/accessibles/accept/0123456789abcef/ HTTP/1.1
+
+        responds
+
+        .. code-block:: json
+
+            {
+                "created_at": "2018-01-01T00:00:00Z",
+                "role_description": {
+                    "created_at": "2018-01-01T00:00:00Z",
+                    "title": "Profile Manager",
+                    "slug": "manager",
+                    "is_global": true,
+                    "organization": {
+                        "slug": "cowork",
+                        "full_name": "ABC Corp.",
+                        "printable_name": "ABC Corp.",
+                        "created_at": "2018-01-01T00:00:00Z",
+                        "email": "support@localhost.localdomain"
+                    }
+                },
+                "user": {
+                    "slug": "alice",
+                    "email": "alice@localhost.localdomain",
+                    "full_name": "Alice Doe",
+                    "created_at": "2018-01-01T00:00:00Z"
+                },
+                "request_key": "1",
+                "grant_key": null
+            }
+        """
         key = kwargs.get('verification_key')
         obj = get_object_or_404(get_role_model().objects.all(),
                 grant_key=key)
@@ -989,7 +1102,6 @@ class RoleAcceptAPIView(UserMixin, GenericAPIView):
                     'organization': obj.organization.printable_name,
                     'existing_role': existing_role.role_description.title})
 
-        obj.user = self.user       # We appropriate the Role here.
         grant_key = obj.grant_key
         obj.grant_key = None
         obj.save()
@@ -1004,4 +1116,4 @@ class RoleAcceptAPIView(UserMixin, GenericAPIView):
         signals.role_grant_accepted.send(sender=__name__,
             role=obj, grant_key=grant_key, request=request)
 
-        return Response({'verification_key': key}, status=status.HTTP_200_OK)
+        return Response(self.get_serializer(instance=role))
