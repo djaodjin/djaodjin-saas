@@ -323,8 +323,8 @@ class PlanSubscriptionsAPIView(DateRangeMixin, SubscriptionSmartListMixin,
         return super(PlanSubscriptionsAPIView, self).post(
             request, *args, **kwargs)
 
-    def send_signals(self, subscriptions, user, reason=None, invite=False):
-        for subscription in subscriptions:
+    def send_signals(self, relations, user, reason=None, invite=False):
+        for subscription in relations:
             signals.subscription_grant_created.send(sender=__name__,
                 subscription=subscription, reason=reason, invite=invite,
                 request=self.request)

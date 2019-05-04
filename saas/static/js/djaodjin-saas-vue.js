@@ -12,7 +12,16 @@ function getInitValue(form, fieldName) {
     return "";
 }
 
-Vue.use(uiv, {prefix: 'uiv'});
+function isFunction(f){
+    // https://stackoverflow.com/a/7356528/1491475
+    return f && {}.toString.call(f) === '[object Function]';
+}
+
+function isObject(o){
+    // https://stackoverflow.com/a/46663081/1491475
+    return o instanceof Object && o.constructor === Object
+}
+
 
 Vue.filter('formatDate', function(value, format) {
   if (value) {
@@ -416,35 +425,14 @@ function handleRequestError(resp){
 var httpRequestMixin = {
     // basically a wrapper around jQuery ajax functions
     methods: {
-        req: function(params, doneCb, failCb){
-            if(!failCb) failCb = handleRequestError;
-            return $.ajax(params).done(doneCb).fail(failCb);
-        },
-        _conditionalParams: function(orig){
-            if(orig.length < 1) return [];
-            var args = [{url: orig[0]}]
-            if(orig[1] instanceof Function){
-                // shortcut form like $.get, where params=doneCb
-                // and doneCb=failCb
-                args.push(orig[1]);
-                if(orig[2]) args.push(orig[2]);
-            } else {
-                if(orig[1]) args[0].data = orig[1];
-                if(orig[2]) args.push(orig[2]); // doneCb
-                if(orig[3]) args.push(orig[3]) // failCb
-            }
-            return args;
-        },
         /** This method generates a GET HTTP request to `url` with a query
             string built of a `queryParams` dictionnary.
 
             It supports the following prototypes:
 
-            - reqGet(url)
-            - reqGet(url, queryParams)
+            - reqGet(url, successCallback)
             - reqGet(url, queryParams, successCallback)
             - reqGet(url, queryParams, successCallback, failureCallback)
-            - reqGet(url, successCallback)
             - reqGet(url, successCallback, failureCallback)
 
             `queryParams` when it is specified is a dictionnary
@@ -453,18 +441,54 @@ var httpRequestMixin = {
 
             `successCallback` and `failureCallback` must be Javascript
             functions (i.e. instance of type `Function`).
-         */
-        reqGet: function(url, data, doneCb, failCb){
+        */
+        reqGet: function(url, arg, arg2, arg3){
             var vm = this;
-            var args = vm._conditionalParams(arguments);
-            return this.req.apply(this, args);
+            var queryParams, successCallback;
+            var failureCallback = handleRequestError;
+            if(typeof url != 'string') throw 'url should be a string';
+            if(isFunction(arg)){
+                // We are parsing reqGet(url, successCallback)
+                // or reqGet(url, successCallback, errorCallback).
+                successCallback = arg;
+                if(isFunction(arg2)){
+                    // We are parsing reqGet(url, successCallback, errorCallback)
+                    failureCallback = arg2;
+                } else if( arg2 !== undefined ) {
+                    throw 'arg2 should be a failureCallback function';
+                }
+            } else if(isObject(arg)){
+                // We are parsing
+                // reqGet(url, queryParams, successCallback)
+                // or reqGet(url, queryParams, successCallback, errorCallback).
+                queryParams = arg;
+                if(isFunction(arg2)){
+                    // We are parsing reqGet(url, queryParams, successCallback)
+                    // or reqGet(url, queryParams, successCallback, errorCallback).
+                    successCallback = arg2;
+                    if(isFunction(arg3)){
+                        // We are parsing reqGet(url, queryParams, successCallback, errorCallback)
+                        failureCallback = arg3;
+                    } else if( arg3 !== undefined ){
+                        throw 'arg3 should be a failureCallback function';
+                    }
+                } else {
+                    throw 'arg2 should be a successCallback function';
+                }
+            } else {
+                throw 'arg should be a queryParams Object or a successCallback function';
+            }
+
+            return $.ajax({
+                url: url,
+                data: queryParams,
+            }).done(successCallback).fail(failureCallback);
         },
         /** This method generates a POST HTTP request to `url` with
             contentType 'application/json'.
 
             It supports the following prototypes:
 
-            - reqPOST(url)
             - reqPOST(url, data)
             - reqPOST(url, data, successCallback)
             - reqPOST(url, data, successCallback, failureCallback)
@@ -476,21 +500,56 @@ var httpRequestMixin = {
 
             `successCallback` and `failureCallback` must be Javascript
             functions (i.e. instance of type `Function`).
-         */
-        reqPost: function(url, data, doneCb, failCb){
+        */
+        reqPost: function(url, arg, arg2, arg3){
             var vm = this;
-            var args = vm._conditionalParams(arguments);
-            if(args[0]){
-                args[0].method = 'POST';
+            var data, successCallback;
+            var failureCallback = handleRequestError;
+            if(typeof url != 'string') throw 'url should be a string';
+            if(isFunction(arg)){
+                // We are parsing reqPost(url, successCallback)
+                // or reqPost(url, successCallback, errorCallback).
+                successCallback = arg;
+                if(isFunction(arg2)){
+                    // We are parsing reqPost(url, successCallback, errorCallback)
+                    failureCallback = arg2;
+                } else if (arg2 !== undefined){
+                    throw 'arg2 should be a failureCallback function';
+                }
+            } else if(isObject(arg)){
+                // We are parsing reqPost(url, data)
+                // or reqPost(url, data, successCallback)
+                // or reqPost(url, data, successCallback, errorCallback).
+                data = arg;
+                if(isFunction(arg2)){
+                    // We are parsing reqPost(url, data, successCallback)
+                    // or reqPost(url, data, successCallback, errorCallback).
+                    successCallback = arg2;
+                    if(isFunction(arg3)){
+                        // We are parsing reqPost(url, data, successCallback, errorCallback)
+                        failureCallback = arg3;
+                    } else if (arg3 !== undefined){
+                        throw 'arg3 should be a failureCallback function';
+                    }
+                } else if (arg2 !== undefined){
+                    throw 'arg2 should be a successCallback function';
+                }
+            } else if (arg !== undefined){
+                throw 'arg should be a data Object or a successCallback function';
             }
-            return this.req.apply(this, args);
+
+            return $.ajax({
+                url: url,
+                contentType: 'application/json',
+                data: JSON.stringify(data),
+                method: 'POST',
+            }).done(successCallback).fail(failureCallback);
         },
         /** This method generates a PUT HTTP request to `url` with
             contentType 'application/json'.
 
             It supports the following prototypes:
 
-            - reqPUT(url)
             - reqPUT(url, data)
             - reqPUT(url, data, successCallback)
             - reqPUT(url, data, successCallback, failureCallback)
@@ -502,21 +561,56 @@ var httpRequestMixin = {
 
             `successCallback` and `failureCallback` must be Javascript
             functions (i.e. instance of type `Function`).
-         */
-        reqPut: function(url, data, doneCb, failCb){
+        */
+        reqPut: function(url, arg, arg2, arg3){
             var vm = this;
-            var args = vm._conditionalParams(arguments);
-            if(args[0]){
-                args[0].method = 'PUT';
+            var data, successCallback;
+            var failureCallback = handleRequestError;
+            if(typeof url != 'string') throw 'url should be a string';
+            if(isFunction(arg)){
+                // We are parsing reqPut(url, successCallback)
+                // or reqPut(url, successCallback, errorCallback).
+                successCallback = arg;
+                if(isFunction(arg2)){
+                    // We are parsing reqPut(url, successCallback, errorCallback)
+                    failureCallback = arg2;
+                } else if (arg2 !== undefined){
+                    throw 'arg2 should be a failureCallback function';
+                }
+            } else if(isObject(arg)){
+                // We are parsing reqPut(url, data)
+                // or reqPut(url, data, successCallback)
+                // or reqPut(url, data, successCallback, errorCallback).
+                data = arg;
+                if(isFunction(arg2)){
+                    // We are parsing reqPut(url, data, successCallback)
+                    // or reqPut(url, data, successCallback, errorCallback).
+                    successCallback = arg2;
+                    if(isFunction(arg3)){
+                        // We are parsing reqPut(url, data, successCallback, errorCallback)
+                        failureCallback = arg3;
+                    } else if (arg3 !== undefined){
+                        throw 'arg3 should be a failureCallback function';
+                    }
+                } else if (arg2 !== undefined){
+                    throw 'arg2 should be a successCallback function';
+                }
+            } else if (arg !== undefined){
+                throw 'arg should be a data Object or a successCallback function';
             }
-            return this.req.apply(this, args);
+
+            return $.ajax({
+                url: url,
+                contentType: 'application/json',
+                data: JSON.stringify(data),
+                method: 'PUT',
+            }).done(successCallback).fail(failureCallback);
         },
         /** This method generates a PATCH HTTP request to `url` with
             contentType 'application/json'.
 
             It supports the following prototypes:
 
-            - reqPATCH(url)
             - reqPATCH(url, data)
             - reqPATCH(url, data, successCallback)
             - reqPATCH(url, data, successCallback, failureCallback)
@@ -528,14 +622,50 @@ var httpRequestMixin = {
 
             `successCallback` and `failureCallback` must be Javascript
             functions (i.e. instance of type `Function`).
-         */
-        reqPatch: function(url, data, doneCb, failCb){
+        */
+        reqPatch: function(url, arg, arg2, arg3){
             var vm = this;
-            var args = vm._conditionalParams(arguments);
-            if(args[0]){
-                args[0].method = 'PATCH';
+            var data, successCallback;
+            var failureCallback = handleRequestError;
+            if(typeof url != 'string') throw 'url should be a string';
+            if(isFunction(arg)){
+                // We are parsing reqPatch(url, successCallback)
+                // or reqPatch(url, successCallback, errorCallback).
+                successCallback = arg;
+                if(isFunction(arg2)){
+                    // We are parsing reqPatch(url, successCallback, errorCallback)
+                    failureCallback = arg2;
+                } else if (arg2 !== undefined){
+                    throw 'arg2 should be a failureCallback function';
+                }
+            } else if(isObject(arg)){
+                // We are parsing reqPatch(url, data)
+                // or reqPatch(url, data, successCallback)
+                // or reqPatch(url, data, successCallback, errorCallback).
+                data = arg;
+                if(isFunction(arg2)){
+                    // We are parsing reqPatch(url, data, successCallback)
+                    // or reqPatch(url, data, successCallback, errorCallback).
+                    successCallback = arg2;
+                    if(isFunction(arg3)){
+                        // We are parsing reqPatch(url, data, successCallback, errorCallback)
+                        failureCallback = arg3;
+                    } else if (arg3 !== undefined){
+                        throw 'arg3 should be a failureCallback function';
+                    }
+                } else if (arg2 !== undefined){
+                    throw 'arg2 should be a successCallback function';
+                }
+            } else if (arg !== undefined){
+                throw 'arg should be a data Object or a successCallback function';
             }
-            return this.req.apply(this, args);
+
+            return $.ajax({
+                url: url,
+                contentType: 'application/json',
+                data: JSON.stringify(data),
+                method: 'PATCH',
+            }).done(successCallback).fail(failureCallback);
         },
         /** This method generates a DELETE HTTP request to `url` with a query
             string built of a `queryParams` dictionnary.
@@ -543,26 +673,35 @@ var httpRequestMixin = {
             It supports the following prototypes:
 
             - reqDELETE(url)
-            - reqDELETE(url, queryParams)
-            - reqDELETE(url, queryParams, successCallback)
-            - reqDELETE(url, queryParams, successCallback, failureCallback)
             - reqDELETE(url, successCallback)
             - reqDELETE(url, successCallback, failureCallback)
-
-            `queryParams` when it is specified is a dictionnary
-            of (key, value) pairs that is converted to an HTTP
-            query string.
 
             `successCallback` and `failureCallback` must be Javascript
             functions (i.e. instance of type `Function`).
         */
-        reqDelete: function(url, data, doneCb, failCb){
+        reqDelete: function(url, arg, arg2){
             var vm = this;
-            var args = vm._conditionalParams(arguments);
-            if(args[0]){
-                args[0].method = 'DELETE';
+            var data, successCallback;
+            var failureCallback = handleRequestError;
+            if(typeof url != 'string') throw 'url should be a string';
+            if(isFunction(arg)){
+                // We are parsing reqDelete(url, successCallback)
+                // or reqDelete(url, successCallback, errorCallback).
+                successCallback = arg;
+                if(isFunction(arg2)){
+                    // We are parsing reqDelete(url, successCallback, errorCallback)
+                    failureCallback = arg2;
+                } else if (arg2 !== undefined){
+                    throw 'arg2 should be a failureCallback function';
+                }
+            } else if (arg !== undefined){
+                throw 'arg should be a successCallback function';
             }
-            return this.req.apply(this, args);
+
+            return $.ajax({
+                url: url,
+                method: 'DELETE',
+            }).done(successCallback).fail(failureCallback);
         },
     }
 }
@@ -770,7 +909,7 @@ var userRelationMixin = {
     data: function(){
         return {
             modalSelector: ".add-role-modal",
-            url: djaodjinSettings.urls.organization.api_roles,
+            url: null,
             typeaheadUrl: null,
             unregistered: {
                 slug: '',
@@ -800,8 +939,7 @@ var userRelationMixin = {
                     return;
                 }
             }
-            var url = vm.url + '/' + encodeURIComponent(slug);
-            vm.reqDelete(url, function() {
+            vm.reqDelete(ob.remove_api_url, function() {
                 // splicing instead of refetching because
                 // subsequent fetch might fail due to 403
                 vm.items.results.splice(idx, 1);
@@ -1136,6 +1274,7 @@ var userRelationListMixin = {
     data: function(){
         return {
             showPending: false,
+            url: djaodjinSettings.urls.organization.api_roles,
             typeaheadUrl: djaodjinSettings.urls.api_candidates,
         }
     },
@@ -1158,6 +1297,47 @@ if($('#user-relation-list-container').length > 0){
 new Vue({
     el: "#user-relation-list-container",
     mixins: [userRelationListMixin],
+    data: {
+        showInvited: false,
+        showRequested: false,
+        params: {
+            role_status: null,
+        },
+    },
+    methods: {
+        updateParams: function(){
+            var vm = this;
+            vm.params.role_status = vm.roleStatus;
+            if(vm.showInvited || vm.showRequested){
+                // django-extra-views doesn't support sorting
+                // by multiple columns so we always use the
+                // first one
+                if(vm.showInvited){
+                    vm.params.o = 'grant_key';
+                } else if(vm.showRequested){
+                    vm.params.o = 'request_key';
+                }
+                vm.params.ot = 'desc';
+            }
+            vm.get();
+        }
+    },
+    computed: {
+        roleStatus: function(){
+            var args = [];
+            if(this.showInvited) args.push('invited');
+            if(this.showRequested) args.push('requested');
+            return args.join(',');
+        },
+    },
+    watch: {
+        showInvited: function(){
+            this.updateParams();
+        },
+        showRequested: function(val){
+            this.updateParams();
+        },
+    },
 })
 }
 
@@ -1522,12 +1702,7 @@ subscriptionsListVM = new Vue({
                   slug: org
                 }
             }
-            vm.req({
-                method: 'POST',
-                url: url,
-                contentType: 'application/json',
-                data: JSON.stringify(data),
-            }, function (){
+            vm.reqPost(url, data, function (){
                 vm.get();
             });
         },
@@ -1778,6 +1953,16 @@ new Vue({
         url: djaodjinSettings.urls.user.api_accessibles,
         typeaheadUrl: djaodjinSettings.urls.api_candidates,
     },
+    methods: {
+        acceptGrant: function(accessible){
+            var vm = this;
+            var url = accessible.accept_grant_api_url;
+            if(!url) return;
+            vm.reqPut(url, function(res){
+                vm.get();
+            });
+        }
+    },
     mounted: function(){
         this.get()
     },
@@ -1869,18 +2054,20 @@ new Vue({
                 for(var key in data){
                     form.append(key, data[key]);
                 }
-                vm.req({
+                // we're using raw $.ajax call here because we need to pass
+                // the data as multipart/form-data
+                $.ajax({
                     method: 'PUT',
                     url: djaodjinSettings.urls.organization.api_base,
                     contentType: false,
                     processData: false,
                     data: form,
-                }, function() {
+                }).done(function() {
                     vm.get(function(){
                         vm.picture.remove();
                     });
                     showMessages(["Profile was updated."], "success");
-                });
+                }).fail(handleRequestError);
             }, 'image/jpeg');
         },
         deleteProfile: function(){
@@ -2442,15 +2629,17 @@ new Vue({
             if(!vm.csvFiles[plan]) return;
             var formData = new FormData();
             formData.append("file", vm.csvFiles[plan]);
-            vm.req({
+            // we're using raw $.ajax call here because we need to pass
+            // the data as multipart/form-data
+            $.ajax({
                 type: "POST",
                 url: "/api/cart/" + plan + "/upload/",
                 data: formData,
                 processData: false,
                 contentType: false,
-            }, function(){
+            }).done(function(){
                 vm.get();
-            });
+            }).fail(handleRequestError);
         },
     },
     computed: {

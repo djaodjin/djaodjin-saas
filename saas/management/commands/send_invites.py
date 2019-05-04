@@ -1,4 +1,4 @@
-# Copyright (c) 2018, DjaoDjin inc.
+# Copyright (c) 2019, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -93,7 +93,7 @@ class Command(BaseCommand):
             self.stdout.write("\t%s for %s" % (
                 role.user.email, role.organization.full_name))
             if not dry_run:
-                signals.user_relation_added.send(sender=__name__, role=role)
+                signals.role_grant_created.send(sender=__name__, role=role)
 
     def send_role_requests(self,
                            organizations=None, emails=None, dry_run=False):
@@ -109,7 +109,7 @@ class Command(BaseCommand):
             self.stdout.write("\t%s for %s" % (
                 role.user.email, role.organization.full_name))
             if not dry_run:
-                signals.user_relation_requested.send(sender=__name__, role=role)
+                signals.role_request_created.send(sender=__name__, role=role)
 
     def send_subscription_grants(self,
                                 organizations=None, emails=None, dry_run=False):

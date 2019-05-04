@@ -44,9 +44,9 @@ from .filters import (OrderingFilter, SearchFilter,
 from .humanize import (as_money, DESCRIBE_BUY_PERIODS, DESCRIBE_BUY_USE,
     DESCRIBE_UNLOCK_NOW, DESCRIBE_UNLOCK_LATER, DESCRIBE_BALANCE)
 from .models import (CartItem, Charge, Coupon, Organization, Plan,
-    RoleDescription, Subscription, Transaction, UseCharge,
-    get_broker, is_broker)
-from .utils import datetime_or_now, get_role_model, update_context_urls
+    RoleDescription, Subscription, Transaction, UseCharge, get_broker)
+from .utils import (build_absolute_uri, datetime_or_now, is_broker,
+    get_role_model, update_context_urls)
 from .extras import OrganizationMixinBase
 
 
@@ -444,12 +444,24 @@ class UserMixin(object):
                     'accessibles': reverse('saas_user_product_list',
                         args=(self.user,))
             }})
+            try:
+                # optional (see signup.mixins.UserMixin)
+                update_context_urls(context, {
+                'user': {
+                    'notifications': reverse(
+                        'users_notifications', args=(self.user,)),
+                    'profile': reverse('users_profile', args=(self.user,)),
+                }})
+            except NoReverseMatch:
+                pass
+
         update_context_urls(context, {
+            'profile_base': reverse('saas_profile'),
             'profile_redirect': reverse('accounts_profile')})
         return context
 
 
-class OrganizationMixin(UserMixin, OrganizationMixinBase, settings.EXTRA_MIXIN):
+class OrganizationMixin(OrganizationMixinBase, settings.EXTRA_MIXIN):
 
     pass
 
@@ -753,7 +765,7 @@ class OrganizationSmartListMixin(DateRangeMixin):
     filter_backends = (SearchFilter, OrderingFilter)
 
 
-class RoleSmartListMixin(SortableListMixin, SearchableListMixin):
+class RoleSmartListMixin(DateRangeMixin):
     """
     The queryset can be further filtered to a range of dates between
     ``start_at`` and ``ends_at``.
@@ -778,21 +790,26 @@ class RoleSmartListMixin(SortableListMixin, SearchableListMixin):
       - role_name
       - created_at
     """
-    search_fields = ['organization__slug',
-                     'organization__full_name',
-                     'organization__email',
-                     'user__username',
-                     'user__email',
-                     'role_description__title',
-                     'role_description__slug']
-
-    sort_fields_aliases = [('organization__full_name', 'full_name'),
-                           ('user__username', 'username'),
-                           ('role_description__title', 'role_name'),
-                           ('created_at', 'created_at')]
-
-    filter_backends = (SortableSearchableFilterBackend(
-        sort_fields_aliases, search_fields),)
+    search_fields = [
+        'organization__slug',
+        'organization__full_name',
+        'organization__email',
+        'user__username',
+        'user__email',
+        'role_description__title',
+        'role_description__slug'
+    ]
+    ordering_fields = [
+        ('organization__full_name', 'full_name'),
+        ('user__username', 'username'),
+        ('role_description__title', 'role_name'),
+        ('grant_key', 'grant_key'),
+        ('request_key', 'request_key'),
+        ('created_at', 'created_at')
+    ]
+    ordering = ('user__username',)
+    alternate_ordering = ordering
+    filter_backends = (SearchFilter, OrderingFilter)
 
 
 class SubscriptionSmartListMixin(SortableListMixin, SearchableListMixin):
@@ -1029,13 +1046,11 @@ def product_url(provider, subscriber=None, request=None):
     We cannot use a basic ``reverse('product_default_start')`` here because
     *organization* and ``get_broker`` might be different.
     """
-    from .compat import import_string
     location = '/app/'
     if subscriber:
         location += '%s/' % subscriber
     if settings.BUILD_ABSOLUTE_URI_CALLABLE:
-        build_absolute_url = import_string(settings.BUILD_ABSOLUTE_URI_CALLABLE)
-        return build_absolute_url(request, provider=provider, location=location)
+        return build_absolute_uri(request, location=location, provider=provider)
     elif not is_broker(provider):
         location = '/%s' % provider + location
     return location

@@ -1,4 +1,4 @@
-# Copyright (c) 2018, DjaoDjin inc.
+# Copyright (c) 2019, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -31,7 +31,8 @@ from django.http import HttpResponseRedirect
 from django.utils.decorators import method_decorator
 from django.views.generic.edit import FormView
 from django_countries import countries
-from saas.models import Organization, Signature
+from saas.models import Signature
+from saas.utils import get_organization_model
 
 #pylint:disable=no-name-in-module,import-error
 from django.utils.six.moves.urllib.parse import urlparse
@@ -107,7 +108,7 @@ class PersonalRegistrationForm(forms.Form):
         """
         Normalizes emails in all lowercase.
         """
-        if self.cleaned_data.has_key('email'):
+        if 'email' in self.cleaned_data:
             self.cleaned_data['email'] = self.cleaned_data['email'].lower()
         user = get_user_model().objects.filter(
             email__iexact=self.cleaned_data['email'])
@@ -120,7 +121,7 @@ class PersonalRegistrationForm(forms.Form):
         """
         Normalizes emails in all lowercase.
         """
-        if self.cleaned_data.has_key('email2'):
+        if 'email2' in self.cleaned_data:
             self.cleaned_data['email2'] = self.cleaned_data['email2'].lower()
         return self.cleaned_data['email2']
 
@@ -128,7 +129,7 @@ class PersonalRegistrationForm(forms.Form):
         """
         Normalizes first names by capitalizing them.
         """
-        if self.cleaned_data.has_key('first_name'):
+        if 'first_name' in self.cleaned_data:
             self.cleaned_data['first_name'] \
                 = self.cleaned_data['first_name'].capitalize()
         return self.cleaned_data['first_name']
@@ -137,7 +138,7 @@ class PersonalRegistrationForm(forms.Form):
         """
         Normalizes first names by capitalizing them.
         """
-        if self.cleaned_data.has_key('last_name'):
+        if 'last_name' in self.cleaned_data:
             self.cleaned_data['last_name'] \
                 = self.cleaned_data['last_name'].capitalize()
         return self.cleaned_data['last_name']
@@ -151,7 +152,7 @@ class PersonalRegistrationForm(forms.Form):
         if user.exists():
             raise forms.ValidationError(
                 "A user with that username already exists.")
-        organization = Organization.objects.filter(
+        organization = get_organization_model().objects.filter(
             slug=self.cleaned_data['username'])
         if organization.exists():
             raise forms.ValidationError(
@@ -203,7 +204,7 @@ class PersonalRegistrationView(FormView):
 
         # Create a 'personal' ``Organization`` to associate the user
         # to a billing account.
-        account = Organization.objects.create(
+        account = get_organization_model().objects.create(
             slug=username,
             full_name='%s %s' % (first_name, last_name),
             email=cleaned_data['email'],

@@ -1,0 +1,44 @@
+{# Profile menu items #}
+{% if urls.user and urls.user.profile %}
+<a id="profile" href="{{urls.user.profile}}">Profile</a>
+{% elif urls.organization and urls.organization.profile %}
+<a id="profile" href="{{urls.organization.profile}}">Profile</a>
+{% endif %}
+{% if urls.organization and urls.organization.roles %}
+{% for role_title, role_url in urls.organization.roles|iteritems %}
+<a href="{{role_url}}">{{role_title}}</a>
+{% endfor %}
+{% endif %}
+
+{# Subscriber menu items  #}
+{% if urls.organization and urls.organization.billing %}
+<a id="saas_billing_info" href="{{urls.organization.billing}}">Billing</a>
+{% endif %}
+{% if urls.organization and urls.organization.subscriptions %}
+<a id="saas_subscription_list" href="{{urls.organization.subscriptions}}">Subscriptions</a>
+{% endif %}
+{% if urls.user and urls.user.accessibles %}
+<a id="users_accessibles" href="{{urls.user.accessibles}}">Connected profiles</a>
+{% endif %}
+{% if urls.user and urls.user.notifications %}
+<a id="users_notifications" href="{{urls.user.notifications}}">Notifications</a>
+{% endif %}
+{# Provider menu items #}
+{% if urls.provider %}
+<a id="saas_dashboard" href="{{urls.provider.dashboard}}">Dashboard</a>
+<a id="saas_metrics_summary" href="{{urls.provider.metrics_sales}}">Revenue</a>
+<a id="saas_transfer_info" href="{{urls.provider.transfers}}">Funds</a>
+<a id="saas_coupon_list" href="{{urls.provider.coupons}}">Coupons</a>
+<a id="saas_metrics_plans" href="{{urls.provider.metrics_plans}}">Plans</a>
+<a id="saas_subscriber_list" href="{{urls.provider.subscribers}}">Subscribers</a>
+{% endif %}
+
+{# Broker menu items #}
+{% if urls.pages or urls.rules %}
+  {% if urls.pages.theme_base %}
+    <a id="pages_theme" href="{{urls.pages.theme_base}}">Theme</a>
+  {% endif %}
+  {% if urls.rules and urls.rules.app %}
+    <a id="rules_update" href="{{urls.rules.app}}">Rules</a>
+  {% endif %}
+{% endif %}

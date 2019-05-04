@@ -25,6 +25,7 @@
 #pylint:disable=useless-super-delegation
 
 import logging
+from collections import OrderedDict
 
 from django.core import validators
 from django.core.exceptions import ValidationError
@@ -37,19 +38,22 @@ from django.utils.encoding import force_text
 from django.utils.translation import ugettext_lazy as _
 from rest_framework import serializers, status
 from rest_framework.exceptions import PermissionDenied
-from rest_framework.generics import (ListAPIView, CreateAPIView,
-    ListCreateAPIView, DestroyAPIView, RetrieveUpdateDestroyAPIView)
+from rest_framework.generics import (ListAPIView, ListCreateAPIView,
+    DestroyAPIView, RetrieveUpdateDestroyAPIView,
+    GenericAPIView, get_object_or_404)
 from rest_framework.response import Response
+from rest_framework.pagination import PageNumberPagination
 
 from .. import settings, signals
 from ..docs import swagger_auto_schema
 from ..mixins import (OrganizationMixin, RoleDescriptionMixin, RoleMixin,
-    RoleSmartListMixin, UserMixin, DateRangeMixin)
+    RoleSmartListMixin, UserMixin)
 from ..models import RoleDescription
 from ..utils import (full_name_natural_split, get_organization_model,
     get_role_model, generate_random_slug)
 from .serializers import (AccessibleSerializer, BaseRoleSerializer,
-    NoModelSerializer, RoleSerializer, RoleAccessibleSerializer)
+    NoModelSerializer, RoleSerializer, RoleAccessibleSerializer,
+    AccessibleOrganizationSerializer)
 
 
 LOGGER = logging.getLogger(__name__)
@@ -200,22 +204,39 @@ class RoleDescriptionCRUDSerializer(serializers.ModelSerializer):
         read_only_fields = ('created_at', 'slug', 'is_global')
 
 
+class RoleListPagination(PageNumberPagination):
+
+    def get_paginated_response(self, data):
+        return Response(OrderedDict([
+            ('invited_count', self.request.invited_count),
+            ('requested_count', self.request.requested_count),
+            ('count', self.page.paginator.count),
+            ('next', self.get_next_link()),
+            ('previous', self.get_previous_link()),
+            ('results', data)
+        ]))
+
+
 class OptinBase(object):
 
     organization_model = get_organization_model()
 
     def add_relations(self, organizations, user):
         #pylint:disable=no-self-use,unused-argument
+        roles = []
         created = False
         for organization in organizations:
-            created |= organization.add_role_request(user)
-        return organizations, created
+            role = organization.add_role_request(user)
+            if role:
+                created = True
+                roles += [role]
+        return roles, created
 
-    def send_signals(self, organizations, user, reason=None, invite=False):
+    def send_signals(self, relations, user, reason=None, invite=False):
         #pylint:disable=no-self-use,unused-argument
-        for organization in organizations:
-            signals.user_relation_requested.send(sender=__name__,
-                organization=organization, user=user, reason=reason)
+        for role in relations:
+            signals.role_request_created.send(sender=__name__,
+                role=role, reason=reason)
 
     def perform_optin(self, serializer, request, user=None):
         #pylint:disable=too-many-locals
@@ -279,16 +300,60 @@ class OptinBase(object):
             headers=self.get_success_headers(serializer.validated_data))
 
 
+class InvitedRequestedListMixin(object):
+    """
+    Filters requests for any role on an organization.
+    """
+
+    def get_queryset(self):
+        queryset = super(InvitedRequestedListMixin, self).get_queryset()
+        self.request.requested_count = queryset.filter(
+            request_key__isnull=False).count()
+        # Because we must count the number of invited
+        # in `RoleByDescrQuerysetMixin.get_queryset`, we also need to compute
+        # here instead of later in RoleInvitedListMixin.
+        self.request.invited_count = queryset.filter(
+            grant_key__isnull=False).count()
+        qry = {}
+        role_status = self.request.query_params.get('role_status', '')
+        stts = role_status.split(',')
+        flt = None
+        if 'active' in stts:
+            flt = Q(grant_key__isnull=True) & Q(request_key__isnull=True)
+            if 'invited' in stts:
+                flt = Q(request_key__isnull=True)
+                if 'requested' in stts:
+                    flt = None
+            elif 'requested' in stts:
+                flt = Q(grant_key__isnull=True)
+        elif 'invited' in stts:
+            flt = Q(grant_key__isnull=False)
+            if 'requested' in stts:
+                flt = flt | Q(request_key__isnull=False)
+        elif 'requested' in stts:
+            flt = Q(request_key__isnull=False)
+
+        if flt is not None:
+            return queryset.filter(flt)
+        return queryset
+
+
 class AccessibleByQuerysetMixin(UserMixin):
 
     def get_queryset(self):
-        # OK to use filter here since we want to see the requests as well.
         return get_role_model().objects.filter(user=self.user)
 
 
-class AccessibleByListAPIView(DateRangeMixin, RoleSmartListMixin,
-                              AccessibleByQuerysetMixin, OptinBase,
-                              ListCreateAPIView):
+class AccessibleByDescrQuerysetMixin(AccessibleByQuerysetMixin):
+
+    def get_queryset(self):
+        return super(AccessibleByDescrQuerysetMixin, self).get_queryset(
+            ).filter(role_description__slug=self.kwargs.get('role'))
+
+
+class AccessibleByListAPIView(RoleSmartListMixin, InvitedRequestedListMixin,
+                              AccessibleByQuerysetMixin,
+                              OptinBase, ListCreateAPIView):
     """
     Lists all relations where an ``Organization`` is accessible by
     a ``User``. Typically the user was granted specific permissions through
@@ -325,6 +390,7 @@ class AccessibleByListAPIView(DateRangeMixin, RoleSmartListMixin,
         }
     """
     serializer_class = AccessibleSerializer
+    pagination_class = RoleListPagination
 
     def post(self, request, *args, **kwargs):
         """
@@ -363,6 +429,106 @@ class AccessibleByListAPIView(DateRangeMixin, RoleSmartListMixin,
         serializer = OrganizationRoleCreateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         return self.perform_optin(serializer, request, user=self.user)
+
+
+class AccessibleByDescrListAPIView(RoleSmartListMixin,
+                                   InvitedRequestedListMixin,
+                                   AccessibleByDescrQuerysetMixin, UserMixin,
+                                   ListCreateAPIView):
+    """
+    Lists all relations where a ``User`` has a specified ``Role``
+    on an ``Organization``.
+
+    see :doc:`Flexible Security Framework <security>`.
+
+    **Tags: rbac
+
+    **Examples
+
+    .. code-block:: http
+
+        GET  /api/users/alice/accessibles/manager HTTP/1.1
+
+    responds
+
+    .. code-block:: json
+
+        {
+            "count": 1,
+            "next": null,
+            "previous": null,
+            "results": [
+                {
+                    "created_at": "2018-01-01T00:00:00Z",
+                    "slug": "cowork",
+                    "printable_name": "ABC Corp.",
+                    "role_description": "manager",
+                    "request_key": null,
+                    "grant_key": null
+                }
+            ]
+        }
+    """
+    serializer_class = AccessibleSerializer
+    pagination_class = RoleListPagination
+
+    def create(self, request, *args, **kwargs): #pylint:disable=unused-argument
+        """
+        Creates a request to attach a user to an organization
+        with a specified role.
+
+        see :doc:`Flexible Security Framework <security>`.
+
+        **Tags: rbac
+
+        **Examples
+
+        .. code-block:: http
+
+            POST /api/users/xia/accessibles/manager/ HTTP/1.1
+
+        .. code-block:: json
+
+            {
+              "slug": "cowork"
+            }
+
+        responds
+
+        .. code-block:: json
+
+            {
+              "slug": "cowork"
+            }
+        """
+        serializer = AccessibleOrganizationSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        reason = serializer.validated_data.get('message')
+        organization_slug = serializer.validated_data.get('organization')
+        organization = get_object_or_404(
+            get_organization_model().objects.all(), slug=organization_slug)
+        if not self.user:
+            raise Http404("User %(username)s does not exist."
+                % {'username': self.kwargs.get('user')})
+        try:
+            role_descr = organization.get_role_description(
+                self.kwargs.get('role'))
+        except RoleDescription.DoesNotExist:
+            raise Http404("Role Description %(slug)s does not exist."
+                % {'slug': self.kwargs.get('role')})
+
+        created = organization.add_role_request(self.user,
+            role_description=role_descr)
+
+        signals.user_relation_requested.send(sender=__name__,
+            organization=organization, user=self.user, reason=reason)
+        if created:
+            resp_status = status.HTTP_201_CREATED
+        else:
+            resp_status = status.HTTP_200_OK
+
+        return Response(serializer.validated_data, status=resp_status,
+            headers=self.get_success_headers(serializer.validated_data))
 
 
 class RoleDescriptionQuerysetMixin(OrganizationMixin):
@@ -612,14 +778,14 @@ class RoleDescriptionDetailView(RoleDescriptionQuerysetMixin,
         super(RoleDescriptionDetailView, self).perform_destroy(instance)
 
 
-class RoleQuerysetMixin(OrganizationMixin):
+class RoleQuerysetBaseMixin(OrganizationMixin):
 
     def get_queryset(self):
-        # OK to use filter here since we want to see the requests as well.
         return get_role_model().objects.filter(organization=self.organization)
 
 
-class RoleListAPIView(RoleSmartListMixin, RoleQuerysetMixin, ListAPIView):
+class RoleListAPIView(RoleSmartListMixin, InvitedRequestedListMixin,
+                      RoleQuerysetBaseMixin, ListAPIView):
     """
     Lists all roles for an organization
 
@@ -666,18 +832,49 @@ class RoleListAPIView(RoleSmartListMixin, RoleQuerysetMixin, ListAPIView):
         }
     """
     serializer_class = RoleSerializer
+    pagination_class = RoleListPagination
 
 
-class RoleByDescrQuerysetMixin(RoleDescriptionMixin, RoleQuerysetMixin):
+class RoleByDescrQuerysetMixin(RoleDescriptionMixin, RoleQuerysetBaseMixin):
+    # We cannot use `InvitedRequestedListMixin` here because `role_description`
+    # will be None on requested roles. We thus need a `role_description = X
+    # *OR* request_key IS NOT NULL`. Calls to more and more refined `filter`
+    # through class inheritence only allows us to implement `*AND*`.
 
     def get_queryset(self):
-        return super(RoleByDescrQuerysetMixin, self).get_queryset().filter(
-            Q(role_description=self.role_description)
-            | Q(request_key__isnull=False))
+        queryset = super(RoleByDescrQuerysetMixin, self).get_queryset()
+        self.request.requested_count = queryset.filter(
+            request_key__isnull=False).count()
+        # We have to get the count of invited here otherwise
+        # `GET /api/profile/{organization}/roles/manager?role_status=requested`
+        # will always return zero invited users.
+        self.request.invited_count = queryset.filter(
+            role_description=self.role_description,
+            grant_key__isnull=False).count()
+        role_status = self.request.query_params.get('role_status', '')
+        stts = role_status.split(',')
+        flt = (Q(role_description=self.role_description) |
+            Q(request_key__isnull=False))
+        if 'active' in stts:
+            flt = (Q(role_description=self.role_description) &
+                Q(grant_key__isnull=True) & Q(request_key__isnull=True))
+            if 'invited' in stts:
+                flt = Q(role_description=self.role_description)
+            if 'requested' in stts:
+                flt = flt | Q(request_key__isnull=False)
+        else:
+            if 'invited' in stts:
+                flt = (Q(role_description=self.role_description) &
+                    Q(grant_key__isnull=False))
+                if 'requested' in stts:
+                    flt = flt | Q(request_key__isnull=False)
+            elif 'requested' in stts:
+                flt = Q(request_key__isnull=False)
+        return queryset.filter(flt)
 
 
-class RoleFilteredListAPIView(RoleSmartListMixin, RoleByDescrQuerysetMixin,
-                              ListAPIView, CreateAPIView):
+class RoleByDescrListAPIView(RoleSmartListMixin, RoleByDescrQuerysetMixin,
+                             ListCreateAPIView):
     """
     ``GET`` lists the specified role assignments for an organization.
 
@@ -724,14 +921,7 @@ class RoleFilteredListAPIView(RoleSmartListMixin, RoleByDescrQuerysetMixin,
         }
     """
     serializer_class = RoleSerializer
-
-    def get_queryset(self):
-        queryset = super(RoleFilteredListAPIView, self).get_queryset()
-        role_status = self.request.query_params.get('role_status')
-        if role_status:
-            active = (role_status == 'active')
-            return queryset.filter(grant_key__isnull=active)
-        return queryset
+    pagination_class = RoleListPagination
 
     def create(self, request, *args, **kwargs): #pylint:disable=unused-argument
         grant_key = None
@@ -807,7 +997,7 @@ class RoleFilteredListAPIView(RoleSmartListMixin, RoleByDescrQuerysetMixin,
               "slug": "xia"
             }
         """
-        return super(RoleFilteredListAPIView, self).post(
+        return super(RoleByDescrListAPIView, self).post(
             request, *args, **kwargs)
 
 
@@ -858,7 +1048,7 @@ class RoleDetailAPIView(RoleMixin, DestroyAPIView):
             }
         """
         role = self.get_object()
-        signals.user_relation_added.send(sender=__name__,
+        signals.role_grant_created.send(sender=__name__,
             role=role, reason=None, request_user=request.user)
         serializer = self.get_serializer(role)
         return Response(serializer.data)
@@ -888,3 +1078,155 @@ class RoleDetailAPIView(RoleMixin, DestroyAPIView):
                 'organization': self.organization.slug, 'roles': roles})
         queryset.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class AccessibleDetailAPIView(RoleDetailAPIView):
+
+    def get_queryset(self):
+        # We never take the `role_description` into account when removing
+        # on the accessibles page.
+        return get_role_model().objects.filter(
+            organization=self.organization, user=self.user)
+
+    def post(self, request, *args, **kwargs):
+        """
+        Re-sends the request e-mail that the user is requested a role
+        on the organization.
+
+        **Tags: rbac
+
+        **Examples
+
+        .. code-block:: http
+
+            POST /api/users/xia/accessibles/manager/cowork/ HTTP/1.1
+
+        responds
+
+        .. code-block:: json
+
+            {
+                "created_at": "2018-01-01T00:00:00Z",
+                "role_description": {
+                    "created_at": "2018-01-01T00:00:00Z",
+                    "title": "Profile Manager",
+                    "slug": "manager",
+                    "is_global": true,
+                    "organization": {
+                        "slug": "cowork",
+                        "full_name": "ABC Corp.",
+                        "printable_name": "ABC Corp.",
+                        "created_at": "2018-01-01T00:00:00Z",
+                        "email": "support@localhost.localdomain"
+                    }
+                },
+                "user": {
+                    "slug": "alice",
+                    "email": "alice@localhost.localdomain",
+                    "full_name": "Alice Doe",
+                    "created_at": "2018-01-01T00:00:00Z"
+                },
+                "request_key": "1",
+                "grant_key": null
+            }
+        """
+        role = self.get_object()
+        signals.role_request_created.send(sender=__name__,
+            role=role, reason=None, request_user=request.user)
+        serializer = self.get_serializer(role)
+        return Response(serializer.data)
+
+
+    def delete(self, request, *args, **kwargs):
+        """
+        Dettach a user from one or all roles with regards to an organization,
+        typically resulting in revoking permissions from this user to manage
+        part of an organization profile.
+
+        **Tags: rbac
+
+        **Examples
+
+        .. code-block:: http
+
+            DELETE /api/users/xia/accessibles/manager/cowork/ HTTP/1.1
+        """
+        return super(AccessibleDetailAPIView, self).delete(
+            request, *args, **kwargs)
+
+
+class RoleAcceptAPIView(UserMixin, GenericAPIView):
+
+    serializer_class = AccessibleSerializer
+
+    def put(self, request, *args, **kwargs):
+        """
+        Accepts a role on an organization.
+
+        **Tags: rbac
+
+        **Examples
+
+        .. code-block:: http
+
+            PUT /api/users/xia/accessibles/accept/0123456789abcef/ HTTP/1.1
+
+        responds
+
+        .. code-block:: json
+
+            {
+                "created_at": "2018-01-01T00:00:00Z",
+                "role_description": {
+                    "created_at": "2018-01-01T00:00:00Z",
+                    "title": "Profile Manager",
+                    "slug": "manager",
+                    "is_global": true,
+                    "organization": {
+                        "slug": "cowork",
+                        "full_name": "ABC Corp.",
+                        "printable_name": "ABC Corp.",
+                        "created_at": "2018-01-01T00:00:00Z",
+                        "email": "support@localhost.localdomain"
+                    }
+                },
+                "user": {
+                    "slug": "alice",
+                    "email": "alice@localhost.localdomain",
+                    "full_name": "Alice Doe",
+                    "created_at": "2018-01-01T00:00:00Z"
+                },
+                "request_key": "1",
+                "grant_key": null
+            }
+        """
+        key = kwargs.get('verification_key')
+        obj = get_object_or_404(get_role_model().objects.all(),
+                grant_key=key)
+        existing_role = get_role_model().objects.filter(
+            organization=obj.organization, user=self.user).exclude(
+            pk=obj.pk).first()
+        if existing_role:
+            raise ValidationError(_("You already have a %(existing_role)s"\
+                " role on %(organization)s. Please drop this role first if"\
+                " you want to accept a role of %(role)s instead.") % {
+                    'role': obj.role_description.title,
+                    'organization': obj.organization.printable_name,
+                    'existing_role': existing_role.role_description.title})
+
+        grant_key = obj.grant_key
+        obj.grant_key = None
+        obj.save()
+        LOGGER.info("%s accepted role of %s to %s (grant_key=%s)",
+            self.user, obj.role_description, obj.organization,
+            grant_key, extra={
+                'request': request, 'event': 'accept',
+                'user': str(self.user),
+                'organization': str(obj.organization),
+                'role_description': str(obj.role_description),
+                'grant_key': grant_key})
+        signals.role_grant_accepted.send(sender=__name__,
+            role=obj, grant_key=grant_key, request=request)
+
+        serializer = self.get_serializer(instance=obj)
+        return Response(serializer.data)

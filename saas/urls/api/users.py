@@ -1,4 +1,4 @@
-# Copyright (c) 2018, DjaoDjin inc.
+# Copyright (c) 2019, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -28,13 +28,24 @@ URLs for API related to users accessible by.
 
 from django.conf.urls import url
 
-from ...api.roles import AccessibleByListAPIView, RoleDetailAPIView
+from ...api.roles import (AccessibleByListAPIView, AccessibleDetailAPIView,
+    RoleAcceptAPIView, AccessibleByDescrListAPIView)
+from ...api.users import AgreementSignAPIView
 from ... import settings
 
 urlpatterns = [
-   url(r'^users/(?P<user>%s)/accessibles/(?P<organization>%s)(/(?P<role>%s))?/?'
+    url(r'^legal/(?P<agreement>%s)/sign/$' % settings.ACCT_REGEX,
+        AgreementSignAPIView.as_view(), name='saas_api_sign_agreement'),
+    url(r'^users/(?P<user>%s)/accessibles/accept/(?P<verification_key>%s)/' % (
+        settings.MAYBE_EMAIL_REGEX, settings.VERIFICATION_KEY_RE),
+        RoleAcceptAPIView.as_view(), name='saas_api_accessibles_accept'),
+    url(r'^users/(?P<user>%s)/accessibles/(?P<role>%s)/(?P<organization>%s)/?'
         % (settings.ACCT_REGEX, settings.ACCT_REGEX, settings.ACCT_REGEX),
-        RoleDetailAPIView.as_view(), name='saas_api_accessible_detail'),
+        AccessibleDetailAPIView.as_view(), name='saas_api_accessible_detail'),
+    url(r'^users/(?P<user>%s)/accessibles/(?P<role>%s)/?' % (
+        settings.ACCT_REGEX, settings.ACCT_REGEX),
+        AccessibleByDescrListAPIView.as_view(),
+        name='saas_api_accessibles_by_descr'),
     url(r'^users/(?P<user>%s)/accessibles/?' % settings.MAYBE_EMAIL_REGEX,
         AccessibleByListAPIView.as_view(), name='saas_api_accessibles'),
 ]

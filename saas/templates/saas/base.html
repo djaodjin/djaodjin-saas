@@ -10,32 +10,7 @@
 <div>
   <div>
     {% block sidebar %}
-    {# Subscriptions for the organization #}
-    <div>
-      <a id="saas_provider_profile" href="{{urls.organization.profile}}">Profile</a>
-      | <a id="saas_billing_info" href="{{urls.organization.billing}}">Billing</a>
-      | <a id="saas_subscription_list" href="{{urls.organization.subscriptions}}">Subscriptions</a>
-      {% if urls.organization.roles %}
-      {% for role_title, role_url in urls.organization.roles|iteritems %}
-      | <a href="{{role_url}}">{{role_title}}s</a>
-      {% endfor %}
-      {% endif %}
-      {% if urls and urls.organization and urls.organization.role_description %}
-      | <a id="saas_role_list" href="{{urls.organization.role_description}}">Roles</a>
-      {% endif %}
-    </div>
-    {% if urls.provider %}
-    <div>
-      {# We are dealing with the site owner. #}
-      <a id="saas_dashboard" href="{{urls.provider.dashboard}}">Dashboard</a>
-      | <a id="saas_coupon_list" href="{{urls.provider.coupons}}">Coupons</a>
-      | <a id="saas_transfer_info" href="{{urls.provider.transfers}}">Funds</a>
-      | <a id="saas_metrics_summary" href="{{urls.provider.metrics_sales}}">Revenue</a>
-      | <a id="saas_metrics_plans" href="{{urls.provider.metrics_plans}}">Plans</a>
-      | <a id="saas_subscriber_list" href="{{urls.provider.subscribers}}">Subscribers</a></li>
-      | <a id="saas_charges" href="{{urls.broker.charges}}">Charges</a>
-    </div>
-    {% endif %}
+    {% include "saas/_sidebar.html" %}
     {% endblock %}
   </div>
   <div>

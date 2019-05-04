@@ -30,18 +30,21 @@ from django.contrib.auth.hashers import is_password_usable
 from django.template.defaultfilters import slugify
 from django.utils import six
 from django.utils.translation import ugettext_lazy as _
+from django.urls.exceptions import NoReverseMatch
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
 from rest_framework.generics import get_object_or_404
 from django_countries.serializer_fields import CountryField
 
+from .. import settings
 from ..decorators import _valid_manager
 from ..humanize import as_money
 from ..mixins import as_html_description, product_url
 from ..models import (BalanceLine, CartItem, Charge, Plan,
     RoleDescription, Subscription, Transaction)
-from ..utils import (get_organization_model, get_role_model,
+from ..utils import (build_absolute_uri, get_organization_model, get_role_model,
     get_picture_storage)
+from ..compat import reverse
 
 #pylint: disable=no-init,old-style-class
 
@@ -292,7 +295,8 @@ class OrganizationSerializer(serializers.ModelSerializer):
             return is_password_usable(obj.user.password)
         return False
 
-    def get_type(self, obj):
+    @staticmethod
+    def get_type(obj):
         if not obj.pk:
             return 'user'
         if hasattr(obj, 'is_personal') and obj.is_personal:
@@ -597,14 +601,53 @@ class AccessibleSerializer(serializers.ModelSerializer):
     printable_name = serializers.CharField(source='organization.printable_name')
     email = serializers.CharField(source='organization.email')
     role_description = RoleDescriptionSerializer(read_only=True)
+    home_url = serializers.SerializerMethodField()
+    settings_url = serializers.SerializerMethodField()
+    accept_grant_api_url = serializers.SerializerMethodField()
+    remove_api_url = serializers.SerializerMethodField()
 
     class Meta:
         model = get_role_model()
-        fields = ('created_at', 'request_key', 'grant_key',
+        fields = ('created_at', 'request_key',
             'slug', 'printable_name', 'email', # Organization
-            'role_description')                # RoleDescription
+            'role_description',                # RoleDescription
+            'home_url', 'settings_url',
+            'accept_grant_api_url', 'remove_api_url')
         read_only_fields = ('created_at', 'request_key', 'grant_key',
             'printable_name')
+
+    def get_accept_grant_api_url(self, obj):
+        if obj.grant_key:
+            return build_absolute_uri(self.context['request'], location=reverse(
+                'saas_api_accessibles_accept', args=(obj.user, obj.grant_key)))
+        return None
+
+    def get_remove_api_url(self, obj):
+        role_description = (obj.role_description
+            if obj.role_description else settings.MANAGER)
+        return build_absolute_uri(self.context['request'], location=reverse(
+            'saas_api_accessible_detail', args=(
+                obj.user, role_description, obj.organization)))
+
+    def get_settings_url(self, obj):
+        req = self.context['request']
+        org = obj.organization
+        if org.is_provider:
+            settings_location = build_absolute_uri(req, location=reverse(
+                'saas_dashboard', args=(org.slug,)))
+        else:
+            settings_location = build_absolute_uri(req, location=reverse(
+                'saas_organization_profile', args=(org.slug,)))
+        return settings_location
+
+    def get_home_url(self, obj):
+        try:
+            return build_absolute_uri(self.context['request'], location=reverse(
+                'organization_app', args=(obj.organization.slug,)))
+        except NoReverseMatch:
+            # serializer used in djaodjin-saas not in djaoapp
+            pass
+        return None
 
 
 class BaseRoleSerializer(serializers.ModelSerializer):
@@ -621,12 +664,28 @@ class RoleSerializer(BaseRoleSerializer):
 
     organization = OrganizationSerializer(read_only=True)
     role_description = RoleDescriptionRelatedField(read_only=True)
+    accept_request_api_url = serializers.SerializerMethodField()
+    remove_api_url = serializers.SerializerMethodField()
 
     class Meta(BaseRoleSerializer.Meta):
-        fields = BaseRoleSerializer.Meta.fields + (
-            'organization', 'role_description')
+        fields = BaseRoleSerializer.Meta.fields + ('organization',
+             'role_description', 'accept_request_api_url', 'remove_api_url')
         read_only_fields = BaseRoleSerializer.Meta.read_only_fields + (
             'role_description',)
+
+    def get_accept_request_api_url(self, obj):
+        if obj.request_key:
+            return build_absolute_uri(self.context['request'], location=reverse(
+                'saas_api_roles_by_descr', args=(
+                    obj.organization, obj.role_description)))
+        return None
+
+    def get_remove_api_url(self, obj):
+        role_description = (obj.role_description
+            if obj.role_description else settings.MANAGER)
+        return build_absolute_uri(self.context['request'], location=reverse(
+            'saas_api_role_detail', args=(
+                obj.organization, role_description, obj.user)))
 
 
 class RoleAccessibleSerializer(BaseRoleSerializer):
@@ -644,3 +703,14 @@ class ValidationErrorSerializer(NoModelSerializer):
     """
     detail = serializers.CharField(help_text=_("Describes the reason for"\
         " the error in plain text"))
+
+
+class AgreementSignSerializer(NoModelSerializer):
+    read_terms = serializers.BooleanField(help_text=_(
+        "I have read and understand these terms and conditions"))
+    last_signed = serializers.DateTimeField(read_only=True)
+
+
+class AccessibleOrganizationSerializer(NoModelSerializer):
+    organization = serializers.CharField()
+    message = serializers.CharField(max_length=255, required=False)

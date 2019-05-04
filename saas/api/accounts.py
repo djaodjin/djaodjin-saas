@@ -23,13 +23,13 @@
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 from django.contrib.auth import get_user_model
-from rest_framework.settings import api_settings
 from rest_framework.generics import ListAPIView
 
 from .organizations import OrganizationQuerysetMixin
 from .serializers import (OrganizationSerializer, UserSerializer)
-from .. import filters
+from .. import filters, settings
 from ..mixins import (OrganizationSmartListMixin, UserSmartListMixin)
+from ..pagination import TypeaheadPagination
 
 
 #pylint: disable=no-init
@@ -81,7 +81,7 @@ class AccountsSearchAPIView(OrganizationSmartListMixin,
 
     .. code-block:: http
 
-        GET /api/profile/?o=created_at HTTP/1.1
+        GET /api/accounts/?o=created_at HTTP/1.1
 
     responds
 
@@ -100,6 +100,7 @@ class AccountsSearchAPIView(OrganizationSmartListMixin,
         }
     """
     serializer_class = OrganizationSerializer
+    pagination_class = TypeaheadPagination
     user_model = get_user_model()
 
     def get_users_queryset(self):
@@ -181,7 +182,12 @@ class AccountsSearchAPIView(OrganizationSmartListMixin,
 
         # XXX It could be faster to stop previous loops early but it is not
         # clear. The extra check at each iteration might in fact be slower.
-        page = page[:api_settings.PAGE_SIZE]
+        if len(page) > settings.MAX_TYPEAHEAD_CANDIDATES:
+            # Returning an empty set if the number of results is greater than
+            # MAX_TYPEAHEAD_CANDIDATES
+            page = []
+            self.paginator.count = 0
+
         self.decorate_personal(page)
 
         serializer = self.get_serializer(page, many=True)
@@ -228,6 +234,7 @@ class ProfilesSearchAPIView(OrganizationSmartListMixin,
         }
     """
     serializer_class = OrganizationSerializer
+    pagination_class = TypeaheadPagination
 
     def paginate_queryset(self, queryset):
         page = super(ProfilesSearchAPIView, self).paginate_queryset(queryset)
@@ -283,3 +290,4 @@ class UsersSearchAPIView(UserSmartListMixin, UserQuerysetMixin, ListAPIView):
         }
     """
     serializer_class = UserSerializer
+    pagination_class = TypeaheadPagination

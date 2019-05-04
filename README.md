@@ -92,10 +92,9 @@ saas/templates/notification/ directory.
 Release Notes
 =============
 
-0.4.1
-  * separates search api for type-ahead candidate lists
-  * adds filter and sort to plans API
-  * fixes #180
+0.5.1
+  * adss API to accept a role grant
+  * fixes calculations of `invited_count` and `requested_count` through filters
 
 [previous release notes](changelog)
 

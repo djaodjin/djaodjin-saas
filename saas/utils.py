@@ -1,4 +1,4 @@
-# Copyright (c) 2018, DjaoDjin inc.
+# Copyright (c) 2019, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -38,7 +38,7 @@ from rest_framework.exceptions import ValidationError
 from rest_framework.settings import api_settings
 from pytz import timezone, UnknownTimeZoneError
 from pytz.tzinfo import DstTzInfo
-from .compat import import_string
+from .compat import get_model_class, import_string
 
 
 class SlugTitleMixin(object):
@@ -169,14 +169,12 @@ def generate_random_slug(length=40, prefix=None):
 def get_organization_model():
     # delayed import so we can load ``OrganizationMixinBase`` in django.conf
     from . import settings
-    from .compat import get_model_class
     return get_model_class(settings.ORGANIZATION_MODEL, 'ORGANIZATION_MODEL')
 
 
 def get_role_model():
     # delayed import so we can load ``OrganizationMixinBase`` in django.conf
     from . import settings
-    from .compat import get_model_class
     return get_model_class(settings.ROLE_RELATION, 'ROLE_RELATION')
 
 
@@ -300,12 +298,49 @@ def handle_uniq_error(err, renames=None):
             _("This %(field)s is already taken.") % {'field': field_name}})
     raise err
 
-def get_picture_storage():
-    from . import settings
 
+def get_picture_storage():
+    # delayed import so we can load ``OrganizationMixinBase`` in django.conf
+    from . import settings
     if settings.PICTURE_STORAGE_CALLABLE:
         try:
             return import_string(settings.PICTURE_STORAGE_CALLABLE)()
         except ImportError:
             pass
     return default_storage
+
+
+# XXX same prototype as djaodjin-multitier.mixins.build_absolute_uri
+def build_absolute_uri(request, location='/', provider=None, with_scheme=True):
+    # delayed import so we can load ``OrganizationMixinBase`` in django.conf
+    from . import settings
+    if settings.BUILD_ABSOLUTE_URI_CALLABLE:
+        try:
+            return import_string(
+                settings.BUILD_ABSOLUTE_URI_CALLABLE)(request,
+                    location=location, provider=provider,
+                    with_scheme=with_scheme)
+        except ImportError:
+            pass
+    return request.build_absolute_uri(location)
+
+
+def is_broker(organization):
+    """
+    Returns ``True`` if the organization is the hosting platform
+    for the service.
+    """
+    # delayed import so we can load ``OrganizationMixinBase`` in django.conf
+    from . import settings
+    from .models import get_broker
+    # We do a string compare here because both ``Organization`` might come
+    # from a different db. That is if the organization parameter is not
+    # a unicode string itself.
+    organization_slug = ''
+    if isinstance(organization, six.string_types):
+        organization_slug = organization
+    elif organization:
+        organization_slug = organization.slug
+    if settings.IS_BROKER_CALLABLE:
+        return import_string(settings.IS_BROKER_CALLABLE)(organization_slug)
+    return get_broker().slug == organization_slug

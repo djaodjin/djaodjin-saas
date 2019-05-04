@@ -475,11 +475,11 @@ class Organization(models.Model):
         m2m.role_description = role_descr
         m2m.request_key = None
         m2m.save(using=self._state.db, force_insert=force_insert)
-        signals.user_relation_added.send(sender=__name__,
+        signals.role_grant_created.send(sender=__name__,
             role=m2m, reason=reason, request_user=request_user)
         return force_insert
 
-    def add_role_request(self, user, at_time=None):
+    def add_role_request(self, user, at_time=None, role_description=None):
         # OK to use ``filter`` in both subsequent queries as we are dealing
         # with the whole QuerySet related to a user.
         if not get_role_model().objects.filter(
@@ -487,12 +487,12 @@ class Organization(models.Model):
             # Otherwise a role already exists
             # or a request was previously sent.
             at_time = datetime_or_now(at_time)
-            m2m = get_role_model()(created_at=at_time,
-                organization=self, user=user,
+            m2m = get_role_model()(created_at=at_time, organization=self,
+                user=user, role_description=role_description,
                 request_key=generate_random_slug())
             m2m.save(using=self._state.db, force_insert=True)
-            return True
-        return False
+            return m2m
+        return None
 
     def add_manager(self, user, at_time=None, reason=None, extra=None,
                     request_user=None):
@@ -3961,25 +3961,6 @@ def get_broker():
     except ImportError:
         pass
     return Organization.objects.get(slug=settings.BROKER_CALLABLE)
-
-
-def is_broker(organization):
-    """
-    Returns ``True`` if the organization is the hosting platform
-    for the service.
-    """
-    # We do a string compare here because both ``Organization`` might come
-    # from a different db. That is if the organization parameter is not
-    # a unicode string itself.
-    organization_slug = ''
-    if isinstance(organization, six.string_types):
-        organization_slug = organization
-    elif organization:
-        organization_slug = organization.slug
-    if settings.IS_BROKER_CALLABLE:
-        from saas.compat import import_string
-        return import_string(settings.IS_BROKER_CALLABLE)(organization_slug)
-    return get_broker().slug == organization_slug
 
 
 def sum_balance_amount(dest_balances, orig_balances):

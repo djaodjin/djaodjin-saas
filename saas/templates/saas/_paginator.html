@@ -1,0 +1,20 @@
+<div ng-show="items.$resolved && totalItems > itemsPerPage" ng-cloak
+     v-show="itemsLoaded && totalItems > itemsPerPage" v-cloak>
+    <ul uib-pagination
+        ng-model="currentPage"
+        total-items="totalItems"
+        items-per-page="itemsPerPage"
+        boundary-links="true"
+        max-size="maxSize"
+        previous-text="&lsaquo;"
+        next-text="&rsaquo;"
+        first-text="&laquo;"
+        last-text="&raquo;"
+        ng-change="pageChanged()"></ul>
+    <div>
+      <span v-for="count in pageCount">
+          <a href="#" role="button" @click="params.page = count; get();">[[count]]</a>
+          &nbsp;&nbsp;
+      </span>
+    </div>
+</div>

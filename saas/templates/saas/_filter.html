@@ -1,14 +1,8 @@
 <div>
-    <div>
-        <span>From</span>
-        <input type="text" ng-model="params.start_at" v-model="params.start_at"></input>
-    </div>
-    <div>
-        <span>To</span>
-        <input type="text" ng-model="params.ends_at" v-model="params.ends_at"></input>
-    </div>
-    <div>
-        <label>Filter</label>
-        <input type="text" ng-model="params.q" v-model="params.q" @input="filterList" />
-    </div>
+    <label>From</label>
+    <input type="date" ng-model="params.start_at" v-model="params.start_at"></input>
+    <label>To</label>
+    <input type="date" ng-model="params.ends_at" v-model="params.ends_at"></input>
+    <label>Filter</label>
+    <input type="text" ng-model="params.q" v-model="params.q" @input="filterList" />
 </div>

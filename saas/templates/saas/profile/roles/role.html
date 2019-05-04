@@ -5,41 +5,53 @@
 {% block saas_content %}
 <section id="user-relation-list-container" ng-app="saasApp">
   <div ng-controller="userRelationListCtrl">
-    <h2 ng-show="!items.$resolved" v-show="!itemsLoaded">Please wait...</h2>
-    <h2 ng-show="items.$resolved && items.results.length == 0" ng-cloak
-        v-show="itemsLoaded && items.results.length == 0" v-cloak>No roles assigned yet</h2>
-    <table ng-show="items.$resolved && items.results.length > 0" ng-cloak
-           v-show="itemsLoaded && items.results.length > 0" v-cloak>
+    <h2>Users with role '{{role_descr.title}}' on {{organization.printable_name}}</h2>
+    <table>
       <thead>
         <tr>
           <th>Username</th>
-          <th>Role</th>
           <th>Email</th>
           <th></th>
           <th></th>
         </tr>
       </thead>
-      <tbody>
+      <tbody ng-show="!items.$resolved" v-show="!itemsLoaded">
+        <tr colspan="5">
+          <td>Please wait...</td>
+        </tr>
+      </tbody>
+      <tbody ng-show="items.$resolved && items.results.length == 0" ng-cloak
+        v-show="itemsLoaded && items.results.length == 0" v-cloak>
+        <tr colspan="4">
+          <td>No users with role {{role_descr.title}} yet.</td>
+        </tr>
+      </tbody>
+      <tbody ng-show="items.$resolved && items.results.length > 0" ng-cloak
+        v-show="itemsLoaded && items.results.length > 0" v-cloak>
         <tr ng-prop-id="item.user.slug" ng-repeat="item in items.results"
             v-bind:id="item.user.slug" v-for="(item, index) in items.results">
           <td>[[item.user.slug]]</td>
-          <td>[[item.role_description.title]]</td>
           <td>[[item.user.email]]</td>
-          <td>[[item.grant_key ? "invited" : ""]]</td>
-          <td><button ng-click="remove($event, $index)"
+          <td>
+            <button @click="sendInvite(item.user.slug)"
+                v-if="item.grant_key">Resend Invite</button>
+            <button @click="save(item.user)" v-if="item.accept_request_api_url">Grant</button>
+          </td>
+          <td><button class="remove" ng-click="remove($event, $index)"
                       @click="remove(index)">Remove</button></td>
         </tr>
       </tbody>
     </table>
     <!-- modal -->
+    <hr />
     <div>
-      <h2>Add {{role_descr.title}}</h2>
+      <h2>Invite user to have a role '{{role_descr.title}}' on {{organization.printable_name}}</h2>
       <form id="add-user" ng-submit="save($event)"
             @submit.prevent="save(unregistered)">
         <input type="hidden" name="csrfmiddlewaretoken" value="{{csrf_token}}">
         <input type="text" name="user" placeholder="Username or e-mail"
                ng-model="unregistered.slug" v-model="unregistered.slug" />
-        <input type="submit" />
+        <button type="submit">Search</button>
       </form>
       <form class="add-role-modal"
             ng-click="create($event)"
@@ -48,23 +60,31 @@
 If the user couldn't be found in the system, it is a great occasion to invite
 them.
         </p>
-        <label>The following invite message will be sent:</label>
-        <input type="text" max-length="150"
-               name="email" placeholder="invitee@example.com"
-               ng-model="unregistered.email"
-               v-model="unregistered.email "/>
-        <textarea name="message" maxlength="255" type="text" rows="10"
-               >
+        <div>
+          <label>To</label>
+          <input type="text" max-length="150"
+                 name="email" placeholder="invitee@example.com"
+                 ng-model="unregistered.email"
+                 v-model="unregistered.email "/>
+        </div>
+        <p>The following invite message will be sent along</p>
+        <div>
+          <textarea name="message" maxlength="255" type="text" rows="10">
 Hello,
 
 I am adding you as a {{role_descr.title}} to {{organization.printable_name}}.
 
 Thank you,
 - {{request.user.first_name}}
-        </textarea>
+          </textarea>
+        </div>
         <button type="submit">Invite user</button>
       </form>
     </div>
+    {% if role_descr.slug == 'manager' %}
+    <hr />
+    <a href="{{urls.organization.role_description}}">Add a new type of role</a>
+    {% endif %}
   </div>
 </section>
 {% endblock %}

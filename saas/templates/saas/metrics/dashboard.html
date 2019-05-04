@@ -79,8 +79,8 @@ No items to take care of Today.
                        v-show="itemsLoaded && items.results.length > 0" v-cloak >
                     <tr v-for="entry in items.results">
                         <td>
-                            <a ng-prop-href="'{{urls.organization.profile_base}}' + entry.dest_organization + '/billing/'"
-                               v-bind:href="'{{urls.organization.profile_base}}' + entry.dest_organization + '/billing/'">[[entry.amount]]</a></td>
+                            <a ng-prop-href="'{{urls.profile_base}}' + entry.dest_organization + '/billing/'"
+                               v-bind:href="'{{urls.profile_base}}' + entry.dest_organization + '/billing/'">[[entry.amount]]</a></td>
                         <td>[[entry.created_at | relativeDate]]</td>
                     </tr>
                 </tbody>

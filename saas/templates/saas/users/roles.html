@@ -30,35 +30,18 @@
         <tr ng-prop-id="entry.slug" ng-repeat="entry in items.results" ng-show="items.$resolved && items.results.length > 0" ng-cloak
             v-bind:id="entry.slug" v-for="(entry, index) in items.results" v-show="itemsLoaded && items.results.length > 0" v-cloak>
           <td>
-            <a ng-prop-href="'{{urls.organization.profile_base}}' + entry.slug + '/'"
-               v-bind:href="'{{urls.organization.profile_base}}' + entry.slug + '/'">[[entry.printable_name]]</a>
+            <a ng-prop-href="'{{urls.profile_base}}' + entry.slug + '/'"
+               v-bind:href="'{{urls.profile_base}}' + entry.slug + '/'">[[entry.printable_name]]</a>
           </td>
           <td>
             [[entry.request_key ? "requested" : entry.role_description.title]]
+            <button @click="acceptGrant(entry)" v-if="entry.accept_grant_api_url">accept</button>
           </td>
-          <td><button ng-click="remove($event, $index)" @click="remove(index)">remove</button></td>
+          <td><button class="remove" ng-click="remove($event, $index)" @click="remove(index)">remove</button></td>
         </tr>
       </tbody>
     </table>
-    <div ng-show="items.$resolved && totalItems > itemsPerPage" ng-cloak
-         v-show="itemsLoaded && totalItems > itemsPerPage" v-cloak>
-      <ul uib-pagination
-          ng-model="currentPage"
-          total-items="totalItems"
-          items-per-page="itemsPerPage"
-          boundary-links="true"
-          max-size="maxSize"
-          previous-text="&lsaquo;"
-          next-text="&rsaquo;"
-          first-text="&laquo;"
-          last-text="&raquo;"
-          ng-change="pageChanged()"></ul>
-      <uiv-pagination
-         v-model="params.page"
-         :total-page="pageCount"
-         @change="get"
-         boundary-links />
-    </div>
+    {% include "saas/_paginator.html" %}
     <!-- modal dialog to add a request to add a role to a user
          on an organization. -->
     <div>

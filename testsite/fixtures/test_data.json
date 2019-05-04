@@ -119,7 +119,7 @@
       "organization": 2,
       "user": 2
     },
-    "model": "saas.Role", "pk": 2
+    "model": "saas.Role", "pk": 1
 },
 {
     "fields": {
@@ -151,7 +151,7 @@
       "organization": 2,
       "user": 3
     },
-    "model": "saas.Role", "pk": 3
+    "model": "saas.Role", "pk": 2
 },
 {
     "fields":{
@@ -160,7 +160,7 @@
       "organization": 5,
       "user": 3
     },
-    "model": "saas.Role", "pk": 10
+    "model": "saas.Role", "pk": 3
 },
 {
     "fields":{
@@ -169,7 +169,7 @@
       "organization": 6,
       "user": 3
     },
-    "model": "saas.Role", "pk": 11
+    "model": "saas.Role", "pk": 4
 },
 {
     "fields": {
@@ -220,7 +220,7 @@
       "organization": 4,
       "user": 4
     },
-    "model": "saas.Role", "pk": 4
+    "model": "saas.Role", "pk": 5
 },
 {
     "fields": {
@@ -305,7 +305,7 @@
       "organization": 5,
       "user": 5
     },
-    "model": "saas.Role", "pk": 5
+    "model": "saas.Role", "pk": 6
 },
 {
     "fields": {
@@ -314,7 +314,7 @@
       "organization": 5,
       "user": 2
     },
-    "model": "saas.Role", "pk": 8
+    "model": "saas.Role", "pk": 7
 },
 {
     "fields": {
@@ -364,7 +364,7 @@
       "organization": 6,
       "user": 6
     },
-    "model": "saas.Role", "pk": 6
+    "model": "saas.Role", "pk": 8
 },
 {
     "fields": {
@@ -430,7 +430,22 @@
       "organization": 2,
       "user": 7
     },
-    "model": "saas.Role", "pk": 7
+    "model": "saas.Role", "pk": 9
+},
+{
+    "fields": {
+      "date_joined": "2017-01-01T00:00:00-00:00",
+      "email": "kenneth@localhost.localdomain",
+      "first_name": "Abby",
+      "last_name": "RoleRequest",
+      "is_active": true,
+      "is_staff": false,
+      "is_superuser": false,
+      "last_login": "2017-01-01T00:00:00-00:00",
+      "password": "pbkdf2_sha256$10000$z0MBiWn0Rlem$iZdC6uHomlE07qGK/TqfcfxNzKJtFp03c0JILF1frRc=",
+      "username": "asmith"
+    },
+    "model": "auth.User", "pk": 8
 },
 {
     "fields": {
@@ -471,7 +486,7 @@
       "organization": 9,
       "user": 9
     },
-    "model": "saas.Role", "pk": 9
+    "model": "saas.Role", "pk": 10
 },
 {
     "fields": {
@@ -609,4 +624,74 @@
       "user": 11
     },
     "model": "saas.signature", "pk": 11
+},
+{
+    "fields": {
+      "created_at": "2019-01-01T00:00:00-09:00",
+      "role_description": null,
+      "organization": 2,
+      "user": 8,
+      "request_key": "a00000d0a0d00001234567890123456789012345"
+    },
+    "model": "saas.Role", "pk": 12
+},
+{
+    "fields": {
+      "date_joined": "2019-01-01T00:00:00-00:00",
+      "email": "brett@localhost.localdomain",
+      "first_name": "Brett",
+      "last_name": "Invited",
+      "is_active": true,
+      "is_staff": false,
+      "is_superuser": false,
+      "password": "pbkdf2_sha256$10000$z0MBiWn0Rlem$iZdC6uHomlE07qGK/TqfcfxNzKJtFp03c0JILF1frRc=",
+      "username": "brett"
+    },
+    "model": "auth.User", "pk": 13
+},
+{
+    "fields": {
+      "last_signed": "2019-01-01T00:00:00-00:00",
+      "agreement": 1,
+      "user": 13
+    },
+    "model": "saas.signature", "pk": 13
+},
+{
+    "fields": {
+      "created_at": "2019-01-01T00:00:00-00:00",
+      "role_description": 1,
+      "organization": 2,
+      "user": 13,
+      "grant_key": "b0e0000000ed0123456789012345678901234578"
+    },
+    "model": "saas.Role", "pk": 13
+},
+{
+    "fields": {
+      "created_at": "2019-01-01T00:00:00-00:00",
+      "role_description": 1,
+      "organization": 4,
+      "user": 13
+    },
+    "model": "saas.Role", "pk": 14
+},
+{
+    "fields": {
+      "created_at": "2019-01-01T00:00:00-00:00",
+      "organization": 5,
+      "user": 13,
+      "request_key": "b0e000e00e0001234567890123456789012345"
+    },
+    "model": "saas.Role", "pk": 15
+},
+{
+    "fields": {
+      "created_at": "2019-01-01T00:00:00-00:00",
+      "role_description": 1,
+      "organization": 6,
+      "user": 13,
+      "request_key": "1234567890123456789012345b0e000e00e000"
+    },
+    "model": "saas.Role", "pk": 16
 }]

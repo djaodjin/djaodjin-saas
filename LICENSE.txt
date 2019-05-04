@@ -44,7 +44,6 @@ in the repo purely for convienience:
 - From https://vuejs.org/
   - testsite/static/vendor/vue.js
   - testsite/static/vendor/vue2-filters.js
-  - testsite/static/vendor/uiv.min.js
 
 
 
