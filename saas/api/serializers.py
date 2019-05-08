@@ -204,6 +204,13 @@ class EmailChargeReceiptSerializer(NoModelSerializer):
         help_text=_("E-mail address to which the receipt was sent."))
 
 
+class ForceSerializer(NoModelSerializer):
+
+    force = serializers.BooleanField(required=False,
+        help_text=_("Forces invite of user/organization that could"\
+        " not be found"))
+
+
 class TableSerializer(NoModelSerializer):
 
     # XXX use `key` instead of `slug` here?
@@ -259,7 +266,7 @@ class OrganizationSerializer(serializers.ModelSerializer):
     default_timezone = serializers.CharField(required=False,
          help_text=_("Timezone to use when reporting metrics"))
     email = serializers.EmailField(
-        help_text=_("E-mail address for the organization"))
+        help_text=_("E-mail address"))
     phone = serializers.CharField(required=False, allow_blank=True,
         help_text=_("Phone number"))
     street_address = serializers.CharField(required=False, allow_blank=True,
@@ -319,7 +326,7 @@ class CreateOrganizationSerializer(NoModelSerializer):
     default_timezone = serializers.CharField(required=False,
          help_text=_("Timezone to use when reporting metrics"))
     email = serializers.EmailField(
-        help_text=_("E-mail address for the organization"))
+        help_text=_("E-mail address"))
     phone = serializers.CharField(required=False, allow_blank=True,
         help_text=_("Phone number"))
     street_address = serializers.CharField(required=False, allow_blank=True,
@@ -413,7 +420,8 @@ class PlanSerializer(serializers.ModelSerializer):
     title = serializers.CharField(required=False,
         help_text=_("Title for the plan"))
     description = serializers.CharField(required=False,
-        help_text=_("Free-form text description for the plan"))
+        help_text=_("Free-form text description for the %(object)s") % {
+            'object': 'plan'})
     is_active = serializers.BooleanField(required=False,
         help_text=_("True when customers can subscribe to the plan"))
     setup_amount = serializers.IntegerField(required=False,
@@ -492,7 +500,8 @@ class TransactionSerializer(serializers.ModelSerializer):
         read_only=True, slug_field='slug', help_text=_("Target organization"\
         " to which funds are deposited"))
     description = serializers.CharField(source='descr', read_only=True,
-        help_text=_("Free-form text description for the transaction"))
+        help_text=_("Free-form text description for the %(object)s") % {
+            'object': 'transaction'})
     amount = serializers.CharField(source='dest_amount', read_only=True,
         help_text=_("Amount being transfered"))
     is_debit = serializers.CharField(source='dest_amount', read_only=True,

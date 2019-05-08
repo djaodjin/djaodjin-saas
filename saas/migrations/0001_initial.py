@@ -6,6 +6,8 @@ from django.conf import settings
 import django.core.validators
 from django.db import migrations, models
 import django.db.models.deletion
+from django.utils.safestring import mark_safe
+from django.utils.translation import ugettext_lazy as _
 import django_countries.fields
 
 
@@ -93,7 +95,10 @@ class Migration(migrations.Migration):
                 ('slug', models.SlugField(help_text='Unique identifier shown in the URL bar.', unique=True)),
                 ('created_at', models.DateTimeField(auto_now_add=True)),
                 ('is_active', models.BooleanField(default=True)),
-                ('is_bulk_buyer', models.BooleanField(default=False, help_text='Enable GroupBuy (<a href="/docs/#group-billing" target="_blank">what is it?</a>)')),
+                ('is_bulk_buyer', models.BooleanField(default=False,
+                    help_text=mark_safe(_("Enable GroupBuy ("\
+                    "<a href=\"https://djaodjin.com/docs/#group-billing\""\
+                    " target=\"_blank\">what is it?</a>)")))),
                 ('is_provider', models.BooleanField(default=False, help_text='Can fulfill the provider side of a subscription.')),
                 ('full_name', models.CharField(blank=True, max_length=60, verbose_name='full name')),
                 ('email', models.EmailField(max_length=254)),

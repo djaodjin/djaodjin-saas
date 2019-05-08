@@ -924,8 +924,8 @@ class RoleDescriptionMixin(OrganizationMixin):
                 self._role_description = self.organization.get_role_description(
                     self.kwargs.get('role'))
             except RoleDescription.DoesNotExist:
-                raise Http404(_("RoleDescription '%s' does not exist.")
-                    % self.kwargs.get('role'))
+                raise Http404(_("RoleDescription '%(role)s' does not exist.")
+                    % {'role': self.kwargs.get('role')})
         return self._role_description
 
 

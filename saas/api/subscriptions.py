@@ -31,6 +31,7 @@ from rest_framework.generics import (get_object_or_404, ListAPIView,
     ListCreateAPIView, RetrieveUpdateDestroyAPIView, UpdateAPIView)
 
 from ..decorators import _valid_manager
+from ..docs import swagger_auto_schema
 from ..filters import SortableDateRangeSearchableFilterBackend
 from ..mixins import (ChurnedQuerysetMixin, PlanMixin, ProviderMixin,
     SubscriptionMixin, SubscriptionSmartListMixin, SubscribedQuerysetMixin,
@@ -39,7 +40,8 @@ from .. import signals
 from ..models import Subscription
 from ..utils import generate_random_slug
 from .roles import OptinBase
-from .serializers import OrganizationSerializer, SubscriptionSerializer
+from .serializers import (ForceSerializer, OrganizationSerializer,
+    SubscriptionSerializer)
 
 #pylint: disable=no-init,old-style-class
 
@@ -235,7 +237,7 @@ class PlanSubscriptionsAPIView(DateRangeMixin, SubscriptionSmartListMixin,
 
     .. code-block:: http
 
-        GET /api/profile/:organization/plans/:plan/subscriptions/ HTTP/1.1
+        GET /api/profile/cowork/plans/premium/subscriptions/ HTTP/1.1
 
     .. code-block:: json
 
@@ -272,6 +274,8 @@ class PlanSubscriptionsAPIView(DateRangeMixin, SubscriptionSmartListMixin,
                 subscriptions += [subscription]
         return subscriptions, created
 
+    @swagger_auto_schema(request_body=SubscriptionCreateSerializer,
+        query_serializer=ForceSerializer)
     def post(self, request, *args, **kwargs):
         """
         A POST request will subscribe an organization to the ``:plan``.
@@ -282,7 +286,7 @@ class PlanSubscriptionsAPIView(DateRangeMixin, SubscriptionSmartListMixin,
 
         .. code-block:: http
 
-            POST /api/profile/:organization/plans/:plan/subscriptions/ HTTP/1.1
+            POST /api/profile/cowork/plans/premium/subscriptions/ HTTP/1.1
 
         .. code-block:: json
 
@@ -332,6 +336,7 @@ class PlanSubscriptionsAPIView(DateRangeMixin, SubscriptionSmartListMixin,
     def create(self, request, *args, **kwargs): #pylint:disable=unused-argument
         serializer = SubscriptionCreateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
+        print("XXX create subscription")
         return self.perform_optin(serializer, request)
 
 

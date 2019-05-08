@@ -51,9 +51,9 @@ from ..mixins import (OrganizationMixin, RoleDescriptionMixin, RoleMixin,
 from ..models import RoleDescription
 from ..utils import (full_name_natural_split, get_organization_model,
     get_role_model, generate_random_slug)
-from .serializers import (AccessibleSerializer, BaseRoleSerializer,
-    NoModelSerializer, RoleSerializer, RoleAccessibleSerializer,
-    AccessibleOrganizationSerializer)
+from .serializers import (AccessibleSerializer,
+    AccessibleOrganizationSerializer, BaseRoleSerializer, ForceSerializer,
+    NoModelSerializer, RoleSerializer, RoleAccessibleSerializer)
 
 
 LOGGER = logging.getLogger(__name__)
@@ -135,13 +135,6 @@ def create_user_from_email(email, password=None, **kwargs):
     signals.user_invited.send(
         sender=__name__, user=user, invited_by=invited_by)
     return user
-
-
-class ForceSerializer(NoModelSerializer):
-
-    force = serializers.BooleanField(required=False,
-        help_text=_("Forces invite of user/organization that could"\
-        " not be found"))
 
 
 class OrganizationRoleCreateSerializer(NoModelSerializer):
@@ -520,7 +513,7 @@ class AccessibleByDescrListAPIView(RoleSmartListMixin,
         created = organization.add_role_request(self.user,
             role_description=role_descr)
 
-        signals.user_relation_requested.send(sender=__name__,
+        signals.role_request_created.send(sender=__name__,
             organization=organization, user=self.user, reason=reason)
         if created:
             resp_status = status.HTTP_201_CREATED

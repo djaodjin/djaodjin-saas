@@ -1068,6 +1068,7 @@ djaodjin-saas/tree/master/saas/templates/saas/billing/withdraw.html>`__).
         # XXX Remove call to processor backend from a ``View``.
         available_amount = self.provider.retrieve_bank()['balance_amount']
         kwargs.update({
+          'unit': "$", # XXX Symbol is currently hardcoded in description.
           'amount': (available_amount / 100.0)
             if (isinstance(available_amount, six.integer_types)
                 and available_amount > 0) else 0})

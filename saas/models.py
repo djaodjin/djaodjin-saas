@@ -236,7 +236,7 @@ class Organization(models.Model):
     locality = models.CharField(_("City/Town"), max_length=50)
     region = models.CharField(_("State/Province/County"), max_length=50)
     postal_code = models.CharField(_("Zip/Postal code"), max_length=50)
-    country = CountryField()
+    country = CountryField(_("Country"))
 
     is_bulk_buyer = models.BooleanField(default=False,
         help_text=mark_safe(_("Enable GroupBuy ("\
@@ -1408,7 +1408,7 @@ class Charge(models.Model):
     customer = models.ForeignKey(Organization, on_delete=models.PROTECT,
         help_text=_("Organization charged"))
     description = models.TextField(null=True,
-        help_text=_("Description for the Charge as appears on billing"\
+        help_text=_("Description for the charge as appears on billing"\
             " statements"))
     last4 = models.PositiveSmallIntegerField(
         help_text=_("Last 4 digits of the credit card used"))
@@ -1487,8 +1487,9 @@ class Charge(models.Model):
         refund_unit = refund_balances[0]['unit']
         if refund_amount and invoiced_total.unit != refund_unit:
             raise ValueError(
-                _("charge and refunds have different units (%s vs. %s)") % (
-                invoiced_total.unit, refund_unit))
+                _("charge and refunds have different units"\
+" (%(unit)s vs. %(refund_unit)s)") % (
+                {'unit': invoiced_total.unit, 'refund_unit': refund_unit}))
         return Price(invoiced_total.amount - refund_amount, invoiced_total.unit)
 
     @property
@@ -2169,7 +2170,8 @@ class Coupon(models.Model):
     code = models.SlugField(
         help_text=_("Unique identifier per provider, typically used in URLs"))
     description = models.TextField(null=True, blank=True,
-        help_text=_("Free-form text description for the Coupon"))
+        help_text=_("Free-form text description for the %(object)s") % {
+            'object': 'coupon'})
     percent = models.PositiveSmallIntegerField(default=0,
         validators=[MaxValueValidator(100)],
         help_text=_("Percentage discounted"))

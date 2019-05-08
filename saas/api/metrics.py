@@ -24,6 +24,7 @@
 
 import logging
 
+from django.utils.translation import ugettext_lazy as _
 from rest_framework.generics import GenericAPIView, ListAPIView
 from rest_framework.response import Response
 
@@ -590,5 +591,5 @@ class PlanMetricAPIView(BeforeMixin, ProviderMixin, GenericAPIView):
                 from_date=self.ends_at, tz=self.timezone)}]
 
         return Response(
-            {"title": "Active Subscribers",
+            {"title": _("Active subscribers"),
                 "table": table, "extra": extra})

@@ -37,6 +37,7 @@ from django_countries import countries
 from django_countries.fields import Country
 import localflavor.us.forms as us_forms
 
+from . import settings
 from .models import Organization, Plan, Subscription
 
 #pylint: disable=super-on-old-class,no-member
@@ -162,9 +163,9 @@ class ImportTransactionForm(forms.Form):
 
 class OrganizationForm(PostalFormMixin, forms.ModelForm):
 
-    submit_title = 'Update'
-    street_address = forms.CharField(required=False)
-    phone = forms.CharField(required=False)
+    submit_title = _('Update')
+    street_address = forms.CharField(label=_("Street address"), required=False)
+    phone = forms.CharField(label=_("Phone number"), required=False)
 
     class Meta:
         model = Organization
@@ -175,7 +176,7 @@ class OrganizationForm(PostalFormMixin, forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super(OrganizationForm, self).__init__(*args, **kwargs)
         if kwargs.get('instance', None) is None:
-            self.submit_title = 'Create'
+            self.submit_title = _('Create')
         if 'country' in self.fields:
             # Country field is optional. We won't add a State/Province
             # in case it is omitted.
@@ -294,8 +295,8 @@ class PlanForm(forms.ModelForm):
                 self.cleaned_data['interval'] = period_choice[0]
                 return self.cleaned_data['interval']
         raise forms.ValidationError(
-            _("period must be one of %s" % ([
-                period_choice[1] for period_choice in Plan.INTERVAL_CHOICES])))
+            _("period must be one of %(period)s") % {[
+                period_choice[1] for period_choice in Plan.INTERVAL_CHOICES]})
 
     def clean_period_amount(self):
         try:
@@ -312,8 +313,9 @@ class PlanForm(forms.ModelForm):
                 self.cleaned_data['renewal_type'] = renewal_type_choice[0]
                 return self.cleaned_data['renewal_type']
         raise forms.ValidationError(
-            _("renewal must be one of %s" % ([renewal_type_choice[1]
-            for renewal_type_choice in Plan.RENEWAL_CHOICES])))
+            _("renewal must be one of %(type)s") % {
+                'type': [renewal_type_choice[1]
+            for renewal_type_choice in Plan.RENEWAL_CHOICES]})
 
     def clean_title(self):
         kwargs = {}
@@ -357,6 +359,11 @@ class WithdrawForm(BankForm):
     Withdraw amount from ``Funds`` to a bank account
     """
     submit_title = _("Withdraw")
-    amount = forms.DecimalField(label=_("Amount (in $)"), # XXX fix to be
-        # derived from unit as well as matching other input (i.e. cents vs. $)
-        required=False)
+    amount = forms.DecimalField(required=False)
+
+    def __init__(self, *args, **kwargs):
+        #call our superclasse's initializer
+        super(WithdrawForm, self).__init__(*args, **kwargs)
+        self.fields['amount'].label = _("Amount (in %(unit)s)") % {
+            'unit': kwargs.get('initial', {}.get(
+                'unit', settings.DEFAULT_UNIT))}

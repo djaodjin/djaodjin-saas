@@ -392,7 +392,8 @@ class CouponRedeemAPIView(GenericAPIView):
             coupon_code = serializer.data['code']
             if CartItem.objects.redeem(request.user, coupon_code):
                 details = {"details": (
-                    _("Coupon '%s' was successfully applied.") % coupon_code)}
+                    _("Coupon '%(code)s' was successfully applied.") % {
+                        'code': coupon_code})}
                 headers = {}
                 # XXX Django 1.7: 500 error, argument must be an HttpRequest
                 # object, not 'Request'. Not an issue with Django 1.6.2

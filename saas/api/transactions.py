@@ -423,7 +423,8 @@ class OfflineTransactionSerializer(NoModelSerializer):
     # XXX Shouldn't this be same format as TransactionSerializer.amount?
     amount = serializers.DecimalField(None, 2)
     descr = serializers.CharField(required=False,
-        help_text=_("Free-form text description for the Transaction"))
+        help_text=_("Free-form text description for the %(object)s") % {
+            'object': 'transaction'})
 
 
 class ImportTransactionsAPIView(ProviderMixin, CreateAPIView):

@@ -76,9 +76,11 @@ Vue.filter('relativeDate', function(at_time) {
     }
     var dateTime = moment(at_time);
     if( dateTime <= cutOff ) {
-        return moment.duration(cutOff.diff(dateTime)).humanize() + " " + gettext('ago');
+        return interpolate(gettext('%s ago'),
+            [moment.duration(cutOff.diff(dateTime)).humanize()]);
     } else {
-        return moment.duration(dateTime.diff(cutOff)).humanize() + " " + gettext('left');
+        return interpolate(gettext('%s left'),
+            [moment.duration(dateTime.diff(cutOff)).humanize()]);
     }
 });
 
@@ -1980,7 +1982,34 @@ new Vue({
         filterableMixin,
     ],
     data: {
+        newProfile: {},
         url: djaodjinSettings.urls.provider.api_plan_subscribers,
+    },
+    methods: {
+        save: function(item){
+            var vm = this;
+            var slug = item.slug ? item.slug : item.toString();
+            vm.reqPost(vm.url, {slug: slug},
+                function(resp){
+                    vm.get();
+                }, function(resp){
+                    if(str.length > 0){
+                        vm.newProfile = {
+                            slug: str,
+                            email: str,
+                            full_name: str
+                        }
+                        vm.modalShow();
+                    }
+                }
+            );
+        },
+        create: function(){
+            var vm = this;
+            vm.reqPost(vm.url + "?force=1", vm.newProfile, function(resp){
+                vm.get();
+            });
+        }
     },
     mounted: function(){
         this.get();
@@ -2357,7 +2386,7 @@ var cardMixin = {
                 }
                 if( vm.errors['cardCvc'] ) {
                     if( errorMessages ) { errorMessages += ", "; }
-                    errorMessages += gettext("Card Security Code");
+                    errorMessages += gettext("Security Code");
                 }
                 if( vm.errors['cardExpMonth']
                          || vm.errors['cardExpYear'] ) {
@@ -2370,15 +2399,15 @@ var cardMixin = {
                 }
                 if( vm.errors['card_address_line1'] ) {
                     if( errorMessages ) { errorMessages += ", "; }
-                    errorMessages += gettext("Street");
+                    errorMessages += gettext("Street address");
                 }
                 if( vm.errors['card_city'] ) {
                     if( errorMessages ) { errorMessages += ", "; }
-                    errorMessages += gettext("City");
+                    errorMessages += gettext("City/Town");
                 }
                 if( vm.errors['card_adress_zip'] ) {
                     if( errorMessages ) { errorMessages += ", "; }
-                    errorMessages += gettext("Zip");
+                    errorMessages += gettext("Zip/Postal code");
                 }
                 if( vm.errors['country'] ) {
                     if( errorMessages ) { errorMessages += ", "; }
@@ -2386,10 +2415,11 @@ var cardMixin = {
                 }
                 if( vm.errors['region'] ) {
                     if( errorMessages ) { errorMessages += ", "; }
-                    errorMessages += gettext("State/Province");
+                    errorMessages += gettext("State/Province/County");
                 }
                 if( errorMessages ) {
-                    errorMessages += " " + gettext("field(s) cannot be empty.");
+                    errorMessages = interpolate(
+                      gettext("%s field(s) cannot be empty."), [errorMessages]);
                 }
                 showErrorMessages(errorMessages);
             }
@@ -2456,7 +2486,7 @@ new Vue({
             vm.reqPost(djaodjinSettings.urls.api_redeem_coupon, {
                 code: vm.coupon },
             function(resp) {
-                showMessages([gettext("Coupon was successfully applied.")],
+                showMessages([gettext("Discount was successfully applied.")],
                     "success");
                 vm.get();
             });
@@ -2576,7 +2606,6 @@ new Vue({
             }
             vm.reqPost(djaodjinSettings.urls.organization.api_checkout, data,
             function(resp) {
-                showMessages([gettext("Success.")], "success");
                 var id = resp.processor_key;
                 location = djaodjinSettings.urls.organization.receipt.replace('_', id);
             });

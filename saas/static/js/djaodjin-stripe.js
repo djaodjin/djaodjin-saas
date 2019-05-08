@@ -97,7 +97,8 @@
                 valid = false;
             }
             if( errorMessages ) {
-                errorMessages += " " + gettext("field(s) cannot be empty.");
+                errorMessages = interpolate(
+                    gettext("%s field(s) cannot be empty."), [errorMessages]);
             }
             if( valid ) {
                 // this identifies your website in the createToken call below
@@ -279,7 +280,7 @@
             var cvc = cvcElement.val();
             if( cvc === "" ) {
                 if( errorMessages ) { errorMessages += ", "; }
-                errorMessages += gettext("Card Security Code");
+                errorMessages += gettext("Security Code");
                 cvcElement.parents(".form-group").addClass("has-error");
                 valid = false;
             }
@@ -308,7 +309,7 @@
             var addressLine1 = addressLine1Element.val();
             if( addressLine1 === "" ) {
                 if( errorMessages ) { errorMessages += ", "; }
-                errorMessages += gettext("Street");
+                errorMessages += gettext("Street address");
                 addressLine1Element.parents(
                     ".form-group").addClass("has-error");
                 valid = false;
@@ -317,7 +318,7 @@
             var addressCity = addressCityElement.val();
             if( addressCity === "" ) {
                 if( errorMessages ) { errorMessages += ", "; }
-                errorMessages += gettext("City");
+                errorMessages += gettext("City/Town");
                 addressCityElement.parents(".form-group").addClass("has-error");
                 valid = false;
             }
@@ -325,7 +326,7 @@
             var addressState = addressStateElement.val();
             if( addressState === "" ) {
                 if( errorMessages ) { errorMessages += ", "; }
-                errorMessages += gettext("State/Province");
+                errorMessages += gettext("State/Province/County");
                 addressStateElement.parents(
                     ".form-group").addClass("has-error");
                 valid = false;
@@ -334,7 +335,7 @@
             var addressZip = addressZipElement.val();
             if( addressZip === "" ) {
                 if( errorMessages ) { errorMessages += ", "; }
-                errorMessages += gettext("Zip");
+                errorMessages += gettext("Zip/Postal code");
                 addressZipElement.parents(".form-group").addClass("has-error");
                 valid = false;
             }
@@ -348,7 +349,8 @@
                 valid = false;
             }
             if( errorMessages ) {
-                errorMessages += " " + gettext("field(s) cannot be empty.");
+                errorMessages = interpolate(
+                    gettext("%s field(s) cannot be empty."), [errorMessages]);
             }
             if( valid ) {
                 // this identifies your website in the createToken call below
