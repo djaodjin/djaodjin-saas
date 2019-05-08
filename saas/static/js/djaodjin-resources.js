@@ -106,7 +106,6 @@ function showErrorMessages(resp) {
             + "<br />" + gettext("We have been notified"
             + " and have started on fixing the error. We apologize for the"
             + " inconvinience.")];
-        ];
     } else {
         var messages = _showErrorMessages(resp);
         if( messages.length === 0 ) {
