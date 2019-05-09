@@ -1303,7 +1303,7 @@ new Vue({
         showInvited: false,
         showRequested: false,
         params: {
-            role_status: null,
+            role_status: 'active',
         },
     },
     methods: {
@@ -1315,9 +1315,9 @@ new Vue({
                 // by multiple columns so we always use the
                 // first one
                 if(vm.showInvited){
-                    vm.params.o = 'grant_key';
+                    vm.params.o = '-grant_key';
                 } else if(vm.showRequested){
-                    vm.params.o = 'request_key';
+                    vm.params.o = '-request_key';
                 }
                 vm.params.ot = 'desc';
             }
@@ -1326,7 +1326,7 @@ new Vue({
     },
     computed: {
         roleStatus: function(){
-            var args = [];
+            var args = ['active'];
             if(this.showInvited) args.push('invited');
             if(this.showRequested) args.push('requested');
             return args.join(',');
@@ -1949,8 +1949,7 @@ new Vue({
     mixins: [userRelationMixin, sortableMixin, filterableMixin],
     data: {
         params: {
-            o: "slug",
-            ot: "asc",
+            o: "-request_key",
         },
         url: djaodjinSettings.urls.user.api_accessibles,
         typeaheadUrl: djaodjinSettings.urls.api_candidates,
@@ -1966,7 +1965,7 @@ new Vue({
         }
     },
     mounted: function(){
-        this.get()
+        this.get();
     },
 })
 }
