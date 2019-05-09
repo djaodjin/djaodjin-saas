@@ -913,6 +913,8 @@ var userRelationMixin = {
             modalSelector: ".add-role-modal",
             url: null,
             typeaheadUrl: null,
+            showInvited: false,
+            showRequested: false,
             unregistered: {
                 slug: '',
                 email: '',
@@ -930,7 +932,7 @@ var userRelationMixin = {
         },
         remove: function(idx){
             var vm = this;
-            var ob = this.items.results[idx]
+            var ob = vm.items.results[idx];
             var slug = (ob.user ? ob.user.slug : ob.slug);
             if( djaodjinSettings.user && djaodjinSettings.user.slug === slug ) {
                 if( !confirm(gettext("You are about to delete yourself from" +
@@ -945,13 +947,16 @@ var userRelationMixin = {
                 // splicing instead of refetching because
                 // subsequent fetch might fail due to 403
                 vm.items.results.splice(idx, 1);
+                if( ob.grant_key ) { vm.items.invited_count -= 1; }
+                if( ob.request_key ) { vm.items.requested_count -= 1; }
             });
         },
         saveUserRelation: function(slug){
             var vm = this;
             vm.reqPost(vm.url, {slug: slug},
                 function(resp){
-                    vm.get()
+                    vm.showInvited = true;
+                    vm.get();
                 }, function(resp){
                     vm.handleNewUser(slug);
                 }
@@ -976,7 +981,8 @@ var userRelationMixin = {
             var vm = this;
             var data = vm.unregistered;
             vm.reqPost(vm.url + "?force=1", data, function(resp){
-                vm.get()
+                vm.showInvited = true;
+                vm.get();
             });
         }
     },
@@ -1215,9 +1221,13 @@ new Vue({
             }
         },
         selected: function(idx){
-            var coupon = this.items.results[idx]
-            coupon.ends_at = (new Date(coupon.ends_at)).toISOString()
-            this.update(coupon)
+            var coupon = this.items.results[idx];
+            if( coupon.ends_at ) {
+                coupon.ends_at = (new Date(coupon.ends_at)).toISOString();
+            } else {
+                coupon.ends_at = null;
+            }
+            this.update(coupon);
         },
     },
     mounted: function(){
@@ -1275,7 +1285,6 @@ var userRelationListMixin = {
     mixins: [userRelationMixin, filterableMixin],
     data: function(){
         return {
-            showPending: false,
             url: djaodjinSettings.urls.organization.api_roles,
             typeaheadUrl: djaodjinSettings.urls.api_candidates,
         }
@@ -1300,8 +1309,6 @@ new Vue({
     el: "#user-relation-list-container",
     mixins: [userRelationListMixin],
     data: {
-        showInvited: false,
-        showRequested: false,
         params: {
             role_status: 'active',
         },
@@ -2909,6 +2916,11 @@ new Vue({
             // It seems the form is completely blank. Let's attempt
             // to load the form fields from the API then.
             vm.get();
+        } else {
+            var planForm = $("#activate-plan").parent();
+            if( planForm.length > 0 ) {
+                vm.isActive = parseInt(getInitValue(planForm, 'is_active'));
+            }
         }
     },
 });
