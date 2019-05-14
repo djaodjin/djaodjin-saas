@@ -265,6 +265,8 @@ class OptinBase(OrganizationDecorateMixin, OrganizationCreateMixin):
                     raise ValidationError({
                         'email': _("We cannot invite an organization"\
                             " without an e-mail address.")})
+                if not organization_data.get('email', None):
+                    organization_data['email'] = email
                 full_name = organization_data.get('full_name', None)
                 if not full_name:
                     default_full_name = slug
