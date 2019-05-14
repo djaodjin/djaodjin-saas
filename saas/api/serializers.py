@@ -315,7 +315,7 @@ OrganizationSerializer._declared_fields["type"] = \
         help_text=_("One of 'organization', 'personal' or 'user'"))
 
 
-class CreateOrganizationSerializer(NoModelSerializer):
+class OrganizationCreateSerializer(NoModelSerializer):
     # We have a special serializer for Create (i.e. POST request)
     # because we want to include the `type` field.
 
@@ -348,7 +348,7 @@ class CreateOrganizationSerializer(NoModelSerializer):
                 _("type must be one of 'personal' or 'organization'."))
         return value
 
-CreateOrganizationSerializer._declared_fields["type"] = \
+OrganizationCreateSerializer._declared_fields["type"] = \
     serializers.CharField(
         help_text=_("One of 'organization', 'personal' or 'user'"))
 
@@ -466,7 +466,6 @@ class PlanSerializer(serializers.ModelSerializer):
         return title
 
 
-
 class SubscriptionSerializer(serializers.ModelSerializer):
 
     organization = OrganizationSerializer(read_only=True)
@@ -486,6 +485,16 @@ class SubscriptionSerializer(serializers.ModelSerializer):
     def get_editable(self, subscription):
         return bool(_valid_manager(self.context['request'],
             [subscription.plan.organization]))
+
+
+class SubscriptionCreateSerializer(serializers.ModelSerializer):
+
+    organization = OrganizationCreateSerializer()
+    message = serializers.CharField(required=False, allow_null=True)
+
+    class Meta:
+        model = Subscription
+        fields = ('organization', 'message')
 
 
 class TransactionSerializer(serializers.ModelSerializer):

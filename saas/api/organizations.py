@@ -34,7 +34,7 @@ from rest_framework.generics import (ListAPIView, ListCreateAPIView,
     RetrieveUpdateDestroyAPIView)
 from rest_framework.response import Response
 
-from .serializers import (CreateOrganizationSerializer,
+from .serializers import (OrganizationCreateSerializer,
     OrganizationSerializer, OrganizationWithSubscriptionsSerializer)
 from .. import signals
 from ..decorators import _valid_manager
@@ -46,13 +46,7 @@ from ..utils import (full_name_natural_split, get_organization_model,
     handle_uniq_error)
 
 
-#pylint: disable=no-init
-#pylint: disable=old-style-class
-
-
-class OrganizationQuerysetMixin(object):
-
-    queryset = get_organization_model().objects.all()
+class OrganizationDecorateMixin(object):
 
     @staticmethod
     def as_organization(user):
@@ -100,8 +94,9 @@ class OrganizationQuerysetMixin(object):
         #queryset = personal_qs.union(organization_qs)
         #
         # A raw query cannot be furthered filtered either.
-        records = page if isinstance(page, list) else [page]
-        personal = dict(get_organization_model().objects.filter(
+        organization_model = get_organization_model()
+        records = [page] if isinstance(page, organization_model) else page
+        personal = dict(organization_model.objects.filter(
             pk__in=[profile.pk for profile in records if profile.pk],
             role__user__username=F('slug')).extra(select={
             'credentials': ("NOT (password LIKE '" + UNUSABLE_PASSWORD_PREFIX
@@ -111,6 +106,52 @@ class OrganizationQuerysetMixin(object):
                 profile.is_personal = True
                 profile.credentials = personal[profile.pk]
         return page
+
+
+#pylint: disable=no-init
+#pylint: disable=old-style-class
+class OrganizationCreateMixin(object):
+
+    user_model = get_user_model()
+
+    def create_organization(self, validated_data):
+        full_name = validated_data.get('full_name')
+        email = validated_data.get('email')
+        organization_model = get_organization_model()
+        organization = organization_model(
+            full_name=full_name, email=email,
+            slug=validated_data.get('slug', None),
+            default_timezone=validated_data.get(
+                'default_timezone', ""),
+            phone=validated_data.get('phone', ""),
+            street_address=validated_data.get('street_address', ""),
+            locality=validated_data.get('locality', ""),
+            region=validated_data.get('region', ""),
+            postal_code=validated_data.get('postal_code', ""),
+            country=validated_data.get('country', ""),
+            extra=validated_data.get('extra'))
+        with transaction.atomic():
+            try:
+                organization.save()
+                organization.is_personal = (
+                    validated_data.get('type') == 'personal')
+                if organization.is_personal:
+                    first_name, mid, last_name = full_name_natural_split(
+                        full_name)
+                    user = self.user_model.objects.create_user(
+                        username=organization.slug,
+                        email=email, first_name=first_name, last_name=last_name)
+                    organization.add_manager(
+                        user, request_user=self.request.user)
+            except IntegrityError as err:
+                handle_uniq_error(err)
+
+        return organization
+
+
+class OrganizationQuerysetMixin(OrganizationDecorateMixin):
+
+    queryset = get_organization_model().objects.all()
 
 
 class OrganizationDetailAPIView(OrganizationMixin, OrganizationQuerysetMixin,
@@ -242,7 +283,8 @@ class OrganizationDetailAPIView(OrganizationMixin, OrganizationQuerysetMixin,
 
 
 class OrganizationListAPIView(OrganizationSmartListMixin,
-                              OrganizationQuerysetMixin, ListCreateAPIView):
+                              OrganizationQuerysetMixin,
+                              OrganizationCreateMixin, ListCreateAPIView):
     """
     Queries a page (``PAGE_SIZE`` records) of organization and user profiles.
 
@@ -282,7 +324,7 @@ class OrganizationListAPIView(OrganizationSmartListMixin,
     serializer_class = OrganizationSerializer
     user_model = get_user_model()
 
-    @swagger_auto_schema(request_body=CreateOrganizationSerializer)
+    @swagger_auto_schema(request_body=OrganizationCreateSerializer)
     def post(self, request, *args, **kwargs):
         """
         Creates an organization, personal or user profile.
@@ -308,40 +350,12 @@ class OrganizationListAPIView(OrganizationSmartListMixin,
         return page
 
     def create(self, request, *args, **kwargs):
-        serializer = CreateOrganizationSerializer(data=request.data)
+        serializer = OrganizationCreateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
         # creates profile
-        full_name = serializer.validated_data.get('full_name')
-        email = serializer.validated_data.get('email')
-        organization_model = get_organization_model()
-        organization = organization_model(
-            full_name=full_name, email=email,
-            slug=serializer.validated_data.get('slug', None),
-            default_timezone=serializer.validated_data.get(
-                'default_timezone', ""),
-            phone=serializer.validated_data.get('phone', ""),
-            street_address=serializer.validated_data.get('street_address', ""),
-            locality=serializer.validated_data.get('locality', ""),
-            region=serializer.validated_data.get('region', ""),
-            postal_code=serializer.validated_data.get('postal_code', ""),
-            country=serializer.validated_data.get('country', ""),
-            extra=serializer.validated_data.get('extra'))
-        with transaction.atomic():
-            try:
-                organization.save()
-                organization.is_personal = (
-                    serializer.validated_data.get('type') == 'personal')
-                if organization.is_personal:
-                    first_name, mid, last_name = full_name_natural_split(
-                        full_name)
-                    user = self.user_model.objects.create_user(
-                        username=organization.slug,
-                        email=email, first_name=first_name, last_name=last_name)
-                    organization.add_manager(
-                        user, request_user=self.request.user)
-            except IntegrityError as err:
-                handle_uniq_error(err)
+        organization = self.create_organization(serializer.validated_data)
+        self.decorate_personal(organization)
 
         # returns created profile
         serializer = self.get_serializer(instance=organization)

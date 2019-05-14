@@ -38,24 +38,14 @@ from ..mixins import (ChurnedQuerysetMixin, PlanMixin, ProviderMixin,
     DateRangeMixin)
 from .. import signals
 from ..models import Subscription
-from ..utils import generate_random_slug
+from ..utils import generate_random_slug, datetime_or_now
 from .roles import OptinBase
-from .serializers import (ForceSerializer, OrganizationSerializer,
-    SubscriptionSerializer)
+from .serializers import (ForceSerializer, SubscriptionSerializer,
+    SubscriptionCreateSerializer)
 
 #pylint: disable=no-init,old-style-class
 
 LOGGER = logging.getLogger(__name__)
-
-
-class SubscriptionCreateSerializer(serializers.ModelSerializer):
-
-    organization = OrganizationSerializer()
-    message = serializers.CharField(required=False, allow_null=True)
-
-    class Meta:
-        model = Subscription
-        fields = ('organization', 'message')
 
 
 class SubscriptionBaseListAPIView(SubscriptionMixin, ListCreateAPIView):
@@ -256,22 +246,34 @@ class PlanSubscriptionsAPIView(DateRangeMixin, SubscriptionSmartListMixin,
     """
     serializer_class = SubscriptionSerializer
 
-    def add_relations(self, organizations, user):
+    def add_relations(self, organizations, user, ends_at=None):
+        ends_at = datetime_or_now(ends_at)
         subscriptions = []
+        created = False
+        self.decorate_personal(organizations)
         for organization in organizations:
             # Be careful that `self.plan` must exist otherwise the API will
             # return a 404.
-            if Subscription.objects.active_for(organization).filter(
-                    plan=self.plan).exists():
-                created = False
-            else:
-                created = True
+            # We do not use `Subscription.objects.active_for` here because
+            # if the subscription was already created and the grant yet to be
+            # accepted, we want to avoid creating a duplicate.
+            subscription = Subscription.objects.filter(
+                organization=organization, plan=self.plan,
+                ends_at__gte=ends_at).order_by('ends_at').first()
+            if subscription is None:
                 subscription = Subscription.objects.new_instance(
                     organization, plan=self.plan)
                 if not self.plan.skip_optin_on_grant:
                     subscription.grant_key = generate_random_slug()
                 subscription.save()
-                subscriptions += [subscription]
+                created = True
+            else:
+                # We set subscription.organization to the object that was
+                # loaded and initialized with `is_personal` otherwise we
+                # will use a shadow copy loaded through `subscription`
+                # when we sent the serialized data back.
+                subscription.organization = organization
+            subscriptions += [subscription]
         return subscriptions, created
 
     @swagger_auto_schema(request_body=SubscriptionCreateSerializer,
@@ -336,7 +338,6 @@ class PlanSubscriptionsAPIView(DateRangeMixin, SubscriptionSmartListMixin,
     def create(self, request, *args, **kwargs): #pylint:disable=unused-argument
         serializer = SubscriptionCreateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        print("XXX create subscription")
         return self.perform_optin(serializer, request)
 
 

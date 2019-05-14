@@ -51,6 +51,7 @@ from ..mixins import (OrganizationMixin, RoleDescriptionMixin, RoleMixin,
 from ..models import RoleDescription
 from ..utils import (full_name_natural_split, get_organization_model,
     get_role_model, generate_random_slug)
+from .organizations import OrganizationCreateMixin, OrganizationDecorateMixin
 from .serializers import (AccessibleSerializer,
     AccessibleOrganizationSerializer, BaseRoleSerializer, ForceSerializer,
     NoModelSerializer, RoleSerializer, RoleAccessibleSerializer)
@@ -210,11 +211,11 @@ class RoleListPagination(PageNumberPagination):
         ]))
 
 
-class OptinBase(object):
+class OptinBase(OrganizationDecorateMixin, OrganizationCreateMixin):
 
     organization_model = get_organization_model()
 
-    def add_relations(self, organizations, user):
+    def add_relations(self, organizations, user, ends_at=None):
         #pylint:disable=no-self-use,unused-argument
         roles = []
         created = False
@@ -223,6 +224,7 @@ class OptinBase(object):
             if role:
                 created = True
                 roles += [role]
+        self.decorate_personal(organizations)
         return roles, created
 
     def send_signals(self, relations, user, reason=None, invite=False):
@@ -254,7 +256,8 @@ class OptinBase(object):
             organizations = self.organization_model.objects.none()
         invite = False
         with transaction.atomic():
-            if organizations.count() == 0:
+            organizations = list(organizations)
+            if not organizations:
                 if not request.GET.get('force', False):
                     raise Http404(_("Profile %(organization)s does not exist."
                     ) % {'organization': slug})
@@ -262,22 +265,32 @@ class OptinBase(object):
                     raise ValidationError({
                         'email': _("We cannot invite an organization"\
                             " without an e-mail address.")})
-                default_full_name = slug
-                if not default_full_name:
-                    default_full_name = email.split('@')[-1].split('.')[-2]
-                full_name = serializer.validated_data.get('full_name',
-                    organization_data.get('full_name', default_full_name))
-                organization = self.organization_model.objects.create(
-                    full_name=full_name, email=email)
-                user_model = get_user_model()
-                try:
-                    manager = user_model.objects.get(email__iexact=email)
-                except user_model.DoesNotExist:
-                    manager = create_user_from_email(email, request=request)
-                organization.add_manager(manager, request_user=request.user)
+                full_name = organization_data.get('full_name', None)
+                if not full_name:
+                    default_full_name = slug
+                    if not default_full_name:
+                        email_parts = email.split('@')[-1].split('.')
+                        if len(email_parts) >= 2:
+                            default_full_name = email_parts[-2]
+                    organization_data['full_name'] = \
+                        serializer.validated_data.get('full_name',
+                            default_full_name)
+                organization = self.create_organization(organization_data)
+                if organization.is_personal:
+                    # We have created the attached User as part of creating
+                    # the Organization.
+                    manager = organization.attached_user()
+                else:
+                    user_model = get_user_model()
+                    try:
+                        manager = user_model.objects.get(email__iexact=email)
+                    except user_model.DoesNotExist:
+                        manager = create_user_from_email(email, request=request)
+                    organization.add_manager(manager, request_user=request.user)
                 organizations = [organization]
                 invite = True
 
+            # notified will either be a list of `Role` or `Subscription`.
             notified, created = self.add_relations(organizations, user)
 
         self.send_signals(notified, user, reason=reason, invite=invite)
@@ -289,7 +302,10 @@ class OptinBase(object):
         # We were going to return the list of managers here but
         # angularjs complains about deserialization of a list
         # while expecting a single object.
-        return Response(serializer.validated_data, status=resp_status,
+        # XXX There is currently a single relation created due to statement
+        # `organizations = [organization]` earlier in the code.
+        resp_serializer = self.get_serializer(notified[0])
+        return Response(resp_serializer.data, status=resp_status,
             headers=self.get_success_headers(serializer.validated_data))
 
 
@@ -307,7 +323,6 @@ class InvitedRequestedListMixin(object):
         # here instead of later in RoleInvitedListMixin.
         self.request.invited_count = queryset.filter(
             grant_key__isnull=False).count()
-        qry = {}
         role_status = self.request.query_params.get('role_status', '')
         stts = role_status.split(',')
         flt = None
@@ -998,7 +1013,7 @@ class RoleDetailAPIView(RoleMixin, DestroyAPIView):
 
     serializer_class = RoleAccessibleSerializer
 
-    def post(self, request, *args, **kwargs):
+    def post(self, request, *args, **kwargs):#pylint:disable=unused-argument
         """
         Re-sends the invite e-mail that the user was granted a role
         on the organization.
@@ -1152,7 +1167,7 @@ class RoleAcceptAPIView(UserMixin, GenericAPIView):
 
     serializer_class = AccessibleSerializer
 
-    def put(self, request, *args, **kwargs):
+    def put(self, request, *args, **kwargs):#pylint:disable=unused-argument
         """
         Accepts a role on an organization.
 

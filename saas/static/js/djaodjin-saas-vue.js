@@ -1989,6 +1989,7 @@ new Vue({
     ],
     data: {
         newProfile: {},
+        typeaheadUrl: djaodjinSettings.urls.api_candidates,
         url: djaodjinSettings.urls.provider.api_plan_subscribers,
     },
     methods: {
