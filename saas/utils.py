@@ -184,8 +184,12 @@ def start_of_day(dtime_at=None):
     time 00:00:00 for a given datetime
     """
     dtime_at = datetime_or_now(dtime_at)
-    return datetime.datetime(dtime_at.year, dtime_at.month,
-        dtime_at.day, tzinfo=get_current_timezone())
+    start = datetime.datetime(dtime_at.year, dtime_at.month,
+        dtime_at.day)
+    tz_ob = get_current_timezone()
+    if tz_ob:
+        start = tz_ob.localize(start)
+    return start
 
 
 def update_context_urls(context, urls):
