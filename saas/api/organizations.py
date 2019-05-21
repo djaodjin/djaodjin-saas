@@ -364,12 +364,17 @@ class OrganizationListAPIView(OrganizationSmartListMixin,
             status=status.HTTP_201_CREATED, headers=headers)
 
 
-class SubscribersQuerysetMixin(ProviderMixin):
+class SubscribersQuerysetMixin(OrganizationDecorateMixin, ProviderMixin):
 
     def get_queryset(self):
         queryset = get_organization_model().objects.filter(
             subscriptions__organization=self.provider)
         return queryset
+
+    def paginate_queryset(self, queryset):
+        page = super(SubscribersQuerysetMixin, self).paginate_queryset(queryset)
+        page = self.decorate_personal(page)
+        return page
 
 
 class SubscribersAPIView(OrganizationSmartListMixin,

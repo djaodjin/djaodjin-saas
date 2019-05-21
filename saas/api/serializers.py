@@ -437,6 +437,13 @@ class PlanSerializer(serializers.ModelSerializer):
     organization = serializers.SlugRelatedField(
         read_only=True, slug_field='slug',
         help_text=_("Provider of the plan"))
+    skip_optin_on_grant = serializers.BooleanField(required=False,
+        help_text=_("True when a subscriber can automatically be subscribed"\
+        " to the plan by its provider. Otherwise the subscriber must manually"\
+        " accept the subscription. (defaults to False)"))
+    optin_on_request = serializers.BooleanField(required=False,
+        help_text=_("True when a provider must manually accept a subscription"\
+        " to the plan initiated by a subscriber. (defaults to False)"))
 
     class Meta:
         model = Plan
@@ -444,7 +451,8 @@ class PlanSerializer(serializers.ModelSerializer):
                   'setup_amount', 'period_amount', 'interval', 'app_url',
                   'advance_discount', 'unit', 'organization', 'extra',
                   'period_length', 'renewal_type', 'is_not_priced',
-                  'created_at')
+                  'created_at',
+                  'skip_optin_on_grant', 'optin_on_request')
         read_only_fields = ('slug', 'app_url')
 
     @staticmethod
