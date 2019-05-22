@@ -806,6 +806,29 @@ var itemListMixin = {
     },
 }
 
+var itemMixin = {
+    mixins: [itemListMixin],
+    data: {
+        item: {},
+        itemLoaded: false,
+    },
+    methods: {
+        get: function(){
+            var vm = this;
+            if(!vm.url) return
+            if(vm[vm.getCb]){
+                var cb = vm[vm.getCb];
+            } else {
+                var cb = function(res){
+                    vm.item = res
+                    vm.itemLoaded = true;
+                }
+            }
+            vm.reqGet(vm.url, vm.getParams(), cb);
+        },
+    },
+}
+
 var paginationMixin = {
     data: function(){
         return {
@@ -2937,6 +2960,111 @@ new Vue({
     ],
     data: {
         url: djaodjinSettings.urls.provider.api_plans,
+    },
+    mounted: function(){
+        this.get();
+    }
+})
+}
+
+if($('#monthly-revenue-container').length > 0){
+new Vue({
+    el: "#monthly-revenue-container",
+    mixins: [itemMixin],
+    data: function(){
+        return {
+            url: djaodjinSettings.urls.provider.api_revenue,
+            params: {
+                timezone: moment.tz.guess(),
+            }
+        }
+    },
+    computed: {
+        amount: function(){
+            var amount = 0;
+            if(this.itemLoaded){
+                this.item.table.forEach(function(e){
+                    if(e.key === 'Total Sales'){
+                        // get MRR from last month
+                        amount = e.values[e.values.length - 2][1];
+                    }
+                });
+            }
+            return amount;
+        }
+    },
+    mounted: function(){
+        this.get();
+    }
+})
+}
+
+if($('#engagement-users-container').length > 0){
+new Vue({
+    el: "#engagement-users-container",
+    mixins: [itemMixin],
+    data: function(){
+        return {
+            url: djaodjinSettings.urls.rules.api_engagement,
+            params: {
+                timezone: moment.tz.guess(),
+            },
+            getCb: 'getAndChart',
+        }
+    },
+    methods: {
+        getAndChart: function(res){
+            var vm = this;
+            vm.itemLoaded = true;
+            vm.$set(vm.item, 'activeUsers', res.active_users);
+            vm.$set(vm.item, 'engagements', res.engagements);
+            var el = vm.$refs.engagementChart;
+
+            if(vm.item.engagements.length === 0 || !el) return;
+
+            nv.addGraph(function() {
+                var data = [{
+                    "key": "Engagements",
+                    "values": vm.item.engagements.map(function(e){
+                      return {
+                        "label": e.slug,
+                        "value" : e.count
+                      }
+                    })
+                }];
+                var chart = nv.models.multiBarHorizontalChart()
+                    .x(function(d) { return d.label })
+                    .y(function(d) { return d.value })
+                    .barColor(nv.utils.defaultColor())
+                    .showValues(true)
+                    .showLegend(false)
+                    .showControls(false)
+                    .showXAxis(false)
+                    .showYAxis(false)
+                    .groupSpacing(0.02)
+                    .margin({top: 0, right: 0, bottom: 0, left: 0});
+
+                d3.select(el)
+                    .datum(data)
+                    .call(chart);
+
+                // centering logic
+                var height = parseInt(d3.select(".positive rect").attr('height'));
+                var y = (height / 2) + 3; // 3 is a magic number
+                // add labels inside bars
+                d3.selectAll(".positive").append("text")
+                    .style('fill', 'white')
+                    .text(function(d){ return d.label })
+                    .attr('x', '10')
+                    .attr('y', y)
+
+                chart.tooltip.enabled(false);
+
+                nv.utils.windowResize(chart.update);
+
+                return chart;
+            });
+        },
     },
     mounted: function(){
         this.get();
