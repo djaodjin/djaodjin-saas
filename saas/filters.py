@@ -114,10 +114,10 @@ class OrderingFilter(BaseOrderingFilter):
             # We use an alternate ordering if the fields are not present
             # in the second model.
             # (ex: Organization.full_name vs. User.first_name)
-            ordering = self.remove_invalid_fields(
-                queryset, self.get_default_ordering(view), view, request)
+            ordering = self.get_default_ordering(view)
         if not ordering:
-            ordering = view.alternate_ordering
+            if hasattr(view, 'alternate_ordering'):
+                ordering = view.alternate_ordering
         return ordering
 
     def remove_invalid_fields(self, queryset, fields, view, request):
