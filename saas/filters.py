@@ -124,7 +124,7 @@ class OrderingFilter(BaseOrderingFilter):
         valid_fields = getattr(view, 'ordering_fields', self.ordering_fields)
         if valid_fields is None or valid_fields == '__all__':
             return super(OrderingFilter, self).remove_invalid_fields(
-                queryset, fields, view)
+                queryset, fields, view, request)
 
         aliased_fields = {}
         for field in valid_fields:
