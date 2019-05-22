@@ -24,6 +24,7 @@
 from __future__ import unicode_literals
 
 import operator
+import six
 from functools import reduce
 
 from django.db import models
@@ -95,15 +96,6 @@ class SearchFilter(BaseSearchFilter):
 
 class OrderingFilter(BaseOrderingFilter):
 
-    def get_valid_fields(self, queryset, view, context={}):
-        model_fields = set([
-            field.name for field in queryset.model._meta.get_fields()])
-        base_fields = super(OrderingFilter, self).get_valid_fields(
-            queryset, view, context=context)
-        valid_fields = tuple([
-            field for field in base_fields if field[0] in model_fields])
-        return valid_fields
-
     def get_ordering(self, request, queryset, view):
         ordering = None
         params = request.query_params.get(self.ordering_param)
@@ -126,6 +118,30 @@ class OrderingFilter(BaseOrderingFilter):
                 queryset, self.get_default_ordering(view), view, request)
         if not ordering:
             ordering = view.alternate_ordering
+        return ordering
+
+    def remove_invalid_fields(self, queryset, fields, view, request):
+        valid_fields = getattr(view, 'ordering_fields', self.ordering_fields)
+        if valid_fields is None or valid_fields == '__all__':
+            return super(OrderingFilter, self).remove_invalid_fields(
+                queryset, fields, view)
+
+        aliased_fields = {}
+        for field in valid_fields:
+            if isinstance(field, six.string_types):
+                aliased_fields[field] = field
+            else:
+                aliased_fields[field[1]] = field[0]
+
+        ordering = []
+        for raw_field in fields:
+            reverse = raw_field[0] == '-'
+            field = raw_field.lstrip('-')
+            if field in aliased_fields:
+                if reverse:
+                    ordering.append('-%s' % aliased_fields[field])
+                else:
+                    ordering.append(aliased_fields[field])
         return ordering
 
 
