@@ -250,10 +250,13 @@ class OrganizationDetailAPIView(OrganizationMixin, OrganizationQuerysetMixin,
                 'slug', user.username)
         serializer.instance.slug = serializer.validated_data.get(
             'slug', serializer.instance.slug)
-        serializer.save(is_provider=is_provider)
-        signals.organization_updated.send(sender=__name__,
+        try:
+            serializer.save(is_provider=is_provider)
+            signals.organization_updated.send(sender=__name__,
                 organization=serializer.instance, changes=changes,
                 user=self.request.user)
+        except IntegrityError as err:
+            handle_uniq_error(err)
 
     def destroy(self, request, *args, **kwargs): #pylint:disable=unused-argument
         """

@@ -480,10 +480,10 @@ var httpRequestMixin = {
             } else {
                 throw 'arg should be a queryParams Object or a successCallback function';
             }
-
             return $.ajax({
                 url: url,
                 data: queryParams,
+                traditional: true,
             }).done(successCallback).fail(failureCallback);
         },
         /** This method generates a POST HTTP request to `url` with
@@ -1321,12 +1321,7 @@ new Vue({
                 // django-extra-views doesn't support sorting
                 // by multiple columns so we always use the
                 // first one
-                if(vm.showInvited){
-                    vm.params.o = '-grant_key';
-                } else if(vm.showRequested){
-                    vm.params.o = '-request_key';
-                }
-                vm.params.ot = 'desc';
+                vm.params.o = ['-grant_key', '-request_key'];
             }
             vm.get();
         }

@@ -105,10 +105,18 @@ class OrderingFilter(BaseOrderingFilter):
         return valid_fields
 
     def get_ordering(self, request, queryset, view):
-        ordering = None
-        params = request.query_params.get(self.ordering_param)
+        # We use an alternate ordering if the fields are not present
+        # in the second model.
+        # (ex: Organization.full_name vs. User.first_name)
+        ordering = self.remove_invalid_fields(
+            queryset, self.get_default_ordering(view), view, request)
+        if not ordering:
+            ordering = view.alternate_ordering
+        params = request.query_params.getlist(self.ordering_param)
         if params:
-            fields = [param.strip() for param in params.split(',')]
+            if isinstance(params, six.string_types):
+                params = params.split(',')
+            fields = [param.strip() for param in params]
             if 'created_at' in fields or '-created_at' in fields:
                 model_fields = set([
                     field.name for field in queryset.model._meta.get_fields()])
@@ -117,15 +125,7 @@ class OrderingFilter(BaseOrderingFilter):
                         '-date_joined' if field == '-created_at' else field)
                         for field in fields]
             ordering = self.remove_invalid_fields(
-                queryset, fields, view, request)
-        if not ordering:
-            # We use an alternate ordering if the fields are not present
-            # in the second model.
-            # (ex: Organization.full_name vs. User.first_name)
-            ordering = self.remove_invalid_fields(
-                queryset, self.get_default_ordering(view), view, request)
-        if not ordering:
-            ordering = view.alternate_ordering
+                queryset, fields, view, request) + list(ordering)
         return ordering
 
 
