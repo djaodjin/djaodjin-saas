@@ -28,7 +28,6 @@ from collections import OrderedDict
 import dateutil
 from django.db.models import Q
 from django.utils.translation import ugettext_lazy as _
-from extra_views.contrib.mixins import SearchableListMixin, SortableListMixin
 from rest_framework import status, serializers
 from rest_framework.exceptions import ValidationError
 from rest_framework.generics import ListAPIView, DestroyAPIView, CreateAPIView
@@ -37,7 +36,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from .serializers import NoModelSerializer, TransactionSerializer
-from ..filters import SortableDateRangeSearchableFilterBackend
+from ..filters import OrderingFilter, SearchFilter
 from ..mixins import DateRangeMixin, OrganizationMixin, ProviderMixin
 from ..models import (Transaction, sum_orig_amount, Subscription,
     Organization, Plan)
@@ -106,21 +105,23 @@ class TotalAnnotateMixin(object):
         return queryset
 
 
-class TransactionFilterMixin(DateRangeMixin, SearchableListMixin):
+class TransactionFilterMixin(DateRangeMixin):
     """
     ``Transaction`` list result of a search query, filtered by dates.
     """
 
-    search_fields = ['descr',
+    search_fields = ('descr',
                      'orig_organization__full_name',
-                     'dest_organization__full_name']
+                     'dest_organization__full_name')
+
+    filter_backends = (SearchFilter,)
 
 
-class SmartTransactionListMixin(SortableListMixin, TransactionFilterMixin):
+class SmartTransactionListMixin(TransactionFilterMixin):
     """
     ``Transaction`` list which is also searchable and sortable.
     """
-    sort_fields_aliases = [('descr', 'description'),
+    ordering_fields = [('descr', 'description'),
                            ('dest_amount', 'amount'),
                            ('dest_organization__slug', 'dest_organization'),
                            ('dest_account', 'dest_account'),
@@ -128,8 +129,7 @@ class SmartTransactionListMixin(SortableListMixin, TransactionFilterMixin):
                            ('orig_account', 'orig_account'),
                            ('created_at', 'created_at')]
 
-    filter_backends = (SortableDateRangeSearchableFilterBackend(
-        sort_fields_aliases, TransactionFilterMixin.search_fields),)
+    filter_backends = (OrderingFilter,)
 
 
 class TransactionQuerysetMixin(object):
@@ -271,9 +271,8 @@ class ReceivablesQuerysetMixin(ProviderMixin):
         return self.provider.receivables().filter(orig_amount__gt=0)
 
 
-class ReceivablesListAPIView(SortableListMixin, TotalAnnotateMixin,
-                             TransactionFilterMixin, ReceivablesQuerysetMixin,
-                             ListAPIView):
+class ReceivablesListAPIView(TotalAnnotateMixin, TransactionFilterMixin,
+                             ReceivablesQuerysetMixin, ListAPIView):
     """
     Queries a page (``PAGE_SIZE`` records) of ``Transaction`` marked
     as receivables associated to ``{organization}`` while the organization
@@ -325,7 +324,7 @@ class ReceivablesListAPIView(SortableListMixin, TotalAnnotateMixin,
             ]
         }
     """
-    sort_fields_aliases = [('descr', 'description'),
+    ordering_fields = [('descr', 'description'),
                            ('dest_amount', 'amount'),
                            ('dest_organization__slug', 'dest_organization'),
                            ('dest_account', 'dest_account'),
@@ -333,8 +332,7 @@ class ReceivablesListAPIView(SortableListMixin, TotalAnnotateMixin,
                            ('orig_account', 'orig_account'),
                            ('created_at', 'created_at')]
 
-    filter_backends = (SortableDateRangeSearchableFilterBackend(
-        sort_fields_aliases, TransactionFilterMixin.search_fields),)
+    filter_backends = (OrderingFilter,)
 
     natural_period = dateutil.relativedelta.relativedelta(days=-1)
     serializer_class = TransactionSerializer

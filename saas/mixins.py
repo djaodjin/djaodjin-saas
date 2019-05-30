@@ -34,13 +34,11 @@ from django.http import Http404
 from django.template.defaultfilters import slugify
 from django.utils.translation import ugettext_lazy as _
 from django.views.generic.detail import SingleObjectMixin
-from extra_views.contrib.mixins import SearchableListMixin, SortableListMixin
 from rest_framework.generics import get_object_or_404
 
 from . import settings
 from .compat import NoReverseMatch, is_authenticated, reverse
-from .filters import (OrderingFilter, SearchFilter,
-    SortableSearchableFilterBackend, SortableDateRangeSearchableFilterBackend)
+from .filters import OrderingFilter, SearchFilter
 from .humanize import (as_money, DESCRIBE_BUY_PERIODS, DESCRIBE_BUY_USE,
     DESCRIBE_UNLOCK_NOW, DESCRIBE_UNLOCK_LATER, DESCRIBE_BALANCE)
 from .models import (CartItem, Charge, Coupon, Organization, Plan,
@@ -677,8 +675,7 @@ class SubscriptionMixin(object):
         return get_object_or_404(queryset, plan__slug=plan)
 
 
-class CartItemSmartListMixin(SortableListMixin,
-                             DateRangeMixin, SearchableListMixin):
+class CartItemSmartListMixin(DateRangeMixin):
     """
     The queryset can be further filtered to a range of dates between
     ``start_at`` and ``ends_at``.
@@ -699,17 +696,16 @@ class CartItemSmartListMixin(SortableListMixin,
       - user.last_name
       - created_at
     """
-    search_fields = ['user__username',
+    search_fields = ('user__username',
                      'user__first_name',
                      'user__last_name',
-                     'user__email']
+                     'user__email')
 
-    sort_fields_aliases = [('slug', 'user__username'),
+    ordering_fields = [('slug', 'user__username'),
                            ('plan', 'plan'),
                            ('created_at', 'created_at')]
 
-    filter_backends = (SortableSearchableFilterBackend(
-        sort_fields_aliases, search_fields),)
+    filter_backends = (SearchFilter, OrderingFilter)
 
 
 class OrganizationSmartListMixin(DateRangeMixin):
@@ -754,13 +750,14 @@ class OrganizationSmartListMixin(DateRangeMixin):
         'first_name',
         'last_name')
 
-    ordering_fields = (
+    ordering_fields = [
         'full_name',
         'created_at',
-        'date_joined')
+        'date_joined'
+    ]
 
-    ordering = ('full_name',)
-    alternate_ordering = ('first_name', 'last_name')
+    ordering = ('user__username',)
+    alternate_ordering = ordering
 
     filter_backends = (SearchFilter, OrderingFilter)
 
@@ -790,7 +787,7 @@ class RoleSmartListMixin(DateRangeMixin):
       - role_name
       - created_at
     """
-    search_fields = [
+    search_fields = (
         'organization__slug',
         'organization__full_name',
         'organization__email',
@@ -798,7 +795,8 @@ class RoleSmartListMixin(DateRangeMixin):
         'user__email',
         'role_description__title',
         'role_description__slug'
-    ]
+    )
+
     ordering_fields = [
         ('organization__full_name', 'full_name'),
         ('user__username', 'username'),
@@ -807,16 +805,15 @@ class RoleSmartListMixin(DateRangeMixin):
         ('request_key', 'request_key'),
         ('created_at', 'created_at')
     ]
-    ordering = ('user__username',)
-    alternate_ordering = ordering
+
     filter_backends = (SearchFilter, OrderingFilter)
 
 
-class SubscriptionSmartListMixin(SortableListMixin, SearchableListMixin):
+class SubscriptionSmartListMixin(object):
     """
     ``Subscription`` list which is also searchable and sortable.
     """
-    search_fields = ['organization__slug',
+    search_fields = ('organization__slug',
                      'organization__full_name',
                      'organization__email',
                      'organization__phone',
@@ -825,18 +822,17 @@ class SubscriptionSmartListMixin(SortableListMixin, SearchableListMixin):
                      'organization__region',
                      'organization__postal_code',
                      'organization__country',
-                     'plan__title']
+                     'plan__title')
 
-    sort_fields_aliases = [('organization__full_name', 'organization'),
+    ordering_fields = [('organization__full_name', 'organization'),
                            ('plan__title', 'plan'),
                            ('created_at', 'created_at'),
                            ('ends_at', 'ends_at')]
 
-    filter_backends = (SortableSearchableFilterBackend(
-        sort_fields_aliases, search_fields),)
+    filter_backends = (SearchFilter, OrderingFilter)
 
 
-class UserSmartListMixin(SortableListMixin, BeforeMixin, SearchableListMixin):
+class UserSmartListMixin(BeforeMixin):
     """
     ``User`` list which is also searchable and sortable.
 
@@ -856,19 +852,18 @@ class UserSmartListMixin(SortableListMixin, BeforeMixin, SearchableListMixin):
       - User.email
       - User.created_at
     """
-    search_fields = ['first_name',
+    search_fields = ('first_name',
                      'last_name',
-                     'email']
+                     'email')
 
     date_field = 'date_joined'
 
-    sort_fields_aliases = [('first_name', 'first_name'),
+    ordering_fields = [('first_name', 'first_name'),
                            ('last_name', 'last_name'),
                            ('email', 'email'),
                            ('date_joined', 'created_at')]
 
-    filter_backends = (SortableDateRangeSearchableFilterBackend(
-        sort_fields_aliases, search_fields),)
+    filter_backends = (SearchFilter, OrderingFilter)
 
 
 class ChurnedQuerysetMixin(DateRangeMixin, ProviderMixin):

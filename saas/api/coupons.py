@@ -26,9 +26,8 @@ from __future__ import unicode_literals
 from rest_framework import serializers
 from rest_framework.generics import (ListCreateAPIView,
     RetrieveUpdateDestroyAPIView)
-from extra_views.contrib.mixins import SearchableListMixin, SortableListMixin
 
-from ..filters import SortableDateRangeSearchableFilterBackend
+from ..filters import OrderingFilter, SearchFilter
 from ..models import Coupon
 from ..mixins import CouponMixin, ProviderMixin, DateRangeMixin
 
@@ -44,25 +43,24 @@ class CouponSerializer(serializers.ModelSerializer):
 
 
 
-class SmartCouponListMixin(SortableListMixin, SearchableListMixin):
+class SmartCouponListMixin(object):
     """
     ``Coupon`` list which is also searchable and sortable.
     """
-    search_fields = ['code',
+    search_fields = ('code',
                      'description',
                      'percent',
-                     'organization__full_name']
+                     'organization__full_name')
 
     search_date_fields = ['created_at', 'ends_at']
 
-    sort_fields_aliases = [('code', 'code'),
+    ordering_fields = [('code', 'code'),
                            ('created_at', 'created_at'),
                            ('description', 'description'),
                            ('ends_at', 'ends_at'),
                            ('percent', 'percent')]
 
-    filter_backends = (SortableDateRangeSearchableFilterBackend(
-        sort_fields_aliases, search_fields),)
+    filter_backends = (SearchFilter, OrderingFilter)
 
 
 class CouponQuerysetMixin(ProviderMixin):

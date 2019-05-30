@@ -850,38 +850,65 @@ var filterableMixin = {
 
 var sortableMixin = {
     data: function(){
+        var dir = djaodjinSettings.sortDirection;
+        // "-" is desc and desc is default
+        var dirPrefix = '-';
+        if(dir && dir === 'asc'){
+            dirPrefix = '';
+        }
+        var o = djaodjinSettings.sortByField || 'created_at';
         return {
             params: {
-                o: djaodjinSettings.sortByField || 'created_at',
-                ot: djaodjinSettings.sortDirection || 'desc',
+                o: dirPrefix + o,
             },
             mixinSortCb: 'get'
         }
     },
     methods: {
         sortBy: function(fieldName) {
-            if(this.params.o === fieldName) {
-                if(this.params.ot === "asc") {
-                    this.params.ot = "desc";
-                } else {
-                    this.params.ot = "asc";
-                }
+            var vm = this;
+            if(vm.params.o === fieldName) {
+                vm.sortReverse();
             }
             else {
-                this.params.o = fieldName
-                this.params.ot = "asc";
+                vm.params.o = fieldName
             }
-            if(this[this.mixinSortCb]){
-                this[this.mixinSortCb]();
+            if(vm[vm.mixinSortCb]){
+                vm[vm.mixinSortCb]();
+            }
+        },
+        sortReverse: function(){
+            var vm = this;
+            var o = vm.params.o;
+            if(o && o.length > 0){
+                if(o[0] === '-'){
+                    vm.params.o = o.substring(1);
+                } else {
+                    vm.params.o = '-' + o;
+                }
             }
         },
         sortIcon: function(fieldName){
             var res = 'fa fa-sort';
             if(fieldName === this.params.o){
-                res += ('-' + this.params.ot);
+                res += ('-' + this.sortDirection);
             }
             return res;
         }
+    },
+    computed: {
+        sortDirection(){
+            var dir = false;
+            var o = this.params.o;
+            if(o && o.length > 0){
+                if(o[0] === '-'){
+                    dir = 'desc';
+                } else {
+                    dir = 'asc';
+                }
+            }
+            return dir;
+        },
     },
 }
 

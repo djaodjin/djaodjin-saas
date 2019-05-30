@@ -32,7 +32,7 @@ from rest_framework.generics import (get_object_or_404, ListAPIView,
 
 from ..decorators import _valid_manager
 from ..docs import swagger_auto_schema
-from ..filters import SortableDateRangeSearchableFilterBackend
+from ..filters import OrderingFilter, SearchFilter
 from ..mixins import (ChurnedQuerysetMixin, PlanMixin, ProviderMixin,
     SubscriptionMixin, SubscriptionSmartListMixin, SubscribedQuerysetMixin,
     DateRangeMixin)
@@ -430,9 +430,7 @@ class ActiveSubscriptionAPIView(SubscriptionSmartListMixin,
         }
     """
     serializer_class = SubscriptionSerializer
-    filter_backends = (SortableDateRangeSearchableFilterBackend(
-        SubscriptionSmartListMixin.sort_fields_aliases,
-        SubscriptionSmartListMixin.search_fields),)
+    filter_backends = (SearchFilter, OrderingFilter)
 
 
 class ChurnedSubscriptionBaseAPIView(ChurnedQuerysetMixin, ListAPIView):

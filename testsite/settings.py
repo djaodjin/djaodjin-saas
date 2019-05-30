@@ -105,6 +105,8 @@ REST_FRAMEWORK = {
     'PAGE_SIZE': 25,
     'DEFAULT_PAGINATION_CLASS':
         'rest_framework.pagination.PageNumberPagination',
+    'SEARCH_PARAM': 'q',
+    'ORDERING_PARAM': 'o'
 }
 
 # Absolute filesystem path to the directory that will hold user-uploaded files.
