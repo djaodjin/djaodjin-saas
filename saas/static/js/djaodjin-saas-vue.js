@@ -848,26 +848,31 @@ var filterableMixin = {
     },
 }
 
+var DESC_SORT_PRE = '-';
+
 var sortableMixin = {
     data: function(){
-        var dir = djaodjinSettings.sortDirection;
-        // "-" is desc and desc is default
-        var dirPrefix = '-';
-        if(dir && dir === 'asc'){
-            dirPrefix = '';
-        }
+        var defaultDir = djaodjinSettings.sortDirection || 'desc';
+        var dir = (defaultDir === 'desc') ? DESC_SORT_PRE : '';
         var o = djaodjinSettings.sortByField || 'created_at';
         return {
             params: {
-                o: dirPrefix + o,
+                o: dir + o,
             },
             mixinSortCb: 'get'
         }
     },
     methods: {
+        isSortedBy(field){
+            var o = this.params.o;
+            if(o && o[0] === DESC_SORT_PRE){
+                o = o.substring(1);
+            }
+            return o === field;
+        },
         sortBy: function(fieldName) {
             var vm = this;
-            if(vm.params.o === fieldName) {
+            if(vm.isSortedBy(fieldName)) {
                 vm.sortReverse();
             }
             else {
@@ -879,29 +884,35 @@ var sortableMixin = {
         },
         sortReverse: function(){
             var vm = this;
-            var o = vm.params.o;
-            if(o && o.length > 0){
-                if(o[0] === '-'){
-                    vm.params.o = o.substring(1);
+            var currDir = this.sortDir;
+            if(currDir){
+                if(currDir === 'desc'){
+                    vm.params.o = vm.params.o.substring(1);
                 } else {
-                    vm.params.o = '-' + o;
+                    vm.params.o = DESC_SORT_PRE + vm.params.o;
                 }
+            }
+        },
+        setSortDir: function(dir){
+            var currDir = this.sortDir;
+            if(currDir && currDir !== dir){
+                this.sortReverse();
             }
         },
         sortIcon: function(fieldName){
             var res = 'fa fa-sort';
-            if(fieldName === this.params.o){
-                res += ('-' + this.sortDirection);
+            if(isSortedBy(fieldName)){
+                res += ('-' + this.sortDir);
             }
             return res;
         }
     },
     computed: {
-        sortDirection(){
+        sortDir: function(){
             var dir = false;
             var o = this.params.o;
             if(o && o.length > 0){
-                if(o[0] === '-'){
+                if(o[0] === DESC_SORT_PRE){
                     dir = 'desc';
                 } else {
                     dir = 'asc';
@@ -1281,8 +1292,7 @@ new Vue({
         url: djaodjinSettings.urls.provider.api_receivables,
         params: {
             start_at: moment().startOf('day'),
-            o: 'created_at',
-            ot: 'desc'
+            o: '-created_at',
         }
     },
     mounted: function(){
@@ -1353,7 +1363,7 @@ new Vue({
                 } else if(vm.showRequested){
                     vm.params.o = '-request_key';
                 }
-                vm.params.ot = 'desc';
+                vm.setSortDir('desc');
             }
             vm.get();
         }
@@ -1386,7 +1396,6 @@ var app = new Vue({
             params: {
                 role_status: 'active',
                 o: 'username',
-                ot: 'asc',
             }
         }
     },
@@ -1402,7 +1411,6 @@ var app = new Vue({
             params: {
                 role_status: 'pending',
                 o: 'username',
-                ot: 'asc',
             }
         }
     },
@@ -1849,8 +1857,7 @@ new Vue({
     mixins: [itemListMixin, sortableMixin, paginationMixin, filterableMixin],
     data: {
         params: {
-            o: 'created_at',
-            ot: "desc",
+            o: '-created_at',
         },
         url: djaodjinSettings.urls.provider.api_metrics_coupon_uses
     },
@@ -1896,7 +1903,7 @@ new Vue({
             var vm = this;
             // We want to make sure the 'Write off...' transaction will display.
             vm.params.o = 'created_at';
-            vm.params.ot = 'desc';
+            vm.setSortDir('desc');
             if( vm.params.ends_at ) {
                 delete vm.params['ends_at'];
             }

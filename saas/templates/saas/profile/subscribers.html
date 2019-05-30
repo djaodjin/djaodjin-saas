@@ -65,10 +65,10 @@
         <table>
           <thead>
             <tr>
-              <th>Subscriber<button ng-click="sortBy('organization')" @click="sortBy('organization')">[[params.o === 'organization' ? params.ot : 'sort']]</button></th>
-              <th>Plan<button ng-click="sortBy('plan')" @click="sortBy('plan')">[[params.o === 'plan' ? params.ot : 'sort']]</button></th>
-              <th>Since<button ng-click="sortBy('created_at')" @click="sortBy('created_at')">[[params.o === 'created_at' ? params.ot : 'sort']]</button></th>
-              <th>Ends At<button ng-click="sortBy('ends_at')" @click="sortBy('ends_at')">[[params.o === 'ends_at' ? params.ot : 'sort']]</button></th>
+              <th>Subscriber<button ng-click="sortBy('organization')" @click="sortBy('organization')">[[isSortedBy('organization') ? sortDir : 'sort']]</button></th>
+              <th>Plan<button ng-click="sortBy('plan')" @click="sortBy('plan')">[[isSortedBy('plan') ? sortDir : 'sort']]</button></th>
+              <th>Since<button ng-click="sortBy('created_at')" @click="sortBy('created_at')">[[isSortedBy('created_at') ? sortDir : 'sort']]</button></th>
+              <th>Ends At<button ng-click="sortBy('ends_at')" @click="sortBy('ends_at')">[[isSortedBy('ends_at') ? sortDir : 'sort']]</button></th>
             </tr>
           </thead>
           <tbody ng-show="!tables.{{tab.slug}}.$resolved"
