@@ -20,11 +20,11 @@
           v-show="itemsLoaded && items.results.length > 0">
           <thead>
             <tr>
-              <th>Code<button ng-click="sortBy('code')" @click="sortBy('code')">[[isSortedBy('code') ? sortDir : 'sort']]</button></th>
-              <th>Percent<button ng-click="sortBy('percent')" @click="sortBy('percent')">[[isSortedBy('percent') ? sortDir : 'sort']]</button></th>
-              <th>Expires At<button ng-click="sortBy('ends_at')" @click="sortBy('ends_at')">[[isSortedBy('ends_at') ? sortDir : 'sort']]</button></th>
-              <th>Description<button ng-click="sortBy('description')" @click="sortBy('description')">[[isSortedBy('description') ? sortDir : 'sort']]</button></th>
-              <th>Created At<button ng-click="sortBy('created_at')" @click="sortBy('created_at')">[[isSortedBy('created_at') ? sortDir : 'sort']]</button></th>
+              <th>Code<button ng-click="sortBy('code')" @click="sortBy('code')">[[sortDir('code') ? sortDir('code') : 'sort']]</button></th>
+              <th>Percent<button ng-click="sortBy('percent')" @click="sortBy('percent')">[[sortDir('percent') ? sortDir('percent') : 'sort']]</button></th>
+              <th>Expires At<button ng-click="sortBy('ends_at')" @click="sortBy('ends_at')">[[sortDir('ends_at') ? sortDir('ends_at') : 'sort']]</button></th>
+              <th>Description<button ng-click="sortBy('description')" @click="sortBy('description')">[[sortDir('description') ? sortDir('description') : 'sort']]</button></th>
+              <th>Created At<button ng-click="sortBy('created_at')" @click="sortBy('created_at')">[[sortDir('created_at') ? sortDir('created_at') : 'sort']]</button></th>
               <th></th>
             </tr>
           </thead>

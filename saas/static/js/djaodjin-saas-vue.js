@@ -863,62 +863,80 @@ var sortableMixin = {
         }
     },
     methods: {
-        isSortedBy(field){
-            var o = this.params.o;
-            if(o && o[0] === DESC_SORT_PRE){
-                o = o.substring(1);
-            }
-            return o === field;
+        sortDir(field){
+            return this.sortFields[field]
         },
-        sortBy: function(fieldName) {
+        sortRemoveField: function(field){
             var vm = this;
-            if(vm.isSortedBy(fieldName)) {
-                vm.sortReverse();
-            }
-            else {
-                vm.params.o = fieldName
-            }
-            if(vm[vm.mixinSortCb]){
-                vm[vm.mixinSortCb]();
-            }
+            var fields = vm.sortFields;
+            delete fields[field];
+            vm.$set(vm.params, 'o', vm.fieldsToStr(fields));
         },
-        sortReverse: function(){
+        sortRemove: function(){
+            vm.$set(vm.params, 'o', '');
+        },
+        sortSet: function(field, dir) {
             var vm = this;
-            var currDir = this.sortDir;
-            if(currDir){
-                if(currDir === 'desc'){
-                    vm.params.o = vm.params.o.substring(1);
-                } else {
-                    vm.params.o = DESC_SORT_PRE + vm.params.o;
+            var fields = vm.sortFields;
+            var oldDir = fields[field];
+            if(!oldDir || (oldDir && oldDir !== dir)){
+                if(!(dir === 'asc' || dir === 'desc')){
+                    // if no dir was specified - reverse
+                    dir = oldDir === 'asc' ? 'desc' : 'asc';
+                }
+                fields[field] = dir;
+                var o = vm.fieldsToStr(fields);
+                vm.$set(vm.params, 'o', o);
+                if(vm[vm.mixinSortCb]){
+                    vm[vm.mixinSortCb]();
                 }
             }
         },
-        setSortDir: function(dir){
-            var currDir = this.sortDir;
-            if(currDir && currDir !== dir){
-                this.sortReverse();
-            }
+        sortBy: function(field){
+            var vm = this;
+            var oldDir = vm.sortDir(field);
+            vm.$set(vm.params, 'o', '');
+            vm.sortSet(field, oldDir === 'asc' ? 'desc' : 'asc');
+        },
+        fieldsToStr: function(fields){
+            var res = [];
+            Object.keys(fields).forEach(function(key){
+                var dir = fields[key];
+                var field = '';
+                if(dir === 'desc'){
+                    field = DESC_SORT_PRE + key;
+                } else {
+                    field = key;
+                }
+                res.push(field);
+            });
+            return res.join(',');
         },
         sortIcon: function(fieldName){
             var res = 'fa fa-sort';
-            if(isSortedBy(fieldName)){
-                res += ('-' + this.sortDir);
+            var dir = sortDir(fieldName);
+            if(dir){
+                res += ('-' + dir);
             }
             return res;
         }
     },
     computed: {
-        sortDir: function(){
-            var dir = false;
-            var o = this.params.o;
-            if(o && o.length > 0){
-                if(o[0] === DESC_SORT_PRE){
-                    dir = 'desc';
-                } else {
-                    dir = 'asc';
-                }
+        sortFields: function(){
+            var vm = this;
+            var res = {};
+            if(vm.params.o){
+                var fields = vm.params.o.split(',');
+                fields.forEach(function(e){
+                    if(!e) return;
+                    if(e[0] === DESC_SORT_PRE){
+                        res[e.substring(1)] = 'desc';
+                    } else {
+                        res[e] = 'asc';
+                    }
+                });
             }
-            return dir;
+            return res;
         },
     },
 }
