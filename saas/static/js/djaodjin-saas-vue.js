@@ -806,6 +806,29 @@ var itemListMixin = {
     },
 }
 
+var itemMixin = {
+    mixins: [itemListMixin],
+    data: {
+        item: {},
+        itemLoaded: false,
+    },
+    methods: {
+        get: function(){
+            var vm = this;
+            if(!vm.url) return
+            if(vm[vm.getCb]){
+                var cb = vm[vm.getCb];
+            } else {
+                var cb = function(res){
+                    vm.item = res
+                    vm.itemLoaded = true;
+                }
+            }
+            vm.reqGet(vm.url, vm.getParams(), cb);
+        },
+    },
+}
+
 var paginationMixin = {
     data: function(){
         return {
@@ -2933,6 +2956,38 @@ new Vue({
     ],
     data: {
         url: djaodjinSettings.urls.provider.api_plans,
+    },
+    mounted: function(){
+        this.get();
+    }
+})
+}
+
+if($('#monthly-revenue-container').length > 0){
+new Vue({
+    el: "#monthly-revenue-container",
+    mixins: [itemMixin],
+    data: function(){
+        return {
+            url: djaodjinSettings.urls.provider.api_revenue,
+            params: {
+                timezone: moment.tz.guess(),
+            }
+        }
+    },
+    computed: {
+        amount: function(){
+            var amount = 0;
+            if(this.itemLoaded){
+                this.item.table.forEach(function(e){
+                    if(e.key === 'Total Sales'){
+                        // get MRR from last month
+                        amount = e.values[e.values.length - 2][1];
+                    }
+                });
+            }
+            return amount;
+        }
     },
     mounted: function(){
         this.get();

@@ -129,6 +129,8 @@ class OrganizationMixinBase(object):
                 'api_plans': reverse('saas_api_plans', args=(provider,)),
                 'api_receivables': reverse(
                     'saas_api_receivables', args=(provider,)),
+                'api_revenue': reverse(
+                    'saas_api_revenue', args=(self.organization,)),
                 'api_subscribers_active': reverse(
                     'saas_api_subscribed', args=(provider,)),
                 'api_subscribers_churned': reverse(
