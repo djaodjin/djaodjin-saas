@@ -23,7 +23,7 @@
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 from __future__ import unicode_literals
 
-import operator
+import logging, operator
 from functools import reduce
 
 from django.db import models
@@ -36,17 +36,28 @@ from rest_framework.compat import distinct
 
 from . import settings
 
+LOGGER = logging.getLogger(__name__)
+
+
 class SearchFilter(BaseSearchFilter):
 
     search_field_param = settings.SEARCH_FIELDS_PARAM
 
     def get_query_fields(self, request):
-        fields = request.query_params.get(self.search_field_param, '')
-        return fields.replace(',', ' ').split()
+        return request.query_params.getlist(self.search_field_param)
 
-    def filter_valid_fields(self, model_fields, fields):
-        return tuple([
-            field for field in fields if field in model_fields])
+    def filter_valid_fields(self, model_fields, fields, view):
+        # We add all the fields that could be aliases then filter out the ones
+        # which are not present in the model.
+        alternate_fields = getattr(view, 'alternate_fields', {})
+        for field in fields:
+            alternate_field = alternate_fields.get(field, None)
+            if alternate_field:
+                if isinstance(alternate_field, (list, tuple)):
+                    fields += tuple(alternate_field)
+                else:
+                    fields += tuple([alternate_field])
+        return tuple([field for field in fields if field in model_fields])
 
     def get_valid_fields(self, queryset, view, context={}):
         model_fields = set([
@@ -54,17 +65,19 @@ class SearchFilter(BaseSearchFilter):
         fields = self.get_query_fields(view.request)
         # client-supplied fields take precedence
         if fields:
-            fields = self.filter_valid_fields(model_fields, fields)
+            fields = self.filter_valid_fields(model_fields, fields, view)
         # if there are no fields (due to empty query params or wrong
         # fields we fallback to fields specified in the view
         if not fields:
             fields = getattr(view, 'search_fields', [])
-            fields = self.filter_valid_fields(model_fields, fields)
+            fields = self.filter_valid_fields(model_fields, fields, view)
         return fields
 
     def filter_queryset(self, request, queryset, view):
         search_fields = self.get_valid_fields(queryset, view)
         search_terms = self.get_search_terms(request)
+        LOGGER.debug("[SearchFilter] search_terms=%s, search_fields=%s",
+            search_terms, search_fields)
 
         if not search_fields or not search_terms:
             return queryset
@@ -98,10 +111,20 @@ class OrderingFilter(BaseOrderingFilter):
     def get_valid_fields(self, queryset, view, context={}):
         model_fields = set([
             field.name for field in queryset.model._meta.get_fields()])
+        # XXX base
         base_fields = super(OrderingFilter, self).get_valid_fields(
             queryset, view, context=context)
+        alternate_fields = getattr(view, 'alternate_fields', {})
+        for field in base_fields:
+            alternate_field = alternate_fields.get(field[0], None)
+            if alternate_field:
+                if isinstance(alternate_field, (list, tuple)):
+                    base_fields += [(item, item) for item in alternate_field]
+                else:
+                    base_fields += [(alternate_field, alternate_field)]
         valid_fields = tuple([
-            field for field in base_fields if field[0] in model_fields])
+            field for field in base_fields if '__' in field[0]
+            or field[0] in model_fields])
         return valid_fields
 
     def get_ordering(self, request, queryset, view):
@@ -110,22 +133,34 @@ class OrderingFilter(BaseOrderingFilter):
         # (ex: Organization.full_name vs. User.first_name)
         ordering = self.remove_invalid_fields(
             queryset, self.get_default_ordering(view), view, request)
-        if not ordering:
-            ordering = view.alternate_ordering
+        default_ordering = list(ordering)
         params = request.query_params.getlist(self.ordering_param)
         if params:
             if isinstance(params, six.string_types):
                 params = params.split(',')
             fields = [param.strip() for param in params]
-            if 'created_at' in fields or '-created_at' in fields:
-                model_fields = set([
-                    field.name for field in queryset.model._meta.get_fields()])
-                if 'date_joined' in model_fields:
-                    fields = ['date_joined' if field == 'created_at' else (
-                        '-date_joined' if field == '-created_at' else field)
-                        for field in fields]
+            alternate_fields = getattr(view, 'alternate_fields', {})
+            for field in fields:
+                reverse = False
+                if field.startswith('-'):
+                    field = field[1:]
+                    reverse = True
+                alternate_field = alternate_fields.get(field, None)
+                if alternate_field:
+                    if reverse:
+                        if isinstance(alternate_field, (list, tuple)):
+                            fields += ['-%s' % item for item in alternate_field]
+                        else:
+                            fields += ['-%s' % alternate_field]
+                    else:
+                        if isinstance(alternate_field, (list, tuple)):
+                            fields += alternate_field
+                        else:
+                            fields += [alternate_field]
             ordering = self.remove_invalid_fields(
-                queryset, fields, view, request) + list(ordering)
+                queryset, fields, view, request) + default_ordering
+        LOGGER.debug("[OrderingFilter] params=%s, default_ordering=%s,"\
+            " ordering_fields=%s", params, default_ordering, ordering)
         return ordering
 
 

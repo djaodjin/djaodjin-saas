@@ -739,6 +739,12 @@ class OrganizationSmartListMixin(DateRangeMixin):
     """
     clip = False
 
+    alternate_fields = {
+        'slug': 'username',
+        'full_name': ('first_name', 'last_name'),
+        'created_at': 'date_joined',
+    }
+
     search_fields = (
         'slug',
         'full_name',
@@ -756,11 +762,14 @@ class OrganizationSmartListMixin(DateRangeMixin):
 
     ordering_fields = (
         'full_name',
-        'created_at',
-        'date_joined')
+        'created_at')
 
-    ordering = ('full_name',)
-    alternate_ordering = ('first_name', 'last_name')
+    # XXX technically we should derive ('first_name', 'last_name')
+    # from `alternate_fields` but it complicates the implementation
+    # of `OrderingFilter.get_ordering`:
+    #     ```ordering = self.remove_invalid_fields(
+    #            queryset, self.get_default_ordering(view), view, request)```
+    ordering = ('full_name', 'first_name', 'last_name')
 
     filter_backends = (SearchFilter, OrderingFilter)
 
@@ -808,7 +817,7 @@ class RoleSmartListMixin(DateRangeMixin):
         ('created_at', 'created_at')
     ]
     ordering = ('user__username',)
-    alternate_ordering = ordering
+
     filter_backends = (SearchFilter, OrderingFilter)
 
 
