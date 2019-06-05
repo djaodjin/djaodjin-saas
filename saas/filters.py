@@ -26,6 +26,7 @@ from __future__ import unicode_literals
 import logging, operator
 from functools import reduce
 
+from django.core.exceptions import FieldDoesNotExist
 from django.db import models
 from django.utils import six
 from django.utils.encoding import force_text
@@ -122,10 +123,23 @@ class OrderingFilter(BaseOrderingFilter):
                     base_fields += [(item, item) for item in alternate_field]
                 else:
                     base_fields += [(alternate_field, alternate_field)]
-        valid_fields = tuple([
-            field for field in base_fields if '__' in field[0]
-            or field[0] in model_fields])
-        return valid_fields
+        valid_fields = []
+        for field in base_fields:
+            if '__' in field[0]:
+                relation, rel_field = field[0].split('__')
+                try:
+                    # check if the field is a relation
+                    rel = queryset.model._meta.get_field(relation).rel
+                    if rel:
+                        # if the field doesn't exist the
+                        # call will throw an exception
+                        rel.to._meta.get_field(rel_field)
+                        valid_fields.append(field)
+                except FieldDoesNotExist:
+                    pass
+            elif field[0] in model_fields:
+                valid_fields.append(field)
+        return tuple(valid_fields)
 
     def get_ordering(self, request, queryset, view):
         # We use an alternate ordering if the fields are not present
