@@ -32,10 +32,9 @@ from rest_framework.generics import (get_object_or_404, ListAPIView,
 
 from ..decorators import _valid_manager
 from ..docs import swagger_auto_schema
-from ..filters import SortableDateRangeSearchableFilterBackend
+from ..filters import DateRangeFilter
 from ..mixins import (ChurnedQuerysetMixin, PlanMixin, ProviderMixin,
-    SubscriptionMixin, SubscriptionSmartListMixin, SubscribedQuerysetMixin,
-    DateRangeMixin)
+    SubscriptionMixin, SubscriptionSmartListMixin, SubscribedQuerysetMixin)
 from .. import signals
 from ..models import Subscription
 from ..utils import generate_random_slug, datetime_or_now
@@ -214,7 +213,7 @@ class PlanSubscriptionsQuerysetMixin(PlanMixin):
             plan__organization=self.provider)
 
 
-class PlanSubscriptionsAPIView(DateRangeMixin, SubscriptionSmartListMixin,
+class PlanSubscriptionsAPIView(SubscriptionSmartListMixin,
                              PlanSubscriptionsQuerysetMixin,
                              OptinBase, ListCreateAPIView):
     """
@@ -245,6 +244,7 @@ class PlanSubscriptionsAPIView(DateRangeMixin, SubscriptionSmartListMixin,
         }
     """
     serializer_class = SubscriptionSerializer
+    filter_backends = SubscriptionSmartListMixin.filter_backends + (DateRangeFilter,)
 
     def add_relations(self, organizations, user, ends_at=None):
         ends_at = datetime_or_now(ends_at)
@@ -431,9 +431,8 @@ class ActiveSubscriptionAPIView(SubscriptionSmartListMixin,
         }
     """
     serializer_class = SubscriptionSerializer
-    filter_backends = (SortableDateRangeSearchableFilterBackend(
-        SubscriptionSmartListMixin.sort_fields_aliases,
-        SubscriptionSmartListMixin.search_fields),)
+    filter_backends = (SubscriptionSmartListMixin.filter_backends +
+        (DateRangeFilter,))
 
 
 class ChurnedSubscriptionBaseAPIView(ChurnedQuerysetMixin, ListAPIView):

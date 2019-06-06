@@ -30,13 +30,14 @@ from django.core.exceptions import FieldDoesNotExist
 from django.db import models
 from django.utils import six
 from django.utils.encoding import force_text
+from django.utils.timezone import utc
 from rest_framework.compat import coreapi, coreschema
 from rest_framework.filters import (OrderingFilter as BaseOrderingFilter,
     SearchFilter as BaseSearchFilter, BaseFilterBackend)
 from rest_framework.compat import distinct
 
 from . import settings
-from .utils import datetime_or_now
+from .utils import datetime_or_now, parse_tz
 
 LOGGER = logging.getLogger(__name__)
 
@@ -107,6 +108,25 @@ class SearchFilter(BaseSearchFilter):
             queryset = distinct(queryset, base)
         return queryset
 
+    def get_schema_fields(self, view):
+        # validating presence of coreapi and coreschema
+        super(SearchFilter, self).get_schema_fields(view)
+        search_fields = getattr(view, 'search_fields', [])
+        search_fields_description = "search for matching text in %s"  % (
+            ', '.join([field_name for field_name in search_fields]))
+
+        return [
+            coreapi.Field(
+                name='q',
+                required=False,
+                location='query',
+                schema=coreschema.String(
+                    title='Q',
+                    description=force_text(search_fields_description)
+                )
+            )
+        ]
+
 
 class OrderingFilter(BaseOrderingFilter):
 
@@ -146,8 +166,11 @@ class OrderingFilter(BaseOrderingFilter):
         # We use an alternate ordering if the fields are not present
         # in the second model.
         # (ex: Organization.full_name vs. User.first_name)
+        default = self.get_default_ordering(view)
+        if default is None:
+            default = []
         ordering = self.remove_invalid_fields(
-            queryset, self.get_default_ordering(view), view, request)
+            queryset, default, view, request)
         default_ordering = list(ordering)
         params = request.query_params.getlist(self.ordering_param)
         if params:
@@ -178,32 +201,14 @@ class OrderingFilter(BaseOrderingFilter):
             " ordering_fields=%s", params, default_ordering, ordering)
         return ordering
 
-
-class SortableSearchableFilterBackend(object):
-
-    def __init__(self, sort_fields, search_fields):
-        self.sort_fields = sort_fields
-        self.search_fields = search_fields
-
-    def __call__(self):
-        return self
-
-    def filter_queryset(self, request, queryset, view):
-        #pylint:disable=no-self-use,unused-argument
-        return queryset
-
     def get_schema_fields(self, view):
-        #pylint:disable=unused-argument
-        assert coreapi is not None, 'coreapi must be installed to use'\
-            ' `get_schema_fields()`'
-        assert coreschema is not None, 'coreschema must be installed '\
-            'to use `get_schema_fields()`'
+        # validating presence of coreapi and coreschema
+        super(OrderingFilter, self).get_schema_fields(view)
+        ordering_fields = getattr(view, 'ordering_fields', [])
         sort_fields_description = "sort by %s" % ', '.join([
-            field[1] for field in self.sort_fields])
-        search_fields_description = "search for matching text in %s"  % (
-            ', '.join([field_name for field_name in self.search_fields]))
+            field[1] for field in ordering_fields])
 
-        fields = [
+        return [
             coreapi.Field(
                 name='o',
                 required=False,
@@ -223,72 +228,34 @@ class SortableSearchableFilterBackend(object):
                         "sort by natural ascending or descending order")
                 )
             ),
-            coreapi.Field(
-                name='q',
-                required=False,
-                location='query',
-                schema=coreschema.String(
-                    title='Q',
-                    description=force_text(search_fields_description)
-                )
-            )
         ]
-        return fields
-
-
-class SortableDateRangeSearchableFilterBackend(SortableSearchableFilterBackend):
-
-    def __init__(self, sort_fields, search_fields):
-        super(SortableDateRangeSearchableFilterBackend, self).__init__(
-            sort_fields, search_fields)
-
-    def get_schema_fields(self, view):
-        fields = super(SortableDateRangeSearchableFilterBackend,
-            self).get_schema_fields(view)
-        fields += [
-            coreapi.Field(
-                name='start_at',
-                required=False,
-                location='query',
-                schema=coreschema.String(
-                    title='StartAt',
-                    description=force_text("date/time in ISO format"\
-                        " after which records were created.")
-                )
-            ),
-            coreapi.Field(
-                name='ends_at',
-                required=False,
-                location='query',
-                schema=coreschema.String(
-                    title='EndsAt',
-                    description=force_text("date/time in ISO format"\
-                        " before which records were created.")
-                )
-            ),
-        ]
-        return fields
 
 
 class DateRangeFilter(BaseFilterBackend):
 
-    clip = False
+    forced_date_range = True
     date_field = 'created_at'
     alternate_date_field = 'date_joined'
     start_at_param = 'start_at'
     ends_at_param = 'ends_at'
 
-    def get_params(self, request):
-        # TODO should we use tz for start_at/ends_at?
-        # timezone = request.GET.get('timezone')
+    def get_params(self, request, view):
+        tz_ob = parse_tz(request.GET.get('timezone'))
+        if not tz_ob:
+            tz_ob = utc
+
         ends_at = request.GET.get(self.ends_at_param)
         start_at = request.GET.get(self.start_at_param)
-        if self.clip or ends_at:
+        forced_date_range = getattr(view, 'forced_date_range',
+            self.forced_date_range)
+        if forced_date_range or ends_at:
             if ends_at is not None:
                 ends_at = ends_at.strip('"')
             ends_at = datetime_or_now(ends_at)
+            ends_at = ends_at.astimezone(tz_ob)
         if start_at:
             start_at = datetime_or_now(start_at.strip('"'))
+            start_at = start_at.astimezone(tz_ob)
         return start_at, ends_at
 
     def get_date_field(self, model):
@@ -300,7 +267,7 @@ class DateRangeFilter(BaseFilterBackend):
             return self.alternate_date_field
 
     def filter_queryset(self, request, queryset, view):
-        start_at, ends_at = self.get_params(request)
+        start_at, ends_at = self.get_params(request, view)
         field = self.get_date_field(queryset.model)
         if not field:
             return queryset

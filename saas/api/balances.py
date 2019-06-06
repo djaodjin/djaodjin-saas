@@ -31,14 +31,14 @@ from rest_framework.generics import (get_object_or_404,
 from rest_framework.response import Response
 
 from .. import settings
-from ..mixins import DateRangeMixin
 from ..managers.metrics import abs_monthly_balances, monthly_balances
 from ..models import BalanceLine
+from ..filters import DateRangeFilter
 from .serializers import BalanceLineSerializer, MetricsSerializer
 
 #pylint: disable=no-init,old-style-class
 
-class BrokerBalancesAPIView(DateRangeMixin, GenericAPIView):
+class BrokerBalancesAPIView(GenericAPIView):
     """
     Queries a balance sheet named ``{report}`` for the broker.
 
@@ -77,6 +77,7 @@ class BrokerBalancesAPIView(DateRangeMixin, GenericAPIView):
         }
     """
     serializer_class = MetricsSerializer
+    filter_backends = (DateRangeFilter,)
 
     def get(self, request, *args, **kwargs): #pylint: disable=unused-argument
         result = []

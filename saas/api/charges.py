@@ -26,7 +26,6 @@ from __future__ import unicode_literals
 from django.http import Http404
 from django.db import transaction
 from django.utils.translation import ugettext_lazy as _
-from extra_views.contrib.mixins import SearchableListMixin, SortableListMixin
 from rest_framework import status
 from rest_framework.generics import (CreateAPIView, ListAPIView,
     GenericAPIView, RetrieveAPIView)
@@ -36,9 +35,9 @@ from .serializers import (ChargeSerializer, EmailChargeReceiptSerializer,
     RefundChargeSerializer, ValidationErrorSerializer)
 from .. import signals
 from ..docs import OpenAPIResponse, swagger_auto_schema
-from ..filters import SortableDateRangeSearchableFilterBackend
+from ..filters import DateRangeFilter, OrderingFilter, SearchFilter
 from ..models import Charge, InsufficientFunds
-from ..mixins import ChargeMixin, DateRangeMixin, OrganizationMixin
+from ..mixins import ChargeMixin, OrganizationMixin
 from ..pagination import TotalPagination
 
 #pylint: disable=no-init
@@ -93,22 +92,20 @@ class ChargeResourceView(RetrieveChargeMixin, RetrieveAPIView):
     serializer_class = ChargeSerializer
 
 
-class SmartChargeListMixin(SortableListMixin, DateRangeMixin,
-                           SearchableListMixin):
+class SmartChargeListMixin(object):
     """
     Subscriber list which is also searchable and sortable.
     """
-    search_fields = ['description',
+    search_fields = ('description',
                      'processor_key',
-                     'customer__full_name']
+                     'customer__full_name')
 
-    sort_fields_aliases = [('description', 'description'),
+    ordering_fields = [('description', 'description'),
                            ('amount', 'amount'),
                            ('customer__full_name', 'Full name'),
                            ('created_at', 'created_at')]
 
-    filter_backends = (SortableDateRangeSearchableFilterBackend(
-        sort_fields_aliases, search_fields),)
+    filter_backends = (DateRangeFilter, OrderingFilter, SearchFilter)
 
 
 class ChargeQuerysetMixin(object):

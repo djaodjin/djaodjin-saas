@@ -34,13 +34,11 @@ from django.http import Http404
 from django.template.defaultfilters import slugify
 from django.utils.translation import ugettext_lazy as _
 from django.views.generic.detail import SingleObjectMixin
-from extra_views.contrib.mixins import SearchableListMixin, SortableListMixin
 from rest_framework.generics import get_object_or_404
 
 from . import settings
 from .compat import NoReverseMatch, is_authenticated, reverse
-from .filters import (OrderingFilter, SearchFilter,
-    SortableSearchableFilterBackend, SortableDateRangeSearchableFilterBackend)
+from .filters import DateRangeFilter, OrderingFilter, SearchFilter
 from .humanize import (as_money, DESCRIBE_BUY_PERIODS, DESCRIBE_BUY_USE,
     DESCRIBE_UNLOCK_NOW, DESCRIBE_UNLOCK_LATER, DESCRIBE_BALANCE)
 from .models import (CartItem, Charge, Coupon, Organization, Plan,
@@ -466,17 +464,23 @@ class OrganizationMixin(OrganizationMixinBase, settings.EXTRA_MIXIN):
     pass
 
 
-class BeforeMixin(object):
+class DateRangeContextMixin(object):
 
-    clip = True
-    date_field = 'created_at'
-    alternate_date_field = 'date_joined'
+    forced_date_range = True
+
+    @property
+    def start_at(self):
+        if not hasattr(self, '_start_at'):
+            self._start_at = self.request.GET.get('start_at', None)
+            if self._start_at:
+                self._start_at = datetime_or_now(self._start_at.strip('"'))
+        return self._start_at
 
     @property
     def ends_at(self):
         if not hasattr(self, '_ends_at'):
             self._ends_at = self.request.GET.get('ends_at', None)
-            if self.clip or self._ends_at:
+            if self.forced_date_range or self._ends_at:
                 if self._ends_at is not None:
                     self._ends_at = self._ends_at.strip('"')
                 self._ends_at = datetime_or_now(self._ends_at)
@@ -488,79 +492,12 @@ class BeforeMixin(object):
             self._timezone = self.request.GET.get('timezone', None)
         return self._timezone
 
-    def get_queryset(self):
-        # XXX This method should be removed once we make sure
-        # filter_queryset fully replaces it.
-        kwargs = {}
-        if self.ends_at:
-            kwargs.update({'%s__lt' % self.date_field: self.ends_at})
-        return super(BeforeMixin, self).get_queryset().filter(**kwargs)
-
-    def filter_queryset(self, queryset):
-        """
-        Implements before date filtering on ``date_field``
-        """
-        before_qs = super(BeforeMixin, self).filter_queryset(queryset)
-        kwargs = {}
-        if self.ends_at:
-            #pylint:disable=protected-access
-            model_fields = set([
-                field.name for field in queryset.model._meta.get_fields()])
-            if self.date_field in model_fields:
-                kwargs.update({'%s__lt' % self.date_field: self.ends_at})
-            else:
-                kwargs.update({
-                    '%s__lt' % self.alternate_date_field: self.ends_at})
-        return before_qs.filter(**kwargs)
-
     def get_context_data(self, **kwargs):
-        context = super(BeforeMixin, self).get_context_data(**kwargs)
-        if self.ends_at:
-            context.update({'ends_at': self.ends_at})
-        return context
-
-
-class DateRangeMixin(BeforeMixin):
-
-    natural_period = dateutil.relativedelta.relativedelta(months=-1)
-
-    @property
-    def start_at(self):
-        if not hasattr(self, '_start_at'):
-            self._start_at = self.request.GET.get('start_at', None)
-            if self._start_at:
-                self._start_at = datetime_or_now(self._start_at.strip('"'))
-        return self._start_at
-
-    def get_queryset(self):
-        # XXX This method should be removed once we make sure
-        # filter_queryset fully replaces it.
-        kwargs = {}
-        if self.start_at:
-            kwargs.update({'%s__gte' % self.date_field: self.start_at})
-        return super(DateRangeMixin, self).get_queryset().filter(**kwargs)
-
-    def filter_queryset(self, queryset):
-        """
-        Implements date range filtering on ``date_field``
-        """
-        after_qs = super(DateRangeMixin, self).filter_queryset(queryset)
-        kwargs = {}
-        if self.start_at:
-            #pylint:disable=protected-access
-            model_fields = set([
-                field.name for field in queryset.model._meta.get_fields()])
-            if self.date_field in model_fields:
-                kwargs.update({'%s__gte' % self.date_field: self.start_at})
-            else:
-                kwargs.update({
-                    '%s__gte' % self.alternate_date_field: self.start_at})
-        return after_qs.filter(**kwargs)
-
-    def get_context_data(self, **kwargs):
-        context = super(DateRangeMixin, self).get_context_data(**kwargs)
+        context = super(DateRangeContextMixin, self).get_context_data(**kwargs)
         if self.start_at:
             context.update({'start_at': self.start_at})
+        if self.ends_at:
+            context.update({'ends_at': self.ends_at})
         return context
 
 
@@ -633,9 +570,9 @@ class CouponMixin(ProviderMixin):
         return context
 
 
-class MetricsMixin(DateRangeMixin, ProviderMixin):
+class MetricsMixin(ProviderMixin):
 
-    pass
+    filter_backends = (DateRangeFilter,)
 
 
 class SubscriptionMixin(object):
@@ -677,8 +614,7 @@ class SubscriptionMixin(object):
         return get_object_or_404(queryset, plan__slug=plan)
 
 
-class CartItemSmartListMixin(SortableListMixin,
-                             DateRangeMixin, SearchableListMixin):
+class CartItemSmartListMixin(object):
     """
     The queryset can be further filtered to a range of dates between
     ``start_at`` and ``ends_at``.
@@ -699,20 +635,19 @@ class CartItemSmartListMixin(SortableListMixin,
       - user.last_name
       - created_at
     """
-    search_fields = ['user__username',
+    search_fields = ('user__username',
                      'user__first_name',
                      'user__last_name',
-                     'user__email']
+                     'user__email')
 
-    sort_fields_aliases = [('slug', 'user__username'),
+    ordering_fields = [('slug', 'user__username'),
                            ('plan', 'plan'),
                            ('created_at', 'created_at')]
 
-    filter_backends = (SortableSearchableFilterBackend(
-        sort_fields_aliases, search_fields),)
+    filter_backends = (DateRangeFilter, OrderingFilter, SearchFilter)
 
 
-class OrganizationSmartListMixin(DateRangeMixin):
+class OrganizationSmartListMixin(object):
     """
     The queryset can be further filtered to a range of dates between
     ``start_at`` and ``ends_at``.
@@ -737,7 +672,7 @@ class OrganizationSmartListMixin(DateRangeMixin):
       - full_name
       - created_at
     """
-    clip = False
+    forced_date_range = False
 
     alternate_fields = {
         'slug': 'username',
@@ -771,10 +706,10 @@ class OrganizationSmartListMixin(DateRangeMixin):
     #            queryset, self.get_default_ordering(view), view, request)```
     ordering = ('full_name', 'first_name', 'last_name')
 
-    filter_backends = (SearchFilter, OrderingFilter)
+    filter_backends = (DateRangeFilter, SearchFilter, OrderingFilter)
 
 
-class RoleSmartListMixin(DateRangeMixin):
+class RoleSmartListMixin(object):
     """
     The queryset can be further filtered to a range of dates between
     ``start_at`` and ``ends_at``.
@@ -799,7 +734,7 @@ class RoleSmartListMixin(DateRangeMixin):
       - role_name
       - created_at
     """
-    search_fields = [
+    search_fields = (
         'organization__slug',
         'organization__full_name',
         'organization__email',
@@ -807,7 +742,7 @@ class RoleSmartListMixin(DateRangeMixin):
         'user__email',
         'role_description__title',
         'role_description__slug'
-    ]
+    )
     ordering_fields = [
         ('organization__full_name', 'full_name'),
         ('user__username', 'username'),
@@ -818,14 +753,14 @@ class RoleSmartListMixin(DateRangeMixin):
     ]
     ordering = ('user__username',)
 
-    filter_backends = (SearchFilter, OrderingFilter)
+    filter_backends = (DateRangeFilter, SearchFilter, OrderingFilter)
 
 
-class SubscriptionSmartListMixin(SortableListMixin, SearchableListMixin):
+class SubscriptionSmartListMixin(object):
     """
     ``Subscription`` list which is also searchable and sortable.
     """
-    search_fields = ['organization__slug',
+    search_fields = ('organization__slug',
                      'organization__full_name',
                      'organization__email',
                      'organization__phone',
@@ -834,18 +769,17 @@ class SubscriptionSmartListMixin(SortableListMixin, SearchableListMixin):
                      'organization__region',
                      'organization__postal_code',
                      'organization__country',
-                     'plan__title']
+                     'plan__title')
 
-    sort_fields_aliases = [('organization__full_name', 'organization'),
+    ordering_fields = [('organization__full_name', 'organization'),
                            ('plan__title', 'plan'),
                            ('created_at', 'created_at'),
                            ('ends_at', 'ends_at')]
 
-    filter_backends = (SortableSearchableFilterBackend(
-        sort_fields_aliases, search_fields),)
+    filter_backends = (OrderingFilter, SearchFilter)
 
 
-class UserSmartListMixin(SortableListMixin, BeforeMixin, SearchableListMixin):
+class UserSmartListMixin(object):
     """
     ``User`` list which is also searchable and sortable.
 
@@ -865,27 +799,25 @@ class UserSmartListMixin(SortableListMixin, BeforeMixin, SearchableListMixin):
       - User.email
       - User.created_at
     """
-    search_fields = ['first_name',
+    search_fields = ('first_name',
                      'last_name',
-                     'email']
+                     'email')
 
-    date_field = 'date_joined'
-
-    sort_fields_aliases = [('first_name', 'first_name'),
+    ordering_fields = [('first_name', 'first_name'),
                            ('last_name', 'last_name'),
                            ('email', 'email'),
                            ('date_joined', 'created_at')]
 
-    filter_backends = (SortableDateRangeSearchableFilterBackend(
-        sort_fields_aliases, search_fields),)
+    filter_backends = (DateRangeFilter, OrderingFilter, SearchFilter)
 
 
-class ChurnedQuerysetMixin(DateRangeMixin, ProviderMixin):
+class ChurnedQuerysetMixin(ProviderMixin):
     """
     ``QuerySet`` of ``Subscription`` which are no longer active.
     """
 
     model = Subscription
+    filter_backends = (DateRangeFilter,)
 
     def get_queryset(self):
         kwargs = {}
@@ -899,7 +831,7 @@ class ChurnedQuerysetMixin(DateRangeMixin, ProviderMixin):
             ends_at__lt=self.ends_at, **kwargs).order_by('-ends_at')
 
 
-class SubscribedQuerysetMixin(DateRangeMixin, ProviderMixin):
+class SubscribedQuerysetMixin(ProviderMixin):
     """
     ``QuerySet`` of ``Subscription`` which are currently active.
 
@@ -912,6 +844,7 @@ class SubscribedQuerysetMixin(DateRangeMixin, ProviderMixin):
     """
 
     model = Subscription
+    filter_backends = (DateRangeFilter,)
 
     def get_queryset(self):
         kwargs = {}

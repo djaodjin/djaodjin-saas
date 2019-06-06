@@ -29,8 +29,9 @@ from rest_framework.generics import GenericAPIView, ListAPIView
 from rest_framework.response import Response
 
 from ..compat import reverse
+from ..filters import DateRangeFilter
 from .. import settings
-from ..mixins import (BeforeMixin, CartItemSmartListMixin, CouponMixin,
+from ..mixins import (CartItemSmartListMixin, CouponMixin,
     ProviderMixin)
 from ..models import CartItem, Plan, Transaction
 from ..utils import convert_dates_to_utc
@@ -43,7 +44,7 @@ from .serializers import MetricsSerializer
 LOGGER = logging.getLogger(__name__)
 
 
-class BalancesAPIView(BeforeMixin, ProviderMixin, GenericAPIView):
+class BalancesAPIView(ProviderMixin, GenericAPIView):
     """
     Generate a table of revenue (rows) per months (columns).
 
@@ -120,6 +121,7 @@ class BalancesAPIView(BeforeMixin, ProviderMixin, GenericAPIView):
         }
     """
     serializer_class = MetricsSerializer
+    filter_backends = (DateRangeFilter,)
 
     def get(self, request, *args, **kwargs): #pylint: disable=unused-argument
         result = []
@@ -141,7 +143,7 @@ class BalancesAPIView(BeforeMixin, ProviderMixin, GenericAPIView):
             'unit': unit, 'scale': 0.01, 'table': result})
 
 
-class RevenueMetricAPIView(BeforeMixin, ProviderMixin, GenericAPIView):
+class RevenueMetricAPIView(ProviderMixin, GenericAPIView):
     """
     Produces sales, payments and refunds over a period of time.
 
@@ -249,6 +251,7 @@ class RevenueMetricAPIView(BeforeMixin, ProviderMixin, GenericAPIView):
         }
     """
     serializer_class = MetricsSerializer
+    filter_backends = (DateRangeFilter,)
 
     def get(self, request, *args, **kwargs):
         #pylint:disable=unused-argument
@@ -338,11 +341,11 @@ class CouponUsesAPIView(CartItemSmartListMixin, CouponUsesQuerysetMixin,
             ]
         }
     """
-    clip = False
+    forced_date_range = False
     serializer_class = CartItemSerializer
 
 
-class CustomerMetricAPIView(BeforeMixin, ProviderMixin, GenericAPIView):
+class CustomerMetricAPIView(ProviderMixin, GenericAPIView):
     """
     Produce revenue stats
 
@@ -450,6 +453,7 @@ class CustomerMetricAPIView(BeforeMixin, ProviderMixin, GenericAPIView):
         }
     """
     serializer_class = MetricsSerializer
+    filter_backends = (DateRangeFilter,)
 
     def get(self, request, *args, **kwargs):
         #pylint:disable=unused-argument
@@ -470,7 +474,7 @@ class CustomerMetricAPIView(BeforeMixin, ProviderMixin, GenericAPIView):
                 "table": customer_table, "extra": customer_extra})
 
 
-class PlanMetricAPIView(BeforeMixin, ProviderMixin, GenericAPIView):
+class PlanMetricAPIView(ProviderMixin, GenericAPIView):
     """
     Produce plan stats
 
@@ -571,6 +575,7 @@ class PlanMetricAPIView(BeforeMixin, ProviderMixin, GenericAPIView):
         }
     """
     serializer_class = MetricsSerializer
+    filter_backends = (DateRangeFilter,)
 
     def get(self, request, *args, **kwargs):
         #pylint:disable=unused-argument
