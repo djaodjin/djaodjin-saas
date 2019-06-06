@@ -32,10 +32,11 @@ from django.utils import six
 from django.utils.encoding import force_text
 from rest_framework.compat import coreapi, coreschema
 from rest_framework.filters import (OrderingFilter as BaseOrderingFilter,
-    SearchFilter as BaseSearchFilter)
+    SearchFilter as BaseSearchFilter, BaseFilterBackend)
 from rest_framework.compat import distinct
 
 from . import settings
+from .utils import datetime_or_now
 
 LOGGER = logging.getLogger(__name__)
 
@@ -267,3 +268,69 @@ class SortableDateRangeSearchableFilterBackend(SortableSearchableFilterBackend):
             ),
         ]
         return fields
+
+
+class DateRangeFilter(BaseFilterBackend):
+
+    clip = False
+    date_field = 'created_at'
+    alternate_date_field = 'date_joined'
+    start_at_param = 'start_at'
+    ends_at_param = 'ends_at'
+
+    def get_params(self, request):
+        # TODO should we use tz for start_at/ends_at?
+        # timezone = request.GET.get('timezone')
+        ends_at = request.GET.get(self.ends_at_param)
+        start_at = request.GET.get(self.start_at_param)
+        if self.clip or ends_at:
+            if ends_at is not None:
+                ends_at = ends_at.strip('"')
+            ends_at = datetime_or_now(ends_at)
+        if start_at:
+            start_at = datetime_or_now(start_at.strip('"'))
+        return start_at, ends_at
+
+    def get_date_field(self, model):
+        model_fields = set([
+            field.name for field in model._meta.get_fields()])
+        if self.date_field in model_fields:
+            return self.date_field
+        elif self.alternate_date_field in model_fields:
+            return self.alternate_date_field
+
+    def filter_queryset(self, request, queryset, view):
+        start_at, ends_at = self.get_params(request)
+        field = self.get_date_field(queryset.model)
+        if not field:
+            return queryset
+        kwargs = {}
+        if ends_at:
+            kwargs.update({'%s__lt' % field: ends_at})
+        if start_at:
+            kwargs.update({'%s__gte' % field: start_at})
+        return queryset.filter(**kwargs)
+
+    def get_schema_fields(self, view):
+        return [
+            coreapi.Field(
+                name='start_at',
+                required=False,
+                location='query',
+                schema=coreschema.String(
+                    title='StartAt',
+                    description=force_text("date/time in ISO format"\
+                        " after which records were created.")
+                )
+            ),
+            coreapi.Field(
+                name='ends_at',
+                required=False,
+                location='query',
+                schema=coreschema.String(
+                    title='EndsAt',
+                    description=force_text("date/time in ISO format"\
+                        " before which records were created.")
+                )
+            ),
+        ]
