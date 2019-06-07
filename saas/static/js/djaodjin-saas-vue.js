@@ -937,7 +937,7 @@ var sortableMixin = {
         },
         sortIcon: function(fieldName){
             var res = 'fa fa-sort';
-            var dir = sortDir(fieldName);
+            var dir = this.sortDir(fieldName);
             if(dir){
                 res += ('-' + dir);
             }
