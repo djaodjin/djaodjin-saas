@@ -36,6 +36,13 @@ from ..utils import datetime_or_now, parse_tz, convert_dates_to_utc
 
 LOGGER = logging.getLogger(__name__)
 
+def _handle_tz(dt, tz_ob, orig_tz):
+    if tz_ob:
+        # adding timezone info
+        # + accounting for DST
+        return tz_ob.localize(dt)
+    return dt.replace(tzinfo=orig_tz)
+
 
 def month_periods(nb_months=12, from_date=None, step_months=1,
                   tz=None):
@@ -63,13 +70,6 @@ def month_periods(nb_months=12, from_date=None, step_months=1,
          "2018-03-26T07:11:24Z"]
     """
     #pylint:disable=invalid-name
-
-    def _handle_tz(dt, tz_ob, orig_tz):
-        if tz_ob:
-            # adding timezone info
-            # + accounting for DST
-            return tz_ob.localize(dt)
-        return dt.replace(tzinfo=orig_tz)
 
     dates = []
     from_date = datetime_or_now(from_date)
@@ -101,6 +101,28 @@ def month_periods(nb_months=12, from_date=None, step_months=1,
                 month = month % 12
         last = datetime(day=1, month=month, year=year)
         last = _handle_tz(last, tz_ob, orig_tz)
+        dates.append(last)
+    dates.reverse()
+
+    return dates
+
+
+def day_periods(nb_days=7, from_date=None, step_days=1,
+                  tz=None):
+    dates = []
+    from_date = datetime_or_now(from_date)
+    orig_tz = from_date.tzinfo
+    tz_ob = parse_tz(tz)
+    if tz_ob:
+        from_date = from_date.astimezone(tz_ob)
+    dates.append(from_date)
+    last = _handle_tz(datetime(day=from_date.day, month=from_date.month,
+        year=from_date.year), tz_ob, orig_tz)
+    if last != from_date:
+        nb_days -= 1
+        dates.append(last)
+    for i in range(1, nb_days):
+        last = last - relativedelta(days=step_days)
         dates.append(last)
     dates.reverse()
 
