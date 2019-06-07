@@ -1935,8 +1935,7 @@ new Vue({
         reload: function(){
             var vm = this;
             // We want to make sure the 'Write off...' transaction will display.
-            vm.params.o = 'created_at';
-            vm.setSortDir('desc');
+            vm.params.o = '-created_at';
             if( vm.params.ends_at ) {
                 delete vm.params['ends_at'];
             }
