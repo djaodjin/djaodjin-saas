@@ -62,10 +62,10 @@ class SearchFilter(BaseSearchFilter):
                     fields += tuple([alternate_field])
         return tuple([field for field in fields if field in model_fields])
 
-    def get_valid_fields(self, queryset, view, context={}):
+    def get_valid_fields(self, request, queryset, view, context={}):
         model_fields = set([
             field.name for field in queryset.model._meta.get_fields()])
-        fields = self.get_query_fields(view.request)
+        fields = self.get_query_fields(request)
         # client-supplied fields take precedence
         if fields:
             fields = self.filter_valid_fields(model_fields, fields, view)
@@ -77,7 +77,7 @@ class SearchFilter(BaseSearchFilter):
         return fields
 
     def filter_queryset(self, request, queryset, view):
-        search_fields = self.get_valid_fields(queryset, view)
+        search_fields = self.get_valid_fields(request, queryset, view)
         search_terms = self.get_search_terms(request)
         LOGGER.debug("[SearchFilter] search_terms=%s, search_fields=%s",
             search_terms, search_fields)

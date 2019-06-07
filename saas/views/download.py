@@ -35,6 +35,7 @@ from io import BytesIO, StringIO
 from django.http import HttpResponse
 from django.utils import six
 from django.views.generic import View
+from rest_framework.request import Request
 
 from ..api.coupons import SmartCouponListMixin, CouponQuerysetMixin
 from ..api.transactions import (BillingsQuerysetMixin,
@@ -60,6 +61,16 @@ class CSVDownloadView(View):
             return text.encode('utf-8')
         return text
 
+    def filter_queryset(self, queryset):
+        """
+        Recreating a GenericAPIView.filter_queryset functionality here
+        """
+        # creating a DRF-compatible request object
+        request = Request(self.request)
+        for backend in list(self.filter_backends):
+            queryset = backend().filter_queryset(request, queryset, self)
+        return queryset
+
     def get(self, *args, **kwargs): #pylint: disable=unused-argument
         if six.PY2:
             content = BytesIO()
@@ -68,7 +79,8 @@ class CSVDownloadView(View):
         csv_writer = csv.writer(content)
         csv_writer.writerow([self.encode(head)
             for head in self.get_headings()])
-        for record in self.get_queryset():
+        qs = self.filter_queryset(self.get_queryset())
+        for record in qs:
             csv_writer.writerow(self.queryrow_to_columns(record))
         content.seek(0)
         resp = HttpResponse(content, content_type='text/csv')
