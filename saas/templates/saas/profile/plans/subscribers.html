@@ -3,6 +3,31 @@
 {% block saas_content %}
 <section id="subscribers" ng-app="saasApp">
   <div id="plan-subscribers-container" ng-controller="planSubscribersListCtrl" ng-init="prefetch()">
+
+    <form id="add-subscriber" @submit.prevent="submit">
+      <input type="hidden" name="csrfmiddlewaretoken" value="{{csrf_token}}">
+      <div>
+        <label>Profile</label>
+        <input type="text" name="user" v-model="newProfile.slug">
+      </div>
+      <div>
+        <label>Email</label>
+        <input id="new-request-email"
+                 name="email" type="text" max-length="150"
+                 v-model="newProfile.email" />
+      </div>
+      <div>
+        <label>The following invite message will be sent:</label>
+        <textarea name="message" maxlength="255" type="text" rows="10">Hi,
+
+I am subscribing you to {{plan}}.
+
+Thank you,
+- {{user}}
+        </textarea>
+      </div>
+      <button type="submit">Add subscriber</button>
+    </form>
     <div>
       <h2>{{plan}} plan subscribers</h2></a>
       <div>

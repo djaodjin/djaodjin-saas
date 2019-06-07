@@ -25,7 +25,8 @@
       <div ng-show="!items.$resolved" v-show="!itemsLoaded">Please wait...</div>
       <div ng-show="items.$resolved" v-show="itemsLoaded">
         {% if urls.organization.api_cancel_balance_due %}
-        <button id="cancel-balance-btn" @click="modalOpen=true" v-cloak>cancel balance due</button>
+        <button id="cancel-balance-btn"
+                data-toggle="modal" data-target="#cancel-balance">cancel balance due</button>
         {% endif %}
         {% if urls.organization.vtcharge %}
         <a id="one-time-charge" href="{{urls.organization.vtcharge}}">one-time charge</a>
@@ -47,7 +48,7 @@
 Are you sure you would like to cancel the whole balance of [[humanizeBalance()]] ?
           </p>
           <div slot="footer">
-            <button @click.prevent="modalOpen=false">Cancel</button>
+            <button data-dismiss="modal">Cancel</button>
             <button type="submit">OK</button>
           </div>
         </form>
