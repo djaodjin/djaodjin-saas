@@ -37,7 +37,7 @@ from rest_framework.views import APIView
 
 from .serializers import NoModelSerializer, TransactionSerializer
 from ..filters import DateRangeFilter, OrderingFilter, SearchFilter
-from ..mixins import OrganizationMixin, ProviderMixin
+from ..mixins import OrganizationMixin, ProviderMixin, DateRangeContextMixin
 from ..models import (Transaction, sum_orig_amount, Subscription,
     Organization, Plan)
 from ..backends import ProcessorError
@@ -105,7 +105,7 @@ class TotalAnnotateMixin(object):
         return queryset
 
 
-class TransactionFilterMixin(object):
+class TransactionFilterMixin(DateRangeContextMixin):
     """
     ``Transaction`` list result of a search query, filtered by dates.
     """

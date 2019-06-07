@@ -570,7 +570,7 @@ class CouponMixin(ProviderMixin):
         return context
 
 
-class MetricsMixin(ProviderMixin):
+class MetricsMixin(DateRangeContextMixin, ProviderMixin):
 
     filter_backends = (DateRangeFilter,)
 
@@ -811,7 +811,7 @@ class UserSmartListMixin(object):
     filter_backends = (DateRangeFilter, OrderingFilter, SearchFilter)
 
 
-class ChurnedQuerysetMixin(ProviderMixin):
+class ChurnedQuerysetMixin(DateRangeContextMixin, ProviderMixin):
     """
     ``QuerySet`` of ``Subscription`` which are no longer active.
     """
@@ -831,7 +831,7 @@ class ChurnedQuerysetMixin(ProviderMixin):
             ends_at__lt=self.ends_at, **kwargs).order_by('-ends_at')
 
 
-class SubscribedQuerysetMixin(ProviderMixin):
+class SubscribedQuerysetMixin(DateRangeContextMixin, ProviderMixin):
     """
     ``QuerySet`` of ``Subscription`` which are currently active.
 

@@ -34,11 +34,12 @@ from .. import settings
 from ..managers.metrics import abs_monthly_balances, monthly_balances
 from ..models import BalanceLine
 from ..filters import DateRangeFilter
+from ..mixins import DateRangeContextMixin
 from .serializers import BalanceLineSerializer, MetricsSerializer
 
 #pylint: disable=no-init,old-style-class
 
-class BrokerBalancesAPIView(GenericAPIView):
+class BrokerBalancesAPIView(DateRangeContextMixin, GenericAPIView):
     """
     Queries a balance sheet named ``{report}`` for the broker.
 

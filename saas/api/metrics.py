@@ -32,7 +32,7 @@ from ..compat import reverse
 from ..filters import DateRangeFilter
 from .. import settings
 from ..mixins import (CartItemSmartListMixin, CouponMixin,
-    ProviderMixin)
+    ProviderMixin, DateRangeContextMixin)
 from ..models import CartItem, Plan, Transaction
 from ..utils import convert_dates_to_utc
 from .serializers import CartItemSerializer
@@ -44,7 +44,8 @@ from .serializers import MetricsSerializer
 LOGGER = logging.getLogger(__name__)
 
 
-class BalancesAPIView(ProviderMixin, GenericAPIView):
+class BalancesAPIView(DateRangeContextMixin, ProviderMixin,
+                      GenericAPIView):
     """
     Generate a table of revenue (rows) per months (columns).
 
@@ -143,7 +144,8 @@ class BalancesAPIView(ProviderMixin, GenericAPIView):
             'unit': unit, 'scale': 0.01, 'table': result})
 
 
-class RevenueMetricAPIView(ProviderMixin, GenericAPIView):
+class RevenueMetricAPIView(DateRangeContextMixin, ProviderMixin,
+                           GenericAPIView):
     """
     Produces sales, payments and refunds over a period of time.
 
@@ -345,7 +347,8 @@ class CouponUsesAPIView(CartItemSmartListMixin, CouponUsesQuerysetMixin,
     serializer_class = CartItemSerializer
 
 
-class CustomerMetricAPIView(ProviderMixin, GenericAPIView):
+class CustomerMetricAPIView(DateRangeContextMixin, ProviderMixin,
+                            GenericAPIView):
     """
     Produce revenue stats
 
@@ -474,7 +477,7 @@ class CustomerMetricAPIView(ProviderMixin, GenericAPIView):
                 "table": customer_table, "extra": customer_extra})
 
 
-class PlanMetricAPIView(ProviderMixin, GenericAPIView):
+class PlanMetricAPIView(DateRangeContextMixin, ProviderMixin, GenericAPIView):
     """
     Produce plan stats
 

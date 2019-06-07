@@ -31,14 +31,15 @@ from rest_framework.exceptions import ValidationError
 
 from .serializers import UserSerializer, AgreementSignSerializer
 from ..models import Agreement, Signature
-from ..mixins import ProviderMixin, UserSmartListMixin
+from ..mixins import (ProviderMixin, UserSmartListMixin,
+    DateRangeContextMixin)
 from ..utils import get_role_model
 
 
 #pylint: disable=no-init
 #pylint: disable=old-style-class
 
-class RegisteredQuerysetMixin(ProviderMixin):
+class RegisteredQuerysetMixin(DateRangeContextMixin, ProviderMixin):
     """
     All ``User`` that have registered, and who are not associated
     to an ``Organization``, or whose ``Organization`` they are associated
