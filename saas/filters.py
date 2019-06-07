@@ -166,11 +166,11 @@ class OrderingFilter(BaseOrderingFilter):
         # We use an alternate ordering if the fields are not present
         # in the second model.
         # (ex: Organization.full_name vs. User.first_name)
+        ordering = []
         default = self.get_default_ordering(view)
-        if default is None:
-            default = []
-        ordering = self.remove_invalid_fields(
-            queryset, default, view, request)
+        if default:
+            ordering = self.remove_invalid_fields(
+                queryset, default, view, request)
         default_ordering = list(ordering)
         params = request.query_params.getlist(self.ordering_param)
         if params:

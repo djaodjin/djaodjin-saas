@@ -886,7 +886,7 @@ var sortableMixin = {
         }
     },
     methods: {
-        sortDir(field){
+        sortDir: function(field){
             return this.sortFields[field]
         },
         sortRemoveField: function(field){
