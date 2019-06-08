@@ -26,11 +26,10 @@ from __future__ import unicode_literals
 from rest_framework import serializers
 from rest_framework.generics import (ListCreateAPIView,
     RetrieveUpdateDestroyAPIView)
-from extra_views.contrib.mixins import SearchableListMixin, SortableListMixin
 
-from ..filters import SortableDateRangeSearchableFilterBackend
+from ..filters import OrderingFilter, SearchFilter, DateRangeFilter
 from ..models import Coupon
-from ..mixins import CouponMixin, ProviderMixin, DateRangeMixin
+from ..mixins import CouponMixin, ProviderMixin
 
 #pylint: disable=no-init
 #pylint: disable=old-style-class
@@ -43,26 +42,22 @@ class CouponSerializer(serializers.ModelSerializer):
         fields = ('code', 'percent', 'created_at', 'ends_at', 'description')
 
 
-
-class SmartCouponListMixin(SortableListMixin, SearchableListMixin):
+class SmartCouponListMixin(object):
     """
     ``Coupon`` list which is also searchable and sortable.
     """
-    search_fields = ['code',
+    search_fields = ('code',
                      'description',
                      'percent',
-                     'organization__full_name']
+                     'organization__full_name')
 
-    search_date_fields = ['created_at', 'ends_at']
-
-    sort_fields_aliases = [('code', 'code'),
+    ordering_fields = [('code', 'code'),
                            ('created_at', 'created_at'),
                            ('description', 'description'),
                            ('ends_at', 'ends_at'),
                            ('percent', 'percent')]
 
-    filter_backends = (SortableDateRangeSearchableFilterBackend(
-        sort_fields_aliases, search_fields),)
+    filter_backends = (OrderingFilter, SearchFilter)
 
 
 class CouponQuerysetMixin(ProviderMixin):
@@ -71,8 +66,8 @@ class CouponQuerysetMixin(ProviderMixin):
         return Coupon.objects.filter(organization=self.organization)
 
 
-class CouponListAPIView(DateRangeMixin, SmartCouponListMixin,
-                        CouponQuerysetMixin, ListCreateAPIView):
+class CouponListAPIView(SmartCouponListMixin, CouponQuerysetMixin,
+                        ListCreateAPIView):
     """
     Queries a page (``PAGE_SIZE`` records) of ``Coupon`` associated
     to a provider.
@@ -120,6 +115,8 @@ class CouponListAPIView(DateRangeMixin, SmartCouponListMixin,
         }
     """
     serializer_class = CouponSerializer
+    filter_backends = (SmartCouponListMixin.filter_backends +
+        (DateRangeFilter,))
 
     def post(self, request, *args, **kwargs):
         """

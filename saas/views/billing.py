@@ -58,8 +58,8 @@ from ..decorators import _insert_url, _valid_manager
 from ..forms import (BankForm, CartPeriodsForm, CreditCardForm,
     ImportTransactionForm, RedeemCouponForm, VTChargeForm, WithdrawForm)
 from ..humanize import describe_buy_periods, match_unlock
-from ..mixins import (CartMixin, ChargeMixin, DateRangeMixin, OrganizationMixin,
-    ProviderMixin, product_url)
+from ..mixins import (CartMixin, ChargeMixin, DateRangeContextMixin,
+    OrganizationMixin, ProviderMixin, product_url)
 from ..models import (CartItem, Charge, Coupon, Organization, Plan, Price,
     Subscription, Transaction, UseCharge, get_broker)
 from ..utils import (datetime_or_now, is_broker, update_context_urls,
@@ -449,7 +449,7 @@ class CardUpdateView(CardFormMixin, FormView):
         return reverse('saas_billing_info', args=(self.organization,))
 
 
-class TransactionBaseView(DateRangeMixin, TemplateView):
+class TransactionBaseView(DateRangeContextMixin, TemplateView):
 
     def get_context_data(self, **kwargs):
         context = super(TransactionBaseView, self).get_context_data(**kwargs)
@@ -493,7 +493,7 @@ class BillingStatementView(OrganizationMixin, TransactionBaseView):
       - ``organization`` The subscriber object
       - ``request`` The HTTP request object
     """
-    clip = False
+    forced_date_range = False
     template_name = 'saas/billing/index.html'
 
     def get_context_data(self, **kwargs):

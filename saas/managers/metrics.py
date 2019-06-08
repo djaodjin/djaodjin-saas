@@ -1,4 +1,4 @@
-# Copyright (c) 2018, DjaoDjin inc.
+# Copyright (c) 2019, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -36,12 +36,13 @@ from ..utils import datetime_or_now, parse_tz, convert_dates_to_utc
 
 LOGGER = logging.getLogger(__name__)
 
-def _handle_tz(dt, tz_ob, orig_tz):
+
+def _handle_tz(at_time, tz_ob, orig_tz):
     if tz_ob:
         # adding timezone info
         # + accounting for DST
-        return tz_ob.localize(dt)
-    return dt.replace(tzinfo=orig_tz)
+        return tz_ob.localize(at_time)
+    return at_time.replace(tzinfo=orig_tz)
 
 
 def month_periods(nb_months=12, from_date=None, step_months=1,
@@ -107,8 +108,8 @@ def month_periods(nb_months=12, from_date=None, step_months=1,
     return dates
 
 
-def day_periods(nb_days=7, from_date=None, step_days=1,
-                  tz=None):
+def day_periods(nb_days=7, from_date=None, step_days=1, tz=None):
+    #pylint:disable=invalid-name
     dates = []
     from_date = datetime_or_now(from_date)
     orig_tz = from_date.tzinfo
@@ -121,7 +122,7 @@ def day_periods(nb_days=7, from_date=None, step_days=1,
     if last != from_date:
         nb_days -= 1
         dates.append(last)
-    for i in range(1, nb_days):
+    for _ in range(1, nb_days):
         last = last - relativedelta(days=step_days)
         dates.append(last)
     dates.reverse()

@@ -871,40 +871,96 @@ var filterableMixin = {
     },
 }
 
+var DESC_SORT_PRE = '-';
+
 var sortableMixin = {
     data: function(){
+        var defaultDir = djaodjinSettings.sortDirection || 'desc';
+        var dir = (defaultDir === 'desc') ? DESC_SORT_PRE : '';
+        var o = djaodjinSettings.sortByField || 'created_at';
         return {
             params: {
-                o: djaodjinSettings.sortByField || 'created_at',
-                ot: djaodjinSettings.sortDirection || 'desc',
+                o: dir + o,
             },
             mixinSortCb: 'get'
         }
     },
     methods: {
-        sortBy: function(fieldName) {
-            if(this.params.o === fieldName) {
-                if(this.params.ot === "asc") {
-                    this.params.ot = "desc";
-                } else {
-                    this.params.ot = "asc";
+        sortDir: function(field){
+            return this.sortFields[field]
+        },
+        sortRemoveField: function(field){
+            var vm = this;
+            var fields = vm.sortFields;
+            delete fields[field];
+            vm.$set(vm.params, 'o', vm.fieldsToStr(fields));
+        },
+        sortRemove: function(){
+            vm.$set(vm.params, 'o', '');
+        },
+        sortSet: function(field, dir) {
+            var vm = this;
+            var fields = vm.sortFields;
+            var oldDir = fields[field];
+            if(!oldDir || (oldDir && oldDir !== dir)){
+                if(!(dir === 'asc' || dir === 'desc')){
+                    // if no dir was specified - reverse
+                    dir = oldDir === 'asc' ? 'desc' : 'asc';
+                }
+                fields[field] = dir;
+                var o = vm.fieldsToStr(fields);
+                vm.$set(vm.params, 'o', o);
+                if(vm[vm.mixinSortCb]){
+                    vm[vm.mixinSortCb]();
                 }
             }
-            else {
-                this.params.o = fieldName
-                this.params.ot = "asc";
-            }
-            if(this[this.mixinSortCb]){
-                this[this.mixinSortCb]();
-            }
+        },
+        sortBy: function(field){
+            var vm = this;
+            var oldDir = vm.sortDir(field);
+            vm.$set(vm.params, 'o', '');
+            vm.sortSet(field, oldDir === 'asc' ? 'desc' : 'asc');
+        },
+        fieldsToStr: function(fields){
+            var res = [];
+            Object.keys(fields).forEach(function(key){
+                var dir = fields[key];
+                var field = '';
+                if(dir === 'desc'){
+                    field = DESC_SORT_PRE + key;
+                } else {
+                    field = key;
+                }
+                res.push(field);
+            });
+            return res.join(',');
         },
         sortIcon: function(fieldName){
             var res = 'fa fa-sort';
-            if(fieldName === this.params.o){
-                res += ('-' + this.params.ot);
+            var dir = this.sortDir(fieldName);
+            if(dir){
+                res += ('-' + dir);
             }
             return res;
         }
+    },
+    computed: {
+        sortFields: function(){
+            var vm = this;
+            var res = {};
+            if(vm.params.o){
+                var fields = vm.params.o.split(',');
+                fields.forEach(function(e){
+                    if(!e) return;
+                    if(e[0] === DESC_SORT_PRE){
+                        res[e.substring(1)] = 'desc';
+                    } else {
+                        res[e] = 'asc';
+                    }
+                });
+            }
+            return res;
+        },
     },
 }
 
@@ -1277,8 +1333,7 @@ new Vue({
         url: djaodjinSettings.urls.provider.api_receivables,
         params: {
             start_at: moment().startOf('day'),
-            o: 'created_at',
-            ot: 'desc'
+            o: '-created_at',
         }
     },
     mounted: function(){
@@ -1341,9 +1396,6 @@ new Vue({
             var vm = this;
             vm.params.role_status = vm.roleStatus;
             if(vm.showInvited || vm.showRequested){
-                // django-extra-views doesn't support sorting
-                // by multiple columns so we always use the
-                // first one
                 vm.params.o = ['-grant_key', '-request_key'];
             }
             vm.get();
@@ -1377,7 +1429,6 @@ var app = new Vue({
             params: {
                 role_status: 'active',
                 o: 'username',
-                ot: 'asc',
             }
         }
     },
@@ -1393,7 +1444,6 @@ var app = new Vue({
             params: {
                 role_status: 'pending',
                 o: 'username',
-                ot: 'asc',
             }
         }
     },
@@ -1840,8 +1890,7 @@ new Vue({
     mixins: [itemListMixin, sortableMixin, paginationMixin, filterableMixin],
     data: {
         params: {
-            o: 'created_at',
-            ot: "desc",
+            o: '-created_at',
         },
         url: djaodjinSettings.urls.provider.api_metrics_coupon_uses
     },
@@ -1886,8 +1935,7 @@ new Vue({
         reload: function(){
             var vm = this;
             // We want to make sure the 'Write off...' transaction will display.
-            vm.params.o = 'created_at';
-            vm.params.ot = 'desc';
+            vm.params.o = '-created_at';
             if( vm.params.ends_at ) {
                 delete vm.params['ends_at'];
             }

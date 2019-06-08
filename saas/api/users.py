@@ -31,14 +31,15 @@ from rest_framework.exceptions import ValidationError
 
 from .serializers import UserSerializer, AgreementSignSerializer
 from ..models import Agreement, Signature
-from ..mixins import ProviderMixin, UserSmartListMixin
+from ..mixins import (ProviderMixin, UserSmartListMixin,
+    DateRangeContextMixin)
 from ..utils import get_role_model
 
 
 #pylint: disable=no-init
 #pylint: disable=old-style-class
 
-class RegisteredQuerysetMixin(ProviderMixin):
+class RegisteredQuerysetMixin(DateRangeContextMixin, ProviderMixin):
     """
     All ``User`` that have registered, and who are not associated
     to an ``Organization``, or whose ``Organization`` they are associated
@@ -114,7 +115,7 @@ class AgreementSignAPIView(GenericAPIView):
     serializer_class = AgreementSignSerializer
     slug_url_kwarg = 'agreement'
 
-    def post(self, request, *args, **kwargs):
+    def post(self, request, *args, **kwargs): #pylint:disable=unused-argument
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         if serializer.validated_data['read_terms']:

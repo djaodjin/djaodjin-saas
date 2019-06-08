@@ -11,8 +11,8 @@
     <table>
       <thead>
         <tr>
-          <th>Name<button ng-click="sortBy('slug')" @click="sortBy('slug')">[[params.o === 'slug' ? params.ot : 'sort']]</button></th>
-          <th>Role<button ng-click="sortBy('role_name')" @click="sortBy('role_name')">[[params.o === 'role_name' ? params.ot : 'sort']]</button></th>
+          <th>Name<button ng-click="sortBy('full_name')" @click="sortBy('full_name')">[[sortDir('full_name') ? sortDir('full_name') : 'sort']]</button></th>
+          <th>Role<button ng-click="sortBy('role_name')" @click="sortBy('role_name')">[[sortDir('role_name') ? sortDir('role_name') : 'sort']]</button></th>
           <th></th>
         </tr>
       </thead>
