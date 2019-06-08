@@ -10,6 +10,7 @@ CONFIG_DIR    ?= $(srcDir)
 LOCALSTATEDIR ?= $(installTop)/var
 
 PYTHON        := TESTSITE_SETTINGS_LOCATION=$(CONFIG_DIR) $(binDir)/python
+SQLITE        ?= sqlite3
 installDirs   ?= install -d
 
 # Django 1.7,1.8 sync tables without migrations by default while Django 1.9
@@ -57,6 +58,7 @@ initdb-with-dummydata: initdb
 initdb: install-conf
 	-rm -f $(srcDir)/db.sqlite $(srcDir)/testsite-app.log
 	cd $(srcDir) && $(PYTHON) ./manage.py migrate $(RUNSYNCDB) --noinput
+	echo "CREATE UNIQUE INDEX uniq_email ON auth_user(email);" | $(SQLITE) $(srcDir)/db.sqlite
 	cd $(srcDir) && $(PYTHON) ./manage.py loaddata testsite/fixtures/test_data.json
 
 

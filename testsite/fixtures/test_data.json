@@ -435,7 +435,7 @@
 {
     "fields": {
       "date_joined": "2017-01-01T00:00:00-00:00",
-      "email": "kenneth@localhost.localdomain",
+      "email": "abby@localhost.localdomain",
       "first_name": "Abby",
       "last_name": "RoleRequest",
       "is_active": true,
