@@ -845,8 +845,9 @@ class Organization(models.Model):
                         orig_amount=amount,
                         orig_account=Transaction.FUNDS,
                         orig_organization=self)
-                    LOGGER.debug("%s  %s payout %d %s",
-                        dry_run_prefix, created_at, amount, unit)
+                    LOGGER.debug("%s  %s payout %d %s (funds=%d)",
+                        dry_run_prefix, created_at, amount, unit,
+                        self.funds_balance)
                 except Transaction.DoesNotExist:
                     if not dry_run:
                         _ = Transaction.objects.create(
@@ -861,8 +862,9 @@ class Organization(models.Model):
                             orig_amount=amount,
                             orig_account=Transaction.FUNDS,
                             orig_organization=self)
-                    LOGGER.debug("%s+ %s payout %d %s",
-                        dry_run_prefix, created_at, amount, unit)
+                    LOGGER.debug("%s+ %s payout %d %s (funds=%d)",
+                        dry_run_prefix, created_at, amount, unit,
+                        self.funds_balance)
                     created = True
             elif amount < 0:
                 # When there is not enough funds in the Stripe account,
@@ -885,8 +887,9 @@ class Organization(models.Model):
                         orig_amount=- amount,
                         orig_account=Transaction.WITHDRAW,
                         orig_organization=self.processor)
-                    LOGGER.debug("%s  %s payout %d %s",
-                        dry_run_prefix, created_at, amount, unit)
+                    LOGGER.debug("%s  %s payout %d %s (funds=%d)",
+                        dry_run_prefix, created_at, amount, unit,
+                        self.funds_balance)
                 except Transaction.DoesNotExist:
                     if not dry_run:
                         _ = Transaction.objects.create(
@@ -901,8 +904,9 @@ class Organization(models.Model):
                             orig_amount=- amount,
                             orig_account=Transaction.WITHDRAW,
                             orig_organization=self.processor)
-                    LOGGER.debug("%s+ %s payout %d %s",
-                        dry_run_prefix, created_at, amount, unit)
+                    LOGGER.debug("%s+ %s payout %d %s (funds=%d)",
+                        dry_run_prefix, created_at, amount, unit,
+                        self.funds_balance)
                     created = True
             if created and not dry_run:
                 # Add processor fee for transfer.
@@ -910,7 +914,17 @@ class Organization(models.Model):
                     amount, self)
                 self.create_processor_fee(transfer_fee, Transaction.FUNDS,
                     event_id=event_id, created_at=created_at)
-                self.funds_balance -= amount
+                if self.funds_balance > amount:
+                    self.funds_balance -= amount
+                else:
+                    # While testing, we reset the database but do not remove
+                    # test transactions on Stripe so the payouts are always
+                    # bigger than the funds available we have tracked so far.
+                    # This issue was silent until Django 2.2.
+                    self.funds_balance = 0
+                    LOGGER.error(
+                      "payout at %s of %d %s greater than funds available (%d)",
+                        created_at, amount, unit, self.funds_balance)
                 self.save()
 
     def create_processor_fee(self, fee_amount, processor_account,
@@ -1254,8 +1268,9 @@ class ChargeManager(models.Manager):
                 ChargeItem.objects.create(invoiced=invoiced, charge=charge,
                     invoice_key=getattr(invoiced, 'invoice_key', None),
                     sync_on=getattr(invoiced, 'sync_on', None))
-            LOGGER.info("create charge %s of %d %s to %s",
-                charge.processor_key, charge.amount, charge.unit, customer,
+            LOGGER.info("  %s create charge %s of %d %s to %s",
+                charge.created_at, charge.processor_key,
+                charge.amount, charge.unit, customer,
                 extra={'event': 'create-charge',
                     'charge': charge.processor_key,
                     'organization': customer.slug,
