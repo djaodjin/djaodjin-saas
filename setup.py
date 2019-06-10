@@ -74,5 +74,6 @@ setup(
         % saas.__version__,
     license='BSD',
     description='Django application for subscription businesses',
+    long_description_content_type='text/markdown',
     long_description=open('README.md').read(),
 )

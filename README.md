@@ -32,6 +32,7 @@ the prerequisites:
     $ virtualenv <em>installTop</em>
     $ source <em>installTop</em>/bin/activate
     $ pip install -r testsite/requirements.txt
+
 </code></pre>
 
 To use the testsite, you will need to add the payment processor keys
@@ -45,6 +46,7 @@ and Django secret key into a credentials file. Example with
     SECRET_KEY = "<em>enough_random_data</em>"
     STRIPE_PUB_KEY = "<em>your_stripe_public_api_key</em>"
     STRIPE_PRIV_KEY = "<em>your_stripe_private_api_key</em>"
+
 </code></pre>
 
 It remains to create the database and populate it with test data.
