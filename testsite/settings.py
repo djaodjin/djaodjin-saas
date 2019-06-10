@@ -278,6 +278,7 @@ if TEMPLATE_REVERT_TO_DJANGO:
         'OPTIONS': {
             'context_processors': [
     'django.contrib.auth.context_processors.auth', # because of admin/
+    'django.contrib.messages.context_processors.messages', # because of admin/
     'django.template.context_processors.request',
     'django.template.context_processors.media',
     'testsite.context_processors.js_framework'
