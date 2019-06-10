@@ -921,10 +921,10 @@ class Organization(models.Model):
                     # test transactions on Stripe so the payouts are always
                     # bigger than the funds available we have tracked so far.
                     # This issue was silent until Django 2.2.
-                    self.funds_balance = 0
                     LOGGER.error(
                       "payout at %s of %d %s greater than funds available (%d)",
                         created_at, amount, unit, self.funds_balance)
+                    self.funds_balance = 0
                 self.save()
 
     def create_processor_fee(self, fee_amount, processor_account,
