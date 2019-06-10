@@ -157,7 +157,7 @@ class OrderingFilter(BaseOrderingFilter):
                     if rel:
                         # if the field doesn't exist the
                         # call will throw an exception
-                        rel.to._meta.get_field(rel_field)
+                        rel.model._meta.get_field(rel_field)
                         valid_fields.append(field)
                 except FieldDoesNotExist:
                     pass
