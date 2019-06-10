@@ -1,4 +1,4 @@
-Copyright (c) 2018, DjaoDjin inc.
+Copyright (c) 2019, DjaoDjin inc.
 All rights reserved.
 
  Redistribution and use in source and binary forms, with or without
@@ -44,6 +44,3 @@ in the repo purely for convienience:
 - From https://vuejs.org/
   - testsite/static/vendor/vue.js
   - testsite/static/vendor/vue2-filters.js
-
-
-

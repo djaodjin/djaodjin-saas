@@ -9,9 +9,9 @@ Major Features:
 
 Tested with
 
-- **Python:** 2.7, **Django:** 1.11.20 ([LTS](https://www.djangoproject.com/download/)), **Django Rest Framework:** 3.8.2
-- **Python:** 3.6, **Django:** 1.11.20 ([LTS](https://www.djangoproject.com/download/)), **Django Rest Framework:** 3.8.2
-- **Python:** 3.6, **Django:** 2.1.8 (latest),       **Django Rest Framework:** 3.8.2
+- **Python:** 2.7, **Django:** 1.11.21 ([LTS](https://www.djangoproject.com/download/)), **Django Rest Framework:** 3.9.4
+- **Python:** 3.6, **Django:** 1.11.21 ([LTS](https://www.djangoproject.com/download/)), **Django Rest Framework:** 3.9.4
+- **Python:** 3.6, **Django:** 2.2.2 (latest, [LTS](https://www.djangoproject.com/download/)), **Django Rest Framework:** 3.9.4
 
 This project contains bare bone templates which are compatible with Django
 and Jinja2 template engines. To see djaodjin-saas in action as part
@@ -92,9 +92,10 @@ saas/templates/notification/ directory.
 Release Notes
 =============
 
-0.5.1
-  * adss API to accept a role grant
-  * fixes calculations of `invited_count` and `requested_count` through filters
+0.6.0
+  * supports sort by multiple columns (#182)
+  * adds day_periods function (#199)
+  * displays invited/requested roles first
+  * populates organization fields when it is created alongside a subscription
 
 [previous release notes](changelog)
-

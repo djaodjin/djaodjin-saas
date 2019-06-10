@@ -1,3 +1,11 @@
+0.6.0
+  * supports sort by multiple columns (#182)
+  * adds day_periods function (#199)
+  * displays invited/requested roles first
+  * populates organization fields when it is created alongside a subscription
+
+ -- Sebastien Mirolo <smirolo@djaodjin.com>   Mon, 10 Jun 2019 12:26:00 -0700
+
 0.5.1
   * adss API to accept a role grant
   * fixes calculations of `invited_count` and `requested_count` through filters
