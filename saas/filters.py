@@ -38,6 +38,7 @@ from rest_framework.compat import distinct
 
 from . import settings
 from .utils import datetime_or_now, parse_tz
+from .compat import get_remote_field
 
 LOGGER = logging.getLogger(__name__)
 
@@ -153,7 +154,8 @@ class OrderingFilter(BaseOrderingFilter):
                 relation, rel_field = field[0].split('__')
                 try:
                     # check if the field is a relation
-                    rel = queryset.model._meta.get_field(relation).rel
+                    rel = get_remote_field(queryset.model._meta.get_field(
+                        relation))
                     if rel:
                         # if the field doesn't exist the
                         # call will throw an exception
