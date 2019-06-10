@@ -70,16 +70,3 @@ def is_authenticated(request):
     if callable(request.user.is_authenticated):
         return request.user.is_authenticated()
     return request.user.is_authenticated
-
-
-def get_remote_field(field):
-    """
-    Django 1.9 removed usage of Rel objects, see
-    https://github.com/django/django/pull/4241
-    """
-    res = None
-    try:
-        res = field.rel
-    except AttributeError:
-        res = field.remote_field
-    return res
