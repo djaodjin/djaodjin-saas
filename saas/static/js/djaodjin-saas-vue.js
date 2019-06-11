@@ -722,6 +722,7 @@ var itemListMixin = {
                     results: [],
                     count: 0
                 },
+                mergeResults: false,
                 params: {
                     // The following dates will be stored as `String` objects
                     // as oppossed to `moment` or `Date` objects because this
@@ -730,6 +731,8 @@ var itemListMixin = {
                     ends_at: null
                 },
                 getCb: null,
+                getCompleteCb: null,
+                setParamCb: null,
             }
             if( djaodjinSettings.date_range ) {
                 if( djaodjinSettings.date_range.start_at ) {
@@ -753,11 +756,24 @@ var itemListMixin = {
             var vm = this;
             if(!vm.url) return
             if(vm[vm.getCb]){
-                var cb = vm[vm.getCb];
+                var cb = function(res){
+                    vm[vm.getCb](res);
+
+                    if(vm[vm.getCompleteCb]){
+                        vm[vm.getCompleteCb]();
+                    }
+                }
             } else {
                 var cb = function(res){
-                    vm.items = res
+                    if(vm.mergeResults){
+                        res.results = vm.items.results.concat(res.results);
+                    }
+                    vm.items = res;
                     vm.itemsLoaded = true;
+
+                    if(vm[vm.getCompleteCb]){
+                        vm[vm.getCompleteCb]();
+                    }
                 }
             }
             vm.reqGet(vm.url, vm.getParams(), cb);
@@ -776,6 +792,14 @@ var itemListMixin = {
                 }
             }
             return params;
+        },
+        setParam: function(key, value){
+            var vm = this;
+            var old = vm.params[key];
+            vm.$set(vm.params, key, value);
+            if(vm[vm.setParamCb]){
+                vm[vm.setParamCb](key, old, value);
+            }
         },
         getQueryString: function(excludes){
             var vm = this;
@@ -836,7 +860,45 @@ var paginationMixin = {
                 page: 1,
             },
             itemsPerPage: djaodjinSettings.itemsPerPage,
+            getCompleteCb: 'paginationLoaded',
+            infiniteScrollState: null,
+            setParamCb: 'resetPage',
         }
+    },
+    methods: {
+        resetPage: function(key, old, nw){
+            var vm = this;
+            if(key != 'page'){
+                vm.mergeResults = false;
+                vm.setParam('page', 1);
+                vm.$refs.infiniteLoading.stateChanger.reset();
+            }
+        },
+        paginationLoaded: function(){
+            var vm = this;
+            if(!this.infiniteScrollState) return;
+            if(vm.params.page >= vm.pageCount){
+                this.infiniteScrollState.complete();
+                console.log('complete');
+            } else {
+                this.infiniteScrollState.loaded();
+                console.log('loaded');
+            }
+        },
+        paginationHandler: function($state){
+            var vm = this;
+            if(!vm.itemsLoaded){
+                $state.loaded()
+                return;
+            }
+            vm.mergeResults = true;
+            vm.infiniteScrollState = $state;
+            var nxt = vm.params.page + 1;
+            if(nxt <= vm.pageCount){
+                vm.$set(vm.params, 'page', nxt);
+                vm.get();
+            }
+        },
     },
     computed: {
         totalItems: function(){
@@ -844,7 +906,7 @@ var paginationMixin = {
         },
         pageCount: function(){
             return Math.ceil(this.totalItems / this.itemsPerPage)
-        }
+        },
     }
 }
 
@@ -1394,12 +1456,12 @@ new Vue({
     methods: {
         updateParams: function(){
             var vm = this;
-            vm.params.role_status = vm.roleStatus;
+            vm.setParam('role_status', vm.roleStatus);
             if(vm.showInvited || vm.showRequested){
-                vm.params.o = ['-grant_key', '-request_key'];
+                vm.setParam('o', ['-grant_key', '-request_key']);
             }
             vm.get();
-        }
+        },
     },
     computed: {
         roleStatus: function(){
