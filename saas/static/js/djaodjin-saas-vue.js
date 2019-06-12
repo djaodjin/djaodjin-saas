@@ -755,6 +755,9 @@ var itemListMixin = {
         get: function(){
             var vm = this;
             if(!vm.url) return
+            if(!vm.mergeResults){
+                vm.itemsLoaded = false;
+            }
             if(vm[vm.getCb]){
                 var cb = function(res){
                     vm[vm.getCb](res);
@@ -860,42 +863,39 @@ var paginationMixin = {
                 page: 1,
             },
             itemsPerPage: djaodjinSettings.itemsPerPage,
-            getCompleteCb: 'paginationLoaded',
-            infiniteScrollState: null,
+            getCompleteCb: 'getCompleted',
             setParamCb: 'resetPage',
         }
     },
     methods: {
         resetPage: function(key, old, nw){
             var vm = this;
+            if(!vm.ISState) return;
             if(key != 'page'){
-                vm.mergeResults = false;
                 vm.setParam('page', 1);
-                vm.$refs.infiniteLoading.stateChanger.reset();
+                vm.ISState.reset();
             }
         },
-        paginationLoaded: function(){
+        getCompleted: function(){
             var vm = this;
-            if(!this.infiniteScrollState) return;
+            if(!vm.ISState) return;
+            vm.mergeResults = false;
+            vm.ISState.loaded();
             if(vm.params.page >= vm.pageCount){
-                this.infiniteScrollState.complete();
-                console.log('complete');
-            } else {
-                this.infiniteScrollState.loaded();
-                console.log('loaded');
+                vm.ISState.complete();
             }
         },
         paginationHandler: function($state){
             var vm = this;
+            if(!vm.ISState) return;
             if(!vm.itemsLoaded){
-                $state.loaded()
+                // this handler is triggered on initial get too
                 return;
             }
-            vm.mergeResults = true;
-            vm.infiniteScrollState = $state;
             var nxt = vm.params.page + 1;
             if(nxt <= vm.pageCount){
                 vm.$set(vm.params, 'page', nxt);
+                vm.mergeResults = true;
                 vm.get();
             }
         },
@@ -906,6 +906,10 @@ var paginationMixin = {
         },
         pageCount: function(){
             return Math.ceil(this.totalItems / this.itemsPerPage)
+        },
+        ISState: function(){
+            if(!this.$refs.infiniteLoading) return;
+            return this.$refs.infiniteLoading.stateChanger;
         },
     }
 }
