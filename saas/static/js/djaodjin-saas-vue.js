@@ -876,13 +876,12 @@ var paginationMixin = {
         },
         paginationLoaded: function(){
             var vm = this;
+            vm.mergeResults = false;
             if(!this.infiniteScrollState) return;
             if(vm.params.page >= vm.pageCount){
                 this.infiniteScrollState.complete();
-                console.log('complete');
             } else {
                 this.infiniteScrollState.loaded();
-                console.log('loaded');
             }
         },
         paginationHandler: function($state){
