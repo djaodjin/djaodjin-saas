@@ -877,7 +877,9 @@ var paginationMixin = {
             var vm = this;
             if(!vm.ISState) return;
             vm.mergeResults = false;
-            vm.ISState.loaded();
+            if(vm.pageCount > 0){
+                vm.ISState.loaded();
+            }
             if(vm.params.page >= vm.pageCount){
                 vm.ISState.complete();
             }
