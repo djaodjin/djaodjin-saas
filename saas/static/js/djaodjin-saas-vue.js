@@ -2195,7 +2195,7 @@ new Vue({
                 '[name="csrfmiddlewaretoken"]');
             for( var fieldIdx = 0; fieldIdx < fields.length; ++fieldIdx ) {
                 var fieldName = $(fields[fieldIdx]).attr('name');
-                var fieldValue = $(fields[fieldIdx]).val();
+                var fieldValue = $(fields[fieldIdx]).attr('type') === 'checkbox' ? $(fields[fieldIdx]).prop('checked') : $(fields[fieldIdx]).val();
                 if( vm.formFields[fieldName] !== fieldValue ) {
                     vm.formFields[fieldName] = fieldValue;
                 }
@@ -2924,17 +2924,7 @@ new Vue({
         formFields: {
             unit: 'usd',
         },
-        title: '',
-        description: '',
-        unit: 'usd',
-        periodAmount: '0.00',
-        setupAmount: '0.00',
-        interval: 'YEARLY',
-        periodLength: 1,
-        advanceDiscount: '0.00',
         isActive: false,
-        isNotPriced: false,
-        renewalType: 1 // AUTO_RENEW,
     },
     mixins: [httpRequestMixin],
     methods: {
@@ -2994,7 +2984,7 @@ new Vue({
                 '[name="csrfmiddlewaretoken"]');
             for( var fieldIdx = 0; fieldIdx < fields.length; ++fieldIdx ) {
                 var fieldName = $(fields[fieldIdx]).attr('name');
-                var fieldValue = $(fields[fieldIdx]).val();
+                var fieldValue = $(fields[fieldIdx]).attr('type') === 'checkbox' ? $(fields[fieldIdx]).prop('checked') : $(fields[fieldIdx]).val();
                 if( vm.formFields[fieldName] !== fieldValue ) {
                     vm.formFields[fieldName] = fieldValue;
                 }
@@ -3050,9 +3040,9 @@ new Vue({
             // to load the form fields from the API then.
             vm.get();
         } else {
-            var planForm = $("#activate-plan").parent();
-            if( planForm.length > 0 ) {
-                vm.isActive = parseInt(getInitValue(planForm, 'is_active'));
+            var activateBtn = $("#activate-plan");
+            if( activateBtn.length > 0 ) {
+                vm.isActive = parseInt(activateBtn.val());
             }
         }
     },
