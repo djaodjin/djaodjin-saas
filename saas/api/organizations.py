@@ -43,7 +43,7 @@ from ..mixins import (OrganizationMixin, OrganizationSmartListMixin,
     ProviderMixin)
 from ..models import get_broker
 from ..utils import (full_name_natural_split, get_organization_model,
-    handle_uniq_error)
+    get_role_model, handle_uniq_error)
 
 
 class OrganizationDecorateMixin(object):
@@ -276,6 +276,9 @@ class OrganizationDetailAPIView(OrganizationMixin, OrganizationQuerysetMixin,
                 user.username = slug
                 user.email = email
                 user.save()
+            # Removes all roles on the organization such that the organization
+            # is not picked up inadvertently.
+            get_role_model().objects.filter(organization=obj).delete()
             obj.slug = slug
             obj.email = email
             obj.is_active = False
