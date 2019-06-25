@@ -732,7 +732,7 @@ var itemListMixin = {
                 },
                 getCb: null,
                 getCompleteCb: null,
-                setParamCb: null,
+                getBeforeCb: null,
             }
             if( djaodjinSettings.date_range ) {
                 if( djaodjinSettings.date_range.start_at ) {
@@ -779,6 +779,9 @@ var itemListMixin = {
                     }
                 }
             }
+            if(vm[vm.getBeforeCb]){
+                vm[vm.getBeforeCb]();
+            }
             vm.reqGet(vm.url, vm.getParams(), cb);
         },
         getParams: function(excludes){
@@ -795,14 +798,6 @@ var itemListMixin = {
                 }
             }
             return params;
-        },
-        setParam: function(key, value){
-            var vm = this;
-            var old = vm.params[key];
-            vm.$set(vm.params, key, value);
-            if(vm[vm.setParamCb]){
-                vm[vm.setParamCb](key, old, value);
-            }
         },
         getQueryString: function(excludes){
             var vm = this;
@@ -864,23 +859,27 @@ var paginationMixin = {
             },
             itemsPerPage: djaodjinSettings.itemsPerPage,
             getCompleteCb: 'getCompleted',
-            setParamCb: 'resetPage',
+            getBeforeCb: 'resetPage',
+            qsCache: null,
         }
     },
     methods: {
-        resetPage: function(key, old, nw){
+        resetPage: function(){
             var vm = this;
             if(!vm.ISState) return;
-            if(key != 'page'){
-                vm.setParam('page', 1);
+            if(vm.qsCache && vm.qsCache !== vm.qs){
+                vm.params.page = 1;
                 vm.ISState.reset();
             }
+            vm.qsCache = vm.qs;
         },
         getCompleted: function(){
             var vm = this;
             if(!vm.ISState) return;
             vm.mergeResults = false;
-            vm.ISState.loaded();
+            if(vm.pageCount > 0){
+                vm.ISState.loaded();
+            }
             if(vm.params.page >= vm.pageCount){
                 vm.ISState.complete();
             }
@@ -910,6 +909,9 @@ var paginationMixin = {
         ISState: function(){
             if(!this.$refs.infiniteLoading) return;
             return this.$refs.infiniteLoading.stateChanger;
+        },
+        qs: function(){
+            return this.getQueryString({page: null});
         },
     }
 }
@@ -1460,9 +1462,9 @@ new Vue({
     methods: {
         updateParams: function(){
             var vm = this;
-            vm.setParam('role_status', vm.roleStatus);
+            vm.params.role_status = vm.roleStatus;
             if(vm.showInvited || vm.showRequested){
-                vm.setParam('o', ['-grant_key', '-request_key']);
+                vm.params.o = ['-grant_key', '-request_key'];
             }
             vm.get();
         },
