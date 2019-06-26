@@ -136,11 +136,17 @@ class OrganizationCreateMixin(object):
                 organization.is_personal = (
                     validated_data.get('type') == 'personal')
                 if organization.is_personal:
-                    first_name, mid, last_name = full_name_natural_split(
-                        full_name)
-                    user = self.user_model.objects.create_user(
-                        username=organization.slug,
-                        email=email, first_name=first_name, last_name=last_name)
+                    try:
+                        user = self.user_model.objects.get(
+                            username=organization.slug)
+                    except self.user_model.DoesNotExist:
+                        first_name, mid, last_name = full_name_natural_split(
+                            full_name)
+                        user = self.user_model.objects.create_user(
+                            username=organization.slug,
+                            email=email,
+                            first_name=first_name,
+                            last_name=last_name)
                     organization.add_manager(
                         user, request_user=self.request.user)
             except IntegrityError as err:

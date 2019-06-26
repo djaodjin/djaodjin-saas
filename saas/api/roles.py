@@ -258,6 +258,13 @@ class OptinBase(OrganizationDecorateMixin, OrganizationCreateMixin):
         with transaction.atomic():
             organizations = list(organizations)
             if not organizations:
+                if organization_data.get('type') == 'personal':
+                    # If we are creating a personal organization and we already
+                    # have a user, we will implicitly create an organization as
+                    # a personal billing profile for that user.
+                    organizations = [self.create_organization(
+                        organization_data)]
+            if not organizations:
                 if not request.GET.get('force', False):
                     raise Http404(_("Profile %(organization)s does not exist."
                     ) % {'organization': slug})

@@ -694,4 +694,26 @@
       "request_key": "1234567890123456789012345b0e000e00e000"
     },
     "model": "saas.Role", "pk": 16
+},
+{
+    "fields": {
+      "date_joined": "2019-01-01T00:00:00-00:00",
+      "email": "joey@localhost.localdomain",
+      "first_name": "Joey",
+      "last_name": "create profile on subscription",
+      "is_active": true,
+      "is_staff": false,
+      "is_superuser": false,
+      "password": "pbkdf2_sha256$10000$z0MBiWn0Rlem$iZdC6uHomlE07qGK/TqfcfxNzKJtFp03c0JILF1frRc=",
+      "username": "joey"
+    },
+    "model": "auth.User", "pk": 14
+},
+{
+    "fields": {
+      "last_signed": "2019-01-01T00:00:00-00:00",
+      "agreement": 1,
+      "user": 14
+    },
+    "model": "saas.signature", "pk": 14
 }]
