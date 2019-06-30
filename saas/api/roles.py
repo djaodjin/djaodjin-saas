@@ -489,7 +489,7 @@ class AccessibleByDescrListAPIView(RoleSmartListMixin,
     serializer_class = AccessibleSerializer
     pagination_class = RoleListPagination
 
-    def create(self, request, *args, **kwargs): #pylint:disable=unused-argument
+    def post(self, request, *args, **kwargs): #pylint:disable=unused-argument
         """
         Creates a request to attach a user to an organization
         with a specified role.
@@ -518,6 +518,10 @@ class AccessibleByDescrListAPIView(RoleSmartListMixin,
               "slug": "cowork"
             }
         """
+        return super(AccessibleByDescrListAPIView, self).post(
+            request, *args, **kwargs)
+
+    def create(self, request, *args, **kwargs): #pylint:disable=unused-argument
         serializer = AccessibleOrganizationSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         reason = serializer.validated_data.get('message')
@@ -599,7 +603,7 @@ class RoleDescriptionListCreateView(RoleDescriptionQuerysetMixin,
                             },
                             "request_key": null,
                             "grant_key": null
-                        },
+                        }
                     ]
                 },
                 {
@@ -626,7 +630,7 @@ class RoleDescriptionListCreateView(RoleDescriptionQuerysetMixin,
 
         .. code-block:: http
 
-            GET /api/profile/cowork/roles/describe/ HTTP/1.1
+            POST /api/profile/cowork/roles/describe/ HTTP/1.1
 
         .. code-block:: json
 
@@ -659,7 +663,7 @@ class RoleDescriptionListCreateView(RoleDescriptionQuerysetMixin,
                                 },
                                 "request_key": null,
                                 "grant_key": null
-                            },
+                            }
                         ]
                     },
                     {
@@ -712,7 +716,7 @@ class RoleDescriptionDetailView(RoleDescriptionQuerysetMixin,
                     },
                     "request_key": null,
                     "grant_key": null
-                },
+                }
             ]
         }
 
@@ -778,7 +782,7 @@ class RoleDescriptionDetailView(RoleDescriptionQuerysetMixin,
                         },
                         "request_key": null,
                         "grant_key": null
-                    },
+                    }
                 ]
             }
 
@@ -844,7 +848,7 @@ class RoleListAPIView(RoleSmartListMixin, InvitedRequestedListMixin,
                     },
                     "request_key": "1",
                     "grant_key": null
-                },
+                }
             ]
         }
     """
@@ -933,7 +937,7 @@ class RoleByDescrListAPIView(RoleSmartListMixin, RoleByDescrQuerysetMixin,
                     },
                     "request_key": "1",
                     "grant_key": null
-                },
+                }
             ]
         }
     """

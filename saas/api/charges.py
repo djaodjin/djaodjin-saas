@@ -75,6 +75,8 @@ class ChargeResourceView(RetrieveChargeMixin, RetrieveAPIView):
 
         GET /api/billing/charges/ch_XAb124EF/ HTTP/1.1
 
+    responds
+
     .. code-block:: json
 
         {
@@ -84,7 +86,7 @@ class ChargeResourceView(RetrieveChargeMixin, RetrieveAPIView):
             "unit": "usd",
             "description": "Charge for subscription to cowork open-space",
             "last4": "1234",
-            "exp_date"" "12/2016",
+            "exp_date": "12/2016",
             "processor_key": "ch_XAb124EF",
             "state": "DONE"
         }
@@ -117,7 +119,6 @@ class ChargeQuerysetMixin(object):
 
 class ChargeListAPIView(SmartChargeListMixin,
                         ChargeQuerysetMixin, ListAPIView):
-
     """
     Queries a page (``PAGE_SIZE`` records) of ``Charge`` that were created
     on the processor.
@@ -129,6 +130,9 @@ class ChargeListAPIView(SmartChargeListMixin,
     Query results can be ordered by natural fields (``o``) in either ascending
     or descending order (``ot``).
 
+    Retrieve the list of charges that were created before
+    2015-07-05T07:00:00.000Z, sort them by date in descending order.
+
     **Tags: billing
 
     **Examples
@@ -138,8 +142,7 @@ class ChargeListAPIView(SmartChargeListMixin,
         GET /api/billing/charges?start_at=2015-07-05T07:00:00.000Z\
 &o=date&ot=desc HTTP/1.1
 
-    Retrieve the list of charges that were created before
-    2015-07-05T07:00:00.000Z, sort them by date in descending order.
+    responds
 
     .. code-block:: json
 
@@ -156,10 +159,11 @@ class ChargeListAPIView(SmartChargeListMixin,
                 "unit": "usd",
                 "description": "Charge for subscription to cowork open-space",
                 "last4": "1234",
-                "exp_date"" "12/2016",
+                "exp_date": "12/2016",
                 "processor_key": "ch_XAb124EF",
                 "state": "DONE"
-            } ...]
+            }]
+        }
     """
     serializer_class = ChargeSerializer
     pagination_class = TotalPagination
@@ -295,9 +299,12 @@ class EmailChargeReceiptAPIView(RetrieveChargeMixin, GenericAPIView):
     """
     Email the charge receipt to the customer email address on file.
 
+    The service sends a duplicate e-mail receipt for charge `ch_XAb124EF`
+    to the e-mail address of the customer, i.e. `joe@localhost.localdomain`.
+
     **Tags: billing
 
-    **Example
+    **Examples
 
     .. code-block:: http
 
@@ -312,8 +319,6 @@ class EmailChargeReceiptAPIView(RetrieveChargeMixin, GenericAPIView):
             "email": "joe@localhost.localdomain"
         }
 
-    The service sends a duplicate e-mail receipt for charge `ch_XAb124EF`
-    to the e-mail address of the customer, i.e. `joe@localhost.localdomain`.
     """
     serializer_class = EmailChargeReceiptSerializer
 

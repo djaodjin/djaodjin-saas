@@ -125,7 +125,7 @@ class RetrieveCardAPIView(OrganizationMixin, RetrieveUpdateDestroyAPIView):
         .. code-block:: json
 
             {
-              "token": "xyz",
+              "token": "xyz"
             }
 
         responds

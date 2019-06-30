@@ -57,6 +57,8 @@ class BalancesAPIView(DateRangeContextMixin, ProviderMixin,
 
         GET /api/metrics/cowork/balances HTTP/1.1
 
+    responds
+
     .. code-block:: json
 
         {
@@ -80,7 +82,7 @@ class BalancesAPIView(DateRangeContextMixin, ProviderMixin,
                         ["2015-07-01T00:00:00Z", 16567341],
                         ["2015-08-01T00:00:00Z", 17893214],
                         ["2015-08-06T02:24:50.485Z", 221340]
-                    ],
+                    ]
                 },
                 {
                     "key": "Backlog",
@@ -98,7 +100,7 @@ class BalancesAPIView(DateRangeContextMixin, ProviderMixin,
                         ["2015-07-01T00:00:00Z", 64775621],
                         ["2015-08-01T00:00:00Z", 75050033],
                         ["2015-08-06T02:24:50.485Z", 89156321]
-                    ],
+                    ]
                 },
                 {
                     "key": "Receivable",
@@ -116,7 +118,7 @@ class BalancesAPIView(DateRangeContextMixin, ProviderMixin,
                         ["2015-07-01T00:00:00Z", 0],
                         ["2015-08-01T00:00:00Z", 0],
                         ["2015-08-06T02:24:50.485Z", 0]
-                    ],
+                    ]
                 }
             ]
         }
@@ -156,6 +158,8 @@ class RevenueMetricAPIView(DateRangeContextMixin, ProviderMixin,
     .. code-block:: http
 
         GET /api/metrics/cowork/funds/ HTTP/1.1
+
+    responds
 
     .. code-block:: json
 
@@ -249,7 +253,7 @@ class RevenueMetricAPIView(DateRangeContextMixin, ProviderMixin,
                         ["2015-08-06T04:59:14.721Z", 0]
                     ]
                 }
-            ],
+            ]
         }
     """
     serializer_class = MetricsSerializer
@@ -323,6 +327,8 @@ class CouponUsesAPIView(CartItemSmartListMixin, CouponUsesQuerysetMixin,
 
         GET /api/metrics/cowork/coupons/DIS100/ HTTP/1.1
 
+    responds
+
     .. code-block:: json
 
         {
@@ -360,10 +366,12 @@ class CustomerMetricAPIView(DateRangeContextMixin, ProviderMixin,
 
         GET /api/metrics/cowork/customers HTTP/1.1
 
+    responds
+
     .. code-block:: json
 
         {
-            "title": "Customers"
+            "title": "Customers",
             "table": [
                 {
                     "key": "Total # of Customers",
@@ -383,7 +391,7 @@ class CustomerMetricAPIView(DateRangeContextMixin, ProviderMixin,
                     ]
                 },
                 {
-                    "key": "# of new Customers"
+                    "key": "# of new Customers",
                     "values": [
                         ["2014-10-01T00:00:00Z", 2],
                         ["2014-11-01T00:00:00Z", 2],
@@ -400,7 +408,7 @@ class CustomerMetricAPIView(DateRangeContextMixin, ProviderMixin,
                     ]
                 },
                 {
-                    "key": "# of churned Customers"
+                    "key": "# of churned Customers",
                     "values": [
                         ["2014-10-01T00:00:00Z", 0],
                         ["2014-11-01T00:00:00Z", 0],
@@ -488,6 +496,8 @@ class PlanMetricAPIView(DateRangeContextMixin, ProviderMixin, GenericAPIView):
     .. code-block:: http
 
         GET /api/metrics/cowork/plans HTTP/1.1
+
+    responds
 
     .. code-block:: json
 

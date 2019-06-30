@@ -90,6 +90,8 @@ class CouponListAPIView(SmartCouponListMixin, CouponQuerysetMixin,
     retrieves the list of Coupon for provider cowork where `code`
     matches 'DIS', ordered by `code` in ascending order.
 
+    responds
+
     .. code-block:: json
 
         {
@@ -158,6 +160,8 @@ class CouponDetailAPIView(CouponMixin, RetrieveUpdateDestroyAPIView):
     .. code-block:: http
 
         GET /api/billing/cowork/coupons/DIS100 HTTP/1.1
+
+    responds
 
     .. code-block:: json
 
