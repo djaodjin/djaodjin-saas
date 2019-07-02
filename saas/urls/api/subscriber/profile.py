@@ -31,7 +31,7 @@ from django.conf.urls import url
 from ....api.organizations import (
     OrganizationDetailAPIView, OrganizationListAPIView)
 from ....api.subscriptions import (SubscriptionDetailAPIView,
-    SubscriptionListAPIView)
+    SubscriptionListCreateAPIView)
 from ....api.roles import (RoleListAPIView, RoleByDescrListAPIView,
     RoleDetailAPIView)
 from ....settings import ACCT_REGEX, MAYBE_EMAIL_REGEX
@@ -52,7 +52,7 @@ urlpatterns = [
         SubscriptionDetailAPIView.as_view(),
         name='saas_api_subscription_detail'),
     url(r'^(?P<organization>%s)/subscriptions/?' % ACCT_REGEX,
-        SubscriptionListAPIView.as_view(),
+        SubscriptionListCreateAPIView.as_view(),
         name='saas_api_subscription_list'),
     url(r'^(?P<organization>%s)/?$' % ACCT_REGEX,
         OrganizationDetailAPIView.as_view(), name='saas_api_organization'),

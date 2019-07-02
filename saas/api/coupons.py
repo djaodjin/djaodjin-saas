@@ -66,9 +66,11 @@ class CouponQuerysetMixin(ProviderMixin):
         return Coupon.objects.filter(organization=self.organization)
 
 
-class CouponListAPIView(SmartCouponListMixin, CouponQuerysetMixin,
-                        ListCreateAPIView):
+class CouponListCreateAPIView(SmartCouponListMixin, CouponQuerysetMixin,
+                              ListCreateAPIView):
     """
+    Lists discount codes
+
     Queries a page (``PAGE_SIZE`` records) of ``Coupon`` associated
     to a provider.
 
@@ -120,7 +122,7 @@ class CouponListAPIView(SmartCouponListMixin, CouponQuerysetMixin,
 
     def post(self, request, *args, **kwargs):
         """
-        Creates a ``Coupon`` to be used on provider's plans.
+        Creates a discount code
 
         Customers will be able to use the `code` until `ends_at`
         to subscribe to plans from the Coupon's provider at a discount.
@@ -130,6 +132,17 @@ class CouponListAPIView(SmartCouponListMixin, CouponQuerysetMixin,
         .. code-block:: http
 
             POST /api/billing/cowork/coupons HTTP/1.1
+
+        .. code-block:: json
+
+            {
+              "code": "DIS100",
+              "percent": 100,
+              "ends_at": null,
+              "description": null
+            }
+
+        responds
 
         .. code-block:: json
 
@@ -149,7 +162,7 @@ class CouponListAPIView(SmartCouponListMixin, CouponQuerysetMixin,
 
 class CouponDetailAPIView(CouponMixin, RetrieveUpdateDestroyAPIView):
     """
-    Retrieves a ``Coupon``.
+    Retrieves a discount code
 
     **Tags: billing
 
@@ -173,7 +186,7 @@ class CouponDetailAPIView(CouponMixin, RetrieveUpdateDestroyAPIView):
 
     def put(self, request, *args, **kwargs):
         """
-        Updates a ``Coupon``.
+        Updates a discount code
 
         **Tags: billing
 
@@ -189,13 +202,23 @@ class CouponDetailAPIView(CouponMixin, RetrieveUpdateDestroyAPIView):
                 "percent": 100,
                 "ends_at": null,
                 "description": null
-           }
+            }
+
+        responds
+
+        .. code-block:: json
+
+            {
+                "percent": 100,
+                "ends_at": null,
+                "description": null
+            }
         """
         return self.update(request, *args, **kwargs)
 
     def delete(self, request, *args, **kwargs):
         """
-        Deletes a ``Coupon``.
+        Deletes a discount code
 
         Only coupons which have never been applied to an oder will
         be permanently deleted. Coupons which have already be used

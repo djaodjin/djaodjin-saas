@@ -146,6 +146,8 @@ class TransactionQuerysetMixin(object):
 class TransactionListAPIView(SmartTransactionListMixin,
                              TransactionQuerysetMixin, ListAPIView):
     """
+    Lists ledger transactions
+
     Queries a page (``PAGE_SIZE`` records) of ``Transaction`` from
     the :doc:`ledger <ledger>`.
 
@@ -210,6 +212,8 @@ class BillingsQuerysetMixin(OrganizationMixin):
 class BillingsAPIView(SmartTransactionListMixin,
                       BillingsQuerysetMixin, ListAPIView):
     """
+    Lists subscriber transactions
+
     Queries a page (``PAGE_SIZE`` records) of ``Transaction`` associated
     to ``{organization}`` while the organization acts as a subscriber.
 
@@ -274,6 +278,8 @@ class ReceivablesQuerysetMixin(ProviderMixin):
 class ReceivablesListAPIView(TotalAnnotateMixin, TransactionFilterMixin,
                              ReceivablesQuerysetMixin, ListAPIView):
     """
+    Lists provider receivables
+
     Queries a page (``PAGE_SIZE`` records) of ``Transaction`` marked
     as receivables associated to ``{organization}`` while the organization
     acts as a provider.
@@ -353,6 +359,8 @@ class TransferQuerysetMixin(ProviderMixin):
 class TransferListAPIView(SmartTransactionListMixin, TransferQuerysetMixin,
                           ListAPIView):
     """
+    Lists provider payouts
+
     Queries a page (``PAGE_SIZE`` records) of ``Transaction`` associated
     to ``{organization}`` while the organization acts as a provider.
 
@@ -428,7 +436,7 @@ class OfflineTransactionSerializer(NoModelSerializer):
 
 class ImportTransactionsAPIView(ProviderMixin, CreateAPIView):
     """
-    Inserts transactions that were done offline.
+    Inserts an offline transactions.
 
     The primary purpose of this API call is for a provider to keep
     accurate metrics for the performance of the product sold, regardless
@@ -441,6 +449,16 @@ class ImportTransactionsAPIView(ProviderMixin, CreateAPIView):
     .. code-block:: http
 
          POST /api/billing/cowork/transfers/import/ HTTP/1.1
+
+    .. code-block:: json
+
+        {
+            "subscription": "demo562-open-plus",
+            "amount": "10.00",
+            "descr": "Paid by check"
+        }
+
+    responds
 
     .. code-block:: json
 
@@ -481,6 +499,8 @@ class ImportTransactionsAPIView(ProviderMixin, CreateAPIView):
 
 class StatementBalanceAPIView(OrganizationMixin, APIView):
     """
+    Retrieves a customer balance
+
     Get the statement balance due for an organization.
 
     **Tags: billing
@@ -506,26 +526,29 @@ class StatementBalanceAPIView(OrganizationMixin, APIView):
         return Response({'balance_amount': balance_amount,
                          'balance_unit': balance_unit})
 
+    def delete(self, request, *args, **kwargs):
+        """
+        Cancels a balance due
 
-class CancelStatementBalanceAPIView(OrganizationMixin, DestroyAPIView):
-    """
-    Cancel the balance for a provider organization. This will create
-    a transaction for this balance cancellation. A manager can use
-    this endpoint to cancel balance dues that is known impossible
-    to be recovered (e.g. an external bank or credit card company
-    act).
+        Cancel the balance for a provider organization. This will create
+        a transaction for this balance cancellation. A manager can use
+        this endpoint to cancel balance dues that is known impossible
+        to be recovered (e.g. an external bank or credit card company
+        act).
 
-    The endpoint returns the transaction created to cancel the
-    balance due.
+        The endpoint returns the transaction created to cancel the
+        balance due.
 
-    **Tags: billing
+        **Tags: billing
 
-    **Examples
+        **Examples
 
-    .. code-block:: http
+        .. code-block:: http
 
-         DELETE /api/billing/cowork/balance/ HTTP/1.1
-    """
+             DELETE /api/billing/cowork/balance/ HTTP/1.1
+        """
+        return super(StatementBalanceAPIView, self).delete(
+            request, *args, **kwargs)
 
     def destroy(self, request, *args, **kwargs): #pylint:disable=unused-argument
         self.organization.create_cancel_transactions(user=request.user)

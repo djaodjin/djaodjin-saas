@@ -98,6 +98,8 @@ class CheckoutSerializer(NoModelSerializer):
 
 class CartItemAPIView(CartMixin, CreateAPIView):
     """
+    Adds an item into a cart
+
     Adds a ``Plan`` into the cart of the ``request.user``.
 
     The cart can later be checked out and paid by an ``Organization``,
@@ -216,6 +218,8 @@ class CartItemAPIView(CartMixin, CreateAPIView):
 
     def delete(self, request, *args, **kwargs):
         """
+        Removes an item from a cart
+
         Removes an item from the ``request.user`` cart.
 
         **Tags: billing
@@ -248,6 +252,8 @@ class CartItemUploadSerializer(NoModelSerializer):
 
 class CartItemUploadAPIView(CartMixin, GenericAPIView):
     """
+    Uploads multiple discount codes into a cart
+
     Add a ``Plan`` into the subscription cart of multiple users as per the
     content of an uploaded file.
 
@@ -354,6 +360,8 @@ class RedeemCouponSerializer(NoModelSerializer):
 
 class CouponRedeemAPIView(GenericAPIView):
     """
+    Redeems a discount code
+
     Redeems a ``Coupon`` and applies the discount to the eligible items
     in the cart.
 
@@ -413,6 +421,8 @@ class CouponRedeemAPIView(GenericAPIView):
 class CheckoutAPIView(CartMixin, OrganizationMixin,
                       CreateModelMixin, RetrieveAPIView):
     """
+    Retrieves a user cart for checkout
+
     Get a list indexed by plans of items that will be charged
     (`lines`) and options that could be charged instead.
 
@@ -481,6 +491,8 @@ class CheckoutAPIView(CartMixin, OrganizationMixin,
         201: OpenAPIResponse("", ChargeSerializer)})
     def post(self, request, *args, **kwargs):
         """
+        Checkouts a user cart
+
         Places an order for the subscription items in the cart and creates
         a ``Charge`` on the ``{organization}`` payment card.
 

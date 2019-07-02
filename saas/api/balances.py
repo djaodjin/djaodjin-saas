@@ -41,6 +41,8 @@ from .serializers import BalanceLineSerializer, MetricsSerializer
 
 class BrokerBalancesAPIView(DateRangeContextMixin, GenericAPIView):
     """
+    Retrieves a balance sheet
+
     Queries a balance sheet named ``{report}`` for the broker.
 
     To add lines in the report see `/api/metrics/balances/{report}/lines/`.
@@ -105,6 +107,8 @@ class BrokerBalancesAPIView(DateRangeContextMixin, GenericAPIView):
 
 class BalanceLineListAPIView(ListCreateAPIView):
     """
+    Retrieves row headers for a balance sheet
+
     Queries the list of rows reported on a balance sheet named `{report}`.
 
     **Tags: metrics
@@ -148,6 +152,8 @@ class BalanceLineListAPIView(ListCreateAPIView):
 
     def post(self, request, *args, **kwargs):
         """
+        Creates a row in a balance sheet
+
         Adds a new row on the ``{report}`` balance sheet.
 
         **Tags: metrics
@@ -181,13 +187,35 @@ class BalanceLineListAPIView(ListCreateAPIView):
 
     def patch(self, request, *args, **kwargs):
         """
-        Updates the order in which lines are displayed.
+        Updates the order in which lines are displayed
 
         When receiving a request like [{u'newpos': 1, u'oldpos': 3}],
         it will move the line at position 3 to position 1, updating the
         rank of all lines in-between.
 
         **Tags: metrics
+
+        **Examples
+
+        .. code-block:: http
+
+            PATCH /api/metrics/balances/taxes/lines/ HTTP/1.1
+
+        .. code-block:: json
+
+            [{
+              "newpos": 1,
+              "oldpos': 3
+            }]
+
+        responds
+
+        .. code-block:: json
+
+            [{
+              "newpos": 1,
+              "oldpos': 3
+            }]
         """
         with transaction.atomic():
             for move in request.data:
@@ -212,6 +240,8 @@ class BalanceLineListAPIView(ListCreateAPIView):
 
 class BalanceLineDetailAPIView(RetrieveUpdateDestroyAPIView):
     """
+    Retrieves a row in a balance sheet
+
     Describes a row reported on a balance sheet named `{report}`.
 
     **Tags: metrics
@@ -236,6 +266,8 @@ class BalanceLineDetailAPIView(RetrieveUpdateDestroyAPIView):
 
     def put(self, request, *args, **kwargs):
         """
+        Updates a row in a balance sheet
+
         Updates a row reported on a balance sheet named `{report}`.
 
         **Tags: metrics
@@ -269,6 +301,8 @@ class BalanceLineDetailAPIView(RetrieveUpdateDestroyAPIView):
 
     def delete(self, request, *args, **kwargs):
         """
+        Deletes a row in a balance sheet
+
         Deletes a row reported on a balance sheet named `{report}`.
 
         **Tags: metrics

@@ -33,12 +33,13 @@ a provider through a processor.
 
 .. http:get:: /api/billing/:organization/card/
 
-.. autoclass:: saas.api.backend.RetrieveCardAPIView
+.. autoclass:: saas.api.backend.PaymentMethodDetailAPIView
 
 
-.. http:delete:: /api/billing/:organization/balance/cancel/
+.. http:get:: /api/billing/:organization/balance/
+.. http:delete:: /api/billing/:organization/balance/
 
-.. autoclass:: saas.api.transactions.CancelStatementBalanceAPIView
+.. autoclass:: saas.api.transactions.StatementBalanceAPIView
 
 
 .. _api_billing_coupons:
@@ -46,7 +47,7 @@ a provider through a processor.
 .. http:get:: /api/billing/:organization/coupons/
 .. http:post:: /api/billing/:organization/coupons/
 
-.. autoclass:: saas.api.coupons.CouponListAPIView
+.. autoclass:: saas.api.coupons.CouponListCreateAPIView
 
 
 .. http:get:: /api/billing/:organization/coupons/:coupon/
@@ -102,7 +103,7 @@ a provider through a processor.
 
 .. http:post:: /api/cart/redeem/
 
-.. autoclass:: saas.api.coupons.CouponRedeemAPIView
+.. autoclass:: saas.api.billing.CouponRedeemAPIView
 
 
 .. http:delete:: /api/cart/:plan/upload/
@@ -122,17 +123,17 @@ Subscription API
 
 These API end points manage the subscription logic, payments excluded.
 
-
+.. http:get:: /api/profile/:organization/plans/
 .. http:post:: /api/profile/:organization/plans/
 
-.. autoclass:: saas.api.plans.PlanCreateAPIView
+.. autoclass:: saas.api.plans.PlanListCreateAPIView
 
 
 .. http:get:: /api/profile/:organization/plans/:plan/
 .. http:put:: /api/profile/:organization/plans/:plan/
 .. http:delete:: /api/profile/:organization/plans/:plan/
 
-.. autoclass:: saas.api.plans.PlanResourceView
+.. autoclass:: saas.api.plans.PlanDetailAPIView
 
 .. http:get:: /api/profile/:organization/plans/:plan/subscriptions/
 .. http:post:: /api/profile/:organization/plans/:plan/subscriptions/
@@ -192,7 +193,7 @@ These API end points manage the subscription logic, payments excluded.
 .. http:get:: /api/profile/:organization/subscriptions/
 .. http:post:: /api/profile/:organization/subscriptions/
 
-.. autoclass:: saas.api.subscriptions.SubscriptionListAPIView
+.. autoclass:: saas.api.subscriptions.SubscriptionListCreateAPIView
 
 
 .. http:delete:: /api/profile/:organization/subscriptions/<subscribed_plan>/
@@ -277,5 +278,3 @@ The two following API end point will list all ``Organization`` and ``User``
 in the database regardless of their associations.
 
 .. autoclass:: saas.api.organizations.OrganizationListAPIView
-
-.. autoclass:: saas.api.users.UserListAPIView

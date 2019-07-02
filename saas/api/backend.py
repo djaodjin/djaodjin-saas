@@ -41,6 +41,8 @@ from .serializers import (BankSerializer, CardSerializer,
 
 class RetrieveBankAPIView(OrganizationMixin, RetrieveAPIView):
     """
+    Retrieves a payout account
+
     Pass through that calls the processor API to retrieve some details about
     the deposit account associated to a provider (if that information is
     available through the :doc:`payment processor backend<backends>` API).
@@ -74,8 +76,11 @@ class RetrieveBankAPIView(OrganizationMixin, RetrieveAPIView):
             self.organization.retrieve_bank())
 
 
-class RetrieveCardAPIView(OrganizationMixin, RetrieveUpdateDestroyAPIView):
+class PaymentMethodDetailAPIView(OrganizationMixin,
+                                 RetrieveUpdateDestroyAPIView):
     """
+    Retrieves a payment method
+
     Pass through to the processor to retrieve some details about
     the payment method (ex: credit card) associated to a subscriber.
 
@@ -98,6 +103,8 @@ class RetrieveCardAPIView(OrganizationMixin, RetrieveUpdateDestroyAPIView):
 
     def delete(self, request, *args, **kwargs):
         """
+        Deletes a payment method
+
         Pass through to the processor to remove the payment method (ex: credit
         card) associated to a subscriber.
 
@@ -107,12 +114,15 @@ class RetrieveCardAPIView(OrganizationMixin, RetrieveUpdateDestroyAPIView):
 
             DELETE /api/billing/cowork/card/ HTTP/1.1
         """
-        return super(RetrieveCardAPIView, self).delete(request, *args, **kwargs)
+        return super(PaymentMethodDetailAPIView, self).delete(
+            request, *args, **kwargs)
 
     @swagger_auto_schema(request_boby=CardTokenSerializer, responses={
         200: OpenAPIResponse("", CardSerializer)})
     def put(self, request, *args, **kwargs):
         """
+        Updates a payment method
+
         Pass through to the processor to update some details about
         the payment method (ex: credit card) associated to a subscriber.
 
@@ -137,7 +147,8 @@ class RetrieveCardAPIView(OrganizationMixin, RetrieveUpdateDestroyAPIView):
               "exp_date": "12/2019"
             }
         """
-        return super(RetrieveCardAPIView, self).put(request, *args, **kwargs)
+        return super(PaymentMethodDetailAPIView, self).put(
+            request, *args, **kwargs)
 
     def destroy(self, request, *args, **kwargs):
         self.organization.delete_card()

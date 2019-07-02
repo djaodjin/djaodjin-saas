@@ -29,7 +29,7 @@ API URLs for profile resources typically associated to a provider
 
 from django.conf.urls import url
 
-from ....api.plans import (PlanCreateAPIView, PlanResourceView)
+from ....api.plans import (PlanListCreateAPIView, PlanDetailAPIView)
 from ....api.roles import (RoleDescriptionListCreateView,
     RoleDescriptionDetailView)
 from ....api.organizations import SubscribersAPIView
@@ -56,9 +56,9 @@ urlpatterns = [
         PlanSubscriptionsAPIView.as_view(), name='saas_api_plan_subscriptions'),
     url(r'^profile/(?P<organization>%s)/plans/(?P<plan>%s)/?'
         % (ACCT_REGEX, ACCT_REGEX),
-        PlanResourceView.as_view(), name='saas_api_plan'),
+        PlanDetailAPIView.as_view(), name='saas_api_plan'),
     url(r'^profile/(?P<organization>%s)/plans/?' % ACCT_REGEX,
-        PlanCreateAPIView.as_view(), name='saas_api_plans'),
+        PlanListCreateAPIView.as_view(), name='saas_api_plans'),
     url(r'^profile/(?P<organization>%s)/subscribers/accept/'\
         '(?P<request_key>%s)/' % (ACCT_REGEX, VERIFICATION_KEY_RE),
         SubscriptionRequestAcceptAPIView.as_view(),

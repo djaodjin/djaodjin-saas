@@ -1,4 +1,4 @@
-# Copyright (c) 2018, DjaoDjin inc.
+# Copyright (c) 2019, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -29,7 +29,7 @@ URLs API for resources
 from django.conf.urls import url
 
 from ....api.billing import CheckoutAPIView
-from ....api.backend import RetrieveCardAPIView
+from ....api.backend import PaymentMethodDetailAPIView
 from ....api.transactions import BillingsAPIView
 from ....settings import ACCT_REGEX
 
@@ -38,7 +38,7 @@ urlpatterns = [
     url(r'^(?P<organization>%s)/history/?' % ACCT_REGEX,
         BillingsAPIView.as_view(), name='saas_api_billings'),
     url(r'^(?P<organization>%s)/card/?' % ACCT_REGEX,
-        RetrieveCardAPIView.as_view(), name='saas_api_card'),
+        PaymentMethodDetailAPIView.as_view(), name='saas_api_card'),
     url(r'^(?P<organization>%s)/checkout/?' % ACCT_REGEX,
         CheckoutAPIView.as_view(), name='saas_api_checkout'),
 ]

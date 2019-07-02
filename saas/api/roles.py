@@ -372,6 +372,8 @@ class AccessibleByListAPIView(RoleSmartListMixin, InvitedRequestedListMixin,
                               AccessibleByQuerysetMixin,
                               OptinBase, ListCreateAPIView):
     """
+    Lists roles by user
+
     Lists all relations where an ``Organization`` is accessible by
     a ``User``. Typically the user was granted specific permissions through
     a ``Role``.
@@ -411,6 +413,8 @@ class AccessibleByListAPIView(RoleSmartListMixin, InvitedRequestedListMixin,
 
     def post(self, request, *args, **kwargs):
         """
+        Requests a role
+
         Creates a request to attach a user to a role on an organization
 
         see :doc:`Flexible Security Framework <security>`.
@@ -453,6 +457,8 @@ class AccessibleByDescrListAPIView(RoleSmartListMixin,
                                    AccessibleByDescrQuerysetMixin, UserMixin,
                                    ListCreateAPIView):
     """
+    Lists roles of specific type by user
+
     Lists all relations where a ``User`` has a specified ``Role``
     on an ``Organization``.
 
@@ -491,6 +497,8 @@ class AccessibleByDescrListAPIView(RoleSmartListMixin,
 
     def create(self, request, *args, **kwargs): #pylint:disable=unused-argument
         """
+        Requests a role of a specified type
+
         Creates a request to attach a user to an organization
         with a specified role.
 
@@ -562,6 +570,8 @@ class RoleDescriptionQuerysetMixin(OrganizationMixin):
 class RoleDescriptionListCreateView(RoleDescriptionQuerysetMixin,
                                     ListCreateAPIView):
     """
+    Lists role types
+
     Lists roles by description``RoleDescription``.
 
     see :doc:`Flexible Security Framework <security>`.
@@ -616,7 +626,9 @@ class RoleDescriptionListCreateView(RoleDescriptionQuerysetMixin,
 
     def post(self, request, *args, **kwargs):
         """
-        Creates a new role that users can take on an organization.
+        Creates a role type
+
+        Creates a role that users can take on an organization.
 
         see :doc:`Flexible Security Framework <security>`.
 
@@ -680,7 +692,7 @@ class RoleDescriptionListCreateView(RoleDescriptionQuerysetMixin,
 class RoleDescriptionDetailView(RoleDescriptionQuerysetMixin,
                                 RetrieveUpdateDestroyAPIView):
     """
-    Retrieves a ``RoleDescription``.
+    Retrieves a role type
 
     see :doc:`Flexible Security Framework <security>`.
 
@@ -723,7 +735,7 @@ class RoleDescriptionDetailView(RoleDescriptionQuerysetMixin,
 
     def delete(self, request, *args, **kwargs):
         """
-        Deletes ``RoleDescription``.
+        Deletes a role type
 
         see :doc:`Flexible Security Framework <security>`.
 
@@ -740,7 +752,7 @@ class RoleDescriptionDetailView(RoleDescriptionQuerysetMixin,
 
     def put(self, request, *args, **kwargs):
         """
-        Updates ``RoleDescription``.
+        Updates a role type
 
         see :doc:`Flexible Security Framework <security>`.
 
@@ -804,7 +816,7 @@ class RoleQuerysetBaseMixin(OrganizationMixin):
 class RoleListAPIView(RoleSmartListMixin, InvitedRequestedListMixin,
                       RoleQuerysetBaseMixin, ListAPIView):
     """
-    Lists all roles for an organization
+    Lists roles for an organization
 
     **Tags: rbac
 
@@ -893,7 +905,9 @@ class RoleByDescrQuerysetMixin(RoleDescriptionMixin, RoleQuerysetBaseMixin):
 class RoleByDescrListAPIView(RoleSmartListMixin, RoleByDescrQuerysetMixin,
                              ListCreateAPIView):
     """
-    ``GET`` lists the specified role assignments for an organization.
+    Lists roles of a specific type
+
+    Lists the specified role assignments for an organization.
 
     **Tags: rbac
 
@@ -988,6 +1002,8 @@ class RoleByDescrListAPIView(RoleSmartListMixin, RoleByDescrQuerysetMixin,
         query_serializer=ForceSerializer)
     def post(self, request, *args, **kwargs):
         """
+        Creates a role
+
         Attaches a user to a role on an organization, typically granting
         permissions to the user with regards to managing an organization profile
         (see :doc:`Flexible Security Framework <security>`).
@@ -1024,6 +1040,8 @@ class RoleDetailAPIView(RoleMixin, DestroyAPIView):
 
     def post(self, request, *args, **kwargs):#pylint:disable=unused-argument
         """
+        Re-sends role invite
+
         Re-sends the invite e-mail that the user was granted a role
         on the organization.
 
@@ -1072,6 +1090,8 @@ class RoleDetailAPIView(RoleMixin, DestroyAPIView):
 
     def delete(self, request, *args, **kwargs):
         """
+        Deletes a role
+
         Dettach a user from one or all roles with regards to an organization,
         typically resulting in revoking permissions from this user to manage
         part of an organization profile.
@@ -1107,6 +1127,8 @@ class AccessibleDetailAPIView(RoleDetailAPIView):
 
     def post(self, request, *args, **kwargs):
         """
+        Re-sends request for role
+
         Re-sends the request e-mail that the user is requested a role
         on the organization.
 
@@ -1156,6 +1178,8 @@ class AccessibleDetailAPIView(RoleDetailAPIView):
 
     def delete(self, request, *args, **kwargs):
         """
+        Deletes a role by type
+
         Dettach a user from one or all roles with regards to an organization,
         typically resulting in revoking permissions from this user to manage
         part of an organization profile.
@@ -1178,6 +1202,8 @@ class RoleAcceptAPIView(UserMixin, GenericAPIView):
 
     def put(self, request, *args, **kwargs):#pylint:disable=unused-argument
         """
+        Accepts role invite
+
         Accepts a role on an organization.
 
         **Tags: rbac

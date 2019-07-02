@@ -72,6 +72,8 @@ class RegisteredBaseAPIView(RegisteredQuerysetMixin, ListAPIView):
 
 class RegisteredAPIView(UserSmartListMixin, RegisteredBaseAPIView):
     """
+    Lists top of funnel registered users
+
     Lists all ``User`` which have no associated role or a role
     to an ``Organization`` which has no Subscription, active or inactive.
 
@@ -112,6 +114,32 @@ class RegisteredAPIView(UserSmartListMixin, RegisteredBaseAPIView):
 
 
 class AgreementSignAPIView(GenericAPIView):
+    """
+    Indicates the request user has signed the required consent agreement.
+
+    **Tags: profile
+
+    **Examples
+
+    .. code-block:: http
+
+         POST /api/legal/terms-of-use/sign/ HTTP/1.1
+
+    .. code-block:: json
+
+        {
+          "read_terms": true
+        }
+
+    responds
+
+    .. code-block:: json
+
+        {
+          "read_terms": true,
+          "last_signed": "2019-01-01T00:00:00Z"
+        }
+    """
     serializer_class = AgreementSignSerializer
     slug_url_kwarg = 'agreement'
 

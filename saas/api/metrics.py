@@ -47,7 +47,10 @@ LOGGER = logging.getLogger(__name__)
 class BalancesAPIView(DateRangeContextMixin, ProviderMixin,
                       GenericAPIView):
     """
-    Generate a table of revenue (rows) per months (columns).
+    Retrieves a default balance sheet
+
+    Generate a table of revenue (rows) per months (columns) for a default
+    balance sheet (Income, Backlog, Receivable).
 
     **Tags: metrics
 
@@ -147,6 +150,8 @@ class BalancesAPIView(DateRangeContextMixin, ProviderMixin,
 class RevenueMetricAPIView(DateRangeContextMixin, ProviderMixin,
                            GenericAPIView):
     """
+    Retrieves 12-month trailing revenue
+
     Produces sales, payments and refunds over a period of time.
 
     **Tags: metrics
@@ -306,6 +311,8 @@ class CouponUsesQuerysetMixin(object):
 class CouponUsesAPIView(CartItemSmartListMixin, CouponUsesQuerysetMixin,
                         CouponMixin, ListAPIView):
     """
+    Retrieves performance of a discount code
+
     Queries a page (``PAGE_SIZE`` records) of ``Coupon`` usage.
 
     The queryset can be filtered to a range of dates
@@ -350,7 +357,7 @@ class CouponUsesAPIView(CartItemSmartListMixin, CouponUsesQuerysetMixin,
 class CustomerMetricAPIView(DateRangeContextMixin, ProviderMixin,
                             GenericAPIView):
     """
-    Produce revenue stats
+    Retrieves 12-month trailing customer counts
 
     **Tags: metrics
 
@@ -479,7 +486,7 @@ class CustomerMetricAPIView(DateRangeContextMixin, ProviderMixin,
 
 class PlanMetricAPIView(DateRangeContextMixin, ProviderMixin, GenericAPIView):
     """
-    Produce plan stats
+    Retrieves 12-month trailing plans performance
 
     **Tags: metrics
 

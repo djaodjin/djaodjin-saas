@@ -1,4 +1,4 @@
-# Copyright (c) 2018, DjaoDjin inc.
+# Copyright (c) 2019, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -30,7 +30,7 @@ from django.conf.urls import url
 
 from ....settings import ACCT_REGEX
 from ....api.backend import RetrieveBankAPIView
-from ....api.coupons import CouponListAPIView, CouponDetailAPIView
+from ....api.coupons import CouponListCreateAPIView, CouponDetailAPIView
 from ....api.transactions import (ReceivablesListAPIView,
     TransferListAPIView, ImportTransactionsAPIView)
 
@@ -41,7 +41,7 @@ urlpatterns = [
         % (ACCT_REGEX, ACCT_REGEX),
         CouponDetailAPIView.as_view(), name='saas_api_coupon_detail'),
     url(r'^billing/(?P<organization>%s)/coupons/?'  % ACCT_REGEX,
-        CouponListAPIView.as_view(), name='saas_api_coupon_list'),
+        CouponListCreateAPIView.as_view(), name='saas_api_coupon_list'),
     url(r'^billing/(?P<organization>%s)/receivables/?' % ACCT_REGEX,
         ReceivablesListAPIView.as_view(), name='saas_api_receivables'),
     url(r'^billing/(?P<organization>%s)/transfers/import/' % ACCT_REGEX,

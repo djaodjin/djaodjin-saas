@@ -65,6 +65,8 @@ class RetrieveChargeMixin(ChargeMixin):
 
 class ChargeResourceView(RetrieveChargeMixin, RetrieveAPIView):
     """
+    Retrieves a single processor charge
+
     Pass through to the processor and returns details about a ``Charge``.
 
     **Tags: billing
@@ -119,6 +121,8 @@ class ChargeListAPIView(SmartChargeListMixin,
                         ChargeQuerysetMixin, ListAPIView):
 
     """
+    Lists processor charges
+
     Queries a page (``PAGE_SIZE`` records) of ``Charge`` that were created
     on the processor.
 
@@ -138,7 +142,7 @@ class ChargeListAPIView(SmartChargeListMixin,
         GET /api/billing/charges?start_at=2015-07-05T07:00:00.000Z\
 &o=date&ot=desc HTTP/1.1
 
-    Retrieve the list of charges that were created before
+    Retrieves the list of charges that were created before
     2015-07-05T07:00:00.000Z, sort them by date in descending order.
 
     .. code-block:: json
@@ -213,6 +217,8 @@ class OrganizationChargeListAPIView(SmartChargeListMixin,
 
 class ChargeRefundAPIView(RetrieveChargeMixin, CreateAPIView):
     """
+    Refunds a processor charge
+
     Partially or totally refund all or a subset of line items on a ``Charge``.
 
     **Tags: billing
@@ -240,6 +246,8 @@ class ChargeRefundAPIView(RetrieveChargeMixin, CreateAPIView):
 
     Refunds $40 and $821.20 from first and second line item on the receipt
     respectively. The API call responds with the Charge.
+
+    responds
 
     .. code-block:: json
 
@@ -293,6 +301,8 @@ class ChargeRefundAPIView(RetrieveChargeMixin, CreateAPIView):
 
 class EmailChargeReceiptAPIView(RetrieveChargeMixin, GenericAPIView):
     """
+    Re-sends a charge receipt
+
     Email the charge receipt to the customer email address on file.
 
     **Tags: billing

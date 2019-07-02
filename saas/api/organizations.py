@@ -214,6 +214,26 @@ class OrganizationDetailAPIView(OrganizationMixin, OrganizationQuerysetMixin,
               "email": "xia@locahost.localdomain",
               "full_name": "Xia Lee"
             }
+
+        responds
+
+        .. code-block:: json
+
+            {
+                "created_at": "2018-01-01T00:00:00Z",
+                "email": "xia@locahost.localdomain",
+                "full_name": "Xia Lee",
+                "printable_name": "Xia Lee",
+                "slug": "xia",
+                "subscriptions": [
+                    {
+                        "created_at": "2018-01-01T00:00:00Z",
+                        "ends_at": "2019-01-01T00:00:00Z",
+                        "plan": "open-space",
+                        "auto_renew": true
+                    }
+                ]
+            }
         """
         return self.update(request, *args, **kwargs)
 
@@ -392,6 +412,8 @@ class SubscribersQuerysetMixin(OrganizationDecorateMixin, ProviderMixin):
 class SubscribersAPIView(OrganizationSmartListMixin,
                          SubscribersQuerysetMixin, ListAPIView):
     """
+    Lists subscribers
+
     List all ``Organization`` which have or had a subscription to a plan
     provided by ``:organization``.
 

@@ -36,9 +36,9 @@ from ..models import Plan, Subscription
 from .. import settings
 
 
-class PlanCreateAPIView(PlanMixin, ListCreateAPIView):
+class PlanListCreateAPIView(PlanMixin, ListCreateAPIView):
     """
-    Create a ``Plan`` for a provider.
+    Lists a provider plans
 
     **Tags: subscriptions
 
@@ -46,43 +46,86 @@ class PlanCreateAPIView(PlanMixin, ListCreateAPIView):
 
     .. code-block:: http
 
-         POST /api/profile/cowork/plans HTTP/1.1
-
-    .. code-block:: json
-
-        {
-            "title": "Open Space",
-            "description": "A desk in our coworking space",
-            "is_active": false,
-            "period_amount": 12000,
-            "interval": 1
-        }
+         GET /api/profile/cowork/plans HTTP/1.1
 
     responds
 
     .. code-block:: json
 
         {
-            "title": "Open Space",
-            "description": "A desk in our coworking space",
-            "is_active": false,
-            "period_amount": 12000,
-            "interval": 1
+          "count": 1,
+          "next": null,
+          "previous": null,
+          "results": [{
+            "slug": "managed",
+            "title": "Managed",
+            "description": "Ideal for growing organizations",
+            "is_active": true,
+            "setup_amount": 0,
+            "period_amount": 2900,
+            "period_length": 1,
+            "interval": "monthly",
+            "advance_discount": 0,
+            "unit": "usd",
+            "is_not_priced": false,
+            "renewal_type": "auto-renew",
+            "created_at": "2019-01-01T00:00:00Z",
+            "organization": "cowork",
+            "extra": null,
+            "skip_optin_on_grant": false,
+            "optin_on_request": false
+          }]
         }
     """
-
     serializer_class = PlanSerializer
-
-    ordering_fields = [('title', 'title'),
-                           ('period_amount', 'period_amount'),
-                           ('is_active', 'is_active'),
-                           ('created_at', 'created_at')]
-
     filter_backends = (DateRangeFilter, OrderingFilter)
+    ordering_fields = [
+        ('title', 'title'),
+        ('period_amount', 'period_amount'),
+        ('is_active', 'is_active'),
+        ('created_at', 'created_at')]
+
+    def post(self, request, *args, **kwargs):
+        """
+        Creates a subscription plan
+
+        Creates a subscription plan for a provider.
+
+        **Tags: subscriptions
+
+        **Examples
+
+        .. code-block:: http
+
+             POST /api/profile/cowork/plans HTTP/1.1
+
+        .. code-block:: json
+
+            {
+                "title": "Open Space",
+                "description": "A desk in our coworking space",
+                "is_active": false,
+                "period_amount": 12000,
+                "interval": 1
+            }
+
+        responds
+
+        .. code-block:: json
+
+            {
+                "title": "Open Space",
+                "description": "A desk in our coworking space",
+                "is_active": false,
+                "period_amount": 12000,
+                "interval": 1
+            }
+        """
+        return super(PlanListCreateAPIView, self).post(request, *args, **kwargs)
 
     def get_queryset(self):
         self.queryset = self.organization.plans.all()
-        return super(PlanCreateAPIView, self).get_queryset()
+        return super(PlanListCreateAPIView, self).get_queryset()
 
     def perform_create(self, serializer):
         unit = serializer.validated_data.get('unit', None)
@@ -95,9 +138,9 @@ class PlanCreateAPIView(PlanMixin, ListCreateAPIView):
         serializer.save(organization=self.provider, unit=unit)
 
 
-class PlanResourceView(PlanMixin, RetrieveUpdateDestroyAPIView):
+class PlanDetailAPIView(PlanMixin, RetrieveUpdateDestroyAPIView):
     """
-    Retrieves a ``Plan``.
+    Retrieves a subscription plan
 
     The ``is_active`` boolean is used to activate a plan, enabling users
     to subscribe to it, or deactivate a plan, disabling users from subscribing
@@ -125,7 +168,7 @@ class PlanResourceView(PlanMixin, RetrieveUpdateDestroyAPIView):
 
     def delete(self, request, *args, **kwargs):
         """
-        Deletes a ``Plan``.
+        Deletes a subscription plan
 
         **Tags: subscriptions
 
@@ -135,7 +178,7 @@ class PlanResourceView(PlanMixin, RetrieveUpdateDestroyAPIView):
 
             DELETE /api/profile/cowork/plans/open-space HTTP/1.1
         """
-        return super(PlanResourceView, self).delete(request, *args, **kwargs)
+        return super(PlanDetailAPIView, self).delete(request, *args, **kwargs)
 
     def get_queryset(self):
         return Plan.objects.filter(organization=self.provider)
@@ -165,7 +208,7 @@ class PlanResourceView(PlanMixin, RetrieveUpdateDestroyAPIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
     def get_serializer_context(self):
-        context = super(PlanResourceView, self).get_serializer_context()
+        context = super(PlanDetailAPIView, self).get_serializer_context()
         context.update({'provider': self.provider})
         return context
 
@@ -191,7 +234,7 @@ class PlanResourceView(PlanMixin, RetrieveUpdateDestroyAPIView):
 
     def put(self, request, *args, **kwargs):
         """
-        Updates a ``Plan``.
+        Updates a subscription plan
 
         The ``is_active`` boolean is used to activate a plan, enabling users
         to subscribe to it, or deactivate a plan, disabling users
@@ -223,4 +266,4 @@ class PlanResourceView(PlanMixin, RetrieveUpdateDestroyAPIView):
                 "interval": 1
             }
         """
-        return super(PlanResourceView, self).put(request, *args, **kwargs)
+        return super(PlanDetailAPIView, self).put(request, *args, **kwargs)
