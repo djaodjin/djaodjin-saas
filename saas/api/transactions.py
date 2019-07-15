@@ -236,6 +236,8 @@ class BillingsAPIView(SmartTransactionListMixin,
          GET /api/billing/xia/history?start_at=2015-07-05T07:00:00.000Z\
 &o=date&ot=desc HTTP/1.1
 
+    responds
+
     .. code-block:: json
 
         {
@@ -303,6 +305,8 @@ class ReceivablesListAPIView(TotalAnnotateMixin, TransactionFilterMixin,
          GET /api/billing/cowork/receivables?start_at=2015-07-05T07:00:00.000Z\
 &o=date&ot=desc HTTP/1.1
 
+    responds
+
     .. code-block:: json
 
         {
@@ -314,8 +318,8 @@ class ReceivablesListAPIView(TotalAnnotateMixin, TransactionFilterMixin,
             "results": [
                 {
                     "created_at": "2015-08-01T00:00:00Z",
-                    "description": "Charge <a href=\"/billing/cowork/receipt/\
-1123\">1123</a> distribution for demo562-open-plus",
+                    "description": "Charge <a href='/billing/cowork/receipt/\
+1123'>1123</a> distribution for demo562-open-plus",
                     "amount": "112120",
                     "is_debit": false,
                     "orig_account": "Funds",
@@ -384,6 +388,8 @@ class TransferListAPIView(SmartTransactionListMixin, TransferQuerysetMixin,
          GET /api/billing/cowork/transfers?start_at=2015-07-05T07:00:00.000Z\
 &o=date&ot=desc HTTP/1.1
 
+    responds
+
     .. code-block:: json
 
         {
@@ -393,8 +399,8 @@ class TransferListAPIView(SmartTransactionListMixin, TransferQuerysetMixin,
             "results": [
                 {
                     "created_at": "2015-08-01T00:00:00Z",
-                    "description": "Charge <a href=\"/billing/cowork/receipt/\
-1123\">1123</a> distribution for demo562-open-plus",
+                    "description": "Charge <a href='/billing/cowork/receipt/\
+1123'>1123</a> distribution for demo562-open-plus",
                     "amount": "$1121.20",
                     "is_debit": false,
                     "orig_account": "Funds",

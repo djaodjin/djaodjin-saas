@@ -68,8 +68,9 @@ class SubscriptionListCreateAPIView(SubscriptionSmartListMixin,
 
     .. code-block:: http
 
-        GET /api/profile/:organization/subscriptions/\
-?o=created_at&ot=desc HTTP/1.1
+        GET /api/profile/cowork/subscriptions/?o=created_at&ot=desc HTTP/1.1
+
+    responds
 
     .. code-block:: json
 
@@ -118,7 +119,7 @@ class SubscriptionListCreateAPIView(SubscriptionSmartListMixin,
 
         .. code-block:: http
 
-            POST /api/profile/:organization/subscriptions/ HTTP/1.1
+            POST /api/profile/cowork/subscriptions/ HTTP/1.1
 
         .. code-block:: json
 
@@ -294,6 +295,8 @@ class PlanSubscriptionsAPIView(SubscriptionSmartListMixin,
     .. code-block:: http
 
         GET /api/profile/cowork/plans/premium/subscriptions/ HTTP/1.1
+
+    responds
 
     .. code-block:: json
 
@@ -610,6 +613,8 @@ class ActiveSubscriptionAPIView(SubscriptionSmartListMixin,
 
         GET /api/metrics/cowork/active?o=created_at&ot=desc HTTP/1.1
 
+    responds
+
     .. code-block:: json
 
         {
@@ -674,6 +679,8 @@ class ChurnedSubscriptionAPIView(SubscriptionSmartListMixin,
     .. code-block:: http
 
         GET /api/metrics/cowork/churned?o=created_at&ot=desc HTTP/1.1
+
+    responds
 
     .. code-block:: json
 

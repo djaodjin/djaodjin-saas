@@ -361,6 +361,8 @@ class SubscribersAPIView(OrganizationSmartListMixin,
 
         GET /api/profile/cowork/subscribers/?o=created_at&ot=desc HTTP/1.1
 
+    responds
+
     .. code-block:: json
 
         {
