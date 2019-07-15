@@ -2746,8 +2746,33 @@ class CartItem(models.Model):
         return result
 
 
+class SubscriptionQuerySet(models.QuerySet):
+
+    def active_with(self, provider, ends_at=None, **kwargs):
+        """
+        Returns a list of active subscriptions for which provider
+        is the owner of the plan.
+        """
+        ends_at = datetime_or_now(ends_at)
+        if isinstance(provider, Organization):
+            return self.valid_for(
+                plan__organization=provider, ends_at__gte=ends_at, **kwargs)
+        return self.valid_for(
+            plan__organization__slug=str(provider), ends_at__gte=ends_at,
+            **kwargs)
+
+    def valid_for(self, **kwargs):
+        """
+        Returns valid (i.e. fully opted-in) subscriptions.
+        """
+        return self.filter(grant_key=None, request_key=None, **kwargs)
+
+
 class SubscriptionManager(models.Manager):
     #pylint: disable=super-on-old-class
+
+    def get_queryset(self):
+        return SubscriptionQuerySet(self.model, using=self._db)
 
     def active_at(self, at_time, **kwargs):
         return self.valid_for(
@@ -2769,13 +2794,8 @@ class SubscriptionManager(models.Manager):
         Returns a list of active subscriptions for which provider
         is the owner of the plan.
         """
-        ends_at = datetime_or_now(ends_at)
-        if isinstance(provider, Organization):
-            return self.valid_for(
-                plan__organization=provider, ends_at__gte=ends_at, **kwargs)
-        return self.valid_for(
-            plan__organization__slug=str(provider), ends_at__gte=ends_at,
-            **kwargs)
+        return self.get_queryset().active_with(
+            provider, ends_at=ends_at, **kwargs)
 
     def churn_in_period(self, start_period, end_period, **kwargs):
         return self.valid_for(
@@ -2813,7 +2833,7 @@ class SubscriptionManager(models.Manager):
         """
         Returns valid (i.e. fully opted-in) subscriptions.
         """
-        return self.filter(grant_key=None, request_key=None, **kwargs)
+        return self.get_queryset().valid_for(**kwargs)
 
 
 @python_2_unicode_compatible
