@@ -33,8 +33,9 @@ from rest_framework.mixins import DestroyModelMixin, UpdateModelMixin
 from ..decorators import _valid_manager
 from ..docs import swagger_auto_schema
 from ..filters import DateRangeFilter
-from ..mixins import (ChurnedQuerysetMixin, PlanMixin, ProviderMixin,
-    SubscriptionMixin, SubscriptionSmartListMixin, SubscribedQuerysetMixin)
+from ..mixins import (ChurnedQuerysetMixin, PlanSubscribersQuerysetMixin,
+    ProviderMixin, SubscriptionMixin, SubscriptionSmartListMixin,
+    SubscribedQuerysetMixin)
 from .. import signals
 from ..models import Subscription
 from ..utils import generate_random_slug, datetime_or_now
@@ -182,7 +183,6 @@ class SubscriptionListCreateAPIView(SubscriptionSmartListMixin,
             request, *args, **kwargs)
 
 
-
 class SubscriptionDetailAPIView(SubscriptionMixin, DestroyModelMixin,
                                 RetrieveAPIView):
     """
@@ -278,18 +278,9 @@ class SubscriptionDetailAPIView(SubscriptionMixin, DestroyModelMixin,
         instance.unsubscribe_now()
 
 
-class PlanSubscriptionsQuerysetMixin(PlanMixin):
-
-    def get_queryset(self):
-        # OK to use ``filter`` here since we want to list all subscriptions.
-        return Subscription.objects.filter(
-            plan__slug=self.kwargs.get(self.plan_url_kwarg),
-            plan__organization=self.provider)
-
-
 class PlanSubscriptionsAPIView(SubscriptionSmartListMixin,
-                             PlanSubscriptionsQuerysetMixin,
-                             OptinBase, ListCreateAPIView):
+                               PlanSubscribersQuerysetMixin,
+                               OptinBase, ListCreateAPIView):
     """
     Lists subscriptions to a plan
 

@@ -26,9 +26,7 @@ import re
 
 from django.conf import settings as django_settings
 from django.contrib.auth import get_user_model, logout as auth_logout
-from django.contrib.auth.hashers import UNUSABLE_PASSWORD_PREFIX
 from django.db import transaction, IntegrityError
-from django.db.models import F
 from rest_framework import status
 from rest_framework.generics import (ListAPIView, ListCreateAPIView,
     RetrieveUpdateDestroyAPIView)
@@ -40,72 +38,10 @@ from .. import signals
 from ..decorators import _valid_manager
 from ..docs import swagger_auto_schema
 from ..mixins import (OrganizationMixin, OrganizationSmartListMixin,
-    ProviderMixin)
+    ProviderMixin, OrganizationDecorateMixin)
 from ..models import get_broker
 from ..utils import (full_name_natural_split, get_organization_model,
     get_role_model, handle_uniq_error)
-
-
-class OrganizationDecorateMixin(object):
-
-    @staticmethod
-    def as_organization(user):
-        organization = get_organization_model()(
-            slug=user.username, email=user.email,
-            full_name=user.get_full_name(), created_at=user.date_joined)
-        organization.user = user
-        return organization
-
-    @staticmethod
-    def decorate_personal(page):
-        # Adds a boolean `is_personal` if there exists a User such that
-        # `Organization.slug == User.username`.
-        # Implementation Note:
-        # The SQL we wanted to generate looks like the following.
-        #
-        # SELECT slug,
-        #   (Count(slug=username) > 0) AS is_personal
-        #   (Count(slug=username
-        #      AND NOT (password LIKE '!%')) > 0) AS credentials
-        # FROM saas_organization LEFT OUTER JOIN (
-        #   SELECT organization_id, username FROM auth_user INNER JOIN saas_role
-        #   ON auth_user.id = saas_role.user_id) AS roles
-        # ON saas_organization.id = roles.organization_id
-        # GROUP BY saas_organization.id;
-        #
-        # I couldn't figure out a way to get Django ORM to do this. The closest
-        # attempts was
-        #    queryset = get_organization_model().objects.annotate(
-        #        Count('role__user__username')).extra(
-        #        select={'is_personal': "count(slug=username) > 0"})
-        #
-        # Unfortunately that adds `is_personal` and `credentials` to the GROUP
-        # BY clause, which leads to an exception.
-        #
-        # The UNION implementation below cannot be furthered filtered
-        # (https://docs.djangoproject.com/en/2.2/ref/models/querysets/#union)
-        #personal_qs = get_organization_model().objects.filter(
-        #    role__user__username=F('slug')).extra(select={'is_personal': 1,
-        #    'credentials':
-        #        "NOT (password LIKE '" + UNUSABLE_PASSWORD_PREFIX + "%%')"})
-        #organization_qs = get_organization_model().objects.exclude(
-        #    role__user__username=F('slug')).extra(select={'is_personal': 0,
-        #    'credentials': 0})
-        #queryset = personal_qs.union(organization_qs)
-        #
-        # A raw query cannot be furthered filtered either.
-        organization_model = get_organization_model()
-        records = [page] if isinstance(page, organization_model) else page
-        personal = dict(organization_model.objects.filter(
-            pk__in=[profile.pk for profile in records if profile.pk],
-            role__user__username=F('slug')).extra(select={
-            'credentials': ("NOT (password LIKE '" + UNUSABLE_PASSWORD_PREFIX
-            + "%%')")}).values_list('pk', 'credentials'))
-        for profile in records:
-            if profile.pk in personal:
-                profile.is_personal = True
-                profile.credentials = personal[profile.pk]
-        return page
 
 
 #pylint: disable=no-init

@@ -28,7 +28,8 @@ from __future__ import unicode_literals
 import re
 
 from django.contrib.auth import get_user_model
-from django.db.models import Q
+from django.contrib.auth.hashers import UNUSABLE_PASSWORD_PREFIX
+from django.db.models import Q, F
 from django.http import Http404
 from django.template.defaultfilters import slugify
 from django.utils.translation import ugettext_lazy as _
@@ -43,7 +44,7 @@ from .humanize import (as_money, DESCRIBE_BUY_PERIODS, DESCRIBE_BUY_USE,
 from .models import (CartItem, Charge, Coupon, Organization, Plan,
     RoleDescription, Subscription, Transaction, UseCharge, get_broker)
 from .utils import (build_absolute_uri, datetime_or_now, is_broker,
-    get_role_model, update_context_urls)
+    get_organization_model, get_role_model, update_context_urls)
 from .extras import OrganizationMixinBase
 
 
@@ -463,6 +464,68 @@ class OrganizationMixin(OrganizationMixinBase, settings.EXTRA_MIXIN):
     pass
 
 
+class OrganizationDecorateMixin(object):
+
+    @staticmethod
+    def as_organization(user):
+        organization = get_organization_model()(
+            slug=user.username, email=user.email,
+            full_name=user.get_full_name(), created_at=user.date_joined)
+        organization.user = user
+        return organization
+
+    @staticmethod
+    def decorate_personal(page):
+        # Adds a boolean `is_personal` if there exists a User such that
+        # `Organization.slug == User.username`.
+        # Implementation Note:
+        # The SQL we wanted to generate looks like the following.
+        #
+        # SELECT slug,
+        #   (Count(slug=username) > 0) AS is_personal
+        #   (Count(slug=username
+        #      AND NOT (password LIKE '!%')) > 0) AS credentials
+        # FROM saas_organization LEFT OUTER JOIN (
+        #   SELECT organization_id, username FROM auth_user INNER JOIN saas_role
+        #   ON auth_user.id = saas_role.user_id) AS roles
+        # ON saas_organization.id = roles.organization_id
+        # GROUP BY saas_organization.id;
+        #
+        # I couldn't figure out a way to get Django ORM to do this. The closest
+        # attempts was
+        #    queryset = get_organization_model().objects.annotate(
+        #        Count('role__user__username')).extra(
+        #        select={'is_personal': "count(slug=username) > 0"})
+        #
+        # Unfortunately that adds `is_personal` and `credentials` to the GROUP
+        # BY clause, which leads to an exception.
+        #
+        # The UNION implementation below cannot be furthered filtered
+        # (https://docs.djangoproject.com/en/2.2/ref/models/querysets/#union)
+        #personal_qs = get_organization_model().objects.filter(
+        #    role__user__username=F('slug')).extra(select={'is_personal': 1,
+        #    'credentials':
+        #        "NOT (password LIKE '" + UNUSABLE_PASSWORD_PREFIX + "%%')"})
+        #organization_qs = get_organization_model().objects.exclude(
+        #    role__user__username=F('slug')).extra(select={'is_personal': 0,
+        #    'credentials': 0})
+        #queryset = personal_qs.union(organization_qs)
+        #
+        # A raw query cannot be furthered filtered either.
+        organization_model = get_organization_model()
+        records = [page] if isinstance(page, organization_model) else page
+        personal = dict(organization_model.objects.filter(
+            pk__in=[profile.pk for profile in records if profile.pk],
+            role__user__username=F('slug')).extra(select={
+            'credentials': ("NOT (password LIKE '" + UNUSABLE_PASSWORD_PREFIX
+            + "%%')")}).values_list('pk', 'credentials'))
+        for profile in records:
+            if profile.pk in personal:
+                profile.is_personal = True
+                profile.credentials = personal[profile.pk]
+        return page
+
+
 class DateRangeContextMixin(object):
 
     forced_date_range = True
@@ -574,7 +637,7 @@ class MetricsMixin(DateRangeContextMixin, ProviderMixin):
     filter_backends = (DateRangeFilter,)
 
 
-class SubscriptionMixin(object):
+class SubscriptionMixin(OrganizationDecorateMixin):
 
     model = Subscription
     subscriber_url_kwarg = 'organization'
@@ -604,13 +667,21 @@ class SubscriptionMixin(object):
             organization__slug=self.kwargs.get(self.subscriber_url_kwarg),
             **kwargs)
 
+    def paginate_queryset(self, queryset):
+        page = super(SubscriptionMixin, self).paginate_queryset(
+            queryset)
+        self.decorate_personal([sub.organization for sub in page])
+        return page
+
     def get_object(self):
         queryset = self.get_queryset()
         if 'plan' in self.kwargs:
             plan = self.kwargs.get('plan')
         else:
             plan = self.kwargs.get('subscribed_plan')
-        return get_object_or_404(queryset, plan__slug=plan)
+        obj = get_object_or_404(queryset, plan__slug=plan)
+        self.decorate_personal(obj.organization)
+        return obj
 
 
 class CartItemSmartListMixin(object):
@@ -775,6 +846,8 @@ class SubscriptionSmartListMixin(object):
                            ('created_at', 'created_at'),
                            ('ends_at', 'ends_at')]
 
+    ordering = ('ends_at',)
+
     filter_backends = (OrderingFilter, SearchFilter)
 
 
@@ -810,27 +883,49 @@ class UserSmartListMixin(object):
     filter_backends = (DateRangeFilter, OrderingFilter, SearchFilter)
 
 
-class ChurnedQuerysetMixin(DateRangeContextMixin, ProviderMixin):
+class SubscribersQuerysetMixin(OrganizationDecorateMixin, ProviderMixin):
+
+    model = Subscription
+
+    def get_queryset(self):
+        # OK to use ``filter`` here since we want to list all subscriptions.
+        return Subscription.objects.filter(
+            plan__organization=self.provider)
+
+    def paginate_queryset(self, queryset):
+        page = super(SubscribersQuerysetMixin, self).paginate_queryset(
+            queryset)
+        self.decorate_personal([sub.organization for sub in page])
+        return page
+
+
+class PlanSubscribersQuerysetMixin(PlanMixin, SubscribersQuerysetMixin):
+
+    def get_queryset(self):
+        return super(PlanSubscribersQuerysetMixin, self).get_queryset().filter(
+            plan__slug=self.kwargs.get(self.plan_url_kwarg))
+
+
+class ChurnedQuerysetMixin(DateRangeContextMixin, SubscribersQuerysetMixin):
     """
     ``QuerySet`` of ``Subscription`` which are no longer active.
     """
 
-    model = Subscription
     filter_backends = (DateRangeFilter,)
 
     def get_queryset(self):
+        queryset = super(ChurnedQuerysetMixin, self).get_queryset()
         kwargs = {}
         start_at = self.request.GET.get('start_at', None)
         if start_at:
             # We don't want to constraint the start date if it is not
             # explicitely set.
             kwargs.update({'ends_at__gte': self.start_at})
-        return Subscription.objects.valid_for(
-            plan__organization=self.provider,
+        return queryset.valid_for(
             ends_at__lt=self.ends_at, **kwargs).order_by('-ends_at')
 
 
-class SubscribedQuerysetMixin(DateRangeContextMixin, ProviderMixin):
+class SubscribedQuerysetMixin(DateRangeContextMixin, SubscribersQuerysetMixin):
     """
     ``QuerySet`` of ``Subscription`` which are currently active.
 
@@ -846,13 +941,14 @@ class SubscribedQuerysetMixin(DateRangeContextMixin, ProviderMixin):
     filter_backends = (DateRangeFilter,)
 
     def get_queryset(self):
+        queryset = super(SubscribedQuerysetMixin, self).get_queryset()
         kwargs = {}
         start_at = self.request.GET.get('start_at', None)
         if start_at:
             # We don't want to constraint the start date if it is not
             # explicitely set.
             kwargs.update({'created_at__lt': self.start_at})
-        return Subscription.objects.active_with(
+        return queryset.active_with(
             self.provider, ends_at=self.ends_at, **kwargs).order_by('-ends_at')
 
 
