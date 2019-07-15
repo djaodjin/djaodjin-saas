@@ -464,7 +464,7 @@ class AccessibleByDescrListAPIView(RoleSmartListMixin,
 
     .. code-block:: http
 
-        GET  /api/users/alice/accessibles/manager HTTP/1.1
+        GET  /api/users/alice/accessibles/manager/ HTTP/1.1
 
     responds
 
@@ -481,7 +481,36 @@ class AccessibleByDescrListAPIView(RoleSmartListMixin,
                     "printable_name": "ABC Corp.",
                     "role_description": "manager",
                     "request_key": null,
-                    "grant_key": null
+                    "email": "",
+                    "role_description": {
+                        "created_at": "",
+                        "title": "",
+                        "slug": "",
+                        "is_global": "",
+                        "organization": {
+                            "slug": "",
+                            "created_at": "",
+                            "full_name": "",
+                            "email": "",
+                            "phone": "",
+                            "street_address": "",
+                            "locality": "",
+                            "region": "",
+                            "postal_code": "",
+                            "country": "AF",
+                            "default_timezone": "",
+                            "printable_name": "",
+                            "is_provider": false,
+                            "is_bulk_buyer": false,
+                            "type": "",
+                            "credentials": "",
+                            "extra": ""
+                        }
+                    },
+                    "home_url": "",
+                    "settings_url": "",
+                    "accept_grant_api_url": "",
+                    "remove_api_url": ""
                 }
             ]
         }
@@ -1086,7 +1115,7 @@ class RoleDetailAPIView(RoleMixin, DestroyAPIView):
 
         .. code-block:: http
 
-            DELETE /api/profile/cowork/roles/managers/xia/ HTTP/1.1
+            DELETE /api/profile/cowork/roles/manager/xia/ HTTP/1.1
         """
         return super(RoleDetailAPIView, self).delete(request, *args, **kwargs)
 
