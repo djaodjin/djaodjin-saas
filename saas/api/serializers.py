@@ -321,11 +321,11 @@ class OrganizationCreateSerializer(NoModelSerializer):
 
     slug = serializers.CharField(required=False, allow_blank=True,
         help_text=_("Unique identifier shown in the URL bar"))
-    full_name = serializers.CharField(
+    full_name = serializers.CharField(required=False,
         help_text=_("Full name"))
     default_timezone = serializers.CharField(required=False,
          help_text=_("Timezone to use when reporting metrics"))
-    email = serializers.EmailField(
+    email = serializers.EmailField(required=False,
         help_text=_("E-mail address"))
     phone = serializers.CharField(required=False, allow_blank=True,
         help_text=_("Phone number"))
@@ -342,6 +342,15 @@ class OrganizationCreateSerializer(NoModelSerializer):
     extra = serializers.CharField(required=False, allow_null=True,
         help_text=_("Extra meta data (can be stringify JSON)"))
 
+    def validate(self, data):
+        # XXX This is because we use `OrganizationCreateSerializer`
+        # in `SubscriptionCreateSerializer`.
+        if not (data.get('slug') or (
+            data.get('full_name') and data.get('email') and data.get('type'))):
+                raise ValidationError(_("One of slug or (full_name, email,"\
+                    " type) should be present"))
+        return super(OrganizationCreateSerializer, self).validate(data)
+
     def validate_type(self, value):
         if value not in ('personal', 'organization'):
             raise ValidationError(
@@ -349,7 +358,7 @@ class OrganizationCreateSerializer(NoModelSerializer):
         return value
 
 OrganizationCreateSerializer._declared_fields["type"] = \
-    serializers.CharField(
+    serializers.CharField(required=False,
         help_text=_("One of 'organization', 'personal' or 'user'"))
 
 
