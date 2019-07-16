@@ -676,7 +676,7 @@ class RoleDescriptionListCreateView(RoleDescriptionQuerysetMixin,
         .. code-block:: json
 
             {
-                "title": "Managers",
+                "title": "Managers"
             }
 
         responds

@@ -517,6 +517,8 @@ class StatementBalanceAPIView(OrganizationMixin, APIView):
 
          GET  /api/billing/cowork/balance/ HTTP/1.1
 
+    responds
+
     .. code-block:: json
 
         {

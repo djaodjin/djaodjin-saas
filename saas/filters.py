@@ -208,9 +208,10 @@ class OrderingFilter(BaseOrderingFilter):
         # validating presence of coreapi and coreschema
         super(OrderingFilter, self).get_schema_fields(view)
         ordering_fields = getattr(view, 'ordering_fields', [])
-        sort_fields_description = "sort by %s" % ', '.join([
-            field[1] for field in ordering_fields])
-
+        sort_fields_description = "sort by %s. If a field is preceded by"\
+            "a minus sign ('-'), the order will be reversed. Multiple 'o'"\
+            " parameters can be specified to produce a stable"\
+            " result." % ', '.join([field[1] for field in ordering_fields])
         return [
             coreapi.Field(
                 name='o',
@@ -219,16 +220,6 @@ class OrderingFilter(BaseOrderingFilter):
                 schema=coreschema.String(
                     title='O',
                     description=force_text(sort_fields_description)
-                )
-            ),
-            coreapi.Field(
-                name='ot',
-                required=False,
-                location='query',
-                schema=coreschema.String(
-                    title='OT',
-                    description=force_text(
-                        "sort by natural ascending or descending order")
                 )
             ),
         ]

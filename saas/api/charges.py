@@ -82,7 +82,7 @@ class ChargeResourceView(RetrieveChargeMixin, RetrieveAPIView):
     .. code-block:: json
 
         {
-            "created_at": "2016-01-01T00:00:00Z",
+            "created_at": "2016-01-01T00:00:01Z",
             "readable_amount": "$1121.20",
             "amount": 112120,
             "unit": "usd",
@@ -134,9 +134,6 @@ class ChargeListAPIView(SmartChargeListMixin,
     Query results can be ordered by natural fields (``o``) in either ascending
     or descending order (``ot``).
 
-    Retrieve the list of charges that were created before
-    2015-07-05T07:00:00.000Z, sort them by date in descending order.
-
     **Tags: billing
 
     **Examples
@@ -160,7 +157,7 @@ class ChargeListAPIView(SmartChargeListMixin,
             "next": null,
             "previous": null,
             "results": [{
-                "created_at": "2016-01-01T00:00:00Z",
+                "created_at": "2016-01-01T00:00:02Z",
                 "readable_amount": "$1121.20",
                 "amount": 112120,
                 "unit": "usd",
@@ -207,7 +204,7 @@ class OrganizationChargeListAPIView(SmartChargeListMixin,
             "next": null,
             "previous": null,
             "results": [{
-                "created_at": "2016-01-01T00:00:00Z",
+                "created_at": "2016-01-01T00:00:03Z",
                 "readable_amount": "$1121.20",
                 "amount": 112120,
                 "unit": "usd",
@@ -242,11 +239,11 @@ class ChargeRefundAPIView(RetrieveChargeMixin, CreateAPIView):
             "lines": [
               {
                   "num": 0,
-                  "refunded_amount": 4000,
+                  "refunded_amount": 4000
               },
               {
                   "num": 1,
-                  "refunded_amount": 82120,
+                  "refunded_amount": 82120
               }
           ]
         }
@@ -259,13 +256,13 @@ class ChargeRefundAPIView(RetrieveChargeMixin, CreateAPIView):
     .. code-block:: json
 
         {
-            "created_at": "2016-01-01T00:00:00Z",
+            "created_at": "2016-01-01T00:00:05Z",
             "readable_amount": "$1121.20",
             "amount": 112120,
             "unit": "usd",
             "description": "Charge for subscription to cowork open-space",
             "last4": "1234",
-            "exp_date"" "12/2016",
+            "exp_date": "12/2016",
             "processor_key": "ch_XAb124EF",
             "state": "DONE"
         }

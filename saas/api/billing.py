@@ -286,7 +286,7 @@ class CartItemUploadAPIView(CartMixin, GenericAPIView):
     .. code-block:: json
 
         {
-            "created" [
+            "created": [
                 {
                     "first_name": "Joe",
                     "last_name": "Smith",
