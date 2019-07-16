@@ -360,10 +360,10 @@ class SubscribersQuerysetMixin(OrganizationDecorateMixin, ProviderMixin):
 class SubscribersAPIView(OrganizationSmartListMixin,
                          SubscribersQuerysetMixin, ListAPIView):
     """
-    Lists subscribers
+    Lists subscribers for a provider
 
-    List all ``Organization`` which have or had a subscription to a plan
-    provided by ``:organization``.
+    Returns a PAGE_SIZE list of subscriber profiles which have or had
+    a subscription to a plan provided by {organization}.
 
     **Tags: subscriptions
 

@@ -40,6 +40,8 @@ class PlanListCreateAPIView(PlanMixin, ListCreateAPIView):
     """
     Lists a provider plans
 
+    Returns a PAGE_SIZE list of plans whose provider is {organization}.
+
     **Tags: subscriptions
 
     **Examples
@@ -89,7 +91,7 @@ class PlanListCreateAPIView(PlanMixin, ListCreateAPIView):
         """
         Creates a subscription plan
 
-        Creates a subscription plan for a provider.
+        Creates a subscription plan for provider {organization}.
 
         **Tags: subscriptions
 
@@ -142,6 +144,8 @@ class PlanDetailAPIView(PlanMixin, RetrieveUpdateDestroyAPIView):
     """
     Retrieves a subscription plan
 
+    Returns the {plan} for provider {organization}
+
     The ``is_active`` boolean is used to activate a plan, enabling users
     to subscribe to it, or deactivate a plan, disabling users from subscribing
     to it.
@@ -171,6 +175,11 @@ class PlanDetailAPIView(PlanMixin, RetrieveUpdateDestroyAPIView):
     def delete(self, request, *args, **kwargs):
         """
         Deletes a subscription plan
+
+        A plan can only be deleted when there are no subscriptions to it.
+        Even if all subscriptions to a plan have expired, the plan cannot
+        be deleted. It should be de-activated instead such that no customers
+        can subscribes to it.
 
         **Tags: subscriptions
 
@@ -237,6 +246,10 @@ class PlanDetailAPIView(PlanMixin, RetrieveUpdateDestroyAPIView):
     def put(self, request, *args, **kwargs):
         """
         Updates a subscription plan
+
+        Updates fields for {plan}. If the ``period_amount`` is modified,
+        all subscriptions to this plan will be charged the ``period_amount``
+        on renewal.
 
         The ``is_active`` boolean is used to activate a plan, enabling users
         to subscribe to it, or deactivate a plan, disabling users

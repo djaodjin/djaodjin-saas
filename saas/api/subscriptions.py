@@ -58,9 +58,11 @@ class SubscriptionListCreateAPIView(SubscriptionSmartListMixin,
     """
     Lists subscriptions
 
-    Queries all ``Subscription`` of an ``Organization``. The queryset
-    can be further refined to match a search filter (``q``) and sorted
-    on a specific field. The returned queryset is always paginated.
+    Returns a PAGE_SIZE list of subscriptions past and present for
+    subscriber {organization}.
+
+    The queryset can be further refined to match a search filter (``q``)
+    and sorted on specific fields (``o``).
 
     **Tags: subscriptions
 
@@ -111,7 +113,7 @@ class SubscriptionListCreateAPIView(SubscriptionSmartListMixin,
         """
         Subscribes to a plan
 
-        Subscribes the organization to a plan.
+        Subscribes {organization} to a plan specified in the request body.
 
         **Tags: subscriptions
 
@@ -119,7 +121,7 @@ class SubscriptionListCreateAPIView(SubscriptionSmartListMixin,
 
         .. code-block:: http
 
-            POST /api/profile/cowork/subscriptions/ HTTP/1.1
+            POST /api/profile/xia/subscriptions/ HTTP/1.1
 
         .. code-block:: json
 
@@ -189,6 +191,8 @@ class SubscriptionDetailAPIView(SubscriptionMixin, DestroyModelMixin,
     """
     Retrieves a subscription
 
+    Returns the subscription of {organization} to {subscribed_plan}.
+
     **Tags: subscriptions
 
     **Examples
@@ -254,7 +258,9 @@ class SubscriptionDetailAPIView(SubscriptionMixin, DestroyModelMixin,
 
     def delete(self, request, *args, **kwargs):
         """
-        Unsubscribes from a plan
+        Unsubscribes
+
+        Unsubscribes {organization} from {subscribed_plan}.
 
         **Tags: subscriptions
 
@@ -285,8 +291,8 @@ class PlanSubscriptionsAPIView(SubscriptionSmartListMixin,
     """
     Lists subscriptions to a plan
 
-    Lists ``Subscription`` to a specified ``:plan`` provided by
-    ``:organization``.
+    Returns a PAGE_SIZE records of subscriptions to {plan} provided by
+    {organization}.
 
     **Tags: subscriptions
 
@@ -351,9 +357,9 @@ class PlanSubscriptionsAPIView(SubscriptionSmartListMixin,
         query_serializer=ForceSerializer)
     def post(self, request, *args, **kwargs):
         """
-        Subscribes a customer
+        Subscribes to a plan through the provider
 
-        Subscribes an organization to the ``:plan``.
+        Subscribes a customer to the {plan} provided by {organization}.
 
         **Tags: subscriptions
 
@@ -417,7 +423,10 @@ class PlanSubscriptionsAPIView(SubscriptionSmartListMixin,
 class PlanSubscriptionDetailAPIView(ProviderMixin, UpdateModelMixin,
                                     SubscriptionDetailAPIView):
     """
-    Retrieves a subscription through the provider of the plan
+    Retrieves a subscription through the provider
+
+    Returns the subscription of {subscriber} to {plan} from provider
+    {organization}.
 
     **Tags: subscriptions
 
@@ -490,7 +499,9 @@ class PlanSubscriptionDetailAPIView(ProviderMixin, UpdateModelMixin,
 
     def delete(self, request, *args, **kwargs):
         """
-        Unsubscribes through the provider of the plan
+        Unsubscribes through the provider
+
+        Unsubscribes {subscriber} from {plan} provided by {organization}.
 
         **Tags: subscriptions
 
@@ -507,7 +518,10 @@ class PlanSubscriptionDetailAPIView(ProviderMixin, UpdateModelMixin,
 
     def put(self, request, *args, **kwargs):
         """
-        Updates a subscription
+        Updates a subscription through the provider
+
+        Updates the subscription of {subscriber} to {plan} from provider
+        {organization}.
 
         **Tags: subscriptions
 
