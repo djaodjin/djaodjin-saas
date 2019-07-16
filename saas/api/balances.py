@@ -189,7 +189,7 @@ class BalanceLineListAPIView(ListCreateAPIView):
         """
         Updates the order in which lines are displayed
 
-        When receiving a request like [{u'newpos': 1, u'oldpos': 3}],
+        When receiving a request like [{"newpos": 1, "oldpos": 3}],
         it will move the line at position 3 to position 1, updating the
         rank of all lines in-between.
 
@@ -205,7 +205,7 @@ class BalanceLineListAPIView(ListCreateAPIView):
 
             [{
               "newpos": 1,
-              "oldpos': 3
+              "oldpos": 3
             }]
 
         responds
@@ -214,7 +214,7 @@ class BalanceLineListAPIView(ListCreateAPIView):
 
             [{
               "newpos": 1,
-              "oldpos': 3
+              "oldpos": 3
             }]
         """
         with transaction.atomic():

@@ -120,6 +120,12 @@ class CartItemAPIView(CartMixin, CreateAPIView):
     payment can be made by one ``Organization`` for another ``Organization``
     to be subscribed (see :ref:`GroupBuy orders<group_buy>`).
 
+    ``option`` is optional. When it is not specified, subsquent checkout
+    screens will provide choices to pay multiple periods in advance
+    When additional ``full_name`` and ``sync_on`` are specified,
+    payment can be made by one ``Organization`` for another ``Organization``
+    to be subscribed (see :ref:`GroupBuy orders<group_buy>`).
+
     **Tags: billing
 
     **Examples
@@ -144,11 +150,6 @@ class CartItemAPIView(CartMixin, CreateAPIView):
             "option": 1
         }
 
-    ``option`` is optional. When it is not specified, subsquent checkout
-    screens will provide choices to pay multiple periods in advance
-    When additional ``full_name`` and ``sync_on`` are specified,
-    payment can be made by one ``Organization`` for another ``Organization``
-    to be subscribed (see :ref:`GroupBuy orders<group_buy>`).
     """
     #pylint: disable=no-member
 
@@ -275,7 +276,7 @@ class CartItemUploadAPIView(CartMixin, GenericAPIView):
 
     .. code-block:: http
 
-        POST /api/cart/:plan/upload/ HTTP/1.1
+        POST /api/cart/basic/upload/ HTTP/1.1
 
         Content-Disposition: form-data; name="file"; filename="names.csv"
         Content-Type: text/csv
@@ -285,7 +286,7 @@ class CartItemUploadAPIView(CartMixin, GenericAPIView):
     .. code-block:: json
 
         {
-            "created" [
+            "created": [
                 {
                     "first_name": "Joe",
                     "last_name": "Smith",
@@ -510,7 +511,7 @@ class CheckoutAPIView(CartMixin, OrganizationMixin,
 
         .. code-block:: http
 
-            POST /api/billing/xia/checkout
+            POST /api/billing/xia/checkout HTTP/1.1
 
             {
                 "remember_card": true,
@@ -523,11 +524,11 @@ class CheckoutAPIView(CartMixin, OrganizationMixin,
 
            {
                 "created_at": "2016-06-21T23:42:44.270977Z",
-                "processor_key": "pay_5lK5TacFH3gbKe"
+                "processor_key": "pay_5lK5TacFH3gbKe",
                 "amount": 2000,
                 "unit": "usd",
-                "description": "Charge pay_5lK5TacFH3gblP on credit card"\
-" of Xia",
+                "description": "Charge pay_5lK5TacFH3gblP on credit card \
+of Xia",
                 "last4": "1234",
                 "exp_date": "2016-06-01",
                 "state": "created"

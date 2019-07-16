@@ -135,7 +135,7 @@ class PaymentMethodDetailAPIView(OrganizationMixin,
         .. code-block:: json
 
             {
-              "token": "xyz",
+              "token": "xyz"
             }
 
         responds

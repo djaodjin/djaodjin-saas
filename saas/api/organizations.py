@@ -119,6 +119,18 @@ class OrganizationDetailAPIView(OrganizationMixin, OrganizationQuerysetMixin,
             "full_name": "Xia Lee",
             "printable_name": "Xia Lee",
             "slug": "xia",
+            "phone": "555-555-5555",
+            "street_address": "185 Berry St #550",
+            "locality": "San Francisco",
+            "region": "CA",
+            "postal_code": "",
+            "country": "US",
+            "default_timezone": "Europe/Kiev",
+            "is_provider": false,
+            "is_bulk_buyer": false,
+            "type": "",
+            "picture": "",
+            "extra": "",
             "subscriptions": [
                 {
                     "created_at": "2018-01-01T00:00:00Z",
@@ -360,6 +372,8 @@ class SubscribersAPIView(OrganizationSmartListMixin,
     .. code-block:: http
 
         GET /api/profile/cowork/subscribers/?o=created_at&ot=desc HTTP/1.1
+
+    responds
 
     .. code-block:: json
 

@@ -470,7 +470,7 @@ class AccessibleByDescrListAPIView(RoleSmartListMixin,
 
     .. code-block:: http
 
-        GET  /api/users/alice/accessibles/manager HTTP/1.1
+        GET  /api/users/alice/accessibles/manager/ HTTP/1.1
 
     responds
 
@@ -487,7 +487,36 @@ class AccessibleByDescrListAPIView(RoleSmartListMixin,
                     "printable_name": "ABC Corp.",
                     "role_description": "manager",
                     "request_key": null,
-                    "grant_key": null
+                    "email": "",
+                    "role_description": {
+                        "created_at": "",
+                        "title": "",
+                        "slug": "",
+                        "is_global": "",
+                        "organization": {
+                            "slug": "",
+                            "created_at": "",
+                            "full_name": "",
+                            "email": "",
+                            "phone": "",
+                            "street_address": "",
+                            "locality": "",
+                            "region": "",
+                            "postal_code": "",
+                            "country": "AF",
+                            "default_timezone": "",
+                            "printable_name": "",
+                            "is_provider": false,
+                            "is_bulk_buyer": false,
+                            "type": "",
+                            "credentials": "",
+                            "extra": ""
+                        }
+                    },
+                    "home_url": "",
+                    "settings_url": "",
+                    "accept_grant_api_url": "",
+                    "remove_api_url": ""
                 }
             ]
         }
@@ -495,7 +524,7 @@ class AccessibleByDescrListAPIView(RoleSmartListMixin,
     serializer_class = AccessibleSerializer
     pagination_class = RoleListPagination
 
-    def create(self, request, *args, **kwargs): #pylint:disable=unused-argument
+    def post(self, request, *args, **kwargs): #pylint:disable=unused-argument
         """
         Requests a role of a specified type
 
@@ -526,6 +555,10 @@ class AccessibleByDescrListAPIView(RoleSmartListMixin,
               "slug": "cowork"
             }
         """
+        return super(AccessibleByDescrListAPIView, self).post(
+            request, *args, **kwargs)
+
+    def create(self, request, *args, **kwargs): #pylint:disable=unused-argument
         serializer = AccessibleOrganizationSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         reason = serializer.validated_data.get('message')
@@ -609,7 +642,7 @@ class RoleDescriptionListCreateView(RoleDescriptionQuerysetMixin,
                             },
                             "request_key": null,
                             "grant_key": null
-                        },
+                        }
                     ]
                 },
                 {
@@ -638,12 +671,12 @@ class RoleDescriptionListCreateView(RoleDescriptionQuerysetMixin,
 
         .. code-block:: http
 
-            GET /api/profile/cowork/roles/describe/ HTTP/1.1
+            POST /api/profile/cowork/roles/describe/ HTTP/1.1
 
         .. code-block:: json
 
             {
-                "title": "Managers",
+                "title": "Managers"
             }
 
         responds
@@ -671,7 +704,7 @@ class RoleDescriptionListCreateView(RoleDescriptionQuerysetMixin,
                                 },
                                 "request_key": null,
                                 "grant_key": null
-                            },
+                            }
                         ]
                     },
                     {
@@ -724,7 +757,7 @@ class RoleDescriptionDetailView(RoleDescriptionQuerysetMixin,
                     },
                     "request_key": null,
                     "grant_key": null
-                },
+                }
             ]
         }
 
@@ -790,7 +823,7 @@ class RoleDescriptionDetailView(RoleDescriptionQuerysetMixin,
                         },
                         "request_key": null,
                         "grant_key": null
-                    },
+                    }
                 ]
             }
 
@@ -856,7 +889,7 @@ class RoleListAPIView(RoleSmartListMixin, InvitedRequestedListMixin,
                     },
                     "request_key": "1",
                     "grant_key": null
-                },
+                }
             ]
         }
     """
@@ -947,7 +980,7 @@ class RoleByDescrListAPIView(RoleSmartListMixin, RoleByDescrQuerysetMixin,
                     },
                     "request_key": "1",
                     "grant_key": null
-                },
+                }
             ]
         }
     """
@@ -1102,7 +1135,7 @@ class RoleDetailAPIView(RoleMixin, DestroyAPIView):
 
         .. code-block:: http
 
-            DELETE /api/profile/cowork/roles/managers/xia/ HTTP/1.1
+            DELETE /api/profile/cowork/roles/manager/xia/ HTTP/1.1
         """
         return super(RoleDetailAPIView, self).delete(request, *args, **kwargs)
 

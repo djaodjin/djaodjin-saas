@@ -77,16 +77,18 @@ class ChargeResourceView(RetrieveChargeMixin, RetrieveAPIView):
 
         GET /api/billing/charges/ch_XAb124EF/ HTTP/1.1
 
+    responds
+
     .. code-block:: json
 
         {
-            "created_at": "2016-01-01T00:00:00Z",
+            "created_at": "2016-01-01T00:00:01Z",
             "readable_amount": "$1121.20",
             "amount": 112120,
             "unit": "usd",
             "description": "Charge for subscription to cowork open-space",
             "last4": "1234",
-            "exp_date"" "12/2016",
+            "exp_date": "12/2016",
             "processor_key": "ch_XAb124EF",
             "state": "DONE"
         }
@@ -119,7 +121,6 @@ class ChargeQuerysetMixin(object):
 
 class ChargeListAPIView(SmartChargeListMixin,
                         ChargeQuerysetMixin, ListAPIView):
-
     """
     Lists processor charges
 
@@ -145,6 +146,8 @@ class ChargeListAPIView(SmartChargeListMixin,
     Retrieves the list of charges that were created before
     2015-07-05T07:00:00.000Z, sort them by date in descending order.
 
+    responds
+
     .. code-block:: json
 
         {
@@ -154,16 +157,17 @@ class ChargeListAPIView(SmartChargeListMixin,
             "next": null,
             "previous": null,
             "results": [{
-                "created_at": "2016-01-01T00:00:00Z",
+                "created_at": "2016-01-01T00:00:02Z",
                 "readable_amount": "$1121.20",
                 "amount": 112120,
                 "unit": "usd",
                 "description": "Charge for subscription to cowork open-space",
                 "last4": "1234",
-                "exp_date"" "12/2016",
+                "exp_date": "12/2016",
                 "processor_key": "ch_XAb124EF",
                 "state": "DONE"
-            } ...]
+            }]
+        }
     """
     serializer_class = ChargeSerializer
     pagination_class = TotalPagination
@@ -200,7 +204,7 @@ class OrganizationChargeListAPIView(SmartChargeListMixin,
             "next": null,
             "previous": null,
             "results": [{
-                "created_at": "2016-01-01T00:00:00Z",
+                "created_at": "2016-01-01T00:00:03Z",
                 "readable_amount": "$1121.20",
                 "amount": 112120,
                 "unit": "usd",
@@ -235,11 +239,11 @@ class ChargeRefundAPIView(RetrieveChargeMixin, CreateAPIView):
             "lines": [
               {
                   "num": 0,
-                  "refunded_amount": 4000,
+                  "refunded_amount": 4000
               },
               {
                   "num": 1,
-                  "refunded_amount": 82120,
+                  "refunded_amount": 82120
               }
           ]
         }
@@ -252,13 +256,13 @@ class ChargeRefundAPIView(RetrieveChargeMixin, CreateAPIView):
     .. code-block:: json
 
         {
-            "created_at": "2016-01-01T00:00:00Z",
+            "created_at": "2016-01-01T00:00:05Z",
             "readable_amount": "$1121.20",
             "amount": 112120,
             "unit": "usd",
             "description": "Charge for subscription to cowork open-space",
             "last4": "1234",
-            "exp_date"" "12/2016",
+            "exp_date": "12/2016",
             "processor_key": "ch_XAb124EF",
             "state": "DONE"
         }
@@ -305,9 +309,12 @@ class EmailChargeReceiptAPIView(RetrieveChargeMixin, GenericAPIView):
 
     Email the charge receipt to the customer email address on file.
 
+    The service sends a duplicate e-mail receipt for charge `ch_XAb124EF`
+    to the e-mail address of the customer, i.e. `joe@localhost.localdomain`.
+
     **Tags: billing
 
-    **Example
+    **Examples
 
     .. code-block:: http
 
@@ -322,8 +329,6 @@ class EmailChargeReceiptAPIView(RetrieveChargeMixin, GenericAPIView):
             "email": "joe@localhost.localdomain"
         }
 
-    The service sends a duplicate e-mail receipt for charge `ch_XAb124EF`
-    to the e-mail address of the customer, i.e. `joe@localhost.localdomain`.
     """
     serializer_class = EmailChargeReceiptSerializer
 

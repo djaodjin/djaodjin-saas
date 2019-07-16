@@ -154,6 +154,8 @@ class PlanDetailAPIView(PlanMixin, RetrieveUpdateDestroyAPIView):
 
         GET /api/profile/cowork/plans/open-space HTTP/1.1
 
+    responds
+
     .. code-block:: json
 
         {
@@ -251,7 +253,7 @@ class PlanDetailAPIView(PlanMixin, RetrieveUpdateDestroyAPIView):
         .. code-block:: json
 
             {
-                "title": "Open Space",
+                "title": "Open Space"
             }
 
         responds

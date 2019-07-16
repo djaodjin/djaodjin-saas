@@ -743,7 +743,7 @@ transactionControllers.controller("subscriptionListCtrl",
     };
 
     $scope.acceptRequest = function(organization, request_key) {
-        $http.put(settings.urls.organization.api_profile_base
+        $http.post(settings.urls.organization.api_profile_base
             + organization + "/subscribers/accept/" + request_key + "/").then(
         function success(resp) {
             $scope.refresh();

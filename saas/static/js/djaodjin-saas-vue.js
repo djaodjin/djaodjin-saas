@@ -1872,7 +1872,7 @@ subscriptionsListVM = new Vue({
             var vm = this;
             var url = (djaodjinSettings.urls.organization.api_profile_base +
                 organization + "/subscribers/accept/" + request_key + "/");
-            vm.reqPut(url, function (){
+            vm.reqPost(url, function (){
                 vm.get();
             });
         },
