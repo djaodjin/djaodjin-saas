@@ -555,8 +555,7 @@ class StatementBalanceAPIView(OrganizationMixin, APIView):
 
              DELETE /api/billing/cowork/balance/ HTTP/1.1
         """
-        return super(StatementBalanceAPIView, self).delete(
-            request, *args, **kwargs)
+        return self.destroy(request, *args, **kwargs)
 
     def destroy(self, request, *args, **kwargs): #pylint:disable=unused-argument
         self.organization.create_cancel_transactions(user=request.user)

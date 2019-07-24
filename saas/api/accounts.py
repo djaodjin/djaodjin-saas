@@ -64,6 +64,8 @@ def get_order_func(fields):
 class AccountsSearchAPIView(OrganizationSmartListMixin,
                             OrganizationQuerysetMixin, ListAPIView):
     """
+    Searches billing and login profiles
+
     Queries a page (``PAGE_SIZE`` records) of organization and user profiles.
 
     The queryset can be filtered for at least one field to match a search
@@ -197,6 +199,8 @@ class AccountsSearchAPIView(OrganizationSmartListMixin,
 class ProfilesSearchAPIView(OrganizationSmartListMixin,
                             OrganizationQuerysetMixin, ListAPIView):
     """
+    Searches billing profiles
+
     Queries a page (``PAGE_SIZE`` records) of candidate profiles based
     of a search criteria (``q``).
 
@@ -254,6 +258,8 @@ class UserQuerysetMixin(object):
 
 class UsersSearchAPIView(UserSmartListMixin, UserQuerysetMixin, ListAPIView):
     """
+    Searches login profiles
+
     Queries a page (``PAGE_SIZE`` records) of ``User``.
 
     The queryset can be filtered to a range of dates

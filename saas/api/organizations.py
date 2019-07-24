@@ -99,7 +99,7 @@ class OrganizationQuerysetMixin(OrganizationDecorateMixin):
 class OrganizationDetailAPIView(OrganizationMixin, OrganizationQuerysetMixin,
                                 RetrieveUpdateDestroyAPIView):
     """
-    Retrieves an organization, personal or user profile.
+    Retrieves a billing profile
 
     **Tags: profile
 
@@ -148,7 +148,7 @@ class OrganizationDetailAPIView(OrganizationMixin, OrganizationQuerysetMixin,
 
     def put(self, request, *args, **kwargs):
         """
-        Updates an organization, personal or user profile.
+        Updates a billing profile
 
         **Examples
 
@@ -187,7 +187,7 @@ class OrganizationDetailAPIView(OrganizationMixin, OrganizationQuerysetMixin,
 
     def delete(self, request, *args, **kwargs):
         """
-        Deletes a profile.
+        Deletes a billing profile
 
         We anonymize the organization instead of purely deleting
         it from the database because we don't want to loose history

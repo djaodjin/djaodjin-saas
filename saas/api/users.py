@@ -115,6 +115,8 @@ class RegisteredAPIView(UserSmartListMixin, RegisteredBaseAPIView):
 
 class AgreementSignAPIView(GenericAPIView):
     """
+    Signs a consent agreement
+
     Indicates the request user has signed the required consent agreement.
 
     **Tags: profile
