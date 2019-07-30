@@ -94,10 +94,9 @@ saas/templates/notification/ directory.
 Release Notes
 =============
 
-0.6.0
-  * supports sort by multiple columns (#182)
-  * adds day_periods function (#199)
-  * displays invited/requested roles first
-  * populates organization fields when it is created alongside a subscription
+0.6.1
+  * improves API documentation
+  * creates billing profile implicitely in various workflows
+  * adds hooks for infinitescroll
 
 [previous release notes](changelog)
