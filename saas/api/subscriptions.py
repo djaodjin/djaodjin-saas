@@ -27,8 +27,7 @@
 import logging
 
 from rest_framework.generics import (get_object_or_404, CreateAPIView,
-    ListAPIView, ListCreateAPIView, RetrieveAPIView)
-from rest_framework.mixins import DestroyModelMixin, UpdateModelMixin
+    ListAPIView, ListCreateAPIView, RetrieveUpdateDestroyAPIView)
 
 from ..decorators import _valid_manager
 from ..docs import swagger_auto_schema
@@ -186,8 +185,7 @@ class SubscriptionListCreateAPIView(SubscriptionSmartListMixin,
             request, *args, **kwargs)
 
 
-class SubscriptionDetailAPIView(SubscriptionMixin, DestroyModelMixin,
-                                RetrieveAPIView):
+class SubscriptionDetailAPIView(SubscriptionMixin, RetrieveUpdateDestroyAPIView):
     """
     Retrieves a subscription
 
@@ -420,8 +418,7 @@ class PlanSubscriptionsAPIView(SubscriptionSmartListMixin,
         return self.perform_optin(serializer, request)
 
 
-class PlanSubscriptionDetailAPIView(ProviderMixin, UpdateModelMixin,
-                                    SubscriptionDetailAPIView):
+class PlanSubscriptionDetailAPIView(ProviderMixin, SubscriptionDetailAPIView):
     """
     Retrieves a subscription through the provider
 
