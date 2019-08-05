@@ -1808,7 +1808,11 @@ var subscriptionsListVM;
 if($('#subscriptions-list-container').length > 0){
 subscriptionsListVM = new Vue({
     el: "#subscriptions-list-container",
-    mixins: [subscriptionsMixin, paginationMixin, itemListMixin],
+    mixins: [
+        itemListMixin,
+        paginationMixin,
+        subscriptionsMixin,
+    ],
     data: {
         url: djaodjinSettings.urls.organization.api_subscriptions,
         plan: {},
@@ -1886,7 +1890,11 @@ subscriptionsListVM = new Vue({
 if($('#expired-subscriptions-list-container').length > 0){
 new Vue({
     el: "#expired-subscriptions-list-container",
-    mixins: [subscriptionsMixin, paginationMixin, itemListMixin],
+    mixins: [
+        itemListMixin,
+        paginationMixin,
+        subscriptionsMixin,
+    ],
     data: {
         url: djaodjinSettings.urls.organization.api_subscriptions,
         params: {
