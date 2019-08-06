@@ -185,7 +185,8 @@ class SubscriptionListCreateAPIView(SubscriptionSmartListMixin,
             request, *args, **kwargs)
 
 
-class SubscriptionDetailAPIView(SubscriptionMixin, RetrieveUpdateDestroyAPIView):
+class SubscriptionDetailAPIView(SubscriptionMixin,
+                                RetrieveUpdateDestroyAPIView):
     """
     Retrieves a subscription
 

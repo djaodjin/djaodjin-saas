@@ -347,8 +347,8 @@ class OrganizationCreateSerializer(NoModelSerializer):
         # in `SubscriptionCreateSerializer`.
         if not (data.get('slug') or (
             data.get('full_name') and data.get('email') and data.get('type'))):
-                raise ValidationError(_("One of slug or (full_name, email,"\
-                    " type) should be present"))
+            raise ValidationError(_("One of slug or (full_name, email,"\
+                " type) should be present"))
         return super(OrganizationCreateSerializer, self).validate(data)
 
     def validate_type(self, value):

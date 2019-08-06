@@ -1,4 +1,4 @@
-# Copyright (c) 2018, DjaoDjin inc.
+# Copyright (c) 2019, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -138,9 +138,10 @@ class BankUpdateView(BankMixin, UpdateView):
     def get_context_data(self, **kwargs):
         context = super(BankUpdateView, self).get_context_data(**kwargs)
         context.update({'force_update': True})
+        deauthorize_url = self.provider.processor_backend.get_deauthorize_url(
+            self.provider)
         update_context_urls(context, {'provider': {
-            'deauthorize_bank': reverse(
-                'saas_deauthorize_bank', args=(self.provider,))}})
+            'deauthorize_processor': deauthorize_url}})
         return context
 
     def get_object(self, queryset=None):
@@ -156,16 +157,16 @@ class BankUpdateView(BankMixin, UpdateView):
         return reverse('saas_transfer_info', kwargs=self.get_url_kwargs())
 
 
-class BankDeAuthorizeView(BankUpdateView):
+class ProcessorDeAuthorizeView(BankUpdateView):
     """
     Removes access to deposit funds into the bank account.
     """
     def form_valid(self, form):
         self.object.update_bank(None)
-        return super(BankDeAuthorizeView, self).form_valid(form)
+        return super(ProcessorDeAuthorizeView, self).form_valid(form)
 
 
-class BankAuthorizeView(BankUpdateView):
+class ProcessorAuthorizeView(BankUpdateView):
     """
     Update the authentication tokens to connect to the deposit account
     handled by the processor or bank information used to transfer funds
@@ -192,17 +193,22 @@ djaodjin-saas/tree/master/saas/templates/saas/billing/bank.html>`__).
         # Since all fields are optional, we cannot assume the card token
         # will be present (i.e. in case of erroneous POST request).
         self.object.update_bank(processor_token)
-        return super(BankAuthorizeView, self).form_valid(form)
+        return super(ProcessorAuthorizeView, self).form_valid(form)
 
     def get_context_data(self, **kwargs):
-        context = super(BankAuthorizeView, self).get_context_data(**kwargs)
-        update_context_urls(context, {
-            'authorize_processor': self.get_authorize_url()})
+        context = super(ProcessorAuthorizeView, self).get_context_data(**kwargs)
+        provider = self.organization
+        context.update(provider.processor_backend.retrieve_bank(
+            provider, includes_balance=False))
+        authorize_url = provider.processor_backend.get_authorize_url(provider)
+        if authorize_url:
+            update_context_urls(context, {
+                'authorize_processor': authorize_url
+            })
         return context
 
-    def get_authorize_url(self):
-        provider = self.organization
-        return provider.processor_backend.get_authorize_url(provider)
+    def connect_auth(self, auth_code):
+        self.object.processor_backend.connect_auth(self.object, auth_code)
 
     def get(self, request, *args, **kwargs):
         error = self.request.GET.get('error', None)
@@ -214,8 +220,7 @@ djaodjin-saas/tree/master/saas/templates/saas/billing/bank.html>`__).
             if auth_code:
                 try:
                     self.object = self.get_object()
-                    self.object.processor_backend.connect_auth(
-                        self.object, auth_code)
+                    self.connect_auth(auth_code)
                     self.object.save()
                     messages.success(self.request, _("Connection to your"\
                         " deposit account was successfully updated."))
@@ -226,7 +231,7 @@ djaodjin-saas/tree/master/saas/templates/saas/billing/bank.html>`__).
                     messages.error(self.request, _("An error occured while"\
                         " saving your deposit account settings."))
                 # XXX maybe redirect to same page here to remove query params.
-        return super(BankAuthorizeView, self).get(request, *args, **kwargs)
+        return super(ProcessorAuthorizeView, self).get(request, *args, **kwargs)
 
 
 class InvoicablesFormMixin(OrganizationMixin):

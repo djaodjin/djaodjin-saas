@@ -1,4 +1,4 @@
-# Copyright (c) 2018, DjaoDjin inc.
+# Copyright (c) 2019, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -30,15 +30,15 @@ from django.conf.urls import url
 
 from ...settings import ACCT_REGEX
 from ...views.download import TransferDownloadView
-from ...views.billing import (BankAuthorizeView, BankDeAuthorizeView,
+from ...views.billing import (ProcessorAuthorizeView, ProcessorDeAuthorizeView,
     CouponListView, ImportTransactionsView, TransferListView, WithdrawView)
 
 
 urlpatterns = [
     url(r'^billing/(?P<organization>%s)/bank/deauthorize/' % ACCT_REGEX,
-        BankDeAuthorizeView.as_view(), name='saas_deauthorize_bank'),
+        ProcessorDeAuthorizeView.as_view(), name='saas_deauthorize_processor'),
     url(r'^billing/(?P<organization>%s)/bank/' % ACCT_REGEX,
-        BankAuthorizeView.as_view(), name='saas_update_bank'),
+        ProcessorAuthorizeView.as_view(), name='saas_update_bank'),
     url(r'^billing/(?P<organization>%s)/coupons/' % ACCT_REGEX,
         CouponListView.as_view(), name='saas_coupon_list'),
     url(r'^billing/(?P<organization>%s)/transfers/download/?' % ACCT_REGEX,

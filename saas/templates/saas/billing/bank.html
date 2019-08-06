@@ -1,47 +1,86 @@
 {% extends "saas/base.html" %}
 
 {% block saas_title %}
-<i class="fa fa-money"></i> Update {{organization.printable_name}} Deposit Information
+{{organization.printable_name}} Payment Processor
 {% endblock %}
 
 {% block saas_content %}
-{% if organization.processor_deposit_key %}
-  {% if organization.processor_pub_key %}
-  <!-- We have a ``standalone`` account. -->
-  <p>
-  Connected to a Stripe account.
-  </p>
-  <p>
-      <button id="de-authorize-btn" data-toggle="modal" data-target="#de-authorize">De-authorize</button>
-  </p>
-  {% else %}
-  <!-- We have a ``managed`` account. -->
-  {% include "saas/_bank_use.html" %}
-  {% endif %}
-{% else %}
-<p>
-<a href="{{urls.authorize_processor}}"><img src="/static/img/stripe-connect.png" /></a>
-</p>
-{% endif %}
-<div id="de-authorize">
+<div>
+  {% if bank_name and bank_name != 'N/A' %}
+  <div>
     <div>
+      <h3>Connected Processor</h3>
+      <div>
+        <p>
+You will be able to create charges and payout funds with this processor.
+        </p>
         <div>
-            <div>
-                De-authorize ...
-            </div>
-            <div>
-                Please confirm you want to de-authorize access
-                to your Stripe account.
-            </div>
-            <div>
-                <button type="button" data-dismiss="modal">Cancel</button>
-                <form method="post" action="{{urls.provider.deauthorize_bank}}">
-                  <input type="hidden" name="csrfmiddlewaretoken" value="{{csrf_token}}">
-                  <input type="hidden" name="stripeToken" value="OOPS" />
-                  <button id="de-authorize-action-btn" type="submit">De-authorize</button>
-                </form>
-            </div>
+          <dl>
+            <dt>Institution</dt>
+            <dd>
+              <span>{{bank_name}}</span>
+            </dd>
+          </dl>
+          <dl>
+            <dt>Account Number</dt>
+            <dd>
+              <span>{{last4}}</span>
+            </dd>
+          </dl>
         </div>
+        {% if urls.provider.deauthorize_processor %}
+        <form method="post" action="{{urls.provider.deauthorize_processor}}">
+          <input type="hidden" name="csrfmiddlewaretoken" value="{{csrf_token}}">
+          <input type="hidden" name="stripeToken" value="OOPS" />
+          <button id="de-authorize-action-btn" type="submit">De-authorize</button>
+        </form>
+        {% endif %}
+      </div>
     </div>
+  </div>
+  {% else %}
+  {% if urls.authorize_processor %}
+      <div>
+        <div>
+          <h3>Stripe Account</h3>
+          <div>
+            <h5>Connect your Stripe account</h5>
+            <p>
+You will be able to create charges on credit cards.
+            </p>
+            <p>
+If you already have a Stripe account, we recommend that you first login into
+your Stripe account before clicking the button below.
+            </p>
+            <p>
+              <a href="https://stripe.com/login/" target="_blank">Login to Stripe &raquo;</a>
+            </p>
+            <a href="{{urls.authorize_processor}}">Connect</a>
+          </div>
+        </div>
+      </div>
+  {% endif %}
+  {% if not urls.authorize_processor %}
+  {# dealing with a misconfigured platform #}
+  <div>
+    <div>
+      <h3>Configure Settings</h3>
+      <div>
+        <p>
+The configuration variables STRIPE_CLIENT_ID, STRIPE_PUB_KEY
+and STRIPE_PRIV_KEY are invalid. You will need to retrieve
+the StripeConnect ClientID, and the pair of publishable/private
+API keys for your Stripe account on
+<a href="https://stripe.com/" target="_blank">stripe.com</a>.
+        </p>
+        <p>
+Once you have those keys, write them in the <em>credentials</em>
+configuration file and restart the server.
+        </p>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+  {% endif %}
 </div>
 {% endblock %}

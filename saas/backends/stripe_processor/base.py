@@ -1,4 +1,4 @@
-# Copyright (c) 2018, DjaoDjin inc.
+# Copyright (c) 2019, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -72,8 +72,9 @@ import requests, stripe
 
 from .. import CardError, ProcessorError
 from ... import settings, signals
+from ...compat import reverse
 from ...utils import (datetime_to_utctimestamp, utctimestamp_to_datetime,
-    datetime_or_now)
+    datetime_or_now, is_broker)
 
 
 LOGGER = logging.getLogger(__name__)
@@ -91,7 +92,7 @@ class StripeBackend(object):
         self.pub_key = settings.PROCESSOR['PUB_KEY']
         self.priv_key = settings.PROCESSOR['PRIV_KEY']
         self.client_id = settings.PROCESSOR.get('CLIENT_ID', None)
-        self.mode = settings.PROCESSOR.get('MODE', 0)
+        self.mode = settings.PROCESSOR.get('MODE', self.LOCAL)
 
     def get_processor_charge(self, charge):
         stripe_charge = None
@@ -111,8 +112,8 @@ class StripeBackend(object):
         return stripe_charge, kwargs
 
     @staticmethod
-    def _is_platform(broker):
-        return broker.processor_deposit_key == settings.PROCESSOR['PRIV_KEY']
+    def _is_platform(provider):
+        return provider._state.db == 'default' and is_broker(provider)
 
     def _prepare_request(self):
         stripe.api_version = '2018-09-06'
@@ -142,6 +143,15 @@ class StripeBackend(object):
             kwargs.update({'stripe_account': provider.processor_deposit_key})
         return kwargs
 
+    def is_configured(self):
+        """
+        Returns `True` if the configuration settings to connect with a Stripe
+        account are present.
+        """
+        result = (self.pub_key and self.priv_key)
+        if self.mode != self.LOCAL:
+            result = (result and self.client_id)
+        return result
 
     def list_customers(self, org_pat=r'.*', broker=None):
         """
@@ -218,7 +228,6 @@ class StripeBackend(object):
         organization.processor_refresh_token = None
 
         data = {'grant_type': 'authorization_code',
-                'client_id': self.client_id,
                 'client_secret': self.priv_key,
                 'code': code}
         if not settings.BYPASS_PROCESSOR_AUTH:
@@ -241,7 +250,8 @@ class StripeBackend(object):
             LOGGER.info("[connect_auth] error headers: %s", resp.headers)
             raise ProcessorError(
                 message="%s: %s" % (data['error'], data['error_description']))
-        LOGGER.info("%s authorized. %s", organization, data,
+        LOGGER.debug("%s Stripe API returned: %s", organization, data)
+        LOGGER.info("%s connect to Stripe authorized.", organization,
             extra={'event': 'connect-authorized', 'processor': 'stripe',
                 'organization': organization.slug})
         organization.processor_pub_key = data.get('stripe_publishable_key')
@@ -459,18 +469,32 @@ class StripeBackend(object):
         stripe_charge, _ = self.get_processor_charge(charge)
         stripe_charge.refund(amount=amount)
 
-    def get_authorize_url(self, provider):
-        redirect_func_name = settings.PROCESSOR.get('AUTHORIZE_CALLABLE', None)
-        if redirect_func_name:
+    def get_authorize_url(self, provider, client_id=None, redirect_uri=None):
+        if self._is_platform(provider):
+            return None
+        state = str(provider)
+        connect_state_func = settings.PROCESSOR.get(
+            'CONNECT_STATE_CALLABLE', None)
+        if connect_state_func:
             from ...compat import import_string
-            func = import_string(redirect_func_name)
-            return func(self, provider)
+            func = import_string(connect_state_func)
+            state = func(self, provider)
         #pylint:disable=line-too-long
-        authorize_url = "https://connect.stripe.com/oauth/authorize?response_type=code&client_id=%(client_id)s&scope=read_write&state=%(provider)s" % {
-            'client_id': self.client_id,
-            'provider': str(provider)
+        data = {
+            'client_id': client_id if client_id else self.client_id,
+            'state': state
         }
+        authorize_url = "https://connect.stripe.com/oauth/authorize?response_type=code&client_id=%(client_id)s&scope=read_write&state=%(state)s" % data
+        if not redirect_uri:
+            redirect_uri = settings.PROCESSOR_CONNECT_CALLBACK_URL
+        if redirect_uri:
+            authorize_url += "&redirect_uri=%s" % redirect_uri
         return authorize_url
+
+    def get_deauthorize_url(self, provider):
+        if self._is_platform(provider):
+            return None
+        return reverse('saas_deauthorize_processor', args=(provider,))
 
     def get_deposit_context(self):
         # We insert the``STRIPE_CLIENT_ID`` here because we serve page
@@ -481,19 +505,22 @@ class StripeBackend(object):
         }
         return context
 
-    def retrieve_bank(self, provider):
+    def retrieve_bank(self, provider, includes_balance=True):
         context = {'bank_name': "N/A", 'last4': "N/A"}
         try:
-            kwargs = self._prepare_transfer_request(provider)
-            # The platform provider (i.e. broker)
-            # is always connected to a Stripe account
-            if provider.processor_deposit_key or self._is_platform(provider):
-                if provider.processor_deposit_key:
-                    last4 = provider.processor_deposit_key[-4:]
-                else:
-                    last4 = self.pub_key[-4:]
+            last4 = None
+            if self._is_platform(provider):
+                if self.priv_key:
+                    last4 = self.priv_key[-min(len(self.priv_key), 4):]
+            elif provider.processor_deposit_key:
+                last4 = provider.processor_deposit_key[
+                    -min(len(provider.processor_deposit_key), 4):]
+            if last4:
                 context.update({
                     'bank_name': 'Stripe', 'last4': '***-%s' % last4})
+
+            if includes_balance:
+                kwargs = self._prepare_transfer_request(provider)
                 try:
                     balance = stripe.Balance.retrieve(**kwargs)
                     # XXX available is a list, ordered by currency?
