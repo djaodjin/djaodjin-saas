@@ -861,6 +861,7 @@ var paginationMixin = {
             getCompleteCb: 'getCompleted',
             getBeforeCb: 'resetPage',
             qsCache: null,
+            isInfiniteScroll: false,
         }
     },
     methods: {
@@ -891,6 +892,9 @@ var paginationMixin = {
                 // this handler is triggered on initial get too
                 return;
             }
+            // rudimentary way to detect which type of pagination
+            // is active. ideally need to monitor resolution changes
+            vm.isInfiniteScroll = true;
             var nxt = vm.params.page + 1;
             if(nxt <= vm.pageCount){
                 vm.$set(vm.params, 'page', nxt);
