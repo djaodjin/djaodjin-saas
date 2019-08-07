@@ -1,3 +1,10 @@
+0.6.2
+  * enables multiple StripeConnect authorize url (live/test)
+  * fixes infinitescroll
+  * fixes connect DELETE method to unsubscribes
+
+ -- Sebastien Mirolo <smirolo@djaodjin.com>   Wed, 7 Aug 2019 00:00:00 -0700
+
 0.6.1
   * improves API documentation
   * creates billing profile implicitely in various workflows
