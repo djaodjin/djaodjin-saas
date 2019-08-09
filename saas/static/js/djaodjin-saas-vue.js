@@ -2436,6 +2436,14 @@ var cardMixin = {
             vm.cardExpMonth = '';
             vm.cardExpYear = '';
         },
+        deleteCard: function() {
+            var vm = this;
+            vm.reqDelete(djaodjinSettings.urls.organization.api_card,
+            function(resp){
+                vm.savedCard.last4 = '';
+                vm.savedCard.exp_date = '';
+            });
+        },
         inputClass: function(name){
             var vm = this;
             var field = this.errors[name];

@@ -10,6 +10,8 @@
         {% include "saas/_card_use.html" %}
         <button type="submit" class="payment-submit">Save</button>
         <button @click.prevent="remove">Remove</button>
+        <button type="button" id="delete-card-btn"
+                @click="deleteCard" v-if="haveCardData">Delete</button>
     </form>
 </section>
 {% endblock %}
