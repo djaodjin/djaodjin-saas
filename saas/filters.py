@@ -50,7 +50,9 @@ class SearchFilter(BaseSearchFilter):
         return request.query_params.getlist(self.search_field_param)
 
     @staticmethod
-    def filter_valid_fields(model_fields, fields, view):
+    def filter_valid_fields(queryset, fields, view):
+        model_fields = set([
+            field.name for field in queryset.model._meta.get_fields()])
         # We add all the fields that could be aliases then filter out the ones
         # which are not present in the model.
         alternate_fields = getattr(view, 'alternate_fields', {})
@@ -61,21 +63,37 @@ class SearchFilter(BaseSearchFilter):
                     fields += tuple(alternate_field)
                 else:
                     fields += tuple([alternate_field])
-        return tuple([field for field in fields if field in model_fields])
+
+        valid_fields = []
+        for field in fields:
+            if '__' in field:
+                relation, rel_field = field.split('__')
+                try:
+                    # check if the field is a relation
+                    rel = queryset.model._meta.get_field(relation).remote_field
+                    if rel:
+                        # if the field doesn't exist the
+                        # call will throw an exception
+                        rel.model._meta.get_field(rel_field)
+                        valid_fields.append(field)
+                except FieldDoesNotExist:
+                    pass
+            elif field in model_fields:
+                valid_fields.append(field)
+
+        return tuple(valid_fields)
 
     def get_valid_fields(self, request, queryset, view, context={}):
         #pylint:disable=protected-access,unused-argument
-        model_fields = set([
-            field.name for field in queryset.model._meta.get_fields()])
         fields = self.get_query_fields(request)
         # client-supplied fields take precedence
         if fields:
-            fields = self.filter_valid_fields(model_fields, fields, view)
+            fields = self.filter_valid_fields(queryset, fields, view)
         # if there are no fields (due to empty query params or wrong
         # fields we fallback to fields specified in the view
         if not fields:
             fields = getattr(view, 'search_fields', [])
-            fields = self.filter_valid_fields(model_fields, fields, view)
+            fields = self.filter_valid_fields(queryset, fields, view)
         return fields
 
     def filter_queryset(self, request, queryset, view):

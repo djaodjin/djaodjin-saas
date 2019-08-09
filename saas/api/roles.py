@@ -398,13 +398,23 @@ class AccessibleByListAPIView(RoleSmartListMixin, InvitedRequestedListMixin,
             "previous": null,
             "results": [
                 {
-                    "created_at": "2018-01-01T00:00:00Z",
                     "slug": "cowork",
+                    "created_at": "2018-01-01T00:00:00Z",
                     "printable_name": "ABC Corp.",
-                    "role_description": "manager",
+                    "email": "help@cowork.net",
+                    "role_description": {
+                        "slug": "cowork",
+                        "created_at": "2018-01-01T00:00:00Z",
+                        "title": "ABC Corp.",
+                        "is_global": true,
+                        "organization": null
+                    },
                     "request_key": null,
-                    "grant_key": null
-                }
+                    "accept_grant_api_url": null,
+                    "remove_api_url": "https://cowork.net/api/users/alice/accessibles/manager/cowork",
+                    "home_url": "https://cowork.net/app/",
+                    "settings_url": "https://cowork.net/profile/cowork/contact/"
+                 }
             ]
         }
     """
@@ -482,41 +492,22 @@ class AccessibleByDescrListAPIView(RoleSmartListMixin,
             "previous": null,
             "results": [
                 {
-                    "created_at": "2018-01-01T00:00:00Z",
                     "slug": "cowork",
+                    "created_at": "2018-01-01T00:00:00Z",
                     "printable_name": "ABC Corp.",
-                    "role_description": "manager",
-                    "request_key": null,
-                    "email": "",
+                    "email": "help@cowork.net",
                     "role_description": {
-                        "created_at": "",
-                        "title": "",
-                        "slug": "",
-                        "is_global": "",
-                        "organization": {
-                            "slug": "",
-                            "created_at": "",
-                            "full_name": "",
-                            "email": "",
-                            "phone": "",
-                            "street_address": "",
-                            "locality": "",
-                            "region": "",
-                            "postal_code": "",
-                            "country": "AF",
-                            "default_timezone": "",
-                            "printable_name": "",
-                            "is_provider": false,
-                            "is_bulk_buyer": false,
-                            "type": "",
-                            "credentials": "",
-                            "extra": ""
-                        }
+                        "slug": "cowork",
+                        "created_at": "2018-01-01T00:00:00Z",
+                        "title": "ABC Corp.",
+                        "is_global": true,
+                        "organization": null
                     },
-                    "home_url": "",
-                    "settings_url": "",
-                    "accept_grant_api_url": "",
-                    "remove_api_url": ""
+                    "request_key": null,
+                    "accept_grant_api_url": null,
+                    "remove_api_url": "https://cowork.net/api/users/alice/accessibles/manager/cowork",
+                    "home_url": "https://cowork.net/app/",
+                    "settings_url": "https://cowork.net/profile/cowork/contact/"
                 }
             ]
         }
@@ -647,7 +638,7 @@ class RoleDescriptionListCreateView(RoleDescriptionQuerysetMixin,
                 },
                 {
                     "created_at": "2018-01-01T00:00:00Z",
-                    "name": "Contributors",
+                    "title": "Contributors",
                     "slug": "contributor",
                     "is_global": false,
                     "roles": []
@@ -690,7 +681,7 @@ class RoleDescriptionListCreateView(RoleDescriptionQuerysetMixin,
                 "results": [
                     {
                         "created_at": "2018-01-01T00:00:00Z",
-                        "name": "Managers",
+                        "title": "Managers",
                         "slug": "manager",
                         "is_global": true,
                         "roles": [
@@ -709,7 +700,7 @@ class RoleDescriptionListCreateView(RoleDescriptionQuerysetMixin,
                     },
                     {
                         "created_at": "2018-01-01T00:00:00Z",
-                        "name": "Contributors",
+                        "title": "Contributors",
                         "slug": "contributor",
                         "is_global": false,
                         "roles": []
@@ -743,8 +734,8 @@ class RoleDescriptionDetailView(RoleDescriptionQuerysetMixin,
 
         {
             "created_at": "2018-01-01T00:00:00Z",
-            "name": "Managers",
             "slug": "manager",
+            "title": "Profile Managers",
             "is_global": true,
             "roles": [
                 {

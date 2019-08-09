@@ -96,8 +96,9 @@ class AccountsSearchAPIView(OrganizationSmartListMixin,
             "results": [{
                 "slug": "xia",
                 "full_name": "Xia Lee",
-                "printable_name": "Xia Lee",
-                "created_at": "2016-01-14T23:16:55Z"
+                "email": "xia@localhost.localdomain",
+                "created_at": "2016-01-14T23:16:55Z",
+                "printable_name": "Xia Lee"
             }]
         }
     """
@@ -232,8 +233,9 @@ class ProfilesSearchAPIView(OrganizationSmartListMixin,
             "results": [{
                 "slug": "xia",
                 "full_name": "Xia Lee",
-                "printable_name": "Xia Lee",
-                "created_at": "2016-01-14T23:16:55Z"
+                "email": "xia@localhost.localdomain",
+                "created_at": "2016-01-14T23:16:55Z",
+                "printable_name": "Xia Lee"
             }]
         }
     """

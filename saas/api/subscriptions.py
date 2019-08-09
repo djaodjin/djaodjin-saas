@@ -26,8 +26,10 @@
 
 import logging
 
+from rest_framework import status
 from rest_framework.generics import (get_object_or_404, CreateAPIView,
     ListAPIView, ListCreateAPIView, RetrieveUpdateDestroyAPIView)
+from rest_framework.response import Response
 
 from ..decorators import _valid_manager
 from ..docs import swagger_auto_schema
@@ -280,8 +282,11 @@ class SubscriptionDetailAPIView(SubscriptionMixin,
             serializer.validated_data['ends_at'] = serializer.instance.ends_at
         super(SubscriptionDetailAPIView, self).perform_update(serializer)
 
-    def perform_destroy(self, instance):
-        instance.unsubscribe_now()
+    def destroy(self, request, *args, **kwargs):
+        at_time = datetime_or_now()
+        queryset = self.get_queryset().filter(ends_at__gt=at_time)
+        queryset.unsubscribe(at_time=at_time)
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class PlanSubscriptionsAPIView(SubscriptionSmartListMixin,
@@ -309,13 +314,12 @@ class PlanSubscriptionsAPIView(SubscriptionSmartListMixin,
             "count": 1,
             "next": null,
             "previous": null,
-            "results": [
-                {
+            "results": [{
                 "slug": "xia",
                 "full_name": "Xia Lee",
-                "created_at": "2016-01-14T23:16:55Z"
-                }
-            ]
+                "created_at": "2016-01-14T23:16:55Z",
+                "ends_at": "2017-01-14T23:16:55Z"
+            }]
         }
     """
     serializer_class = SubscriptionSerializer
@@ -398,7 +402,7 @@ class PlanSubscriptionsAPIView(SubscriptionSmartListMixin,
                 "is_active": true,
                 "setup_amount": 0,
                 "period_amount": 17999,
-                "interval": 4,
+                "interval": "monthly",
                 "app_url": "http://localhost:8020/app"
               },
               "auto_renew": true

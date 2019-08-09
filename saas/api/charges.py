@@ -88,7 +88,7 @@ class ChargeResourceView(RetrieveChargeMixin, RetrieveAPIView):
             "unit": "usd",
             "description": "Charge for subscription to cowork open-space",
             "last4": "1234",
-            "exp_date": "12/2016",
+            "exp_date": "2016-06-01",
             "processor_key": "ch_XAb124EF",
             "state": "DONE"
         }
@@ -163,7 +163,7 @@ class ChargeListAPIView(SmartChargeListMixin,
                 "unit": "usd",
                 "description": "Charge for subscription to cowork open-space",
                 "last4": "1234",
-                "exp_date": "12/2016",
+                "exp_date": "2016-06-01",
                 "processor_key": "ch_XAb124EF",
                 "state": "DONE"
             }]
@@ -210,7 +210,7 @@ class OrganizationChargeListAPIView(SmartChargeListMixin,
                 "unit": "usd",
                 "description": "Charge for subscription to cowork open-space",
                 "last4": "1234",
-                "exp_date"" "12/2016",
+                "exp_date": "2016-06-01",
                 "processor_key": "ch_XAb124EF",
                 "state": "DONE"
             } ...]
@@ -262,7 +262,7 @@ class ChargeRefundAPIView(RetrieveChargeMixin, CreateAPIView):
             "unit": "usd",
             "description": "Charge for subscription to cowork open-space",
             "last4": "1234",
-            "exp_date": "12/2016",
+            "exp_date": "2016-06-01",
             "processor_key": "ch_XAb124EF",
             "state": "DONE"
         }

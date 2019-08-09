@@ -661,6 +661,9 @@ class SubscriptionMixin(OrganizationDecorateMixin):
             if ends_at:
                 ends_at = datetime_or_now(ends_at)
                 kwargs.update({'ends_at__lt': ends_at})
+        plan = self.kwargs.get('plan', self.kwargs.get('subscribed_plan', None))
+        if plan:
+            kwargs.update({'plan__slug': plan})
         # Use ``filter`` instead of active_for here because we want to list
         # through the API subscriptions which are pending opt-in.
         return Subscription.objects.filter(
@@ -675,11 +678,14 @@ class SubscriptionMixin(OrganizationDecorateMixin):
 
     def get_object(self):
         queryset = self.get_queryset()
-        if 'plan' in self.kwargs:
-            plan = self.kwargs.get('plan')
-        else:
-            plan = self.kwargs.get('subscribed_plan')
-        obj = get_object_or_404(queryset, plan__slug=plan)
+        obj = queryset.filter(
+            ends_at__gt=datetime_or_now()).order_by('ends_at').first()
+        if not obj:
+            raise Http404(_("cannot find active subscription to"\
+                " %(plan)s for %(organization)s") % {
+                'plan': self.kwargs.get('plan', self.kwargs.get(
+                    'subscribed_plan', None)),
+                'organization': self.kwargs.get(self.subscriber_url_kwarg)})
         self.decorate_personal(obj.organization)
         return obj
 

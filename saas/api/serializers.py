@@ -211,14 +211,23 @@ class ForceSerializer(NoModelSerializer):
         " not be found"))
 
 
+class DatetimeValueTuple(serializers.ListField):
+
+    child = serializers.CharField() # XXX (Datetime, Integer)
+    min_length = 2
+    max_length = 2
+
+
 class TableSerializer(NoModelSerializer):
 
     # XXX use `key` instead of `slug` here?
     key = serializers.CharField(
         help_text=_("Unique key in the table for the data series"))
     selector = serializers.CharField(
+        required=False, # XXX only in balances.py
         help_text=_("Filter on the Transaction accounts"))
-    values = serializers.CharField(
+    values = serializers.ListField(
+        child=DatetimeValueTuple(),
         help_text=_("Datapoints in the serie"))
 
 

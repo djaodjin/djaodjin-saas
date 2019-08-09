@@ -130,7 +130,6 @@ class OrganizationDetailAPIView(OrganizationMixin, OrganizationQuerysetMixin,
             "is_bulk_buyer": false,
             "type": "",
             "picture": "",
-            "extra": "",
             "subscriptions": [
                 {
                     "created_at": "2018-01-01T00:00:00Z",
@@ -296,6 +295,7 @@ class OrganizationListAPIView(OrganizationSmartListMixin,
             "results": [{
                 "slug": "xia",
                 "full_name": "Xia Lee",
+                "email": "xia@localhost.localdomain",
                 "printable_name": "Xia Lee",
                 "created_at": "2016-01-14T23:16:55Z"
             }]
@@ -319,7 +319,8 @@ class OrganizationListAPIView(OrganizationSmartListMixin,
 
             {
               "email": "xia@locahost.localdomain",
-              "full_name": "Xia Lee"
+              "full_name": "Xia Lee",
+              "type": "personal"
             }
         """
         return self.create(request, *args, **kwargs)
@@ -385,7 +386,9 @@ class SubscribersAPIView(OrganizationSmartListMixin,
                 {
                 "slug": "xia",
                 "full_name": "Xia Lee",
-                "created_at": "2016-01-14T23:16:55Z"
+                "email": "xia@localhost.localdomain",
+                "created_at": "2016-01-14T23:16:55Z",
+                "ends_at": "2017-01-14T23:16:55Z"
                 }
             ]
         }

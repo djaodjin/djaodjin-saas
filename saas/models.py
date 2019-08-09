@@ -2767,6 +2767,10 @@ class SubscriptionQuerySet(models.QuerySet):
         """
         return self.filter(grant_key=None, request_key=None, **kwargs)
 
+    def unsubscribe(self, at_time=None):
+        at_time = datetime_or_now(at_time)
+        self.update(ends_at=at_time, auto_renew=False)
+
 
 class SubscriptionManager(models.Manager):
     #pylint: disable=super-on-old-class
@@ -3021,11 +3025,6 @@ class Subscription(models.Model):
         if queryset.exists():
             return queryset.first()
         return None
-
-    def unsubscribe_now(self):
-        self.ends_at = datetime_or_now()
-        self.auto_renew = False
-        self.save()
 
 
 class TransactionQuerySet(models.QuerySet):
