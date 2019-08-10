@@ -164,10 +164,8 @@ class ImportTransactionForm(forms.Form):
 class OrganizationForm(PostalFormMixin, forms.ModelForm):
 
     submit_title = _('Update')
-    slug = forms.CharField(widget=forms.TextInput(
-        attrs={'placeholder': _("Screenname")}),
-        max_length=254, label=_("Screenname"),
-        error_messages={'invalid': _("Screenname may only contain letters,"\
+    slug = forms.SlugField(max_length=254, label=_("Display name"),
+        error_messages={'invalid': _("Display name may only contain letters,"\
             " digits and -/_ characters. Spaces are not allowed.")})
     street_address = forms.CharField(label=_("Street address"), required=False)
     phone = forms.CharField(label=_("Phone number"), required=False)
@@ -221,7 +219,7 @@ class OrganizationForm(PostalFormMixin, forms.ModelForm):
 
 class OrganizationCreateForm(OrganizationForm):
 
-    slug = forms.SlugField(label=_("Screenname"),
+    slug = forms.SlugField(label=_("Display name"),
         help_text=_("Unique identifier shown in the URL bar"))
 
     class Meta:
