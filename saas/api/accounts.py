@@ -103,7 +103,6 @@ class AccountsSearchAPIView(OrganizationSmartListMixin,
         }
     """
     serializer_class = OrganizationSerializer
-    pagination_class = TypeaheadPagination
     user_model = get_user_model()
 
     def get_users_queryset(self):
@@ -183,21 +182,12 @@ class AccountsSearchAPIView(OrganizationSmartListMixin,
         except StopIteration:
             pass
 
-        # XXX It could be faster to stop previous loops early but it is not
-        # clear. The extra check at each iteration might in fact be slower.
-        if len(page) > settings.MAX_TYPEAHEAD_CANDIDATES:
-            # Returning an empty set if the number of results is greater than
-            # MAX_TYPEAHEAD_CANDIDATES
-            page = []
-            self.paginator.count = 0
-
         self.decorate_personal(page)
-
         serializer = self.get_serializer(page, many=True)
         return self.get_paginated_response(serializer.data)
 
 
-class ProfilesSearchAPIView(OrganizationSmartListMixin,
+class ProfilesTypeaheadAPIView(OrganizationSmartListMixin,
                             OrganizationQuerysetMixin, ListAPIView):
     """
     Searches billing profiles
@@ -243,7 +233,7 @@ class ProfilesSearchAPIView(OrganizationSmartListMixin,
     pagination_class = TypeaheadPagination
 
     def paginate_queryset(self, queryset):
-        page = super(ProfilesSearchAPIView, self).paginate_queryset(queryset)
+        page = super(ProfilesTypeaheadAPIView, self).paginate_queryset(queryset)
         page = self.decorate_personal(page)
         return page
 
@@ -258,7 +248,8 @@ class UserQuerysetMixin(object):
         return get_user_model().objects.all()
 
 
-class UsersSearchAPIView(UserSmartListMixin, UserQuerysetMixin, ListAPIView):
+class UsersTypeaheadAPIView(UserSmartListMixin, UserQuerysetMixin,
+                            ListAPIView):
     """
     Searches login profiles
 
