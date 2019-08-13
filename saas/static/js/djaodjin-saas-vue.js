@@ -2440,8 +2440,7 @@ var cardMixin = {
             var vm = this;
             vm.reqDelete(djaodjinSettings.urls.organization.api_card,
             function(resp){
-                vm.savedCard.last4 = '';
-                vm.savedCard.exp_date = '';
+                vm.clearCardData();
             });
         },
         inputClass: function(name){
@@ -2874,9 +2873,9 @@ new Vue({
 })
 }
 
-if($('#payment-form').length > 0){
+if($('#update-card-container').length > 0){
 new Vue({
-    el: "#payment-form",
+    el: "#update-card-container",
     mixins: [cardMixin],
     data: {
         updateCard: true,
@@ -2905,9 +2904,6 @@ new Vue({
                 }
                 // matching the code in `CardUpdateView` for redirects.
                 var redirectUrl = getUrlParameter('next');
-                if( !redirectUrl ) {
-                    redirectUrl = document.referrer;
-                }
                 if( redirectUrl ) {
                     window.location = redirectUrl;
                 }

@@ -190,12 +190,12 @@
     Card.prototype = {
         init: function () {
             var self = this;
+            self.element.find("#card-update").click(function(event) {
+                event.preventDefault();
+                self.showCardInputFields();
+            });
             var cardNumber = self.element.find("#card-number");
             if( cardNumber.length > 0 ) {
-                /* Only attach ``stripeCreateToken`` if we don't have
-                   a card on file already. */
-                self.element.submit(
-                    function (event) { return self.stripeCreateToken(event); });
                 if( typeof $.payment !== 'undefined' ) {
                     /* Optional use of jquery.payment */
                     cardNumber.find("#card-number").payment('formatCardNumber');
@@ -218,8 +218,18 @@
                         }
                     });
                 }
-            } else if( self.element.find(".last4").length > 0 ) {
-                self.query();
+            }
+            // XXX As long as we are looking up the card data in `CartView`,
+            // we use the following code instead of:
+            //
+            // `self.query();`
+            //
+            if( self.element.find("#card-data:hidden").length > 0 ) {
+                /* Only attach ``stripeCreateToken`` if we don't have
+                   a card on file already. */
+                self.element.submit(function (event) {
+                    return self.stripeCreateToken(event);
+                });
             }
         },
 
@@ -227,11 +237,33 @@
             "use strict";
             var self = this;
             $.get(self.options.saas_api_card, function(data) {
-                self.element.find(".last4").text(data.last4);
-                self.element.find(".exp_date").text(data.exp_date);
+                if( data.exp_date && data.exp_date.match(
+                    "[0-9][0-9]/[0-9][0-9][0-9][0-9]") ) {
+                    self.element.find("[data-last4]").text(data.last4);
+                    self.element.find("[data-exp-date]").text(data.exp_date);
+                    self.element.find("#card-update").show();
+                    self.element.find("#card-data").show();
+                    self.element.find("#card-no-data").hide();
+                    self.element.find("#card-billing-address").hide();
+                } else {
+                    self.showCardInputFields();
+                }
             }).fail(function() {
-                self.element.find(".last4").text("Err");
-                self.element.find(".exp_date").text("Err");
+                self.element.find("[data-last4]").text("Err");
+                self.element.find("[data-exp-date]").text("Err");
+            });
+        },
+
+        showCardInputFields: function() {
+            var self = this;
+            self.element.find("#card-update").hide();
+            self.element.find("#card-data").hide();
+            self.element.find("#card-no-data").show();
+            self.element.find("#card-billing-address").show();
+            // Only attach ``stripeCreateToken`` if we don't have
+            // a card on file already.
+            self.element.submit(function (event) {
+                return self.stripeCreateToken(event);
             });
         },
 

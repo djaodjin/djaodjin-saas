@@ -439,9 +439,6 @@ class CardUpdateView(CardFormMixin, FormView):
         context = {}
         redirect_path = validate_redirect_url(
             self.request.GET.get(REDIRECT_FIELD_NAME, None))
-        if not redirect_path:
-            redirect_path = validate_redirect_url(
-                self.request.META.get('HTTP_REFERER', ''))
         if redirect_path:
             context.update({REDIRECT_FIELD_NAME: redirect_path})
         return context
