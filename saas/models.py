@@ -218,6 +218,20 @@ class Organization(models.Model):
     """
     #pylint:disable=too-many-instance-attributes
 
+    ACCOUNT_UNKNOWN = 0
+    ACCOUNT_USER = 1
+    ACCOUNT_PERSONAL = 2
+    ACCOUNT_ORGANIZATION = 3
+    ACCOUNT_PROVIDER = 4
+
+    ACCOUNT_TYPE = (
+        (ACCOUNT_UNKNOWN, "unknown"),
+        (ACCOUNT_USER, "user"),
+        (ACCOUNT_PERSONAL, "personal"),
+        (ACCOUNT_ORGANIZATION, "organization"),
+        (ACCOUNT_PROVIDER, "provider"),
+    )
+
     objects = OrganizationManager()
     slug = models.SlugField(unique=True,
         help_text=_("Unique identifier shown in the URL bar"))

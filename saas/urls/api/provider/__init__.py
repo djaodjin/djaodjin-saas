@@ -1,4 +1,4 @@
-# Copyright (c) 2018, DjaoDjin inc.
+# Copyright (c) 2019, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -31,6 +31,8 @@ from ....settings import ACCT_REGEX
 urlpatterns = [
     url(r'^', include('saas.urls.api.provider.charges')),
     url(r'^', include('saas.urls.api.provider.billing')),
-    url(r'^', include('saas.urls.api.provider.profile')),
+    url(r'^', include('saas.urls.api.provider.roles')),
+    url(r'^', include('saas.urls.api.provider.subscribers')),
+    url(r'^', include('saas.urls.api.provider.plans')),
     url(r'^', include('saas.urls.api.provider.metrics')),
 ]

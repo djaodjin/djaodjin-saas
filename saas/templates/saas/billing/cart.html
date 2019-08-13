@@ -35,11 +35,11 @@ If you have a coupon code, it is time to redeem it now!
         {% block order_card %}
         {% if RAZORPAY_PUB_KEY %}
         {% include "saas/_razorpay_checkout.html" %}
-        {% elif STRIPE_PUB_KEY %}
-        {% include "saas/_card_use.html" %}
         <div>
           <button type="submit" class="payment-submit">{% if submit_title %}{{submit_title}}{% else %}Submit{% endif %}</button>
         </div>
+        {% elif STRIPE_PUB_KEY %}
+        {% include "saas/_card_use.html" %}
         {% else %}
         <p>
 Either variables RAZORPAY_PUB_KEY or STRIPE_PUB_KEY must be defined.

@@ -9,9 +9,13 @@
         <input type="hidden" name="csrfmiddlewaretoken" value="{{csrf_token}}">
         {% include "saas/_card_use.html" %}
         <button type="submit" class="payment-submit">Save</button>
-        <button type="button" id="delete-card-btn"
-                @click.prevent="remove"
-                v-if="haveCardData">Remove</button>
+        <div id="delete-action-open">
+            <div id="delete-action">
+                <button type="button" id="delete-card-btn"
+                        @click.prevent="remove"
+                        v-if="haveCardData">Remove</button>
+            </div>
+        </div>
     </form>
 </section>
 {% endblock %}

@@ -33,9 +33,9 @@ from ....settings import ACCT_REGEX
 
 
 urlpatterns = [
-    url(r'^charges/(?P<charge>%s)/email/' % ACCT_REGEX,
+    url(r'^billing/charges/(?P<charge>%s)/email/' % ACCT_REGEX,
         EmailChargeReceiptAPIView.as_view(),
         name='saas_api_email_charge_receipt'),
-    url(r'^charges/(?P<charge>%s)/?' % ACCT_REGEX,
+    url(r'^billing/charges/(?P<charge>%s)/?' % ACCT_REGEX,
         ChargeResourceView.as_view(), name='saas_api_charge'),
 ]

@@ -49,13 +49,13 @@ from .serializers import (ForceSerializer, SubscriptionSerializer,
 LOGGER = logging.getLogger(__name__)
 
 
-class SubscriptionBaseListAPIView(SubscriptionMixin, ListCreateAPIView):
+class SubscriberSubscriptionListBaseAPIView(SubscriptionMixin, ListAPIView):
 
     pass
 
 
-class SubscriptionListCreateAPIView(SubscriptionSmartListMixin,
-                                    SubscriptionBaseListAPIView):
+class SubscriberSubscriptionListAPIView(SubscriptionSmartListMixin,
+                                    SubscriberSubscriptionListBaseAPIView):
     """
     Lists subscriptions
 
@@ -110,81 +110,8 @@ class SubscriptionListCreateAPIView(SubscriptionSmartListMixin,
     """
     serializer_class = SubscriptionSerializer
 
-    def post(self, request, *args, **kwargs):
-        """
-        Subscribes to a plan
+    # No POST. We are talking about a subscriber Organization here.
 
-        Subscribes {organization} to a plan specified in the request body.
-
-        **Tags: subscriptions
-
-        **Examples
-
-        .. code-block:: http
-
-            POST /api/profile/xia/subscriptions/ HTTP/1.1
-
-        .. code-block:: json
-
-           {
-               "plan": "open-space"
-           }
-
-        responds
-
-        .. code-block:: json
-
-             {
-               "created_at": "2019-01-01T00:00:00Z",
-               "ends_at": "2020-01-01T00:00:00Z",
-               "description": null,
-               "organization": {
-                 "slug": "xia",
-                 "created_at": "2019-01-01T00:00:00Z",
-                 "full_name": "Xia Lee",
-                 "email": "xia@localhost.localdomain",
-                 "phone": "555-555-5555",
-                 "street_address": "350 Bay St.",
-                 "locality": "San Francisco",
-                 "region": "CA",
-                 "postal_code": "94133",
-                 "country": "US",
-                 "default_timezone": "UTC",
-                 "printable_name": "Xia Lee",
-                 "is_provider": false,
-                 "is_bulk_buyer": false,
-                 "type": "personal",
-                 "credentials": true,
-                 "extra": null
-               },
-               "plan": {
-                 "slug": "open-space",
-                 "title": "Open Space",
-                 "description": "open space desk",
-                 "is_active": true,
-                 "setup_amount": 0,
-                 "period_amount": 17999,
-                 "period_length": 1,
-                 "interval": "monthly",
-                 "advance_discount": 0,
-                 "unit": "cad",
-                 "organization": "cowork",
-                 "renewal_type": "auto-renew",
-                 "is_not_priced": false,
-                 "created_at": "2019-01-01T00:00:00Z",
-                 "skip_optin_on_grant": false,
-                 "optin_on_request": false,
-                 "extra": null
-               },
-               "auto_renew": true,
-               "editable": true,
-               "extra": null,
-               "grant_key": null,
-               "request_key": null
-             }
-        """
-        return super(SubscriptionListCreateAPIView, self).post(
-            request, *args, **kwargs)
 
 
 class SubscriptionDetailAPIView(SubscriptionMixin,

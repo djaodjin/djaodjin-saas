@@ -35,10 +35,10 @@ from ....settings import ACCT_REGEX
 
 
 urlpatterns = [
-    url(r'^(?P<organization>%s)/history/?' % ACCT_REGEX,
+    url(r'^billing/(?P<organization>%s)/history/?' % ACCT_REGEX,
         BillingsAPIView.as_view(), name='saas_api_billings'),
-    url(r'^(?P<organization>%s)/card/?' % ACCT_REGEX,
+    url(r'^billing/(?P<organization>%s)/card/?' % ACCT_REGEX,
         PaymentMethodDetailAPIView.as_view(), name='saas_api_card'),
-    url(r'^(?P<organization>%s)/checkout/?' % ACCT_REGEX,
+    url(r'^billing/(?P<organization>%s)/checkout/?' % ACCT_REGEX,
         CheckoutAPIView.as_view(), name='saas_api_checkout'),
 ]

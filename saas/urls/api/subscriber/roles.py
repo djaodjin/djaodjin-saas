@@ -23,26 +23,24 @@
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 """
-URLs for API related to users accessible by.
+URLs API for profile managers and custom roles on an Organization
 """
 
 from django.conf.urls import url
 
-from ...api.roles import (AccessibleByListAPIView, AccessibleDetailAPIView,
-    RoleAcceptAPIView, AccessibleByDescrListAPIView)
-from ... import settings
+from ....api.roles import (RoleListAPIView, RoleByDescrListAPIView,
+    RoleDetailAPIView)
+from ....settings import ACCT_REGEX, MAYBE_EMAIL_REGEX
+
 
 urlpatterns = [
-    url(r'^users/(?P<user>%s)/accessibles/accept/(?P<verification_key>%s)/' % (
-        settings.MAYBE_EMAIL_REGEX, settings.VERIFICATION_KEY_RE),
-        RoleAcceptAPIView.as_view(), name='saas_api_accessibles_accept'),
-    url(r'^users/(?P<user>%s)/accessibles/(?P<role>%s)/(?P<organization>%s)/?'
-        % (settings.ACCT_REGEX, settings.ACCT_REGEX, settings.ACCT_REGEX),
-        AccessibleDetailAPIView.as_view(), name='saas_api_accessible_detail'),
-    url(r'^users/(?P<user>%s)/accessibles/(?P<role>%s)/?' % (
-        settings.ACCT_REGEX, settings.ACCT_REGEX),
-        AccessibleByDescrListAPIView.as_view(),
-        name='saas_api_accessibles_by_descr'),
-    url(r'^users/(?P<user>%s)/accessibles/?' % settings.MAYBE_EMAIL_REGEX,
-        AccessibleByListAPIView.as_view(), name='saas_api_accessibles'),
+    url(r'^profile/(?P<organization>%s)/roles/(?P<role>%s)/(?P<user>%s)/?'
+        % (ACCT_REGEX, ACCT_REGEX, MAYBE_EMAIL_REGEX),
+        RoleDetailAPIView.as_view(), name='saas_api_role_detail'),
+    url(r'^profile/(?P<organization>%s)/roles/(?P<role>%s)/?'
+        % (ACCT_REGEX, ACCT_REGEX),
+        RoleByDescrListAPIView.as_view(),
+        name='saas_api_roles_by_descr'),
+    url(r'^profile/(?P<organization>%s)/roles/?' % ACCT_REGEX,
+        RoleListAPIView.as_view(), name='saas_api_roles'),
 ]

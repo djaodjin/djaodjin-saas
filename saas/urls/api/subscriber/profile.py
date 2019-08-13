@@ -31,32 +31,22 @@ from django.conf.urls import url
 from ....api.organizations import (
     OrganizationDetailAPIView, OrganizationListAPIView)
 from ....api.subscriptions import (SubscriptionDetailAPIView,
-    SubscriptionListCreateAPIView)
-from ....api.roles import (RoleListAPIView, RoleByDescrListAPIView,
-    RoleDetailAPIView)
-from ....settings import ACCT_REGEX, MAYBE_EMAIL_REGEX
+    SubscriberSubscriptionListAPIView)
+from ....settings import ACCT_REGEX
 
 
 urlpatterns = [
-    url(r'^(?P<organization>%s)/roles/(?P<role>%s)/(?P<user>%s)/?'
-        % (ACCT_REGEX, ACCT_REGEX, MAYBE_EMAIL_REGEX),
-        RoleDetailAPIView.as_view(), name='saas_api_role_detail'),
-    url(r'^(?P<organization>%s)/roles/(?P<role>%s)/?'
-        % (ACCT_REGEX, ACCT_REGEX),
-        RoleByDescrListAPIView.as_view(),
-        name='saas_api_roles_by_descr'),
-    url(r'^(?P<organization>%s)/roles/?' % ACCT_REGEX,
-        RoleListAPIView.as_view(), name='saas_api_roles'),
-    url(r'^(?P<organization>%s)/subscriptions/(?P<subscribed_plan>%s)/?'
+    url(r'^profile/(?P<organization>%s)/subscriptions/(?P<subscribed_plan>%s)/?'
         % (ACCT_REGEX, ACCT_REGEX),
         SubscriptionDetailAPIView.as_view(),
         name='saas_api_subscription_detail'),
-    url(r'^(?P<organization>%s)/subscriptions/?' % ACCT_REGEX,
-        SubscriptionListCreateAPIView.as_view(),
+    url(r'^profile/(?P<organization>%s)/subscriptions/?' % ACCT_REGEX,
+        SubscriberSubscriptionListAPIView.as_view(),
         name='saas_api_subscription_list'),
-    url(r'^(?P<organization>%s)/?$' % ACCT_REGEX,
+    url(r'^profile/(?P<organization>%s)/?$' % ACCT_REGEX,
         OrganizationDetailAPIView.as_view(), name='saas_api_organization'),
-    url(r'^$',
+
+    url(r'^profile/$',
         OrganizationListAPIView.as_view(),
         name='saas_api_profile'),
 ]

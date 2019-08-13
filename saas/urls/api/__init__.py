@@ -1,4 +1,4 @@
-# Copyright (c) 2018, DjaoDjin inc.
+# Copyright (c) 2019, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -28,6 +28,7 @@ from django.conf.urls import include, url
 
 urlpatterns = [
     url(r'^', include('saas.urls.api.cart')),
+    url(r'^', include('saas.urls.api.legal')),
     url(r'^', include('saas.urls.api.users')),
     url(r'^', include('saas.urls.api.broker')),
     url(r'^', include('saas.urls.api.provider')),

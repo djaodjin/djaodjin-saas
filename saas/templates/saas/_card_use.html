@@ -5,13 +5,13 @@
         Credit Card Information
         <a id="card-update" href=""
            v-show="haveCardData && !updateCard"
-           {% if not (last4 and not force_update) %}style="display:none;"{% endif %}>
+           {% if not last4 or force_update %}style="display:none;"{% endif %}>
           Update
         </a>
       </legend>
       <div id="card-data"
            v-show="haveCardData"
-           {% if not (last4) %}style="display:none;"{% endif %}>
+           {% if not last4 %}style="display:none;"{% endif %}>
         <dl>
           <dt>card</dt>
           <dd data-last4="{% if last4 %}{{last4}}{% endif %}" v-text="savedCard.last4">{% if last4 %}{{last4}}{% endif %}</dd>
@@ -23,7 +23,7 @@
       </div>
       <div id="card-no-data"
            v-show="!haveCardData || updateCard"
-           {% if not (not last4 or force_update) %}style="display:none;"{% endif %}>
+           {% if last4 and not force_update %}style="display:none;"{% endif %}>
         <!-- BE CAREFULL: Do not add name="" to these <input> nodes, else
              values will hit the server and break PCI compliance. -->
         <div id="row-number">
@@ -62,7 +62,7 @@
     </fieldset>
     <fieldset id="card-billing-address"
              v-show="!haveCardData || updateCard"
-            {% if not (not last4 or force_update) %}style="display:none;"{% endif %}>
+            {% if last4 and not force_update %}style="display:none;"{% endif %}>
             {# XXX technically could be `!haveBillingAddress` #}
       <legend>Billing Address</legend>
       {{form.card_name}}

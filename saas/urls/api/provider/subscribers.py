@@ -23,26 +23,31 @@
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 """
-URLs for API related to users accessible by.
+API URLs for a provider subcribers.
 """
 
 from django.conf.urls import url
 
-from ...api.roles import (AccessibleByListAPIView, AccessibleDetailAPIView,
-    RoleAcceptAPIView, AccessibleByDescrListAPIView)
-from ... import settings
+from ....api.organizations import SubscribersAPIView
+from ....api.subscriptions import (PlanSubscriptionsAPIView,
+    PlanSubscriptionDetailAPIView)
+from ....settings import ACCT_REGEX, VERIFICATION_KEY_RE
+from ....api.subscriptions import SubscriptionRequestAcceptAPIView
+
 
 urlpatterns = [
-    url(r'^users/(?P<user>%s)/accessibles/accept/(?P<verification_key>%s)/' % (
-        settings.MAYBE_EMAIL_REGEX, settings.VERIFICATION_KEY_RE),
-        RoleAcceptAPIView.as_view(), name='saas_api_accessibles_accept'),
-    url(r'^users/(?P<user>%s)/accessibles/(?P<role>%s)/(?P<organization>%s)/?'
-        % (settings.ACCT_REGEX, settings.ACCT_REGEX, settings.ACCT_REGEX),
-        AccessibleDetailAPIView.as_view(), name='saas_api_accessible_detail'),
-    url(r'^users/(?P<user>%s)/accessibles/(?P<role>%s)/?' % (
-        settings.ACCT_REGEX, settings.ACCT_REGEX),
-        AccessibleByDescrListAPIView.as_view(),
-        name='saas_api_accessibles_by_descr'),
-    url(r'^users/(?P<user>%s)/accessibles/?' % settings.MAYBE_EMAIL_REGEX,
-        AccessibleByListAPIView.as_view(), name='saas_api_accessibles'),
+    url(r'^profile/(?P<organization>%s)/subscribers/accept/'\
+        '(?P<request_key>%s)/' % (ACCT_REGEX, VERIFICATION_KEY_RE),
+        SubscriptionRequestAcceptAPIView.as_view(),
+        name='saas_api_subscription_grant_accept'),
+    url(r'^profile/(?P<organization>%s)/subscribers/?' % ACCT_REGEX,
+        SubscribersAPIView.as_view(), name='saas_api_subscribers'),
+    url(r'^profile/(?P<organization>%s)/plans/(?P<plan>%s)/subscriptions/'\
+    '(?P<subscriber>%s)/'
+        % (ACCT_REGEX, ACCT_REGEX, ACCT_REGEX),
+        PlanSubscriptionDetailAPIView.as_view(),
+        name='saas_api_plan_subscription'),
+    url(r'^profile/(?P<organization>%s)/plans/(?P<plan>%s)/subscriptions/'
+        % (ACCT_REGEX, ACCT_REGEX),
+        PlanSubscriptionsAPIView.as_view(), name='saas_api_plan_subscriptions'),
 ]

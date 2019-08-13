@@ -1,4 +1,4 @@
-# Copyright (c) 2018, DjaoDjin inc.
+# Copyright (c) 2019, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -27,7 +27,8 @@
 from django.conf.urls import include, url
 
 urlpatterns = [
-    url(r'^billing/', include('saas.urls.api.subscriber.charges')),
-    url(r'^billing/', include('saas.urls.api.subscriber.billing')),
-    url(r'^profile/', include('saas.urls.api.subscriber.profile')),
+    url(r'^', include('saas.urls.api.subscriber.charges')),
+    url(r'^', include('saas.urls.api.subscriber.billing')),
+    url(r'^', include('saas.urls.api.subscriber.roles')),
+    url(r'^', include('saas.urls.api.subscriber.profile')),
 ]
