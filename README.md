@@ -94,10 +94,10 @@ saas/templates/notification/ directory.
 Release Notes
 =============
 
-0.6.2
-  * enables multiple StripeConnect authorize url (live/test)
-  * fixes infinitescroll
-  * fixes connect DELETE method to unsubscribes
-
+0.6.3
+  * updates card-on-file directly in /billing/cart/ page
+  * makes /api/accounts/ a search API instead of a typeahead API
+  * fixes default search fields when looking for subscribers
+  * adds remove card-on-file button in page templates
 
 [previous release notes](changelog)
