@@ -1322,6 +1322,9 @@ new Vue({
     ],
     data: {
         url: djaodjinSettings.urls.provider.api_coupons,
+        params: {
+            o: 'ends_at',
+        },
         newCoupon: {
             code: '',
             percent: ''
