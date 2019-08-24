@@ -1353,6 +1353,36 @@ new Vue({
                 }
             });
         },
+        editPlan: function(item){
+            var vm = this;
+            vm.$set(item, '_editPlan', true);
+            vm.$nextTick(function(){
+                vm.$refs['editPlan_' + item.code][0].focus();
+            });
+        },
+        savePlan: function(item){
+            if(!item._editPlan) return;
+            // since backend accepts only id, we don't care about
+            // other properties of the object, so we can update
+            // title to something more useful than old value
+            this.$set(item.plan, 'title', 'updating...');
+            this.$set(item, '_editPlan', false);
+            delete item._editPlan;
+            this.update(item)
+        },
+        editAttempts: function(item){
+            var vm = this;
+            vm.$set(item, '_editAttempts', true);
+            vm.$nextTick(function(){
+                vm.$refs['editAttempts_' + item.code][0].focus();
+            });
+        },
+        saveAttempts: function(item){
+            if(!item._editAttempts) return;
+            this.$set(item, '_editAttempts', false);
+            delete item._editAttempts;
+            this.update(item)
+        },
         editDescription: function(idx){
             var vm = this;
             vm.edit_description = Array.apply(

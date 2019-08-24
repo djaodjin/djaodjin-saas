@@ -28,18 +28,38 @@ from rest_framework.generics import (ListCreateAPIView,
     RetrieveUpdateDestroyAPIView)
 
 from ..filters import OrderingFilter, SearchFilter, DateRangeFilter
-from ..models import Coupon
+from ..models import Coupon, Plan
 from ..mixins import CouponMixin, ProviderMixin
 
 #pylint: disable=no-init
 #pylint: disable=old-style-class
 
 
+class PlanSerializer(serializers.ModelSerializer):
+    id = serializers.IntegerField()
+    class Meta:
+        model = Plan
+        fields = ('id', 'title')
+
 class CouponSerializer(serializers.ModelSerializer):
+    plan = PlanSerializer()
+
+    # writeable nested relationship require manual handling
+    # https://www.django-rest-framework.org/api-guide/relations/
+    # #writable-nested-serializers
+    def save(self, **kwargs):
+        # this is a (id, title) tuple
+        plan = self.validated_data.get('plan')
+        if plan:
+            # we only care about id
+            del self.validated_data['plan']
+            self.validated_data['plan_id'] = plan['id']
+        return super(CouponSerializer, self).save(**kwargs)
 
     class Meta:
         model = Coupon
-        fields = ('code', 'percent', 'created_at', 'ends_at', 'description')
+        fields = ('code', 'percent', 'created_at', 'ends_at', 'description',
+                'nb_attempts', 'plan')
 
 
 class SmartCouponListMixin(object):
