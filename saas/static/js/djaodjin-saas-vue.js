@@ -1533,6 +1533,7 @@ new Vue({
         var data = {
             tables: djaodjinSettings.tables,
             activeTab: 0,
+            colorFn: nv.utils.defaultColor(),
         }
         data.ends_at = moment();
         if( djaodjinSettings.date_range
