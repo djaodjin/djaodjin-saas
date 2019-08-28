@@ -1351,10 +1351,11 @@ new Vue({
                 vm.get();
             });
         },
-        update: function(coupon){
+        update: function(coupon, cb){
             var vm = this;
             vm.reqPut(vm.url + '/' + coupon.code, coupon, function(resp){
                 vm.get();
+                if(cb) cb();
             });
         },
         save: function(){
@@ -1381,12 +1382,18 @@ new Vue({
             });
         },
         savePlan: function(item){
+            var vm = this;
             if(!item._editPlan) return;
-            this.$set(item, '_editPlan', false);
-            delete item._editPlan;
-            if(item.plan && item.plan.slug == item.plan_slug) return;
-            item.plan = {slug: item.plan_slug};
-            this.update(item)
+            if(item.plan && item.plan.slug == item.plan_slug){
+                vm.$set(item, '_editPlan', false);
+                delete item._editPlan;
+            } else {
+                item.plan = {slug: item.plan_slug, title: 'updating...'};
+                vm.update(item, function(){
+                    vm.$set(item, '_editPlan', false);
+                    delete item._editPlan;
+                });
+            }
         },
         editAttempts: function(item){
             var vm = this;
@@ -1396,10 +1403,12 @@ new Vue({
             });
         },
         saveAttempts: function(item){
+            var vm = this;
             if(!item._editAttempts) return;
-            this.$set(item, '_editAttempts', false);
-            delete item._editAttempts;
-            this.update(item)
+            vm.update(item, function(){
+                vm.$set(item, '_editAttempts', false);
+                delete item._editAttempts;
+            })
         },
         editDescription: function(idx){
             var vm = this;

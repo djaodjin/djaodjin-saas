@@ -46,7 +46,7 @@ class PlanSerializer(serializers.ModelSerializer):
         read_only_fields = ['title']
 
 class CouponSerializer(serializers.ModelSerializer):
-    plan = PlanSerializer(required=False)
+    plan = PlanSerializer(required=False, allow_null=True)
 
     # writeable nested relationship require manual handling
     # https://www.django-rest-framework.org/api-guide/relations/
