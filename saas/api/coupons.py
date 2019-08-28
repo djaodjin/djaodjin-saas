@@ -36,24 +36,35 @@ from ..mixins import CouponMixin, ProviderMixin
 
 
 class PlanSerializer(serializers.ModelSerializer):
-    id = serializers.IntegerField()
+    # otherwise results in a weird error:
+    # plan with this slug already exists
+    slug = serializers.CharField(allow_blank=True, allow_null=True)
+
     class Meta:
         model = Plan
-        fields = ('id', 'title')
+        fields = ('slug', 'title')
+        read_only_fields = ['title']
 
 class CouponSerializer(serializers.ModelSerializer):
-    plan = PlanSerializer()
+    plan = PlanSerializer(required=False)
 
     # writeable nested relationship require manual handling
     # https://www.django-rest-framework.org/api-guide/relations/
     # #writable-nested-serializers
     def save(self, **kwargs):
-        # this is a (id, title) tuple
         plan = self.validated_data.get('plan')
         if plan:
-            # we only care about id
+            # we only care about slug
             del self.validated_data['plan']
-            self.validated_data['plan_id'] = plan['id']
+            if plan['slug']:
+                try:
+                    plan = self.instance.provider.plans.get(
+                        slug=plan['slug'])
+                    self.validated_data['plan_id'] = plan.id
+                except Plan.DoesNotExist:
+                    pass
+            else:
+                self.validated_data['plan_id'] = None
         return super(CouponSerializer, self).save(**kwargs)
 
     class Meta:

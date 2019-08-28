@@ -944,8 +944,6 @@ coupons.html>`__).
                 context['urls'].update({'provider': urls_provider})
         else:
             context.update({'urls': {'provider': urls_provider}})
-        # pre-rendering plans for vue
-        context.update({'plans': self.provider.plans.all()})
         return context
 
 

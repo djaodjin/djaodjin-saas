@@ -1326,10 +1326,24 @@ new Vue({
             code: '',
             percent: ''
         },
+        getCb: 'getAndPrepareData',
         edit_description: [],
-        date: null
+        date: null,
+        plans: []
     },
     methods: {
+        getAndPrepareData: function(res){
+            var vm = this;
+            res.results.map(function(e){
+                e.plan_slug = e.plan ? e.plan.slug : '';
+            });
+            if(vm.mergeResults){
+                res.results = vm.items.results.concat(res.results);
+            }
+            vm.items = res;
+            vm.itemsLoaded = true;
+            return res
+        },
         remove: function(idx){
             var vm = this;
             var code = this.items.results[idx].code;
@@ -1353,6 +1367,12 @@ new Vue({
                 }
             });
         },
+        getPlans: function(){
+            var vm = this;
+            vm.reqGet(djaodjinSettings.urls.provider.api_plans, function(res){
+                vm.plans = res.results;
+            });
+        },
         editPlan: function(item){
             var vm = this;
             vm.$set(item, '_editPlan', true);
@@ -1362,12 +1382,10 @@ new Vue({
         },
         savePlan: function(item){
             if(!item._editPlan) return;
-            // since backend accepts only id, we don't care about
-            // other properties of the object, so we can update
-            // title to something more useful than old value
-            this.$set(item.plan, 'title', 'updating...');
             this.$set(item, '_editPlan', false);
             delete item._editPlan;
+            if(item.plan && item.plan.slug == item.plan_slug) return;
+            item.plan = {slug: item.plan_slug};
             this.update(item)
         },
         editAttempts: function(item){
@@ -1413,6 +1431,7 @@ new Vue({
     },
     mounted: function(){
         this.get()
+        this.getPlans()
     }
 })
 }
