@@ -72,15 +72,3 @@
   </div>
 </section>
 {% endblock %}
-
-{% block dashboard_bodyscripts %}
-<script type="text/javascript">
-function updateChart(container, data, unit, dataScale, extra) {
-    $(container).text(JSON.stringify(data));
-}
-
-function updateBarChart(container, data, unit, dataScale, extra) {
-    $(container).text(JSON.stringify(data));
-}
-</script>
-{% endblock %}

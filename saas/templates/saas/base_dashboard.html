@@ -26,6 +26,21 @@ var djaodjinSettings = {
     csrf: "{{csrf_token}}",
 };
 </script>
+
+<script type="text/javascript">
+// dummy functions redefined in djaoapp djaodjin-metrics.js
+function updateChart(container, data, unit, dataScale, extra) {
+    $(container).text(JSON.stringify(data));
+}
+
+function updateBarChart(container, data, unit, dataScale, extra) {
+    $(container).text(JSON.stringify(data));
+}
+
+function metricsLegendColors(){
+    //return nv.utils.defaultColor() in djaoapp
+}
+</script>
 <script type="text/javascript" charset="utf-8" src="/static/vendor/vue.js"></script>
 <script>
     Vue.mixin({
