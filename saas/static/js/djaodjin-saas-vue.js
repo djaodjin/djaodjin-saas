@@ -1353,6 +1353,10 @@ new Vue({
         },
         update: function(coupon, cb){
             var vm = this;
+            if(coupon.plan){
+                // otherwise serializer raises plan-related error
+                coupon.plan = {slug: coupon.plan.slug}
+            }
             vm.reqPut(vm.url + '/' + coupon.code, coupon, function(resp){
                 vm.get();
                 if(cb) cb();
@@ -1389,10 +1393,6 @@ new Vue({
                 vm.$set(item, '_editPlan', false);
                 delete item._editPlan;
             } else {
-                item.plan = {
-                    slug: item.plan_slug,
-                    title: gettext('updating...'),
-                };
                 vm.update(item, function(){
                     vm.$set(item, '_editPlan', false);
                     delete item._editPlan;
