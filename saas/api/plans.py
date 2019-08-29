@@ -127,6 +127,10 @@ class PlanListCreateAPIView(PlanMixin, ListCreateAPIView):
 
     def get_queryset(self):
         self.queryset = self.organization.plans.all()
+        is_active = self.request.query_params.get('is_active')
+        if is_active:
+            bl = is_active and is_active.lower() == 'true'
+            self.queryset = self.queryset.filter(is_active=bl)
         return super(PlanListCreateAPIView, self).get_queryset()
 
     def perform_create(self, serializer):

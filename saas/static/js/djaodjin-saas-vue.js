@@ -1370,7 +1370,8 @@ new Vue({
         },
         getPlans: function(){
             var vm = this;
-            vm.reqGet(djaodjinSettings.urls.provider.api_plans, function(res){
+            vm.reqGet(djaodjinSettings.urls.provider.api_plans,
+                {is_active: true}, function(res){
                 vm.plans = res.results;
             });
         },
@@ -1388,7 +1389,10 @@ new Vue({
                 vm.$set(item, '_editPlan', false);
                 delete item._editPlan;
             } else {
-                item.plan = {slug: item.plan_slug, title: 'updating...'};
+                item.plan = {
+                    slug: item.plan_slug,
+                    title: gettext('updating...'),
+                };
                 vm.update(item, function(){
                     vm.$set(item, '_editPlan', false);
                     delete item._editPlan;

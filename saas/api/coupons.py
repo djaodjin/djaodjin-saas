@@ -30,20 +30,21 @@ from rest_framework.generics import (ListCreateAPIView,
 from ..filters import OrderingFilter, SearchFilter, DateRangeFilter
 from ..models import Coupon, Plan
 from ..mixins import CouponMixin, ProviderMixin
+from .serializers import PlanSerializer as BasePlanSerializer
 
 #pylint: disable=no-init
 #pylint: disable=old-style-class
 
 
-class PlanSerializer(serializers.ModelSerializer):
+class PlanSerializer(BasePlanSerializer):
     # otherwise results in a weird error:
     # plan with this slug already exists
     slug = serializers.CharField(allow_blank=True, allow_null=True)
 
-    class Meta:
-        model = Plan
-        fields = ('slug', 'title')
-        read_only_fields = ['title']
+    class Meta(BasePlanSerializer.Meta):
+        read_only_fields = [f for f in
+            BasePlanSerializer.Meta.read_only_fields if f != 'slug']
+
 
 class CouponSerializer(serializers.ModelSerializer):
     plan = PlanSerializer(required=False, allow_null=True)
@@ -59,7 +60,7 @@ class CouponSerializer(serializers.ModelSerializer):
             if plan['slug']:
                 try:
                     plan = self.instance.provider.plans.get(
-                        slug=plan['slug'])
+                        slug=plan['slug'], is_active=True)
                     self.validated_data['plan_id'] = plan.id
                 except Plan.DoesNotExist:
                     pass
