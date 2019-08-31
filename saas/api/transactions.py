@@ -158,9 +158,9 @@ class TransactionListAPIView(SmartTransactionListMixin,
     Query results can be ordered by natural fields (``o``) in either ascending
     or descending order (``ot``).
 
-    **Tags: billing
+    **Tags**: billing
 
-    **Examples
+    **Examples**
 
     .. code-block:: http
 
@@ -225,11 +225,11 @@ class BillingsAPIView(SmartTransactionListMixin,
     or descending order (``ot``).
 
     This API end point is typically used to display orders, payments and refunds
-    of a subscriber (see :ref:`subscribers pages <_pages_subscribers>`)
+    of a subscriber (see :ref:`subscribers pages <pages_subscribers>`)
 
-    **Tags: billing
+    **Tags**: billing
 
-    **Examples
+    **Examples**
 
     .. code-block:: http
 
@@ -296,9 +296,9 @@ class ReceivablesListAPIView(TotalAnnotateMixin, TransactionFilterMixin,
     This API endpoint is typically used to find all sales for ``{organization}``
     whether it was paid or not.
 
-    **Tags: billing
+    **Tags**: billing
 
-    **Examples
+    **Examples**
 
     .. code-block:: http
 
@@ -377,11 +377,11 @@ class TransferListAPIView(SmartTransactionListMixin, TransferQuerysetMixin,
 
     This API endpoint is typically used to find sales, payments, refunds
     and bank deposits for a provider.
-    (see :ref:`provider pages <_pages_provider_transactions>`)
+    (see :ref:`provider pages <pages_provider_transactions>`)
 
-    **Tags: billing
+    **Tags**: billing
 
-    **Examples
+    **Examples**
 
     .. code-block:: http
 
@@ -448,9 +448,9 @@ class ImportTransactionsAPIView(ProviderMixin, CreateAPIView):
     accurate metrics for the performance of the product sold, regardless
     of payment options (online or offline).
 
-    **Tags: billing
+    **Tags**: billing
 
-    **Examples
+    **Examples**
 
     .. code-block:: http
 
@@ -509,9 +509,9 @@ class StatementBalanceAPIView(OrganizationMixin, APIView):
 
     Get the statement balance due for an organization.
 
-    **Tags: billing
+    **Tags**: billing
 
-    **Examples
+    **Examples**
 
     .. code-block:: http
 
@@ -547,9 +547,9 @@ class StatementBalanceAPIView(OrganizationMixin, APIView):
         The endpoint returns the transaction created to cancel the
         balance due.
 
-        **Tags: billing
+        **Tags**: billing
 
-        **Examples
+        **Examples**
 
         .. code-block:: http
 

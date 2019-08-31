@@ -101,9 +101,9 @@ class OrganizationDetailAPIView(OrganizationMixin, OrganizationQuerysetMixin,
     """
     Retrieves a billing profile
 
-    **Tags: profile
+    **Tags**: profile
 
-    **Examples
+    **Examples**
 
     .. code-block:: http
 
@@ -149,7 +149,7 @@ class OrganizationDetailAPIView(OrganizationMixin, OrganizationQuerysetMixin,
         """
         Updates a billing profile
 
-        **Examples
+        **Examples**
 
         .. code-block:: http
 
@@ -192,9 +192,9 @@ class OrganizationDetailAPIView(OrganizationMixin, OrganizationQuerysetMixin,
         it from the database because we don't want to loose history
         on subscriptions and transactions.
 
-        **Tags: profile
+        **Tags**: profile
 
-        **Examples
+        **Examples**
 
         .. code-block:: http
 
@@ -276,9 +276,9 @@ class OrganizationListAPIView(OrganizationSmartListMixin,
     parameters. To reverse the natural order of a field, prefix the field
     name by a minus (-) sign.
 
-    **Tags: profile
+    **Tags**: profile
 
-    **Examples
+    **Examples**
 
     .. code-block:: http
 
@@ -309,7 +309,7 @@ class OrganizationListAPIView(OrganizationSmartListMixin,
         """
         Creates an organization, personal or user profile.
 
-        **Examples
+        **Examples**
 
         .. code-block:: http
 
@@ -366,9 +366,9 @@ class SubscribersAPIView(OrganizationSmartListMixin,
     Returns a PAGE_SIZE list of subscriber profiles which have or had
     a subscription to a plan provided by {organization}.
 
-    **Tags: subscriptions
+    **Tags**: subscriptions
 
-    **Examples
+    **Examples**
 
     .. code-block:: http
 

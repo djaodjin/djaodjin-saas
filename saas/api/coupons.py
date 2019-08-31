@@ -1,4 +1,4 @@
-# Copyright (c) 2018, DjaoDjin inc.
+# Copyright (c) 2019, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -81,9 +81,9 @@ class CouponListCreateAPIView(SmartCouponListMixin, CouponQuerysetMixin,
     Query results can be ordered by natural fields (``o``) in either ascending
     or descending order (``ot``).
 
-    **Tags: billing
+    **Tags**: billing
 
-    **Examples
+    **Examples**
 
     .. code-block:: http
 
@@ -129,7 +129,7 @@ class CouponListCreateAPIView(SmartCouponListMixin, CouponQuerysetMixin,
         Customers will be able to use the `code` until `ends_at`
         to subscribe to plans from the Coupon's provider at a discount.
 
-        **Examples
+        **Examples**
 
         .. code-block:: http
 
@@ -166,9 +166,9 @@ class CouponDetailAPIView(CouponMixin, RetrieveUpdateDestroyAPIView):
     """
     Retrieves a discount code
 
-    **Tags: billing
+    **Tags**: billing
 
-    **Examples
+    **Examples**
 
     .. code-block:: http
 
@@ -192,9 +192,9 @@ class CouponDetailAPIView(CouponMixin, RetrieveUpdateDestroyAPIView):
         """
         Updates a discount code
 
-        **Tags: billing
+        **Tags**: billing
 
-        **Examples
+        **Examples**
 
         .. code-block:: http
 
@@ -229,9 +229,9 @@ class CouponDetailAPIView(CouponMixin, RetrieveUpdateDestroyAPIView):
         at least once will be de-activated and still available for
         performance measurements.
 
-        **Tags: billing
+        **Tags**: billing
 
-        **Examples
+        **Examples**
 
         .. code-block:: http
 

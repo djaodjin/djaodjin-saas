@@ -242,7 +242,7 @@ class PlanForm(forms.ModelForm):
     """
     submit_title = _("Update")
 
-    interval = forms.ChoiceField(choices=[
+    period_type = forms.ChoiceField(choices=[
         (slugify(choice[1]), choice[1]) for choice in Plan.INTERVAL_CHOICES])
     renewal_type = forms.ChoiceField(choices=[
         (slugify(choice[1]), choice[1]) for choice in Plan.RENEWAL_CHOICES])
@@ -253,8 +253,8 @@ class PlanForm(forms.ModelForm):
 
     class Meta:
         model = Plan
-        fields = ('title', 'description', 'period_amount', 'unit', 'interval',
-                  'period_length', 'advance_discount',
+        fields = ('title', 'description', 'period_amount', 'unit',
+                  'period_type', 'period_length', 'advance_discount',
                   'renewal_type', 'is_not_priced')
 
     def __init__(self, *args, **kwargs):
@@ -262,24 +262,24 @@ class PlanForm(forms.ModelForm):
         if initial:
             period_amount = initial.get('period_amount', 0)
             advance_discount = initial.get('advance_discount', 0)
-            interval = initial.get('interval', Plan.MONTHLY)
+            period_type = initial.get('period_type', Plan.MONTHLY)
             renewal_type = initial.get('renewal_type', Plan.AUTO_RENEW)
         instance = kwargs.get('instance', None)
         if instance:
             period_amount = instance.period_amount
             advance_discount = instance.advance_discount
-            interval = instance.interval
+            period_type = instance.period_type
             renewal_type = instance.renewal_type
         else:
             self.submit_title = _("Create")
         period_amount = Decimal(period_amount).scaleb(-2)
         advance_discount = Decimal(advance_discount).scaleb(-2)
-        interval = slugify(Plan.INTERVAL_CHOICES[interval - 1][1])
+        period_type = slugify(Plan.INTERVAL_CHOICES[period_type - 1][1])
         renewal_type = slugify(Plan.RENEWAL_CHOICES[renewal_type][1])
         initial.update({
             'period_amount':period_amount,
             'advance_discount': advance_discount,
-            'interval': interval,
+            'period_type': period_type,
             'renewal_type': renewal_type})
         super(PlanForm, self).__init__(*args, **kwargs)
 
@@ -291,12 +291,12 @@ class PlanForm(forms.ModelForm):
             self.cleaned_data['advance_discount'] = 0
         return self.cleaned_data['advance_discount']
 
-    def clean_interval(self):
-        period = self.cleaned_data['interval']
+    def clean_period_type(self):
+        period_type = self.cleaned_data['period_type']
         for period_choice in Plan.INTERVAL_CHOICES:
-            if period == slugify(period_choice[1]):
-                self.cleaned_data['interval'] = period_choice[0]
-                return self.cleaned_data['interval']
+            if period_type == slugify(period_choice[1]):
+                self.cleaned_data['period_type'] = period_choice[0]
+                return self.cleaned_data['period_type']
         raise forms.ValidationError(
             _("period must be one of %(period)s") % {[
                 period_choice[1] for period_choice in Plan.INTERVAL_CHOICES]})

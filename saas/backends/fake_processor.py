@@ -1,4 +1,4 @@
-# Copyright (c) 2018, DjaoDjin inc.
+# Copyright (c) 2019, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -53,21 +53,26 @@ class FakeProcessorBackend(object):
         # is 2.9% + 30 cents.
         # Stripe rounds up so we do the same here. Be careful Python 3.x
         # semantics are broken and will return a float instead of a int.
-        fee_unit = unit
+        processor_fee_unit = unit
         available_amount = charge.amount - refunded
         if available_amount > 0:
             # integer division
-            fee_amount = (available_amount * 290 + 5000) // 10000 + 30
-            assert isinstance(fee_amount, six.integer_types)
+            processor_fee_amount = (available_amount * 290 + 5000) // 10000 + 30
+            assert isinstance(processor_fee_amount, six.integer_types)
         else:
-            fee_amount = 0
-        distribute_amount = available_amount - fee_amount
+            processor_fee_amount = 0
+        distribute_amount = available_amount - processor_fee_amount
         distribute_unit = charge.unit
-        return distribute_amount, distribute_unit, fee_amount, fee_unit
+        broker_fee_amount = 0
+        broker_fee_unit = charge.unit
+        return (distribute_amount, distribute_unit,
+                processor_fee_amount, processor_fee_unit,
+                broker_fee_amount, broker_fee_unit)
 
     @staticmethod
-    def create_charge(customer, amount, unit,
-                    broker=None, descr=None, stmt_descr=None, created_at=None):
+    def create_charge(customer, amount, unit, provider,
+                      descr=None, stmt_descr=None, created_at=None,
+                      broker_fee_amount=0):
         #pylint: disable=too-many-arguments,unused-argument
         created_at = datetime_or_now(created_at)
         receipt_info = {
@@ -80,12 +85,13 @@ class FakeProcessorBackend(object):
             amount, unit, descr, charge_key)
         return (charge_key, created_at, receipt_info)
 
-    def create_charge_on_card(self, card, amount, unit,
-                    broker=None, descr=None, stmt_descr=None, created_at=None):
+    def create_charge_on_card(self, card, amount, unit, provider,
+                              descr=None, stmt_descr=None, created_at=None,
+                              broker_fee_amount=0):
         #pylint: disable=too-many-arguments,unused-argument
-        return self.create_charge(card, amount, unit,
-                    broker=broker, descr=descr,
-                    stmt_descr=descr, created_at=created_at)
+        return self.create_charge(card, amount, unit, provider,
+                    descr=descr, stmt_descr=descr, created_at=created_at,
+                    broker_fee_amount=broker_fee_amount)
 
     @staticmethod
     def create_transfer(provider, amount, unit, descr=None):
@@ -111,7 +117,7 @@ class FakeProcessorBackend(object):
             "reconcile_transfers is not implemented on FakeProcessor")
 
     @staticmethod
-    def refund_charge(charge, amount):
+    def refund_charge(charge, amount, broker_amount=0):
         """
         Refund a charge on the associated card.
         """

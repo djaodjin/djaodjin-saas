@@ -191,9 +191,8 @@ These API end points manage the subscription logic, payments excluded.
 .. autoclass:: saas.api.organizations.SubscribersAPIView
 
 .. http:get:: /api/profile/:organization/subscriptions/
-.. http:post:: /api/profile/:organization/subscriptions/
 
-.. autoclass:: saas.api.subscriptions.SubscriptionListCreateAPIView
+.. autoclass:: saas.api.subscriptions.SubscriberSubscriptionListAPIView
 
 
 .. http:delete:: /api/profile/:organization/subscriptions/<subscribed_plan>/

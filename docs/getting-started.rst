@@ -151,6 +151,9 @@ provider / broker together with three ``Plan`` that belong to the provider
       "model" : "saas.Plan", "pk": 3
     }]
 
+To setup different pricing models such as a 3 Part Tariff (3PT),
+read about the :doc:`supported pricing models<pricing>`.
+
 
 Selling add-ons plans
 ---------------------
@@ -187,5 +190,3 @@ on the subscribed-to Plan is to decorate the view implementing the feature.
            requires_paid_subscription(FeatureView.as_view()), name='feature'),
     \.\.\.
    ]
-
-

@@ -84,9 +84,9 @@ class RegisteredAPIView(UserSmartListMixin, RegisteredBaseAPIView):
     Query results can be ordered by natural fields (``o``) in either ascending
     or descending order (``ot``).
 
-    **Tags: metrics
+    **Tags**: metrics
 
-    **Examples
+    **Examples**
 
     .. code-block:: http
 
@@ -119,9 +119,9 @@ class AgreementSignAPIView(GenericAPIView):
 
     Indicates the request user has signed the required consent agreement.
 
-    **Tags: profile
+    **Tags**: profile
 
-    **Examples
+    **Examples**
 
     .. code-block:: http
 

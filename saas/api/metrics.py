@@ -52,9 +52,9 @@ class BalancesAPIView(DateRangeContextMixin, ProviderMixin,
     Generate a table of revenue (rows) per months (columns) for a default
     balance sheet (Income, Backlog, Receivable).
 
-    **Tags: metrics
+    **Tags**: metrics
 
-    **Examples
+    **Examples**
 
     .. code-block:: http
 
@@ -156,9 +156,9 @@ class RevenueMetricAPIView(DateRangeContextMixin, ProviderMixin,
 
     Produces sales, payments and refunds over a period of time.
 
-    **Tags: metrics
+    **Tags**: metrics
 
-    **Examples
+    **Examples**
 
     .. code-block:: http
 
@@ -326,9 +326,9 @@ class CouponUsesAPIView(CartItemSmartListMixin, CouponUsesQuerysetMixin,
     The result queryset can be ordered by passing an ``o`` (field name)
     and ``ot`` (asc or desc) parameter.
 
-    **Tags: metrics
+    **Tags**: metrics
 
-    **Examples
+    **Examples**
 
     .. code-block:: http
 
@@ -365,9 +365,9 @@ class CustomerMetricAPIView(DateRangeContextMixin, ProviderMixin,
     """
     Retrieves 12-month trailing customer counts
 
-    **Tags: metrics
+    **Tags**: metrics
 
-    **Examples
+    **Examples**
 
     .. code-block:: http
 
@@ -496,9 +496,9 @@ class PlanMetricAPIView(DateRangeContextMixin, ProviderMixin, GenericAPIView):
     """
     Retrieves 12-month trailing plans performance
 
-    **Tags: metrics
+    **Tags**: metrics
 
-    **Examples
+    **Examples**
 
     .. code-block:: http
 

@@ -1,6 +1,6 @@
 #pylint: disable=too-many-lines
 
-# Copyright (c) 2018, DjaoDjin inc.
+# Copyright (c) 2019, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -102,6 +102,8 @@ class Price(object):
         assert isinstance(amount, six.integer_types)
         self.amount = amount
         self.unit = unit
+        if not self.unit:
+            self.unit = settings.DEFAULT_UNIT # XXX
 
 
 class OrganizationManager(models.Manager):
@@ -398,22 +400,22 @@ class Organization(models.Model):
 
     @property
     def natural_interval(self):
-        plan_periods = self.plans.values('interval').distinct()
+        plan_periods = self.plans.values('period_type').distinct()
         interval = Plan.MONTHLY
         if plan_periods.exists():
             interval = Plan.YEARLY
             for period in plan_periods:
-                interval = min(interval, period['interval'])
+                interval = min(interval, period['period_type'])
         return interval
 
     @property
     def natural_subscription_period(self):
-        plan_periods = self.subscriptions.values('interval').distinct()
+        plan_periods = self.subscriptions.values('period_type').distinct()
         interval = Plan.MONTHLY
         if plan_periods.exists():
             interval = Plan.YEARLY
             for period in plan_periods:
-                interval = min(interval, period['interval'])
+                interval = min(interval, period['period_type'])
         return Plan.get_natural_period(1, interval)
 
     @property
@@ -713,7 +715,7 @@ class Organization(models.Model):
 
     def checkout(self, invoicables, user, token=None, remember_card=True):
         """
-        *invoiced_items* is a set of ``Transaction`` that will be recorded
+        *invoicables* is a set of ``Transaction`` that will be recorded
         in the ledger. Associated subscriptions will be updated such that
         the ends_at is extended in the future.
         """
@@ -1333,6 +1335,14 @@ class ChargeManager(models.Manager):
         unit = balances[0]['unit']
         if amount == 0:
             return None
+
+        broker_fee_amount = 0
+        for invoiced_item in transactions:
+            if invoiced_item.subscription:
+                broker_fee_amount += \
+                    invoiced_item.subscription.plan.prorate_transaction(
+                        invoiced_item.dest_amount)
+
         providers = Transaction.objects.providers(transactions)
         if len(providers) == 1:
             broker = providers[0]
@@ -1352,13 +1362,15 @@ class ChargeManager(models.Manager):
             if customer.processor_card_key:
                 (processor_charge_id, created_at,
                  receipt_info) = processor_backend.create_charge(
-                     customer, amount, unit, broker=broker, descr=descr,
-                     created_at=created_at)
+                     customer, amount, unit, broker,
+                     descr=descr, created_at=created_at,
+                     broker_fee_amount=broker_fee_amount)
             elif token:
                 (processor_charge_id, created_at,
                  receipt_info) = processor_backend.create_charge_on_card(
-                     token, amount, unit, broker=broker, descr=descr,
-                     created_at=created_at)
+                     token, amount, unit, broker,
+                     descr=descr, created_at=created_at,
+                     broker_fee_amount=broker_fee_amount)
             else:
                 raise ProcessorError(_("%(organization)s is not associated"\
                     " to an account on the processor and no token was passed."
@@ -1460,6 +1472,18 @@ class Charge(models.Model):
         return str(self.processor_key)
 
     @property
+    def broker_fee_amount(self):
+        if not hasattr(self, '_broker_fee_amount'):
+            self._broker_fee_amount = 0
+            for charge_item in self.charge_items.all():
+                invoiced_item = charge_item.invoiced
+                if invoiced_item.subscription:
+                    self._broker_fee_amount += \
+                        invoiced_item.subscription.plan.prorate_transaction(
+                            invoiced_item.dest_amount)
+        return self._broker_fee_amount
+
+    @property
     def price(self):
         return Price(self.amount, self.unit)
 
@@ -1506,7 +1530,7 @@ class Charge(models.Model):
         have been deducted.
         """
         invoiced_total = self.invoiced_total
-        refund_balances = sum_dest_amount(self.refunded)
+        refund_balances = sum_orig_amount(self.refunded)
         if len(refund_balances) > 1:
             raise ValueError(
                 _("balances with multiple currency units (%s)") %
@@ -1577,10 +1601,12 @@ class Charge(models.Model):
         previously_refunded = balances[0]['amount']
         refund_available = self.amount - previously_refunded
         charge_available_amount, provider_unit, \
-            charge_fee_amount, processor_unit \
+            charge_processor_fee_amount, processor_unit, \
+            charge_broker_fee_amount, broker_unit \
             = self.processor_backend.charge_distribution(self)
         corrected_available_amount = charge_available_amount
-        corrected_fee_amount = charge_fee_amount
+        corrected_processor_fee_amount = charge_processor_fee_amount
+        corrected_broker_fee_amount = charge_broker_fee_amount
         providers = set([])
         with transaction.atomic():
             updated = Charge.objects.select_for_update(nowait=True).filter(
@@ -1601,11 +1627,13 @@ class Charge(models.Model):
                     providers |= set([provider])
                 charge_item.create_refund_transactions(
                     refunded_amount,
-                    charge_available_amount, charge_fee_amount,
-                    corrected_available_amount, corrected_fee_amount,
-                    created_at=created_at, provider_unit=provider_unit,
-                    processor_unit=processor_unit,
-                    refund_type=Transaction.CHARGEBACK)
+                    Price(charge_available_amount, provider_unit),
+                    Price(charge_processor_fee_amount, processor_unit),
+                    Price(charge_broker_fee_amount, broker_unit),
+                    Price(corrected_available_amount, provider_unit),
+                    Price(corrected_processor_fee_amount, processor_unit),
+                    Price(corrected_broker_fee_amount, broker_unit),
+                    created_at=created_at, refund_type=Transaction.CHARGEBACK)
                 refund_available -= refunded_amount
         # We did a `select_for_update` earlier on but that did not change
         # in state of the `self` currently in memory.
@@ -1695,6 +1723,14 @@ class Charge(models.Model):
                 provider:Expenses                        processor_fee
                 processor:Backlog
 
+            yyyy/mm/dd cha_***** broker fee paid by provider
+                provider:Expenses                        broker_fee_amount
+                broker:Backlog
+
+            yyyy/mm/dd cha_***** distribution to broker
+                broker:Funds                             broker_fee_amount
+                processor:Funds
+
             yyyy/mm/dd sub_***** distribution to provider (backlog accounting)
                 provider:Receivable                      plan_amount
                 provider:Backlog
@@ -1713,6 +1749,14 @@ class Charge(models.Model):
                 xia:Liability                          $179.99
                 xia:Payable
 
+            2014/09/10 Charge ch_ABC123 broker fee to cowork
+                cowork:Expenses                        $17.99
+                broker:Backlog
+
+            2014/09/10 Charge ch_ABC123 distribution due to cowork
+                broker:Funds                           $17.99
+                stripe:Funds
+
             2014/09/10 Charge ch_ABC123 processor fee for open-space
                 cowork:Expenses                         $5.22
                 stripe:Backlog
@@ -1722,7 +1766,7 @@ class Charge(models.Model):
                 cowork:Backlog
 
             2014/09/10 Charge ch_ABC123 distribution for open-space
-                cowork:Funds                          $174.77
+                cowork:Funds                          $156.78
                 stripe:Funds
         """
         #pylint: disable=too-many-locals
@@ -1741,9 +1785,13 @@ class Charge(models.Model):
             # 2014/01/15 charge on xia card
             #     stripe:Funds                                 15800
             #     xia:Liability
-            total_distribute_amount, funds_unit, \
-                total_fee_amount, processor_funds_unit \
+            charge_available_amount, funds_unit, \
+                charge_processor_fee_amount, processor_funds_unit, \
+                charge_broker_fee_amount, broker_funds_unit \
                 = self.processor_backend.charge_distribution(self)
+            charge_amount = (charge_available_amount
+                + charge_processor_fee_amount + charge_broker_fee_amount)
+            assert isinstance(charge_amount, six.integer_types)
 
             charge_transaction = Transaction.objects.create(
                 event_id=get_charge_event_id(self),
@@ -1760,6 +1808,7 @@ class Charge(models.Model):
                 orig_organization=self.customer)
             # Once we have created a transaction for the charge, let's
             # redistribute the funds to their rightful owners.
+            orig_total_broker_fee_amount = self.broker_fee_amount
             for charge_item in self.charge_items.all():
                 invoiced_item = charge_item.invoiced
 
@@ -1792,57 +1841,139 @@ class Charge(models.Model):
                 # XXX event_id is used for provider and in description.
                 event = None
                 event_id = invoiced_item.event_id
+                orig_item_amount = invoiced_item.dest_amount
                 if invoiced_item.event_id:
                     event = invoiced_item.get_event()
+                broker = get_broker()
+                orig_broker_fee_amount = 0
                 if event:
+                    # XXX event shouldn't be anything but a Subscription here.
+                    # How could it be Coupon?
                     provider = event.provider
+                    if invoiced_item.subscription:
+                        orig_broker_fee_amount = \
+                            invoiced_item.subscription.plan.prorate_transaction(
+                                orig_item_amount)
                 else:
-                    provider = get_broker()
-                orig_item_amount = invoiced_item.dest_amount
-                # Has long as we have only one item and charge/funds are using
+                    provider = broker
+                # self.amount = orig_item_amount_1 + orig_item_amount_2
+                # orig_item_amount_1 = (orig_distribute_amount_1
+                #     + orig_processor_fee_amount_1 + orig_broker_fee_amount_1)
+
+                # As long as we have only one item and charge/funds are using
                 # same unit, multiplication and division are carefully crafted
                 # to keep full precision.
                 # XXX to check with transfer btw currencies and multiple items.
-                # integer division
-                orig_fee_amount = (orig_item_amount * total_fee_amount
-                    // (total_distribute_amount + total_fee_amount))
-                assert isinstance(orig_fee_amount, six.integer_types)
-                orig_distribute_amount = orig_item_amount - orig_fee_amount
-                # integer division
-                fee_amount = ((total_fee_amount * orig_item_amount
-                               // self.amount))
-                assert isinstance(fee_amount, six.integer_types)
-                # integer division
+                # integer divisions
+                # `orig_processor_fee_amount = (orig_charge_processor_fee_amount
+                #    * orig_item_amount // self.amount)`
+                # simplifies to:
+                orig_processor_fee_amount = (orig_item_amount
+                    * charge_processor_fee_amount // charge_amount)
+                orig_distribute_amount = (orig_item_amount
+                    - orig_processor_fee_amount - orig_broker_fee_amount)
+                assert isinstance(orig_processor_fee_amount, six.integer_types)
+                assert isinstance(orig_broker_fee_amount, six.integer_types)
+                assert isinstance(orig_distribute_amount, six.integer_types)
+
+                # integer divisions
+                # The charge_broker_fee_amount must be split amongst all items
+                # with a broker fee rather than equaly amongst all items.
+                processor_fee_amount = (charge_processor_fee_amount
+                    * orig_item_amount // self.amount)
+                if orig_total_broker_fee_amount:
+                    broker_fee_amount = (
+                        charge_broker_fee_amount * orig_broker_fee_amount
+                        // orig_total_broker_fee_amount)
+                else:
+                    broker_fee_amount = 0
                 distribute_amount = (
-                    total_distribute_amount * orig_item_amount // self.amount)
+                    (charge_available_amount + charge_broker_fee_amount)
+                    * orig_item_amount // self.amount) - broker_fee_amount
+                item_amount = ((distribute_amount
+                    + processor_fee_amount + broker_fee_amount)
+                    if self.unit != funds_unit else orig_item_amount)
+
+                assert isinstance(processor_fee_amount, six.integer_types)
+                assert isinstance(broker_fee_amount, six.integer_types)
                 assert isinstance(distribute_amount, six.integer_types)
-                LOGGER.debug("payment_successful(charge=%s) distribute: %d %s,"\
-                 " fee: %d %s out of total distribute: %d %s, total fee: %d %s",
-                    self.processor_key, distribute_amount, funds_unit,
-                    fee_amount, processor_funds_unit,
-                    total_distribute_amount, funds_unit,
-                    total_fee_amount, processor_funds_unit)
-                if fee_amount > 0:
+
+                LOGGER.debug("payment_successful(charge=%s)"\
+                    " distribute: %d %s,"\
+                    " broker fee: %d %s,"\
+                    " processor fee: %d %s out of total"\
+                    " distribute: %d %s,"\
+                    " broker fee: %d %s,"\
+                    " processor fee: %d %s",
+                    self.processor_key,
+                    distribute_amount, funds_unit,
+                    broker_fee_amount, broker_funds_unit,
+                    processor_fee_amount, processor_funds_unit,
+                    charge_available_amount, funds_unit,
+                    charge_broker_fee_amount, broker_funds_unit,
+                    charge_processor_fee_amount, processor_funds_unit)
+
+                if processor_fee_amount > 0:
                     # Example:
-                    # 2014/01/15 fee to cowork
+                    # 2014/01/15 processor fee to cowork
                     #     cowork:Expenses                             900
                     #     stripe:Backlog
-                    charge_item.invoiced_fee = Transaction.objects.create(
+                    charge_item.invoiced_processor_fee = \
+                        Transaction.objects.create(
                         created_at=self.created_at,
                         descr=humanize.DESCRIBE_CHARGED_CARD_PROCESSOR % {
                             'charge': self.processor_key, 'event': event_id},
                         event_id=get_charge_event_id(self),
                         dest_unit=funds_unit,
-                        dest_amount=fee_amount,
+                        dest_amount=processor_fee_amount,
                         dest_account=Transaction.EXPENSES,
                         dest_organization=provider,
                         orig_unit=self.unit,
-                        orig_amount=orig_fee_amount,
+                        orig_amount=orig_processor_fee_amount,
                         orig_account=Transaction.BACKLOG,
                         orig_organization=self.processor)
                     # pylint:disable=no-member
-                    self.processor.funds_balance += fee_amount
+                    self.processor.funds_balance += processor_fee_amount
                     self.processor.save()
+
+                if broker_fee_amount > 0:
+                    # Example:
+                    # 2014/01/15 broker fee to cowork
+                    #     cowork:Expenses                             900
+                    #     broker:Backlog
+                    #
+                    # 2014/01/15 distribution due to broker
+                    #     broker:Funds                               7000
+                    #     stripe:Funds
+                    charge_item.invoiced_broker_fee = \
+                        Transaction.objects.create(
+                        created_at=self.created_at,
+                        descr=humanize.DESCRIBE_CHARGED_CARD_BROKER % {
+                            'charge': self.processor_key, 'event': event_id},
+                        event_id=get_charge_event_id(self),
+                        dest_unit=funds_unit,
+                        dest_amount=broker_fee_amount,
+                        dest_account=Transaction.EXPENSES,
+                        dest_organization=provider,
+                        orig_unit=self.unit,
+                        orig_amount=orig_broker_fee_amount,
+                        orig_account=Transaction.BACKLOG,
+                        orig_organization=broker)
+                    Transaction.objects.create(
+                        event_id=get_charge_event_id(self),
+                        created_at=self.created_at,
+                        descr=humanize.DESCRIBE_CHARGED_CARD_BROKER % {
+                                'charge': self.processor_key, 'event': event},
+                        dest_unit=funds_unit,
+                        dest_amount=broker_fee_amount,
+                        dest_account=Transaction.FUNDS,
+                        dest_organization=broker,
+                        orig_unit=self.unit,
+                        orig_amount=orig_broker_fee_amount,
+                        orig_account=Transaction.FUNDS,
+                        orig_organization=self.processor)
+                    broker.funds_balance += broker_fee_amount
+                    broker.save()
 
                 # Example:
                 # 2014/01/15 distribution due to cowork
@@ -1852,6 +1983,9 @@ class Charge(models.Model):
                 # 2014/01/15 distribution due to cowork
                 #     cowork:Funds                                  7000
                 #     stripe:Funds
+
+                # XXX Just making sure we don't screw up rounding
+                # when using the same unit.
                 Transaction.objects.create(
                     event_id=event_id,
                     created_at=self.created_at,
@@ -1866,10 +2000,7 @@ class Charge(models.Model):
                     dest_account=Transaction.RECEIVABLE,
                     dest_organization=provider,
                     orig_unit=funds_unit,
-                    # XXX Just making sure we don't screw up rounding
-                    # when using the same unit.
-                    orig_amount=(distribute_amount + fee_amount
-                        if self.unit != funds_unit else orig_item_amount),
+                    orig_amount=item_amount,
                     orig_account=Transaction.BACKLOG,
                     orig_organization=provider)
 
@@ -1916,6 +2047,11 @@ class Charge(models.Model):
         invoiced_item = charge_item.invoiced
         if refunded_amount is None:
             refunded_amount = invoiced_item.dest_amount
+        invoiced_broker_fee = charge_item.invoiced_broker_fee
+        refunded_broker_fee_amount = 0
+        if invoiced_broker_fee:
+            # XXX partial refunds with refunded_amount
+            refunded_broker_fee_amount = invoiced_broker_fee.orig_amount
 
         balances = sum_orig_amount(self.refunded)
         if len(balances) > 1:
@@ -1932,26 +2068,33 @@ class Charge(models.Model):
    'refund_required': humanize.as_money(refunded_amount, self.unit)})
 
         charge_available_amount, provider_unit, \
-            charge_fee_amount, processor_unit \
+            charge_processor_fee_amount, processor_unit, \
+            charge_broker_fee_amount, broker_unit \
             = self.processor_backend.charge_distribution(
                 self, refunded=previously_refunded)
 
         # We execute the refund on the processor backend here such that
         # the following call to ``processor_backend.charge_distribution``
         # returns the correct ``corrected_available_amount`` and
-        # ``corrected_fee_amount``.
-        self.processor_backend.refund_charge(self, refunded_amount)
+        # ``corrected_processor_fee_amount``.
+        self.processor_backend.refund_charge(
+            self, refunded_amount, refunded_broker_fee_amount)
 
         corrected_available_amount, provider_unit, \
-            corrected_fee_amount, processor_unit \
+            corrected_processor_fee_amount, processor_unit, \
+            corrected_broker_fee_amount, broker_unit \
             = self.processor_backend.charge_distribution(
                 self, refunded=previously_refunded + refunded_amount)
 
-        charge_item.create_refund_transactions(refunded_amount,
-            charge_available_amount, charge_fee_amount,
-            corrected_available_amount, corrected_fee_amount,
-            created_at=created_at,
-            provider_unit=provider_unit, processor_unit=processor_unit)
+        charge_item.create_refund_transactions(
+            refunded_amount,
+            Price(charge_available_amount, provider_unit),
+            Price(charge_processor_fee_amount, processor_unit),
+            Price(charge_broker_fee_amount, broker_unit),
+            Price(corrected_available_amount, provider_unit),
+            Price(corrected_processor_fee_amount, processor_unit),
+            Price(corrected_broker_fee_amount, broker_unit),
+            created_at=created_at)
         username = str(user) if user is not None else '-'
         LOGGER.info("%s refunds %d %s on line item %d of charge %s to %s.",
             username, refunded_amount, self.unit, linenum, self, self.customer,
@@ -2002,11 +2145,16 @@ class ChargeItem(models.Model):
     invoiced = models.ForeignKey('Transaction', on_delete=models.PROTECT,
         related_name='invoiced_item',
         help_text=_("Transaction invoiced through this charge"))
-    invoiced_fee = models.ForeignKey('Transaction', null=True,
+    invoiced_processor_fee = models.ForeignKey('Transaction', null=True,
         on_delete=models.PROTECT,
-        related_name='invoiced_fee_item',
-        help_text=_("Fee transaction to process the transaction invoiced"\
-" through this charge"))
+        related_name='invoiced_processor_fee_item',
+        help_text=_("Fee transaction to processor in order to process"\
+            " the transaction invoiced through this charge"))
+    invoiced_broker_fee = models.ForeignKey('Transaction', null=True,
+        on_delete=models.PROTECT,
+        related_name='invoiced_broker_fee_item',
+        help_text=_("Fee transaction to broker in order to process"\
+            " the transaction invoiced through this charge"))
     invoiced_distribute = models.ForeignKey('Transaction', null=True,
         on_delete=models.PROTECT,
         related_name='invoiced_distribute',
@@ -2033,10 +2181,9 @@ class ChargeItem(models.Model):
             orig_account=Transaction.REFUNDED)
 
     def create_refund_transactions(self, refunded_amount,
-        charge_available_amount, charge_fee_amount,
-        corrected_available_amount, corrected_fee_amount,
-        created_at=None, provider_unit=None, processor_unit=None,
-        refund_type=None):
+        charge_available, charge_processor_fee, charge_broker_fee,
+        corrected_available, corrected_processor_fee, corrected_broker_fee,
+        created_at=None, refund_type=None):
         """
         Each ``ChargeItem`` can be partially refunded::
 
@@ -2048,7 +2195,11 @@ class ChargeItem(models.Model):
                 processor:Refund                         processor_fee
                 processor:Funds
 
-            yyyy/mm/dd cha_*****_*** refund of processor fee
+            yyyy/mm/dd cha_*****_*** refund of broker fee
+                processor:Refund                         broker_fee
+                broker:Funds
+
+            yyyy/mm/dd cha_*****_*** cancel distribution
                 processor:Refund                         distribute_amount
                 provider:Funds
 
@@ -2065,30 +2216,52 @@ class ChargeItem(models.Model):
                 stripe:Refund                              $5.22
                 stripe:Funds
 
+            2014/09/10 Charge ch_ABC123 refund broker fee
+                stripe:Refund                             $17.99
+                broker:Funds
+
             2014/09/10 Charge ch_ABC123 cancel distribution
-                stripe:Refund                            $174.77
+                stripe:Refund                            $156.78
                 cowork:Funds
         """
         #pylint:disable=too-many-locals,too-many-arguments,no-member
         created_at = datetime_or_now(created_at)
         if not refund_type:
             refund_type = Transaction.REFUND
+
+        charge_available_amount = charge_available.amount
+        charge_processor_fee_amount = charge_processor_fee.amount
+        charge_broker_fee_amount = charge_broker_fee.amount
+        provider_unit = charge_available.unit
+        processor_unit = charge_processor_fee.unit
+        broker_unit = charge_broker_fee.unit
+
+        corrected_available_amount = corrected_available.amount
+        corrected_processor_fee_amount = corrected_processor_fee.amount
+        corrected_broker_fee_amount = corrected_broker_fee.amount
+
         charge = self.charge
         processor = charge.processor
         invoiced_item = self.invoiced
-        invoiced_fee = self.invoiced_fee
+        broker = get_broker()
         provider = invoiced_item.orig_organization
         customer = invoiced_item.dest_organization
+
+        invoiced_processor_fee = self.invoiced_processor_fee
+        refunded_processor_fee_amount = 0
+        if invoiced_processor_fee:
+            refunded_processor_fee_amount = min(
+                charge_processor_fee_amount - corrected_processor_fee_amount,
+                invoiced_processor_fee.orig_amount)
+
+        invoiced_broker_fee = self.invoiced_broker_fee
+        refunded_broker_fee_amount = 0
+        if invoiced_broker_fee:
+            refunded_broker_fee_amount = min(
+                charge_broker_fee_amount - corrected_broker_fee_amount,
+                invoiced_broker_fee.orig_amount)
+
         invoiced_distribute = self.invoiced_distribute
-        if not processor_unit:
-            processor_unit = settings.DEFAULT_UNIT # XXX
-        if not provider_unit:
-            provider_unit = settings.DEFAULT_UNIT # XXX
-        refunded_fee_amount = 0
-        if invoiced_fee:
-            refunded_fee_amount = min(
-                charge_fee_amount - corrected_fee_amount,
-                invoiced_fee.orig_amount)
         refunded_distribute_amount = \
             charge_available_amount - corrected_available_amount
         if invoiced_distribute:
@@ -2099,16 +2272,20 @@ class ChargeItem(models.Model):
         else:
             orig_distribute = 'N/A'
         # Implementation Note:
-        # refunded_amount = refunded_distribute_amount + refunded_fee_amount
-
+        # refunded_amount = (refunded_distribute_amount
+        #     + refunded_processor_fee_amount + refunded_broker_fee_amount)
         LOGGER.debug(
             "create_refund_transactions(charge=%s, refund_amount=%d %s)"\
-            " distribute: %d %s, fee: %d %s, available: %d %s, "\
+            " distribute: %d %s,"\
+            " broker fee: %d %s,"\
+            " processor fee: %d %s out of total"\
+            " distribute: %d %s, "\
             " orig_distribute: %s",
             charge.processor_key, refunded_amount, charge.unit,
             refunded_distribute_amount, provider_unit,
-            refunded_fee_amount, processor_unit,
-            charge_available_amount, charge.unit,
+            refunded_broker_fee_amount, broker_unit,
+            refunded_processor_fee_amount, processor_unit,
+            charge_available_amount, provider_unit,
             orig_distribute)
 
         if refunded_distribute_amount > provider.funds_balance:
@@ -2121,6 +2298,10 @@ class ChargeItem(models.Model):
         refunded_distribute_amount, provider_unit),
     'descr': invoiced_item.descr})
 
+        dest_refunded_amount = (
+            refunded_distribute_amount + refunded_processor_fee_amount
+            + refunded_broker_fee_amount)
+
         with transaction.atomic():
             # Record the refund from provider to subscriber
             descr = humanize.DESCRIBE_CHARGED_CARD_REFUND % {
@@ -2132,7 +2313,7 @@ class ChargeItem(models.Model):
                 descr=descr,
                 created_at=created_at,
                 dest_unit=provider_unit,
-                dest_amount=refunded_distribute_amount + refunded_fee_amount,
+                dest_amount=dest_refunded_amount,
                 dest_account=refund_type,
                 dest_organization=provider,
                 orig_unit=charge.unit,
@@ -2140,24 +2321,43 @@ class ChargeItem(models.Model):
                 orig_account=Transaction.REFUNDED,
                 orig_organization=customer)
 
-            if invoiced_fee:
+            if invoiced_processor_fee:
                 # Refund the processor fee (if exists)
                 Transaction.objects.create(
                     event_id=get_charge_event_id(self.charge, self),
                     # The Charge id is already included in the description here.
-                    descr=invoiced_fee.descr.replace(
+                    descr=invoiced_processor_fee.descr.replace(
                         'processor fee', 'refund processor fee'),
                     created_at=created_at,
                     dest_unit=processor_unit,
-                    dest_amount=refunded_fee_amount,
+                    dest_amount=refunded_processor_fee_amount,
                     dest_account=refund_type,
                     dest_organization=processor,
                     orig_unit=processor_unit,
-                    orig_amount=refunded_fee_amount,
+                    orig_amount=refunded_processor_fee_amount,
                     orig_account=Transaction.FUNDS,
                     orig_organization=processor)
-                processor.funds_balance -= refunded_fee_amount
+                processor.funds_balance -= refunded_processor_fee_amount
                 processor.save()
+
+            if invoiced_broker_fee:
+                # Refund the processor fee (if exists)
+                Transaction.objects.create(
+                    event_id=get_charge_event_id(self.charge, self),
+                    # The Charge id is already included in the description here.
+                    descr=invoiced_broker_fee.descr.replace(
+                        'broker fee', 'refund broker fee'),
+                    created_at=created_at,
+                    dest_unit=processor_unit,
+                    dest_amount=refunded_broker_fee_amount,
+                    dest_account=refund_type,
+                    dest_organization=processor,
+                    orig_unit=processor_unit,
+                    orig_amount=refunded_broker_fee_amount,
+                    orig_account=Transaction.FUNDS,
+                    orig_organization=broker)
+                broker.funds_balance -= refunded_broker_fee_amount
+                broker.save()
 
             # cancel payment to provider
             Transaction.objects.create(
@@ -2362,7 +2562,7 @@ class Plan(SlugTitleMixin, models.Model):
     organization = models.ForeignKey(Organization, on_delete=models.CASCADE,
         related_name='plans')
     unit = models.CharField(max_length=3, default=settings.DEFAULT_UNIT)
-    # on creatiion of a subscription
+    # on creation of a subscription
     skip_optin_on_grant = models.BooleanField(default=False)
     optin_on_request = models.BooleanField(default=False)
     setup_amount = models.PositiveIntegerField(default=0,
@@ -2370,13 +2570,15 @@ class Plan(SlugTitleMixin, models.Model):
     # period billing
     period_amount = models.PositiveIntegerField(default=0,
         help_text=_('Recurring amount per period in currency unit'))
-    transaction_fee = models.PositiveIntegerField(default=0,
-        help_text=_('Fee per transaction (in per 10000).'))
-    interval = models.PositiveSmallIntegerField(
+    period_type = models.PositiveSmallIntegerField(
         choices=INTERVAL_CHOICES, default=YEARLY)
     period_length = models.PositiveSmallIntegerField(default=1,
         help_text=_('Natural period length of a subscription to the plan'\
         ' (monthly, yearly, etc.)'))
+    broker_fee_percent = models.PositiveIntegerField(
+        default=settings.BROKER_FEE_PERCENTAGE,
+        help_text=_('Broker fee per transaction (in per 10000).'))
+
     unlock_event = models.CharField(max_length=128, null=True, blank=True,
         help_text=_('Payment required to access full service'))
     advance_discount = models.PositiveIntegerField(default=0,
@@ -2416,15 +2618,15 @@ class Plan(SlugTitleMixin, models.Model):
 
     @property
     def yearly_amount(self):
-        if self.interval == Plan.HOURLY:
+        if self.period_type == Plan.HOURLY:
             amount, _ = self.advance_period_amount(365 * 24)
-        elif self.interval == Plan.DAILY:
+        elif self.period_type == Plan.DAILY:
             amount, _ = self.advance_period_amount(365)
-        elif self.interval == Plan.WEEKLY:
+        elif self.period_type == Plan.WEEKLY:
             amount, _ = self.advance_period_amount(52)
-        elif self.interval == Plan.MONTHLY:
+        elif self.period_type == Plan.MONTHLY:
             amount, _ = self.advance_period_amount(12)
-        elif self.interval == Plan.YEARLY:
+        elif self.period_type == Plan.YEARLY:
             amount, _ = self.advance_period_amount(1)
         return amount
 
@@ -2470,13 +2672,13 @@ class Plan(SlugTitleMixin, models.Model):
         return result
 
     def natural_period(self, nb_periods=1):
-        return self.get_natural_period(nb_periods, self.interval)
+        return self.get_natural_period(nb_periods, self.period_type)
 
     def natural_options(self):
         natural_periods = [1]
         if self.advance_discount > 0:
             # Give a chance for discount when paying periods in advance
-            if self.interval == self.MONTHLY:
+            if self.period_type == self.MONTHLY:
                 if self.period_length == 1:
                     natural_periods = [1, 3, 6, 12]
                 elif self.period_length == 4:
@@ -2512,15 +2714,15 @@ class Plan(SlugTitleMixin, models.Model):
 
     def humanize_period(self, nb_periods):
         result = None
-        if self.interval == self.HOURLY:
+        if self.period_type == self.HOURLY:
             result = '%d hour' % nb_periods
-        elif self.interval == self.DAILY:
+        elif self.period_type == self.DAILY:
             result = '%d day' % nb_periods
-        elif self.interval == self.WEEKLY:
+        elif self.period_type == self.WEEKLY:
             result = '%d week' % nb_periods
-        elif self.interval == self.MONTHLY:
+        elif self.period_type == self.MONTHLY:
             result = '%d month' % nb_periods
-        elif self.interval == self.YEARLY:
+        elif self.period_type == self.YEARLY:
             result = '%d year' % nb_periods
         if result and nb_periods > 1:
             result += 's'
@@ -2532,19 +2734,19 @@ class Plan(SlugTitleMixin, models.Model):
         a number of periods from a text.
         """
         result = None
-        if self.interval == self.HOURLY:
+        if self.period_type == self.HOURLY:
             pat = r'(\d+)(\s|-)hour'
-        elif self.interval == self.DAILY:
+        elif self.period_type == self.DAILY:
             pat = r'(\d+)(\s|-)day'
-        elif self.interval == self.WEEKLY:
+        elif self.period_type == self.WEEKLY:
             pat = r'(\d+)(\s|-)week'
-        elif self.interval == self.MONTHLY:
+        elif self.period_type == self.MONTHLY:
             pat = r'(\d+)(\s|-)month'
-        elif self.interval == self.YEARLY:
+        elif self.period_type == self.YEARLY:
             pat = r'(\d+)(\s|-)year'
         else:
             raise ValueError(_("period type %d is not defined.")
-                % self.interval)
+                % self.period_type)
         look = re.search(pat, text)
         if look:
             try:
@@ -2558,7 +2760,7 @@ class Plan(SlugTitleMixin, models.Model):
         Hosting service paid through a transaction fee.
         """
         # integer division
-        return (amount * self.transaction_fee) // 10000
+        return (amount * self.broker_fee_percent) // 10000
 
     def prorate_period(self, start_time, end_time):
         """
@@ -2568,25 +2770,25 @@ class Plan(SlugTitleMixin, models.Model):
         If end_time - start_time >= interval period, the value
         returned is undefined.
         """
-        if self.interval == self.HOURLY:
+        if self.period_type == self.HOURLY:
             # Hourly: fractional period is in minutes.
             # XXX integer division?
             fraction = (end_time - start_time).seconds // 3600
-        elif self.interval == self.DAILY:
+        elif self.period_type == self.DAILY:
             # Daily: fractional period is in hours.
             # XXX integer division?
             fraction = ((end_time - start_time).seconds // (3600 * 24))
-        elif self.interval == self.WEEKLY:
+        elif self.period_type == self.WEEKLY:
             # Weekly, fractional period is in days.
             # XXX integer division?
             fraction = (end_time.date() - start_time.date()).days // 7
-        elif self.interval == self.MONTHLY:
+        elif self.period_type == self.MONTHLY:
             # Monthly: fractional period is in days.
             # We divide by the maximum number of days in a month to
             # the advantage of a customer.
             # XXX integer division?
             fraction = (end_time.date() - start_time.date()).days // 31
-        elif self.interval == self.YEARLY:
+        elif self.period_type == self.YEARLY:
             # Yearly: fractional period is in days.
             # We divide by the maximum number of days in a year to
             # the advantage of a customer.
@@ -2924,30 +3126,30 @@ class Subscription(models.Model):
         """
         at_time = datetime_or_now(at_time)
         delta = at_time - self.created_at
-        if self.plan.interval == Plan.HOURLY:
+        if self.plan.period_type == Plan.HOURLY:
             estimated = relativedelta(hours=delta.total_seconds() // 3600)
             period = relativedelta(hours=1)
-        elif self.plan.interval == Plan.DAILY:
+        elif self.plan.period_type == Plan.DAILY:
             estimated = relativedelta(days=delta.days)
             period = relativedelta(days=1)
-        elif self.plan.interval == Plan.WEEKLY:
+        elif self.plan.period_type == Plan.WEEKLY:
             # XXX integer division?
             estimated = relativedelta(days=delta.days // 7)
             period = relativedelta(days=7)
-        elif self.plan.interval == Plan.MONTHLY:
+        elif self.plan.period_type == Plan.MONTHLY:
             estimated = relativedelta(at_time, self.created_at)
             estimated.normalized()
             estimated = relativedelta(
                 months=estimated.years * 12 + estimated.months)
             period = relativedelta(months=1)
-        elif self.plan.interval == Plan.YEARLY:
+        elif self.plan.period_type == Plan.YEARLY:
             estimated = relativedelta(at_time, self.created_at)
             estimated.normalized()
             estimated = relativedelta(years=estimated.years)
             period = relativedelta(years=1)
         else:
             raise ValueError(_("period type %d is not defined.")
-                % self.plan.interval)
+                % self.plan.period_type)
         lower = self.created_at + estimated # rough estimate to start
         upper = self.created_at + (estimated + period)
         while not (lower <= at_time and at_time < upper):
@@ -2966,19 +3168,19 @@ class Subscription(models.Model):
         is longer than a plan period. Use ``nb_periods`` instead.
         """
         delta = relativedelta(until, start)
-        if self.plan.interval == Plan.HOURLY:
+        if self.plan.period_type == Plan.HOURLY:
             fraction = (until - start).total_seconds() / 3600.0
-        elif self.plan.interval == Plan.DAILY:
+        elif self.plan.period_type == Plan.DAILY:
             fraction = delta.hours / 24.0
-        elif self.plan.interval == Plan.WEEKLY:
+        elif self.plan.period_type == Plan.WEEKLY:
             fraction = delta.days / 7.0
-        elif self.plan.interval == Plan.MONTHLY:
+        elif self.plan.period_type == Plan.MONTHLY:
             # The number of days in a month cannot be reliably computed
             # from [start_lower, start_upper[ if those bounds cross the 1st
             # of a month.
             fraction = ((until - start).total_seconds()
                 / (start_upper - start_lower).total_seconds())
-        elif self.plan.interval == Plan.YEARLY:
+        elif self.plan.period_type == Plan.YEARLY:
             fraction = delta.months / 12.0
         return fraction
 
@@ -2999,17 +3201,17 @@ class Subscription(models.Model):
         partial_end_period = 0
         if start_upper <= until_lower:
             delta = relativedelta(start_upper, until_lower)
-            if self.plan.interval == Plan.HOURLY:
+            if self.plan.period_type == Plan.HOURLY:
                 # Integer division?
                 estimated = (start_upper - until_lower).total_seconds() // 3600
-            elif self.plan.interval == Plan.DAILY:
+            elif self.plan.period_type == Plan.DAILY:
                 estimated = delta.days
-            elif self.plan.interval == Plan.WEEKLY:
+            elif self.plan.period_type == Plan.WEEKLY:
                 # Integer division?
                 estimated = delta.days // 7
-            elif self.plan.interval == Plan.MONTHLY:
+            elif self.plan.period_type == Plan.MONTHLY:
                 estimated = delta.months
-            elif self.plan.interval == Plan.YEARLY:
+            elif self.plan.period_type == Plan.YEARLY:
                 estimated = delta.years
             upper = self.plan.end_of_period(start_upper, nb_periods=estimated)
             if upper < until_lower:
@@ -3948,6 +4150,21 @@ class Transaction(models.Model):
     @property
     def orig_price(self):
         return Price(self.orig_amount, self.orig_unit)
+
+    @property
+    def subscription(self):
+        """
+        Returns the `Subscription` object associated to the `Transaction`
+        or `None` if it could not be deduced from the `event_id`.
+        """
+        if not hasattr(self, '_subscription'):
+            self._subscription = None
+            if self.event_id:
+                look = re.match(r'sub_(\d+)(_(\d+))?', self.event_id)
+                if look:
+                    self._subscription = Subscription.objects.get_by_event_id(
+                        self.event_id)
+        return self._subscription
 
     def is_debit(self, organization):
         '''

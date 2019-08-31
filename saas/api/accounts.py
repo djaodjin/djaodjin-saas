@@ -27,7 +27,7 @@ from rest_framework.generics import ListAPIView
 
 from .organizations import OrganizationQuerysetMixin
 from .serializers import (OrganizationSerializer, UserSerializer)
-from .. import filters, settings
+from .. import filters
 from ..mixins import (OrganizationSmartListMixin, UserSmartListMixin)
 from ..pagination import TypeaheadPagination
 
@@ -77,9 +77,9 @@ class AccountsSearchAPIView(OrganizationSmartListMixin,
     parameters. To reverse the natural order of a field, prefix the field
     name by a minus (-) sign.
 
-    **Tags: profile
+    **Tags**: profile
 
-    **Examples
+    **Examples**
 
     .. code-block:: http
 
@@ -204,9 +204,9 @@ class ProfilesTypeaheadAPIView(OrganizationSmartListMixin,
     parameters. To reverse the natural order of a field, prefix the field
     name by a minus (-) sign.
 
-    **Tags: profile
+    **Tags**: profile
 
-    **Examples
+    **Examples**
 
     .. code-block:: http
 
@@ -262,9 +262,9 @@ class UsersTypeaheadAPIView(UserSmartListMixin, UserQuerysetMixin,
     Query results can be ordered by natural fields (``o``) in either ascending
     or descending order (``ot``).
 
-    **Tags: profile
+    **Tags**: profile
 
-    **Examples
+    **Examples**
 
     .. code-block:: http
 

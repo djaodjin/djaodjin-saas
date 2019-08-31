@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# Copyright (c) 2018, DjaoDjin inc.
+# Copyright (c) 2019, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -109,6 +109,9 @@ def htmlize_money(amount_unit_tuple):
 def humanize_money(amount_unit_tuple):
     return as_money(amount_unit_tuple.amount, amount_unit_tuple.unit)
 
+@register.filter()
+def humanize_percent(percentage):
+    return "%.2f%%" % (percentage / 100)
 
 @register.filter()
 def humanize_period(period):

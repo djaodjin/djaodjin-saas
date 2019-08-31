@@ -1,4 +1,4 @@
-# Copyright (c) 2018, DjaoDjin inc.
+# Copyright (c) 2019, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -47,9 +47,9 @@ class BrokerBalancesAPIView(DateRangeContextMixin, GenericAPIView):
 
     To add lines in the report see `/api/metrics/balances/{report}/lines/`.
 
-    **Tags: metrics
+    **Tags**: metrics
 
-    **Examples
+    **Examples**
 
     .. code-block:: http
 
@@ -111,9 +111,9 @@ class BalanceLineListAPIView(ListCreateAPIView):
 
     Queries the list of rows reported on a balance sheet named `{report}`.
 
-    **Tags: metrics
+    **Tags**: metrics
 
-    **Examples
+    **Examples**
 
     .. code-block:: http
 
@@ -156,9 +156,9 @@ class BalanceLineListAPIView(ListCreateAPIView):
 
         Adds a new row on the ``{report}`` balance sheet.
 
-        **Tags: metrics
+        **Tags**: metrics
 
-        **Examples
+        **Examples**
 
         .. code-block:: http
 
@@ -193,9 +193,9 @@ class BalanceLineListAPIView(ListCreateAPIView):
         it will move the line at position 3 to position 1, updating the
         rank of all lines in-between.
 
-        **Tags: metrics
+        **Tags**: metrics
 
-        **Examples
+        **Examples**
 
         .. code-block:: http
 
@@ -244,9 +244,9 @@ class BalanceLineDetailAPIView(RetrieveUpdateDestroyAPIView):
 
     Describes a row reported on a balance sheet named `{report}`.
 
-    **Tags: metrics
+    **Tags**: metrics
 
-    **Examples
+    **Examples**
 
     .. code-block:: http
 
@@ -270,9 +270,9 @@ class BalanceLineDetailAPIView(RetrieveUpdateDestroyAPIView):
 
         Updates a row reported on a balance sheet named `{report}`.
 
-        **Tags: metrics
+        **Tags**: metrics
 
-        **Examples
+        **Examples**
 
         .. code-block:: http
 
@@ -305,9 +305,9 @@ class BalanceLineDetailAPIView(RetrieveUpdateDestroyAPIView):
 
         Deletes a row reported on a balance sheet named `{report}`.
 
-        **Tags: metrics
+        **Tags**: metrics
 
-        **Examples
+        **Examples**
 
         .. code-block:: http
 

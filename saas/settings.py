@@ -83,7 +83,8 @@ _SETTINGS = {
         'GET_INSTANCE': os.path.basename(
             getattr(settings, 'BASE_DIR', "broker")),
         'IS_INSTANCE_CALLABLE': None,
-        'BUILD_ABSOLUTE_URI_CALLABLE': None
+        'BUILD_ABSOLUTE_URI_CALLABLE': None,
+        'FEE_PERCENTAGE': 0
     },
     'BYPASS_PERMISSION_CHECK': False,
     # Do not check the auth token against the processor to set processor keys.
@@ -127,6 +128,7 @@ AUTH_USER_MODEL = getattr(
     settings, 'AUTH_USER_MODEL', 'django.contrib.auth.models.User')
 
 BROKER_CALLABLE = _SETTINGS.get('BROKER').get('GET_INSTANCE', None)
+BROKER_FEE_PERCENTAGE = _SETTINGS.get('BROKER').get('FEE_PERCENTAGE', 0)
 BUILD_ABSOLUTE_URI_CALLABLE = _SETTINGS.get('BROKER').get(
     'BUILD_ABSOLUTE_URI_CALLABLE')
 BYPASS_PROCESSOR_AUTH = _SETTINGS.get('BYPASS_PROCESSOR_AUTH')

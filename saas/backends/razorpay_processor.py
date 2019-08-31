@@ -1,4 +1,4 @@
-# Copyright (c) 2018, DjaoDjin inc.
+# Copyright (c) 2019, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -71,19 +71,25 @@ class RazorpayBackend(object):
                 'fee': 0, 'service_tax': 0, 'amount': charge.amount}
         else:
             processor_charge = self.razor.payment.fetch(charge.processor_key)
-        fee_amount = processor_charge['fee'] + processor_charge['service_tax']
-        fee_unit = unit
-        distribute_amount = processor_charge['amount'] - fee_amount
+        processor_fee_amount = (
+            processor_charge['fee'] + processor_charge['service_tax'])
+        processor_fee_unit = unit
+        distribute_amount = processor_charge['amount'] - processor_fee_amount
         distribute_unit = unit
         LOGGER.debug("charge_distribution(charge=%s, amount=%d %s)"\
             "distribute: %d %s, fee: %d %s",
             charge.processor_key, refunded, unit,
             distribute_amount, distribute_unit,
-            fee_amount, fee_unit)
-        return distribute_amount, distribute_unit, fee_amount, fee_unit
+            processor_fee_amount, processor_fee_unit)
+        broker_fee_amount = 0
+        broker_fee_unit = charge.unit
+        return (distribute_amount, distribute_unit,
+                processor_fee_amount, processor_fee_unit,
+                broker_fee_amount, broker_fee_unit)
 
-    def create_charge(self, customer, amount, unit,
-                    broker=None, descr=None, stmt_descr=None, created_at=None):
+    def create_charge(self, customer, amount, unit, provider,
+                      descr=None, stmt_descr=None, created_at=None,
+                      broker_fee_amount=0):
         #pylint: disable=too-many-arguments,unused-argument
         """
         Create a charge on the default card associated to the customer.
@@ -93,8 +99,9 @@ class RazorpayBackend(object):
         """
         raise NotImplementedError()
 
-    def create_charge_on_card(self, card, amount, unit,
-                    broker=None, descr=None, stmt_descr=None, created_at=None):
+    def create_charge_on_card(self, card, amount, unit, provider,
+                              descr=None, stmt_descr=None, created_at=None,
+                              broker_fee_amount=0):
         #pylint: disable=too-many-arguments,unused-argument
         LOGGER.debug('create_charge_on_card(amount=%s, unit=%s, descr=%s)',
             amount, unit, descr)
@@ -146,7 +153,7 @@ class RazorpayBackend(object):
                 charge.payment_successful()
         return charge
 
-    def refund_charge(self, charge, amount):
+    def refund_charge(self, charge, amount, broker_amount=0):
         """
         Full or partial refund a charge.
         """

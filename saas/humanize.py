@@ -1,4 +1,4 @@
-# Copyright (c) 2018, DjaoDjin inc.
+# Copyright (c) 2019, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -45,6 +45,9 @@ DESCRIBE_CHARGED_CARD = \
 
 DESCRIBE_CHARGED_CARD_PROCESSOR = \
     "Charge %(charge)s processor fee for %(event)s"
+
+DESCRIBE_CHARGED_CARD_BROKER = \
+    "Charge %(charge)s broker fee for %(event)s"
 
 DESCRIBE_CHARGED_CARD_PROVIDER = \
     "Charge %(charge)s distribution for %(event)s"
@@ -125,7 +128,7 @@ def as_money(value, currency=settings.DEFAULT_UNIT, negative_format="(%s)"):
 
 def describe_buy_periods(plan, ends_at, nb_periods,
     discount_percent=0, descr_suffix=None):
-    if plan.interval == HOURLY:
+    if plan.period_type == HOURLY:
         descr = (DESCRIBE_RETAINER_PERIODS %
             {'plan': plan,
              'ends_at': datetime.datetime.strftime(ends_at, '%Y/%m/%d'),

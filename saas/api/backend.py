@@ -51,7 +51,7 @@ class RetrieveBankAPIView(OrganizationMixin, RetrieveAPIView):
     of a subscription cart is done either through the
     :ref:`HTML page<pages_cart>` or :ref:`API end point<api_checkout>`.
 
-    **Examples
+    **Examples**
 
     .. code-block:: http
 
@@ -84,7 +84,7 @@ class PaymentMethodDetailAPIView(OrganizationMixin,
     Pass through to the processor to retrieve some details about
     the payment method (ex: credit card) associated to a subscriber.
 
-    **Examples
+    **Examples**
 
     .. code-block:: http
 
@@ -108,7 +108,7 @@ class PaymentMethodDetailAPIView(OrganizationMixin,
         Pass through to the processor to remove the payment method (ex: credit
         card) associated to a subscriber.
 
-        **Examples
+        **Examples**
 
         .. code-block:: http
 
@@ -126,7 +126,7 @@ class PaymentMethodDetailAPIView(OrganizationMixin,
         Pass through to the processor to update some details about
         the payment method (ex: credit card) associated to a subscriber.
 
-        **Examples
+        **Examples**
 
         .. code-block:: http
 

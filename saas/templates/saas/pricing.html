@@ -13,16 +13,11 @@
             <h2>{{plan.title}}</h2>
             {% if plan.period_price.amount > 0 %}
             <p>
-            {{plan.period_price|humanize_money}} {{plan.interval|humanize_period}}
+            {{plan.period_price|humanize_money}} {{plan.period_type|humanize_period}}
             </p>
             {% endif %}
             {% if plan.setup_amount > 0 %}
             one-time: {{plan.setup_price|humanize_money}}
-            {% endif %}
-            {% if plan.transaction_fee > 0 %}
-            <p>
-                (+Stripe per transaction costs)
-            </p>
             {% endif %}
             <div>
                 <p>

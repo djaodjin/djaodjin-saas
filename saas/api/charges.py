@@ -69,9 +69,9 @@ class ChargeResourceView(RetrieveChargeMixin, RetrieveAPIView):
 
     Pass through to the processor and returns details about a ``Charge``.
 
-    **Tags: billing
+    **Tags**: billing
 
-    **Examples
+    **Examples**
 
     .. code-block:: http
 
@@ -134,9 +134,9 @@ class ChargeListAPIView(SmartChargeListMixin,
     Query results can be ordered by natural fields (``o``) in either ascending
     or descending order (``ot``).
 
-    **Tags: billing
+    **Tags**: billing
 
-    **Examples
+    **Examples**
 
     .. code-block:: http
 
@@ -186,9 +186,9 @@ class OrganizationChargeListAPIView(SmartChargeListMixin,
     """
     List all ``Charge`` for a subscriber.
 
-    **Tags: billing
+    **Tags**: billing
 
-    **Examples
+    **Examples**
 
     .. code-block:: http
 
@@ -225,9 +225,9 @@ class ChargeRefundAPIView(RetrieveChargeMixin, CreateAPIView):
 
     Partially or totally refund all or a subset of line items on a ``Charge``.
 
-    **Tags: billing
+    **Tags**: billing
 
-    **Example
+    **Examples**
 
     .. code-block:: http
 
@@ -312,9 +312,9 @@ class EmailChargeReceiptAPIView(RetrieveChargeMixin, GenericAPIView):
     The service sends a duplicate e-mail receipt for charge `ch_XAb124EF`
     to the e-mail address of the customer, i.e. `joe@localhost.localdomain`.
 
-    **Tags: billing
+    **Tags**: billing
 
-    **Examples
+    **Examples**
 
     .. code-block:: http
 

@@ -126,9 +126,9 @@ class CartItemAPIView(CartMixin, CreateAPIView):
     payment can be made by one ``Organization`` for another ``Organization``
     to be subscribed (see :ref:`GroupBuy orders<group_buy>`).
 
-    **Tags: billing
+    **Tags**: billing
 
-    **Examples
+    **Examples**
 
     .. code-block:: http
 
@@ -223,9 +223,9 @@ class CartItemAPIView(CartMixin, CreateAPIView):
 
         Removes an item from the ``request.user`` cart.
 
-        **Tags: billing
+        **Tags**: billing
 
-        **Examples
+        **Examples**
 
         .. code-block:: http
 
@@ -263,9 +263,9 @@ class CartItemUploadAPIView(CartMixin, GenericAPIView):
     ``last_name`` and email. The CSV file must not contain a header
     line, only data.
 
-    **Tags: billing
+    **Tags**: billing
 
-    **Examples
+    **Examples**
 
     Content of ``names.csv``:
 
@@ -366,9 +366,9 @@ class CouponRedeemAPIView(GenericAPIView):
     Redeems a ``Coupon`` and applies the discount to the eligible items
     in the cart.
 
-    **Tags: billing
+    **Tags**: billing
 
-    **Examples
+    **Examples**
 
     .. code-block:: http
 
@@ -430,9 +430,9 @@ class CheckoutAPIView(CartMixin, OrganizationMixin,
     In many subscription businesses, it is possible to buy multiple
     period in advance at a discount. The options reflects that.
 
-    **Tags: billing
+    **Tags**: billing
 
-    **Examples
+    **Examples**
 
     .. code-block:: http
 
@@ -456,13 +456,13 @@ class CheckoutAPIView(CartMixin, OrganizationMixin,
                   "email":"xia@localhost.localdomain"
               },
               "plan":{
-                  "slug":"basic",
-                  "title":"Basic",
-                  "description":"Basic Plan",
-                  "is_active":true,
-                  "setup_amount":0,
-                  "period_amount":2000,
-                  "interval":4,
+                  "slug": "basic",
+                  "title": "Basic",
+                  "description": "Basic Plan",
+                  "is_active": true,
+                  "setup_amount": 0,
+                  "period_amount": 2000,
+                  "period_type": "monthly",
                   "app_url":"/app/"
               },
               "auto_renew":true
@@ -505,9 +505,9 @@ class CheckoutAPIView(CartMixin, OrganizationMixin,
         - `/api/cart/` adds or updates a cart item.
         - `/api/cart/{plan}` removes a cart item.
 
-        **Tags: billing
+        **Tags**: billing
 
-        **Examples
+        **Examples**
 
         .. code-block:: http
 

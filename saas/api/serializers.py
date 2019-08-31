@@ -446,8 +446,7 @@ class PlanSerializer(serializers.ModelSerializer):
         help_text=_("One-time amount to pay when the subscription starts"))
     period_amount = serializers.IntegerField(required=False,
         help_text=_("Amount billed every period"))
-    # XXX rename `interval` to `period`
-    interval = EnumField(choices=Plan.INTERVAL_CHOICES, required=False,
+    period_type = EnumField(choices=Plan.INTERVAL_CHOICES, required=False,
         help_text=_("Natural period for the subscription"))
     renewal_type = EnumField(choices=Plan.RENEWAL_CHOICES, required=False,
         help_text=_("Natural period for the subscription"))
@@ -466,7 +465,7 @@ class PlanSerializer(serializers.ModelSerializer):
     class Meta:
         model = Plan
         fields = ('slug', 'title', 'description', 'is_active',
-                  'setup_amount', 'period_amount', 'interval', 'app_url',
+                  'setup_amount', 'period_amount', 'period_type', 'app_url',
                   'advance_discount', 'unit', 'organization', 'extra',
                   'period_length', 'renewal_type', 'is_not_priced',
                   'created_at',
@@ -605,7 +604,9 @@ class UserSerializer(serializers.ModelSerializer):
 
 class CartItemSerializer(serializers.ModelSerializer):
     """
-    serializer for ``Coupon`` use metrics.
+    serializer for a ``CartItem`` object.
+
+    This serializer is typically used in coupon performance metrics.
     """
     user = UserSerializer(required=False)
     plan = PlanRelatedField(read_only=False, required=True)

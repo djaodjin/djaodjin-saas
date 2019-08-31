@@ -1,4 +1,4 @@
-# Copyright (c) 2018, DjaoDjin inc.
+# Copyright (c) 2019, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -102,7 +102,7 @@ def _recognize_subscription_income(subscription, until=None):
                 descr_period_end = recognize_end
                 if nb_periods == 1.0:
                     descr = humanize.DESCRIBE_RECOGNIZE_INCOME
-                    if subscription.plan.interval > Plan.DAILY:
+                    if subscription.plan.period_type > Plan.DAILY:
                         descr_period_start = recognize_start.date()
                         # shows the natural bound for "end of day".
                         descr_period_end = (

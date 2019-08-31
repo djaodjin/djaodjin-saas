@@ -42,9 +42,9 @@ class PlanListCreateAPIView(PlanMixin, ListCreateAPIView):
 
     Returns a PAGE_SIZE list of plans whose provider is {organization}.
 
-    **Tags: subscriptions
+    **Tags**: subscriptions
 
-    **Examples
+    **Examples**
 
     .. code-block:: http
 
@@ -66,7 +66,7 @@ class PlanListCreateAPIView(PlanMixin, ListCreateAPIView):
             "setup_amount": 0,
             "period_amount": 2900,
             "period_length": 1,
-            "interval": "monthly",
+            "period_type": "monthly",
             "advance_discount": 0,
             "unit": "usd",
             "is_not_priced": false,
@@ -93,9 +93,9 @@ class PlanListCreateAPIView(PlanMixin, ListCreateAPIView):
 
         Creates a subscription plan for provider {organization}.
 
-        **Tags: subscriptions
+        **Tags**: subscriptions
 
-        **Examples
+        **Examples**
 
         .. code-block:: http
 
@@ -150,9 +150,9 @@ class PlanDetailAPIView(PlanMixin, RetrieveUpdateDestroyAPIView):
     to subscribe to it, or deactivate a plan, disabling users from subscribing
     to it.
 
-    **Tags: subscriptions
+    **Tags**: subscriptions
 
-    **Examples
+    **Examples**
 
     .. code-block:: http
 
@@ -181,9 +181,9 @@ class PlanDetailAPIView(PlanMixin, RetrieveUpdateDestroyAPIView):
         be deleted. It should be de-activated instead such that no customers
         can subscribes to it.
 
-        **Tags: subscriptions
+        **Tags**: subscriptions
 
-        **Examples
+        **Examples**
 
         .. code-block:: http
 
@@ -255,9 +255,9 @@ class PlanDetailAPIView(PlanMixin, RetrieveUpdateDestroyAPIView):
         to subscribe to it, or deactivate a plan, disabling users
         from subscribing to it.
 
-        **Tags: subscriptions
+        **Tags**: subscriptions
 
-        **Examples
+        **Examples**
 
         .. code-block:: http
 

@@ -380,9 +380,9 @@ class AccessibleByListAPIView(RoleSmartListMixin, InvitedRequestedListMixin,
 
     see :doc:`Flexible Security Framework <security>`.
 
-    **Tags: rbac
+    **Tags**: rbac
 
-    **Examples
+    **Examples**
 
     .. code-block:: http
 
@@ -429,9 +429,9 @@ class AccessibleByListAPIView(RoleSmartListMixin, InvitedRequestedListMixin,
 
         see :doc:`Flexible Security Framework <security>`.
 
-        **Tags: rbac
+        **Tags**: rbac
 
-        **Examples
+        **Examples**
 
         .. code-block:: http
 
@@ -474,9 +474,9 @@ class AccessibleByDescrListAPIView(RoleSmartListMixin,
 
     see :doc:`Flexible Security Framework <security>`.
 
-    **Tags: rbac
+    **Tags**: rbac
 
-    **Examples
+    **Examples**
 
     .. code-block:: http
 
@@ -524,9 +524,9 @@ class AccessibleByDescrListAPIView(RoleSmartListMixin,
 
         see :doc:`Flexible Security Framework <security>`.
 
-        **Tags: rbac
+        **Tags**: rbac
 
-        **Examples
+        **Examples**
 
         .. code-block:: http
 
@@ -600,9 +600,9 @@ class RoleDescriptionListCreateView(RoleDescriptionQuerysetMixin,
 
     see :doc:`Flexible Security Framework <security>`.
 
-    **Tags: rbac
+    **Tags**: rbac
 
-    **Examples
+    **Examples**
 
     .. code-block:: http
 
@@ -656,9 +656,9 @@ class RoleDescriptionListCreateView(RoleDescriptionQuerysetMixin,
 
         see :doc:`Flexible Security Framework <security>`.
 
-        **Tags: rbac
+        **Tags**: rbac
 
-        **Examples
+        **Examples**
 
         .. code-block:: http
 
@@ -720,9 +720,9 @@ class RoleDescriptionDetailView(RoleDescriptionQuerysetMixin,
 
     see :doc:`Flexible Security Framework <security>`.
 
-    **Tags: rbac
+    **Tags**: rbac
 
-    **Examples
+    **Examples**
 
     .. code-block:: http
 
@@ -763,9 +763,9 @@ class RoleDescriptionDetailView(RoleDescriptionQuerysetMixin,
 
         see :doc:`Flexible Security Framework <security>`.
 
-        **Tags: rbac
+        **Tags**: rbac
 
-        **Examples
+        **Examples**
 
         .. code-block:: http
 
@@ -780,9 +780,9 @@ class RoleDescriptionDetailView(RoleDescriptionQuerysetMixin,
 
         see :doc:`Flexible Security Framework <security>`.
 
-        **Tags: rbac
+        **Tags**: rbac
 
-        **Examples
+        **Examples**
 
         .. code-block:: http
 
@@ -842,9 +842,9 @@ class RoleListAPIView(RoleSmartListMixin, InvitedRequestedListMixin,
     """
     Lists roles for an organization
 
-    **Tags: rbac
+    **Tags**: rbac
 
-    **Examples
+    **Examples**
 
     .. code-block:: http
 
@@ -933,9 +933,9 @@ class RoleByDescrListAPIView(RoleSmartListMixin, RoleByDescrQuerysetMixin,
 
     Lists the specified role assignments for an organization.
 
-    **Tags: rbac
+    **Tags**: rbac
 
-    **Examples
+    **Examples**
 
     .. code-block:: http
 
@@ -1032,9 +1032,9 @@ class RoleByDescrListAPIView(RoleSmartListMixin, RoleByDescrQuerysetMixin,
         permissions to the user with regards to managing an organization profile
         (see :doc:`Flexible Security Framework <security>`).
 
-        **Tags: rbac
+        **Tags**: rbac
 
-        **Examples
+        **Examples**
 
         .. code-block:: http
 
@@ -1069,9 +1069,9 @@ class RoleDetailAPIView(RoleMixin, DestroyAPIView):
         Re-sends the invite e-mail that the user was granted a role
         on the organization.
 
-        **Tags: rbac
+        **Tags**: rbac
 
-        **Examples
+        **Examples**
 
         .. code-block:: http
 
@@ -1120,9 +1120,9 @@ class RoleDetailAPIView(RoleMixin, DestroyAPIView):
         typically resulting in revoking permissions from this user to manage
         part of an organization profile.
 
-        **Tags: rbac
+        **Tags**: rbac
 
-        **Examples
+        **Examples**
 
         .. code-block:: http
 
@@ -1156,9 +1156,9 @@ class AccessibleDetailAPIView(RoleDetailAPIView):
         Re-sends the request e-mail that the user is requested a role
         on the organization.
 
-        **Tags: rbac
+        **Tags**: rbac
 
-        **Examples
+        **Examples**
 
         .. code-block:: http
 
@@ -1208,9 +1208,9 @@ class AccessibleDetailAPIView(RoleDetailAPIView):
         typically resulting in revoking permissions from this user to manage
         part of an organization profile.
 
-        **Tags: rbac
+        **Tags**: rbac
 
-        **Examples
+        **Examples**
 
         .. code-block:: http
 
@@ -1230,9 +1230,9 @@ class RoleAcceptAPIView(UserMixin, GenericAPIView):
 
         Accepts a role on an organization.
 
-        **Tags: rbac
+        **Tags**: rbac
 
-        **Examples
+        **Examples**
 
         .. code-block:: http
 

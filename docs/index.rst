@@ -22,6 +22,7 @@ Contents:
 
    getting-started
    subscriptions
+   pricing
    orders
    ledger
    security

@@ -65,9 +65,9 @@ class SubscriberSubscriptionListAPIView(SubscriptionSmartListMixin,
     The queryset can be further refined to match a search filter (``q``)
     and sorted on specific fields (``o``).
 
-    **Tags: subscriptions
+    **Tags**: subscriptions
 
-    **Examples
+    **Examples**
 
     .. code-block:: http
 
@@ -100,7 +100,7 @@ class SubscriberSubscriptionListAPIView(SubscriptionSmartListMixin,
                         "is_active": true,
                         "setup_amount": 0,
                         "period_amount": 17999,
-                        "interval": 4,
+                        "period_type": "monthly",
                         "app_url": "http://localhost:8020/app"
                     },
                     "auto_renew": true
@@ -121,9 +121,9 @@ class SubscriptionDetailAPIView(SubscriptionMixin,
 
     Returns the subscription of {organization} to {subscribed_plan}.
 
-    **Tags: subscriptions
+    **Tags**: subscriptions
 
-    **Examples
+    **Examples**
 
     .. code-block:: http
 
@@ -190,9 +190,9 @@ class SubscriptionDetailAPIView(SubscriptionMixin,
 
         Unsubscribes {organization} from {subscribed_plan}.
 
-        **Tags: subscriptions
+        **Tags**: subscriptions
 
-        **Examples
+        **Examples**
 
         .. code-block:: http
 
@@ -225,9 +225,9 @@ class PlanSubscriptionsAPIView(SubscriptionSmartListMixin,
     Returns a PAGE_SIZE records of subscriptions to {plan} provided by
     {organization}.
 
-    **Tags: subscriptions
+    **Tags**: subscriptions
 
-    **Examples
+    **Examples**
 
     .. code-block:: http
 
@@ -291,9 +291,9 @@ class PlanSubscriptionsAPIView(SubscriptionSmartListMixin,
 
         Subscribes a customer to the {plan} provided by {organization}.
 
-        **Tags: subscriptions
+        **Tags**: subscriptions
 
-        **Examples
+        **Examples**
 
         .. code-block:: http
 
@@ -357,9 +357,9 @@ class PlanSubscriptionDetailAPIView(ProviderMixin, SubscriptionDetailAPIView):
     Returns the subscription of {subscriber} to {plan} from provider
     {organization}.
 
-    **Tags: subscriptions
+    **Tags**: subscriptions
 
-    **Examples
+    **Examples**
 
     .. code-block:: http
 
@@ -432,9 +432,9 @@ class PlanSubscriptionDetailAPIView(ProviderMixin, SubscriptionDetailAPIView):
 
         Unsubscribes {subscriber} from {plan} provided by {organization}.
 
-        **Tags: subscriptions
+        **Tags**: subscriptions
 
-        **Examples
+        **Examples**
 
         .. code-block:: http
 
@@ -452,9 +452,9 @@ class PlanSubscriptionDetailAPIView(ProviderMixin, SubscriptionDetailAPIView):
         Updates the subscription of {subscriber} to {plan} from provider
         {organization}.
 
-        **Tags: subscriptions
+        **Tags**: subscriptions
 
-        **Examples
+        **Examples**
 
         .. code-block:: http
 
@@ -548,9 +548,9 @@ class ActiveSubscriptionAPIView(SubscriptionSmartListMixin,
     Query results can be ordered by natural fields (``o``) in either ascending
     or descending order (``ot``).
 
-    **Tags: metrics
+    **Tags**: metrics
 
-    **Examples
+    **Examples**
 
     .. code-block:: http
 
@@ -615,9 +615,9 @@ class ChurnedSubscriptionAPIView(SubscriptionSmartListMixin,
     The queryset can be further filtered by passing a ``q`` parameter.
     The result queryset can be ordered.
 
-    **Tags: metrics
+    **Tags**: metrics
 
-    **Examples
+    **Examples**
 
     .. code-block:: http
 
@@ -667,9 +667,9 @@ class SubscriptionRequestAcceptAPIView(CreateAPIView):
 
     Accepts a subscription request.
 
-    **Tags: rbac
+    **Tags**: rbac
 
-    **Examples
+    **Examples**
 
     .. code-block:: http
 

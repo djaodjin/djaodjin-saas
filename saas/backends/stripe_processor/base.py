@@ -66,6 +66,7 @@ import datetime, logging, re
 from hashlib import sha512
 from base64 import b64encode
 
+from django.db import transaction
 from django.utils import six
 from django.utils.translation import ugettext_lazy as _
 import requests, stripe
@@ -94,9 +95,15 @@ class StripeBackend(object):
         self.client_id = settings.PROCESSOR.get('CLIENT_ID', None)
         self.mode = settings.PROCESSOR.get('MODE', self.LOCAL)
 
-    def get_processor_charge(self, charge):
+    def get_processor_charge(self, charge, includes_fee=False):
         stripe_charge = None
-        kwargs = self._prepare_charge_request(charge.broker)
+        headers = self._prepare_charge_request(charge.broker)
+        kwargs = headers
+        if includes_fee:
+            kwargs = {}
+            kwargs.update(headers)
+            kwargs.update({'expand': ['application_fee',
+                'balance_transaction', 'refunds.data.balance_transaction']})
         try:
             stripe_charge = stripe.Charge.retrieve(
                 charge.processor_key, **kwargs)
@@ -109,14 +116,14 @@ class StripeBackend(object):
                 kwargs = self._prepare_request()
                 stripe_charge = stripe.Charge.retrieve(
                     charge.processor_key, **kwargs)
-        return stripe_charge, kwargs
+        return stripe_charge, headers
 
     @staticmethod
     def _is_platform(provider):
         return provider._state.db == 'default' and is_broker(provider)
 
     def _prepare_request(self):
-        stripe.api_version = '2018-09-06'
+        stripe.api_version = '2019-08-14'
         stripe.api_key = self.priv_key
         return {}
 
@@ -177,46 +184,76 @@ class StripeBackend(object):
 
     def charge_distribution(self, charge,
                             refunded=0, unit=settings.DEFAULT_UNIT):
-        if charge.unit != unit:
-            # Avoids an HTTP request to Stripe API when we can compute it.
-            stripe_charge, kwargs = self.get_processor_charge(charge)
-            balance_transactions = stripe.BalanceTransaction.list(
-                source=charge.processor_key, **kwargs)
-            # You would think to get all BalanceTransaction related to
-            # the charge here but it is incorrect. You only get
-            # the BalanceTransaction related to the original Charge.
-            assert len(balance_transactions.data) == 1
-            fee_unit = balance_transactions.data[0].currency
-            fee_amount = balance_transactions.data[0].fee
-            distribute_unit = balance_transactions.data[0].currency
-            distribute_amount = balance_transactions.data[0].amount
-            for refund in stripe_charge.refunds:
+        stripe_charge, kwargs = self.get_processor_charge(
+            charge, includes_fee=True)
+        LOGGER.debug("charge_distribution(charge=%s, refunded=%d, unit=%s)"\
+            " => stripe_charge=\n%s", charge.processor_key, refunded, unit,
+            stripe_charge)
+        balance_transaction = stripe_charge.balance_transaction
+        if isinstance(balance_transaction, six.string_types):
+            balance_transaction = stripe.BalanceTransaction.retrieve(
+                    stripe_charge.balance_transaction, **kwargs)
+            LOGGER.debug(
+                "charge_distribution(charge=%s, refunded=%d, unit=%s)"\
+                " => balance_transaction=\n%s", charge.processor_key,
+                refunded, unit, balance_transaction)
+
+        distribute_amount = balance_transaction.net
+        distribute_unit = balance_transaction.currency
+        broker_fee_amount = 0
+        broker_fee_unit = distribute_unit
+        processor_fee_amount = 0
+        processor_fee_unit = distribute_unit
+        for stripe_fee in balance_transaction.fee_details:
+            if stripe_fee.type == 'application_fee':
+                broker_fee_amount = stripe_fee.amount
+                broker_fee_unit = stripe_fee.currency
+            elif stripe_fee.type == 'stripe_fee':
+                processor_fee_amount = stripe_fee.amount
+                processor_fee_unit = stripe_fee.currency
+
+        for refund in stripe_charge.refunds:
+            balance_transaction = refund.balance_transaction
+            if isinstance(balance_transaction, six.string_types):
                 balance_transaction = stripe.BalanceTransaction.retrieve(
-                    refund.balance_transaction, **kwargs)
-                # fee and amount are negative
-                fee_amount += balance_transaction.fee
-                distribute_amount += balance_transaction.amount
-        else:
-            # Stripe processing fee associated to a transaction
-            # is 2.9% + 30 cents.
-            # Stripe rounds up so we do the same here. Be careful Python 3.x
-            # semantics are broken and will return a float instead of a int.
-            fee_unit = charge.unit
-            available_amount = charge.amount - refunded
-            if available_amount > 0:
-                # integer division
-                fee_amount = (available_amount * 290 + 5000) // 10000 + 30
-                assert isinstance(fee_amount, six.integer_types)
-            else:
-                fee_amount = 0
-            distribute_amount = available_amount - fee_amount
-            distribute_unit = charge.unit
-        LOGGER.debug("charge_distribution(charge=%s, amount=%d %s)"\
-            "distribute: %d %s, fee: %d %s",
+                    balance_transaction, **kwargs)
+                LOGGER.debug(
+                    "charge_distribution(charge=%s, refunded=%d, unit=%s)"\
+                    " => balance_transaction=\n%s", charge.processor_key,
+                    refunded, unit, balance_transaction)
+            # All amounts in refunds are negative
+            distribute_amount += balance_transaction.net
+            for stripe_fee in balance_transaction.fee_details:
+                if stripe_fee.type == 'stripe_fee':
+                    processor_fee_amount += stripe_fee.amount
+
+        # Refunds of broker fee do not appear in refunds
+        # but in application_fee.refunds instead.
+        application_fee = stripe_charge.application_fee
+        if application_fee:
+            if isinstance(application_fee, six.string_types):
+                application_fee = stripe.ApplicationFee.retrieve(
+                    application_fee, **kwargs)
+                LOGGER.debug(
+                    "charge_distribution(charge=%s, refunded=%d, unit=%s)"\
+                    " => application_fee=\n%s", charge.processor_key,
+                    refunded, unit, application_fee)
+            for stripe_fee in application_fee.refunds.data:
+                if stripe_fee.object == 'fee_refund':
+                    broker_fee_amount -= stripe_fee.amount
+                    distribute_amount += stripe_fee.amount
+
+        LOGGER.debug("charge_distribution(charge=%s, refunded=%d, unit=%s)"\
+            " distribute: %d %s,"\
+            " broker fee: %d %s,"\
+            " processor fee: %d %s",
             charge.processor_key, refunded, unit,
             distribute_amount, distribute_unit,
-            fee_amount, fee_unit)
-        return distribute_amount, distribute_unit, fee_amount, fee_unit
+            broker_fee_amount, broker_fee_unit,
+            processor_fee_amount, processor_fee_unit)
+        return (distribute_amount, distribute_unit,
+                processor_fee_amount, processor_fee_unit,
+                broker_fee_amount, broker_fee_unit)
 
     def connect_auth(self, organization, code):
         # setting those values to None in case the code has been used
@@ -243,11 +280,11 @@ class StripeBackend(object):
             resp._content = '{"stripe_publishable_key": "123456789",'\
                 '"access_token": "123456789",'\
                 '"stripe_user_id": "123456789",'\
-                '"refresh_token": "123456789"}'
+                '"refresh_token": "123456789"}'.encode('utf-8')
         # Grab access_token (use this as your user's API key)
         data = resp.json()
         if resp.status_code != 200:
-            LOGGER.info("[connect_auth] error headers: %s", resp.headers)
+            LOGGER.debug("[connect_auth] error headers: %s", resp.headers)
             raise ProcessorError(
                 message="%s: %s" % (data['error'], data['error_description']))
         LOGGER.debug("%s Stripe API returned: %s", organization, data)
@@ -259,28 +296,30 @@ class StripeBackend(object):
         organization.processor_deposit_key = data.get('stripe_user_id')
         organization.processor_refresh_token = data.get('refresh_token')
 
-    def _create_charge(self, amount, unit,
-            broker=None, descr=None, stmt_descr=None,
-            customer=None, card=None, created_at=None):
+    def _create_charge(self, amount, unit, provider,
+            descr=None, stmt_descr=None, created_at=None,
+            broker_fee_amount=0, customer=None, card=None):
         #pylint: disable=too-many-arguments
         assert customer is not None or card is not None
-        kwargs = self._prepare_charge_request(broker)
-        if self.mode == self.FORWARD and not self._is_platform(broker):
+        kwargs = self._prepare_charge_request(provider)
+        if self.mode == self.FORWARD and not self._is_platform(provider):
             # We generate Stripe data into the StripeConnect account.
-            if not broker.processor_deposit_key:
+            if not provider.processor_deposit_key:
                 raise ProcessorError(
                     _("%(organization)s is not connected to a Stripe account."
-                    ) % {'organization': broker})
-            kwargs.update({'destination': broker.processor_deposit_key})
+                    ) % {'organization': provider})
+            kwargs.update({'destination': provider.processor_deposit_key})
         if customer is not None:
             kwargs.update({'customer': customer})
         elif card is not None:
             kwargs.update({'card': card})
-        if stmt_descr is None and broker is not None:
-            stmt_descr = broker.printable_name
+        if broker_fee_amount:
+            kwargs.update({'application_fee_amount': broker_fee_amount})
+        if stmt_descr is None and provider is not None:
+            stmt_descr = provider.printable_name
 
         key = self.generate_idempotent_key(amount,
-            unit, broker, descr, stmt_descr, created_at,
+            unit, provider, descr, stmt_descr, created_at,
             customer, card)
         if key:
             kwargs.update({'idempotency_key': key})
@@ -290,6 +329,10 @@ class StripeBackend(object):
                 description=descr, statement_descriptor=stmt_descr[:15],
                 **kwargs)
             processor_key = processor_charge.id
+            LOGGER.debug("stripe.Charge.create(amount=%d, currency=%s,"\
+                " description=%s, statement_descriptor=%s, kwargs=%s)"\
+                " =>\n%s", amount, unit, descr, stmt_descr, kwargs,
+                str(processor_charge))
             if created_at is None:
                 # Implementation Note:
                 #  We don't blindly use the `created` field from the Stripe
@@ -313,33 +356,50 @@ class StripeBackend(object):
             raise CardError(str(err), err.code,
                 charge_processor_key=err.json_body['error']['charge'],
                 backend_except=err)
+        except stripe.error.PermissionError as err:
+            # It is possible we no longer have access to the connected account.
+            LOGGER.exception("invalid permission attempting to charge %s"\
+                " on behalf of %s.", customer, provider)
+            with transaction.atomic():
+                # We want this update to be committed even if other transactions
+                # are unwind on the exception.
+                provider.processor_pub_key = None
+                provider.processor_priv_key = None
+                provider.processor_deposit_key = None
+                provider.processor_refresh_token = None
+                provider.save()
+            raise ProcessorError(str(err), backend_except=err)
         except stripe.error.IdempotencyError as err:
             LOGGER.error(err)
         return (processor_key, created_at, receipt_info)
 
-    def create_charge(self, customer, amount, unit,
-                    broker=None, descr=None, stmt_descr=None, created_at=None):
+    def create_charge(self, customer, amount, unit, provider=None,
+                      descr=None, stmt_descr=None, created_at=None,
+                      broker_fee_amount=0):
         #pylint: disable=too-many-arguments
         """
         Create a charge on the default card associated to the customer.
 
         *stmt_descr* can only be 15 characters maximum.
         """
-        return self._create_charge(amount, unit,
-            broker=broker, descr=descr, stmt_descr=stmt_descr,
-            customer=customer.processor_card_key, created_at=created_at)
+        return self._create_charge(amount, unit, provider,
+            descr=descr, stmt_descr=stmt_descr, created_at=created_at,
+            broker_fee_amount=broker_fee_amount,
+            customer=customer.processor_card_key)
 
-    def create_charge_on_card(self, card, amount, unit,
-                    broker=None, descr=None, stmt_descr=None, created_at=None):
+    def create_charge_on_card(self, card, amount, unit, provider,
+                    descr=None, stmt_descr=None, created_at=None,
+                    broker_fee_amount=0):
         #pylint: disable=too-many-arguments
         """
         Create a charge on a specified card.
 
         *stmt_descr* can only be 15 characters maximum.
         """
-        return self._create_charge(amount, unit,
-            broker=broker, descr=descr, stmt_descr=stmt_descr,
-            card=card, created_at=created_at)
+        return self._create_charge(amount, unit, provider,
+            descr=descr, stmt_descr=stmt_descr, created_at=created_at,
+            broker_fee_amount=broker_fee_amount,
+            card=card)
 
     def create_transfer(self, provider, amount, currency, descr=None):
         """
@@ -462,12 +522,27 @@ class StripeBackend(object):
             subscriber.processor_card_key = p_customer.id
             # We rely on ``update_card`` to do the ``save``.
 
-    def refund_charge(self, charge, amount):
+    def refund_charge(self, charge, amount, broker_amount):
         """
         Refund a charge on the associated card.
         """
-        stripe_charge, _ = self.get_processor_charge(charge)
-        stripe_charge.refund(amount=amount)
+        kwargs = self._prepare_charge_request(charge.broker)
+        refund = stripe.Refund.create(
+            charge=charge.processor_key,
+            amount=amount,
+            refund_application_fee=False,
+            expand=['charge'],
+            **kwargs)
+        LOGGER.debug("refund_charge(charge=%s, amount=%d, broker_amount=%d)"\
+            " => refund=\n%s", charge.processor_key, amount, broker_amount,
+            refund)
+        if broker_amount > 0:
+            application_fee_refund = stripe.ApplicationFee.create_refund(
+                refund.charge.application_fee, amount=broker_amount)
+            LOGGER.debug(
+                "refund_charge(charge=%s, amount=%d, broker_amount=%d)"\
+                " => application_fee_refund=\n%s", charge.processor_key, amount,
+                broker_amount, application_fee_refund)
 
     def get_authorize_url(self, provider, client_id=None, redirect_uri=None):
         if self._is_platform(provider):
