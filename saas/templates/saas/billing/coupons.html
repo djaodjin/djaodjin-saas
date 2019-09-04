@@ -77,6 +77,32 @@
                            tooltip-trigger="focus"
                            tooltip-placement="top">
                 </td>
+                <td>
+                   <span v-show="!coupon._editAttempts">Use limit:</span>
+                   <span @click="editAttempts(coupon)"
+                     v-show="!coupon._editAttempts">
+                     [[coupon.nb_attempts ? coupon.nb_attempts : 'No limit']]
+                   </span>
+                   <input type="text" @blur="saveAttempts(coupon)"
+                       @keyup.13="saveAttempts(coupon)"
+                       v-model="coupon.nb_attempts"
+                       :ref="'editAttempts_' + coupon.code"
+                       v-show="coupon._editAttempts">
+                </td>
+                <td>
+                   <span v-show="!coupon._editPlan">Plan:</span>
+                   <span @click="editPlan(coupon)"
+                     v-show="!coupon._editPlan">
+                     [[planTitle(coupon.plan)]]
+                   </span>
+                   <select @blur="savePlan(coupon)" @keyup.13="savePlan(coupon)"
+                       v-model="coupon.plan"
+                       :ref="'editPlan_' + coupon.code"
+                       v-show="coupon._editPlan">
+                         <option value="">Select plan</option>
+                         <option :value="plan.slug" v-for="plan in plans">[[plan.title]]</option>
+                   </select>
+                </td>
                 <td>[[coupon.created_at | formatDate]]</td>
                 <td><button ng-click="remove($index)" @click="remove(index)">Remove</button></td>
             </tr>

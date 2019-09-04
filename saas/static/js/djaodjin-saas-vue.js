@@ -1330,7 +1330,8 @@ new Vue({
             percent: ''
         },
         edit_description: [],
-        date: null
+        date: null,
+        plans: []
     },
     methods: {
         remove: function(idx){
@@ -1340,10 +1341,11 @@ new Vue({
                 vm.get();
             });
         },
-        update: function(coupon){
+        update: function(coupon, cb){
             var vm = this;
             vm.reqPut(vm.url + '/' + coupon.code, coupon, function(resp){
                 vm.get();
+                if(cb) cb();
             });
         },
         save: function(){
@@ -1355,6 +1357,43 @@ new Vue({
                     percent: ''
                 }
             });
+        },
+        getPlans: function(){
+            var vm = this;
+            vm.reqGet(djaodjinSettings.urls.provider.api_plans,
+                {active: true}, function(res){
+                vm.plans = res.results;
+            });
+        },
+        editPlan: function(item){
+            var vm = this;
+            vm.$set(item, '_editPlan', true);
+            vm.$nextTick(function(){
+                vm.$refs['editPlan_' + item.code][0].focus();
+            });
+        },
+        savePlan: function(item){
+            var vm = this;
+            if(!item._editPlan) return;
+            vm.update(item, function(){
+                vm.$set(item, '_editPlan', false);
+                delete item._editPlan;
+            });
+        },
+        editAttempts: function(item){
+            var vm = this;
+            vm.$set(item, '_editAttempts', true);
+            vm.$nextTick(function(){
+                vm.$refs['editAttempts_' + item.code][0].focus();
+            });
+        },
+        saveAttempts: function(item){
+            var vm = this;
+            if(!item._editAttempts) return;
+            vm.update(item, function(){
+                vm.$set(item, '_editAttempts', false);
+                delete item._editAttempts;
+            })
         },
         editDescription: function(idx){
             var vm = this;
@@ -1383,9 +1422,22 @@ new Vue({
             }
             this.update(coupon);
         },
+        planTitle: function(slug){
+            var title = gettext('No plan');
+            if(this.plans.length > 0){
+                this.plans.forEach(function(e){
+                    if(e.slug === slug){
+                        title = e.title;
+                        return;
+                    }
+                });
+            }
+            return title;
+        },
     },
     mounted: function(){
         this.get()
+        this.getPlans()
     }
 })
 }
