@@ -1420,7 +1420,7 @@ new Vue({
             this.update(coupon);
         },
         planTitle: function(slug){
-            var title = 'No plan';
+            var title = gettext('No plan');
             if(this.plans.length > 0){
                 this.plans.forEach(function(e){
                     if(e.slug === slug){

@@ -23,7 +23,9 @@
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 from __future__ import unicode_literals
 
+from django.utils.translation import ugettext_lazy as _
 from rest_framework import serializers
+from rest_framework.exceptions import ValidationError
 from rest_framework.generics import (ListCreateAPIView,
     RetrieveUpdateDestroyAPIView)
 
@@ -40,8 +42,10 @@ class CouponSerializer(serializers.ModelSerializer):
     plan = PlanRelatedField(required=False, allow_null=True)
 
     def validate_plan(self, plan):
-        if plan and plan.is_active:
-            return plan
+        if plan and not plan.is_active:
+            raise ValidationError(_("The plan is inactive. "\
+                "As a result the coupon will have no effect."))
+        return plan
 
     class Meta:
         model = Coupon
