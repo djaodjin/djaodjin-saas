@@ -30,42 +30,23 @@ from rest_framework.generics import (ListCreateAPIView,
 from ..filters import OrderingFilter, SearchFilter, DateRangeFilter
 from ..models import Coupon, Plan
 from ..mixins import CouponMixin, ProviderMixin
-from .serializers import PlanSerializer as BasePlanSerializer
+from .serializers import PlanRelatedField
 
 #pylint: disable=no-init
 #pylint: disable=old-style-class
 
 
-class PlanSerializer(BasePlanSerializer):
-    # otherwise results in a weird error:
-    # plan with this slug already exists
-    slug = serializers.CharField(allow_blank=True, allow_null=True)
-
-    class Meta(BasePlanSerializer.Meta):
-        read_only_fields = [f for f in
-            BasePlanSerializer.Meta.read_only_fields if f != 'slug']
-
-
 class CouponSerializer(serializers.ModelSerializer):
-    plan = PlanSerializer(required=False, allow_null=True)
+    plan = PlanRelatedField(required=False, allow_null=True)
 
-    # writeable nested relationship require manual handling
+    # writeable nested relationship requires manual handling
     # https://www.django-rest-framework.org/api-guide/relations/
     # #writable-nested-serializers
     def save(self, **kwargs):
         plan = self.validated_data.get('plan')
-        if plan:
-            # we only care about slug
+        if plan and plan.is_active:
             del self.validated_data['plan']
-            if plan['slug']:
-                try:
-                    plan = self.instance.provider.plans.get(
-                        slug=plan['slug'], is_active=True)
-                    self.validated_data['plan_id'] = plan.id
-                except Plan.DoesNotExist:
-                    pass
-            else:
-                self.validated_data['plan_id'] = None
+            self.validated_data['plan_id'] = plan.id
         return super(CouponSerializer, self).save(**kwargs)
 
     class Meta:

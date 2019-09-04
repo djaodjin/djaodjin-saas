@@ -1326,24 +1326,11 @@ new Vue({
             code: '',
             percent: ''
         },
-        getCb: 'getAndPrepareData',
         edit_description: [],
         date: null,
         plans: []
     },
     methods: {
-        getAndPrepareData: function(res){
-            var vm = this;
-            res.results.map(function(e){
-                e.plan_slug = e.plan ? e.plan.slug : '';
-            });
-            if(vm.mergeResults){
-                res.results = vm.items.results.concat(res.results);
-            }
-            vm.items = res;
-            vm.itemsLoaded = true;
-            return res
-        },
         remove: function(idx){
             var vm = this;
             var code = this.items.results[idx].code;
@@ -1353,10 +1340,6 @@ new Vue({
         },
         update: function(coupon, cb){
             var vm = this;
-            if(coupon.plan){
-                // otherwise serializer raises plan-related error
-                coupon.plan = {slug: coupon.plan.slug}
-            }
             vm.reqPut(vm.url + '/' + coupon.code, coupon, function(resp){
                 vm.get();
                 if(cb) cb();
@@ -1375,7 +1358,7 @@ new Vue({
         getPlans: function(){
             var vm = this;
             vm.reqGet(djaodjinSettings.urls.provider.api_plans,
-                {is_active: true}, function(res){
+                {active: true}, function(res){
                 vm.plans = res.results;
             });
         },
@@ -1389,15 +1372,10 @@ new Vue({
         savePlan: function(item){
             var vm = this;
             if(!item._editPlan) return;
-            if(item.plan && item.plan.slug == item.plan_slug){
+            vm.update(item, function(){
                 vm.$set(item, '_editPlan', false);
                 delete item._editPlan;
-            } else {
-                vm.update(item, function(){
-                    vm.$set(item, '_editPlan', false);
-                    delete item._editPlan;
-                });
-            }
+            });
         },
         editAttempts: function(item){
             var vm = this;
@@ -1440,6 +1418,18 @@ new Vue({
                 coupon.ends_at = null;
             }
             this.update(coupon);
+        },
+        planTitle: function(slug){
+            var title = 'No plan';
+            if(this.plans.length > 0){
+                this.plans.forEach(function(e){
+                    if(e.slug === slug){
+                        title = e.title;
+                        return;
+                    }
+                });
+            }
+            return title;
         },
     },
     mounted: function(){
