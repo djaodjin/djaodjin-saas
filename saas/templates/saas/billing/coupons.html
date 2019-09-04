@@ -93,10 +93,10 @@
                    <span v-show="!coupon._editPlan">Plan:</span>
                    <span @click="editPlan(coupon)"
                      v-show="!coupon._editPlan">
-                     [[coupon.plan ? coupon.plan.title : 'No plan']]
+                     [[planTitle(coupon.plan)]]
                    </span>
                    <select @blur="savePlan(coupon)" @keyup.13="savePlan(coupon)"
-                       v-model="coupon.plan_slug"
+                       v-model="coupon.plan"
                        :ref="'editPlan_' + coupon.code"
                        v-show="coupon._editPlan">
                          <option value="">Select plan</option>

@@ -39,15 +39,9 @@ from .serializers import PlanRelatedField
 class CouponSerializer(serializers.ModelSerializer):
     plan = PlanRelatedField(required=False, allow_null=True)
 
-    # writeable nested relationship requires manual handling
-    # https://www.django-rest-framework.org/api-guide/relations/
-    # #writable-nested-serializers
-    def save(self, **kwargs):
-        plan = self.validated_data.get('plan')
+    def validate_plan(self, plan):
         if plan and plan.is_active:
-            del self.validated_data['plan']
-            self.validated_data['plan_id'] = plan.id
-        return super(CouponSerializer, self).save(**kwargs)
+            return plan
 
     class Meta:
         model = Coupon
