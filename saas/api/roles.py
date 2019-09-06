@@ -313,8 +313,12 @@ class OptinBase(OrganizationDecorateMixin, OrganizationCreateMixin):
         # while expecting a single object.
         # XXX There is currently a single relation created due to statement
         # `organizations = [organization]` earlier in the code.
-        resp_serializer = self.get_serializer(notified[0])
-        return Response(resp_serializer.data, status=resp_status,
+        if notified:
+            resp_serializer = self.get_serializer(notified[0])
+            result = resp_serializer.data
+        else:
+            result = None
+        return Response(result, status=resp_status,
             headers=self.get_success_headers(serializer.validated_data))
 
 

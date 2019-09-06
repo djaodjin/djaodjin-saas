@@ -1021,7 +1021,8 @@ var sortableMixin = {
             var vm = this;
             var res = {};
             if(vm.params.o){
-                var fields = vm.params.o.split(',');
+                var fields = (typeof vm.params.o === 'string') ?
+                    vm.params.o.split(',') : vm.params.o;
                 fields.forEach(function(e){
                     if(!e) return;
                     if(e[0] === DESC_SORT_PRE){
@@ -1102,12 +1103,14 @@ var userRelationMixin = {
                 if( ob.request_key ) { vm.items.requested_count -= 1; }
             });
         },
+        refresh: function() {
+            vm.showInvited = true;
+        },
         saveUserRelation: function(slug){
             var vm = this;
             vm.reqPost(vm.url, {slug: slug},
                 function(resp){
-                    vm.showInvited = true;
-                    vm.get();
+                    vm.refresh();
                 }, function(resp){
                     vm.handleNewUser(slug);
                 }
@@ -1132,10 +1135,33 @@ var userRelationMixin = {
             var vm = this;
             var data = vm.unregistered;
             vm.reqPost(vm.url + "?force=1", data, function(resp){
-                vm.showInvited = true;
-                vm.get();
+                vm.refresh();
             });
-        }
+        },
+        updateParams: function(){
+            var vm = this;
+            vm.params.role_status = vm.roleStatus;
+            if(vm.showInvited || vm.showRequested){
+                vm.params.o = ['-grant_key', '-request_key'];
+            }
+            vm.get();
+        },
+    },
+    computed: {
+        roleStatus: function(){
+            var args = ['active'];
+            if(this.showInvited) args.push('invited');
+            if(this.showRequested) args.push('requested');
+            return args.join(',');
+        },
+    },
+    watch: {
+        showInvited: function(){
+            this.updateParams();
+        },
+        showRequested: function(val){
+            this.updateParams();
+        },
     },
 }
 
@@ -1480,21 +1506,34 @@ new Vue({
             o: '-created_at'
         }
     },
+
+        refresh: function() {
+            vm.showInvited = true;
+        },
+
     mounted: function(){
         this.get()
     }
 })
 }
 
-var userRelationListMixin = {
-    mixins: [userRelationMixin, filterableMixin],
-    data: function(){
-        return {
-            url: djaodjinSettings.urls.organization.api_roles,
-            typeaheadUrl: djaodjinSettings.urls.api_candidates,
-        }
+
+if($('#user-relation-list-container').length > 0){
+new Vue({
+    el: "#user-relation-list-container",
+    mixins: [userRelationMixin, sortableMixin, filterableMixin],
+    data: {
+        url: djaodjinSettings.urls.organization.api_roles,
+        typeaheadUrl: djaodjinSettings.urls.api_candidates,
+        params: {
+            role_status: 'active',
+        },
     },
     methods: {
+        refresh: function() {
+            var vm = this;
+            vm.showInvited = true;
+        },
         sendInvite: function(slug){
             var vm = this;
             vm.reqPost(vm.url + '/' + slug + '/', {}, function(res){
@@ -1507,75 +1546,9 @@ var userRelationListMixin = {
     mounted: function(){
         this.get()
     }
+});
 }
 
-if($('#user-relation-list-container').length > 0){
-new Vue({
-    el: "#user-relation-list-container",
-    mixins: [userRelationListMixin],
-    data: {
-        params: {
-            role_status: 'active',
-        },
-    },
-    methods: {
-        updateParams: function(){
-            var vm = this;
-            vm.params.role_status = vm.roleStatus;
-            if(vm.showInvited || vm.showRequested){
-                vm.params.o = ['-grant_key', '-request_key'];
-            }
-            vm.get();
-        },
-    },
-    computed: {
-        roleStatus: function(){
-            var args = ['active'];
-            if(this.showInvited) args.push('invited');
-            if(this.showRequested) args.push('requested');
-            return args.join(',');
-        },
-    },
-    watch: {
-        showInvited: function(){
-            this.updateParams();
-        },
-        showRequested: function(val){
-            this.updateParams();
-        },
-    },
-})
-}
-
-if($('#user-relation-active-list-container').length > 0){
-var app = new Vue({
-    el: "#user-relation-active-list-container",
-    mixins: [userRelationListMixin],
-    data: function(){
-        return {
-            params: {
-                role_status: 'active',
-                o: 'username',
-            }
-        }
-    },
-})
-}
-
-if($('#user-relation-pending-list-container').length > 0){
-var app = new Vue({
-    el: "#user-relation-pending-list-container",
-    mixins: [userRelationListMixin],
-    data: function(){
-        return {
-            params: {
-                role_status: 'pending',
-                o: 'username',
-            }
-        }
-    },
-})
-}
 
 if($('#metrics-container').length > 0){
 new Vue({
@@ -2156,13 +2129,19 @@ new Vue({
     el: "#accessible-list-container",
     mixins: [userRelationMixin, sortableMixin, filterableMixin],
     data: {
-        params: {
-            o: "-request_key",
-        },
         url: djaodjinSettings.urls.user.api_accessibles,
         typeaheadUrl: djaodjinSettings.urls.api_candidates,
+        showInvited: false,
+        showRequested: false,
+        params: {
+            role_status: "",
+        },
     },
     methods: {
+        refresh: function() {
+            var vm = this;
+            vm.showRequested = true;
+        },
         acceptGrant: function(accessible){
             var vm = this;
             var url = accessible.accept_grant_api_url;

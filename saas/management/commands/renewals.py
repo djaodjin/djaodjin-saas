@@ -50,6 +50,7 @@ import logging, time
 
 from django.core.management.base import BaseCommand
 
+from ...models import get_broker
 from ...renewals import (create_charges_for_balance, complete_charges,
     extend_subscriptions, recognize_income, trigger_expiration_notices)
 from ...utils import datetime_or_now
@@ -95,7 +96,9 @@ on credit cards"""
             create_charges_for_balance(
                 end_period, dry_run=dry_run or no_charges)
         except Exception as err:
-            LOGGER.exception("create_charges_for_balance: %s", err)
+            LOGGER.exception(
+                "Unable to create charges for balance on broker '%s'",
+                get_broker())
         if not (dry_run or no_charges):
             # Let's complete the in flight charges after we have given
             # them time to settle.
