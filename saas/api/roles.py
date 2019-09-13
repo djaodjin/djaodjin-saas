@@ -247,8 +247,8 @@ class OptinBase(OrganizationDecorateMixin, OrganizationCreateMixin):
             organization_data.get('email', None))
         if slug:
             # XXX slugify because we actually pass a full_name when doesnt exist
-            slug = slugify(slug)
-            organizations = self.organization_model.objects.filter(slug=slug)
+            organizations = self.organization_model.objects.filter(
+                slug=slugify(slug))
         elif email:
             organizations = self.organization_model.objects.filter(
                 email__iexact=email)
@@ -256,6 +256,7 @@ class OptinBase(OrganizationDecorateMixin, OrganizationCreateMixin):
             organizations = self.organization_model.objects.none()
         invite = False
         with transaction.atomic():
+            del organization_data['slug']
             organizations = list(organizations)
             if not organizations:
                 if organization_data.get('type') == 'personal':

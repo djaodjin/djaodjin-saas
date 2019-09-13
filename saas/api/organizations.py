@@ -34,7 +34,7 @@ from rest_framework.response import Response
 
 from .serializers import (OrganizationCreateSerializer,
     OrganizationSerializer, OrganizationWithSubscriptionsSerializer)
-from .. import signals
+from .. import settings, signals
 from ..decorators import _valid_manager
 from ..docs import swagger_auto_schema
 from ..mixins import (OrganizationMixin, OrganizationSmartListMixin,
@@ -58,7 +58,7 @@ class OrganizationCreateMixin(object):
             full_name=full_name, email=email,
             slug=validated_data.get('slug', None),
             default_timezone=validated_data.get(
-                'default_timezone', ""),
+                'default_timezone', settings.TIME_ZONE),
             phone=validated_data.get('phone', ""),
             street_address=validated_data.get('street_address', ""),
             locality=validated_data.get('locality', ""),
