@@ -78,12 +78,13 @@ from django.utils.safestring import mark_safe
 from django.utils import six
 from django.utils.translation import ugettext_lazy as _
 from django_countries.fields import CountryField
+from rest_framework.exceptions import ValidationError
 
 from . import humanize, settings, signals
 from .backends import get_processor_backend, ProcessorError, CardError
 from .utils import (SlugTitleMixin, datetime_or_now,
-    extract_full_exception_stack, generate_random_slug, get_role_model,
-    full_name_natural_split)
+    extract_full_exception_stack, full_name_natural_split,
+    generate_random_slug, get_role_model, handle_uniq_error)
 
 
 LOGGER = logging.getLogger(__name__)
@@ -354,20 +355,51 @@ class Organization(models.Model):
 
     def save(self, force_insert=False, force_update=False, using=None,
              update_fields=None):
-        if not self.slug:
-            self.slug = slugify(self.full_name)
-        self.validate_processor()
-        with transaction.atomic():
-            user = self.attached_user()
-            if user:
-                user.first_name, _, user.last_name \
-                    = full_name_natural_split(self.full_name)
-                if self.email:
-                    user.email = self.email
-                user.save()
-            super(Organization, self).save(force_insert=force_insert,
-                 force_update=force_update, using=using,
-                 update_fields=update_fields)
+        if self.slug:
+            self.validate_processor()
+            with transaction.atomic():
+                user = self.attached_user()
+                if user:
+                    user.first_name, _, user.last_name \
+                        = full_name_natural_split(self.full_name)
+                    if self.email:
+                        user.email = self.email
+                    user.save()
+                return super(Organization, self).save(
+                    force_insert=force_insert, force_update=force_update,
+                    using=using, update_fields=update_fields)
+        max_length = self._meta.get_field('slug').max_length
+        slug_base = slugify(self.full_name)
+        if len(slug_base) > max_length:
+            slug_base = slug_base[:max_length]
+        self.slug = slug_base
+        for idx in range(1, 10):
+            try:
+                try:
+                    with transaction.atomic():
+                        user = self.attached_user()
+                        if user:
+                            user.first_name, _, user.last_name \
+                                = full_name_natural_split(self.full_name)
+                            if self.email:
+                                user.email = self.email
+                            user.save()
+                        return super(Organization, self).save(
+                            force_insert=force_insert,
+                            force_update=force_update,
+                            using=using, update_fields=update_fields)
+                except IntegrityError as err:
+                    handle_uniq_error(err)
+            except ValidationError as err:
+                if not (isinstance(err.detail, dict) and 'slug' in err.detail):
+                    raise err
+                suffix = '-%s' % generate_random_slug(length=7)
+                if len(slug_base) + len(suffix) > max_length:
+                    self.slug = slug_base[:(max_length - len(suffix))] + suffix
+                else:
+                    self.slug = slug_base + suffix
+        raise ValidationError({'detail':
+            "Unable to create a unique URL slug from '%s'" % self.full_name})
 
     @property
     def printable_name(self):

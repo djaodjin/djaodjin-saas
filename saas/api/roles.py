@@ -256,7 +256,8 @@ class OptinBase(OrganizationDecorateMixin, OrganizationCreateMixin):
             organizations = self.organization_model.objects.none()
         invite = False
         with transaction.atomic():
-            if 'slug' in organization_data:
+            if ('slug' in organization_data and organization_data['slug']
+                != slugify(organization_data['slug'])):
                 del organization_data['slug']
             organizations = list(organizations)
             if not organizations:
