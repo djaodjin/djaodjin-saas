@@ -94,10 +94,9 @@ saas/templates/notification/ directory.
 Release Notes
 =============
 
-0.6.3
-  * updates card-on-file directly in /billing/cart/ page
-  * makes /api/accounts/ a search API instead of a typeahead API
-  * fixes default search fields when looking for subscribers
-  * adds remove card-on-file button in page templates
+0.7.0
+  * adds marketplace processing fee
+  * restricts coupon to plan or number of use through UI
+  * fixes invite new organizations with erroneous slugs
 
 [previous release notes](changelog)

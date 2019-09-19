@@ -1,3 +1,10 @@
+0.7.0
+  * adds marketplace processing fee
+  * restricts coupon to plan or number of use through UI
+  * fixes invite new organizations with erroneous slugs
+
+ -- Sebastien Mirolo <smirolo@djaodjin.com>   Sat, 14 Sep 2019 02:18:56 -0700
+
 0.6.3
   * updates card-on-file directly in /billing/cart/ page
   * makes /api/accounts/ a search API instead of a typeahead API
