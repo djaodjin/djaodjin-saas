@@ -355,8 +355,8 @@ class Organization(models.Model):
 
     def save(self, force_insert=False, force_update=False, using=None,
              update_fields=None):
+        self.validate_processor()
         if self.slug:
-            self.validate_processor()
             with transaction.atomic():
                 user = self.attached_user()
                 if user:

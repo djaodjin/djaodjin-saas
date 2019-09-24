@@ -165,6 +165,7 @@ class OrganizationForm(PostalFormMixin, forms.ModelForm):
 
     submit_title = _('Update')
     slug = forms.SlugField(max_length=254, label=_("Display name"),
+        disabled=True,
         error_messages={'invalid': _("Display name may only contain letters,"\
             " digits and -/_ characters. Spaces are not allowed.")})
     street_address = forms.CharField(label=_("Street address"), required=False)
