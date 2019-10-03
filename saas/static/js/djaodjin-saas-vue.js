@@ -774,6 +774,10 @@ var itemListMixin = {
                     vm.items = res;
                     vm.itemsLoaded = true;
 
+                    if( res.detail ) {
+                        showMessages([res.detail], "warning");
+                    }
+
                     if(vm[vm.getCompleteCb]){
                         vm[vm.getCompleteCb]();
                     }

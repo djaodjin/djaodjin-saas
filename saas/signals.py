@@ -41,6 +41,7 @@ card_expires_soon = Signal(providing_args=['organization', 'nb_days'])
 subscription_upgrade = Signal(providing_args=['subscription', 'nb_days'])
 payment_method_absent = Signal(providing_args=['organization'])
 user_invited = Signal(providing_args=['user', 'invited_by'])
+processor_setup_error = Signal(providing_args=['provider', 'error_message'])
 role_grant_accepted = Signal(providing_args=['role', 'grant_key'])
 role_grant_created = Signal(providing_args=['role', 'reason'])
 # There is no `role_request_accepted` because a `role_grant_created`

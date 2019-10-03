@@ -71,7 +71,7 @@ from django.utils import six
 from django.utils.translation import ugettext_lazy as _
 import requests, stripe
 
-from .. import CardError, ProcessorError
+from .. import CardError, ProcessorError, ProcessorSetupError
 from ... import settings, signals
 from ...compat import reverse
 from ...utils import (datetime_to_utctimestamp, utctimestamp_to_datetime,
@@ -132,9 +132,9 @@ class StripeBackend(object):
         if self.mode == self.REMOTE and not self._is_platform(broker):
             # We generate Stripe data into the StripeConnect account.
             if not broker.processor_deposit_key:
-                raise ProcessorError(
+                raise ProcessorSetupError(
                     _("%(organization)s is not connected to a Stripe account."
-                    ) % {'organization': broker})
+                    ) % {'organization': broker}, broker)
             kwargs.update({'stripe_account': broker.processor_deposit_key})
         return kwargs
 
@@ -144,9 +144,9 @@ class StripeBackend(object):
             and  not self._is_platform(provider)):
             # We generate Stripe data into the StripeConnect account.
             if not provider.processor_deposit_key:
-                raise ProcessorError(
+                raise ProcessorSetupError(
                     _("%(organization)s is not connected to a Stripe account."
-                    ) % {'organization': provider})
+                    ) % {'organization': provider}, provider)
             kwargs.update({'stripe_account': provider.processor_deposit_key})
         return kwargs
 
@@ -305,9 +305,9 @@ class StripeBackend(object):
         if self.mode == self.FORWARD and not self._is_platform(provider):
             # We generate Stripe data into the StripeConnect account.
             if not provider.processor_deposit_key:
-                raise ProcessorError(
+                raise ProcessorSetupError(
                     _("%(organization)s is not connected to a Stripe account."
-                    ) % {'organization': provider})
+                    ) % {'organization': provider}, provider)
             kwargs.update({'destination': provider.processor_deposit_key})
         if customer is not None:
             kwargs.update({'customer': customer})
@@ -358,8 +358,6 @@ class StripeBackend(object):
                 backend_except=err)
         except stripe.error.PermissionError as err:
             # It is possible we no longer have access to the connected account.
-            LOGGER.exception("invalid permission attempting to charge %s"\
-                " on behalf of %s.", customer, provider)
             with transaction.atomic():
                 # We want this update to be committed even if other transactions
                 # are unwind on the exception.
@@ -368,7 +366,10 @@ class StripeBackend(object):
                 provider.processor_deposit_key = None
                 provider.processor_refresh_token = None
                 provider.save()
-            raise ProcessorError(str(err), backend_except=err)
+            raise ProcessorSetupError(
+                    _("access to %(organization)s Stripe account was denied"\
+                      " (access might have been revoked).") % {
+                    'organization': provider}, provider, backend_except=err)
         except stripe.error.IdempotencyError as err:
             LOGGER.error(err)
         return (processor_key, created_at, receipt_info)
@@ -460,8 +461,7 @@ class StripeBackend(object):
             rcp.external_account = bank_token
             rcp.save()
         except stripe.error.InvalidRequestError:
-            LOGGER.exception("update_bank(%s, %s)", provider, bank_token)
-            raise
+            raise ProcessorError(str(err), backend_except=err)
 
     def create_or_update_card(self, subscriber, card_token,
                               user=None, broker=None):
@@ -624,7 +624,7 @@ class StripeBackend(object):
                 except stripe.error.StripeError as err:
                     LOGGER.exception("%s (mode=%s)", err,
                         "REMOTE" if kwargs else "LOCAL")
-                    raise
+                    raise ProcessorError(str(err), backend_except=err)
                 if p_customer.default_source:
                     last4 = '***-%s' % str(p_customer.default_source.last4)
                     exp_date = "%02d/%04d" % (
@@ -705,7 +705,6 @@ class StripeBackend(object):
                     created={'gt': timestamp}, status='paid',
                     offset=offset, **kwargs)
         except stripe.error.StripeError as err:
-            LOGGER.exception(err)
             raise ProcessorError(str(err), backend_except=err)
 
     @staticmethod

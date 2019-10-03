@@ -91,6 +91,26 @@ class TotalPagination(PageNumberPagination):
         ]))
 
 
+class IncludesSyncErrorPagination(PageNumberPagination):
+
+    def paginate_queryset(self, queryset, request, view=None):
+        if view and hasattr(view, 'processor_error'):
+            self.detail = view.processor_error
+        return super(IncludesSyncErrorPagination, self).paginate_queryset(
+            queryset, request, view=view)
+
+    def get_paginated_response(self, data):
+        paginated = [
+            ('count', self.page.paginator.count),
+            ('next', self.get_next_link()),
+            ('previous', self.get_previous_link()),
+            ('results', data)
+        ]
+        if hasattr(self, 'detail'):
+            paginated += [('detail', self.detail)]
+        return Response(OrderedDict(paginated))
+
+
 class TotalAnnotateMixin(object):
 
     def get_queryset(self):
@@ -344,9 +364,7 @@ class ReceivablesListAPIView(TotalAnnotateMixin, TransactionFilterMixin,
 
     filter_backends = (TransactionFilterMixin.filter_backends +
         (OrderingFilter,))
-
     serializer_class = TransactionSerializer
-
     pagination_class = TotalPagination
 
 
@@ -356,8 +374,14 @@ class TransferQuerysetMixin(ProviderMixin):
         """
         Get the list of transactions for this organization.
         """
-        reconcile = not bool(self.request.GET.get('force', False))
-        return self.organization.get_transfers(reconcile=reconcile)
+        try:
+            reconcile = not bool(self.request.GET.get('force', False))
+            return self.organization.get_transfers(reconcile=reconcile)
+        except ProcessorError as err:
+            self.processor_error = _("The latest transfers might"\
+                " not be shown because there was an error with the backend"\
+                " processor (ie. %(err)s).") % {'err': str(err)}
+            return Transaction.objects.by_organization(self.organization)
 
 
 class TransferListAPIView(SmartTransactionListMixin, TransferQuerysetMixin,
@@ -416,15 +440,7 @@ class TransferListAPIView(SmartTransactionListMixin, TransferQuerysetMixin,
         }
     """
     serializer_class = TransactionSerializer
-
-    def list(self, request, *args, **kwargs):
-        try:
-            return super(TransferListAPIView, self).list(
-                request, *args, **kwargs)
-        except ProcessorError as err:
-            raise ValidationError({'detail': _("The latest transfers might"\
-                " not be shown because there was an error with the backend"\
-                " processor (ie. %(err)s).") % {'err': str(err)}})
+    pagination_class = IncludesSyncErrorPagination
 
 
 class OfflineTransactionSerializer(NoModelSerializer):

@@ -1,4 +1,4 @@
-# Copyright (c) 2018, DjaoDjin inc.
+# Copyright (c) 2019, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -48,6 +48,19 @@ class ProcessorError(RuntimeError):
 
     def processor_details(self):
         return "(processor exception: %s)" % str(self.backend_except)
+
+
+@python_2_unicode_compatible
+class ProcessorSetupError(ProcessorError):
+    """
+    Error class specific for setup of processor account
+    (i.e. none or invalid keys)
+    """
+
+    def __init__(self,  message, provider, backend_except=None):
+        super(ProcessorSetupError, self).__init__(
+            message, backend_except=backend_except)
+        self.provider = provider
 
 
 @python_2_unicode_compatible

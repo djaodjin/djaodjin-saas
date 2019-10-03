@@ -81,7 +81,8 @@ from django_countries.fields import CountryField
 from rest_framework.exceptions import ValidationError
 
 from . import humanize, settings, signals
-from .backends import get_processor_backend, ProcessorError, CardError
+from .backends import (get_processor_backend, CardError, ProcessorError,
+    ProcessorSetupError)
 from .utils import (SlugTitleMixin, datetime_or_now,
     extract_full_exception_stack, full_name_natural_split,
     generate_random_slug, get_role_model, handle_uniq_error)
@@ -1377,11 +1378,11 @@ class ChargeManager(models.Manager):
 
         providers = Transaction.objects.providers(transactions)
         if len(providers) == 1:
-            broker = providers[0]
+            provider = providers[0]
         else:
-            broker = get_broker()
-        processor = broker.validate_processor()
-        processor_backend = broker.processor_backend
+            provider = get_broker()
+        processor = provider.validate_processor()
+        processor_backend = provider.processor_backend
         descr = humanize.DESCRIBE_CHARGED_CARD % {
             'charge': '', 'organization': customer.printable_name}
         if user:
@@ -1394,13 +1395,13 @@ class ChargeManager(models.Manager):
             if customer.processor_card_key:
                 (processor_charge_id, created_at,
                  receipt_info) = processor_backend.create_charge(
-                     customer, amount, unit, broker,
+                     customer, amount, unit, provider,
                      descr=descr, created_at=created_at,
                      broker_fee_amount=broker_fee_amount)
             elif token:
                 (processor_charge_id, created_at,
                  receipt_info) = processor_backend.create_charge_on_card(
-                     token, amount, unit, broker,
+                     token, amount, unit, provider,
                      descr=descr, created_at=created_at,
                      broker_fee_amount=broker_fee_amount)
             else:
@@ -1437,12 +1438,27 @@ class ChargeManager(models.Manager):
                     'organization': customer.slug,
                     'amount': amount, 'unit': unit})
             raise
+        except ProcessorSetupError as err:
+            # When a provider Stripe account is not connected correctly,
+            # it is not obviously a problem with the broker. So we send
+            # a signal to alert the provider instead of triggering an error
+            # that needs to be investigated by the broker hosting platform.
+            LOGGER.info('error: "%s" processing charge of %d %s to %s',
+                err.processor_details(), amount, unit, customer,
+                extra={'event': 'processor-setup-error',
+                    'details': err.processor_details(),
+                    'provider': err.provider,
+                    'organization': customer.slug,
+                    'amount': amount, 'unit': unit})
+            signals.processor_setup_error.send(sender=__name__,
+                provider=err.provider, error_message=str(err))
+            raise
         except ProcessorError as err:
             # An error from the processor which indicates the logic might be
             # incorrect, the network down, etc. We want to know about it right
             # away.
-            LOGGER.error("ProcessorError for charge of %d cents to %s\n" % (
-                amount, customer) + extract_full_exception_stack(err))
+            LOGGER.error("ProcessorError for charge of %d (%s) to %s",
+                amount, unit, customer)
             # We are going to rollback because of the ``transaction.atomic``
             # in ``checkout`` so let's reset the processor_card_key.
             customer.processor_card_key = prev_processor_card_key
