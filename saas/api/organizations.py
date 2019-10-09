@@ -29,11 +29,12 @@ from django.contrib.auth import get_user_model, logout as auth_logout
 from django.db import transaction, IntegrityError
 from rest_framework import status
 from rest_framework.generics import (ListAPIView, ListCreateAPIView,
-    RetrieveUpdateDestroyAPIView)
+    RetrieveUpdateAPIView, RetrieveUpdateDestroyAPIView)
 from rest_framework.response import Response
 
 from .serializers import (OrganizationCreateSerializer,
-    OrganizationSerializer, OrganizationWithSubscriptionsSerializer)
+    OrganizationSerializer, OrganizationWithSubscriptionsSerializer,
+    OrganizationPictureSerializer)
 from .. import settings, signals
 from ..decorators import _valid_manager
 from ..docs import swagger_auto_schema
@@ -259,6 +260,14 @@ class OrganizationDetailAPIView(OrganizationMixin, OrganizationQuerysetMixin,
             if request.user == user:
                 auth_logout(request)
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class OrganizationPictureAPIView(OrganizationMixin, OrganizationQuerysetMixin,
+                                RetrieveUpdateAPIView):
+
+    serializer_class = OrganizationPictureSerializer
+    lookup_field = 'slug'
+    lookup_url_kwarg = 'organization'
 
 
 class OrganizationListAPIView(OrganizationSmartListMixin,

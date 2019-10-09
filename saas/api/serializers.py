@@ -389,13 +389,10 @@ class WithSubscriptionSerializer(serializers.ModelSerializer):
         fields = ('created_at', 'ends_at', 'plan', 'auto_renew')
 
 
-class OrganizationWithSubscriptionsSerializer(OrganizationSerializer):
-
-    subscriptions = WithSubscriptionSerializer(
-        source='subscription_set', many=True, read_only=True)
+class OrganizationPictureSerializer(serializers.ModelSerializer):
 
     def __init__(self, *args, **kwargs):
-        super(OrganizationWithSubscriptionsSerializer, self).__init__(
+        super(OrganizationPictureSerializer, self).__init__(
             *args, **kwargs)
         obj = kwargs.get('data')
         if obj:
@@ -409,12 +406,22 @@ class OrganizationWithSubscriptionsSerializer(OrganizationSerializer):
 
     class Meta:
         model = get_organization_model()
+        fields = ('picture',)
+
+
+class OrganizationWithSubscriptionsSerializer(OrganizationSerializer):
+
+    subscriptions = WithSubscriptionSerializer(
+        source='subscription_set', many=True, read_only=True)
+
+    class Meta:
+        model = get_organization_model()
         fields = ('slug', 'created_at', 'full_name',
             'email', 'phone', 'street_address', 'locality',
             'region', 'postal_code', 'country', 'default_timezone',
             'printable_name', 'is_provider', 'is_bulk_buyer', 'type',
-            'picture', 'extra', 'subscriptions')
-        read_only_fields = ('slug', 'created_at',)
+            'extra', 'subscriptions', 'picture')
+        read_only_fields = ('slug', 'created_at', 'picture')
 
 
 class OrganizationWithEndsAtByPlanSerializer(serializers.ModelSerializer):
