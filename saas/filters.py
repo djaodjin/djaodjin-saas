@@ -183,6 +183,22 @@ class OrderingFilter(BaseOrderingFilter):
                 valid_fields.append(field)
         return tuple(valid_fields)
 
+    def remove_invalid_fields(self, queryset, fields, view, request):
+        valid_fields = {item[1]: item[0] for item in self.get_valid_fields(queryset, view, {'request': request})}
+        ordering = []
+        for term in fields:
+            alias = term
+            reverse = False
+            if alias.startswith('-'):
+                alias = alias[1:]
+                reverse = True
+            real_field = valid_fields.get(alias)
+            if real_field:
+                if reverse:
+                    real_field = '-' + real_field
+                ordering.append(real_field)
+        return ordering
+
     def get_ordering(self, request, queryset, view):
         # We use an alternate ordering if the fields are not present
         # in the second model.
