@@ -46,7 +46,7 @@ urlpatterns = [
         name='saas_api_subscription_list'),
     url(r'^profile/(?P<organization>%s)/?$' % ACCT_REGEX,
         OrganizationDetailAPIView.as_view(), name='saas_api_organization'),
-    url(r'^profile/(?P<organization>%s)/picture$' % ACCT_REGEX,
+    url(r'^profile/(?P<organization>%s)/picture/$' % ACCT_REGEX,
         OrganizationPictureAPIView.as_view(),
         name='saas_api_organization_picture'),
 

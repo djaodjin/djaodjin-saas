@@ -23,6 +23,7 @@
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import re
+from hashlib import sha256
 
 from django.conf import settings as django_settings
 from django.contrib.auth import get_user_model, logout as auth_logout
@@ -42,7 +43,7 @@ from ..mixins import (OrganizationMixin, OrganizationSmartListMixin,
     ProviderMixin, OrganizationDecorateMixin)
 from ..models import get_broker
 from ..utils import (full_name_natural_split, get_organization_model,
-    get_role_model, handle_uniq_error)
+    get_role_model, handle_uniq_error, get_picture_storage)
 
 
 #pylint: disable=no-init
@@ -268,6 +269,17 @@ class OrganizationPictureAPIView(OrganizationMixin, OrganizationQuerysetMixin,
     serializer_class = OrganizationPictureSerializer
     lookup_field = 'slug'
     lookup_url_kwarg = 'organization'
+
+    def put(self, request, *args, **kwargs):
+         storage = get_picture_storage()
+         picture = request.data.get('picture')
+         if picture:
+             name = '%s.%s' % (sha256(picture.read()).hexdigest(), 'jpg')
+             storage.save(name, picture)
+             request.data['picture'] = storage.url(name)
+         return self.update(request, *args, **kwargs)
+
+    patch = put
 
 
 class OrganizationListAPIView(OrganizationSmartListMixin,
