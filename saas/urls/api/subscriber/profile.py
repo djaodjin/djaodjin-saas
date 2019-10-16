@@ -29,7 +29,8 @@ URLs API for profile resources (managers, custom roles and subscriptions)
 from django.conf.urls import url
 
 from ....api.organizations import (
-    OrganizationDetailAPIView, OrganizationListAPIView)
+    OrganizationDetailAPIView, OrganizationListAPIView,
+    OrganizationPictureAPIView)
 from ....api.subscriptions import (SubscriptionDetailAPIView,
     SubscriberSubscriptionListAPIView)
 from ....settings import ACCT_REGEX
@@ -45,6 +46,9 @@ urlpatterns = [
         name='saas_api_subscription_list'),
     url(r'^profile/(?P<organization>%s)/?$' % ACCT_REGEX,
         OrganizationDetailAPIView.as_view(), name='saas_api_organization'),
+    url(r'^profile/(?P<organization>%s)/picture/$' % ACCT_REGEX,
+        OrganizationPictureAPIView.as_view(),
+        name='saas_api_organization_picture'),
 
     url(r'^profile/$',
         OrganizationListAPIView.as_view(),

@@ -2230,16 +2230,6 @@ new Vue({
                 if(cb) cb();
             });
         },
-        updateProfile: function(){
-            var vm = this;
-            vm.validateForm();
-            var data = vm.formFields;
-            if(vm.imageSelected){
-                vm.saveProfileWithPicture(data);
-            } else {
-                vm.saveProfile(data);
-            }
-        },
         validateForm: function(){
             var vm = this;
             var isEmpty = true;
@@ -2259,26 +2249,28 @@ new Vue({
             }
             return !isEmpty;
         },
-        saveProfile: function(data){
-            vm.reqPut(djaodjinSettings.urls.organization.api_base, data,
+        updateProfile: function(){
+            var vm = this;
+            vm.validateForm();
+            vm.reqPut(djaodjinSettings.urls.organization.api_base, vm.formFields,
             function(resp) {
                 showMessages([gettext("Profile was updated.")], "success");
             });
+            if(vm.imageSelected){
+                vm.uploadProfilePicture();
+            }
         },
-        saveProfileWithPicture: function(data){
+        uploadProfilePicture: function() {
             var vm = this;
             this.picture.generateBlob(function(blob){
                 if(!blob) return;
                 var form = new FormData();
                 form.append('picture', blob);
-                for(var key in data){
-                    form.append(key, data[key]);
-                }
                 // we're using raw $.ajax call here because we need to pass
                 // the data as multipart/form-data
                 $.ajax({
                     method: 'PUT',
-                    url: djaodjinSettings.urls.organization.api_base,
+                    url: djaodjinSettings.urls.organization.api_profile_picture,
                     contentType: false,
                     processData: false,
                     data: form,
@@ -2311,6 +2303,7 @@ new Vue({
             // to load the profile from the API then.
             vm.get();
         }
+        vm.get();
     },
 });
 }

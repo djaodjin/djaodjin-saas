@@ -22,7 +22,6 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 from __future__ import unicode_literals
-from hashlib import sha256
 
 from django.core import validators
 from django.contrib.auth import get_user_model
@@ -42,8 +41,7 @@ from ..humanize import as_money
 from ..mixins import as_html_description, product_url
 from ..models import (BalanceLine, CartItem, Charge, Plan,
     RoleDescription, Subscription, Transaction)
-from ..utils import (build_absolute_uri, get_organization_model, get_role_model,
-    get_picture_storage)
+from ..utils import (build_absolute_uri, get_organization_model, get_role_model)
 from ..compat import reverse
 
 #pylint: disable=no-init,old-style-class
@@ -389,23 +387,17 @@ class WithSubscriptionSerializer(serializers.ModelSerializer):
         fields = ('created_at', 'ends_at', 'plan', 'auto_renew')
 
 
+class OrganizationPictureSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = get_organization_model()
+        fields = ('picture',)
+
+
 class OrganizationWithSubscriptionsSerializer(OrganizationSerializer):
 
     subscriptions = WithSubscriptionSerializer(
         source='subscription_set', many=True, read_only=True)
-
-    def __init__(self, *args, **kwargs):
-        super(OrganizationWithSubscriptionsSerializer, self).__init__(
-            *args, **kwargs)
-        obj = kwargs.get('data')
-        if obj:
-            # means serializer was populated with data
-            storage = get_picture_storage()
-            picture = obj.get('picture')
-            if picture:
-                name = '%s.%s' % (sha256(picture.read()).hexdigest(), 'jpg')
-                storage.save(name, picture)
-                kwargs['data']['picture'] = storage.url(name)
 
     class Meta:
         model = get_organization_model()
@@ -413,8 +405,8 @@ class OrganizationWithSubscriptionsSerializer(OrganizationSerializer):
             'email', 'phone', 'street_address', 'locality',
             'region', 'postal_code', 'country', 'default_timezone',
             'printable_name', 'is_provider', 'is_bulk_buyer', 'type',
-            'picture', 'extra', 'subscriptions')
-        read_only_fields = ('slug', 'created_at',)
+            'extra', 'subscriptions', 'picture')
+        read_only_fields = ('slug', 'created_at', 'picture')
 
 
 class OrganizationWithEndsAtByPlanSerializer(serializers.ModelSerializer):
