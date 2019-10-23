@@ -1846,6 +1846,7 @@ subscriptionsListVM = new Vue({
     el: "#subscriptions-list-container",
     mixins: [
         itemListMixin,
+        sortableMixin,
         paginationMixin,
         subscriptionsMixin,
     ],
