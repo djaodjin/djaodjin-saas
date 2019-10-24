@@ -189,6 +189,12 @@ class StripeBackend(object):
         LOGGER.debug("charge_distribution(charge=%s, refunded=%d, unit=%s)"\
             " => stripe_charge=\n%s", charge.processor_key, refunded, unit,
             stripe_charge)
+
+        if not stripe_charge:
+            return (charge.amount - refunded, unit,
+                    0, unit,
+                    0, unit)
+
         balance_transaction = stripe_charge.balance_transaction
         if isinstance(balance_transaction, six.string_types):
             balance_transaction = stripe.BalanceTransaction.retrieve(
