@@ -23,6 +23,8 @@
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import debug_toolbar
+from django.conf import settings
+from django.conf.urls.static import static
 from django.core.exceptions import ImproperlyConfigured
 from django.contrib.auth.decorators import login_required
 from django.views.generic import TemplateView
@@ -59,7 +61,8 @@ except ImproperlyConfigured: # Django <= 1.9
         url(r'^admin/', include(admin.site.urls)),
     ]
 
-urlpatterns += [
+urlpatterns += \
+    static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT) + [
     url(r'^__debug__/', include(debug_toolbar.urls)),
     url(r'^jsi18n/', JavaScriptCatalog.as_view(), name='javascript-catalog'),
     url_prefixed(r'register/$',

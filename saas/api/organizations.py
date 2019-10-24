@@ -22,20 +22,19 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-import re
-from hashlib import sha256
+import hashlib, os, re
 
 from django.conf import settings as django_settings
 from django.contrib.auth import get_user_model, logout as auth_logout
 from django.db import transaction, IntegrityError
-from rest_framework import status
-from rest_framework.generics import (ListAPIView, ListCreateAPIView,
-    RetrieveUpdateAPIView, RetrieveUpdateDestroyAPIView)
+from django.utils.encoding import force_text
+from rest_framework import filters, parsers, status
+from rest_framework.generics import (CreateAPIView, ListAPIView,
+    ListCreateAPIView, RetrieveUpdateAPIView, RetrieveUpdateDestroyAPIView)
 from rest_framework.response import Response
 
 from .serializers import (OrganizationCreateSerializer,
-    OrganizationSerializer, OrganizationWithSubscriptionsSerializer,
-    OrganizationPictureSerializer)
+    OrganizationSerializer, OrganizationWithSubscriptionsSerializer)
 from .. import settings, signals
 from ..decorators import _valid_manager
 from ..docs import swagger_auto_schema
@@ -263,23 +262,37 @@ class OrganizationDetailAPIView(OrganizationMixin, OrganizationQuerysetMixin,
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
-class OrganizationPictureAPIView(OrganizationMixin, OrganizationQuerysetMixin,
-                                RetrieveUpdateAPIView):
+class OrganizationPictureAPIView(OrganizationMixin, CreateAPIView):
+    """
+        Uploads a static asset file
 
-    serializer_class = OrganizationPictureSerializer
-    lookup_field = 'slug'
-    lookup_url_kwarg = 'organization'
+        **Examples
 
-    def put(self, request, *args, **kwargs):
-         storage = get_picture_storage()
-         picture = request.data.get('picture')
-         if picture:
-             name = '%s.%s' % (sha256(picture.read()).hexdigest(), 'jpg')
-             storage.save(name, picture)
-             request.data['picture'] = storage.url(name)
-         return self.update(request, *args, **kwargs)
+        .. code-block:: http
 
-    patch = put
+            POST /api/profile/xia/picture/ HTTP/1.1
+    """
+    parser_classes = (parsers.FormParser, parsers.MultiPartParser)
+
+    def post(self, request, *args, **kwargs):
+        #pylint:disable=unused-argument
+        uploaded_file = request.data.get('file')
+        if not uploaded_file:
+            return Response({'details': "no location or file specified."},
+                status=status.HTTP_400_BAD_REQUEST)
+
+        # tentatively extract file extension.
+        parts = os.path.splitext(
+            force_text(uploaded_file.name.replace('\\', '/')))
+        ext = parts[-1].lower() if len(parts) > 1 else ""
+        key_name = "%s%s" % (
+            hashlib.sha256(uploaded_file.read()).hexdigest(), ext)
+        default_storage = get_picture_storage()
+        location = self.request.build_absolute_uri(default_storage.url(
+            default_storage.save(key_name, uploaded_file)))
+        self.organization.picture = location
+        self.organization.save()
+        return Response({'location': location}, status=status.HTTP_201_CREATED)
 
 
 class OrganizationListAPIView(OrganizationSmartListMixin,

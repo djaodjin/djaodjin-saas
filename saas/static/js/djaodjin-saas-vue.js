@@ -12,16 +12,6 @@ function getInitValue(form, fieldName) {
     return "";
 }
 
-function isFunction(f){
-    // https://stackoverflow.com/a/7356528/1491475
-    return f && {}.toString.call(f) === '[object Function]';
-}
-
-function isObject(o){
-    // https://stackoverflow.com/a/46663081/1491475
-    return o instanceof Object && o.constructor === Object
-}
-
 
 Vue.filter('formatDate', function(value, format) {
   if (value) {
@@ -420,13 +410,49 @@ var regions = {
 
 var DATE_FORMAT = 'MMM DD, YYYY';
 
-function handleRequestError(resp){
-    showErrorMessages(resp);
-}
 
 var httpRequestMixin = {
     // basically a wrapper around jQuery ajax functions
     methods: {
+        _isFunction: function (func){
+            // https://stackoverflow.com/a/7356528/1491475
+            return func && {}.toString.call(func) === '[object Function]';
+        },
+
+        _isObject: function (obj) {
+            // https://stackoverflow.com/a/46663081/1491475
+            return obj instanceof Object && obj.constructor === Object
+        },
+
+        _getAuthToken: function() {
+            return null; // XXX NotYetImplemented
+        },
+
+        _csrfSafeMethod: function(method) {
+            // these HTTP methods do not require CSRF protection
+            return (/^(GET|HEAD|OPTIONS|TRACE)$/.test(method));
+        },
+
+        _getCSRFToken: function() {
+            var vm = this;
+            // Look first for an input node in the HTML page, i.e.
+            // <input type="hidden" name="csrfmiddlewaretoken"
+            //     value="{{csrf_token}}">
+            var crsfNode = $(vm.$el).find("[name='csrfmiddlewaretoken']");
+            if( crsfNode.length > 0 ) {
+                return crsfNode.val();
+            }
+            // Then look for a CSRF token in the meta tags, i.e.
+            // <meta name="csrf-token" content="{{csrf_token}}">
+            var metas = document.getElementsByTagName('meta');
+            for( var i = 0; i < metas.length; i++) {
+                if (metas[i].getAttribute("name") == "csrf-token") {
+                    return metas[i].getAttribute("content");
+                }
+            }
+            return "";
+        },
+
         /** This method generates a GET HTTP request to `url` with a query
             string built of a `queryParams` dictionnary.
 
@@ -447,28 +473,28 @@ var httpRequestMixin = {
         reqGet: function(url, arg, arg2, arg3){
             var vm = this;
             var queryParams, successCallback;
-            var failureCallback = handleRequestError;
+            var failureCallback = showErrorMessages;
             if(typeof url != 'string') throw 'url should be a string';
-            if(isFunction(arg)){
+            if(vm._isFunction(arg)){
                 // We are parsing reqGet(url, successCallback)
                 // or reqGet(url, successCallback, errorCallback).
                 successCallback = arg;
-                if(isFunction(arg2)){
+                if(vm._isFunction(arg2)){
                     // We are parsing reqGet(url, successCallback, errorCallback)
                     failureCallback = arg2;
                 } else if( arg2 !== undefined ) {
                     throw 'arg2 should be a failureCallback function';
                 }
-            } else if(isObject(arg)){
+            } else if(vm._isObject(arg)){
                 // We are parsing
                 // reqGet(url, queryParams, successCallback)
                 // or reqGet(url, queryParams, successCallback, errorCallback).
                 queryParams = arg;
-                if(isFunction(arg2)){
+                if(vm._isFunction(arg2)){
                     // We are parsing reqGet(url, queryParams, successCallback)
                     // or reqGet(url, queryParams, successCallback, errorCallback).
                     successCallback = arg2;
-                    if(isFunction(arg3)){
+                    if(vm._isFunction(arg3)){
                         // We are parsing reqGet(url, queryParams, successCallback, errorCallback)
                         failureCallback = arg3;
                     } else if( arg3 !== undefined ){
@@ -481,10 +507,26 @@ var httpRequestMixin = {
                 throw 'arg should be a queryParams Object or a successCallback function';
             }
             return $.ajax({
+                method: 'GET',
                 url: url,
+                beforeSend: function(xhr, settings) {
+                    var authToken = vm._getAuthToken();
+                    if( authToken ) {
+                        xhr.setRequestHeader("Authorization",
+                            "Bearer " + authToken);
+                    } else {
+                        if( !vm._csrfSafeMethod(settings.type) ) {
+                            var csrfToken = vm._getCSRFToken();
+                            if( csrfToken ) {
+                                xhr.setRequestHeader("X-CSRFToken", csrfToken);
+                            }
+                        }
+                    }
+                },
                 data: queryParams,
                 traditional: true,
-            }).done(successCallback).fail(failureCallback);
+                cache: false,       // force requested pages not to be cached
+           }).done(successCallback).fail(failureCallback);
         },
         /** This method generates a POST HTTP request to `url` with
             contentType 'application/json'.
@@ -506,28 +548,28 @@ var httpRequestMixin = {
         reqPost: function(url, arg, arg2, arg3){
             var vm = this;
             var data, successCallback;
-            var failureCallback = handleRequestError;
+            var failureCallback = showErrorMessages;
             if(typeof url != 'string') throw 'url should be a string';
-            if(isFunction(arg)){
+            if(vm._isFunction(arg)){
                 // We are parsing reqPost(url, successCallback)
                 // or reqPost(url, successCallback, errorCallback).
                 successCallback = arg;
-                if(isFunction(arg2)){
+                if(vm._isFunction(arg2)){
                     // We are parsing reqPost(url, successCallback, errorCallback)
                     failureCallback = arg2;
                 } else if (arg2 !== undefined){
                     throw 'arg2 should be a failureCallback function';
                 }
-            } else if(isObject(arg)){
+            } else if(vm._isObject(arg)){
                 // We are parsing reqPost(url, data)
                 // or reqPost(url, data, successCallback)
                 // or reqPost(url, data, successCallback, errorCallback).
                 data = arg;
-                if(isFunction(arg2)){
+                if(vm._isFunction(arg2)){
                     // We are parsing reqPost(url, data, successCallback)
                     // or reqPost(url, data, successCallback, errorCallback).
                     successCallback = arg2;
-                    if(isFunction(arg3)){
+                    if(vm._isFunction(arg3)){
                         // We are parsing reqPost(url, data, successCallback, errorCallback)
                         failureCallback = arg3;
                     } else if (arg3 !== undefined){
@@ -539,12 +581,25 @@ var httpRequestMixin = {
             } else if (arg !== undefined){
                 throw 'arg should be a data Object or a successCallback function';
             }
-
             return $.ajax({
+                method: 'POST',
                 url: url,
+                beforeSend: function(xhr, settings) {
+                    var authToken = vm._getAuthToken();
+                    if( authToken ) {
+                        xhr.setRequestHeader("Authorization",
+                            "Bearer " + authToken);
+                    } else {
+                        if( !vm._csrfSafeMethod(settings.type) ) {
+                            var csrfToken = vm._getCSRFToken();
+                            if( csrfToken ) {
+                                xhr.setRequestHeader("X-CSRFToken", csrfToken);
+                            }
+                        }
+                    }
+                },
                 contentType: 'application/json',
                 data: JSON.stringify(data),
-                method: 'POST',
             }).done(successCallback).fail(failureCallback);
         },
         /** This method generates a PUT HTTP request to `url` with
@@ -567,28 +622,28 @@ var httpRequestMixin = {
         reqPut: function(url, arg, arg2, arg3){
             var vm = this;
             var data, successCallback;
-            var failureCallback = handleRequestError;
+            var failureCallback = showErrorMessages;
             if(typeof url != 'string') throw 'url should be a string';
-            if(isFunction(arg)){
+            if(vm._isFunction(arg)){
                 // We are parsing reqPut(url, successCallback)
                 // or reqPut(url, successCallback, errorCallback).
                 successCallback = arg;
-                if(isFunction(arg2)){
+                if(vm._isFunction(arg2)){
                     // We are parsing reqPut(url, successCallback, errorCallback)
                     failureCallback = arg2;
                 } else if (arg2 !== undefined){
                     throw 'arg2 should be a failureCallback function';
                 }
-            } else if(isObject(arg)){
+            } else if(vm._isObject(arg)){
                 // We are parsing reqPut(url, data)
                 // or reqPut(url, data, successCallback)
                 // or reqPut(url, data, successCallback, errorCallback).
                 data = arg;
-                if(isFunction(arg2)){
+                if(vm._isFunction(arg2)){
                     // We are parsing reqPut(url, data, successCallback)
                     // or reqPut(url, data, successCallback, errorCallback).
                     successCallback = arg2;
-                    if(isFunction(arg3)){
+                    if(vm._isFunction(arg3)){
                         // We are parsing reqPut(url, data, successCallback, errorCallback)
                         failureCallback = arg3;
                     } else if (arg3 !== undefined){
@@ -602,10 +657,24 @@ var httpRequestMixin = {
             }
 
             return $.ajax({
+                method: 'PUT',
                 url: url,
+                beforeSend: function(xhr, settings) {
+                    var authToken = vm._getAuthToken();
+                    if( authToken ) {
+                        xhr.setRequestHeader("Authorization",
+                            "Bearer " + authToken);
+                    } else {
+                        if( !vm._csrfSafeMethod(settings.type) ) {
+                            var csrfToken = vm._getCSRFToken();
+                            if( csrfToken ) {
+                                xhr.setRequestHeader("X-CSRFToken", csrfToken);
+                            }
+                        }
+                    }
+                },
                 contentType: 'application/json',
                 data: JSON.stringify(data),
-                method: 'PUT',
             }).done(successCallback).fail(failureCallback);
         },
         /** This method generates a PATCH HTTP request to `url` with
@@ -628,28 +697,28 @@ var httpRequestMixin = {
         reqPatch: function(url, arg, arg2, arg3){
             var vm = this;
             var data, successCallback;
-            var failureCallback = handleRequestError;
+            var failureCallback = showErrorMessages;
             if(typeof url != 'string') throw 'url should be a string';
-            if(isFunction(arg)){
+            if(vm._isFunction(arg)){
                 // We are parsing reqPatch(url, successCallback)
                 // or reqPatch(url, successCallback, errorCallback).
                 successCallback = arg;
-                if(isFunction(arg2)){
+                if(vm._isFunction(arg2)){
                     // We are parsing reqPatch(url, successCallback, errorCallback)
                     failureCallback = arg2;
                 } else if (arg2 !== undefined){
                     throw 'arg2 should be a failureCallback function';
                 }
-            } else if(isObject(arg)){
+            } else if(vm._isObject(arg)){
                 // We are parsing reqPatch(url, data)
                 // or reqPatch(url, data, successCallback)
                 // or reqPatch(url, data, successCallback, errorCallback).
                 data = arg;
-                if(isFunction(arg2)){
+                if(vm._isFunction(arg2)){
                     // We are parsing reqPatch(url, data, successCallback)
                     // or reqPatch(url, data, successCallback, errorCallback).
                     successCallback = arg2;
-                    if(isFunction(arg3)){
+                    if(vm._isFunction(arg3)){
                         // We are parsing reqPatch(url, data, successCallback, errorCallback)
                         failureCallback = arg3;
                     } else if (arg3 !== undefined){
@@ -663,10 +732,24 @@ var httpRequestMixin = {
             }
 
             return $.ajax({
+                method: 'PATCH',
                 url: url,
+                beforeSend: function(xhr, settings) {
+                    var authToken = vm._getAuthToken();
+                    if( authToken ) {
+                        xhr.setRequestHeader("Authorization",
+                            "Bearer " + authToken);
+                    } else {
+                        if( !vm._csrfSafeMethod(settings.type) ) {
+                            var csrfToken = vm._getCSRFToken();
+                            if( csrfToken ) {
+                                xhr.setRequestHeader("X-CSRFToken", csrfToken);
+                            }
+                        }
+                    }
+                },
                 contentType: 'application/json',
                 data: JSON.stringify(data),
-                method: 'PATCH',
             }).done(successCallback).fail(failureCallback);
         },
         /** This method generates a DELETE HTTP request to `url` with a query
@@ -684,13 +767,13 @@ var httpRequestMixin = {
         reqDelete: function(url, arg, arg2){
             var vm = this;
             var data, successCallback;
-            var failureCallback = handleRequestError;
+            var failureCallback = showErrorMessages;
             if(typeof url != 'string') throw 'url should be a string';
-            if(isFunction(arg)){
+            if(vm._isFunction(arg)){
                 // We are parsing reqDelete(url, successCallback)
                 // or reqDelete(url, successCallback, errorCallback).
                 successCallback = arg;
-                if(isFunction(arg2)){
+                if(vm._isFunction(arg2)){
                     // We are parsing reqDelete(url, successCallback, errorCallback)
                     failureCallback = arg2;
                 } else if (arg2 !== undefined){
@@ -701,8 +784,22 @@ var httpRequestMixin = {
             }
 
             return $.ajax({
-                url: url,
                 method: 'DELETE',
+                url: url,
+                beforeSend: function(xhr, settings) {
+                    var authToken = vm._getAuthToken();
+                    if( authToken ) {
+                        xhr.setRequestHeader("Authorization",
+                            "Bearer " + authToken);
+                    } else {
+                        if( !vm._csrfSafeMethod(settings.type) ) {
+                            var csrfToken = vm._getCSRFToken();
+                            if( csrfToken ) {
+                                xhr.setRequestHeader("X-CSRFToken", csrfToken);
+                            }
+                        }
+                    }
+                },
             }).done(successCallback).fail(failureCallback);
         },
     }
@@ -2061,7 +2158,7 @@ new Vue({
                 },
                 function(resp){
                     vm.reload()
-                    handleRequestError(resp);
+                    showErrorMessages(resp);
                 }
             );
         }
@@ -2222,6 +2319,14 @@ new Vue({
     },
     mixins: [httpRequestMixin],
     methods: {
+        deleteProfile: function(){
+            var vm = this;
+            vm.reqDelete(djaodjinSettings.urls.organization.api_base,
+                function() {
+                    window.location = djaodjinSettings.urls.profile_redirect;
+                }
+            );
+        },
         get: function(cb){
             var vm = this;
             vm.reqGet(djaodjinSettings.urls.organization.api_base,
@@ -2229,6 +2334,53 @@ new Vue({
                 vm.formFields = resp;
                 if(cb) cb();
             });
+        },
+        updateProfile: function(){
+            var vm = this;
+            vm.validateForm();
+            vm.reqPut(djaodjinSettings.urls.organization.api_base, vm.formFields,
+            function(resp) {
+                showMessages([gettext("Profile was updated.")], "success");
+            });
+            if(vm.imageSelected){
+                vm.uploadProfilePicture();
+            }
+        },
+        uploadProfilePicture: function() {
+            var vm = this;
+            vm.picture.generateBlob(function(blob){
+                if(!blob) return;
+                var form = new FormData();
+                form.append('file', blob, vm.picture.getChosenFile().name);
+                // we're using raw $.ajax call here because we need to pass
+                // the data as multipart/form-data
+                $.ajax({
+                    method: 'POST',
+                    url: djaodjinSettings.urls.organization.api_profile_picture,
+                    beforeSend: function(xhr, settings) {
+                        var authToken = vm._getAuthToken();
+                        if( authToken ) {
+                            xhr.setRequestHeader("Authorization",
+                                                 "Bearer " + authToken);
+                        } else {
+                            if( !vm._csrfSafeMethod(settings.type) ) {
+                                var csrfToken = vm._getCSRFToken();
+                                if( csrfToken ) {
+                                    xhr.setRequestHeader("X-CSRFToken", csrfToken);
+                                }
+                            }
+                        }
+                    },
+                    contentType: false,
+                    processData: false,
+                    data: form,
+                }).done(function(resp) {
+                    vm.formFields.picture = resp.location;
+                    vm.picture.remove();
+                    vm.$forceUpdate();
+                    showMessages(["Profile was updated."], "success");
+                }).fail(showErrorMessages);
+            }, 'image/jpeg');
         },
         validateForm: function(){
             var vm = this;
@@ -2249,47 +2401,6 @@ new Vue({
             }
             return !isEmpty;
         },
-        updateProfile: function(){
-            var vm = this;
-            vm.validateForm();
-            vm.reqPut(djaodjinSettings.urls.organization.api_base, vm.formFields,
-            function(resp) {
-                showMessages([gettext("Profile was updated.")], "success");
-            });
-            if(vm.imageSelected){
-                vm.uploadProfilePicture();
-            }
-        },
-        uploadProfilePicture: function() {
-            var vm = this;
-            this.picture.generateBlob(function(blob){
-                if(!blob) return;
-                var form = new FormData();
-                form.append('picture', blob);
-                // we're using raw $.ajax call here because we need to pass
-                // the data as multipart/form-data
-                $.ajax({
-                    method: 'PUT',
-                    url: djaodjinSettings.urls.organization.api_profile_picture,
-                    contentType: false,
-                    processData: false,
-                    data: form,
-                }).done(function() {
-                    vm.get(function(){
-                        vm.picture.remove();
-                    });
-                    showMessages(["Profile was updated."], "success");
-                }).fail(handleRequestError);
-            }, 'image/jpeg');
-        },
-        deleteProfile: function(){
-            var vm = this;
-            vm.reqDelete(djaodjinSettings.urls.organization.api_base,
-                function() {
-                    window.location = djaodjinSettings.urls.profile_redirect;
-                }
-            );
-        },
     },
     computed: {
         imageSelected: function(){
@@ -2303,7 +2414,6 @@ new Vue({
             // to load the profile from the API then.
             vm.get();
         }
-        vm.get();
     },
 });
 }
@@ -2553,7 +2663,7 @@ var cardMixin = {
                     vm.region = org.region;
                 }
                 vm.organization = org;
-            }).fail(handleRequestError);
+            }).fail(showErrorMessages);
         },
         validateForm: function(){
             var vm = this;
@@ -2859,7 +2969,7 @@ new Vue({
                 contentType: false,
             }).done(function(){
                 vm.get();
-            }).fail(handleRequestError);
+            }).fail(showErrorMessages);
         },
     },
     computed: {

@@ -387,13 +387,6 @@ class WithSubscriptionSerializer(serializers.ModelSerializer):
         fields = ('created_at', 'ends_at', 'plan', 'auto_renew')
 
 
-class OrganizationPictureSerializer(serializers.ModelSerializer):
-
-    class Meta:
-        model = get_organization_model()
-        fields = ('picture',)
-
-
 class OrganizationWithSubscriptionsSerializer(OrganizationSerializer):
 
     subscriptions = WithSubscriptionSerializer(
