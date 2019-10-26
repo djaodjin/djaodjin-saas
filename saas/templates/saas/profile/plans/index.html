@@ -1,11 +1,13 @@
 {% extends "saas/base_dashboard.html" %}
 
 {% block saas_content %}
-<div id="plan-list-container">
-    <h2>Plan list</h2>
+<plan-list inline-template id="plan-list-container">
+  <div>
+    <h2>Plans</h2>
     <div v-for="item in items.results">
         <!-- TODO just basic template instead of an error page -->
         <a :href="'{{urls.provider.plans}}' + item.slug + '/'">[[item.title]]</a>
     </div>
-</div>
+  </div>
+</plan-list>
 {% endblock %}

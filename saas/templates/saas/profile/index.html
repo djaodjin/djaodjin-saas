@@ -1,7 +1,7 @@
 {% extends "saas/base_dashboard.html" %}
 
 {% block saas_content %}
-<div id="profile-container">
+<profile-update inline-template id="profile-container">
   <div>
     <form method="post" action="." @submit.prevent="updateProfile">
       <input type="hidden" name="csrfmiddlewaretoken" value="{{csrf_token}}">
@@ -33,5 +33,5 @@
       </div>
     </div>
   </div>
-</div>
+</profile-update>
 {% endblock %}

@@ -27,14 +27,16 @@ var djaodjinSettings = {
 };
 </script>
 <script type="text/javascript" charset="utf-8" src="/static/vendor/vue.js"></script>
-<script>
-    Vue.mixin({
-        delimiters: ['[[',']]'],
-    });
-</script>
 <script type="text/javascript" charset="utf-8" src="/static/vendor/vue2-filters.js"></script>
 <script type="text/javascript" charset="utf-8" src="/static/vendor/vue-croppa.min.js"></script>
 <script type="text/javascript" charset="utf-8" src="/static/js/djaodjin-saas-vue.js"></script>
+<script type="text/javascript">
+Vue.use(Croppa);
+var app = new Vue({
+  el: '#app',
+  delimiters: ["[[","]]"],
+});
+</script>
 {% else %}
 <script type="text/javascript" charset="utf-8" src="/static/js/djaodjin-stripe.js"></script>
 <script type="text/javascript">

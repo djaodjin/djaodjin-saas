@@ -3,7 +3,7 @@
 {% block saas_title %}Roles{% endblock %}
 
 {% block saas_content %}
-<section id="user-relation-list-container" ng-app="saasApp">
+<role-user-list inline-template id="user-relation-list-container" ng-app="saasApp">
   <div ng-controller="userRelationListCtrl">
     <h2>Users with role '{{role_descr.title}}' on {{organization.printable_name}}</h2>
     <table>
@@ -86,5 +86,5 @@ Thank you,
     <a href="{{urls.organization.role_description}}">Add a new type of role</a>
     {% endif %}
   </div>
-</section>
+</role-user-list>
 {% endblock %}

@@ -6,13 +6,14 @@ Provider Dashboard
 
 {% block saas_content %}
 <div ng-app="saasApp">
-    <div id="search-list-container" ng-controller="searchListCtrl">
+    <search-profile inline-template id="search-list-container" ng-controller="searchListCtrl">
         <div>
+          <div>
             <input type="text" placeholder="Search..."
                 ng-model="params.q" ng-change="filterList(params.q)"
                 v-model="params.q" @input="filterList" />
-        </div>
-        <table>
+          </div>
+          <table>
             <tbody id="has-registered"
                 ng-show="items.$resolved && items.results.length > 0" ng-cloak
                 v-show="itemsLoaded && items.results.length > 0" v-cloak >
@@ -26,8 +27,9 @@ Provider Dashboard
                     <td>[[entry.created_at | relativeDate]]</td>
                 </tr>
             </tbody>
-        </table>
-    </div>
+          </table>
+        </div>
+    </search-profile>
     <div>
         <div>
             <div>
@@ -37,10 +39,9 @@ Provider Dashboard
 No items to take care of Today.
             </p>
         </div>
-        <div id="user-list-container" ng-controller="userListCtrl">
-            <div>
-                <h4>Recently registered</h4>
-            </div>
+        <user-list inline-template id="user-list-container" ng-controller="userListCtrl">
+          <div>
+            <h4>Recently registered</h4>
             <table>
                 <tbody ng-show="!items.$resolved" v-show="!itemsLoaded">
                     <tr>
@@ -61,11 +62,10 @@ No items to take care of Today.
                     </tr>
                 </tbody>
             </table>
-        </div>
-        <div id="today-sales-container" ng-controller="receivableListCtrl">
-            <div>
-                <h4>Today Sales<span ng-show="items.$resolved" v-show="itemsLoaded">: [[humanizeTotal()]]</span></h4>
-            </div>
+        </user-list>
+        <today-sales inline-template id="today-sales-container" ng-controller="receivableListCtrl">
+          <div>
+            <h4>Today Sales<span ng-show="items.$resolved" v-show="itemsLoaded">: [[humanizeTotal()]]</span></h4>
             <table>
                 <tbody ng-show="!items.$resolved" v-show="!itemsLoaded">
                     <tr>
@@ -85,7 +85,8 @@ No items to take care of Today.
                     </tr>
                 </tbody>
             </table>
-        </div>
+          </div>
+        </today-sales>
     </div>
 </div>
 {% endblock %}

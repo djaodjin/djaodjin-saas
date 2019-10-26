@@ -1,17 +1,4 @@
-function getInitValue(form, fieldName) {
-    if( form.length > 0 ) {
-        var field = form.find("[name='" + fieldName + "']");
-        if( field.length > 0 ) {
-            var val = field.val();
-            if( !val ) {
-                val = field.data('init');
-            }
-            return val;
-        }
-    }
-    return "";
-}
-
+// Components for saas logic
 
 Vue.filter('formatDate', function(value, format) {
   if (value) {
@@ -26,6 +13,7 @@ Vue.filter('formatDate', function(value, format) {
   }
 });
 
+
 Vue.filter("monthHeading", function(d) {
     // shift each period by 1 month unless this is
     // current month and not a first day of the month
@@ -39,11 +27,13 @@ Vue.filter("monthHeading", function(d) {
     return d.clone().subtract(1, 'months').format("MMM'YY");
 });
 
+
 Vue.filter('currencyToSymbol', function(currency) {
     if( currency === "usd" || currency === "cad" ) { return "$"; }
     else if( currency === "eur" ) { return "\u20ac"; }
     return currency;
 });
+
 
 Vue.filter('humanizeCell', function(cell, unit, scale) {
     var currencyFilter = Vue.filter('currency');
@@ -58,6 +48,7 @@ Vue.filter('humanizeCell', function(cell, unit, scale) {
     }
     return currencyFilter(value, symbol, precision);
 });
+
 
 Vue.filter('relativeDate', function(at_time) {
     var cutOff = moment();
@@ -438,9 +429,9 @@ var httpRequestMixin = {
             // Look first for an input node in the HTML page, i.e.
             // <input type="hidden" name="csrfmiddlewaretoken"
             //     value="{{csrf_token}}">
-            var crsfNode = $(vm.$el).find("[name='csrfmiddlewaretoken']");
-            if( crsfNode.length > 0 ) {
-                return crsfNode.val();
+            var crsfNode = vm.$el.querySelector("[name='csrfmiddlewaretoken']");
+            if( crsfNode ) {
+                return crsfNode.value;
             }
             // Then look for a CSRF token in the meta tags, i.e.
             // <meta name="csrf-token" content="{{csrf_token}}">
@@ -805,6 +796,246 @@ var httpRequestMixin = {
     }
 }
 
+
+var cardMixin = {
+    mixins: [
+        httpRequestMixin
+    ],
+    data: function() {
+        return $.extend({
+            cardNumber: '',
+            cardCvc: '',
+            cardExpMonth: '',
+            cardExpYear: '',
+            savedCard: {
+                last4: '',
+                exp_date: '',
+            },
+            countries: countries,
+            regions: regions,
+            organization: {},
+            updateCard: false, //used in legacy checkout
+            errors: {},
+            validate: [
+                'cardNumber',
+                'cardCvc',
+                'cardExpMonth',
+                'cardExpYear',
+                'card_name',
+                'card_address_line1',
+                'card_city',
+                'card_adress_zip',
+                'country',
+                'region',
+            ],
+        }, this.getCardFormData());
+    },
+    methods: {
+        getCardFormData: function() {
+            var vm = this;
+            var data = {};
+            var cardForm = $("#card-use");
+            if( cardForm.length > 0 ) {
+                data['card_name'] = vm.getInitValue(cardForm, 'card_name');
+                data['card_address_line1'] = vm.getInitValue(cardForm, 'card_address_line1');
+                data['card_city'] = vm.getInitValue(cardForm, 'card_city');
+                data['ard_adress_zip'] = vm.getInitValue(cardForm, 'card_address_zip');
+                data['country'] = vm.getInitValue(cardForm, 'country');
+                data['region'] = vm.getInitValue(cardForm, 'region');
+            }
+            return data;
+        },
+        clearCardData: function() {
+            var vm = this;
+            vm.savedCard.last4 = '';
+            vm.savedCard.exp_date = '';
+            vm.cardNumber = '';
+            vm.cardCvc = '';
+            vm.cardExpMonth = '';
+            vm.cardExpYear = '';
+        },
+        deleteCard: function() {
+            var vm = this;
+            vm.reqDelete(djaodjinSettings.urls.organization.api_card,
+            function(resp){
+                vm.clearCardData();
+            });
+        },
+        inputClass: function(name){
+            var vm = this;
+            var field = this.errors[name];
+            if(name === 'cardExp'){
+                // a hack to validate card expiration year and month as
+                // a single field
+                if(vm.errors['cardExpMonth'] || this.errors['cardExpYear']){
+                    field = true;
+                }
+            }
+            cls = [];
+            if( field ){
+                cls.push('has-error');
+            }
+            return cls;
+        },
+        getInitValue: function(form, fieldName) {
+            if( form.length > 0 ) {
+                var field = form.find("[name='" + fieldName + "']");
+                if( field.length > 0 ) {
+                    var val = field.attr('type') === 'checkbox' ?
+                        field.prop('checked') : (
+                            field.val() ? field.val() : field.data('init'));
+                    return val;
+                }
+            }
+            return "";
+        },
+        getUserCard: function(){
+            var vm = this;
+            vm.reqGet(djaodjinSettings.urls.organization.api_card,
+            function(resp){
+                if(resp.last4){
+                    vm.savedCard.last4 = resp.last4;
+                    vm.savedCard.exp_date = resp.exp_date;
+                }
+            });
+        },
+        getCardToken: function(cb){
+            var vm = this;
+            if(!djaodjinSettings.stripePubKey){
+                showMessages([
+                    gettext("You haven't set a valid Stripe public key")
+                ], "error");
+                return;
+            }
+            Stripe.setPublishableKey(djaodjinSettings.stripePubKey);
+            Stripe.createToken({
+                number: vm.cardNumber,
+                cvc: vm.cardCvc,
+                exp_month: vm.cardExpMonth,
+                exp_year: vm.cardExpYear,
+                name: vm.card_name,
+                address_line1: vm.card_address_line1,
+                address_city: vm.card_city,
+                address_state: vm.region,
+                address_zip: vm.card_adress_zip,
+                address_country: vm.country
+            }, function(code, res){
+                if(code === 200) {
+                    vm.savedCard.last4 = '***-' + res.card.last4;
+                    vm.savedCard.exp_date = (
+                        res.card.exp_month + '/' + res.card.exp_year);
+                    if(cb) cb(res.id)
+                } else {
+                    showMessages([res.error.message], "error");
+                }
+            });
+        },
+        getOrgAddress: function(){
+            var vm = this;
+            vm.reqGet(djaodjinSettings.urls.organization.api_base, function(org) {
+                if(org.full_name){
+                    vm.card_name = org.full_name;
+                }
+                if(org.street_address){
+                    vm.card_address_line1 = org.street_address;
+                }
+                if(org.locality){
+                    vm.card_city = org.locality;
+                }
+                if(org.postal_code){
+                    vm.card_adress_zip = org.postal_code;
+                }
+                if(org.country){
+                    vm.country = org.country;
+                }
+                if(org.region){
+                    vm.region = org.region;
+                }
+                vm.organization = org;
+            }).fail(showErrorMessages);
+        },
+        validateForm: function(){
+            var vm = this;
+            var valid = true;
+            var errors = {}
+            var errorMessages = "";
+            vm.validate.forEach(function(field){
+                if(vm[field] === ''){
+                    vm[field] = vm.getInitValue($(vm.$el), field);
+                }
+                if( vm[field] === '') {
+                    valid = false;
+                    errors[field] = [gettext("This field shouldn't be empty")];
+                }
+            });
+            vm.errors = errors;
+            if(Object.keys(vm.errors).length > 0){
+                if( vm.errors['cardNumber'] ) {
+                    if( errorMessages ) { errorMessages += ", "; }
+                    errorMessages += gettext("Card Number");
+                }
+                if( vm.errors['cardCvc'] ) {
+                    if( errorMessages ) { errorMessages += ", "; }
+                    errorMessages += gettext("Security Code");
+                }
+                if( vm.errors['cardExpMonth']
+                         || vm.errors['cardExpYear'] ) {
+                    if( errorMessages ) { errorMessages += ", "; }
+                    errorMessages += gettext("Expiration");
+                }
+                if( vm.errors['card_name'] ) {
+                    if( errorMessages ) { errorMessages += ", "; }
+                    errorMessages += gettext("Card Holder");
+                }
+                if( vm.errors['card_address_line1'] ) {
+                    if( errorMessages ) { errorMessages += ", "; }
+                    errorMessages += gettext("Street address");
+                }
+                if( vm.errors['card_city'] ) {
+                    if( errorMessages ) { errorMessages += ", "; }
+                    errorMessages += gettext("City/Town");
+                }
+                if( vm.errors['card_adress_zip'] ) {
+                    if( errorMessages ) { errorMessages += ", "; }
+                    errorMessages += gettext("Zip/Postal code");
+                }
+                if( vm.errors['country'] ) {
+                    if( errorMessages ) { errorMessages += ", "; }
+                    errorMessages += gettext("Country");
+                }
+                if( vm.errors['region'] ) {
+                    if( errorMessages ) { errorMessages += ", "; }
+                    errorMessages += gettext("State/Province/County");
+                }
+                if( errorMessages ) {
+                    errorMessages = interpolate(
+                      gettext("%s field(s) cannot be empty."), [errorMessages]);
+                }
+                showErrorMessages(errorMessages);
+            }
+            return valid;
+        },
+    },
+    computed: {
+        haveCardData: function() {
+            var vm = this;
+            return vm.savedCard.last4 && vm.savedCard.exp_date;
+        }
+    },
+    mounted: function() {
+        var vm = this;
+        var elements = vm.$el.querySelectorAll('[data-last4]');
+        if( elements.length > 0 ) {
+            vm.savedCard.last4 = elements[0].getAttribute('data-last4');
+        }
+        var elements = vm.$el.querySelectorAll('[data-exp-date]');
+        if( elements.length > 0 ) {
+            vm.savedCard.exp_date = elements[0].getAttribute('data-exp-date');
+        }
+    }
+}
+
+
 var itemListMixin = {
     data: function(){
         return this.getInitData();
@@ -930,10 +1161,12 @@ var itemListMixin = {
 }
 
 var itemMixin = {
-    mixins: [itemListMixin],
-    data: {
-        item: {},
-        itemLoaded: false,
+    mixins: [httpRequestMixin],
+    data: function() {
+        return {
+            item: {},
+            itemLoaded: false,
+        }
     },
     methods: {
         get: function(){
@@ -948,6 +1181,27 @@ var itemMixin = {
                 }
             }
             vm.reqGet(vm.url, vm.getParams(), cb);
+        },
+        validateForm: function(){
+            var vm = this;
+            var isEmpty = true;
+            var fields = $(vm.$el).find('[name]').not(
+                '[name="csrfmiddlewaretoken"]');
+            for( var fieldIdx = 0; fieldIdx < fields.length; ++fieldIdx ) {
+                var field = $(fields[fieldIdx]);
+                var fieldName = field.attr('name');
+                var fieldValue = field.attr('type') === 'checkbox' ?
+                    field.prop('checked') : field.val();
+                if( vm.formFields[fieldName] !== fieldValue ) {
+                    vm.formFields[fieldName] = fieldValue;
+                }
+                if( vm.formFields[fieldName] ) {
+                    // We have at least one piece of information
+                    // about the plan already available.
+                    isEmpty = false;
+                }
+            }
+            return !isEmpty;
         },
     },
 }
@@ -1160,7 +1414,10 @@ var timezoneMixin = {
 }
 
 var userRelationMixin = {
-    mixins: [itemListMixin, paginationMixin],
+    mixins: [
+        itemListMixin,
+        paginationMixin
+    ],
     data: function(){
         return {
             modalSelector: ".add-role-modal",
@@ -1352,7 +1609,7 @@ var subscribersMixin = {
 Vue.component('user-typeahead', {
     template: "",
     props: ['url', 'role'],
-    data: function(){
+    data: function() {
         return {
             target: null,
             searching: false,
@@ -1401,7 +1658,9 @@ Vue.component('user-typeahead', {
 // TODO it probably makes sense to use this component in other
 // places where user relations are needed
 Vue.component('user-relation', {
-    template: "",
+    mixins: [
+        userRelationMixin
+    ],
     props: {
         roleUrl: '',
         role: {
@@ -1414,7 +1673,6 @@ Vue.component('user-relation', {
             }
         },
     },
-    mixins: [userRelationMixin],
     data: function(){
         return {
             url: this.roleUrl,
@@ -1438,27 +1696,28 @@ Vue.component('user-relation', {
     },
 });
 
-if($('#coupon-list-container').length > 0){
-new Vue({
-    el: "#coupon-list-container",
+
+Vue.component('coupon-list', {
     mixins: [
         itemListMixin,
         paginationMixin,
         filterableMixin,
         sortableMixin
     ],
-    data: {
-        url: djaodjinSettings.urls.provider.api_coupons,
-        params: {
-            o: 'ends_at',
-        },
-        newCoupon: {
-            code: '',
-            percent: ''
-        },
-        edit_description: [],
-        date: null,
-        plans: []
+    data: function() {
+        return {
+            url: djaodjinSettings.urls.provider.api_coupons,
+            params: {
+                o: 'ends_at',
+            },
+            newCoupon: {
+                code: '',
+                percent: ''
+            },
+            edit_description: [],
+            date: null,
+            plans: []
+        }
     },
     methods: {
         remove: function(idx){
@@ -1566,69 +1825,40 @@ new Vue({
         this.get()
         this.getPlans()
     }
-})
-}
+});
 
-if($('#search-list-container').length > 0){
-new Vue({
-    el: "#search-list-container",
-    mixins: [itemListMixin, paginationMixin, filterableMixin],
-    data: {
-        url: djaodjinSettings.urls.provider.api_accounts,
-    },
-})
-}
 
-if($('#today-sales-container').length > 0){
-new Vue({
-    el: "#today-sales-container",
-    mixins: [itemListMixin, paginationMixin],
-    data: {
-        url: djaodjinSettings.urls.provider.api_receivables,
-        params: {
-            start_at: moment().startOf('day'),
-            o: '-created_at',
+Vue.component('user-list', {
+    mixins: [
+        itemListMixin,
+        paginationMixin
+    ],
+    data: function() {
+        return {
+            url: djaodjinSettings.urls.provider.api_accounts,
+            params: {
+                start_at: moment().startOf('day'),
+                o: '-created_at'
+            }
         }
     },
-    mounted: function(){
-        this.get()
-    }
-})
-}
-
-if($('#user-list-container').length > 0){
-new Vue({
-    el: "#user-list-container",
-    mixins: [itemListMixin, paginationMixin],
-    data: {
-        url: djaodjinSettings.urls.provider.api_accounts,
-        params: {
-            start_at: moment().startOf('day'),
-            o: '-created_at'
-        }
-    },
-
-        refresh: function() {
-            vm.showInvited = true;
-        },
 
     mounted: function(){
         this.get()
     }
-})
-}
+});
 
 
-if($('#user-relation-list-container').length > 0){
-new Vue({
-    el: "#user-relation-list-container",
+Vue.component('role-user-list', {
     mixins: [userRelationMixin, sortableMixin, filterableMixin],
-    data: {
-        url: djaodjinSettings.urls.organization.api_roles,
-        typeaheadUrl: djaodjinSettings.urls.api_candidates,
-        params: {
-            role_status: 'active',
-        },
+    data: function() {
+        return {
+            url: djaodjinSettings.urls.organization.api_roles,
+            typeaheadUrl: djaodjinSettings.urls.api_candidates,
+            params: {
+                role_status: 'active',
+            },
+        }
     },
     methods: {
         refresh: function() {
@@ -1648,14 +1878,11 @@ new Vue({
         this.get()
     }
 });
-}
 
 
-if($('#metrics-container').length > 0){
-new Vue({
-    el: "#metrics-container",
+Vue.component('metrics-charts', {
     mixins: [httpRequestMixin, timezoneMixin],
-    data: function(){
+    data: function() {
         var data = {
             tables: djaodjinSettings.tables,
             activeTab: 0,
@@ -1787,30 +2014,28 @@ new Vue({
             }
         }
     }
-})
-}
+});
 
-if($('#registered').length > 0){
-  new Vue({
-    el: "#registered",
+
+Vue.component('registered', {
     mixins: [
         itemListMixin,
         paginationMixin,
         filterableMixin,
         sortableMixin,
     ],
-    data: {
-        url: djaodjinSettings.urls.broker.api_users_registered,
+    data: function() {
+        return {
+            url: djaodjinSettings.urls.broker.api_users_registered,
+        }
     },
     mounted: function(){
         this.get();
     },
-})
-}
+});
 
-if($('#subscribed').length > 0){
-var app = new Vue({
-    el: "#subscribed",
+
+Vue.component('subscribed', {
     mixins: [
         subscriptionsMixin,
         subscribersMixin,
@@ -1818,18 +2043,18 @@ var app = new Vue({
         filterableMixin,
         sortableMixin,
     ],
-    data: {
-        url: djaodjinSettings.urls.provider.api_subscribers_active,
+    data: function() {
+        return {
+            url: djaodjinSettings.urls.provider.api_subscribers_active,
+        }
     },
     mounted: function(){
         this.get();
     },
-})
-}
+});
 
-if($('#churned').length > 0){
-var app = new Vue({
-    el: "#churned",
+
+Vue.component('churned', {
     mixins: [
         subscriptionsMixin,
         subscribersMixin,
@@ -1837,126 +2062,137 @@ var app = new Vue({
         filterableMixin,
         sortableMixin,
     ],
-    data: {
-        url: djaodjinSettings.urls.provider.api_subscribers_churned,
+    data: function() {
+        return {
+            url: djaodjinSettings.urls.provider.api_subscribers_churned,
+        }
     },
     mounted: function(){
         this.get();
     },
-})
-}
+});
 
-if($('#plans-tab-container').length > 0){
-var app = new Vue({
-    el: "#plans-tab-container",
+
+Vue.component('coupon-user-list', {
     mixins: [
-        httpRequestMixin,
-        timezoneMixin
-    ],
-    data: function(){
-        var data = {
-            url: djaodjinSettings.urls.provider.api_metrics_plans,
-            endsAt: moment(),
-            plansData: {
-                data: []
+        filterableMixin,
+        itemListMixin,
+        paginationMixin,
+        sortableMixin],
+    data: function() {
+        return {
+            url: djaodjinSettings.urls.provider.api_metrics_coupon_uses,
+            params: {
+                o: '-created_at',
             },
         }
-        if( djaodjinSettings.date_range
-            && djaodjinSettings.date_range.ends_at ) {
-            var ends_at = moment(djaodjinSettings.date_range.ends_at);
-            if(ends_at.isValid()){
-                data.endsAt = ends_at;
-            }
+    },
+    mounted: function(){
+        this.get()
+    }
+});
+
+
+Vue.component('charge-list', {
+    mixins: [
+        itemListMixin,
+        filterableMixin
+    ],
+    data: function() {
+        return {
+            url: djaodjinSettings.urls.broker.api_charges,
         }
-        data.endsAt = data.endsAt.format(DATE_FORMAT);
-
-        return data;
-    },
-    methods: {
-        get: function(){
-            var vm = this;
-            var params = {"ends_at": moment(vm.endsAt, DATE_FORMAT).format()};
-            if( vm.timezone !== 'utc' ) {
-                params["timezone"] = moment.tz.guess();
-            }
-            vm.reqGet(vm.url, params, function(resp){
-                var unit = resp.unit;
-                var scale = resp.scale;
-                scale = parseFloat(scale);
-                if( isNaN(scale) ) {
-                    scale = 1.0;
-                }
-                // add "extra" rows at the end
-                var extra = resp.extra || [];
-
-                var tableData = {
-                    key: 'plan',
-                    title: resp.title,
-                    unit: unit,
-                    scale: scale,
-                    data: resp.table,
-                    extra: resp.extra
-                }
-                vm.convertDatetime(tableData.data, vm.timezone === 'utc');
-                vm.plansData = tableData
-
-                if(window.updateChart){
-                    // in djaodjin-saas there is no metrics code, that's
-                    // why we need to check if there is a global defined
-                    updateChart(".chart-content", tableData.data,
-                        tableData.unit, tableData.scale, tableData.extra);
-                }
-            });
-        },
-        humanizeCell: function(value, unit, scale) {
-            var vm = this;
-            var filter = Vue.filter('humanizeCell');
-            return filter(value, unit, scale);
-        },
-    },
-    computed: {
-        planTableDates: function(){
-            var res = this.plansData.data;
-            if(res.length > 0){
-                return res[0].values;
-            }
-            return []
-        },
     },
     mounted: function(){
         this.get();
+    }
+});
+
+
+Vue.component('plan-list', {
+    mixins: [
+        filterableMixin,
+        itemListMixin,
+        paginationMixin,
+        sortableMixin,
+    ],
+    data: function() {
+        return {
+            url: djaodjinSettings.urls.provider.api_plans,
+        }
     },
-})
-}
+    mounted: function(){
+        this.get();
+    }
+});
 
-/*
-    XXX
-    We define a global here because another VM needs to be able
-    to communicate with this one, specifically when a user is
-    unsubscribed, an event is triggered which causes another VM
-    to reload its list of objects
-*/
-var subscriptionsListVM;
 
-if($('#subscriptions-list-container').length > 0){
-subscriptionsListVM = new Vue({
-    el: "#subscriptions-list-container",
+Vue.component('plan-subscriber-list', {
+    mixins: [
+        subscriptionsMixin,
+        subscribersMixin,
+        paginationMixin,
+        sortableMixin,
+        filterableMixin,
+    ],
+    data: function() {
+        return {
+            newProfile: {},
+            typeaheadUrl: djaodjinSettings.urls.api_candidates,
+            url: djaodjinSettings.urls.provider.api_plan_subscribers,
+        }
+    },
+    methods: {
+        save: function(item){
+            var vm = this;
+            var slug = item.slug ? item.slug : item.toString();
+            vm.reqPost(vm.url, {slug: slug},
+                function(resp){
+                    vm.get();
+                }, function(resp){
+                    if(str.length > 0){
+                        vm.newProfile = {
+                            slug: str,
+                            email: str,
+                            full_name: str
+                        }
+                        vm.modalShow();
+                    }
+                }
+            );
+        },
+        create: function(){
+            var vm = this;
+            vm.reqPost(vm.url + "?force=1", vm.newProfile, function(resp){
+                vm.get();
+            });
+        }
+    },
+    mounted: function(){
+        this.get();
+    }
+});
+
+
+Vue.component('subscription-list', {
     mixins: [
         itemListMixin,
-        sortableMixin,
         paginationMixin,
+        sortableMixin,
         subscriptionsMixin,
     ],
-    data: {
-        url: djaodjinSettings.urls.organization.api_subscriptions,
-        plan: {},
-        params: {
-            state: 'active',
-        },
-        toDelete: {
-            plan: null,
-            org: null
-        },
+    data: function() {
+        return {
+            url: djaodjinSettings.urls.organization.api_subscriptions,
+            plan: {},
+            params: {
+                state: 'active',
+            },
+            toDelete: {
+                plan: null,
+                org: null
+            },
+        }
     },
     methods: {
         update: function(item){
@@ -2018,42 +2254,61 @@ subscriptionsListVM = new Vue({
     mounted: function(){
         this.get();
     }
-})
-}
+});
 
-if($('#expired-subscriptions-list-container').length > 0){
-new Vue({
-    el: "#expired-subscriptions-list-container",
+
+Vue.component('expired-subscription-list', {
     mixins: [
         itemListMixin,
+        sortableMixin,
         paginationMixin,
         subscriptionsMixin,
     ],
-    data: {
-        url: djaodjinSettings.urls.organization.api_subscriptions,
-        params: {
-            state: 'expired',
-        },
+    data: function() {
+        return {
+            url: djaodjinSettings.urls.organization.api_subscriptions,
+            params: {
+                state: 'expired',
+            },
+        }
     },
     mounted: function(){
         this.get();
-        subscriptionsListVM.$on('expired', this.get);
     }
-})
-}
+});
 
-if($('#import-transaction-container').length > 0){
-new Vue({
-    el: "#import-transaction-container",
-    data: {
-        url: djaodjinSettings.urls.provider.api_subscribers_active,
-        createdAt: moment().format("YYYY-MM-DD"),
-        itemSelected: '',
-        searching: false,
-        amount: 0,
-        description: '',
+
+/*
+    We nedd to communicate the unsubscribe event from the <subscription-list>
+    to the <expired-subscription-list>. We use `events` and `refs` to do that.
+*/
+Vue.component('subscription-list-container', {
+    data: function() {
+        return {
+        }
     },
-    mixins: [httpRequestMixin],
+    methods: {
+        expired: function() {
+            this.$refs.expired.get();
+        }
+    }
+});
+
+
+Vue.component('import-transaction', {
+    mixins: [
+        httpRequestMixin
+    ],
+    data: function() {
+        return {
+            url: djaodjinSettings.urls.provider.api_subscribers_active,
+            createdAt: moment().format("YYYY-MM-DD"),
+            itemSelected: '',
+            searching: false,
+            amount: 0,
+            description: '',
+        }
+    },
     methods: {
         getSubscriptions: function(query, done) {
             var vm = this;
@@ -2092,32 +2347,14 @@ new Vue({
         }
     },
 });
-}
 
-if($('#coupon-users-container').length > 0){
-new Vue({
-    el: "#coupon-users-container",
-    mixins: [itemListMixin, sortableMixin, paginationMixin, filterableMixin],
-    data: {
-        params: {
-            o: '-created_at',
-        },
-        url: djaodjinSettings.urls.provider.api_metrics_coupon_uses
-    },
-    mounted: function(){
-        this.get()
-    }
-})
-}
 
-if($('#billing-statement-container').length > 0){
-new Vue({
-    el: "#billing-statement-container",
+Vue.component('billing-statement', {
     mixins: [
+        filterableMixin,
         itemListMixin,
-        sortableMixin,
         paginationMixin,
-        filterableMixin
+        sortableMixin,
     ],
     data: function(){
         var res = {
@@ -2168,25 +2405,25 @@ new Vue({
         this.getCard();
         this.get();
     }
-})
-}
+});
 
-if($('#transfers-container').length > 0){
-new Vue({
-    el: "#transfers-container",
+
+Vue.component('transfers-statement', {
     mixins: [
+        filterableMixin,
         itemListMixin,
-        sortableMixin,
         paginationMixin,
-        filterableMixin
+        sortableMixin,
     ],
-    data: {
-        url: djaodjinSettings.urls.organization.api_transactions,
-        balanceLoaded: false,
-        last4: gettext("N/A"),
-        bank_name: gettext("N/A"),
-        balance_amount: gettext("N/A"),
-        balance_unit: '',
+    data: function() {
+        return {
+            url: djaodjinSettings.urls.organization.api_transactions,
+            balanceLoaded: false,
+            last4: gettext("N/A"),
+            bank_name: gettext("N/A"),
+            balance_amount: gettext("N/A"),
+            balance_unit: '',
+        }
     },
     methods: {
         getBalance: function() {
@@ -2210,34 +2447,43 @@ new Vue({
         this.getBalance();
         this.get();
     },
-})
-}
+});
 
-if($('#transactions-container').length > 0){
-new Vue({
-    el: "#transactions-container",
-    mixins: [itemListMixin, sortableMixin, paginationMixin, filterableMixin],
-    data: {
-        url: djaodjinSettings.urls.organization.api_transactions,
+
+Vue.component('transaction-list', {
+    mixins: [
+        filterableMixin,
+        itemListMixin,
+        paginationMixin,
+        sortableMixin,
+    ],
+    data: function() {
+        return {
+            url: djaodjinSettings.urls.organization.api_transactions,
+        }
     },
     mounted: function(){
         this.get();
     },
-})
-}
+});
 
-if($('#accessible-list-container').length > 0){
-new Vue({
-    el: "#accessible-list-container",
-    mixins: [userRelationMixin, sortableMixin, filterableMixin],
-    data: {
-        url: djaodjinSettings.urls.user.api_accessibles,
-        typeaheadUrl: djaodjinSettings.urls.api_candidates,
-        showInvited: false,
-        showRequested: false,
-        params: {
-            role_status: "",
-        },
+
+Vue.component('role-profile-list', {
+    mixins: [
+        filterableMixin,
+        sortableMixin,
+        userRelationMixin,
+    ],
+    data: function() {
+        return {
+            url: djaodjinSettings.urls.user.api_accessibles,
+            typeaheadUrl: djaodjinSettings.urls.api_candidates,
+            showInvited: false,
+            showRequested: false,
+            params: {
+                role_status: "",
+            },
+        }
     },
     methods: {
         refresh: function() {
@@ -2256,69 +2502,22 @@ new Vue({
     mounted: function(){
         this.get();
     },
-})
-}
+});
 
-if($('#plan-subscribers-container').length > 0){
-new Vue({
-    el: "#plan-subscribers-container",
+
+Vue.component('profile-update', {
     mixins: [
-        subscriptionsMixin,
-        subscribersMixin,
-        paginationMixin,
-        sortableMixin,
-        filterableMixin,
+        itemMixin,
     ],
-    data: {
-        newProfile: {},
-        typeaheadUrl: djaodjinSettings.urls.api_candidates,
-        url: djaodjinSettings.urls.provider.api_plan_subscribers,
-    },
-    methods: {
-        save: function(item){
-            var vm = this;
-            var slug = item.slug ? item.slug : item.toString();
-            vm.reqPost(vm.url, {slug: slug},
-                function(resp){
-                    vm.get();
-                }, function(resp){
-                    if(str.length > 0){
-                        vm.newProfile = {
-                            slug: str,
-                            email: str,
-                            full_name: str
-                        }
-                        vm.modalShow();
-                    }
-                }
-            );
-        },
-        create: function(){
-            var vm = this;
-            vm.reqPost(vm.url + "?force=1", vm.newProfile, function(resp){
-                vm.get();
-            });
+    data: function() {
+        return {
+            formFields: {},
+            countries: countries,
+            regions: regions,
+            currentPicture: null,
+            picture: null,
         }
     },
-    mounted: function(){
-        this.get();
-    }
-})
-}
-
-if($('#profile-container').length > 0){
-Vue.use(Croppa);
-
-new Vue({
-    el: "#profile-container",
-    data: {
-        formFields: {},
-        countries: countries,
-        regions: regions,
-        currentPicture: null,
-        picture: null,
-    },
-    mixins: [httpRequestMixin],
     methods: {
         deleteProfile: function(){
             var vm = this;
@@ -2383,25 +2582,6 @@ new Vue({
                 }).fail(showErrorMessages);
             }, 'image/jpeg');
         },
-        validateForm: function(){
-            var vm = this;
-            var isEmpty = true;
-            var fields = $(vm.$el).find('[name]').not(
-                '[name="csrfmiddlewaretoken"]');
-            for( var fieldIdx = 0; fieldIdx < fields.length; ++fieldIdx ) {
-                var fieldName = $(fields[fieldIdx]).attr('name');
-                var fieldValue = $(fields[fieldIdx]).attr('type') === 'checkbox' ? $(fields[fieldIdx]).prop('checked') : $(fields[fieldIdx]).val();
-                if( vm.formFields[fieldName] !== fieldValue ) {
-                    vm.formFields[fieldName] = fieldValue;
-                }
-                if( vm.formFields[fieldName] ) {
-                    // We have at least one piece of information
-                    // about the plan already available.
-                    isEmpty = false;
-                }
-            }
-            return !isEmpty;
-        },
     },
     computed: {
         imageSelected: function(){
@@ -2417,36 +2597,20 @@ new Vue({
         }
     },
 });
-}
 
-if($('#charge-list-container').length > 0){
-new Vue({
-    el: "#charge-list-container",
-    mixins: [
-        itemListMixin,
-        filterableMixin
-    ],
-    data: {
-        url: djaodjinSettings.urls.broker.api_charges,
-    },
-    mounted: function(){
-        this.get();
-    }
-})
-}
 
-if($('#role-list-container').length > 0){
-new Vue({
-    el: "#role-list-container",
+Vue.component('roledescr-list', {
     mixins: [
         itemListMixin,
         paginationMixin,
     ],
-    data: {
-        url: djaodjinSettings.urls.organization.api_role_descriptions,
-        role: {
-            title: '',
-        },
+    data: function() {
+        return {
+            url: djaodjinSettings.urls.organization.api_role_descriptions,
+            role: {
+                title: '',
+            },
+        }
     },
     methods: {
         create: function(){
@@ -2469,25 +2633,25 @@ new Vue({
     mounted: function(){
         this.get();
     },
-})
-}
+});
 
-if($('#balance-list-container').length > 0){
-new Vue({
-    el: "#balance-list-container",
+
+Vue.component('balance-list', {
     mixins: [
         itemListMixin,
         timezoneMixin,
     ],
-    data: {
-        url: djaodjinSettings.urls.api_broker_balances,
-        balanceLineUrl : djaodjinSettings.urls.api_balance_lines,
-        startPeriod: moment().subtract(1, 'months').toISOString(),
-        balanceLine: {
-            title: '',
-            selector: '',
-            rank: 0,
-        },
+    data: function() {
+        return {
+            url: djaodjinSettings.urls.api_broker_balances,
+            balanceLineUrl : djaodjinSettings.urls.api_balance_lines,
+            startPeriod: moment().subtract(1, 'months').toISOString(),
+            balanceLine: {
+                title: '',
+                selector: '',
+                rank: 0,
+            },
+        }
     },
     computed: {
         values: function(){
@@ -2530,238 +2694,27 @@ new Vue({
     mounted: function(){
         this.get();
     }
-})
-}
+});
 
-var cardMixin = {
-    data: {
-        cardNumber: '',
-        cardCvc: '',
-        cardExpMonth: '',
-        cardExpYear: '',
-        savedCard: {
-          last4: '',
-          exp_date: '',
-        },
-        countries: countries,
-        regions: regions,
-        organization: {},
-        card_name: getInitValue($("#card-use"), 'card_name'),
-        card_address_line1: getInitValue($("#card-use"), 'card_address_line1'),
-        card_city: getInitValue($("#card-use"), 'card_city'),
-        card_adress_zip: getInitValue($("#card-use"), 'card_address_zip'),
-        country: getInitValue($("#card-use"), 'country'),
-        region: getInitValue($("#card-use"), 'region'),
-        errors: {},
-        validate: [
-            'cardNumber',
-            'cardCvc',
-            'cardExpMonth',
-            'cardExpYear',
-            'card_name',
-            'card_address_line1',
-            'card_city',
-            'card_adress_zip',
-            'country',
-            'region',
-        ],
-        updateCard: false, //used in legacy checkout
-    },
-    mixins: [httpRequestMixin],
-    methods: {
-        clearCardData: function() {
-            var vm = this;
-            vm.savedCard.last4 = '';
-            vm.savedCard.exp_date = '';
-            vm.cardNumber = '';
-            vm.cardCvc = '';
-            vm.cardExpMonth = '';
-            vm.cardExpYear = '';
-        },
-        deleteCard: function() {
-            var vm = this;
-            vm.reqDelete(djaodjinSettings.urls.organization.api_card,
-            function(resp){
-                vm.clearCardData();
-            });
-        },
-        inputClass: function(name){
-            var vm = this;
-            var field = this.errors[name];
-            if(name === 'cardExp'){
-                // a hack to validate card expiration year and month as
-                // a single field
-                if(vm.errors['cardExpMonth'] || this.errors['cardExpYear']){
-                    field = true;
-                }
-            }
-            cls = [];
-            if( field ){
-                cls.push('has-error');
-            }
-            return cls;
-        },
-        getUserCard: function(){
-            var vm = this;
-            vm.reqGet(djaodjinSettings.urls.organization.api_card,
-            function(resp){
-                if(resp.last4){
-                    vm.savedCard.last4 = resp.last4;
-                    vm.savedCard.exp_date = resp.exp_date;
-                }
-            });
-        },
-        getCardToken: function(cb){
-            var vm = this;
-            if(!djaodjinSettings.stripePubKey){
-                showMessages([
-                    gettext("You haven't set a valid Stripe public key")
-                ], "error");
-                return;
-            }
-            Stripe.setPublishableKey(djaodjinSettings.stripePubKey);
-            Stripe.createToken({
-                number: vm.cardNumber,
-                cvc: vm.cardCvc,
-                exp_month: vm.cardExpMonth,
-                exp_year: vm.cardExpYear,
-                name: vm.card_name,
-                address_line1: vm.card_address_line1,
-                address_city: vm.card_city,
-                address_state: vm.region,
-                address_zip: vm.card_adress_zip,
-                address_country: vm.country
-            }, function(code, res){
-                if(code === 200) {
-                    vm.savedCard.last4 = '***-' + res.card.last4;
-                    vm.savedCard.exp_date = (
-                        res.card.exp_month + '/' + res.card.exp_year);
-                    if(cb) cb(res.id)
-                } else {
-                    showMessages([res.error.message], "error");
-                }
-            });
-        },
-        getOrgAddress: function(){
-            var vm = this;
-            vm.reqGet(djaodjinSettings.urls.organization.api_base, function(org) {
-                if(org.full_name){
-                    vm.card_name = org.full_name;
-                }
-                if(org.street_address){
-                    vm.card_address_line1 = org.street_address;
-                }
-                if(org.locality){
-                    vm.card_city = org.locality;
-                }
-                if(org.postal_code){
-                    vm.card_adress_zip = org.postal_code;
-                }
-                if(org.country){
-                    vm.country = org.country;
-                }
-                if(org.region){
-                    vm.region = org.region;
-                }
-                vm.organization = org;
-            }).fail(showErrorMessages);
-        },
-        validateForm: function(){
-            var vm = this;
-            var valid = true;
-            var errors = {}
-            var errorMessages = "";
-            vm.validate.forEach(function(field){
-                if(vm[field] === ''){
-                    vm[field] = getInitValue($(vm.$el), field);
-                }
-                if( vm[field] === '') {
-                    valid = false;
-                    errors[field] = [gettext("This field shouldn't be empty")];
-                }
-            });
-            vm.errors = errors;
-            if(Object.keys(vm.errors).length > 0){
-                if( vm.errors['cardNumber'] ) {
-                    if( errorMessages ) { errorMessages += ", "; }
-                    errorMessages += gettext("Card Number");
-                }
-                if( vm.errors['cardCvc'] ) {
-                    if( errorMessages ) { errorMessages += ", "; }
-                    errorMessages += gettext("Security Code");
-                }
-                if( vm.errors['cardExpMonth']
-                         || vm.errors['cardExpYear'] ) {
-                    if( errorMessages ) { errorMessages += ", "; }
-                    errorMessages += gettext("Expiration");
-                }
-                if( vm.errors['card_name'] ) {
-                    if( errorMessages ) { errorMessages += ", "; }
-                    errorMessages += gettext("Card Holder");
-                }
-                if( vm.errors['card_address_line1'] ) {
-                    if( errorMessages ) { errorMessages += ", "; }
-                    errorMessages += gettext("Street address");
-                }
-                if( vm.errors['card_city'] ) {
-                    if( errorMessages ) { errorMessages += ", "; }
-                    errorMessages += gettext("City/Town");
-                }
-                if( vm.errors['card_adress_zip'] ) {
-                    if( errorMessages ) { errorMessages += ", "; }
-                    errorMessages += gettext("Zip/Postal code");
-                }
-                if( vm.errors['country'] ) {
-                    if( errorMessages ) { errorMessages += ", "; }
-                    errorMessages += gettext("Country");
-                }
-                if( vm.errors['region'] ) {
-                    if( errorMessages ) { errorMessages += ", "; }
-                    errorMessages += gettext("State/Province/County");
-                }
-                if( errorMessages ) {
-                    errorMessages = interpolate(
-                      gettext("%s field(s) cannot be empty."), [errorMessages]);
-                }
-                showErrorMessages(errorMessages);
-            }
-            return valid;
-        },
-    },
-    computed: {
-        haveCardData: function() {
-            var vm = this;
-            return vm.savedCard.last4 && vm.savedCard.exp_date;
-        }
-    },
-    mounted: function() {
-        var vm = this;
-        var elements = vm.$el.querySelectorAll('[data-last4]');
-        if( elements.length > 0 ) {
-            vm.savedCard.last4 = elements[0].getAttribute('data-last4');
-        }
-        var elements = vm.$el.querySelectorAll('[data-exp-date]');
-        if( elements.length > 0 ) {
-            vm.savedCard.exp_date = elements[0].getAttribute('data-exp-date');
-        }
-    }
-}
 
-if($('#checkout-container').length > 0){
-new Vue({
-    el: "#checkout-container",
-    mixins: [itemListMixin, cardMixin],
-    data: {
-        url: djaodjinSettings.urls.organization.api_checkout,
-        isBulkBuyer: djaodjinSettings.bulkBuyer,
-        plansOption: {},
-        plansUser: {},
-        coupon: '',
-        optionsConfirmed: false,
-        seatsConfirmed: false,
-        getCb: 'getAndPrepareData',
-        init: true,
-        csvFiles: {},
+Vue.component('checkout', {
+    mixins: [
+        cardMixin,
+        itemListMixin
+    ],
+    data: function() {
+        return {
+            url: djaodjinSettings.urls.organization.api_checkout,
+            isBulkBuyer: djaodjinSettings.bulkBuyer,
+            plansOption: {},
+            plansUser: {},
+            coupon: '',
+            optionsConfirmed: false,
+            seatsConfirmed: false,
+            getCb: 'getAndPrepareData',
+            init: true,
+            csvFiles: {},
+        }
     },
     methods: {
         getOptions: function(){
@@ -2923,7 +2876,8 @@ new Vue({
         },
         // used in legacy checkout
         doCheckoutForm: function(token) {
-            var form = $('#checkout-container form');
+            var vm = this;
+            var form = $(vm.$el).find('form');
             if(token){
                 form.append("<input type='hidden' name='stripeToken' value='" + token + "'/>");
             }
@@ -3000,27 +2954,29 @@ new Vue({
         var vm = this;
         vm.get()
         vm.getUserCard();
-        var cardForm = $("#card-use");
-        if( cardForm.length > 0 ) {
-            vm.card_name = getInitValue(cardForm, 'card_name');
-            vm.card_address_line1 = getInitValue(cardForm, 'card_address_line1');
-            vm.card_city = getInitValue(cardForm, 'card_city');
-            vm.card_adress_zip = getInitValue(cardForm, 'card_address_zip');
-            vm.country = getInitValue(cardForm, 'country');
-            vm.region = getInitValue(cardForm, 'region');
+        var cardData = vm.getCardFormData();
+        if( !$.isEmptyObject(cardData) ) {
+            vm.card_name = cardData['card_name'];
+            vm.card_address_line1 = cardData['card_address_line1'];
+            vm.card_city = cardData['card_city'];
+            vm.card_adress_zip = cardData['card_address_zip'];
+            vm.country = cardData['country'];
+            vm.region = cardData['region'];
         } else {
             vm.getOrgAddress();
         }
     }
-})
-}
+});
 
-if($('#update-card-container').length > 0){
-new Vue({
-    el: "#update-card-container",
-    mixins: [cardMixin],
-    data: {
-        updateCard: true,
+
+Vue.component('card-update', {
+    mixins: [
+        cardMixin
+    ],
+    data: function() {
+        return {
+            updateCard: true,
+        }
     },
     methods: {
         saveCard: function(){
@@ -3074,19 +3030,21 @@ new Vue({
 //        this.getUserCard();
 //        this.getOrgAddress();
     }
-})
-}
+});
 
-if($('#plan-container').length > 0){
-new Vue({
-    el: "#plan-container",
-    data: {
-        formFields: {
-            unit: 'usd',
-        },
-        isActive: false,
+
+Vue.component('plan-update', {
+    mixins: [
+        itemMixin,
+    ],
+    data: function() {
+        return {
+            formFields: {
+                unit: 'usd',
+            },
+            isActive: false,
+        }
     },
-    mixins: [httpRequestMixin],
     methods: {
         get: function(){
             if(!djaodjinSettings.urls.plan.api_plan) return;
@@ -3137,25 +3095,6 @@ new Vue({
                 vm.createPlan();
             }
         },
-        validateForm: function(){
-            var vm = this;
-            var isEmpty = true;
-            var fields = $(vm.$el).find('[name]').not(
-                '[name="csrfmiddlewaretoken"]');
-            for( var fieldIdx = 0; fieldIdx < fields.length; ++fieldIdx ) {
-                var fieldName = $(fields[fieldIdx]).attr('name');
-                var fieldValue = $(fields[fieldIdx]).attr('type') === 'checkbox' ? $(fields[fieldIdx]).prop('checked') : $(fields[fieldIdx]).val();
-                if( vm.formFields[fieldName] !== fieldValue ) {
-                    vm.formFields[fieldName] = fieldValue;
-                }
-                if( vm.formFields[fieldName] ) {
-                    // We have at least one piece of information
-                    // about the plan already available.
-                    isEmpty = false;
-                }
-            }
-            return !isEmpty;
-        },
         togglePlanStatus: function(){
             var vm = this;
             var next = !vm.isActive;
@@ -3200,37 +3139,49 @@ new Vue({
             // to load the form fields from the API then.
             vm.get();
         } else {
-            var activateBtn = $("#activate-plan");
-            if( activateBtn.length > 0 ) {
-                vm.isActive = parseInt(activateBtn.val());
+            var activateBtn = vm.$el.querySelector("#activate-plan");
+            if( activateBtn) {
+                vm.isActive = parseInt(activateBtn.value);
             }
         }
     },
 });
-}
 
-if($('#plan-list-container').length > 0){
-new Vue({
-    el: "#plan-list-container",
-    mixins: [
-        itemListMixin,
-        paginationMixin,
-        filterableMixin,
-        sortableMixin,
-    ],
-    data: {
-        url: djaodjinSettings.urls.provider.api_plans,
+
+// Widgets for dashboard
+// ---------------------
+
+Vue.component('search-profile', {
+    mixins: [itemListMixin, paginationMixin, filterableMixin],
+    data: function() {
+        return {
+            url: djaodjinSettings.urls.provider.api_accounts,
+        }
+    },
+});
+
+
+Vue.component('today-sales', {
+    mixins: [itemListMixin, paginationMixin],
+    data: function() {
+        return {
+            url: djaodjinSettings.urls.provider.api_receivables,
+            params: {
+                start_at: moment().startOf('day'),
+                o: '-created_at',
+            }
+        }
     },
     mounted: function(){
-        this.get();
+        this.get()
     }
-})
-}
+});
 
-if($('#monthly-revenue-container').length > 0){
-new Vue({
-    el: "#monthly-revenue-container",
-    mixins: [itemMixin],
+
+Vue.component('monthly-revenue', {
+    mixins: [
+        itemMixin
+    ],
     data: function(){
         return {
             url: djaodjinSettings.urls.provider.api_revenue,
@@ -3256,5 +3207,5 @@ new Vue({
     mounted: function(){
         this.get();
     }
-})
-}
+});
+

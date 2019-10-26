@@ -1,33 +1,35 @@
 {% extends "saas/base_dashboard.html" %}
 
 {% block saas_content %}
-<div id="transfers-container" ng-app="saasApp">
-  <div ng-controller="billingSummaryCtrl"
-       data-api-url="{{urls.provider.api_bank}}">
-    <section id="info">
-      <h1>Deposit Information <a id="update_bank" href="{{urls.provider.bank}}">Update</a></h1>
-      <dl>
-        <dt>Institution</dt>
-        <dd>[[bank_name]]</dd>
-      </dl>
-      <dl>
-        <dt>Account Number</dt>
-        <dd>[[last4]]</dd>
-      </dl>
-    </section>
-    <section id="funds">
-      <h1>Funds</h1>
-      <dl>
-        <dt>Available</dt>
-        <dd><span id="balance-amount">[[humanizeBalance()]]</span> (<a href="{{urls.provider.withdraw_funds}}">withdraw</a>)</dd>
-      </dl>
-    </section>
-  </div>
-  <div ng-controller="transactionListCtrl">
-    {% include "saas/_transactions.html" %}
-  </div>
+<transfers-statement inline-template id="transfers-container" ng-app="saasApp">
   <div>
-    <a id="add-offline-transaction" href="{{urls.provider.import_transactions}}">Add offline transaction</a>
+    <div ng-controller="billingSummaryCtrl"
+       data-api-url="{{urls.provider.api_bank}}">
+      <section id="info">
+        <h1>Deposit Information <a id="update_bank" href="{{urls.provider.bank}}">Update</a></h1>
+        <dl>
+          <dt>Institution</dt>
+          <dd>[[bank_name]]</dd>
+        </dl>
+        <dl>
+          <dt>Account Number</dt>
+          <dd>[[last4]]</dd>
+        </dl>
+      </section>
+      <section id="funds">
+        <h1>Funds</h1>
+        <dl>
+          <dt>Available</dt>
+          <dd><span id="balance-amount">[[humanizeBalance()]]</span> (<a href="{{urls.provider.withdraw_funds}}">withdraw</a>)</dd>
+        </dl>
+      </section>
+    </div>
+    <div ng-controller="transactionListCtrl">
+      {% include "saas/_transactions.html" %}
+    </div>
+    <div>
+      <a id="add-offline-transaction" href="{{urls.provider.import_transactions}}">Add offline transaction</a>
+    </div>
   </div>
-</div>
+</transfers-statement>
 {% endblock %}

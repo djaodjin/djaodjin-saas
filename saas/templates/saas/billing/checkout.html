@@ -1,7 +1,8 @@
 {% extends "saas/base.html" %}
 
 {% block saas_content %}
-    <div id="checkout-container">
+<checkout inline-template id="checkout-container">
+  <div>
         <form @submit.prevent="redeem">
             <input name="code" type="text" placeholder="Coupon code" v-model="coupon">
             <button type="submit" class="submit-code">Redeem</button>
@@ -129,6 +130,7 @@
                 <button @click="checkout" type="submit" class="payment-submit">{% if submit_title %}{{submit_title}}{% else %}{% if force_update %}Update{% else %}Submit{% endif %}{% endif %}</button>
             </div>
         </div>
-    </div>
+  </div>
+</checkout>
 {% endblock %}
 

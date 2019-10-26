@@ -1,7 +1,7 @@
 {% extends "saas/base_dashboard.html" %}
 
 {% block saas_content %}
-<section id="subscribers" ng-app="saasApp">
+<plan-subscriber-list inline-template id="subscribers" ng-app="saasApp">
   <div id="plan-subscribers-container" ng-controller="planSubscribersListCtrl" ng-init="prefetch()">
 
     <form id="add-subscriber" @submit.prevent="submit">
@@ -90,5 +90,5 @@ Thank you,
         </tbody>
       </table>
       {% include "saas/_paginator.html" %}
-</section>
+</plan-subscriber-list>
 {% endblock %}

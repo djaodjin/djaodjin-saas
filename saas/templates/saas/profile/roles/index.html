@@ -3,7 +3,7 @@
 {% block saas_title %}Roles{% endblock %}
 
 {% block saas_content %}
-<section id="role-list-container" ng-app="saasApp">
+<roledescr-list inline-template id="role-list-container" ng-app="saasApp">
   <div ng-controller="userRoleDescriptionCtrl"
        saas-organization="{{organization.slug}}">
     <h2 ng-show="!items.$resolved"
@@ -46,5 +46,5 @@
       <button type="submit">Create role</button>
     </form>
   </div>
-</section>
+</roledescr-list>
 {% endblock %}

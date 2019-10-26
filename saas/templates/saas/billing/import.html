@@ -3,16 +3,16 @@
 {% block saas_title %}Add offline transaction{% endblock %}
 
 {% block saas_content %}
-<section id="import-transaction-container" ng-app="saasApp" ng-cloak>
-<div ng-controller="importTransactionsCtrl">
-  <form @submit.prevent="addPayment">
-  <input type="hidden" name="csrfmiddlewaretoken" value="{{csrf_token}}">
-  <fieldset>
+<import-transaction inline-template id="import-transaction-container" ng-app="saasApp" ng-cloak>
+  <div ng-controller="importTransactionsCtrl">
+    <form @submit.prevent="addPayment">
+      <input type="hidden" name="csrfmiddlewaretoken" value="{{csrf_token}}">
+      <fieldset>
         <div class="{% if form.subscription.errors %} has-error{% endif %}">
-            <label for="subscription">
-                Subscription
-            </label>
-            <div>
+          <label for="subscription">
+            Subscription
+          </label>
+          <div>
             <input
                id="subscription"
                class="form-control"
@@ -22,29 +22,29 @@
                autocomplete="off"
                ng-model="subscription"
                v-model="itemSelected" />
-            </div>
+          </div>
         </div>
         <div>
-            <label for="amount">
-                Amount
-            </label>
-            <div>
-                <input name="amount" type="number" min="0" step="any" placeholder="amount" v-model="amount">
-            </div>
+          <label for="amount">
+            Amount
+          </label>
+          <div>
+            <input name="amount" type="number" min="0" step="any" placeholder="amount" v-model="amount">
+          </div>
         </div>
         <div>
-            <label for="descr">
-                Description
-            </label>
-            <div>
-                <input name="descr" type="text" placeholder="description" v-model="description">
-            </div>
+          <label for="descr">
+            Description
+          </label>
+          <div>
+            <input name="descr" type="text" placeholder="description" v-model="description">
+          </div>
         </div>
-    </fieldset>
-    <div>
+      </fieldset>
+      <div>
         <button type="submit">Add Off-line Payment</button>
-    </div>
-  </form>
-</div>
-</section>
+      </div>
+    </form>
+  </div>
+</import-transaction>
 {% endblock %}

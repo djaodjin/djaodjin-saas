@@ -1,134 +1,142 @@
 {% extends "saas/base_dashboard.html" %}
 
 {% block saas_content %}
-<section id="subscriptions">
-  <div id="subscriptions-list-container">
-    <h2>Active subscriptions</h2>
-    <table>
-      <thead>
-        <tr>
-          <th>Plan</th>
-          <th>Until</th>
-          <th></th>
-          <th></th>
-        </tr>
-      </thead>
-      <tbody>
-        {% if plans %}
-        <tr>
-          <td colspan="4">
-            <form id="subscribe" @submit.prevent="subscribe('{{organization}}')">
-              <div>
-                <select name="plan" v-model="plan">
-                    <option selected :value="{}">Select a plan...</option>
+<subscription-list-container inline-template id="subscriptions">
+  <div>
+    <subscription-list inline-template id="subscriptions-list-container"
+        @expired="expired">
+      <div>
+        <h2>Active subscriptions</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>Plan</th>
+              <th>Until</th>
+              <th></th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% if plans %}
+            <tr>
+              <td colspan="4">
+                <form id="subscribe" @submit.prevent="subscribe('{{organization}}')">
+                  <div>
+                    <select name="plan" v-model="plan">
+                      <option selected :value="{}">Select a plan...</option>
                       {% for choice in plans %}
                       <option :value='{"slug":"{{choice.slug}}","organization":"{{choice.organization.slug}}"}'>{{choice.title}}</option>
                       {% endfor %}
-                </select>
-                <button type="submit">Subscribe</button>
-              </div>
-            </form>
-          </td>
-        </tr>
-        {% endif %}
-        <tr  v-show="!itemsLoaded">
-          <td colspan="4">
-            <h4>Loading ...</h4>
-          </td>
-        </tr>
-        <tr v-show="itemsLoaded && items.count == 0">
-          <td colspan="4">
-            <h4>No subcriptions<span v-show="params.q"> [[params.q]]</span></h4>
-          </td>
-        </tr>
-      </tbody>
-      <tbody v-for="entry in items.results" v-show="itemsLoaded && items.results.length > 0" v-cloak>
-        <tr :class="endsSoon(entry)">
-          <td>
-            <a :href="entry.plan.app_url + entry.organization.slug + '/' + entry.plan.slug + '/'">[[entry.plan.title]]</a>
-          </td>
-          <td>
-            [[entry.ends_at | formatDate]]
-          </td>
-          <td>
-            [[entry.ends_at | relativeDate]]
-          </td>
-          <td v-if="!entry.request_key">
-               <button class="unsubscribe"
-                   data-toggle="modal" data-target="#unsubscribe-action"
-                   @click="unsubscribeConfirm(entry.organization.slug, entry.plan.slug)">
-                   Unsubscribe Now
-               </button>
-           </td>
-           <td v-if="entry.request_key && entry.editable">
-               <button
+                    </select>
+                    <button type="submit">Subscribe</button>
+                  </div>
+                </form>
+              </td>
+            </tr>
+            {% endif %}
+            <tr  v-show="!itemsLoaded">
+              <td colspan="4">
+                <h4>Loading ...</h4>
+              </td>
+            </tr>
+            <tr v-show="itemsLoaded && items.count == 0">
+              <td colspan="4">
+                <h4>No subcriptions<span v-show="params.q"> [[params.q]]</span></h4>
+              </td>
+            </tr>
+          </tbody>
+          <tbody v-for="entry in items.results" v-show="itemsLoaded && items.results.length > 0" v-cloak>
+            <tr :class="endsSoon(entry)">
+              <td>
+                <a :href="entry.plan.app_url + entry.organization.slug + '/' + entry.plan.slug + '/'">[[entry.plan.title]]</a>
+              </td>
+              <td>
+                [[entry.ends_at | formatDate]]
+              </td>
+              <td>
+                [[entry.ends_at | relativeDate]]
+              </td>
+              <td v-if="!entry.request_key">
+                <button class="unsubscribe"
+                        data-toggle="modal" data-target="#unsubscribe-action"
+                        @click="unsubscribeConfirm(entry.organization.slug, entry.plan.slug)">
+                  Unsubscribe Now
+                </button>
+              </td>
+              <td v-if="entry.request_key && entry.editable">
+                <button
                   class="unsubscribe"
                   data-toggle="modal" data-target="#unsubscribe-action"
                   @click="unsubscribeConfirm(entry.organization.slug, entry.plan.slug)">
-                   Deny
-               </button>
-               <button @click="acceptRequest(entry.plan.organization, entry.request_key)">
-                   Accept
-               </button>
-           </td>
-           <td v-if="entry.request_key && !entry.editable">
-               Request pending approval ...
-           </td>
-        </tr>
-      </tbody>
-    </table>
-    {% include "saas/_paginator.html" %}
-    <!-- modal dialog to confirm unsubscribe -->
-    <modal title="Unsubscribe ...">
-        <p>
+                  Deny
+                </button>
+                <button @click="acceptRequest(entry.plan.organization, entry.request_key)">
+                  Accept
+                </button>
+              </td>
+              <td v-if="entry.request_key && !entry.editable">
+                Request pending approval ...
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        {% include "saas/_paginator.html" %}
+        <!-- modal dialog to confirm unsubscribe -->
+        <div title="Unsubscribe ...">
+          <p>
             Are you sure you want to continue?
-        </p>
-        <div slot="footer">
+          </p>
+          <div slot="footer">
             <button id="cancel-unsubscribe"
                     @click="modalOpen=false">Cancel</button>
             <button type="submit" id="unsubscribe-btn"
                     @click="unsubscribe">Unsubscribe</button>
+          </div>
         </div>
-    </modal>
-    <!-- /modal dialog to confirm unsubscribe -->
+        <!-- /modal dialog to confirm unsubscribe -->
+      </div>
+    </subscription-list>
+    <expired-subscription-list inline-template id="expired-subscriptions-list-container"
+        ref="expired">
+      <div>
+        <h2>Expired subscriptions</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>Plan</th>
+              <th>Expired</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-show="!itemsLoaded">
+              <td colspan="4">
+                <h4>Loading ...</h4>
+              </td>
+            </tr>
+            <tr v-show="itemsLoaded && items.count == 0">
+              <td colspan="4">
+                <h4>No subcriptions<span v-show="params.q"> [[params.q]]</span></h4>
+              </td>
+            </tr>
+          </tbody>
+          <tbody v-for="entry in items.results" v-show="itemsLoaded && items.results.length > 0" v-cloak>
+            <tr>
+              <td>
+                <a :href="entry.plan.app_url + entry.organization.slug + '/' + entry.plan.slug + '/'">[[entry.plan.title]]</a>
+              </td>
+              <td>
+                [[entry.ends_at | formatDate]]
+              </td>
+              <td>
+                [[entry.ends_at | relativeDate]]
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        {% include "saas/_paginator.html" %}
+      </div>
+    </expired-subscription-list>
   </div>
-  <div id="expired-subscriptions-list-container">
-    <h2>Expired subscriptions</h2>
-    <table>
-      <thead>
-        <tr>
-          <th>Plan</th>
-          <th>Expired</th>
-          <th></th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr v-show="!itemsLoaded">
-          <td colspan="4">
-            <h4>Loading ...</h4>
-          </td>
-        </tr>
-        <tr v-show="itemsLoaded && items.count == 0">
-          <td colspan="4">
-            <h4>No subcriptions<span v-show="params.q"> [[params.q]]</span></h4>
-          </td>
-        </tr>
-      </tbody>
-      <tbody v-for="entry in items.results" v-show="itemsLoaded && items.results.length > 0" v-cloak>
-        <tr>
-          <td>
-            <a :href="entry.plan.app_url + entry.organization.slug + '/' + entry.plan.slug + '/'">[[entry.plan.title]]</a>
-          </td>
-          <td>
-            [[entry.ends_at | formatDate]]
-          </td>
-          <td>
-            [[entry.ends_at | relativeDate]]
-          </td>
-        </tr>
-      </tbody>
-    </table>
-    {% include "saas/_paginator.html" %}
-  </div>
-</section>
+</subscription-list-container>
 {% endblock %}

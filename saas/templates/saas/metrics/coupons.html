@@ -1,7 +1,7 @@
 {% extends "saas/base_dashboard.html" %}
 
 {% block saas_content %}
-<section id="coupon-performance" ng-app="saasApp">
+<coupon-user-list inline-template id="coupon-performance" ng-app="saasApp">
     <div id="coupon-users-container" ng-controller="cartItemListCtrl">
         <p ng-show="items.$resolved" v-show="itemsLoaded">
 {{coupon.code}} was used [[totalItems]] time[[totalItems > 0 ? "s" : ""]].
@@ -26,10 +26,10 @@
               </tr>
               <tr ng-prop-id="item.user.slug"
                   ng-repeat="item in items.results"
-                  ng-show="items.$resolved && items.results.length > 0"
+                  ng-show="items.$resolved && items.results.length"
                   v-bind:id="item.user.slug"
                   v-for="item in items.results"
-                  v-show="itemsLoaded && items.results.length > 0" >
+                  v-show="itemsLoaded && items.results.length" >
                 <td>
                   <a ng-prop-href="'{{urls.profile_redirect}}' + item.user.slug + '/'"
                       v-bind:href="'{{urls.profile_redirect}}' + item.user.slug + '/'">[[item.user.full_name]]</a>
@@ -40,6 +40,6 @@
         </table>
         {% include "saas/_paginator.html" %}
     </div>
-</section>
+</coupon-user-list>
 {% endblock %}
 

@@ -1,7 +1,7 @@
 {% extends "saas/base_dashboard.html" %}
 
 {% block saas_content %}
-<div id="balance-list-container" ng-app="saasApp" ng-cloak>
+<balance-list inline-template id="balance-list-container" ng-app="saasApp" ng-cloak>
   <div ng-controller="BalanceListCtrl">
     {% include "saas/_filter.html" %}
     <div>
@@ -70,5 +70,5 @@
             v-model="balanceLine.selector">
         <button ng-click="create()" @click="create">Add Line</button>
     </div>
-</div>
+</balance-list>
 {% endblock %}

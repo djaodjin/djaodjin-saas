@@ -1,40 +1,39 @@
 {% extends "saas/base_dashboard.html" %}
 
 {% block saas_content %}
-<div id="plan-container">
-<div>
+<plan-update inline-template id="plan-container">
+  <div>
     {% if form.instance and form.instance.slug %}
     <div data-plan="{{form.instance.slug}}">
         <button id="activate-plan"
-            class="activate{% if form.instance.is_active %} activated{% endif %}"
+            value="{% if form.instance.is_active %}1{% else %}0{% endif %}"
             @click="togglePlanStatus"
-            v-bind:class="isActive ? 'activated' : ''"
-            v-text="isActive ? 'Deactivate' : 'Activate'">{% if form.instance.is_active %}Deactivate{% else %}Activate{% endif %}</button>
+            v-bind:class="{activated: isActive}"
+            v-text="isActive ? 'Deactivate' : 'Activate'"></button>
     </div>
     {% endif %}
-</div>
-<form
-    method="post" action=".{% if next %}/?next={{ next }}{% endif %}"
-     @submit.prevent="updatePlan">
-    <input type="hidden" name="csrfmiddlewaretoken" value="{{csrf_token}}">
-    <div class="form-group{% if form.title.errors %} has-error{% endif %}">{# testing .has-error decoration #}
-        {{form.title}}
-        <div class="help-block invalid-feedback">{% for error in form.title.errors %}{{error}}{% endfor %}</div>
+    <form method="post" action=".{% if next %}/?next={{ next }}{% endif %}"
+          @submit.prevent="updatePlan">
+        <input type="hidden" name="csrfmiddlewaretoken" value="{{csrf_token}}">
+        <div class="form-group{% if form.title.errors %} has-error{% endif %}">{# testing .has-error decoration #}
+            {{form.title}}
+            <div class="help-block invalid-feedback">{% for error in form.title.errors %}{{error}}{% endfor %}</div>
+        </div>
+        {{form.description}}
+        {{form.unit}}
+        {{form.period_amount}}
+        {{form.period_type}}
+        {{form.period_length}}
+        {{form.advance_discount}}
+        {{form.renewal_type}}
+        {{form.is_not_priced}}
+        <button type="submit">Submit</button>
+    </form>
+    {% if show_delete %}
+    <div id="confirm-delete" data-plan="{{form.instance.slug}}">
+        <button id="delete-plan" class="delete" @click="deletePlan">Delete</button>
     </div>
-    {{form.description}}
-    {{form.unit}}
-    {{form.period_amount}}
-    {{form.period_type}}
-    {{form.period_length}}
-    {{form.advance_discount}}
-    {{form.renewal_type}}
-    {{form.is_not_priced}}
-    <button type="submit">Submit</button>
-</form>
-{% if show_delete %}
-<div id="confirm-delete" data-plan="{{form.instance.slug}}">
-  <button id="delete-plan" class="delete" @click="deletePlan">Delete</button>
-</div>
-{% endif %}
-</div>
+    {% endif %}
+  </div>
+</plan-update>
 {% endblock %}

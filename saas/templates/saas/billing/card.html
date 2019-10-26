@@ -1,7 +1,8 @@
 {% extends "saas/base_dashboard.html" %}
 
 {% block saas_content %}
-<section id="update-card-container">
+<card-update inline-template id="update-card-container">
+  <div>
     <h1>Update Card for {{ organization }}</h1>
     <form id="update-card" method="post"
         action=".{% if next %}/?next={{next}}{% endif %}"
@@ -17,5 +18,6 @@
             </div>
         </div>
     </form>
-</section>
+  </div>
+</card-update>
 {% endblock %}

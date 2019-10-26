@@ -5,7 +5,7 @@
 {% endblock %}
 
 {% block saas_content %}
-<section id="metrics-container" ng-app="saasApp">
+<metrics-charts inline-template id="metrics-container" ng-app="saasApp">
   <div id="metrics-table" ng-controller="metricsCtrl">
     <div><!-- choose report date -->
       <div class="date-chooser">
@@ -70,7 +70,7 @@
       </div>
     </div>
   </div>
-</section>
+</metrics-charts>
 {% endblock %}
 
 {% block dashboard_bodyscripts %}

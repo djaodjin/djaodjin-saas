@@ -1,7 +1,7 @@
 {% extends "saas/base_dashboard.html" %}
 
 {% block saas_content %}
-<div id="billing-statement-container" ng-app="saasApp">
+<billing-statement inline-template id="billing-statement-container" ng-app="saasApp">
   <div ng-controller="billingStatementCtrl">
     <section id="info" ng-controller="billingSummaryCtrl"
              data-api-url="{{urls.organization.api_card}}">
@@ -58,5 +58,5 @@ Are you sure you would like to cancel the whole balance of [[humanizeBalance()]]
     </section>
     {% include "saas/_transactions.html" %}
   </div>
-</div>
+</billing-statement>
 {% endblock %}

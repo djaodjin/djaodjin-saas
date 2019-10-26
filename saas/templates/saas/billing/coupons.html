@@ -1,7 +1,8 @@
 {% extends "saas/base_dashboard.html" %}
 
 {% block saas_content %}
-<div id="coupon-list-container" ng-app="saasApp">
+<coupon-list inline-template id="coupon-list-container" ng-app="saasApp">
+  <div>
     <h1>Coupons</h1>
     <div ng-controller="CouponListCtrl">
       {% include "saas/_filter.html" %}
@@ -108,5 +109,6 @@
             </tr>
         </table>
     </div>
-</div>
+  </div>
+</coupon-list>
 {% endblock %}
