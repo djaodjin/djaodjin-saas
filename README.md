@@ -94,9 +94,10 @@ saas/templates/notification/ directory.
 Release Notes
 =============
 
-0.7.0
-  * adds marketplace processing fee
-  * restricts coupon to plan or number of use through UI
-  * fixes invite new organizations with erroneous slugs
+0.8.0
+
+  * uses inline-template for Vue.js components
+  * uploads profile picture
+  * signals when processor is not connected and a charge is attempted
 
 [previous release notes](changelog)
