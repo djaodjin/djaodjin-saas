@@ -62,6 +62,11 @@ class ProcessorSetupError(ProcessorError):
             message, backend_except=backend_except)
         self.provider = provider
 
+    def __str__(self):
+        result = super(ProcessorSetupError, self).__str__()
+        result += '(provider: %s)' % str(self.provider)
+        return result
+
 
 @python_2_unicode_compatible
 class CardError(ProcessorError):
