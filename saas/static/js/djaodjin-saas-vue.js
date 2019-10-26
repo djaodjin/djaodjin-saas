@@ -1180,7 +1180,7 @@ var itemMixin = {
                     vm.itemLoaded = true;
                 }
             }
-            vm.reqGet(vm.url, vm.getParams(), cb);
+            vm.reqGet(vm.url, cb);
         },
         validateForm: function(){
             var vm = this;
@@ -3185,9 +3185,6 @@ Vue.component('monthly-revenue', {
     data: function(){
         return {
             url: djaodjinSettings.urls.provider.api_revenue,
-            params: {
-                timezone: moment.tz.guess(),
-            }
         }
     },
     computed: {
