@@ -1420,7 +1420,6 @@ var userRelationMixin = {
     ],
     data: function(){
         return {
-            modalSelector: ".add-role-modal",
             url: null,
             typeaheadUrl: null,
             showInvited: false,
@@ -1430,16 +1429,10 @@ var userRelationMixin = {
                 email: '',
                 full_name: ''
             },
+            formVisible: false,
         }
     },
     methods: {
-        modalShow: function() {
-            var vm = this;
-            var dialog = $(vm.modalSelector);
-            if( dialog && jQuery().modal ) {
-                dialog.modal("show");
-            }
-        },
         remove: function(idx){
             var vm = this;
             var ob = vm.items.results[idx];
@@ -1482,7 +1475,7 @@ var userRelationMixin = {
                     email: str,
                     full_name: str
                 }
-                vm.modalShow();
+                vm.formVisible = true;
             }
         },
         save: function(item){
@@ -1654,48 +1647,6 @@ Vue.component('user-typeahead', {
             this.target = this.$refs.tphd[0];
     }
 });
-
-// TODO it probably makes sense to use this component in other
-// places where user relations are needed
-Vue.component('user-relation', {
-    mixins: [
-        userRelationMixin
-    ],
-    props: {
-        roleUrl: '',
-        role: {
-            type: Object,
-            default: function(){
-                return {
-                    slug: '',
-                    title: ''
-                }
-            }
-        },
-    },
-    data: function(){
-        return {
-            url: this.roleUrl,
-            typeaheadUrl: djaodjinSettings.urls.api_candidates,
-        }
-    },
-    watch: {
-        // this should have been a computed propery, however
-        // vue doesn't allow to have computed properties with
-        // the same name as in data
-        roleUrl: function (newVal, oldVal) {
-            if(newVal != oldVal){
-                this.url = newVal;
-                this.params.page = 1;
-                this.get();
-            }
-        }
-    },
-    mounted: function(){
-        this.get();
-    },
-});
-
 
 Vue.component('coupon-list', {
     mixins: [
@@ -2156,7 +2107,6 @@ Vue.component('plan-subscriber-list', {
                             email: str,
                             full_name: str
                         }
-                        vm.modalShow();
                     }
                 }
             );
