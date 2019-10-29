@@ -1886,22 +1886,24 @@ Vue.component('metrics-charts', {
         var data = {
             tables: djaodjinSettings.tables,
             activeTab: 0,
+            params: {
+                ends_at: moment(),
+            },
         }
-        data.ends_at = moment();
         if( djaodjinSettings.date_range
             && djaodjinSettings.date_range.ends_at ) {
             var ends_at = moment(djaodjinSettings.date_range.ends_at);
             if(ends_at.isValid()){
-                data.ends_at = ends_at;
+                data.params.ends_at = ends_at;
             }
         }
-        data.ends_at = data.ends_at.format(DATE_FORMAT);
+        data.params.ends_at = data.params.ends_at.format(DATE_FORMAT);
         return data;
     },
     methods: {
         fetchTableData: function(table, cb){
             var vm = this;
-            var params = {"ends_at": moment(vm.ends_at, DATE_FORMAT).toISOString()};
+            var params = {"ends_at": moment(vm.params.ends_at, DATE_FORMAT).toISOString()};
             if( vm.timezone !== 'utc' ) {
                 params["timezone"] = moment.tz.guess();
             }
@@ -1939,6 +1941,10 @@ Vue.component('metrics-charts', {
                 date.getMonth() + 1,
                 0
             );
+        },
+        // an alias for consistent method usage in datepickers templates
+        get: function(){
+            this.prepareCurrentTabData();
         },
         prepareCurrentTabData: function(){
             var vm = this;
