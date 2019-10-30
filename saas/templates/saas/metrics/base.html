@@ -13,7 +13,7 @@
         <input type="date"
            ng-model="ends_at"
            ng-change="prepareCurrentTabData(ends_at, timezone)"
-           v-model="ends_at"
+           v-model="params.ends_at"
            v-on:input="prepareCurrentTabData"></input>
         <select ng-model="timezone"
               ng-change="prepareCurrentTabData(ends_at, timezone)"
