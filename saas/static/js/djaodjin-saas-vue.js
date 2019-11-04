@@ -1487,6 +1487,7 @@ var userRelationMixin = {
             var data = vm.unregistered;
             vm.reqPost(vm.url + "?force=1", data, function(resp){
                 vm.refresh();
+                vm.formVisible = false;
             });
         },
         updateParams: function(){
