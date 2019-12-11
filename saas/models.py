@@ -243,8 +243,7 @@ class Organization(models.Model):
     created_at = models.DateTimeField(auto_now_add=True,
         help_text=_("Date/time of creation (in ISO format)"))
     is_active = models.BooleanField(default=True)
-    full_name = models.CharField(_("Organization name"), max_length=100,
-        blank=True)
+    full_name = models.CharField(_("Profile name"), max_length=100, blank=True)
     # contact by e-mail
     email = models.EmailField()
     # contact by phone
@@ -3298,6 +3297,8 @@ class TransactionQuerySet(models.QuerySet):
 
     def get_statement_balances(self, organization, until=None):
         until = datetime_or_now(until)
+        # XXX We rely here on a subscriber:Payable to subscriber:Liability
+        # transaction to be present for all transaction with a charge event_id.
         dest_balances = self.filter(
             Q(dest_account=Transaction.PAYABLE)
             | Q(dest_account=Transaction.LIABILITY),

@@ -1,0 +1,44 @@
+[{
+    "fields": {
+      "slug": "stripe",
+      "full_name": "Stripe",
+      "created_at": "2012-08-14T14:16:55-09:00",
+      "processor": 1,
+      "is_active": 1
+    },
+    "model": "saas.Organization", "pk": 1
+},
+{
+    "fields": {
+      "slug": "terms-of-use",
+      "title": "Terms Of Use",
+      "modified": "2012-08-14T00:00:00-09:00"
+    },
+    "model": "saas.agreement", "pk": 1
+},
+{
+    "fields": {
+      "slug": "cowork",
+      "full_name": "ABC Corp.",
+      "created_at": "2012-08-14T14:16:55-09:00",
+      "email": "support@localhost.localdomain",
+      "phone": "555-555-5555",
+      "street_address": "1 ABC loop",
+      "locality":  "San Francisco",
+      "region": "CA",
+      "postal_code": "94102",
+      "country": "US",
+      "processor": 1,
+      "is_provider": 1,
+      "is_active": 1
+    },
+    "model": "saas.Organization", "pk": 2
+},
+{
+    "fields": {
+      "created_at": "2012-08-14T15:00:00-09:00",
+      "slug": "manager",
+      "title": "Profile Manager"
+    },
+    "model": "saas.RoleDescription", "pk": 1
+}]

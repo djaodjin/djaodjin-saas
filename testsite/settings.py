@@ -243,7 +243,7 @@ LOGGING = {
         #https://docs.python.org/2/library/logging.html#logging.Logger.propagate
         '': {
             'handlers': ['logfile', 'mail_admins'],
-            'level': 'INFO'
+            'level': 'WARNING'
         }
     }
 }

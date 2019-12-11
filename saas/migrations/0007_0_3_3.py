@@ -14,11 +14,6 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.AddField(
-            model_name='organization',
-            name='default_timezone',
-            field=models.CharField(default=b'America/Los_Angeles', max_length=100),
-        ),
         migrations.AlterField(
             model_name='charge',
             name='created_at',
@@ -63,11 +58,6 @@ class Migration(migrations.Migration):
             model_name='chargeitem',
             name='invoiced_fee',
             field=models.ForeignKey(help_text='fee transaction to process the transaction invoiced through this charge', null=True, on_delete=django.db.models.deletion.PROTECT, related_name='invoiced_fee_item', to='saas.Transaction'),
-        ),
-        migrations.AlterField(
-            model_name='organization',
-            name='processor',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='processes', to='saas.Organization'),
         ),
         migrations.AlterField(
             model_name='signature',

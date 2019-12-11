@@ -13,9 +13,4 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.AddField(
-            model_name='organization',
-            name='picture',
-            field=models.URLField(blank=True, help_text='Profile picture', max_length=2083, null=True, verbose_name='Profile picture'),
-        ),
     ]

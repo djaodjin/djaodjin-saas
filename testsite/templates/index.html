@@ -11,13 +11,20 @@ necessary to validate the functionality of the project was used.
 This way makes it a lot easier to understand what truly matters.
 </p>
 <p>
-Next Sign-in to the admin site (login: donny, password: yoyo) or browse
-to the Pricing page and follow the logic a user would go through to sign
-up for the service.
+Next Sign-in to the admin site with the superuser you created through
+the <em>python ./manage.py createsuperuser</em> command. Then start
+by creating a few plans and discounts if you haven't prepopulated
+the site with dummy data (<em>python ./manage.py load_test_transactions</em>).
 </p>
 <p>
-To test adding managers and contributors, there is 'scott' (pk=3) in
-the fixtures.
+Once at least one plan is active, you can browse to the Pricing page
+and follow the logic a user would go through to sign up for the service.
+</p>
+<p>
+If you are browsing to the <strong>Pricing</strong> page and get a
+<strong>404 error</strong>, it is most likely you haven't loaded initial
+data to represent the website broker
+(<em>python ./manage.py loaddata testsite/fixtures/initial_data.json</em>).
 </p>
 </div>
 {% endblock %}

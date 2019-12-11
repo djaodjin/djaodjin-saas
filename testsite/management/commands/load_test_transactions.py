@@ -31,7 +31,7 @@ from django.template.defaultfilters import slugify
 from django.utils.timezone import utc
 
 from saas.backends.razorpay_processor import RazorpayBackend
-from saas.models import Transaction
+from saas.models import Plan, Transaction, get_broker
 from saas.utils import datetime_or_now
 from saas.settings import PROCESSOR_ID
 
@@ -170,6 +170,44 @@ class Command(BaseCommand):
         if args:
             from_date = datetime.datetime.strptime(
                 args[0], '%Y-%m-%d')
+        # Create a set of 3 plans
+        broker = get_broker()
+        Plan.objects.get_or_create(
+            slug='basic',
+            defaults={
+                'title': "Basic",
+                'description': "Basic Plan",
+                'period_amount': 24900,
+                'broker_fee_percent': 0,
+                'period_type': 4,
+                'advance_discount': 1000,
+                'organization': broker,
+                'is_active': True
+        })
+        Plan.objects.get_or_create(
+            slug='medium',
+            defaults={
+                'title': "Medium",
+                'description': "Medium Plan",
+                'period_amount': 24900,
+                'broker_fee_percent': 0,
+                'period_type': 4,
+                'organization': broker,
+                'is_active': True
+        })
+        Plan.objects.get_or_create(
+            slug='premium',
+            defaults={
+                'title': "Premium",
+                'description': "Premium Plan",
+                'period_amount': 18900,
+                'broker_fee_percent': 0,
+                'period_type': 4,
+                'advance_discount': 81,
+                'organization': broker,
+                'is_active': True
+        })
+
         # Create Income transactions that represents a growing bussiness.
         provider = Organization.objects.get(slug=options['provider'])
         processor = Organization.objects.get(pk=PROCESSOR_ID)

@@ -42,6 +42,9 @@ from testsite.views.registration import PersonalRegistrationView
 from django.contrib import admin
 admin.autodiscover()
 
+from . import signals
+
+
 def url_prefixed(regex, view, name=None, decorators=None):
     """
     Returns a urlpattern for public pages.

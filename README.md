@@ -29,8 +29,8 @@ After cloning the repository, create a virtualenv environment and install
 the prerequisites:
 
 <pre><code>
-    $ virtualenv <em>installTop</em>
-    $ source <em>installTop</em>/bin/activate
+    $ python -m venv .venv
+    $ source .venv/bin/activate
     $ pip install -r testsite/requirements.txt
 
 </code></pre>
@@ -49,25 +49,27 @@ and Django secret key into a credentials file. Example with
 
 </code></pre>
 
-It remains to create the database and populate it with test data.
+It remains to create and [populate the database with required objects](https://djaodjin-saas.readthedocs.io/en/latest/getting-started.html#setting-up-a-software-as-a-service-site).
 
     $ python ./manage.py migrate --run-syncdb --noinput
-    $ python ./manage.py loaddata testsite/fixtures/test_data.json
+    $ python ./manage.py loaddata testsite/fixtures/initial_data.json
+    $ python ./manage.py createsuperuser
 
-
-The test_data.json fixture contains the minimal amount of data to make
-the testsite usable. If you want to load a bigger set of dummy data, you
-could run the load_test_transactions command.
+You can further generate a set of dummy data data to populate the site.
 
     $ python ./manage.py load_test_transactions
 
+Side note: If create your own fixtures file (ex: testsite/fixtures/test_data.json)
+and attempt to load them with a Django version *before* 2 while the Python
+executable was linked with a SQLite version *after* 3.25, you might stumble upon
+the well-known [SQLite 3.26 breaks database migration ForeignKey constraint, leaving <table_name>__old in db schema](http://djaodjin.com/blog/django-2-2-with-sqlite-3-on-centos-7.blog.html#sqlite-django-compatibility) bug.
+Your best bet is to use Django2+ or delete the migrations/ directory.
 
 If all is well then, you are ready to run the server and browse the testsite.
 
     $ python manage.py runserver
 
     # Browse http://localhost:8000/
-    # Login with username: alice and password: yoyo
 
 
 Implementation Notes

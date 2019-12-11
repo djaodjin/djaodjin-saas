@@ -52,16 +52,6 @@ class Migration(migrations.Migration):
             field=models.CharField(max_length=255, null=True),
         ),
         migrations.AddField(
-            model_name='plan',
-            name='optin_on_request',
-            field=models.BooleanField(default=False),
-        ),
-        migrations.AddField(
-            model_name='plan',
-            name='skip_optin_on_grant',
-            field=models.BooleanField(default=False),
-        ),
-        migrations.AddField(
             model_name='roledescription',
             name='skip_optin_on_grant',
             field=models.BooleanField(default=False),
@@ -85,26 +75,6 @@ class Migration(migrations.Migration):
             model_name='charge',
             name='state',
             field=models.PositiveSmallIntegerField(choices=[(3, 'disputed'), (0, 'created'), (2, 'failed'), (1, 'done')], default=0),
-        ),
-        migrations.AlterField(
-            model_name='organization',
-            name='full_name',
-            field=models.CharField(blank=True, max_length=60, verbose_name='Organization name'),
-        ),
-        migrations.AlterField(
-            model_name='organization',
-            name='locality',
-            field=models.CharField(max_length=50, verbose_name='City/Town'),
-        ),
-        migrations.AlterField(
-            model_name='organization',
-            name='postal_code',
-            field=models.CharField(max_length=50, verbose_name='Postal Code'),
-        ),
-        migrations.AlterField(
-            model_name='organization',
-            name='region',
-            field=models.CharField(max_length=50, verbose_name='State/Province/County'),
         ),
         migrations.AddField(
             model_name='usecharge',
