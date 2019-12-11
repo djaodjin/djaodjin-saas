@@ -66,6 +66,10 @@ class OrganizationMixinBase(object):
 
     def get_context_data(self, **kwargs):
         context = super(OrganizationMixinBase, self).get_context_data(**kwargs)
+
+        from .decorators import _has_valid_access
+        from .models import get_broker
+
         organization = self.organization
         if not organization:
             # If we don't even have a broker/provider for a site.
@@ -118,9 +122,8 @@ class OrganizationMixinBase(object):
                         args=(organization, role_descr.slug)),
                 })
 
-        if (organization.is_provider
-            and is_authenticated(self.request)
-            and organization.accessible_by(self.request.user)):
+        if (organization.is_provider and
+            _has_valid_access(self.request, [organization, get_broker()])):
             provider = organization
             urls.update({'provider': {
                 'api_bank': reverse('saas_api_bank', args=(provider,)),

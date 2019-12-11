@@ -29,7 +29,6 @@ URLs API for resources available typically only to the broker platform.
 from django.conf.urls import url
 
 from ... import settings
-from ...api.accounts import AccountsSearchAPIView
 from ...api.balances import (BalanceLineListAPIView, BrokerBalancesAPIView,
     BalanceLineDetailAPIView)
 from ...api.charges import ChargeListAPIView
@@ -38,8 +37,6 @@ from ...api.users import RegisteredAPIView
 
 
 urlpatterns = [
-    url(r'^accounts/$', AccountsSearchAPIView.as_view(),
-        name='saas_api_search_accounts'),
     url(r'^billing/transactions/?',
         TransactionListAPIView.as_view(), name='saas_api_transactions'),
     url(r'^billing/(?P<organization>%s)/balance/?' % settings.ACCT_REGEX,

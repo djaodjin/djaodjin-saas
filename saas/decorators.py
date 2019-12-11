@@ -43,9 +43,8 @@ from django.utils.translation import ugettext_lazy as _
 
 from . import settings
 from .compat import is_authenticated, reverse
-from .models import (Charge, Organization, Plan, Signature, Subscription,
-    get_broker)
-from .utils import datetime_or_now, get_role_model
+from .models import Charge, Plan, Signature, Subscription, get_broker
+from .utils import datetime_or_now, get_organization_model, get_role_model
 
 
 LOGGER = logging.getLogger(__name__)
@@ -64,6 +63,7 @@ def _valid_role(request, candidates, role):
     Returns the subset of a set of ``Organization`` *candidates*
     which have *request.user* listed with a role.
     """
+    organization_model = get_organization_model()
     results = []
     if settings.BYPASS_PERMISSION_CHECK:
         if request.user:
@@ -78,7 +78,7 @@ def _valid_role(request, candidates, role):
             kwargs = {'role_description__slug__in': role}
         else:
             kwargs = {'role_description__slug': role}
-        results = Organization.objects.filter(
+        results = organization_model.objects.filter(
             pk__in=get_role_model().objects.valid_for(
                 organization__in=candidates,
                 user=request.user, **kwargs).values(
@@ -183,11 +183,12 @@ def fail_subscription(request, organization=None, plan=None):
     this check. Without a ``plan``, only users with valid access to the broker
     will also pass the check.
     """
+    organization_model = get_organization_model()
     if _has_valid_access(request, [get_broker()]):
         # Bypass if a manager for the broker.
         return False
-    if organization and not isinstance(organization, Organization):
-        candidates = [get_object_or_404(Organization, slug=organization)]
+    if organization and not isinstance(organization, organization_model):
+        candidates = [get_object_or_404(organization_model, slug=organization)]
     else:
         candidates = get_role_model().objects.filter(
             user=request.user).values('organization').distinct()
@@ -206,12 +207,13 @@ def fail_paid_subscription(request, organization=None, plan=None):
     """
     Subscribed to %(saas.Plan)s
     """
+    organization_model = get_organization_model()
     subscribed_at = datetime_or_now()
     if _has_valid_access(request, [get_broker()]):
         # Bypass if a manager for the broker.
         return False
-    if organization and not isinstance(organization, Organization):
-        organization = get_object_or_404(Organization, slug=organization)
+    if organization and not isinstance(organization, organization_model):
+        organization = get_object_or_404(organization_model, slug=organization)
     subscriptions = organization.get_active_subscriptions(
         at_time=subscribed_at).order_by('ends_at')
     # ``order_by("ends_at")`` will get the subscription that ends the earliest,
@@ -236,15 +238,16 @@ def fail_paid_subscription(request, organization=None, plan=None):
 
 def _fail_direct(request, organization=None, roledescription=None,
                  strength=NORMAL):
+    organization_model = get_organization_model()
     candidates = [get_broker()]
     if organization:
         if isinstance(organization, Charge):
             # implicit natural conversion
             organization = organization.customer
-        elif not isinstance(organization, Organization):
+        elif not isinstance(organization, organization_model):
             try:
-                organization = Organization.objects.get(slug=organization)
-            except Organization.DoesNotExist:
+                organization = organization_model.objects.get(slug=organization)
+            except organization_model.DoesNotExist:
                 charge = get_object_or_404(Charge, processor_key=organization)
                 organization = charge.customer
         candidates += [organization]
@@ -309,13 +312,14 @@ def fail_provider_readable(request, organization=None, roledescription=None):
     ``roledescription`` (ex: contributor) or manager for ``organization``,
     or to a provider of ``organization`` and ``request.method`` is GET.
     """
+    organization_model = get_organization_model()
     if isinstance(organization, Charge):
         # implicit natural conversion
         organization = organization.customer
-    elif organization and not isinstance(organization, Organization):
+    elif organization and not isinstance(organization, organization_model):
         try:
-            organization = Organization.objects.get(slug=organization)
-        except Organization.DoesNotExist:
+            organization = organization_model.objects.get(slug=organization)
+        except organization_model.DoesNotExist:
             charge = get_object_or_404(Charge, processor_key=organization)
             organization = charge.customer
     if organization:
@@ -330,26 +334,27 @@ def fail_provider_readable(request, organization=None, roledescription=None):
         return True
     candidates = []
     if organization:
-        candidates = list(Organization.objects.providers_to(organization))
+        candidates = list(organization_model.objects.providers_to(organization))
     return not _has_valid_access(request, candidates,
         strength=NORMAL, roledescription=roledescription)
 
 
 def _fail_provider(request, organization=None,
                    strength=NORMAL, roledescription=None):
+    organization_model = get_organization_model()
     candidates = [get_broker()]
     if organization:
         if isinstance(organization, Charge):
             # implicit natural conversion
             organization = organization.customer
-        elif not isinstance(organization, Organization):
+        elif not isinstance(organization, organization_model):
             try:
-                organization = Organization.objects.get(slug=organization)
-            except Organization.DoesNotExist:
+                organization = organization_model.objects.get(slug=organization)
+            except organization_model.DoesNotExist:
                 charge = get_object_or_404(Charge, processor_key=organization)
                 organization = charge.customer
         candidates += ([organization]
-                + list(Organization.objects.providers_to(organization)))
+                + list(organization_model.objects.providers_to(organization)))
     return not _has_valid_access(request, candidates,
         strength=strength, roledescription=roledescription)
 
@@ -398,18 +403,19 @@ def fail_provider_strong(request, organization=None):
 
 def _fail_provider_only(request, organization=None, strength=NORMAL,
                         roledescription=None):
+    organization_model = get_organization_model()
     candidates = [get_broker()]
     if organization:
         if isinstance(organization, Charge):
             # implicit natural conversion
             organization = organization.customer
-        elif not isinstance(organization, Organization):
+        elif not isinstance(organization, organization_model):
             try:
-                organization = Organization.objects.get(slug=organization)
-            except Organization.DoesNotExist:
+                organization = organization_model.objects.get(slug=organization)
+            except organization_model.DoesNotExist:
                 charge = get_object_or_404(Charge, processor_key=organization)
                 organization = charge.customer
-        candidates += list(Organization.objects.providers_to(organization))
+        candidates += list(organization_model.objects.providers_to(organization))
     return not _has_valid_access(request, candidates,
         strength=strength, roledescription=roledescription)
 
@@ -457,10 +463,11 @@ def fail_provider_only_strong(request, organization=None):
 
 def _fail_self_provider(request, user=None, strength=NORMAL,
                         roledescription=None):
+    organization_model = get_organization_model()
     if request.user.username != user:
         # Organization that are managed by both users
-        directs = Organization.objects.accessible_by(user)
-        providers = Organization.objects.providers(
+        directs = organization_model.objects.accessible_by(user)
+        providers = organization_model.objects.providers(
             Subscription.objects.valid_for(organization__in=directs))
         candidates = list(directs) + list(providers) + [get_broker()]
         return not _has_valid_access(request, candidates,
@@ -590,7 +597,7 @@ def requires_subscription(function=None,
         @wraps(view_func, assigned=available_attrs(view_func))
         def _wrapped_view(request, *args, **kwargs):
             subscriber = get_object_or_404(
-                Organization, slug=kwargs.get(organization_kwarg_slug, None))
+                organization_model, slug=kwargs.get(organization_kwarg_slug, None))
             if _fail_provider(request, organization=subscriber,
                     strength=strength, roledescription=roledescription):
                 raise PermissionDenied(_("%(auth)s is neither a manager"\
@@ -627,8 +634,9 @@ def requires_paid_subscription(function=None,
     def decorator(view_func):
         @wraps(view_func, assigned=available_attrs(view_func))
         def _wrapped_view(request, *args, **kwargs):
+            organization_model = get_organization_model()
             subscriber = get_object_or_404(
-                Organization, slug=kwargs.get(organization_kwarg_slug, None))
+                organization_model, slug=kwargs.get(organization_kwarg_slug, None))
             if _fail_provider(request, organization=subscriber,
                     strength=strength, roledescription=roledescription):
                 raise PermissionDenied(_("%(auth)s is neither a manager"\
