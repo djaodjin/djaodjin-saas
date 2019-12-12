@@ -246,9 +246,8 @@ class OptinBase(OrganizationDecorateMixin, OrganizationCreateMixin):
         email = serializer.validated_data.get('email',
             organization_data.get('email', None))
         if slug:
-            # XXX slugify because we actually pass a full_name when doesnt exist
             organizations = self.organization_model.objects.filter(
-                slug=slugify(slug))
+                slug=slug)
         elif email:
             organizations = self.organization_model.objects.filter(
                 email__iexact=email)
@@ -256,17 +255,29 @@ class OptinBase(OrganizationDecorateMixin, OrganizationCreateMixin):
             organizations = self.organization_model.objects.none()
         invite = False
         with transaction.atomic():
-            if ('slug' in organization_data and organization_data['slug']
-                != slugify(organization_data['slug'])):
-                del organization_data['slug']
             organizations = list(organizations)
             if not organizations:
                 if organization_data.get('type') == 'personal':
-                    # If we are creating a personal organization and we already
-                    # have a user, we will implicitly create an organization as
-                    # a personal billing profile for that user.
-                    organizations = [self.create_organization(
-                        organization_data)]
+                    user_exists = False
+                    if ('slug' in organization_data and
+                        organization_data['slug']):
+                        user_exists = self.user_model.objects.filter(
+                            username=organization_data['slug']).exists()
+                    elif email:
+                        try:
+                            user = self.user_model.objects.filter(
+                                email__iexact=email).get()
+                            organization_data['slug'] = user.username
+                            user_exists = True
+                        except self.user_model.DoesNotExist:
+                            pass
+                    if user_exists:
+                        # If we are creating a personal organization and
+                        # we already have a user, we will implicitly create
+                        # an organization as a personal billing profile
+                        # for that user.
+                        organizations = [
+                            self.create_organization(organization_data)]
             if not organizations:
                 if not request.GET.get('force', False):
                     raise Http404(_("Profile %(organization)s does not exist."

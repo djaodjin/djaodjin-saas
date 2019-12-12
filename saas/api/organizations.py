@@ -46,17 +46,15 @@ from ..utils import (full_name_natural_split, get_organization_model,
 
 
 #pylint: disable=no-init
-#pylint: disable=old-style-class
 class OrganizationCreateMixin(object):
 
     user_model = get_user_model()
 
     def create_organization(self, validated_data):
-        full_name = validated_data.get('full_name')
-        email = validated_data.get('email')
         organization_model = get_organization_model()
         organization = organization_model(
-            full_name=full_name, email=email,
+            full_name=validated_data.get('full_name'),
+            email=validated_data.get('email'),
             slug=validated_data.get('slug', None),
             default_timezone=validated_data.get(
                 'default_timezone', settings.TIME_ZONE),
@@ -67,23 +65,33 @@ class OrganizationCreateMixin(object):
             postal_code=validated_data.get('postal_code', ""),
             country=validated_data.get('country', ""),
             extra=validated_data.get('extra'))
+        organization.is_personal = (validated_data.get('type') == 'personal')
         with transaction.atomic():
             try:
-                organization.save()
-                organization.is_personal = (
-                    validated_data.get('type') == 'personal')
                 if organization.is_personal:
                     try:
                         user = self.user_model.objects.get(
                             username=organization.slug)
+                        if not organization.full_name:
+                            organization.full_name = user.get_full_name()
+                        if not organization.email:
+                            organization.email = user.email
                     except self.user_model.DoesNotExist:
+                        #pylint:disable=unused-variable
                         first_name, mid, last_name = full_name_natural_split(
-                            full_name)
+                            organization.full_name)
                         user = self.user_model.objects.create_user(
                             username=organization.slug,
-                            email=email,
+                            email=organization.email,
                             first_name=first_name,
                             last_name=last_name)
+                        organization.slug = user.username
+                # We are saving the `Organization` after the `User` exists
+                # in the database so we can retrieve the full_name and email
+                # from that attached user if case they were not provided
+                # in the API call.
+                organization.save()
+                if organization.is_personal:
                     organization.add_manager(
                         user, request_user=self.request.user)
             except IntegrityError as err:
@@ -365,6 +373,7 @@ class OrganizationListAPIView(OrganizationSmartListMixin,
         return page
 
     def create(self, request, *args, **kwargs):
+        #pylint:disable=unused-argument
         serializer = OrganizationCreateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
