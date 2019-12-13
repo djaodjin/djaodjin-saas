@@ -53,9 +53,9 @@ class OrganizationCreateMixin(object):
     def create_organization(self, validated_data):
         organization_model = get_organization_model()
         organization = organization_model(
+            slug=validated_data.get('slug', None),
             full_name=validated_data.get('full_name'),
             email=validated_data.get('email'),
-            slug=validated_data.get('slug', None),
             default_timezone=validated_data.get(
                 'default_timezone', settings.TIME_ZONE),
             phone=validated_data.get('phone', ""),
@@ -94,9 +94,12 @@ class OrganizationCreateMixin(object):
                             email=organization.email,
                             first_name=first_name,
                             last_name=last_name)
-                if organization.is_personal:
                     organization.add_manager(
                         user, request_user=self.request.user)
+                else:
+                    # When `slug` is not present, `save` would try to create
+                    # one from the `full_name`.
+                    organization.save()
             except IntegrityError as err:
                 handle_uniq_error(err)
 

@@ -296,9 +296,16 @@ class OptinBase(OrganizationDecorateMixin, OrganizationCreateMixin):
                 if not full_name:
                     default_full_name = slug
                     if not default_full_name:
-                        email_parts = email.split('@')[-1].split('.')
-                        if len(email_parts) >= 2:
-                            default_full_name = email_parts[-2]
+                        email_parts = email.split('@')
+                        email_parts = \
+                            email_parts[:1] + email_parts[1].split('.')
+                        # creates a default full_name from the username
+                        # of an e-mail address.
+                        default_full_name = email_parts[0]
+                        # or creates a default full_name from the domain name
+                        # of an e-mail address.
+                        #if len(email_parts) >= 3:
+                        #    default_full_name = email_parts[-2]
                     organization_data['full_name'] = \
                         serializer.validated_data.get('full_name',
                             default_full_name)
