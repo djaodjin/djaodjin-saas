@@ -1,4 +1,9 @@
-// Components for saas logic
+// Copyright (c) 2019, DjaoDjin inc.
+// All rights reserved.
+// BSD 2-Clause license
+
+/*global Vue jQuery moment interpolate gettext showMessages showErrorMessages djaodjinSettings Stripe updateBarChart updateChart getUrlParameter $ */
+
 
 Vue.filter('formatDate', function(value, format) {
   if (value) {
@@ -497,7 +502,7 @@ var httpRequestMixin = {
             } else {
                 throw 'arg should be a queryParams Object or a successCallback function';
             }
-            return $.ajax({
+            return jQuery.ajax({
                 method: 'GET',
                 url: url,
                 beforeSend: function(xhr, settings) {
@@ -519,6 +524,7 @@ var httpRequestMixin = {
                 cache: false,       // force requested pages not to be cached
            }).done(successCallback).fail(failureCallback);
         },
+
         /** This method generates a POST HTTP request to `url` with
             contentType 'application/json'.
 
@@ -572,7 +578,7 @@ var httpRequestMixin = {
             } else if (arg !== undefined){
                 throw 'arg should be a data Object or a successCallback function';
             }
-            return $.ajax({
+            return jQuery.ajax({
                 method: 'POST',
                 url: url,
                 beforeSend: function(xhr, settings) {
@@ -593,6 +599,63 @@ var httpRequestMixin = {
                 data: JSON.stringify(data),
             }).done(successCallback).fail(failureCallback);
         },
+
+        /** This method generates a POST HTTP request to `url` with
+            data encoded as multipart/form-data.
+
+            It supports the following prototypes:
+
+            - reqPOSTBlob(url, data)
+            - reqPOSTBlob(url, data, successCallback)
+            - reqPOSTBlob(url, data, successCallback, failureCallback)
+
+            `data` is a `FormData` that holds a binary blob.
+
+            `successCallback` and `failureCallback` must be Javascript
+            functions (i.e. instance of type `Function`).
+        */
+        reqPostBlob: function(url, form, arg2, arg3) {
+            var vm = this;
+            var successCallback;
+            var failureCallback = showErrorMessages;
+            if(typeof url != 'string') throw 'url should be a string';
+            if(vm._isFunction(arg2)){
+                // We are parsing reqPostBlob(url, successCallback)
+                // or reqPostBlob(url, successCallback, errorCallback).
+                successCallback = arg2;
+                if(vm._isFunction(arg3)){
+                    // We are parsing
+                    // reqPostBlob(url, successCallback, errorCallback)
+                    failureCallback = arg3;
+                } else if( arg3 !== undefined ) {
+                    throw 'arg3 should be a failureCallback function';
+                }
+            } else if( arg2 !== undefined ) {
+                throw 'arg2 should be successCallback function';
+            }
+            return jQuery.ajax({
+                method: 'POST',
+                url: url,
+                beforeSend: function(xhr, settings) {
+                    var authToken = vm._getAuthToken();
+                    if( authToken ) {
+                        xhr.setRequestHeader("Authorization",
+                            "Bearer " + authToken);
+                    } else {
+                        if( !vm._csrfSafeMethod(settings.type) ) {
+                            var csrfToken = vm._getCSRFToken();
+                            if( csrfToken ) {
+                                xhr.setRequestHeader("X-CSRFToken", csrfToken);
+                            }
+                        }
+                    }
+                },
+                contentType: false,
+                processData: false,
+                data: form,
+            }).done(successCallback).fail(failureCallback);
+        },
+
         /** This method generates a PUT HTTP request to `url` with
             contentType 'application/json'.
 
@@ -647,7 +710,7 @@ var httpRequestMixin = {
                 throw 'arg should be a data Object or a successCallback function';
             }
 
-            return $.ajax({
+            return jQuery.ajax({
                 method: 'PUT',
                 url: url,
                 beforeSend: function(xhr, settings) {
@@ -722,7 +785,7 @@ var httpRequestMixin = {
                 throw 'arg should be a data Object or a successCallback function';
             }
 
-            return $.ajax({
+            return jQuery.ajax({
                 method: 'PATCH',
                 url: url,
                 beforeSend: function(xhr, settings) {
@@ -757,7 +820,7 @@ var httpRequestMixin = {
         */
         reqDelete: function(url, arg, arg2){
             var vm = this;
-            var data, successCallback;
+            var successCallback;
             var failureCallback = showErrorMessages;
             if(typeof url != 'string') throw 'url should be a string';
             if(vm._isFunction(arg)){
@@ -774,7 +837,7 @@ var httpRequestMixin = {
                 throw 'arg should be a successCallback function';
             }
 
-            return $.ajax({
+            return jQuery.ajax({
                 method: 'DELETE',
                 url: url,
                 beforeSend: function(xhr, settings) {
@@ -797,371 +860,10 @@ var httpRequestMixin = {
 }
 
 
-var cardMixin = {
+var itemMixin = {
     mixins: [
         httpRequestMixin
     ],
-    data: function() {
-        return $.extend({
-            cardNumber: '',
-            cardCvc: '',
-            cardExpMonth: '',
-            cardExpYear: '',
-            savedCard: {
-                last4: '',
-                exp_date: '',
-            },
-            countries: countries,
-            regions: regions,
-            organization: {},
-            updateCard: false, //used in legacy checkout
-            errors: {},
-            validate: [
-                'cardNumber',
-                'cardCvc',
-                'cardExpMonth',
-                'cardExpYear',
-                'card_name',
-                'card_address_line1',
-                'card_city',
-                'card_adress_zip',
-                'country',
-                'region',
-            ],
-        }, this.getCardFormData());
-    },
-    methods: {
-        getCardFormData: function() {
-            var vm = this;
-            var data = {};
-            var cardForm = $("#card-use");
-            if( cardForm.length > 0 ) {
-                data['card_name'] = vm.getInitValue(cardForm, 'card_name');
-                data['card_address_line1'] = vm.getInitValue(cardForm, 'card_address_line1');
-                data['card_city'] = vm.getInitValue(cardForm, 'card_city');
-                data['ard_adress_zip'] = vm.getInitValue(cardForm, 'card_address_zip');
-                data['country'] = vm.getInitValue(cardForm, 'country');
-                data['region'] = vm.getInitValue(cardForm, 'region');
-            }
-            return data;
-        },
-        clearCardData: function() {
-            var vm = this;
-            vm.savedCard.last4 = '';
-            vm.savedCard.exp_date = '';
-            vm.cardNumber = '';
-            vm.cardCvc = '';
-            vm.cardExpMonth = '';
-            vm.cardExpYear = '';
-        },
-        deleteCard: function() {
-            var vm = this;
-            vm.reqDelete(djaodjinSettings.urls.organization.api_card,
-            function(resp){
-                vm.clearCardData();
-            });
-        },
-        inputClass: function(name){
-            var vm = this;
-            var field = this.errors[name];
-            if(name === 'cardExp'){
-                // a hack to validate card expiration year and month as
-                // a single field
-                if(vm.errors['cardExpMonth'] || this.errors['cardExpYear']){
-                    field = true;
-                }
-            }
-            cls = [];
-            if( field ){
-                cls.push('has-error');
-            }
-            return cls;
-        },
-        getInitValue: function(form, fieldName) {
-            if( form.length > 0 ) {
-                var field = form.find("[name='" + fieldName + "']");
-                if( field.length > 0 ) {
-                    var val = field.attr('type') === 'checkbox' ?
-                        field.prop('checked') : (
-                            field.val() ? field.val() : field.data('init'));
-                    return val;
-                }
-            }
-            return "";
-        },
-        getUserCard: function(){
-            var vm = this;
-            vm.reqGet(djaodjinSettings.urls.organization.api_card,
-            function(resp){
-                if(resp.last4){
-                    vm.savedCard.last4 = resp.last4;
-                    vm.savedCard.exp_date = resp.exp_date;
-                }
-            });
-        },
-        getCardToken: function(cb){
-            var vm = this;
-            if(!djaodjinSettings.stripePubKey){
-                showMessages([
-                    gettext("You haven't set a valid Stripe public key")
-                ], "error");
-                return;
-            }
-            Stripe.setPublishableKey(djaodjinSettings.stripePubKey);
-            Stripe.createToken({
-                number: vm.cardNumber,
-                cvc: vm.cardCvc,
-                exp_month: vm.cardExpMonth,
-                exp_year: vm.cardExpYear,
-                name: vm.card_name,
-                address_line1: vm.card_address_line1,
-                address_city: vm.card_city,
-                address_state: vm.region,
-                address_zip: vm.card_adress_zip,
-                address_country: vm.country
-            }, function(code, res){
-                if(code === 200) {
-                    vm.savedCard.last4 = '***-' + res.card.last4;
-                    vm.savedCard.exp_date = (
-                        res.card.exp_month + '/' + res.card.exp_year);
-                    if(cb) cb(res.id)
-                } else {
-                    showMessages([res.error.message], "error");
-                }
-            });
-        },
-        getOrgAddress: function(){
-            var vm = this;
-            vm.reqGet(djaodjinSettings.urls.organization.api_base, function(org) {
-                if(org.full_name){
-                    vm.card_name = org.full_name;
-                }
-                if(org.street_address){
-                    vm.card_address_line1 = org.street_address;
-                }
-                if(org.locality){
-                    vm.card_city = org.locality;
-                }
-                if(org.postal_code){
-                    vm.card_adress_zip = org.postal_code;
-                }
-                if(org.country){
-                    vm.country = org.country;
-                }
-                if(org.region){
-                    vm.region = org.region;
-                }
-                vm.organization = org;
-            }).fail(showErrorMessages);
-        },
-        validateForm: function(){
-            var vm = this;
-            var valid = true;
-            var errors = {}
-            var errorMessages = "";
-            vm.validate.forEach(function(field){
-                if(vm[field] === ''){
-                    vm[field] = vm.getInitValue($(vm.$el), field);
-                }
-                if( vm[field] === '') {
-                    valid = false;
-                    errors[field] = [gettext("This field shouldn't be empty")];
-                }
-            });
-            vm.errors = errors;
-            if(Object.keys(vm.errors).length > 0){
-                if( vm.errors['cardNumber'] ) {
-                    if( errorMessages ) { errorMessages += ", "; }
-                    errorMessages += gettext("Card Number");
-                }
-                if( vm.errors['cardCvc'] ) {
-                    if( errorMessages ) { errorMessages += ", "; }
-                    errorMessages += gettext("Security Code");
-                }
-                if( vm.errors['cardExpMonth']
-                         || vm.errors['cardExpYear'] ) {
-                    if( errorMessages ) { errorMessages += ", "; }
-                    errorMessages += gettext("Expiration");
-                }
-                if( vm.errors['card_name'] ) {
-                    if( errorMessages ) { errorMessages += ", "; }
-                    errorMessages += gettext("Card Holder");
-                }
-                if( vm.errors['card_address_line1'] ) {
-                    if( errorMessages ) { errorMessages += ", "; }
-                    errorMessages += gettext("Street address");
-                }
-                if( vm.errors['card_city'] ) {
-                    if( errorMessages ) { errorMessages += ", "; }
-                    errorMessages += gettext("City/Town");
-                }
-                if( vm.errors['card_adress_zip'] ) {
-                    if( errorMessages ) { errorMessages += ", "; }
-                    errorMessages += gettext("Zip/Postal code");
-                }
-                if( vm.errors['country'] ) {
-                    if( errorMessages ) { errorMessages += ", "; }
-                    errorMessages += gettext("Country");
-                }
-                if( vm.errors['region'] ) {
-                    if( errorMessages ) { errorMessages += ", "; }
-                    errorMessages += gettext("State/Province/County");
-                }
-                if( errorMessages ) {
-                    errorMessages = interpolate(
-                      gettext("%s field(s) cannot be empty."), [errorMessages]);
-                }
-                showErrorMessages(errorMessages);
-            }
-            return valid;
-        },
-    },
-    computed: {
-        haveCardData: function() {
-            var vm = this;
-            return vm.savedCard.last4 && vm.savedCard.exp_date;
-        }
-    },
-    mounted: function() {
-        var vm = this;
-        var elements = vm.$el.querySelectorAll('[data-last4]');
-        if( elements.length > 0 ) {
-            vm.savedCard.last4 = elements[0].getAttribute('data-last4');
-        }
-        var elements = vm.$el.querySelectorAll('[data-exp-date]');
-        if( elements.length > 0 ) {
-            vm.savedCard.exp_date = elements[0].getAttribute('data-exp-date');
-        }
-    }
-}
-
-
-var itemListMixin = {
-    data: function(){
-        return this.getInitData();
-    },
-    mixins: [httpRequestMixin],
-    methods: {
-        getInitData: function(){
-            data = {
-                url: '',
-                itemsLoaded: false,
-                items: {
-                    results: [],
-                    count: 0
-                },
-                mergeResults: false,
-                params: {
-                    // The following dates will be stored as `String` objects
-                    // as oppossed to `moment` or `Date` objects because this
-                    // is how uiv-date-picker will update them.
-                    start_at: null,
-                    ends_at: null
-                },
-                getCb: null,
-                getCompleteCb: null,
-                getBeforeCb: null,
-            }
-            if( djaodjinSettings.date_range ) {
-                if( djaodjinSettings.date_range.start_at ) {
-                    data.params['start_at'] = moment(
-                        djaodjinSettings.date_range.start_at).format(DATE_FORMAT);
-                }
-                if( djaodjinSettings.date_range.ends_at ) {
-                    // uiv-date-picker will expect ends_at as a String
-                    // but DATE_FORMAT will literally cut the hour part,
-                    // regardless of timezone. We don't want an empty list
-                    // as a result.
-                    // If we use moment `endOfDay` we get 23:59:59 so we
-                    // add a full day instead.
-                    data.params['ends_at'] = moment(
-                        djaodjinSettings.date_range.ends_at).add(1,'days').format(DATE_FORMAT);
-                }
-            }
-            return data;
-        },
-        get: function(){
-            var vm = this;
-            if(!vm.url) return
-            if(!vm.mergeResults){
-                vm.itemsLoaded = false;
-            }
-            if(vm[vm.getCb]){
-                var cb = function(res){
-                    vm[vm.getCb](res);
-
-                    if(vm[vm.getCompleteCb]){
-                        vm[vm.getCompleteCb]();
-                    }
-                }
-            } else {
-                var cb = function(res){
-                    if(vm.mergeResults){
-                        res.results = vm.items.results.concat(res.results);
-                    }
-                    vm.items = res;
-                    vm.itemsLoaded = true;
-
-                    if( res.detail ) {
-                        showMessages([res.detail], "warning");
-                    }
-
-                    if(vm[vm.getCompleteCb]){
-                        vm[vm.getCompleteCb]();
-                    }
-                }
-            }
-            if(vm[vm.getBeforeCb]){
-                vm[vm.getBeforeCb]();
-            }
-            vm.reqGet(vm.url, vm.getParams(), cb);
-        },
-        getParams: function(excludes){
-            var vm = this;
-            var params = {};
-            for( var key in vm.params ) {
-                if( vm.params.hasOwnProperty(key) && vm.params[key] ) {
-                    if( excludes && key in excludes ) continue;
-                    if( key === 'start_at' || key === 'ends_at' ) {
-                        params[key] = moment(vm.params[key], DATE_FORMAT).toISOString();
-                    } else {
-                        params[key] = vm.params[key];
-                    }
-                }
-            }
-            return params;
-        },
-        getQueryString: function(excludes){
-            var vm = this;
-            var sep = "";
-            var result = "";
-            var params = vm.getParams(excludes);
-            for( var key in params ) {
-                if( params.hasOwnProperty(key) ) {
-                    result += sep + key + '=' + params[key].toString();
-                    sep = "&";
-                }
-            }
-            if( result ) {
-                result = '?' + result;
-            }
-            return result;
-        },
-        humanizeTotal: function() {
-            var vm = this;
-            var filter = Vue.filter('humanizeCell');
-            return filter(vm.items.total, vm.items.unit, 0.01);
-        },
-        humanizeBalance: function() {
-            var vm = this;
-            var filter = Vue.filter('humanizeCell');
-            return filter(vm.items.balance, vm.items.unit, 0.01);
-        },
-    },
-}
-
-var itemMixin = {
-    mixins: [httpRequestMixin],
     data: function() {
         return {
             item: {},
@@ -1171,11 +873,10 @@ var itemMixin = {
     methods: {
         get: function(){
             var vm = this;
-            if(!vm.url) return
-            if(vm[vm.getCb]){
-                var cb = vm[vm.getCb];
-            } else {
-                var cb = function(res){
+            if(!vm.url) return;
+            var cb = vm[vm.getCb];
+            if( !cb ) {
+                cb = function(res){
                     vm.item = res
                     vm.itemLoaded = true;
                 }
@@ -1185,10 +886,10 @@ var itemMixin = {
         validateForm: function(){
             var vm = this;
             var isEmpty = true;
-            var fields = $(vm.$el).find('[name]').not(
+            var fields = $(vm.$el).find('[name]').not(//XXX jQuery
                 '[name="csrfmiddlewaretoken"]');
             for( var fieldIdx = 0; fieldIdx < fields.length; ++fieldIdx ) {
-                var field = $(fields[fieldIdx]);
+                var field = $(fields[fieldIdx]); // XXX jQuery
                 var fieldName = field.attr('name');
                 var fieldValue = field.attr('type') === 'checkbox' ?
                     field.prop('checked') : field.val();
@@ -1205,6 +906,7 @@ var itemMixin = {
         },
     },
 }
+
 
 var paginationMixin = {
     data: function(){
@@ -1323,6 +1025,7 @@ var sortableMixin = {
             vm.$set(vm.params, 'o', vm.fieldsToStr(fields));
         },
         sortRemove: function(){
+            var vm = this;
             vm.$set(vm.params, 'o', '');
         },
         sortSet: function(field, dir) {
@@ -1392,6 +1095,138 @@ var sortableMixin = {
     },
 }
 
+
+var itemListMixin = {
+    data: function(){
+        return this.getInitData();
+    },
+    mixins: [
+        httpRequestMixin,
+        paginationMixin,
+        filterableMixin,
+        sortableMixin
+    ],
+    methods: {
+        getInitData: function(){
+            var data = {
+                url: '',
+                itemsLoaded: false,
+                items: {
+                    results: [],
+                    count: 0
+                },
+                mergeResults: false,
+                params: {
+                    // The following dates will be stored as `String` objects
+                    // as oppossed to `moment` or `Date` objects because this
+                    // is how uiv-date-picker will update them.
+                    start_at: null,
+                    ends_at: null
+                },
+                getCb: null,
+                getCompleteCb: null,
+                getBeforeCb: null,
+            }
+            if( djaodjinSettings.date_range ) {
+                if( djaodjinSettings.date_range.start_at ) {
+                    data.params['start_at'] = moment(
+                        djaodjinSettings.date_range.start_at).format(DATE_FORMAT);
+                }
+                if( djaodjinSettings.date_range.ends_at ) {
+                    // uiv-date-picker will expect ends_at as a String
+                    // but DATE_FORMAT will literally cut the hour part,
+                    // regardless of timezone. We don't want an empty list
+                    // as a result.
+                    // If we use moment `endOfDay` we get 23:59:59 so we
+                    // add a full day instead.
+                    data.params['ends_at'] = moment(
+                        djaodjinSettings.date_range.ends_at).add(1,'days').format(DATE_FORMAT);
+                }
+            }
+            return data;
+        },
+        get: function(){
+            var vm = this;
+            if(!vm.url) return
+            if(!vm.mergeResults){
+                vm.itemsLoaded = false;
+            }
+            var cb = null;
+            if(vm[vm.getCb]){
+                cb = function(res){
+                    vm[vm.getCb](res);
+
+                    if(vm[vm.getCompleteCb]){
+                        vm[vm.getCompleteCb]();
+                    }
+                }
+            } else {
+                cb = function(res){
+                    if(vm.mergeResults){
+                        res.results = vm.items.results.concat(res.results);
+                    }
+                    vm.items = res;
+                    vm.itemsLoaded = true;
+
+                    if( res.detail ) {
+                        showMessages([res.detail], "warning");
+                    }
+
+                    if(vm[vm.getCompleteCb]){
+                        vm[vm.getCompleteCb]();
+                    }
+                }
+            }
+            if(vm[vm.getBeforeCb]){
+                vm[vm.getBeforeCb]();
+            }
+            vm.reqGet(vm.url, vm.getParams(), cb);
+        },
+        getParams: function(excludes){
+            var vm = this;
+            var params = {};
+            for( var key in vm.params ) {
+                if( vm.params.hasOwnProperty(key) && vm.params[key] ) {
+                    if( excludes && key in excludes ) continue;
+                    if( key === 'start_at' || key === 'ends_at' ) {
+                        params[key] = moment(vm.params[key], DATE_FORMAT).toISOString();
+                    } else {
+                        params[key] = vm.params[key];
+                    }
+                }
+            }
+            return params;
+        },
+        getQueryString: function(excludes){
+            var vm = this;
+            var sep = "";
+            var result = "";
+            var params = vm.getParams(excludes);
+            for( var key in params ) {
+                if( params.hasOwnProperty(key) ) {
+                    result += sep + key + '=' + params[key].toString();
+                    sep = "&";
+                }
+            }
+            if( result ) {
+                result = '?' + result;
+            }
+            return result;
+        },
+        humanizeTotal: function() {
+            var vm = this;
+            var filter = Vue.filter('humanizeCell');
+            return filter(vm.items.total, vm.items.unit, 0.01);
+        },
+        humanizeBalance: function() {
+            var vm = this;
+            var filter = Vue.filter('humanizeCell');
+            return filter(vm.items.balance, vm.items.unit, 0.01);
+        },
+    },
+}
+
+
 var timezoneMixin = {
     data: function(){
         return {
@@ -1403,7 +1238,7 @@ var timezoneMixin = {
             // Convert datetime string to moment object in-place because we want
             // to keep extra keys and structure in the JSON returned by the API.
             return data.map(function(f){
-                var values = f.values.map(function(v){
+                f.values.map(function(v){
                     // localizing the period to local browser time
                     // unless showing reports in UTC.
                     v[0] = isUTC ? moment.parseZone(v[0]) : moment(v[0]);
@@ -1413,34 +1248,294 @@ var timezoneMixin = {
     },
 }
 
-var userRelationMixin = {
+
+var cardMixin = {
+    mixins: [
+        itemMixin
+    ],
+    data: function() {
+        return $.extend({ // XXX jQuery
+            cardNumber: '',
+            cardCvc: '',
+            cardExpMonth: '',
+            cardExpYear: '',
+            savedCard: {
+                last4: '',
+                exp_date: '',
+            },
+            countries: countries,
+            regions: regions,
+            organization: {},
+            updateCard: false, //used in legacy checkout
+            errors: {},
+            validate: [
+                'cardNumber',
+                'cardCvc',
+                'cardExpMonth',
+                'cardExpYear',
+                'card_name',
+                'card_address_line1',
+                'card_city',
+                'card_adress_zip',
+                'country',
+                'region',
+            ],
+        }, this.getCardFormData());
+    },
+    methods: {
+        getCardFormData: function() {
+            var vm = this;
+            var data = {};
+            var cardForm = $("#card-use"); // XXX jQuery
+            if( cardForm.length > 0 ) {
+                data['card_name'] = vm.getInitValue(cardForm, 'card_name');
+                data['card_address_line1'] = vm.getInitValue(cardForm, 'card_address_line1');
+                data['card_city'] = vm.getInitValue(cardForm, 'card_city');
+                data['ard_adress_zip'] = vm.getInitValue(cardForm, 'card_address_zip');
+                data['country'] = vm.getInitValue(cardForm, 'country');
+                data['region'] = vm.getInitValue(cardForm, 'region');
+            }
+            return data;
+        },
+        clearCardData: function() {
+            var vm = this;
+            vm.savedCard.last4 = '';
+            vm.savedCard.exp_date = '';
+            vm.cardNumber = '';
+            vm.cardCvc = '';
+            vm.cardExpMonth = '';
+            vm.cardExpYear = '';
+        },
+        deleteCard: function() {
+            var vm = this;
+            vm.reqDelete(djaodjinSettings.urls.organization.api_card,
+            function() {
+                vm.clearCardData();
+            });
+        },
+        inputClass: function(name){
+            var vm = this;
+            var field = this.errors[name];
+            if(name === 'cardExp'){
+                // a hack to validate card expiration year and month as
+                // a single field
+                if(vm.errors['cardExpMonth'] || this.errors['cardExpYear']){
+                    field = true;
+                }
+            }
+            var cls = [];
+            if( field ){
+                cls.push('has-error');
+            }
+            return cls;
+        },
+        getInitValue: function(form, fieldName) {
+            if( form.length > 0 ) {
+                var field = form.find("[name='" + fieldName + "']");
+                if( field.length > 0 ) {
+                    var val = field.attr('type') === 'checkbox' ?
+                        field.prop('checked') : (
+                            field.val() ? field.val() : field.data('init'));
+                    return val;
+                }
+            }
+            return "";
+        },
+        getUserCard: function(){
+            var vm = this;
+            vm.reqGet(djaodjinSettings.urls.organization.api_card,
+            function(resp){
+                if(resp.last4){
+                    vm.savedCard.last4 = resp.last4;
+                    vm.savedCard.exp_date = resp.exp_date;
+                }
+            });
+        },
+        getCardToken: function(cb){
+            var vm = this;
+            if(!djaodjinSettings.stripePubKey){
+                showMessages([
+                    gettext("You haven't set a valid Stripe public key")
+                ], "error");
+                return;
+            }
+            Stripe.setPublishableKey(djaodjinSettings.stripePubKey);
+            Stripe.createToken({
+                number: vm.cardNumber,
+                cvc: vm.cardCvc,
+                exp_month: vm.cardExpMonth,
+                exp_year: vm.cardExpYear,
+                name: vm.card_name,
+                address_line1: vm.card_address_line1,
+                address_city: vm.card_city,
+                address_state: vm.region,
+                address_zip: vm.card_adress_zip,
+                address_country: vm.country
+            }, function(code, res){
+                if(code === 200) {
+                    vm.savedCard.last4 = '***-' + res.card.last4;
+                    vm.savedCard.exp_date = (
+                        res.card.exp_month + '/' + res.card.exp_year);
+                    if(cb) cb(res.id)
+                } else {
+                    showMessages([res.error.message], "error");
+                }
+            });
+        },
+        getOrgAddress: function(){
+            var vm = this;
+            vm.reqGet(djaodjinSettings.urls.organization.api_base, function(org) {
+                if(org.full_name){
+                    vm.card_name = org.full_name;
+                }
+                if(org.street_address){
+                    vm.card_address_line1 = org.street_address;
+                }
+                if(org.locality){
+                    vm.card_city = org.locality;
+                }
+                if(org.postal_code){
+                    vm.card_adress_zip = org.postal_code;
+                }
+                if(org.country){
+                    vm.country = org.country;
+                }
+                if(org.region){
+                    vm.region = org.region;
+                }
+                vm.organization = org;
+            }).fail(showErrorMessages);
+        },
+        validateForm: function(){
+            var vm = this;
+            var valid = true;
+            var errors = {}
+            var errorMessages = "";
+            vm.validate.forEach(function(field){
+                if(vm[field] === ''){
+                    vm[field] = vm.getInitValue($(vm.$el), field);//XXX jQuery
+                }
+                if( vm[field] === '') {
+                    valid = false;
+                    errors[field] = [gettext("This field shouldn't be empty")];
+                }
+            });
+            vm.errors = errors;
+            if(Object.keys(vm.errors).length > 0){
+                if( vm.errors['cardNumber'] ) {
+                    if( errorMessages ) { errorMessages += ", "; }
+                    errorMessages += gettext("Card Number");
+                }
+                if( vm.errors['cardCvc'] ) {
+                    if( errorMessages ) { errorMessages += ", "; }
+                    errorMessages += gettext("Security Code");
+                }
+                if( vm.errors['cardExpMonth']
+                         || vm.errors['cardExpYear'] ) {
+                    if( errorMessages ) { errorMessages += ", "; }
+                    errorMessages += gettext("Expiration");
+                }
+                if( vm.errors['card_name'] ) {
+                    if( errorMessages ) { errorMessages += ", "; }
+                    errorMessages += gettext("Card Holder");
+                }
+                if( vm.errors['card_address_line1'] ) {
+                    if( errorMessages ) { errorMessages += ", "; }
+                    errorMessages += gettext("Street address");
+                }
+                if( vm.errors['card_city'] ) {
+                    if( errorMessages ) { errorMessages += ", "; }
+                    errorMessages += gettext("City/Town");
+                }
+                if( vm.errors['card_adress_zip'] ) {
+                    if( errorMessages ) { errorMessages += ", "; }
+                    errorMessages += gettext("Zip/Postal code");
+                }
+                if( vm.errors['country'] ) {
+                    if( errorMessages ) { errorMessages += ", "; }
+                    errorMessages += gettext("Country");
+                }
+                if( vm.errors['region'] ) {
+                    if( errorMessages ) { errorMessages += ", "; }
+                    errorMessages += gettext("State/Province/County");
+                }
+                if( errorMessages ) {
+                    errorMessages = interpolate(
+                      gettext("%s field(s) cannot be empty."), [errorMessages]);
+                }
+                showErrorMessages(errorMessages);
+            }
+            return valid;
+        },
+    },
+    computed: {
+        haveCardData: function() {
+            var vm = this;
+            return vm.savedCard.last4 && vm.savedCard.exp_date;
+        }
+    },
+    mounted: function() {
+        var vm = this;
+        var elements = vm.$el.querySelectorAll('[data-last4]');
+        if( elements.length > 0 ) {
+            vm.savedCard.last4 = elements[0].getAttribute('data-last4');
+        }
+        elements = vm.$el.querySelectorAll('[data-exp-date]');
+        if( elements.length > 0 ) {
+            vm.savedCard.exp_date = elements[0].getAttribute('data-exp-date');
+        }
+    }
+}
+
+var roleDetailMixin = {
+    methods: {
+        acceptGrant: function(accessible){
+            var vm = this;
+            var url = accessible.accept_grant_api_url;
+            if(!url) return;
+            vm.reqPut(url, function() { vm.get(); });
+        },
+        sendInvite: function(slug){
+            var vm = this;
+            vm.reqPost(vm.url + '/' + slug + '/', {}, function() {
+                showMessages([interpolate(gettext(
+                    "Invite for %s has been sent"), [slug])],
+                    "success");
+            });
+        },
+    }
+}
+
+
+var roleListMixin = {
     mixins: [
         itemListMixin,
-        paginationMixin
+        roleDetailMixin
     ],
+    props: {
+        unregistered: {
+            type: Object,
+            default: {
+                slug: '',
+                email: '',
+                full_name: ''
+            }
+        }
+    },
     data: function(){
         return {
-            modalSelector: ".add-role-modal",
             url: null,
             typeaheadUrl: null,
             showInvited: false,
             showRequested: false,
-            unregistered: {
-                slug: '',
-                email: '',
-                full_name: ''
-            },
         }
     },
     methods: {
         modalShow: function() {
             var vm = this;
-            var dialog = $(vm.modalSelector);
-            if( dialog && jQuery().modal ) {
-                dialog.modal("show");
-            }
+            vm.$emit('invite');
         },
-        remove: function(idx){
+        remove: function(idx){ // saas/_user_card.html
             var vm = this;
             var ob = vm.items.results[idx];
             var slug = (ob.user ? ob.user.slug : ob.slug);
@@ -1462,41 +1557,41 @@ var userRelationMixin = {
             });
         },
         refresh: function() {
-            vm.showInvited = true;
+            // overridden in subclasses.
         },
-        saveUserRelation: function(slug){
+        saveUserRelation: function(slug){ // XXX internal?
             var vm = this;
             vm.reqPost(vm.url, {slug: slug},
-                function(resp){
+                function() {
                     vm.refresh();
-                }, function(resp){
+                }, function() {
                     vm.handleNewUser(slug);
                 }
             );
         },
-        handleNewUser: function(str){
+        handleNewUser: function(str){  // XXX internal?
             var vm = this;
             if(str.length > 0){
                 vm.unregistered = {
-                    slug: str,
                     email: str,
-                    full_name: str
+                    full_name: ''
                 }
                 vm.modalShow();
             }
         },
-        save: function(item){
+        save: function(item){ // user-typeahead @item-save="save"
             var vm = this;
             vm.saveUserRelation(item.slug ? item.slug : item.toString());
         },
-        create: function(){
+        create: function(){ // @click="create" in dialog
             var vm = this;
             var data = vm.unregistered;
-            vm.reqPost(vm.url + "?force=1", data, function(resp){
+            vm.reqPost(vm.url + "?force=1", data,
+            function() {
                 vm.refresh();
             });
         },
-        updateParams: function(){
+        updateParams: function(){ // internal
             var vm = this;
             vm.params.role_status = vm.roleStatus;
             if(vm.showInvited || vm.showRequested){
@@ -1514,25 +1609,42 @@ var userRelationMixin = {
         },
     },
     watch: {
-        showInvited: function(){
+        showInvited: function() {
             this.updateParams();
         },
-        showRequested: function(val){
+        showRequested: function() {
             this.updateParams();
         },
     },
+    mounted: function(){
+        this.get()
+    }
 }
 
-var subscriptionsMixin = {
+
+var subscriptionDetailMixin = {
     data: function(){
         return {
             ends_at: moment().endOf("day").format(DATE_FORMAT),
         }
     },
     methods: {
-        subscriptionURL: function(organization, plan) {
-            return djaodjinSettings.urls.organization.api_profile_base
-                + organization + "/subscriptions/" + plan;
+        acceptRequest: function(organization, request_key) {
+            var vm = this;
+            var url = (djaodjinSettings.urls.organization.api_profile_base +
+                organization + "/subscribers/accept/" + request_key + "/");
+            vm.reqPost(url, function (){
+                vm.get();
+            });
+        },
+        editDescription: function(item, id){
+            var vm = this;
+            vm.$set(item, 'edit_description', true);
+            // at this point the input is rendered and visible
+            vm.$nextTick(function(){
+                var ref = vm.refId(item, id);
+                vm.$refs[ref][0].focus();
+            });
         },
         endsSoon: function(subscription) {
             var vm = this;
@@ -1543,22 +1655,10 @@ var subscriptionsMixin = {
             }
             return "";
         },
-    },
-}
-
-var subscribersMixin = {
-    mixins: [
-        itemListMixin,
-    ],
-    methods: {
-        editDescription: function(item, id){
-            var vm = this;
-            vm.$set(item, 'edit_description', true);
-            // at this point the input is rendered and visible
-            vm.$nextTick(function(){
-                var ref = vm.refId(item, id);
-                vm.$refs[ref][0].focus();
-            });
+        refId: function(item, id){
+            var ids = [item.organization.slug,
+                item.plan.slug, id];
+            return ids.join('_').replace(new RegExp('[-:]', 'g'), '');
         },
         saveDescription: function(item){
             // this solves a problem where user hits an enter
@@ -1569,29 +1669,63 @@ var subscribersMixin = {
             if(!item.edit_description) return;
             this.$set(item, 'edit_description', false);
             delete item.edit_description;
-            this.update(item)
+            this.update(item);
         },
-        refId: function(item, id){
-            var ids = [item.organization.slug,
-                item.plan.slug, id];
-            return ids.join('_').replace(new RegExp('[-:]', 'g'), '');
+        subscriptionURL: function(organization, plan) {
+            return djaodjinSettings.urls.organization.api_profile_base
+                + organization + "/subscriptions/" + plan;
         },
-        update: function(item){
+        update: function(item) {
             var vm = this;
             var url = vm.subscriptionURL(
                 item.organization.slug, item.plan.slug);
-            vm.reqPatch(url, {description: item.description})
+            var data = {
+                description: item.description,
+                ends_at: item.ends_at
+            };
+            vm.reqPatch(url, data);
         },
-        resolve: function (o, s){
+    },
+}
+
+
+var subscriptionListMixin = {
+    mixins: [
+        itemListMixin,
+        subscriptionDetailMixin
+    ],
+    data: function() {
+        return {
+            typeaheadUrl: null,
+            url: null,
+            newProfile: {},
+            plan: {},
+            params: {
+            },
+            toDelete: {
+                plan: null,
+                org: null
+            },
+        }
+    },
+    methods: {
+        _resolve: function (o, s){
             return s.split('.').reduce(function(a, b) {
                 return a[b];
             }, o);
+        },
+        create: function(){
+            var vm = this;
+            vm.reqPost(vm.url + "?force=1", vm.newProfile,
+            function() {
+                vm.get();
+            });
         },
         groupBy: function (list, groupBy) {
             var vm = this;
             var res = {};
             list.forEach(function(item){
-                var value = vm.resolve(item, groupBy);
+                var value = vm._resolve(item, groupBy);
                 res[value] = res[value] || [];
                 res[value].push(item);
             });
@@ -1603,6 +1737,65 @@ var subscribersMixin = {
             }
             return ordered_res;
         },
+        save: function(item){
+            var vm = this;
+            var slug = item.slug ? item.slug : item.toString();
+            vm.reqPost(vm.url, {slug: slug},
+                function() {
+                    vm.get();
+                },
+                function() {
+                    if(slug.length > 0){
+                        vm.newProfile = {
+                            slug: slug,
+                            email: slug,
+                            full_name: slug
+                        }
+                        vm.modalShow();
+                    }
+                }
+            );
+        },
+        subscribe: function(org){ // XXX same as `save`?
+            var vm = this;
+            var url = vm.subscribersURL(vm.plan.organization, vm.plan.slug);
+            var data = {
+                organization: {
+                  slug: org
+                }
+            }
+            vm.reqPost(url, data, function (){
+                vm.get();
+            });
+        },
+        selected: function(idx){
+            var item = this.items.results[idx];
+            item.ends_at = (new Date(item.ends_at)).toISOString();
+            this.update(item);
+        },
+        subscribersURL: function(provider, plan) {
+            return djaodjinSettings.urls.organization.api_profile_base + provider + "/plans/" + plan + "/subscriptions/";
+        },
+        unsubscribe: function() {
+            var vm = this;
+            var data = vm.toDelete;
+            if(!(data.org && data.plan)) return;
+            var url = vm.subscriptionURL(data.org, data.plan);
+            vm.reqDelete(url, function (){
+                vm.$emit('expired');
+                vm.params.page = 1;
+                vm.get();
+            });
+        },
+        unsubscribeConfirm: function(org, plan) {
+            this.toDelete = {
+                org: org,
+                plan: plan
+            }
+        },
+    },
+    mounted: function(){
+        this.get();
     }
 }
 
@@ -1619,10 +1812,12 @@ Vue.component('user-typeahead', {
             itemSelected: '',
         }
     },
-    mixins: [httpRequestMixin],
+    mixins: [
+        httpRequestMixin
+    ],
     computed: {
         params: function(){
-            res = {}
+            var res = {}
             if(this.typeaheadQuery) res.q = this.typeaheadQuery;
             return res
         },
@@ -1655,100 +1850,15 @@ Vue.component('user-typeahead', {
     }
 });
 
-// TODO it probably makes sense to use this component in other
-// places where user relations are needed
-Vue.component('user-relation', {
-    mixins: [
-        userRelationMixin
-    ],
-    props: {
-        roleUrl: '',
-        role: {
-            type: Object,
-            default: function(){
-                return {
-                    slug: '',
-                    title: ''
-                }
-            }
-        },
-    },
-    data: function(){
-        return {
-            url: this.roleUrl,
-            typeaheadUrl: djaodjinSettings.urls.api_candidates,
-        }
-    },
-    watch: {
-        // this should have been a computed propery, however
-        // vue doesn't allow to have computed properties with
-        // the same name as in data
-        roleUrl: function (newVal, oldVal) {
-            if(newVal != oldVal){
-                this.url = newVal;
-                this.params.page = 1;
-                this.get();
-            }
-        }
-    },
-    mounted: function(){
-        this.get();
-    },
-});
 
-
-Vue.component('coupon-list', {
-    mixins: [
-        itemListMixin,
-        paginationMixin,
-        filterableMixin,
-        sortableMixin
-    ],
-    data: function() {
-        return {
-            url: djaodjinSettings.urls.provider.api_coupons,
-            params: {
-                o: 'ends_at',
-            },
-            newCoupon: {
-                code: '',
-                percent: ''
-            },
-            edit_description: [],
-            date: null,
-            plans: []
-        }
-    },
+var couponDetailMixin = {
     methods: {
-        remove: function(idx){
+        update: function(coupon, cb) {
             var vm = this;
-            var code = this.items.results[idx].code;
-            vm.reqDelete(vm.url + '/' + code, function() {
-                vm.get();
-            });
-        },
-        update: function(coupon, cb){
-            var vm = this;
-            vm.reqPut(vm.url + '/' + coupon.code, coupon, function(resp){
+            vm.reqPut(vm.url + '/' + coupon.code, coupon,
+            function(){
                 vm.get();
                 if(cb) cb();
-            });
-        },
-        save: function(){
-            var vm = this;
-            vm.reqPost(vm.url, vm.newCoupon, function(resp){
-                vm.get();
-                vm.newCoupon = {
-                    code: '',
-                    percent: ''
-                }
-            });
-        },
-        getPlans: function(){
-            var vm = this;
-            vm.reqGet(djaodjinSettings.urls.provider.api_plans,
-                {active: true}, function(res){
-                vm.plans = res.results;
             });
         },
         editPlan: function(item){
@@ -1799,6 +1909,57 @@ Vue.component('coupon-list', {
                 this.update(this.items.results[idx])
             }
         },
+    }
+}
+
+
+Vue.component('coupon-list', {
+    mixins: [
+        itemListMixin,
+        couponDetailMixin
+    ],
+    data: function() {
+        return {
+            url: djaodjinSettings.urls.provider.api_coupons,
+            params: {
+                o: 'ends_at',
+            },
+            newCoupon: {
+                code: '',
+                percent: ''
+            },
+            edit_description: [],
+            date: null,
+            plans: []
+        }
+    },
+    methods: {
+        remove: function(idx){
+            var vm = this;
+            var code = this.items.results[idx].code;
+            vm.reqDelete(vm.url + '/' + code,
+            function() {
+                vm.get();
+            });
+        },
+        save: function(){
+            var vm = this;
+            vm.reqPost(vm.url, vm.newCoupon,
+            function() {
+                vm.get();
+                vm.newCoupon = {
+                    code: '',
+                    percent: ''
+                }
+            });
+        },
+        getPlans: function(){
+            var vm = this;
+            vm.reqGet(djaodjinSettings.urls.provider.api_plans,
+                {active: true}, function(res){
+                vm.plans = res.results;
+            });
+        },
         selected: function(idx){
             var coupon = this.items.results[idx];
             if( coupon.ends_at ) {
@@ -1830,8 +1991,7 @@ Vue.component('coupon-list', {
 
 Vue.component('user-list', {
     mixins: [
-        itemListMixin,
-        paginationMixin
+        itemListMixin
     ],
     data: function() {
         return {
@@ -1849,8 +2009,38 @@ Vue.component('user-list', {
 });
 
 
+/** Profiles accessible, granted or requested by a user.
+ */
+Vue.component('role-profile-list', {
+    mixins: [
+        roleListMixin,
+    ],
+    data: function() {
+        return {
+            url: djaodjinSettings.urls.user.api_accessibles,
+            typeaheadUrl: djaodjinSettings.urls.api_candidates,
+            showInvited: false,
+            showRequested: false,
+            params: {
+                role_status: "",
+            },
+        }
+    },
+    methods: {
+        refresh: function() {
+            var vm = this;
+            vm.showRequested = true;
+        },
+    },
+});
+
+
+/** Users who have a role, have been granted or requested a role on a profile.
+ */
 Vue.component('role-user-list', {
-    mixins: [userRelationMixin, sortableMixin, filterableMixin],
+    mixins: [
+        roleListMixin
+    ],
     data: function() {
         return {
             url: djaodjinSettings.urls.organization.api_roles,
@@ -1865,23 +2055,15 @@ Vue.component('role-user-list', {
             var vm = this;
             vm.showInvited = true;
         },
-        sendInvite: function(slug){
-            var vm = this;
-            vm.reqPost(vm.url + '/' + slug + '/', {}, function(res){
-                showMessages([interpolate(gettext(
-                    "Invite for %s has been sent"), [slug])],
-                    "success");
-            });
-        },
     },
-    mounted: function(){
-        this.get()
-    }
 });
 
 
 Vue.component('metrics-charts', {
-    mixins: [httpRequestMixin, timezoneMixin],
+    mixins: [
+        httpRequestMixin,
+        timezoneMixin
+    ],
     data: function() {
         var data = {
             tables: djaodjinSettings.tables,
@@ -1981,7 +2163,6 @@ Vue.component('metrics-charts', {
             return (index === vm.activeTab) ? base + " active" : base;
         },
         humanizeCell: function(value, unit, scale) {
-            var vm = this;
             var filter = Vue.filter('humanizeCell');
             return filter(value, unit, scale);
         },
@@ -2025,10 +2206,7 @@ Vue.component('metrics-charts', {
 
 Vue.component('registered', {
     mixins: [
-        itemListMixin,
-        paginationMixin,
-        filterableMixin,
-        sortableMixin,
+        itemListMixin
     ],
     data: function() {
         return {
@@ -2043,103 +2221,31 @@ Vue.component('registered', {
 
 Vue.component('subscribed', {
     mixins: [
-        subscriptionsMixin,
-        subscribersMixin,
-        paginationMixin,
-        filterableMixin,
-        sortableMixin,
+        subscriptionListMixin
     ],
     data: function() {
         return {
             url: djaodjinSettings.urls.provider.api_subscribers_active,
         }
-    },
-    mounted: function(){
-        this.get();
-    },
+    }
 });
 
 
 Vue.component('churned', {
     mixins: [
-        subscriptionsMixin,
-        subscribersMixin,
-        paginationMixin,
-        filterableMixin,
-        sortableMixin,
+        subscriptionListMixin
     ],
     data: function() {
         return {
             url: djaodjinSettings.urls.provider.api_subscribers_churned,
         }
-    },
-    mounted: function(){
-        this.get();
-    },
-});
-
-
-Vue.component('coupon-user-list', {
-    mixins: [
-        filterableMixin,
-        itemListMixin,
-        paginationMixin,
-        sortableMixin],
-    data: function() {
-        return {
-            url: djaodjinSettings.urls.provider.api_metrics_coupon_uses,
-            params: {
-                o: '-created_at',
-            },
-        }
-    },
-    mounted: function(){
-        this.get()
-    }
-});
-
-
-Vue.component('charge-list', {
-    mixins: [
-        itemListMixin,
-        filterableMixin
-    ],
-    data: function() {
-        return {
-            url: djaodjinSettings.urls.broker.api_charges,
-        }
-    },
-    mounted: function(){
-        this.get();
-    }
-});
-
-
-Vue.component('plan-list', {
-    mixins: [
-        filterableMixin,
-        itemListMixin,
-        paginationMixin,
-        sortableMixin,
-    ],
-    data: function() {
-        return {
-            url: djaodjinSettings.urls.provider.api_plans,
-        }
-    },
-    mounted: function(){
-        this.get();
     }
 });
 
 
 Vue.component('plan-subscriber-list', {
     mixins: [
-        subscriptionsMixin,
-        subscribersMixin,
-        paginationMixin,
-        sortableMixin,
-        filterableMixin,
+        subscriptionListMixin
     ],
     data: function() {
         return {
@@ -2147,128 +2253,28 @@ Vue.component('plan-subscriber-list', {
             typeaheadUrl: djaodjinSettings.urls.api_candidates,
             url: djaodjinSettings.urls.provider.api_plan_subscribers,
         }
-    },
-    methods: {
-        save: function(item){
-            var vm = this;
-            var slug = item.slug ? item.slug : item.toString();
-            vm.reqPost(vm.url, {slug: slug},
-                function(resp){
-                    vm.get();
-                }, function(resp){
-                    if(str.length > 0){
-                        vm.newProfile = {
-                            slug: str,
-                            email: str,
-                            full_name: str
-                        }
-                        vm.modalShow();
-                    }
-                }
-            );
-        },
-        create: function(){
-            var vm = this;
-            vm.reqPost(vm.url + "?force=1", vm.newProfile, function(resp){
-                vm.get();
-            });
-        }
-    },
-    mounted: function(){
-        this.get();
     }
 });
 
 
 Vue.component('subscription-list', {
     mixins: [
-        itemListMixin,
-        paginationMixin,
-        sortableMixin,
-        subscriptionsMixin,
+        subscriptionListMixin,
     ],
     data: function() {
         return {
             url: djaodjinSettings.urls.organization.api_subscriptions,
-            plan: {},
             params: {
                 state: 'active',
             },
-            toDelete: {
-                plan: null,
-                org: null
-            },
         }
-    },
-    methods: {
-        update: function(item){
-            var vm = this;
-            var url = vm.subscriptionURL(
-                item.organization.slug, item.plan.slug);
-            var data = {
-                description: item.description,
-                ends_at: item.ends_at
-            };
-            vm.reqPatch(url, data);
-        },
-        selected: function(idx){
-            var item = this.items.results[idx];
-            item.ends_at = (new Date(item.ends_at)).toISOString();
-            this.update(item);
-        },
-        subscribersURL: function(provider, plan) {
-            return djaodjinSettings.urls.organization.api_profile_base + provider + "/plans/" + plan + "/subscriptions/";
-        },
-        subscribe: function(org){
-            var vm = this;
-            var url = vm.subscribersURL(vm.plan.organization, vm.plan.slug);
-            var data = {
-                organization: {
-                  slug: org
-                }
-            }
-            vm.reqPost(url, data, function (){
-                vm.get();
-            });
-        },
-        unsubscribeConfirm: function(org, plan) {
-            this.toDelete = {
-                org: org,
-                plan: plan
-            }
-        },
-        unsubscribe: function() {
-            var vm = this;
-            var data = vm.toDelete;
-            if(!(data.org && data.plan)) return;
-            var url = vm.subscriptionURL(data.org, data.plan);
-            vm.reqDelete(url, function (){
-                vm.$emit('expired');
-                vm.params.page = 1;
-                vm.get();
-            });
-        },
-        acceptRequest: function(organization, request_key) {
-            var vm = this;
-            var url = (djaodjinSettings.urls.organization.api_profile_base +
-                organization + "/subscribers/accept/" + request_key + "/");
-            vm.reqPost(url, function (){
-                vm.get();
-            });
-        },
-    },
-    mounted: function(){
-        this.get();
     }
 });
 
 
 Vue.component('expired-subscription-list', {
     mixins: [
-        itemListMixin,
-        sortableMixin,
-        paginationMixin,
-        subscriptionsMixin,
+        subscriptionListMixin,
     ],
     data: function() {
         return {
@@ -2277,9 +2283,6 @@ Vue.component('expired-subscription-list', {
                 state: 'expired',
             },
         }
-    },
-    mounted: function(){
-        this.get();
     }
 });
 
@@ -2301,13 +2304,61 @@ Vue.component('subscription-list-container', {
 });
 
 
+Vue.component('coupon-user-list', {
+    mixins: [
+        itemListMixin
+    ],
+    data: function() {
+        return {
+            url: djaodjinSettings.urls.provider.api_metrics_coupon_uses,
+            params: {
+                o: '-created_at',
+            },
+        }
+    },
+    mounted: function(){
+        this.get()
+    }
+});
+
+
+Vue.component('charge-list', {
+    mixins: [
+        itemListMixin
+    ],
+    data: function() {
+        return {
+            url: djaodjinSettings.urls.broker.api_charges,
+        }
+    },
+    mounted: function(){
+        this.get();
+    }
+});
+
+
+Vue.component('plan-list', {
+    mixins: [
+        itemListMixin,
+    ],
+    data: function() {
+        return {
+            url: djaodjinSettings.urls.provider.api_plans,
+        }
+    },
+    mounted: function(){
+        this.get();
+    }
+});
+
+
 Vue.component('import-transaction', {
     mixins: [
         httpRequestMixin
     ],
     data: function() {
         return {
-            url: djaodjinSettings.urls.provider.api_subscribers_active,
+            typeaheadUrl: djaodjinSettings.urls.provider.api_subscribers_active,
             createdAt: moment().format("YYYY-MM-DD"),
             itemSelected: '',
             searching: false,
@@ -2319,7 +2370,7 @@ Vue.component('import-transaction', {
         getSubscriptions: function(query, done) {
             var vm = this;
             vm.searching = true;
-            vm.reqGet(vm.url, {q: query}, function(res){
+            vm.reqGet(vm.typeaheadUrl, {q: query}, function(res){
                 vm.searching = false;
                 // current typeahead implementation does not
                 // support dynamic keys that's why we are
@@ -2327,7 +2378,7 @@ Vue.component('import-transaction', {
                 res.results.forEach(function(e){
                     e.itemKey = e.organization.slug + ':' + e.plan.slug
                 });
-                done(res.results)
+//XXX                done(res.results)
             });
         },
         addPayment: function(){
@@ -2357,10 +2408,7 @@ Vue.component('import-transaction', {
 
 Vue.component('billing-statement', {
     mixins: [
-        filterableMixin,
         itemListMixin,
-        paginationMixin,
-        sortableMixin,
     ],
     data: function(){
         var res = {
@@ -2416,10 +2464,7 @@ Vue.component('billing-statement', {
 
 Vue.component('transfers-statement', {
     mixins: [
-        filterableMixin,
         itemListMixin,
-        paginationMixin,
-        sortableMixin,
     ],
     data: function() {
         return {
@@ -2458,51 +2503,11 @@ Vue.component('transfers-statement', {
 
 Vue.component('transaction-list', {
     mixins: [
-        filterableMixin,
         itemListMixin,
-        paginationMixin,
-        sortableMixin,
     ],
     data: function() {
         return {
             url: djaodjinSettings.urls.organization.api_transactions,
-        }
-    },
-    mounted: function(){
-        this.get();
-    },
-});
-
-
-Vue.component('role-profile-list', {
-    mixins: [
-        filterableMixin,
-        sortableMixin,
-        userRelationMixin,
-    ],
-    data: function() {
-        return {
-            url: djaodjinSettings.urls.user.api_accessibles,
-            typeaheadUrl: djaodjinSettings.urls.api_candidates,
-            showInvited: false,
-            showRequested: false,
-            params: {
-                role_status: "",
-            },
-        }
-    },
-    methods: {
-        refresh: function() {
-            var vm = this;
-            vm.showRequested = true;
-        },
-        acceptGrant: function(accessible){
-            var vm = this;
-            var url = accessible.accept_grant_api_url;
-            if(!url) return;
-            vm.reqPut(url, function(res){
-                vm.get();
-            });
         }
     },
     mounted: function(){
@@ -2545,7 +2550,7 @@ Vue.component('profile-update', {
             var vm = this;
             vm.validateForm();
             vm.reqPut(djaodjinSettings.urls.organization.api_base, vm.formFields,
-            function(resp) {
+            function() {
                 showMessages([gettext("Profile was updated.")], "success");
             });
             if(vm.imageSelected){
@@ -2558,34 +2563,15 @@ Vue.component('profile-update', {
                 if(!blob) return;
                 var form = new FormData();
                 form.append('file', blob, vm.picture.getChosenFile().name);
-                // we're using raw $.ajax call here because we need to pass
-                // the data as multipart/form-data
-                $.ajax({
-                    method: 'POST',
-                    url: djaodjinSettings.urls.organization.api_profile_picture,
-                    beforeSend: function(xhr, settings) {
-                        var authToken = vm._getAuthToken();
-                        if( authToken ) {
-                            xhr.setRequestHeader("Authorization",
-                                                 "Bearer " + authToken);
-                        } else {
-                            if( !vm._csrfSafeMethod(settings.type) ) {
-                                var csrfToken = vm._getCSRFToken();
-                                if( csrfToken ) {
-                                    xhr.setRequestHeader("X-CSRFToken", csrfToken);
-                                }
-                            }
-                        }
-                    },
-                    contentType: false,
-                    processData: false,
-                    data: form,
-                }).done(function(resp) {
-                    vm.formFields.picture = resp.location;
-                    vm.picture.remove();
-                    vm.$forceUpdate();
-                    showMessages(["Profile was updated."], "success");
-                }).fail(showErrorMessages);
+                vm.reqPostBlob(
+                    djaodjinSettings.urls.organization.api_profile_picture,
+                    form,
+                    function(resp) {
+                        vm.formFields.picture = resp.location;
+                        vm.picture.remove();
+                        vm.$forceUpdate();
+                        showMessages(["Profile was updated."], "success");
+                });
             }, 'image/jpeg');
         },
     },
@@ -2607,8 +2593,7 @@ Vue.component('profile-update', {
 
 Vue.component('roledescr-list', {
     mixins: [
-        itemListMixin,
-        paginationMixin,
+        itemListMixin
     ],
     data: function() {
         return {
@@ -2621,7 +2606,8 @@ Vue.component('roledescr-list', {
     methods: {
         create: function(){
             var vm = this;
-            vm.reqPost(vm.url, vm.role, function(resp) {
+            vm.reqPost(vm.url, vm.role,
+            function() {
                 vm.role.title = '';
                 vm.params.page = 1;
                 vm.get()
@@ -2670,7 +2656,8 @@ Vue.component('balance-list', {
     methods: {
         create: function(){
             var vm = this;
-            vm.reqPost(vm.balanceLineUrl, vm.balanceLine, function(resp){
+            vm.reqPost(vm.balanceLineUrl, vm.balanceLine,
+            function() {
                 vm.get()
                 vm.balanceLine = {
                     title: '',
@@ -2738,7 +2725,8 @@ Vue.component('checkout', {
         remove: function(plan){
             var vm = this;
             var url = djaodjinSettings.urls.api_cart;
-            vm.reqDelete(url, {plan: plan}, function() {
+            vm.reqDelete(url, {plan: plan},
+            function() {
                 vm.get()
             });
         },
@@ -2746,7 +2734,7 @@ Vue.component('checkout', {
             var vm = this;
             vm.reqPost(djaodjinSettings.urls.api_redeem_coupon, {
                 code: vm.coupon },
-            function(resp) {
+            function() {
                 showMessages([gettext("Discount was successfully applied.")],
                     "success");
                 vm.get();
@@ -2796,7 +2784,7 @@ Vue.component('checkout', {
                 data.option = option
             }
             vm.reqPost(djaodjinSettings.urls.api_cart, data,
-            function(resp) {
+            function() {
                 showMessages([gettext("User was added.")], "success");
                 vm.init = false;
                 vm.$set(vm.plansUser, plan, {
@@ -2883,7 +2871,7 @@ Vue.component('checkout', {
         // used in legacy checkout
         doCheckoutForm: function(token) {
             var vm = this;
-            var form = $(vm.$el).find('form');
+            var form = $(vm.$el).find('form'); // XXX jQuery
             if(token){
                 form.append("<input type='hidden' name='stripeToken' value='" + token + "'/>");
             }
@@ -2892,7 +2880,7 @@ Vue.component('checkout', {
         // used in legacy checkout
         checkoutForm: function() {
             var vm = this;
-            cardUse = $('#card-use');
+            var cardUse = $('#card-use'); // XXX jQuery
             if( cardUse.length > 0 && cardUse.is(":visible") ) {
                 if(vm.haveCardData){
                     if(vm.updateCard){
@@ -2918,19 +2906,13 @@ Vue.component('checkout', {
         bulkImport: function(plan){
             var vm = this;
             if(!vm.csvFiles[plan]) return;
-            var formData = new FormData();
-            formData.append("file", vm.csvFiles[plan]);
-            // we're using raw $.ajax call here because we need to pass
-            // the data as multipart/form-data
-            $.ajax({
-                type: "POST",
-                url: "/api/cart/" + plan + "/upload/",
-                data: formData,
-                processData: false,
-                contentType: false,
-            }).done(function(){
-                vm.get();
-            }).fail(showErrorMessages);
+            var form = new FormData();
+            form.append("file", vm.csvFiles[plan]);
+            vm.reqPostBlob("/api/cart/" + plan + "/upload/",
+                form,
+                function(){
+                    vm.get();
+            });
         },
     },
     computed: {
@@ -2961,7 +2943,7 @@ Vue.component('checkout', {
         vm.get()
         vm.getUserCard();
         var cardData = vm.getCardFormData();
-        if( !$.isEmptyObject(cardData) ) {
+        if( !$.isEmptyObject(cardData) ) { // XXX jQuery
             vm.card_name = cardData['card_name'];
             vm.card_address_line1 = cardData['card_address_line1'];
             vm.card_city = cardData['card_city'];
@@ -2985,7 +2967,17 @@ Vue.component('card-update', {
         }
     },
     methods: {
-        saveCard: function(){
+        remove: function() {
+            var vm = this;
+            vm.reqDelete(djaodjinSettings.urls.organization.api_card,
+            function() {
+                vm.clearCardData();
+                showMessages([gettext(
+                    "Your credit card is no longer on file with us.")],
+                    "success");
+            });
+        },
+        save: function(){
             var vm = this;
             if(!vm.validateForm()) return;
             vm.getCardToken(function(token){
@@ -3017,19 +3009,6 @@ Vue.component('card-update', {
                 });
             });
         },
-        save: function(){
-            this.saveCard();
-        },
-        remove: function() {
-            var vm = this;
-            vm.reqDelete(djaodjinSettings.urls.organization.api_card,
-            function(resp) {
-                vm.clearCardData();
-                showMessages([gettext(
-                    "Your credit card is no longer on file with us.")],
-                    "success");
-            });
-        }
     },
     mounted: function(){
 // XXX This shouldn't be called on billing
@@ -3052,6 +3031,36 @@ Vue.component('plan-update', {
         }
     },
     methods: {
+         createPlan: function(){
+            var vm = this;
+            vm.validateForm();
+            var data = {};
+            for( var field in vm.formFields ) {
+                if( vm.formFields.hasOwnProperty(field) ) {
+                    data[field] = vm.formFields[field];
+                }
+            }
+            if( data.period_amount ) {
+                data.period_amount = Math.round(data.period_amount * 100);
+            }
+            if( data.setup_amount ) {
+                data.setup_amount = Math.round(data.setup_amount * 100);
+            }
+            if( data.advance_discount ) {
+                data.advance_discount = Math.round(data.advance_discount * 100);
+            }
+            vm.reqPost(djaodjinSettings.urls.provider.api_plans, data,
+            function() {
+                window.location = djaodjinSettings.urls.provider.metrics_plans;
+            });
+        },
+        deletePlan: function(){
+            var vm = this;
+            vm.reqDelete(djaodjinSettings.urls.plan.api_plan,
+            function() {
+                window.location = djaodjinSettings.urls.provider.metrics_plans;
+            });
+        },
         get: function(){
             if(!djaodjinSettings.urls.plan.api_plan) return;
             var vm = this;
@@ -3069,6 +3078,14 @@ Vue.component('plan-update', {
         },
         formatNumber: function(num){
             return (parseFloat(num) / 100).toFixed(2);
+        },
+        togglePlanStatus: function(){
+            var vm = this;
+            var next = !vm.isActive;
+            vm.reqPut(djaodjinSettings.urls.plan.api_plan, {is_active: next},
+            function(){
+                vm.isActive = next;
+            });
         },
         updatePlan: function(){
             var vm = this;
@@ -3091,7 +3108,7 @@ Vue.component('plan-update', {
             if( djaodjinSettings.urls.plan &&
                 djaodjinSettings.urls.plan.api_plan ) {
                 vm.reqPut(djaodjinSettings.urls.plan.api_plan, data,
-                function(res) {
+                function() {
                     showMessages([interpolate(gettext(
                         "Successfully updated plan titled '%s'."), [
                             vm.formFields.title])
@@ -3100,42 +3117,6 @@ Vue.component('plan-update', {
             } else {
                 vm.createPlan();
             }
-        },
-        togglePlanStatus: function(){
-            var vm = this;
-            var next = !vm.isActive;
-            vm.reqPut(djaodjinSettings.urls.plan.api_plan, {is_active: next}, function(res){
-                vm.isActive = next;
-            });
-        },
-        deletePlan: function(){
-            var vm = this;
-            vm.reqDelete(djaodjinSettings.urls.plan.api_plan, function(res) {
-                window.location = djaodjinSettings.urls.provider.metrics_plans;
-            });
-        },
-        createPlan: function(){
-            var vm = this;
-            vm.validateForm();
-            var data = {};
-            for( var field in vm.formFields ) {
-                if( vm.formFields.hasOwnProperty(field) ) {
-                    data[field] = vm.formFields[field];
-                }
-            }
-            if( data.period_amount ) {
-                data.period_amount = Math.round(data.period_amount * 100);
-            }
-            if( data.setup_amount ) {
-                data.setup_amount = Math.round(data.setup_amount * 100);
-            }
-            if( data.advance_discount ) {
-                data.advance_discount = Math.round(data.advance_discount * 100);
-            }
-            vm.reqPost(djaodjinSettings.urls.provider.api_plans, data,
-            function(resp) {
-                window.location = djaodjinSettings.urls.provider.metrics_plans;
-            });
         },
     },
     mounted: function(){
@@ -3158,7 +3139,9 @@ Vue.component('plan-update', {
 // ---------------------
 
 Vue.component('search-profile', {
-    mixins: [itemListMixin, paginationMixin, filterableMixin],
+    mixins: [
+        itemListMixin
+    ],
     data: function() {
         return {
             url: djaodjinSettings.urls.provider.api_accounts,
@@ -3168,7 +3151,9 @@ Vue.component('search-profile', {
 
 
 Vue.component('today-sales', {
-    mixins: [itemListMixin, paginationMixin],
+    mixins: [
+        itemListMixin
+    ],
     data: function() {
         return {
             url: djaodjinSettings.urls.provider.api_receivables,

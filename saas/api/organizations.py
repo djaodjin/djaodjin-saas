@@ -76,8 +76,17 @@ class OrganizationCreateMixin(object):
                             organization.full_name = user.get_full_name()
                         if not organization.email:
                             organization.email = user.email
+                        # We are saving the `Organization` after the `User`
+                        # exists in the database so we can retrieve
+                        # the full_name and email from that attached user
+                        # if case they were not provided in the API call.
+                        organization.save()
                     except self.user_model.DoesNotExist:
                         #pylint:disable=unused-variable
+                        # We are saving the `Organization` when the `User`
+                        # does not exist so we have a chance to create
+                        # a slug/username.
+                        organization.save()
                         first_name, mid, last_name = full_name_natural_split(
                             organization.full_name)
                         user = self.user_model.objects.create_user(
@@ -85,12 +94,6 @@ class OrganizationCreateMixin(object):
                             email=organization.email,
                             first_name=first_name,
                             last_name=last_name)
-                        organization.slug = user.username
-                # We are saving the `Organization` after the `User` exists
-                # in the database so we can retrieve the full_name and email
-                # from that attached user if case they were not provided
-                # in the API call.
-                organization.save()
                 if organization.is_personal:
                     organization.add_manager(
                         user, request_user=self.request.user)

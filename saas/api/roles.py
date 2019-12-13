@@ -151,13 +151,17 @@ class OrganizationRoleCreateSerializer(NoModelSerializer):
 class UserRoleCreateSerializer(serializers.Serializer):
     #pylint:disable=abstract-method,protected-access
 
-    slug = serializers.CharField(validators=[
-        validators.RegexValidator(settings.ACCT_REGEX,
+    slug = serializers.CharField(required=False,
+        help_text=_("Username"),
+        validators=[validators.RegexValidator(settings.ACCT_REGEX,
             _("Enter a valid username."), 'invalid')])
     email = serializers.EmailField(
         max_length=get_user_model()._meta.get_field('email').max_length,
-        required=False)
-    message = serializers.CharField(max_length=255, required=False)
+        required=False, help_text=_("E-mail of the invitee"))
+    full_name = serializers.CharField(required=False,
+        help_text=_("Full name"))
+    message = serializers.CharField(max_length=255, required=False,
+        help_text=_("Message to send along the invitation"))
 
     @staticmethod
     def validate_slug(data):
@@ -1002,21 +1006,34 @@ class RoleByDescrListAPIView(RoleSmartListMixin, RoleByDescrQuerysetMixin,
         serializer.is_valid(raise_exception=True)
         user_model = get_user_model()
         user = None
-        try:
-            user = user_model.objects.get(
-                username=serializer.validated_data['slug'])
-        except user_model.DoesNotExist:
+        if serializer.validated_data.get('slug'):
+            try:
+                user = user_model.objects.get(
+                    username=serializer.validated_data['slug'])
+            except user_model.DoesNotExist:
+                user = None
+        if not user and serializer.validated_data.get('email'):
             try:
                 # The following SQL query is not folded into the previous
                 # one so we can have a priority of username over email.
                 user = user_model.objects.get(
-                    email__iexact=serializer.validated_data.get('email',
-                        serializer.validated_data['slug']))
+                    email__iexact=serializer.validated_data['email'])
             except user_model.DoesNotExist:
-                if not request.GET.get('force', False):
-                    raise Http404("User %(username)s does not exist."
-                        % {'username': serializer.validated_data['slug']})
+                user = None
         if not user:
+            if not request.GET.get('force', False):
+                sep = ""
+                not_found_msg = "Cannot find"
+                if serializer.validated_data.get('slug'):
+                    not_found_msg += " username %(username)s" % {
+                        'username': serializer.validated_data['slug']
+                    }
+                    sep = "or"
+                if serializer.validated_data.get('email'):
+                    not_found_msg += sep + " email %(email)s" % {
+                        'email': serializer.validated_data['email']
+                    }
+                raise Http404(not_found_msg)
             user = create_user_from_email(
                 serializer.validated_data['email'],
                 full_name=serializer.validated_data.get('full_name', ''),
