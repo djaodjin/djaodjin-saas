@@ -96,10 +96,9 @@ saas/templates/notification/ directory.
 Release Notes
 =============
 
-0.8.0
+0.8.2
 
-  * uses inline-template for Vue.js components
-  * uploads profile picture
-  * signals when processor is not connected and a charge is attempted
+  * fixes add roles and subscriptions in multiple profile/user configurations
+  * works around for Django/SQLite bug (#230)
 
 [previous release notes](changelog)

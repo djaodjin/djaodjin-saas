@@ -1,3 +1,10 @@
+0.8.2
+
+  * fixes add roles and subscriptions in multiple profile/user configurations
+  * works around for Django/SQLite bug (#230)
+
+ -- Sebastien Mirolo <smirolo@djaodjin.com>  Fri, 13 Dec 2019 13:25:00 -0700
+
 0.8.0
 
   * uses inline-template for Vue.js components
