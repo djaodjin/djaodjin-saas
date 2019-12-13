@@ -1585,7 +1585,13 @@ var roleListMixin = {
         },
         create: function(){ // @click="create" in dialog
             var vm = this;
-            var data = vm.unregistered;
+            var data = {};
+            var fields = ['slug', 'email', 'full_name', 'message'];
+            for( var idx = 0; idx < fields.length; ++idx ) {
+                if( vm.unregistered[fields[idx]] ) {
+                    data[fields[idx]] = vm.unregistered[fields[idx]];
+                }
+            }
             vm.reqPost(vm.url + "?force=1", data,
             function() {
                 vm.refresh();
