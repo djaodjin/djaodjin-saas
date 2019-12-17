@@ -60,8 +60,8 @@ class StatementBalancePagination(PageNumberPagination):
         return Response(OrderedDict([
             ('start_at', self.start_at),
             ('ends_at', self.ends_at),
-            ('balance', self.balance_amount),
-            ('unit', self.balance_unit),
+            ('balance_amount', self.balance_amount),
+            ('balance_unit', self.balance_unit),
             ('count', self.page.paginator.count),
             ('next', self.get_next_link()),
             ('previous', self.get_previous_link()),

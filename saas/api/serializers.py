@@ -326,7 +326,7 @@ class OrganizationCreateSerializer(NoModelSerializer):
     # We have a special serializer for Create (i.e. POST request)
     # because we want to include the `type` field.
 
-    slug = serializers.CharField(required=False, allow_blank=True,
+    slug = serializers.SlugField(required=False, allow_blank=True,
         help_text=_("Unique identifier shown in the URL bar"))
     full_name = serializers.CharField(required=False,
         help_text=_("Full name"))

@@ -31,12 +31,12 @@
         {% if urls.organization.vtcharge %}
         <a id="one-time-charge" href="{{urls.organization.vtcharge}}">one-time charge</a>
         {% endif %}
-        <dl ng-show="items.balance >= 0" v-show="items.balance >= 0">
+        <dl ng-show="items.balance_amount >= 0" v-show="items.balance_amount >= 0">
           <dt>[[humanizeBalance()]]</dt>
-          <dd ng-show="items.balance >= 0" v-show="items.balance >= 0">
-            Balance due<span ng-if="items.balance > 0" v-if="items.balance > 0">(<a href="{{ urls.organization.balance }}">pay now</a>)</span>
+          <dd ng-show="items.balance_amount >= 0" v-show="items.balance_amount >= 0">
+            Balance due<span ng-if="items.balance_amount > 0" v-if="items.balance_amount > 0">(<a href="{{ urls.organization.balance }}">pay now</a>)</span>
           </dd>
-          <dd ng-show="items.balance < 0" v-show="items.balance < 0">Balance Credits</dd>
+          <dd ng-show="items.balance_amount < 0" v-show="items.balance_amount < 0">Balance Credits</dd>
         </dl>
       </div>
       {% if urls.organization.api_cancel_balance_due %}

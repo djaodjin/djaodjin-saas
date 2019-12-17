@@ -1221,7 +1221,7 @@ var itemListMixin = {
         humanizeBalance: function() {
             var vm = this;
             var filter = Vue.filter('humanizeCell');
-            return filter(vm.items.balance, vm.items.unit, 0.01);
+            return filter(vm.items.balance_amount, vm.items.balance_unit, 0.01);
         },
     },
 }
