@@ -28,19 +28,21 @@ from collections import OrderedDict
 from django.db.models import Q
 from django.utils.translation import ugettext_lazy as _
 from rest_framework import status, serializers
-from rest_framework.exceptions import ValidationError
+from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.generics import ListAPIView, CreateAPIView
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from .serializers import NoModelSerializer, TransactionSerializer
+from ..decorators import _valid_manager
 from ..filters import DateRangeFilter, OrderingFilter, SearchFilter
 from ..mixins import OrganizationMixin, ProviderMixin, DateRangeContextMixin
-from ..models import (Transaction, sum_orig_amount, Subscription,
+from ..models import (get_broker, sum_orig_amount, Subscription,  Transaction,
     Organization, Plan)
 from ..backends import ProcessorError
 from ..pagination import BalancePagination
+
 
 class StatementBalancePagination(PageNumberPagination):
     """
@@ -574,5 +576,9 @@ class StatementBalanceAPIView(OrganizationMixin, APIView):
         return self.destroy(request, *args, **kwargs)
 
     def destroy(self, request, *args, **kwargs): #pylint:disable=unused-argument
+        if not _valid_manager(request, [get_broker()]):
+            # XXX temporary workaround to provide GET balance API
+            # to subscribers and providers.
+            raise PermissionDenied()
         self.organization.create_cancel_transactions(user=request.user)
         return Response(status=status.HTTP_204_NO_CONTENT)

@@ -32,16 +32,13 @@ from ... import settings
 from ...api.balances import (BalanceLineListAPIView, BrokerBalancesAPIView,
     BalanceLineDetailAPIView)
 from ...api.charges import ChargeListAPIView
-from ...api.transactions import StatementBalanceAPIView, TransactionListAPIView
+from ...api.transactions import TransactionListAPIView
 from ...api.users import RegisteredAPIView
 
 
 urlpatterns = [
     url(r'^billing/transactions/?',
         TransactionListAPIView.as_view(), name='saas_api_transactions'),
-    url(r'^billing/(?P<organization>%s)/balance/?' % settings.ACCT_REGEX,
-        StatementBalanceAPIView.as_view(),
-        name='saas_api_cancel_balance_due'),
     url(r'^billing/charges/?$', ChargeListAPIView.as_view(),
         name='saas_api_charges'),
     url(r'^metrics/balances/(?P<report>%s)/?' % settings.ACCT_REGEX,

@@ -30,11 +30,14 @@ from django.conf.urls import url
 
 from ....api.billing import CheckoutAPIView
 from ....api.backend import PaymentMethodDetailAPIView
-from ....api.transactions import BillingsAPIView
+from ....api.transactions import BillingsAPIView, StatementBalanceAPIView
 from ....settings import ACCT_REGEX
 
 
 urlpatterns = [
+    url(r'^billing/(?P<organization>%s)/balance/?' % settings.ACCT_REGEX,
+        StatementBalanceAPIView.as_view(),
+        name='saas_api_cancel_balance_due'),
     url(r'^billing/(?P<organization>%s)/history/?' % ACCT_REGEX,
         BillingsAPIView.as_view(), name='saas_api_billings'),
     url(r'^billing/(?P<organization>%s)/card/?' % ACCT_REGEX,
