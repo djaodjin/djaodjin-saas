@@ -184,9 +184,9 @@ class CartItemDownloadView(CartItemSmartListMixin, CartItemQuerysetMixin,
             # `setup` is only defined in Django 2.2+
             view.setup(self.request, *self.args, **self.kwargs)
         else:
-            self.request = self.request
-            self.args = self.args
-            self.kwargs = self.kwargs
+            view.request = self.request
+            view.args = self.args
+            view.kwargs = self.kwargs
         return view.get_queryset()
 
     def get_headings(self):
