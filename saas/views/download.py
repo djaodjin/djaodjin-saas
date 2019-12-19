@@ -187,7 +187,7 @@ class CartItemDownloadView(CartItemSmartListMixin, CartItemQuerysetMixin,
         return self.headings
 
     def get_filename(self):
-        return datetime_or_now().strftime('coupon-use-%Y%m%d.csv')
+        return datetime_or_now().strftime('coupons-%Y%m%d.csv')
 
     def get_queryset(self):
         '''
