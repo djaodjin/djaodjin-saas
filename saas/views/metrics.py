@@ -93,10 +93,13 @@ class CouponMetricsView(CouponMixin, TemplateView):
 
     def get_context_data(self, **kwargs):
         context = super(CouponMetricsView, self).get_context_data(**kwargs)
-        urls = {'provider': {
-            'api_metrics_coupon_uses': reverse(
-                'saas_api_coupon_uses',
-                args=(self.provider, self.coupon.code))}}
+        urls = {
+            'coupon_uses_download': reverse('saas_coupon_uses_download',
+                args=(self.provider, self.coupon.code)),
+            'provider': {
+                'api_metrics_coupon_uses': reverse(
+                    'saas_api_coupon_uses',
+                    args=(self.provider, self.coupon.code))}}
         update_context_urls(context, urls)
         return context
 

@@ -1,4 +1,4 @@
-# Copyright (c) 2018, DjaoDjin inc.
+# Copyright (c) 2019, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -35,9 +35,11 @@ from io import BytesIO, StringIO
 from django.http import HttpResponse
 from django.utils import six
 from django.views.generic import View
+from rest_framework.generics import get_object_or_404
 from rest_framework.request import Request
 
-from ..api.coupons import SmartCouponListMixin, CouponQuerysetMixin
+from ..api.coupons import CouponQuerysetMixin, SmartCouponListMixin
+from ..mixins import CartItemSmartListMixin, ProviderMixin
 from ..api.transactions import (BillingsQuerysetMixin,
     SmartTransactionListMixin, TransactionQuerysetMixin, TransferQuerysetMixin)
 from ..api.users import RegisteredQuerysetMixin
@@ -46,7 +48,7 @@ from ..managers.metrics import (abs_monthly_balances, monthly_balances,
     month_periods)
 from ..mixins import (MetricsMixin, ChurnedQuerysetMixin,
     SubscriptionSmartListMixin, SubscribedQuerysetMixin, UserSmartListMixin)
-from ..models import BalanceLine, CartItem
+from ..models import BalanceLine, CartItem, Coupon
 from ..utils import datetime_or_now
 
 
@@ -134,15 +136,13 @@ class BalancesDownloadView(MetricsMixin, CSVDownloadView):
         return row
 
 
-class CouponMetricsDownloadView(SmartCouponListMixin, CouponQuerysetMixin,
-                                CSVDownloadView):
+class CouponDownloadView(SmartCouponListMixin, CouponQuerysetMixin,
+                         CSVDownloadView):
 
     headings = [
+        'Created At'
         'Code',
         'Percentage',
-        'Name',
-        'Email',
-        'Plan',
     ]
 
     def get_headings(self):
@@ -151,14 +151,50 @@ class CouponMetricsDownloadView(SmartCouponListMixin, CouponQuerysetMixin,
     def get_filename(self):
         return datetime_or_now().strftime('coupons-%Y%m%d.csv')
 
+
+class CartItemQuerysetMixin(ProviderMixin):
+
+    def get_queryset(self):
+        return CartItem.objects.filter(coupon__organization=self.provider)
+
+
+class CartItemDownloadView(CartItemSmartListMixin, CartItemQuerysetMixin,
+                           CSVDownloadView):
+
+    coupon_url_kwarg = 'coupon'
+
+    headings = [
+        'Used At',
+        'Code',
+        'Percentage',
+        'Name',
+        'Email',
+        'Plan',
+    ]
+
+    def get_coupons(self):
+        coupon_code = self.kwargs.get(self.coupon_url_kwarg)
+        if coupon_code:
+            coupon = get_object_or_404(
+                Coupon.objects.filter(organization=self.provider),
+                code=self.kwargs.get(self.coupon_url_kwarg))
+            return [coupon]
+        view = CouponDownloadView()
+        view.setup(self.request, *self.args, **self.kwargs)
+        return view.get_queryset()
+
+    def get_headings(self):
+        return self.headings
+
+    def get_filename(self):
+        return datetime_or_now().strftime('coupon-use-%Y%m%d.csv')
+
     def get_queryset(self):
         '''
         Return CartItems related to the Coupon specified in the URL.
         '''
-        # invoke SmartCouponListMixin to get the coupon specified by URL params
-        coupons = super(CouponMetricsDownloadView, self).get_queryset()
-        # get related CartItems
-        return CartItem.objects.filter(coupon__in=coupons)
+        return super(CartItemDownloadView, self).get_queryset().filter(
+            coupon__in=self.get_coupons())
 
     def queryrow_to_columns(self, record):
         cartitem = record
@@ -172,6 +208,7 @@ class CouponMetricsDownloadView(SmartCouponListMixin, CouponQuerysetMixin,
             full_name = cartitem.full_name
             email = cartitem.sync_on
         return [
+            cartitem.created_at.date(),
             self.encode(cartitem.coupon.code),
             cartitem.coupon.percent,
             self.encode(full_name),

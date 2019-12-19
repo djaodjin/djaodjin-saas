@@ -3,6 +3,7 @@
 {% block saas_content %}
 <coupon-user-list inline-template id="coupon-performance" ng-app="saasApp">
     <div id="coupon-users-container" ng-controller="cartItemListCtrl">
+        <a id="download" role="button" :href="'{{urls.coupon_uses_download}}' + getQueryString(['page'])">Download .CSV</a>
         <p ng-show="items.$resolved" v-show="itemsLoaded">
 {{coupon.code}} was used [[totalItems]] time[[totalItems > 0 ? "s" : ""]].
         </p>

@@ -1,4 +1,4 @@
-# Copyright (c) 2018, DjaoDjin inc.
+# Copyright (c) 2019, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -27,7 +27,7 @@
 from django.conf.urls import url
 
 from ...settings import ACCT_REGEX
-from ...views.download import CouponMetricsDownloadView
+from ...views.download import CartItemDownloadView
 from ...views.profile import DashboardView
 from ...views.metrics import (CouponMetricsView, PlansMetricsView,
     RevenueMetricsView)
@@ -35,8 +35,11 @@ from ...views.metrics import (CouponMetricsView, PlansMetricsView,
 
 urlpatterns = [
     url(r'^metrics/(?P<organization>%s)/coupons/download/?' % ACCT_REGEX,
-        CouponMetricsDownloadView.as_view(),
+        CartItemDownloadView.as_view(),
         name='saas_metrics_coupons_download'),
+    url(r'^metrics/(?P<organization>%s)/coupons/(?P<coupon>%s)/download/?'
+        % (ACCT_REGEX, ACCT_REGEX),
+        CartItemDownloadView.as_view(), name='saas_coupon_uses_download'),
     url(r'^metrics/(?P<organization>%s)/coupons/((?P<coupon>%s)/)?'
         % (ACCT_REGEX, ACCT_REGEX),
         CouponMetricsView.as_view(), name='saas_metrics_coupons'),
