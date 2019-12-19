@@ -180,7 +180,13 @@ class CartItemDownloadView(CartItemSmartListMixin, CartItemQuerysetMixin,
                 code=self.kwargs.get(self.coupon_url_kwarg))
             return [coupon]
         view = CouponDownloadView()
-        view.setup(self.request, *self.args, **self.kwargs)
+        if hasattr(view, 'setup'):
+            # `setup` is only defined in Django 2.2+
+            view.setup(self.request, *self.args, **self.kwargs)
+        else:
+            self.request = self.request
+            self.args = self.args
+            self.kwargs = self.kwargs
         return view.get_queryset()
 
     def get_headings(self):
