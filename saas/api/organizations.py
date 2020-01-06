@@ -33,8 +33,8 @@ from rest_framework.generics import (CreateAPIView, ListAPIView,
     ListCreateAPIView, RetrieveUpdateAPIView, RetrieveUpdateDestroyAPIView)
 from rest_framework.response import Response
 
-from .serializers import (OrganizationCreateSerializer,
-    OrganizationSerializer, OrganizationWithSubscriptionsSerializer)
+from .serializers import (OrganizationCreateSerializer, OrganizationSerializer,
+    OrganizationWithSubscriptionsSerializer, UploadBlobSerializer)
 from .. import settings, signals
 from ..decorators import _valid_manager
 from ..docs import swagger_auto_schema
@@ -287,6 +287,7 @@ class OrganizationPictureAPIView(OrganizationMixin, CreateAPIView):
             POST /api/profile/xia/picture/ HTTP/1.1
     """
     parser_classes = (parsers.FormParser, parsers.MultiPartParser)
+    serializer_class = UploadBlobSerializer
 
     def post(self, request, *args, **kwargs):
         #pylint:disable=unused-argument

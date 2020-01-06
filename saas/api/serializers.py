@@ -727,6 +727,14 @@ class RoleAccessibleSerializer(BaseRoleSerializer):
             'role_description', 'user')
 
 
+class UploadBlobSerializer(NoModelSerializer):
+    """
+    Upload a picture or other POD content
+    """
+    location = serializers.URLField(
+        help_text=_("URL to uploaded content"))
+
+
 class ValidationErrorSerializer(NoModelSerializer):
     """
     Details on why token is invalid.
