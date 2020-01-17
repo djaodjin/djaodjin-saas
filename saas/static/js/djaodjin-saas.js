@@ -487,7 +487,7 @@
                     totalAmount += parseInt(radio.attr('data-amount'));
                 }
             }
-            candidates = self.element.find(".invoice-item td:nth-child(2)");
+            candidates = self.element.find(".invoice-item .line-amount");
             for( i = 0; i < candidates.length; ++i ) {
                 var lineAmountText = $(candidates[i]).text().replace(',','');
                 var first = lineAmountText.search("[0-9]");
@@ -542,7 +542,7 @@
             var prevLine = this.element.find("tbody[data-plan='" +
                 data.plan + "'] .invoice-item").last();
             var newLine = prevLine.clone();
-            var clonedNode = $(newLine.children("td")[2]);
+            var clonedNode = newLine.children("td.line-descr");
 
             prevLine.removeClass("alert alert-info");
             var txt = clonedNode.text().split(', for');
@@ -570,7 +570,7 @@
                 prevLine = prevLine.first();
             }
             var newLine = prevLine;
-            var descrNode = $(newLine.children("td")[2]);
+            var descrNode = newLine.children("td.line-descr");
 
             var txt = descrNode.text().split(', for');
             descrNode.text(txt[0] + ", for " + msg);
