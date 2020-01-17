@@ -55,7 +55,7 @@ class RetrieveChargeMixin(ChargeMixin):
     """
     model = Charge
     slug_field = 'processor_key'
-    slug_url_kwarg = 'charge'
+    slug_url_kwarg = 'organization' # See comment in urls.api.subscriber.charges
 
     def get_object(self, queryset=None):
         charge = super(RetrieveChargeMixin, self).get_object(queryset)

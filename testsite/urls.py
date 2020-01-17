@@ -1,4 +1,4 @@
-# Copyright (c) 2019, DjaoDjin inc.
+# Copyright (c) 2020, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -30,9 +30,11 @@ from django.contrib.auth.decorators import login_required
 from django.views.generic import TemplateView
 from django.views.i18n import JavaScriptCatalog
 from saas.compat import reverse_lazy
+from saas.decorators import (fail_agreement, fail_authenticated, fail_direct,
+    fail_provider, fail_provider_only, fail_self_provider)
 from saas.views import OrganizationRedirectView, UserRedirectView
 from saas.views.plans import CartPlanListView
-from urldecorators import include, url
+from rules.urldecorators import include, url
 
 from testsite.views.app import AppView
 from testsite.views.organization import OrganizationListView, UserProfileView
@@ -45,11 +47,11 @@ admin.autodiscover()
 from . import signals
 
 
-def url_prefixed(regex, view, name=None, decorators=None):
+def url_prefixed(regex, view, name=None, redirects=None):
     """
     Returns a urlpattern for public pages.
     """
-    return url(r'^' + regex, view, name=name, decorators=decorators)
+    return url(r'^' + regex, view, name=name, redirects=redirects)
 
 
 # admin doc and panel
@@ -73,17 +75,17 @@ urlpatterns += \
             success_url=reverse_lazy('home')),
         name='registration_register'),
     url_prefixed(r'', include('saas.urls.users'),
-        decorators=['django.contrib.auth.decorators.login_required']),
+        redirects=[fail_authenticated]),
     url_prefixed(r'users/(?P<user>[\w.@+-]+)/',
         UserProfileView.as_view(), name='users_profile',
-        decorators=['django.contrib.auth.decorators.login_required']),
+        redirects=[fail_authenticated]),
     url_prefixed(r'users/',
         UserRedirectView.as_view(), name='accounts_profile',
-        decorators=['django.contrib.auth.decorators.login_required']),
+        redirects=[fail_authenticated]),
     url_prefixed(r'', include('django.contrib.auth.urls')),
     url_prefixed(r'saas/$',
         OrganizationListView.as_view(), name='saas_organization_list',
-        decorators=['django.contrib.auth.decorators.login_required']),
+        redirects=[fail_authenticated]),
     url_prefixed(r'$', TemplateView.as_view(template_name='index.html'),
         name='home'),
     url_prefixed(r'billing/cart/',
@@ -97,48 +99,47 @@ urlpatterns += \
     url_prefixed(r'api/', include('saas.backends.urls.api')),
     url_prefixed(r'api/', include('saas.urls.api.cart')),
     url_prefixed(r'api/', include('saas.urls.api.users'),
-        decorators=['saas.decorators.requires_self_provider']),
+        redirects=[fail_authenticated, fail_self_provider]),
     url_prefixed(r'api/', include('saas.urls.api.broker'),
-        decorators=['saas.decorators.requires_provider_only']),
+        redirects=[fail_authenticated, fail_provider_only]),
     url_prefixed(r'api/', include('saas.urls.api.search'),
-        decorators=['django.contrib.auth.decorators.login_required']),
+        redirects=[fail_authenticated]),
     # api/charges/:charge/refund must be before api/charges/
     url_prefixed(r'api/',
         include('saas.urls.api.provider.charges'),
-        decorators=['saas.decorators.requires_provider_only']),
+        redirects=[fail_authenticated, fail_provider_only]),
     url_prefixed(r'api/',
         include('saas.urls.api.provider.billing'),
-        decorators=['saas.decorators.requires_direct']),
+        redirects=[fail_authenticated, fail_direct]),
     url_prefixed(r'api/',
         include('saas.urls.api.provider.roles'),
-        decorators=['saas.decorators.requires_direct']),
+        redirects=[fail_authenticated, fail_direct]),
     url_prefixed(r'api/',
         include('saas.urls.api.provider.subscribers'),
-        decorators=['saas.decorators.requires_direct']),
+        redirects=[fail_authenticated, fail_direct]),
     url_prefixed(r'api/',
         include('saas.urls.api.provider.plans'),
-        decorators=['saas.decorators.requires_direct']),
+        redirects=[fail_authenticated, fail_direct]),
     url_prefixed(r'api/',
         include('saas.urls.api.provider.metrics'),
-        decorators=['saas.decorators.requires_direct']),
+        redirects=[fail_authenticated, fail_direct]),
     url_prefixed(r'api/', include('saas.urls.api.subscriber'),
-        decorators=['saas.decorators.requires_provider']),
+        redirects=[fail_authenticated, fail_provider]),
     url_prefixed(r'pricing/', CartPlanListView.as_view(),
         name='saas_cart_plan_list'),
     url_prefixed(r'', include('saas.urls.request'),
-        decorators=['django.contrib.auth.decorators.login_required']),
+        redirects=[fail_authenticated]),
     url_prefixed(r'', include('saas.urls.noauth')),
     url_prefixed(r'', include('saas.urls.broker'),
-        decorators=['saas.decorators.requires_direct']),
+        redirects=[fail_authenticated, fail_direct]),
     url_prefixed(r'', include('saas.urls.redirects'),
-        decorators=['django.contrib.auth.decorators.login_required']),
+        redirects=[fail_authenticated]),
     url_prefixed(r'', include('saas.urls.provider'),
-        decorators=['saas.decorators.requires_direct']),
+        redirects=[fail_authenticated, fail_direct]),
     url_prefixed(r'', include('saas.urls.subscriber'),
-        decorators=['saas.decorators.requires_provider',
-                    'saas.decorators.requires_agreement']),
+        redirects=[fail_authenticated, fail_agreement, fail_provider]),
     url_prefixed(r'', include('saas.backends.urls.views')),
     url_prefixed(r'app/((?P<organization>[a-zA-Z0-9_-]+)/)?',
         AppView.as_view(template_name='app.html'), name='app',
-        decorators=['django.contrib.auth.decorators.login_required']),
+        redirects=[fail_authenticated]),
 ]

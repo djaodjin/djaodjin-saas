@@ -1,22 +1,20 @@
-# Until django-urldecorators is updated for ``patterns`` being deprecated,
-# we cannot move the testsite to Django 1.10.
-Django==1.11.23
-django-countries==5.3
-django-localflavor==2.0
+Django==1.11.27
+django-countries==5.5
+django-localflavor==2.2
 djangorestframework==3.9.4
 # We need Python Markdown for django.contrib.markup. markdown2 is not enough.
-Markdown==2.6.11
-python-dateutil==2.7.5
+Markdown==3.1.1
+python-dateutil==2.8.1
 razorpay==0.2.0
-stripe==2.35.1
+stripe==2.42.0
 
 # testsite-only
 coverage==4.0.3
-django-debug-toolbar==1.11 # This version works with Django>=1.11 (includes 2.1)
-django-extensions==2.1.4
-django-urldecorators==0.6  # Requires GitHub Pull Request #2 for Django 2.1
+django-debug-toolbar==2.1
+django-extensions==2.2.5
+djaodjin-rules==0.2.3
 whitenoise==4.1.2
 
 # development
-Sphinx==1.7.5
-sphinxcontrib-httpdomain==1.6.1
+Sphinx==2.3.1
+sphinxcontrib-httpdomain==1.7.0

@@ -189,7 +189,7 @@
 {
     "fields": {
       "created_at": "2014-01-14T14:16:55-09:00",
-      "ends_at": "2020-01-01T00:00:00-09:00",
+      "ends_at": "2021-01-01T00:00:00-09:00",
       "organization": 4,
       "plan": 3
     },
@@ -358,7 +358,7 @@
 {
     "fields": {
       "created_at": "2015-01-14T14:16:55-09:00",
-      "ends_at": "2020-01-01T00:00:00-09:00",
+      "ends_at": "2021-01-01T00:00:00-09:00",
       "organization": 8,
       "plan": 1
     },
@@ -522,7 +522,7 @@
 {
     "fields": {
       "created_at": "2016-08-22T00:00:00+00:00",
-      "ends_at": "2020-01-01T00:00:00-09:00",
+      "ends_at": "2021-01-01T00:00:00-09:00",
       "organization": 7,
       "plan": 1
     },
@@ -583,7 +583,7 @@
 },
 {
     "fields": {
-      "created_at": "2019-01-01T00:00:00-09:00",
+      "created_at": "2020-01-01T00:00:00-09:00",
       "role_description": null,
       "organization": 2,
       "user": 8,
@@ -615,7 +615,7 @@
 },
 {
     "fields": {
-      "created_at": "2019-01-01T00:00:00-00:00",
+      "created_at": "2020-01-01T00:00:00-00:00",
       "role_description": 1,
       "organization": 2,
       "user": 13,
@@ -625,7 +625,7 @@
 },
 {
     "fields": {
-      "created_at": "2019-01-01T00:00:00-00:00",
+      "created_at": "2020-01-01T00:00:00-00:00",
       "role_description": 1,
       "organization": 4,
       "user": 13
@@ -634,7 +634,7 @@
 },
 {
     "fields": {
-      "created_at": "2019-01-01T00:00:00-00:00",
+      "created_at": "2020-01-01T00:00:00-00:00",
       "organization": 5,
       "user": 13,
       "request_key": "b0e000e00e0001234567890123456789012345"
@@ -643,7 +643,7 @@
 },
 {
     "fields": {
-      "created_at": "2019-01-01T00:00:00-00:00",
+      "created_at": "2020-01-01T00:00:00-00:00",
       "role_description": 1,
       "organization": 6,
       "user": 13,
@@ -678,7 +678,7 @@
     "fields": {
       "slug": "stephanie2",
       "full_name": "Stephanie DuJardin",
-      "created_at": "2019-01-01T00:00:00-09:00",
+      "created_at": "2020-01-01T00:00:00-09:00",
       "email": "stephanie2@localhost.localdomain",
       "phone": "555-555-5555",
       "street_address": "350 Bay St.",
@@ -713,7 +713,7 @@
 },
 {
     "fields": {
-      "created_at": "2019-01-01T00:00:00-09:00",
+      "created_at": "2020-01-01T00:00:00-09:00",
       "role_description": 1,
       "organization": 17,
       "user": 17
@@ -722,8 +722,8 @@
 },
 {
     "fields": {
-      "created_at": "2019-01-01T00:00:00-09:00",
-      "ends_at": "2020-01-01T00:00:00-09:00",
+      "created_at": "2020-01-01T00:00:00-09:00",
+      "ends_at": "2021-01-01T00:00:00-09:00",
       "organization": 17,
       "plan": 3
     },
@@ -734,7 +734,7 @@
     "fields": {
       "slug": "stephanie3",
       "full_name": "Stephanie DuJardin",
-      "created_at": "2019-01-01T00:00:00-09:00",
+      "created_at": "2020-01-01T00:00:00-09:00",
       "email": "stephanie3@localhost.localdomain",
       "phone": "555-555-5555",
       "street_address": "350 Bay St.",
@@ -769,7 +769,7 @@
 },
 {
     "fields": {
-      "created_at": "2019-01-01T00:00:00-09:00",
+      "created_at": "2020-01-01T00:00:00-09:00",
       "role_description": 1,
       "organization": 18,
       "user": 18
@@ -778,8 +778,8 @@
 },
 {
     "fields": {
-      "created_at": "2019-01-01T00:00:00-09:00",
-      "ends_at": "2020-01-01T00:00:00-09:00",
+      "created_at": "2020-01-01T00:00:00-09:00",
+      "ends_at": "2021-01-01T00:00:00-09:00",
       "organization": 18,
       "plan": 3,
       "extra": ""
@@ -788,8 +788,8 @@
 },
 {
     "fields": {
-      "created_at": "2019-01-01T00:00:00-09:00",
-      "ends_at": "2020-01-01T00:00:00-09:00",
+      "created_at": "2020-01-01T00:00:00-09:00",
+      "ends_at": "2021-01-01T00:00:00-09:00",
       "organization": 18,
       "plan": 3,
       "extra": "bogus duplicate subscription"

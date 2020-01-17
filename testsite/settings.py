@@ -70,6 +70,7 @@ INSTALLED_APPS = (
     # 'django.contrib.admindocs',
     'rest_framework',
     'django_countries',
+    'rules',
     'saas',
     'testsite'
 )
@@ -219,6 +220,10 @@ LOGGING = {
         }
     },
     'loggers': {
+        'rules': {
+            'handlers': [],
+            'level': 'INFO',
+        },
         'saas': {
             'handlers': [],
             'level': 'INFO',

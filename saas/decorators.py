@@ -1,4 +1,4 @@
-# Copyright (c) 2018, DjaoDjin inc.
+# Copyright (c) 2020, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -161,7 +161,14 @@ def fail_authenticated(request):
     Authenticated
     """
     if not is_authenticated(request):
-        return reverse(settings.LOGIN_URL)
+        return str(settings.LOGIN_URL)
+
+    if get_role_model().objects.filter(
+            user=request.user, grant_key__isnull=False).exists():
+        # We have some invites pending so let's first stop
+        # by the user accessibles page.
+        return reverse('saas_user_product_list', args=(request.user,))
+
     return False
 
 

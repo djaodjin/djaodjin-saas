@@ -1,4 +1,4 @@
-# Copyright (c) 2018, DjaoDjin inc.
+# Copyright (c) 2020, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -31,8 +31,10 @@ from django.conf.urls import url
 from ....settings import ACCT_REGEX
 from ....api.charges import ChargeRefundAPIView
 
+# Actually a <charge> slug. We are using <organization> here such that
+# it plays nice with the rules-based permission checks.
 urlpatterns = [
-    url(r'^billing/charges/(?P<charge>%s)/refund/' % ACCT_REGEX,
+    url(r'^billing/charges/(?P<organization>%s)/refund/' % ACCT_REGEX,
         ChargeRefundAPIView.as_view(),
         name='saas_api_charge_refund'),
 ]

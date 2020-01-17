@@ -1,4 +1,4 @@
-# Copyright (c) 2018, DjaoDjin inc.
+# Copyright (c) 2020, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -32,10 +32,12 @@ from ....api.charges import ChargeResourceView, EmailChargeReceiptAPIView
 from ....settings import ACCT_REGEX
 
 
+# Actually a <charge> slug. We are using <organization> here such that
+# it plays nice with the rules-based permission checks.
 urlpatterns = [
-    url(r'^billing/charges/(?P<charge>%s)/email/' % ACCT_REGEX,
+    url(r'^billing/charges/(?P<organization>%s)/email/' % ACCT_REGEX,
         EmailChargeReceiptAPIView.as_view(),
         name='saas_api_email_charge_receipt'),
-    url(r'^billing/charges/(?P<charge>%s)/?' % ACCT_REGEX,
+    url(r'^billing/charges/(?P<organization>%s)/?' % ACCT_REGEX,
         ChargeResourceView.as_view(), name='saas_api_charge'),
 ]
