@@ -804,5 +804,38 @@
       "extra": "bogus duplicate subscription"
     },
     "model": "saas.subscription", "pk": 19
-}
-]
+},
+{
+    "fields": {
+      "slug": "djaoapp-roles-card1",
+      "full_name": "RolesCard1",
+      "email": "djaoapp-roles-card1@localhost.localdomain",
+      "created_at": "2020-01-01T00:00:00+00:00",
+      "processor": 1,
+      "is_provider": 1,
+      "is_active": 1
+    },
+    "model": "saas.Organization", "pk": 30
+},
+{
+    "fields": {
+      "date_joined": "2020-01-01T00:00:00-00:00",
+      "email": "xia+roles-card1@localhost.localdomain",
+      "first_name": "Xia",
+      "last_name": "Roles Card1",
+      "is_active": true,
+      "is_staff": false,
+      "is_superuser": false,
+      "password": "pbkdf2_sha256$10000$z0MBiWn0Rlem$iZdC6uHomlE07qGK/TqfcfxNzKJtFp03c0JILF1frRc=", 
+      "username": "xia-roles-card1"
+    },
+    "model": "auth.User", "pk": 30
+},
+{
+    "fields": {
+      "last_signed": "2020-01-01T00:00:00-00:00",
+      "agreement": 1,
+      "user": 30
+    },
+    "model": "saas.signature", "pk": 30
+}]

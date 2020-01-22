@@ -46,7 +46,7 @@
          on an organization. -->
     <div>
       <h4>Request access ...</h4>
-      <form @submit.prevent="save(unregistered)" ng-submit="save($event)">
+      <form @submit.prevent="submit" ng-submit="save($event)">
         <input id="userTypeahead" type="text"
                name="organization" placeholder="Name or email"
                autocomplete="off"
@@ -57,8 +57,8 @@
                uib-typeahead-template-url="customTemplate.html" />
         <button type="submit" name="submit">Add</button>
       </form>
-      <div class="add-role-modal">
-        <form @submit.prevent="submit" ng-submit="create($event)">
+      <div>
+        <form id="add-profile" @submit.prevent="submit" ng-submit="create($event)">
           <p ng-model="unregistered">
 [[unregistered.full_name]] was not found. This is an opportunity to invite
 a manager for [[unregistered.full_name]] to join {{organization.printable_name}}.
