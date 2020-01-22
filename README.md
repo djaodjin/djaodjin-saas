@@ -96,9 +96,11 @@ saas/templates/notification/ directory.
 Release Notes
 =============
 
-0.8.2
+0.8.3
 
-  * fixes add roles and subscriptions in multiple profile/user configurations
-  * works around for Django/SQLite bug (#230)
+  * adds implicit role to user when none exists
+  * uses class name instead of HTML node indexes as hooks in checkout pages
+  * uses consistent balance_amount/balance_unit accross APIs
+  * replaces django-urldecorators by djaodjin-rules in testsite
 
 [previous release notes](changelog)

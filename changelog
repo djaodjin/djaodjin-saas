@@ -1,3 +1,12 @@
+0.8.3
+
+  * adds implicit role to user when none exists
+  * uses class name instead of HTML node indexes as hooks in checkout pages
+  * uses consistent balance_amount/balance_unit accross APIs
+  * replaces django-urldecorators by djaodjin-rules in testsite
+
+ -- Sebastien Mirolo <smirolo@djaodjin.com>  Wed, 22 Jan 2020 10:15:00 -0700
+
 0.8.2
 
   * fixes add roles and subscriptions in multiple profile/user configurations
