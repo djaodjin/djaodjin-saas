@@ -1,4 +1,4 @@
-# Copyright (c) 2019, DjaoDjin inc.
+# Copyright (c) 2020, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -32,6 +32,7 @@ from ... import settings
 from ...api.balances import (BalanceLineListAPIView, BrokerBalancesAPIView,
     BalanceLineDetailAPIView)
 from ...api.charges import ChargeListAPIView
+from ...api.organizations import OrganizationListAPIView
 from ...api.transactions import TransactionListAPIView
 from ...api.users import RegisteredAPIView
 
@@ -50,4 +51,7 @@ urlpatterns = [
         BalanceLineListAPIView.as_view(), name='saas_api_balance_lines'),
     url(r'^metrics/registered/?',
         RegisteredAPIView.as_view(), name='saas_api_registered'),
+    url(r'^profile/$',
+        OrganizationListAPIView.as_view(),
+        name='saas_api_profile'),
 ]

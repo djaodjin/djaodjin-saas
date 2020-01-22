@@ -1,4 +1,4 @@
-# Copyright (c) 2019, DjaoDjin inc.
+# Copyright (c) 2020, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -38,7 +38,7 @@ from .serializers import NoModelSerializer, TransactionSerializer
 from ..decorators import _valid_manager
 from ..filters import DateRangeFilter, OrderingFilter, SearchFilter
 from ..mixins import OrganizationMixin, ProviderMixin, DateRangeContextMixin
-from ..models import (get_broker, sum_orig_amount, Subscription,  Transaction,
+from ..models import (get_broker, sum_orig_amount, Subscription, Transaction,
     Organization, Plan)
 from ..backends import ProcessorError
 from ..pagination import BalancePagination

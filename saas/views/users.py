@@ -1,4 +1,4 @@
-# Copyright (c) 2019, DjaoDjin inc.
+# Copyright (c) 2020, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -57,6 +57,8 @@ class ProductListView(UserMixin, TemplateView):
             'user': {
                 'api_accessibles': reverse(
                     'saas_api_accessibles', args=(self.user,)),
+                'api_profile_create': reverse(
+                    'saas_api_user_profiles', args=(self.user,)),
         }}
         update_context_urls(context, urls)
         return context

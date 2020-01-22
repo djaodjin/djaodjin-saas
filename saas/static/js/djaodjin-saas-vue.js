@@ -1,4 +1,4 @@
-// Copyright (c) 2019, DjaoDjin inc.
+// Copyright (c) 2020, DjaoDjin inc.
 // All rights reserved.
 // BSD 2-Clause license
 
@@ -1512,28 +1512,115 @@ var roleListMixin = {
         itemListMixin,
         roleDetailMixin
     ],
-    props: {
-        unregistered: {
-            type: Object,
-            default: {
+    data: function(){
+        return {
+            url: null,
+            create_url: null,
+            typeaheadUrl: null,
+            showInvited: false,
+            showRequested: false,
+            profileRequestDone: false,
+            inNewProfileFlow: false,
+            unregistered: {
+                slug: '',
+                email: '',
+                full_name: ''
+            },
+            newProfile: {
                 slug: '',
                 email: '',
                 full_name: ''
             }
         }
     },
-    data: function(){
-        return {
-            url: null,
-            typeaheadUrl: null,
-            showInvited: false,
-            showRequested: false,
-        }
-    },
     methods: {
-        modalShow: function() {
+        _addRole: function(item, force) {
             var vm = this;
-            vm.$emit('invite');
+            if( jQuery.type(item) === "string" ) {
+                var stringVal = item;
+                item = {slug: "", email: "", full_name: ""};
+                var pattern = /@[a-zA-Z\-]+\.[a-zA-Z\-]{2,3}/;
+                if( pattern.test(stringVal) ) {
+                    item['email'] = stringVal;
+                } else {
+                    item['slug'] = stringVal;
+                }
+            }
+            var data = {};
+            var fields = ['slug', 'email', 'full_name', 'message'];
+            for( var idx = 0; idx < fields.length; ++idx ) {
+                if( item[fields[idx]] ) {
+                    data[fields[idx]] = item[fields[idx]];
+                }
+            }
+            vm.reqPost(vm.url + (force ? "?force=1" : ""), data,
+                function() {
+                    vm.clearRequestProfile();
+                    vm.refresh();
+                }, function() {
+                    vm.profileRequestDone = true;
+                    vm.unregistered = item;
+                    vm.$emit('invite');
+                }
+            );
+        },
+        clearRequestProfile: function() {
+            var vm = this;
+            vm.unregistered = {slug: "", email: "", full_name: ""};
+            vm.profileRequestDone = false;
+            if( vm.$refs.typeahead ) {
+                vm.$refs.typeahead.clear();
+            }
+            vm.$emit('invite-completed');
+        },
+        clearNewProfile: function() {
+            var vm = this;
+            vm.newProfile = {slug: "", email: "", full_name: ""};
+            vm.inNewProfileFlow = false;
+            vm.$emit('create-completed');
+        },
+        create: function() { // create a new profile to be owned by user.
+            var vm = this;
+            vm.clearRequestProfile();
+            if( !vm.inNewProfileFlow ) {
+                vm.inNewProfileFlow = true;
+                vm.$emit('create');
+            } else {
+                if( jQuery.type(vm.newProfile) === "string" ) {
+                    var stringVal = vm.newProfile;
+                    vm.newProfile = {slug: "", email: "", full_name: ""};
+                    var pattern = /@[a-zA-Z\-]+\.[a-zA-Z\-]{2,3}/;
+                    if( pattern.test(stringVal) ) {
+                        vm.newProfile['email'] = stringVal;
+                    } else {
+                        vm.newProfile['slug'] = stringVal;
+                    }
+                }
+                var data = {};
+                var fields = ['slug', 'email', 'full_name'];
+                for( var idx = 0; idx < fields.length; ++idx ) {
+                    if( vm.newProfile[fields[idx]] ) {
+                        data[fields[idx]] = vm.newProfile[fields[idx]];
+                    }
+                }
+                vm.reqPost(vm.create_url, data,
+                    function() {
+                        vm.clearNewProfile();
+                        vm.refresh();
+                    }
+                );
+            }
+        },
+        updateItemSelected: function(item) { // user-typeahead @item-selected="updateItemSelected"
+            var vm = this;
+            if( item ) {
+                vm.unregistered = item;
+                vm.profileRequestDone = false;
+                vm.clearNewProfile();
+            }
+        },
+        refresh: function() {
+            // overridden in subclasses.
         },
         remove: function(idx){ // saas/_user_card.html
             var vm = this;
@@ -1556,46 +1643,12 @@ var roleListMixin = {
                 if( ob.request_key ) { vm.items.requested_count -= 1; }
             });
         },
-        refresh: function() {
-            // overridden in subclasses.
-        },
-        saveUserRelation: function(slug){ // XXX internal?
-            var vm = this;
-            vm.reqPost(vm.url, {slug: slug},
-                function() {
-                    vm.refresh();
-                }, function() {
-                    vm.handleNewUser(slug);
-                }
-            );
-        },
-        handleNewUser: function(str){  // XXX internal?
-            var vm = this;
-            if(str.length > 0){
-                vm.unregistered = {
-                    email: str,
-                    full_name: ''
-                }
-                vm.modalShow();
-            }
-        },
         save: function(item){ // user-typeahead @item-save="save"
-            var vm = this;
-            vm.saveUserRelation(item.slug ? item.slug : item.toString());
+            this._addRole(item);
         },
-        create: function(){ // @click="create" in dialog
+        submit: function() {
             var vm = this;
-            var data = {};
-            var fields = ['slug', 'email', 'full_name', 'message'];
-            for( var idx = 0; idx < fields.length; ++idx ) {
-                if( vm.unregistered[fields[idx]] ) {
-                    data[fields[idx]] = vm.unregistered[fields[idx]];
-                }
-            }
-            vm.reqPost(vm.url + "?force=1", data,
-            function() {
-                vm.refresh();
-            });
+            this._addRole(vm.unregistered, vm.profileRequestDone);
         },
         updateParams: function(){ // internal
             var vm = this;
@@ -1607,12 +1660,29 @@ var roleListMixin = {
         },
     },
     computed: {
-        roleStatus: function(){
+        roleStatus: function() {
             var args = ['active'];
             if(this.showInvited) args.push('invited');
             if(this.showRequested) args.push('requested');
             return args.join(',');
         },
+        requestedProfilePrintableName: function() {
+            var vm = this;
+            if( typeof vm.unregistered !== 'undefined' ) {
+                if( jQuery.type(vm.unregistered) === "string" ) {
+                    return vm.unregistered ? vm.unregistered : "The profile";
+                }
+                if( typeof vm.unregistered.full_name !== 'undefined' &&
+                    vm.unregistered.full_name ) {
+                    return vm.unregistered.full_name;
+                }
+                if( typeof vm.unregistered.email !== 'undefined' &&
+                    vm.unregistered.email ) {
+                    return vm.unregistered.email;
+                }
+            }
+            return  "The profile";
+        }
     },
     watch: {
         showInvited: function() {
@@ -1814,8 +1884,7 @@ Vue.component('user-typeahead', {
             searching: false,
             // used in a http request
             typeaheadQuery: '',
-            // used to hold the selected item
-            itemSelected: '',
+            itemSelected: ""
         }
     },
     mixins: [
@@ -1829,6 +1898,9 @@ Vue.component('user-typeahead', {
         },
     },
     methods: {
+        clear: function() {
+            this.itemSelected = '';
+        },
         // called by typeahead when a user enters input
         getUsers: function(query, done) {
             var vm = this;
@@ -1846,13 +1918,18 @@ Vue.component('user-typeahead', {
         },
         submit: function(){
             this.$emit('item-save', this.itemSelected);
-            this.itemSelected = '';
+            this.clear();
         }
     },
     mounted: function() {
         // TODO we should probably use one interface everywhere
         if(this.$refs.tphd)
             this.target = this.$refs.tphd[0];
+    },
+    watch: {
+        itemSelected: function(val) {
+            this.$emit('item-selected', this.itemSelected);
+        }
     }
 });
 
@@ -2024,6 +2101,7 @@ Vue.component('role-profile-list', {
     data: function() {
         return {
             url: djaodjinSettings.urls.user.api_accessibles,
+            create_url: djaodjinSettings.urls.user.api_profile_create,
             typeaheadUrl: djaodjinSettings.urls.api_candidates,
             showInvited: false,
             showRequested: false,
@@ -2035,7 +2113,8 @@ Vue.component('role-profile-list', {
     methods: {
         refresh: function() {
             var vm = this;
-            vm.showRequested = true;
+            vm.params = {};
+            vm.get();
         },
     },
 });

@@ -1,4 +1,4 @@
-# Copyright (c) 2019, DjaoDjin inc.
+# Copyright (c) 2020, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -21,6 +21,19 @@
 # WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+"""
+Profiles appear at 3 level of details: slug, OrganizationSerializer and
+OrganizationDetailSerializer. The slug representation is used when
+a unique identifier for the profile is required but otherwise dealing with
+profiles is not the main purpose of the API call. The OrganizationSerializer
+is used when minimal information about the profile should be returned
+(slug, full_name, picture) for display but otherwise access to personal
+information (street_address, etc.) have not been granted to the requesting user.
+The OrganizationDetailSerializer is used when the requesting user has been
+granted access to personal information.
+"""
+
 from __future__ import unicode_literals
 
 from django.core import validators
@@ -44,7 +57,7 @@ from ..models import (BalanceLine, CartItem, Charge, Plan,
 from ..utils import (build_absolute_uri, get_organization_model, get_role_model)
 from ..compat import reverse
 
-#pylint: disable=no-init,old-style-class
+#pylint: disable=no-init
 
 class EnumField(serializers.Field):
     """
@@ -270,36 +283,13 @@ class OrganizationSerializer(serializers.ModelSerializer):
         help_text=_("Unique identifier shown in the URL bar"))
     full_name = serializers.CharField(
         help_text=_("Full name"))
-    default_timezone = serializers.CharField(required=False,
-         help_text=_("Timezone to use when reporting metrics"))
-    email = serializers.EmailField(
-        help_text=_("E-mail address"))
-    phone = serializers.CharField(required=False, allow_blank=True,
-        help_text=_("Phone number"))
-    street_address = serializers.CharField(required=False, allow_blank=True,
-        help_text=_("Street address"))
-    locality = serializers.CharField(required=False, allow_blank=True,
-        help_text=_("City/Town"))
-    region = serializers.CharField(required=False, allow_blank=True,
-        help_text=_("State/Province/County"))
-    postal_code = serializers.CharField(required=False, allow_blank=True,
-        help_text=_("Zip/Postal code"))
-    country = CountryField(required=False, allow_blank=True,
-        help_text=_("Country"))
-    extra = serializers.CharField(required=False, allow_null=True,
-        help_text=_("Extra meta data (can be stringify JSON)"))
     printable_name = serializers.CharField(read_only=True)
     credentials = serializers.SerializerMethodField(read_only=True)
 
     class Meta:
         model = get_organization_model()
-        fields = ('slug', 'created_at', 'full_name',
-            'email', 'phone', 'street_address', 'locality',
-            'region', 'postal_code', 'country',
-            'default_timezone', 'printable_name',
-            'is_provider', 'is_bulk_buyer', 'type', 'credentials',
-            'extra')
-        read_only_fields = ('created_at',)
+        fields = ('slug', 'full_name', 'printable_name', 'picture',
+            'type', 'credentials')
 
     @staticmethod
     def get_credentials(obj):
@@ -320,6 +310,35 @@ class OrganizationSerializer(serializers.ModelSerializer):
 OrganizationSerializer._declared_fields["type"] = \
     serializers.SerializerMethodField(
         help_text=_("One of 'organization', 'personal' or 'user'"))
+
+
+class OrganizationDetailSerializer(OrganizationSerializer):
+
+    default_timezone = serializers.CharField(required=False,
+         help_text=_("Timezone to use when reporting metrics"))
+    email = serializers.EmailField(
+        help_text=_("E-mail address"))
+    phone = serializers.CharField(required=False, allow_blank=True,
+        help_text=_("Phone number"))
+    street_address = serializers.CharField(required=False, allow_blank=True,
+        help_text=_("Street address"))
+    locality = serializers.CharField(required=False, allow_blank=True,
+        help_text=_("City/Town"))
+    region = serializers.CharField(required=False, allow_blank=True,
+        help_text=_("State/Province/County"))
+    postal_code = serializers.CharField(required=False, allow_blank=True,
+        help_text=_("Zip/Postal code"))
+    country = CountryField(required=False, allow_blank=True,
+        help_text=_("Country"))
+    extra = serializers.CharField(required=False, allow_null=True,
+        help_text=_("Extra meta data (can be stringify JSON)"))
+
+    class Meta(OrganizationSerializer.Meta):
+        fields = OrganizationSerializer.Meta.fields + (
+            'created_at', 'email', 'phone',
+            'street_address', 'locality', 'region', 'postal_code', 'country',
+            'default_timezone', 'is_provider', 'is_bulk_buyer', 'extra')
+        read_only_fields = ('created_at',)
 
 
 class OrganizationCreateSerializer(NoModelSerializer):
@@ -387,7 +406,7 @@ class WithSubscriptionSerializer(serializers.ModelSerializer):
         fields = ('created_at', 'ends_at', 'plan', 'auto_renew')
 
 
-class OrganizationWithSubscriptionsSerializer(OrganizationSerializer):
+class OrganizationWithSubscriptionsSerializer(OrganizationDetailSerializer):
 
     subscriptions = WithSubscriptionSerializer(
         source='subscription_set', many=True, read_only=True)
@@ -478,7 +497,7 @@ class PlanSerializer(serializers.ModelSerializer):
 
 class SubscriptionSerializer(serializers.ModelSerializer):
 
-    organization = OrganizationSerializer(read_only=True)
+    organization = OrganizationDetailSerializer(read_only=True)
     plan = PlanSerializer(read_only=True)
     editable = serializers.SerializerMethodField(
         help_text=_("True if the request user is able to update"\
@@ -621,30 +640,28 @@ class RoleDescriptionSerializer(serializers.ModelSerializer):
     class Meta:
         model = RoleDescription
         fields = ('created_at', 'title', 'slug', 'is_global', 'organization')
+        read_only_fields = ('created_at', 'slug', 'is_global')
 
 
 class AccessibleSerializer(serializers.ModelSerializer):
     """
     Formats an entry in a list of ``Organization`` accessible by a ``User``.
     """
-    slug = serializers.SlugField(source='organization.slug')
-    printable_name = serializers.CharField(source='organization.printable_name')
-    email = serializers.CharField(source='organization.email')
+    organization = OrganizationSerializer(read_only=True)
     role_description = RoleDescriptionSerializer(read_only=True)
-    home_url = serializers.SerializerMethodField()
-    settings_url = serializers.SerializerMethodField()
+
     accept_grant_api_url = serializers.SerializerMethodField()
     remove_api_url = serializers.SerializerMethodField()
+    home_url = serializers.SerializerMethodField()
+    settings_url = serializers.SerializerMethodField()
 
     class Meta:
         model = get_role_model()
         fields = ('created_at', 'request_key',
-            'slug', 'printable_name', 'email', # Organization
-            'role_description',                # RoleDescription
+            'organization', 'role_description',
             'home_url', 'settings_url',
             'accept_grant_api_url', 'remove_api_url')
-        read_only_fields = ('created_at', 'request_key', 'grant_key',
-            'printable_name')
+        read_only_fields = ('created_at', 'request_key')
 
     def get_accept_grant_api_url(self, obj):
         if obj.grant_key:
@@ -680,28 +697,20 @@ class AccessibleSerializer(serializers.ModelSerializer):
         return None
 
 
-class BaseRoleSerializer(serializers.ModelSerializer):
+class RoleSerializer(serializers.ModelSerializer):
 
     user = UserSerializer(read_only=True)
-
-    class Meta:
-        model = get_role_model()
-        fields = ('created_at', 'user', 'request_key', 'grant_key')
-        read_only_fields = ('created_at', 'request_key', 'grant_key')
-
-
-class RoleSerializer(BaseRoleSerializer):
-
-    organization = OrganizationSerializer(read_only=True)
-    role_description = RoleDescriptionRelatedField(read_only=True)
+    organization = OrganizationDetailSerializer(read_only=True)
+    role_description = RoleDescriptionSerializer(read_only=True)
     accept_request_api_url = serializers.SerializerMethodField()
     remove_api_url = serializers.SerializerMethodField()
 
-    class Meta(BaseRoleSerializer.Meta):
-        fields = BaseRoleSerializer.Meta.fields + ('organization',
-             'role_description', 'accept_request_api_url', 'remove_api_url')
-        read_only_fields = BaseRoleSerializer.Meta.read_only_fields + (
-            'role_description',)
+    class Meta:
+        model = get_role_model()
+        fields = ('created_at', 'user', 'grant_key',
+            'organization', 'role_description', 'accept_request_api_url',
+            'remove_api_url')
+        read_only_fields = ('created_at', 'grant_key', 'role_description')
 
     def get_accept_request_api_url(self, obj):
         if obj.request_key:
@@ -716,15 +725,6 @@ class RoleSerializer(BaseRoleSerializer):
         return build_absolute_uri(self.context['request'], location=reverse(
             'saas_api_role_detail', args=(
                 obj.organization, role_description, obj.user)))
-
-
-class RoleAccessibleSerializer(BaseRoleSerializer):
-    role_description = RoleDescriptionSerializer(read_only=True)
-
-    class Meta:
-        model = get_role_model()
-        fields = ('created_at', 'request_key', 'grant_key',
-            'role_description', 'user')
 
 
 class UploadBlobSerializer(NoModelSerializer):
@@ -749,6 +749,9 @@ class AgreementSignSerializer(NoModelSerializer):
     last_signed = serializers.DateTimeField(read_only=True)
 
 
-class AccessibleOrganizationSerializer(NoModelSerializer):
+class CreateAccessibleRequestSerializer(NoModelSerializer):
+    """
+    Requests to be granted a role on a profile
+    """
     organization = serializers.CharField()
     message = serializers.CharField(max_length=255, required=False)

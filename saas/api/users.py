@@ -1,4 +1,4 @@
-# Copyright (c) 2019, DjaoDjin inc.
+# Copyright (c) 2020, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -37,7 +37,6 @@ from ..utils import get_role_model
 
 
 #pylint: disable=no-init
-#pylint: disable=old-style-class
 
 class RegisteredQuerysetMixin(DateRangeContextMixin, ProviderMixin):
     """
@@ -158,5 +157,4 @@ class AgreementSignAPIView(GenericAPIView):
             return Response(AgreementSignSerializer().to_representation({
                 'read_terms': serializer.validated_data['read_terms'],
                 'last_signed': record.last_signed}))
-        else:
-            raise ValidationError(_('You have to agree with the terms'))
+        raise ValidationError(_('You have to agree with the terms'))

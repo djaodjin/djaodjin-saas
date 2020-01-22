@@ -55,6 +55,15 @@
 },
 {
     "fields": {
+      "created_at": "2020-01-01T00:00:00+00:00",
+      "slug": "viewer",
+      "title": "Viewer",
+      "implicit_create_on_none": true
+    },
+    "model": "saas.RoleDescription", "pk": 3
+},
+{
+    "fields": {
       "date_joined": "2012-09-14T14:16:55-09:00",
       "email": "alice@localhost.localdomain",
       "first_name": "Alice",

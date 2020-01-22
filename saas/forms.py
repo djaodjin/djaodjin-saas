@@ -40,8 +40,7 @@ import localflavor.us.forms as us_forms
 from . import settings
 from .models import Organization, Plan, Subscription
 
-#pylint: disable=super-on-old-class,no-member
-#pylint: disable=old-style-class,no-init
+#pylint: disable=no-member,no-init
 
 class BankForm(forms.ModelForm):
     """
@@ -108,7 +107,7 @@ class CreditCardForm(PostalFormMixin, forms.Form):
         remember_card = self.data.get('remember_card', None)
         if remember_card is not None:
             self.cleaned_data['remember_card'] = (
-                remember_card != "0" and remember_card != "off")
+                remember_card not in ("0", "off"))
         return self.cleaned_data['remember_card']
 
 

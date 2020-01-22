@@ -39,12 +39,12 @@ from django.utils import six
 from django.utils.translation import ugettext_lazy as _
 from django.views.generic import RedirectView
 from django.views.generic.base import ContextMixin, TemplateResponseMixin
-from django.views.generic.edit import FormMixin, ProcessFormView
+from django.views.generic.edit import FormMixin
 
 from .. import settings
 from ..compat import reverse, NoReverseMatch
 from ..decorators import fail_direct
-from ..models import CartItem, Coupon, Plan, Organization, get_broker
+from ..models import CartItem, Plan, Organization, get_broker
 from ..utils import update_context_urls
 
 

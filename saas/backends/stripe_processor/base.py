@@ -1,4 +1,4 @@
-# Copyright (c) 2019, DjaoDjin inc.
+# Copyright (c) 2020, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -466,7 +466,7 @@ class StripeBackend(object):
             # This will only work on "Managed" StripeConnect accounts.
             rcp.external_account = bank_token
             rcp.save()
-        except stripe.error.InvalidRequestError:
+        except stripe.error.InvalidRequestError as err:
             raise ProcessorError(str(err), backend_except=err)
 
     def create_or_update_card(self, subscriber, card_token,
@@ -513,7 +513,6 @@ class StripeBackend(object):
         if p_customer is None:
             try:
                 # XXX Seems either pylint or Stripe is wrong here...
-                #pylint:disable=redefined-variable-type
                 key = self.generate_idempotent_key(subscriber,
                     card_token, user, broker)
                 if key:

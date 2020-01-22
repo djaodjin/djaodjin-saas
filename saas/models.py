@@ -1,6 +1,6 @@
 #pylint: disable=too-many-lines
 
-# Copyright (c) 2019, DjaoDjin inc.
+# Copyright (c) 2020, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -83,14 +83,13 @@ from rest_framework.exceptions import ValidationError
 from . import humanize, settings, signals
 from .backends import (get_processor_backend, CardError, ProcessorError,
     ProcessorSetupError)
-from .utils import (SlugTitleMixin, datetime_or_now,
-    extract_full_exception_stack, full_name_natural_split,
+from .utils import (SlugTitleMixin, datetime_or_now, full_name_natural_split,
     generate_random_slug, get_role_model, handle_uniq_error)
 
 
 LOGGER = logging.getLogger(__name__)
 
-#pylint: disable=old-style-class,no-init
+#pylint: disable=no-init
 
 
 class InsufficientFunds(Exception):
@@ -133,11 +132,11 @@ class OrganizationManager(models.Manager):
         """
         if isinstance(user, get_user_model()):
             return self.filter(role__user=user, slug=user.username).first()
-        elif isinstance(user, six.string_types):
+        if isinstance(user, six.string_types):
             return self.filter(role__user__username=user, slug=user).first()
         return None
 
-    def accessible_by(self, user, role_descr=None):
+    def accessible_by(self, user, role_descr=None): # OrganizationManager
         """
         Returns a QuerySet of Organziation which *user* has an associated
         role with.
@@ -456,20 +455,6 @@ class Organization(models.Model):
             self._processor_backend = get_processor_backend(self)
         return self._processor_backend
 
-    def accessible_by(self, user):
-        """
-        Returns True if the user has any ``Role`` relationship
-        with the ``Organization``.
-
-        When *user* is a string instead of a ``User`` instance, it will
-        be interpreted as a username.
-        """
-        user_model = get_user_model()
-        if not isinstance(user, user_model):
-            user = user_model.objects.get(username=user)
-        return get_role_model().objects.valid_for(
-            user=user, organization=self).exists()
-
     def get_role_description(self, role_slug):
         return RoleDescription.objects.db_manager(using=self._state.db).get(
             Q(organization=self) | Q(organization__isnull=True),
@@ -499,7 +484,7 @@ class Organization(models.Model):
         If ``user`` already had a role on the organization, it is removed
         to only keep one role per user per organization.
         """
-        #pylint:disable=unused-argument,too-many-arguments
+        #pylint:disable=too-many-arguments
         # Implementation Note:
         # Django get_or_create will call router.db_for_write without
         # an instance so the using database will be lost. The following
@@ -516,12 +501,16 @@ class Organization(models.Model):
             m2m = queryset.get()
             force_insert = False
         else:
+            if not (role_descr.skip_optin_on_grant or grant_key):
+                grant_key = generate_random_slug()
             m2m = get_role_model()(
                 organization=self, user=user, grant_key=grant_key)
             m2m.extra = extra
             force_insert = True
         m2m.role_description = role_descr
         m2m.request_key = None
+        if at_time:
+            m2m.created_at = at_time
         m2m.save(using=self._state.db, force_insert=force_insert)
         signals.role_grant_created.send(sender=__name__,
             role=m2m, reason=reason, request_user=request_user)
@@ -542,15 +531,30 @@ class Organization(models.Model):
             return m2m
         return None
 
-    def add_manager(self, user, at_time=None, reason=None, extra=None,
-                    request_user=None):
+    def add_manager(self, user, extra=None, request_user=None, at_time=None):
         """
-        Add user as a manager to organization.
+        Special implementation of `add_role` that does not require a grant key,
+        nor generates any notification.
         """
-        #pylint: disable=unused-argument,too-many-arguments
-        return self.add_role(user, settings.MANAGER,
-            at_time=at_time, reason=reason, extra=extra,
-            request_user=request_user)
+        # OK to use ``filter`` in both subsequent queries as we are dealing
+        # with the whole QuerySet related to a user.
+        queryset = get_role_model().objects.db_manager(
+            using=self._state.db).filter(organization=self, user=user)
+        if queryset.exists():
+            # We have a role for the user on this organization. Let's update it.
+            m2m = queryset.get()
+            force_insert = False
+        else:
+            m2m = get_role_model()(organization=self, user=user)
+            force_insert = True
+        m2m.extra = extra
+        m2m.role_description = self.get_role_description(settings.MANAGER)
+        m2m.grant_key = None
+        m2m.request_key = None
+        if at_time:
+            m2m.created_at = at_time
+        m2m.save(using=self._state.db, force_insert=force_insert)
+        return force_insert
 
     def remove_role(self, user, role_name):
         """
@@ -1137,7 +1141,12 @@ class RoleDescription(models.Model):
     title = models.CharField(max_length=20,
         help_text=_("Short description of the role. Grammatical rules to"\
         " pluralize the title might be used in User Interfaces."))
-    skip_optin_on_grant = models.BooleanField(default=False)
+    skip_optin_on_grant = models.BooleanField(default=False,
+        help_text=_("Automatically grants the role without requiring a user"\
+        " to accept it."))
+    implicit_create_on_none = models.BooleanField(default=False,
+        help_text=_("Automatically adds the role when a user and profile share"\
+        " the same e-mail domain."))
     extra = settings.get_extra_field_class()(null=True,
         help_text=_("Extra meta data (can be stringify JSON)"))
 
@@ -1178,22 +1187,6 @@ class RoleManager(models.Manager):
                 kwargs = {'role_description__slug': role_descr}
         return self.filter(
             user=user, organization__subscriptions__plan=plan, **kwargs)
-
-    def accessbile_by(self, user):
-        """
-        Returns ``Organization`` accessible by a ``user``,
-        keyed by ``Role``.
-        """
-        user_model = get_user_model()
-        if not isinstance(user, user_model):
-            user = user_model.objects.get(username=user)
-        results = {}
-        for role in self.filter(user=user).order_by('role_description'):
-            if role.role_description is not None:
-                if not role.role_description in results:
-                    results[role.role_description] = []
-                results[role.role_description].append(role.organization)
-        return results
 
     def valid_for(self, **kwargs):
         return self.filter(grant_key=None, request_key=None, **kwargs)
@@ -2071,7 +2064,6 @@ class Charge(models.Model):
 
             invoiced_amount = self.invoiced_total.amount
             if invoiced_amount > self.amount:
-                #pylint: disable=nonstandard-exception
                 raise IntegrityError("The total amount of invoiced items for "\
                     "charge %s exceed the amount of the charge." %
                     self.processor_key)
@@ -2438,7 +2430,6 @@ class Coupon(models.Model):
     """
     Coupons are used on invoiced to give a rebate to a customer.
     """
-    #pylint: disable=super-on-old-class
     objects = CouponManager()
 
     created_at = models.DateTimeField(auto_now_add=True,
@@ -3036,7 +3027,6 @@ class SubscriptionQuerySet(models.QuerySet):
 
 
 class SubscriptionManager(models.Manager):
-    #pylint: disable=super-on-old-class
 
     def get_queryset(self):
         return SubscriptionQuerySet(self.model, using=self._db)

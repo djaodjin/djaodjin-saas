@@ -1,4 +1,4 @@
-# Copyright (c) 2019, DjaoDjin inc.
+# Copyright (c) 2020, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -57,7 +57,7 @@ class ProcessorSetupError(ProcessorError):
     (i.e. none or invalid keys)
     """
 
-    def __init__(self,  message, provider, backend_except=None):
+    def __init__(self, message, provider, backend_except=None):
         super(ProcessorSetupError, self).__init__(
             message, backend_except=backend_except)
         self.provider = provider

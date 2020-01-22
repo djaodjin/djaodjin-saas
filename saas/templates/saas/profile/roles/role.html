@@ -34,7 +34,7 @@
           <td>[[item.user.email]]</td>
           <td>
             <button @click="sendInvite(item.user.slug)"
-                v-if="item.grant_key">Resend Invite</button>
+                v-if="item.grant_key">Re-send</button>
             <button @click="save(item.user)" v-if="item.accept_request_api_url">Grant</button>
           </td>
           <td><button class="remove" ng-click="remove($event, $index)"
@@ -55,7 +55,7 @@
       </form>
       <form class="add-role-modal"
             ng-click="create($event)"
-            @submit.prevent="create(unregistered)">
+            @submit.prevent="submit">
         <p>
 If the user couldn't be found in the system, it is a great occasion to invite
 them.

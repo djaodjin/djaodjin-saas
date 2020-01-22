@@ -1,4 +1,4 @@
-# Copyright (c) 2019, DjaoDjin inc.
+# Copyright (c) 2020, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -827,9 +827,9 @@ class RoleSmartListMixin(object):
         ('request_key', 'request_key'),
         ('created_at', 'created_at')
     ]
-    ordering = ('user__username',)
+    ordering = ('-created_at', 'user__username',)
 
-    filter_backends = (DateRangeFilter, SearchFilter, OrderingFilter)
+    filter_backends = (SearchFilter, OrderingFilter)
 
 
 class SubscriptionSmartListMixin(object):
@@ -963,12 +963,17 @@ class RoleDescriptionMixin(OrganizationMixin):
     @property
     def role_description(self):
         if not hasattr(self, '_role_description'):
-            try:
-                self._role_description = self.organization.get_role_description(
-                    self.kwargs.get('role'))
-            except RoleDescription.DoesNotExist:
-                raise Http404(_("RoleDescription '%(role)s' does not exist.")
-                    % {'role': self.kwargs.get('role')})
+            role_descr_slug = self.kwargs.get('role')
+            if role_descr_slug:
+                try:
+                    self._role_description = \
+                        self.organization.get_role_description(role_descr_slug)
+                except RoleDescription.DoesNotExist:
+                    raise Http404(
+                        _("RoleDescription '%(role)s' does not exist.")
+                        % {'role': role_descr_slug})
+            else:
+                self._role_description = None
         return self._role_description
 
 
@@ -1094,6 +1099,6 @@ def product_url(provider, subscriber=None, request=None):
         location += '%s/' % subscriber
     if settings.BUILD_ABSOLUTE_URI_CALLABLE:
         return build_absolute_uri(request, location=location, provider=provider)
-    elif not is_broker(provider):
+    if not is_broker(provider):
         location = '/%s' % provider + location
     return location

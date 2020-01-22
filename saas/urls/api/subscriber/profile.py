@@ -1,4 +1,4 @@
-# Copyright (c) 2019, DjaoDjin inc.
+# Copyright (c) 2020, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -29,8 +29,7 @@ URLs API for profile resources (managers, custom roles and subscriptions)
 from django.conf.urls import url
 
 from ....api.organizations import (
-    OrganizationDetailAPIView, OrganizationListAPIView,
-    OrganizationPictureAPIView)
+    OrganizationDetailAPIView, OrganizationPictureAPIView)
 from ....api.subscriptions import (SubscriptionDetailAPIView,
     SubscriberSubscriptionListAPIView)
 from ....settings import ACCT_REGEX
@@ -49,8 +48,4 @@ urlpatterns = [
     url(r'^profile/(?P<organization>%s)/picture/$' % ACCT_REGEX,
         OrganizationPictureAPIView.as_view(),
         name='saas_api_organization_picture'),
-
-    url(r'^profile/$',
-        OrganizationListAPIView.as_view(),
-        name='saas_api_profile'),
 ]

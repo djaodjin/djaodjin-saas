@@ -1,4 +1,4 @@
-# Copyright (c) 2019, DjaoDjin inc.
+# Copyright (c) 2020, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -29,7 +29,7 @@ URLs for API related to users accessible by.
 from django.conf.urls import url
 
 from ...api.roles import (AccessibleByListAPIView, AccessibleDetailAPIView,
-    RoleAcceptAPIView, AccessibleByDescrListAPIView)
+    RoleAcceptAPIView, AccessibleByDescrListAPIView, UserProfileListAPIView)
 from ... import settings
 
 urlpatterns = [
@@ -45,4 +45,6 @@ urlpatterns = [
         name='saas_api_accessibles_by_descr'),
     url(r'^users/(?P<user>%s)/accessibles/?' % settings.MAYBE_EMAIL_REGEX,
         AccessibleByListAPIView.as_view(), name='saas_api_accessibles'),
+    url(r'^users/(?P<user>%s)/profiles/?' % settings.MAYBE_EMAIL_REGEX,
+        UserProfileListAPIView.as_view(), name='saas_api_user_profiles'),
 ]

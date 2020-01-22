@@ -1,4 +1,4 @@
-# Copyright (c) 2019, DjaoDjin inc.
+# Copyright (c) 2020, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -33,7 +33,6 @@ from django.contrib.auth import get_user_model
 from django.db import transaction, IntegrityError
 from django.db.models import Q
 from django.http import Http404
-from django.template.defaultfilters import slugify
 from django.utils.encoding import force_text
 from django.utils.translation import ugettext_lazy as _
 from rest_framework import serializers, status
@@ -46,15 +45,15 @@ from rest_framework.pagination import PageNumberPagination
 
 from .. import settings, signals
 from ..docs import swagger_auto_schema
-from ..mixins import (OrganizationMixin, RoleDescriptionMixin, RoleMixin,
-    RoleSmartListMixin, UserMixin)
-from ..models import RoleDescription
+from ..mixins import (OrganizationMixin, OrganizationSmartListMixin,
+    RoleDescriptionMixin, RoleMixin, RoleSmartListMixin, UserMixin)
 from ..utils import (full_name_natural_split, get_organization_model,
     get_role_model, generate_random_slug)
 from .organizations import OrganizationCreateMixin, OrganizationDecorateMixin
 from .serializers import (AccessibleSerializer,
-    AccessibleOrganizationSerializer, BaseRoleSerializer, ForceSerializer,
-    NoModelSerializer, RoleSerializer, RoleAccessibleSerializer)
+    CreateAccessibleRequestSerializer, ForceSerializer, NoModelSerializer,
+    OrganizationCreateSerializer, OrganizationDetailSerializer,
+    RoleDescriptionSerializer, RoleSerializer)
 
 
 LOGGER = logging.getLogger(__name__)
@@ -178,30 +177,6 @@ class UserRoleCreateSerializer(serializers.Serializer):
         return data
 
 
-
-class RoleDescriptionCRUDRoleSerializer(BaseRoleSerializer):
-    pass
-
-
-class RoleDescriptionCRUDSerializer(serializers.ModelSerializer):
-    # Slightly different from `RoleDescriptionSerializer` in api.serializer.
-    roles = serializers.SerializerMethodField()
-
-    def get_roles(self, obj):
-        roles_queryset = obj.role_set.filter(
-            organization=self._context['view'].organization)
-        return RoleDescriptionCRUDRoleSerializer(roles_queryset, many=True).data
-
-    def create(self, validated_data):
-        validated_data['organization'] = self._context['view'].organization
-        return super(RoleDescriptionCRUDSerializer, self).create(validated_data)
-
-    class Meta:
-        model = RoleDescription
-        fields = ('created_at', 'title', 'slug', 'is_global', 'roles')
-        read_only_fields = ('created_at', 'slug', 'is_global')
-
-
 class RoleListPagination(PageNumberPagination):
 
     def get_paginated_response(self, data):
@@ -287,7 +262,7 @@ class OptinBase(OrganizationDecorateMixin, OrganizationCreateMixin):
                     raise Http404(_("Profile %(organization)s does not exist."
                     ) % {'organization': slug})
                 if not email:
-                    raise ValidationError({
+                    raise serializers.ValidationError({
                         'email': _("We cannot invite an organization"\
                             " without an e-mail address.")})
                 if not organization_data.get('email', None):
@@ -386,8 +361,10 @@ class InvitedRequestedListMixin(object):
 
 class AccessibleByQuerysetMixin(UserMixin):
 
+    role_model = get_role_model()
+
     def get_queryset(self):
-        return get_role_model().objects.filter(user=self.user)
+        return self.role_model.objects.filter(user=self.user)
 
 
 class AccessibleByDescrQuerysetMixin(AccessibleByQuerysetMixin):
@@ -544,6 +521,11 @@ class AccessibleByDescrListAPIView(RoleSmartListMixin,
     serializer_class = AccessibleSerializer
     pagination_class = RoleListPagination
 
+    def get_serializer_class(self):
+        if self.request.method.lower() == 'post':
+            return CreateAccessibleRequestSerializer
+        return super(AccessibleByDescrListAPIView, self).get_serializer_class()
+
     def post(self, request, *args, **kwargs): #pylint:disable=unused-argument
         """
         Requests a role of a specified type
@@ -578,35 +560,12 @@ class AccessibleByDescrListAPIView(RoleSmartListMixin,
         return super(AccessibleByDescrListAPIView, self).post(
             request, *args, **kwargs)
 
+    @swagger_auto_schema(request_body=OrganizationRoleCreateSerializer,
+        query_serializer=ForceSerializer)
     def create(self, request, *args, **kwargs): #pylint:disable=unused-argument
-        serializer = AccessibleOrganizationSerializer(data=request.data)
+        serializer = OrganizationRoleCreateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        reason = serializer.validated_data.get('message')
-        organization_slug = serializer.validated_data.get('organization')
-        organization = get_object_or_404(
-            get_organization_model().objects.all(), slug=organization_slug)
-        if not self.user:
-            raise Http404("User %(username)s does not exist."
-                % {'username': self.kwargs.get('user')})
-        try:
-            role_descr = organization.get_role_description(
-                self.kwargs.get('role'))
-        except RoleDescription.DoesNotExist:
-            raise Http404("Role Description %(slug)s does not exist."
-                % {'slug': self.kwargs.get('role')})
-
-        created = organization.add_role_request(self.user,
-            role_description=role_descr)
-
-        signals.role_request_created.send(sender=__name__,
-            organization=organization, user=self.user, reason=reason)
-        if created:
-            resp_status = status.HTTP_201_CREATED
-        else:
-            resp_status = status.HTTP_200_OK
-
-        return Response(serializer.validated_data, status=resp_status,
-            headers=self.get_success_headers(serializer.validated_data))
+        return self.perform_optin(serializer, request, user=self.user)
 
 
 class RoleDescriptionQuerysetMixin(OrganizationMixin):
@@ -651,19 +610,6 @@ class RoleDescriptionListCreateView(RoleDescriptionQuerysetMixin,
                     "title": "Managers",
                     "slug": "manager",
                     "is_global": true,
-                    "roles": [
-                        {
-                            "created_at": "2018-01-01T00:00:00Z",
-                            "user": {
-                                "slug": "donny",
-                                "email": "donny@localhost.localdomain",
-                                "full_name": "Donny Cooper",
-                                "created_at": "2018-01-01T00:00:00Z"
-                            },
-                            "request_key": null,
-                            "grant_key": null
-                        }
-                    ]
                 },
                 {
                     "created_at": "2018-01-01T00:00:00Z",
@@ -675,7 +621,7 @@ class RoleDescriptionListCreateView(RoleDescriptionQuerysetMixin,
             ]
         }
     """
-    serializer_class = RoleDescriptionCRUDSerializer
+    serializer_class = RoleDescriptionSerializer
 
     def post(self, request, *args, **kwargs):
         """
@@ -782,7 +728,7 @@ class RoleDescriptionDetailView(RoleDescriptionQuerysetMixin,
         }
 
     """
-    serializer_class = RoleDescriptionCRUDSerializer
+    serializer_class = RoleDescriptionSerializer
     lookup_field = 'slug'
     lookup_url_kwarg = 'role'
 
@@ -1046,8 +992,6 @@ class RoleByDescrListAPIView(RoleSmartListMixin, RoleByDescrQuerysetMixin,
                 full_name=serializer.validated_data.get('full_name', ''),
                 request=request)
             grant_key = generate_random_slug()
-        if not (self.role_description.skip_optin_on_grant or grant_key):
-            grant_key = generate_random_slug()
         reason = serializer.validated_data.get('message', None)
         if reason:
             reason = force_text(reason)
@@ -1102,7 +1046,7 @@ class RoleByDescrListAPIView(RoleSmartListMixin, RoleByDescrQuerysetMixin,
 
 class RoleDetailAPIView(RoleMixin, DestroyAPIView):
 
-    serializer_class = RoleAccessibleSerializer
+    serializer_class = RoleSerializer
 
     def post(self, request, *args, **kwargs):#pylint:disable=unused-argument
         """
@@ -1316,7 +1260,8 @@ class RoleAcceptAPIView(UserMixin, GenericAPIView):
             organization=obj.organization, user=self.user).exclude(
             pk=obj.pk).first()
         if existing_role:
-            raise ValidationError(_("You already have a %(existing_role)s"\
+            raise serializers.ValidationError(
+                _("You already have a %(existing_role)s"\
                 " role on %(organization)s. Please drop this role first if"\
                 " you want to accept a role of %(role)s instead.") % {
                     'role': obj.role_description.title,
@@ -1339,3 +1284,116 @@ class RoleAcceptAPIView(UserMixin, GenericAPIView):
 
         serializer = self.get_serializer(instance=obj)
         return Response(serializer.data)
+
+
+class UserProfileListAPIView(OrganizationSmartListMixin,
+                             OrganizationDecorateMixin, OrganizationCreateMixin,
+                             UserMixin, ListCreateAPIView):
+    """
+    List billing profiles owned by user
+
+    Queries a page (``PAGE_SIZE`` records) of organization and user profiles.
+
+    The queryset can be filtered for at least one field to match a search
+    term (``q``).
+
+    The queryset can be ordered by a field by adding an HTTP query parameter
+    ``o=`` followed by the field name. A sequence of fields can be used
+    to create a complete ordering by adding a sequence of ``o`` HTTP query
+    parameters. To reverse the natural order of a field, prefix the field
+    name by a minus (-) sign.
+
+    **Tags**: profile
+
+    **Examples**
+
+    .. code-block:: http
+
+        GET /api/users/xia/profiles/?o=created_at HTTP/1.1
+
+    responds
+
+    .. code-block:: json
+
+        {
+            "count": 1,
+            "next": null,
+            "previous": null,
+            "results": [{
+                "slug": "xia",
+                "full_name": "Xia Lee",
+                "email": "xia@localhost.localdomain",
+                "printable_name": "Xia Lee",
+                "created_at": "2016-01-14T23:16:55Z"
+            }]
+        }
+    """
+    serializer_class = OrganizationDetailSerializer
+
+    def paginate_queryset(self, queryset):
+        page = super(UserProfileListAPIView, self).paginate_queryset(queryset)
+        page = self.decorate_personal(page)
+        return page
+
+    def get_serializer_class(self):
+        if self.request.method.lower() == 'post':
+            return OrganizationCreateSerializer
+        return super(UserProfileListAPIView, self).get_serializer_class()
+
+    def get_queryset(self):
+        return get_organization_model().objects.accessible_by(
+            self.user, role_description=settings.MANAGER)
+
+    def post(self, request, *args, **kwargs):
+        """
+        Creates a new profile owned by user
+
+        This end-point creates a new profile whose manager is user and
+        returns an error if the profile already exists.
+
+        If you want to request access to an already existing profile,
+        see the accessibles end-point.
+
+        **Tags**: rbac
+
+        **Examples**
+
+        .. code-block:: http
+
+            POST /api/users/xia/profiles/ HTTP/1.1
+
+        .. code-block:: json
+
+            {
+              "slug": "myproject",
+              "full_name": "My Project"
+            }
+
+        responds
+
+        .. code-block:: json
+
+            {
+              "slug": "myproject",
+              "full_name": "My Project"
+            }
+        """
+        return super(UserProfileListAPIView, self).post(
+            request, *args, **kwargs)
+
+    def create(self, request, *args, **kwargs): #pylint:disable=unused-argument
+        #pylint:disable=unused-argument
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        # creates profile
+        with transaction.atomic():
+            organization = self.create_organization(serializer.validated_data)
+            organization.add_manager(self.user, request_user=self.request.user)
+        self.decorate_personal(organization)
+
+        # returns created profile
+        serializer = self.get_serializer(instance=organization)
+        headers = self.get_success_headers(serializer.data)
+        return Response(serializer.data,
+            status=status.HTTP_201_CREATED, headers=headers)

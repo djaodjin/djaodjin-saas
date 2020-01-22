@@ -36,6 +36,7 @@ import logging
 from functools import wraps
 from django.core.exceptions import PermissionDenied
 from django.contrib.auth import REDIRECT_FIELD_NAME
+from django.db.models import Q
 from django.shortcuts import get_object_or_404
 from django.utils.decorators import available_attrs
 from django.utils import six
@@ -43,7 +44,8 @@ from django.utils.translation import ugettext_lazy as _
 
 from . import settings
 from .compat import is_authenticated, reverse
-from .models import Charge, Plan, Signature, Subscription, get_broker
+from .models import (Charge, Plan, RoleDescription, Signature, Subscription,
+    get_broker)
 from .utils import datetime_or_now, get_organization_model, get_role_model
 
 
@@ -163,12 +165,6 @@ def fail_authenticated(request):
     if not is_authenticated(request):
         return str(settings.LOGIN_URL)
 
-    if get_role_model().objects.filter(
-            user=request.user, grant_key__isnull=False).exists():
-        # We have some invites pending so let's first stop
-        # by the user accessibles page.
-        return reverse('saas_user_product_list', args=(request.user,))
-
     return False
 
 
@@ -179,6 +175,60 @@ def fail_agreement(request, agreement=settings.TERMS_OF_USE):
     if not Signature.objects.has_been_accepted(
             agreement=agreement, user=request.user):
         return reverse('legal_sign_agreement', kwargs={'agreement': agreement})
+    return False
+
+
+def fail_active_roles(request):
+    """
+    User with active roles only
+    """
+    role_model = get_role_model()
+    if not role_model.objects.filter(user=request.user).exists():
+        # Find an organization with a matching e-mail domain.
+        domain = request.user.email.split('@')[-1].lower()
+        organization_model = get_organization_model()
+        try:
+            organization = organization_model.objects.filter(
+                email__endswith=domain).get()
+            # Find a RoleDescription we can implicitely grant to the user.
+            try:
+                role_descr = RoleDescription.objects.filter(
+                    Q(organization__isnull=True) | Q(organization=organization),
+                    implicit_create_on_none=True).get()
+                # Create a granted role implicitely. We assume the user's
+                # identity (ex: email) was verified.
+                organization.add_role(request.user, role_descr,
+                    request_user=request.user)
+            except role_model.DoesNotExist:
+                LOGGER.debug("'%s' does not have a role on any profile but"
+                    " we cannot grant one implicitely because there is"
+                    " no role description that permits it.",
+                    request.user)
+            except role_model.MultipleObjectsReturned:
+                LOGGER.debug("'%s' does not have a role on any profile but"
+                    " we cannot grant one implicitely because we have"
+                    " multiple role description that permits it. Ambiguous.",
+                    request.user)
+        except organization_model.DoesNotExist:
+            LOGGER.debug("'%s' does not have a role on any profile but"
+                " we cannot grant one implicitely because there is"
+                " no profiles with @%s e-mail domain.",
+                request.user, domain)
+        except organization_model.MultipleObjectsReturned:
+            LOGGER.debug("'%s' does not have a role on any profile but"
+                " we cannot grant one implicitely because @%s is"
+                " ambiguous. Multiple profiles share that email domain.",
+                request.user, domain)
+
+    if role_model.objects.filter(
+            user=request.user, grant_key__isnull=False).exists():
+        # We have some invites pending so let's first stop
+        # by the user accessibles page.
+        redirect_to = reverse('saas_user_product_list', args=(request.user,))
+        if request.path != redirect_to:
+            # Prevents URL redirect loops
+            return redirect_to
+
     return False
 
 
@@ -422,7 +472,8 @@ def _fail_provider_only(request, organization=None, strength=NORMAL,
             except organization_model.DoesNotExist:
                 charge = get_object_or_404(Charge, processor_key=organization)
                 organization = charge.customer
-        candidates += list(organization_model.objects.providers_to(organization))
+        candidates += list(
+            organization_model.objects.providers_to(organization))
     return not _has_valid_access(request, candidates,
         strength=strength, roledescription=roledescription)
 
@@ -603,8 +654,9 @@ def requires_subscription(function=None,
     def decorator(view_func):
         @wraps(view_func, assigned=available_attrs(view_func))
         def _wrapped_view(request, *args, **kwargs):
-            subscriber = get_object_or_404(
-                organization_model, slug=kwargs.get(organization_kwarg_slug, None))
+            organization_model = get_organization_model()
+            subscriber = get_object_or_404(organization_model,
+                slug=kwargs.get(organization_kwarg_slug, None))
             if _fail_provider(request, organization=subscriber,
                     strength=strength, roledescription=roledescription):
                 raise PermissionDenied(_("%(auth)s is neither a manager"\
@@ -642,8 +694,8 @@ def requires_paid_subscription(function=None,
         @wraps(view_func, assigned=available_attrs(view_func))
         def _wrapped_view(request, *args, **kwargs):
             organization_model = get_organization_model()
-            subscriber = get_object_or_404(
-                organization_model, slug=kwargs.get(organization_kwarg_slug, None))
+            subscriber = get_object_or_404(organization_model,
+                slug=kwargs.get(organization_kwarg_slug, None))
             if _fail_provider(request, organization=subscriber,
                     strength=strength, roledescription=roledescription):
                 raise PermissionDenied(_("%(auth)s is neither a manager"\

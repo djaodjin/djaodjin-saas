@@ -1,4 +1,4 @@
-# Copyright (c) 2019, DjaoDjin inc.
+# Copyright (c) 2020, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -28,13 +28,14 @@ from django.conf import settings as django_settings
 from django.contrib.auth import get_user_model, logout as auth_logout
 from django.db import transaction, IntegrityError
 from django.utils.encoding import force_text
-from rest_framework import filters, parsers, status
+from rest_framework import parsers, status
 from rest_framework.generics import (CreateAPIView, ListAPIView,
-    ListCreateAPIView, RetrieveUpdateAPIView, RetrieveUpdateDestroyAPIView)
+    ListCreateAPIView, RetrieveUpdateDestroyAPIView)
 from rest_framework.response import Response
 
-from .serializers import (OrganizationCreateSerializer, OrganizationSerializer,
-    OrganizationWithSubscriptionsSerializer, UploadBlobSerializer)
+from .serializers import (OrganizationCreateSerializer,
+    OrganizationDetailSerializer, OrganizationWithSubscriptionsSerializer,
+    UploadBlobSerializer)
 from .. import settings, signals
 from ..decorators import _valid_manager
 from ..docs import swagger_auto_schema
@@ -163,6 +164,8 @@ class OrganizationDetailAPIView(OrganizationMixin, OrganizationQuerysetMixin,
     def put(self, request, *args, **kwargs):
         """
         Updates a billing profile
+
+        **Tags**: profile
 
         **Examples**
 
@@ -314,6 +317,8 @@ class OrganizationListAPIView(OrganizationSmartListMixin,
                               OrganizationQuerysetMixin,
                               OrganizationCreateMixin, ListCreateAPIView):
     """
+    List billing profiles
+
     Queries a page (``PAGE_SIZE`` records) of organization and user profiles.
 
     The queryset can be filtered for at least one field to match a search
@@ -350,7 +355,7 @@ class OrganizationListAPIView(OrganizationSmartListMixin,
             }]
         }
     """
-    serializer_class = OrganizationSerializer
+    serializer_class = OrganizationDetailSerializer
     user_model = get_user_model()
 
     @swagger_auto_schema(request_body=OrganizationCreateSerializer)
@@ -443,4 +448,4 @@ class SubscribersAPIView(OrganizationSmartListMixin,
             ]
         }
     """
-    serializer_class = OrganizationSerializer
+    serializer_class = OrganizationDetailSerializer
