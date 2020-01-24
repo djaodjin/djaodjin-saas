@@ -31,8 +31,10 @@ import logging, re
 
 from django import http
 from django.conf import settings as django_settings
+from django.contrib import messages
 from django.contrib.auth import REDIRECT_FIELD_NAME
 from django.db import IntegrityError, transaction
+from django.db.models import Q
 from django.http.request import split_domain_port, validate_host
 from django.shortcuts import get_object_or_404
 from django.utils import six
@@ -44,8 +46,8 @@ from django.views.generic.edit import FormMixin
 from .. import settings
 from ..compat import reverse, NoReverseMatch
 from ..decorators import fail_direct
-from ..models import CartItem, Plan, Organization, get_broker
-from ..utils import update_context_urls
+from ..models import CartItem, Plan, RoleDescription, get_broker
+from ..utils import get_organization_model, get_role_model, update_context_urls
 
 
 LOGGER = logging.getLogger(__name__)
@@ -177,6 +179,7 @@ class OrganizationRedirectView(TemplateResponseMixin, ContextMixin,
     to redirect to.
     """
 
+    organization_model = get_organization_model()
     template_name = 'saas/organization_redirects.html'
     slug_url_kwarg = 'organization'
     permanent = False
@@ -185,9 +188,14 @@ class OrganizationRedirectView(TemplateResponseMixin, ContextMixin,
     explicit_create_on_none = False
     query_string = True
 
+    def check_email_verified(self, request, user,
+                             redirect_field_name=REDIRECT_FIELD_NAME,
+                             next_url=None):
+        return True
+
     def create_organization_from_user(self, user):#pylint:disable=no-self-use
         with transaction.atomic():
-            organization = Organization.objects.create(
+            organization = self.organization_model.objects.create(
                 slug=user.username,
                 full_name=user.get_full_name(),
                 email=user.email)
@@ -198,8 +206,10 @@ class OrganizationRedirectView(TemplateResponseMixin, ContextMixin,
         return self.implicit_create_on_none
 
     def get(self, request, *args, **kwargs):
+        #pylint:disable=too-many-locals,too-many-statements
         session_cart_to_database(request)
-        accessibles = Organization.objects.accessible_by(request.user)
+        accessibles = self.organization_model.objects.accessible_by(
+            request.user)
         count = accessibles.count()
         try:
             next_url = self.get_redirect_url(*args, **kwargs)
@@ -211,6 +221,63 @@ class OrganizationRedirectView(TemplateResponseMixin, ContextMixin,
         else:
             create_url = reverse('saas_organization_create')
         if count == 0:
+            # We will attempt to assign the user to a profile.
+            # Find an organization with a matching e-mail domain.
+            role_model = get_role_model()
+            redirect_to = reverse('saas_user_product_list',
+                args=(request.user,))
+            domain = request.user.email.split('@')[-1].lower()
+            try:
+                organization = self.organization_model.objects.filter(
+                    email__endswith=domain).get()
+                # Find a RoleDescription we can implicitely grant to the user.
+                try:
+                    role_descr = RoleDescription.objects.filter(
+                        Q(organization__isnull=True) |
+                        Q(organization=organization),
+                        implicit_create_on_none=True).get()
+                    # Create a granted role implicitely, but only if the e-mail
+                    # was verified.
+                    if self.check_email_verified(request, request.user,
+                            next_url=next_url):
+                        organization.add_role(request.user, role_descr,
+                            request_user=request.user)
+                        messages.info(request, _("Based on your e-mail address"\
+                            " we have granted you a %(role_descr)s role on"\
+                            " %(organization)s. If you need extra permissions,"\
+                            " contact one of the profile managers for"\
+                            " %(organization)s: %(managers)s.") % {
+                            'role_descr': role_descr.title,
+                            'organization': organization.printable_name,
+                            'managers': ', '.join([user.get_full_name() for user
+                                in organization.with_role(settings.MANAGER)])})
+                    else:
+                        # We are redirecting because the e-mail must be verified
+                        messages.info(request, _("You need to verify"\
+                          " your e-mail address before going further. Please"\
+                          " click on the link in the e-mail we just sent you."))
+                    return http.HttpResponseRedirect(redirect_to)
+                except role_model.DoesNotExist:
+                    LOGGER.debug("'%s' does not have a role on any profile but"
+                        " we cannot grant one implicitely because there is"
+                        " no role description that permits it.",
+                        request.user)
+                except role_model.MultipleObjectsReturned:
+                    LOGGER.debug("'%s' does not have a role on any profile but"
+                      " we cannot grant one implicitely because we have"
+                      " multiple role description that permits it. Ambiguous.",
+                        request.user)
+            except self.organization_model.DoesNotExist:
+                LOGGER.debug("'%s' does not have a role on any profile but"
+                    " we cannot grant one implicitely because there is"
+                    " no profiles with @%s e-mail domain.",
+                    request.user, domain)
+            except self.organization_model.MultipleObjectsReturned:
+                LOGGER.debug("'%s' does not have a role on any profile but"
+                    " we cannot grant one implicitely because @%s is"
+                    " ambiguous. Multiple profiles share that email domain.",
+                    request.user, domain)
+
             if self.get_implicit_create_on_none():
                 try:
                     kwargs.update({self.slug_url_kwarg: str(
