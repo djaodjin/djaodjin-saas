@@ -182,14 +182,16 @@ def fail_active_roles(request):
     User with active roles only
     """
     role_model = get_role_model()
+    redirect_to = reverse('saas_user_product_list', args=(request.user,))
+    if request.path == redirect_to:
+        # Prevents URL redirect loops
+        return False
+
     if role_model.objects.filter(
             user=request.user, grant_key__isnull=False).exists():
         # We have some invites pending so let's first stop
         # by the user accessibles page.
-        redirect_to = reverse('saas_user_product_list', args=(request.user,))
-        if request.path != redirect_to:
-            # Prevents URL redirect loops
-            return redirect_to
+        return redirect_to
 
     return False
 

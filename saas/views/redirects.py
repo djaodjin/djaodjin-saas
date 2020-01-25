@@ -47,7 +47,8 @@ from .. import settings
 from ..compat import reverse, NoReverseMatch
 from ..decorators import fail_direct
 from ..models import CartItem, Plan, RoleDescription, get_broker
-from ..utils import get_organization_model, get_role_model, update_context_urls
+from ..utils import (get_organization_model, get_role_model,
+    update_context_urls, validate_redirect_url as validate_redirect_url_base)
 
 
 LOGGER = logging.getLogger(__name__)
@@ -132,30 +133,9 @@ class RedirectFormMixin(FormMixin):
         """
         Returns the next_url path if next_url matches allowed hosts.
         """
-        next_url = self.request.GET.get(REDIRECT_FIELD_NAME, None)
-        if not next_url:
-            return None
-        parts = six.moves.urllib.parse.urlparse(next_url)
-        if parts.netloc:
-            domain, _ = split_domain_port(parts.netloc)
-            allowed_hosts = (['*'] if django_settings.DEBUG
-                else django_settings.ALLOWED_HOSTS)
-            if not (domain and validate_host(domain, allowed_hosts)):
-                return None
-        path = parts.path
-        if sub:
-            try:
-                # We replace all ':slug/' by '%(slug)s/' so that we can further
-                # create an instantiated url through Python string expansion.
-                path = re.sub(r':(%s)/' % settings.ACCT_REGEX,
-                    r'%(\1)s/', path) % self.kwargs
-            except KeyError:
-                # We don't have all keys necessary. A safe defaults is to remove
-                # them. Most likely a redirect URL is present to pick between
-                # multiple choices.
-                path = re.sub(r'%(\S+)s/', '', path)
-        return six.moves.urllib.parse.urlunparse(("", "", path,
-            parts.params, parts.query, parts.fragment))
+        return validate_redirect_url_base(
+            self.request.GET.get(REDIRECT_FIELD_NAME, None),
+            sub=sub, **self.kwargs)
 
     def get_success_url(self):
         next_url = self.validate_redirect_url(sub=True)
@@ -240,8 +220,8 @@ class OrganizationRedirectView(TemplateResponseMixin, ContextMixin,
                     # was verified.
                     if self.check_email_verified(request, request.user,
                             next_url=next_url):
-                        organization.add_role(request.user, role_descr,
-                            request_user=request.user)
+                        organization.add_role_request(
+                            request.user, role_descr=role_descr)
                         messages.info(request, _("Based on your e-mail address"\
                             " we have granted you a %(role_descr)s role on"\
                             " %(organization)s. If you need extra permissions,"\

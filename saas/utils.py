@@ -1,4 +1,4 @@
-# Copyright (c) 2019, DjaoDjin inc.
+# Copyright (c) 2020, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -216,7 +216,7 @@ def utctimestamp_to_datetime(timestamp):
     return datetime_or_now(datetime.datetime.utcfromtimestamp(timestamp))
 
 
-def validate_redirect_url(next_url):
+def validate_redirect_url(next_url, sub=False, **kwargs):
     """
     Returns the next_url path if next_url matches allowed hosts.
     """
@@ -232,7 +232,21 @@ def validate_redirect_url(next_url):
             else django_settings.ALLOWED_HOSTS
         if not (domain and validate_host(domain, allowed_hosts)):
             return None
-    return parts.path
+    path = parts.path
+    if sub:
+        from . import settings
+        try:
+            # We replace all ':slug/' by '%(slug)s/' so that we can further
+            # create an instantiated url through Python string expansion.
+            path = re.sub(r':(%s)/' % settings.ACCT_REGEX,
+                r'%(\1)s/', path) % kwargs
+        except KeyError:
+            # We don't have all keys necessary. A safe defaults is to remove
+            # them. Most likely a redirect URL is present to pick between
+            # multiple choices.
+            path = re.sub(r':(%s)/' % settings.ACCT_REGEX, '', path)
+    return six.moves.urllib.parse.urlunparse(("", "", path,
+        parts.params, parts.query, parts.fragment))
 
 
 def update_db_row(instance, form):
