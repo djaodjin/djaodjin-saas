@@ -520,7 +520,7 @@ class Organization(models.Model):
         return force_insert
 
     def add_role_request(self, user, at_time=None, role_descr=None):
-        if not isinstance(role_descr, RoleDescription):
+        if role_descr and not isinstance(role_descr, RoleDescription):
             role_descr = self.get_role_description(role_descr)
         # OK to use ``filter`` in both subsequent queries as we are dealing
         # with the whole QuerySet related to a user.
@@ -530,7 +530,7 @@ class Organization(models.Model):
             # Otherwise a role already exists
             # or a request was previously sent.
             at_time = datetime_or_now(at_time)
-            if role_descr.implicit_create_on_none:
+            if role_descr and role_descr.implicit_create_on_none:
                 request_key = None
             else:
                 request_key = generate_random_slug()
