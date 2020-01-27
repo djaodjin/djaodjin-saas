@@ -50,6 +50,33 @@ class RoleImplicitGrantAcceptView(RedirectView):
     role_model = get_role_model()
     organization_model = get_organization_model()
 
+    def check_email_verified(self, request, user,
+                             redirect_field_name=REDIRECT_FIELD_NAME,
+                             next_url=None):
+        #pylint:disable=unused-argument,no-self-use
+        return True
+
+    def get_implicit_grant_response(self, next_url, role, *args, **kwargs):
+        if role:
+            organization = role.organization
+            role_descr = role.role_description
+            messages.info(self.request, _("Based on your e-mail address"\
+                " we have granted you a %(role_descr)s role on"\
+                " %(organization)s. If you need extra permissions,"\
+                " contact one of the profile managers for"\
+                " %(organization)s: %(managers)s.") % {
+                'role_descr': role_descr.title,
+                'organization': organization.printable_name,
+                'managers': ', '.join([user.get_full_name() for user
+                    in organization.with_role(settings.MANAGER)]).exclude(
+                        pk=self.request.user.pk)})
+        else:
+            messages.info(self.request, _("You need to verify"\
+                " your e-mail address before going further. Please"\
+                " click on the link in the e-mail we just sent you."\
+                " Thank you."))
+        return http.HttpResponseRedirect(next_url)
+
     def get_redirect_url(self, *args, **kwargs):
         # XXX copy/pasted from `RoleGrantAcceptView`
         redirect_path = validate_redirect_url(
@@ -61,12 +88,6 @@ class RoleImplicitGrantAcceptView(RedirectView):
             except NoReverseMatch: # Django==2.0
                 redirect_path = reverse('product_default_start')
         return redirect_path
-
-    def check_email_verified(self, request, user,
-                             redirect_field_name=REDIRECT_FIELD_NAME,
-                             next_url=None):
-        #pylint:disable=unused-argument,no-self-use
-        return True
 
     def get(self, request, *args, **kwargs):
         redirect_to = reverse('saas_user_product_list', args=(request.user,))
@@ -84,38 +105,38 @@ class RoleImplicitGrantAcceptView(RedirectView):
                     email__endswith=domain).get()
                 # Find a RoleDescription we can implicitely grant to the user.
                 try:
-                    role_descr = RoleDescription.objects.filter(
-                        Q(organization__isnull=True) |
-                        Q(organization=organization),
-                        implicit_create_on_none=True).get()
+                    if organization.get_roles().exists():
+                        role_descr = RoleDescription.objects.filter(
+                            Q(organization__isnull=True) |
+                            Q(organization=organization),
+                            implicit_create_on_none=True).get()
+                    else:
+                        # If this profile is not yet claimed by any user,
+                        # then we implicitely grant a manager role.
+                        role_descr = organization.get_role_description(
+                            settings.MANAGER)
                     # Create a granted role implicitely, but only if the e-mail
                     # was verified.
                     next_url = self.get_redirect_url(*args, **kwargs)
                     if self.check_email_verified(request, request.user,
                             next_url=next_url):
-                        organization.add_role_request(
+                        role = organization.add_role_request(
                             request.user, role_descr=role_descr)
-                        messages.info(request, _("Based on your e-mail address"\
-                            " we have granted you a %(role_descr)s role on"\
-                            " %(organization)s. If you need extra permissions,"\
-                            " contact one of the profile managers for"\
-                            " %(organization)s: %(managers)s.") % {
-                            'role_descr': role_descr.title,
-                            'organization': organization.printable_name,
-                            'managers': ', '.join([user.get_full_name() for user
-                                in organization.with_role(settings.MANAGER)])})
+                        if role.request_key:
+                            # We have done an implicit grant of a manager role.
+                            role.request_key = None
+                            role.save()
                         # We create a profile-qualified url after the role
                         # has been granted otherwise the redirect specified
                         # in the verification of e-mail will lead to a
                         # 403 permission denied.
                         kwargs.update({self.slug_url_kwarg: organization})
                         next_url = self.get_redirect_url(*args, **kwargs)
-                        return http.HttpResponseRedirect(next_url)
+                        return self.get_implicit_grant_response(
+                            next_url, role, *args, **kwargs)
                     # We are redirecting because the e-mail must be verified
-                    messages.info(request, _("You need to verify"\
-                        " your e-mail address before going further. Please"\
-                        " click on the link in the e-mail we just sent you."))
-                    # XXX special place to redirect to ???
+                    return self.get_implicit_grant_response(
+                        redirect_to, None, *args, **kwargs)
                 except self.role_model.DoesNotExist:
                     LOGGER.debug("'%s' does not have a role on any profile but"
                         " we cannot grant one implicitely because there is"
@@ -138,4 +159,3 @@ class RoleImplicitGrantAcceptView(RedirectView):
                     request.user, domain)
         # XXX This one must return to users/roles/!!!
         return http.HttpResponseRedirect(redirect_to)
-

@@ -467,13 +467,16 @@ class Organization(models.Model):
         return RoleDescription.objects.filter(
             Q(organization=self) | Q(organization__isnull=True)).order_by('pk')
 
-    def get_roles(self, role_descr):
-        if not isinstance(role_descr, RoleDescription):
-            role_descr = self.get_role_description(role_descr)
+    def get_roles(self, role_descr=None):
+        kwargs = {}
+        if role_descr:
+            if not isinstance(role_descr, RoleDescription):
+                role_descr = self.get_role_description(role_descr)
+            kwargs = {'role_description': role_descr}
         # OK to use ``filter`` here since we want to see all pending grants
         # and requests.
         return get_role_model().objects.db_manager(using=self._state.db).filter(
-            organization=self, role_description=role_descr)
+            organization=self, **kwargs)
 
     def add_role(self, user, role_descr,
                  grant_key=None, at_time=None, reason=None, extra=None,
