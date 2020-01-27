@@ -205,9 +205,15 @@ class OrganizationRedirectView(TemplateResponseMixin, ContextMixin,
         return self.implicit_create_on_none
 
     def get_redirect_url(self, *args, **kwargs):
-        # XXX kind of copy/pasted from `RoleGrantAcceptView`
-        return validate_redirect_url_base(
+        redirect_path = validate_redirect_url_base(
             self.request.GET.get(REDIRECT_FIELD_NAME, None), sub=True, **kwargs)
+        if not redirect_path:
+            try:
+                redirect_path = super(OrganizationRedirectView,
+                    self).get_redirect_url(*args, **kwargs)
+            except NoReverseMatch: # Django==2.0
+                redirect_path = None
+        return redirect_path
 
     def get(self, request, *args, **kwargs):
         #pylint:disable=too-many-locals,too-many-statements
