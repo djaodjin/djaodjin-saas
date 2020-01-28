@@ -42,7 +42,7 @@ from django.views.generic.base import ContextMixin, TemplateResponseMixin
 from django.views.generic.edit import FormMixin
 
 from .. import settings
-from ..compat import reverse
+from ..compat import reverse, NoReverseMatch
 from ..decorators import fail_direct
 from ..models import CartItem, Plan, RoleDescription, get_broker
 from ..utils import (get_organization_model, get_role_model,
@@ -262,12 +262,12 @@ class OrganizationRedirectView(TemplateResponseMixin, ContextMixin,
                     # We are redirecting because the e-mail must be verified
                     return self.get_implicit_grant_response(
                         redirect_to, None, *args, **kwargs)
-                except self.role_model.DoesNotExist:
+                except RoleDescription.DoesNotExist:
                     LOGGER.debug("'%s' does not have a role on any profile but"
                         " we cannot grant one implicitely because there is"
                         " no role description that permits it.",
                         request.user)
-                except self.role_model.MultipleObjectsReturned:
+                except RoleDescription.MultipleObjectsReturned:
                     LOGGER.debug("'%s' does not have a role on any profile but"
                       " we cannot grant one implicitely because we have"
                       " multiple role description that permits it. Ambiguous.",

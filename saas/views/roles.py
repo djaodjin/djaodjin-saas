@@ -137,12 +137,12 @@ class RoleImplicitGrantAcceptView(RedirectView):
                     # We are redirecting because the e-mail must be verified
                     return self.get_implicit_grant_response(
                         redirect_to, None, *args, **kwargs)
-                except self.role_model.DoesNotExist:
+                except RoleDescription.DoesNotExist:
                     LOGGER.debug("'%s' does not have a role on any profile but"
                         " we cannot grant one implicitely because there is"
                         " no role description that permits it.",
                         request.user)
-                except self.role_model.MultipleObjectsReturned:
+                except RoleDescription.MultipleObjectsReturned:
                     LOGGER.debug("'%s' does not have a role on any profile but"
                       " we cannot grant one implicitely because we have"
                       " multiple role description that permits it. Ambiguous.",
