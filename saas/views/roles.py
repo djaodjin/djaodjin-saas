@@ -27,7 +27,7 @@ import logging
 
 from django import http
 from django.contrib import messages
-from django.contrib.auth import REDIRECT_FIELD_NAME
+from django.contrib.auth import REDIRECT_FIELD_NAME, get_user_model
 from django.db.models import Q
 from django.utils.translation import ugettext_lazy as _
 from django.views.generic.base import RedirectView
@@ -48,6 +48,7 @@ class RoleImplicitGrantAcceptView(RedirectView):
     permanent = False
     slug_url_kwarg = 'organization'
     role_model = get_role_model()
+    user_model = get_user_model()
     organization_model = get_organization_model()
 
     def check_email_verified(self, request, user,
@@ -77,6 +78,33 @@ class RoleImplicitGrantAcceptView(RedirectView):
                 " Thank you."))
         return http.HttpResponseRedirect(next_url)
 
+    def get_natural_profile(self, request):
+        """
+        Returns an `Organization` which a user with `email` is naturally
+        connected with (ex: same domain).
+        """
+        email_parts = request.user.email.lower().split('@')
+        domain = email_parts[-1]
+        bypass_domain = settings.BYPASS_IMPLICIT_GRANT.get('domain')
+        bypass_slug = settings.BYPASS_IMPLICIT_GRANT.get('slug')
+        LOGGER.debug("attempts bypass with domain %s and slug %s",
+            bypass_domain, bypass_slug)
+        if bypass_domain and domain == bypass_domain:
+            try:
+                user = self.user_model.objects.filter(
+                    username=email_parts[0]).get()
+            except self.user_model.DoesNotExist:
+                user = request.user
+            organization = self.organization_model.objects.filter(
+                slug=bypass_slug).get()
+            LOGGER.debug("bypass implicit grant for %s with user %s: %s",
+                request.user, user, organization)
+        else:
+            user = request.user
+            organization = self.organization_model.objects.filter(
+                email__endswith=domain).get()
+        return user, organization
+
     def get_redirect_url(self, *args, **kwargs):
         # XXX copy/pasted from `RoleGrantAcceptView`
         redirect_path = validate_redirect_url(
@@ -101,8 +129,7 @@ class RoleImplicitGrantAcceptView(RedirectView):
             # XXX copy/pasted from `OrganizationRedirectView`
             domain = request.user.email.split('@')[-1].lower()
             try:
-                organization = self.organization_model.objects.filter(
-                    email__endswith=domain).get()
+                user, organization = self.get_natural_profile(request)
                 # Find a RoleDescription we can implicitely grant to the user.
                 try:
                     if organization.get_roles().exists():
@@ -118,10 +145,10 @@ class RoleImplicitGrantAcceptView(RedirectView):
                     # Create a granted role implicitely, but only if the e-mail
                     # was verified.
                     next_url = self.get_redirect_url(*args, **kwargs)
-                    if self.check_email_verified(request, request.user,
+                    if self.check_email_verified(request, user,
                             next_url=next_url):
                         role = organization.add_role_request(
-                            request.user, role_descr=role_descr)
+                            user, role_descr=role_descr)
                         if role.request_key:
                             # We have done an implicit grant of a manager role.
                             role.request_key = None
@@ -141,12 +168,12 @@ class RoleImplicitGrantAcceptView(RedirectView):
                     LOGGER.debug("'%s' does not have a role on any profile but"
                         " we cannot grant one implicitely because there is"
                         " no role description that permits it.",
-                        request.user)
+                        user)
                 except RoleDescription.MultipleObjectsReturned:
                     LOGGER.debug("'%s' does not have a role on any profile but"
                       " we cannot grant one implicitely because we have"
                       " multiple role description that permits it. Ambiguous.",
-                        request.user)
+                        user)
             except self.organization_model.DoesNotExist:
                 LOGGER.debug("'%s' does not have a role on any profile but"
                     " we cannot grant one implicitely because there is"

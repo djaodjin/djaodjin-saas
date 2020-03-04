@@ -105,6 +105,20 @@ def import_transactions(filedesc, create_organizations=False, broker=None,
                 orig_organization, orig_account, orig_amount, orig_unit \
                     = parse_line(line, create_organizations,
                         broker=broker, using=using)
+                if dest_amount < 0:
+                    # Opening balances are shown as negative amounts
+                    tmp_organization = dest_organization
+                    tmp_account = dest_account
+                    tmp_amount = dest_amount
+                    tmp_unit = dest_unit
+                    dest_organization = orig_organization
+                    dest_account = orig_account
+                    dest_amount = orig_amount
+                    dest_unit = orig_unit
+                    orig_organization = tmp_organization
+                    orig_account = tmp_account
+                    orig_amount = tmp_amount
+                    orig_unit = tmp_unit
                 if dest_unit != 'usd' and orig_unit == 'usd':
                     dest_amount = - orig_amount
                     dest_unit = orig_unit

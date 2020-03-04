@@ -32,7 +32,7 @@ import logging
 from django import http
 from django.conf import settings as django_settings
 from django.contrib import messages
-from django.contrib.auth import REDIRECT_FIELD_NAME
+from django.contrib.auth import REDIRECT_FIELD_NAME, get_user_model
 from django.db import IntegrityError, transaction
 from django.db.models import Q
 from django.shortcuts import get_object_or_404
@@ -159,6 +159,7 @@ class OrganizationRedirectView(TemplateResponseMixin, ContextMixin,
 
     organization_model = get_organization_model()
     role_model = get_role_model()
+    user_model = get_user_model()
     template_name = 'saas/organization_redirects.html'
     slug_url_kwarg = 'organization'
     permanent = False
@@ -171,6 +172,18 @@ class OrganizationRedirectView(TemplateResponseMixin, ContextMixin,
                              redirect_field_name=REDIRECT_FIELD_NAME,
                              next_url=None):
         return True
+
+    def create_organization_from_user(self, user):#pylint:disable=no-self-use
+        with transaction.atomic():
+            organization = self.organization_model.objects.create(
+                slug=user.username,
+                full_name=user.get_full_name(),
+                email=user.email)
+            organization.add_manager(user)
+        return organization
+
+    def get_implicit_create_on_none(self):
+        return self.implicit_create_on_none
 
     def get_implicit_grant_response(self, next_url, role, *args, **kwargs):
         if role:
@@ -192,17 +205,32 @@ class OrganizationRedirectView(TemplateResponseMixin, ContextMixin,
                 " Thank you."))
         return http.HttpResponseRedirect(next_url)
 
-    def create_organization_from_user(self, user):#pylint:disable=no-self-use
-        with transaction.atomic():
-            organization = self.organization_model.objects.create(
-                slug=user.username,
-                full_name=user.get_full_name(),
-                email=user.email)
-            organization.add_manager(user)
-        return organization
-
-    def get_implicit_create_on_none(self):
-        return self.implicit_create_on_none
+    def get_natural_profile(self, request):
+        """
+        Returns an `Organization` which a user with `email` is naturally
+        connected with (ex: same domain).
+        """
+        email_parts = request.user.email.lower().split('@')
+        domain = email_parts[-1]
+        bypass_domain = settings.BYPASS_IMPLICIT_GRANT.get('domain')
+        bypass_slug = settings.BYPASS_IMPLICIT_GRANT.get('slug')
+        LOGGER.debug("attempts bypass with domain %s and slug %s",
+            bypass_domain, bypass_slug)
+        if bypass_domain and domain == bypass_domain:
+            try:
+                user = self.user_model.objects.filter(
+                    username=email_parts[0]).get()
+            except self.user_model.DoesNotExist:
+                user = request.user
+            organization = self.organization_model.objects.filter(
+                slug=bypass_slug).get()
+            LOGGER.debug("bypass implicit grant for %s with user %s: %s",
+                request.user, user, organization)
+        else:
+            user = request.user
+            organization = self.organization_model.objects.filter(
+                email__endswith=domain).get()
+        return user, organization
 
     def get_redirect_url(self, *args, **kwargs):
         redirect_path = validate_redirect_url_base(
@@ -236,8 +264,7 @@ class OrganizationRedirectView(TemplateResponseMixin, ContextMixin,
             # Find an organization with a matching e-mail domain.
             domain = request.user.email.split('@')[-1].lower()
             try:
-                organization = self.organization_model.objects.filter(
-                    email__endswith=domain).get()
+                user, organization = self.get_natural_profile(request)
                 # Find a RoleDescription we can implicitely grant to the user.
                 try:
                     role_descr = RoleDescription.objects.filter(
@@ -247,10 +274,10 @@ class OrganizationRedirectView(TemplateResponseMixin, ContextMixin,
                     # Create a granted role implicitely, but only if the e-mail
                     # was verified.
                     next_url = self.get_redirect_url(*args, **kwargs)
-                    if self.check_email_verified(request, request.user,
+                    if self.check_email_verified(request, user,
                             next_url=next_url):
                         role = organization.add_role_request(
-                            request.user, role_descr=role_descr)
+                            user, role_descr=role_descr)
                         # We create a profile-qualified url after the role
                         # has been granted otherwise the redirect specified
                         # in the verification of e-mail will lead to a
@@ -266,12 +293,12 @@ class OrganizationRedirectView(TemplateResponseMixin, ContextMixin,
                     LOGGER.debug("'%s' does not have a role on any profile but"
                         " we cannot grant one implicitely because there is"
                         " no role description that permits it.",
-                        request.user)
+                        user)
                 except RoleDescription.MultipleObjectsReturned:
                     LOGGER.debug("'%s' does not have a role on any profile but"
                       " we cannot grant one implicitely because we have"
                       " multiple role description that permits it. Ambiguous.",
-                        request.user)
+                        user)
             except self.organization_model.DoesNotExist:
                 LOGGER.debug("'%s' does not have a role on any profile but"
                     " we cannot grant one implicitely because there is"
