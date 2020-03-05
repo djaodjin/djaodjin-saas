@@ -11,7 +11,7 @@
         <legend>Amount to transfer</legend>
         <div>
          <label for="id_amount">Amount (in $):</label>
-         <input id="id_amount" name="amount" step="any" type="number" value="0">
+         {{form.amount}}
         </div>
       </fieldset>
       <button type="submit">{% if form.submit_title %}{{form.submit_title}}{% else %}Submit{% endif %}</button>
