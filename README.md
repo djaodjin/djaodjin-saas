@@ -96,11 +96,9 @@ saas/templates/notification/ directory.
 Release Notes
 =============
 
-0.8.3
+0.8.4
 
-  * adds implicit role to user when none exists
-  * uses class name instead of HTML node indexes as hooks in checkout pages
-  * uses consistent balance_amount/balance_unit accross APIs
-  * replaces django-urldecorators by djaodjin-rules in testsite
+  * claims organization with no roles based on e-mail address
+  * fixes implicit role grants
 
 [previous release notes](changelog)
