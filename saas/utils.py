@@ -320,12 +320,13 @@ def handle_uniq_error(err, renames=None):
     raise err
 
 
-def get_picture_storage():
+def get_picture_storage(request, account=None, **kwargs):
     # delayed import so we can load ``OrganizationMixinBase`` in django.conf
     from . import settings
     if settings.PICTURE_STORAGE_CALLABLE:
         try:
-            return import_string(settings.PICTURE_STORAGE_CALLABLE)()
+            return import_string(settings.PICTURE_STORAGE_CALLABLE)(
+                request, account=account, **kwargs)
         except ImportError:
             pass
     return default_storage
