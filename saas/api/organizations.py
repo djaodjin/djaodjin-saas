@@ -45,6 +45,9 @@ from ..models import get_broker
 from ..utils import (full_name_natural_split, get_organization_model,
     get_role_model, handle_uniq_error, get_picture_storage)
 
+#pylint:disable=no-name-in-module,import-error
+from django.utils.six.moves.urllib.parse import urlparse, urlunparse
+
 
 #pylint: disable=no-init
 class OrganizationCreateMixin(object):
@@ -305,9 +308,17 @@ class OrganizationPictureAPIView(OrganizationMixin, CreateAPIView):
         ext = parts[-1].lower() if len(parts) > 1 else ""
         key_name = "%s%s" % (
             hashlib.sha256(uploaded_file.read()).hexdigest(), ext)
-        default_storage = get_picture_storage()
-        location = self.request.build_absolute_uri(default_storage.url(
-            default_storage.save(key_name, uploaded_file)))
+        default_storage = get_picture_storage(request)
+
+        location = default_storage.url(
+            default_storage.save(key_name, uploaded_file))
+        # We are removing the query parameters, as they contain
+        # signature information, not the relevant URL location.
+        parts = urlparse(location)
+        location = urlunparse((parts.scheme, parts.netloc, parts.path,
+            "", "", ""))
+        location = self.request.build_absolute_uri(location)
+
         self.organization.picture = location
         self.organization.save()
         return Response({'location': location}, status=status.HTTP_201_CREATED)
