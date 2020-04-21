@@ -28,6 +28,7 @@ from django.views.generic import RedirectView
 from ..settings import ACCT_REGEX
 from ..views import (OrganizationRedirectView, ProviderRedirectView,
     UserRedirectView)
+from ..views.profile import OrganizationCreateView
 
 
 urlpatterns = [
@@ -95,6 +96,8 @@ urlpatterns = [
     url(r'^billing/$',
         OrganizationRedirectView.as_view(pattern_name='saas_billing_info'),
         name='saas_billing_base'),
+    url(r'^profile/new/', OrganizationCreateView.as_view(),
+        name='saas_organization_create'),
     url(r'^profile/(?P<organization>%s)/$' % ACCT_REGEX,
         RedirectView.as_view(permanent=False,
             pattern_name='saas_organization_profile'),

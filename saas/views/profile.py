@@ -1,4 +1,4 @@
-# Copyright (c) 2019, DjaoDjin inc.
+# Copyright (c) 2020, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -24,17 +24,19 @@
 """
 Manage Profile information
 """
+import logging
 
+from django import http
 from django.contrib import messages
-from django.db import transaction
-from django.http import HttpResponseRedirect
+from django.contrib.auth import REDIRECT_FIELD_NAME
+from django.db import IntegrityError, transaction
 from django.views.generic import (CreateView, DetailView, ListView,
     TemplateView, UpdateView)
 from django.utils.decorators import method_decorator
 
 from . import RedirectFormMixin
 from .. import settings, signals
-from ..compat import reverse
+from ..compat import reverse, NoReverseMatch
 from ..decorators import _valid_manager
 from ..forms import (OrganizationForm, OrganizationCreateForm,
     ManagerAndOrganizationForm)
@@ -42,7 +44,10 @@ from ..mixins import (OrganizationMixin, ProviderMixin, RoleDescriptionMixin,
     PlanMixin)
 from ..models import Plan, Subscription, get_broker
 from ..utils import (get_organization_model, is_broker, update_context_urls,
-    update_db_row)
+    update_db_row, validate_redirect_url as validate_redirect_url_base)
+
+
+LOGGER = logging.getLogger(__name__)
 
 
 class RoleDetailView(RoleDescriptionMixin, TemplateView):
@@ -239,9 +244,23 @@ class OrganizationCreateView(RedirectFormMixin, CreateView):
     """
 
     model = get_organization_model()
+    organization_model = get_organization_model()
     form_class = OrganizationCreateForm
     pattern_name = 'saas_organization_cart'
     template_name = "saas/profile/new.html"
+    implicit_create_on_none = False
+
+    def create_organization_from_user(self, user):#pylint:disable=no-self-use
+        with transaction.atomic():
+            organization = self.organization_model.objects.create(
+                slug=user.username,
+                full_name=user.get_full_name(),
+                email=user.email)
+            organization.add_manager(user)
+        return organization
+
+    def get_implicit_create_on_none(self):
+        return self.implicit_create_on_none
 
     def form_valid(self, form):
         with transaction.atomic():
@@ -251,7 +270,7 @@ class OrganizationCreateView(RedirectFormMixin, CreateView):
                 # the newly created Organization will be accessible anyway.
                 self.object.add_manager(
                     self.request.user, request_user=self.request.user)
-        return HttpResponseRedirect(self.get_success_url())
+        return http.HttpResponseRedirect(self.get_success_url())
 
     def get_initial(self):
         kwargs = super(OrganizationCreateView, self).get_initial()
@@ -260,10 +279,37 @@ class OrganizationCreateView(RedirectFormMixin, CreateView):
                        'email': self.request.user.email})
         return kwargs
 
+    def get_redirect_url(self, *args, **kwargs):
+        #pylint:disable=unused-argument
+        redirect_path = validate_redirect_url_base(
+            self.request.GET.get(REDIRECT_FIELD_NAME, None), sub=True, **kwargs)
+        if not redirect_path:
+            try:
+                redirect_path = reverse(self.pattern_name, args=(self.object,))
+            except NoReverseMatch: # Django==2.0
+                redirect_path = None
+        return redirect_path
+
     def get_success_url(self):
         self.kwargs.update({'organization': self.object})
-        self.success_url = reverse(self.pattern_name, args=(self.object,))
-        return super(OrganizationCreateView, self).get_success_url()
+        success_url = self.get_redirect_url(*self.args, **self.kwargs)
+        return str(success_url)
+
+    def get(self, request, *args, **kwargs):
+        accessibles = self.organization_model.objects.accessible_by(
+            request.user)
+        count = accessibles.count()
+        if count == 0:
+            if self.get_implicit_create_on_none():
+                try:
+                    self.object = self.create_organization_from_user(
+                        request.user)
+                    return http.HttpResponseRedirect(self.get_success_url())
+                except IntegrityError:
+                    LOGGER.warning("tried to implicitely create"\
+                        " an organization that already exists.",
+                        extra={'request': request})
+        return super(OrganizationCreateView, self).get(request, *args, **kwargs)
 
 
 class DashboardView(OrganizationMixin, DetailView):
@@ -356,7 +402,7 @@ class OrganizationProfileView(OrganizationMixin, UpdateView):
         signals.organization_updated.send(sender=__name__,
                 organization=self.object, changes=changes,
                 user=self.request.user)
-        return HttpResponseRedirect(self.get_success_url())
+        return http.HttpResponseRedirect(self.get_success_url())
 
     def get_form_class(self):
         if self.object.attached_user():
