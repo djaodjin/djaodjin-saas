@@ -66,47 +66,65 @@ def session_cart_to_database(request):
                 cart_item.save()
     if 'cart_items' in request.session:
         with transaction.atomic():
+            cart_items = CartItem.objects.get_cart(
+                user=request.user).select_related('plan').order_by(
+                'plan', 'full_name', 'email', 'sync_on')
             for item in request.session['cart_items']:
+                plan_slug = item.get('plan')
+                if not plan_slug:
+                    continue
                 coupon = item.get('coupon', None)
                 option = item.get('option', 0)
                 full_name = item.get('full_name', '')
                 sync_on = item.get('sync_on', '')
                 email = item.get('email', '')
-                # We use ``filter(...).first()`` instead of ``get_or_create()``
-                # here just in case the database is inconsistent and multiple
-                # ``CartItem`` are already present.
-                cart_item = CartItem.objects.get_cart(
-                    user=request.user, plan__slug=item['plan']).filter(
-                    full_name=full_name, email=email, sync_on=sync_on).first()
+                # Merging items in the request session
+                # with items in the database.
+                candidate = None
+                for cart_item in cart_items:
+                    if plan_slug != cart_item.plan.slug:
+                        continue
+                    if (full_name and (not cart_item.full_name or
+                        full_name != cart_item.full_name)):
+                        continue
+                    if (email and (not cart_item.email or
+                        email != cart_item.email)):
+                        continue
+                    if (sync_on and (not cart_item.sync_on or
+                        sync_on != cart_item.sync_on)):
+                        continue
+                    # We found a `CartItem` in the database that was can be
+                    # further constrained by the cookie session item.
+                    candidate = cart_item
+                    break
                 # if the item is already in the cart, it is OK to forget about
                 # any additional count of it. We are just going to constraint
                 # the available one further.
-                if cart_item:
+                if candidate:
                     updated = False
-                    if coupon and not cart_item.coupon:
-                        cart_item.coupon = coupon
+                    if coupon and not candidate.coupon:
+                        candidate.coupon = coupon
                         updated = True
-                    if option and not cart_item.option:
-                        cart_item.option = option
+                    if option and not candidate.option:
+                        candidate.option = option
                         updated = True
-                    if full_name and not cart_item.full_name:
-                        cart_item.full_name = full_name
+                    if full_name and not candidate.full_name:
+                        candidate.full_name = full_name
                         updated = True
-                    if sync_on and not cart_item.sync_on:
-                        cart_item.sync_on = sync_on
+                    if sync_on and not candidate.sync_on:
+                        candidate.sync_on = sync_on
                         updated = True
-                    if email and not cart_item.email:
-                        cart_item.email = email
+                    if email and not candidate.email:
+                        candidate.email = email
                         updated = True
                     if updated:
-                        cart_item.save()
+                        candidate.save()
                 else:
-                    plan = get_object_or_404(Plan, slug=item['plan'])
+                    plan = get_object_or_404(Plan, slug=plan_slug)
                     CartItem.objects.create(
                         user=request.user, plan=plan,
-                        full_name=full_name, email=email,
-                        sync_on=sync_on, coupon=coupon,
-                        option=option)
+                        full_name=full_name, email=email, sync_on=sync_on,
+                        coupon=coupon, option=option)
             del request.session['cart_items']
     redeemed = request.session.get('redeemed', None)
     if redeemed:
