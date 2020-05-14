@@ -639,7 +639,9 @@ class RoleDescriptionSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = RoleDescription
-        fields = ('created_at', 'title', 'slug', 'is_global', 'organization')
+        fields = ('created_at', 'slug', 'title',
+                  'skip_optin_on_grant', 'implicit_create_on_none',
+                  'is_global', 'organization', 'extra')
         read_only_fields = ('created_at', 'slug', 'is_global')
 
 
