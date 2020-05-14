@@ -538,7 +538,7 @@ var paginationMixin = {
             params: {
                 page: 1,
             },
-            itemsPerPage: djaodjinSettings.itemsPerPage,
+            itemsPerPage: this.$itemsPerPage,
             getCompleteCb: 'getCompleted',
             getBeforeCb: 'resetPage',
             qsCache: null,
@@ -604,9 +604,9 @@ var paginationMixin = {
 
 var sortableMixin = {
     data: function(){
-        var defaultDir = djaodjinSettings.sortDirection || 'desc';
+        var defaultDir = this.$sortDirection || 'desc';
         var dir = (defaultDir === 'desc') ? DESC_SORT_PRE : '';
-        var o = djaodjinSettings.sortByField || 'created_at';
+        var o = this.$sortByField || 'created_at';
         return {
             params: {
                 o: dir + o,
@@ -697,19 +697,19 @@ var sortableMixin = {
 
 
 var itemListMixin = {
-    data: function(){
-        return this.getInitData();
-    },
     mixins: [
         httpRequestMixin,
         paginationMixin,
         filterableMixin,
         sortableMixin
     ],
+    data: function(){
+        return this.getInitData();
+    },
     methods: {
         getInitData: function(){
             var data = {
-                url: '',
+                url: null,
                 itemsLoaded: false,
                 items: {
                     results: [],
@@ -721,18 +721,20 @@ var itemListMixin = {
                     // as oppossed to `moment` or `Date` objects because this
                     // is how uiv-date-picker will update them.
                     start_at: null,
-                    ends_at: null
+                    ends_at: null,
+                    // The timezone for both start_at and ends_at.
+                    timezone: 'local'
                 },
                 getCb: null,
                 getCompleteCb: null,
                 getBeforeCb: null,
             }
-            if( djaodjinSettings.date_range ) {
-                if( djaodjinSettings.date_range.start_at ) {
+            if( this.$dateRange ) {
+                if( this.$dateRange.start_at ) {
                     data.params['start_at'] = moment(
-                        djaodjinSettings.date_range.start_at).format(DATE_FORMAT);
+                        this.$dateRange.start_at).format(DATE_FORMAT);
                 }
-                if( djaodjinSettings.date_range.ends_at ) {
+                if( this.$dateRange.ends_at ) {
                     // uiv-date-picker will expect ends_at as a String
                     // but DATE_FORMAT will literally cut the hour part,
                     // regardless of timezone. We don't want an empty list
@@ -740,7 +742,10 @@ var itemListMixin = {
                     // If we use moment `endOfDay` we get 23:59:59 so we
                     // add a full day instead.
                     data.params['ends_at'] = moment(
-                        djaodjinSettings.date_range.ends_at).add(1,'days').format(DATE_FORMAT);
+                        this.$dateRange.ends_at).add(1,'days').format(DATE_FORMAT);
+                }
+                if( this.$dateRange.timezone ) {
+                    data.params['timezone'] = this.$dateRange.timezone;
                 }
             }
             return data;

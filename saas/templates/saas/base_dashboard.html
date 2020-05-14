@@ -2,31 +2,22 @@
 
 {% block saas_bodyscripts %}
 {% if VUEJS %}
-<script type="text/javascript">
-var djaodjinSettings = {
-    urls: {% if urls %}{{urls|to_json}}{% else %}{}{% endif %},
-    itemsPerPage: {% if items_per_page %}{{items_per_page}}{% else %}25{% endif %},
-    tables: {% if tables %}{{tables|safe}}{% else %}{}{% endif %}, // XXX
-    {% if start_at or ends_at %}
-    date_range: {
-      start_at: "{% if start_at %}{{start_at|isoformat}}{% endif %}",
-      ends_at: "{% if ends_at %}{{ends_at|isoformat}}{% endif %}"
-    },
-    {% endif %}
-    user: {
-      username: "{{request.user.username}}",
-      slug: "{{request.user.username}}",
-      first_name: "{{request.user.first_name}}",
-      last_name: "{{request.user.last_name}}"
-    },
-{% if STRIPE_PUB_KEY %}
-    stripePubKey: "{{ STRIPE_PUB_KEY }}",
-{% endif %}
-    bulkBuyer: {% if is_bulk_buyer %}true{% else %}false{% endif %},
-    csrf: "{{csrf_token}}",
-};
-</script>
 <script type="text/javascript" charset="utf-8" src="/static/vendor/vue.js"></script>
+<script type="text/javascript">
+Vue.prototype.$itemsPerPage =
+    {% if items_per_page %}{{items_per_page}}{% else %}25{% endif %};
+//Vue.prototype.$sortDirection = ;
+//Vue.prototype.$sortByField = ;
+Vue.prototype.$dateRange = {
+    start_at: "{% if start_at %}{{start_at|isoformat}}{% endif %}",
+    ends_at: "{% if ends_at %}{{ends_at|isoformat}}{% endif %}"
+};
+Vue.prototype.$urls = {% if urls %}{{urls|to_json}}{% else %}{}{% endif %};
+{% if STRIPE_PUB_KEY %}
+Vue.prototype.$stripePubKey = "{{ STRIPE_PUB_KEY }}";
+{% endif %}
+Vue.prototype.$tables = {% if tables %}{{tables|safe}}{% else %}{}{% endif %};
+</script>
 <script type="text/javascript" charset="utf-8" src="/static/vendor/vue2-filters.js"></script>
 <script type="text/javascript" charset="utf-8" src="/static/vendor/vue-croppa.min.js"></script>
 <script type="text/javascript" charset="utf-8" src="/static/js/djaodjin-resources-vue.js"></script>

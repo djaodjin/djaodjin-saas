@@ -1,136 +1,135 @@
 {% extends "saas/base.html" %}
 
 {% block saas_content %}
-<checkout inline-template id="checkout-container">
+<checkout inline-template id="checkout-container" :isBulkBuyer="{% if is_bulk_buyer %}true{% else %}false{% endif %}">
   <div>
-        <form @submit.prevent="redeem">
-            <input name="code" type="text" placeholder="Coupon code" v-model="coupon">
-            <button type="submit" class="submit-code">Redeem</button>
-        </form>
-        <form @submit.prevent="saveChanges">
-            <table>
+    <form @submit.prevent="redeem">
+      <input name="code" type="text" placeholder="Coupon code" v-model="coupon">
+      <button type="submit" class="submit-code">Redeem</button>
+    </form>
+    <form @submit.prevent="saveChanges">
+      <table>
+        <tbody>
+          <tr v-for="(item, itemIndex) in items.results">
+            <td>
+              <em>[[item.subscription.plan.title]] from
+                [[item.subscription.plan.organization]]</em>
+              <button type="button" @click="remove(item.subscription.plan.slug)">delete</button>
+              <table>
                 <tbody>
-                    <tr v-for="(item, itemIndex) in items.results">
-                        <td>
-                            <em>[[item.subscription.plan.title]] from
-                          [[item.subscription.plan.organization]]</em>
-                            <button type="button" @click="remove(item.subscription.plan.slug)">delete</button>
-                            <table>
-                                <tbody>
-                                    <tr v-for="line in item.lines" class="invoice-item">
-                                        <td></td>
-                                        <td>[[line.amount]]</td>
-                                        <td v-html="line.description"></td>
-                                    </tr>
-                                    <tr v-show="optionsConfirmed">
-                                        <td></td>
-                                        <td>[[activeOption(item).amount]]</td>
-                                        <td v-html="activeOption(item).description"></td>
-                                    </tr>
-                                    <tr v-for="(option, index) in item.options" v-show="!optionsConfirmed">
-                                        <td><input type="radio" @change="optionSelected(item.subscription.plan.slug, index + 1)" :checked="isOptionSelected(item.subscription.plan.slug, index + 1)"></input></td>
-                                        <td>[[option.amount]]</td>
-                                        <td v-html="option.description"></td>
-                                    </tr>
-                                    <tr class="seat" v-show="optionsConfirmed && !seatsConfirmed && isLastUserPlan(itemIndex)">
-                                      <td colspan="3">
-                                        <input type="text" v-model="planUser(item.subscription.plan.slug).firstName" placeholder="First Name" />
-                                        <input type="text" v-model="planUser(item.subscription.plan.slug).lastName" placeholder="Last Name" />
-                                        <input type="text" v-model="planUser(item.subscription.plan.slug).email" placeholder="Email" />
-                                        <button @click.prevent="addPlanUser(item.subscription.plan.slug)" type="button">Add</button>
-                                        <div>
-                                            <label>Upload CSV:</label>
-                                            <input @change="fileChanged(item.subscription.plan.slug, $event)" type="file" />
-                                            <button type="button" @click="bulkImport(item.subscription.plan.slug)">Upload</button>
-                                        </div>
-                                      </td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </td>
-                    </tr>
-                    <tfoot>
-                        <tr>
-                            <th class="total-amount">[[linesPrice[0] | currency($options.filters.currencyToSymbol(linesPrice[1]))]]</th>
-                            <th>Charged Today</th>
-                        </tr>
-                    </tfoot>
+                  <tr v-for="line in item.lines" class="invoice-item">
+                    <td></td>
+                    <td>[[line.amount]]</td>
+                    <td v-html="line.description"></td>
+                  </tr>
+                  <tr v-show="optionsConfirmed">
+                    <td></td>
+                    <td>[[activeOption(item).amount]]</td>
+                    <td v-html="activeOption(item).description"></td>
+                  </tr>
+                  <tr v-for="(option, index) in item.options" v-show="!optionsConfirmed">
+                    <td><input type="radio" @change="optionSelected(item.subscription.plan.slug, index + 1)" :checked="isOptionSelected(item.subscription.plan.slug, index + 1)"></input></td>
+                    <td>[[option.amount]]</td>
+                    <td v-html="option.description"></td>
+                  </tr>
+                  <tr class="seat" v-show="optionsConfirmed && !seatsConfirmed && isLastUserPlan(itemIndex)">
+                    <td colspan="3">
+                      <input type="text" v-model="planUser(item.subscription.plan.slug).firstName" placeholder="First Name" />
+                      <input type="text" v-model="planUser(item.subscription.plan.slug).lastName" placeholder="Last Name" />
+                      <input type="text" v-model="planUser(item.subscription.plan.slug).email" placeholder="Email" />
+                      <button @click.prevent="addPlanUser(item.subscription.plan.slug)" type="button">Add</button>
+                      <div>
+                        <label>Upload CSV:</label>
+                        <input @change="fileChanged(item.subscription.plan.slug, $event)" type="file" />
+                        <button type="button" @click="bulkImport(item.subscription.plan.slug)">Upload</button>
+                      </div>
+                    </td>
+                  </tr>
                 </tbody>
-            </table>
-            <button v-show="!seatsConfirmed" type="submit">next &raquo;</button>
-        </form>
-        <div v-show="seatsConfirmed">
-            <fieldset>
-                <legend>Credit Card Information</legend>
-                <div v-show="haveCardData" v-cloak>
-                    <a href="{{urls.organization.update_card}}">Update</a>
-                    <div>
-                        <dl>
-                              <dt>card</dt>
-                              <dd>[[savedCard.last4]]</dd>
-                        </dl>
-                        <dl>
-                              <dt>expires</dt>
-                              <dd>[[savedCard.exp_date]]</dd>
-                        </dl>
-                    </div>
-                </div>
-                <div v-show="!haveCardData" v-cloak>
-                  <!-- BE CAREFULL: Do not add name="" to these <input> nodes, else
-                       values will hit the server and break PCI compliance. -->
-                  <div :class="inputClass('cardNumber')">
-                        <label for="card-number">Card Number</label>
-                        <input id="card-number" v-model="cardNumber"
-                               type="text" size="16" placeholder="Card number"
-                               autocomplete="off" />
-                  </div>
-                  <div :class="inputClass('cardExp')">
-                        <label>Expiration</label>
-                        <input v-model="cardExpMonth"
-                               type="text" maxlength="2" size="2" placeholder="MM" />
-                        <input v-model="cardExpYear"
-                               type="text" maxlength="4" size="4" placeholder="YYYY" />
-                  </div>
-                  <div :class="inputClass('cardCvc')">
-                        <label>Security Code</label>
-                        <input v-model="cardCvc"
-                               type="text" maxlength="3" size="3" placeholder="CVC"
-                               autocomplete="off" />
-                  </div>
-
-                    <legend>Billing Address</legend>
-                  <div :class="inputClass('name')">
-                    <input v-model="name" type="text" placeholder="Name">
-                  </div>
-                  <div :class="inputClass('addressLine1')">
-                    <input v-model="addressLine1" type="text" placeholder="Address line">
-                  </div>
-                  <div :class="inputClass('addressCity')">
-                    <input v-model="addressCity" type="text" placeholder="City">
-                  </div>
-                  <div :class="inputClass('addressZip')">
-                    <input v-model="addressZip" type="text" placeholder="ZIP">
-                  </div>
-                  <div :class="inputClass('addressCountry')">
-                    <select v-model="addressCountry" @change="addressRegion = ''">
-                        <option value="">select country</option>
-                        <option :value="code" v-for="(country, code) in countries">[[country]]</option>
-                    </select>
-                  </div>
-                  <div :class="inputClass('addressRegion')">
-                    <select v-model="addressRegion" v-show="addressCountry == 'US' || addressCountry == 'CA'">
-                        <option value="">select state</option>
-                        <option :value="code" v-for="(region, code) in regions[addressCountry]">[[region]]</option>
-                    </select>
-                    <input v-model="addressRegion" type="text" placeholder="Region" v-show="addressCountry != 'US' && addressCountry != 'CA'">
-                  </div>
-                </div>
-            </fieldset>
-            <div>
-                <button @click="checkout" type="submit" class="payment-submit">{% if submit_title %}{{submit_title}}{% else %}{% if force_update %}Update{% else %}Submit{% endif %}{% endif %}</button>
-            </div>
+              </table>
+            </td>
+          </tr>
+          <tfoot>
+            <tr>
+              <th class="total-amount">[[linesPrice[0] | currency($options.filters.currencyToSymbol(linesPrice[1]))]]</th>
+              <th>Charged Today</th>
+            </tr>
+          </tfoot>
+        </tbody>
+      </table>
+      <button v-show="!seatsConfirmed" type="submit">next &raquo;</button>
+    </form>
+    <div v-show="seatsConfirmed">
+      <fieldset>
+        <legend>Credit Card Information</legend>
+        <div v-show="haveCardData" v-cloak>
+          <a href="{{urls.organization.update_card}}">Update</a>
+          <div>
+            <dl>
+              <dt>card</dt>
+              <dd>[[savedCard.last4]]</dd>
+            </dl>
+            <dl>
+              <dt>expires</dt>
+              <dd>[[savedCard.exp_date]]</dd>
+            </dl>
+          </div>
         </div>
+        <div v-show="!haveCardData" v-cloak>
+          <!-- BE CAREFULL: Do not add name="" to these <input> nodes, else
+               values will hit the server and break PCI compliance. -->
+          <div :class="inputClass('cardNumber')">
+            <label for="card-number">Card Number</label>
+            <input id="card-number" v-model="cardNumber"
+                   type="text" size="16" placeholder="Card number"
+                   autocomplete="off" />
+          </div>
+          <div :class="inputClass('cardExp')">
+            <label>Expiration</label>
+            <input v-model="cardExpMonth"
+                   type="text" maxlength="2" size="2" placeholder="MM" />
+            <input v-model="cardExpYear"
+                   type="text" maxlength="4" size="4" placeholder="YYYY" />
+          </div>
+          <div :class="inputClass('cardCvc')">
+            <label>Security Code</label>
+            <input v-model="cardCvc"
+                   type="text" maxlength="3" size="3" placeholder="CVC"
+                   autocomplete="off" />
+          </div>
+
+          <legend>Billing Address</legend>
+          <div :class="inputClass('name')">
+            <input v-model="name" type="text" placeholder="Name">
+          </div>
+          <div :class="inputClass('addressLine1')">
+            <input v-model="addressLine1" type="text" placeholder="Address line">
+          </div>
+          <div :class="inputClass('addressCity')">
+            <input v-model="addressCity" type="text" placeholder="City">
+          </div>
+          <div :class="inputClass('addressZip')">
+            <input v-model="addressZip" type="text" placeholder="ZIP">
+          </div>
+          <div :class="inputClass('addressCountry')">
+            <select v-model="addressCountry" @change="addressRegion = ''">
+              <option value="">select country</option>
+              <option :value="code" v-for="(country, code) in countries">[[country]]</option>
+            </select>
+          </div>
+          <div :class="inputClass('addressRegion')">
+            <select v-model="addressRegion" v-show="addressCountry == 'US' || addressCountry == 'CA'">
+              <option value="">select state</option>
+              <option :value="code" v-for="(region, code) in regions[addressCountry]">[[region]]</option>
+            </select>
+            <input v-model="addressRegion" type="text" placeholder="Region" v-show="addressCountry != 'US' && addressCountry != 'CA'">
+          </div>
+        </div>
+      </fieldset>
+      <div>
+        <button @click="checkout" type="submit" class="payment-submit">{% if submit_title %}{{submit_title}}{% else %}{% if force_update %}Update{% else %}Submit{% endif %}{% endif %}</button>
+      </div>
+    </div>
   </div>
 </checkout>
 {% endblock %}
-

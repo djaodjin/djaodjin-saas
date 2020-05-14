@@ -2,7 +2,7 @@
 // All rights reserved.
 // BSD 2-Clause license
 
-/*global Vue jQuery moment interpolate gettext showMessages showErrorMessages djaodjinSettings Stripe updateBarChart updateChart getUrlParameter $ */
+/*global Vue jQuery moment interpolate gettext showMessages showErrorMessages Stripe updateBarChart updateChart getUrlParameter $ */
 
 
 Vue.filter('formatDate', function(value, format) {
@@ -431,10 +431,13 @@ var timezoneMixin = {
 
 var cardMixin = {
     mixins: [
-        itemMixin
+        httpRequestMixin
     ],
     data: function() {
         return $.extend({ // XXX jQuery
+            api_card_url: this.$urls.organization.api_card,
+            api_profile_url: this.$urls.organization.api_base,
+            processor_pub_key: this.$stripePubKey,
             cardNumber: '',
             cardCvc: '',
             cardExpMonth: '',
@@ -488,7 +491,7 @@ var cardMixin = {
         },
         deleteCard: function() {
             var vm = this;
-            vm.reqDelete(djaodjinSettings.urls.organization.api_card,
+            vm.reqDelete(vm.api_card_url,
             function() {
                 vm.clearCardData();
             });
@@ -523,7 +526,7 @@ var cardMixin = {
         },
         getUserCard: function(){
             var vm = this;
-            vm.reqGet(djaodjinSettings.urls.organization.api_card,
+            vm.reqGet(vm.api_card_url,
             function(resp){
                 if(resp.last4){
                     vm.savedCard.last4 = resp.last4;
@@ -533,13 +536,13 @@ var cardMixin = {
         },
         getCardToken: function(cb){
             var vm = this;
-            if(!djaodjinSettings.stripePubKey){
+            if(!vm.processor_pub_key){
                 showMessages([
                     gettext("You haven't set a valid Stripe public key")
                 ], "error");
                 return;
             }
-            Stripe.setPublishableKey(djaodjinSettings.stripePubKey);
+            Stripe.setPublishableKey(vm.processor_pub_key);
             Stripe.createToken({
                 number: vm.cardNumber,
                 cvc: vm.cardCvc,
@@ -564,7 +567,7 @@ var cardMixin = {
         },
         getOrgAddress: function(){
             var vm = this;
-            vm.reqGet(djaodjinSettings.urls.organization.api_base, function(org) {
+            vm.reqGet(vm.api_profile_url, function(org) {
                 if(org.full_name){
                     vm.card_name = org.full_name;
                 }
@@ -692,6 +695,9 @@ var roleListMixin = {
         itemListMixin,
         roleDetailMixin
     ],
+    props: [
+        'requestUser'
+    ],
     data: function(){
         return {
             url: null,
@@ -710,7 +716,10 @@ var roleListMixin = {
                 slug: '',
                 email: '',
                 full_name: ''
-            }
+            },
+            toDelete: {
+                idx: null
+            },
         }
     },
     methods: {
@@ -802,25 +811,30 @@ var roleListMixin = {
         refresh: function() {
             // overridden in subclasses.
         },
+        removeConfirm: function(idx) { // saas/_user_card.html
+            var vm = this;
+            var role = vm.items.results[idx];
+            vm.toDelete.idx = idx;
+            if( role.user.slug !== vm.requestUser ) {
+                remove();
+            } else {
+                vm.$emit('remove');
+            }
+        },
         remove: function(idx){ // saas/_user_card.html
             var vm = this;
-            var ob = vm.items.results[idx];
-            var slug = (ob.user ? ob.user.slug : ob.slug);
-            if( djaodjinSettings.user && djaodjinSettings.user.slug === slug ) {
-                if( !confirm(gettext("You are about to delete yourself from" +
-                    " this role. it's possible that you no longer can manage" +
-                    " this organization after performing this" +
-                    " action.\n\nDo you want to remove yourself" +
-                    " from this organization?")) ) {
-                    return;
-                }
+            if( typeof idx === 'undefined' ) {
+                idx = vm.toDelete.idx;
             }
-            vm.reqDelete(ob.remove_api_url, function() {
+            var role = vm.items.results[idx];
+            vm.reqDelete(role.remove_api_url, function() {
                 // splicing instead of refetching because
                 // subsequent fetch might fail due to 403
                 vm.items.results.splice(idx, 1);
-                if( ob.grant_key ) { vm.items.invited_count -= 1; }
-                if( ob.request_key ) { vm.items.requested_count -= 1; }
+                if( role.grant_key ) { vm.items.invited_count -= 1; }
+                if( role.request_key ) { vm.items.requested_count -= 1; }
+                vm.toDelete.idx = null;
+                vm.$emit('remove-completed');
             });
         },
         save: function(item){ // user-typeahead @item-save="save"
@@ -881,15 +895,15 @@ var roleListMixin = {
 var subscriptionDetailMixin = {
     data: function(){
         return {
+            api_profile_url: this.$urls.organization.api_profile_base,
             ends_at: moment().endOf("day").format(DATE_FORMAT),
         }
     },
     methods: {
         acceptRequest: function(organization, request_key) {
             var vm = this;
-            var url = (djaodjinSettings.urls.organization.api_profile_base +
-                organization + "/subscribers/accept/" + request_key + "/");
-            vm.reqPost(url, function (){
+            vm.reqPost(vm.acceptRequestURL(organization, request_key),
+            function (){
                 vm.get();
             });
         },
@@ -927,10 +941,6 @@ var subscriptionDetailMixin = {
             delete item.edit_description;
             this.update(item);
         },
-        subscriptionURL: function(organization, plan) {
-            return djaodjinSettings.urls.organization.api_profile_base
-                + organization + "/subscriptions/" + plan;
-        },
         update: function(item) {
             var vm = this;
             var url = vm.subscriptionURL(
@@ -942,6 +952,17 @@ var subscriptionDetailMixin = {
             vm.reqPatch(url, data);
         },
     },
+    computed: {
+        acceptRequestURL: function(organization, request_key) {
+           var vm = this;
+           return (vm.api_profile_url +
+                organization + "/subscribers/accept/" + request_key + "/");
+        },
+        subscriptionURL: function(organization, plan) {
+           var vm = this;
+            return vm.api_profile_url + organization + "/subscriptions/" + plan;
+        },
+    }
 }
 
 
@@ -1029,9 +1050,6 @@ var subscriptionListMixin = {
             item.ends_at = (new Date(item.ends_at)).toISOString();
             this.update(item);
         },
-        subscribersURL: function(provider, plan) {
-            return djaodjinSettings.urls.organization.api_profile_base + provider + "/plans/" + plan + "/subscriptions/";
-        },
         unsubscribe: function() {
             var vm = this;
             var data = vm.toDelete;
@@ -1050,6 +1068,12 @@ var subscriptionListMixin = {
             }
         },
     },
+    computed: {
+        subscribersURL: function(provider, plan) {
+            var vm = this;
+            return vm.api_profile_url + provider + "/plans/" + plan + "/subscriptions/";
+        },
+    },
     mounted: function(){
         this.get();
     }
@@ -1057,7 +1081,10 @@ var subscriptionListMixin = {
 
 Vue.component('user-typeahead', {
     template: "",
-    props: ['url', 'role'],
+    props: [
+        'url',
+        'role'
+    ],
     data: function() {
         return {
             target: null,
@@ -1183,7 +1210,8 @@ Vue.component('coupon-list', {
     ],
     data: function() {
         return {
-            url: djaodjinSettings.urls.provider.api_coupons,
+            url: this.$urls.provider.api_coupons,
+            api_plans_url: this.$urls.provider.api_plans,
             params: {
                 o: 'ends_at',
             },
@@ -1218,7 +1246,7 @@ Vue.component('coupon-list', {
         },
         getPlans: function(){
             var vm = this;
-            vm.reqGet(djaodjinSettings.urls.provider.api_plans,
+            vm.reqGet(vm.api_plans_url,
                 {active: true}, function(res){
                 vm.plans = res.results;
             });
@@ -1258,7 +1286,7 @@ Vue.component('user-list', {
     ],
     data: function() {
         return {
-            url: djaodjinSettings.urls.provider.api_accounts,
+            url: this.$urls.provider.api_accounts,
             params: {
                 start_at: moment().startOf('day'),
                 o: '-created_at'
@@ -1280,9 +1308,9 @@ Vue.component('role-profile-list', {
     ],
     data: function() {
         return {
-            url: djaodjinSettings.urls.user.api_accessibles,
-            create_url: djaodjinSettings.urls.user.api_profile_create,
-            typeaheadUrl: djaodjinSettings.urls.api_candidates,
+            url: this.$urls.user.api_accessibles,
+            create_url: this.$urls.user.api_profile_create,
+            typeaheadUrl: this.$urls.api_candidates,
             showInvited: false,
             showRequested: false,
             params: {
@@ -1308,8 +1336,8 @@ Vue.component('role-user-list', {
     ],
     data: function() {
         return {
-            url: djaodjinSettings.urls.organization.api_roles,
-            typeaheadUrl: djaodjinSettings.urls.api_candidates,
+            url: this.$urls.organization.api_roles,
+            typeaheadUrl: this.$urls.api_candidates,
             params: {
                 role_status: 'active',
             },
@@ -1336,15 +1364,14 @@ Vue.component('metrics-charts', {
     ],
     data: function() {
         var data = {
-            tables: djaodjinSettings.tables,
+            tables: this.$tables,
             activeTab: 0,
             params: {
                 ends_at: moment(),
             },
         }
-        if( djaodjinSettings.date_range
-            && djaodjinSettings.date_range.ends_at ) {
-            var ends_at = moment(djaodjinSettings.date_range.ends_at);
+        if( this.$dateRange && this.$dateRange.ends_at ) {
+            var ends_at = moment(this.$dateRange.ends_at);
             if(ends_at.isValid()){
                 data.params.ends_at = ends_at;
             }
@@ -1480,7 +1507,7 @@ Vue.component('registered', {
     ],
     data: function() {
         return {
-            url: djaodjinSettings.urls.broker.api_users_registered,
+            url: this.$urls.broker.api_users_registered,
         }
     },
     mounted: function(){
@@ -1495,7 +1522,7 @@ Vue.component('subscribed', {
     ],
     data: function() {
         return {
-            url: djaodjinSettings.urls.provider.api_subscribers_active,
+            url: this.$urls.provider.api_subscribers_active,
         }
     }
 });
@@ -1507,7 +1534,7 @@ Vue.component('churned', {
     ],
     data: function() {
         return {
-            url: djaodjinSettings.urls.provider.api_subscribers_churned,
+            url: this.$urls.provider.api_subscribers_churned,
         }
     }
 });
@@ -1519,9 +1546,9 @@ Vue.component('plan-subscriber-list', {
     ],
     data: function() {
         return {
+            url: this.$urls.provider.api_plan_subscribers,
+            typeaheadUrl: this.$urls.api_candidates,
             newProfile: {},
-            typeaheadUrl: djaodjinSettings.urls.api_candidates,
-            url: djaodjinSettings.urls.provider.api_plan_subscribers,
         }
     }
 });
@@ -1533,7 +1560,7 @@ Vue.component('subscription-list', {
     ],
     data: function() {
         return {
-            url: djaodjinSettings.urls.organization.api_subscriptions,
+            url: this.$urls.organization.api_subscriptions,
             params: {
                 state: 'active',
             },
@@ -1548,7 +1575,7 @@ Vue.component('expired-subscription-list', {
     ],
     data: function() {
         return {
-            url: djaodjinSettings.urls.organization.api_subscriptions,
+            url: this.$urls.organization.api_subscriptions,
             params: {
                 state: 'expired',
             },
@@ -1580,7 +1607,7 @@ Vue.component('coupon-user-list', {
     ],
     data: function() {
         return {
-            url: djaodjinSettings.urls.provider.api_metrics_coupon_uses,
+            url: this.$urls.provider.api_metrics_coupon_uses,
             params: {
                 o: '-created_at',
             },
@@ -1598,7 +1625,7 @@ Vue.component('charge-list', {
     ],
     data: function() {
         return {
-            url: djaodjinSettings.urls.broker.api_charges,
+            url: this.$urls.broker.api_charges,
         }
     },
     mounted: function(){
@@ -1613,7 +1640,7 @@ Vue.component('plan-list', {
     ],
     data: function() {
         return {
-            url: djaodjinSettings.urls.provider.api_plans,
+            url: this.$urls.provider.api_plans,
         }
     },
     mounted: function(){
@@ -1628,15 +1655,52 @@ Vue.component('import-transaction', {
     ],
     data: function() {
         return {
-            typeaheadUrl: djaodjinSettings.urls.provider.api_subscribers_active,
-            createdAt: moment().format("YYYY-MM-DD"),
+            url: this.$urls.organization.api_import,
+            typeaheadUrl: this.$urls.provider.api_subscribers_active,
             itemSelected: '',
             searching: false,
-            amount: 0,
-            description: '',
+            entry: {
+                subscription: null,
+                created_at: moment().format("YYYY-MM-DD"),
+                amount: 0,
+                descr: '',
+            },
+            params: {
+                timezone: 'local'
+            }
         }
     },
     methods: {
+        addPayment: function(){
+            var vm = this;
+            var sel = vm.itemSelected
+            if(!sel.plan){
+                alert(gettext('select a subscription from dropdown'));
+                return;
+            }
+            vm.entry.subscription = (
+                sel.organization.slug + ':' + sel.plan.slug);
+            vm.entry.created_at = moment(vm.entry.created_at).toISOString();
+            vm.reqPost(vm.url, vm.entry,
+            function () {
+                vm.clearNewPayment();
+                showMessages([gettext("Transaction imported successfully.")],
+                    "success");
+            });
+        },
+        clearNewPayment: function() {
+            var vm = this;
+            vm.itemSelected = '';
+            vm.entry = {
+                subscription: null,
+                created_at: moment().format("YYYY-MM-DD"),
+                amount: 0,
+                descr: '',
+            };
+        },
+        get: function() {
+            // We want to keep a single template for `date_input_field`.
+        },
         getSubscriptions: function(query, done) {
             var vm = this;
             vm.searching = true;
@@ -1648,41 +1712,28 @@ Vue.component('import-transaction', {
                 res.results.forEach(function(e){
                     e.itemKey = e.organization.slug + ':' + e.plan.slug
                 });
-//XXX                done(res.results)
+                done(res.results)
             });
         },
-        addPayment: function(){
+        updateItemSelected: function(item) {
             var vm = this;
-            var sel = vm.itemSelected
-            if(!sel.plan){
-                alert(gettext('select a subscription from dropdown'));
-                return;
+            if( item ) {
+                vm.itemSelected = item;
             }
-            var sub = sel.organization.slug + ':' + sel.plan.slug;
-            vm.reqPost(djaodjinSettings.urls.organization.api_import, {
-                subscription: sub,
-                amount: vm.amount,
-                descr: vm.description,
-                created_at: moment(vm.createdAt).toISOString(),
-            }, function () {
-                vm.itemSelected = '';
-                vm.amount = '';
-                vm.description = '';
-                vm.createdAt = moment().format("YYYY-MM-DD");
-                showMessages([gettext("Profile was updated.")], "success");
-            });
-        }
+        },
     },
 });
 
 
 Vue.component('billing-statement', {
     mixins: [
+        cardMixin,
         itemListMixin,
     ],
     data: function(){
         var res = {
-            url: djaodjinSettings.urls.organization.api_transactions,
+            url: this.$urls.organization.api_transactions,
+            api_cancel_balance_url: this.$urls.organization.api_cancel_balance_due,
             last4: gettext("N/A"),
             exp_date: gettext("N/A"),
             cardLoaded: false
@@ -1692,7 +1743,7 @@ Vue.component('billing-statement', {
     methods: {
         getCard: function(){
             var vm = this;
-            vm.reqGet(djaodjinSettings.urls.organization.api_card,
+            vm.reqGet(vm.api_card_url,
             function(resp){
                 if(resp.last4) {
                     vm.last4 = resp.last4;
@@ -1714,7 +1765,7 @@ Vue.component('billing-statement', {
         },
         cancelBalance: function(){
             var vm = this;
-            vm.reqDelete(djaodjinSettings.urls.organization.api_cancel_balance_due,
+            vm.reqDelete(vm.api_cancel_balance_url,
                 function() {
                     vm.reload()
                 },
@@ -1738,7 +1789,8 @@ Vue.component('transfers-statement', {
     ],
     data: function() {
         return {
-            url: djaodjinSettings.urls.organization.api_transactions,
+            url: this.$urls.organization.api_transactions,
+            api_balance_url: this.$urls.provider.api_bank,
             balanceLoaded: false,
             last4: gettext("N/A"),
             bank_name: gettext("N/A"),
@@ -1749,7 +1801,7 @@ Vue.component('transfers-statement', {
     methods: {
         getBalance: function() {
             var vm = this;
-            vm.reqGet(djaodjinSettings.urls.provider.api_bank,
+            vm.reqGet(vm.api_balance_url,
             function(resp){
                 vm.balance_amount = resp.balance_amount;
                 vm.balance_unit = resp.balance_unit;
@@ -1777,7 +1829,7 @@ Vue.component('transaction-list', {
     ],
     data: function() {
         return {
-            url: djaodjinSettings.urls.organization.api_transactions,
+            url: this.$urls.organization.api_transactions,
         }
     },
     mounted: function(){
@@ -1792,6 +1844,9 @@ Vue.component('profile-update', {
     ],
     data: function() {
         return {
+            url: this.$urls.organization.api_base,
+            picture_url: this.$urls.organization.api_profile_picture,
+            redirect_url: this.$urls.profile_redirect,
             formFields: {},
             countries: countries,
             regions: regions,
@@ -1802,15 +1857,15 @@ Vue.component('profile-update', {
     methods: {
         deleteProfile: function(){
             var vm = this;
-            vm.reqDelete(djaodjinSettings.urls.organization.api_base,
+            vm.reqDelete(vm.url,
                 function() {
-                    window.location = djaodjinSettings.urls.profile_redirect;
+                    window.location = vm.redirect_url;
                 }
             );
         },
         get: function(cb){
             var vm = this;
-            vm.reqGet(djaodjinSettings.urls.organization.api_base,
+            vm.reqGet(vm.url,
             function(resp) {
                 vm.formFields = resp;
                 if(cb) cb();
@@ -1819,7 +1874,7 @@ Vue.component('profile-update', {
         updateProfile: function(){
             var vm = this;
             vm.validateForm();
-            vm.reqPut(djaodjinSettings.urls.organization.api_base, vm.formFields,
+            vm.reqPut(vm.url, vm.formFields,
             function() {
                 showMessages([gettext("Profile was updated.")], "success");
             });
@@ -1834,7 +1889,7 @@ Vue.component('profile-update', {
                 var form = new FormData();
                 form.append('file', blob, vm.picture.getChosenFile().name);
                 vm.reqPostBlob(
-                    djaodjinSettings.urls.organization.api_profile_picture,
+                    vm.picture_url,
                     form,
                     function(resp) {
                         vm.formFields.picture = resp.location;
@@ -1867,7 +1922,7 @@ Vue.component('roledescr-list', {
     ],
     data: function() {
         return {
-            url: djaodjinSettings.urls.organization.api_role_descriptions,
+            url: this.$urls.organization.api_role_descriptions,
             role: {
                 title: '',
             },
@@ -1905,8 +1960,8 @@ Vue.component('balance-list', {
     ],
     data: function() {
         return {
-            url: djaodjinSettings.urls.api_broker_balances,
-            balanceLineUrl : djaodjinSettings.urls.api_balance_lines,
+            url: this.$urls.api_broker_balances,
+            balanceLineUrl : this.$urls.api_balance_lines,
             startPeriod: moment().subtract(1, 'months').toISOString(),
             balanceLine: {
                 title: '',
@@ -1965,10 +2020,15 @@ Vue.component('checkout', {
         cardMixin,
         itemListMixin
     ],
+    props: [
+        'isBulkBuyer',
+    ],
     data: function() {
         return {
-            url: djaodjinSettings.urls.organization.api_checkout,
-            isBulkBuyer: djaodjinSettings.bulkBuyer,
+            url: this.$urls.organization.api_checkout,
+            api_cart_url: this.$urls.api_cart,
+            api_redeem_url: this.$urls.api_redeem_coupon,
+            receipt_url: this.$urls.organization.receipt,
             plansOption: {},
             plansUser: {},
             coupon: '',
@@ -1994,16 +2054,14 @@ Vue.component('checkout', {
         },
         remove: function(plan){
             var vm = this;
-            var url = djaodjinSettings.urls.api_cart;
-            vm.reqDelete(url, {plan: plan},
+            vm.reqDelete(vm.api_cart_url, {plan: plan},
             function() {
                 vm.get()
             });
         },
         redeem: function(){
             var vm = this;
-            vm.reqPost(djaodjinSettings.urls.api_redeem_coupon, {
-                code: vm.coupon },
+            vm.reqPost(vm.api_redeem_url, {code: vm.coupon},
             function() {
                 showMessages([gettext("Discount was successfully applied.")],
                     "success");
@@ -2053,7 +2111,7 @@ Vue.component('checkout', {
             if(option){
                 data.option = option
             }
-            vm.reqPost(djaodjinSettings.urls.api_cart, data,
+            vm.reqPost(vm.api_cart_url, data,
             function() {
                 showMessages([gettext("User was added.")], "success");
                 vm.init = false;
@@ -2123,10 +2181,9 @@ Vue.component('checkout', {
             if(token){
                 data.processor_token = token;
             }
-            vm.reqPost(djaodjinSettings.urls.organization.api_checkout, data,
+            vm.reqPost(vm.url, data,
             function(resp) {
-                var id = resp.processor_key;
-                location = djaodjinSettings.urls.organization.receipt.replace('_', id);
+                window.location = vm.receiptUrl(resp.processor_key);
             });
         },
         checkout: function(){
@@ -2178,7 +2235,7 @@ Vue.component('checkout', {
             if(!vm.csvFiles[plan]) return;
             var form = new FormData();
             form.append("file", vm.csvFiles[plan]);
-            vm.reqPostBlob("/api/cart/" + plan + "/upload/",
+            vm.reqPostBlob(vm.bulkUploadUrl(plan),
                 form,
                 function(){
                     vm.get();
@@ -2206,6 +2263,14 @@ Vue.component('checkout', {
                 });
             }
             return [total / 100, unit];
+        },
+        bulkUploadUrl: function(plan) {
+            var vm = this;
+            return vm.api_cart + plan + "/upload/";
+        },
+        receiptUrl: function(processor_key) {
+            var vm = this;
+            return vm.receipt_url.replace('_', processor_key);
         }
     },
     mounted: function(){
@@ -2239,7 +2304,7 @@ Vue.component('card-update', {
     methods: {
         remove: function() {
             var vm = this;
-            vm.reqDelete(djaodjinSettings.urls.organization.api_card,
+            vm.reqDelete(vm.api_card_url,
             function() {
                 vm.clearCardData();
                 showMessages([gettext(
@@ -2251,7 +2316,7 @@ Vue.component('card-update', {
             var vm = this;
             if(!vm.validateForm()) return;
             vm.getCardToken(function(token){
-                vm.reqPut(djaodjinSettings.urls.organization.api_card, {
+                vm.reqPut(vm.api_card_url, {
                     token: token,
                     full_name: vm.card_name,
                     street_address: vm.card_address_line1,
@@ -2294,6 +2359,10 @@ Vue.component('plan-update', {
     ],
     data: function() {
         return {
+            url: (this.$urls.plan ?
+                this.$urls.plan.api_plan : null),
+            api_plans_url: this.$urls.provider.api_plans,
+            redirect_url: this.$urls.provider.metrics_plans,
             formFields: {
                 unit: 'usd',
             },
@@ -2319,22 +2388,22 @@ Vue.component('plan-update', {
             if( data.advance_discount ) {
                 data.advance_discount = Math.round(data.advance_discount * 100);
             }
-            vm.reqPost(djaodjinSettings.urls.provider.api_plans, data,
+            vm.reqPost(vm.api_plans_url, data,
             function() {
-                window.location = djaodjinSettings.urls.provider.metrics_plans;
+                window.location = vm.redirect_url;
             });
         },
         deletePlan: function(){
             var vm = this;
-            vm.reqDelete(djaodjinSettings.urls.plan.api_plan,
+            vm.reqDelete(vm.url,
             function() {
-                window.location = djaodjinSettings.urls.provider.metrics_plans;
+                window.location = vm.redirect_url;
             });
         },
         get: function(){
-            if(!djaodjinSettings.urls.plan.api_plan) return;
+            if(!vm.url) return;
             var vm = this;
-            vm.reqGet(djaodjinSettings.urls.plan.api_plan,
+            vm.reqGet(vm.url,
             function(resp) {
                 vm.formFields = resp;
                 vm.formFields.period_amount = vm.formatNumber(
@@ -2352,7 +2421,7 @@ Vue.component('plan-update', {
         togglePlanStatus: function(){
             var vm = this;
             var next = !vm.isActive;
-            vm.reqPut(djaodjinSettings.urls.plan.api_plan, {is_active: next},
+            vm.reqPut(vm.url, {is_active: next},
             function(){
                 vm.isActive = next;
             });
@@ -2375,9 +2444,8 @@ Vue.component('plan-update', {
             if( data.advance_discount ) {
                 data.advance_discount = Math.round(data.advance_discount * 100);
             }
-            if( djaodjinSettings.urls.plan &&
-                djaodjinSettings.urls.plan.api_plan ) {
-                vm.reqPut(djaodjinSettings.urls.plan.api_plan, data,
+            if( vm.url ) {
+                vm.reqPut(vm.url, data,
                 function() {
                     showMessages([interpolate(gettext(
                         "Successfully updated plan titled '%s'."), [
@@ -2414,7 +2482,7 @@ Vue.component('search-profile', {
     ],
     data: function() {
         return {
-            url: djaodjinSettings.urls.provider.api_accounts,
+            url: this.$urls.provider.api_accounts,
         }
     },
 });
@@ -2426,7 +2494,7 @@ Vue.component('today-sales', {
     ],
     data: function() {
         return {
-            url: djaodjinSettings.urls.provider.api_receivables,
+            url: this.$urls.provider.api_receivables,
             params: {
                 start_at: moment().startOf('day'),
                 o: '-created_at',
@@ -2445,7 +2513,7 @@ Vue.component('monthly-revenue', {
     ],
     data: function(){
         return {
-            url: djaodjinSettings.urls.provider.api_revenue,
+            url: this.$urls.provider.api_revenue,
         }
     },
     computed: {
