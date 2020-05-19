@@ -102,7 +102,7 @@ Per-period pricing with discount for advance payments
 Software-as-a-Service (SaaS) is a relationship business. It makes sense
 to incentivize subscribers to pay in advance by offering discounts.
 
-You can specify an ``advance_discount`` on a plan. When you do so, the checkout
+You can specify ``advance_discounts`` on a plan. When you do so, the checkout
 workflow will automatically present the option to pay for a multiple periods
 in advance to the customer.
 
@@ -117,7 +117,11 @@ Example fixtures for a $29/month and a 20% discount if paid yearly::
             "is_active": 1,
             "period_amount": 2900,
             "period_type": 4,
-            **"advance_discount": 2000**
+            **"advance_discounts": [{
+                "discount_type": "percentage",
+                "amount": 2000,
+                "length": 12
+            }]**
         },
         "model": "saas.Plan", "pk": 1
     }

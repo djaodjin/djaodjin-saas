@@ -1,4 +1,4 @@
-# Copyright (c) 2019, DjaoDjin inc.
+# Copyright (c) 2020, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -32,13 +32,16 @@ from rest_framework.generics import (ListCreateAPIView,
 from ..filters import OrderingFilter, SearchFilter, DateRangeFilter
 from ..models import Coupon
 from ..mixins import CouponMixin, ProviderMixin
-from .serializers import PlanRelatedField
+from .serializers import EnumField, PlanRelatedField
 
 #pylint: disable=no-init
 #pylint: disable=old-style-class
 
 
 class CouponSerializer(serializers.ModelSerializer):
+
+    discount_type = EnumField(choices=Coupon.DISCOUNT_CHOICES,
+        help_text=_("Type of discount (percentage or currency unit)"))
     plan = PlanRelatedField(required=False, allow_null=True)
 
     def validate_plan(self, plan):
@@ -49,8 +52,9 @@ class CouponSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Coupon
-        fields = ('code', 'percent', 'created_at', 'ends_at', 'description',
-                'nb_attempts', 'plan')
+        fields = ('code', 'discount_type', 'discount_value',
+            'created_at', 'ends_at', 'description',
+            'nb_attempts', 'plan')
 
 
 class SmartCouponListMixin(object):
@@ -59,14 +63,15 @@ class SmartCouponListMixin(object):
     """
     search_fields = ('code',
                      'description',
-                     'percent',
+                     'amount',
                      'organization__full_name')
 
     ordering_fields = [('code', 'code'),
                            ('created_at', 'created_at'),
                            ('description', 'description'),
                            ('ends_at', 'ends_at'),
-                           ('percent', 'percent')]
+                           ('discount_type', 'discount_type'),
+                           ('amount', 'amount')]
 
     filter_backends = (OrderingFilter, SearchFilter)
 
@@ -114,14 +119,16 @@ class CouponListCreateAPIView(SmartCouponListMixin, CouponQuerysetMixin,
             "results": [
                 {
                     "code": "DIS100",
-                    "percent": 100,
+                    "discount_type": "percentage",
+                    "amount": 10000,
                     "created_at": "2014-01-01T09:00:00Z",
                     "ends_at": null,
                     "description": null
                 },
                 {
                     "code": "DIS50",
-                    "percent": 50,
+                    "discount_type": "percentage",
+                    "amount": 5000,
                     "created_at": "2014-01-01T09:00:00Z",
                     "ends_at": null,
                     "description": null
@@ -150,7 +157,8 @@ class CouponListCreateAPIView(SmartCouponListMixin, CouponQuerysetMixin,
 
             {
               "code": "DIS100",
-              "percent": 100,
+              "discount_type": "percentage",
+              "amount": 10000,
               "ends_at": null,
               "description": null
             }
@@ -161,7 +169,8 @@ class CouponListCreateAPIView(SmartCouponListMixin, CouponQuerysetMixin,
 
             {
               "code": "DIS100",
-              "percent": 100,
+              "discount_type": "percentage",
+              "amount": 10000,
               "ends_at": null,
               "description": null
             }
@@ -191,7 +200,8 @@ class CouponDetailAPIView(CouponMixin, RetrieveUpdateDestroyAPIView):
 
         {
             "code": "DIS100",
-            "percent": 100,
+            "discount_type": "percentage",
+            "amount": 10000,
             "created_at": "2014-01-01T09:00:00Z",
             "ends_at": null,
             "description": null
@@ -214,7 +224,8 @@ class CouponDetailAPIView(CouponMixin, RetrieveUpdateDestroyAPIView):
         .. code-block:: json
 
             {
-                "percent": 100,
+                "discount_type": "percentage",
+                "amount": 10000,
                 "ends_at": null,
                 "description": null
             }
@@ -224,7 +235,8 @@ class CouponDetailAPIView(CouponMixin, RetrieveUpdateDestroyAPIView):
         .. code-block:: json
 
             {
-                "percent": 100,
+                "discount_type": "percentage",
+                "amount": 10000,
                 "ends_at": null,
                 "description": null
             }

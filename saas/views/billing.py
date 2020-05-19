@@ -1,4 +1,4 @@
-# Copyright (c) 2019, DjaoDjin inc.
+# Copyright (c) 2020, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -43,6 +43,8 @@ from django import http
 from django.contrib.auth import REDIRECT_FIELD_NAME
 from django.db import transaction
 from django.db.models import Q
+from django.db.models.sql.datastructures import Join
+from django.db.models.sql.constants import INNER
 from django.contrib import messages
 from django.shortcuts import get_object_or_404
 from django.utils.translation import ugettext_lazy as _
@@ -51,17 +53,16 @@ from django.views.generic import (DetailView, FormView, ListView, TemplateView,
 from django.utils.http import urlencode
 from django.utils import six
 
-from .. import settings
+from .. import settings, humanize
 from ..compat import is_authenticated, reverse
 from ..backends import ProcessorError, ProcessorConnectionError
 from ..decorators import _insert_url, _valid_manager
 from ..forms import (BankForm, CartPeriodsForm, CreditCardForm,
     ImportTransactionForm, RedeemCouponForm, VTChargeForm, WithdrawForm)
-from ..humanize import describe_buy_periods, match_unlock
 from ..mixins import (CartMixin, ChargeMixin, DateRangeContextMixin,
     OrganizationMixin, ProviderMixin, product_url)
-from ..models import (CartItem, Charge, Coupon, Organization, Plan, Price,
-    Subscription, Transaction, UseCharge, get_broker)
+from ..models import (AdvanceDiscount, CartItem, Charge, Coupon, Organization,
+    Plan, Price, Subscription, Transaction, UseCharge, get_broker)
 from ..utils import (datetime_or_now, is_broker, update_context_urls,
     validate_redirect_url)
 from ..views import session_cart_to_database
@@ -356,9 +357,9 @@ class CardInvoicablesFormMixin(CardFormMixin, InvoicablesFormMixin):
                     line = invoicable['options'][selected_line]
                     # Normalize unlock line description to
                     # "subscribe <plan> until ..."
-                    if match_unlock(line.descr):
+                    if humanize.match_unlock(line.descr):
                         nb_periods = plan.period_number(line.descr)
-                        line.descr = describe_buy_periods(plan,
+                        line.descr = humanize.describe_buy_periods(plan,
                             plan.end_of_period(line.created_at, nb_periods),
                             nb_periods)
                     invoicable['lines'] += [line]
@@ -695,8 +696,24 @@ class CartSeatsView(CartPeriodsView):
     template_name = 'saas/billing/cart-seats.html'
 
     def get(self, request, *args, **kwargs):
-        if self.cart_items.filter(
-                option=0, plan__advance_discount__gt=0).exists():
+        class JoinCols:
+            @staticmethod
+            def get_joining_columns():
+                return (('plan_id', 'plan_id'),)
+            @staticmethod
+            def get_extra_restriction(where_class, alias, related_alias):
+                return None
+
+        cart_items = self.cart_items.filter(option=0)
+        cart_items.query.join(Join(
+            AdvanceDiscount._meta.db_table, # table_name
+            CartItem._meta.db_table,        # parent_alias
+            None,                           # table_alias
+            INNER,                          # join_type
+            JoinCols(),                     # join_field
+            False,                          # nullable
+        ))
+        if cart_items.exists():
             # If option == 0 and there is a discount to buy periods
             # in advance, we will present multiple options to the user.
             return http.HttpResponseRedirect(

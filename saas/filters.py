@@ -1,4 +1,4 @@
-# Copyright (c) 2019, DjaoDjin inc.
+# Copyright (c) 2020, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -51,6 +51,7 @@ class SearchFilter(BaseSearchFilter):
 
     @staticmethod
     def filter_valid_fields(queryset, fields, view):
+        #pylint:disable=protected-access
         model_fields = set([
             field.name for field in queryset.model._meta.get_fields()])
         # We add all the fields that could be aliases then filter out the ones
@@ -184,7 +185,9 @@ class OrderingFilter(BaseOrderingFilter):
         return tuple(valid_fields)
 
     def remove_invalid_fields(self, queryset, fields, view, request):
-        valid_fields = {item[1]: item[0] for item in self.get_valid_fields(queryset, view, {'request': request})}
+        valid_fields = {item[1]: item[0]
+            for item in self.get_valid_fields(
+                queryset, view, {'request': request})}
         ordering = []
         for term in fields:
             alias = term
@@ -292,7 +295,7 @@ class DateRangeFilter(BaseFilterBackend):
             field.name for field in model._meta.get_fields()])
         if self.date_field in model_fields:
             return self.date_field
-        elif self.alternate_date_field in model_fields:
+        if self.alternate_date_field in model_fields:
             return self.alternate_date_field
         return None
 

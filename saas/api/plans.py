@@ -1,4 +1,4 @@
-# Copyright (c) 2019, DjaoDjin inc.
+# Copyright (c) 2020, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -67,7 +67,6 @@ class PlanListCreateAPIView(PlanMixin, ListCreateAPIView):
             "period_amount": 2900,
             "period_length": 1,
             "period_type": "monthly",
-            "advance_discount": 0,
             "unit": "usd",
             "is_not_priced": false,
             "renewal_type": "auto-renew",

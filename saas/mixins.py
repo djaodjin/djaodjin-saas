@@ -36,11 +36,9 @@ from django.utils.translation import ugettext_lazy as _
 from django.views.generic.detail import SingleObjectMixin
 from rest_framework.generics import get_object_or_404
 
-from . import settings
+from . import humanize, settings
 from .compat import NoReverseMatch, is_authenticated, reverse
 from .filters import DateRangeFilter, OrderingFilter, SearchFilter
-from .humanize import (as_money, DESCRIBE_BUY_PERIODS, DESCRIBE_BUY_USE,
-    DESCRIBE_UNLOCK_NOW, DESCRIBE_UNLOCK_LATER, DESCRIBE_BALANCE)
 from .models import (CartItem, Charge, Coupon, Organization, Plan,
     RoleDescription, Subscription, Transaction, UseCharge, get_broker)
 from .utils import (build_absolute_uri, datetime_or_now, is_broker,
@@ -200,58 +198,97 @@ class CartMixin(object):
         prorated_amount = 0
         if prorate_to:
             prorated_amount = plan.prorate_period(created_at, prorate_to)
+        full_amount = prorated_amount + plan.period_amount
 
-        discount_percent = 0
-        descr_suffix = None
+        coupon = None
+        full_name = None
         if cart_item:
             coupon = cart_item.coupon
             if coupon:
-                discount_percent = coupon.percent
                 if coupon.code.startswith('cpn_'):
-                    descr_suffix = ', complimentary of %s' % cart_item.full_name
-                else:
-                    descr_suffix = '(code: %s)' % coupon.code
+                    full_name = cart_item.full_name
 
-        first_periods_amount = plan.first_periods_amount(
-            discount_percent=discount_percent,
-            prorated_amount=prorated_amount)
+        discount_by_types = {}
+        coupon_discount_amount = 0
+        if coupon:
+            coupon_discount_amount = coupon.get_discount_amount(
+                prorated_amount=prorated_amount,
+                period_amount=plan.period_amount)
+            discount_by_types[coupon.discount_type] = coupon.discount_value
+        amount = full_amount - coupon_discount_amount
+        if amount <= 0:
+            amount = 0
 
-        if first_periods_amount == 0:
-            # We are having a freemium business models, no discounts.
-            if not descr_suffix:
-                descr_suffix = _("free")
-            option_items += [Transaction.objects.new_subscription_order(
-                subscription, 1, prorated_amount, created_at,
-                discount_percent=discount_percent,
-                descr_suffix=descr_suffix)]
-
-        elif plan.unlock_event:
+        if plan.unlock_event:
             # Locked plans are free until an event.
             option_items += [Transaction.objects.new_subscription_order(
-                subscription, 1, plan.period_amount, created_at,
-                DESCRIBE_UNLOCK_NOW % {
+                subscription,
+                amount=amount,
+                descr=humanize.DESCRIBE_UNLOCK_NOW % {
                     'plan': plan, 'unlock_event': plan.unlock_event},
-               discount_percent=discount_percent,
-               descr_suffix=descr_suffix)]
+                created_at=created_at)]
             option_items += [Transaction.objects.new_subscription_order(
-                subscription, 1, 0, created_at,
-                DESCRIBE_UNLOCK_LATER % {
-                        'amount': as_money(plan.period_amount, plan.unit),
-                        'plan': plan, 'unlock_event': plan.unlock_event})]
+                subscription,
+                amount=0,
+                descr=humanize.DESCRIBE_UNLOCK_LATER % {
+                        'amount': humanize.as_money(
+                            plan.period_amount, plan.unit),
+                        'plan': plan, 'unlock_event': plan.unlock_event},
+                created_at=created_at)]
 
         else:
-            natural_periods = plan.natural_options()
-            for nb_periods in natural_periods:
-                if nb_periods > 1:
-                    descr_suffix = ""
-                    amount, discount_percent \
-                        = subscription.plan.advance_period_amount(nb_periods)
-                    if amount <= 0:
-                        break # never allow to be completely free here.
+            nb_periods = subscription.plan.period_length
+            ends_at = subscription.plan.end_of_period(
+                subscription.ends_at, nb_periods)
+
+            option_items += [Transaction.objects.new_subscription_order(
+                subscription,
+                amount=amount,
+                descr=humanize.describe_buy_periods(
+                    plan, ends_at, 1,
+                    discount_by_types=discount_by_types,
+                    coupon=coupon,
+                    full_name=full_name),
+                created_at=created_at)]
+
+            advance_discounts = plan.advance_discounts.all().order_by('length')
+            for advance_discount in advance_discounts:
+                full_amount = (
+                    prorated_amount + advance_discount.full_periods_amount)
+                advance_discount_amount = advance_discount.get_discount_amount(
+                    prorated_amount=prorated_amount)
+                discount_by_types = {}
+                discount_by_types[advance_discount.discount_type] = \
+                    advance_discount.discount_value
+                coupon_discount_amount = 0
+                if coupon:
+                    coupon_discount_amount = coupon.get_discount_amount(
+                        prorated_amount=prorated_amount,
+                        period_amount=plan.period_amount,
+                        advance_amount=(advance_discount.full_periods_amount
+                            - plan.period_amount))
+                    if coupon.discount_type in discount_by_types:
+                        discount_by_types[coupon.discount_type] += \
+                            coupon.discount_value
+                    else:
+                        discount_by_types[coupon.discount_type] = \
+                            coupon.discount_value
+                amount = (full_amount - advance_discount_amount
+                    - coupon_discount_amount)
+                if amount <= 0:
+                    continue # never allow to be completely free here.
+                nb_periods = (
+                    advance_discount.length * plan.period_length)
+                ends_at = plan.end_of_period(subscription.ends_at, nb_periods)
                 option_items += [Transaction.objects.new_subscription_order(
-                    subscription, nb_periods, prorated_amount, created_at,
-                    discount_percent=discount_percent,
-                    descr_suffix=descr_suffix)]
+                    subscription,
+                    amount=amount,
+                    descr=humanize.describe_buy_periods(
+                        plan, ends_at, nb_periods,
+                        discount_by_types=discount_by_types,
+                        coupon=coupon,
+                        full_name=full_name),
+                    created_at=created_at)]
 
         return option_items
 
@@ -1023,8 +1060,8 @@ def as_html_description(transaction):
     """
     result = transaction.descr
 
-    # DESCRIBE_CHARGED_CARD, DESCRIBE_CHARGED_CARD_PROCESSOR
-    # and DESCRIBE_CHARGED_CARD_PROVIDER.
+    # humanize.DESCRIBE_CHARGED_CARD, humanize.DESCRIBE_CHARGED_CARD_PROCESSOR
+    # and humanize.DESCRIBE_CHARGED_CARD_PROVIDER.
     # are specially crafted to start with "Charge ..."
     look = re.match(r'Charge (?P<charge>\S+)', transaction.descr)
     if look:
@@ -1037,22 +1074,22 @@ def as_html_description(transaction):
 
     provider = transaction.orig_organization
     subscriber = transaction.dest_organization
-    look = re.match(DESCRIBE_BUY_PERIODS % {
+    look = re.match(humanize.DESCRIBE_BUY_PERIODS % {
         'plan': r'(?P<plan>\S+)', 'ends_at': r'.*', 'humanized_periods': r'.*'},
         transaction.descr)
     if not look:
-        look = re.match(DESCRIBE_UNLOCK_NOW % {
+        look = re.match(humanize.DESCRIBE_UNLOCK_NOW % {
             'plan': r'(?P<plan>\S+)', 'unlock_event': r'.*'},
             transaction.descr)
     if not look:
-        look = re.match(DESCRIBE_UNLOCK_LATER % {
+        look = re.match(humanize.DESCRIBE_UNLOCK_LATER % {
             'plan': r'(?P<plan>\S+)', 'unlock_event': r'.*',
             'amount': r'.*'}, transaction.descr)
     if not look:
-        look = re.match(DESCRIBE_BALANCE % {
+        look = re.match(humanize.DESCRIBE_BALANCE % {
             'plan': r'(?P<plan>\S+)'}, transaction.descr)
     if not look:
-        look = re.match(DESCRIBE_BUY_USE % {
+        look = re.match(humanize.DESCRIBE_BUY_USE % {
             'quantity': r'\d+',
             'use_charge': r'.*',
             'plan': r'(?P<plan>\S+)'}, transaction.descr)

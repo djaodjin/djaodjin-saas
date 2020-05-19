@@ -1,4 +1,4 @@
-# Copyright (c) 2018, DjaoDjin inc.
+# Copyright (c) 2020, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -30,8 +30,11 @@ from django.db.utils import IntegrityError
 from django.template.defaultfilters import slugify
 from django.utils.timezone import utc
 
+from saas import humanize
 from saas.backends.razorpay_processor import RazorpayBackend
-from saas.models import Plan, Transaction, get_broker
+from saas.models import (AdvanceDiscount, Charge, ChargeItem, Organization,
+    Plan, Subscription, Transaction, get_broker)
+
 from saas.utils import datetime_or_now
 from saas.settings import PROCESSOR_ID
 
@@ -158,8 +161,6 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         #pylint: disable=too-many-locals,too-many-statements
         from saas.managers.metrics import month_periods # avoid import loop
-        from saas.models import (Charge, ChargeItem, Organization, Plan,
-            Subscription)
 
         RazorpayBackend.bypass_api = True
 
@@ -172,7 +173,7 @@ class Command(BaseCommand):
                 args[0], '%Y-%m-%d')
         # Create a set of 3 plans
         broker = get_broker()
-        Plan.objects.get_or_create(
+        plan, _ = Plan.objects.get_or_create(
             slug='basic',
             defaults={
                 'title': "Basic",
@@ -180,10 +181,14 @@ class Command(BaseCommand):
                 'period_amount': 24900,
                 'broker_fee_percent': 0,
                 'period_type': 4,
-                'advance_discount': 1000,
                 'organization': broker,
                 'is_active': True
         })
+        advance_discount = AdvanceDiscount.objects.get_or_create(
+            plan=plan,
+            discount_type=AdvanceDiscount.PERCENTAGE,
+            amount=1000,
+            length=12)
         Plan.objects.get_or_create(
             slug='medium',
             defaults={
@@ -195,7 +200,7 @@ class Command(BaseCommand):
                 'organization': broker,
                 'is_active': True
         })
-        Plan.objects.get_or_create(
+        plan, _ = Plan.objects.get_or_create(
             slug='premium',
             defaults={
                 'title': "Premium",
@@ -203,11 +208,14 @@ class Command(BaseCommand):
                 'period_amount': 18900,
                 'broker_fee_percent': 0,
                 'period_type': 4,
-                'advance_discount': 81,
                 'organization': broker,
                 'is_active': True
         })
-
+        advance_discount = AdvanceDiscount.objects.get_or_create(
+            plan=plan,
+            discount_type=AdvanceDiscount.PERCENTAGE,
+            amount=81,
+            length=12)
         # Create Income transactions that represents a growing bussiness.
         provider = Organization.objects.get(slug=options['provider'])
         processor = Organization.objects.get(pk=PROCESSOR_ID)
@@ -252,8 +260,14 @@ class Command(BaseCommand):
                 all_subscriptions.count() - nb_churn_customers)
             for subscription in subscriptions:
                 nb_periods = random.randint(1, 6)
+                amount = nb_periods * subscription.plan.period_amount
+                ends_at = subscription.plan.end_of_period(
+                    subscription.ends_at, nb_periods)
                 transaction_item = Transaction.objects.new_subscription_order(
-                    subscription, nb_natural_periods=nb_periods,
+                    subscription,
+                    amount=amount,
+                    descr=humanize.describe_buy_periods(
+                        subscription.plan, ends_at, nb_periods),
                     created_at=end_period)
                 if transaction_item.dest_amount < 50:
                     continue

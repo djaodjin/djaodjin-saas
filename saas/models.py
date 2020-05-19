@@ -65,7 +65,6 @@ import datetime, logging, re
 
 from dateutil.relativedelta import relativedelta
 from django.contrib.auth import get_user_model
-from django.core.validators import MaxValueValidator
 from django.db import DatabaseError, IntegrityError, models, transaction
 from django.db.models import Max, Q, Sum
 from django.db.models.query import QuerySet
@@ -372,7 +371,7 @@ class Organization(models.Model):
         if len(slug_base) > max_length:
             slug_base = slug_base[:max_length]
         self.slug = slug_base
-        for idx in range(1, 10):
+        for idx in range(1, 10): #pylint:disable=unused-variable
             try:
                 try:
                     with transaction.atomic():
@@ -705,7 +704,8 @@ class Organization(models.Model):
             coupon = Coupon.objects.create(
                 code='cpn_%s' % generate_random_slug(),
                 organization=coupon_provider,
-                percent=100, nb_attempts=0,
+                discount_type=Coupon.PERCENTAGE, discount_value=10000,
+                nb_attempts=0,
                 description=('Auto-generated after payment by %s'
                     % self.printable_name))
             LOGGER.info('Auto-generated Coupon %s for %s',
@@ -2425,91 +2425,6 @@ class ChargeItem(models.Model):
             provider.save()
 
 
-class CouponManager(models.Manager):
-
-    def active(self, organization, code, at_time=None):
-        at_time = datetime_or_now(at_time)
-        return self.filter(
-            Q(ends_at__isnull=True) | Q(ends_at__gt=at_time),
-            code__iexact=code, # case incensitive search.
-            organization=organization)
-
-
-@python_2_unicode_compatible
-class Coupon(models.Model):
-    """
-    Coupons are used on invoiced to give a rebate to a customer.
-    """
-    objects = CouponManager()
-
-    created_at = models.DateTimeField(auto_now_add=True,
-        help_text=_("Date/time of creation (in ISO format)"))
-    code = models.SlugField(
-        help_text=_("Unique identifier per provider, typically used in URLs"))
-    description = models.TextField(null=True, blank=True,
-        help_text=_("Free-form text description for the %(object)s") % {
-            'object': 'coupon'})
-    percent = models.PositiveSmallIntegerField(default=0,
-        validators=[MaxValueValidator(100)],
-        help_text=_("Percentage discounted"))
-    # restrict use in scope
-    organization = models.ForeignKey(Organization, on_delete=models.CASCADE,
-        help_text=_("Coupon will only apply to purchased plans"\
-            " from this provider"))
-    plan = models.ForeignKey('saas.Plan', on_delete=models.CASCADE, null=True,
-        blank=True, help_text=_("Coupon will only apply to this plan"))
-    # restrict use in time and count.
-    ends_at = models.DateTimeField(null=True, blank=True,
-        help_text=_("Date/time at which the coupon code expires"\
-        " (in ISO format)"))
-    nb_attempts = models.IntegerField(null=True, blank=True,
-        help_text=_("Number of times the coupon can be used"))
-    extra = settings.get_extra_field_class()(null=True,
-        help_text=_("Extra meta data (can be stringify JSON)"))
-
-    class Meta:
-        unique_together = ('organization', 'code')
-
-    def __str__(self):
-        return '%s-%s' % (self.organization, self.code)
-
-    @property
-    def provider(self):
-        return self.organization
-
-    def is_valid(self, plan, at_time=None):
-        """
-        Returns ``True`` if the ``Coupon`` can sucessfuly be applied
-        to purchase this plan.
-        """
-        at_time = datetime_or_now(at_time)
-        valid_plan = (not self.plan or self.plan == plan)
-        valid_time = (not self.ends_at or self.ends_at < at_time)
-        valid_attempts = (self.nb_attempts is None or self.nb_attempts > 0)
-        valid_organization = (self.organization == plan.organization)
-        return (valid_plan or valid_time or valid_attempts
-            or valid_organization)
-
-    def save(self, force_insert=False, force_update=False, using=None,
-             update_fields=None):
-        if not self.created_at:
-            self.created_at = datetime_or_now()
-        # Implementation Note:
-        # We want ``ends_at`` on a newly created ``Coupon`` to defaults
-        # to an expiration date, yet we want to force an update on the Coupon
-        # to enable a "never" expiration date. We can't enable both semantics
-        # through ``ends_at == None``, so the serializer ``perform_update``
-        # explicitely set ends_at to 'never' (not a datetime instance).
-        if self.ends_at:
-            if str(self.ends_at) == 'never':
-                self.ends_at = None
-        else:
-            self.ends_at = self.created_at + datetime.timedelta(days=30)
-        super(Coupon, self).save(force_insert=force_insert,
-             force_update=force_update, using=using,
-             update_fields=update_fields)
-
-
 class PlanManager(models.Manager):
 
     def as_buy_periods(self, descr):
@@ -2629,10 +2544,6 @@ class Plan(SlugTitleMixin, models.Model):
 
     unlock_event = models.CharField(max_length=128, null=True, blank=True,
         help_text=_('Payment required to access full service'))
-    advance_discount = models.PositiveIntegerField(default=0,
-        validators=[MaxValueValidator(10000)], # 100.00%
-        help_text=_('Incremental discount for payment of multiple periods'\
-        ' (in %%).'))
     # end game
     length = models.PositiveSmallIntegerField(null=True, blank=True,
         help_text=_('Number of natural periods before a subscription to'\
@@ -2659,50 +2570,9 @@ class Plan(SlugTitleMixin, models.Model):
     def setup_price(self):
         return Price(self.setup_amount, self.unit)
 
-    def discounted_price(self, percentage):
-        # integer division
-        return Price((self.period_amount * (100 - percentage) // 100),
-            self.unit)
-
-    @property
-    def yearly_amount(self):
-        if self.period_type == Plan.HOURLY:
-            amount, _ = self.advance_period_amount(365 * 24)
-        elif self.period_type == Plan.DAILY:
-            amount, _ = self.advance_period_amount(365)
-        elif self.period_type == Plan.WEEKLY:
-            amount, _ = self.advance_period_amount(52)
-        elif self.period_type == Plan.MONTHLY:
-            amount, _ = self.advance_period_amount(12)
-        elif self.period_type == Plan.YEARLY:
-            amount, _ = self.advance_period_amount(1)
-        return amount
-
-    def advance_period_amount(self, nb_periods, rounding=PRICE_ROUND_WHOLE):
-        assert nb_periods > 0
-        discount_percent = self.advance_discount * (nb_periods - 1)
-        if discount_percent >= 9999:
-            # Hardcode to a maximum of 99.99% discount
-            discount_percent = 9999
-            # integer division
-            return -1, discount_percent // 100
-        # integer division
-        discount_amount = (self.period_amount * nb_periods
-                * (10000 - discount_percent) // 10000)
-        if rounding == self.PRICE_ROUND_WHOLE:
-            discount_amount += 100 - discount_amount % 100
-        elif rounding == self.PRICE_ROUND_99:
-            discount_amount += 99 - discount_amount % 100
-        # integer division
-        return discount_amount, discount_percent // 100
-
-    def first_periods_amount(self, discount_percent=0, nb_natural_periods=1,
-                              prorated_amount=0):
-        # XXX integer division?
-        amount = int((prorated_amount
-            + (self.period_amount * nb_natural_periods))
-            * (100 - discount_percent) // 100)
-        return amount
+    def discounted_price(self, coupon):
+        return Price(self.period_amount - coupon.get_discount_amount(
+            period_amount=self.period_amount), self.unit)
 
     @staticmethod
     def get_natural_period(nb_periods, interval):
@@ -2721,21 +2591,6 @@ class Plan(SlugTitleMixin, models.Model):
 
     def natural_period(self, nb_periods=1):
         return self.get_natural_period(nb_periods, self.period_type)
-
-    def natural_options(self):
-        natural_periods = [1]
-        if self.advance_discount > 0:
-            # Give a chance for discount when paying periods in advance
-            if self.period_type == self.MONTHLY:
-                if self.period_length == 1:
-                    natural_periods = [1, 3, 6, 12]
-                elif self.period_length == 4:
-                    natural_periods = [1, 2, 3]
-                else:
-                    natural_periods = [1, 2, 3, 4]
-            else:
-                natural_periods = [1, 2, 3, 4]
-        return natural_periods
 
     def end_of_period(self, start_time, nb_periods=1):
         result = start_time
@@ -2854,6 +2709,165 @@ def on_plan_post_save(sender, instance, created, raw, **kwargs):
             signals.plan_created.send(sender=sender, plan=instance)
         else:
             signals.plan_updated.send(sender=sender, plan=instance)
+
+
+@python_2_unicode_compatible
+class AdvanceDiscount(models.Model):
+    """
+    Discounts for advance payments
+    """
+    UNSPECIFIED = 0
+    PERCENTAGE = humanize.DISCOUNT_PERCENTAGE
+    CURRENCY = humanize.DISCOUNT_CURRENCY
+    PERIOD = humanize.DISCOUNT_PERIOD
+
+    DISCOUNT_CHOICES = [
+        (PERCENTAGE, "Percentage"),
+        (CURRENCY, "Currency"),
+        (PERIOD, "Period")]
+
+    plan = models.ForeignKey(Plan, on_delete=models.CASCADE,
+        related_name='advance_discounts')
+    discount_type = models.PositiveSmallIntegerField(
+        choices=DISCOUNT_CHOICES, default=PERCENTAGE)
+    discount_value = models.PositiveIntegerField(default=0,
+        help_text=_('Amount of the discount'))
+    length = models.PositiveSmallIntegerField(default=1,
+        help_text=_('Contract length associated with the period'))
+
+    @property
+    def full_periods_amount(self):
+        """
+        Returns the full amount for the length of the subscription
+        when no discount is applied.
+        """
+        assert self.length > 0
+        nb_periods = self.length
+        return self.plan.period_amount * nb_periods
+
+    def get_discount_amount(self, prorated_amount=0,
+            rounding=Plan.PRICE_ROUND_WHOLE):
+        if self.discount_type == self.CURRENCY:
+            return self.discount_value
+        if self.discount_type == self.PERIOD:
+            return self.plan.period_amount * self.discount_value
+        # discount percentage
+        full_amount = prorated_amount + self.full_periods_amount
+        discount_percent = self.discount_value
+        discount_amount = (full_amount * discount_percent) // 10000
+        if rounding == Plan.PRICE_ROUND_WHOLE:
+            discount_amount += 100 - discount_amount % 100
+        elif rounding == Plan.PRICE_ROUND_99:
+            discount_amount += 99 - discount_amount % 100
+        return discount_amount
+
+
+class CouponManager(models.Manager):
+
+    def active(self, organization, code, at_time=None):
+        at_time = datetime_or_now(at_time)
+        return self.filter(
+            Q(ends_at__isnull=True) | Q(ends_at__gt=at_time),
+            code__iexact=code, # case incensitive search.
+            organization=organization)
+
+
+@python_2_unicode_compatible
+class Coupon(models.Model):
+    """
+    Coupons are used on invoiced to give a rebate to a customer.
+    """
+    UNSPECIFIED = 0
+    PERCENTAGE = humanize.DISCOUNT_PERCENTAGE
+    CURRENCY = humanize.DISCOUNT_CURRENCY
+
+    DISCOUNT_CHOICES = [
+        (PERCENTAGE, "Percentage"),
+        (CURRENCY, "Currency")]
+
+    objects = CouponManager()
+
+    created_at = models.DateTimeField(auto_now_add=True,
+        help_text=_("Date/time of creation (in ISO format)"))
+    code = models.SlugField(
+        help_text=_("Unique identifier per provider, typically used in URLs"))
+    description = models.TextField(null=True, blank=True,
+        help_text=_("Free-form text description for the %(object)s") % {
+            'object': 'coupon'})
+    discount_type = models.PositiveSmallIntegerField(
+        choices=DISCOUNT_CHOICES, default=PERCENTAGE)
+    discount_value = models.PositiveIntegerField(default=0,
+        help_text=_('Amount of the discount'))
+    # restrict use in scope
+    organization = models.ForeignKey(Organization, on_delete=models.CASCADE,
+        help_text=_("Coupon will only apply to purchased plans"\
+            " from this provider"))
+    plan = models.ForeignKey('saas.Plan', on_delete=models.CASCADE, null=True,
+        blank=True, help_text=_("Coupon will only apply to this plan"))
+    # restrict use in time and count.
+    ends_at = models.DateTimeField(null=True, blank=True,
+        help_text=_("Date/time at which the coupon code expires"\
+        " (in ISO format)"))
+    nb_attempts = models.IntegerField(null=True, blank=True,
+        help_text=_("Number of times the coupon can be used"))
+    extra = settings.get_extra_field_class()(null=True,
+        help_text=_("Extra meta data (can be stringify JSON)"))
+
+    class Meta:
+        unique_together = ('organization', 'code')
+
+    def __str__(self):
+        return '%s-%s' % (self.organization, self.code)
+
+    @property
+    def provider(self):
+        return self.organization
+
+    def get_discount_amount(self, prorated_amount=0, period_amount=0,
+                            advance_amount=0, rounding=Plan.PRICE_ROUND_WHOLE):
+        if self.discount_type == self.CURRENCY:
+            return self.discount_value
+        # discount percentage
+        full_amount = prorated_amount + period_amount + advance_amount
+        discount_percent = self.discount_value
+        discount_amount = (full_amount * discount_percent) // 10000
+        if rounding == Plan.PRICE_ROUND_WHOLE:
+            discount_amount += 100 - discount_amount % 100
+        elif rounding == Plan.PRICE_ROUND_99:
+            discount_amount += 99 - discount_amount % 100
+        return discount_amount
+
+    def is_valid(self, plan, at_time=None):
+        """
+        Returns ``True`` if the ``Coupon`` can sucessfuly be applied
+        to purchase this plan.
+        """
+        at_time = datetime_or_now(at_time)
+        valid_plan = (not self.plan or self.plan == plan)
+        valid_time = (not self.ends_at or self.ends_at < at_time)
+        valid_attempts = (self.nb_attempts is None or self.nb_attempts > 0)
+        valid_organization = (self.organization == plan.organization)
+        return (valid_plan or valid_time or valid_attempts
+            or valid_organization)
+
+    def save(self, force_insert=False, force_update=False, using=None,
+             update_fields=None):
+        if not self.created_at:
+            self.created_at = datetime_or_now()
+        # Implementation Note:
+        # We want ``ends_at`` on a newly created ``Coupon`` to defaults
+        # to an expiration date, yet we want to force an update on the Coupon
+        # to enable a "never" expiration date. We can't enable both semantics
+        # through ``ends_at == None``, so the serializer ``perform_update``
+        # explicitely set ends_at to 'never' (not a datetime instance).
+        if self.ends_at:
+            if str(self.ends_at) == 'never':
+                self.ends_at = None
+        else:
+            self.ends_at = self.created_at + datetime.timedelta(days=30)
+        super(Coupon, self).save(force_insert=force_insert,
+             force_update=force_update, using=using,
+             update_fields=update_fields)
 
 
 @python_2_unicode_compatible
@@ -3830,9 +3844,8 @@ class TransactionManager(models.Manager):
             subscription.plan.organization, descr,
             event_id=event_id, created_at=created_at)
 
-    def new_subscription_order(self, subscription, nb_natural_periods,
-        prorated_amount=0, created_at=None, descr=None, discount_percent=0,
-        descr_suffix=None):
+    def new_subscription_order(self, subscription,
+        amount=None, descr=None, created_at=None):
         #pylint: disable=too-many-arguments
         """
         Each time a subscriber places an order through
@@ -3848,39 +3861,34 @@ class TransactionManager(models.Manager):
             2014/09/10 subscribe to open-space plan
                 xia:Payable                             $179.99
                 cowork:Receivable
-
-        At first, ``nb_periods``, the number of period paid in advance,
-        is stored in the ``Transaction.orig_amount``. The ``Transaction``
-        is created in ``TransactionManager.new_subscription_order``, then only
-        later saved when ``TransactionManager.record_order`` is called through
-        ``Organization.execute_order``. ``record_order`` will replace
-        ``orig_amount`` by the correct amount in the expected currency.
         """
-        nb_periods = nb_natural_periods * subscription.plan.period_length
-        if not descr:
-            amount = subscription.plan.first_periods_amount(
-                discount_percent=discount_percent,
-                nb_natural_periods=nb_natural_periods,
-                prorated_amount=prorated_amount)
+        created_at = datetime_or_now(created_at)
+        if amount is None:
+            amount = subscription.plan.period_amount
+            nb_periods = subscription.plan.period_length
             ends_at = subscription.plan.end_of_period(
                 subscription.ends_at, nb_periods)
             # descr will later be use to recover the ``period_number``,
             # so we need to use The true ``nb_periods`` and not the number
             # of natural periods.
+            full_name = None
+            if not subscription.organization.attached_user():
+                full_name = subscription.organization.printable_name
             descr = humanize.describe_buy_periods(
                 subscription.plan, ends_at, nb_periods,
-                discount_percent=discount_percent, descr_suffix=descr_suffix)
-        else:
-            # If we already have a description, all bets are off on
-            # what the amount represents (see unlock_event).
-            amount = prorated_amount
+                full_name=full_name)
+        elif not descr:
+            LOGGER.warning("creating a `new_subscription_order` for %s"\
+                " with amount %d has no description.",
+                subscription, amount)
         event_id = None
         if subscription.id:
             # If the subscription has not yet been recorded in the database
             # we don't have an id for it (see order/checkout pages).
             event_id = get_sub_event_id(subscription)
         return self.new_payable(
-            subscription.organization, Price(amount, subscription.plan.unit),
+            subscription.organization,
+            Price(amount, subscription.plan.unit),
             subscription.plan.organization, descr,
             event_id=event_id, created_at=created_at)
 
@@ -4263,7 +4271,7 @@ class BalanceLine(models.Model):
         unique_together = ('report', 'rank', 'moved')
 
     def __str__(self):
-        return '%s/%d' % (self.report, self.rank)
+        return '%s/%d' % (self.report, int(self.rank))
 
 
 def get_broker():

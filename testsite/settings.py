@@ -1,6 +1,6 @@
 # Django settings for testsite project.
 
-import logging, os.path, sys
+import logging, os.path, re, sys
 
 from django.contrib.messages import constants as messages
 from saas.compat import reverse_lazy
@@ -20,7 +20,6 @@ def load_config(confpath):
     '''
     # todo: consider using something like ConfigObj for this:
     # http://www.voidspace.org.uk/python/configobj.html
-    import re
     if os.path.isfile(confpath):
         sys.stderr.write('config loaded from %s\n' % confpath)
         with open(confpath) as conffile:

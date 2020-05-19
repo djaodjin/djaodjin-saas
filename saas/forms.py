@@ -1,4 +1,4 @@
-# Copyright (c) 2019, DjaoDjin inc.
+# Copyright (c) 2020, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -38,7 +38,7 @@ from django_countries.fields import Country
 import localflavor.us.forms as us_forms
 
 from . import settings
-from .models import Organization, Plan, Subscription
+from .models import AdvanceDiscount, Organization, Plan, Subscription
 
 #pylint: disable=no-member,no-init
 
@@ -249,47 +249,66 @@ class PlanForm(forms.ModelForm):
     unit = forms.ChoiceField(choices=(
         ('usd', 'usd'), ('cad', 'cad'), ('eur', 'eur')))
     period_amount = forms.DecimalField(max_digits=7, decimal_places=2)
-    advance_discount = forms.DecimalField(max_digits=5, decimal_places=2)
+    advance_discount_type = forms.ChoiceField(choices=[
+        (slugify(choice[1]), choice[1])
+        for choice in AdvanceDiscount.DISCOUNT_CHOICES])
+    advance_discount_value = forms.DecimalField(max_digits=5, decimal_places=2)
+    advance_discount_length = forms.IntegerField()
 
     class Meta:
         model = Plan
         fields = ('title', 'description', 'period_amount', 'unit',
-                  'period_type', 'period_length', 'advance_discount',
-                  'renewal_type', 'is_not_priced')
+                  'period_type', 'period_length', 'renewal_type',
+                  'advance_discount_type', 'advance_discount_value',
+                  'advance_discount_length')
 
     def __init__(self, *args, **kwargs):
         initial = kwargs.get('initial', None)
         if initial:
             period_amount = initial.get('period_amount', 0)
-            advance_discount = initial.get('advance_discount', 0)
             period_type = initial.get('period_type', Plan.MONTHLY)
             renewal_type = initial.get('renewal_type', Plan.AUTO_RENEW)
+            advance_discount_type = initial.get(
+                'advance_discount_type', AdvanceDiscount.PERCENTAGE)
+            advance_discount_value = initial.get(
+                'advance_discount_value', 0)
+            advance_discount_length = initial.get(
+                'advance_discount_value', 0)
         instance = kwargs.get('instance', None)
         if instance:
             period_amount = instance.period_amount
-            advance_discount = instance.advance_discount
             period_type = instance.period_type
             renewal_type = instance.renewal_type
+            advance_discount = instance.advance_discounts.first()
+            if advance_discount:
+                advance_discount_type = advance_discount.discount_type
+                advance_discount_value = advance_discount.discount_value
+                advance_discount_length = advance_discount.length
         else:
             self.submit_title = _("Create")
         period_amount = Decimal(period_amount).scaleb(-2)
-        advance_discount = Decimal(advance_discount).scaleb(-2)
         period_type = slugify(Plan.INTERVAL_CHOICES[period_type - 1][1])
         renewal_type = slugify(Plan.RENEWAL_CHOICES[renewal_type][1])
+        advance_discount_type = slugify(
+            AdvanceDiscount.DISCOUNT_CHOICES[advance_discount_type - 1][1])
+        advance_discount_value = Decimal(advance_discount_value).scaleb(-2)
         initial.update({
             'period_amount':period_amount,
-            'advance_discount': advance_discount,
             'period_type': period_type,
-            'renewal_type': renewal_type})
+            'renewal_type': renewal_type,
+            'advance_discount_type': advance_discount_type,
+            'advance_discount_value': advance_discount_value,
+            'advance_discount_length': advance_discount_length
+        })
         super(PlanForm, self).__init__(*args, **kwargs)
 
-    def clean_advance_discount(self):
+    def clean_advance_discount_value(self):
         try:
-            self.cleaned_data['advance_discount'] = \
-              int(self.cleaned_data['advance_discount'].scaleb(2))
+            self.cleaned_data['advance_discount_value'] = \
+              int(self.cleaned_data['advance_discount_value'].scaleb(2))
         except (TypeError, ValueError):
-            self.cleaned_data['advance_discount'] = 0
-        return self.cleaned_data['advance_discount']
+            self.cleaned_data['advance_discount_value'] = 0
+        return self.cleaned_data['advance_discount_value']
 
     def clean_period_type(self):
         period_type = self.cleaned_data['period_type']

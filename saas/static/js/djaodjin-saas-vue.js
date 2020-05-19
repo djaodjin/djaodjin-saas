@@ -1217,7 +1217,8 @@ Vue.component('coupon-list', {
             },
             newCoupon: {
                 code: '',
-                percent: ''
+                discount_type: 'percentage',
+                discount_value: 0
             },
             edit_description: [],
             date: null,
@@ -1235,12 +1236,23 @@ Vue.component('coupon-list', {
         },
         save: function(){
             var vm = this;
-            vm.reqPost(vm.url, vm.newCoupon,
+            var data = {};
+            for( var key in vm.newCoupon ) {
+                if( vm.newCoupon.hasOwnProperty(key) ) {
+                    if( key === 'discount_value' ) {
+                        data[key] = vm.newCoupon[key] * 100;
+                    } else {
+                        data[key] = vm.newCoupon[key];
+                    }
+                }
+            }
+            vm.reqPost(vm.url, data,
             function() {
                 vm.get();
                 vm.newCoupon = {
                     code: '',
-                    percent: ''
+                    discount_type: 'percentage',
+                    discount_value: 0
                 }
             });
         },
@@ -2370,13 +2382,25 @@ Vue.component('plan-update', {
         }
     },
     methods: {
-         createPlan: function(){
+        _populateParams: function() {
             var vm = this;
             vm.validateForm();
             var data = {};
+            var advance_discount = {};
             for( var field in vm.formFields ) {
                 if( vm.formFields.hasOwnProperty(field) ) {
-                    data[field] = vm.formFields[field];
+                    if( field == 'advance_discount_type' ) {
+                        advance_discount['discount_type'] =
+                            vm.formFields[field];
+                    } else if( field == 'advance_discount_value' ) {
+                        advance_discount['discount_value'] =
+                            parseFloat(vm.formFields[field]);
+                    } else if( field == 'advance_discount_length' ) {
+                        advance_discount['length'] =
+                            parseInt(vm.formFields[field]);
+                    } else {
+                        data[field] = vm.formFields[field];
+                    }
                 }
             }
             if( data.period_amount ) {
@@ -2385,10 +2409,20 @@ Vue.component('plan-update', {
             if( data.setup_amount ) {
                 data.setup_amount = Math.round(data.setup_amount * 100);
             }
-            if( data.advance_discount ) {
-                data.advance_discount = Math.round(data.advance_discount * 100);
+            if( advance_discount && advance_discount.discount_value ) {
+                data['advance_discounts'] = [advance_discount];
+                for( var idx = 0; idx < data.advance_discounts.length; ++idx ) {
+                    if( data.advance_discounts[idx].discount_type !== 'period' ) {
+                        data.advance_discounts[idx].discount_value = Math.round(
+                            data.advance_discounts[idx].discount_value * 100);
+                    }
+                }
             }
-            vm.reqPost(vm.api_plans_url, data,
+            return data;
+        },
+        createPlan: function(){
+            var vm = this;
+            vm.reqPost(vm.api_plans_url, vm._populateParams(),
             function() {
                 window.location = vm.redirect_url;
             });
@@ -2410,8 +2444,14 @@ Vue.component('plan-update', {
                     resp.period_amount);
                 vm.formFields.setup_amount = vm.formatNumber(
                     resp.setup_amount);
-                vm.formFields.advance_discount = vm.formatNumber(
-                    resp.advance_discount);
+                for( var idx = 0; idx < resp.advance_discounts.length; ++idx ) {
+                    vm.formFields.advance_discount_type =
+                        resp.advance_discounts[idx].discount_type;
+                    vm.formFields.advance_discount_value = vm.formatNumber(
+                        resp.advance_discounts[idx].discount_value);
+                    vm.formFields.advance_discount_length =
+                        resp.advance_discounts[idx].length;
+                }
                 vm.isActive = resp.is_active;
             });
         },
@@ -2428,24 +2468,8 @@ Vue.component('plan-update', {
         },
         updatePlan: function(){
             var vm = this;
-            vm.validateForm();
-            var data = {};
-            for( var field in vm.formFields ) {
-                if( vm.formFields.hasOwnProperty(field) ) {
-                    data[field] = vm.formFields[field];
-                }
-            }
-            if( data.period_amount ) {
-                data.period_amount = Math.round(data.period_amount * 100);
-            }
-            if( data.setup_amount ) {
-                data.setup_amount = Math.round(data.setup_amount * 100);
-            }
-            if( data.advance_discount ) {
-                data.advance_discount = Math.round(data.advance_discount * 100);
-            }
             if( vm.url ) {
-                vm.reqPut(vm.url, data,
+                vm.reqPut(vm.url, vm._populateParams(),
                 function() {
                     showMessages([interpolate(gettext(
                         "Successfully updated plan titled '%s'."), [

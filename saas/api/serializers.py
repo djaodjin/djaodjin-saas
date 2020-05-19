@@ -39,6 +39,7 @@ from __future__ import unicode_literals
 from django.core import validators
 from django.contrib.auth import get_user_model
 from django.contrib.auth.hashers import is_password_usable
+from django.db import transaction
 from django.template.defaultfilters import slugify
 from django.utils import six
 from django.utils.translation import ugettext_lazy as _
@@ -52,7 +53,7 @@ from .. import settings
 from ..decorators import _valid_manager
 from ..humanize import as_money
 from ..mixins import as_html_description, product_url
-from ..models import (BalanceLine, CartItem, Charge, Plan,
+from ..models import (AdvanceDiscount, BalanceLine, CartItem, Charge, Plan,
     RoleDescription, Subscription, Transaction)
 from ..utils import (build_absolute_uri, get_organization_model, get_role_model)
 from ..compat import reverse
@@ -437,6 +438,16 @@ class OrganizationWithEndsAtByPlanSerializer(serializers.ModelSerializer):
         read_only_fields = ('slug', 'created_at')
 
 
+class AdvanceDiscountSerializer(serializers.ModelSerializer):
+
+    discount_type = EnumField(choices=AdvanceDiscount.DISCOUNT_CHOICES,
+        help_text=_("Type of discount (periods, percentage or currency unit)"))
+
+    class Meta:
+        model = AdvanceDiscount
+        fields = ('discount_type', 'discount_value', 'length')
+
+
 class PlanSerializer(serializers.ModelSerializer):
 
     title = serializers.CharField(required=False,
@@ -465,12 +476,14 @@ class PlanSerializer(serializers.ModelSerializer):
     optin_on_request = serializers.BooleanField(required=False,
         help_text=_("True when a provider must manually accept a subscription"\
         " to the plan initiated by a subscriber. (defaults to False)"))
+    advance_discounts = AdvanceDiscountSerializer(many=True, required=False,
+        help_text=_("Discounts when periods are paid in advance."))
 
     class Meta:
         model = Plan
         fields = ('slug', 'title', 'description', 'is_active',
                   'setup_amount', 'period_amount', 'period_type', 'app_url',
-                  'advance_discount', 'unit', 'organization', 'extra',
+                  'advance_discounts', 'unit', 'organization', 'extra',
                   'period_length', 'renewal_type', 'is_not_priced',
                   'created_at',
                   'skip_optin_on_grant', 'optin_on_request')
@@ -479,6 +492,36 @@ class PlanSerializer(serializers.ModelSerializer):
     @staticmethod
     def get_app_url(obj):
         return product_url(obj.organization)
+
+    def create(self, validated_data):
+        advance_discounts = validated_data.pop('advance_discounts', [])
+        with transaction.atomic():
+            instance = Plan.objects.create(**validated_data)
+            for advance_discount in advance_discounts:
+                AdvanceDiscount.objects.create(
+                    plan=instance,
+                    discount_type=advance_discount.get('discount_type'),
+                    discount_value=advance_discount.get('discount_value'),
+                    length=advance_discount.get('length'))
+
+        return instance
+
+    def update(self, instance, validated_data):
+        advance_discounts = validated_data.pop('advance_discounts', [])
+        for attr, value in six.iteritems(validated_data):
+            setattr(instance, attr, value)
+
+        with transaction.atomic():
+            instance.save()
+            instance.advance_discounts.all().delete()
+            for advance_discount in advance_discounts:
+                AdvanceDiscount.objects.create(
+                    plan=instance,
+                    discount_type=advance_discount.get('discount_type'),
+                    discount_value=advance_discount.get('discount_value'),
+                    length=advance_discount.get('length'))
+
+        return instance
 
     def validate_title(self, title):
         kwargs = {}

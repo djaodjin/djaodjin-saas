@@ -22,7 +22,7 @@
           <thead>
             <tr>
               <th>Code<button ng-click="sortBy('code')" @click="sortBy('code')">[[sortDir('code') ? sortDir('code') : 'sort']]</button></th>
-              <th>Percent<button ng-click="sortBy('percent')" @click="sortBy('percent')">[[sortDir('percent') ? sortDir('percent') : 'sort']]</button></th>
+              <th>Percent<button ng-click="sortBy('amount')" @click="sortBy('amount')">[[sortDir('amount') ? sortDir('amount') : 'sort']]</button></th>
               <th>Expires At<button ng-click="sortBy('ends_at')" @click="sortBy('ends_at')">[[sortDir('ends_at') ? sortDir('ends_at') : 'sort']]</button></th>
               <th>Description<button ng-click="sortBy('description')" @click="sortBy('description')">[[sortDir('description') ? sortDir('description') : 'sort']]</button></th>
               <th>Created At<button ng-click="sortBy('created_at')" @click="sortBy('created_at')">[[sortDir('created_at') ? sortDir('created_at') : 'sort']]</button></th>
@@ -38,8 +38,8 @@
                     </td>
                     <td>
                         <input type="text" placeholder="Percent"
-                            ng-model="newCoupon.percent"
-                            v-model="newCoupon.percent">
+                            ng-model="newCoupon.discount_value"
+                            v-model="newCoupon.discount_value">
                     </td>
                     <td>
                         <button ng-click="save()" @click="save">Create Coupon</button>
@@ -50,7 +50,7 @@
                 v-bind:id="coupon.code" v-for="(coupon, index) in items.results" v-cloak>
             <td><a ng-prop-href="getCouponUrl(coupon)"
                    v-bind:href="'{{urls.provider.metrics_coupons}}' + coupon.code + '/'">[[coupon.code]]</a></td>
-                <td>[[coupon.percent]]</td>
+                <td>[[coupon.discount_value / 100]]%</td>
                 <td ng-if="coupon.ends_at"
                     v-if="coupon.ends_at">[[coupon.ends_at | formatDate]]
                 </td>

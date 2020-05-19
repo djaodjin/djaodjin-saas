@@ -1,4 +1,4 @@
-# Copyright (c) 2019, DjaoDjin inc.
+# Copyright (c) 2020, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -142,7 +142,8 @@ class CouponDownloadView(SmartCouponListMixin, CouponQuerysetMixin,
     headings = [
         'Created At'
         'Code',
-        'Percentage',
+        'DiscountType',
+        'Amount',
     ]
 
     def get_headings(self):
@@ -166,7 +167,8 @@ class CartItemDownloadView(CartItemSmartListMixin, CartItemQuerysetMixin,
     headings = [
         'Used At',
         'Code',
-        'Percentage',
+        'DiscountType',
+        'Amount',
         'Name',
         'Email',
         'Plan',
@@ -216,7 +218,8 @@ class CartItemDownloadView(CartItemSmartListMixin, CartItemQuerysetMixin,
         return [
             cartitem.created_at.date(),
             self.encode(cartitem.coupon.code),
-            cartitem.coupon.percent,
+            Coupon.DISCOUNT_CHOICES.get(cartitem.coupon.discount_type),
+            cartitem.coupon.discount_value,
             self.encode(full_name),
             self.encode(email),
             self.encode(cartitem.plan.slug),

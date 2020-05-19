@@ -1,4 +1,4 @@
-# Copyright (c) 2019, DjaoDjin inc.
+# Copyright (c) 2020, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -30,6 +30,11 @@ from . import settings
 
 
 HOURLY = 1 # XXX to avoid import loop
+
+DISCOUNT_PERCENTAGE = 1
+DISCOUNT_CURRENCY = 2
+DISCOUNT_PERIOD = 3
+
 
 DESCRIBE_BALANCE = \
     "Balance on %(plan)s"
@@ -126,22 +131,51 @@ def as_money(value, currency=settings.DEFAULT_UNIT, negative_format="(%s)"):
     return result
 
 
-def describe_buy_periods(plan, ends_at, nb_periods,
-    discount_percent=0, descr_suffix=None):
-    if plan.period_type == HOURLY:
-        descr = (DESCRIBE_RETAINER_PERIODS %
-            {'plan': plan,
-             'ends_at': datetime.datetime.strftime(ends_at, '%Y/%m/%d'),
-             'humanized_periods': plan.humanize_period(nb_periods)})
-    else:
-        descr = (DESCRIBE_BUY_PERIODS %
-            {'plan': plan,
-             'ends_at': datetime.datetime.strftime(ends_at, '%Y/%m/%d'),
-             'humanized_periods': plan.humanize_period(nb_periods)})
-    if discount_percent:
-        descr += ' - a %d%% discount' % discount_percent
+def as_percentage(value):
+    if (value % 100) == 0:
+        return "%d%%" % (value // 100)
+    return "%.2f%%" % (value / 100)
+
+
+def describe_buy_periods(plan, ends_at, nb_periods, discount_by_types=None,
+                         coupon=None, full_name=None):
+    descr = ((DESCRIBE_BUY_PERIODS if plan.period_type != HOURLY
+        else DESCRIBE_RETAINER_PERIODS) % {
+                'plan': plan,
+                'ends_at': datetime.datetime.strftime(ends_at, '%Y/%m/%d'),
+                'humanized_periods': plan.humanize_period(nb_periods)})
+    sep = ""
+    descr_suffix = ""
+
+    if not coupon and full_name:
+        descr_suffix += "%s" % full_name
+
+    if discount_by_types:
+        discount_amount = discount_by_types.get(DISCOUNT_PERCENTAGE)
+        if discount_amount:
+            descr_suffix += sep + 'a %(percent)s discount' % {
+                'percent': as_percentage(discount_amount)}
+            sep = " and"
+        discount_amount = discount_by_types.get(DISCOUNT_PERIOD)
+        if discount_amount:
+            descr_suffix += sep + '%(period)s free' % {
+                'period': plan.humanize_period(discount_amount)}
+            sep = " and"
+        discount_amount = discount_by_types.get(DISCOUNT_CURRENCY)
+        if discount_amount:
+            descr_suffix += sep + 'a %(amount)s off' % {
+                'amount': as_money(discount_amount, currency=plan.unit)}
+            sep = " and"
+
+    if coupon:
+        if coupon.code.startswith('cpn_'):
+            if full_name:
+                descr_suffix += ', complimentary of %s' % full_name
+        else:
+            descr_suffix += '(code: %s)' % coupon.code
+
     if descr_suffix:
-        descr += ' %s' % descr_suffix
+        descr += " - %s" % descr_suffix
     return descr
 
 

@@ -1,4 +1,4 @@
-# Copyright (c) 2018, DjaoDjin inc.
+# Copyright (c) 2020, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -24,10 +24,11 @@
 
 from django.contrib import admin
 
-from .models import (Agreement, CartItem, Charge, ChargeItem, Coupon,
-    Organization, Role, RoleDescription, Plan, Signature, Subscription,
+from .models import (AdvanceDiscount, Agreement, CartItem, Charge, ChargeItem,
+    Coupon, Organization, Role, RoleDescription, Plan, Signature, Subscription,
     Transaction)
 
+admin.site.register(AdvanceDiscount)
 admin.site.register(Agreement)
 admin.site.register(CartItem)
 admin.site.register(Charge)
