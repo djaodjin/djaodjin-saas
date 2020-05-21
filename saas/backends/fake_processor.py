@@ -1,4 +1,4 @@
-# Copyright (c) 2019, DjaoDjin inc.
+# Copyright (c) 2020, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -24,10 +24,9 @@
 
 import datetime, logging
 
-from django.utils import six
-
-from ..utils import datetime_or_now, generate_random_slug
 from .. import settings
+from ..compat import six
+from ..utils import datetime_or_now, generate_random_slug
 
 
 LOGGER = logging.getLogger(__name__)

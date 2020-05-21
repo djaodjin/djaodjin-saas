@@ -72,10 +72,8 @@ from django.db.models.query import QuerySet
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 from django.template.defaultfilters import slugify
-from django.utils.encoding import python_2_unicode_compatible
 from django.utils.http import quote
 from django.utils.safestring import mark_safe
-from django.utils import six
 from django.utils.translation import ugettext_lazy as _
 from django_countries.fields import CountryField
 from rest_framework.exceptions import ValidationError
@@ -83,6 +81,7 @@ from rest_framework.exceptions import ValidationError
 from . import humanize, settings, signals
 from .backends import (get_processor_backend, CardError, ProcessorError,
     ProcessorSetupError)
+from .compat import python_2_unicode_compatible, six
 from .utils import (SlugTitleMixin, datetime_or_now, full_name_natural_split,
     generate_random_slug, get_role_model, handle_uniq_error)
 

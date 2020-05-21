@@ -23,6 +23,23 @@
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #pylint: disable=no-name-in-module,unused-import
+from functools import WRAPPER_ASSIGNMENTS
+import six
+
+#pylint:disable=no-name-in-module,import-error
+from six.moves.urllib.parse import urlparse, urlunparse
+from six import StringIO
+
+try:
+    from django.utils.decorators import available_attrs
+except ImportError: # django < 3.0
+    def available_attrs(fn):
+        return WRAPPER_ASSIGNMENTS
+
+try:
+    from django.utils.encoding import python_2_unicode_compatible
+except ImportError: # django < 3.0
+    python_2_unicode_compatible = six.python_2_unicode_compatible
 
 try:
     from django.utils.module_loading import import_string

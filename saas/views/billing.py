@@ -49,10 +49,9 @@ from django.utils.translation import ugettext_lazy as _
 from django.views.generic import (DetailView, FormView, ListView, TemplateView,
     UpdateView)
 from django.utils.http import urlencode
-from django.utils import six
 
 from .. import settings
-from ..compat import is_authenticated, reverse
+from ..compat import is_authenticated, reverse, six
 from ..backends import ProcessorError, ProcessorConnectionError
 from ..decorators import _insert_url, _valid_manager
 from ..forms import (BankForm, CartPeriodsForm, CreditCardForm,

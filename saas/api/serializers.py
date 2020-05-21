@@ -40,7 +40,6 @@ from django.core import validators
 from django.contrib.auth import get_user_model
 from django.contrib.auth.hashers import is_password_usable
 from django.template.defaultfilters import slugify
-from django.utils import six
 from django.utils.translation import ugettext_lazy as _
 from django.urls.exceptions import NoReverseMatch
 from rest_framework import serializers
@@ -49,13 +48,13 @@ from rest_framework.generics import get_object_or_404
 from django_countries.serializer_fields import CountryField
 
 from .. import settings
+from ..compat import reverse, six
 from ..decorators import _valid_manager
 from ..humanize import as_money
 from ..mixins import as_html_description, product_url
 from ..models import (BalanceLine, CartItem, Charge, Plan,
     RoleDescription, Subscription, Transaction)
 from ..utils import (build_absolute_uri, get_organization_model, get_role_model)
-from ..compat import reverse
 
 #pylint: disable=no-init
 

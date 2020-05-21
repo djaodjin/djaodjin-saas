@@ -67,13 +67,12 @@ from hashlib import sha512
 from base64 import b64encode
 
 from django.db import transaction
-from django.utils import six
 from django.utils.translation import ugettext_lazy as _
 import requests, stripe
 
 from .. import CardError, ProcessorError, ProcessorSetupError
 from ... import settings, signals
-from ...compat import reverse
+from ...compat import reverse, six
 from ...utils import (datetime_to_utctimestamp, utctimestamp_to_datetime,
     datetime_or_now, is_broker)
 

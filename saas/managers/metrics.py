@@ -1,4 +1,4 @@
-# Copyright (c) 2019, DjaoDjin inc.
+# Copyright (c) 2020, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -29,8 +29,8 @@ from dateutil.relativedelta import relativedelta
 from django.db import router
 from django.db.models import Count, Sum
 from django.db.models.sql.query import RawQuery
-from django.utils import six
 
+from ..compat import six
 from ..models import Plan, Subscription, Transaction
 from ..utils import datetime_or_now, parse_tz, convert_dates_to_utc
 
