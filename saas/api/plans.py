@@ -25,7 +25,7 @@
 #pylint:disable=useless-super-delegation
 
 from rest_framework import status
-from rest_framework.generics import (ListCreateAPIView,
+from rest_framework.generics import (ListAPIView, ListCreateAPIView,
     RetrieveUpdateDestroyAPIView)
 from rest_framework.response import Response
 
@@ -34,6 +34,76 @@ from ..mixins import PlanMixin
 from ..filters import DateRangeFilter, OrderingFilter
 from ..models import Plan, Subscription
 from .. import settings
+
+
+class PricingAPIView(PlanMixin, ListAPIView):
+    """
+    Lists active plans
+
+    Returns a PAGE_SIZE list of plans.
+
+    **Tags**: subscriptions
+
+    **Examples**
+
+    .. code-block:: http
+
+         GET /api/pricing/ HTTP/1.1
+
+    responds
+
+    .. code-block:: json
+
+        {
+          "count": 1,
+          "next": null,
+          "previous": null,
+          "results": [{
+            "slug": "managed",
+            "title": "Managed",
+            "description": "Ideal for growing organizations",
+            "is_active": true,
+            "setup_amount": 0,
+            "period_amount": 2900,
+            "period_length": 1,
+            "period_type": "monthly",
+            "unit": "usd",
+            "is_not_priced": false,
+            "renewal_type": "auto-renew",
+            "created_at": "2019-01-01T00:00:00Z",
+            "organization": "cowork",
+            "extra": null,
+            "skip_optin_on_grant": false,
+            "optin_on_request": false
+          }]
+        }
+    """
+    serializer_class = PlanSerializer
+    filter_backends = (DateRangeFilter, OrderingFilter)
+    ordering_fields = [
+        ('title', 'title'),
+        ('period_amount', 'period_amount'),
+        ('is_active', 'is_active'),
+        ('created_at', 'created_at')]
+
+    def get_queryset(self):
+        queryset = Plan.objects.filter(organization=self.provider,
+            is_active=True).order_by('is_not_priced', 'period_amount')
+        return queryset
+
+    def paginate_queryset(self, queryset):
+        page = super(PricingAPIView, self).paginate_queryset(queryset)
+
+        redeemed = self.request.session.get('redeemed', None)
+        if redeemed is not None:
+            redeemed = Coupon.objects.active(self.provider, redeemed).first()
+            decorate_queryset = page if page else queryset
+            for index, plan in enumerate(decorate_queryset):
+                if redeemed and redeemed.is_valid(plan):
+                    setattr(plan, 'discounted_period_amount',
+                        plan.get_discounted_period_amount(redeemed))
+
+        return page
 
 
 class PlanListCreateAPIView(PlanMixin, ListCreateAPIView):

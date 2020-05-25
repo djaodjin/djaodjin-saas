@@ -130,7 +130,7 @@ djaodjin-saas/tree/master/saas/templates/saas/pricing.html>`__).
                 setattr(plan, 'is_line_break', True)
             if redeemed and redeemed.is_valid(plan):
                 setattr(plan, 'discounted_period_price',
-                    plan.discounted_price(redeemed))
+                    plan.get_discounted_period_price(redeemed))
             if is_authenticated(self.request):
                 setattr(plan, 'managed_subscribers',
                     get_role_model().objects.role_on_subscriber(

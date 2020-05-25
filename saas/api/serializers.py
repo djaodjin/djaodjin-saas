@@ -478,6 +478,8 @@ class PlanSerializer(serializers.ModelSerializer):
         " to the plan initiated by a subscriber. (defaults to False)"))
     advance_discounts = AdvanceDiscountSerializer(many=True, required=False,
         help_text=_("Discounts when periods are paid in advance."))
+    discounted_period_amount = serializers.SerializerMethodField(required=False,
+        help_text=_("Discounted amount for the first period"))
 
     class Meta:
         model = Plan
@@ -486,8 +488,13 @@ class PlanSerializer(serializers.ModelSerializer):
                   'advance_discounts', 'unit', 'organization', 'extra',
                   'period_length', 'renewal_type', 'is_not_priced',
                   'created_at',
-                  'skip_optin_on_grant', 'optin_on_request')
+                  'skip_optin_on_grant', 'optin_on_request',
+                  'discounted_period_amount')
         read_only_fields = ('slug', 'app_url')
+
+    @staticmethod
+    def get_discounted_period_amount(obj):
+        return getattr(obj, 'discounted_period_amount', obj.period_amount)
 
     @staticmethod
     def get_app_url(obj):

@@ -98,12 +98,14 @@ urlpatterns += \
     # saas urls with provider key to implement marketplace.
     url_prefixed(r'api/', include('saas.backends.urls.api')),
     url_prefixed(r'api/', include('saas.urls.api.cart')),
+    url_prefixed(r'api/', include('saas.urls.api.legal'),
+        redirects=[fail_authenticated]),
+    url_prefixed(r'api/', include('saas.urls.api.search'),
+        redirects=[fail_authenticated]),
     url_prefixed(r'api/', include('saas.urls.api.users'),
         redirects=[fail_authenticated, fail_self_provider]),
     url_prefixed(r'api/', include('saas.urls.api.broker'),
         redirects=[fail_authenticated, fail_provider_only]),
-    url_prefixed(r'api/', include('saas.urls.api.search'),
-        redirects=[fail_authenticated]),
     # api/charges/:charge/refund must be before api/charges/
     url_prefixed(r'api/',
         include('saas.urls.api.provider.charges'),
@@ -125,8 +127,7 @@ urlpatterns += \
         redirects=[fail_authenticated, fail_direct]),
     url_prefixed(r'api/', include('saas.urls.api.subscriber'),
         redirects=[fail_authenticated, fail_provider]),
-    url_prefixed(r'pricing/', CartPlanListView.as_view(),
-        name='saas_cart_plan_list'),
+    # views
     url_prefixed(r'', include('saas.urls.request'),
         redirects=[fail_authenticated]),
     url_prefixed(r'', include('saas.urls.noauth')),

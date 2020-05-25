@@ -2570,9 +2570,12 @@ class Plan(SlugTitleMixin, models.Model):
     def setup_price(self):
         return Price(self.setup_amount, self.unit)
 
-    def discounted_price(self, coupon):
-        return Price(self.period_amount - coupon.get_discount_amount(
-            period_amount=self.period_amount), self.unit)
+    def get_discounted_period_amount(self, coupon):
+        return self.period_amount - coupon.get_discount_amount(
+            period_amount=self.period_amount)
+
+    def get_discounted_period_price(self, coupon):
+        return Price(self.get_discounted_period_amount(coupon), self.unit)
 
     @staticmethod
     def get_natural_period(nb_periods, interval):

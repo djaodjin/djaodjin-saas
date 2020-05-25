@@ -1,4 +1,4 @@
-# Copyright (c) 2018, DjaoDjin inc.
+# Copyright (c) 2020, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -30,9 +30,12 @@ from django.conf.urls import url
 
 from ...api.billing import (CartItemAPIView, CartItemUploadAPIView,
                             CouponRedeemAPIView)
+from ...api.plans import PricingAPIView
 from ...settings import ACCT_REGEX
 
 urlpatterns = [
+    url(r'^pricing/',
+        PricingAPIView.as_view(), name='saas_api_pricing'),
     url(r'^cart/redeem/',
         CouponRedeemAPIView.as_view(), name='saas_api_redeem_coupon'),
     url(r'^cart/(?P<plan>%s)/upload/' % ACCT_REGEX,
