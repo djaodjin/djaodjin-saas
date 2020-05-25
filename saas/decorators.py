@@ -38,12 +38,10 @@ from django.core.exceptions import PermissionDenied
 from django.contrib.auth import REDIRECT_FIELD_NAME
 
 from django.shortcuts import get_object_or_404
-from django.utils.decorators import available_attrs
-from django.utils import six
 from django.utils.translation import ugettext_lazy as _
 
 from . import settings
-from .compat import is_authenticated, reverse
+from .compat import available_attrs, is_authenticated, reverse, six
 from .models import Charge, Plan, Signature, Subscription, get_broker
 from .utils import datetime_or_now, get_organization_model, get_role_model
 

@@ -1,4 +1,4 @@
-# Copyright (c) 2019, DjaoDjin inc.
+# Copyright (c) 2020, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -28,7 +28,6 @@ APIs for cart and checkout functionality.
 from __future__ import unicode_literals
 
 import csv, logging
-from django.utils.six import StringIO
 
 from django.contrib import messages
 from django.utils.translation import ugettext_lazy as _
@@ -39,7 +38,7 @@ from rest_framework.response import Response
 from rest_framework import serializers, status
 
 from ..backends import ProcessorError
-from ..compat import is_authenticated
+from ..compat import is_authenticated, StringIO
 from ..docs import swagger_auto_schema, OpenAPIResponse
 from ..mixins import CartMixin, OrganizationMixin
 from ..models import CartItem

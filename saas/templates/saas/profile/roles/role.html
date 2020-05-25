@@ -47,38 +47,37 @@
     <div>
       <h2>Invite user to have a role '{{role_descr.title}}' on {{organization.printable_name}}</h2>
       <form id="add-user" ng-submit="save($event)"
-            @submit.prevent="save(unregistered)">
+            @submit.prevent="submit">
         <input type="hidden" name="csrfmiddlewaretoken" value="{{csrf_token}}">
         <input type="text" name="user" placeholder="Username or e-mail"
                ng-model="unregistered.slug" v-model="unregistered.slug" />
-        <button type="submit">Search</button>
-      </form>
-      <form class="add-role-modal"
+        <div class="add-role-modal"
             ng-click="create($event)"
             @submit.prevent="submit">
-        <p>
+          <p>
 If the user couldn't be found in the system, it is a great occasion to invite
 them.
-        </p>
-        <div>
-          <label>To</label>
-          <input type="text" max-length="150"
+          </p>
+          <div>
+            <label>To</label>
+            <input type="text" max-length="150"
                  name="email" placeholder="invitee@example.com"
                  ng-model="unregistered.email"
                  v-model="unregistered.email "/>
-        </div>
-        <p>The following invite message will be sent along</p>
-        <div>
-          <textarea name="message" maxlength="255" type="text" rows="10">
+          </div>
+          <p>The following invite message will be sent along</p>
+          <div>
+            <textarea name="message" maxlength="255" type="text" rows="10">
 Hello,
 
 I am adding you as a {{role_descr.title}} to {{organization.printable_name}}.
 
 Thank you,
 - {{request.user.first_name}}
-          </textarea>
+            </textarea>
+          </div>
         </div>
-        <button type="submit">Invite user</button>
+        <button type="submit">Submit</button>
       </form>
     </div>
     {% if role_descr.slug == 'manager' %}

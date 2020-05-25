@@ -28,7 +28,6 @@ from functools import reduce
 
 from django.core.exceptions import FieldDoesNotExist
 from django.db import models
-from django.utils import six
 from django.utils.encoding import force_text
 from django.utils.timezone import utc
 from rest_framework.compat import coreapi, coreschema
@@ -37,6 +36,7 @@ from rest_framework.filters import (OrderingFilter as BaseOrderingFilter,
 from rest_framework.compat import distinct
 
 from . import settings
+from .compat import six
 from .utils import datetime_or_now, parse_tz
 
 LOGGER = logging.getLogger(__name__)

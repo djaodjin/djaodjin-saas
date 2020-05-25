@@ -32,10 +32,10 @@ from django import template
 from django.shortcuts import get_object_or_404
 from django.template.defaultfilters import stringfilter
 from django.utils.safestring import mark_safe
-from django.utils import six
 from django.utils.timezone import utc
 from django.utils.translation import ugettext_lazy as _
 
+from ..compat import six
 from ..decorators import fail_direct, _valid_manager
 from ..humanize import as_money, as_percentage
 from ..mixins import as_html_description, product_url as utils_product_url

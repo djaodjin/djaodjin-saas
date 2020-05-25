@@ -1,4 +1,4 @@
-# Copyright (c) 2018, Djaodjin Inc.
+# Copyright (c) 2020, Djaodjin Inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -29,7 +29,7 @@ try:
     from drf_yasg.utils import swagger_auto_schema
 except ImportError:
     from functools import wraps
-    from django.utils.decorators import available_attrs
+    from .compat import available_attrs
 
     def swagger_auto_schema(function=None, **kwargs):
         """

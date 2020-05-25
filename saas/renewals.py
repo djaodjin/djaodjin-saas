@@ -1,4 +1,4 @@
-# Copyright (c) 2019, DjaoDjin inc.
+# Copyright (c) 2020, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -32,9 +32,9 @@ import logging
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
 from django.db import transaction
-from django.utils import six
 
 from . import humanize, signals
+from .compat import six
 from .models import (Charge, Organization, Plan, Subscription, Transaction,
     sum_dest_amount, get_period_usage, get_sub_event_id)
 from .utils import datetime_or_now

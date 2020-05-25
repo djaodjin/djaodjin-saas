@@ -37,6 +37,7 @@ from .serializers import (OrganizationCreateSerializer,
     OrganizationDetailSerializer, OrganizationWithSubscriptionsSerializer,
     UploadBlobSerializer)
 from .. import settings, signals
+from ..compat import urlparse, urlunparse
 from ..decorators import _valid_manager
 from ..docs import swagger_auto_schema
 from ..mixins import (OrganizationMixin, OrganizationSmartListMixin,
@@ -44,9 +45,6 @@ from ..mixins import (OrganizationMixin, OrganizationSmartListMixin,
 from ..models import get_broker
 from ..utils import (full_name_natural_split, get_organization_model,
     get_role_model, handle_uniq_error, get_picture_storage)
-
-#pylint:disable=no-name-in-module,import-error
-from django.utils.six.moves.urllib.parse import urlparse, urlunparse
 
 
 #pylint: disable=no-init

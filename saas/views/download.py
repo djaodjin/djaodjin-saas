@@ -33,20 +33,20 @@ from decimal import Decimal
 from io import BytesIO, StringIO
 
 from django.http import HttpResponse
-from django.utils import six
 from django.views.generic import View
 from rest_framework.generics import get_object_or_404
 from rest_framework.request import Request
 
+from .. import humanize
 from ..api.coupons import CouponQuerysetMixin, SmartCouponListMixin
-from ..mixins import CartItemSmartListMixin, ProviderMixin
 from ..api.transactions import (BillingsQuerysetMixin,
     SmartTransactionListMixin, TransactionQuerysetMixin, TransferQuerysetMixin)
 from ..api.users import RegisteredQuerysetMixin
-from .. import humanize
+from ..compat import six
 from ..managers.metrics import (abs_monthly_balances, monthly_balances,
     month_periods)
-from ..mixins import (MetricsMixin, ChurnedQuerysetMixin,
+from ..mixins import (CartItemSmartListMixin, ProviderMixin,
+    MetricsMixin, ChurnedQuerysetMixin,
     SubscriptionSmartListMixin, SubscribedQuerysetMixin, UserSmartListMixin)
 from ..models import BalanceLine, CartItem, Coupon
 from ..utils import datetime_or_now

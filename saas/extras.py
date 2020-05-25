@@ -1,4 +1,4 @@
-# Copyright (c) 2019, DjaoDjin inc.
+# Copyright (c) 2020, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -27,14 +27,13 @@ from collections import OrderedDict
 
 from django.http import Http404
 from django.shortcuts import get_object_or_404
-from django.utils import six
 from django.utils.translation import ugettext_lazy as _
 
 # Implementation Note:
 #
 # saas.settings cannot be imported at this point because this file (extras.py)
 # will be imported before ``django.conf.settings`` is fully initialized.
-from .compat import NoReverseMatch, is_authenticated, reverse
+from .compat import NoReverseMatch, is_authenticated, reverse, six
 from .utils import get_organization_model, is_broker
 
 

@@ -30,7 +30,6 @@ from django.conf import settings as django_settings
 from django.db import transaction, IntegrityError
 from django.http.request import split_domain_port, validate_host
 from django.template.defaultfilters import slugify
-from django.utils import six
 from django.utils.dateparse import parse_datetime
 from django.utils.timezone import utc, get_current_timezone
 from django.utils.translation import ugettext_lazy as _
@@ -38,7 +37,8 @@ from rest_framework.exceptions import ValidationError
 from rest_framework.settings import api_settings
 from pytz import timezone, UnknownTimeZoneError
 from pytz.tzinfo import DstTzInfo
-from .compat import get_model_class, import_string
+
+from .compat import get_model_class, import_string, six
 
 
 class SlugTitleMixin(object):
