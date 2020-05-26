@@ -815,10 +815,10 @@ var roleListMixin = {
             var vm = this;
             var role = vm.items.results[idx];
             vm.toDelete.idx = idx;
-            if( role.user.slug !== vm.requestUser ) {
-                remove();
-            } else {
+            if( role.user && role.user.slug === vm.requestUser ) {
                 vm.$emit('remove');
+            } else {
+                vm.remove();
             }
         },
         remove: function(idx){ // saas/_user_card.html

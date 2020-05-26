@@ -33,6 +33,7 @@ from decimal import Decimal
 from io import BytesIO, StringIO
 
 from django.http import HttpResponse
+from django.template.defaultfilters import slugify
 from django.views.generic import View
 from rest_framework.generics import get_object_or_404
 from rest_framework.request import Request
@@ -218,7 +219,8 @@ class CartItemDownloadView(CartItemSmartListMixin, CartItemQuerysetMixin,
         return [
             cartitem.created_at.date(),
             self.encode(cartitem.coupon.code),
-            Coupon.DISCOUNT_CHOICES.get(cartitem.coupon.discount_type),
+            slugify(
+                Coupon.DISCOUNT_CHOICES[cartitem.coupon.discount_type - 1][1]),
             cartitem.coupon.discount_value,
             self.encode(full_name),
             self.encode(email),
