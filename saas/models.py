@@ -2737,6 +2737,11 @@ class AdvanceDiscount(models.Model):
     length = models.PositiveSmallIntegerField(default=1,
         help_text=_('Contract length associated with the period'))
 
+    def __str__(self):
+        return "%s-%s-%d" % (self.plan, slugify(
+            self.DISCOUNT_CHOICES[self.discount_type - 1][1]),
+            self.discount_value)
+
     @property
     def full_periods_amount(self):
         """

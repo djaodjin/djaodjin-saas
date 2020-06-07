@@ -445,7 +445,7 @@ var cardMixin = {
             card_name: '',
             card_address_line1: '',
             card_city: '',
-            card_adress_zip: '',
+            card_address_zip: '',
             country: '',
             region: '',
             savedCard: {
@@ -465,7 +465,7 @@ var cardMixin = {
                 'card_name',
                 'card_address_line1',
                 'card_city',
-                'card_adress_zip',
+                'card_address_zip',
                 'country',
                 'region',
             ],
@@ -563,7 +563,7 @@ var cardMixin = {
                 address_line1: vm.card_address_line1,
                 address_city: vm.card_city,
                 address_state: vm.region,
-                address_zip: vm.card_adress_zip,
+                address_zip: vm.card_address_zip,
                 address_country: vm.country
             }, function(code, res){
                 if(code === 200) {
@@ -589,7 +589,7 @@ var cardMixin = {
                     vm.card_city = org.locality;
                 }
                 if(org.postal_code){
-                    vm.card_adress_zip = org.postal_code;
+                    vm.card_address_zip = org.postal_code;
                 }
                 if(org.country){
                     vm.country = org.country;
@@ -641,7 +641,7 @@ var cardMixin = {
                     if( errorMessages ) { errorMessages += ", "; }
                     errorMessages += gettext("City/Town");
                 }
-                if( vm.errors['card_adress_zip'] ) {
+                if( vm.errors['card_address_zip'] ) {
                     if( errorMessages ) { errorMessages += ", "; }
                     errorMessages += gettext("Zip/Postal code");
                 }
@@ -2178,7 +2178,7 @@ Vue.component('checkout', {
                 items: opts,
                 street_address: vm.card_address_line1,
                 locality: vm.card_city,
-                postal_code: vm.card_adress_zip,
+                postal_code: vm.card_address_zip,
                 country: vm.country,
                 region: vm.region,
             }
@@ -2311,7 +2311,7 @@ Vue.component('checkout', {
             vm.card_name = cardData['card_name'];
             vm.card_address_line1 = cardData['card_address_line1'];
             vm.card_city = cardData['card_city'];
-            vm.card_adress_zip = cardData['card_address_zip'];
+            vm.card_address_zip = cardData['card_address_zip'];
             vm.country = cardData['country'];
             vm.region = cardData['region'];
         } else {
@@ -2350,7 +2350,7 @@ Vue.component('card-update', {
                     full_name: vm.card_name,
                     street_address: vm.card_address_line1,
                     locality: vm.card_city,
-                    postal_code: vm.card_adress_zip,
+                    postal_code: vm.card_address_zip,
                     country: vm.country,
                     region: vm.region,
                 },
