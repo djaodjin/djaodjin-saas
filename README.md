@@ -96,9 +96,11 @@ saas/templates/notification/ directory.
 Release Notes
 =============
 
-0.8.4
+0.9.0
 
-  * claims organization with no roles based on e-mail address
-  * fixes implicit role grants
+  * reworks discount with an AdvanceDiscount model
+  * adds pricing api
+  * compatibles with Django3
+  * fixes recording CartItem twice
 
 [previous release notes](changelog)
