@@ -1,7 +1,8 @@
 {% extends "saas/base_dashboard.html" %}
 
 {% block saas_content %}
-<card-update inline-template id="update-card-container">
+<card-update inline-template id="update-card-container"
+    data-processor-pub-key="{{STRIPE_PUB_KEY}}">
   <div>
     <h1>Update Card for {{ organization }}</h1>
     <form id="update-card" method="post"

@@ -1,7 +1,8 @@
 {% extends "saas/base.html" %}
 
 {% block saas_content %}
-<checkout inline-template id="checkout-container" :isBulkBuyer="{% if is_bulk_buyer %}true{% else %}false{% endif %}">
+<checkout inline-template id="checkout-container"
+    data-processor-pub-key="{{STRIPE_PUB_KEY}}">
   <div>
     <form @submit.prevent="redeem">
       <input name="code" type="text" placeholder="Coupon code" v-model="coupon">

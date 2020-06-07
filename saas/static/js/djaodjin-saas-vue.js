@@ -547,13 +547,15 @@ var cardMixin = {
         },
         getCardToken: function(cb){
             var vm = this;
-            if(!vm.processor_pub_key){
+            var processorPubKey = vm.processor_pub_key ? vm.processor_pub_key
+                : vm.$el.getAttribute('data-processor-pub-key');
+            if( !processorPubKey ){
                 showMessages([
                     gettext("You haven't set a valid Stripe public key")
                 ], "error");
                 return;
             }
-            Stripe.setPublishableKey(vm.processor_pub_key);
+            Stripe.setPublishableKey(processorPubKey);
             Stripe.createToken({
                 number: vm.cardNumber,
                 cvc: vm.cardCvc,
