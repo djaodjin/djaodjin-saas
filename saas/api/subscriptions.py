@@ -1,4 +1,4 @@
-# Copyright (c) 2019, DjaoDjin inc.
+# Copyright (c) 2020, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -32,7 +32,7 @@ from rest_framework.generics import (get_object_or_404, CreateAPIView,
 from rest_framework.response import Response
 
 from ..decorators import _valid_manager
-from ..docs import swagger_auto_schema
+from ..docs import no_body, swagger_auto_schema
 from ..filters import DateRangeFilter
 from ..mixins import (ChurnedQuerysetMixin, PlanSubscribersQuerysetMixin,
     ProviderMixin, SubscriptionMixin, SubscriptionSmartListMixin,
@@ -182,6 +182,82 @@ class SubscriptionDetailAPIView(SubscriptionMixin,
         }
     """
     serializer_class = SubscriptionSerializer
+
+    def put(self, request, *args, **kwargs):
+        """
+        Unsubscribes  at a future date
+
+        Unsubscribes {organization} from {subscribed_plan} at a future date.
+
+        **Tags**: subscriptions
+
+        **Examples**
+
+        .. code-block:: http
+
+            PUT /api/profile/xia/subscriptions/open-space/ HTTP/1.1
+
+        .. code-block:: json
+
+            {
+              "ends_at": "2020-01-01T00:00:00Z"
+            }
+
+        responds
+
+        .. code-block:: json
+
+            {
+              "created_at": "2019-01-01T00:00:00Z",
+              "ends_at": "2020-01-01T00:00:00Z",
+              "description": null,
+              "organization": {
+                "slug": "xia",
+                "created_at": "2019-01-01T00:00:00Z",
+                "full_name": "Xia Lee",
+                "email": "xia@localhost.localdomain",
+                "phone": "555-555-5555",
+                "street_address": "350 Bay St.",
+                "locality": "San Francisco",
+                "region": "CA",
+                "postal_code": "94133",
+                "country": "US",
+                "default_timezone": "UTC",
+                "printable_name": "Xia Lee",
+                "is_provider": false,
+                "is_bulk_buyer": false,
+                "type": "personal",
+                "credentials": true,
+                "extra": null
+              },
+              "plan": {
+                "slug": "open-space",
+                "title": "Open Space",
+                "description": "open space desk",
+                "is_active": true,
+                "setup_amount": 0,
+                "period_amount": 17999,
+                "period_length": 1,
+                "interval": "monthly",
+                "unit": "cad",
+                "organization": "cowork",
+                "renewal_type": "auto-renew",
+                "is_not_priced": false,
+                "created_at": "2019-01-01T00:00:00Z",
+                "skip_optin_on_grant": false,
+                "optin_on_request": false,
+                "extra": null
+              },
+              "auto_renew": true,
+              "editable": true,
+              "extra": null,
+              "grant_key": null,
+              "request_key": null
+            }
+
+        """
+        return super(SubscriptionDetailAPIView, self).put(
+            request, *args, **kwargs)
 
     def delete(self, request, *args, **kwargs):
         """
@@ -660,73 +736,81 @@ class ChurnedSubscriptionAPIView(SubscriptionSmartListMixin,
 
 class SubscriptionRequestAcceptAPIView(CreateAPIView):
     """
-    Grants a subscription request
-
-    Accepts a subscription request.
-
-    **Tags**: rbac
-
-    **Examples**
-
-    .. code-block:: http
-
-        POST /api/profile/xia/subscribers/accept\
-/a00000d0a0000001234567890123456789012345 HTTP/1.1
-
-    responds
-
-    .. code-block:: json
-
-        {
-          "created_at": "2019-01-01T00:00:00Z",
-          "ends_at": "2020-01-01T00:00:00Z",
-          "description": null,
-          "organization": {
-            "slug": "xia",
-            "created_at": "2019-01-01T00:00:00Z",
-            "full_name": "Xia Lee",
-            "email": "xia@localhost.localdomain",
-            "phone": "555-555-5555",
-            "street_address": "350 Bay St.",
-            "locality": "San Francisco",
-            "region": "CA",
-            "postal_code": "94133",
-            "country": "US",
-            "default_timezone": "UTC",
-            "printable_name": "Xia Lee",
-            "is_provider": false,
-            "is_bulk_buyer": false,
-            "type": "personal",
-            "credentials": true,
-            "extra": null
-          },
-          "plan": {
-            "slug": "open-space",
-            "title": "Open Space",
-            "description": "open space desk",
-            "is_active": true,
-            "setup_amount": 0,
-            "period_amount": 17999,
-            "period_length": 1,
-            "interval": "monthly",
-            "unit": "cad",
-            "organization": "cowork",
-            "renewal_type": "auto-renew",
-            "is_not_priced": false,
-            "created_at": "2019-01-01T00:00:00Z",
-            "skip_optin_on_grant": false,
-            "optin_on_request": false,
-            "extra": null
-          },
-          "auto_renew": true,
-          "editable": true,
-          "extra": null,
-          "grant_key": null,
-          "request_key": null
-        }
+    Accepts a subscription request
     """
     provider_url_kwarg = 'organization'
     serializer_class = SubscriptionSerializer
+
+    @swagger_auto_schema(request_body=no_body)
+    def post(self, request, *args, **kwargs):
+        """
+        Grants a subscription request
+
+        Accepts a subscription request.
+
+        **Tags**: rbac
+
+        **Examples**
+
+        .. code-block:: http
+
+            POST /api/profile/xia/subscribers/accept\
+    /a00000d0a0000001234567890123456789012345 HTTP/1.1
+
+        responds
+
+        .. code-block:: json
+
+            {
+              "created_at": "2019-01-01T00:00:00Z",
+              "ends_at": "2020-01-01T00:00:00Z",
+              "description": null,
+              "organization": {
+                "slug": "xia",
+                "created_at": "2019-01-01T00:00:00Z",
+                "full_name": "Xia Lee",
+                "email": "xia@localhost.localdomain",
+                "phone": "555-555-5555",
+                "street_address": "350 Bay St.",
+                "locality": "San Francisco",
+                "region": "CA",
+                "postal_code": "94133",
+                "country": "US",
+                "default_timezone": "UTC",
+                "printable_name": "Xia Lee",
+                "is_provider": false,
+                "is_bulk_buyer": false,
+                "type": "personal",
+                "credentials": true,
+                "extra": null
+              },
+              "plan": {
+                "slug": "open-space",
+                "title": "Open Space",
+                "description": "open space desk",
+                "is_active": true,
+                "setup_amount": 0,
+                "period_amount": 17999,
+                "period_length": 1,
+                "interval": "monthly",
+                "unit": "cad",
+                "organization": "cowork",
+                "renewal_type": "auto-renew",
+                "is_not_priced": false,
+                "created_at": "2019-01-01T00:00:00Z",
+                "skip_optin_on_grant": false,
+                "optin_on_request": false,
+                "extra": null
+              },
+              "auto_renew": true,
+              "editable": true,
+              "extra": null,
+              "grant_key": null,
+              "request_key": null
+            }
+        """
+        return super(SubscriptionRequestAcceptAPIView, self).post(
+            request, *args, **kwargs)
 
     def get_queryset(self):
         return Subscription.objects.active_with(

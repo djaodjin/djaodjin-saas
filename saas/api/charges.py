@@ -1,4 +1,4 @@
-# Copyright (c) 2019, DjaoDjin inc.
+# Copyright (c) 2020, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -34,7 +34,7 @@ from rest_framework.response import Response
 from .serializers import (ChargeSerializer, EmailChargeReceiptSerializer,
     RefundChargeSerializer, ValidationErrorSerializer)
 from .. import signals
-from ..docs import OpenAPIResponse, swagger_auto_schema
+from ..docs import OpenAPIResponse, no_body, swagger_auto_schema
 from ..filters import DateRangeFilter, OrderingFilter, SearchFilter
 from ..models import Charge, InsufficientFunds
 from ..mixins import ChargeMixin, OrganizationMixin
@@ -332,6 +332,7 @@ class EmailChargeReceiptAPIView(RetrieveChargeMixin, GenericAPIView):
     """
     serializer_class = EmailChargeReceiptSerializer
 
+    @swagger_auto_schema(request_body=no_body)
     def post(self, request, *args, **kwargs): #pylint: disable=unused-argument
         self.object = self.get_object()
         signals.charge_updated.send(

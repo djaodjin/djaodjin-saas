@@ -55,6 +55,7 @@ class CouponSerializer(serializers.ModelSerializer):
         fields = ('code', 'discount_type', 'discount_value',
             'created_at', 'ends_at', 'description',
             'nb_attempts', 'plan')
+        read_only_fields = ('code',)
 
 
 class SmartCouponListMixin(object):
@@ -235,6 +236,7 @@ class CouponDetailAPIView(CouponMixin, RetrieveUpdateDestroyAPIView):
         .. code-block:: json
 
             {
+                "code": "DIS100",
                 "discount_type": "percentage",
                 "amount": 10000,
                 "ends_at": null,

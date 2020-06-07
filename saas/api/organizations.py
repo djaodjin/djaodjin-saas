@@ -289,6 +289,14 @@ class OrganizationPictureAPIView(OrganizationMixin, CreateAPIView):
         .. code-block:: http
 
             POST /api/profile/xia/picture/ HTTP/1.1
+
+        responds
+
+        .. code-block:: json
+
+            {
+              "location": "https://cowork.net/picture.jpg"
+            }
     """
     parser_classes = (parsers.FormParser, parsers.MultiPartParser)
     serializer_class = UploadBlobSerializer
@@ -297,7 +305,7 @@ class OrganizationPictureAPIView(OrganizationMixin, CreateAPIView):
         #pylint:disable=unused-argument
         uploaded_file = request.data.get('file')
         if not uploaded_file:
-            return Response({'details': "no location or file specified."},
+            return Response({'detail': "no location or file specified."},
                 status=status.HTTP_400_BAD_REQUEST)
 
         # tentatively extract file extension.
@@ -385,6 +393,29 @@ class OrganizationListAPIView(OrganizationSmartListMixin,
               "full_name": "Xia Lee",
               "type": "personal"
             }
+
+        responds
+
+        .. code-block:: json
+
+            {
+              "slug": "xia",
+              "email": "xia@locahost.localdomain",
+              "full_name": "Xia Lee",
+              "printable_name": "Xia Lee",
+              "type": "personal",
+              "credentials": true,
+              "default_timezone": "America/Los_Angeles",
+              "phone": "",
+              "street_address": "",
+              "locality": "",
+              "region": "",
+              "postal_code": "",
+              "country": "US",
+              "is_bulk_buyer": false,
+              "extra": null
+            }
+
         """
         return self.create(request, *args, **kwargs)
 

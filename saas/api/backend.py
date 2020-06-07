@@ -31,7 +31,7 @@ from rest_framework.generics import (RetrieveAPIView,
 from rest_framework.response import Response
 
 from ..backends import ProcessorError
-from ..docs import swagger_auto_schema, OpenAPIResponse
+from ..docs import swagger_auto_schema
 from ..mixins import OrganizationMixin
 from .serializers import (BankSerializer, CardSerializer,
     CardTokenSerializer)
@@ -50,6 +50,8 @@ class RetrieveBankAPIView(OrganizationMixin, RetrieveAPIView):
     This API does not trigger payment of a subscriber to a provider. Checkout
     of a subscription cart is done either through the
     :ref:`HTML page<pages_cart>` or :ref:`API end point<api_checkout>`.
+
+    **Tags**: billing
 
     **Examples**
 
@@ -84,6 +86,8 @@ class PaymentMethodDetailAPIView(OrganizationMixin,
     Pass through to the processor to retrieve some details about
     the payment method (ex: credit card) associated to a subscriber.
 
+    **Tags**: billing
+
     **Examples**
 
     .. code-block:: http
@@ -108,6 +112,8 @@ class PaymentMethodDetailAPIView(OrganizationMixin,
         Pass through to the processor to remove the payment method (ex: credit
         card) associated to a subscriber.
 
+        **Tags**: billing
+
         **Examples**
 
         .. code-block:: http
@@ -117,14 +123,15 @@ class PaymentMethodDetailAPIView(OrganizationMixin,
         return super(PaymentMethodDetailAPIView, self).delete(
             request, *args, **kwargs)
 
-    @swagger_auto_schema(request_boby=CardTokenSerializer, responses={
-        200: OpenAPIResponse("", CardSerializer)})
+    @swagger_auto_schema(request_body=CardTokenSerializer)
     def put(self, request, *args, **kwargs):
         """
         Updates a payment method
 
         Pass through to the processor to update some details about
         the payment method (ex: credit card) associated to a subscriber.
+
+        **Tags**: billing
 
         **Examples**
 

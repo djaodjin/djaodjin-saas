@@ -637,7 +637,7 @@
                    contentType: "application/json; charset=utf-8",
                    success: function(data) {
                      // XXX does not show messages since we reload...
-                     showMessages([data.details], "success");
+                     showMessages([data.detail], "success");
                      location.reload();
                    },
                    error: function(resp) {

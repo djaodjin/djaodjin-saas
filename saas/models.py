@@ -1435,7 +1435,7 @@ class ChargeManager(models.Manager):
                 amount, unit, customer,
                 extra={'event': 'card-error',
                     'charge': err.charge_processor_key,
-                    'details': err.processor_details(),
+                    'detail': err.processor_details(),
                     'organization': customer.slug,
                     'amount': amount, 'unit': unit})
             raise
@@ -1447,7 +1447,7 @@ class ChargeManager(models.Manager):
             LOGGER.info('error: "%s" processing charge of %d %s to %s',
                 err.processor_details(), amount, unit, customer,
                 extra={'event': 'processor-setup-error',
-                    'details': err.processor_details(),
+                    'detail': err.processor_details(),
                     'provider': err.provider,
                     'organization': customer.slug,
                     'amount': amount, 'unit': unit})

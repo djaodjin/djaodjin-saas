@@ -244,10 +244,10 @@ class TableSerializer(NoModelSerializer):
 
 class MetricsSerializer(NoModelSerializer):
 
-    scale = serializers.FloatField(
+    scale = serializers.FloatField(required=False,
         help_text=_("The scale of the number reported in the tables (ex: 1000"\
         " when numbers are reported in thousands of dollars)"))
-    unit = serializers.CharField(
+    unit = serializers.CharField(required=False,
         help_text=_("Three-letter ISO 4217 code for currency unit (ex: usd)"))
     title = serializers.CharField(
         help_text=_("Title for the table"))
@@ -330,6 +330,8 @@ class OrganizationDetailSerializer(OrganizationSerializer):
         help_text=_("Zip/Postal code"))
     country = CountryField(required=False, allow_blank=True,
         help_text=_("Country"))
+    is_bulk_buyer = serializers.BooleanField(required=False, default=False,
+        help_text=_("Enable GroupBuy"))
     extra = serializers.CharField(required=False, allow_null=True,
         help_text=_("Extra meta data (can be stringify JSON)"))
 
@@ -408,6 +410,8 @@ class WithSubscriptionSerializer(serializers.ModelSerializer):
 
 class OrganizationWithSubscriptionsSerializer(OrganizationDetailSerializer):
 
+    is_bulk_buyer = serializers.BooleanField(required=False, default=False,
+        help_text=_("Enable GroupBuy"))
     subscriptions = WithSubscriptionSerializer(
         source='subscription_set', many=True, read_only=True)
 
@@ -465,8 +469,7 @@ class PlanSerializer(serializers.ModelSerializer):
     renewal_type = EnumField(choices=Plan.RENEWAL_CHOICES, required=False,
         help_text=_("Natural period for the subscription"))
     app_url = serializers.SerializerMethodField()
-    organization = serializers.SlugRelatedField(
-        read_only=True, slug_field='slug',
+    organization = OrganizationSerializer(read_only=True,
         help_text=_("Provider of the plan"))
     skip_optin_on_grant = serializers.BooleanField(required=False,
         help_text=_("True when a subscriber can automatically be subscribed"\

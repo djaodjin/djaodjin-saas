@@ -786,12 +786,17 @@ djaodjin-saas/tree/master/saas/templates/saas/billing/cart.html>`__).
         return context
 
 
-class CheckoutView(OrganizationMixin, TemplateView):
+class CheckoutView(CardFormMixin, FormView):
     """
     A checkout view
     """
-
     template_name = 'saas/billing/checkout.html'
+
+    def dispatch(self, request, *args, **kwargs):
+        # We are not getting here without an authenticated user. It is time
+        # to store the cart into the database.
+        session_cart_to_database(self.request)
+        return super(CheckoutView, self).dispatch(request, *args, **kwargs)
 
     def get_context_data(self, **kwargs):
         context = super(CheckoutView, self).get_context_data(**kwargs)

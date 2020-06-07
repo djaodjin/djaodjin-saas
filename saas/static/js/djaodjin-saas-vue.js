@@ -437,11 +437,17 @@ var cardMixin = {
         return $.extend({ // XXX jQuery
             api_card_url: this.$urls.organization.api_card,
             api_profile_url: this.$urls.organization.api_base,
-            processor_pub_key: this.$stripePubKey,
+            processor_pub_key: null,
             cardNumber: '',
             cardCvc: '',
             cardExpMonth: '',
             cardExpYear: '',
+            card_name: '',
+            card_address_line1: '',
+            card_city: '',
+            card_adress_zip: '',
+            country: '',
+            region: '',
             savedCard: {
                 last4: '',
                 exp_date: '',
@@ -527,9 +533,14 @@ var cardMixin = {
         getUserCard: function(){
             var vm = this;
             vm.reqGet(vm.api_card_url,
-            function(resp){
-                if(resp.last4){
+            function(resp) {
+                if( resp.STRIPE_PUB_KEY ) {
+                    vm.processor_pub_key = resp.STRIPE_PUB_KEY;
+                }
+                if( resp.last4 ) {
                     vm.savedCard.last4 = resp.last4;
+                }
+                if( resp.exp_date ) {
                     vm.savedCard.exp_date = resp.exp_date;
                 }
             });
@@ -2032,9 +2043,6 @@ Vue.component('checkout', {
         cardMixin,
         itemListMixin
     ],
-    props: [
-        'isBulkBuyer',
-    ],
     data: function() {
         return {
             url: this.$urls.organization.api_checkout,
@@ -2068,7 +2076,7 @@ Vue.component('checkout', {
             var vm = this;
             vm.reqDelete(vm.api_cart_url, {plan: plan},
             function() {
-                vm.get()
+                vm.get();
             });
         },
         redeem: function(){
@@ -2080,22 +2088,26 @@ Vue.component('checkout', {
                 vm.get();
             });
         },
-        getAndPrepareData: function(res){
+        getAndPrepareData: function(resp){
             var vm = this;
-            var results = res.items
+            var results = resp.results;
             var periods = {}
             var users = {}
             var optionsConfirmed = results.length > 0 ? true : false;
-            results.map(function(e){
-                var plan = e.subscription.plan.slug;
-                if(e.options.length > 0){
+            var seatsConfirmed = results.length > 0 ? true : false;
+            results.map(function(elm){
+                var plan = elm.subscription.plan.slug;
+                if( elm.options.length > 0 ){
                     optionsConfirmed = false;
-                    if(vm.init){
+                    if( vm.init ){
                         periods[plan] = 1;
                     }
                 }
+                if( elm.subscription.organization.is_bulk_buyer ) {
+                    seatsConfirmed = false;
+                }
                 users[plan] = {
-                    firstName: '', lastName: '', email: ''
+                    fullName: '', email: ''
                 }
             });
 
@@ -2108,7 +2120,7 @@ Vue.component('checkout', {
                 this.plansOption = periods;
                 this.plansUser = users;
                 this.optionsConfirmed = optionsConfirmed;
-                this.seatsConfirmed = false;
+                this.seatsConfirmed = seatsConfirmed;
             }
         },
         addPlanUser: function(plan){
@@ -2116,7 +2128,7 @@ Vue.component('checkout', {
             var user = this.planUser(plan);
             var data = {
                 plan: plan,
-                full_name: user.firstName + ' ' + user.lastName,
+                full_name: user.fullName,
                 sync_on: user.email
             }
             var option = vm.plansOption[plan];
@@ -2128,8 +2140,7 @@ Vue.component('checkout', {
                 showMessages([gettext("User was added.")], "success");
                 vm.init = false;
                 vm.$set(vm.plansUser, plan, {
-                    firstName: '',
-                    lastName: '',
+                    fullName: '',
                     email: ''
                 });
                 vm.get();
@@ -2152,31 +2163,12 @@ Vue.component('checkout', {
             var lastItemIndex = this.getLastUserPlanIndex(plan);
             return lastItemIndex === index;
         },
-        activeOption: function(item){
-            var index = this.plansOption[item.subscription.plan.slug];
-            if(index !== undefined){
-                var option = item.options[index - 1];
-                if(option) return option;
-            }
-            return {};
-        },
         optionSelected: function(plan, index){
             this.$set(this.plansOption, plan, index);
         },
         isOptionSelected: function(plan, index){
             var selected = this.plansOption[plan];
             return selected !== undefined && selected == index;
-        },
-        saveChanges: function(){
-            if(this.optionsConfirmed){
-                this.seatsConfirmed = true;
-            }
-            else {
-                this.optionsConfirmed = true;
-                if(!this.isBulkBuyer){
-                    this.seatsConfirmed = true;
-                }
-            }
         },
         doCheckout: function(token){
             var vm = this;
@@ -2198,13 +2190,34 @@ Vue.component('checkout', {
                 window.location = vm.receiptUrl(resp.processor_key);
             });
         },
-        checkout: function(){
+        nextStep: function(){
             var vm = this;
-            if(vm.haveCardData){
-                vm.doCheckout();
-            } else {
-                if(!vm.validateForm()) return;
-                vm.getCardToken(vm.doCheckout);
+            if( vm.allConfirmed ) {
+                if(vm.haveCardData){
+                    vm.doCheckout();
+                } else {
+                    if(!vm.validateForm()) return;
+                    vm.getCardToken(vm.doCheckout);
+                }
+            } else if( !vm.optionsConfirmed ) {
+                var queryArray = [];
+                vm.items.results.map(function(elm){
+                    var plan = elm.subscription.plan.slug;
+                    if( elm.options.length > 0 ) {
+                        var option = vm.plansOption[plan];
+                        queryArray.push({
+                            method: 'POST',
+                            url: vm.api_cart_url,
+                            data: {plan: plan, option: option}
+                        })
+                    }
+                });
+                vm.reqMultiple(queryArray,
+                function() {
+                    vm.get(); // `optionsConfirmed` will be set in `get`.
+                });
+            } else if( !vm.seatsConfirmed ) {
+                vm.seatsConfirmed = true;
             }
         },
         // used in legacy checkout
@@ -2255,22 +2268,26 @@ Vue.component('checkout', {
         },
     },
     computed: {
-        linesPrice: function(){
+        allConfirmed: function() {
+            return this.optionsConfirmed && this.seatsConfirmed;
+        },
+        linesPrice: function() {
             var vm = this;
             var total = 0;
             var unit = 'usd';
             if(this.items.results){
-                this.items.results.map(function(e){
-                    if(e.options.length > 0){
-                        var option = vm.plansOption[e.subscription.plan.slug];
-                        if(option !== undefined){
-                            total += e.options[option-1].dest_amount;
-                            unit = e.options[option-1].dest_unit;
+                this.items.results.map(function(elm) {
+                    var plan = elm.subscription.plan.slug;
+                    if( elm.options.length > 0 ) {
+                        var option = vm.plansOption[plan];
+                        if( option !== undefined ) {
+                            total += elm.options[option-1].dest_amount;
+                            unit = elm.options[option-1].dest_unit;
                         }
                     }
-                    e.lines.map(function(l){
-                        total += l.dest_amount;
-                        unit = l.dest_unit;
+                    elm.lines.map(function(line) {
+                        total += line.dest_amount;
+                        unit = line.dest_unit;
                     });
                 });
             }
@@ -2287,7 +2304,7 @@ Vue.component('checkout', {
     },
     mounted: function(){
         var vm = this;
-        vm.get()
+        vm.get();
         vm.getUserCard();
         var cardData = vm.getCardFormData();
         if( !$.isEmptyObject(cardData) ) { // XXX jQuery

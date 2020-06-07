@@ -477,9 +477,10 @@ class ImportTransactionsAPIView(ProviderMixin, CreateAPIView):
     .. code-block:: json
 
         {
-            "subscription": "demo562-open-plus",
+            "created_at": "2020-05-30T00:00:00Z",
             "amount": "10.00",
-            "descr": "Paid by check"
+            "descr": "Paid by check",
+            "subscription": "demo562-open-plus"
         }
 
     responds
@@ -487,9 +488,10 @@ class ImportTransactionsAPIView(ProviderMixin, CreateAPIView):
     .. code-block:: json
 
         {
-            "subscription": "demo562-open-plus",
+            "created_at": "2020-05-30T00:00:00Z",
             "amount": "10.00",
-            "descr": "Paid by check"
+            "descr": "Paid by check",
+            "subscription": "demo562-open-plus"
         }
     """
     serializer_class = OfflineTransactionSerializer

@@ -456,6 +456,53 @@ var httpRequestMixin = {
                 },
             }).done(successCallback).fail(failureCallback);
         },
+        /** This method generates a DELETE HTTP request to `url` with a query
+            string built of a `queryParams` dictionnary.
+
+            It supports the following prototypes:
+
+            - reqDELETE(url)
+            - reqDELETE(url, successCallback)
+            - reqDELETE(url, successCallback, failureCallback)
+
+            `successCallback` and `failureCallback` must be Javascript
+            functions (i.e. instance of type `Function`).
+        */
+        reqMultiple: function(queryArray, successCallback, failureCallback) {
+            var vm = this;
+            var ajaxCalls = [];
+            if( !successCallback ) {
+                successCallback = function() {};
+            }
+            if( !failureCallback ) {
+                failureCallback = showErrorMessages;
+            }
+            for(var idx = 0; idx < queryArray.length; ++idx ) {
+                ajaxCalls.push(function () {
+                    return $.ajax({
+                        method: queryArray[idx].method,
+                        url: queryArray[idx].url,
+                        data: JSON.stringify(queryArray[idx].data),
+                        beforeSend: function(xhr, settings) {
+                            var authToken = vm._getAuthToken();
+                            if( authToken ) {
+                                xhr.setRequestHeader("Authorization",
+                                                     "Bearer " + authToken);
+                            } else {
+                                if( !vm._csrfSafeMethod(settings.type) ) {
+                                    var csrfToken = vm._getCSRFToken();
+                                    if( csrfToken ) {
+                                        xhr.setRequestHeader("X-CSRFToken", csrfToken);
+                                    }
+                                }
+                            }
+                        },
+                        contentType: 'application/json',
+                    });
+                }());
+            }
+            jQuery.when(ajaxCalls).done(successCallback).fail(failureCallback);
+        },
     }
 }
 

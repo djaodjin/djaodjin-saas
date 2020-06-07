@@ -65,7 +65,7 @@ class OrganizationCartSerializer(NoModelSerializer):
     """
     Items which will be charged on an order checkout action.
     """
-    items = InvoicableSerializer(many=True)
+    results = InvoicableSerializer(many=True)
 
 
 class CheckoutItemSerializer(NoModelSerializer):
@@ -384,7 +384,7 @@ class CouponRedeemAPIView(GenericAPIView):
     .. code-block:: json
 
         {
-            "details": "Coupon 'LABORDAY' was successfully applied."
+            "detail": "Coupon 'LABORDAY' was successfully applied."
         }
     """
     serializer_class = RedeemCouponSerializer
@@ -399,7 +399,7 @@ class CouponRedeemAPIView(GenericAPIView):
         if serializer.is_valid():
             coupon_code = serializer.data['code']
             if CartItem.objects.redeem(request.user, coupon_code):
-                details = {"details": (
+                details = {'detail': (
                     _("Coupon '%(code)s' was successfully applied.") % {
                         'code': coupon_code})}
                 headers = {}
@@ -408,10 +408,10 @@ class CouponRedeemAPIView(GenericAPIView):
                 # Since we rely on the message to appear after reload of
                 # the cart page in the casperjs tests, we can't get rid
                 # of this statement just yet.
-                messages.success(request._request, details['details'])#pylint: disable=protected-access
+                messages.success(request._request, details['detail'])#pylint: disable=protected-access
                 return Response(details, status=status.HTTP_200_OK,
                                 headers=headers)
-            details = {"details": (
+            details = {'detail': (
                 _("No items can be discounted using this coupon: %(code)s.") % {
                 'code': coupon_code})}
             return Response(details, status=status.HTTP_400_BAD_REQUEST)
@@ -441,20 +441,21 @@ class CheckoutAPIView(CartMixin, OrganizationMixin,
 
     .. code-block:: json
 
-        {"items":
-        [{
-          "subscription":{
+        {
+          "results": [
+          {
+            "subscription": {
               "created_at":"2016-06-21T23:24:09.242925Z",
               "ends_at":"2016-10-21T23:24:09.229768Z",
               "description":null,
-              "organization":{
+              "organization": {
                   "slug":"xia",
                   "full_name":"Xia",
                   "printable_name":"Xia",
                   "created_at":"2012-08-14T23:16:55Z",
                   "email":"xia@localhost.localdomain"
               },
-              "plan":{
+              "plan": {
                   "slug": "basic",
                   "title": "Basic",
                   "description": "Basic Plan",
@@ -465,8 +466,9 @@ class CheckoutAPIView(CartMixin, OrganizationMixin,
                   "app_url":"/app/"
               },
               "auto_renew":true
-          },
-          "lines":[{
+            },
+            "lines": [
+            {
               "created_at":"2016-06-21T23:42:13.863739Z",
               "description":"Subscription to basic until 2016/11/21 (1 month)",
               "amount":"$20.00",
@@ -479,12 +481,11 @@ class CheckoutAPIView(CartMixin, OrganizationMixin,
               "dest_organization":"xia",
               "dest_amount":2000,
               "dest_unit":"usd"
-          }],
-          "options":[]
-        }]
+            }],
+            "options":[]
+          }]
         }
     """
-    # XXX replace key `items` by `results` to match other serializers?
     serializer_class = OrganizationCartSerializer
 
     @swagger_auto_schema(request_body=CheckoutSerializer, responses={
@@ -511,6 +512,8 @@ class CheckoutAPIView(CartMixin, OrganizationMixin,
         .. code-block:: http
 
             POST /api/billing/xia/checkout HTTP/1.1
+
+        .. code-block:: json
 
             {
                 "remember_card": true,
@@ -541,7 +544,7 @@ of Xia",
 
     def get(self, request, *args, **kwargs):
         queryset = self.get_queryset()
-        serializer = self.get_serializer({'items': queryset})
+        serializer = self.get_serializer({'results': queryset})
         return Response(serializer.data)
 
     def create(self, request, *args, **kwargs):#pylint:disable=unused-argument
@@ -573,5 +576,5 @@ of Xia",
                 result = ChargeSerializer(charge)
                 return Response(result.data, status=status.HTTP_200_OK)
         except ProcessorError as err:
-            return Response({"details": err}, status=status.HTTP_403_FORBIDDEN)
+            return Response({'detail': err}, status=status.HTTP_403_FORBIDDEN)
         return Response({}, status=status.HTTP_200_OK)

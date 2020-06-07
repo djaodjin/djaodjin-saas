@@ -26,10 +26,13 @@
 
 try:
     from drf_yasg.openapi import Response as OpenAPIResponse
-    from drf_yasg.utils import swagger_auto_schema
+    from drf_yasg.utils import no_body, swagger_auto_schema
 except ImportError:
     from functools import wraps
     from .compat import available_attrs
+
+    class no_body(object):
+        pass
 
     def swagger_auto_schema(function=None, **kwargs):
         """

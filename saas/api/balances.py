@@ -1,4 +1,4 @@
-# Copyright (c) 2019, DjaoDjin inc.
+# Copyright (c) 2020, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -31,6 +31,7 @@ from rest_framework.generics import (get_object_or_404,
 from rest_framework.response import Response
 
 from .. import settings
+from ..docs import swagger_auto_schema, OpenAPIResponse
 from ..managers.metrics import abs_monthly_balances, monthly_balances
 from ..models import BalanceLine
 from ..filters import DateRangeFilter
@@ -185,6 +186,8 @@ class BalanceLineListAPIView(ListCreateAPIView):
         return super(BalanceLineListAPIView, self).post(
             request, *args, **kwargs)
 
+    @swagger_auto_schema(responses={
+        200: OpenAPIResponse("success", BalanceLineSerializer)})
     def patch(self, request, *args, **kwargs):
         """
         Updates the order in which lines are displayed
@@ -212,10 +215,18 @@ class BalanceLineListAPIView(ListCreateAPIView):
 
         .. code-block:: json
 
-            [{
-              "newpos": 1,
-              "oldpos": 3
-            }]
+            {
+                "count": 1,
+                "next": null,
+                "previous": null,
+                "results": [
+                    {
+                        "title": "Sales",
+                        "selector": "Receivable",
+                        "rank": 1
+                    }
+                ]
+            }
         """
         with transaction.atomic():
             for move in request.data:

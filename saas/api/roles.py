@@ -44,7 +44,7 @@ from rest_framework.response import Response
 from rest_framework.pagination import PageNumberPagination
 
 from .. import settings, signals
-from ..docs import swagger_auto_schema
+from ..docs import no_body, swagger_auto_schema
 from ..mixins import (OrganizationMixin, OrganizationSmartListMixin,
     RoleDescriptionMixin, RoleMixin, RoleSmartListMixin, UserMixin)
 from ..utils import (full_name_natural_split, get_organization_model,
@@ -409,9 +409,9 @@ class AccessibleByListAPIView(RoleSmartListMixin, InvitedRequestedListMixin,
                     "printable_name": "ABC Corp.",
                     "email": "help@cowork.net",
                     "role_description": {
-                        "slug": "cowork",
+                        "slug": "manager",
                         "created_at": "2018-01-01T00:00:00Z",
-                        "title": "ABC Corp.",
+                        "title": "Profile Manager",
                         "is_global": true,
                         "organization": null
                     },
@@ -427,6 +427,8 @@ class AccessibleByListAPIView(RoleSmartListMixin, InvitedRequestedListMixin,
     serializer_class = AccessibleSerializer
     pagination_class = RoleListPagination
 
+    @swagger_auto_schema(request_body=OrganizationRoleCreateSerializer,
+        query_serializer=ForceSerializer)
     def post(self, request, *args, **kwargs):
         """
         Requests a role
@@ -454,14 +456,26 @@ class AccessibleByListAPIView(RoleSmartListMixin, InvitedRequestedListMixin,
         .. code-block:: json
 
             {
-              "slug": "cowork"
+              "organization": {
+                "slug": "cowork",
+                "full_name": "Cowork",
+                "printable_name": "Cowork",
+                "picture": null,
+                "type": "organization",
+                "credentials": false
+              },
+              "created_at": "2020-06-06T04:55:41.766938Z",
+              "request_key": "53a1b0657c7cf738514bf791e6f20f36429e57aa",
+              "role_description": null,
+              "home_url": "/app/cowork/",
+              "settings_url": "/profile/cowork/contact/",
+              "accept_grant_api_url": null,
+              "remove_api_url": "/api/users/xia/accessibles/manager/cowork"
             }
         """
         return super(AccessibleByListAPIView, self).post(
             request, *args, **kwargs)
 
-    @swagger_auto_schema(request_body=OrganizationRoleCreateSerializer,
-        query_serializer=ForceSerializer)
     def create(self, request, *args, **kwargs): #pylint:disable=unused-argument
         serializer = OrganizationRoleCreateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -503,9 +517,9 @@ class AccessibleByDescrListAPIView(RoleSmartListMixin,
                     "printable_name": "ABC Corp.",
                     "email": "help@cowork.net",
                     "role_description": {
-                        "slug": "cowork",
+                        "slug": "manager",
                         "created_at": "2018-01-01T00:00:00Z",
-                        "title": "ABC Corp.",
+                        "title": "Profile manager",
                         "is_global": true,
                         "organization": null
                     },
@@ -526,6 +540,8 @@ class AccessibleByDescrListAPIView(RoleSmartListMixin,
             return CreateAccessibleRequestSerializer
         return super(AccessibleByDescrListAPIView, self).get_serializer_class()
 
+    @swagger_auto_schema(request_body=OrganizationRoleCreateSerializer,
+        query_serializer=ForceSerializer)
     def post(self, request, *args, **kwargs): #pylint:disable=unused-argument
         """
         Requests a role of a specified type
@@ -554,14 +570,32 @@ class AccessibleByDescrListAPIView(RoleSmartListMixin,
         .. code-block:: json
 
             {
-              "slug": "cowork"
+              "organization": {
+                "slug": "cowork",
+                "full_name": "Cowork",
+                "printable_name": "Cowork",
+                "picture": null,
+                "type": "organization",
+                "credentials": false
+              },
+              "created_at": "2020-06-06T04:55:41.766938Z",
+              "request_key": "53a1b0657c7cf738514bf791e6f20f36429e57aa",
+              "role_description": {
+                "slug": "manager",
+                "created_at": "2018-01-01T00:00:00Z",
+                "title": "Profile manager",
+                "is_global": true,
+                "organization": null
+              },
+              "home_url": "/app/cowork/",
+              "settings_url": "/profile/cowork/contact/",
+              "accept_grant_api_url": null,
+              "remove_api_url": "/api/users/xia/accessibles/manager/cowork"
             }
         """
         return super(AccessibleByDescrListAPIView, self).post(
             request, *args, **kwargs)
 
-    @swagger_auto_schema(request_body=OrganizationRoleCreateSerializer,
-        query_serializer=ForceSerializer)
     def create(self, request, *args, **kwargs): #pylint:disable=unused-argument
         serializer = OrganizationRoleCreateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -609,7 +643,7 @@ class RoleDescriptionListCreateView(RoleDescriptionQuerysetMixin,
                     "created_at": "2018-01-01T00:00:00Z",
                     "title": "Managers",
                     "slug": "manager",
-                    "is_global": true,
+                    "is_global": true
                 },
                 {
                     "created_at": "2018-01-01T00:00:00Z",
@@ -642,7 +676,7 @@ class RoleDescriptionListCreateView(RoleDescriptionQuerysetMixin,
         .. code-block:: json
 
             {
-                "title": "Managers"
+              "title": "Support"
             }
 
         responds
@@ -650,38 +684,13 @@ class RoleDescriptionListCreateView(RoleDescriptionQuerysetMixin,
         .. code-block:: json
 
             {
-                "count": 2,
-                "next": null,
-                "previous": null,
-                "results": [
-                    {
-                        "created_at": "2018-01-01T00:00:00Z",
-                        "title": "Managers",
-                        "slug": "manager",
-                        "is_global": true,
-                        "roles": [
-                            {
-                                "created_at": "2018-01-01T00:00:00Z",
-                                "user": {
-                                    "slug": "donny",
-                                    "email": "donny@localhost.localdomain",
-                                    "full_name": "Donny Cooper",
-                                    "created_at": "2018-01-01T00:00:00Z"
-                                },
-                                "request_key": null,
-                                "grant_key": null
-                            }
-                        ]
-                    },
-                    {
-                        "created_at": "2018-01-01T00:00:00Z",
-                        "title": "Contributors",
-                        "slug": "contributor",
-                        "is_global": false,
-                        "roles": []
-                    }
-                ]
+              "created_at": "2018-01-01T00:00:00Z",
+              "title": "Support",
+              "slug": "support",
+              "is_global": false,
+              "roles": []
             }
+
         """
         return super(RoleDescriptionListCreateView, self).post(
             request, *args, **kwargs)
@@ -1045,9 +1054,12 @@ class RoleByDescrListAPIView(RoleSmartListMixin, RoleByDescrQuerysetMixin,
 
 
 class RoleDetailAPIView(RoleMixin, DestroyAPIView):
-
+    """
+    Re-sends and delete role for a user on a profile.
+    """
     serializer_class = RoleSerializer
 
+    @swagger_auto_schema(request_body=no_body)
     def post(self, request, *args, **kwargs):#pylint:disable=unused-argument
         """
         Re-sends role invite
@@ -1128,6 +1140,9 @@ class RoleDetailAPIView(RoleMixin, DestroyAPIView):
 
 
 class AccessibleDetailAPIView(RoleDetailAPIView):
+    """
+    Re-sends and delete role for a user on a profile.
+    """
 
     def get_queryset(self):
         # We never take the `role_description` into account when removing
@@ -1135,11 +1150,12 @@ class AccessibleDetailAPIView(RoleDetailAPIView):
         return get_role_model().objects.filter(
             organization=self.organization, user=self.user)
 
+    @swagger_auto_schema(request_body=no_body)
     def post(self, request, *args, **kwargs):
         """
         Re-sends request for role
 
-        Re-sends the request e-mail that the user is requested a role
+        Re-sends the request e-mail that the user is requesting a role
         on the organization.
 
         **Tags**: rbac
@@ -1210,6 +1226,7 @@ class RoleAcceptAPIView(UserMixin, GenericAPIView):
 
     serializer_class = AccessibleSerializer
 
+    @swagger_auto_schema(request_body=no_body)
     def put(self, request, *args, **kwargs):#pylint:disable=unused-argument
         """
         Accepts role invite
