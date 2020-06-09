@@ -209,7 +209,7 @@ class ProfilesTypeaheadAPIView(OrganizationSmartListMixin,
 
     .. code-block:: http
 
-        GET /api/accounts/profile/?q=xia HTTP/1.1
+        GET /api/accounts/profiles/?q=xia HTTP/1.1
 
     responds
 
@@ -267,7 +267,7 @@ class UsersTypeaheadAPIView(UserSmartListMixin, UserQuerysetMixin,
 
     .. code-block:: http
 
-        GET  /api/users/?o=created_at&ot=desc HTTP/1.1
+        GET  /api/accounts/users/?o=created_at&ot=desc HTTP/1.1
 
     responds
 

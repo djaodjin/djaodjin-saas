@@ -371,7 +371,7 @@ class CouponRedeemAPIView(GenericAPIView):
 
     .. code-block:: http
 
-         POST /api/redeem HTTP/1.1
+         POST /api/cart/redeem HTTP/1.1
 
     .. code-block:: json
 
