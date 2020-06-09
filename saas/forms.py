@@ -291,7 +291,9 @@ class PlanForm(forms.ModelForm):
         renewal_type = slugify(Plan.RENEWAL_CHOICES[renewal_type][1])
         advance_discount_type = slugify(
             AdvanceDiscount.DISCOUNT_CHOICES[advance_discount_type - 1][1])
-        advance_discount_value = Decimal(advance_discount_value).scaleb(-2)
+        if advance_discount_type in (AdvanceDiscount.PERCENTAGE,
+                                     AdvanceDiscount.CURRENCY):
+            advance_discount_value = Decimal(advance_discount_value).scaleb(-2)
         initial.update({
             'period_amount':period_amount,
             'period_type': period_type,
@@ -304,8 +306,13 @@ class PlanForm(forms.ModelForm):
 
     def clean_advance_discount_value(self):
         try:
-            self.cleaned_data['advance_discount_value'] = \
-              int(self.cleaned_data['advance_discount_value'].scaleb(2))
+            if self.cleaned_data['advance_discount_type'] in (
+                    AdvanceDiscount.PERCENTAGE, AdvanceDiscount.CURRENCY):
+                self.cleaned_data['advance_discount_value'] = \
+                    int(self.cleaned_data['advance_discount_value'].scaleb(2))
+            else:
+                self.cleaned_data['advance_discount_value'] = \
+                    int(self.cleaned_data['advance_discount_value'])
         except (TypeError, ValueError):
             self.cleaned_data['advance_discount_value'] = 0
         return self.cleaned_data['advance_discount_value']
