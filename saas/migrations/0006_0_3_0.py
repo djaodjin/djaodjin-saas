@@ -59,12 +59,12 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='subscription',
             name='grant_key',
-            field=models.CharField(blank=True, max_length=40, null=True),
+            field=models.SlugField(blank=True, max_length=40, null=True),
         ),
         migrations.AddField(
             model_name='subscription',
             name='request_key',
-            field=models.CharField(blank=True, max_length=40, null=True),
+            field=models.SlugField(blank=True, max_length=40, null=True),
         ),
         migrations.AlterField(
             model_name='cartitem',
