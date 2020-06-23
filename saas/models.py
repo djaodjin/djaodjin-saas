@@ -286,13 +286,13 @@ class Organization(models.Model):
     processor = models.ForeignKey(
         'Organization', null=True, blank=True, on_delete=models.SET_NULL,
         related_name='processes',)
-    processor_card_key = models.CharField(null=True, blank=True, max_length=20)
-    processor_deposit_key = models.CharField(max_length=60, null=True,
+    processor_card_key = models.SlugField(max_length=255, null=True, blank=True)
+    processor_deposit_key = models.SlugField(max_length=255, null=True,
         blank=True,
         help_text=_("Used to deposit funds to the organization bank account"))
-    processor_priv_key = models.CharField(max_length=60, null=True, blank=True)
-    processor_pub_key = models.CharField(max_length=60, null=True, blank=True)
-    processor_refresh_token = models.CharField(max_length=60, null=True,
+    processor_priv_key = models.SlugField(max_length=255, null=True, blank=True)
+    processor_pub_key = models.SlugField(max_length=255, null=True, blank=True)
+    processor_refresh_token = models.SlugField(max_length=255, null=True,
         blank=True)
 
     extra = settings.get_extra_field_class()(null=True, blank=True,
@@ -1213,8 +1213,8 @@ class Role(models.Model):
         db_column='user_id', related_name='role')
     role_description = models.ForeignKey(RoleDescription, null=True,
         on_delete=models.CASCADE)
-    request_key = models.CharField(max_length=40, null=True, blank=True)
-    grant_key = models.CharField(max_length=40, null=True, blank=True)
+    request_key = models.SlugField(max_length=40, null=True, blank=True)
+    grant_key = models.SlugField(max_length=40, null=True, blank=True)
     extra = settings.get_extra_field_class()(null=True,
         help_text=_("Extra meta data (can be stringify JSON)"))
 
@@ -1507,7 +1507,7 @@ class Charge(models.Model):
     card_name = models.CharField(max_length=50, null=True)
     processor = models.ForeignKey('Organization', on_delete=models.PROTECT,
         related_name='charges')
-    processor_key = models.SlugField(unique=True, db_index=True)
+    processor_key = models.SlugField(max_length=255, unique=True, db_index=True)
     state = models.PositiveSmallIntegerField(
         choices=CHARGE_STATES, default=CREATED,
         help_text=_("Current state (i.e. created, done, failed, disputed)"))
@@ -3162,8 +3162,8 @@ class Subscription(models.Model):
         help_text=_("Organization subscribed to the plan"))
     plan = models.ForeignKey(Plan, on_delete=models.CASCADE,
         help_text=_("Plan the organization is subscribed to"))
-    request_key = models.CharField(max_length=40, null=True, blank=True)
-    grant_key = models.CharField(max_length=40, null=True, blank=True)
+    request_key = models.SlugField(max_length=40, null=True, blank=True)
+    grant_key = models.SlugField(max_length=40, null=True, blank=True)
     extra = settings.get_extra_field_class()(null=True,
         help_text=_("Extra meta data (can be stringify JSON)"))
 
