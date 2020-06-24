@@ -53,8 +53,8 @@ from ..compat import reverse, six
 from ..decorators import _valid_manager
 from ..humanize import as_money
 from ..mixins import as_html_description, product_url
-from ..models import (AdvanceDiscount, BalanceLine, CartItem, Charge, Plan,
-    RoleDescription, Subscription, Transaction)
+from ..models import (AdvanceDiscount, BalanceLine, CartItem, Charge, Coupon,
+    Plan, RoleDescription, Subscription, Transaction)
 from ..utils import (build_absolute_uri, get_organization_model, get_role_model)
 
 #pylint: disable=no-init
@@ -202,6 +202,37 @@ class ChargeSerializer(serializers.ModelSerializer):
         model = Charge
         fields = ('created_at', 'amount', 'unit', 'readable_amount',
                   'description', 'last4', 'exp_date', 'processor_key', 'state')
+
+
+class CouponCreateSerializer(serializers.ModelSerializer):
+    """
+    Serializer to create a coupon, including the `code`.
+    """
+    discount_type = EnumField(choices=Coupon.DISCOUNT_CHOICES,
+        help_text=_("Type of discount (percentage or currency unit)"))
+    plan = PlanRelatedField(required=False, allow_null=True)
+
+    def validate_plan(self, plan):
+        if plan and not plan.is_active:
+            raise ValidationError(_("The plan is inactive. "\
+                "As a result the coupon will have no effect."))
+        return plan
+
+    class Meta:
+        model = Coupon
+        fields = ('code', 'discount_type', 'discount_value',
+            'created_at', 'ends_at', 'description',
+            'nb_attempts', 'plan')
+
+
+class CouponSerializer(CouponCreateSerializer):
+    """
+    Serializer to retrieve or update a `Coupon`.
+    """
+    class Meta:
+        model = CouponCreateSerializer.Meta.model
+        fields = CouponCreateSerializer.Meta.fields
+        read_only_fields = ('code',)
 
 
 class EmailChargeReceiptSerializer(NoModelSerializer):

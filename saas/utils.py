@@ -286,35 +286,42 @@ def handle_uniq_error(err, renames=None):
     """
     Will raise a ``ValidationError`` with the appropriate error message.
     """
-    field_name = None
+    field_names = None
     err_msg = str(err).splitlines().pop()
     # PostgreSQL unique constraint.
     look = re.match(
-        r'DETAIL:\s+Key \(([a-z_]+)\)=\(.*\) already exists\.', err_msg)
+        r'DETAIL:\s+Key \(([a-z_]+(, [a-z_]+)*)\)=\(.*\) already exists\.',
+        err_msg)
     if look:
-        field_name = look.group(1)
+        field_names = [field_name for field_name in look.group(1).split(',')]
     else:
         look = re.match(
           r'DETAIL:\s+Key \(lower\(([a-z_]+)::text\)\)=\(.*\) already exists\.',
             err_msg)
         if look:
-            field_name = look.group(1)
+            field_names = [look.group(1)]
         else:
             # SQLite unique constraint.
-            look = re.match(
-                r'UNIQUE constraint failed: [a-z_]+\.([a-z_]+)', err_msg)
+            look = re.match(r'UNIQUE constraint failed: '\
+                '([a-z_]+\.[a-z_]+(, [a-z_]+\.[a-z_]+)*)', err_msg)
             if look:
-                field_name = look.group(1)
+                field_names = [field_name.split('.')[-1]
+                    for field_name in look.group(1).split(',')]
             else:
                 # On CentOS 7, installed sqlite 3.7.17
                 # returns differently-formatted error message.
                 look = re.match(
                     r'column ([a-z_]+) is not unique', err_msg)
                 if look:
-                    field_name = look.group(1)
-    if field_name:
-        if renames and field_name in renames:
-            field_name = renames[field_name]
+                    field_names = [look.group(1)]
+    if field_names:
+        renamed_fields = []
+        for field_name in field_names:
+            if renames and field_name in renames:
+                field_name = renames[field_name]
+            renamed_fields += [field_name]
+        # XXX retrieves `saas_coupon.code` duplicates
+        field_name = renamed_fields[-1]
         raise ValidationError({field_name:
             _("This %(field)s is already taken.") % {'field': field_name}})
     raise err

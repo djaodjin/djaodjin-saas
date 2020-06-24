@@ -23,39 +23,22 @@
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 from __future__ import unicode_literals
 
+from django.db import IntegrityError
 from django.utils.translation import ugettext_lazy as _
-from rest_framework import serializers
+from rest_framework import serializers, status
 from rest_framework.exceptions import ValidationError
 from rest_framework.generics import (ListCreateAPIView,
     RetrieveUpdateDestroyAPIView)
+from rest_framework.response import Response
 
+from .serializers import CouponSerializer, CouponCreateSerializer
 from ..filters import OrderingFilter, SearchFilter, DateRangeFilter
 from ..models import Coupon
 from ..mixins import CouponMixin, ProviderMixin
-from .serializers import EnumField, PlanRelatedField
+from ..utils import handle_uniq_error
 
 #pylint: disable=no-init
 #pylint: disable=old-style-class
-
-
-class CouponSerializer(serializers.ModelSerializer):
-
-    discount_type = EnumField(choices=Coupon.DISCOUNT_CHOICES,
-        help_text=_("Type of discount (percentage or currency unit)"))
-    plan = PlanRelatedField(required=False, allow_null=True)
-
-    def validate_plan(self, plan):
-        if plan and not plan.is_active:
-            raise ValidationError(_("The plan is inactive. "\
-                "As a result the coupon will have no effect."))
-        return plan
-
-    class Meta:
-        model = Coupon
-        fields = ('code', 'discount_type', 'discount_value',
-            'created_at', 'ends_at', 'description',
-            'nb_attempts', 'plan')
-        read_only_fields = ('code',)
 
 
 class SmartCouponListMixin(object):
@@ -148,6 +131,8 @@ class CouponListCreateAPIView(SmartCouponListMixin, CouponQuerysetMixin,
         Customers will be able to use the `code` until `ends_at`
         to subscribe to plans from the Coupon's provider at a discount.
 
+        **Tags**: billing
+
         **Examples**
 
         .. code-block:: http
@@ -178,9 +163,20 @@ class CouponListCreateAPIView(SmartCouponListMixin, CouponQuerysetMixin,
         """
         return self.create(request, *args, **kwargs)
 
-    def perform_create(self, serializer):
-        serializer.save(organization=self.organization)
-
+    def create(self, request, *args, **kwargs):
+        serializer = CouponCreateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        # check plan belongs to organization
+        plan = serializer.validated_data.get('plan')
+        if plan and plan.organization != self.organization:
+            raise ValidationError(
+                _("The plan does not belong to the organization."))
+        try:
+            serializer.save(organization=self.organization)
+        except IntegrityError as err:
+            handle_uniq_error(err)
+        headers = self.get_success_headers(serializer.data)
+        return Response(self.get_serializer().to_representation(serializer.instance), status=status.HTTP_201_CREATED, headers=headers)
 
 
 class CouponDetailAPIView(CouponMixin, RetrieveUpdateDestroyAPIView):
