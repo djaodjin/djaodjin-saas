@@ -303,17 +303,16 @@ def handle_uniq_error(err, renames=None):
         else:
             # SQLite unique constraint.
             look = re.match(r'UNIQUE constraint failed: '\
-                '([a-z_]+\.[a-z_]+(, [a-z_]+\.[a-z_]+)*)', err_msg)
-            if look:
-                field_names = [field_name.split('.')[-1]
-                    for field_name in look.group(1).split(',')]
-            else:
+                '(?P<cols>[a-z_]+\.[a-z_]+(, [a-z_]+\.[a-z_]+)*)', err_msg)
+            if not look:
                 # On CentOS 7, installed sqlite 3.7.17
                 # returns differently-formatted error message.
                 look = re.match(
-                    r'column ([a-z_]+) is not unique', err_msg)
-                if look:
-                    field_names = [look.group(1)]
+                    r'column(s)? (?P<cols>[a-z_]+(\.[a-z_]+)?'\
+                    '(, [a-z_]+(\.[a-z_]+)?)*) (is|are) not unique', err_msg)
+            if look:
+                field_names = [field_name.split('.')[-1]
+                    for field_name in look.group('cols').split(',')]
     if field_names:
         renamed_fields = []
         for field_name in field_names:
