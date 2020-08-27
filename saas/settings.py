@@ -46,6 +46,8 @@ BYPASS_PERMISSION_CHECK    False            Skip all permission checks
 BYPASS_PROCESSOR_AUTH      False            Do not check the auth token against
                                             the processor to set processor keys
                                             (useful to test StripeConnect).
+DISABLE_UPDATES           False             When `True`, modifications are not
+                                            allowed.
 EXTRA_MIXIN               object            Class to to inject into the parents
                                             of the Mixin hierarchy.
                                             (useful for composition of Django
@@ -92,6 +94,7 @@ _SETTINGS = {
     # (useful while testing).
     'BYPASS_PROCESSOR_AUTH': False,
     'DEFAULT_UNIT': 'usd',
+    'DISABLE_UPDATES': False,
     'EXPIRE_NOTICE_DAYS': [15],
     'EXTRA_MIXIN': object,
     'EXTRA_FIELD': None,
@@ -136,6 +139,7 @@ BYPASS_IMPLICIT_GRANT = _SETTINGS.get('BYPASS_IMPLICIT_GRANT')
 BYPASS_PROCESSOR_AUTH = _SETTINGS.get('BYPASS_PROCESSOR_AUTH')
 CREDIT_ON_CREATE = _SETTINGS.get('CREDIT_ON_CREATE')
 DEFAULT_UNIT = _SETTINGS.get('DEFAULT_UNIT')
+DISABLE_UPDATES = _SETTINGS.get('DISABLE_UPDATES')
 EXPIRE_NOTICE_DAYS = _SETTINGS.get('EXPIRE_NOTICE_DAYS')
 EXTRA_MIXIN = _SETTINGS.get('EXTRA_MIXIN')
 IS_BROKER_CALLABLE = _SETTINGS.get('BROKER').get('IS_INSTANCE_CALLABLE', None)

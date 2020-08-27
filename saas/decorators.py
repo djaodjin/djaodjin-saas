@@ -124,6 +124,9 @@ def _has_valid_access(request, candidates,
     """
     Returns True if any candidate is accessible to the request user.
     """
+    if (settings.DISABLE_UPDATES and
+        request.method not in ('GET', 'HEAD', 'OPTIONS', 'TRACE')):
+        return False
     managed, contributed = _filter_valid_access(request, candidates,
         strength=strength, roledescription=roledescription)
     return len(managed) + len(contributed) > 0
@@ -483,16 +486,18 @@ def fail_provider_only_strong(request, organization=None):
 
 def _fail_self_provider(request, user=None, strength=NORMAL,
                         roledescription=None):
+    if request.user.username == user:
+        return (settings.DISABLE_UPDATES and
+            request.method not in ('GET', 'HEAD', 'OPTIONS', 'TRACE'))
+
     organization_model = get_organization_model()
-    if request.user.username != user:
-        # Organization that are managed by both users
-        directs = organization_model.objects.accessible_by(user)
-        providers = organization_model.objects.providers(
-            Subscription.objects.valid_for(organization__in=directs))
-        candidates = list(directs) + list(providers) + [get_broker()]
-        return not _has_valid_access(request, candidates,
-            strength=strength, roledescription=roledescription)
-    return False
+    # Organization that are managed by both users
+    directs = organization_model.objects.accessible_by(user)
+    providers = organization_model.objects.providers(
+        Subscription.objects.valid_for(organization__in=directs))
+    candidates = list(directs) + list(providers) + [get_broker()]
+    return not _has_valid_access(request, candidates,
+        strength=strength, roledescription=roledescription)
 
 
 def fail_self_provider(request, user=None, roledescription=None):
