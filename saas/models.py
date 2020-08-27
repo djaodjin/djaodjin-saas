@@ -2487,11 +2487,11 @@ class Plan(SlugTitleMixin, models.Model):
     objects = PlanManager()
 
     UNSPECIFIED = 0
-    HOURLY = 1
-    DAILY = 2
-    WEEKLY = 3
-    MONTHLY = 4
-    YEARLY = 5
+    HOURLY = humanize.HOURLY
+    DAILY = humanize.DAILY
+    WEEKLY = humanize.WEEKLY
+    MONTHLY = humanize.MONTHLY
+    YEARLY = humanize.YEARLY
 
     INTERVAL_CHOICES = [
         (HOURLY, "HOURLY"),
@@ -2616,22 +2616,6 @@ class Plan(SlugTitleMixin, models.Model):
         if self.title:
             return self.title
         return self.slug
-
-    def humanize_period(self, nb_periods):
-        result = None
-        if self.period_type == self.HOURLY:
-            result = '%d hour' % nb_periods
-        elif self.period_type == self.DAILY:
-            result = '%d day' % nb_periods
-        elif self.period_type == self.WEEKLY:
-            result = '%d week' % nb_periods
-        elif self.period_type == self.MONTHLY:
-            result = '%d month' % nb_periods
-        elif self.period_type == self.YEARLY:
-            result = '%d year' % nb_periods
-        if result and nb_periods > 1:
-            result += 's'
-        return result
 
     def period_number(self, text):
         """

@@ -47,8 +47,8 @@ from ..compat import six
 from ..managers.metrics import (abs_monthly_balances, monthly_balances,
     month_periods)
 from ..mixins import (CartItemSmartListMixin, ProviderMixin,
-    MetricsMixin, ChurnedQuerysetMixin,
-    SubscriptionSmartListMixin, SubscribedQuerysetMixin, UserSmartListMixin)
+    MetricsMixin, ChurnedQuerysetMixin, SubscriptionSmartListMixin,
+    SubscribedQuerysetMixin, UserSmartListMixin, as_html_description)
 from ..models import BalanceLine, CartItem, Coupon
 from ..utils import datetime_or_now
 
@@ -63,6 +63,11 @@ class CSVDownloadView(View):
         if six.PY2:
             return text.encode('utf-8')
         return text
+
+    def encode_descr(transaction):
+        return self.encode(('"%s"' % as_html_description(
+            transaction, active_links=False).replace(
+            '\\', '\\\\').replace('"', '\"')))
 
     def filter_queryset(self, queryset):
         """
@@ -337,8 +342,7 @@ class TransactionDownloadView(SmartTransactionListMixin,
             self.encode(transaction.orig_unit),
             self.encode(transaction.orig_organization.printable_name),
             self.encode(transaction.orig_account),
-            self.encode(('"%s"' % transaction.descr.replace(
-                '\\', '\\\\').replace('"', '\"')))
+            self.encode_descr(transaction)
         ]
 
 
@@ -362,8 +366,7 @@ class BillingStatementDownloadView(SmartTransactionListMixin,
                 # XXX integer division
                 Decimal(transaction.dest_amount) / 100),
             self.encode(transaction.dest_unit),
-            self.encode(('"%s"' % transaction.descr.replace(
-                '\\', '\\\\').replace('"', '\"')))
+            self.encode_descr(transaction)
         ]
 
 
@@ -387,6 +390,5 @@ class TransferDownloadView(SmartTransactionListMixin,
                 # XXX integer division
                 Decimal(transaction.dest_amount) / 100),
             self.encode(transaction.dest_unit),
-            self.encode(('"%s"' % transaction.descr.replace(
-                '\\', '\\\\').replace('"', '\"')))
+            self.encode_descr(transaction)
         ]

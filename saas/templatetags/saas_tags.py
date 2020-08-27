@@ -73,6 +73,11 @@ def describe(transaction):
     return mark_safe(as_html_description(transaction))
 
 
+@register.filter(needs_autoescape=False)
+def describe_no_links(transaction):
+    return mark_safe(as_html_description(transaction, active_links=False))
+
+
 @register.filter()
 def isoformat(val):
     if isinstance(val, datetime):

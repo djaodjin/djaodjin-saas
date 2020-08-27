@@ -37,7 +37,7 @@ from django.views.generic.detail import SingleObjectMixin
 from rest_framework.generics import get_object_or_404
 
 from . import humanize, settings
-from .compat import NoReverseMatch, is_authenticated, reverse
+from .compat import six, NoReverseMatch, is_authenticated, reverse
 from .filters import DateRangeFilter, OrderingFilter, SearchFilter
 from .models import (CartItem, Charge, Coupon, Organization, Plan,
     RoleDescription, Subscription, Transaction, UseCharge, get_broker)
@@ -1054,63 +1054,94 @@ class RoleMixin(RoleDescriptionMixin):
                 % queryset.model._meta.object_name)
 
 
-def as_html_description(transaction):
+def _as_html_description(transaction_descr,
+                         orig_organization=None, dest_organization=None,
+                         dest_account=None, active_links=True):
+    #pylint:disable=too-many-locals
+    result = transaction_descr
+    for pat, trans in six.iteritems(humanize.REGEX_TO_TRANSLATION):
+        look = re.match(pat, transaction_descr)
+        if look:
+            groups = {}
+            for key in six.iterkeys(humanize.REGEXES):
+                try:
+                    groups.update({key: (int(look.group(key))
+                        if key in ['nb_periods', 'quantity']
+                        else look.group(key))})
+                except IndexError:
+                    pass
+
+            charge = groups.get('charge')
+            if (charge and
+                dest_organization and dest_account and orig_organization):
+                if active_links:
+                    groups.update({'charge':
+                        '<a href="%s">%s</a>' % (reverse('saas_charge_receipt',
+                        args=(dest_organization
+                        if dest_account == Transaction.EXPENSES
+                        else orig_organization, look.group('charge'),)),
+                        charge)})
+
+            period_name = groups.get('period_name')
+            nb_periods = groups.get('nb_periods')
+            if nb_periods and period_name:
+                groups.update({'period_name': humanize.translate_period_name(
+                    period_name, nb_periods)})
+
+            subscriber = groups.get('subscriber')
+            if (subscriber and
+                orig_organization and dest_organization):
+                if str(orig_organization) == subscriber:
+                    provider = dest_organization
+                else:
+                    provider = orig_organization
+                if active_links:
+                    groups.update({'subscriber': '<a href="%s">%s</a>' % (
+                        reverse('saas_organization_profile',
+                        args=(subscriber,)), subscriber)})
+            else:
+                provider = orig_organization
+                subscriber = dest_organization
+
+            plan = groups.get('plan')
+            if (plan and
+                provider and subscriber):
+                try:
+                    plan_title = Plan.objects.get(slug=plan).title
+                except Plan.DoesNotExist:
+                    plan_title = plan
+                if active_links:
+                    groups.update({'plan':
+                        ('<a href="%s%s/">%s</a>' % (
+                        product_url(provider, subscriber),
+                        plan, plan_title))})
+                else:
+                    groups.update({'plan': plan_title})
+
+            descr = groups.get('descr')
+            if descr:
+                groups.update({'descr': _as_html_description(descr)})
+
+            result = trans % groups
+            pos = transaction_descr.rfind(' - ')
+            if pos > 0:
+                result += humanize.translate_descr_suffix(
+                    transaction_descr[pos + 3:])
+            break
+    return result
+
+
+def as_html_description(transaction, active_links=True):
     """
     Add hyperlinks into a transaction description.
     """
-    result = transaction.descr
-
-    # humanize.DESCRIBE_CHARGED_CARD, humanize.DESCRIBE_CHARGED_CARD_PROCESSOR
-    # and humanize.DESCRIBE_CHARGED_CARD_PROVIDER.
-    # are specially crafted to start with "Charge ..."
-    look = re.match(r'Charge (?P<charge>\S+)', transaction.descr)
-    if look:
-        link = '<a href="%s">%s</a>' % (reverse('saas_charge_receipt',
-            args=(transaction.dest_organization
-                  if transaction.dest_account == Transaction.EXPENSES
-                  else transaction.orig_organization, look.group('charge'),)),
-            look.group('charge'))
-        result = result.replace(look.group('charge'), link)
-
-    provider = transaction.orig_organization
-    subscriber = transaction.dest_organization
-    look = re.match(humanize.DESCRIBE_BUY_PERIODS % {
-        'plan': r'(?P<plan>\S+)', 'ends_at': r'.*', 'humanized_periods': r'.*'},
-        transaction.descr)
-    if not look:
-        look = re.match(humanize.DESCRIBE_UNLOCK_NOW % {
-            'plan': r'(?P<plan>\S+)', 'unlock_event': r'.*'},
-            transaction.descr)
-    if not look:
-        look = re.match(humanize.DESCRIBE_UNLOCK_LATER % {
-            'plan': r'(?P<plan>\S+)', 'unlock_event': r'.*',
-            'amount': r'.*'}, transaction.descr)
-    if not look:
-        look = re.match(humanize.DESCRIBE_BALANCE % {
-            'plan': r'(?P<plan>\S+)'}, transaction.descr)
-    if not look:
-        look = re.match(humanize.DESCRIBE_BUY_USE % {
-            'quantity': r'\d+',
-            'use_charge': r'.*',
-            'plan': r'(?P<plan>\S+)'}, transaction.descr)
-    if not look:
-        look = re.match(r'.*for (?P<subscriber>\S+):(?P<plan>\S+)',
-            transaction.descr)
-        if look:
-            subscriber = look.group('subscriber')
-            if str(transaction.orig_organization) == subscriber:
-                provider = transaction.dest_organization
-            else:
-                provider = transaction.orig_organization
-            link = '<a href="%s">%s</a>' % (reverse('saas_organization_profile',
-                args=(subscriber,)), subscriber)
-            result = result.replace(subscriber, link)
-    if look:
-        plan_link = ('<a href="%s%s/">%s</a>' % (
-            product_url(provider, subscriber),
-            look.group('plan'), look.group('plan')))
-        result = result.replace(look.group('plan'), plan_link)
-    return result
+    print("as_html_description(active_links=%s)" % str(active_links))
+    return _as_html_description(
+        transaction.descr,
+        transaction.orig_organization,
+        transaction.dest_organization,
+        transaction.dest_account,
+        active_links=active_links)
 
 
 def get_charge_context(charge):

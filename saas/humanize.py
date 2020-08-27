@@ -26,10 +26,17 @@ from __future__ import unicode_literals
 
 import datetime, re
 
+from django.utils.translation import ugettext_lazy as _
+
 from . import settings
 
 
-HOURLY = 1 # XXX to avoid import loop
+# prevents an import loop with models.py
+HOURLY = 1
+DAILY = 2
+WEEKLY = 3
+MONTHLY = 4
+YEARLY = 5
 
 DISCOUNT_PERCENTAGE = 1
 DISCOUNT_CURRENCY = 2
@@ -40,7 +47,7 @@ DESCRIBE_BALANCE = \
     "Balance on %(plan)s"
 
 DESCRIBE_BUY_PERIODS = \
-    "Subscription to %(plan)s until %(ends_at)s (%(humanized_periods)s)"
+   "Subscription to %(plan)s until %(ends_at)s (%(nb_periods)s %(period_name)s)"
 
 DESCRIBE_BUY_USE = \
     "Buy %(quantity)s %(plan)s %(use_charge)s"
@@ -77,7 +84,7 @@ DESCRIBE_RECOGNIZE_INCOME_DETAILED = \
     " (%(nb_periods)s period)"
 
 DESCRIBE_RETAINER_PERIODS = \
-    "Retainer for services (%(humanized_periods)s)"
+    "Retainer for services (%(nb_periods)s %(period_name)s)"
 
 DESCRIBE_UNLOCK_NOW = \
     "Unlock %(plan)s now. Don't worry later to %(unlock_event)s."
@@ -90,6 +97,90 @@ DESCRIBE_WRITEOFF_LIABILITY = \
 
 DESCRIBE_WRITEOFF_RECEIVABLE = \
     "Write off receivable for %(event)s"
+
+DESCRIBE_SUFFIX_DISCOUNT_PERCENTAGE = \
+    "a %(percent)s discount"
+
+DESCRIBE_SUFFIX_DISCOUNT_PERIOD = \
+    "%(nb_periods)s %(period_name)s free"
+
+DESCRIBE_SUFFIX_DISCOUNT_CURRENCY = \
+    "a %(amount)s off"
+
+DESCRIBE_SUFFIX_GROUP_BUY = \
+    ", complimentary of %(payer)s"
+
+DESCRIBE_SUFFIX_COUPON_APPLIED = \
+    " (code: %(code)s)"
+
+
+REGEXES = {
+    'amount': r'(?P<amount>\S+)',
+    'charge': r'(?P<charge>\S+)',
+    'code': r'(?P<code>\S+)',
+    'descr': r'(?P<descr>.*)',
+    'event': r'(?P<event>\S+)',
+    'ends_at': r'(?P<ends_at>\S+)',
+    'nb_periods': r'(?P<nb_periods>\d+)',
+    'organization': r'(?P<organization>\S+)',
+    'payer': r'(?P<payer>\S+)',
+    'percent': r'(?P<percent>\S+)',
+    'period_end': r'(?P<period_end>\S+)',
+    'period_name': r'(?P<period_name>\S+)',
+    'period_start': r'(?P<period_start>\S+)',
+    'plan': r'(?P<plan>\S+)',
+    'quantity': r'(?P<quantity>\d+)',
+    'refund_type': r'(?P<refund_type>\S+)',
+    'subscription': r'(?P<subscriber>\S+):(?P<plan>\S+)',
+    'use_charge': r'(?P<use_charge>\S+)',
+    'unlock_event': r'(?P<unlock_event>\S+)',
+}
+
+# Implementation note: The text has been copied verbatim instead
+# of using the environment variable declared such that the translation
+# module is able to pick up those strings and add them in the .po file.
+REGEX_TO_TRANSLATION = {
+    (DESCRIBE_BALANCE % REGEXES): \
+_("Balance on %(plan)s"),
+    (DESCRIBE_BUY_PERIODS.replace(' (', r' \(').replace(
+        ')s)', r')s\)') % REGEXES):\
+_("Subscription to %(plan)s until %(ends_at)s"\
+" (%(nb_periods)s %(period_name)s)"),
+    (DESCRIBE_BUY_USE % REGEXES): \
+_("Buy %(quantity)s %(plan)s %(use_charge)s"),
+    (DESCRIBE_CHARGED_CARD % REGEXES): \
+_("Charge %(charge)s on credit card of %(organization)s"),
+    (DESCRIBE_CHARGED_CARD_PROCESSOR % REGEXES): \
+_("Charge %(charge)s processor fee for %(event)s"),
+    (DESCRIBE_CHARGED_CARD_BROKER % REGEXES): \
+_("Charge %(charge)s broker fee for %(event)s"),
+    (DESCRIBE_CHARGED_CARD_PROVIDER % REGEXES): \
+_("Charge %(charge)s distribution for %(event)s"),
+    (DESCRIBE_CHARGED_CARD_REFUND % REGEXES): \
+_("Charge %(charge)s %(refund_type)s for %(descr)s"),
+    (DESCRIBE_DOUBLE_ENTRY_MATCH % REGEXES): \
+_("Keep a balanced ledger"),
+    (DESCRIBE_LIABILITY_START_PERIOD % REGEXES): \
+_("Past due"),
+    (DESCRIBE_OFFLINE_PAYMENT % REGEXES): \
+_("Off-line payment"),
+    (DESCRIBE_RECOGNIZE_INCOME % REGEXES): \
+_("Recognize %(subscription)s from %(period_start)s to %(period_end)s"),
+    (DESCRIBE_RECOGNIZE_INCOME_DETAILED % REGEXES): \
+_("Recognize %(subscription)s from %(period_start)s to %(period_end)s"\
+    " (%(nb_periods)s period)"),
+    (DESCRIBE_RETAINER_PERIODS.replace(' (', r' \(').replace(
+        ')s)', r')s\)') % REGEXES): \
+_("Retainer for services (%(nb_periods)s %(period_name)s)"),
+    (DESCRIBE_UNLOCK_NOW % REGEXES): \
+_("Unlock %(plan)s now. Don't worry later to %(unlock_event)s."),
+    (DESCRIBE_UNLOCK_LATER % REGEXES): \
+_("Access %(plan)s Today. Pay %(amount)s later to %(unlock_event)s."),
+    (DESCRIBE_WRITEOFF_LIABILITY % REGEXES): \
+_("Write off liability for %(event)s"),
+    (DESCRIBE_WRITEOFF_RECEIVABLE % REGEXES): \
+_("Write off receivable for %(event)s"),
+}
 
 
 def as_money(value, currency=settings.DEFAULT_UNIT, negative_format="(%s)"):
@@ -137,13 +228,100 @@ def as_percentage(value):
     return "%.2f%%" % (value / 100)
 
 
+def _describe_period_name(period_type, nb_periods):
+    result = None
+    if period_type == HOURLY:
+        result = 'hour'
+    elif period_type == DAILY:
+        result = 'day'
+    elif period_type == WEEKLY:
+        result = 'week'
+    elif period_type == MONTHLY:
+        result = 'month'
+    elif period_type == YEARLY:
+        result = 'year'
+    if result and nb_periods > 1:
+        result += 's'
+    return result
+
+
+def translate_period_name(period_name, nb_periods):
+    result = None
+    if period_name.startswith('hour'):
+        result = _('hour')
+    elif period_name.startswith('day'):
+        result = _('day')
+    elif period_name.startswith('week'):
+        result = _('week')
+    elif period_name.startswith('month'):
+        result = _('month')
+    elif period_name.startswith('year'):
+        result = _('year')
+    if result and nb_periods > 1 and not result.endswith('s'):
+        result += 's'
+    return result
+
+
+def translate_descr_suffix(descr):
+    pos = descr.rfind(' - ')
+    if pos >= 0:
+        descr_suffix = descr[pos + 3:]
+        descr = descr[:pos]
+    else:
+        # If we cannot find the suffix separator (' - '), we assume the whole
+        # string passed as parameter is the description suffix.
+        descr_suffix = descr
+        descr = ""
+    pat = r"(a %(percent)s discount)?( and )?"\
+        r"(%(nb_periods)s %(period_name)s free)?( and )?"\
+        r"(a %(amount)s off)?"\
+        r"(, complimentary of %(payer)s)?"\
+        r"( \(code: %(code)s\))?" % REGEXES
+    look = re.match(pat, descr_suffix)
+    if look:
+        descr_suffix = ""
+        # Implementation note: The text has been copied verbatim instead
+        # of using the environment variable declared such that the translation
+        # module is able to pick up those strings and add them in the .po file.
+        sep = ""
+        percent = look.group('percent')
+        if percent:
+            descr_suffix += sep + _("a %(percent)s discount") % {
+                'percent': percent}
+            sep = _(" and ")
+        nb_periods = look.group('nb_periods')
+        period_name = look.group('period_name')
+        if nb_periods and period_name:
+            descr_suffix += sep + _("%(nb_periods)s %(period_name)s free") % {
+                'nb_periods': nb_periods,
+                'period_name': translate_period_name(period_name, nb_periods)}
+            sep = _(" and ")
+        amount = look.group('amount')
+        if amount:
+            descr_suffix += sep + _("a %(amount)s off") % {
+                'amount': amount}
+            sep = _(" and ")
+        payer = look.group('payer')
+        if payer:
+            descr_suffix += _(", complimentary of %(payer)s") % {'payer': payer}
+        code = look.group('code')
+        if code:
+            descr_suffix += _(" (code: %(code)s)") % {'code': code}
+
+    if descr_suffix:
+        descr += " - %s" % descr_suffix
+    return descr
+
+
 def describe_buy_periods(plan, ends_at, nb_periods, discount_by_types=None,
                          coupon=None, full_name=None):
-    descr = ((DESCRIBE_BUY_PERIODS if plan.period_type != HOURLY
-        else DESCRIBE_RETAINER_PERIODS) % {
-                'plan': plan,
-                'ends_at': datetime.datetime.strftime(ends_at, '%Y/%m/%d'),
-                'humanized_periods': plan.humanize_period(nb_periods)})
+    #pylint:disable=too-many-arguments
+    descr = ((DESCRIBE_BUY_PERIODS
+        if plan.period_type != HOURLY else DESCRIBE_RETAINER_PERIODS) % {
+        'plan': plan,
+        'ends_at': datetime.datetime.strftime(ends_at, '%Y/%m/%d'),
+        'nb_periods': nb_periods,
+        'period_name': _describe_period_name(plan.period_type, nb_periods)})
     sep = ""
     descr_suffix = ""
 
@@ -153,26 +331,29 @@ def describe_buy_periods(plan, ends_at, nb_periods, discount_by_types=None,
     if discount_by_types:
         discount_amount = discount_by_types.get(DISCOUNT_PERCENTAGE)
         if discount_amount:
-            descr_suffix += sep + 'a %(percent)s discount' % {
+            descr_suffix += sep + DESCRIBE_SUFFIX_DISCOUNT_PERCENTAGE % {
                 'percent': as_percentage(discount_amount)}
-            sep = " and"
+            sep = " and "
         discount_amount = discount_by_types.get(DISCOUNT_PERIOD)
         if discount_amount:
-            descr_suffix += sep + '%(period)s free' % {
-                'period': plan.humanize_period(discount_amount)}
-            sep = " and"
+            descr_suffix += sep + DESCRIBE_SUFFIX_DISCOUNT_PERIOD % {
+                'nb_periods': nb_periods,
+                'period_name': _describe_period_name(
+                    plan.period_type, discount_amount)}
+            sep = " and "
         discount_amount = discount_by_types.get(DISCOUNT_CURRENCY)
         if discount_amount:
-            descr_suffix += sep + 'a %(amount)s off' % {
+            descr_suffix += sep + DESCRIBE_SUFFIX_DISCOUNT_CURRENCY % {
                 'amount': as_money(discount_amount, currency=plan.unit)}
-            sep = " and"
+            sep = " and "
 
     if coupon:
         if coupon.code.startswith('cpn_'):
             if full_name:
-                descr_suffix += ', complimentary of %s' % full_name
+                descr_suffix += DESCRIBE_SUFFIX_GROUP_BUY % {'payer': full_name}
         else:
-            descr_suffix += '(code: %s)' % coupon.code
+            descr_suffix += DESCRIBE_SUFFIX_COUPON_APPLIED % {
+                'code': coupon.code}
 
     if descr_suffix:
         descr += " - %s" % descr_suffix
@@ -186,9 +367,13 @@ def describe_buy_use(use_charge, quantity,
         'use_charge': use_charge.title,
         'quantity': quantity})
     if discount_percent:
-        descr += ' - a %d%% discount' % discount_percent
+        last_suffix = descr_suffix
+        descr_suffix = DESCRIBE_SUFFIX_DISCOUNT_PERCENTAGE % {
+            'percent': discount_percent}
+        if last_suffix:
+            descr_suffix = '%s %s' % (descr_suffix, last_suffix)
     if descr_suffix:
-        descr += ' %s' % descr_suffix
+        descr += '- %s' % descr_suffix
     return descr
 
 
