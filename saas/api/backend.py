@@ -37,7 +37,6 @@ from .serializers import (BankSerializer, CardSerializer,
     CardTokenSerializer)
 
 #pylint: disable=no-init
-#pylint: disable=old-style-class
 
 class RetrieveBankAPIView(OrganizationMixin, RetrieveAPIView):
     """

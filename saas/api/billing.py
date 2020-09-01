@@ -45,7 +45,7 @@ from ..models import CartItem
 from .serializers import (ChargeSerializer, InvoicableSerializer,
     NoModelSerializer, PlanRelatedField, ValidationErrorSerializer)
 
-#pylint: disable=no-init,old-style-class
+#pylint: disable=no-init
 LOGGER = logging.getLogger(__name__)
 
 

@@ -41,7 +41,6 @@ from ..mixins import ChargeMixin, OrganizationMixin
 from ..pagination import TotalPagination
 
 #pylint: disable=no-init
-#pylint: disable=old-style-class
 
 class RetrieveChargeMixin(ChargeMixin):
     """

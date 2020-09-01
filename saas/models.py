@@ -2724,7 +2724,7 @@ class AdvanceDiscount(models.Model):
     def __str__(self):
         return "%s-%s-%d" % (self.plan, slugify(
             self.DISCOUNT_CHOICES[self.discount_type - 1][1]),
-            self.discount_value)
+            int(self.discount_value))
 
     @property
     def full_periods_amount(self):

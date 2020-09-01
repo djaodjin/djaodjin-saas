@@ -32,7 +32,7 @@ from rest_framework.response import Response
 from .serializers import PlanSerializer
 from ..mixins import PlanMixin
 from ..filters import DateRangeFilter, OrderingFilter
-from ..models import Plan, Subscription
+from ..models import Coupon, Plan, Subscription
 from .. import settings
 
 

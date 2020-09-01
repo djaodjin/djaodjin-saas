@@ -44,7 +44,7 @@ from .roles import OptinBase
 from .serializers import (ForceSerializer, SubscriptionSerializer,
     SubscriptionCreateSerializer)
 
-#pylint: disable=no-init,old-style-class
+#pylint: disable=no-init
 
 LOGGER = logging.getLogger(__name__)
 

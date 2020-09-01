@@ -38,7 +38,6 @@ from ..mixins import CouponMixin, ProviderMixin
 from ..utils import handle_uniq_error
 
 #pylint: disable=no-init
-#pylint: disable=old-style-class
 
 
 class SmartCouponListMixin(object):
