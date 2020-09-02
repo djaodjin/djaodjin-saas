@@ -96,11 +96,10 @@ saas/templates/notification/ directory.
 Release Notes
 =============
 
-0.9.0
+0.9.1
 
-  * reworks discount with an AdvanceDiscount model
-  * adds pricing api
-  * compatibles with Django3
-  * fixes recording CartItem twice
+  * translates Transaction description on display
+  * fixes regression when creating code through the API
+  * increases length of processor keys to 255
 
 [previous release notes](changelog)
