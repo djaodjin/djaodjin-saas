@@ -292,7 +292,8 @@ def translate_descr_suffix(descr):
         nb_periods = look.group('nb_periods')
         period_name = look.group('period_name')
         if nb_periods and period_name:
-            descr_suffix += sep + _("%(nb_periods)s %(period_name)s free") % {
+            nb_periods = int(nb_periods)
+            descr_suffix += sep + _("%(nb_periods)d %(period_name)s free") % {
                 'nb_periods': nb_periods,
                 'period_name': translate_period_name(period_name, nb_periods)}
             sep = _(" and ")
@@ -337,7 +338,7 @@ def describe_buy_periods(plan, ends_at, nb_periods, discount_by_types=None,
         discount_amount = discount_by_types.get(DISCOUNT_PERIOD)
         if discount_amount:
             descr_suffix += sep + DESCRIBE_SUFFIX_DISCOUNT_PERIOD % {
-                'nb_periods': nb_periods,
+                'nb_periods': discount_amount,
                 'period_name': _describe_period_name(
                     plan.period_type, discount_amount)}
             sep = " and "

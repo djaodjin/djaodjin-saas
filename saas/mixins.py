@@ -1135,7 +1135,6 @@ def as_html_description(transaction, active_links=True):
     """
     Add hyperlinks into a transaction description.
     """
-    print("as_html_description(active_links=%s)" % str(active_links))
     return _as_html_description(
         transaction.descr,
         transaction.orig_organization,

@@ -96,10 +96,8 @@ saas/templates/notification/ directory.
 Release Notes
 =============
 
-0.9.1
+0.9.2
 
-  * translates Transaction description on display
-  * fixes regression when creating code through the API
-  * increases length of processor keys to 255
+  * fixes translation of Transaction description when using period discounts
 
 [previous release notes](changelog)
