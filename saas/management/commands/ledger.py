@@ -1,4 +1,4 @@
-# Copyright (c) 2018, DjaoDjin inc.
+# Copyright (c) 2020, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -22,7 +22,7 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-import datetime, re, sys
+import datetime, logging, re, sys
 
 from django.core.management.base import BaseCommand
 from django.db import transaction
@@ -30,6 +30,10 @@ from django.utils.timezone import utc
 
 from ...ledger import export
 from ...models import Organization, Transaction
+
+
+LOGGER = logging.getLogger(__name__)
+
 
 class Command(BaseCommand):
     help = 'Import/export transactions in ledger format.'
@@ -129,6 +133,33 @@ def import_transactions(filedesc, create_organizations=False, broker=None,
                 if dest_organization and orig_organization:
                     # Assuming no errors, at this point we have
                     # a full transaction.
+                    LOGGER.debug(
+                        "Transaction.objects.using('%(using)s').create("\
+                        "created_at='%(created_at)s',"\
+                        "descr='%(descr)s',"\
+                        "dest_unit='%(dest_unit)s',"\
+                        "dest_amount='%(dest_amount)s',"\
+                        "dest_organization='%(dest_organization)s',"\
+                        "dest_account='%(dest_account)s',"\
+                        "orig_amount='%(dest_amount)s',"\
+                        "orig_unit='%(orig_unit)s',"\
+                        "orig_organization='%(orig_organization)s',"\
+                        "orig_account='%(orig_account)s',"\
+                        "event_id=%(event_id)s)" % {
+                            'using': using,
+                            'created_at': created_at,
+                            'descr': descr,
+                            'dest_unit': dest_unit,
+                            'dest_amount': dest_amount,
+                            'dest_organization': dest_organization,
+                            'dest_account': dest_account,
+                            'orig_amount': dest_amount,
+                            'orig_unit': orig_unit,
+                            'orig_organization': orig_organization,
+                            'orig_account': orig_account,
+                            'event_id':
+                                "'%s'" % reference if reference else "None"
+                        })
                     Transaction.objects.using(using).create(
                         created_at=created_at,
                         descr=descr,

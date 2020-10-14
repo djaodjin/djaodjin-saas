@@ -44,7 +44,7 @@ from ..api.transactions import (BillingsQuerysetMixin,
     SmartTransactionListMixin, TransactionQuerysetMixin, TransferQuerysetMixin)
 from ..api.users import RegisteredQuerysetMixin
 from ..compat import six
-from ..managers.metrics import (abs_monthly_balances, monthly_balances,
+from ..metrics.base import (abs_monthly_balances, monthly_balances,
     month_periods)
 from ..mixins import (CartItemSmartListMixin, ProviderMixin,
     MetricsMixin, ChurnedQuerysetMixin, SubscriptionSmartListMixin,
@@ -69,6 +69,9 @@ class CSVDownloadView(View):
             transaction, active_links=False).replace(
             '\\', '\\\\').replace('"', '\"')))
 
+    def decorate_queryset(self, queryset):
+        return queryset
+
     def filter_queryset(self, queryset):
         """
         Recreating a GenericAPIView.filter_queryset functionality here
@@ -87,7 +90,7 @@ class CSVDownloadView(View):
         csv_writer = csv.writer(content)
         csv_writer.writerow([self.encode(head)
             for head in self.get_headings()])
-        qs = self.filter_queryset(self.get_queryset())
+        qs = self.decorate_queryset(self.filter_queryset(self.get_queryset()))
         for record in qs:
             csv_writer.writerow(self.queryrow_to_columns(record))
         content.seek(0)

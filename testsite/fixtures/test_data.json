@@ -129,15 +129,6 @@
     "fields":{
       "created_at": "2012-10-01T00:00:00-09:00",
       "role_description": 1,
-      "organization": 2,
-      "user": 3
-    },
-    "model": "saas.Role", "pk": 2
-},
-{
-    "fields":{
-      "created_at": "2012-10-01T00:00:00-09:00",
-      "role_description": 1,
       "organization": 5,
       "user": 3
     },

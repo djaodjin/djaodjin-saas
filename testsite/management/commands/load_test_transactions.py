@@ -160,7 +160,7 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         #pylint: disable=too-many-locals,too-many-statements
-        from saas.managers.metrics import month_periods # avoid import loop
+        from saas.metrics.base import month_periods # avoid import loop
 
         RazorpayBackend.bypass_api = True
 

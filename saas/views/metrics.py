@@ -1,4 +1,4 @@
-# Copyright (c) 2018, DjaoDjin inc.
+# Copyright (c) 2020, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -27,7 +27,9 @@ from datetime import datetime
 
 from django.views.generic import TemplateView
 
+from .download import CSVDownloadView
 from .. import settings
+from ..api.metrics import LifetimeValueMetricMixin
 from ..compat import reverse
 from ..mixins import CouponMixin, ProviderMixin, MetricsMixin
 from ..models import CartItem, Plan
@@ -70,6 +72,53 @@ djaodjin-saas/tree/master/saas/templates/saas/metrics/balances.html>`__).
                 'saas_transactions_download', kwargs=self.get_url_kwargs()),
             'broker_transactions': reverse('saas_broker_transactions')})
         return context
+
+
+class LifeTimeValueMetricsView(ProviderMixin, TemplateView):
+    """
+    Lifetime-value of customers
+
+    Template:
+
+    To edit the layout of this page, create a local \
+    ``saas/metrics/coupons.html`` (`example <https://github.com/djaodjin\
+/djaodjin-saas/tree/master/saas/templates/saas/metrics/lifetimevalue.html>`__).
+
+    Template context:
+      - ``organization`` The provider object
+      - ``request`` The HTTP request object
+    """
+    template_name = 'saas/metrics/lifetimevalue.html'
+
+    def get_context_data(self, **kwargs):
+        context = super(LifeTimeValueMetricsView, self).get_context_data(**kwargs)
+        urls = {
+            'metrics_lifetimevalue_download': reverse(
+                'saas_metrics_lifetimevalue_download', args=(self.provider,)),
+            'provider': {
+                'api_metrics_lifetimevalue': reverse(
+                    'saas_api_metrics_lifetimevalue', args=(self.provider,))}}
+        update_context_urls(context, urls)
+        return context
+
+
+class LifeTimeValueDownloadView(LifetimeValueMetricMixin, CSVDownloadView):
+    """
+    Export customers lifetime value as a CSV file.
+    """
+    headings = ['Profile', 'Since', 'Ends at',
+        'Contract value', 'Cash payments', 'Deferred revenue']
+
+    def queryrow_to_columns(self, record):
+        organization = record
+        return [
+            self.encode(organization.printable_name),
+            organization.created_at.date(),
+            organization.ends_at.date() if organization.ends_at else "",
+            organization.contract_value,
+            organization.cash_payments,
+            organization.deferred_revenue,
+        ]
 
 
 class CouponMetricsView(CouponMixin, TemplateView):

@@ -834,14 +834,6 @@ class UploadBlobSerializer(NoModelSerializer):
         help_text=_("URL to uploaded content"))
 
 
-class ValidationErrorSerializer(NoModelSerializer):
-    """
-    Details on why token is invalid.
-    """
-    detail = serializers.CharField(help_text=_("Describes the reason for"\
-        " the error in plain text"))
-
-
 class AgreementSignSerializer(NoModelSerializer):
     read_terms = serializers.BooleanField(help_text=_(
         "I have read and understand these terms and conditions"))
@@ -854,3 +846,36 @@ class CreateAccessibleRequestSerializer(NoModelSerializer):
     """
     organization = serializers.CharField()
     message = serializers.CharField(max_length=255, required=False)
+
+
+class LifetimeSerializer(OrganizationSerializer):
+    """
+    A customer lifetime value
+    """
+    created_at = serializers.CharField(
+        help_text=_("Since when is the profile a subscriber"))
+    ends_at = serializers.CharField(
+        help_text=_("Current end date for the contract"))
+    contract_value = serializers.IntegerField(
+        help_text=_("Total value to be collected from the profile"))
+    cash_payments = serializers.IntegerField(
+        help_text=_("Cash payments collected from the profile"))
+    deferred_revenue = serializers.IntegerField(
+        help_text=_("The deferred revenue for the profile"))
+    unit = serializers.CharField(
+        help_text=_("Three-letter ISO 4217 code for currency unit (ex: usd)"))
+
+    class Meta(OrganizationSerializer.Meta):
+        fields = OrganizationSerializer.Meta.fields + (
+            'created_at', 'ends_at', 'contract_value',
+            'cash_payments', 'deferred_revenue', 'unit')
+        read_only_fields = ('created_at', 'ends_at', 'contract_value',
+            'cash_payments', 'deferred_revenue', 'unit')
+
+
+class ValidationErrorSerializer(NoModelSerializer):
+    """
+    Details on why token is invalid.
+    """
+    detail = serializers.CharField(help_text=_("Describes the reason for"\
+        " the error in plain text"))

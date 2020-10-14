@@ -32,7 +32,7 @@ from rest_framework.response import Response
 
 from .. import settings
 from ..docs import swagger_auto_schema, OpenAPIResponse
-from ..managers.metrics import abs_monthly_balances, monthly_balances
+from ..metrics.base import abs_monthly_balances, monthly_balances
 from ..models import BalanceLine
 from ..filters import DateRangeFilter
 from ..mixins import DateRangeContextMixin
