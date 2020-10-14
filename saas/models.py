@@ -65,10 +65,12 @@ import datetime, logging, re
 
 from dateutil.relativedelta import relativedelta
 from django.contrib.auth import get_user_model
-from django.db import DatabaseError, IntegrityError, models, transaction
+from django.db import (DatabaseError, IntegrityError, connections, models,
+    transaction)
 from django.db.models import Max, Q, Sum
 from django.db.models.query import QuerySet
 from django.db.models.signals import post_save
+from django.db.utils import DEFAULT_DB_ALIAS
 from django.dispatch import receiver
 from django.template.defaultfilters import slugify
 from django.utils.http import quote
@@ -3471,7 +3473,7 @@ class TransactionManager(models.Manager):
 
             ; Record the off-line payment
 
-            yyyy/mm/dd (no event) charge event
+            yyyy/mm/dd check_***** charge event
                 provider:Funds                           amount
                 subscriber:Liability
 
@@ -3487,7 +3489,7 @@ class TransactionManager(models.Manager):
                 provider:Receivable                      amount
                 provider:Backlog
 
-            yyyy/mm/dd sub_***** mark the amount as offline payment
+            yyyy/mm/dd check_***** mark the amount as offline payment
                 provider:Offline                         amount
                 provider:Funds
 
@@ -4285,6 +4287,57 @@ def get_broker():
     return Organization.objects.get(slug=settings.BROKER_CALLABLE)
 
 
+def is_sqlite3(db_key=None):
+    if db_key is None:
+        db_key = DEFAULT_DB_ALIAS
+    return connections.databases[db_key]['ENGINE'].endswith('sqlite3')
+
+
+def get_period_usage(subscription, use_charge, starts_at, ends_at):
+    return Transaction.objects.filter(
+        orig_account=Transaction.RECEIVABLE,
+        dest_account=Transaction.PAYABLE, created_at__lt=ends_at,
+        created_at__gte=starts_at,
+        event_id=get_sub_event_id(subscription, use_charge)).count()
+
+
+def get_charge_event_id(charge, charge_item=None):
+    """
+    Returns a formatted id for a charge (or a charge_item
+    on that charge) that can be used as `event_id` in a `Transaction`.
+    """
+    substr = "cha_%d/" % charge.id
+    if charge_item:
+        substr += "%d/" % charge_item.id
+    return substr
+
+
+def get_sub_event_id(subscription, use_charge=None):
+    """
+    Returns a formatted id for a subscription (or a use_charge
+    on that subscription) that can be used as `event_id` in a `Transaction`.
+    """
+    substr = "sub_%d/" % subscription.id
+    if use_charge:
+        substr += "%d/" % use_charge.id
+    return substr
+
+
+def record_use_charge(subscription, use_charge):
+    usage = get_period_usage(subscription, use_charge,
+        subscription.created_at, subscription.ends_at)
+    amount = None
+    event_id = get_sub_event_id(subscription, use_charge)
+    descr = event_id
+    if usage < use_charge.quota:
+        amount = 0
+        descr = (humanize.describe_buy_use(use_charge, 1)
+            + " (complimentary in plan)")
+    return Transaction.objects.record_order([
+        Transaction.objects.new_use_charge(subscription,
+            use_charge, 1, custom_amount=amount, descr=descr)])
+
+
 def sum_balance_amount(dest_balances, orig_balances):
     """
     `dest_balances` and `orig_balances` are mostly the results
@@ -4390,48 +4443,3 @@ def sum_orig_amount(transactions):
         results = [{'amount': 0, 'unit': settings.DEFAULT_UNIT,
             'created_at': datetime_or_now()}]
     return results
-
-
-def get_period_usage(subscription, use_charge, starts_at, ends_at):
-    return Transaction.objects.filter(
-        orig_account=Transaction.RECEIVABLE,
-        dest_account=Transaction.PAYABLE, created_at__lt=ends_at,
-        created_at__gte=starts_at,
-        event_id=get_sub_event_id(subscription, use_charge)).count()
-
-
-def get_charge_event_id(charge, charge_item=None):
-    """
-    Returns a formatted id for a charge (or a charge_item
-    on that charge) that can be used as `event_id` in a `Transaction`.
-    """
-    substr = "cha_%d/" % charge.id
-    if charge_item:
-        substr += "%d/" % charge_item.id
-    return substr
-
-
-def get_sub_event_id(subscription, use_charge=None):
-    """
-    Returns a formatted id for a subscription (or a use_charge
-    on that subscription) that can be used as `event_id` in a `Transaction`.
-    """
-    substr = "sub_%d/" % subscription.id
-    if use_charge:
-        substr += "%d/" % use_charge.id
-    return substr
-
-
-def record_use_charge(subscription, use_charge):
-    usage = get_period_usage(subscription, use_charge,
-        subscription.created_at, subscription.ends_at)
-    amount = None
-    event_id = get_sub_event_id(subscription, use_charge)
-    descr = event_id
-    if usage < use_charge.quota:
-        amount = 0
-        descr = (humanize.describe_buy_use(use_charge, 1)
-            + " (complimentary in plan)")
-    return Transaction.objects.record_order([
-        Transaction.objects.new_use_charge(subscription,
-            use_charge, 1, custom_amount=amount, descr=descr)])

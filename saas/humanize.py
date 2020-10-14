@@ -83,9 +83,6 @@ DESCRIBE_RECOGNIZE_INCOME_DETAILED = \
     "Recognize %(subscription)s from %(period_start)s to %(period_end)s"\
     " (%(nb_periods)s period)"
 
-DESCRIBE_RETAINER_PERIODS = \
-    "Retainer for services (%(nb_periods)s %(period_name)s)"
-
 DESCRIBE_UNLOCK_NOW = \
     "Unlock %(plan)s now. Don't worry later to %(unlock_event)s."
 
@@ -164,14 +161,12 @@ _("Keep a balanced ledger"),
 _("Past due"),
     (DESCRIBE_OFFLINE_PAYMENT % REGEXES): \
 _("Off-line payment"),
-    (DESCRIBE_RECOGNIZE_INCOME % REGEXES): \
-_("Recognize %(subscription)s from %(period_start)s to %(period_end)s"),
-    (DESCRIBE_RECOGNIZE_INCOME_DETAILED % REGEXES): \
+    (DESCRIBE_RECOGNIZE_INCOME_DETAILED.replace(' (', r' \(').replace(
+        ')s)', r')s\)') % REGEXES): \
 _("Recognize %(subscription)s from %(period_start)s to %(period_end)s"\
     " (%(nb_periods)s period)"),
-    (DESCRIBE_RETAINER_PERIODS.replace(' (', r' \(').replace(
-        ')s)', r')s\)') % REGEXES): \
-_("Retainer for services (%(nb_periods)s %(period_name)s)"),
+    (DESCRIBE_RECOGNIZE_INCOME % REGEXES): \
+_("Recognize %(subscription)s from %(period_start)s to %(period_end)s"),
     (DESCRIBE_UNLOCK_NOW % REGEXES): \
 _("Unlock %(plan)s now. Don't worry later to %(unlock_event)s."),
     (DESCRIBE_UNLOCK_LATER % REGEXES): \
@@ -317,12 +312,11 @@ def translate_descr_suffix(descr):
 def describe_buy_periods(plan, ends_at, nb_periods, discount_by_types=None,
                          coupon=None, full_name=None):
     #pylint:disable=too-many-arguments
-    descr = ((DESCRIBE_BUY_PERIODS
-        if plan.period_type != HOURLY else DESCRIBE_RETAINER_PERIODS) % {
+    descr = DESCRIBE_BUY_PERIODS % {
         'plan': plan,
         'ends_at': datetime.datetime.strftime(ends_at, '%Y/%m/%d'),
         'nb_periods': nb_periods,
-        'period_name': _describe_period_name(plan.period_type, nb_periods)})
+        'period_name': _describe_period_name(plan.period_type, nb_periods)}
     sep = ""
     descr_suffix = ""
 

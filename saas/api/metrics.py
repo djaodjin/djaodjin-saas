@@ -1,4 +1,4 @@
-# Copyright (c) 2019, DjaoDjin inc.
+# Copyright (c) 2020, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -28,18 +28,21 @@ from django.utils.translation import ugettext_lazy as _
 from rest_framework.generics import GenericAPIView, ListAPIView
 from rest_framework.response import Response
 
-from ..compat import reverse
-from ..filters import DateRangeFilter
+from .serializers import (CartItemSerializer, LifetimeSerializer,
+    MetricsSerializer)
 from .. import settings
+from ..compat import reverse, six
+from ..filters import DateRangeFilter
+from ..metrics.base import (abs_monthly_balances,
+    aggregate_transactions_by_period, month_periods,
+    aggregate_transactions_change_by_period, get_different_units)
+from ..metrics.subscriptions import (active_subscribers, churn_subscribers,
+    subscribers_age)
+from ..metrics.transactions import lifetime_value
 from ..mixins import (CartItemSmartListMixin, CouponMixin,
     ProviderMixin, DateRangeContextMixin)
-from ..models import CartItem, Plan, Transaction
+from ..models import CartItem, Organization, Plan, Transaction
 from ..utils import convert_dates_to_utc
-from .serializers import CartItemSerializer
-from ..managers.metrics import (abs_monthly_balances, active_subscribers,
-    aggregate_transactions_by_period, month_periods, churn_subscribers,
-    aggregate_transactions_change_by_period, get_different_units)
-from .serializers import MetricsSerializer
 
 LOGGER = logging.getLogger(__name__)
 
@@ -497,6 +500,95 @@ class CustomerMetricAPIView(DateRangeContextMixin, ProviderMixin,
         return Response(
             {"title": "Customers",
                 "table": customer_table, "extra": customer_extra})
+
+
+class LifetimeValueMetricMixin(DateRangeContextMixin, ProviderMixin):
+    """
+    Decorates profiles with subscriber age and lifetime value
+    """
+    filter_backends = (DateRangeFilter,)
+
+    def get_queryset(self):
+        if self.provider:
+            queryset = Organization.objects.filter(
+                subscriptions__organization=self.provider).distinct()
+        else:
+            queryset = Organization.objects.all()
+        queryset = queryset.filter(
+            outgoing__orig_account=Transaction.PAYABLE).distinct()
+        return queryset.order_by('full_name')
+
+    def decorate_queryset(self, queryset):
+        decorated_queryset = list(queryset)
+        subscriber_ages = {subscriber['slug']: subscriber
+            for subscriber in subscribers_age(provider=self.provider)}
+        customer_values = lifetime_value(provider=self.provider)
+        for organization in decorated_queryset:
+            subscriber = subscriber_ages.get(organization.slug)
+            if subscriber:
+                organization.created_at = subscriber['created_at']
+                organization.ends_at = subscriber['ends_at']
+            else:
+                organization.ends_at = None
+            customer = customer_values.get(organization.slug)
+            if customer:
+                for unit, val in six.iteritems(customer):
+                    # XXX Only supports one currency unit.
+                    organization.unit = unit
+                    organization.contract_value = val['contract_value']
+                    organization.cash_payments = val['payments']
+                    organization.deferred_revenue = val['deferred_revenue']
+            else:
+                organization.unit = settings.DEFAULT_UNIT
+                organization.contract_value = 0
+                organization.cash_payments = 0
+                organization.deferred_revenue = 0
+        return decorated_queryset
+
+
+class LifetimeValueMetricAPIView(LifetimeValueMetricMixin, ListAPIView):
+    """
+    Retrieves customers lifetime value
+
+    **Tags**: metrics
+
+    **Examples**
+
+    .. code-block:: http
+
+        GET /api/metrics/cowork/lifetimevalue HTTP/1.1
+
+    responds
+
+    .. code-block:: json
+
+        {
+            "count": 1,
+            "next": null,
+            "previous": null,
+            "results": [
+                {
+                    "profile": {
+                        "slug": "xia",
+                        "email": "xia@localhost.localdomain",
+                        "full_name": "Xia Doe",
+                        "created_at": "2012-09-14T23:16:55Z"
+                    },
+                    "created_at": "2014-01-01T09:00:00Z",
+                    "ends_at": "2014-01-01T09:00:00Z",
+                    "contract_value": 10000,
+                    "cash_payments": 10000,
+                    "deferred_revenue": 10000
+                }
+            ]
+        }
+    """
+    serializer_class = LifetimeSerializer
+
+    def paginate_queryset(self, queryset):
+        page = super(
+            LifetimeValueMetricAPIView, self).paginate_queryset(queryset)
+        return self.decorate_queryset(page if page else queryset)
 
 
 class PlanMetricAPIView(DateRangeContextMixin, ProviderMixin, GenericAPIView):

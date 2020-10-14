@@ -24,7 +24,7 @@
 
 from django.test import TestCase
 
-from saas.managers.metrics import month_periods
+from .metrics.base import month_periods
 
 
 class SaasTests(TestCase):

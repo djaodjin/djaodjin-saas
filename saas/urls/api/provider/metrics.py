@@ -29,7 +29,8 @@ URLs API for provider resources related to billing
 from django.conf.urls import url
 
 from ....api.metrics import (BalancesAPIView, CouponUsesAPIView,
-    CustomerMetricAPIView, PlanMetricAPIView, RevenueMetricAPIView)
+    CustomerMetricAPIView, LifetimeValueMetricAPIView, PlanMetricAPIView,
+    RevenueMetricAPIView)
 from ....api.subscriptions import (ActiveSubscriptionAPIView,
     ChurnedSubscriptionAPIView)
 from ....settings import ACCT_REGEX
@@ -51,4 +52,7 @@ urlpatterns = [
         PlanMetricAPIView.as_view(), name='saas_api_metrics_plans'),
     url(r'^metrics/(?P<organization>%s)/funds/?' % ACCT_REGEX,
         RevenueMetricAPIView.as_view(), name='saas_api_revenue'),
+    url(r'^metrics/(?P<organization>%s)/lifetimevalue/?' % ACCT_REGEX,
+        LifetimeValueMetricAPIView.as_view(),
+        name='saas_api_metrics_lifetimevalue'),
 ]

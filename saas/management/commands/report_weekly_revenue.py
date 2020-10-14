@@ -1,4 +1,4 @@
-# Copyright (c) 2018, DjaoDjin inc.
+# Copyright (c) 2020, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -29,14 +29,13 @@ import logging
 from dateutil.relativedelta import relativedelta, SU
 from django.core.management.base import BaseCommand
 
-from ...managers.metrics import (aggregate_transactions_by_period,
-    aggregate_transactions_change_by_period)
-from ...models import Organization, Transaction
-from ...utils import datetime_or_now, parse_tz
-from ...humanize import as_money
-from ...managers.metrics import get_different_units
 from ... import settings
 from ... import signals
+from ...humanize import as_money
+from ...metrics.base import (aggregate_transactions_by_period,
+    aggregate_transactions_change_by_period, get_different_units)
+from ...models import Organization, Transaction
+from ...utils import datetime_or_now, parse_tz
 
 LOGGER = logging.getLogger(__name__)
 

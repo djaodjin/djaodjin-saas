@@ -1562,6 +1562,34 @@ Vue.component('churned', {
 });
 
 
+Vue.component('lifetimevalue-list', {
+    mixins: [
+        itemListMixin
+    ],
+    data: function() {
+        return {
+            url: this.$urls.provider.api_metrics_lifetimevalue
+        }
+    },
+    methods: {
+        humanizeCell: function(value, unit, scale) {
+            var vm = this;
+            if( typeof unit == 'undefined' ) {
+                unit = vm.items.unit;
+            }
+            if( typeof scale == 'undefined' ) {
+                scale = vm.items.scale;
+            }
+            var filter = Vue.filter('humanizeCell');
+            return filter(value, unit, scale);
+        },
+    },
+    mounted: function(){
+        this.get();
+    }
+});
+
+
 Vue.component('plan-subscriber-list', {
     mixins: [
         subscriptionListMixin
