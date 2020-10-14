@@ -154,7 +154,8 @@ class CartMixin(object):
                         if sync_on != template_item.sync_on:
                             # (anonymous) Copy/Replace in template item
                             created = True
-                            cart_items += [{'plan': template_item['plan'],
+                            cart_items += [{
+                                'plan': template_item['plan'],
                                 'use': template_item['use'],
                                 'option': template_item['option'],
                                 'full_name': kwargs.get('full_name', ''),
@@ -178,6 +179,27 @@ class CartMixin(object):
                     'invoice_key': invoice_key}]
             request.session['cart_items'] = cart_items
         return inserted_item, created
+
+
+    def get_cart(self):
+        """
+        returns the items currently in the cart.
+        """
+        if is_authenticated(self.request):
+            return [{
+                'plan': cart_item.plan.slug,
+                'use': cart_item.use,
+                'option': cart_item.option,
+                'full_name': cart_item.full_name,
+                'sync_on': cart_item.sync_on,
+                'email': cart_item.email,
+                'invoice_key': cart_item.claim_on
+            } for cart_item in CartItem.objects.get_cart(
+                user=self.request.user)]
+        if 'cart_items' in self.request.session:
+            return self.request.session['cart_items']
+        return []
+
 
     @staticmethod
     def get_invoicable_options(subscription, created_at=None,

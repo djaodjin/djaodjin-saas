@@ -30,13 +30,13 @@ from rest_framework.generics import (ListAPIView, ListCreateAPIView,
 from rest_framework.response import Response
 
 from .serializers import PlanSerializer
-from ..mixins import PlanMixin
+from ..mixins import PlanMixin, CartMixin
 from ..filters import DateRangeFilter, OrderingFilter
 from ..models import Coupon, Plan, Subscription
 from .. import settings
 
 
-class PricingAPIView(PlanMixin, ListAPIView):
+class PricingAPIView(PlanMixin, CartMixin, ListAPIView):
     """
     Lists active plans
 
@@ -93,15 +93,22 @@ class PricingAPIView(PlanMixin, ListAPIView):
 
     def paginate_queryset(self, queryset):
         page = super(PricingAPIView, self).paginate_queryset(queryset)
+        decorate_queryset = page if page else queryset
+
+        cart_items_by_plan = {
+            cart_item['plan']: cart_item for cart_item in self.get_cart()}
 
         redeemed = self.request.session.get('redeemed', None)
         if redeemed is not None:
             redeemed = Coupon.objects.active(self.provider, redeemed).first()
-            decorate_queryset = page if page else queryset
-            for index, plan in enumerate(decorate_queryset):
-                if redeemed and redeemed.is_valid(plan):
-                    setattr(plan, 'discounted_period_amount',
-                        plan.get_discounted_period_amount(redeemed))
+
+        for index, plan in enumerate(decorate_queryset):
+            if redeemed and redeemed.is_valid(plan):
+                setattr(plan, 'discounted_period_amount',
+                    plan.get_discounted_period_amount(redeemed))
+            cart_item = cart_items_by_plan.get(plan.slug)
+            if cart_item:
+                setattr(plan, 'is_cart_item', True)
 
         return page
 

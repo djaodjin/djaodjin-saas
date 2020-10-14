@@ -73,7 +73,7 @@
             var country = countryElement.val();
             if( country === "" ) {
                 if( errorMessages ) { errorMessages += ", "; }
-                errorMessages += gettext("Country");
+                errorMessages += self.options.countryLabel;
                 countryElement.parents(".form-group").addClass("has-error");
                 valid = false;
             }
@@ -83,7 +83,7 @@
             var accountNumber = accountNumberElement.val();
             if(!Stripe.bankAccount.validateAccountNumber(accountNumber, country)) {
                 if( errorMessages ) { errorMessages += ", "; }
-                errorMessages += gettext("Account Number");
+                errorMessages += self.options.accountNumberLabel;
                 accountNumberElement.parents(".form-group").addClass("has-error");
                 valid = false;
             }
@@ -91,7 +91,7 @@
             var routingNumber = routingNumberElement.val();
             if(!Stripe.bankAccount.validateRoutingNumber(routingNumber, country)) {
                 if( errorMessages ) { errorMessages += ", "; }
-                errorMessages += gettext("Routing Number");
+                errorMessages += self.options.routingNumberLabel;
                 routingNumberElement.parents(
                     ".form-group").addClass("has-error");
                 valid = false;
@@ -125,7 +125,10 @@
     };
 
     $.fn.bank.defaults = {
-        stripePubKey: null
+        stripePubKey: null,
+        countryLabel: "Country",
+        accountNumberLabel: "Account Number",
+        routingNumberLabel: "Routing Number"
     };
 
     /** Augment a <form> to request a token from a credit card, then submit
@@ -304,7 +307,7 @@
             var number = numberElement.val();
             if( number === "" ) {
                 if( errorMessages ) { errorMessages += ", "; }
-                errorMessages += gettext("Card Number");
+                errorMessages += self.options.cardNumberLabel;
                 numberElement.parents(".form-group").addClass("has-error");
                 valid = false;
             }
@@ -312,7 +315,7 @@
             var cvc = cvcElement.val();
             if( cvc === "" ) {
                 if( errorMessages ) { errorMessages += ", "; }
-                errorMessages += gettext("Security Code");
+                errorMessages += self.options.securityCodeLabel;
                 cvcElement.parents(".form-group").addClass("has-error");
                 valid = false;
             }
@@ -322,7 +325,7 @@
             var expYear = expYearElement.val();
             if( expMonth === "" || expYear === "" ) {
                 if( errorMessages ) { errorMessages += ", "; }
-                errorMessages += gettext("Expiration");
+                errorMessages += self.options.expirationLabel;
                 expMonthElement.parents(".form-group").addClass("has-error");
                 expYearElement.parents(".form-group").addClass("has-error");
                 valid = false;
@@ -333,7 +336,7 @@
             var name = nameElement.val();
             if( name === "" ) {
                 if( errorMessages ) { errorMessages += ", "; }
-                errorMessages += gettext("Card Holder");
+                errorMessages += self.options.cardHolderLabel;
                 nameElement.parents(".form-group").addClass("has-error");
                 valid = false;
             }
@@ -341,7 +344,7 @@
             var addressLine1 = addressLine1Element.val();
             if( addressLine1 === "" ) {
                 if( errorMessages ) { errorMessages += ", "; }
-                errorMessages += gettext("Street address");
+                errorMessages += self.options.streetAddressLabel;
                 addressLine1Element.parents(
                     ".form-group").addClass("has-error");
                 valid = false;
@@ -350,7 +353,7 @@
             var addressCity = addressCityElement.val();
             if( addressCity === "" ) {
                 if( errorMessages ) { errorMessages += ", "; }
-                errorMessages += gettext("City/Town");
+                errorMessages += self.options.localityLabel;
                 addressCityElement.parents(".form-group").addClass("has-error");
                 valid = false;
             }
@@ -358,7 +361,7 @@
             var addressState = addressStateElement.val();
             if( addressState === "" ) {
                 if( errorMessages ) { errorMessages += ", "; }
-                errorMessages += gettext("State/Province/County");
+                errorMessages += self.options.regionLabel;
                 addressStateElement.parents(
                     ".form-group").addClass("has-error");
                 valid = false;
@@ -367,7 +370,7 @@
             var addressZip = addressZipElement.val();
             if( addressZip === "" ) {
                 if( errorMessages ) { errorMessages += ", "; }
-                errorMessages += gettext("Zip/Postal code");
+                errorMessages += self.options.postalCodeLabel;
                 addressZipElement.parents(".form-group").addClass("has-error");
                 valid = false;
             }
@@ -375,7 +378,7 @@
             var addressCountry = addressCountryElement.val();
             if( addressCountry === "" ) {
                 if( errorMessages ) { errorMessages += ", "; }
-                errorMessages += gettext("Country");
+                errorMessages += self.options.countryLabel;
                 addressCountryElement.parents(
                     ".form-group").addClass("has-error");
                 valid = false;
@@ -417,7 +420,16 @@
 
     $.fn.card.defaults = {
         stripePubKey: null,
-        saas_api_card: null
+        saas_api_card: null,
+        cardNumberLabel: "Card Number",
+        securityCodeLabel: "Security Code",
+        expirationLabel: "Expiration",
+        cardHolderLabel: "Card Holder",
+        streetAddressLabel: "Street address",
+        localityLabel: "City/Town",
+        regionLabel: "State/Province/County",
+        postalCodeLabel: "Zip/Postal code",
+        countryLabel: "Country"
     };
 
 

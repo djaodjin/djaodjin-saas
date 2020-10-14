@@ -76,7 +76,11 @@
                 datatype: "json",
                 contentType: "application/json; charset=utf-8",
                 success: function(data) {
-                    self.submitBtn.text(self.options.removeLabel);
+                    if( self.options.reload ) {
+                        location.reload();
+                    } else {
+                        self.submitBtn.text(self.options.removeLabel);
+                    }
                 },
                 error: function(resp) {
                     showErrorMessages(resp);
@@ -93,7 +97,11 @@
                     xhr.setRequestHeader("X-CSRFToken", self._getCSRFToken());
                 },
                 success: function(data) {
-                    self.submitBtn.text(self.options.addLabel);
+                    if( self.options.reload ) {
+                        location.reload();
+                    } else {
+                        self.submitBtn.text(self.options.addLabel);
+                    }
                 }
             });
         }
@@ -107,10 +115,11 @@
     };
 
     $.fn.cartItem.defaults = {
-        addLabel: gettext("Add to Cart"),
-        removeLabel: gettext("Remove from Cart"),
+        addLabel: "Add to Cart",
+        removeLabel: "Remove from Cart",
         nb_periods: 1,
-        api_cart: null
+        api_cart: '/api/cart/',
+        reload: false
     };
 
 
@@ -225,9 +234,9 @@
                     datatype: "json",
                     contentType: "application/json; charset=utf-8",
                     success: function(data) {
-                        showMessages([interpolate(gettext(
-                            "A copy of the receipt was sent to %s."),
-                            [data.email])], "info");
+                        if( data.detail ) {
+                            showMessages([data.detail], "info");
+                        }
                     },
                     error: function(resp) {
                         showErrorMessages(resp);
@@ -321,13 +330,12 @@
                     datatype: "json",
                     contentType: "application/json; charset=utf-8",
                     success: function(data) {
-                        var message = gettext("Amount refunded.");
-                        if( data.responseJSON ) {
-                            message = data.responseJSON.detail;
+                        var message = data.detail ?
+                            data.detail : "Amount refunded.";
+                        if( message ) {
+                            showMessages([message], "info");
                         }
-                        showMessages([message], "info");
-                        refundButton.replaceWith(
-                            "<em>" + gettext("Refunded") + "</em>");
+                        refundButton.replaceWith(self.options.refundedLabel);
                     },
                     error: function(resp) {
                         showErrorMessages(resp);
@@ -355,7 +363,8 @@
         availableAmount: 0,
         linenum: 0,
         saas_api_charge_refund: null,
-        refundButton: null
+        refundButton: null,
+        refundedLabel: "<em>Refunded</em>"
     };
 
     /** Invoice
@@ -711,16 +720,11 @@
                  beforeSend: function(xhr) {
                      xhr.setRequestHeader("X-CSRFToken", self._getCSRFToken());
                  },
-                 data: JSON.stringify({
-                     "title": gettext("New Plan"),
-                     "description": gettext("Write the description of the plan here."),
-                     "period_type": "monthly",
-                     "is_active": 1}),
+                 data: JSON.stringify(self.options.template_new),
                  datatype: "json",
                  contentType: "application/json; charset=utf-8",
                  success: function(data) {
-                     showMessages([
-                         gettext("Plan was created successfully.")], "success");
+                     showMessages([self.options.message_created], "success");
                      if( reload ) { location.reload(true); }
                  },
                  error: function(resp) {
@@ -758,8 +762,7 @@
                  async: false,
                  success: function(data) {
                      window.location.href = self.options.saas_metrics_plans;
-                     showMessages([
-                         gettext("Plan was successfully deleted.")], "success");
+                     showMessages([self.options.message_deleted], "success");
                  },
                  error: function(resp) {
                      showErrorMessages(resp);
@@ -814,7 +817,15 @@
 
    $.fn.plan.defaults = {
        saas_api_plan: "/api/plan",
-       saas_metrics_plans: "/plan"
+       saas_metrics_plans: "/plan",
+       message_created: "Plan was created successfully.",
+       message_deleted: "Plan was successfully deleted.",
+       template_new: {
+           title: "New Plan",
+           description: "Write the description of the plan here.",
+           period_type: "monthly",
+           is_active: 1
+       }
    };
 
 })(jQuery);

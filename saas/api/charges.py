@@ -36,6 +36,7 @@ from .serializers import (ChargeSerializer, EmailChargeReceiptSerializer,
 from .. import signals
 from ..docs import OpenAPIResponse, no_body, swagger_auto_schema
 from ..filters import DateRangeFilter, OrderingFilter, SearchFilter
+from ..humanize import as_money
 from ..models import Charge, InsufficientFunds
 from ..mixins import ChargeMixin, OrganizationMixin
 from ..pagination import TotalPagination
@@ -285,13 +286,16 @@ class ChargeRefundAPIView(RetrieveChargeMixin, CreateAPIView):
                 msg = _("You cannot refund a failed charge.")
             return Response({"detail": msg},
                 status=status.HTTP_405_METHOD_NOT_ALLOWED)
+        refunded_amount = 0
         with transaction.atomic():
             try:
                 for line in serializer.validated_data.get('lines', []):
                     try:
+                        line_refunded_amount = int(line.get('refunded_amount', 0))
                         self.object.refund(int(line['num']),
-                            refunded_amount=int(line.get('refunded_amount', 0)),
+                            refunded_amount=line_refunded_amount,
                             user=request.user)
+                        refunded_amount += line_refunded_amount
                     except ValueError:
                         raise Http404(
                          _("Unable to retrieve line '%(lineno)s' in %(charge)s")
@@ -299,6 +303,11 @@ class ChargeRefundAPIView(RetrieveChargeMixin, CreateAPIView):
             except InsufficientFunds as insufficient_funds_err:
                 return Response({"detail": str(insufficient_funds_err)},
                     status=status.HTTP_405_METHOD_NOT_ALLOWED)
+        self.object.detail = _("%(amount)s refunded successfully"\
+" on charge %(charge_id)s.") % {
+            'amount': as_money(refunded_amount, self.object.unit),
+            'charge_id': self.object.processor_key
+        }
         return Response(ChargeSerializer().to_representation(self.object))
 
 
@@ -337,5 +346,7 @@ class EmailChargeReceiptAPIView(RetrieveChargeMixin, GenericAPIView):
         signals.charge_updated.send(
             sender=__name__, charge=self.object, user=request.user)
         return Response(self.get_serializer().to_representation({
-            "charge_id": self.object.processor_key,
-            "email": self.object.customer.email}))
+            'charge_id': self.object.processor_key,
+            'email': self.object.customer.email,
+            'detail': _("A copy of the receipt was sent to %(email)s.") % {
+                'email': self.object.customer.email}}))

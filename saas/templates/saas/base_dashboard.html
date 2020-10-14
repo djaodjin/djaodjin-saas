@@ -28,16 +28,6 @@ var app = new Vue({
 </script>
 {% else %}
 <script type="text/javascript" charset="utf-8" src="/static/js/djaodjin-stripe.js"></script>
-<script type="text/javascript">
-jQuery(document).ready(function($) {
-{% if STRIPE_PUB_KEY %}
-    $("#payment-form").card({
-        stripePubKey: "{{ STRIPE_PUB_KEY }}",
-        saas_api_card: "{{ urls.organization.api_card }}"
-    });
-{% endif %}
-});
-</script>
 <script type="text/javascript" charset="utf-8" src="/static/vendor/angular.js"></script>
 <script type="text/javascript" charset="utf-8" src="/static/vendor/angular-touch.js"></script>
 <script type="text/javascript" charset="utf-8" src="/static/vendor/angular-animate.js"></script>

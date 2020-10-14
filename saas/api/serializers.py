@@ -193,6 +193,8 @@ class ChargeSerializer(serializers.ModelSerializer):
         help_text=_("Current state (i.e. created, done, failed, disputed)"))
     readable_amount = serializers.SerializerMethodField(
         help_text=_("Amount and unit in a commonly accepted readable format"))
+    detail = serializers.CharField(read_only=True, required=False,
+        help_text=_("Feedback for the user in plain text"))
 
     @staticmethod
     def get_readable_amount(charge):
@@ -201,7 +203,9 @@ class ChargeSerializer(serializers.ModelSerializer):
     class Meta:
         model = Charge
         fields = ('created_at', 'amount', 'unit', 'readable_amount',
-                  'description', 'last4', 'exp_date', 'processor_key', 'state')
+                  'description', 'last4', 'exp_date', 'processor_key', 'state',
+                  'detail')
+        read_only_fields = ('detail',)
 
 
 class CouponCreateSerializer(serializers.ModelSerializer):
@@ -244,6 +248,8 @@ class EmailChargeReceiptSerializer(NoModelSerializer):
             " parameter)"))
     email = serializers.EmailField(read_only=True,
         help_text=_("E-mail address to which the receipt was sent."))
+    detail = serializers.CharField(read_only=True,
+        help_text=_("Feedback for the user in plain text"))
 
 
 class ForceSerializer(NoModelSerializer):
@@ -511,8 +517,11 @@ class PlanSerializer(serializers.ModelSerializer):
         " to the plan initiated by a subscriber. (defaults to False)"))
     advance_discounts = AdvanceDiscountSerializer(many=True, required=False,
         help_text=_("Discounts when periods are paid in advance."))
+
     discounted_period_amount = serializers.SerializerMethodField(required=False,
         help_text=_("Discounted amount for the first period"))
+    is_cart_item = serializers.SerializerMethodField(required=False,
+        help_text=_("The plan is part of the cart to checkout"))
 
     class Meta:
         model = Plan
@@ -522,12 +531,17 @@ class PlanSerializer(serializers.ModelSerializer):
                   'period_length', 'renewal_type', 'is_not_priced',
                   'created_at',
                   'skip_optin_on_grant', 'optin_on_request',
-                  'discounted_period_amount')
-        read_only_fields = ('slug', 'app_url')
+                  'discounted_period_amount', 'is_cart_item')
+        read_only_fields = ('slug', 'app_url',
+            'discounted_period_amount', 'is_cart_item')
 
     @staticmethod
     def get_discounted_period_amount(obj):
         return getattr(obj, 'discounted_period_amount', obj.period_amount)
+
+    @staticmethod
+    def get_is_cart_item(obj):
+        return getattr(obj, 'is_cart_item', False)
 
     @staticmethod
     def get_app_url(obj):
