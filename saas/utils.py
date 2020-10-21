@@ -159,11 +159,14 @@ def generate_random_slug(length=40, prefix=None):
     """
     if prefix:
         length = length - len(prefix)
-    suffix = "".join([random.choice("abcdef0123456789")
-                      for val in range(length)]) # Generated coupon codes are
-                             # stored as ``Transaction.event_id`` we a 'cpn_'
-                             # prefix. The total event_id must be less than 50
-                             # chars.
+    # make sure the slug starts with a letter in case it is used as a resource
+    # name (variable or database).
+    suffix = random.choice("abcdef")
+    suffix += "".join([random.choice("abcdef0123456789")
+                      for val in range(length - 1)]) # Generated coupon codes
+                             # are stored as ``Transaction.event_id`` with
+                             # a 'cpn_' prefix. The total event_id must be less
+                             # than 50 chars.
     if prefix:
         return str(prefix) + suffix
     return suffix
