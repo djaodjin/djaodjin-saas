@@ -301,9 +301,16 @@ class RevenueMetricAPIView(DateRangeContextMixin, ProviderMixin,
             {"key": "Payments", "values": payment_amounts},
             {"key": "Refunds", "values": refund_amounts}]
 
-        return Response(
-            {"title": "Amount",
-            "unit": unit, "scale": 0.01, "table": account_table})
+        resp = {
+            "title": "Amount",
+            "unit": unit,
+            "scale": 0.01,
+            "table": account_table
+        }
+        if not self.provider.has_bank_account:
+            resp.update({'processor_hint': 'connect_provider'})
+
+        return Response(resp)
 
 
 class CouponUsesQuerysetMixin(object):
