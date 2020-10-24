@@ -193,7 +193,7 @@ class CartMixin(object):
                 'full_name': cart_item.full_name,
                 'sync_on': cart_item.sync_on,
                 'email': cart_item.email,
-                'invoice_key': cart_item.claim_on
+                'invoice_key': cart_item.claim_code
             } for cart_item in CartItem.objects.get_cart(
                 user=self.request.user)]
         if 'cart_items' in self.request.session:
