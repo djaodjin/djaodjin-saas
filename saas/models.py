@@ -2838,8 +2838,8 @@ class Coupon(models.Model):
         valid_time = (not self.ends_at or self.ends_at < at_time)
         valid_attempts = (self.nb_attempts is None or self.nb_attempts > 0)
         valid_organization = (self.organization == plan.organization)
-        return (valid_plan or valid_time or valid_attempts
-            or valid_organization)
+        return (valid_plan and valid_time and valid_attempts
+            and valid_organization)
 
     def save(self, force_insert=False, force_update=False, using=None,
              update_fields=None):
@@ -2915,11 +2915,11 @@ class CartItemManager(models.Manager):
         at_time = datetime_or_now(created_at)
         coupon_applied = False
         for item in self.get_cart(user):
-            coupon = Coupon.objects.active(item.plan.organization, coupon_code,
+            redeemed = Coupon.objects.active(item.plan.organization, coupon_code,
                 at_time=at_time).first()
-            if coupon and coupon.is_valid(item.plan, at_time=at_time):
+            if redeemed and redeemed.is_valid(item.plan, at_time=at_time):
                 coupon_applied = True
-                item.coupon = coupon
+                item.coupon = redeemed
                 item.save()
         return coupon_applied
 

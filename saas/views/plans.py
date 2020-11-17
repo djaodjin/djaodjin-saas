@@ -38,7 +38,7 @@ from ..compat import is_authenticated, reverse, reverse_lazy
 from ..forms import PlanForm
 from ..mixins import CartMixin, OrganizationMixin, ProviderMixin
 from ..models import CartItem, Coupon, Plan
-from ..utils import get_role_model, update_context_urls
+from ..utils import datetime_or_now, get_role_model, update_context_urls
 
 
 class PlanFormMixin(OrganizationMixin, SingleObjectMixin):
@@ -115,6 +115,7 @@ djaodjin-saas/tree/master/saas/templates/saas/pricing.html>`__).
         # a POST request directly or through Javascript calling the shopping
         # cart API.
         context.update(csrf(self.request))
+        at_time = datetime_or_now()
         items_selected = []
         if is_authenticated(self.request):
             items_selected += [item.plan.slug
@@ -124,11 +125,12 @@ djaodjin-saas/tree/master/saas/templates/saas/pricing.html>`__).
                 for item in self.request.session['cart_items']]
         redeemed = self.request.session.get('redeemed', None)
         if redeemed is not None:
-            redeemed = Coupon.objects.active(self.provider, redeemed).first()
+            redeemed = Coupon.objects.active(self.provider, redeemed,
+                at_time=at_time).first()
         for index, plan in enumerate(context['plan_list']):
             if index % self.line_break == 0:
                 setattr(plan, 'is_line_break', True)
-            if redeemed and redeemed.is_valid(plan):
+            if redeemed and redeemed.is_valid(plan, at_time=at_time):
                 setattr(plan, 'discounted_period_price',
                     plan.get_discounted_period_price(redeemed))
             if is_authenticated(self.request):

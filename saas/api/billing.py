@@ -408,7 +408,8 @@ class CouponRedeemAPIView(GenericAPIView):
                 # Since we rely on the message to appear after reload of
                 # the cart page in the casperjs tests, we can't get rid
                 # of this statement just yet.
-                messages.success(request._request, details['detail'])#pylint: disable=protected-access
+                #pylint: disable=protected-access
+                messages.success(request._request, details['detail'])
                 return Response(details, status=status.HTTP_200_OK,
                                 headers=headers)
             details = {'detail': (
