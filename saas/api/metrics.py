@@ -31,12 +31,13 @@ from rest_framework.response import Response
 from .serializers import (CartItemSerializer, LifetimeSerializer,
     MetricsSerializer)
 from .. import settings
-from ..compat import reverse
+from ..compat import reverse, six
 from ..filters import DateRangeFilter
-from ..metrics.base import (abs_monthly_balances, active_subscribers,
-    aggregate_transactions_by_period, month_periods, churn_subscribers,
+from ..metrics.base import (abs_monthly_balances,
+    aggregate_transactions_by_period, month_periods,
     aggregate_transactions_change_by_period, get_different_units)
-from ..metrics.subscriptions import subscribers_age
+from ..metrics.subscriptions import (active_subscribers, churn_subscribers,
+    subscribers_age)
 from ..metrics.transactions import lifetime_value
 from ..mixins import (CartItemSmartListMixin, CouponMixin,
     ProviderMixin, DateRangeContextMixin)
@@ -501,14 +502,18 @@ class LifetimeValueMetricMixin(DateRangeContextMixin, ProviderMixin):
     filter_backends = (DateRangeFilter,)
 
     def get_queryset(self):
-        return Organization.objects.all().order_by('full_name')
+        if self.provider:
+            queryset = Organization.objects.filter(
+                subscriptions__organization=self.provider)
+        else:
+            queryset = Organization.objects.all()
+        return queryset.order_by('full_name')
 
     def decorate_queryset(self, queryset):
         decorated_queryset = list(queryset)
-        subscriber_ages = {
-            subscriber['slug']: subscriber for subscriber in subscribers_age()}
-        customer_values = {
-            customer['slug']: customer for customer in lifetime_value()}
+        subscriber_ages = {subscriber['slug']: subscriber
+            for subscriber in subscribers_age(provider=self.provider)}
+        customer_values = lifetime_value(provider=self.provider)
         for organization in decorated_queryset:
             subscriber = subscriber_ages.get(organization.slug)
             if subscriber:
@@ -518,14 +523,17 @@ class LifetimeValueMetricMixin(DateRangeContextMixin, ProviderMixin):
                 organization.ends_at = None
             customer = customer_values.get(organization.slug)
             if customer:
-                organization.contract_value = customer['contract_value']
-                organization.cash_payments = customer['cash_payments']
-                organization.deferred_revenue = customer['deferred_revenue']
+                for unit, val in six.iteritems(customer):
+                    # XXX Only supports one currency unit.
+                    organization.unit = unit
+                    organization.contract_value = val['contract_value']
+                    organization.cash_payments = val['payments']
+                    organization.deferred_revenue = val['deferred_revenue']
             else:
+                organization.unit = settings.DEFAULT_UNIT
                 organization.contract_value = 0
                 organization.cash_payments = 0
                 organization.deferred_revenue = 0
-            organization.unit = 'usd' # XXX
         return decorated_queryset
 
 

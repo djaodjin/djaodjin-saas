@@ -31,7 +31,7 @@ from django.db.models import Count, Sum
 from django.db.models.sql.query import RawQuery
 
 from ..compat import six
-from ..models import Plan, Subscription, Transaction
+from ..models import Plan, Transaction
 from ..utils import datetime_or_now, parse_tz, convert_dates_to_utc
 
 LOGGER = logging.getLogger(__name__)
@@ -356,19 +356,6 @@ def aggregate_transactions_change_by_period(organization, account, date_periods,
     return account_table, customer_table, customer_extra, unit
 
 
-def active_subscribers(plan, from_date=None, tz=None):
-    """
-    List of active subscribers for a *plan*.
-    """
-    #pylint:disable=invalid-name
-    values = []
-    for end_period in convert_dates_to_utc(month_periods(
-                            from_date=from_date, tz=tz)):
-        values.append([end_period,
-            Subscription.objects.active_at(end_period, plan=plan).count()])
-    return values
-
-
 def abs_monthly_balances(organization=None, account=None, like_account=None,
                          until=None, step_months=1, tz=None):
     #pylint:disable=invalid-name,too-many-arguments
@@ -400,23 +387,6 @@ def quaterly_balances(organization=None, account=None, like_account=None,
         account=account, like_account=like_account,
         until=until, step_months=3)
 
-
-def churn_subscribers(plan=None, from_date=None, tz=None):
-    """
-    List of churn subscribers from the previous period for a *plan*.
-    """
-    #pylint:disable=invalid-name
-    values = []
-    dates = convert_dates_to_utc(month_periods(13, from_date, tz=tz))
-    start_period = dates[0]
-    kwargs = {}
-    if plan:
-        kwargs = {'plan': plan}
-    for end_period in dates[1:]:
-        values.append([end_period, Subscription.objects.churn_in_period(
-            start_period, end_period, **kwargs).count()])
-        start_period = end_period
-    return values
 
 def get_different_units(*args):
     # removing None and duplicate values
