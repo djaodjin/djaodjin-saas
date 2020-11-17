@@ -964,8 +964,6 @@ var subscriptionDetailMixin = {
             };
             vm.reqPatch(url, data);
         },
-    },
-    computed: {
         acceptRequestURL: function(organization, request_key) {
            var vm = this;
            return (vm.api_profile_url +
@@ -1054,6 +1052,7 @@ var subscriptionListMixin = {
                   slug: org
                 }
             }
+            vm.itemsLoaded = false;
             vm.reqPost(url, data, function (){
                 vm.get();
             });
@@ -1080,8 +1079,6 @@ var subscriptionListMixin = {
                 plan: plan
             }
         },
-    },
-    computed: {
         subscribersURL: function(provider, plan) {
             var vm = this;
             return vm.api_profile_url + provider + "/plans/" + plan + "/subscriptions/";
