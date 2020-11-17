@@ -2747,9 +2747,11 @@ class AdvanceDiscount(models.Model):
         discount_percent = self.discount_value
         discount_amount = (full_amount * discount_percent) // 10000
         if rounding == Plan.PRICE_ROUND_WHOLE:
-            discount_amount += 100 - discount_amount % 100
+            if (full_amount - discount_amount) % 100:
+                discount_amount += (full_amount - discount_amount) % 100
         elif rounding == Plan.PRICE_ROUND_99:
-            discount_amount += 99 - discount_amount % 100
+            if (full_amount - discount_amount - 99) % 100:
+                discount_amount += (full_amount - discount_amount - 99) % 100
         return discount_amount
 
 
@@ -2823,9 +2825,11 @@ class Coupon(models.Model):
         discount_percent = self.discount_value
         discount_amount = (full_amount * discount_percent) // 10000
         if rounding == Plan.PRICE_ROUND_WHOLE:
-            discount_amount += 100 - discount_amount % 100
+            if (full_amount - discount_amount) % 100:
+                discount_amount += (full_amount - discount_amount) % 100
         elif rounding == Plan.PRICE_ROUND_99:
-            discount_amount += 99 - discount_amount % 100
+            if (full_amount - discount_amount - 99) % 100:
+                discount_amount += (full_amount - discount_amount - 99) % 100
         return discount_amount
 
     def is_valid(self, plan, at_time=None):
