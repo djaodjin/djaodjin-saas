@@ -57,6 +57,7 @@ def session_cart_to_database(request):
     Transfer all the items in the cart stored in the session into proper
     records in the database.
     """
+    #pylint:disable=too-many-statements
     claim_code = request.GET.get('code', None)
     if claim_code:
         with transaction.atomic():
@@ -189,6 +190,7 @@ class OrganizationRedirectView(TemplateResponseMixin, ContextMixin,
     def check_email_verified(self, request, user,
                              redirect_field_name=REDIRECT_FIELD_NAME,
                              next_url=None):
+        #pylint:disable=unused-argument,no-self-use
         return True
 
     def create_organization_from_user(self, user):#pylint:disable=no-self-use
@@ -204,6 +206,7 @@ class OrganizationRedirectView(TemplateResponseMixin, ContextMixin,
         return self.implicit_create_on_none
 
     def get_implicit_grant_response(self, next_url, role, *args, **kwargs):
+        #pylint:disable=unused-argument
         if role:
             organization = role.organization
             role_descr = role.role_description
@@ -250,19 +253,9 @@ class OrganizationRedirectView(TemplateResponseMixin, ContextMixin,
                 email__endswith=domain).get()
         return user, organization
 
-    def get_redirect_url(self, *args, **kwargs):
-        redirect_path = validate_redirect_url_base(
-            self.request.GET.get(REDIRECT_FIELD_NAME, None), sub=True, **kwargs)
-        if not redirect_path:
-            try:
-                redirect_path = super(OrganizationRedirectView,
-                    self).get_redirect_url(*args, **kwargs)
-            except NoReverseMatch: # Django==2.0
-                redirect_path = None
-        return redirect_path
-
     def get(self, request, *args, **kwargs):
         #pylint:disable=too-many-locals,too-many-statements
+        #pylint:disable=too-many-nested-blocks,too-many-return-statements
         session_cart_to_database(request)
 
         redirect_to = reverse('saas_user_product_list', args=(request.user,))
@@ -291,7 +284,14 @@ class OrganizationRedirectView(TemplateResponseMixin, ContextMixin,
                         implicit_create_on_none=True).get()
                     # Create a granted role implicitely, but only if the e-mail
                     # was verified.
-                    next_url = self.get_redirect_url(*args, **kwargs)
+                    next_url = validate_redirect_url_base(
+                        self.request.GET.get(REDIRECT_FIELD_NAME, None),
+                        sub=True, **kwargs)
+                    if not next_url:
+                        try:
+                            next_url = self.get_redirect_url(*args, **kwargs)
+                        except NoReverseMatch: # Django==2.0
+                            next_url = None
                     if self.check_email_verified(request, user,
                             next_url=next_url):
                         role = organization.add_role_request(
@@ -301,7 +301,15 @@ class OrganizationRedirectView(TemplateResponseMixin, ContextMixin,
                         # in the verification of e-mail will lead to a
                         # 403 permission denied.
                         kwargs.update({self.slug_url_kwarg: organization})
-                        next_url = self.get_redirect_url(*args, **kwargs)
+                        next_url = validate_redirect_url_base(
+                            self.request.GET.get(REDIRECT_FIELD_NAME, None),
+                            sub=True, **kwargs)
+                        if not next_url:
+                            try:
+                                next_url = self.get_redirect_url(
+                                    *args, **kwargs)
+                            except NoReverseMatch: # Django==2.0
+                                next_url = None
                         return self.get_implicit_grant_response(
                             next_url, role, *args, **kwargs)
                     # We are redirecting because the e-mail must be verified
@@ -349,8 +357,7 @@ class OrganizationRedirectView(TemplateResponseMixin, ContextMixin,
         redirects = []
         for organization in accessibles:
             kwargs.update({self.slug_url_kwarg: organization})
-            url = super(OrganizationRedirectView, self).get_redirect_url(
-                *args, **kwargs)
+            url = self.get_redirect_url(*args, **kwargs)
             redirects += [(url, organization.printable_name, organization.slug)]
         context = self.get_context_data(**kwargs)
         context.update({'redirects': redirects})

@@ -209,52 +209,80 @@ def fail_subscription(request, organization=None, plan=None):
     if _has_valid_access(request, [get_broker()]):
         # Bypass if a manager for the broker.
         return False
-    if organization and not isinstance(organization, organization_model):
-        candidates = [get_object_or_404(organization_model, slug=organization)]
+    if organization:
+        if not isinstance(organization, organization_model):
+            organization = get_object_or_404(organization_model,
+                slug=organization)
+        candidates = [organization]
     else:
-        candidates = get_role_model().objects.filter(
-            user=request.user).values('organization').distinct()
-    subscriptions = Subscription.objects.valid_for(organization__in=candidates)
-    is_provider = False
+        candidates = organization_model.objects.accessible_by(request.user)
+    subscriptions = Subscription.objects.valid_for(
+        organization__in=candidates).order_by('ends_at')
     if plan:
         if not isinstance(plan, Plan):
             plan = get_object_or_404(Plan, slug=plan)
-        subscriptions = subscriptions.filter(plan=plan)
-        is_provider = Plan.objects.filter(
-            pk=plan.pk, organization__in=candidates).exists()
-    return not (subscriptions.exists() or is_provider)
+        if organization_model.objects.accessible_by(request.user).filter(
+                pk=plan.organization.pk).exists():
+            # The request.user has a role on the plan provider.
+            return False
+
+    if not subscriptions.exists():
+        if plan:
+            if organization:
+                return "%s?plan=%s" % (reverse('saas_organization_cart',
+                    args=(organization,)), plan)
+            return "%s?plan=%s" % (reverse('saas_cart'), plan)
+        return reverse('saas_cart_plan_list')
+
+    return False
 
 
 def fail_paid_subscription(request, organization=None, plan=None):
     """
     Subscribed to %(saas.Plan)s
+
+    When a ``plan`` is specified, providers of the plan will also pass
+    this check. Without a ``plan``, only users with valid access to the broker
+    will also pass the check.
     """
-    organization_model = get_organization_model()
+    #pylint:disable=too-many-return-statements
     subscribed_at = datetime_or_now()
+    organization_model = get_organization_model()
     if _has_valid_access(request, [get_broker()]):
         # Bypass if a manager for the broker.
         return False
-    if organization and not isinstance(organization, organization_model):
-        organization = get_object_or_404(organization_model, slug=organization)
-    subscriptions = organization.get_active_subscriptions(
-        at_time=subscribed_at).order_by('ends_at')
+    if organization:
+        if not isinstance(organization, organization_model):
+            organization = get_object_or_404(organization_model,
+                slug=organization)
+        candidates = [organization]
+    else:
+        candidates = organization_model.objects.accessible_by(request.user)
+    subscriptions = Subscription.objects.valid_for(organization__in=candidates,
+        ends_at__gte=subscribed_at).order_by('ends_at')
     # ``order_by("ends_at")`` will get the subscription that ends the earliest,
     # yet is greater than Today (``subscribed_at``).
     if plan:
         if not isinstance(plan, Plan):
             plan = get_object_or_404(Plan, slug=plan)
         subscriptions = subscriptions.filter(plan=plan)
-        active_subscription = subscriptions.first()
-        if active_subscription is None:
-            return "%s?plan=%s" % (
-                reverse('saas_organization_cart', args=(organization,)), plan)
-    else:
-        active_subscription = subscriptions.first()
-        if active_subscription is None:
-            return reverse('saas_cart_plan_list')
-        plan = active_subscription.plan
+        if organization_model.objects.accessible_by(request.user).filter(
+                pk=plan.organization.pk).exists():
+            # The request.user has a role on the plan provider.
+            return False
+
+    active_subscription = subscriptions.first()
+    if active_subscription is None:
+        if plan:
+            if organization:
+                return "%s?plan=%s" % (reverse('saas_organization_cart',
+                    args=(organization,)), plan)
+            return "%s?plan=%s" % (reverse('saas_cart'), plan)
+        return reverse('saas_cart_plan_list')
+
     if active_subscription.is_locked:
-        return reverse('saas_organization_balance', args=(organization, plan))
+        return reverse('saas_organization_balance', args=(
+            active_subscription.organization, active_subscription.plan))
     return False
 
 
