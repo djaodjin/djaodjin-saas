@@ -116,23 +116,14 @@
       "email": "donny@localhost.localdomain",
       "first_name": "Donny",
       "is_active": true,
-      "is_staff": true,
-      "is_superuser": true,
+      "is_staff": false,
+      "is_superuser": false,
       "last_login": "2012-09-14T14:57:48-09:00",
       "last_name": "Manager",
       "password": "pbkdf2_sha256$10000$z0MBiWn0Rlem$iZdC6uHomlE07qGK/TqfcfxNzKJtFp03c0JILF1frRc=",
       "username": "donny"
     },
     "model": "auth.User", "pk": 3
-},
-{
-    "fields":{
-      "created_at": "2012-10-01T00:00:00-09:00",
-      "role_description": 1,
-      "organization": 2,
-      "user": 3
-    },
-    "model": "saas.Role", "pk": 2
 },
 {
     "fields":{
@@ -167,8 +158,8 @@
       "first_name": "Xia",
       "groups": [],
       "is_active": true,
-      "is_staff": true,
-      "is_superuser": true,
+      "is_staff": false,
+      "is_superuser": false,
       "last_login": "2012-09-14T14:57:48-09:00",
       "last_name": "Doe",
       "password": "pbkdf2_sha256$10000$z0MBiWn0Rlem$iZdC6uHomlE07qGK/TqfcfxNzKJtFp03c0JILF1frRc=",
