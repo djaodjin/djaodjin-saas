@@ -2817,7 +2817,7 @@ class Coupon(models.Model):
         return self.organization
 
     def get_discount_amount(self, prorated_amount=0, period_amount=0,
-                            advance_amount=0, rounding=Plan.PRICE_ROUND_WHOLE):
+                            advance_amount=0, rounding=Plan.PRICE_ROUND_NONE):
         if self.discount_type == self.CURRENCY:
             return self.discount_value
         # discount percentage
@@ -2839,7 +2839,7 @@ class Coupon(models.Model):
         """
         at_time = datetime_or_now(at_time)
         valid_plan = (not self.plan or self.plan == plan)
-        valid_time = (not self.ends_at or self.ends_at < at_time)
+        valid_time = (not self.ends_at or at_time < self.ends_at)
         valid_attempts = (self.nb_attempts is None or self.nb_attempts > 0)
         valid_organization = (self.organization == plan.organization)
         return (valid_plan and valid_time and valid_attempts
