@@ -3452,7 +3452,7 @@ class TransactionManager(models.Manager):
             queryset = queryset.filter(created_at=at_time)
         return queryset.order_by('created_at')
 
-    def offline_payment(self, subscription, amount,
+    def offline_payment(self, subscription, amount, payment_event_id=None,
                         descr=None, user=None, created_at=None):
         #pylint: disable=too-many-arguments
         """
@@ -3518,12 +3518,14 @@ class TransactionManager(models.Manager):
         if user:
             descr += ' (%s)' % user.username
         created_at = datetime_or_now(created_at)
+        if not payment_event_id:
+            payment_event_id = generate_random_slug(prefix='check_')
         with transaction.atomic():
-            event_id = get_sub_event_id(subscription)
+            subscription_event_id = get_sub_event_id(subscription)
             self.create(
                 created_at=created_at,
                 descr=descr,
-                event_id=event_id,
+                event_id=subscription_event_id,
                 dest_amount=amount,
                 dest_unit=subscription.plan.unit,
                 dest_account=Transaction.PAYABLE,
@@ -3536,6 +3538,7 @@ class TransactionManager(models.Manager):
             self.create(
                 created_at=created_at,
                 descr=descr,
+                event_id=payment_event_id,
                 dest_amount=amount,
                 dest_unit=subscription.plan.unit,
                 dest_account=Transaction.FUNDS,
@@ -3550,12 +3553,12 @@ class TransactionManager(models.Manager):
             # the accounts amounts. This is a side effect of the atomicity
             # requirement for a ``Transaction`` associated to offline payment.
             balance = self.get_event_balance(
-                event_id, account=Transaction.PAYABLE)
+                subscription_event_id, account=Transaction.PAYABLE)
             balance_payable = balance['amount']
             if balance_payable > 0:
                 available = min(amount, balance_payable)
                 Transaction.objects.create(
-                    event_id=event_id,
+                    event_id=subscription_event_id,
                     created_at=created_at,
                     descr=humanize.DESCRIBE_DOUBLE_ENTRY_MATCH,
                     dest_amount=available,
@@ -3570,7 +3573,7 @@ class TransactionManager(models.Manager):
             self.create(
                 created_at=created_at,
                 descr=descr,
-                event_id=event_id,
+                event_id=subscription_event_id,
                 dest_amount=amount,
                 dest_unit=subscription.plan.unit,
                 dest_account=Transaction.RECEIVABLE,
@@ -3583,7 +3586,7 @@ class TransactionManager(models.Manager):
             self.create(
                 created_at=created_at,
                 descr="%s - %s" % (descr, humanize.DESCRIBE_DOUBLE_ENTRY_MATCH),
-                event_id=event_id,
+                event_id=payment_event_id,
                 dest_amount=amount,
                 dest_unit=subscription.plan.unit,
                 dest_account=Transaction.OFFLINE,
