@@ -1049,88 +1049,74 @@ class Organization(models.Model):
                 cowork:Receivable
         """
         at_time = datetime_or_now(at_time)
-        dest_balances = Transaction.objects.filter(
-            Q(dest_account=Transaction.PAYABLE)
-            | Q(dest_account=Transaction.LIABILITY),
-            dest_organization=self).values('event_id', 'dest_unit').annotate(
-                Sum('dest_amount'))
-        orig_balances = Transaction.objects.filter(
-            Q(orig_account=Transaction.PAYABLE)
-            | Q(orig_account=Transaction.LIABILITY),
-            orig_organization=self).values('event_id', 'orig_unit').annotate(
-                Sum('orig_amount'))
-        orig_amounts = {}
-        for balance in orig_balances:
-            orig_amounts[balance['event_id']] = balance['orig_amount__sum']
-        for balance in dest_balances:
-            sub_event_id = balance['event_id']
-            balance_due = (balance['dest_amount__sum']
-                - orig_amounts.get(sub_event_id, 0))
-            if balance_due > 0:
-                dest_unit = balance['dest_unit']
-                subscription = Subscription.objects.get_by_event_id(
-                    sub_event_id)
-                event_balance = Transaction.objects.get_event_balance(
-                    sub_event_id, account=Transaction.PAYABLE)
-                balance_payable = event_balance['amount']
-                with transaction.atomic():
-                    if balance_payable > 0:
+        balances = Transaction.objects.get_statement_balances(
+            self, until=at_time)
+        for sub_event_id, balance in six.iteritems(balances):
+            for dest_unit, balance_due in six.iteritems(balance):
+                if balance_due > 0:
+                    subscription = Subscription.objects.get_by_event_id(
+                        sub_event_id)
+                    event_balance = Transaction.objects.get_event_balance(
+                        sub_event_id, account=Transaction.PAYABLE)
+                    balance_payable = event_balance['amount']
+                    with transaction.atomic():
+                        if balance_payable > 0:
+                            # Example:
+                            # 2016/08/16 keep a balanced ledger
+                            #     xia:Liability                            15800
+                            #     xia:Payable
+                            Transaction.objects.create(
+                                event_id=sub_event_id,
+                                created_at=at_time,
+                                descr=humanize.DESCRIBE_DOUBLE_ENTRY_MATCH,
+                                dest_unit=dest_unit,
+                                dest_amount=balance_payable,
+                                dest_account=Transaction.LIABILITY,
+                                dest_organization=subscription.organization,
+                                orig_unit=dest_unit,
+                                orig_amount=balance_payable,
+                                orig_account=Transaction.PAYABLE,
+                                orig_organization=subscription.organization)
                         # Example:
-                        # 2016/08/16 keep a balanced ledger
-                        #     xia:Liability                            15800
-                        #     xia:Payable
+                        # 2016/08/16 write off liability
+                        #     cowork:Writeoff                              15800
+                        #     xia:Liability
                         Transaction.objects.create(
                             event_id=sub_event_id,
                             created_at=at_time,
-                            descr=humanize.DESCRIBE_DOUBLE_ENTRY_MATCH,
+                            descr=humanize.DESCRIBE_WRITEOFF_LIABILITY % {
+                                'event': subscription},
                             dest_unit=dest_unit,
-                            dest_amount=balance_payable,
-                            dest_account=Transaction.LIABILITY,
+                            dest_amount=balance_due,
+                            dest_account=Transaction.WRITEOFF,
+                            dest_organization=subscription.plan.organization,
+                            orig_unit=dest_unit,
+                            orig_amount=balance_due,
+                            orig_account=Transaction.LIABILITY,
+                            orig_organization=subscription.organization)
+                        # Example:
+                        # 2016/08/16 write off receivable
+                        #     xia:Cancelled                             15800
+                        #     cowork:Receivable
+                        Transaction.objects.create(
+                            event_id=sub_event_id,
+                            created_at=at_time,
+                            descr=humanize.DESCRIBE_WRITEOFF_RECEIVABLE % {
+                                'event': subscription},
+                            dest_unit=dest_unit,
+                            dest_amount=balance_due,
+                            dest_account=Transaction.CANCELED,
                             dest_organization=subscription.organization,
                             orig_unit=dest_unit,
-                            orig_amount=balance_payable,
-                            orig_account=Transaction.PAYABLE,
-                            orig_organization=subscription.organization)
-                    # Example:
-                    # 2016/08/16 write off liability
-                    #     cowork:Writeoff                              15800
-                    #     xia:Liability
-                    Transaction.objects.create(
-                        event_id=sub_event_id,
-                        created_at=at_time,
-                        descr=humanize.DESCRIBE_WRITEOFF_LIABILITY % {
-                            'event': subscription},
-                        dest_unit=dest_unit,
-                        dest_amount=balance_due,
-                        dest_account=Transaction.WRITEOFF,
-                        dest_organization=subscription.plan.organization,
-                        orig_unit=dest_unit,
-                        orig_amount=balance_due,
-                        orig_account=Transaction.LIABILITY,
-                        orig_organization=subscription.organization)
-                    # Example:
-                    # 2016/08/16 write off receivable
-                    #     xia:Cancelled                             15800
-                    #     cowork:Receivable
-                    Transaction.objects.create(
-                        event_id=sub_event_id,
-                        created_at=at_time,
-                        descr=humanize.DESCRIBE_WRITEOFF_RECEIVABLE % {
-                            'event': subscription},
-                        dest_unit=dest_unit,
-                        dest_amount=balance_due,
-                        dest_account=Transaction.CANCELED,
-                        dest_organization=subscription.organization,
-                        orig_unit=dest_unit,
-                        orig_amount=balance_due,
-                        orig_account=Transaction.RECEIVABLE,
-                        orig_organization=subscription.plan.organization)
-                    LOGGER.info("%s cancel balance due of %d for %s.",
-                        user, balance_due, self,
-                        extra={'event': 'cancel-balance',
-                            'username': user.username,
-                            'organization': self.slug,
-                            'amount': balance_due})
+                            orig_amount=balance_due,
+                            orig_account=Transaction.RECEIVABLE,
+                            orig_organization=subscription.plan.organization)
+                        LOGGER.info("%s cancel balance due of %d for %s.",
+                            user, balance_due, self,
+                            extra={'event': 'cancel-balance',
+                                'username': user.username,
+                                'organization': self.slug,
+                                'amount': balance_due})
 
 
 @python_2_unicode_compatible
@@ -3308,81 +3294,74 @@ class TransactionQuerySet(models.QuerySet):
 
     def get_statement_balances(self, organization, until=None):
         until = datetime_or_now(until)
-        # XXX We rely here on a subscriber:Payable to subscriber:Liability
-        # transaction to be present for all transaction with a charge event_id.
+        # We use the fact that all orders (and only orders) will have
+        # a destination of `subscriber:Payable`.
         dest_balances = self.filter(
-            Q(dest_account=Transaction.PAYABLE)
-            | Q(dest_account=Transaction.LIABILITY),
+            Q(dest_account=Transaction.PAYABLE),
             dest_organization=organization,
             created_at__lt=until).values(
                 'event_id', 'dest_unit').annotate(
                 dest_balance=Sum('dest_amount'),
                 last_activity_at=Max('created_at')).order_by(
                     'last_activity_at')
+        dest_balance_per_events = {}
+        for dest_balance in dest_balances:
+            event_id = dest_balance['event_id']
+            if event_id not in dest_balance_per_events:
+                dest_balance_per_events.update({event_id: {}})
+            dest_balance_per_events[event_id].update({
+                dest_balance['dest_unit']: dest_balance['dest_balance']})
+
+        # Then all payments for these orders will either be of the form:
+        #     yyyy/mm/dd sub_***** distribution to provider (backlog accounting)
+        #        provider:Receivable                      plan_amount
+        #        provider:Backlog
+        # (payment_successful and offline_payment), or:
+        #    yyyy/mm/dd sub_***** write off receivable
+        #        subscriber:Canceled                        liability_amount
+        #        provider:Receivable
+        # (create_cancel_transactions).
         orig_balances = self.filter(
-            Q(orig_account=Transaction.PAYABLE)
-            | Q(orig_account=Transaction.LIABILITY),
-            orig_organization=organization,
+            (Q(orig_account=Transaction.BACKLOG)
+             & Q(dest_account=Transaction.RECEIVABLE)) |
+            (Q(orig_account=Transaction.RECEIVABLE)
+             & Q(dest_account=Transaction.CANCELED)),
+            event_id__in=dest_balance_per_events.keys(),
             created_at__lt=until).values(
                 'event_id', 'orig_unit').annotate(
                 orig_balance=Sum('orig_amount'),
                 last_activity_at=Max('created_at')).order_by(
                     'last_activity_at', '-event_id')
-
-        dest_balance_per_events = {}
-        for dest_balance in dest_balances:
-            event_id = dest_balance['event_id']
-            if event_id in dest_balance_per_events:
-                # Because of the `GROUP BY` clause in the SQL query,
-                # if the balance is already in the dictionary then
-                # units are different on the same event.
-                raise ValueError('dest balances until %s for event %s'\
-                ' of %s have different unit (%s vs. %s).' % (
-                    until, event_id, organization,
-                    dest_balance_per_events[event_id].unit,
-                    dest_balance['dest_unit']))
-            dest_balance_per_events.update({
-                event_id: Price(
-                    dest_balance['dest_balance'], dest_balance['dest_unit'])})
-        prev_event_id = None
         for orig_balance in orig_balances:
+            orig_amount = orig_balance['orig_balance']
+            orig_unit = orig_balance['orig_unit']
             event_id = orig_balance['event_id']
-            if event_id.startswith('sub_'):
-                # We could have events for subscriptions (Receivable, Payable),
-                # or charges (Liability, Funds) here.
-                prev_event_id = event_id
-            elif prev_event_id:
-                # XXX Quick workaround: assign the amount of the charge
-                #     to the previous subscription. We should really load
-                #     the charge items and assign amounts accordingly.
-                # p.s. We should always have a (Receivable, Payable) before
-                # a charge so an undefined variable exception should not be
-                # raised.
-                event_id = prev_event_id
-            dest_total = dest_balance_per_events.get(event_id,
-                Price(0, orig_balance['orig_unit']))
-            dest_balance = dest_total.amount
-            dest_unit = dest_total.unit
-            if orig_balance['orig_unit'] != dest_unit:
-                raise ValueError(
-'orig and dest balances until %s for event %s'\
-' of %s have different unit (%s vs. %s).' % (until, event_id, organization,
-                    dest_unit, orig_balance['orig_unit']))
-            dest_balance_per_events.update({event_id: Price(
-                dest_balance - orig_balance['orig_balance'], dest_unit)})
+            assert event_id.startswith('sub_')
+            # We should always have subscription events in orig_balances
+            # by the definition of the SQL query.
+            balance_by_units = dest_balance_per_events.get(event_id, {})
+            if orig_unit in balance_by_units:
+                balance_by_units.update({
+                    orig_unit: balance_by_units[orig_unit] - orig_amount})
+
         balances = {}
         for event_id, balance in six.iteritems(dest_balance_per_events):
-            if balance.amount != 0:
-                balances.update({event_id: balance})
+            amount_by_units = {}
+            for unit, amount in six.iteritems(balance):
+                if amount != 0:
+                    amount_by_units.update({unit: amount})
+            if amount_by_units:
+                balances.update({event_id: amount_by_units})
         return balances
 
     def get_statement_balance(self, organization, until=None):
         balances_per_unit = {}
         for val in six.itervalues(self.get_statement_balances(
                 organization, until=until)):
-            balances_per_unit.update({
-                val.unit: balances_per_unit.get(val.unit, 0) + val.amount
-            })
+            for unit, amount in six.iteritems(val):
+                balances_per_unit.update({
+                    unit: balances_per_unit.get(unit, 0) + amount
+                })
         balances = {}
         for unit, balance in six.iteritems(balances_per_unit):
             if balance != 0:

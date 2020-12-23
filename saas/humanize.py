@@ -162,7 +162,7 @@ _("Past due"),
     (DESCRIBE_OFFLINE_PAYMENT % REGEXES): \
 _("Off-line payment"),
     (DESCRIBE_RECOGNIZE_INCOME_DETAILED.replace(' (', r' \(').replace(
-        ')s)', r')s\)') % REGEXES): \
+        'period)', r'period\)') % REGEXES): \
 _("Recognize %(subscription)s from %(period_start)s to %(period_end)s"\
     " (%(nb_periods)s period)"),
     (DESCRIBE_RECOGNIZE_INCOME % REGEXES): \
