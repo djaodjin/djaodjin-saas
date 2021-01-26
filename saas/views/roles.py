@@ -58,6 +58,7 @@ class RoleImplicitGrantAcceptView(RedirectView):
         return True
 
     def get_implicit_grant_response(self, next_url, role, *args, **kwargs):
+        #pylint:disable=unused-argument
         if role:
             organization = role.organization
             role_descr = role.role_description

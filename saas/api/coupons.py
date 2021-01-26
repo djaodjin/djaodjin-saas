@@ -1,4 +1,4 @@
-# Copyright (c) 2020, DjaoDjin inc.
+# Copyright (c) 2021, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -25,7 +25,7 @@ from __future__ import unicode_literals
 
 from django.db import IntegrityError
 from django.utils.translation import ugettext_lazy as _
-from rest_framework import serializers, status
+from rest_framework import status
 from rest_framework.exceptions import ValidationError
 from rest_framework.generics import (ListCreateAPIView,
     RetrieveUpdateDestroyAPIView)
@@ -163,6 +163,7 @@ class CouponListCreateAPIView(SmartCouponListMixin, CouponQuerysetMixin,
         return self.create(request, *args, **kwargs)
 
     def create(self, request, *args, **kwargs):
+        #pylint:disable=unused-argument
         serializer = CouponCreateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         # check plan belongs to organization
@@ -175,7 +176,9 @@ class CouponListCreateAPIView(SmartCouponListMixin, CouponQuerysetMixin,
         except IntegrityError as err:
             handle_uniq_error(err)
         headers = self.get_success_headers(serializer.data)
-        return Response(self.get_serializer().to_representation(serializer.instance), status=status.HTTP_201_CREATED, headers=headers)
+        return Response(self.get_serializer().to_representation(
+            serializer.instance), status=status.HTTP_201_CREATED,
+            headers=headers)
 
 
 class CouponDetailAPIView(CouponMixin, RetrieveUpdateDestroyAPIView):

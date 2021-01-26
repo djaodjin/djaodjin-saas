@@ -133,6 +133,7 @@ def import_transactions(filedesc, create_organizations=False, broker=None,
                 if dest_organization and orig_organization:
                     # Assuming no errors, at this point we have
                     # a full transaction.
+                    #pylint:disable=logging-not-lazy
                     LOGGER.debug(
                         "Transaction.objects.using('%(using)s').create("\
                         "created_at='%(created_at)s',"\
@@ -141,7 +142,7 @@ def import_transactions(filedesc, create_organizations=False, broker=None,
                         "dest_amount='%(dest_amount)s',"\
                         "dest_organization='%(dest_organization)s',"\
                         "dest_account='%(dest_account)s',"\
-                        "orig_amount='%(dest_amount)s',"\
+                        "orig_amount='%(orig_amount)s',"\
                         "orig_unit='%(orig_unit)s',"\
                         "orig_organization='%(orig_organization)s',"\
                         "orig_account='%(orig_account)s',"\

@@ -34,6 +34,7 @@ from dateutil.relativedelta import relativedelta
 from django.db import transaction
 
 from . import humanize, signals
+from .backends import ProcessorError
 from .compat import six
 from .models import (Charge, Organization, Plan, Subscription, Transaction,
     sum_dest_amount, get_period_usage, get_sub_event_id)
@@ -335,14 +336,19 @@ def create_charges_for_balance(until=None, dry_run=False):
                     LOGGER.info('REVIEW %dc to %s (requires manual charge)',
                         invoiceable_amount, organization)
                 else:
-                    LOGGER.info('CHARGE %dc to %s', invoiceable_amount,
-                        organization)
-                    try:
-                        if not dry_run:
+                    if not dry_run:
+                        try:
                             Charge.objects.charge_card(
-                                organization, invoiceables, created_at=until)
-                    except:
-                        raise
+                                organization, invoiceables,
+                                created_at=until)
+                            LOGGER.info('CHARGE %dc to %s', invoiceable_amount,
+                                organization)
+                        except ProcessorError:
+                            # There was a problem with the Card (i.e. expired,
+                            # underfunded, etc.)
+                            LOGGER.error('FAILED CHARGE %dc to %s',
+                                invoiceable_amount, organization)
+                            # XXX Notify customer.
             elif invoiceable_amount > 0:
                 LOGGER.info('SKIP   %dc to %s (less than 50c)',
                     invoiceable_amount, organization)

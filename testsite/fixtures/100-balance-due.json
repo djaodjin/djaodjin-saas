@@ -1,7 +1,7 @@
 [
   {
     "fields": {
-      "slug": "xia-balance",
+      "slug": "xia-balance-due",
       "created_at": "2020-12-20T00:00:00Z",
       "is_active": true,
       "full_name": "Xia",
@@ -31,7 +31,7 @@
   {
     "fields": {
       "date_joined": "2020-12-20T00:00:00Z",
-      "email": "xia+balancedue@localhost.localdomain",
+      "email": "xia+balance-due@localhost.localdomain",
       "first_name": "Xia",
       "groups": [],
       "is_active": true,
@@ -41,7 +41,7 @@
       "last_name": "BalanceDue",
       "password": "pbkdf2_sha256$10000$z0MBiWn0Rlem$iZdC6uHomlE07qGK/TqfcfxNzKJtFp03c0JILF1frRc=",
       "user_permissions": [],
-      "username": "xia-balance"
+      "username": "xia-balance-due"
     },
     "model": "auth.User", "pk": 100
   },
@@ -118,7 +118,7 @@
       "grant_key": null,
       "extra": null
     },
-    "model": "saas.subscription", "pk": 120
+    "model": "saas.subscription", "pk": 102
   },
   {
     "fields": {
@@ -132,7 +132,7 @@
       "dest_amount": 24900,
       "dest_unit": "usd",
       "descr": "Subscription to basic until 2021/01/21 (1 month)",
-      "event_id": "sub_120/"
+      "event_id": "sub_102/"
     },
     "model": "saas.transaction", "pk": 100
   },
@@ -164,7 +164,7 @@
       "dest_amount": 24900,
       "dest_unit": "usd",
       "descr": "Subscription to basic until 2021/02/21 (1 month)",
-      "event_id": "sub_120/"
+      "event_id": "sub_102/"
     },
     "model": "saas.transaction", "pk": 102
   },
@@ -196,7 +196,7 @@
       "dest_amount": 24900,
       "dest_unit": "usd",
       "descr": "Keep a balanced ledger",
-      "event_id": "sub_120/"
+      "event_id": "sub_102/"
     },
     "model": "saas.transaction", "pk": 104
   },
@@ -211,7 +211,7 @@
       "dest_organization": 2,
       "dest_amount": 752,
       "dest_unit": "usd",
-      "descr": "Charge ch_1I0sHd2fIune2L0qKZoE1XqC processor fee for sub_120/",
+      "descr": "Charge ch_1I0sHd2fIune2L0qKZoE1XqC processor fee for sub_102/",
       "event_id": "cha_1/"
     },
     "model": "saas.transaction", "pk": 105
@@ -228,7 +228,7 @@
       "dest_amount": 24900,
       "dest_unit": "usd",
       "descr": "Charge ch_1I0sHd2fIune2L0qKZoE1XqC distribution for xia:basic",
-      "event_id": "sub_120/"
+      "event_id": "sub_102/"
     },
     "model": "saas.transaction", "pk": 106
   },

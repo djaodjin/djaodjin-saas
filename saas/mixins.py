@@ -40,13 +40,68 @@ from . import humanize, settings
 from .compat import six, NoReverseMatch, is_authenticated, reverse
 from .filters import DateRangeFilter, OrderingFilter, SearchFilter
 from .models import (CartItem, Charge, Coupon, Organization, Plan,
-    RoleDescription, Subscription, Transaction, UseCharge, get_broker)
+    RoleDescription, Subscription, Transaction, UseCharge, get_broker,
+    sum_orig_amount)
 from .utils import (build_absolute_uri, datetime_or_now, is_broker,
     get_organization_model, get_role_model, update_context_urls)
 from .extras import OrganizationMixinBase
 
 
+class BalanceDueMixin(object):
+    """
+    Mixin to retrieve a profile's balance due as line items
+    for a checkout workflow.
+    """
+    @staticmethod
+    def get_balance_options(subscription, created_at=None,
+                               prorate_to=None, cart_item=None):
+        #pylint: disable=unused-argument
+        options = []
+        payable = Transaction.objects.new_subscription_statement(
+            subscription, created_at)
+        if payable.dest_amount > 0:
+            later = Transaction.objects.new_subscription_later(
+                subscription, created_at)
+            options = [payable, later]
+        return options
+
+    def as_invoicables(self, user, customer, at_time=None):
+        invoicables = []
+        at_time = datetime_or_now(at_time)
+        balances = Transaction.objects.get_statement_balances(
+            customer, until=at_time)
+        for event_id, amount_by_units in six.iteritems(balances):
+            subscription = Subscription.objects.get_by_event_id(event_id)
+            last_unpaid_orders = customer.last_unpaid_orders(
+                subscription=subscription, at_time=at_time)
+            order_balances = sum_orig_amount(last_unpaid_orders)
+            lines = []
+            for order_balance in order_balances:
+                order_amount = order_balance.get('amount')
+                balance_amount = amount_by_units.get(order_balance.get('unit'))
+                if order_amount == balance_amount:
+                    lines = last_unpaid_orders
+                    break
+            options = []
+            if not lines:
+                # XXX paying balance due is not optional.
+                #options = self.get_balance_options(
+                #    subscription, created_at=at_time)
+                lines = [Transaction.objects.new_subscription_statement(
+                    subscription, at_time)]
+            if lines or options:
+                invoicables += [{
+                    'subscription': subscription,
+                    'name': 'cart-%s' % subscription.plan.slug,
+                    'lines': lines,
+                    'options': options}]
+        return invoicables
+
+
 class CartMixin(object):
+    """
+    Mixin to retrieve a user's cart as line items for a checkout workflow.
+    """
 
     @staticmethod
     def insert_item(request, **kwargs):
@@ -202,7 +257,7 @@ class CartMixin(object):
 
 
     @staticmethod
-    def get_invoicable_options(subscription, created_at=None,
+    def get_cart_options(subscription, created_at=None,
                                prorate_to=None, cart_item=None):
         """
         Return a set of lines that must charged Today and a set of choices
@@ -393,7 +448,7 @@ class CartMixin(object):
                 lines += [Transaction.objects.new_use_charge(subscription,
                     cart_item.use, cart_item.option)]
             else:
-                options = self.get_invoicable_options(subscription,
+                options = self.get_cart_options(subscription,
                     created_at=created_at, prorate_to=prorate_to,
                     cart_item=cart_item)
                 # option is selected
@@ -415,9 +470,12 @@ class CartMixin(object):
                 line.dest_organization = customer
                 line.descr += for_descr
             invoicables += [{
-                'name': cart_item.name, 'descr': cart_item.descr,
                 'subscription': subscription,
-                "lines": lines, "options": options}]
+                'name': cart_item.name,
+                'lines': lines,
+                'options': options,
+                'descr': cart_item.descr,
+            }]
         return invoicables
 
 
