@@ -1,4 +1,4 @@
-# Copyright (c) 2020, DjaoDjin inc.
+# Copyright (c) 2021, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -279,8 +279,6 @@ class Command(BaseCommand):
                     amount=transaction_item.dest_amount,
                     customer=subscription.organization,
                     description='Charge for %d periods' % nb_periods,
-                    last4=1241,
-                    exp_date=datetime_or_now(),
                     processor=processor,
                     processor_key=str(transaction_item.pk),
 # XXX We can't do that yet because of
@@ -291,7 +289,8 @@ class Command(BaseCommand):
                 charge.save()
                 ChargeItem.objects.create(
                     invoiced=transaction_item, charge=charge)
-                charge.payment_successful()
+                charge.payment_successful(
+                    receipt_info={'last4': 1241, 'exp_date': datetime_or_now()})
             churned = all_subscriptions.exclude(
                 pk__in=[subscription.pk for subscription in subscriptions])
             for subscription in churned:

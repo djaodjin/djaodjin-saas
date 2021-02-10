@@ -237,6 +237,35 @@ class InvoicablesMixin(OrganizationMixin):
     """
     Mixin a list of invoicables
     """
+    @property
+    def invoicables_broker_fee_amount(self):
+        if not hasattr(self, '_invoicables_broker_fee_amount'):
+            self._invoicables_broker_fee_amount = 0
+            for invoicable in self.invoicables:
+                for invoiced_item in invoicable['lines']:
+                    if invoiced_item.subscription:
+                        self._invoicables_broker_fee_amount += \
+                            invoiced_item.subscription.plan.prorate_transaction(
+                                invoiced_item.dest_amount)
+        return self._invoicables_broker_fee_amount
+
+    @property
+    def invoicables_provider(self):
+        if not hasattr(self, '_invoicables_provider'):
+            self._invoicables_provider = None
+            for invoicable in self.invoicables:
+                providers = Transaction.objects.providers(invoicable['lines'])
+                if len(providers) > 1:
+                    self._invoicables_provider = get_broker()
+                    break
+                if providers:
+                    if not self._invoicables_provider:
+                        self._invoicables_provider = providers[0]
+                    elif self._invoicables_provider != providers[0]:
+                        self._invoicables_provider = get_broker()
+                        break
+        return self._invoicables_provider
+
     def get_context_data(self, **kwargs):
         context = super(InvoicablesMixin, self).get_context_data(**kwargs)
         context.update(self.get_redirect_path())
@@ -374,6 +403,22 @@ class CheckoutFormMixin(CardFormMixin):
             return self.form_invalid(form)
         return super(CheckoutFormMixin, self).form_valid(form)
 
+    def get_context_data(self, **kwargs):
+        context = super(CheckoutFormMixin, self).get_context_data(**kwargs)
+        try:
+            # computed in `InvoicablesMixin.get_context_data`
+            lines_price = context.get('lines_price')
+            context.update(
+                self.organization.processor_backend.get_payment_context(
+                    self.invoicables_provider,
+                    self.organization.processor_card_key,
+                    amount=lines_price.amount, unit=lines_price.unit,
+                    broker_fee_amount=self.invoicables_broker_fee_amount))
+        except ProcessorConnectionError:
+            messages.error(self.request, _("The payment processor is "\
+                "currently unreachable. Sorry for the inconvienience."))
+        return context
+
     def get_success_url(self):
         redirect_path = validate_redirect_url(
             self.request.GET.get(REDIRECT_FIELD_NAME, None))
@@ -429,6 +474,15 @@ class CardUpdateView(CardFormMixin, FormView):
 
     def get_context_data(self, **kwargs):
         context = super(CardUpdateView, self).get_context_data(**kwargs)
+        try:
+            # computed in `InvoicablesMixin.get_context_data`
+            context.update(
+                self.organization.processor_backend.get_payment_context(
+                    get_broker(),
+                    self.organization.processor_card_key))
+        except ProcessorConnectionError:
+            messages.error(self.request, _("The payment processor is "\
+                "currently unreachable. Sorry for the inconvienience."))
         context.update(self.get_redirect_path())
         context.update({'force_update': True})
         return context
@@ -736,7 +790,7 @@ class CartPeriodsView(CartBaseView):
             request, *args, **kwargs)
         if redirect_url:
             return http.HttpResponseRedirect(redirect_url)
-        return super(CartBaseView, self).get(request, *args, **kwargs)
+        return super(CartPeriodsView, self).get(request, *args, **kwargs)
 
 
 class CartSeatsView(CartBaseView):
@@ -819,11 +873,6 @@ djaodjin-saas/tree/master/saas/templates/saas/billing/cart.html>`__).
         if redirect_url:
             return http.HttpResponseRedirect(redirect_url)
         return super(CartView, self).get(request, *args, **kwargs)
-
-    def get_context_data(self, **kwargs):
-        context = super(CartView, self).get_context_data(**kwargs)
-        context.update({'is_bulk_buyer': False})
-        return context
 
 
 class CheckoutView(CardFormMixin, FormView):

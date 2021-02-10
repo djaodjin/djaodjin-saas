@@ -113,6 +113,7 @@ _SETTINGS = {
         'PRIV_KEY': None,
         'PUB_KEY': None,
         'REDIRECT_CALLABLE': None,
+        'USE_STRIPE_V3': False,
         'WEBHOOK_URL': 'stripe/postevent',
         'WEBHOOK_SECRET': None,
     },

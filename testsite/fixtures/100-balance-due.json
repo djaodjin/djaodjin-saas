@@ -5,7 +5,7 @@
       "created_at": "2020-12-20T00:00:00Z",
       "is_active": true,
       "full_name": "Xia",
-      "email": "xia@localhost.localdomain",
+      "email": "xia+balance-due@localhost.localdomain",
       "phone": "555-555-5555",
       "street_address": "1 ABC loop",
       "locality": "San Francisco",
@@ -96,7 +96,7 @@
     "fields": {
       "auto_renew": true,
       "created_at": "2020-12-21T17:31:55.531Z",
-      "ends_at": "2021-02-01T09:00:00Z",
+      "ends_at": "2022-01-01T00:00:00Z",
       "description": null,
       "organization": 100,
       "plan": 3,
@@ -110,7 +110,7 @@
     "fields": {
       "auto_renew": true,
       "created_at": "2020-12-21T17:31:55.531Z",
-      "ends_at": "2021-02-21T17:31:55.366Z",
+      "ends_at": "2022-01-01T00:00:00Z",
       "description": null,
       "organization": 100,
       "plan": 1,

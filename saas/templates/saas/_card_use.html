@@ -26,39 +26,41 @@
            {% if last4 and not force_update %}style="display:none;"{% endif %}>
         <!-- BE CAREFULL: Do not add name="" to these <input> nodes, else
              values will hit the server and break PCI compliance. -->
-        <div id="row-number">
-          <label for="card-number">Card Number</label>
+        <div id="card-element">
+          <div id="row-number">
+            <label for="card-number">Card Number</label>
+            <div>
+              <input id="card-number"
+                     type="text"
+                     size="16"
+                     autocomplete="off"
+                     v-model="cardNumber" />
+            </div>
+          </div>
           <div>
-            <input id="card-number"
-                   type="text"
-                   size="16"
-                   autocomplete="off"
-                   v-model="cardNumber" />
-          </div>
-        </div>
-        <div>
-          <div id="row-exp">
-            <label>Expiration</label>
-            <div>
-              <input id="card-exp-month"
-                     type="text" maxlength="2" size="2"
-                     v-model="cardExpMonth" />
-              <input id="card-exp-year"
-                     type="text" maxlength="4" size="4"
-                     v-model="cardExpYear" />
+            <div id="row-exp">
+              <label>Expiration</label>
+              <div>
+                <input id="card-exp-month"
+                       type="text" maxlength="2" size="2"
+                       v-model="cardExpMonth" />
+                <input id="card-exp-year"
+                       type="text" maxlength="4" size="4"
+                       v-model="cardExpYear" />
+              </div>
             </div>
-          </div>
-          <div id="row-cvc">
-            <label>Security Code</label>
-            <div>
-              <input id="card-cvc"
-                     type="text" maxlength="4" size="3"
-                     placeholder="CVC" autocomplete="off"
-                     v-model="cardCvc" />
+            <div id="row-cvc">
+              <label>Security Code</label>
+              <div>
+                <input id="card-cvc"
+                       type="text" maxlength="4" size="3"
+                       placeholder="CVC" autocomplete="off"
+                       v-model="cardCvc" />
+              </div>
             </div>
           </div>
         </div>
-       </div>{# /!haveCardData #}
+      </div>{# /!haveCardData #}
     </fieldset>
     <fieldset id="card-billing-address"
              v-show="!haveCardData || updateCard"

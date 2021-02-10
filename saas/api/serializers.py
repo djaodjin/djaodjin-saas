@@ -1,4 +1,4 @@
-# Copyright (c) 2020, DjaoDjin inc.
+# Copyright (c) 2021, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -33,8 +33,9 @@ information (street_address, etc.) have not been granted to the requesting user.
 The OrganizationDetailSerializer is used when the requesting user has been
 granted access to personal information.
 """
-
 from __future__ import unicode_literals
+
+import logging
 
 from django.core import validators
 from django.contrib.auth import get_user_model
@@ -43,10 +44,11 @@ from django.db import transaction
 from django.template.defaultfilters import slugify
 from django.utils.translation import ugettext_lazy as _
 from django.urls.exceptions import NoReverseMatch
+from django_countries.serializer_fields import CountryField
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
 from rest_framework.generics import get_object_or_404
-from django_countries.serializer_fields import CountryField
+import phonenumbers
 
 from .. import settings
 from ..compat import reverse, six
@@ -58,6 +60,9 @@ from ..models import (AdvanceDiscount, BalanceLine, CartItem, Charge, Coupon,
 from ..utils import (build_absolute_uri, get_organization_model, get_role_model)
 
 #pylint: disable=no-init
+
+LOGGER = logging.getLogger(__name__)
+
 
 class EnumField(serializers.Field):
     """
@@ -92,6 +97,30 @@ class EnumField(serializers.Field):
                     'data': data, 'choices': [choice
                     for choice in six.iterkeys(self.inverted_choices)]})
         return result
+
+
+class PhoneField(serializers.Field):
+
+    def to_internal_value(self, data):
+        """
+        Returns a formatted phone number as a string.
+        """
+        if self.required:
+            try:
+                phone_number = phonenumbers.parse(data, None)
+            except phonenumbers.NumberParseException as err:
+                LOGGER.info("tel %s:%s", data, err)
+                phone_number = None
+            if not phone_number:
+                try:
+                    phone_number = phonenumbers.parse(data, "US")
+                except phonenumbers.NumberParseException:
+                    raise ValidationError(self.error_messages['invalid'])
+            if phone_number and not phonenumbers.is_valid_number(phone_number):
+                raise ValidationError(self.error_messages['invalid'])
+            return phonenumbers.format_number(
+                phone_number, phonenumbers.PhoneNumberFormat.E164)
+        return None
 
 
 class PlanRelatedField(serializers.RelatedField):

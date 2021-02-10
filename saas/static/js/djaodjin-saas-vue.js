@@ -438,6 +438,8 @@ var cardMixin = {
             api_card_url: this.$urls.organization.api_card,
             api_profile_url: this.$urls.organization.api_base,
             processor_pub_key: null,
+            stripe_intent_secret: null,
+            stripe: null,
             cardNumber: '',
             cardCvc: '',
             cardExpMonth: '',
@@ -500,6 +502,9 @@ var cardMixin = {
             vm.reqDelete(vm.api_card_url,
             function() {
                 vm.clearCardData();
+                showMessages([gettext(
+                    "Your credit card is no longer on file with us.")],
+                    "success");
             });
         },
         inputClass: function(name){
@@ -534,49 +539,121 @@ var cardMixin = {
             var vm = this;
             vm.reqGet(vm.api_card_url,
             function(resp) {
-                if( resp.STRIPE_PUB_KEY ) {
-                    vm.processor_pub_key = resp.STRIPE_PUB_KEY;
-                }
                 if( resp.last4 ) {
                     vm.savedCard.last4 = resp.last4;
                 }
                 if( resp.exp_date ) {
                     vm.savedCard.exp_date = resp.exp_date;
                 }
+                if( resp.STRIPE_PUB_KEY ) {
+                    vm.processor_pub_key = resp.STRIPE_PUB_KEY;
+                }
+                if( resp.STRIPE_INTENT_SECRET ) {
+                    vm.stripe_intent_secret = resp.STRIPE_INTENT_SECRET;
+                }
+                if( vm.processor_pub_key ) {
+                    vm.stripe = Stripe(vm.processor_pub_key);
+                    if( vm.stripe_intent_secret ) {
+                        var elements = vm.stripe.elements();
+                        vm.cardElement = elements.create("card", {
+                            hidePostalCode: true
+                        });
+                        vm.cardElement.mount("#card-element");
+                    }
+                }
             });
         },
         getCardToken: function(cb){
             var vm = this;
-            var processorPubKey = vm.processor_pub_key ? vm.processor_pub_key
-                : vm.$el.getAttribute('data-processor-pub-key');
-            if( !processorPubKey ){
-                showMessages([
-                    gettext("You haven't set a valid Stripe public key")
-                ], "error");
-                return;
-            }
-            Stripe.setPublishableKey(processorPubKey);
-            Stripe.createToken({
-                number: vm.cardNumber,
-                cvc: vm.cardCvc,
-                exp_month: vm.cardExpMonth,
-                exp_year: vm.cardExpYear,
-                name: vm.card_name,
-                address_line1: vm.card_address_line1,
-                address_city: vm.card_city,
-                address_state: vm.region,
-                address_zip: vm.card_address_zip,
-                address_country: vm.country
-            }, function(code, res){
-                if(code === 200) {
-                    vm.savedCard.last4 = '***-' + res.card.last4;
-                    vm.savedCard.exp_date = (
-                        res.card.exp_month + '/' + res.card.exp_year);
-                    if(cb) cb(res.id)
-                } else {
-                    showMessages([res.error.message], "error");
+            // this identifies your website in the createToken call below
+            if( vm.stripe_intent_secret ) {
+                if( !vm.stripe ){
+                    showMessages([
+                        gettext("You haven't set a valid Stripe public key")
+                    ], "error");
+                    return;
                 }
-            });
+                if( vm.stripe_intent_secret.substring(0, 3) === 'pi_' ) {
+                    vm.stripe.confirmCardPayment(
+                        vm.stripe_intent_secret, {
+                            payment_method: {
+                                type: "card",
+                                card: vm.cardElement,
+                                billing_details: {
+                                    address: {
+                                        city: vm.card_city,
+                                        country: vm.country,
+                                        line1: vm.card_address_line1,
+                                        // line2: null,
+                                        postal_code: vm.card_address_zip,
+                                        state: vm.region,
+                                    },
+                                    name: vm.card_name,
+                                }
+                            }
+                        }
+                    ).then(function(resp) {
+                        vm.stripeResponseHandler(resp, cb);
+                    });
+                } else {
+                    vm.stripe.confirmCardSetup(
+                        vm.stripe_intent_secret, {
+                            payment_method: {
+                                type: "card",
+                                card: vm.cardElement,
+                                billing_details: {
+                                    address: {
+                                        city: vm.card_city,
+                                        country: vm.country,
+                                        line1: vm.card_address_line1,
+                                        // line2: null,
+                                        postal_code: vm.card_address_zip,
+                                        state: vm.region,
+                                    },
+                                    name: vm.card_name,
+                                }
+                            }
+                        }
+                    ).then(function(resp) {
+                        vm.stripeResponseHandler(resp, cb);
+                    });
+                }
+            } else if( vm.validateForm() ) {
+                // use https://js.stripe.com/v2/
+                Stripe.setPublishableKey(vm.processor_pub_key);
+                Stripe.createToken({
+                    number: vm.cardNumber,
+                    cvc: vm.cardCvc,
+                    exp_month: vm.cardExpMonth,
+                    exp_year: vm.cardExpYear,
+                    name: vm.card_name,
+                    address_line1: vm.card_address_line1,
+                    address_city: vm.card_city,
+                    address_state: vm.region,
+                    address_zip: vm.card_address_zip,
+                    address_country: vm.country
+                }, function(status, resp) {
+                    vm.stripeResponseHandler(resp, cb);
+                });
+            }
+        },
+        stripeResponseHandler: function(resp, cb) {
+            var vm = this;
+            if( resp.error ) {
+                showMessages([resp.error.message], "error");
+            } else {
+                var token = resp.id;
+                if( !token && resp.paymentIntent ) {
+                    token = resp.paymentIntent.id;
+                }
+                if( !token && resp.setupIntent ) {
+                    token = resp.setupIntent.id;
+                }
+                if(vm.cardElement) vm.cardElement.clear();
+                if(cb) {
+                    cb(token);
+                }
+            }
         },
         getOrgAddress: function(){
             var vm = this;
@@ -679,6 +756,19 @@ var cardMixin = {
         elements = vm.$el.querySelectorAll('[data-exp-date]');
         if( elements.length > 0 ) {
             vm.savedCard.exp_date = elements[0].getAttribute('data-exp-date');
+        }
+        vm.processor_pub_key = vm.$el.getAttribute('data-processor-pub-key');
+        vm.stripe_intent_secret = vm.$el.getAttribute(
+            'data-stripe-intent-secret');
+        if( vm.processor_pub_key ) {
+            vm.stripe = Stripe(vm.processor_pub_key);
+            if( vm.stripe_intent_secret ) {
+                var elements = vm.stripe.elements();
+                vm.cardElement = elements.create("card", {
+                    hidePostalCode: true
+                });
+                vm.cardElement.mount("#card-element");
+            }
         }
     }
 }
@@ -2223,7 +2313,6 @@ Vue.component('checkout', {
                 if(vm.haveCardData){
                     vm.doCheckout();
                 } else {
-                    if(!vm.validateForm()) return;
                     vm.getCardToken(vm.doCheckout);
                 }
             } else if( !vm.optionsConfirmed ) {
@@ -2263,13 +2352,11 @@ Vue.component('checkout', {
             if( cardUse.length > 0 && cardUse.is(":visible") ) {
                 if(vm.haveCardData){
                     if(vm.updateCard){
-                        if(!vm.validateForm()) return;
                         vm.getCardToken(vm.doCheckoutForm);
                     } else {
                         vm.doCheckoutForm();
                     }
                 } else {
-                    if(!vm.validateForm()) return;
                     vm.getCardToken(vm.doCheckoutForm);
                 }
             } else {
@@ -2360,17 +2447,10 @@ Vue.component('card-update', {
     methods: {
         remove: function() {
             var vm = this;
-            vm.reqDelete(vm.api_card_url,
-            function() {
-                vm.clearCardData();
-                showMessages([gettext(
-                    "Your credit card is no longer on file with us.")],
-                    "success");
-            });
+            vm.deleteCard();
         },
         save: function(){
             var vm = this;
-            if(!vm.validateForm()) return;
             vm.getCardToken(function(token){
                 vm.reqPut(vm.api_card_url, {
                     token: token,
@@ -2381,22 +2461,21 @@ Vue.component('card-update', {
                     country: vm.country,
                     region: vm.region,
                 },
-            function(resp) {
-                vm.clearCardData();
-                if( resp.last4 ){
+                function(resp) {
+                    // We do not get card information on the response
+                    // from Stripe, only a paymentMethodId.
+                    vm.clearCardData();
                     vm.savedCard.last4 = resp.last4;
-                }
-                if( resp.exp_date ) {
                     vm.savedCard.exp_date = resp.exp_date;
-                }
-                // matching the code in `CardUpdateView` for redirects.
-                var redirectUrl = getUrlParameter('next');
-                if( redirectUrl ) {
-                    window.location = redirectUrl;
-                }
-                showMessages([gettext(
-                    "Your credit card on file was sucessfully updated.")],
-                    "success");
+
+                    // matching the code in `CardUpdateView` for redirects.
+                    var redirectUrl = getUrlParameter('next');
+                    if( redirectUrl ) {
+                        window.location = redirectUrl;
+                    }
+                    showMessages([gettext(
+                        "Your credit card on file was sucessfully updated.")],
+                        "success");
                 });
             });
         },

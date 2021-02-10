@@ -1,6 +1,6 @@
 #pylint: disable=too-many-lines
 
-# Copyright (c) 2020, DjaoDjin inc.
+# Copyright (c) 2021, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -359,11 +359,22 @@ class Organization(models.Model):
             with transaction.atomic():
                 user = self.attached_user()
                 if user:
-                    user.first_name, _, user.last_name \
+                    # When dealing with a personal profile, keep the login
+                    # user in sync with the billing profile.
+                    save_user = False
+                    first_name, _, last_name \
                         = full_name_natural_split(self.full_name)
-                    if self.email:
+                    if user.first_name != first_name:
+                        user.first_name = first_name
+                        save_user = True
+                    if user.last_name != last_name:
+                        user.last_name = last_name
+                        save_user = True
+                    if user.email != self.email:
                         user.email = self.email
-                    user.save()
+                        save_user = True
+                    if save_user:
+                        user.save()
                 return super(Organization, self).save(
                     force_insert=force_insert, force_update=force_update,
                     using=using, update_fields=update_fields)
@@ -1412,16 +1423,12 @@ class ChargeManager(models.Manager):
             if token and remember_card:
                 customer.update_card(token, user)
 
-            if customer.processor_card_key:
+            if customer.processor_card_key or token:
                 (processor_charge_id, created_at,
-                 receipt_info) = processor_backend.create_charge(
-                     customer, amount, unit, provider,
-                     descr=descr, created_at=created_at,
-                     broker_fee_amount=broker_fee_amount)
-            elif token:
-                (processor_charge_id, created_at,
-                 receipt_info) = processor_backend.create_charge_on_card(
-                     token, amount, unit, provider,
+                 receipt_info) = processor_backend.create_payment(
+                     amount, unit, provider,
+                     processor_card_key=customer.processor_card_key,
+                     token=token,
                      descr=descr, created_at=created_at,
                      broker_fee_amount=broker_fee_amount)
             else:
@@ -1431,7 +1438,7 @@ class ChargeManager(models.Manager):
             # Create record of the charge in our database
             descr = humanize.DESCRIBE_CHARGED_CARD % {
                 'charge': processor_charge_id,
-                'organization': receipt_info['card_name']}
+                'organization': receipt_info.get('card_name', "")}
             if user:
                 descr += ' (%s)' % user.username
             return self.create_charge(customer, transactions,
@@ -1519,9 +1526,9 @@ class Charge(models.Model):
     description = models.TextField(null=True,
         help_text=_("Description for the charge as appears on billing"\
             " statements"))
-    last4 = models.PositiveSmallIntegerField(
+    last4 = models.PositiveSmallIntegerField(null=True,
         help_text=_("Last 4 digits of the credit card used"))
-    exp_date = models.DateField(
+    exp_date = models.DateField(null=True,
         help_text=_("Expiration date of the credit card used"))
     card_name = models.CharField(max_length=50, null=True)
     processor = models.ForeignKey('Organization', on_delete=models.PROTECT,
@@ -1753,11 +1760,22 @@ class Charge(models.Model):
         self.state = self.DONE
         signals.charge_updated.send(sender=__name__, charge=self, user=None)
 
-    def failed(self):
+    def failed(self, receipt_info=None):
         assert self.state == self.CREATED
+        kwargs = {}
+        if receipt_info:
+            kwargs.update({
+                'last4': receipt_info.get('last4'),
+                'exp_date': receipt_info.get('exp_date'),
+                'card_name': receipt_info.get('card_name', "")
+            })
+            self.last4 = receipt_info.get('last4')
+            self.exp_date = receipt_info.get('exp_date')
+            self.card_name = receipt_info.get('card_name', "")
         with transaction.atomic():
             updated = Charge.objects.select_for_update(nowait=True).filter(
-                pk=self.pk, state=self.CREATED).update(state=self.FAILED)
+                pk=self.pk, state=self.CREATED).update(
+                    state=self.FAILED, **kwargs)
             if not updated:
                 raise DatabaseError(
                     "Charge is currently being updated by another transaction")
@@ -1766,7 +1784,7 @@ class Charge(models.Model):
         self.state = self.FAILED
         signals.charge_updated.send(sender=__name__, charge=self, user=None)
 
-    def payment_successful(self):
+    def payment_successful(self, receipt_info=None):
         """
         When a charge through the payment processor is sucessful,
         a unique ``Transaction`` records the charge through the processor.
@@ -1839,12 +1857,23 @@ class Charge(models.Model):
         """
         #pylint: disable=too-many-locals
         assert self.state == self.CREATED
+        kwargs = {}
+        if receipt_info:
+            kwargs.update({
+                'last4': receipt_info.get('last4'),
+                'exp_date': receipt_info.get('exp_date'),
+                'card_name': receipt_info.get('card_name', "")
+            })
+            self.last4 = receipt_info.get('last4')
+            self.exp_date = receipt_info.get('exp_date')
+            self.card_name = receipt_info.get('card_name', "")
         with transaction.atomic():
             # up at the top of this method so that we bail out quickly, before
             # we start to mistakenly enter the charge and distributions a second
             # time on two rapid fire `Charge.retrieve()` calls.
             updated = Charge.objects.select_for_update(nowait=True).filter(
-                pk=self.pk, state=self.CREATED).update(state=self.DONE)
+                pk=self.pk, state=self.CREATED).update(
+                    state=self.DONE, **kwargs)
             if not updated:
                 raise DatabaseError(
                     "Charge is currently being updated by another transaction")
@@ -3368,6 +3397,12 @@ class TransactionQuerySet(models.QuerySet):
             orig_amount = orig_balance['orig_balance']
             orig_unit = orig_balance['orig_unit']
             event_id = orig_balance['event_id']
+            if event_id.startswith('cpn_'):
+                # XXX group buy events should certainly be re-written as sub_.
+                continue
+            if not event_id.startswith('sub_'):
+                LOGGER.error("event_id '%s' does not start with 'sub_'",
+                    event_id)
             assert event_id.startswith('sub_')
             # We should always have subscription events in orig_balances
             # by the definition of the SQL query.

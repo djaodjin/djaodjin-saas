@@ -116,18 +116,8 @@ class Migration(migrations.Migration):
         ),
         migrations.AlterField(
             model_name='charge',
-            name='exp_date',
-            field=models.DateField(help_text='Expiration date of the credit card used'),
-        ),
-        migrations.AlterField(
-            model_name='charge',
             name='extra',
             field=models.TextField(help_text='Extra meta data (can be stringify JSON)', null=True),
-        ),
-        migrations.AlterField(
-            model_name='charge',
-            name='last4',
-            field=models.PositiveSmallIntegerField(help_text='Last 4 digits of the credit card used'),
         ),
         migrations.AlterField(
             model_name='charge',

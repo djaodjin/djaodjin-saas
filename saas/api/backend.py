@@ -157,12 +157,12 @@ class PaymentMethodDetailAPIView(OrganizationMixin,
             request, *args, **kwargs)
 
     def destroy(self, request, *args, **kwargs):
-        #pylintLdisable=unused-argument
+        #pylint:disable=unused-argument
         self.organization.delete_card()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
     def retrieve(self, request, *args, **kwargs):
-        #pylint: disable=unused-argument
+        #pylint:disable=unused-argument
         return Response(self.organization.retrieve_card())
 
     def update(self, request, *args, **kwargs):
