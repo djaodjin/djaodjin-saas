@@ -371,19 +371,18 @@ class StripeBackend(object):
                     })
                 if broker_fee_amount:
                     kwargs.update({'application_fee_amount': broker_fee_amount})
-                key = self.generate_idempotent_key(amount,
-                    unit, provider, descr, stmt_descr, created_at,
-                    processor_card_key, token)
-                if key:
-                    kwargs.update({'idempotency_key': key})
                 if stmt_descr is None and provider is not None:
                     stmt_descr = provider.printable_name
 
+                idempotency_key = self.generate_idempotent_key(amount,
+                    unit, provider, descr, stmt_descr, created_at,
+                    processor_card_key, token)
                 payment_intent = stripe.PaymentIntent.create(
                     amount=amount, currency=unit,
                     description=descr, statement_descriptor=stmt_descr[:15],
                     off_session=True,
                     confirm=True,
+                    idempotency_key=idempotency_key,
                     **kwargs)
                 if payment_intent.charges.data:
                     stripe_charge = payment_intent.charges.data[0]
@@ -451,16 +450,14 @@ class StripeBackend(object):
         #     "Cannot create transfers with an OAuth key."
         # This needs to be revisited now because of Payouts API.
         kwargs = self._prepare_transfer_request(provider)
-        key = self.generate_idempotent_key(provider, amount,
-            currency, descr)
-        if key:
-            kwargs.update({'idempotency_key': key})
         try:
             transfer = stripe.Payout.create(
                 amount=amount,
                 currency=currency,
                 description=descr,
                 statement_descriptor=provider.printable_name[:15],
+                idempotency_key=self.generate_idempotent_key(
+                    provider, amount, currency, descr),
                 **kwargs)
         except stripe.error.IdempotencyError as err:
             LOGGER.error(err)
@@ -532,11 +529,10 @@ class StripeBackend(object):
 
         if p_customer is None:
             try:
-                key = self.generate_idempotent_key(subscriber, user, broker)
-                if key:
-                    kwargs.update({'idempotency_key': key})
                 p_customer = stripe.Customer.create(
                     email=subscriber.email, description=subscriber.slug,
+                    idempotency_key=self.generate_idempotent_key(
+                        subscriber, user, broker),
                     **kwargs)
             except stripe.error.IdempotencyError as err:
                 LOGGER.error(err)
@@ -551,19 +547,38 @@ class StripeBackend(object):
             card_token = setup_intent.payment_method
         else:
             try:
-                setup_intent = stripe.SetupIntent.create(
-                    confirm=True,
-                    usage='off_session',
-                    customer=p_customer,
-                    payment_method_data={
-                        'type': 'card', 'card': {'token': token}})
-                card_token = setup_intent.payment_method
+                if self.mode == self.REMOTE:
+                    # Implementation note: If we try to create a SetupIntent
+                    # on a Connect account, Stripe complains that the card
+                    # token is invalid. Stripe is though happy to use it
+                    # as a customer source and convert that default source
+                    # to a payment method afterwards.
+                    p_customer.source = token
+                    p_customer.save()
+                    p_customer = stripe.Customer.retrieve(
+                        subscriber.processor_card_key,
+                        expand=['invoice_settings.default_payment_method',
+                                'default_source'], **kwargs)
+                    card_token = p_customer.default_source
+                else:
+                    # Implementation note: If we create a SetupIntent on
+                    # the Stripe account itself, then we donot have issues
+                    # with invalid tokens.
+                    setup_intent = stripe.SetupIntent.create(
+                        confirm=True,
+                        usage='off_session',
+                        customer=p_customer,
+                        payment_method_data={
+                            'type': 'card', 'card': {'token': token}},
+                        **kwargs)
+                    card_token = setup_intent.payment_method
             except stripe.error.CardError as err:
                 raise CardError(str(err), err.code, backend_except=err)
 
         try:
             stripe.Customer.modify(p_customer.id,
-                invoice_settings={'default_payment_method': card_token})
+                invoice_settings={'default_payment_method': card_token},
+                **kwargs)
             new_card = self._retrieve_card(subscriber, broker=broker)
             if old_card:
                 signals.card_updated.send(
@@ -753,8 +768,8 @@ class StripeBackend(object):
     def _retrieve_card(self, subscriber, broker=None, stripe_customer=None):
         context = {}
         try:
+            kwargs = self._prepare_charge_request(broker)
             if not stripe_customer:
-                kwargs = self._prepare_charge_request(broker)
                 if subscriber.processor_card_key:
                     try:
                         stripe_customer = stripe.Customer.retrieve(
@@ -782,8 +797,9 @@ class StripeBackend(object):
                     billing_name = stripe_customer.default_source.name
                     try:
                         stripe.Customer.modify(subscriber.processor_card_key,
-                           invoice_settings={
-                               'default_payment_method': stripe_card})
+                            invoice_settings={
+                               'default_payment_method': stripe_card},
+                            **kwargs)
                     except stripe.error.StripeError as err:
                         LOGGER.exception("%s (mode=%s)", err,
                             "REMOTE" if kwargs else "LOCAL")
