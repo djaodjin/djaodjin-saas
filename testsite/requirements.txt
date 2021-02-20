@@ -4,6 +4,7 @@ django-localflavor==3.0.1
 djangorestframework==3.11.0
 # We need Python Markdown for django.contrib.markup. markdown2 is not enough.
 Markdown==3.2.2
+phonenumbers==8.12.6
 python-dateutil==2.8.1
 razorpay==0.2.0
 stripe==2.55.1
