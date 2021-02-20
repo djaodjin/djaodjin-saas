@@ -1,4 +1,4 @@
-# Copyright (c) 2020, DjaoDjin inc.
+# Copyright (c) 2021, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -38,7 +38,8 @@ from django_countries.fields import Country
 import localflavor.us.forms as us_forms
 
 from . import settings
-from .models import AdvanceDiscount, Organization, Plan, Subscription
+from .models import AdvanceDiscount, Plan, Subscription
+from .utils import get_organization_model
 
 #pylint: disable=no-member,no-init
 
@@ -51,7 +52,7 @@ class BankForm(forms.ModelForm):
         required=False, widget=forms.widgets.HiddenInput())
 
     class Meta:
-        model = Organization
+        model = get_organization_model()
         fields = tuple([])
 
 
@@ -171,7 +172,7 @@ class OrganizationForm(PostalFormMixin, forms.ModelForm):
     phone = forms.CharField(label=_("Phone number"), required=False)
 
     class Meta:
-        model = Organization
+        model = get_organization_model()
         fields = ('slug', 'full_name', 'email', 'phone', 'country',
                   'region', 'locality', 'street_address', 'postal_code')
         widgets = {'country': forms.widgets.Select(choices=countries)}
@@ -223,7 +224,7 @@ class OrganizationCreateForm(OrganizationForm):
         help_text=_("Unique identifier shown in the URL bar"))
 
     class Meta:
-        model = Organization
+        model = get_organization_model()
         fields = ('slug', 'full_name', 'email')
 
 

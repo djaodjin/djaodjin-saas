@@ -1,4 +1,4 @@
-# Copyright (c) 2020, DjaoDjin inc.
+# Copyright (c) 2021, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -174,13 +174,13 @@ def generate_random_slug(length=40, prefix=None):
 
 def get_organization_model():
     # delayed import so we can load ``OrganizationMixinBase`` in django.conf
-    from . import settings
+    from . import settings #pylint:disable=import-outside-toplevel
     return get_model_class(settings.ORGANIZATION_MODEL, 'ORGANIZATION_MODEL')
 
 
 def get_role_model():
     # delayed import so we can load ``OrganizationMixinBase`` in django.conf
-    from . import settings
+    from . import settings #pylint:disable=import-outside-toplevel
     return get_model_class(settings.ROLE_RELATION, 'ROLE_RELATION')
 
 
@@ -237,7 +237,7 @@ def validate_redirect_url(next_url, sub=False, **kwargs):
             return None
     path = parts.path
     if sub:
-        from . import settings
+        from . import settings #pylint:disable=import-outside-toplevel
         try:
             # We replace all ':slug/' by '%(slug)s/' so that we can further
             # create an instantiated url through Python string expansion.
@@ -296,7 +296,8 @@ def handle_uniq_error(err, renames=None):
         r'DETAIL:\s+Key \(([a-z_]+(, [a-z_]+)*)\)=\(.*\) already exists\.',
         err_msg)
     if look:
-        field_names = [field_name for field_name in look.group(1).split(',')]
+        # XXX Do we need to include '.' in pattern as done later on?
+        field_names = look.group(1).split(',')
     else:
         look = re.match(
           r'DETAIL:\s+Key \(lower\(([a-z_]+)::text\)\)=\(.*\) already exists\.',
@@ -331,7 +332,7 @@ def handle_uniq_error(err, renames=None):
 
 def get_picture_storage(request, account=None, **kwargs):
     # delayed import so we can load ``OrganizationMixinBase`` in django.conf
-    from . import settings
+    from . import settings #pylint:disable=import-outside-toplevel
     if settings.PICTURE_STORAGE_CALLABLE:
         try:
             return import_string(settings.PICTURE_STORAGE_CALLABLE)(
@@ -344,7 +345,7 @@ def get_picture_storage(request, account=None, **kwargs):
 # XXX same prototype as djaodjin-multitier.mixins.build_absolute_uri
 def build_absolute_uri(request, location='/', provider=None, with_scheme=True):
     # delayed import so we can load ``OrganizationMixinBase`` in django.conf
-    from . import settings
+    from . import settings #pylint:disable=import-outside-toplevel
     if settings.BUILD_ABSOLUTE_URI_CALLABLE:
         try:
             return import_string(
@@ -354,24 +355,3 @@ def build_absolute_uri(request, location='/', provider=None, with_scheme=True):
         except ImportError:
             pass
     return request.build_absolute_uri(location)
-
-
-def is_broker(organization):
-    """
-    Returns ``True`` if the organization is the hosting platform
-    for the service.
-    """
-    # delayed import so we can load ``OrganizationMixinBase`` in django.conf
-    from . import settings
-    from .models import get_broker
-    # We do a string compare here because both ``Organization`` might come
-    # from a different db. That is if the organization parameter is not
-    # a unicode string itself.
-    organization_slug = ''
-    if isinstance(organization, six.string_types):
-        organization_slug = organization
-    elif organization:
-        organization_slug = organization.slug
-    if settings.IS_BROKER_CALLABLE:
-        return import_string(settings.IS_BROKER_CALLABLE)(organization_slug)
-    return get_broker().slug == organization_slug

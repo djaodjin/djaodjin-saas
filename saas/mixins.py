@@ -1,4 +1,4 @@
-# Copyright (c) 2020, DjaoDjin inc.
+# Copyright (c) 2021, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -37,12 +37,13 @@ from django.views.generic.detail import SingleObjectMixin
 from rest_framework.generics import get_object_or_404
 
 from . import humanize, settings
+from .cart import cart_insert_item
 from .compat import six, NoReverseMatch, is_authenticated, reverse
 from .filters import DateRangeFilter, OrderingFilter, SearchFilter
-from .models import (CartItem, Charge, Coupon, Organization, Plan,
-    RoleDescription, Subscription, Transaction, UseCharge, get_broker,
+from .models import (CartItem, Charge, Coupon, Plan,
+    RoleDescription, Subscription, Transaction, get_broker, is_broker,
     sum_orig_amount)
-from .utils import (build_absolute_uri, datetime_or_now, is_broker,
+from .utils import (build_absolute_uri, datetime_or_now,
     get_organization_model, get_role_model, update_context_urls)
 from .extras import OrganizationMixinBase
 
@@ -66,6 +67,7 @@ class BalanceDueMixin(object):
         return options
 
     def as_invoicables(self, user, customer, at_time=None):
+        #pylint: disable=too-many-locals,unused-argument,no-self-use
         invoicables = []
         at_time = datetime_or_now(at_time)
         balances = Transaction.objects.get_statement_balances(
@@ -105,136 +107,7 @@ class CartMixin(object):
 
     @staticmethod
     def insert_item(request, **kwargs):
-        #pylint: disable=too-many-statements,too-many-nested-blocks
-        #pylint: disable=too-many-locals
-        created = False
-        inserted_item = None
-        template_item = None
-        invoice_key = kwargs.get('invoice_key')
-        sync_on = kwargs.get('sync_on', '')
-        option = kwargs.get('option', 0)
-        email = kwargs.get('email', '')
-        plan = kwargs['plan']
-        if not isinstance(plan, Plan):
-            plan = get_object_or_404(Plan.objects.all(), slug=plan)
-        use = kwargs.get('use', None)
-        if use and not isinstance(use, UseCharge):
-            use = get_object_or_404(UseCharge.objects.filter(
-                plan=plan), slug=use)
-        if is_authenticated(request):
-            # If the user is authenticated, we just create the cart items
-            # into the database.
-            queryset = CartItem.objects.get_cart(
-                request.user, plan=plan).order_by('-sync_on')
-            if queryset.exists():
-                template_item = queryset.first()
-            if template_item:
-                created = False
-                inserted_item = template_item
-                if sync_on:
-                    account = queryset.filter(email=email)
-                    if account.exists():
-                        inserted_item = template_item = account.first()
-
-                    template_option = template_item.option
-                    if option > 0:
-                        template_option = option
-                    # Bulk buyer subscribes someone else than request.user
-                    if template_item.sync_on:
-                        if sync_on != template_item.sync_on:
-                            # Copy/Replace in template CartItem
-                            created = True
-                            inserted_item = CartItem.objects.create(
-                                user=request.user,
-                                plan=template_item.plan,
-                                use=template_item.use,
-                                coupon=template_item.coupon,
-                                option=template_option,
-                                full_name=kwargs.get('full_name', ''),
-                                sync_on=sync_on,
-                                email=email,
-                                claim_code=invoice_key)
-                    else:
-                        # Use template CartItem
-                        inserted_item.full_name = kwargs.get('full_name', '')
-                        inserted_item.option = template_option
-                        inserted_item.sync_on = sync_on
-                        inserted_item.email = email
-                        inserted_item.save()
-                else:
-                    # Use template CartItem
-                    inserted_item.full_name = kwargs.get('full_name', '')
-                    inserted_item.option = option
-                    inserted_item.save()
-            else:
-                # New CartItem
-                created = True
-                item_queryset = CartItem.objects.get_cart(user=request.user,
-                    plan=plan, sync_on=sync_on)
-                # TODO this conditional is not necessary: at this point
-                # we have already checked that there is no such CartItem, right?
-                if item_queryset.exists():
-                    inserted_item = item_queryset.get()
-                else:
-                    redeemed = request.session.get('redeemed', None)
-                    if redeemed:
-                        redeemed = Coupon.objects.active(
-                            plan.organization, redeemed).first()
-                    inserted_item = CartItem.objects.create(
-                        plan=plan, use=use, coupon=redeemed,
-                        user=request.user,
-                        option=option,
-                        full_name=kwargs.get('full_name', ''),
-                        sync_on=sync_on, claim_code=invoice_key)
-
-        else:
-            # We have an anonymous user so let's play some tricks with
-            # the session data.
-            cart_items = []
-            if 'cart_items' in request.session:
-                cart_items = request.session['cart_items']
-            for item in cart_items:
-                if item['plan'] == str(plan):
-                    if not template_item:
-                        template_item = item
-                    elif ('sync_on' in template_item and 'sync_on' in item
-                      and len(template_item['sync_on']) > len(item['sync_on'])):
-                        template_item = item
-            if template_item:
-                created = False
-                inserted_item = template_item
-                if sync_on:
-                    # Bulk buyer subscribes someone else than request.user
-                    if template_item.sync_on:
-                        if sync_on != template_item.sync_on:
-                            # (anonymous) Copy/Replace in template item
-                            created = True
-                            cart_items += [{
-                                'plan': template_item['plan'],
-                                'use': template_item['use'],
-                                'option': template_item['option'],
-                                'full_name': kwargs.get('full_name', ''),
-                                'sync_on': sync_on,
-                                'email': email,
-                                'invoice_key': invoice_key}]
-                    else:
-                        # (anonymous) Use template item
-                        inserted_item['full_name'] = kwargs.get(
-                            'full_name', '')
-                        inserted_item['sync_on'] = sync_on
-                        inserted_item['email'] = email
-            else:
-                # (anonymous) New item
-                created = True
-                cart_items += [{'plan': str(plan), 'use': str(use),
-                    'option': kwargs.get('option', 0),
-                    'full_name': kwargs.get('full_name', ''),
-                    'sync_on': sync_on,
-                    'email': email,
-                    'invoice_key': invoice_key}]
-            request.session['cart_items'] = cart_items
-        return inserted_item, created
-
+        return cart_insert_item(request, **kwargs)
 
     def get_cart(self):
         """
@@ -411,7 +284,7 @@ class CartMixin(object):
             if cart_item.sync_on:
                 full_name = cart_item.full_name.strip()
                 for_descr = ', for %s (%s)' % (full_name, cart_item.sync_on)
-                organization_queryset = Organization.objects.filter(
+                organization_queryset = get_organization_model().objects.filter(
                     Q(slug=cart_item.sync_on)
                     | Q(email__iexact=cart_item.sync_on))
                 if organization_queryset.exists():
@@ -422,7 +295,7 @@ class CartMixin(object):
                         | Q(email__iexact=cart_item.sync_on))
                     if not user_queryset.exists():
                         # XXX Hacky way to determine GroupBuy vs. notify.
-                        organization = Organization(
+                        organization = get_organization_model()(
                             full_name=cart_item.full_name,
                             email=cart_item.sync_on)
             try:
@@ -452,7 +325,12 @@ class CartMixin(object):
                     created_at=created_at, prorate_to=prorate_to,
                     cart_item=cart_item)
                 # option is selected
-                if (cart_item.option > 0 and
+                if len(options) == 1:
+                    # We only have one option.
+                    line = options[cart_item.option - 1]
+                    lines += [line]
+                    options = []
+                elif (cart_item.option > 0 and
                     (cart_item.option - 1) < len(options)):
                     # The number of periods was already selected so we generate
                     # a line instead.
@@ -533,8 +411,8 @@ class UserMixin(object):
         context = super(UserMixin, self).get_context_data(**kwargs)
         if self.user:
             top_accessibles = []
-            queryset = Organization.objects.accessible_by(self.user).filter(
-                is_active=True).exclude(
+            queryset = get_organization_model().objects.accessible_by(
+                self.user).filter(is_active=True).exclude(
                 slug=self.user.username)[:self.SHORT_LIST_CUT_OFF + 1]
             for organization in queryset:
                 if organization.is_provider:
@@ -594,7 +472,7 @@ class OrganizationDecorateMixin(object):
     @staticmethod
     def decorate_personal(page):
         # Adds a boolean `is_personal` if there exists a User such that
-        # `Organization.slug == User.username`.
+        # `get_organization_model().slug == User.username`.
         # Implementation Note:
         # The SQL we wanted to generate looks like the following.
         #
@@ -687,7 +565,7 @@ class ProviderMixin(OrganizationMixin):
 
     def get_organization(self):
         if self.organization_url_kwarg in self.kwargs:
-            queryset = Organization.objects.filter(
+            queryset = get_organization_model().objects.filter(
                 slug=self.kwargs.get(self.organization_url_kwarg))
             if queryset.exists():
                 return queryset.get()

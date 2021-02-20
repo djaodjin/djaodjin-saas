@@ -2014,7 +2014,14 @@ Vue.component('profile-update', {
         updateProfile: function(){
             var vm = this;
             vm.validateForm();
-            vm.reqPut(vm.url, vm.formFields,
+            var data = {}
+            for( var field in vm.formFields ) {
+                if( vm.formFields.hasOwnProperty(field) &&
+                    vm.formFields[field] ) {
+                    data[field] = vm.formFields[field];
+                }
+            }
+            vm.reqPut(vm.url, data,
             function() {
                 showMessages([gettext("Profile was updated.")], "success");
             });

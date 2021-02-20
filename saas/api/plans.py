@@ -102,6 +102,7 @@ class PricingAPIView(PlanMixin, CartMixin, ListAPIView):
         if redeemed is not None:
             redeemed = Coupon.objects.active(self.provider, redeemed).first()
 
+        #pylint:disable=unused-variable
         for index, plan in enumerate(decorate_queryset):
             if redeemed and redeemed.is_valid(plan):
                 setattr(plan, 'discounted_period_amount',

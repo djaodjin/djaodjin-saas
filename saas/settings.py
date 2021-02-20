@@ -168,14 +168,4 @@ MANAGER = 'manager'
 CONTRIBUTOR = 'contributor'
 
 PICTURE_STORAGE_CALLABLE = _SETTINGS.get('PICTURE_STORAGE_CALLABLE')
-
-
-def get_extra_field_class():
-    extra_class = _SETTINGS.get('EXTRA_FIELD')
-    if extra_class is None:
-        from django.db.models import TextField
-        extra_class = TextField
-    elif isinstance(extra_class, str):
-        from saas.compat import import_string
-        extra_class = import_string(extra_class)
-    return extra_class
+EXTRA_FIELD = _SETTINGS.get('EXTRA_FIELD')

@@ -1,4 +1,4 @@
-# Copyright (c) 2020, DjaoDjin inc.
+# Copyright (c) 2021, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -43,7 +43,7 @@ from ..forms import (OrganizationForm, OrganizationCreateForm,
 from ..mixins import (OrganizationMixin, ProviderMixin, RoleDescriptionMixin,
     PlanMixin)
 from ..models import Plan, Subscription, get_broker
-from ..utils import (get_organization_model, is_broker, update_context_urls,
+from ..utils import (get_organization_model, update_context_urls,
     update_db_row, validate_redirect_url as validate_redirect_url_base)
 
 
@@ -155,7 +155,7 @@ djaodjin-saas/tree/master/saas/templates/saas/profile/subscribers.html>`__).
               'saas_subscriber_pipeline_download_churned', args=(provider,))
             }}]
         context.update({'tabs': tabs})
-        if is_broker(provider):
+        if provider.is_broker:
             context.update({'registered': {'urls': {'download': reverse(
                 'saas_subscriber_pipeline_download_registered')}}})
         return context
@@ -333,7 +333,7 @@ class DashboardView(OrganizationMixin, DetailView):
 
     def get_context_data(self, **kwargs):
         context = super(DashboardView, self).get_context_data(**kwargs)
-        if is_broker(self.organization):
+        if self.organization.is_broker:
             urls = {
                 'accounts_base': reverse('saas_profile'),
                 'provider': {

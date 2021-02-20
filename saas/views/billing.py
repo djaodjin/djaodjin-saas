@@ -43,8 +43,6 @@ from django import http
 from django.contrib.auth import REDIRECT_FIELD_NAME
 from django.db import transaction
 from django.db.models import Q
-from django.db.models.sql.datastructures import Join
-from django.db.models.sql.constants import INNER
 from django.contrib import messages
 from django.shortcuts import get_object_or_404
 from django.utils.translation import ugettext_lazy as _
@@ -53,6 +51,7 @@ from django.views.generic import (DetailView, FormView, ListView, TemplateView,
 from django.utils.http import urlencode
 
 from .. import settings, humanize
+from ..cart import session_cart_to_database
 from ..compat import is_authenticated, reverse, six
 from ..backends import ProcessorError, ProcessorConnectionError
 from ..decorators import _insert_url, _valid_manager
@@ -60,10 +59,10 @@ from ..forms import (BankForm, CartPeriodsForm, CreditCardForm,
     ImportTransactionForm, RedeemCouponForm, VTChargeForm, WithdrawForm)
 from ..mixins import (BalanceDueMixin, CartMixin, ChargeMixin,
     DateRangeContextMixin, OrganizationMixin, ProviderMixin, product_url)
-from ..models import (AdvanceDiscount, CartItem, Charge, Coupon, Organization,
+from ..models import (CartItem, Charge, Coupon,
     Plan, Price, Subscription, Transaction, UseCharge, get_broker)
-from ..utils import is_broker, update_context_urls, validate_redirect_url
-from ..views import session_cart_to_database
+from ..utils import (get_organization_model, update_context_urls,
+    validate_redirect_url)
 
 
 LOGGER = logging.getLogger(__name__)
@@ -238,6 +237,15 @@ class InvoicablesMixin(OrganizationMixin):
     Mixin a list of invoicables
     """
     @property
+    def invoicables(self):
+        if not hasattr(self, '_invoicables'):
+            self._invoicables = self.as_invoicables(
+                self.request.user, self.organization)
+            self._invoicables.sort(
+                key=lambda invoicable: str(invoicable['subscription']))
+        return self._invoicables
+
+    @property
     def invoicables_broker_fee_amount(self):
         if not hasattr(self, '_invoicables_broker_fee_amount'):
             self._invoicables_broker_fee_amount = 0
@@ -252,18 +260,14 @@ class InvoicablesMixin(OrganizationMixin):
     @property
     def invoicables_provider(self):
         if not hasattr(self, '_invoicables_provider'):
-            self._invoicables_provider = None
+            providers = set([])
             for invoicable in self.invoicables:
-                providers = Transaction.objects.providers(invoicable['lines'])
-                if len(providers) > 1:
-                    self._invoicables_provider = get_broker()
-                    break
-                if providers:
-                    if not self._invoicables_provider:
-                        self._invoicables_provider = providers[0]
-                    elif self._invoicables_provider != providers[0]:
-                        self._invoicables_provider = get_broker()
-                        break
+                providers |= set(Transaction.objects.providers(
+                    invoicable['lines']))
+            if len(providers) == 1:
+                self._invoicables_provider = list(providers)[0]
+            else:
+                self._invoicables_provider = get_broker()
         return self._invoicables_provider
 
     def get_context_data(self, **kwargs):
@@ -298,10 +302,6 @@ class InvoicablesMixin(OrganizationMixin):
         })
         return context
 
-    def get_form(self, form_class=None):
-        self.invoicables = self.get_queryset()
-        return super(InvoicablesMixin, self).get_form(form_class)
-
     def get_initial(self):
         kwargs = super(InvoicablesMixin, self).get_initial()
         for invoicable in self.invoicables:
@@ -310,9 +310,7 @@ class InvoicablesMixin(OrganizationMixin):
         return kwargs
 
     def get_queryset(self):
-        invoicables = self.as_invoicables(self.request.user, self.organization)
-        invoicables.sort(key=lambda invoicable: str(invoicable['subscription']))
-        return invoicables
+        return self.invoicables
 
     def get_redirect_path(self, **kwargs): #pylint: disable=unused-argument
         context = {}
@@ -663,7 +661,8 @@ class CartBaseView(InvoicablesMixin, BalanceDueMixin, CartMixin, FormView):
             'submit_title': _("Subscribe")})
         return context
 
-    def get_empty_cart_redirect_url(self, request, *args, **kwargs):
+    @staticmethod
+    def get_empty_cart_redirect_url(request, *args, **kwargs):
         """
         Returns URL to pricing page if the cart is empty.
         """
@@ -680,29 +679,10 @@ class CartBaseView(InvoicablesMixin, BalanceDueMixin, CartMixin, FormView):
         """
         Returns URL to pick period's page if there are multiple options
         """
-        #pylint:disable=unused-argument,protected-access
-        class JoinCols:
-            @staticmethod
-            def get_joining_columns():
-                return (('plan_id', 'plan_id'),)
-            @staticmethod
-            def get_extra_restriction(where_class, alias, related_alias):
-                return None
-
-        cart_items = CartItem.objects.get_cart(user=request.user).filter(
-            option=0)
-        cart_items.query.join(Join(
-            AdvanceDiscount._meta.db_table, # table_name
-            CartItem._meta.db_table,        # parent_alias
-            None,                           # table_alias
-            INNER,                          # join_type
-            JoinCols(),                     # join_field
-            False,                          # nullable
-        ))
-        if cart_items.exists():
-            # If option == 0 and there is a discount to buy periods
-            # in advance, we will present multiple options to the user.
-            return reverse('saas_cart_periods', args=(self.organization,))
+        #pylint:disable=unused-argument
+        for invoicable in self.invoicables:
+            if invoicable['options']:
+                return reverse('saas_cart_periods', args=(self.organization,))
         return None
 
     def get_bulk_options_redirect_url(self, request, *args, **kwargs):
@@ -1171,7 +1151,7 @@ djaodjin-saas/tree/master/saas/templates/saas/billing/withdraw.html>`__).
 
     def get(self, request, *args, **kwargs):
         if not (self.organization.processor_deposit_key
-                or is_broker(self.organization)):
+                or self.organization.is_broker):
             return _insert_url(request, inserted_url=reverse('saas_update_bank',
                 args=(self.organization,)))
         return super(WithdrawView, self).get(request, *args, **kwargs)
@@ -1201,7 +1181,8 @@ djaodjin-saas/tree/master/saas/templates/saas/billing/import.html>`__).
         assert len(parts) == 2
         subscriber = parts[0]
         plan = parts[1]
-        subscriber = Organization.objects.filter(slug=subscriber).first()
+        subscriber = get_organization_model().objects.filter(
+            slug=subscriber).first()
         if subscriber is None:
             form.add_error(None, _("Invalid subscriber"))
         plan = Plan.objects.filter(

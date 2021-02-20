@@ -82,9 +82,10 @@ from rest_framework.exceptions import ValidationError
 from . import humanize, settings, signals
 from .backends import (get_processor_backend, CardError, ProcessorError,
     ProcessorSetupError)
-from .compat import python_2_unicode_compatible, six
+from .compat import import_string, python_2_unicode_compatible, six
 from .utils import (SlugTitleMixin, datetime_or_now, full_name_natural_split,
-    generate_random_slug, get_role_model, handle_uniq_error)
+    generate_random_slug, handle_uniq_error)
+from .utils import get_organization_model, get_role_model
 
 
 LOGGER = logging.getLogger(__name__)
@@ -105,6 +106,15 @@ class Price(object):
         self.unit = unit
         if not self.unit:
             self.unit = settings.DEFAULT_UNIT # XXX
+
+
+def get_extra_field_class():
+    extra_class = settings.EXTRA_FIELD
+    if extra_class is None:
+        extra_class = models.TextField
+    elif isinstance(extra_class, six.string_types):
+        extra_class = import_string(extra_class)
+    return extra_class
 
 
 class OrganizationManager(models.Manager):
@@ -297,11 +307,28 @@ class Organization(models.Model):
     processor_refresh_token = models.SlugField(max_length=255, null=True,
         blank=True)
 
-    extra = settings.get_extra_field_class()(null=True, blank=True,
+    extra = get_extra_field_class()(null=True, blank=True,
         help_text=_("Extra meta data (can be stringify JSON)"))
 
     def __str__(self):
         return str(self.slug)
+
+    @property
+    def is_broker(self):
+        """
+        Returns ``True`` if the organization is the hosting platform
+        for the service.
+        """
+        if not hasattr(self, '_is_broker'):
+            # We do a string compare here because both ``Organization`` might
+            # come from a different db.
+            organization_slug = self.slug
+            if settings.IS_BROKER_CALLABLE:
+                self._is_broker = import_string(settings.IS_BROKER_CALLABLE)(
+                    organization_slug)
+            else:
+                self._is_broker = (get_broker().slug == organization_slug)
+        return self._is_broker
 
     def get_active_subscriptions(self, at_time=None):
         """
@@ -1186,7 +1213,7 @@ class RoleDescription(models.Model):
     implicit_create_on_none = models.BooleanField(default=False,
         help_text=_("Automatically adds the role when a user and profile share"\
         " the same e-mail domain."))
-    extra = settings.get_extra_field_class()(null=True,
+    extra = get_extra_field_class()(null=True,
         help_text=_("Extra meta data (can be stringify JSON)"))
 
     class Meta:
@@ -1245,7 +1272,7 @@ class Role(models.Model):
         on_delete=models.CASCADE)
     request_key = models.SlugField(max_length=40, null=True, blank=True)
     grant_key = models.SlugField(max_length=40, null=True, blank=True)
-    extra = settings.get_extra_field_class()(null=True,
+    extra = get_extra_field_class()(null=True,
         help_text=_("Extra meta data (can be stringify JSON)"))
 
     class Meta:
@@ -1537,7 +1564,7 @@ class Charge(models.Model):
     state = models.PositiveSmallIntegerField(
         choices=CHARGE_STATES, default=CREATED,
         help_text=_("Current state (i.e. created, done, failed, disputed)"))
-    extra = settings.get_extra_field_class()(null=True,
+    extra = get_extra_field_class()(null=True,
         help_text=_("Extra meta data (can be stringify JSON)"))
 
     # XXX unique together paid and invoiced.
@@ -1855,7 +1882,7 @@ class Charge(models.Model):
                 cowork:Funds                          $156.78
                 stripe:Funds
         """
-        #pylint: disable=too-many-locals
+        #pylint: disable=too-many-locals,too-many-statements
         assert self.state == self.CREATED
         kwargs = {}
         if receipt_info:
@@ -2320,7 +2347,8 @@ class ChargeItem(models.Model):
                 stripe:Refund                            $156.78
                 cowork:Funds
         """
-        #pylint:disable=too-many-locals,too-many-arguments,no-member
+        #pylint:disable=too-many-locals,too-many-arguments,too-many-statements
+        #pylint:disable=no-member
         created_at = datetime_or_now(created_at)
         if not refund_type:
             refund_type = Transaction.REFUND
@@ -2600,7 +2628,7 @@ class Plan(SlugTitleMixin, models.Model):
     # Pb with next : maybe create an other model for it
     next_plan = models.ForeignKey("Plan", null=True, on_delete=models.CASCADE,
         blank=True)
-    extra = settings.get_extra_field_class()(null=True,
+    extra = get_extra_field_class()(null=True,
         help_text=_("Extra meta data (can be stringify JSON)"))
 
     class Meta:
@@ -2851,7 +2879,7 @@ class Coupon(models.Model):
         " (in ISO format)"))
     nb_attempts = models.IntegerField(null=True, blank=True,
         help_text=_("Number of times the coupon can be used"))
-    extra = settings.get_extra_field_class()(null=True,
+    extra = get_extra_field_class()(null=True,
         help_text=_("Extra meta data (can be stringify JSON)"))
 
     class Meta:
@@ -2927,7 +2955,7 @@ class UseCharge(SlugTitleMixin, models.Model):
         related_name='use_charges')
     use_amount = models.PositiveIntegerField(default=0)
     quota = models.PositiveIntegerField(default=0)
-    extra = settings.get_extra_field_class()(null=True,
+    extra = get_extra_field_class()(null=True,
         help_text=_("Extra meta data (can be stringify JSON)"))
 
     class Meta:
@@ -2967,8 +2995,8 @@ class CartItemManager(models.Manager):
         at_time = datetime_or_now(created_at)
         coupon_applied = False
         for item in self.get_cart(user):
-            redeemed = Coupon.objects.active(item.plan.organization, coupon_code,
-                at_time=at_time).first()
+            redeemed = Coupon.objects.active(
+                item.plan.organization, coupon_code, at_time=at_time).first()
             if redeemed and redeemed.is_valid(item.plan, at_time=at_time):
                 coupon_applied = True
                 item.coupon = redeemed
@@ -3201,7 +3229,7 @@ class Subscription(models.Model):
         help_text=_("Plan the organization is subscribed to"))
     request_key = models.SlugField(max_length=40, null=True, blank=True)
     grant_key = models.SlugField(max_length=40, null=True, blank=True)
-    extra = settings.get_extra_field_class()(null=True,
+    extra = get_extra_field_class()(null=True,
         help_text=_("Extra meta data (can be stringify JSON)"))
 
     def __str__(self):
@@ -3354,6 +3382,7 @@ class TransactionQuerySet(models.QuerySet):
     """
 
     def get_statement_balances(self, organization, until=None):
+        #pylint:disable=too-many-locals
         until = datetime_or_now(until)
         # We use the fact that all orders (and only orders) will have
         # a destination of `subscriber:Payable`.
@@ -3389,13 +3418,13 @@ class TransactionQuerySet(models.QuerySet):
              & Q(dest_account=Transaction.CANCELED)),
             event_id__in=dest_balance_per_events.keys(),
             created_at__lt=until).values(
-                'event_id', 'orig_unit').annotate(
-                orig_balance=Sum('orig_amount'),
+                'event_id', 'dest_unit').annotate(
+                orig_balance=Sum('dest_amount'),
                 last_activity_at=Max('created_at')).order_by(
                     'last_activity_at', '-event_id')
         for orig_balance in orig_balances:
             orig_amount = orig_balance['orig_balance']
-            orig_unit = orig_balance['orig_unit']
+            orig_unit = orig_balance['dest_unit']
             event_id = orig_balance['event_id']
             if event_id.startswith('cpn_'):
                 # XXX group buy events should certainly be re-written as sub_.
@@ -4321,13 +4350,30 @@ def get_broker():
     """
     Returns the site-wide provider from a request.
     """
-    from saas.compat import import_string
     LOGGER.debug("get_broker('%s')", settings.BROKER_CALLABLE)
     try:
         return import_string(settings.BROKER_CALLABLE)()
     except ImportError:
         pass
-    return Organization.objects.get(slug=settings.BROKER_CALLABLE)
+    return get_organization_model().objects.get(slug=settings.BROKER_CALLABLE)
+
+
+def is_broker(organization):
+    """
+    Returns ``True`` if the organization is the hosting platform
+    for the service.
+    """
+    # We do a string compare here because both ``Organization`` might come
+    # from a different db. That is if the organization parameter is not
+    # a unicode string itself.
+    organization_slug = ''
+    if isinstance(organization, six.string_types):
+        organization_slug = organization
+    elif organization:
+        organization_slug = organization.slug
+    if settings.IS_BROKER_CALLABLE:
+        return import_string(settings.IS_BROKER_CALLABLE)(organization_slug)
+    return get_broker().slug == organization_slug
 
 
 def is_sqlite3(db_key=None):

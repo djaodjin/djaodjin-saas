@@ -77,11 +77,12 @@ class EnumField(serializers.Field):
             slugify(val): key for key, val in six.iteritems(self.choices)}
         super(EnumField, self).__init__(*args, **kwargs)
 
-    def to_representation(self, obj):
-        if isinstance(obj, list):
-            result = [slugify(self.choices.get(item, None)) for item in obj]
+    def to_representation(self, value):
+        if isinstance(value, list):
+            result = [slugify(self.choices.get(item, None))
+                for item in value]
         else:
-            result = slugify(self.choices.get(obj, None))
+            result = slugify(self.choices.get(value, None))
         return result
 
     def to_internal_value(self, data):
@@ -94,12 +95,15 @@ class EnumField(serializers.Field):
                 raise ValidationError(_("This field cannot be blank."))
             raise ValidationError(_("'%(data)s' is not a valid choice."\
                 " Expected one of %(choices)s.") % {
-                    'data': data, 'choices': [choice
+                    'data': data, 'choices': [str(choice)
                     for choice in six.iterkeys(self.inverted_choices)]})
         return result
 
 
 class PhoneField(serializers.Field):
+
+    def to_representation(self, value):
+        return str(value)
 
     def to_internal_value(self, data):
         """
@@ -129,9 +133,8 @@ class PlanRelatedField(serializers.RelatedField):
         super(PlanRelatedField, self).__init__(
             queryset=Plan.objects.all(), **kwargs)
 
-    # Django REST Framework 3.0
-    def to_representation(self, obj):
-        return obj.slug
+    def to_representation(self, value):
+        return value.slug
 
     def to_internal_value(self, data):
         return get_object_or_404(Plan.objects.all(), slug=data)
@@ -140,11 +143,11 @@ class PlanRelatedField(serializers.RelatedField):
 class RoleDescriptionRelatedField(serializers.RelatedField):
 
     def __init__(self, **kwargs):
-        super(RoleDescriptionRelatedField, self).__init__(**kwargs)
+        super(RoleDescriptionRelatedField, self).__init__(
+            queryset=RoleDescription.objects.all(), **kwargs)
 
-    # Django REST Framework 3.0
-    def to_representation(self, obj):
-        return obj.slug
+    def to_representation(self, value):
+        return value.slug
 
     def to_internal_value(self, data):
         return get_object_or_404(RoleDescription.objects.all(), slug=data)
@@ -245,7 +248,8 @@ class CouponCreateSerializer(serializers.ModelSerializer):
         help_text=_("Type of discount (percentage or currency unit)"))
     plan = PlanRelatedField(required=False, allow_null=True)
 
-    def validate_plan(self, plan):
+    @staticmethod
+    def validate_plan(plan):
         if plan and not plan.is_active:
             raise ValidationError(_("The plan is inactive. "\
                 "As a result the coupon will have no effect."))
@@ -374,8 +378,8 @@ class OrganizationSerializer(serializers.ModelSerializer):
         return 'organization'
 
 OrganizationSerializer._declared_fields["type"] = \
-    serializers.SerializerMethodField(
-        help_text=_("One of 'organization', 'personal' or 'user'"))
+    serializers.SerializerMethodField(#pylint:disable=protected-access
+    help_text=_("One of 'organization', 'personal' or 'user'"))
 
 
 class OrganizationDetailSerializer(OrganizationSerializer):
@@ -436,23 +440,24 @@ class OrganizationCreateSerializer(NoModelSerializer):
     extra = serializers.CharField(required=False, allow_null=True,
         help_text=_("Extra meta data (can be stringify JSON)"))
 
-    def validate(self, data):
+    def validate(self, attrs):
         # XXX This is because we use `OrganizationCreateSerializer`
         # in `SubscriptionCreateSerializer`.
-        if not (data.get('slug') or (
-            data.get('full_name') and data.get('email') and data.get('type'))):
+        if not (attrs.get('slug') or (attrs.get('full_name') and
+                attrs.get('email') and attrs.get('type'))):
             raise ValidationError(_("One of slug or (full_name, email,"\
                 " type) should be present"))
-        return super(OrganizationCreateSerializer, self).validate(data)
+        return super(OrganizationCreateSerializer, self).validate(attrs)
 
-    def validate_type(self, value):
+    @staticmethod
+    def validate_type(value):
         if value not in ('personal', 'organization'):
             raise ValidationError(
                 _("type must be one of 'personal' or 'organization'."))
         return value
 
 OrganizationCreateSerializer._declared_fields["type"] = \
-    serializers.CharField(required=False,
+    serializers.CharField(required=False,#pylint:disable=protected-access
         help_text=_("One of 'organization', 'personal' or 'user'"))
 
 
@@ -672,7 +677,7 @@ class TransactionSerializer(serializers.ModelSerializer):
         help_text=_("True if the transaction is indentified as a debit in"\
         " the API context"))
 
-    def _is_debit(self, transaction):
+    def _is_debit(self, value):
         """
         True if the transaction can be tagged as a debit. That is
         it is either payable by the organization or the transaction
@@ -681,18 +686,18 @@ class TransactionSerializer(serializers.ModelSerializer):
         #pylint: disable=no-member
         if ('view' in self.context
             and hasattr(self.context['view'], 'organization')):
-            return transaction.is_debit(self.context['view'].organization)
+            return value.is_debit(self.context['view'].organization)
         return False
 
-    def to_representation(self, obj):
-        ret = super(TransactionSerializer, self).to_representation(obj)
-        is_debit = self._is_debit(obj)
+    def to_representation(self, instance):
+        ret = super(TransactionSerializer, self).to_representation(instance)
+        is_debit = self._is_debit(instance)
         if is_debit:
-            amount = as_money(obj.orig_amount, '-%s' % obj.orig_unit)
+            amount = as_money(instance.orig_amount, '-%s' % instance.orig_unit)
         else:
-            amount = as_money(obj.dest_amount, obj.dest_unit)
+            amount = as_money(instance.dest_amount, instance.dest_unit)
         ret.update({
-            'description': as_html_description(obj),
+            'description': as_html_description(instance),
             'is_debit': is_debit,
             'amount': amount})
         return ret

@@ -1,4 +1,4 @@
-# Copyright (c) 2020, DjaoDjin inc.
+# Copyright (c) 2021, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -36,9 +36,9 @@ from django.db import transaction
 from . import humanize, signals
 from .backends import ProcessorError
 from .compat import six
-from .models import (Charge, Organization, Plan, Subscription, Transaction,
+from .models import (Charge, Plan, Subscription, Transaction,
     sum_dest_amount, get_period_usage, get_sub_event_id)
-from .utils import datetime_or_now
+from .utils import datetime_or_now, get_organization_model
 
 LOGGER = logging.getLogger(__name__)
 
@@ -308,7 +308,7 @@ def create_charges_for_balance(until=None, dry_run=False):
     #pylint:disable=too-many-nested-blocks
     until = datetime_or_now(until)
     LOGGER.info("create charges for balance at %s ...", until)
-    for organization in Organization.objects.all():
+    for organization in get_organization_model().objects.all():
         charges = Charge.objects.in_progress_for_customer(organization)
         # We will create charges only when we have no charges
         # already in flight for this customer.

@@ -72,9 +72,9 @@ import requests, stripe
 
 from .. import CardError, ProcessorError, ProcessorSetupError
 from ... import settings, signals
-from ...compat import reverse, six
+from ...compat import import_string, reverse, six
 from ...utils import (datetime_to_utctimestamp, utctimestamp_to_datetime,
-    datetime_or_now, is_broker)
+    datetime_or_now)
 
 
 LOGGER = logging.getLogger(__name__)
@@ -130,7 +130,8 @@ class StripeBackend(object):
 
     @staticmethod
     def _is_platform(provider):
-        return provider._state.db == 'default' and is_broker(provider)
+        #pylint:disable=protected-access
+        return provider._state.db == 'default' and provider.is_broker
 
     def _prepare_request(self):
         stripe.api_version = '2020-08-27'
@@ -620,7 +621,6 @@ class StripeBackend(object):
         connect_state_func = settings.PROCESSOR.get(
             'CONNECT_STATE_CALLABLE', None)
         if connect_state_func:
-            from ...compat import import_string
             func = import_string(connect_state_func)
             state = func(self, provider)
         #pylint:disable=line-too-long

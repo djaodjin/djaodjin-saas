@@ -41,6 +41,7 @@ from django.shortcuts import get_object_or_404
 from django.utils.translation import ugettext_lazy as _
 
 from . import settings
+from .cart import cart_insert_item
 from .compat import available_attrs, is_authenticated, reverse, six
 from .models import Charge, Plan, Signature, Subscription, get_broker
 from .utils import datetime_or_now, get_organization_model, get_role_model
@@ -228,10 +229,10 @@ def fail_subscription(request, organization=None, plan=None):
 
     if not subscriptions.exists():
         if plan:
+            cart_insert_item(request, plan=plan)
             if organization:
-                return "%s?plan=%s" % (reverse('saas_organization_cart',
-                    args=(organization,)), plan)
-            return "%s?plan=%s" % (reverse('saas_cart'), plan)
+                return reverse('saas_organization_cart', args=(organization,))
+            return reverse('saas_cart')
         return reverse('saas_cart_plan_list')
 
     return False
@@ -274,10 +275,10 @@ def fail_paid_subscription(request, organization=None, plan=None):
     active_subscription = subscriptions.first()
     if active_subscription is None:
         if plan:
+            cart_insert_item(request, plan=plan)
             if organization:
-                return "%s?plan=%s" % (reverse('saas_organization_cart',
-                    args=(organization,)), plan)
-            return "%s?plan=%s" % (reverse('saas_cart'), plan)
+                return reverse('saas_organization_cart', args=(organization,))
+            return reverse('saas_cart')
         return reverse('saas_cart_plan_list')
 
     if active_subscription.is_locked:

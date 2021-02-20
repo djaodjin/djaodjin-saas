@@ -1,4 +1,4 @@
-# Copyright (c) 2020, DjaoDjin inc.
+# Copyright (c) 2021, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -29,8 +29,8 @@ from django.db import transaction
 from django.utils.timezone import utc
 
 from ...ledger import export
-from ...models import Organization, Transaction
-
+from ...models import Transaction
+from ...utils import get_organization_model
 
 LOGGER = logging.getLogger(__name__)
 
@@ -212,15 +212,16 @@ def parse_line(line, create_organizations=False, broker=None, using='default'):
                     amount = int(float(value) * 100)
                 else:
                     amount = int(value)
+        organization_model = get_organization_model()
         try:
             if create_organizations:
-                organization, _ = Organization.objects.using(
+                organization, _ = organization_model.objects.using(
                     using).get_or_create(slug=organization_slug)
             else:
-                organization = Organization.objects.using(using).get(
+                organization = organization_model.objects.using(using).get(
                     slug=organization_slug)
             return (organization, account, amount, unit)
-        except Organization.DoesNotExist:
+        except organization_model.DoesNotExist:
             sys.stderr.write("error: Cannot find Organization '%s'\n"
                 % organization_slug)
     return (None, None, amount, unit)
