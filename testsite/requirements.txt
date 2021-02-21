@@ -14,6 +14,7 @@ coverage==5.1
 django-debug-toolbar==2.2
 django-extensions==2.2.9
 djaodjin-rules==0.2.5
+gunicorn==20.0.4
 whitenoise==5.1.0
 
 # development
