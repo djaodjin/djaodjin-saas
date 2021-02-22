@@ -91,7 +91,8 @@ class LifeTimeValueMetricsView(ProviderMixin, TemplateView):
     template_name = 'saas/metrics/lifetimevalue.html'
 
     def get_context_data(self, **kwargs):
-        context = super(LifeTimeValueMetricsView, self).get_context_data(**kwargs)
+        context = super(LifeTimeValueMetricsView, self).get_context_data(
+            **kwargs)
         urls = {
             'metrics_lifetimevalue_download': reverse(
                 'saas_metrics_lifetimevalue_download', args=(self.provider,)),

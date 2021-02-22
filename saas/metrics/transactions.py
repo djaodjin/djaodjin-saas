@@ -133,7 +133,7 @@ GROUP BY saas_organization.slug, matched_transfers_payments.dest_unit""" % {
         # compatible if it were not for Postgresql to through an execption on
         # the trailing '/' character.
         extract_number = (
-            "substring(saas_transaction.event_id from 'sub_(\d+)/')")
+            r"substring(saas_transaction.event_id from 'sub_(\d+)/')")
     deferred_revenues_query = """
 SELECT saas_organization.slug, saas_transaction.dest_unit,
   SUM(saas_transaction.dest_amount)

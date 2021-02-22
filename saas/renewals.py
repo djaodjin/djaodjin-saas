@@ -1,4 +1,4 @@
-# Copyright (c) 2020, DjaoDjin inc.
+# Copyright (c) 2021, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -34,10 +34,11 @@ from dateutil.relativedelta import relativedelta
 from django.db import transaction
 
 from . import humanize, signals
+from .backends import ProcessorError
 from .compat import six
-from .models import (Charge, Organization, Plan, Subscription, Transaction,
+from .models import (Charge, Plan, Subscription, Transaction,
     sum_dest_amount, get_period_usage, get_sub_event_id)
-from .utils import datetime_or_now
+from .utils import datetime_or_now, get_organization_model
 
 LOGGER = logging.getLogger(__name__)
 
@@ -307,7 +308,7 @@ def create_charges_for_balance(until=None, dry_run=False):
     #pylint:disable=too-many-nested-blocks
     until = datetime_or_now(until)
     LOGGER.info("create charges for balance at %s ...", until)
-    for organization in Organization.objects.all():
+    for organization in get_organization_model().objects.all():
         charges = Charge.objects.in_progress_for_customer(organization)
         # We will create charges only when we have no charges
         # already in flight for this customer.
@@ -335,14 +336,19 @@ def create_charges_for_balance(until=None, dry_run=False):
                     LOGGER.info('REVIEW %dc to %s (requires manual charge)',
                         invoiceable_amount, organization)
                 else:
-                    LOGGER.info('CHARGE %dc to %s', invoiceable_amount,
-                        organization)
-                    try:
-                        if not dry_run:
+                    if not dry_run:
+                        try:
                             Charge.objects.charge_card(
-                                organization, invoiceables, created_at=until)
-                    except:
-                        raise
+                                organization, invoiceables,
+                                created_at=until)
+                            LOGGER.info('CHARGE %dc to %s', invoiceable_amount,
+                                organization)
+                        except ProcessorError:
+                            # There was a problem with the Card (i.e. expired,
+                            # underfunded, etc.)
+                            LOGGER.error('FAILED CHARGE %dc to %s',
+                                invoiceable_amount, organization)
+                            # XXX Notify customer.
             elif invoiceable_amount > 0:
                 LOGGER.info('SKIP   %dc to %s (less than 50c)',
                     invoiceable_amount, organization)

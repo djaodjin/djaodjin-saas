@@ -285,6 +285,7 @@ class SubscriptionDetailAPIView(SubscriptionMixin,
         super(SubscriptionDetailAPIView, self).perform_update(serializer)
 
     def destroy(self, request, *args, **kwargs):
+        #pylint:disable=unused-argument
         at_time = datetime_or_now()
         queryset = self.get_queryset().filter(ends_at__gt=at_time)
         queryset.unsubscribe(at_time=at_time)

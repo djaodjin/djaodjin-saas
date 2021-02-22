@@ -1,4 +1,4 @@
-# Copyright (c) 2020, DjaoDjin inc.
+# Copyright (c) 2021, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -34,7 +34,7 @@ from django.utils.translation import ugettext_lazy as _
 # saas.settings cannot be imported at this point because this file (extras.py)
 # will be imported before ``django.conf.settings`` is fully initialized.
 from .compat import NoReverseMatch, is_authenticated, reverse, six
-from .utils import get_organization_model, is_broker
+from .utils import get_organization_model
 
 
 class OrganizationMixinBase(object):
@@ -65,9 +65,6 @@ class OrganizationMixinBase(object):
 
     def get_context_data(self, **kwargs):
         context = super(OrganizationMixinBase, self).get_context_data(**kwargs)
-
-        from .decorators import _has_valid_access
-        from .models import get_broker
 
         organization = self.organization
         if not organization:
@@ -120,6 +117,11 @@ class OrganizationMixinBase(object):
                     role_descr.title: reverse('saas_role_detail',
                         args=(organization, role_descr.slug)),
                 })
+
+        # extras.py is special has it gets included before settings and models
+        # are fully loaded by Django.
+        from .decorators import _has_valid_access
+        from .models import get_broker
 
         if (organization.is_provider and
             _has_valid_access(self.request, [organization, get_broker()])):
@@ -177,7 +179,7 @@ class OrganizationMixinBase(object):
         self.update_context_urls(context, {
             'profile_redirect': reverse('accounts_profile')})
 
-        if not is_broker(organization):
+        if not organization.is_broker:
             # A broker does not have subscriptions.
             self.update_context_urls(context, {
                 'organization': {

@@ -1,4 +1,4 @@
-# Copyright (c) 2020, DjaoDjin inc.
+# Copyright (c) 2021, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -34,8 +34,8 @@ from ... import signals
 from ...humanize import as_money
 from ...metrics.base import (aggregate_transactions_by_period,
     aggregate_transactions_change_by_period, get_different_units)
-from ...models import Organization, Transaction
-from ...utils import datetime_or_now, parse_tz
+from ...models import Transaction
+from ...utils import datetime_or_now, get_organization_model, parse_tz
 
 LOGGER = logging.getLogger(__name__)
 
@@ -194,7 +194,7 @@ class Command(BaseCommand):
         at_time = datetime_or_now(options.get('at_time'))
         self.stdout.write("running report_weekly_revenue at %s" % at_time)
 
-        providers = Organization.objects.filter(is_provider=True)
+        providers = get_organization_model().objects.filter(is_provider=True)
         provider_slugs = options.get('providers')
         if provider_slugs:
             providers = providers.filter(slug__in=provider_slugs)

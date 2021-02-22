@@ -1,4 +1,4 @@
-# Copyright (c) 2018, DjaoDjin inc.
+# Copyright (c) 2021, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -25,12 +25,12 @@
 from django.views.generic import ListView, TemplateView
 
 from saas.mixins import UserMixin
-from saas.models import Organization
+from saas.utils import get_organization_model
 
 
 class OrganizationListView(ListView):
 
-    model = Organization
+    model = get_organization_model()
     template_name = 'organization_list_index.html'
 
 

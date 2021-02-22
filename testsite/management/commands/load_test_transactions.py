@@ -1,4 +1,4 @@
-# Copyright (c) 2020, DjaoDjin inc.
+# Copyright (c) 2021, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -32,12 +32,11 @@ from django.utils.timezone import utc
 
 from saas import humanize
 from saas.backends.razorpay_processor import RazorpayBackend
-from saas.models import (AdvanceDiscount, Charge, ChargeItem, Organization,
+from saas.models import (AdvanceDiscount, Charge, ChargeItem,
     Plan, Subscription, Transaction, get_broker)
-
-from saas.utils import datetime_or_now
+from saas.metrics.base import month_periods
+from saas.utils import datetime_or_now, get_organization_model
 from saas.settings import PROCESSOR_ID
-
 
 LOGGER = logging.getLogger(__name__)
 
@@ -152,6 +151,8 @@ class Command(BaseCommand):
         'Peterson',
         )
 
+    organization_model = get_organization_model()
+
     def add_arguments(self, parser):
         parser.add_argument('--provider',
             action='store', dest='provider',
@@ -160,8 +161,6 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         #pylint: disable=too-many-locals,too-many-statements
-        from saas.metrics.base import month_periods # avoid import loop
-
         RazorpayBackend.bypass_api = True
 
         now = datetime.datetime.utcnow().replace(tzinfo=utc)
@@ -187,7 +186,7 @@ class Command(BaseCommand):
         advance_discount = AdvanceDiscount.objects.get_or_create(
             plan=plan,
             discount_type=AdvanceDiscount.PERCENTAGE,
-            amount=1000,
+            discount_value=1000,
             length=12)
         Plan.objects.get_or_create(
             slug='medium',
@@ -214,11 +213,11 @@ class Command(BaseCommand):
         advance_discount = AdvanceDiscount.objects.get_or_create(
             plan=plan,
             discount_type=AdvanceDiscount.PERCENTAGE,
-            amount=81,
+            discount_value=81,
             length=12)
         # Create Income transactions that represents a growing bussiness.
-        provider = Organization.objects.get(slug=options['provider'])
-        processor = Organization.objects.get(pk=PROCESSOR_ID)
+        provider = self.organization_model.objects.get(slug=options['provider'])
+        processor = self.organization_model.objects.get(pk=PROCESSOR_ID)
         for end_period in month_periods(from_date=from_date):
             nb_new_customers = random.randint(0, 9)
             for _ in range(nb_new_customers):
@@ -235,7 +234,8 @@ class Command(BaseCommand):
                             0, len(self.LAST_NAMES)-1)]
                         full_name = '%s %s' % (first_name, last_name)
                         slug = slugify('demo%d' % random.randint(1, 1000))
-                        customer, created = Organization.objects.get_or_create(
+                        customer, created = \
+                            self.organization_model.objects.get_or_create(
                                 slug=slug, full_name=full_name)
                     #pylint: disable=catching-non-exception
                     except IntegrityError:
@@ -243,7 +243,7 @@ class Command(BaseCommand):
                         if trials > 10:
                             raise RuntimeError(
                          'impossible to create a new customer after 10 trials.')
-                Organization.objects.filter(pk=customer.id).update(
+                self.organization_model.objects.filter(pk=customer.id).update(
                     created_at=end_period)
                 subscription = Subscription.objects.create(
                     organization=customer, plan=plan,
@@ -279,8 +279,6 @@ class Command(BaseCommand):
                     amount=transaction_item.dest_amount,
                     customer=subscription.organization,
                     description='Charge for %d periods' % nb_periods,
-                    last4=1241,
-                    exp_date=datetime_or_now(),
                     processor=processor,
                     processor_key=str(transaction_item.pk),
 # XXX We can't do that yet because of
@@ -291,7 +289,8 @@ class Command(BaseCommand):
                 charge.save()
                 ChargeItem.objects.create(
                     invoiced=transaction_item, charge=charge)
-                charge.payment_successful()
+                charge.payment_successful(
+                    receipt_info={'last4': 1241, 'exp_date': datetime_or_now()})
             churned = all_subscriptions.exclude(
                 pk__in=[subscription.pk for subscription in subscriptions])
             for subscription in churned:

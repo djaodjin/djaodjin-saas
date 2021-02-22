@@ -1,0 +1,251 @@
+[
+  {
+    "fields": {
+      "slug": "xia-balance-due",
+      "created_at": "2020-12-20T00:00:00Z",
+      "is_active": true,
+      "full_name": "Xia",
+      "email": "xia+balance-due@localhost.localdomain",
+      "phone": "555-555-5555",
+      "street_address": "1 ABC loop",
+      "locality": "San Francisco",
+      "region": "CA",
+      "postal_code": "94102",
+      "country": "US",
+      "is_bulk_buyer": false,
+      "is_provider": false,
+      "default_timezone": "America/Chicago",
+      "picture": null,
+      "billing_start": null,
+      "funds_balance": 0,
+      "processor": 1,
+      "processor_card_key": "cus_Ic6Uu0Uj9GTsvI",
+      "processor_deposit_key": null,
+      "processor_priv_key": null,
+      "processor_pub_key": null,
+      "processor_refresh_token": null,
+      "extra": null
+    },
+    "model": "saas.organization", "pk": 100
+  },
+  {
+    "fields": {
+      "date_joined": "2020-12-20T00:00:00Z",
+      "email": "xia+balance-due@localhost.localdomain",
+      "first_name": "Xia",
+      "groups": [],
+      "is_active": true,
+      "is_staff": false,
+      "is_superuser": false,
+      "last_login": "2020-12-20T00:00:00Z",
+      "last_name": "BalanceDue",
+      "password": "pbkdf2_sha256$10000$z0MBiWn0Rlem$iZdC6uHomlE07qGK/TqfcfxNzKJtFp03c0JILF1frRc=",
+      "user_permissions": [],
+      "username": "xia-balance-due"
+    },
+    "model": "auth.User", "pk": 100
+  },
+  {
+    "fields":{
+      "created_at": "2012-10-01T00:00:00-09:00",
+      "role_description": 1,
+      "organization": 100,
+      "user": 100
+    },
+    "model": "saas.Role", "pk": 100
+  },
+  {
+    "fields": {
+      "last_signed": "2014-01-01T00:00:00-00:00",
+      "agreement": 1,
+      "user": 100
+    },
+    "model": "saas.signature", "pk": 100
+  },
+  {
+    "fields": {
+      "created_at": "2020-12-21T17:34:56.217Z",
+      "created_by": 100,
+      "amount": 24900,
+      "unit": "usd",
+      "customer": 100,
+      "description": "Charge ch_1I0sHd2fIune2L0qKZoE1XqC on credit card of Xia (xia)",
+      "last4": 4242,
+      "exp_date": "2021-12-01",
+      "card_name": "Xia",
+      "processor": 1,
+      "processor_key": "ch_1I0sHd2fIune2L0qKZoE1XqC",
+      "state": 1,
+      "extra": null
+    },
+    "model": "saas.charge", "pk": 100
+  },
+  {
+    "fields": {
+      "charge": 100,
+      "invoiced": 102,
+      "invoiced_processor_fee": 105,
+      "invoiced_broker_fee": null,
+      "invoiced_distribute": 107,
+      "invoice_key": null,
+      "sync_on": ""
+    },
+    "model": "saas.chargeitem", "pk": 100
+  },
+  {
+    "fields": {
+      "auto_renew": true,
+      "created_at": "2020-12-21T17:31:55.531Z",
+      "ends_at": "2022-01-01T00:00:00Z",
+      "description": null,
+      "organization": 100,
+      "plan": 3,
+      "request_key": null,
+      "grant_key": null,
+      "extra": null
+    },
+    "model": "saas.subscription", "pk": 100
+  },
+  {
+    "fields": {
+      "auto_renew": true,
+      "created_at": "2020-12-21T17:31:55.531Z",
+      "ends_at": "2022-01-01T00:00:00Z",
+      "description": null,
+      "organization": 100,
+      "plan": 1,
+      "request_key": null,
+      "grant_key": null,
+      "extra": null
+    },
+    "model": "saas.subscription", "pk": 102
+  },
+  {
+    "fields": {
+      "created_at": "2020-12-21T17:31:55.366Z",
+      "orig_account": "Receivable",
+      "orig_organization": 2,
+      "orig_amount": 24900,
+      "orig_unit": "usd",
+      "dest_account": "Payable",
+      "dest_organization": 100,
+      "dest_amount": 24900,
+      "dest_unit": "usd",
+      "descr": "Subscription to basic until 2021/01/21 (1 month)",
+      "event_id": "sub_102/"
+    },
+    "model": "saas.transaction", "pk": 100
+  },
+  {
+    "fields": {
+      "created_at": "2020-12-21T17:31:55.366Z",
+      "orig_account": "Receivable",
+      "orig_organization": 2,
+      "orig_amount": 18900,
+      "orig_unit": "usd",
+      "dest_account": "Payable",
+      "dest_organization": 100,
+      "dest_amount": 18900,
+      "dest_unit": "usd",
+      "descr": "Subscription to premium until 2021/02/01 (1 month)",
+      "event_id": "sub_100/"
+    },
+    "model": "saas.transaction", "pk": 101
+  },
+  {
+    "fields": {
+      "created_at": "2020-12-21T17:34:55.855Z",
+      "orig_account": "Receivable",
+      "orig_organization": 2,
+      "orig_amount": 24900,
+      "orig_unit": "usd",
+      "dest_account": "Payable",
+      "dest_organization": 100,
+      "dest_amount": 24900,
+      "dest_unit": "usd",
+      "descr": "Subscription to basic until 2021/02/21 (1 month)",
+      "event_id": "sub_102/"
+    },
+    "model": "saas.transaction", "pk": 102
+  },
+  {
+    "fields": {
+      "created_at": "2020-12-21T17:34:56.217Z",
+      "orig_account": "Liability",
+      "orig_organization": 100,
+      "orig_amount": 24900,
+      "orig_unit": "usd",
+      "dest_account": "Funds",
+      "dest_organization": 1,
+      "dest_amount": 24900,
+      "dest_unit": "usd",
+      "descr": "Charge ch_1I0sHd2fIune2L0qKZoE1XqC on credit card of Xia (xia)",
+      "event_id": "cha_1/"
+    },
+    "model": "saas.transaction", "pk": 103
+  },
+  {
+    "fields": {
+      "created_at": "2020-12-21T17:34:56.217Z",
+      "orig_account": "Payable",
+      "orig_organization": 100,
+      "orig_amount": 24900,
+      "orig_unit": "usd",
+      "dest_account": "Liability",
+      "dest_organization": 100,
+      "dest_amount": 24900,
+      "dest_unit": "usd",
+      "descr": "Keep a balanced ledger",
+      "event_id": "sub_102/"
+    },
+    "model": "saas.transaction", "pk": 104
+  },
+  {
+    "fields": {
+      "created_at": "2020-12-21T17:34:56.217Z",
+      "orig_account": "Backlog",
+      "orig_organization": 1,
+      "orig_amount": 752,
+      "orig_unit": "usd",
+      "dest_account": "Expenses",
+      "dest_organization": 2,
+      "dest_amount": 752,
+      "dest_unit": "usd",
+      "descr": "Charge ch_1I0sHd2fIune2L0qKZoE1XqC processor fee for sub_102/",
+      "event_id": "cha_1/"
+    },
+    "model": "saas.transaction", "pk": 105
+  },
+  {
+    "fields": {
+      "created_at": "2020-12-21T17:34:56.217Z",
+      "orig_account": "Backlog",
+      "orig_organization": 2,
+      "orig_amount": 24900,
+      "orig_unit": "usd",
+      "dest_account": "Receivable",
+      "dest_organization": 2,
+      "dest_amount": 24900,
+      "dest_unit": "usd",
+      "descr": "Charge ch_1I0sHd2fIune2L0qKZoE1XqC distribution for xia:basic",
+      "event_id": "sub_102/"
+    },
+    "model": "saas.transaction", "pk": 106
+  },
+  {
+    "fields": {
+      "created_at": "2020-12-21T17:34:56.217Z",
+      "orig_account": "Funds",
+      "orig_organization": 1,
+      "orig_amount": 24148,
+      "orig_unit": "usd",
+      "dest_account": "Funds",
+      "dest_organization": 2,
+      "dest_amount": 24148,
+      "dest_unit": "usd",
+      "descr": "Charge ch_1I0sHd2fIune2L0qKZoE1XqC distribution for xia:basic",
+      "event_id": "cha_1/"
+    },
+    "model": "saas.transaction", "pk": 107
+  }
+]

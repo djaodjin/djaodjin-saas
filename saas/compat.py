@@ -22,18 +22,19 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#pylint: disable=no-name-in-module,unused-import
+#pylint:disable=no-name-in-module,unused-import,import-outside-toplevel
+#pylint:disable=invalid-name
 from functools import WRAPPER_ASSIGNMENTS
 import six
 
-#pylint:disable=no-name-in-module,import-error
+#pylint:disable=import-error
 from six.moves.urllib.parse import urlparse, urlunparse
 from six import StringIO
 
 try:
     from django.utils.decorators import available_attrs
 except ImportError: # django < 3.0
-    def available_attrs(fn):
+    def available_attrs(fn):#pylint:disable=unused-argument
         return WRAPPER_ASSIGNMENTS
 
 try:

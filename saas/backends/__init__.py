@@ -1,4 +1,4 @@
-# Copyright (c) 2020, DjaoDjin inc.
+# Copyright (c) 2021, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -31,7 +31,8 @@ from django.utils.translation import ugettext_lazy as _
 from stripe.error import APIConnectionError as ProcessorConnectionError
 
 from .. import settings
-from ..compat import python_2_unicode_compatible
+from ..compat import import_string, python_2_unicode_compatible
+
 
 @python_2_unicode_compatible
 class ProcessorError(RuntimeError):
@@ -105,7 +106,6 @@ def load_backend(path):
 
 def get_processor_backend(provider):
     if settings.PROCESSOR_BACKEND_CALLABLE:
-        from saas.compat import import_string
         func = import_string(settings.PROCESSOR_BACKEND_CALLABLE)
         processor_backend = func(provider)
     else:

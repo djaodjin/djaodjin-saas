@@ -1,4 +1,4 @@
-# Copyright (c) 2018, DjaoDjin inc.
+# Copyright (c) 2021, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -31,7 +31,8 @@ from rest_framework.views import APIView
 import stripe
 
 from ... import settings
-from ...models import get_broker
+from ...compat import import_string
+from ...models import Charge, get_broker
 from .. import get_processor_backend
 
 
@@ -49,7 +50,6 @@ class StripeProcessorRedirectView(RedirectView):
     def get_redirect_url(self, *args, **kwargs):
         redirect_func_name = settings.PROCESSOR.get('REDIRECT_CALLABLE', None)
         if redirect_func_name:
-            from saas.compat import import_string
             func = import_string(redirect_func_name)
             url = func(self.request, site=kwargs.get(self.slug_url_kwarg))
             args = self.request.META.get('QUERY_STRING', '')
@@ -76,8 +76,6 @@ class StripeWebhook(APIView):
 
     def post(self, request, *args, **kwargs):
         #pylint:disable=unused-argument,no-self-use
-        from saas.models import Charge
-
         processor_backend = get_processor_backend(get_broker())
         stripe.api_key = processor_backend.priv_key
 

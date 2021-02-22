@@ -1,4 +1,4 @@
-# Copyright (c) 2019, DjaoDjin inc.
+# Copyright (c) 2021, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -157,11 +157,12 @@ class PaymentMethodDetailAPIView(OrganizationMixin,
             request, *args, **kwargs)
 
     def destroy(self, request, *args, **kwargs):
+        #pylint:disable=unused-argument
         self.organization.delete_card()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
     def retrieve(self, request, *args, **kwargs):
-        #pylint: disable=unused-argument
+        #pylint:disable=unused-argument
         return Response(self.organization.retrieve_card())
 
     def update(self, request, *args, **kwargs):

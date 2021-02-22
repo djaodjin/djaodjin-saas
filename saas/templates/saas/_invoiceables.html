@@ -3,9 +3,14 @@
     {% if invoicables %}
       <tbody data-plan="{{invoicables.0.subscription.plan}}">
         <tr>
-          <td colspan="3">
+          <th colspan="2">
             <em>{{invoicables.0.subscription.plan.title}} from {{invoicables.0.subscription.plan.organization.printable_name}}</em>
-          </td>
+          </th>
+          <th class="text-right">
+            {% if invoicables.0.subscription.plan.is_removable %}
+            <a id="{{invoicables.0.subscription.plan.slug}}" class="remove-cart-item" href="">Remove from Cart</a>
+            {% endif %}
+          </th>
         </tr>
       {% for entry in invoicables %}
       {% if entry.is_changed %}
@@ -28,9 +33,14 @@
       </tbody>
       <tbody data-plan="{{entry.subscription.plan}}">
       <tr>
-        <td colspan="3">
+        <th colspan="2">
           <em>{{entry.subscription.plan.title}} from {{entry.subscription.plan.organization.printable_name}}</em>
-        </td>
+        </th>
+          <th class="text-right">
+            {% if entry.subscription.plan.is_removable %}
+            <a id="{{entry.subscription.plan.slug}}" class="remove-cart-item" href="">Remove from Cart</a>
+            {% endif %}
+          </th>
       </tr>
       {% endif %}
       {% for line in entry.lines %}
