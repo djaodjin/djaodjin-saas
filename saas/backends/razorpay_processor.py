@@ -1,4 +1,4 @@
-# Copyright (c) 2019, DjaoDjin inc.
+# Copyright (c) 2021, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -87,26 +87,15 @@ class RazorpayBackend(object):
                 processor_fee_amount, processor_fee_unit,
                 broker_fee_amount, broker_fee_unit)
 
-    def create_charge(self, customer, amount, unit, provider,
-                      descr=None, stmt_descr=None, created_at=None,
-                      broker_fee_amount=0):
+    def create_payment(self, amount, unit, provider,
+                       processor_card_key=None, token=None,
+                       descr=None, stmt_descr=None, created_at=None,
+                       broker_fee_amount=0):
         #pylint: disable=too-many-arguments,unused-argument
-        """
-        Create a charge on the default card associated to the customer.
-
-        This method is not implemented as Razorpay does not allow
-        to create a charge on a stored credit card.
-        """
-        raise NotImplementedError()
-
-    def create_charge_on_card(self, card, amount, unit, provider,
-                              descr=None, stmt_descr=None, created_at=None,
-                              broker_fee_amount=0):
-        #pylint: disable=too-many-arguments,unused-argument
-        LOGGER.debug('create_charge_on_card(amount=%s, unit=%s, descr=%s)',
+        LOGGER.debug('create_payment(amount=%s, unit=%s, descr=%s)',
             amount, unit, descr)
         try:
-            processor_charge = self.razor.payment.capture(card, amount)
+            processor_charge = self.razor.payment.capture(token, amount)
         except razorpay.errors.RazorpayError as err:
             raise CardError(err.error, "unknown", backend_except=err)
         LOGGER.info('capture %s', processor_charge,

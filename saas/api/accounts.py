@@ -112,7 +112,7 @@ class AccountsSearchAPIView(OrganizationSmartListMixin,
                 where=["username = slug"]).values('pk'))
 
     def list(self, request, *args, **kwargs):
-        #pylint:disable=too-many-locals
+        #pylint:disable=too-many-locals,too-many-statements
         organizations_queryset = self.filter_queryset(self.get_queryset())
         organizations_page = self.paginate_queryset(organizations_queryset)
         # XXX When we use a `rest_framework.PageNumberPagination`,

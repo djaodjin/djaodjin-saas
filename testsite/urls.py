@@ -1,4 +1,4 @@
-# Copyright (c) 2020, DjaoDjin inc.
+# Copyright (c) 2021, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -33,7 +33,6 @@ from saas.compat import reverse_lazy
 from saas.decorators import (fail_agreement, fail_authenticated, fail_direct,
     fail_provider, fail_provider_only, fail_self_provider)
 from saas.views import OrganizationRedirectView, UserRedirectView
-from saas.views.plans import CartPlanListView
 from rules.urldecorators import include, url
 
 from testsite.views.app import AppView

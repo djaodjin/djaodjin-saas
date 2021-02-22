@@ -1,4 +1,4 @@
-# Copyright (c) 2020, Djaodjin Inc.
+# Copyright (c) 2021, Djaodjin Inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -31,7 +31,7 @@ except ImportError:
     from functools import wraps
     from .compat import available_attrs
 
-    class no_body(object):
+    class no_body(object):#pylint:disable=invalid-name
         pass
 
     def swagger_auto_schema(function=None, **kwargs):

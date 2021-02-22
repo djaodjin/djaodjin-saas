@@ -1,6 +1,6 @@
 #pylint: disable=too-many-lines
 
-# Copyright (c) 2020, DjaoDjin inc.
+# Copyright (c) 2021, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -82,9 +82,10 @@ from rest_framework.exceptions import ValidationError
 from . import humanize, settings, signals
 from .backends import (get_processor_backend, CardError, ProcessorError,
     ProcessorSetupError)
-from .compat import python_2_unicode_compatible, six
+from .compat import import_string, python_2_unicode_compatible, six
 from .utils import (SlugTitleMixin, datetime_or_now, full_name_natural_split,
-    generate_random_slug, get_role_model, handle_uniq_error)
+    generate_random_slug, handle_uniq_error)
+from .utils import get_organization_model, get_role_model
 
 
 LOGGER = logging.getLogger(__name__)
@@ -105,6 +106,15 @@ class Price(object):
         self.unit = unit
         if not self.unit:
             self.unit = settings.DEFAULT_UNIT # XXX
+
+
+def get_extra_field_class():
+    extra_class = settings.EXTRA_FIELD
+    if extra_class is None:
+        extra_class = models.TextField
+    elif isinstance(extra_class, six.string_types):
+        extra_class = import_string(extra_class)
+    return extra_class
 
 
 class OrganizationManager(models.Manager):
@@ -297,11 +307,28 @@ class Organization(models.Model):
     processor_refresh_token = models.SlugField(max_length=255, null=True,
         blank=True)
 
-    extra = settings.get_extra_field_class()(null=True, blank=True,
+    extra = get_extra_field_class()(null=True, blank=True,
         help_text=_("Extra meta data (can be stringify JSON)"))
 
     def __str__(self):
         return str(self.slug)
+
+    @property
+    def is_broker(self):
+        """
+        Returns ``True`` if the organization is the hosting platform
+        for the service.
+        """
+        if not hasattr(self, '_is_broker'):
+            # We do a string compare here because both ``Organization`` might
+            # come from a different db.
+            organization_slug = self.slug
+            if settings.IS_BROKER_CALLABLE:
+                self._is_broker = import_string(settings.IS_BROKER_CALLABLE)(
+                    organization_slug)
+            else:
+                self._is_broker = (get_broker().slug == organization_slug)
+        return self._is_broker
 
     def get_active_subscriptions(self, at_time=None):
         """
@@ -359,11 +386,22 @@ class Organization(models.Model):
             with transaction.atomic():
                 user = self.attached_user()
                 if user:
-                    user.first_name, _, user.last_name \
+                    # When dealing with a personal profile, keep the login
+                    # user in sync with the billing profile.
+                    save_user = False
+                    first_name, _, last_name \
                         = full_name_natural_split(self.full_name)
-                    if self.email:
+                    if user.first_name != first_name:
+                        user.first_name = first_name
+                        save_user = True
+                    if user.last_name != last_name:
+                        user.last_name = last_name
+                        save_user = True
+                    if user.email != self.email:
                         user.email = self.email
-                    user.save()
+                        save_user = True
+                    if save_user:
+                        user.save()
                 return super(Organization, self).save(
                     force_insert=force_insert, force_update=force_update,
                     using=using, update_fields=update_fields)
@@ -593,6 +631,37 @@ class Organization(models.Model):
         return get_user_model().objects.db_manager(
             using=self._state.db).filter(
             role__organization=self, username=self.slug).first()
+
+    def last_payment(self):
+        """
+        Returns the Transaction that corresponds to the last payment
+        by the organization.
+        """
+        return Transaction.objects.filter(
+            orig_organization=self,
+            orig_account=Transaction.LIABILITY,
+            dest_organization=self.processor,
+            dest_account=Transaction.FUNDS).order_by('created_at').first()
+
+    def last_unpaid_orders(self, subscription=None, at_time=None):
+        """
+        Returns the set of payable transactions that happened
+        after the last payment.
+        """
+        kwargs = {}
+        if subscription:
+            kwargs.update({'event_id': get_sub_event_id(subscription)})
+        if at_time:
+            kwargs.update({'created_at__lt': at_time})
+        last_payment = self.last_payment()
+        if last_payment:
+            kwargs.update({'created_at__gt': last_payment.created_at})
+        queryset = Transaction.objects.filter(
+            dest_organization=self,
+            dest_account=Transaction.PAYABLE,
+            orig_account=Transaction.RECEIVABLE,
+            **kwargs).order_by('created_at')
+        return queryset
 
     def receivables(self):
         """
@@ -1049,88 +1118,74 @@ class Organization(models.Model):
                 cowork:Receivable
         """
         at_time = datetime_or_now(at_time)
-        dest_balances = Transaction.objects.filter(
-            Q(dest_account=Transaction.PAYABLE)
-            | Q(dest_account=Transaction.LIABILITY),
-            dest_organization=self).values('event_id', 'dest_unit').annotate(
-                Sum('dest_amount'))
-        orig_balances = Transaction.objects.filter(
-            Q(orig_account=Transaction.PAYABLE)
-            | Q(orig_account=Transaction.LIABILITY),
-            orig_organization=self).values('event_id', 'orig_unit').annotate(
-                Sum('orig_amount'))
-        orig_amounts = {}
-        for balance in orig_balances:
-            orig_amounts[balance['event_id']] = balance['orig_amount__sum']
-        for balance in dest_balances:
-            sub_event_id = balance['event_id']
-            balance_due = (balance['dest_amount__sum']
-                - orig_amounts.get(sub_event_id, 0))
-            if balance_due > 0:
-                dest_unit = balance['dest_unit']
-                subscription = Subscription.objects.get_by_event_id(
-                    sub_event_id)
-                event_balance = Transaction.objects.get_event_balance(
-                    sub_event_id, account=Transaction.PAYABLE)
-                balance_payable = event_balance['amount']
-                with transaction.atomic():
-                    if balance_payable > 0:
+        balances = Transaction.objects.get_statement_balances(
+            self, until=at_time)
+        for sub_event_id, balance in six.iteritems(balances):
+            for dest_unit, balance_due in six.iteritems(balance):
+                if balance_due > 0:
+                    subscription = Subscription.objects.get_by_event_id(
+                        sub_event_id)
+                    event_balance = Transaction.objects.get_event_balance(
+                        sub_event_id, account=Transaction.PAYABLE)
+                    balance_payable = event_balance['amount']
+                    with transaction.atomic():
+                        if balance_payable > 0:
+                            # Example:
+                            # 2016/08/16 keep a balanced ledger
+                            #     xia:Liability                            15800
+                            #     xia:Payable
+                            Transaction.objects.create(
+                                event_id=sub_event_id,
+                                created_at=at_time,
+                                descr=humanize.DESCRIBE_DOUBLE_ENTRY_MATCH,
+                                dest_unit=dest_unit,
+                                dest_amount=balance_payable,
+                                dest_account=Transaction.LIABILITY,
+                                dest_organization=subscription.organization,
+                                orig_unit=dest_unit,
+                                orig_amount=balance_payable,
+                                orig_account=Transaction.PAYABLE,
+                                orig_organization=subscription.organization)
                         # Example:
-                        # 2016/08/16 keep a balanced ledger
-                        #     xia:Liability                            15800
-                        #     xia:Payable
+                        # 2016/08/16 write off liability
+                        #     cowork:Writeoff                              15800
+                        #     xia:Liability
                         Transaction.objects.create(
                             event_id=sub_event_id,
                             created_at=at_time,
-                            descr=humanize.DESCRIBE_DOUBLE_ENTRY_MATCH,
+                            descr=humanize.DESCRIBE_WRITEOFF_LIABILITY % {
+                                'event': subscription},
                             dest_unit=dest_unit,
-                            dest_amount=balance_payable,
-                            dest_account=Transaction.LIABILITY,
+                            dest_amount=balance_due,
+                            dest_account=Transaction.WRITEOFF,
+                            dest_organization=subscription.plan.organization,
+                            orig_unit=dest_unit,
+                            orig_amount=balance_due,
+                            orig_account=Transaction.LIABILITY,
+                            orig_organization=subscription.organization)
+                        # Example:
+                        # 2016/08/16 write off receivable
+                        #     xia:Cancelled                             15800
+                        #     cowork:Receivable
+                        Transaction.objects.create(
+                            event_id=sub_event_id,
+                            created_at=at_time,
+                            descr=humanize.DESCRIBE_WRITEOFF_RECEIVABLE % {
+                                'event': subscription},
+                            dest_unit=dest_unit,
+                            dest_amount=balance_due,
+                            dest_account=Transaction.CANCELED,
                             dest_organization=subscription.organization,
                             orig_unit=dest_unit,
-                            orig_amount=balance_payable,
-                            orig_account=Transaction.PAYABLE,
-                            orig_organization=subscription.organization)
-                    # Example:
-                    # 2016/08/16 write off liability
-                    #     cowork:Writeoff                              15800
-                    #     xia:Liability
-                    Transaction.objects.create(
-                        event_id=sub_event_id,
-                        created_at=at_time,
-                        descr=humanize.DESCRIBE_WRITEOFF_LIABILITY % {
-                            'event': subscription},
-                        dest_unit=dest_unit,
-                        dest_amount=balance_due,
-                        dest_account=Transaction.WRITEOFF,
-                        dest_organization=subscription.plan.organization,
-                        orig_unit=dest_unit,
-                        orig_amount=balance_due,
-                        orig_account=Transaction.LIABILITY,
-                        orig_organization=subscription.organization)
-                    # Example:
-                    # 2016/08/16 write off receivable
-                    #     xia:Cancelled                             15800
-                    #     cowork:Receivable
-                    Transaction.objects.create(
-                        event_id=sub_event_id,
-                        created_at=at_time,
-                        descr=humanize.DESCRIBE_WRITEOFF_RECEIVABLE % {
-                            'event': subscription},
-                        dest_unit=dest_unit,
-                        dest_amount=balance_due,
-                        dest_account=Transaction.CANCELED,
-                        dest_organization=subscription.organization,
-                        orig_unit=dest_unit,
-                        orig_amount=balance_due,
-                        orig_account=Transaction.RECEIVABLE,
-                        orig_organization=subscription.plan.organization)
-                    LOGGER.info("%s cancel balance due of %d for %s.",
-                        user, balance_due, self,
-                        extra={'event': 'cancel-balance',
-                            'username': user.username,
-                            'organization': self.slug,
-                            'amount': balance_due})
+                            orig_amount=balance_due,
+                            orig_account=Transaction.RECEIVABLE,
+                            orig_organization=subscription.plan.organization)
+                        LOGGER.info("%s cancel balance due of %d for %s.",
+                            user, balance_due, self,
+                            extra={'event': 'cancel-balance',
+                                'username': user.username,
+                                'organization': self.slug,
+                                'amount': balance_due})
 
 
 @python_2_unicode_compatible
@@ -1158,7 +1213,7 @@ class RoleDescription(models.Model):
     implicit_create_on_none = models.BooleanField(default=False,
         help_text=_("Automatically adds the role when a user and profile share"\
         " the same e-mail domain."))
-    extra = settings.get_extra_field_class()(null=True,
+    extra = get_extra_field_class()(null=True,
         help_text=_("Extra meta data (can be stringify JSON)"))
 
     class Meta:
@@ -1217,7 +1272,7 @@ class Role(models.Model):
         on_delete=models.CASCADE)
     request_key = models.SlugField(max_length=40, null=True, blank=True)
     grant_key = models.SlugField(max_length=40, null=True, blank=True)
-    extra = settings.get_extra_field_class()(null=True,
+    extra = get_extra_field_class()(null=True,
         help_text=_("Extra meta data (can be stringify JSON)"))
 
     class Meta:
@@ -1395,16 +1450,12 @@ class ChargeManager(models.Manager):
             if token and remember_card:
                 customer.update_card(token, user)
 
-            if customer.processor_card_key:
+            if customer.processor_card_key or token:
                 (processor_charge_id, created_at,
-                 receipt_info) = processor_backend.create_charge(
-                     customer, amount, unit, provider,
-                     descr=descr, created_at=created_at,
-                     broker_fee_amount=broker_fee_amount)
-            elif token:
-                (processor_charge_id, created_at,
-                 receipt_info) = processor_backend.create_charge_on_card(
-                     token, amount, unit, provider,
+                 receipt_info) = processor_backend.create_payment(
+                     amount, unit, provider,
+                     processor_card_key=customer.processor_card_key,
+                     token=token,
                      descr=descr, created_at=created_at,
                      broker_fee_amount=broker_fee_amount)
             else:
@@ -1414,7 +1465,7 @@ class ChargeManager(models.Manager):
             # Create record of the charge in our database
             descr = humanize.DESCRIBE_CHARGED_CARD % {
                 'charge': processor_charge_id,
-                'organization': receipt_info['card_name']}
+                'organization': receipt_info.get('card_name', "")}
             if user:
                 descr += ' (%s)' % user.username
             return self.create_charge(customer, transactions,
@@ -1502,9 +1553,9 @@ class Charge(models.Model):
     description = models.TextField(null=True,
         help_text=_("Description for the charge as appears on billing"\
             " statements"))
-    last4 = models.PositiveSmallIntegerField(
+    last4 = models.PositiveSmallIntegerField(null=True,
         help_text=_("Last 4 digits of the credit card used"))
-    exp_date = models.DateField(
+    exp_date = models.DateField(null=True,
         help_text=_("Expiration date of the credit card used"))
     card_name = models.CharField(max_length=50, null=True)
     processor = models.ForeignKey('Organization', on_delete=models.PROTECT,
@@ -1513,7 +1564,7 @@ class Charge(models.Model):
     state = models.PositiveSmallIntegerField(
         choices=CHARGE_STATES, default=CREATED,
         help_text=_("Current state (i.e. created, done, failed, disputed)"))
-    extra = settings.get_extra_field_class()(null=True,
+    extra = get_extra_field_class()(null=True,
         help_text=_("Extra meta data (can be stringify JSON)"))
 
     # XXX unique together paid and invoiced.
@@ -1736,11 +1787,22 @@ class Charge(models.Model):
         self.state = self.DONE
         signals.charge_updated.send(sender=__name__, charge=self, user=None)
 
-    def failed(self):
+    def failed(self, receipt_info=None):
         assert self.state == self.CREATED
+        kwargs = {}
+        if receipt_info:
+            kwargs.update({
+                'last4': receipt_info.get('last4'),
+                'exp_date': receipt_info.get('exp_date'),
+                'card_name': receipt_info.get('card_name', "")
+            })
+            self.last4 = receipt_info.get('last4')
+            self.exp_date = receipt_info.get('exp_date')
+            self.card_name = receipt_info.get('card_name', "")
         with transaction.atomic():
             updated = Charge.objects.select_for_update(nowait=True).filter(
-                pk=self.pk, state=self.CREATED).update(state=self.FAILED)
+                pk=self.pk, state=self.CREATED).update(
+                    state=self.FAILED, **kwargs)
             if not updated:
                 raise DatabaseError(
                     "Charge is currently being updated by another transaction")
@@ -1749,7 +1811,7 @@ class Charge(models.Model):
         self.state = self.FAILED
         signals.charge_updated.send(sender=__name__, charge=self, user=None)
 
-    def payment_successful(self):
+    def payment_successful(self, receipt_info=None):
         """
         When a charge through the payment processor is sucessful,
         a unique ``Transaction`` records the charge through the processor.
@@ -1820,14 +1882,25 @@ class Charge(models.Model):
                 cowork:Funds                          $156.78
                 stripe:Funds
         """
-        #pylint: disable=too-many-locals
+        #pylint: disable=too-many-locals,too-many-statements
         assert self.state == self.CREATED
+        kwargs = {}
+        if receipt_info:
+            kwargs.update({
+                'last4': receipt_info.get('last4'),
+                'exp_date': receipt_info.get('exp_date'),
+                'card_name': receipt_info.get('card_name', "")
+            })
+            self.last4 = receipt_info.get('last4')
+            self.exp_date = receipt_info.get('exp_date')
+            self.card_name = receipt_info.get('card_name', "")
         with transaction.atomic():
             # up at the top of this method so that we bail out quickly, before
             # we start to mistakenly enter the charge and distributions a second
             # time on two rapid fire `Charge.retrieve()` calls.
             updated = Charge.objects.select_for_update(nowait=True).filter(
-                pk=self.pk, state=self.CREATED).update(state=self.DONE)
+                pk=self.pk, state=self.CREATED).update(
+                    state=self.DONE, **kwargs)
             if not updated:
                 raise DatabaseError(
                     "Charge is currently being updated by another transaction")
@@ -2274,7 +2347,8 @@ class ChargeItem(models.Model):
                 stripe:Refund                            $156.78
                 cowork:Funds
         """
-        #pylint:disable=too-many-locals,too-many-arguments,no-member
+        #pylint:disable=too-many-locals,too-many-arguments,too-many-statements
+        #pylint:disable=no-member
         created_at = datetime_or_now(created_at)
         if not refund_type:
             refund_type = Transaction.REFUND
@@ -2554,7 +2628,7 @@ class Plan(SlugTitleMixin, models.Model):
     # Pb with next : maybe create an other model for it
     next_plan = models.ForeignKey("Plan", null=True, on_delete=models.CASCADE,
         blank=True)
-    extra = settings.get_extra_field_class()(null=True,
+    extra = get_extra_field_class()(null=True,
         help_text=_("Extra meta data (can be stringify JSON)"))
 
     class Meta:
@@ -2805,7 +2879,7 @@ class Coupon(models.Model):
         " (in ISO format)"))
     nb_attempts = models.IntegerField(null=True, blank=True,
         help_text=_("Number of times the coupon can be used"))
-    extra = settings.get_extra_field_class()(null=True,
+    extra = get_extra_field_class()(null=True,
         help_text=_("Extra meta data (can be stringify JSON)"))
 
     class Meta:
@@ -2881,7 +2955,7 @@ class UseCharge(SlugTitleMixin, models.Model):
         related_name='use_charges')
     use_amount = models.PositiveIntegerField(default=0)
     quota = models.PositiveIntegerField(default=0)
-    extra = settings.get_extra_field_class()(null=True,
+    extra = get_extra_field_class()(null=True,
         help_text=_("Extra meta data (can be stringify JSON)"))
 
     class Meta:
@@ -2921,8 +2995,8 @@ class CartItemManager(models.Manager):
         at_time = datetime_or_now(created_at)
         coupon_applied = False
         for item in self.get_cart(user):
-            redeemed = Coupon.objects.active(item.plan.organization, coupon_code,
-                at_time=at_time).first()
+            redeemed = Coupon.objects.active(
+                item.plan.organization, coupon_code, at_time=at_time).first()
             if redeemed and redeemed.is_valid(item.plan, at_time=at_time):
                 coupon_applied = True
                 item.coupon = redeemed
@@ -2979,7 +3053,8 @@ class CartItem(models.Model):
     # a number of prepaid periods in advance, a balance due payment, etc.
     # 0 means not selected yet. In order to retrieve the actual option,
     # the index is decremented and then used to access the element in
-    # options list, which is usually generated by get_invoicable_options()
+    # options list, which is usually generated by `get_balance_options()`
+    # or `get_cart_options()`.
     option = models.PositiveIntegerField(default=0)
 
     # The following fields are used for the GroupBuy feature. They do not
@@ -3154,7 +3229,7 @@ class Subscription(models.Model):
         help_text=_("Plan the organization is subscribed to"))
     request_key = models.SlugField(max_length=40, null=True, blank=True)
     grant_key = models.SlugField(max_length=40, null=True, blank=True)
-    extra = settings.get_extra_field_class()(null=True,
+    extra = get_extra_field_class()(null=True,
         help_text=_("Extra meta data (can be stringify JSON)"))
 
     def __str__(self):
@@ -3307,82 +3382,82 @@ class TransactionQuerySet(models.QuerySet):
     """
 
     def get_statement_balances(self, organization, until=None):
+        #pylint:disable=too-many-locals
         until = datetime_or_now(until)
-        # XXX We rely here on a subscriber:Payable to subscriber:Liability
-        # transaction to be present for all transaction with a charge event_id.
+        # We use the fact that all orders (and only orders) will have
+        # a destination of `subscriber:Payable`.
         dest_balances = self.filter(
-            Q(dest_account=Transaction.PAYABLE)
-            | Q(dest_account=Transaction.LIABILITY),
+            Q(dest_account=Transaction.PAYABLE),
             dest_organization=organization,
             created_at__lt=until).values(
                 'event_id', 'dest_unit').annotate(
                 dest_balance=Sum('dest_amount'),
                 last_activity_at=Max('created_at')).order_by(
                     'last_activity_at')
-        orig_balances = self.filter(
-            Q(orig_account=Transaction.PAYABLE)
-            | Q(orig_account=Transaction.LIABILITY),
-            orig_organization=organization,
-            created_at__lt=until).values(
-                'event_id', 'orig_unit').annotate(
-                orig_balance=Sum('orig_amount'),
-                last_activity_at=Max('created_at')).order_by(
-                    'last_activity_at', '-event_id')
-
         dest_balance_per_events = {}
         for dest_balance in dest_balances:
             event_id = dest_balance['event_id']
-            if event_id in dest_balance_per_events:
-                # Because of the `GROUP BY` clause in the SQL query,
-                # if the balance is already in the dictionary then
-                # units are different on the same event.
-                raise ValueError('dest balances until %s for event %s'\
-                ' of %s have different unit (%s vs. %s).' % (
-                    until, event_id, organization,
-                    dest_balance_per_events[event_id].unit,
-                    dest_balance['dest_unit']))
-            dest_balance_per_events.update({
-                event_id: Price(
-                    dest_balance['dest_balance'], dest_balance['dest_unit'])})
-        prev_event_id = None
+            if event_id not in dest_balance_per_events:
+                dest_balance_per_events.update({event_id: {}})
+            dest_balance_per_events[event_id].update({
+                dest_balance['dest_unit']: dest_balance['dest_balance']})
+
+        # Then all payments for these orders will either be of the form:
+        #     yyyy/mm/dd sub_***** distribution to provider (backlog accounting)
+        #        provider:Receivable                      plan_amount
+        #        provider:Backlog
+        # (payment_successful and offline_payment), or:
+        #    yyyy/mm/dd sub_***** write off receivable
+        #        subscriber:Canceled                        liability_amount
+        #        provider:Receivable
+        # (create_cancel_transactions).
+        orig_balances = self.filter(
+            (Q(orig_account=Transaction.BACKLOG)
+             & Q(dest_account=Transaction.RECEIVABLE)) |
+            (Q(orig_account=Transaction.RECEIVABLE)
+             & Q(dest_account=Transaction.CANCELED)),
+            event_id__in=dest_balance_per_events.keys(),
+            created_at__lt=until).values(
+                'event_id', 'dest_unit').annotate(
+                orig_balance=Sum('dest_amount'),
+                last_activity_at=Max('created_at')).order_by(
+                    'last_activity_at', '-event_id')
         for orig_balance in orig_balances:
+            orig_amount = orig_balance['orig_balance']
+            orig_unit = orig_balance['dest_unit']
             event_id = orig_balance['event_id']
-            if event_id.startswith('sub_'):
-                # We could have events for subscriptions (Receivable, Payable),
-                # or charges (Liability, Funds) here.
-                prev_event_id = event_id
-            elif prev_event_id:
-                # XXX Quick workaround: assign the amount of the charge
-                #     to the previous subscription. We should really load
-                #     the charge items and assign amounts accordingly.
-                # p.s. We should always have a (Receivable, Payable) before
-                # a charge so an undefined variable exception should not be
-                # raised.
-                event_id = prev_event_id
-            dest_total = dest_balance_per_events.get(event_id,
-                Price(0, orig_balance['orig_unit']))
-            dest_balance = dest_total.amount
-            dest_unit = dest_total.unit
-            if orig_balance['orig_unit'] != dest_unit:
-                raise ValueError(
-'orig and dest balances until %s for event %s'\
-' of %s have different unit (%s vs. %s).' % (until, event_id, organization,
-                    dest_unit, orig_balance['orig_unit']))
-            dest_balance_per_events.update({event_id: Price(
-                dest_balance - orig_balance['orig_balance'], dest_unit)})
+            if event_id.startswith('cpn_'):
+                # XXX group buy events should certainly be re-written as sub_.
+                continue
+            if not event_id.startswith('sub_'):
+                LOGGER.error("event_id '%s' does not start with 'sub_'",
+                    event_id)
+            assert event_id.startswith('sub_')
+            # We should always have subscription events in orig_balances
+            # by the definition of the SQL query.
+            balance_by_units = dest_balance_per_events.get(event_id, {})
+            if orig_unit in balance_by_units:
+                balance_by_units.update({
+                    orig_unit: balance_by_units[orig_unit] - orig_amount})
+
         balances = {}
         for event_id, balance in six.iteritems(dest_balance_per_events):
-            if balance.amount != 0:
-                balances.update({event_id: balance})
+            amount_by_units = {}
+            for unit, amount in six.iteritems(balance):
+                if amount != 0:
+                    amount_by_units.update({unit: amount})
+            if amount_by_units:
+                balances.update({event_id: amount_by_units})
         return balances
 
     def get_statement_balance(self, organization, until=None):
         balances_per_unit = {}
         for val in six.itervalues(self.get_statement_balances(
                 organization, until=until)):
-            balances_per_unit.update({
-                val.unit: balances_per_unit.get(val.unit, 0) + val.amount
-            })
+            for unit, amount in six.iteritems(val):
+                balances_per_unit.update({
+                    unit: balances_per_unit.get(unit, 0) + amount
+                })
         balances = {}
         for unit, balance in six.iteritems(balances_per_unit):
             if balance != 0:
@@ -3724,21 +3799,18 @@ class TransactionManager(models.Manager):
         The balance on a subscription is used to determine when
         a subscription is locked (balance due) or unlocked (no balance).
         """
-        # Implementation Note:
-        # The ``event_id`` associated to the unique ``Transaction` recording
-        # a ``Charge`` will be the ``Charge.id``. As a result, getting the
-        # amount due on a subscription by itself is more complicated than
-        # just filtering by account and event_id.
-        balances = sum_dest_amount(
-            self.get_invoiceables(
-                subscription.organization, until=until).filter(
-                event_id=get_sub_event_id(subscription)))
-        if len(balances) > 1:
+        balances = self.get_statement_balances(
+            subscription.organization, until=until)
+        event_id = get_sub_event_id(subscription)
+        balance = balances.get(event_id)
+        if len(balance) > 1:
             raise ValueError(_("balances with multiple currency units (%s)") %
-                str(balances))
-        # `sum_dest_amount` guarentees at least one result.
-        dest_amount = balances[0]['amount']
-        dest_unit = balances[0]['unit']
+                str(balance))
+        try:
+            dest_unit, dest_amount = next(six.iteritems(balance))
+        except StopIteration:
+            dest_amount = 0
+            dest_unit = settings.DEFAULT_UNIT
         return dest_amount, dest_unit
 
     def get_event_balance(self, event_id,
@@ -4278,13 +4350,30 @@ def get_broker():
     """
     Returns the site-wide provider from a request.
     """
-    from saas.compat import import_string
     LOGGER.debug("get_broker('%s')", settings.BROKER_CALLABLE)
     try:
         return import_string(settings.BROKER_CALLABLE)()
     except ImportError:
         pass
-    return Organization.objects.get(slug=settings.BROKER_CALLABLE)
+    return get_organization_model().objects.get(slug=settings.BROKER_CALLABLE)
+
+
+def is_broker(organization):
+    """
+    Returns ``True`` if the organization is the hosting platform
+    for the service.
+    """
+    # We do a string compare here because both ``Organization`` might come
+    # from a different db. That is if the organization parameter is not
+    # a unicode string itself.
+    organization_slug = ''
+    if isinstance(organization, six.string_types):
+        organization_slug = organization
+    elif organization:
+        organization_slug = organization.slug
+    if settings.IS_BROKER_CALLABLE:
+        return import_string(settings.IS_BROKER_CALLABLE)(organization_slug)
+    return get_broker().slug == organization_slug
 
 
 def is_sqlite3(db_key=None):

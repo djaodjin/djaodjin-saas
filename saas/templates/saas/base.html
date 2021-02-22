@@ -2,7 +2,11 @@
 
 {% block localheader %}
 {% if STRIPE_PUB_KEY %}
+{% if STRIPE_INTENT_SECRET %}
+<script type="text/javascript" src="https://js.stripe.com/v3/"></script>
+{% else %}
 <script type="text/javascript" src="https://js.stripe.com/v2/"></script>
+{% endif %}
 {% endif %}
 {% endblock %}
 

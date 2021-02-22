@@ -193,6 +193,16 @@
     Card.prototype = {
         init: function () {
             var self = this;
+
+            self.stripe = Stripe(self.options.stripePubKey);
+            if( self.options.stripeIntentSecret ) {
+                var elements = self.stripe.elements();
+                self.cardElement = elements.create("card", {
+                    hidePostalCode: true
+                });
+                self.cardElement.mount("#card-element");
+            }
+
             self.element.find("#card-update").click(function(event) {
                 event.preventDefault();
                 self.showCardInputFields();
@@ -270,17 +280,23 @@
             });
         },
 
-        stripeResponseHandler: function(status, response) {
+        stripeResponseHandler: function(resp) {
             var self = this;
             var submitButton = self.element.find("[type='submit']");
-            if (response.error) {
+            if (resp.error) {
                 // show the errors on the form
-                showMessages([response.error.message], "error");
+                showMessages([resp.error.message], "error");
                 submitButton.removeAttr("disabled");
             } else {
-                // token contains id, last4, and card type
-                var token = response.id;
-                // insert the token into the form so it gets submitted to the server
+                var token = resp.id;
+                if( !token && resp.paymentIntent ) {
+                    token = resp.paymentIntent.id;
+                }
+                if( !token && resp.setupIntent ) {
+                    token = resp.setupIntent.id;
+                }
+                // insert the token into the form so it gets submitted
+                // to the server.
                 self.element.append("<input type='hidden' name='stripeToken' value='" + token + "'/>");
                 // and submit
                 self.element.get(0).submit();
@@ -389,21 +405,70 @@
             }
             if( valid ) {
                 // this identifies your website in the createToken call below
-                Stripe.setPublishableKey(self.options.stripePubKey);
-                Stripe.createToken({
-                    number: number,
-                    cvc: cvc,
-                    exp_month: expMonth,
-                    exp_year: expYear,
-                    name: name,
-                    address_line1: addressLine1,
-                    address_city: addressCity,
-                    address_state: addressState,
-                    address_zip: addressZip,
-                    address_country: addressCountry
-                }, function(status, response) {
-                    self.stripeResponseHandler(status, response);
-                });
+                if( self.options.stripeIntentSecret ) {
+                    if( self.options.stripeIntentSecret.substring(0, 3) === 'pi_' ) {
+                        self.stripe.confirmCardPayment(
+                            self.options.stripeIntentSecret, {
+                                payment_method: {
+                                    type: "card",
+                                    card: self.cardElement,
+                                    billing_details: {
+                                        address: {
+                                            city: addressCity,
+                                            country: addressCountry,
+                                            line1: addressLine1,
+                                            // line2: null,
+                                            postal_code: addressZip,
+                                            state: addressState,
+                                        },
+                                        name: name,
+                                    }
+                                }
+                            }
+                        ).then(function(resp) {
+                            self.stripeResponseHandler(resp);
+                        });
+                    } else {
+                        self.stripe.confirmCardSetup(
+                            self.options.stripeIntentSecret, {
+                                payment_method: {
+                                    type: "card",
+                                    card: self.cardElement,
+                                    billing_details: {
+                                        address: {
+                                            city: addressCity,
+                                            country: addressCountry,
+                                            line1: addressLine1,
+                                            // line2: null,
+                                            postal_code: addressZip,
+                                            state: addressState,
+                                        },
+                                        name: name,
+                                    }
+                                }
+                            }
+                        ).then(function(resp) {
+                            self.stripeResponseHandler(resp);
+                        });
+                    }
+                } else {
+                    // use https://js.stripe.com/v2/
+                    Stripe.setPublishableKey(self.options.stripePubKey);
+                    Stripe.createToken({
+                        number: number,
+                        cvc: cvc,
+                        exp_month: expMonth,
+                        exp_year: expYear,
+                        name: name,
+                        address_line1: addressLine1,
+                        address_city: addressCity,
+                        address_state: addressState,
+                        address_zip: addressZip,
+                        address_country: addressCountry
+                    }, function(status, resp) {
+                        self.stripeResponseHandler(resp);
+                    });
+                }
             } else {
                 showMessages([errorMessages], "error");
                 submitButton.removeAttr("disabled");
@@ -420,6 +485,7 @@
 
     $.fn.card.defaults = {
         stripePubKey: null,
+        stripeIntentSecret: null,
         saas_api_card: null,
         cardNumberLabel: "Card Number",
         securityCodeLabel: "Security Code",

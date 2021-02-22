@@ -1,4 +1,4 @@
-# Copyright (c) 2020, DjaoDjin inc.
+# Copyright (c) 2021, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -29,8 +29,8 @@ from django.db import transaction
 from django.utils.timezone import utc
 
 from ...ledger import export
-from ...models import Organization, Transaction
-
+from ...models import Transaction
+from ...utils import get_organization_model
 
 LOGGER = logging.getLogger(__name__)
 
@@ -133,6 +133,7 @@ def import_transactions(filedesc, create_organizations=False, broker=None,
                 if dest_organization and orig_organization:
                     # Assuming no errors, at this point we have
                     # a full transaction.
+                    #pylint:disable=logging-not-lazy
                     LOGGER.debug(
                         "Transaction.objects.using('%(using)s').create("\
                         "created_at='%(created_at)s',"\
@@ -141,7 +142,7 @@ def import_transactions(filedesc, create_organizations=False, broker=None,
                         "dest_amount='%(dest_amount)s',"\
                         "dest_organization='%(dest_organization)s',"\
                         "dest_account='%(dest_account)s',"\
-                        "orig_amount='%(dest_amount)s',"\
+                        "orig_amount='%(orig_amount)s',"\
                         "orig_unit='%(orig_unit)s',"\
                         "orig_organization='%(orig_organization)s',"\
                         "orig_account='%(orig_account)s',"\
@@ -211,15 +212,16 @@ def parse_line(line, create_organizations=False, broker=None, using='default'):
                     amount = int(float(value) * 100)
                 else:
                     amount = int(value)
+        organization_model = get_organization_model()
         try:
             if create_organizations:
-                organization, _ = Organization.objects.using(
+                organization, _ = organization_model.objects.using(
                     using).get_or_create(slug=organization_slug)
             else:
-                organization = Organization.objects.using(using).get(
+                organization = organization_model.objects.using(using).get(
                     slug=organization_slug)
             return (organization, account, amount, unit)
-        except Organization.DoesNotExist:
+        except organization_model.DoesNotExist:
             sys.stderr.write("error: Cannot find Organization '%s'\n"
                 % organization_slug)
     return (None, None, amount, unit)

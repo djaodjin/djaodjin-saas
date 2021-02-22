@@ -1,0 +1,7 @@
+100-balance-due.json
+A charge has failed after a balance was already due.
+
+110-balance-checkout.json
+There is a balance due on a subscription and a user is adding the plan
+in the cart again.
+

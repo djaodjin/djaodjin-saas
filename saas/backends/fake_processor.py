@@ -1,4 +1,4 @@
-# Copyright (c) 2020, DjaoDjin inc.
+# Copyright (c) 2021, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -69,9 +69,10 @@ class FakeProcessorBackend(object):
                 broker_fee_amount, broker_fee_unit)
 
     @staticmethod
-    def create_charge(customer, amount, unit, provider,
-                      descr=None, stmt_descr=None, created_at=None,
-                      broker_fee_amount=0):
+    def create_payment(amount, unit, provider,
+                       processor_card_key=None, token=None,
+                       descr=None, stmt_descr=None, created_at=None,
+                       broker_fee_amount=0):
         #pylint: disable=too-many-arguments,unused-argument
         created_at = datetime_or_now(created_at)
         receipt_info = {
@@ -80,17 +81,9 @@ class FakeProcessorBackend(object):
             'card_name': "Joe Test"
         }
         charge_key = "fake_%s" % generate_random_slug()
-        LOGGER.debug("create_charge(amount=%s, unit='%s', descr='%s') => %s",
+        LOGGER.debug("create_payment(amount=%s, unit='%s', descr='%s') => %s",
             amount, unit, descr, charge_key)
         return (charge_key, created_at, receipt_info)
-
-    def create_charge_on_card(self, card, amount, unit, provider,
-                              descr=None, stmt_descr=None, created_at=None,
-                              broker_fee_amount=0):
-        #pylint: disable=too-many-arguments,unused-argument
-        return self.create_charge(card, amount, unit, provider,
-                    descr=descr, stmt_descr=descr, created_at=created_at,
-                    broker_fee_amount=broker_fee_amount)
 
     @staticmethod
     def create_transfer(provider, amount, unit, descr=None):
@@ -107,7 +100,6 @@ class FakeProcessorBackend(object):
         """
         Removes a card associated to an subscriber.
         """
-        pass
 
     @staticmethod
     def reconcile_transfers(provider, created_at, dry_run=False):
@@ -120,7 +112,6 @@ class FakeProcessorBackend(object):
         """
         Refund a charge on the associated card.
         """
-        pass
 
     @staticmethod
     def retrieve_charge(charge):

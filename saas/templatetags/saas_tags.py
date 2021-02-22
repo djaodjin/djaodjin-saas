@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# Copyright (c) 2020, DjaoDjin inc.
+# Copyright (c) 2021, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -39,8 +39,8 @@ from ..compat import six
 from ..decorators import fail_direct, _valid_manager
 from ..humanize import as_money, as_percentage
 from ..mixins import as_html_description, product_url as utils_product_url
-from ..models import Organization, Subscription, Plan, get_broker
-
+from ..models import Subscription, Plan, get_broker
+from ..utils import get_organization_model
 
 register = template.Library()
 
@@ -159,8 +159,9 @@ def is_direct(request, organization=None):
 
 @register.filter
 def is_manager(request, organization):
-    if not isinstance(organization, Organization):
-        organization = get_object_or_404(Organization, slug=organization)
+    organization_model = get_organization_model()
+    if not isinstance(organization, organization_model):
+        organization = get_object_or_404(organization_model, slug=organization)
     return _valid_manager(request, [organization])
 
 
@@ -188,7 +189,7 @@ def attached_organization(user):
     Returns the person ``Organization`` associated to the user or None
     in none can be reliably found.
     """
-    return Organization.objects.attached(user)
+    return get_organization_model().objects.attached(user)
 
 
 @register.filter()

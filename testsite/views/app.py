@@ -1,4 +1,4 @@
-# Copyright (c) 2018, DjaoDjin inc.
+# Copyright (c) 2021, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -27,20 +27,21 @@ from django.http import HttpResponseRedirect
 from django.views.generic import TemplateView
 from saas.backends import ProcessorConnectionError
 from saas.compat import reverse
-from saas.models import Organization
 from saas.settings import MANAGER
+from saas.utils import get_organization_model
 
 
 class AppView(TemplateView):
 
     template_name = 'app.html'
+    organization_model = get_organization_model()
 
     @property
     def organization(self):
         organization_slug = self.kwargs.get('organization')
         if organization_slug:
-            return Organization.objects.get(slug=organization_slug)
-        return Organization.objects.accessible_by(
+            return self.organization_model.objects.get(slug=organization_slug)
+        return self.organization_model.objects.accessible_by(
             self.request.user, role_descr=MANAGER).first()
 
     def get_context_data(self, **kwargs):

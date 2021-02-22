@@ -1,4 +1,4 @@
-# Copyright (c) 2020, DjaoDjin inc.
+# Copyright (c) 2021, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -43,8 +43,6 @@ from django import http
 from django.contrib.auth import REDIRECT_FIELD_NAME
 from django.db import transaction
 from django.db.models import Q
-from django.db.models.sql.datastructures import Join
-from django.db.models.sql.constants import INNER
 from django.contrib import messages
 from django.shortcuts import get_object_or_404
 from django.utils.translation import ugettext_lazy as _
@@ -53,18 +51,18 @@ from django.views.generic import (DetailView, FormView, ListView, TemplateView,
 from django.utils.http import urlencode
 
 from .. import settings, humanize
+from ..cart import session_cart_to_database
 from ..compat import is_authenticated, reverse, six
 from ..backends import ProcessorError, ProcessorConnectionError
 from ..decorators import _insert_url, _valid_manager
 from ..forms import (BankForm, CartPeriodsForm, CreditCardForm,
     ImportTransactionForm, RedeemCouponForm, VTChargeForm, WithdrawForm)
-from ..mixins import (CartMixin, ChargeMixin, DateRangeContextMixin,
-    OrganizationMixin, ProviderMixin, product_url)
-from ..models import (AdvanceDiscount, CartItem, Charge, Coupon, Organization,
+from ..mixins import (BalanceDueMixin, CartMixin, ChargeMixin,
+    DateRangeContextMixin, OrganizationMixin, ProviderMixin, product_url)
+from ..models import (CartItem, Charge, Coupon,
     Plan, Price, Subscription, Transaction, UseCharge, get_broker)
-from ..utils import (datetime_or_now, is_broker, update_context_urls,
+from ..utils import (get_organization_model, update_context_urls,
     validate_redirect_url)
-from ..views import session_cart_to_database
 
 
 LOGGER = logging.getLogger(__name__)
@@ -234,35 +232,46 @@ djaodjin-saas/tree/master/saas/templates/saas/billing/bank.html>`__).
         return super(ProcessorAuthorizeView, self).get(request, *args, **kwargs)
 
 
-class InvoicablesFormMixin(OrganizationMixin):
+class InvoicablesMixin(OrganizationMixin):
     """
     Mixin a list of invoicables
     """
+    @property
+    def invoicables(self):
+        if not hasattr(self, '_invoicables'):
+            self._invoicables = self.as_invoicables(
+                self.request.user, self.organization)
+            self._invoicables.sort(
+                key=lambda invoicable: str(invoicable['subscription']))
+        return self._invoicables
 
-    @staticmethod
-    def with_options(invoicables):
-        """
-        Returns ``True`` if any of the invoicables has at least two options
-        available for the user.
-        """
-        for invoicable in invoicables:
-            if len(invoicable['options']) > 1:
-                return True
-        return False
+    @property
+    def invoicables_broker_fee_amount(self):
+        if not hasattr(self, '_invoicables_broker_fee_amount'):
+            self._invoicables_broker_fee_amount = 0
+            for invoicable in self.invoicables:
+                for invoiced_item in invoicable['lines']:
+                    if invoiced_item.subscription:
+                        self._invoicables_broker_fee_amount += \
+                            invoiced_item.subscription.plan.prorate_transaction(
+                                invoiced_item.dest_amount)
+        return self._invoicables_broker_fee_amount
 
-    def get_initial(self):
-        kwargs = super(InvoicablesFormMixin, self).get_initial()
-        for invoicable in self.invoicables:
-            if invoicable['options']:
-                kwargs.update({invoicable['name']: ""})
-        return kwargs
-
-    def get_form(self, form_class=None):
-        self.invoicables = self.get_queryset()
-        return super(InvoicablesFormMixin, self).get_form(form_class)
+    @property
+    def invoicables_provider(self):
+        if not hasattr(self, '_invoicables_provider'):
+            providers = set([])
+            for invoicable in self.invoicables:
+                providers |= set(Transaction.objects.providers(
+                    invoicable['lines']))
+            if len(providers) == 1:
+                self._invoicables_provider = list(providers)[0]
+            else:
+                self._invoicables_provider = get_broker()
+        return self._invoicables_provider
 
     def get_context_data(self, **kwargs):
-        context = super(InvoicablesFormMixin, self).get_context_data(**kwargs)
+        context = super(InvoicablesMixin, self).get_context_data(**kwargs)
         context.update(self.get_redirect_path())
         lines_amount = 0
         lines_unit = settings.DEFAULT_UNIT
@@ -277,16 +286,31 @@ class InvoicablesFormMixin(OrganizationMixin):
                 lines_amount += line.dest_amount
                 lines_unit = line.dest_unit
         current_plan = None
-        self.invoicables.sort(
-            key=lambda invoicable: str(invoicable['subscription']))
         for invoicable in self.invoicables:
             plan = invoicable['subscription'].plan
-            invoicable['is_changed'] = (
-                current_plan is not None and plan != current_plan)
-            current_plan = plan
-        context.update({'invoicables': self.invoicables,
-            'lines_price': Price(lines_amount, lines_unit)})
+            if current_plan is None or plan != current_plan:
+                invoicable['is_changed'] = (current_plan is not None)
+                current_plan = plan
+                current_plan.is_removable = True
+            for line in invoicable['lines']:
+                if line.pk:
+                    current_plan.is_removable = False
+
+        context.update({
+            'invoicables': self.invoicables,
+            'lines_price': Price(lines_amount, lines_unit)
+        })
         return context
+
+    def get_initial(self):
+        kwargs = super(InvoicablesMixin, self).get_initial()
+        for invoicable in self.invoicables:
+            if invoicable['options']:
+                kwargs.update({invoicable['name']: ""})
+        return kwargs
+
+    def get_queryset(self):
+        return self.invoicables
 
     def get_redirect_path(self, **kwargs): #pylint: disable=unused-argument
         context = {}
@@ -297,7 +321,7 @@ class InvoicablesFormMixin(OrganizationMixin):
         return context
 
 
-class CardInvoicablesFormMixin(CardFormMixin, InvoicablesFormMixin):
+class CheckoutFormMixin(CardFormMixin):
     """
     Create a charge for items that must be charged on submit.
     """
@@ -351,6 +375,7 @@ class CardInvoicablesFormMixin(CardFormMixin, InvoicablesFormMixin):
                 self.sole_provider = False
             if plan_key in data:
                 selected_line = int(data[plan_key]) - 1
+                #pylint:disable=chained-comparison
                 if (selected_line >= 0 and
                     selected_line < len(invoicable['options'])):
                     line = invoicable['options'][selected_line]
@@ -374,7 +399,23 @@ class CardInvoicablesFormMixin(CardFormMixin, InvoicablesFormMixin):
         except ProcessorError as err:
             messages.error(self.request, err)
             return self.form_invalid(form)
-        return super(CardInvoicablesFormMixin, self).form_valid(form)
+        return super(CheckoutFormMixin, self).form_valid(form)
+
+    def get_context_data(self, **kwargs):
+        context = super(CheckoutFormMixin, self).get_context_data(**kwargs)
+        try:
+            # computed in `InvoicablesMixin.get_context_data`
+            lines_price = context.get('lines_price')
+            context.update(
+                self.organization.processor_backend.get_payment_context(
+                    self.invoicables_provider,
+                    self.organization.processor_card_key,
+                    amount=lines_price.amount, unit=lines_price.unit,
+                    broker_fee_amount=self.invoicables_broker_fee_amount))
+        except ProcessorConnectionError:
+            messages.error(self.request, _("The payment processor is "\
+                "currently unreachable. Sorry for the inconvienience."))
+        return context
 
     def get_success_url(self):
         redirect_path = validate_redirect_url(
@@ -431,6 +472,15 @@ class CardUpdateView(CardFormMixin, FormView):
 
     def get_context_data(self, **kwargs):
         context = super(CardUpdateView, self).get_context_data(**kwargs)
+        try:
+            # computed in `InvoicablesMixin.get_context_data`
+            context.update(
+                self.organization.processor_backend.get_payment_context(
+                    get_broker(),
+                    self.organization.processor_card_key))
+        except ProcessorConnectionError:
+            messages.error(self.request, _("The payment processor is "\
+                "currently unreachable. Sorry for the inconvienience."))
         context.update(self.get_redirect_path())
         context.update({'force_update': True})
         return context
@@ -562,7 +612,7 @@ djaodjin-saas/tree/master/saas/templates/saas/billing/transfers.html>`__).
         return context
 
 
-class CartBaseView(InvoicablesFormMixin, CartMixin, FormView):
+class CartBaseView(InvoicablesMixin, BalanceDueMixin, CartMixin, FormView):
     """
     The main pupose of ``CartBaseView`` is generate an list of invoicables
     from ``CartItem`` records associated to a ``request.user``.
@@ -592,6 +642,12 @@ class CartBaseView(InvoicablesFormMixin, CartMixin, FormView):
         $510.30 Subscription to medium-plan until 2016/01/07 (3 months, 10% off)
         $907.20 Subscription to medium-plan until 2016/04/07 (6 months, 20% off)
     """
+    def as_invoicables(self, user, customer, at_time=None):
+        invoicables = BalanceDueMixin.as_invoicables(
+            self, user, customer, at_time=at_time)
+        invoicables += CartMixin.as_invoicables(
+            self, user, customer, at_time=at_time)
+        return invoicables
 
     def dispatch(self, request, *args, **kwargs):
         # We are not getting here without an authenticated user. It is time
@@ -605,9 +661,59 @@ class CartBaseView(InvoicablesFormMixin, CartMixin, FormView):
             'submit_title': _("Subscribe")})
         return context
 
-    def get_queryset(self):
-        return super(CartBaseView, self).as_invoicables(
-            self.request.user, self.organization)
+    @staticmethod
+    def get_empty_cart_redirect_url(request, *args, **kwargs):
+        """
+        Returns URL to pricing page if the cart is empty.
+        """
+        #pylint:disable=unused-argument
+        if is_authenticated(request):
+            if not CartItem.objects.get_cart(user=request.user).exists():
+                messages.info(request,
+                    _("Your Cart is empty. Please add some items to your cart"
+" before you check out."))
+                return reverse('saas_cart_plan_list')
+        return None
+
+    def get_period_options_redirect_url(self, request, *args, **kwargs):
+        """
+        Returns URL to pick period's page if there are multiple options
+        """
+        #pylint:disable=unused-argument
+        for invoicable in self.invoicables:
+            if invoicable['options']:
+                return reverse('saas_cart_periods', args=(self.organization,))
+        return None
+
+    def get_bulk_options_redirect_url(self, request, *args, **kwargs):
+        """
+        Returns URL to buy subscriptions for a different profile if bulk buying
+        is enabled.
+        """
+        #pylint:disable=unused-argument
+        # Let's first make sure we have valid parameters ...
+        params = []
+        for item_plan, item_use, item_sync_on in six.moves.zip_longest(
+                request.GET.getlist('plan', []),
+                request.GET.getlist('use', []),
+                request.GET.getlist('sync_on', [])):
+            plan = get_object_or_404(Plan, slug=item_plan)
+            if item_use:
+                use = get_object_or_404(UseCharge, slug=item_use, plan=plan)
+            else:
+                use = None
+            params += [(plan, use, item_sync_on)]
+        invoice_key = request.GET.get('invoice_key', None)
+        # ... before doing any persistent modifications.
+        for item_plan, item_use, item_sync_on in params:
+            self.insert_item(request, plan=item_plan, use=item_use,
+                sync_on=item_sync_on, invoice_key=invoice_key)
+        if (self.organization.is_bulk_buyer and CartItem.objects.get_cart(
+                user=request.user).filter(
+                Q(sync_on__isnull=True) | Q(sync_on="")).exists()):
+            # A bulk buyer customer can buy subscriptions for other people.
+            return reverse('saas_cart_seats', args=(self.organization,))
+        return None
 
     def get_success_url(self):
         redirect_path = validate_redirect_url(
@@ -657,25 +763,17 @@ class CartPeriodsView(CartBaseView):
                     for cart_item in queryset:
                         cart_item.option = selected_line
                         cart_item.save()
-
         return super(CartPeriodsView, self).form_valid(form)
 
-    @property
-    def cart_items(self):
-        if is_authenticated(self.request):
-            return CartItem.objects.get_cart(user=self.request.user)
-        return CartItem.objects.none()
-
     def get(self, request, *args, **kwargs):
-        if not self.cart_items.exists():
-            messages.info(self.request,
-              _("Your Cart is empty. Please add some items to your cart before"
-" you check out."))
-            return http.HttpResponseRedirect(reverse('saas_cart_plan_list'))
+        redirect_url = self.get_empty_cart_redirect_url(
+            request, *args, **kwargs)
+        if redirect_url:
+            return http.HttpResponseRedirect(redirect_url)
         return super(CartPeriodsView, self).get(request, *args, **kwargs)
 
 
-class CartSeatsView(CartPeriodsView):
+class CartSeatsView(CartBaseView):
     """
     Optional page to subcribe multiple organizations to a ``Plan`` while paying
     through through a third-party ``Organization`` (i.e. self.organization).
@@ -695,28 +793,14 @@ class CartSeatsView(CartPeriodsView):
     template_name = 'saas/billing/cart-seats.html'
 
     def get(self, request, *args, **kwargs):
-        class JoinCols:
-            @staticmethod
-            def get_joining_columns():
-                return (('plan_id', 'plan_id'),)
-            @staticmethod
-            def get_extra_restriction(where_class, alias, related_alias):
-                return None
-
-        cart_items = self.cart_items.filter(option=0)
-        cart_items.query.join(Join(
-            AdvanceDiscount._meta.db_table, # table_name
-            CartItem._meta.db_table,        # parent_alias
-            None,                           # table_alias
-            INNER,                          # join_type
-            JoinCols(),                     # join_field
-            False,                          # nullable
-        ))
-        if cart_items.exists():
-            # If option == 0 and there is a discount to buy periods
-            # in advance, we will present multiple options to the user.
-            return http.HttpResponseRedirect(
-                reverse('saas_cart_periods', args=(self.organization,)))
+        redirect_url = self.get_empty_cart_redirect_url(
+            request, *args, **kwargs)
+        if redirect_url:
+            return http.HttpResponseRedirect(redirect_url)
+        redirect_url = self.get_period_options_redirect_url(
+            request, *args, **kwargs)
+        if redirect_url:
+            return http.HttpResponseRedirect(redirect_url)
         return super(CartSeatsView, self).get(request, *args, **kwargs)
 
     def get_context_data(self, **kwargs):
@@ -725,7 +809,7 @@ class CartSeatsView(CartPeriodsView):
         return context
 
 
-class CartView(CardInvoicablesFormMixin, CartSeatsView):
+class CartView(CheckoutFormMixin, CartBaseView):
     """
     ``CartView`` derives from ``CartSeatsView`` which itself derives from
     ``CartPeriodsView``, all of which overrides the ``get`` method to redirect
@@ -756,34 +840,19 @@ djaodjin-saas/tree/master/saas/templates/saas/billing/cart.html>`__).
           - ``organization`` The provider of the product
           - ``request`` The HTTP request object
         """
-        # Let's first make sure we have valid parameters ...
-        params = []
-        for item_plan, item_use, item_sync_on in six.moves.zip_longest(
-                request.GET.getlist('plan', []),
-                request.GET.getlist('use', []),
-                request.GET.getlist('sync_on', [])):
-            plan = get_object_or_404(Plan, slug=item_plan)
-            if item_use:
-                use = get_object_or_404(UseCharge, slug=item_use, plan=plan)
-            else:
-                use = None
-            params += [(plan, use, item_sync_on)]
-        invoice_key = request.GET.get('invoice_key', None)
-        # ... before doing any persistent modifications.
-        for item_plan, item_use, item_sync_on in params:
-            self.insert_item(request, plan=item_plan, use=item_use,
-                sync_on=item_sync_on, invoice_key=invoice_key)
-        if (self.organization.is_bulk_buyer and self.cart_items.filter(
-                Q(sync_on__isnull=True) | Q(sync_on="")).exists()):
-            # A bulk buyer customer can buy subscriptions for other people.
-            return http.HttpResponseRedirect(
-                reverse('saas_cart_seats', args=(self.organization,)))
+        redirect_url = self.get_empty_cart_redirect_url(
+            request, *args, **kwargs)
+        if redirect_url:
+            return http.HttpResponseRedirect(redirect_url)
+        redirect_url = self.get_period_options_redirect_url(
+            request, *args, **kwargs)
+        if redirect_url:
+            return http.HttpResponseRedirect(redirect_url)
+        redirect_url = self.get_bulk_options_redirect_url(
+            request, *args, **kwargs)
+        if redirect_url:
+            return http.HttpResponseRedirect(redirect_url)
         return super(CartView, self).get(request, *args, **kwargs)
-
-    def get_context_data(self, **kwargs):
-        context = super(CartView, self).get_context_data(**kwargs)
-        context.update({'is_bulk_buyer': False})
-        return context
 
 
 class CheckoutView(CardFormMixin, FormView):
@@ -995,7 +1064,8 @@ class RedeemCouponView(ProviderMixin, FormView):
         return reverse('saas_cart_plan_list')
 
 
-class BalanceView(CardInvoicablesFormMixin, FormView):
+class BalanceView(CheckoutFormMixin, InvoicablesMixin, BalanceDueMixin,
+                  FormView):
     """
     Set of invoicables for all subscriptions which have a balance due.
 
@@ -1012,55 +1082,25 @@ class BalanceView(CardInvoicablesFormMixin, FormView):
                   "lines": [Transaction, ...],
                   "options": [Transaction, ...],
                 }, ...]
-    """
-    plan_url_kwarg = 'subscribed_plan'
-    template_name = 'saas/billing/balance.html'
 
-    @staticmethod
-    def get_invoicable_options(subscription, created_at=None,
-                               prorate_to=None, cart_item=None):
-        #pylint: disable=unused-argument
-        payable = Transaction.objects.new_subscription_statement(
-            subscription, created_at)
-        if payable.dest_amount > 0:
-            later = Transaction.objects.new_subscription_later(
-                subscription, created_at)
-            return [payable, later]
-        return []
+    GET displays the balance due by a subscriber.
 
-    def get_queryset(self):
-        """
-        GET displays the balance due by a subscriber.
+    Template:
 
-        Template:
-
-        To edit the layout of this page, create a local \
+    To edit the layout of this page, create a local \
         ``saas/billing/balance.html`` (`example <https://github.com/djaodjin\
 /djaodjin-saas/tree/master/saas/templates/saas/billing/balance.html>`__).
 
-        Template context:
-          - ``STRIPE_PUB_KEY`` Public key to send to stripe.com
-          - ``invoicables`` List of items to be invoiced (with options)
-          - ``organization`` The provider of the product
-          - ``request`` The HTTP request object
+    Template context:
+        - ``STRIPE_PUB_KEY`` Public key to send to stripe.com
+        - ``invoicables`` List of items to be invoiced (with options)
+        - ``organization`` The provider of the product
+        - ``request`` The HTTP request object
 
-        POST attempts to charge the card for the balance due.
-        """
-        invoicables = []
-        created_at = datetime_or_now()
-        balances = Transaction.objects.get_statement_balances(
-            self.organization, until=created_at)
-        for event_id in six.iterkeys(balances):
-            subscription = Subscription.objects.get_by_event_id(event_id)
-            options = self.get_invoicable_options(subscription,
-                created_at=created_at)
-            if len(options) > 0:
-                invoicables += [{
-                    'subscription': subscription,
-                    'name': 'cart-%s' % subscription.plan.slug,
-                    'lines': [],
-                    'options': options}]
-        return invoicables
+    POST attempts to charge the card for the balance due.
+    """
+    plan_url_kwarg = 'subscribed_plan'
+    template_name = 'saas/billing/balance.html'
 
     def get_subscription(self):
         return get_object_or_404(Subscription,
@@ -1111,7 +1151,7 @@ djaodjin-saas/tree/master/saas/templates/saas/billing/withdraw.html>`__).
 
     def get(self, request, *args, **kwargs):
         if not (self.organization.processor_deposit_key
-                or is_broker(self.organization)):
+                or self.organization.is_broker):
             return _insert_url(request, inserted_url=reverse('saas_update_bank',
                 args=(self.organization,)))
         return super(WithdrawView, self).get(request, *args, **kwargs)
@@ -1141,7 +1181,8 @@ djaodjin-saas/tree/master/saas/templates/saas/billing/import.html>`__).
         assert len(parts) == 2
         subscriber = parts[0]
         plan = parts[1]
-        subscriber = Organization.objects.filter(slug=subscriber).first()
+        subscriber = get_organization_model().objects.filter(
+            slug=subscriber).first()
         if subscriber is None:
             form.add_error(None, _("Invalid subscriber"))
         plan = Plan.objects.filter(

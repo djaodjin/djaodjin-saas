@@ -1,4 +1,4 @@
-# Copyright (c) 2020, DjaoDjin inc.
+# Copyright (c) 2021, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -72,9 +72,9 @@ import requests, stripe
 
 from .. import CardError, ProcessorError, ProcessorSetupError
 from ... import settings, signals
-from ...compat import reverse, six
+from ...compat import import_string, reverse, six
 from ...utils import (datetime_to_utctimestamp, utctimestamp_to_datetime,
-    datetime_or_now, is_broker)
+    datetime_or_now)
 
 
 LOGGER = logging.getLogger(__name__)
@@ -94,35 +94,47 @@ class StripeBackend(object):
         self.client_id = settings.PROCESSOR.get('CLIENT_ID', None)
         self.mode = settings.PROCESSOR.get('MODE', self.LOCAL)
 
-    def get_processor_charge(self, charge, includes_fee=False):
+    def _get_processor_charge(self, stripe_charge_key, broker,
+                              includes_fee=False):
         stripe_charge = None
-        headers = self._prepare_charge_request(charge.broker)
+        headers = self._prepare_charge_request(broker)
         kwargs = headers
         if includes_fee:
             kwargs = {}
             kwargs.update(headers)
             kwargs.update({'expand': ['application_fee',
                 'balance_transaction', 'refunds.data.balance_transaction']})
-        try:
-            stripe_charge = stripe.Charge.retrieve(
-                charge.processor_key, **kwargs)
-        except stripe.error.InvalidRequestError:
-            if (charge.processor_key in settings.PROCESSOR_FALLBACK and
-                (self.mode == self.REMOTE and
-                 not self._is_platform(charge.broker))):
-                LOGGER.warning("Attempt fallback on charge %s.",
-                    charge.processor_key)
-                kwargs = self._prepare_request()
+        if stripe_charge_key.startswith('ch_'):
+            try:
                 stripe_charge = stripe.Charge.retrieve(
-                    charge.processor_key, **kwargs)
+                    stripe_charge_key, **kwargs)
+            except stripe.error.InvalidRequestError:
+                if (stripe_charge_key in settings.PROCESSOR_FALLBACK and
+                    (self.mode == self.REMOTE and
+                     not self._is_platform(broker))):
+                    LOGGER.warning("Attempt fallback on charge %s.",
+                        stripe_charge_key)
+                    kwargs = self._prepare_request()
+                    stripe_charge = stripe.Charge.retrieve(
+                        stripe_charge_key, **kwargs)
+        else:
+            try:
+                payment_intent = stripe.PaymentIntent.retrieve(
+                    stripe_charge_key, **kwargs)
+                if payment_intent.charges.data:
+                    stripe_charge = payment_intent.charges.data[0]
+            except stripe.error.InvalidRequestError:
+                # XXX do more processing here??
+                raise
         return stripe_charge, headers
 
     @staticmethod
     def _is_platform(provider):
-        return provider._state.db == 'default' and is_broker(provider)
+        #pylint:disable=protected-access
+        return provider._state.db == 'default' and provider.is_broker
 
     def _prepare_request(self):
-        stripe.api_version = '2019-08-14'
+        stripe.api_version = '2020-08-27'
         stripe.api_key = self.priv_key
         return {}
 
@@ -183,8 +195,9 @@ class StripeBackend(object):
 
     def charge_distribution(self, charge,
                             refunded=0, unit=settings.DEFAULT_UNIT):
-        stripe_charge, kwargs = self.get_processor_charge(
-            charge, includes_fee=True)
+        #pylint:disable=too-many-locals
+        stripe_charge, kwargs = self._get_processor_charge(
+            charge.processor_key, charge.broker, includes_fee=True)
         LOGGER.debug("charge_distribution(charge=%s, refunded=%d, unit=%s)"\
             " => stripe_charge=\n%s", charge.processor_key, refunded, unit,
             stripe_charge)
@@ -301,11 +314,23 @@ class StripeBackend(object):
         organization.processor_deposit_key = data.get('stripe_user_id')
         organization.processor_refresh_token = data.get('refresh_token')
 
-    def _create_charge(self, amount, unit, provider,
-            descr=None, stmt_descr=None, created_at=None,
-            broker_fee_amount=0, customer=None, card=None):
-        #pylint: disable=too-many-arguments
-        assert customer is not None or card is not None
+    def create_payment(self, amount, unit, provider,
+                       processor_card_key=None, token=None,
+                       descr=None, stmt_descr=None, created_at=None,
+                       broker_fee_amount=0):
+        """
+        Create either a Stripe ``Charge`` or ``PaymentIntent`` for an *amount*
+        of *unit* (ex: $12) if *processor_card_key*/*token* is set or
+        neither is set respectively.
+
+        Create a charge on the default card associated to the customer
+        if processor_card_key is set or on a specific card is token
+        is set.
+
+        *stmt_descr* can only be 15 characters maximum.
+        """
+        #pylint: disable=too-many-arguments,too-many-locals,too-many-statements
+        assert processor_card_key is not None or token is not None
         kwargs = self._prepare_charge_request(provider)
         if self.mode == self.FORWARD and not self._is_platform(provider):
             # We generate Stripe data into the StripeConnect account.
@@ -314,98 +339,108 @@ class StripeBackend(object):
                     _("%(organization)s is not connected to a Stripe account."
                     ) % {'organization': provider}, provider)
             kwargs.update({'destination': provider.processor_deposit_key})
-        if customer is not None:
-            kwargs.update({'customer': customer})
-        elif card is not None:
-            kwargs.update({'card': card})
-        if broker_fee_amount:
-            kwargs.update({'application_fee_amount': broker_fee_amount})
-        if stmt_descr is None and provider is not None:
-            stmt_descr = provider.printable_name
 
-        key = self.generate_idempotent_key(amount,
-            unit, provider, descr, stmt_descr, created_at,
-            customer, card)
-        if key:
-            kwargs.update({'idempotency_key': key})
-        try:
-            processor_charge = stripe.Charge.create(
-                amount=amount, currency=unit,
-                description=descr, statement_descriptor=stmt_descr[:15],
-                **kwargs)
-            processor_key = processor_charge.id
-            LOGGER.debug("stripe.Charge.create(amount=%d, currency=%s,"\
-                " description=%s, statement_descriptor=%s, kwargs=%s)"\
-                " =>\n%s", amount, unit, descr, stmt_descr, kwargs,
-                str(processor_charge))
-            if created_at is None:
-                # Implementation Note:
-                #  We don't blindly use the `created` field from the Stripe
-                #  Charge object because it seems to have dropped
-                #  the microseconds accuracy recently. That's a problem
-                #  whe `Transaction` are ordered and order->charge->receipt
-                #  pipeline is script driven.
-                created_at = utctimestamp_to_datetime(processor_charge.created)
-            receipt_info = {
-                'last4': processor_charge.source.last4,
-                'exp_date': datetime.date(processor_charge.source.exp_year,
-                    processor_charge.source.exp_month, 1),
-                'card_name': processor_charge.source.name
-            }
-        except stripe.error.CardError as err:
-            # If the card is declined, Stripe will record a failed ``Charge``
-            # and raise an exception here. Unfortunately only the Charge id
-            # is present in the CardError exception. So instead of generating
-            # an HTTP retrieve and recording a failed charge in our database,
-            # we raise and rollback.
-            raise CardError(str(err), err.code,
-                charge_processor_key=err.json_body['error']['charge'],
-                backend_except=err)
-        except stripe.error.PermissionError as err:
-            # It is possible we no longer have access to the connected account.
-            with transaction.atomic():
-                # We want this update to be committed even if other transactions
-                # are unwind on the exception.
-                provider.processor_pub_key = None
-                provider.processor_priv_key = None
-                provider.processor_deposit_key = None
-                provider.processor_refresh_token = None
-                provider.save()
-            raise ProcessorSetupError(
+        receipt_info = {}
+        if token.startswith('pi_'):
+            # We are dealing with a PaymentIntent. The Stripe Charge has
+            # already been created.
+            try:
+                payment_intent = stripe.PaymentIntent.retrieve(id=token,
+                    **kwargs)
+                LOGGER.debug("stripe.PaymentIntent.retrieve("\
+                    "id=%s, kwargs=%s) =>\n%s",
+                    token, kwargs, str(payment_intent))
+                if payment_intent.charges.data:
+                    stripe_charge = payment_intent.charges.data[0]
+            except stripe.error.InvalidRequestError as err:
+                raise ProcessorError(str(err), backend_except=err)
+        else:
+            try:
+                if processor_card_key is not None:
+                    stripe_customer = stripe.Customer.retrieve(
+                        processor_card_key,
+                        expand=['invoice_settings.default_payment_method'],
+                        **kwargs)
+                    kwargs.update({
+                        'customer': processor_card_key,
+                        'payment_method': stripe_customer.invoice_settings\
+                            .default_payment_method,
+                    })
+                elif token is not None:
+                    kwargs.update({'payment_method_data': {
+                        'type': 'card', 'card': {'token': token}}
+                    })
+                if broker_fee_amount:
+                    kwargs.update({'application_fee_amount': broker_fee_amount})
+                if stmt_descr is None and provider is not None:
+                    stmt_descr = provider.printable_name
+
+                idempotency_key = self.generate_idempotent_key(amount,
+                    unit, provider, descr, stmt_descr, created_at,
+                    processor_card_key, token)
+                payment_intent = stripe.PaymentIntent.create(
+                    amount=amount, currency=unit,
+                    description=descr, statement_descriptor=stmt_descr[:15],
+                    off_session=True,
+                    confirm=True,
+                    idempotency_key=idempotency_key,
+                    **kwargs)
+                if payment_intent.charges.data:
+                    stripe_charge = payment_intent.charges.data[0]
+                LOGGER.debug("stripe.PaymentIntent.create("\
+                    "amount=%d, currency=%s, description=%s, "\
+                    "statement_descriptor=%s, kwargs=%s)"\
+                    " =>\n%s\nstripe_charge=%s",
+                    amount, unit, descr, stmt_descr, kwargs,
+                    str(payment_intent), str(stripe_charge))
+
+            except stripe.error.CardError as err:
+                # If the card is declined, Stripe will record a failed
+                # ``Charge`` and raise an exception here. Unfortunately only
+                # the Charge id is present in the CardError exception.
+                # So instead of generating
+                # an HTTP retrieve and recording a failed charge in our
+                # database, we raise and rollback.
+                raise CardError(str(err), err.code,
+                    charge_processor_key=err.json_body['error']['charge'],
+                    backend_except=err)
+            except stripe.error.PermissionError as err:
+                # It is possible we no longer have access to the connected
+                # account.
+                with transaction.atomic():
+                    # We want this update to be committed even if other
+                    # transactions are unwind on the exception.
+                    provider.processor_pub_key = None
+                    provider.processor_priv_key = None
+                    provider.processor_deposit_key = None
+                    provider.processor_refresh_token = None
+                    provider.save()
+                raise ProcessorSetupError(
                     _("access to %(organization)s Stripe account was denied"\
                       " (access might have been revoked).") % {
                     'organization': provider}, provider, backend_except=err)
-        except stripe.error.IdempotencyError as err:
-            LOGGER.error(err)
+            except stripe.error.IdempotencyError as err:
+                LOGGER.error(err)
+
+        processor_key = stripe_charge.id
+        if created_at is None:
+            # Implementation Note:
+            #  We don't blindly use the `created` field from the Stripe
+            #  PaymentIntent object because it seems to have dropped
+            #  the microseconds accuracy recently. That's a problem
+            #  whe `Transaction` are ordered and order->charge->receipt
+            #  pipeline is script driven.
+            created_at = utctimestamp_to_datetime(stripe_charge.created)
+        receipt_info.update({
+            'last4': stripe_charge.payment_method_details.card.last4,
+            'exp_date': datetime.date(
+                stripe_charge.payment_method_details.card.exp_year,
+                stripe_charge.payment_method_details.card.exp_month, 1),
+            'card_name': stripe_charge.billing_details.name
+        })
+
         return (processor_key, created_at, receipt_info)
 
-    def create_charge(self, customer, amount, unit, provider=None,
-                      descr=None, stmt_descr=None, created_at=None,
-                      broker_fee_amount=0):
-        #pylint: disable=too-many-arguments
-        """
-        Create a charge on the default card associated to the customer.
-
-        *stmt_descr* can only be 15 characters maximum.
-        """
-        return self._create_charge(amount, unit, provider,
-            descr=descr, stmt_descr=stmt_descr, created_at=created_at,
-            broker_fee_amount=broker_fee_amount,
-            customer=customer.processor_card_key)
-
-    def create_charge_on_card(self, card, amount, unit, provider,
-                    descr=None, stmt_descr=None, created_at=None,
-                    broker_fee_amount=0):
-        #pylint: disable=too-many-arguments
-        """
-        Create a charge on a specified card.
-
-        *stmt_descr* can only be 15 characters maximum.
-        """
-        return self._create_charge(amount, unit, provider,
-            descr=descr, stmt_descr=stmt_descr, created_at=created_at,
-            broker_fee_amount=broker_fee_amount,
-            card=card)
 
     def create_transfer(self, provider, amount, currency, descr=None):
         """
@@ -416,16 +451,14 @@ class StripeBackend(object):
         #     "Cannot create transfers with an OAuth key."
         # This needs to be revisited now because of Payouts API.
         kwargs = self._prepare_transfer_request(provider)
-        key = self.generate_idempotent_key(provider, amount,
-            currency, descr)
-        if key:
-            kwargs.update({'idempotency_key': key})
         try:
             transfer = stripe.Payout.create(
                 amount=amount,
                 currency=currency,
                 description=descr,
                 statement_descriptor=provider.printable_name[:15],
+                idempotency_key=self.generate_idempotent_key(
+                    provider, amount, currency, descr),
                 **kwargs)
         except stripe.error.IdempotencyError as err:
             LOGGER.error(err)
@@ -443,9 +476,10 @@ class StripeBackend(object):
             try:
                 p_customer = stripe.Customer.retrieve(
                     subscriber.processor_card_key,
-                    expand=['default_source'],
+                    expand=['invoice_settings.default_payment_method'],
                     **kwargs)
-                p_customer.default_source.delete()
+                stripe.PaymentMethod.detach(
+                    p_customer.invoice_settings.default_payment_method)
             except stripe.error.CardError as err:
                 raise CardError(str(err), err.code, backend_except=err)
             except stripe.error.InvalidRequestError:
@@ -468,63 +502,95 @@ class StripeBackend(object):
         except stripe.error.InvalidRequestError as err:
             raise ProcessorError(str(err), backend_except=err)
 
-    def create_or_update_card(self, subscriber, card_token,
+    def create_or_update_card(self, subscriber, token,
                               user=None, broker=None):
         """
         Create or update a card associated to an subscriber on Stripe.
         """
         kwargs = self._prepare_charge_request(broker)
-        # Save customer on the platform
+
+        old_card = {}
         p_customer = None
         if subscriber.processor_card_key:
             try:
                 p_customer = stripe.Customer.retrieve(
                     subscriber.processor_card_key,
-                    expand=['default_source'],
-                    **kwargs)
-                old_card = {'last4':p_customer.default_source.last4,
-                    'exp_date':"%d/%d" % (
-                        p_customer.default_source.exp_month,
-                        p_customer.default_source.exp_year)
-                }
-                p_customer.source = card_token
-                p_customer.save()
-                p_customer = stripe.Customer.retrieve(
-                    subscriber.processor_card_key,
-                    expand=['default_source'],
-                    **kwargs)
-                new_card = {'last4':p_customer.default_source.last4,
-                    'exp_date':"%d/%d" % (
-                        p_customer.default_source.exp_month,
-                        p_customer.default_source.exp_year)
-                }
-                signals.card_updated.send(
-                    sender=__name__, organization=subscriber,
-                    user=user, old_card=old_card, new_card=new_card)
+                    expand=['invoice_settings.default_payment_method',
+                            'default_source'], **kwargs)
+                old_card = self._retrieve_card(subscriber, broker=broker,
+                    stripe_customer=p_customer)
             except stripe.error.CardError as err:
                 raise CardError(str(err), err.code, backend_except=err)
-            except stripe.error.InvalidRequestError:
+            except stripe.error.InvalidRequestError as err:
                 # Can't find the customer on Stripe. This can be related to
                 # a switch from using devel to production keys.
                 # We will seamlessly create a new customer on Stripe.
-                LOGGER.warning("Retrieve customer %s on Stripe for %s",
-                    subscriber.processor_card_key, subscriber)
+                LOGGER.warning("Retrieve customer %s on Stripe for %s: %s",
+                    subscriber.processor_card_key, subscriber, err)
+
         if p_customer is None:
             try:
-                # XXX Seems either pylint or Stripe is wrong here...
-                key = self.generate_idempotent_key(subscriber,
-                    card_token, user, broker)
-                if key:
-                    kwargs.update({'idempotency_key': key})
                 p_customer = stripe.Customer.create(
                     email=subscriber.email, description=subscriber.slug,
-                    card=card_token, **kwargs)
-            except stripe.error.CardError as err:
-                raise CardError(str(err), err.code, backend_except=err)
+                    idempotency_key=self.generate_idempotent_key(
+                        subscriber, user, broker),
+                    **kwargs)
             except stripe.error.IdempotencyError as err:
                 LOGGER.error(err)
             subscriber.processor_card_key = p_customer.id
             # We rely on ``update_card`` to do the ``save``.
+
+        if token.startswith('pi_'):
+            payment_intent = stripe.PaymentIntent.retrieve(id=token, **kwargs)
+            card_token = payment_intent.payment_method
+        elif token.startswith('seti_'):
+            setup_intent = stripe.SetupIntent.retrieve(id=token, **kwargs)
+            card_token = setup_intent.payment_method
+        else:
+            try:
+                if self.mode == self.REMOTE:
+                    # Implementation note: If we try to create a SetupIntent
+                    # on a Connect account, Stripe complains that the card
+                    # token is invalid. Stripe is though happy to use it
+                    # as a customer source and convert that default source
+                    # to a payment method afterwards.
+                    p_customer.source = token
+                    p_customer.save()
+                    p_customer = stripe.Customer.retrieve(
+                        subscriber.processor_card_key,
+                        expand=['invoice_settings.default_payment_method',
+                                'default_source'], **kwargs)
+                    card_token = p_customer.default_source
+                else:
+                    # Implementation note: If we create a SetupIntent on
+                    # the Stripe account itself, then we donot have issues
+                    # with invalid tokens.
+                    setup_intent = stripe.SetupIntent.create(
+                        confirm=True,
+                        usage='off_session',
+                        customer=p_customer,
+                        payment_method_data={
+                            'type': 'card', 'card': {'token': token}},
+                        **kwargs)
+                    card_token = setup_intent.payment_method
+            except stripe.error.CardError as err:
+                raise CardError(str(err), err.code, backend_except=err)
+
+        try:
+            stripe.Customer.modify(p_customer.id,
+                invoice_settings={'default_payment_method': card_token},
+                **kwargs)
+            new_card = self._retrieve_card(subscriber, broker=broker)
+            if old_card:
+                signals.card_updated.send(
+                    sender=__name__, organization=subscriber,
+                    user=user, old_card=old_card, new_card=new_card)
+        except stripe.error.CardError as err:
+            raise CardError(str(err), err.code, backend_except=err)
+        except stripe.error.InvalidRequestError as err:
+            raise ProcessorError(str(err), backend_except=err)
+
+        return new_card
 
     def refund_charge(self, charge, amount, broker_amount):
         """
@@ -555,7 +621,6 @@ class StripeBackend(object):
         connect_state_func = settings.PROCESSOR.get(
             'CONNECT_STATE_CALLABLE', None)
         if connect_state_func:
-            from ...compat import import_string
             func = import_string(connect_state_func)
             state = func(self, provider)
         #pylint:disable=line-too-long
@@ -574,6 +639,91 @@ class StripeBackend(object):
         if self._is_platform(provider):
             return None
         return reverse('saas_deauthorize_processor', args=(provider,))
+
+    def get_payment_context(self, provider, processor_card_key,
+                            amount=None, unit=None, broker_fee_amount=0):
+        """
+        Returns a dictionnary of values that needs to be passed to the browser
+        client in order for the processor to create a payment.
+        """
+        #pylint:disable=too-many-arguments
+        context = {
+            'STRIPE_PUB_KEY': self.pub_key,
+        }
+
+        if not settings.PROCESSOR.get('USE_STRIPE_V3', False):
+            return context
+
+        if amount is not None and amount == 0:
+            return context
+
+        kwargs = self._prepare_charge_request(provider)
+        if self.mode == self.FORWARD and not self._is_platform(provider):
+            # We generate Stripe data into the StripeConnect account.
+            if not provider.processor_deposit_key:
+                raise ProcessorSetupError(
+                    _("%(organization)s is not connected to a Stripe account."
+                    ) % {'organization': provider}, provider)
+            kwargs.update({'destination': provider.processor_deposit_key})
+        if processor_card_key is not None:
+            kwargs.update({'customer': processor_card_key})
+
+        if amount is None:
+            # We are updating a card for later payments.
+            try:
+                setup_intent = stripe.SetupIntent.create(**kwargs)
+                LOGGER.debug("stripe.PaymentIntent.create("\
+                    "amount=%d, currency=%s, kwargs=%s) =>\n%s",
+                    amount, unit, kwargs, str(setup_intent))
+                context.update({
+                    'STRIPE_INTENT_SECRET': setup_intent.client_secret})
+            except stripe.error.InvalidRequestError as err:
+                raise ProcessorSetupError(
+                    _("Invalid request on processor for %(organization)s") % {
+                    'organization': provider}, provider, backend_except=err)
+
+        elif amount > 0:
+            if broker_fee_amount:
+                kwargs.update({'application_fee_amount': broker_fee_amount})
+            try:
+                payment_intent = stripe.PaymentIntent.create(
+                    amount=amount, currency=unit,
+                    setup_future_usage='off_session',
+                    **kwargs)
+                LOGGER.debug("stripe.PaymentIntent.create("\
+                    "amount=%d, currency=%s, kwargs=%s) =>\n%s",
+                    amount, unit, kwargs, str(payment_intent))
+                context.update({
+                    'STRIPE_INTENT_SECRET': payment_intent.client_secret})
+
+            except stripe.error.CardError as err:
+                # If the card is declined, Stripe will record a failed
+                # ``Charge`` and raise an exception here. Unfortunately only
+                # the Charge id is present in the CardError exception.
+                # So instead of generating
+                # an HTTP retrieve and recording a failed charge in our
+                # database, we raise and rollback.
+                raise CardError(str(err), err.code,
+                    charge_processor_key=err.json_body['error']['charge'],
+                    backend_except=err)
+            except stripe.error.PermissionError as err:
+                # It is possible we no longer have access to the connected
+                # account.
+                with transaction.atomic():
+                    # We want this update to be committed even
+                    # if other transactions are unwind on the exception.
+                    provider.processor_pub_key = None
+                    provider.processor_priv_key = None
+                    provider.processor_deposit_key = None
+                    provider.processor_refresh_token = None
+                    provider.save()
+                raise ProcessorSetupError(
+                    _("access to %(organization)s Stripe account was denied"\
+                      " (access might have been revoked).") % {
+                    'organization': provider}, provider, backend_except=err)
+
+        return context
+
 
     def get_deposit_context(self):
         # We insert the``STRIPE_CLIENT_ID`` here because we serve page
@@ -615,38 +765,70 @@ class StripeBackend(object):
                 'balance_unit':  "N/A"})
         return context
 
-    def retrieve_card(self, subscriber, broker=None):
-        context = {'STRIPE_PUB_KEY': self.pub_key}
+    def _retrieve_card(self, subscriber, broker=None, stripe_customer=None):
+        context = {}
         try:
             kwargs = self._prepare_charge_request(broker)
-            if subscriber.processor_card_key:
-                try:
-                    p_customer = stripe.Customer.retrieve(
-                        subscriber.processor_card_key,
-                        expand=['default_source'],
-                        **kwargs)
-                except stripe.error.StripeError as err:
-                    LOGGER.exception("%s (mode=%s)", err,
-                        "REMOTE" if kwargs else "LOCAL")
-                    raise ProcessorError(str(err), backend_except=err)
-                if p_customer.default_source:
-                    last4 = '***-%s' % str(p_customer.default_source.last4)
-                    exp_date = "%02d/%04d" % (
-                        p_customer.default_source.exp_month,
-                        p_customer.default_source.exp_year)
-                    context.update({
-                        'last4': last4, 'exp_date': exp_date,
-                        'card_name': p_customer.default_source.name})
+            if not stripe_customer:
+                if subscriber.processor_card_key:
+                    try:
+                        stripe_customer = stripe.Customer.retrieve(
+                            subscriber.processor_card_key,
+                            expand=['invoice_settings.default_payment_method',
+                                'default_source'],
+                            **kwargs)
+                    except stripe.error.StripeError as err:
+                        LOGGER.exception("%s (mode=%s)", err,
+                            "REMOTE" if kwargs else "LOCAL")
+                        raise ProcessorError(str(err), backend_except=err)
+
+            stripe_card = None
+            if stripe_customer:
+                if stripe_customer.invoice_settings.default_payment_method:
+                    stripe_card = stripe_customer.invoice_settings\
+                        .default_payment_method.card
+                    billing_name = stripe_customer.invoice_settings\
+                        .default_payment_method.billing_details.name
+                elif stripe_customer.default_source:
+                    # `default_payment_method` and `default_source` are not
+                    # automatically in-sync on Stripe so we follow a smooth
+                    # upgrade path here.
+                    stripe_card = stripe_customer.default_source
+                    billing_name = stripe_customer.default_source.name
+                    try:
+                        stripe.Customer.modify(subscriber.processor_card_key,
+                            invoice_settings={
+                               'default_payment_method': stripe_card},
+                            **kwargs)
+                    except stripe.error.StripeError as err:
+                        LOGGER.exception("%s (mode=%s)", err,
+                            "REMOTE" if kwargs else "LOCAL")
+                        raise ProcessorError(str(err), backend_except=err)
+
+            if stripe_card:
+                last4 = '***-%s' % str(stripe_card.last4)
+                exp_date = "%02d/%04d" % (
+                    stripe_card.exp_month,
+                    stripe_card.exp_year)
+                context.update({
+                    'last4': last4,
+                    'exp_date': exp_date,
+                    'card_name': billing_name
+                })
         except ProcessorError:
-            pass # OK here. We don't have a connected Stripe account.
+            pass # OK here. We don't have a connected Stripe account.XXX really?
         return context
+
+    def retrieve_card(self, subscriber, broker=None):
+        return self._retrieve_card(subscriber, broker=broker)
 
     def retrieve_charge(self, charge):
         return self._update_charge_state(charge)
 
     def _update_charge_state(self, charge, stripe_charge=None, event_type=None):
         if stripe_charge is None:
-            stripe_charge, _ = self.get_processor_charge(charge)
+            stripe_charge, _ = self._get_processor_charge(
+                charge.processor_key, charge.broker)
         if event_type is None:
             if charge.is_progress:
                 if stripe_charge.paid and stripe_charge.status == 'succeeded':
@@ -657,14 +839,21 @@ class StripeBackend(object):
                 event_type = 'charge.dispute.created'
         # Record state transition
         if event_type:
+            receipt_info = {
+                'last4': stripe_charge.payment_method_details.card.last4,
+                'exp_date': datetime.date(
+                    stripe_charge.payment_method_details.card.exp_year,
+                    stripe_charge.payment_method_details.card.exp_month, 1),
+                'card_name': stripe_charge.billing_details.name
+            }
             if event_type == 'charge.succeeded':
                 if charge.is_progress:
-                    charge.payment_successful()
+                    charge.payment_successful(receipt_info=receipt_info)
                 else:
                     LOGGER.warning(
                         "Already received a state update event for %s", charge)
             elif event_type == 'charge.failed':
-                charge.failed()
+                charge.failed(receipt_info=receipt_info)
             elif event_type == 'charge.refunded':
                 charge.refund()
             elif event_type == 'charge.captured':

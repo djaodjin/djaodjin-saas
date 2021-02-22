@@ -1,4 +1,4 @@
-# Copyright (c) 2020, DjaoDjin inc.
+# Copyright (c) 2021, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -41,8 +41,8 @@ from ..metrics.subscriptions import (active_subscribers, churn_subscribers,
 from ..metrics.transactions import lifetime_value
 from ..mixins import (CartItemSmartListMixin, CouponMixin,
     ProviderMixin, DateRangeContextMixin)
-from ..models import CartItem, Organization, Plan, Transaction
-from ..utils import convert_dates_to_utc
+from ..models import CartItem, Plan, Transaction
+from ..utils import convert_dates_to_utc, get_organization_model
 
 LOGGER = logging.getLogger(__name__)
 
@@ -509,11 +509,12 @@ class LifetimeValueMetricMixin(DateRangeContextMixin, ProviderMixin):
     filter_backends = (DateRangeFilter,)
 
     def get_queryset(self):
+        organization_model = get_organization_model()
         if self.provider:
-            queryset = Organization.objects.filter(
+            queryset = organization_model.objects.filter(
                 subscriptions__organization=self.provider).distinct()
         else:
-            queryset = Organization.objects.all()
+            queryset = organization_model.objects.all()
         queryset = queryset.filter(
             outgoing__orig_account=Transaction.PAYABLE).distinct()
         return queryset.order_by('full_name')

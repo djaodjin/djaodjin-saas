@@ -1,4 +1,4 @@
-# Copyright (c) 2020, DjaoDjin inc.
+# Copyright (c) 2021, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -22,7 +22,7 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#pylint:disable=useless-super-delegation
+#pylint:disable=useless-super-delegation,too-many-lines
 
 import logging
 from collections import OrderedDict
@@ -213,7 +213,7 @@ class OptinBase(OrganizationDecorateMixin, OrganizationCreateMixin):
                 role=role, reason=reason)
 
     def perform_optin(self, serializer, request, user=None):
-        #pylint:disable=too-many-locals
+        #pylint:disable=too-many-locals,too-many-statements
         if user is None:
             user = request.user
         reason = serializer.validated_data.get('message', None)
@@ -417,7 +417,8 @@ class AccessibleByListAPIView(RoleSmartListMixin, InvitedRequestedListMixin,
                     },
                     "request_key": null,
                     "accept_grant_api_url": null,
-                    "remove_api_url": "https://cowork.net/api/users/alice/accessibles/manager/cowork",
+                    "remove_api_url": "https://cowork.net/api/users/alice/\
+accessibles/manager/cowork",
                     "home_url": "https://cowork.net/app/",
                     "settings_url": "https://cowork.net/profile/cowork/contact/"
                  }
@@ -525,7 +526,8 @@ class AccessibleByDescrListAPIView(RoleSmartListMixin,
                     },
                     "request_key": null,
                     "accept_grant_api_url": null,
-                    "remove_api_url": "https://cowork.net/api/users/alice/accessibles/manager/cowork",
+                    "remove_api_url": "https://cowork.net/api/users/alice/\
+accessibles/manager/cowork",
                     "home_url": "https://cowork.net/app/",
                     "settings_url": "https://cowork.net/profile/cowork/contact/"
                 }

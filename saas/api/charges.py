@@ -291,7 +291,8 @@ class ChargeRefundAPIView(RetrieveChargeMixin, CreateAPIView):
             try:
                 for line in serializer.validated_data.get('lines', []):
                     try:
-                        line_refunded_amount = int(line.get('refunded_amount', 0))
+                        line_refunded_amount = int(line.get(
+                            'refunded_amount', 0))
                         self.object.refund(int(line['num']),
                             refunded_amount=line_refunded_amount,
                             user=request.user)
