@@ -206,16 +206,24 @@ LOGGING = {
             '()': 'django.utils.log.RequireDebugFalse'
         }
     },
+    'formatters': {
+        'simple': {
+            'format': 'X X %(levelname)s [%(asctime)s] %(message)s',
+            'datefmt': '%d/%b/%Y:%H:%M:%S %z'
+        },
+    },
     'handlers': {
-        'logfile':{
+        'log':{
             'level':'DEBUG',
+            'formatter': 'simple',
             'class':'logging.StreamHandler',
         },
-        'mail_admins': {
-            'level': 'ERROR',
-            'filters': ['require_debug_false'],
-            'class': 'django.utils.log.AdminEmailHandler'
-        }
+        'db_log': {
+            'level': 'DEBUG',
+            'formatter': 'simple',
+            'filters': ['require_debug_true'],
+            'class':'logging.StreamHandler',
+        },
     },
     'loggers': {
         'rules': {
@@ -227,7 +235,7 @@ LOGGING = {
             'level': 'INFO',
         },
 #        'django.db.backends': {
-#             'handlers': ['logfile'],
+#             'handlers': ['db_log'],
 #             'level': 'DEBUG',
 #             'propagate': True,
 #        },
@@ -245,13 +253,13 @@ LOGGING = {
         # propagated from a child logger.
         #https://docs.python.org/2/library/logging.html#logging.Logger.propagate
         '': {
-            'handlers': ['logfile', 'mail_admins'],
+            'handlers': ['log'],
             'level': 'WARNING'
         }
     }
 }
 if logging.getLogger('gunicorn.error').handlers:
-    LOGGING['handlers']['logfile'].update({
+    LOGGING['handlers']['log'].update({
         'class':'logging.handlers.WatchedFileHandler',
         'filename': os.path.join(RUN_DIR, 'testsite-app.log')
     })
