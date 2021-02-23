@@ -149,7 +149,7 @@ class Command(BaseCommand):
         units = get_different_units(table_unit, payments_unit, refund_unit)
 
         if len(units) > 1:
-            LOGGER.error("different units: %s", units)
+            LOGGER.error("different units in get_weekly_perf_data: %s", units)
 
         if units:
             unit = units[0]

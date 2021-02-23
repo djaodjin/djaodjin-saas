@@ -420,7 +420,7 @@ class StripeBackend(object):
                       " (access might have been revoked).") % {
                     'organization': provider}, provider, backend_except=err)
             except stripe.error.IdempotencyError as err:
-                LOGGER.error(err)
+                LOGGER.exception(err)
 
         processor_key = stripe_charge.id
         if created_at is None:
@@ -461,7 +461,7 @@ class StripeBackend(object):
                     provider, amount, currency, descr),
                 **kwargs)
         except stripe.error.IdempotencyError as err:
-            LOGGER.error(err)
+            LOGGER.exception(err)
         created_at = utctimestamp_to_datetime(transfer.created)
         return (transfer.id, created_at)
 
@@ -536,7 +536,7 @@ class StripeBackend(object):
                         subscriber, user, broker),
                     **kwargs)
             except stripe.error.IdempotencyError as err:
-                LOGGER.error(err)
+                LOGGER.exception(err)
             subscriber.processor_card_key = p_customer.id
             # We rely on ``update_card`` to do the ``save``.
 

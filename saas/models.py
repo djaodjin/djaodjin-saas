@@ -295,6 +295,8 @@ class Organization(models.Model):
 
     funds_balance = models.PositiveIntegerField(default=0,
         help_text=_("Funds escrowed in currency unit"))
+    nb_renewal_attempts = models.PositiveIntegerField(default=0,
+        help_text=_("Number of successive failed charges"))
     processor = models.ForeignKey(
         'Organization', null=True, blank=True, on_delete=models.SET_NULL,
         related_name='processes',)
@@ -697,6 +699,7 @@ class Organization(models.Model):
     def update_card(self, card_token, user):
         self.processor_backend.create_or_update_card(
             self, card_token, user=user, broker=get_broker())
+        self.nb_renewal_attempts = 0  # reset off-session failures counter
         # The following ``save`` will be rolled back in ``checkout``
         # if there is any ProcessorError.
         self.save()
@@ -1054,7 +1057,8 @@ class Organization(models.Model):
                     # bigger than the funds available we have tracked so far.
                     # This issue was silent until Django 2.2.
                     LOGGER.error(
-                      "payout at %s of %d %s greater than funds available (%d)",
+                        "payout at %s of %d %s greater than funds available"\
+                        " (%d) in create_withdraw_transactions",
                         created_at, amount, unit, self.funds_balance)
                     self.funds_balance = 0
                 self.save()
@@ -1511,8 +1515,8 @@ class ChargeManager(models.Manager):
             # An error from the processor which indicates the logic might be
             # incorrect, the network down, etc. We want to know about it right
             # away.
-            LOGGER.error("ProcessorError for charge of %d (%s) to %s",
-                amount, unit, customer)
+            LOGGER.exception("ProcessorError for charge of %d %s to %s: %s",
+                amount, unit, customer, err)
             # We are going to rollback because of the ``transaction.atomic``
             # in ``checkout`` so let's reset the processor_card_key.
             customer.processor_card_key = prev_processor_card_key
@@ -3430,8 +3434,8 @@ class TransactionQuerySet(models.QuerySet):
                 # XXX group buy events should certainly be re-written as sub_.
                 continue
             if not event_id.startswith('sub_'):
-                LOGGER.error("event_id '%s' does not start with 'sub_'",
-                    event_id)
+                LOGGER.error("event_id '%s' does not start with 'sub_'"\
+                    " in get_statement_balances", event_id)
             assert event_id.startswith('sub_')
             # We should always have subscription events in orig_balances
             # by the definition of the SQL query.

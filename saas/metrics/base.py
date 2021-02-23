@@ -284,7 +284,9 @@ def _aggregate_transactions_change_by_period(organization, account,
         units = get_different_units(churn_receivable_unit,
             receivable_unit, new_receivable_unit)
         if len(units) > 1:
-            LOGGER.error("different units: %s", units)
+            LOGGER.error(
+              "different units in _aggregate_transactions_change_by_period: %s",
+                units)
 
         period = period_end
         churn_customers += [(period, churn_customer)]

@@ -32,11 +32,12 @@ import logging
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
 from django.db import transaction
+from django.utils.translation import ugettext_lazy as _
 
-from . import humanize, signals
-from .backends import ProcessorError
+from . import humanize, settings, signals
+from .backends import CardError, ProcessorError
 from .compat import six
-from .models import (Charge, Plan, Subscription, Transaction,
+from .models import (Charge, Plan, Price, Subscription, Transaction,
     sum_dest_amount, get_period_usage, get_sub_event_id)
 from .utils import datetime_or_now, get_organization_model
 
@@ -308,7 +309,8 @@ def create_charges_for_balance(until=None, dry_run=False):
     #pylint:disable=too-many-nested-blocks
     until = datetime_or_now(until)
     LOGGER.info("create charges for balance at %s ...", until)
-    for organization in get_organization_model().objects.all():
+    for organization in get_organization_model().objects.filter(
+            nb_renewal_attempts__lt=settings.MAX_RENEWAL_ATTEMPTS):
         charges = Charge.objects.in_progress_for_customer(organization)
         # We will create charges only when we have no charges
         # already in flight for this customer.
@@ -317,41 +319,77 @@ def create_charges_for_balance(until=None, dry_run=False):
                 organization, until=until)
             LOGGER.debug("invoicables for %s until %s:", organization, until)
             for invoicable in invoiceables:
-                LOGGER.debug("\t#%d %s", invoicable.pk, invoicable.dest_amount)
+                LOGGER.debug("\t#%d %s %s", invoicable.pk,
+                    invoicable.dest_amount, invoicable.dest_unit)
             balances = sum_dest_amount(invoiceables)
             if len(balances) > 1:
                 raise ValueError("balances with multiple currency units (%s)" %
                     str(balances))
             # `sum_dest_amount` guarentees at least one result.
             invoiceable_amount = balances[0]['amount']
+            invoiceable_unit = balances[0]['unit']
             if invoiceable_amount > 50:
                 # Stripe will not processed charges less than 50 cents.
-                if not Subscription.objects.active_for(
-                        organization, ends_at=until).filter(
-                        auto_renew=True).exists():
+                active_subscriptions = Subscription.objects.active_for(
+                    organization, ends_at=until).filter(auto_renew=True)
+                if not active_subscriptions.exists():
                     # If we have a past due but it is not coming from a renewal
                     # generated earlier, we will make a note of it but do not
                     # charge the Card. Each provider needs to decide what to do
                     # about collections.
-                    LOGGER.info('REVIEW %dc to %s (requires manual charge)',
-                        invoiceable_amount, organization)
+                    LOGGER.info('REVIEW %d %s to %s (requires manual charge)',
+                        invoiceable_amount, invoiceable_unit, organization)
                 else:
-                    if not dry_run:
-                        try:
+                    try:
+                        if not organization.processor_card_key:
+                            raise CardError(_("No payment method attached"),
+                                'card_absent')
+                        if not dry_run:
                             Charge.objects.charge_card(
                                 organization, invoiceables,
                                 created_at=until)
-                            LOGGER.info('CHARGE %dc to %s', invoiceable_amount,
-                                organization)
-                        except ProcessorError:
-                            # There was a problem with the Card (i.e. expired,
-                            # underfunded, etc.)
-                            LOGGER.error('FAILED CHARGE %dc to %s',
-                                invoiceable_amount, organization)
-                            # XXX Notify customer.
+                        LOGGER.info('CHARGE %d %s to %s',
+                            invoiceable_amount, invoiceable_unit,
+                            organization)
+                    except CardError as err:
+                        # There was a problem with the Card (i.e. expired,
+                        # underfunded, etc.)
+                        LOGGER.info('FAILED CHARGE %d %s to %s (%s: %s)',
+                            invoiceable_amount, invoiceable_unit,
+                            organization.slug, err.charge_processor_key,
+                            err,
+                            extra={'event': 'card-error',
+                                'charge': err.charge_processor_key,
+                                'detail': err.processor_details(),
+                                'organization': organization.slug,
+                                'amount': invoiceable_amount,
+                                'unit': invoiceable_unit})
+                        organization.nb_renewal_attempts = (
+                            organization.nb_renewal_attempts + 1)
+                        final_notice = False
+                        if (organization.nb_renewal_attempts >=
+                            settings.MAX_RENEWAL_ATTEMPTS):
+                            final_notice = True
+                            if not dry_run:
+                                active_subscriptions.unsubscribe(at_time=until)
+                        if not dry_run:
+                            organization.save()
+                        signals.renewal_charge_failed.send(
+                            sender=__name__,
+                            invoiced_items=invoiceables,
+                            total_price=Price(
+                                invoiceable_amount, invoiceable_unit),
+                            final_notice=final_notice)
+                    except ProcessorError as err:
+                        # An error from the processor which indicates
+                        # the logic might be incorrect, the network down,
+                        # etc. We have already notified the admin
+                        # in `charge_card_one_processor`.
+                        pass
             elif invoiceable_amount > 0:
-                LOGGER.info('SKIP   %dc to %s (less than 50c)',
-                    invoiceable_amount, organization)
+                LOGGER.info('SKIP   %d %s to %s (less than 50 %s)',
+                    invoiceable_amount, invoiceable_unit, organization,
+                    invoiceable_unit)
         else:
             LOGGER.info('SKIP   %s (one charge already in flight)',
                 organization)

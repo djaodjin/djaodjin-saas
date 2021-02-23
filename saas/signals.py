@@ -1,4 +1,4 @@
-# Copyright (c) 2019, DjaoDjin inc.
+# Copyright (c) 2021, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -42,6 +42,8 @@ subscription_upgrade = Signal(providing_args=['subscription', 'nb_days'])
 payment_method_absent = Signal(providing_args=['organization'])
 user_invited = Signal(providing_args=['user', 'invited_by'])
 processor_setup_error = Signal(providing_args=['provider', 'error_message'])
+renewal_charge_failed = Signal(providing_args=['invoiced_items', 'total_price',
+    'final_notice'])
 role_grant_accepted = Signal(providing_args=['role', 'grant_key'])
 role_grant_created = Signal(providing_args=['role', 'reason'])
 # There is no `role_request_accepted` because a `role_grant_created`

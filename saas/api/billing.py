@@ -1,4 +1,4 @@
-# Copyright (c) 2020, DjaoDjin inc.
+# Copyright (c) 2021, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -577,5 +577,5 @@ of Xia",
                 result = ChargeSerializer(charge)
                 return Response(result.data, status=status.HTTP_200_OK)
         except ProcessorError as err:
-            return Response({'detail': err}, status=status.HTTP_403_FORBIDDEN)
+            return Response({'detail': err}, status=status.HTTP_400_BAD_REQUEST)
         return Response({}, status=status.HTTP_200_OK)

@@ -295,7 +295,8 @@ class RevenueMetricAPIView(DateRangeContextMixin, ProviderMixin,
         units = get_different_units(table_unit, payments_unit, refund_unit)
 
         if len(units) > 1:
-            LOGGER.error("different units: %s", units)
+            LOGGER.error("different units in RevenueMetricAPIView.get: %s",
+                units)
 
         if units:
             unit = units[0]

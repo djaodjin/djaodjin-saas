@@ -1,0 +1,15 @@
+{% block subject %}
+Renewal failed for {{site.name}}
+{% endblock %}
+
+{% block plain_content %}
+We attempted to renew your following subscriptions to {{site.name}}:
+{% for line in invoiced_items %}
+    {{line.dest_price|humanize_money}}
+    {{line.descr}}
+{% endfor %}
+
+The charge of {{total_price|humanize_money}} failed.
+
+Please update your payment method at {{back_url}}.
+{% endblock %}

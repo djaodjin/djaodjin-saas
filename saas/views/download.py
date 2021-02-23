@@ -161,6 +161,15 @@ class CouponDownloadView(SmartCouponListMixin, CouponQuerysetMixin,
     def get_filename(self):
         return datetime_or_now().strftime('coupons-%Y%m%d.csv')
 
+    def queryrow_to_columns(self, record):
+        row = [
+            record.created_at.date(),
+            record.code,
+            record.get_discount_type_display(),
+            record.discount_value
+        ]
+        return row
+
 
 class CartItemQuerysetMixin(ProviderMixin):
 
