@@ -9,9 +9,9 @@ Major Features:
 
 Tested with
 
-- **Python:** 2.7, **Django:** 1.11, **Django Rest Framework:** 3.9.4
 - **Python:** 3.6, **Django:** 2.2 ([LTS](https://www.djangoproject.com/download/)), **Django Rest Framework:** 3.11
 - **Python:** 3.6, **Django:** 3.0 (latest), **Django Rest Framework:** 3.11
+- **Python:** 2.7 (end-of-life), **Django:** 1.11, **Django Rest Framework:** 3.9.4
 
 This project contains bare bone templates which are compatible with Django
 and Jinja2 template engines. To see djaodjin-saas in action as part
@@ -96,8 +96,11 @@ saas/templates/notification/ directory.
 Release Notes
 =============
 
-0.9.2
+0.9.3
 
-  * fixes translation of Transaction description when using period discounts
+  * migrates to Stripe PaymentIntent for SCA
+  * adds balance due in checkout page
+  * computes customers lifetime value (LTV) for a provider
+  * reports error details when the payment processor has issues
 
 [previous release notes](changelog)
