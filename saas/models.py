@@ -3806,7 +3806,7 @@ class TransactionManager(models.Manager):
         balances = self.get_statement_balances(
             subscription.organization, until=until)
         event_id = get_sub_event_id(subscription)
-        balance = balances.get(event_id)
+        balance = balances.get(event_id, {})
         if len(balance) > 1:
             raise ValueError(_("balances with multiple currency units (%s)") %
                 str(balance))
