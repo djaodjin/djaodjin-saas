@@ -354,12 +354,14 @@ def create_charges_for_balance(until=None, dry_run=False):
                     except CardError as err:
                         # There was a problem with the Card (i.e. expired,
                         # underfunded, etc.)
+                        charge_processor_key = getattr(
+                            err, 'charge_processor_key', None)
                         LOGGER.info('FAILED CHARGE %d %s to %s (%s: %s)',
                             invoiceable_amount, invoiceable_unit,
-                            organization.slug, err.charge_processor_key,
-                            err,
-                            extra={'event': 'card-error',
-                                'charge': err.charge_processor_key,
+                            organization.slug, charge_processor_key,
+                            err, extra={
+                                'event': 'card-error',
+                                'charge': charge_processor_key,
                                 'detail': err.processor_details(),
                                 'organization': organization.slug,
                                 'amount': invoiceable_amount,

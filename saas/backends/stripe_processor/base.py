@@ -123,9 +123,14 @@ class StripeBackend(object):
                     stripe_charge_key, **kwargs)
                 if payment_intent.charges.data:
                     stripe_charge = payment_intent.charges.data[0]
-            except stripe.error.InvalidRequestError:
-                # XXX do more processing here??
-                raise
+            except stripe.error.InvalidRequestError as err:
+                raise ProcessorSetupError(
+                    _("Invalid request on processor for %(organization)s") % {
+                    'organization': broker}, broker, backend_except=err)
+            except stripe.error.StripeError as err:
+                LOGGER.exception(err)
+                raise ProcessorError(str(err), backend_except=err)
+
         return stripe_charge, headers
 
     @staticmethod
@@ -341,7 +346,7 @@ class StripeBackend(object):
             kwargs.update({'destination': provider.processor_deposit_key})
 
         receipt_info = {}
-        if token.startswith('pi_'):
+        if token and token.startswith('pi_'):
             # We are dealing with a PaymentIntent. The Stripe Charge has
             # already been created.
             try:
@@ -353,6 +358,11 @@ class StripeBackend(object):
                 if payment_intent.charges.data:
                     stripe_charge = payment_intent.charges.data[0]
             except stripe.error.InvalidRequestError as err:
+                raise ProcessorSetupError(
+                    _("Invalid request on processor for %(organization)s") % {
+                    'organization': provider}, provider, backend_except=err)
+            except stripe.error.StripeError as err:
+                LOGGER.exception(err)
                 raise ProcessorError(str(err), backend_except=err)
         else:
             try:
@@ -419,8 +429,9 @@ class StripeBackend(object):
                     _("access to %(organization)s Stripe account was denied"\
                       " (access might have been revoked).") % {
                     'organization': provider}, provider, backend_except=err)
-            except stripe.error.IdempotencyError as err:
+            except stripe.error.StripeError as err:
                 LOGGER.exception(err)
+                raise ProcessorError(str(err), backend_except=err)
 
         processor_key = stripe_charge.id
         if created_at is None:
@@ -460,8 +471,14 @@ class StripeBackend(object):
                 idempotency_key=self.generate_idempotent_key(
                     provider, amount, currency, descr),
                 **kwargs)
-        except stripe.error.IdempotencyError as err:
+        except stripe.error.InvalidRequestError as err:
+            raise ProcessorSetupError(
+                _("Invalid request on processor for %(organization)s") % {
+                'organization': provider}, provider, backend_except=err)
+        except stripe.error.StripeError as err:
             LOGGER.exception(err)
+            raise ProcessorError(str(err), backend_except=err)
+
         created_at = utctimestamp_to_datetime(transfer.created)
         return (transfer.id, created_at)
 
@@ -488,6 +505,9 @@ class StripeBackend(object):
                 # We will seamlessly create a new customer on Stripe.
                 LOGGER.warning("Retrieve customer %s on Stripe for %s",
                     subscriber.processor_card_key, subscriber)
+            except stripe.error.StripeError as err:
+                LOGGER.exception(err)
+                raise ProcessorError(str(err), backend_except=err)
 
     def update_bank(self, provider, bank_token):
         """
@@ -500,6 +520,11 @@ class StripeBackend(object):
             rcp.external_account = bank_token
             rcp.save()
         except stripe.error.InvalidRequestError as err:
+            raise ProcessorSetupError(
+                _("Invalid request on processor for %(organization)s") % {
+                'organization': provider}, provider, backend_except=err)
+        except stripe.error.StripeError as err:
+            LOGGER.exception(err)
             raise ProcessorError(str(err), backend_except=err)
 
     def create_or_update_card(self, subscriber, token,
@@ -507,6 +532,7 @@ class StripeBackend(object):
         """
         Create or update a card associated to an subscriber on Stripe.
         """
+        #pylint:disable=too-many-statements
         kwargs = self._prepare_charge_request(broker)
 
         old_card = {}
@@ -527,6 +553,9 @@ class StripeBackend(object):
                 # We will seamlessly create a new customer on Stripe.
                 LOGGER.warning("Retrieve customer %s on Stripe for %s: %s",
                     subscriber.processor_card_key, subscriber, err)
+            except stripe.error.StripeError as err:
+                LOGGER.exception(err)
+                raise ProcessorError(str(err), backend_except=err)
 
         if p_customer is None:
             try:
@@ -535,8 +564,14 @@ class StripeBackend(object):
                     idempotency_key=self.generate_idempotent_key(
                         subscriber, user, broker),
                     **kwargs)
-            except stripe.error.IdempotencyError as err:
+            except stripe.error.InvalidRequestError as err:
+                raise ProcessorSetupError(
+                    _("Invalid request on processor for %(organization)s") % {
+                    'organization': broker}, broker, backend_except=err)
+            except stripe.error.StripeError as err:
                 LOGGER.exception(err)
+                raise ProcessorError(str(err), backend_except=err)
+
             subscriber.processor_card_key = p_customer.id
             # We rely on ``update_card`` to do the ``save``.
 
@@ -575,6 +610,13 @@ class StripeBackend(object):
                     card_token = setup_intent.payment_method
             except stripe.error.CardError as err:
                 raise CardError(str(err), err.code, backend_except=err)
+            except stripe.error.InvalidRequestError as err:
+                raise ProcessorSetupError(
+                    _("Invalid request on processor for %(organization)s") % {
+                    'organization': broker}, broker, backend_except=err)
+            except stripe.error.StripeError as err:
+                LOGGER.exception(err)
+                raise ProcessorError(str(err), backend_except=err)
 
         try:
             stripe.Customer.modify(p_customer.id,
@@ -588,6 +630,11 @@ class StripeBackend(object):
         except stripe.error.CardError as err:
             raise CardError(str(err), err.code, backend_except=err)
         except stripe.error.InvalidRequestError as err:
+            raise ProcessorSetupError(
+                _("Invalid request on processor for %(organization)s") % {
+                'organization': broker}, broker, backend_except=err)
+        except stripe.error.StripeError as err:
+            LOGGER.exception(err)
             raise ProcessorError(str(err), backend_except=err)
 
         return new_card
@@ -597,22 +644,32 @@ class StripeBackend(object):
         Refund a charge on the associated card.
         """
         kwargs = self._prepare_charge_request(charge.broker)
-        refund = stripe.Refund.create(
-            charge=charge.processor_key,
-            amount=amount,
-            refund_application_fee=False,
-            expand=['charge'],
-            **kwargs)
-        LOGGER.debug("refund_charge(charge=%s, amount=%d, broker_amount=%d)"\
-            " => refund=\n%s", charge.processor_key, amount, broker_amount,
-            refund)
-        if broker_amount > 0:
-            application_fee_refund = stripe.ApplicationFee.create_refund(
-                refund.charge.application_fee, amount=broker_amount)
+        try:
+            refund = stripe.Refund.create(
+                charge=charge.processor_key,
+                amount=amount,
+                refund_application_fee=False,
+                expand=['charge'],
+                **kwargs)
             LOGGER.debug(
                 "refund_charge(charge=%s, amount=%d, broker_amount=%d)"\
-                " => application_fee_refund=\n%s", charge.processor_key, amount,
-                broker_amount, application_fee_refund)
+                " => refund=\n%s", charge.processor_key, amount, broker_amount,
+                refund)
+            if broker_amount > 0:
+                application_fee_refund = stripe.ApplicationFee.create_refund(
+                    refund.charge.application_fee, amount=broker_amount)
+                LOGGER.debug(
+                    "refund_charge(charge=%s, amount=%d, broker_amount=%d)"\
+                    " => application_fee_refund=\n%s", charge.processor_key,
+                    amount, broker_amount, application_fee_refund)
+        except stripe.error.InvalidRequestError as err:
+            raise ProcessorSetupError(
+                _("Invalid request on processor for %(organization)s") % {
+                'organization': charge.broker}, charge.broker,
+                backend_except=err)
+        except stripe.error.StripeError as err:
+            LOGGER.exception(err)
+            raise ProcessorError(str(err), backend_except=err)
 
     def get_authorize_url(self, provider, client_id=None, redirect_uri=None):
         if self._is_platform(provider):
@@ -681,6 +738,9 @@ class StripeBackend(object):
                 raise ProcessorSetupError(
                     _("Invalid request on processor for %(organization)s") % {
                     'organization': provider}, provider, backend_except=err)
+            except stripe.error.StripeError as err:
+                LOGGER.exception(err)
+                raise ProcessorError(str(err), backend_except=err)
 
         elif amount > 0:
             if broker_fee_amount:
@@ -721,6 +781,13 @@ class StripeBackend(object):
                     _("access to %(organization)s Stripe account was denied"\
                       " (access might have been revoked).") % {
                     'organization': provider}, provider, backend_except=err)
+            except stripe.error.InvalidRequestError as err:
+                raise ProcessorSetupError(
+                    _("Invalid request on processor for %(organization)s") % {
+                    'organization': provider}, provider, backend_except=err)
+            except stripe.error.StripeError as err:
+                LOGGER.exception(err)
+                raise ProcessorError(str(err), backend_except=err)
 
         return context
 
@@ -756,8 +823,15 @@ class StripeBackend(object):
                     context.update({
                         'balance_amount': balance.available[0].amount,
                         'balance_unit': balance.available[0].currency})
+                except stripe.error.InvalidRequestError as err:
+                    raise ProcessorSetupError(
+                        _("Invalid request on processor for %(organization)s") %
+                        {'organization': provider}, provider,
+                        backend_except=err)
                 except stripe.error.StripeError as err:
+                    LOGGER.exception(err)
                     raise ProcessorError(str(err), backend_except=err)
+
         except ProcessorError:
             # OK here. We don't have a connected Stripe account.
             context.update({
@@ -897,7 +971,13 @@ class StripeBackend(object):
                 transfers = stripe.Payout.list(
                     created={'gt': timestamp}, status='paid',
                     offset=offset, **kwargs)
+        except stripe.error.InvalidRequestError as err:
+            raise ProcessorSetupError(
+                _("Invalid request on processor for %(organization)s") %
+                {'organization': provider}, provider,
+                backend_except=err)
         except stripe.error.StripeError as err:
+            LOGGER.exception(err)
             raise ProcessorError(str(err), backend_except=err)
 
     @staticmethod
