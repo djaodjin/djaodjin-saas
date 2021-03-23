@@ -557,32 +557,29 @@ class StripeBackend(object):
                 LOGGER.exception(err)
                 raise ProcessorError(str(err), backend_except=err)
 
-        if p_customer is None:
-            try:
-                p_customer = stripe.Customer.create(
-                    email=subscriber.email, description=subscriber.slug,
-                    idempotency_key=self.generate_idempotent_key(
-                        subscriber, user, broker),
-                    **kwargs)
-            except stripe.error.InvalidRequestError as err:
-                raise ProcessorSetupError(
-                    _("Invalid request on processor for %(organization)s") % {
-                    'organization': broker}, broker, backend_except=err)
-            except stripe.error.StripeError as err:
-                LOGGER.exception(err)
-                raise ProcessorError(str(err), backend_except=err)
-
-            subscriber.processor_card_key = p_customer.id
-            # We rely on ``update_card`` to do the ``save``.
-
         if token.startswith('pi_'):
             payment_intent = stripe.PaymentIntent.retrieve(id=token, **kwargs)
             card_token = payment_intent.payment_method
+            if not subscriber.processor_card_key:
+                subscriber.processor_card_key = payment_intent.customer
+                # We rely on caller (``update_card``) to do the ``save``.
         elif token.startswith('seti_'):
             setup_intent = stripe.SetupIntent.retrieve(id=token, **kwargs)
             card_token = setup_intent.payment_method
+            if not subscriber.processor_card_key:
+                subscriber.processor_card_key = setup_intent.customer
+                # We rely on caller (``update_card``) to do the ``save``.
         else:
             try:
+                if p_customer is None:
+                    p_customer = stripe.Customer.create(
+                        email=subscriber.email, description=subscriber.slug,
+                        idempotency_key=self.generate_idempotent_key(
+                            subscriber, user, broker),
+                        **kwargs)
+                    subscriber.processor_card_key = p_customer.id
+                    # We rely on caller (``update_card``) to do the ``save``.
+
                 if self.mode == self.REMOTE:
                     # Implementation note: If we try to create a SetupIntent
                     # on a Connect account, Stripe complains that the card
@@ -619,7 +616,7 @@ class StripeBackend(object):
                 raise ProcessorError(str(err), backend_except=err)
 
         try:
-            stripe.Customer.modify(p_customer.id,
+            stripe.Customer.modify(subscriber.processor_card_key,
                 invoice_settings={'default_payment_method': card_token},
                 **kwargs)
             new_card = self._retrieve_card(subscriber, broker=broker)
@@ -630,6 +627,7 @@ class StripeBackend(object):
         except stripe.error.CardError as err:
             raise CardError(str(err), err.code, backend_except=err)
         except stripe.error.InvalidRequestError as err:
+            LOGGER.exception(err)
             raise ProcessorSetupError(
                 _("Invalid request on processor for %(organization)s") % {
                 'organization': broker}, broker, backend_except=err)
@@ -698,7 +696,8 @@ class StripeBackend(object):
         return reverse('saas_deauthorize_processor', args=(provider,))
 
     def get_payment_context(self, provider, processor_card_key,
-                            amount=None, unit=None, broker_fee_amount=0):
+                            amount=None, unit=None, broker_fee_amount=0,
+                            subscriber_email=None, subscriber_slug=None):
         """
         Returns a dictionnary of values that needs to be passed to the browser
         client in order for the processor to create a payment.
@@ -722,72 +721,73 @@ class StripeBackend(object):
                     _("%(organization)s is not connected to a Stripe account."
                     ) % {'organization': provider}, provider)
             kwargs.update({'destination': provider.processor_deposit_key})
-        if processor_card_key is not None:
+
+        try:
+            if processor_card_key is None:
+                p_customer = stripe.Customer.create(
+                    email=subscriber_email, description=subscriber_slug,
+                    idempotency_key=self.generate_idempotent_key(
+                        subscriber_slug, provider),
+                    **kwargs)
+                processor_card_key = p_customer.id
             kwargs.update({'customer': processor_card_key})
 
-        if amount is None:
-            # We are updating a card for later payments.
-            try:
+            if amount is None:
+                # We are updating a card for later payments.
                 setup_intent = stripe.SetupIntent.create(**kwargs)
                 LOGGER.debug("stripe.PaymentIntent.create("\
                     "amount=%d, currency=%s, kwargs=%s) =>\n%s",
                     amount, unit, kwargs, str(setup_intent))
                 context.update({
                     'STRIPE_INTENT_SECRET': setup_intent.client_secret})
-            except stripe.error.InvalidRequestError as err:
-                raise ProcessorSetupError(
-                    _("Invalid request on processor for %(organization)s") % {
-                    'organization': provider}, provider, backend_except=err)
-            except stripe.error.StripeError as err:
-                LOGGER.exception(err)
-                raise ProcessorError(str(err), backend_except=err)
 
-        elif amount > 0:
-            if broker_fee_amount:
-                kwargs.update({'application_fee_amount': broker_fee_amount})
-            try:
-                payment_intent = stripe.PaymentIntent.create(
-                    amount=amount, currency=unit,
-                    setup_future_usage='off_session',
-                    **kwargs)
-                LOGGER.debug("stripe.PaymentIntent.create("\
-                    "amount=%d, currency=%s, kwargs=%s) =>\n%s",
-                    amount, unit, kwargs, str(payment_intent))
-                context.update({
-                    'STRIPE_INTENT_SECRET': payment_intent.client_secret})
+            elif amount > 0:
+                if broker_fee_amount:
+                    kwargs.update({'application_fee_amount': broker_fee_amount})
+                try:
+                    payment_intent = stripe.PaymentIntent.create(
+                        amount=amount, currency=unit,
+                        setup_future_usage='off_session',
+                        **kwargs)
+                    LOGGER.debug("stripe.PaymentIntent.create("\
+                        "amount=%d, currency=%s, kwargs=%s) =>\n%s",
+                        amount, unit, kwargs, str(payment_intent))
+                    context.update({
+                        'STRIPE_INTENT_SECRET': payment_intent.client_secret})
 
-            except stripe.error.CardError as err:
-                # If the card is declined, Stripe will record a failed
-                # ``Charge`` and raise an exception here. Unfortunately only
-                # the Charge id is present in the CardError exception.
-                # So instead of generating
-                # an HTTP retrieve and recording a failed charge in our
-                # database, we raise and rollback.
-                raise CardError(str(err), err.code,
-                    charge_processor_key=err.json_body['error']['charge'],
-                    backend_except=err)
-            except stripe.error.PermissionError as err:
-                # It is possible we no longer have access to the connected
-                # account.
-                with transaction.atomic():
-                    # We want this update to be committed even
-                    # if other transactions are unwind on the exception.
-                    provider.processor_pub_key = None
-                    provider.processor_priv_key = None
-                    provider.processor_deposit_key = None
-                    provider.processor_refresh_token = None
-                    provider.save()
-                raise ProcessorSetupError(
-                    _("access to %(organization)s Stripe account was denied"\
-                      " (access might have been revoked).") % {
-                    'organization': provider}, provider, backend_except=err)
-            except stripe.error.InvalidRequestError as err:
-                raise ProcessorSetupError(
-                    _("Invalid request on processor for %(organization)s") % {
-                    'organization': provider}, provider, backend_except=err)
-            except stripe.error.StripeError as err:
-                LOGGER.exception(err)
-                raise ProcessorError(str(err), backend_except=err)
+                except stripe.error.CardError as err:
+                    # If the card is declined, Stripe will record a failed
+                    # ``Charge`` and raise an exception here. Unfortunately only
+                    # the Charge id is present in the CardError exception.
+                    # So instead of generating
+                    # an HTTP retrieve and recording a failed charge in our
+                    # database, we raise and rollback.
+                    raise CardError(str(err), err.code,
+                        charge_processor_key=err.json_body['error']['charge'],
+                        backend_except=err)
+                except stripe.error.PermissionError as err:
+                    # It is possible we no longer have access to the connected
+                    # account.
+                    with transaction.atomic():
+                        # We want this update to be committed even
+                        # if other transactions are unwind on the exception.
+                        provider.processor_pub_key = None
+                        provider.processor_priv_key = None
+                        provider.processor_deposit_key = None
+                        provider.processor_refresh_token = None
+                        provider.save()
+                    raise ProcessorSetupError(
+                        _("access to %(organization)s Stripe account was"\
+                          " denied (access might have been revoked).") % {
+                        'organization': provider}, provider, backend_except=err)
+
+        except stripe.error.InvalidRequestError as err:
+            raise ProcessorSetupError(
+                _("Invalid request on processor for %(organization)s") % {
+                'organization': provider}, provider, backend_except=err)
+        except stripe.error.StripeError as err:
+            LOGGER.exception(err)
+            raise ProcessorError(str(err), backend_except=err)
 
         return context
 

@@ -40,10 +40,11 @@ from rest_framework import serializers, status
 from ..backends import ProcessorError
 from ..compat import is_authenticated, StringIO
 from ..docs import swagger_auto_schema, OpenAPIResponse
-from ..mixins import CartMixin, OrganizationMixin
+from ..mixins import BalanceAndCartMixin, CartMixin, InvoicablesMixin
 from ..models import CartItem
 from .serializers import (ChargeSerializer, InvoicableSerializer,
-    NoModelSerializer, PlanRelatedField, ValidationErrorSerializer)
+    NoModelSerializer, PlanRelatedField, ProcessorAuthSerializer,
+    ValidationErrorSerializer)
 
 #pylint: disable=no-init
 LOGGER = logging.getLogger(__name__)
@@ -65,6 +66,8 @@ class OrganizationCartSerializer(NoModelSerializer):
     """
     Items which will be charged on an order checkout action.
     """
+    processor = ProcessorAuthSerializer(required=False,
+      help_text=_("Keys to authenticate the client with the payment processor"))
     results = InvoicableSerializer(many=True)
 
 
@@ -419,7 +422,7 @@ class CouponRedeemAPIView(GenericAPIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
-class CheckoutAPIView(CartMixin, OrganizationMixin,
+class CheckoutAPIView(InvoicablesMixin, BalanceAndCartMixin,
                       CreateModelMixin, RetrieveAPIView):
     """
     Retrieves a user cart for checkout
@@ -539,13 +542,20 @@ of Xia",
         """
         return self.create(request, *args, **kwargs)
 
-    def get_queryset(self):
-        return super(CheckoutAPIView, self).as_invoicables(
-            self.request.user, self.organization)
-
     def get(self, request, *args, **kwargs):
-        queryset = self.get_queryset()
-        serializer = self.get_serializer({'results': queryset})
+        resp_data = {
+            'processor':
+            self.organization.processor_backend.get_payment_context(
+                self.invoicables_provider,
+                self.organization.processor_card_key,
+                amount=self.invoicables_lines_price.amount,
+                unit=self.invoicables_lines_price.unit,
+                broker_fee_amount=self.invoicables_broker_fee_amount,
+                subscriber_email=self.organization.email,
+                subscriber_slug=self.organization.slug),
+            'results': self.get_queryset()
+        }
+        serializer = self.get_serializer(resp_data)
         return Response(serializer.data)
 
     def create(self, request, *args, **kwargs):#pylint:disable=unused-argument

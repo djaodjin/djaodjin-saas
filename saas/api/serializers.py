@@ -185,10 +185,20 @@ class BankSerializer(NoModelSerializer):
         help_text=_("Three-letter ISO 4217 code for currency unit (ex: usd)"))
 
 
+class ProcessorAuthSerializer(NoModelSerializer):
+
+    STRIPE_PUB_KEY = serializers.CharField(required=False,
+        help_text=_("Stripe processor public key"))
+    STRIPE_INTENT_SECRET = serializers.CharField(required=False,
+        help_text=_("intent secret for SCA (Stripe)"))
+
+
 class CardSerializer(NoModelSerializer):
     """
     Information to verify a credit card
     """
+    processor = ProcessorAuthSerializer(required=False,
+      help_text=_("Keys to authenticate the client with the payment processor"))
     last4 = serializers.CharField(
         help_text=_("Last 4 digits of the credit card on file"))
     exp_date = serializers.CharField(

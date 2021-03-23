@@ -57,8 +57,9 @@ from ..backends import ProcessorError, ProcessorConnectionError
 from ..decorators import _insert_url, _valid_manager
 from ..forms import (BankForm, CartPeriodsForm, CreditCardForm,
     ImportTransactionForm, RedeemCouponForm, VTChargeForm, WithdrawForm)
-from ..mixins import (BalanceDueMixin, CartMixin, ChargeMixin,
-    DateRangeContextMixin, OrganizationMixin, ProviderMixin, product_url)
+from ..mixins import (BalanceDueMixin, BalanceAndCartMixin, ChargeMixin,
+    DateRangeContextMixin, InvoicablesMixin, OrganizationMixin,
+    ProviderMixin, product_url)
 from ..models import (CartItem, Charge, Coupon,
     Plan, Price, Subscription, Transaction, UseCharge, get_broker)
 from ..utils import (get_organization_model, update_context_urls,
@@ -232,95 +233,6 @@ djaodjin-saas/tree/master/saas/templates/saas/billing/bank.html>`__).
         return super(ProcessorAuthorizeView, self).get(request, *args, **kwargs)
 
 
-class InvoicablesMixin(OrganizationMixin):
-    """
-    Mixin a list of invoicables
-    """
-    @property
-    def invoicables(self):
-        if not hasattr(self, '_invoicables'):
-            self._invoicables = self.as_invoicables(
-                self.request.user, self.organization)
-            self._invoicables.sort(
-                key=lambda invoicable: str(invoicable['subscription']))
-        return self._invoicables
-
-    @property
-    def invoicables_broker_fee_amount(self):
-        if not hasattr(self, '_invoicables_broker_fee_amount'):
-            self._invoicables_broker_fee_amount = 0
-            for invoicable in self.invoicables:
-                for invoiced_item in invoicable['lines']:
-                    if invoiced_item.subscription:
-                        self._invoicables_broker_fee_amount += \
-                            invoiced_item.subscription.plan.prorate_transaction(
-                                invoiced_item.dest_amount)
-        return self._invoicables_broker_fee_amount
-
-    @property
-    def invoicables_provider(self):
-        if not hasattr(self, '_invoicables_provider'):
-            providers = set([])
-            for invoicable in self.invoicables:
-                providers |= set(Transaction.objects.providers(
-                    invoicable['lines']))
-            if len(providers) == 1:
-                self._invoicables_provider = list(providers)[0]
-            else:
-                self._invoicables_provider = get_broker()
-        return self._invoicables_provider
-
-    def get_context_data(self, **kwargs):
-        context = super(InvoicablesMixin, self).get_context_data(**kwargs)
-        context.update(self.get_redirect_path())
-        lines_amount = 0
-        lines_unit = settings.DEFAULT_UNIT
-        for invoicable in self.invoicables:
-            if len(invoicable['options']) > 0:
-                # In case it is pure options, no lines.
-                lines_unit = invoicable['options'][0].dest_unit
-                invoicable['selected_option'] = 1
-                for rank, line in enumerate(invoicable['options']):
-                    setattr(line, 'rank', rank + 1)
-            for line in invoicable['lines']:
-                lines_amount += line.dest_amount
-                lines_unit = line.dest_unit
-        current_plan = None
-        for invoicable in self.invoicables:
-            plan = invoicable['subscription'].plan
-            if current_plan is None or plan != current_plan:
-                invoicable['is_changed'] = (current_plan is not None)
-                current_plan = plan
-                current_plan.is_removable = True
-            for line in invoicable['lines']:
-                if line.pk:
-                    current_plan.is_removable = False
-
-        context.update({
-            'invoicables': self.invoicables,
-            'lines_price': Price(lines_amount, lines_unit)
-        })
-        return context
-
-    def get_initial(self):
-        kwargs = super(InvoicablesMixin, self).get_initial()
-        for invoicable in self.invoicables:
-            if invoicable['options']:
-                kwargs.update({invoicable['name']: ""})
-        return kwargs
-
-    def get_queryset(self):
-        return self.invoicables
-
-    def get_redirect_path(self, **kwargs): #pylint: disable=unused-argument
-        context = {}
-        redirect_path = validate_redirect_url(
-            self.request.GET.get(REDIRECT_FIELD_NAME, None))
-        if redirect_path:
-            context.update({REDIRECT_FIELD_NAME: redirect_path})
-        return context
-
-
 class CheckoutFormMixin(CardFormMixin):
     """
     Create a charge for items that must be charged on submit.
@@ -412,7 +324,9 @@ class CheckoutFormMixin(CardFormMixin):
                     self.invoicables_provider,
                     self.organization.processor_card_key,
                     amount=lines_price.amount, unit=lines_price.unit,
-                    broker_fee_amount=self.invoicables_broker_fee_amount))
+                    broker_fee_amount=self.invoicables_broker_fee_amount,
+                    subscriber_email=self.organization.email,
+                    subscriber_slug=self.organization.slug))
         except ProcessorConnectionError:
             messages.error(self.request, _("The payment processor is "\
                 "currently unreachable. Sorry for the inconvienience."))
@@ -478,7 +392,9 @@ class CardUpdateView(CardFormMixin, FormView):
             context.update(
                 self.organization.processor_backend.get_payment_context(
                     get_broker(),
-                    self.organization.processor_card_key))
+                    self.organization.processor_card_key,
+                    subscriber_email=self.organization.email,
+                    subscriber_slug=self.organization.slug))
         except ProcessorConnectionError:
             messages.error(self.request, _("The payment processor is "\
                 "currently unreachable. Sorry for the inconvienience."))
@@ -613,7 +529,7 @@ djaodjin-saas/tree/master/saas/templates/saas/billing/transfers.html>`__).
         return context
 
 
-class CartBaseView(InvoicablesMixin, BalanceDueMixin, CartMixin, FormView):
+class CartBaseView(InvoicablesMixin, BalanceAndCartMixin, FormView):
     """
     The main pupose of ``CartBaseView`` is generate an list of invoicables
     from ``CartItem`` records associated to a ``request.user``.
@@ -643,12 +559,6 @@ class CartBaseView(InvoicablesMixin, BalanceDueMixin, CartMixin, FormView):
         $510.30 Subscription to medium-plan until 2016/01/07 (3 months, 10% off)
         $907.20 Subscription to medium-plan until 2016/04/07 (6 months, 20% off)
     """
-    def as_invoicables(self, user, customer, at_time=None):
-        invoicables = BalanceDueMixin.as_invoicables(
-            self, user, customer, at_time=at_time)
-        invoicables += CartMixin.as_invoicables(
-            self, user, customer, at_time=at_time)
-        return invoicables
 
     def dispatch(self, request, *args, **kwargs):
         # We are not getting here without an authenticated user. It is time
@@ -871,11 +781,6 @@ class CheckoutView(CardFormMixin, FormView):
     def get_context_data(self, **kwargs):
         context = super(CheckoutView, self).get_context_data(**kwargs)
         context.update({'is_bulk_buyer': self.organization.is_bulk_buyer})
-        try:
-            context.update(self.organization.retrieve_card())
-        except ProcessorConnectionError:
-            messages.error(self.request, _("The payment processor is "\
-                "currently unreachable. Sorry for the inconvienience."))
         urls = {'organization': {
             'api_checkout': reverse('saas_api_checkout',
                 args=(self.organization,)),

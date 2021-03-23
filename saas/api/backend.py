@@ -33,6 +33,7 @@ from rest_framework.response import Response
 from ..backends import ProcessorError
 from ..docs import swagger_auto_schema
 from ..mixins import OrganizationMixin
+from ..models import get_broker
 from .serializers import (BankSerializer, CardSerializer,
     CardTokenSerializer)
 
@@ -163,7 +164,17 @@ class PaymentMethodDetailAPIView(OrganizationMixin,
 
     def retrieve(self, request, *args, **kwargs):
         #pylint:disable=unused-argument
-        return Response(self.organization.retrieve_card())
+        resp_data = self.organization.retrieve_card()
+        if request.query_params.get('update', False):
+            resp_data.update({
+                'processor':
+                self.organization.processor_backend.get_payment_context(
+                    get_broker(),
+                    self.organization.processor_card_key,
+                    subscriber_email=self.organization.email,
+                    subscriber_slug=self.organization.slug)
+            })
+        return Response(resp_data)
 
     def update(self, request, *args, **kwargs):
         partial = kwargs.pop('partial', False)

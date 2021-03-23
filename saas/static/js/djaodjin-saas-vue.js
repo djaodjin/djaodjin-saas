@@ -545,11 +545,11 @@ var cardMixin = {
                 if( resp.exp_date ) {
                     vm.savedCard.exp_date = resp.exp_date;
                 }
-                if( resp.STRIPE_PUB_KEY ) {
-                    vm.processor_pub_key = resp.STRIPE_PUB_KEY;
+                if( resp.processor && resp.processor.STRIPE_PUB_KEY ) {
+                    vm.processor_pub_key = resp.processor.STRIPE_PUB_KEY;
                 }
-                if( resp.STRIPE_INTENT_SECRET ) {
-                    vm.stripe_intent_secret = resp.STRIPE_INTENT_SECRET;
+                if( resp.processor && resp.processor.STRIPE_INTENT_SECRET ) {
+                    vm.stripe_intent_secret = resp.processor.STRIPE_INTENT_SECRET;
                 }
                 if( vm.processor_pub_key ) {
                     vm.stripe = Stripe(vm.processor_pub_key);

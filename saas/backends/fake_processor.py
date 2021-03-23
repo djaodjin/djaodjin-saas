@@ -102,6 +102,14 @@ class FakeProcessorBackend(object):
         """
 
     @staticmethod
+    def get_payment_context(provider, processor_card_key,
+                            amount=None, unit=None, broker_fee_amount=0,
+                            subscriber_email=None, subscriber_slug=None):
+        #pylint:disable=too-many-arguments,unused-argument
+        context = {}
+        return context
+
+    @staticmethod
     def reconcile_transfers(provider, created_at, dry_run=False):
         #pylint:disable=unused-argument
         raise NotImplementedError(

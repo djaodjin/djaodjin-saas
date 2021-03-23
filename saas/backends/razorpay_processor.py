@@ -121,6 +121,15 @@ class RazorpayBackend(object):
         }
         return context
 
+    def get_payment_context(self, provider, processor_card_key,
+                            amount=None, unit=None, broker_fee_amount=0,
+                            subscriber_email=None, subscriber_slug=None):
+        #pylint:disable=too-many-arguments,unused-argument
+        context = {
+            'RAZORPAY_PUB_KEY': self.pub_key
+        }
+        return context
+
     @staticmethod
     def reconcile_transfers(provider, created_at, dry_run=False):
         #pylint:disable=unused-argument
@@ -131,8 +140,8 @@ class RazorpayBackend(object):
         return self.get_deposit_context()
 
     def retrieve_card(self, subscriber, broker=None):
-        #pylint:disable=unused-argument
-        context = {'RAZORPAY_PUB_KEY': self.pub_key}
+        #pylint:disable=unused-argument,no-self-use
+        context = {}
         return context
 
     def retrieve_charge(self, charge):

@@ -27,7 +27,7 @@ from __future__ import unicode_literals
 
 import re
 
-from django.contrib.auth import get_user_model
+from django.contrib.auth import REDIRECT_FIELD_NAME, get_user_model
 from django.contrib.auth.hashers import UNUSABLE_PASSWORD_PREFIX
 from django.db.models import Q, F
 from django.http import Http404
@@ -40,11 +40,12 @@ from . import humanize, settings
 from .cart import cart_insert_item
 from .compat import six, NoReverseMatch, is_authenticated, reverse
 from .filters import DateRangeFilter, OrderingFilter, SearchFilter
-from .models import (CartItem, Charge, Coupon, Plan,
+from .models import (CartItem, Charge, Coupon, Plan, Price,
     RoleDescription, Subscription, Transaction, get_broker, is_broker,
     sum_orig_amount)
 from .utils import (build_absolute_uri, datetime_or_now,
-    get_organization_model, get_role_model, update_context_urls)
+    get_organization_model, get_role_model, update_context_urls,
+    validate_redirect_url)
 from .extras import OrganizationMixinBase
 
 
@@ -556,6 +557,110 @@ class DateRangeContextMixin(object):
         if self.ends_at:
             context.update({'ends_at': self.ends_at})
         return context
+
+
+class InvoicablesMixin(OrganizationMixin):
+    """
+    Mixin a list of invoicables
+    """
+    @property
+    def invoicables(self):
+        if not hasattr(self, '_invoicables'):
+            self._invoicables = self.as_invoicables(
+                self.request.user, self.organization)
+            self._invoicables.sort(
+                key=lambda invoicable: str(invoicable['subscription']))
+        return self._invoicables
+
+    @property
+    def invoicables_broker_fee_amount(self):
+        if not hasattr(self, '_invoicables_broker_fee_amount'):
+            self._invoicables_broker_fee_amount = 0
+            for invoicable in self.invoicables:
+                for invoiced_item in invoicable['lines']:
+                    if invoiced_item.subscription:
+                        self._invoicables_broker_fee_amount += \
+                            invoiced_item.subscription.plan.prorate_transaction(
+                                invoiced_item.dest_amount)
+        return self._invoicables_broker_fee_amount
+
+    @property
+    def invoicables_provider(self):
+        if not hasattr(self, '_invoicables_provider'):
+            providers = set([])
+            for invoicable in self.invoicables:
+                providers |= set(Transaction.objects.providers(
+                    invoicable['lines']))
+            if len(providers) == 1:
+                self._invoicables_provider = list(providers)[0]
+            else:
+                self._invoicables_provider = get_broker()
+        return self._invoicables_provider
+
+    @property
+    def invoicables_lines_price(self):
+        if not hasattr(self, '_invoicables_lines_price'):
+            lines_amount = 0
+            lines_unit = settings.DEFAULT_UNIT
+            for invoicable in self.invoicables:
+                if len(invoicable['options']) > 0:
+                    # In case it is pure options, no lines.
+                    lines_unit = invoicable['options'][0].dest_unit
+                    invoicable['selected_option'] = 1
+                    for rank, line in enumerate(invoicable['options']):
+                        setattr(line, 'rank', rank + 1)
+                for line in invoicable['lines']:
+                    lines_amount += line.dest_amount
+                    lines_unit = line.dest_unit
+            current_plan = None
+            for invoicable in self.invoicables:
+                plan = invoicable['subscription'].plan
+                if current_plan is None or plan != current_plan:
+                    invoicable['is_changed'] = (current_plan is not None)
+                    current_plan = plan
+                    current_plan.is_removable = True
+                for line in invoicable['lines']:
+                    if line.pk:
+                        current_plan.is_removable = False
+            self._invoicables_lines_price = Price(lines_amount, lines_unit)
+        return self._invoicables_lines_price
+
+    def get_queryset(self):
+        return self.invoicables
+
+    def get_context_data(self, **kwargs):
+        context = super(InvoicablesMixin, self).get_context_data(**kwargs)
+        context.update(self.get_redirect_path())
+        context.update({
+            'invoicables': self.invoicables,
+            'lines_price': self.invoicables_lines_price
+        })
+        return context
+
+    def get_initial(self):
+        kwargs = super(InvoicablesMixin, self).get_initial()
+        for invoicable in self.invoicables:
+            if invoicable['options']:
+                kwargs.update({invoicable['name']: ""})
+        return kwargs
+
+    def get_redirect_path(self, **kwargs): #pylint: disable=unused-argument
+        context = {}
+        redirect_path = validate_redirect_url(
+            self.request.GET.get(REDIRECT_FIELD_NAME, None))
+        if redirect_path:
+            context.update({REDIRECT_FIELD_NAME: redirect_path})
+        return context
+
+
+class BalanceAndCartMixin(BalanceDueMixin, CartMixin):
+
+    def as_invoicables(self, user, customer, at_time=None):
+        invoicables = BalanceDueMixin.as_invoicables(
+            self, user, customer, at_time=at_time)
+        invoicables += CartMixin.as_invoicables(
+            self, user, customer, at_time=at_time)
+        return invoicables
 
 
 class ProviderMixin(OrganizationMixin):
