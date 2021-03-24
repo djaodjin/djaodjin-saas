@@ -56,8 +56,7 @@ function _showErrorMessages(resp) {
         var data = resp.data || resp.responseJSON;
         if( data && typeof data === "object" ) {
             if( data.detail ) {
-                messages = [interpolate(gettext("Error %s: %s"),
-                    ["", data.detail])];
+                messages = [data.detail];
             } else if( $.isArray(data) ) {
                 for( var idx = 0; idx < data.length; ++idx ) {
                     messages = messages.concat(_showErrorMessages(data[idx]));
@@ -91,8 +90,7 @@ function _showErrorMessages(resp) {
                 }
             }
         } else if( resp.detail ) {
-            messages = [interpolate(gettext("Error %s: %s"),
-                ["", resp.detail])];
+            messages = [resp.detail];
         }
     }
     return messages;
@@ -101,16 +99,15 @@ function _showErrorMessages(resp) {
 
 function showErrorMessages(resp) {
     if( resp.status >= 500 && resp.status < 600 ) {
-        messages = [interpolate(gettext("Error %s: %s"),
-            [resp.status, resp.statusText])
-            + "<br />" + gettext("We have been notified"
-            + " and have started on fixing the error. We apologize for the"
-            + " inconvinience.")];
+        msg = "Err " + resp.status + ": " + resp.statusText;
+        if( _showErrorMessagesProviderNotified ) {
+            msg += "<br />" + _showErrorMessagesProviderNotified;
+        }
+        messages = [msg];
     } else {
         var messages = _showErrorMessages(resp);
         if( messages.length === 0 ) {
-            messages = [interpolate(gettext("Error %s: %s"),
-            [resp.status, resp.statusText])];
+            messages = ["Err " + resp.status + ": " + resp.statusText];
         }
     }
     showMessages(messages, "error");

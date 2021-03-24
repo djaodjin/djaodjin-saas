@@ -98,7 +98,7 @@
             }
             if( errorMessages ) {
                 errorMessages = interpolate(
-                    gettext("%s field(s) cannot be empty."), [errorMessages]);
+                    self.options.fieldsCannotBeEmptyError, [errorMessages]);
             }
             if( valid ) {
                 // this identifies your website in the createToken call below
@@ -128,7 +128,8 @@
         stripePubKey: null,
         countryLabel: "Country",
         accountNumberLabel: "Account Number",
-        routingNumberLabel: "Routing Number"
+        routingNumberLabel: "Routing Number",
+        fieldsCannotBeEmptyError: gettext("%s field(s) cannot be empty.")
     };
 
     /** Augment a <form> to request a token from a credit card, then submit
@@ -401,7 +402,7 @@
             }
             if( errorMessages ) {
                 errorMessages = interpolate(
-                    gettext("%s field(s) cannot be empty."), [errorMessages]);
+                    self.options.fieldsCannotBeEmptyError, [errorMessages]);
             }
             if( valid ) {
                 // this identifies your website in the createToken call below
@@ -495,7 +496,8 @@
         localityLabel: "City/Town",
         regionLabel: "State/Province/County",
         postalCodeLabel: "Zip/Postal code",
-        countryLabel: "Country"
+        countryLabel: "Country",
+        fieldsCannotBeEmptyError: gettext("%s field(s) cannot be empty.")
     };
 
 

@@ -1,4 +1,4 @@
-# Copyright (c) 2020, DjaoDjin inc.
+# Copyright (c) 2021, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -28,6 +28,7 @@ from django.conf import settings as django_settings
 from django.contrib.auth import get_user_model, logout as auth_logout
 from django.db import transaction, IntegrityError
 from django.utils.encoding import force_text
+from django.utils.translation import ugettext_lazy as _
 from rest_framework import parsers, status
 from rest_framework.generics import (CreateAPIView, ListAPIView,
     ListCreateAPIView, RetrieveUpdateDestroyAPIView)
@@ -244,6 +245,7 @@ class OrganizationDetailAPIView(OrganizationMixin, OrganizationQuerysetMixin,
             'slug', serializer.instance.slug)
         try:
             serializer.save(is_provider=is_provider)
+            serializer.instance.detail = _("Profile was updated.")
             signals.organization_updated.send(sender=__name__,
                 organization=serializer.instance, changes=changes,
                 user=self.request.user)
@@ -305,7 +307,7 @@ class OrganizationPictureAPIView(OrganizationMixin, CreateAPIView):
         #pylint:disable=unused-argument
         uploaded_file = request.data.get('file')
         if not uploaded_file:
-            return Response({'detail': "no location or file specified."},
+            return Response({'detail': _("no location or file specified.")},
                 status=status.HTTP_400_BAD_REQUEST)
 
         # tentatively extract file extension.

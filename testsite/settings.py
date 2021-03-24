@@ -69,8 +69,8 @@ INSTALLED_APPS = (
     # 'django.contrib.admindocs',
     'rest_framework',
     'django_countries',
-    'rules',
     'saas',
+    'rules',
     'testsite'
 )
 

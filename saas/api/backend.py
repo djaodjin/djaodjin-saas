@@ -24,6 +24,7 @@
 
 #pylint:disable=useless-super-delegation
 
+from django.utils.translation import ugettext_lazy as _
 from rest_framework import status
 from rest_framework.exceptions import ValidationError
 from rest_framework.generics import (RetrieveAPIView,
@@ -160,7 +161,9 @@ class PaymentMethodDetailAPIView(OrganizationMixin,
     def destroy(self, request, *args, **kwargs):
         #pylint:disable=unused-argument
         self.organization.delete_card()
-        return Response(status=status.HTTP_204_NO_CONTENT)
+        return Response({
+            'detail': _("Your credit card is no longer on file with us.")},
+            status=status.HTTP_200_OK)
 
     def retrieve(self, request, *args, **kwargs):
         #pylint:disable=unused-argument
@@ -177,12 +180,15 @@ class PaymentMethodDetailAPIView(OrganizationMixin,
         return Response(resp_data)
 
     def update(self, request, *args, **kwargs):
+        #pylint:disable=unused-argument
         partial = kwargs.pop('partial', False)
         serializer = CardTokenSerializer(data=request.data, partial=partial)
         serializer.is_valid(raise_exception=True)
         token = serializer.validated_data['token']
         try:
-            self.organization.update_card(token, self.request.user)
+            new_card = self.organization.update_card(token, self.request.user)
         except ProcessorError as err:
             raise ValidationError(err)
-        return self.retrieve(request, *args, **kwargs)
+        new_card.update({
+            'detail': _("Your credit card on file was sucessfully updated.")})
+        return Response(new_card)

@@ -1109,6 +1109,9 @@ class RoleDetailAPIView(RoleMixin, DestroyAPIView):
         role = self.get_object()
         signals.role_grant_created.send(sender=__name__,
             role=role, reason=None, request_user=request.user)
+        role.detail = _("Invite for %(username)s has been sent") % {
+            'username': role.user.username
+        }
         serializer = self.get_serializer(role)
         return Response(serializer.data)
 

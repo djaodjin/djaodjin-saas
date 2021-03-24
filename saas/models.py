@@ -697,7 +697,7 @@ class Organization(models.Model):
             self, extra={'event': 'delete-debit', 'organization': self.slug})
 
     def update_card(self, card_token, user):
-        self.processor_backend.create_or_update_card(
+        new_card = self.processor_backend.create_or_update_card(
             self, card_token, user=user, broker=get_broker())
         self.nb_renewal_attempts = 0  # reset off-session failures counter
         # The following ``save`` will be rolled back in ``checkout``
@@ -707,6 +707,7 @@ class Organization(models.Model):
             self, self.processor_card_key,
             extra={'event': 'update-debit', 'organization': self.slug,
                 'processor_card_key': self.processor_card_key})
+        return new_card
 
     def execute_order(self, invoicables, user):
         """

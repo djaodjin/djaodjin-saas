@@ -65,7 +65,7 @@ jQuery(document).ready(function($) {
 {% if STRIPE_PUB_KEY %}
     cardForm.card({
         stripePubKey: "{{ STRIPE_PUB_KEY }}",
-        stripeIntentSecret: "{{ STRIPE_INTENT_SECRET }}",
+        stripeIntentSecret: {% if STRIPE_INTENT_SECRET %}"{{ STRIPE_INTENT_SECRET }}"{% else %}null{% endif %},
         saas_api_card: "{{ urls.organization.api_card }}"
     });
 {% endif %}

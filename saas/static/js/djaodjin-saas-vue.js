@@ -471,6 +471,17 @@ var cardMixin = {
                 'country',
                 'region',
             ],
+            labels: {
+                cardNumberLabel: gettext("Card Number"),
+                securityCodeLabel: gettext("Security Code"),
+                expirationLabel: gettext("Expiration"),
+                cardHolderLabel: gettext("Card Holder"),
+                streetAddressLabel: gettext("Street address"),
+                localityLabel: gettext("City/Town"),
+                regionLabel: gettext("State/Province/County"),
+                postalCodeLabel: gettext("Zip/Postal code"),
+                countryLabel: gettext("Country")
+            }
         }, this.getCardFormData());
     },
     methods: {
@@ -500,11 +511,11 @@ var cardMixin = {
         deleteCard: function() {
             var vm = this;
             vm.reqDelete(vm.api_card_url,
-            function() {
+            function(resp) {
                 vm.clearCardData();
-                showMessages([gettext(
-                    "Your credit card is no longer on file with us.")],
-                    "success");
+                if( resp.detail ) {
+                    showMessages([resp.detail], "success");
+                }
             });
         },
         inputClass: function(name){
@@ -697,40 +708,40 @@ var cardMixin = {
             if(Object.keys(vm.errors).length > 0){
                 if( vm.errors['cardNumber'] ) {
                     if( errorMessages ) { errorMessages += ", "; }
-                    errorMessages += gettext("Card Number");
+                    errorMessages += vm.labels.cardNumberLabel;
                 }
                 if( vm.errors['cardCvc'] ) {
                     if( errorMessages ) { errorMessages += ", "; }
-                    errorMessages += gettext("Security Code");
+                    errorMessages += vm.labels.securityCodeLabel;
                 }
                 if( vm.errors['cardExpMonth']
                          || vm.errors['cardExpYear'] ) {
                     if( errorMessages ) { errorMessages += ", "; }
-                    errorMessages += gettext("Expiration");
+                    errorMessages += vm.labels.expirationLabel;
                 }
                 if( vm.errors['card_name'] ) {
                     if( errorMessages ) { errorMessages += ", "; }
-                    errorMessages += gettext("Card Holder");
+                    errorMessages +=  vm.labels.cardHolderLabel;
                 }
                 if( vm.errors['card_address_line1'] ) {
                     if( errorMessages ) { errorMessages += ", "; }
-                    errorMessages += gettext("Street address");
+                    errorMessages += vm.labels.streetAddressLabel;
                 }
                 if( vm.errors['card_city'] ) {
                     if( errorMessages ) { errorMessages += ", "; }
-                    errorMessages += gettext("City/Town");
+                    errorMessages += vm.labels.localityLabel;
                 }
                 if( vm.errors['card_address_zip'] ) {
                     if( errorMessages ) { errorMessages += ", "; }
-                    errorMessages += gettext("Zip/Postal code");
+                    errorMessages += vm.labels.regionLabel;
                 }
                 if( vm.errors['country'] ) {
                     if( errorMessages ) { errorMessages += ", "; }
-                    errorMessages += gettext("Country");
+                    errorMessages += vm.labels.countryLabel;
                 }
                 if( vm.errors['region'] ) {
                     if( errorMessages ) { errorMessages += ", "; }
-                    errorMessages += gettext("State/Province/County");
+                    errorMessages += vm.labels.postalCodeLabel;
                 }
                 if( errorMessages ) {
                     errorMessages = interpolate(
@@ -783,10 +794,8 @@ var roleDetailMixin = {
         },
         sendInvite: function(slug){
             var vm = this;
-            vm.reqPost(vm.url + '/' + slug + '/', {}, function() {
-                showMessages([interpolate(gettext(
-                    "Invite for %s has been sent"), [slug])],
-                    "success");
+            vm.reqPost(vm.url + '/' + slug + '/', {}, function(resp) {
+                showMessages([resp.detail], "success");
             });
         },
     }
@@ -2022,8 +2031,10 @@ Vue.component('profile-update', {
                 }
             }
             vm.reqPut(vm.url, data,
-            function() {
-                showMessages([gettext("Profile was updated.")], "success");
+            function(resp) {
+                if( resp.detail ) {
+                    showMessages([resp.detail], "success");
+                }
             });
             if(vm.imageSelected){
                 vm.uploadProfilePicture();
@@ -2206,9 +2217,10 @@ Vue.component('checkout', {
         redeem: function(){
             var vm = this;
             vm.reqPost(vm.api_redeem_url, {code: vm.coupon},
-            function() {
-                showMessages([gettext("Discount was successfully applied.")],
-                    "success");
+            function(resp) {
+                if( resp.detail ) {
+                    showMessages([resp.detail], "success");
+                }
                 vm.get();
             });
         },
@@ -2480,9 +2492,9 @@ Vue.component('card-update', {
                     if( redirectUrl ) {
                         window.location = redirectUrl;
                     }
-                    showMessages([gettext(
-                        "Your credit card on file was sucessfully updated.")],
-                        "success");
+                    if( resp.detail ) {
+                        showMessages([resp.detail], "success");
+                    }
                 });
             });
         },
@@ -2600,11 +2612,8 @@ Vue.component('plan-update', {
             var vm = this;
             if( vm.url ) {
                 vm.reqPut(vm.url, vm._populateParams(),
-                function() {
-                    showMessages([interpolate(gettext(
-                        "Successfully updated plan titled '%s'."), [
-                            vm.formFields.title])
-                                 ], "success");
+                function(resp) {
+                    showMessages([resp.detail], "success");
                 });
             } else {
                 vm.createPlan();

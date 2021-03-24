@@ -415,12 +415,17 @@ class OrganizationDetailSerializer(OrganizationSerializer):
     extra = serializers.CharField(required=False, allow_null=True,
         help_text=_("Extra meta data (can be stringify JSON)"))
 
+    detail = serializers.CharField(required=False,
+        help_text=_("Describes the result of the action"\
+            " in human-readable form"))
+
     class Meta(OrganizationSerializer.Meta):
         fields = OrganizationSerializer.Meta.fields + (
             'created_at', 'email', 'phone',
             'street_address', 'locality', 'region', 'postal_code', 'country',
-            'default_timezone', 'is_provider', 'is_bulk_buyer', 'extra')
-        read_only_fields = ('created_at',)
+            'default_timezone', 'is_provider', 'is_bulk_buyer', 'extra',
+            'detail')
+        read_only_fields = ('created_at', 'detail')
 
 
 class OrganizationCreateSerializer(NoModelSerializer):
@@ -567,6 +572,10 @@ class PlanSerializer(serializers.ModelSerializer):
     is_cart_item = serializers.SerializerMethodField(required=False,
         help_text=_("The plan is part of the cart to checkout"))
 
+    detail = serializers.CharField(required=False,
+        help_text=_("Describes the result of the action"\
+            " in human-readable form"))
+
     class Meta:
         model = Plan
         fields = ('slug', 'title', 'description', 'is_active',
@@ -575,9 +584,9 @@ class PlanSerializer(serializers.ModelSerializer):
                   'period_length', 'renewal_type', 'is_not_priced',
                   'created_at',
                   'skip_optin_on_grant', 'optin_on_request',
-                  'discounted_period_amount', 'is_cart_item')
+                  'discounted_period_amount', 'is_cart_item', 'detail')
         read_only_fields = ('slug', 'app_url',
-            'discounted_period_amount', 'is_cart_item')
+            'discounted_period_amount', 'is_cart_item', 'detail')
 
     @staticmethod
     def get_discounted_period_amount(obj):
@@ -848,12 +857,17 @@ class RoleSerializer(serializers.ModelSerializer):
     accept_request_api_url = serializers.SerializerMethodField()
     remove_api_url = serializers.SerializerMethodField()
 
+    detail = serializers.CharField(required=False,
+        help_text=_("Describes the result of the action"\
+            " in human-readable form"))
+
     class Meta:
         model = get_role_model()
         fields = ('created_at', 'user', 'grant_key',
             'organization', 'role_description', 'accept_request_api_url',
-            'remove_api_url')
-        read_only_fields = ('created_at', 'grant_key', 'role_description')
+            'remove_api_url', 'detail')
+        read_only_fields = ('created_at', 'grant_key', 'role_description',
+            'detail')
 
     def get_accept_request_api_url(self, obj):
         if obj.request_key:

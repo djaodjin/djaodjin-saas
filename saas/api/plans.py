@@ -1,4 +1,4 @@
-# Copyright (c) 2020, DjaoDjin inc.
+# Copyright (c) 2021, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -24,6 +24,7 @@
 
 #pylint:disable=useless-super-delegation
 
+from django.utils.translation import ugettext_lazy as _
 from rest_framework import status
 from rest_framework.generics import (ListAPIView, ListCreateAPIView,
     RetrieveUpdateDestroyAPIView)
@@ -295,7 +296,7 @@ class PlanDetailAPIView(PlanMixin, RetrieveUpdateDestroyAPIView):
         instance = self.get_object()
         if instance.subscription_set.count() != 0:
             return Response(
-                {'detail':'Cannot delete a plan with subscribers'},
+                {'detail': _("Cannot delete a plan with subscribers")},
                 status=status.HTTP_403_FORBIDDEN)
         self.perform_destroy(instance)
         return Response(status=status.HTTP_204_NO_CONTENT)
@@ -324,6 +325,9 @@ class PlanDetailAPIView(PlanMixin, RetrieveUpdateDestroyAPIView):
         serializer.save(organization=self.provider,
             is_active=serializer.validated_data.get('is_active',
                 serializer.instance.is_active))
+        serializer.instance.detail = \
+            _("Successfully updated plan titled '%(title)s'.") % {
+                'title': serializer.instance.title}
 
     def put(self, request, *args, **kwargs):
         """
