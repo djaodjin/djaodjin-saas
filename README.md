@@ -96,11 +96,10 @@ saas/templates/notification/ directory.
 Release Notes
 =============
 
-0.9.3
+0.9.4
 
-  * migrates to Stripe PaymentIntent for SCA
-  * adds balance due in checkout page
-  * computes customers lifetime value (LTV) for a provider
-  * reports error details when the payment processor has issues
+  * adds processor in checkout and card APIs
+  * fixes computed balance due when subscription is free
+  * re-raises all StripeError as ProcessorError
 
 [previous release notes](changelog)
