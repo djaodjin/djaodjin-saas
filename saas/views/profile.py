@@ -58,7 +58,7 @@ class RoleDetailView(RoleDescriptionMixin, TemplateView):
 
     To edit the layout of this page, create a local \
     ``saas/profile/roles/role.html`` (`example <https://github.com/djaodjin\
-/djaodjin-saas/tree/master/saas/templates/saas/profile/roles.html>`__).
+/djaodjin-saas/tree/master/saas/templates/saas/profile/roles/role.html>`__).
     You should insure the page will call back the
     :ref:`/api/profile/:organization/roles/:role/ <api_role>`
     API end point to fetch the set of users with the specified role.
