@@ -170,7 +170,7 @@ class OrganizationRedirectView(TemplateResponseMixin, ContextMixin,
     def get(self, request, *args, **kwargs):
         #pylint:disable=too-many-locals,too-many-statements
         #pylint:disable=too-many-nested-blocks,too-many-return-statements
-        if not is_authenticated(request.user):
+        if not is_authenticated(request):
             # If we got here and the user is not authenticated, it is pointless.
             return http.HttpResponseRedirect(settings.LOGIN_URL)
 
