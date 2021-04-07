@@ -42,7 +42,7 @@ from django.views.generic.edit import FormMixin
 
 from .. import settings
 from ..cart import session_cart_to_database
-from ..compat import reverse, NoReverseMatch
+from ..compat import is_authenticated, reverse, NoReverseMatch
 from ..decorators import fail_direct
 from ..models import RoleDescription, get_broker
 from ..utils import (get_organization_model, get_role_model,
@@ -170,6 +170,10 @@ class OrganizationRedirectView(TemplateResponseMixin, ContextMixin,
     def get(self, request, *args, **kwargs):
         #pylint:disable=too-many-locals,too-many-statements
         #pylint:disable=too-many-nested-blocks,too-many-return-statements
+        if not is_authenticated(request.user):
+            # If we got here and the user is not authenticated, it is pointless.
+            return http.HttpResponseRedirect(settings.LOGIN_URL)
+
         session_cart_to_database(request)
 
         redirect_to = reverse('saas_user_product_list', args=(request.user,))

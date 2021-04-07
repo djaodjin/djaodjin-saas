@@ -25,11 +25,13 @@
 #pylint:disable=unused-argument,unused-import
 
 try:
-    from drf_yasg.openapi import Response as OpenAPIResponse
+    from drf_yasg.openapi import Response as OpenAPIResponse, Parameter, IN_PATH
     from drf_yasg.utils import no_body, swagger_auto_schema
 except ImportError:
     from functools import wraps
     from .compat import available_attrs
+
+    IN_PATH = 0
 
     class no_body(object):#pylint:disable=invalid-name
         pass
@@ -51,6 +53,13 @@ except ImportError:
     class OpenAPIResponse(object):
         """
         Dummy response object to document API.
+        """
+        def __init__(self, *args, **kwargs):
+            pass
+
+    class Parameter(object):
+        """
+        Dummy object to document API.
         """
         def __init__(self, *args, **kwargs):
             pass
