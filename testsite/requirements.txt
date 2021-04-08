@@ -1,4 +1,4 @@
-Django==2.2.13
+Django==2.2.20
 django-countries==6.1.2
 django-localflavor==3.0.1
 djangorestframework==3.11.0
