@@ -237,6 +237,8 @@ class ChargeSerializer(serializers.ModelSerializer):
         help_text=_("Amount and unit in a commonly accepted readable format"))
     detail = serializers.CharField(read_only=True, required=False,
         help_text=_("Feedback for the user in plain text"))
+    last4 = serializers.CharField(source='get_last4_display', read_only=True,
+        help_text=_("Last 4 digits of the credit card used"))
 
     @staticmethod
     def get_readable_amount(charge):
@@ -245,9 +247,11 @@ class ChargeSerializer(serializers.ModelSerializer):
     class Meta:
         model = Charge
         fields = ('created_at', 'amount', 'unit', 'readable_amount',
-                  'description', 'last4', 'exp_date', 'processor_key', 'state',
-                  'detail')
-        read_only_fields = ('detail',)
+            'description', 'last4', 'exp_date', 'processor_key', 'state',
+            'detail')
+        read_only_fields = ('created_at', 'amount', 'unit', 'readable_amount',
+            'description', 'last4', 'exp_date', 'processor_key', 'state',
+            'detail')
 
 
 class CouponCreateSerializer(serializers.ModelSerializer):

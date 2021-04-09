@@ -1578,6 +1578,9 @@ class Charge(models.Model):
     def __str__(self):
         return str(self.processor_key)
 
+    def get_last4_display(self):
+        return '%04d' % self.last4
+
     @property
     def broker_fee_amount(self):
         if not hasattr(self, '_broker_fee_amount'):
