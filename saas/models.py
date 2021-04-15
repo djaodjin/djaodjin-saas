@@ -1366,12 +1366,15 @@ class ChargeManager(models.Manager):
         assert amount > 0
         created_at = datetime_or_now(created_at)
         with transaction.atomic():
+            last4 = receipt_info.get('last4')
+            if last4:
+                last4 = int(last4)
             charge = self.create(
                 processor=processor, processor_key=processor_charge_id,
                 amount=amount, unit=unit, customer=customer,
                 created_at=created_at, created_by=user,
                 description=descr,
-                last4=receipt_info.get('last4'),
+                last4=last4,
                 exp_date=receipt_info.get('exp_date'),
                 card_name=receipt_info.get('card_name', ""))
             for invoiced in transactions:
@@ -1799,14 +1802,14 @@ class Charge(models.Model):
         assert self.state == self.CREATED
         kwargs = {}
         if receipt_info:
-            kwargs.update({
-                'last4': receipt_info.get('last4'),
-                'exp_date': receipt_info.get('exp_date'),
-                'card_name': receipt_info.get('card_name', "")
-            })
-            self.last4 = receipt_info.get('last4')
+            self.last4 = int(receipt_info.get('last4'))
             self.exp_date = receipt_info.get('exp_date')
             self.card_name = receipt_info.get('card_name', "")
+            kwargs.update({
+                'last4': self.last4,
+                'exp_date': self.exp_date,
+                'card_name': self.card_name
+            })
         with transaction.atomic():
             updated = Charge.objects.select_for_update(nowait=True).filter(
                 pk=self.pk, state=self.CREATED).update(
@@ -1894,14 +1897,14 @@ class Charge(models.Model):
         assert self.state == self.CREATED
         kwargs = {}
         if receipt_info:
-            kwargs.update({
-                'last4': receipt_info.get('last4'),
-                'exp_date': receipt_info.get('exp_date'),
-                'card_name': receipt_info.get('card_name', "")
-            })
-            self.last4 = receipt_info.get('last4')
+            self.last4 = int(receipt_info.get('last4'))
             self.exp_date = receipt_info.get('exp_date')
             self.card_name = receipt_info.get('card_name', "")
+            kwargs.update({
+                'last4': self.last4,
+                'exp_date': self.exp_date,
+                'card_name': self.card_name
+            })
         with transaction.atomic():
             # up at the top of this method so that we bail out quickly, before
             # we start to mistakenly enter the charge and distributions a second

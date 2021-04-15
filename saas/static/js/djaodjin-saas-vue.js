@@ -439,6 +439,7 @@ var cardMixin = {
             api_profile_url: this.$urls.organization.api_base,
             processor_pub_key: null,
             stripe_intent_secret: null,
+            stripe_account: null,
             stripe: null,
             cardNumber: '',
             cardCvc: '',
@@ -562,8 +563,17 @@ var cardMixin = {
                 if( resp.processor && resp.processor.STRIPE_INTENT_SECRET ) {
                     vm.stripe_intent_secret = resp.processor.STRIPE_INTENT_SECRET;
                 }
+                if( resp.processor && resp.processor.STRIPE_ACCOUNT ) {
+                    vm.stripe_account = resp.processor.STRIPE_ACCOUNT;
+                }
                 if( vm.processor_pub_key ) {
-                    vm.stripe = Stripe(vm.processor_pub_key);
+                    if( vm.stripe_account ) {
+                        vm.stripe = Stripe(vm.processor_pub_key, {
+                            stripeAccount: vm.stripe_account
+                        });
+                    } else {
+                        vm.stripe = Stripe(vm.processor_pub_key);
+                    }
                     if( vm.stripe_intent_secret ) {
                         var elements = vm.stripe.elements();
                         vm.cardElement = elements.create("card", {
@@ -771,8 +781,15 @@ var cardMixin = {
         vm.processor_pub_key = vm.$el.getAttribute('data-processor-pub-key');
         vm.stripe_intent_secret = vm.$el.getAttribute(
             'data-stripe-intent-secret');
+        vm.stripe_account =  vm.$el.getAttribute('data-stripe-account');
         if( vm.processor_pub_key ) {
-            vm.stripe = Stripe(vm.processor_pub_key);
+            if( vm.stripe_account ) {
+                vm.stripe = Stripe(vm.processor_pub_key, {
+                    stripeAccount: vm.stripe_account
+                });
+            } else {
+                vm.stripe = Stripe(vm.processor_pub_key);
+            }
             if( vm.stripe_intent_secret ) {
                 var elements = vm.stripe.elements();
                 vm.cardElement = elements.create("card", {

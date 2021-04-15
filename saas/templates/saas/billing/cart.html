@@ -66,6 +66,7 @@ jQuery(document).ready(function($) {
     cardForm.card({
         stripePubKey: "{{ STRIPE_PUB_KEY }}",
         stripeIntentSecret: {% if STRIPE_INTENT_SECRET %}"{{ STRIPE_INTENT_SECRET }}"{% else %}null{% endif %},
+        stripeAccount: {% if STRIPE_ACCOUNT %}"{{ STRIPE_ACCOUNT }}"{% else %}null{% endif %},
         saas_api_card: "{{ urls.organization.api_card }}"
     });
 {% endif %}

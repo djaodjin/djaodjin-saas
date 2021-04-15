@@ -151,6 +151,8 @@ class StripeBackend(object):
                 raise ProcessorSetupError(
                     _("%(organization)s is not connected to a Stripe account."
                     ) % {'organization': broker}, broker)
+            # https://stripe.com/docs/connect/enable-payment-acceptance-guide?\
+            #platform=web#create-a-payment-intent
             kwargs.update({'stripe_account': broker.processor_deposit_key})
         return kwargs
 
@@ -740,6 +742,9 @@ class StripeBackend(object):
                     amount, unit, kwargs, str(setup_intent))
                 context.update({
                     'STRIPE_INTENT_SECRET': setup_intent.client_secret})
+                if 'stripe_account' in kwargs:
+                    context.update({
+                        'STRIPE_ACCOUNT': kwargs.get('stripe_account')})
 
             elif amount > 0:
                 if broker_fee_amount:
@@ -754,6 +759,9 @@ class StripeBackend(object):
                         amount, unit, kwargs, str(payment_intent))
                     context.update({
                         'STRIPE_INTENT_SECRET': payment_intent.client_secret})
+                    if 'stripe_account' in kwargs:
+                        context.update({
+                            'STRIPE_ACCOUNT': kwargs.get('stripe_account')})
 
                 except stripe.error.CardError as err:
                     # If the card is declined, Stripe will record a failed

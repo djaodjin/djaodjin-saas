@@ -188,9 +188,11 @@ class BankSerializer(NoModelSerializer):
 class ProcessorAuthSerializer(NoModelSerializer):
 
     STRIPE_PUB_KEY = serializers.CharField(required=False,
-        help_text=_("Stripe processor public key"))
+        help_text=_("Processor public key (Stripe)"))
     STRIPE_INTENT_SECRET = serializers.CharField(required=False,
-        help_text=_("intent secret for SCA (Stripe)"))
+        help_text=_("PaymentIntent or SetupIntent secret for SCA (Stripe)"))
+    STRIPE_ACCOUNT = serializers.CharField(required=False,
+        help_text=_("Connected account identifier (Stripe)"))
 
 
 class CardSerializer(NoModelSerializer):

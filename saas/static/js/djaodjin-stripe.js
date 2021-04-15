@@ -194,8 +194,13 @@
     Card.prototype = {
         init: function () {
             var self = this;
-
-            self.stripe = Stripe(self.options.stripePubKey);
+            if( self.options.stripeAccount ) {
+                self.stripe = Stripe(self.options.stripePubKey, {
+                    stripeAccount: self.options.stripeAccount
+                });
+            } else {
+                self.stripe = Stripe(self.options.stripePubKey);
+            }
             if( self.options.stripeIntentSecret ) {
                 var elements = self.stripe.elements();
                 self.cardElement = elements.create("card", {
@@ -487,6 +492,7 @@
     $.fn.card.defaults = {
         stripePubKey: null,
         stripeIntentSecret: null,
+        stripeAccount: null,
         saas_api_card: null,
         cardNumberLabel: "Card Number",
         securityCodeLabel: "Security Code",
