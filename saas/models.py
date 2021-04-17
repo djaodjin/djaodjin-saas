@@ -3437,15 +3437,8 @@ class TransactionQuerySet(models.QuerySet):
             orig_amount = orig_balance['orig_balance']
             orig_unit = orig_balance['dest_unit']
             event_id = orig_balance['event_id']
-            if event_id.startswith('cpn_'):
-                # XXX group buy events should certainly be re-written as sub_.
-                continue
-            if not event_id.startswith('sub_'):
-                LOGGER.error("event_id '%s' does not start with 'sub_'"\
-                    " in get_statement_balances", event_id)
-            assert event_id.startswith('sub_')
-            # We should always have subscription events in orig_balances
-            # by the definition of the SQL query.
+            # We could have subscription or group-buy (coupon codes) events
+            # in both dest_balances and orig_balances.
             balance_by_units = dest_balance_per_events.get(event_id, {})
             if orig_unit in balance_by_units:
                 balance_by_units.update({

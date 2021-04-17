@@ -25,7 +25,7 @@
 #pylint:disable=too-many-lines
 from __future__ import unicode_literals
 
-import re
+import logging, re
 
 from django.contrib.auth import REDIRECT_FIELD_NAME, get_user_model
 from django.contrib.auth.hashers import UNUSABLE_PASSWORD_PREFIX
@@ -47,6 +47,8 @@ from .utils import (build_absolute_uri, datetime_or_now,
     get_organization_model, get_role_model, update_context_urls,
     validate_redirect_url)
 from .extras import OrganizationMixinBase
+
+LOGGER = logging.getLogger(__name__)
 
 
 class BalanceDueMixin(object):
@@ -74,6 +76,11 @@ class BalanceDueMixin(object):
         balances = Transaction.objects.get_statement_balances(
             customer, until=at_time)
         for event_id, amount_by_units in six.iteritems(balances):
+            if not event_id.startswith('sub_'):
+                # XXX Not showing balance due on group buy events.
+                LOGGER.error("Looking at a balance %s on event_id '%s'",
+                    amount_by_units, event_id)
+                continue
             subscription = Subscription.objects.get_by_event_id(event_id)
             last_unpaid_orders = customer.last_unpaid_orders(
                 subscription=subscription, at_time=at_time)
