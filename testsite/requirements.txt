@@ -1,7 +1,7 @@
-Django==2.2.13
+Django==2.2.20
 django-countries==6.1.2
 django-localflavor==3.0.1
-djangorestframework==3.11.0
+djangorestframework==3.11.2
 # We need Python Markdown for django.contrib.markup. markdown2 is not enough.
 Markdown==3.2.2
 phonenumbers==8.12.6
@@ -11,7 +11,7 @@ stripe==2.55.1
 
 # testsite-only
 coverage==5.1
-django-debug-toolbar==2.2
+django-debug-toolbar==2.2.1
 django-extensions==2.2.9
 djaodjin-rules==0.2.5
 gunicorn==20.0.4
