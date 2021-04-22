@@ -11,7 +11,7 @@ stripe==2.55.1
 
 # testsite-only
 coverage==5.1
-django-debug-toolbar==2.2.1
+django-debug-toolbar==1.11.1
 django-extensions==2.2.9
 djaodjin-rules==0.2.5
 gunicorn==20.0.4
