@@ -1217,11 +1217,14 @@ def get_charge_context(charge):
     """
     Return a dictionnary useful to populate charge receipt templates.
     """
-    context = {'charge': charge,
-               'refunded': charge.refunded.exists(),
-               'charge_items': charge.line_items,
-               'organization': charge.customer,
-               'provider': charge.broker, # XXX update templates
+    context = {
+        'last4': charge.get_last4_display(),
+        'exp_date': charge.exp_date,
+        'charge': charge,
+        'refunded': charge.refunded.exists(),
+        'charge_items': charge.line_items,
+        'organization': charge.customer,
+        'provider': charge.broker, # XXX update templates
     }
     return context
 
