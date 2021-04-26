@@ -335,7 +335,10 @@ class CartMixin(object):
                 # option is selected
                 if len(options) == 1:
                     # We only have one option.
-                    line = options[cart_item.option - 1]
+                    # It could happen when we use a 100% discount coupon
+                    # with advance discounts; in which case the advance
+                    # discounts would be cancelled. nothing is totally free.
+                    line = options[0]
                     lines += [line]
                     options = []
                 elif (cart_item.option > 0 and
