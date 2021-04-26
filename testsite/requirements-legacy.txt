@@ -11,9 +11,9 @@ stripe==2.55.1
 
 # testsite-only
 coverage==4.0.3
-django-debug-toolbar==1.11 # This version works with Py2, Django>=1.11 (incl. 2.2)
+django-debug-toolbar==1.11.1 # This version works with Py2, Django>=1.11 (incl. 2.2)
 django-extensions==2.2.5
-djaodjin-rules==0.2.5
+djaodjin-rules==0.2.7
 gunicorn==19.7.1
 whitenoise==4.1.2
 
