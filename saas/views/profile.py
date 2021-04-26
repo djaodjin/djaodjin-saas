@@ -29,10 +29,10 @@ import logging
 from django import http
 from django.contrib import messages
 from django.contrib.auth import REDIRECT_FIELD_NAME
+from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
 from django.views.generic import (CreateView, DetailView, ListView,
     TemplateView, UpdateView)
-from django.utils.decorators import method_decorator
 
 from . import RedirectFormMixin
 from .. import settings, signals
@@ -368,20 +368,27 @@ class OrganizationProfileView(OrganizationMixin, UpdateView):
     """
 
     model = get_organization_model()
+    form_class = OrganizationForm
     slug_field = 'slug'
     slug_url_kwarg = 'organization'
     template_name = "saas/profile/index.html"
 
-    @method_decorator(transaction.atomic)
+    def update_attached_user(self, form):
+        validated_data = form.cleaned_data
+        user = self.object.attached_user()
+        if user:
+            user.username = validated_data.get('slug', user.username)
+            user.email = validated_data.get('email', user.email)
+            if update_db_row(user, form):
+                raise ValidationError("update_attached_user")
+        return user
+
     def form_valid(self, form):
         validated_data = form.cleaned_data
         # Calls `get_object()` such that we get the actual values present
         # in the database. `self.object` will contain the updated values
         # at this point.
         changes = self.get_object().get_changes(validated_data)
-        user = self.object.attached_user()
-        if user:
-            user.username = validated_data.get('slug', user.username)
         self.object.slug = validated_data.get('slug', self.object.slug)
         self.object.full_name = validated_data['full_name']
         self.object.email = validated_data['email']
@@ -396,9 +403,14 @@ class OrganizationProfileView(OrganizationMixin, UpdateView):
             self.object.is_provider = validated_data.get(
                 'is_provider', is_provider)
 
-        form.save(commit=False)
-        if update_db_row(self.object, form):
+        try:
+            with transaction.atomic():
+                self.update_attached_user(form)
+                if update_db_row(self.object, form):
+                    raise ValidationError("form_valid")
+        except ValidationError:
             return self.form_invalid(form)
+
         signals.organization_updated.send(sender=__name__,
                 organization=self.object, changes=changes,
                 user=self.request.user)
@@ -409,7 +421,7 @@ class OrganizationProfileView(OrganizationMixin, UpdateView):
             # There is only one user so we will add the User fields
             # to the form so they can be updated at the same time.
             return ManagerAndOrganizationForm
-        return OrganizationForm
+        return super(OrganizationProfileView, self).get_form_class()
 
     def get_initial(self):
         kwargs = super(OrganizationProfileView, self).get_initial()
