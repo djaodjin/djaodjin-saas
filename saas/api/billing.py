@@ -184,9 +184,10 @@ class CartItemAPIView(CartMixin, CreateAPIView):
             # insert_item will either return a dict or a CartItem instance
             # (which cannot be directly serialized).
             if isinstance(cart_item, CartItem):
-                cart_items += [serializer.to_representation(cart_item)]
-            else:
-                cart_items += [cart_item]
+                cart_item = serializer.to_representation(cart_item)
+            if cart_item.get('sync_on'):
+                cart_item.update({'detail': _("User was added.")})
+            cart_items += [cart_item]
         if len(items) > 1:
             headers = self.get_success_headers(cart_items)
             return Response(cart_items, status=status_code, headers=headers)

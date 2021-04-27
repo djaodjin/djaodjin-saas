@@ -1,4 +1,4 @@
-// Copyright (c) 2020, DjaoDjin inc.
+// Copyright (c) 2021, DjaoDjin inc.
 // All rights reserved.
 // BSD 2-Clause license
 
@@ -473,15 +473,17 @@ var cardMixin = {
                 'region',
             ],
             labels: {
-                cardNumberLabel: gettext("Card Number"),
-                securityCodeLabel: gettext("Security Code"),
-                expirationLabel: gettext("Expiration"),
-                cardHolderLabel: gettext("Card Holder"),
-                streetAddressLabel: gettext("Street address"),
-                localityLabel: gettext("City/Town"),
-                regionLabel: gettext("State/Province/County"),
-                postalCodeLabel: gettext("Zip/Postal code"),
-                countryLabel: gettext("Country")
+                cardNumberLabel: (this.$labels && this.$labels.cardNumberLabel) || "Card Number",
+                securityCodeLabel: (this.$labels && this.$labels.securityCodeLabel) || "Security Code",
+                expirationLabel: (this.$labels && this.$labels.expirationLabel) || "Expiration",
+                cardHolderLabel: (this.$labels && this.$labels.cardHolderLabel) || "Card Holder",
+                streetAddressLabel: (this.$labels && this.$labels.streetAddressLabel) || "Street address",
+                localityLabel: (this.$labels && this.$labels.localityLabel) || "City/Town",
+                regionLabel: (this.$labels && this.$labels.regionLabel) || "State/Province/County",
+                postalCodeLabel: (this.$labels && this.$labels.postalCodeLabel) || "Zip/Postal code",
+                countryLabel: (this.$labels && this.$labels.countryLabel) || "Country",
+                fieldShoundNotBeEmptyError: (this.$labels && this.$labels.fieldShoundNotBeEmptyError) || "This field shouldn't be empty",
+                fieldsCannotBeEmptyError: (this.$labels && this.$labels.fieldsCannotBeEmptyError) || " field(s) cannot be empty."
             }
         }, this.getCardFormData());
     },
@@ -589,9 +591,7 @@ var cardMixin = {
             // this identifies your website in the createToken call below
             if( vm.stripe_intent_secret ) {
                 if( !vm.stripe ){
-                    showMessages([
-                        gettext("You haven't set a valid Stripe public key")
-                    ], "error");
+                    showErrorMessages("You haven't set a valid Stripe public key");
                     return;
                 }
                 if( vm.stripe_intent_secret.substring(0, 3) === 'pi_' ) {
@@ -711,7 +711,7 @@ var cardMixin = {
                 }
                 if( vm[field] === '') {
                     valid = false;
-                    errors[field] = [gettext("This field shouldn't be empty")];
+                    errors[field] = [vm.labels.fieldShoundNotBeEmptyError];
                 }
             });
             vm.errors = errors;
@@ -754,8 +754,7 @@ var cardMixin = {
                     errorMessages += vm.labels.postalCodeLabel;
                 }
                 if( errorMessages ) {
-                    errorMessages = interpolate(
-                      gettext("%s field(s) cannot be empty."), [errorMessages]);
+                    errorMessages = errorMessages + vm.labels.fieldsCannotBeEmptyError;
                 }
                 showErrorMessages(errorMessages);
             }
@@ -1900,8 +1899,8 @@ Vue.component('billing-statement', {
         var res = {
             url: this.$urls.organization.api_transactions,
             api_cancel_balance_url: this.$urls.organization.api_cancel_balance_due,
-            last4: gettext("N/A"),
-            exp_date: gettext("N/A"),
+            last4: (this.$labels && this.$labels.notAvailableLabel) || "N/A",
+            exp_date: (this.$labels && this.$labels.notAvailableLabel) || "N/A",
             cardLoaded: false
         }
         return res;
@@ -1958,9 +1957,9 @@ Vue.component('transfers-statement', {
             url: this.$urls.organization.api_transactions,
             api_balance_url: this.$urls.provider.api_bank,
             balanceLoaded: false,
-            last4: gettext("N/A"),
-            bank_name: gettext("N/A"),
-            balance_amount: gettext("N/A"),
+            last4: (this.$labels && this.$labels.notAvailableLabel) || "N/A",
+            bank_name: (this.$labels && this.$labels.notAvailableLabel) || "N/A",
+            balance_amount: (this.$labels && this.$labels.notAvailableLabel) || "N/A",
             balance_unit: '',
         }
     },
@@ -2289,8 +2288,10 @@ Vue.component('checkout', {
                 data.option = option
             }
             vm.reqPost(vm.api_cart_url, data,
-            function() {
-                showMessages([gettext("User was added.")], "success");
+            function(resp) {
+                if( resp.detail ) {
+                    showMessages([resp.detail], "success");
+                }
                 vm.init = false;
                 vm.$set(vm.plansUser, plan, {
                     fullName: '',

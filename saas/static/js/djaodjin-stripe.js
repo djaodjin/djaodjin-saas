@@ -97,8 +97,7 @@
                 valid = false;
             }
             if( errorMessages ) {
-                errorMessages = interpolate(
-                    self.options.fieldsCannotBeEmptyError, [errorMessages]);
+                errorMessages = errorMessages + self.options.fieldsCannotBeEmptyError;
             }
             if( valid ) {
                 // this identifies your website in the createToken call below
@@ -129,7 +128,7 @@
         countryLabel: "Country",
         accountNumberLabel: "Account Number",
         routingNumberLabel: "Routing Number",
-        fieldsCannotBeEmptyError: gettext("%s field(s) cannot be empty.")
+        fieldsCannotBeEmptyError: " field(s) cannot be empty."
     };
 
     /** Augment a <form> to request a token from a credit card, then submit
@@ -406,8 +405,7 @@
                 valid = false;
             }
             if( errorMessages ) {
-                errorMessages = interpolate(
-                    self.options.fieldsCannotBeEmptyError, [errorMessages]);
+                errorMessages = errorMessages + self.options.fieldsCannotBeEmptyError;
             }
             if( valid ) {
                 // this identifies your website in the createToken call below
@@ -503,7 +501,7 @@
         regionLabel: "State/Province/County",
         postalCodeLabel: "Zip/Postal code",
         countryLabel: "Country",
-        fieldsCannotBeEmptyError: gettext("%s field(s) cannot be empty.")
+        fieldsCannotBeEmptyError: " field(s) cannot be empty."
     };
 
 
