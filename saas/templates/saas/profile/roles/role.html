@@ -47,13 +47,11 @@
     <div>
       <h2>Invite user to have a role '{{role_descr.title}}' on {{organization.printable_name}}</h2>
       <form id="add-user" ng-submit="save($event)"
-            @submit.prevent="submit">
+           @submit.prevent="submit">
         <input type="hidden" name="csrfmiddlewaretoken" value="{{csrf_token}}">
         <input type="text" name="user" placeholder="Username or e-mail"
                ng-model="unregistered.slug" v-model="unregistered.slug" />
-        <div class="add-role-modal"
-            ng-click="create($event)"
-            @submit.prevent="submit">
+        <div class="add-role-modal" v-show="profileRequestDone">
           <p>
 If the user couldn't be found in the system, it is a great occasion to invite
 them.

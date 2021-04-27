@@ -56,9 +56,7 @@
                uib-typeahead-loading="loadingOrganizations"
                uib-typeahead-template-url="customTemplate.html" />
         <button type="submit" name="submit">Add</button>
-      </form>
-      <div>
-        <form id="add-profile" @submit.prevent="submit" ng-submit="create($event)">
+        <div id="add-profile" v-show="profileRequestDone">
           <p ng-model="unregistered">
 [[unregistered.full_name]] was not found. This is an opportunity to invite
 a manager for [[unregistered.full_name]] to join {{organization.printable_name}}.
@@ -80,8 +78,8 @@ Thank you,
 - {{request.user.first_name}}
           </textarea>
           <button type="submit">Request access</button>
-        </form>
-      </div>
+        </div>
+      </form>
     </div>
     <!-- end of modal dialog -->
   </div>
