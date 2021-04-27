@@ -1,3 +1,14 @@
+0.9.5
+
+  * keeps user model fields in sync with personal billing profile
+  * prints last4 as exactly 4 digits on receipts
+  * fixes index error in the presence of 100% discount and advance payments
+  * fixes statement balances in the presence of GroupBuy
+  * fixes PaymentIntent not found while using StripeConnect accounts
+  * redirects to login page on redirects-to-profile if user not authenticated
+
+ -- Sebastien Mirolo <smirolo@djaodjin.com>  Mon, 26 Apr 2021 22:25:00 -0700
+
 0.9.4
 
   * adds processor in checkout and card APIs

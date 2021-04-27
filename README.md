@@ -9,9 +9,9 @@ Major Features:
 
 Tested with
 
-- **Python:** 3.6, **Django:** 2.2 ([LTS](https://www.djangoproject.com/download/)), **Django Rest Framework:** 3.11
-- **Python:** 3.6, **Django:** 3.0 (latest), **Django Rest Framework:** 3.11
-- **Python:** 2.7 (end-of-life), **Django:** 1.11, **Django Rest Framework:** 3.9.4
+- **Python:** 3.6, **Django:** 2.2 ([LTS](https://www.djangoproject.com/download/)), **Django Rest Framework:** 3.12
+- **Python:** 3.6, **Django:** 3.0 (latest), **Django Rest Framework:** 3.12
+- **Python:** 2.7, **Django:** 1.11 (legacy), **Django Rest Framework:** 3.9.4
 
 This project contains bare bone templates which are compatible with Django
 and Jinja2 template engines. To see djaodjin-saas in action as part
@@ -96,10 +96,13 @@ saas/templates/notification/ directory.
 Release Notes
 =============
 
-0.9.4
+0.9.5
 
-  * adds processor in checkout and card APIs
-  * fixes computed balance due when subscription is free
-  * re-raises all StripeError as ProcessorError
+  * keeps user model fields in sync with personal billing profile
+  * prints last4 as exactly 4 digits on receipts
+  * fixes index error in the presence of 100% discount and advance payments
+  * fixes statement balances in the presence of GroupBuy
+  * fixes PaymentIntent not found while using StripeConnect accounts
+  * redirects to login page on redirects-to-profile if user not authenticated
 
 [previous release notes](changelog)
