@@ -30,7 +30,7 @@
       <tr
          ng-repeat="entry in items.results"
          v-for="entry in items.results">
-        <td>[[entry.created_at | formatDate]]</td>
+        <td>[[entry.created_at]]</td>
         <td
            ng-class="entry.is_debit ? 'text-danger' : ''"
            v-bind:class="entry.is_debit ? 'text-danger' : ''">

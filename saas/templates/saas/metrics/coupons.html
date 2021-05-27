@@ -36,7 +36,7 @@
                       v-bind:href="'{{urls.profile_redirect}}' + item.user.slug + '/'">[[item.user.full_name]]</a>
                 </td>
                 <td>[[item.plan]]</td>
-                <td>[[item.created_at | formatDate]]</td>
+                <td>[[item.created_at]]</td>
               </tr>
         </table>
         {% include "saas/_paginator.html" %}

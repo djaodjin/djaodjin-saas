@@ -52,7 +52,9 @@
           </tr>
           <tfoot>
             <tr>
-              <th class="total-amount">[[linesPrice[0] | currency($options.filters.currencyToSymbol(linesPrice[1]))]]</th>
+              <th class="total-amount">
+                [[humanizeCell(linesPrice[0], linesPrice[1])]]
+              </th>
               <th>Charged Today</th>
             </tr>
           </tfoot>

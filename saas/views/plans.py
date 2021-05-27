@@ -67,16 +67,17 @@ class PlanFormMixin(OrganizationMixin, SingleObjectMixin):
             update_context_urls(context, urls)
         return context
 
-    def get_url_kwargs(self):
+    def get_url_kwargs(self, **kwargs):
         """
         Rebuilds the ``kwargs`` to pass to ``reverse()``.
         """
-        url_kwargs = super(PlanFormMixin, self).get_url_kwargs()
+        url_kwargs = super(PlanFormMixin, self).get_url_kwargs(**kwargs)
         if hasattr(self, 'object'):
             plan_kwarg = self.object.slug
         else:
-            plan_kwarg = self.kwargs['plan']
-        url_kwargs.update({'plan': plan_kwarg})
+            plan_kwarg = kwargs.get('plan')
+        if plan_kwarg:
+            url_kwargs.update({'plan': plan_kwarg})
         return url_kwargs
 
 
@@ -204,7 +205,8 @@ djaodjin-saas/tree/master/saas/templates/saas/profile/plans/plan.html>`__).
         messages.success(self.request,
             _("Successfully updated plan titled '%(title)s'.") % {
                 'title': self.object.title})
-        return reverse('saas_plan_edit', kwargs=self.get_url_kwargs())
+        return reverse('saas_plan_edit',
+            kwargs=self.get_url_kwargs(**self.kwargs))
 
     def get_context_data(self, **kwargs):
         context = super(PlanUpdateView, self).get_context_data(**kwargs)
@@ -238,5 +240,5 @@ djaodjin-saas/tree/master/saas/templates/saas/profile/plans/index.html>`__).
         context.update({
             'download_url': reverse(
                 'saas_subscriber_pipeline_download_subscribed',
-                kwargs=self.get_url_kwargs())})
+                kwargs=self.get_url_kwargs(**kwargs))})
         return context

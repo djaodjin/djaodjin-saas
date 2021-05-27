@@ -3594,6 +3594,7 @@ class TransactionManager(models.Manager):
                 cowork:Offline                          $179.99
                 cowork:Funds
         """
+        results = []
         if descr is None:
             descr = humanize.DESCRIBE_OFFLINE_PAYMENT
         if user:
@@ -3603,7 +3604,7 @@ class TransactionManager(models.Manager):
             payment_event_id = generate_random_slug(prefix='check_')
         with transaction.atomic():
             subscription_event_id = get_sub_event_id(subscription)
-            self.create(
+            results.append(self.create(
                 created_at=created_at,
                 descr=descr,
                 event_id=subscription_event_id,
@@ -3614,9 +3615,9 @@ class TransactionManager(models.Manager):
                 orig_amount=amount,
                 orig_unit=subscription.plan.unit,
                 orig_account=Transaction.RECEIVABLE,
-                orig_organization=subscription.plan.organization)
+                orig_organization=subscription.plan.organization))
 
-            self.create(
+            results.append(self.create(
                 created_at=created_at,
                 descr=descr,
                 event_id=payment_event_id,
@@ -3627,7 +3628,7 @@ class TransactionManager(models.Manager):
                 orig_amount=amount,
                 orig_unit=subscription.plan.unit,
                 orig_account=Transaction.LIABILITY,
-                orig_organization=subscription.organization)
+                orig_organization=subscription.organization))
 
             # If there is still an amount on the ``Payable`` account,
             # we create Payable to Liability transaction in order to correct
@@ -3638,7 +3639,7 @@ class TransactionManager(models.Manager):
             balance_payable = balance['amount']
             if balance_payable > 0:
                 available = min(amount, balance_payable)
-                Transaction.objects.create(
+                results.append(self.create(
                     event_id=subscription_event_id,
                     created_at=created_at,
                     descr=humanize.DESCRIBE_DOUBLE_ENTRY_MATCH,
@@ -3649,9 +3650,9 @@ class TransactionManager(models.Manager):
                     orig_amount=available,
                     orig_unit=subscription.plan.unit,
                     orig_account=Transaction.PAYABLE,
-                    orig_organization=subscription.organization)
+                    orig_organization=subscription.organization))
 
-            self.create(
+            results.append(self.create(
                 created_at=created_at,
                 descr=descr,
                 event_id=subscription_event_id,
@@ -3662,9 +3663,9 @@ class TransactionManager(models.Manager):
                 orig_amount=amount,
                 orig_unit=subscription.plan.unit,
                 orig_account=Transaction.BACKLOG,
-                orig_organization=subscription.plan.organization)
+                orig_organization=subscription.plan.organization))
 
-            self.create(
+            results.append(self.create(
                 created_at=created_at,
                 descr="%s - %s" % (descr, humanize.DESCRIBE_DOUBLE_ENTRY_MATCH),
                 event_id=payment_event_id,
@@ -3675,7 +3676,9 @@ class TransactionManager(models.Manager):
                 orig_amount=amount,
                 orig_unit=subscription.plan.unit,
                 orig_account=Transaction.FUNDS,
-                orig_organization=subscription.plan.organization)
+                orig_organization=subscription.plan.organization))
+
+            return results
 
 
     def distinct_accounts(self):
@@ -4161,8 +4164,9 @@ class TransactionManager(models.Manager):
                 recognized.save()
             created_transactions += [recognized]
             amount -= available
-        assert amount == 0, "amount(%dc) should be zero for subscription %d" % (
-            amount, subscription.pk)
+        assert amount == 0, (
+            "[%s] amount(%dc) should be zero for subscription %d" % (
+                subscription._state.db, amount, subscription.pk))
         return created_transactions
 
     @staticmethod

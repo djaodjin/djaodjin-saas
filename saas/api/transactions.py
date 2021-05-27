@@ -1,4 +1,4 @@
-# Copyright (c) 2020, DjaoDjin inc.
+# Copyright (c) 2021, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -27,15 +27,16 @@ from collections import OrderedDict
 
 from django.db.models import Q
 from django.utils.translation import ugettext_lazy as _
-from rest_framework import status, serializers
 from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.generics import ListAPIView, CreateAPIView
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .serializers import NoModelSerializer, TransactionSerializer
+from .serializers import (CreateOfflineTransactionSerializer,
+    OfflineTransactionSerializer, TransactionSerializer)
 from ..decorators import _valid_manager
+from ..docs import swagger_auto_schema, OpenAPIResponse
 from ..filters import DateRangeFilter, OrderingFilter, SearchFilter
 from ..mixins import OrganizationMixin, ProviderMixin, DateRangeContextMixin
 from ..models import (get_broker, sum_orig_amount, Subscription, Transaction,
@@ -445,58 +446,125 @@ class TransferListAPIView(SmartTransactionListMixin, TransferQuerysetMixin,
     pagination_class = IncludesSyncErrorPagination
 
 
-class OfflineTransactionSerializer(NoModelSerializer):
-
-    subscription = serializers.CharField(
-        help_text="The subscription the offline transaction refers to.")
-    created_at = serializers.DateTimeField(
-        help_text=_("Date/time of creation (in ISO format)"))
-    # XXX Shouldn't this be same format as TransactionSerializer.amount?
-    amount = serializers.DecimalField(None, 2)
-    descr = serializers.CharField(required=False,
-        help_text=_("Free-form text description for the %(object)s") % {
-            'object': 'transaction'})
-
-
 class ImportTransactionsAPIView(ProviderMixin, CreateAPIView):
-    """
-    Inserts an offline transactions.
 
-    The primary purpose of this API call is for a provider to keep
-    accurate metrics for the performance of the product sold, regardless
-    of payment options (online or offline).
+    serializer_class = CreateOfflineTransactionSerializer
 
-    **Tags**: billing
+    @swagger_auto_schema(responses={
+        201: OpenAPIResponse("", OfflineTransactionSerializer)})
+    def post(self, request, *args, **kwargs):
+        """
+        Inserts an offline transactions.
 
-    **Examples**
+        The primary purpose of this API call is for a provider to keep
+        accurate metrics for the performance of the product sold, regardless
+        of payment options (online or offline).
 
-    .. code-block:: http
+        **Tags**: billing
 
-         POST /api/billing/cowork/transfers/import/ HTTP/1.1
+        **Examples**
 
-    .. code-block:: json
+        .. code-block:: http
 
-        {
-            "created_at": "2020-05-30T00:00:00Z",
-            "amount": "10.00",
-            "descr": "Paid by check",
-            "subscription": "demo562-open-plus"
-        }
+             POST /api/billing/cowork/transfers/import/ HTTP/1.1
 
-    responds
+        .. code-block:: json
 
-    .. code-block:: json
+            {
+               "created_at": "2020-05-30T00:00:00Z",
+               "amount": "10.00",
+               "descr": "Paid by check",
+               "subscription": "demo562:open-plus"
+            }
 
-        {
-            "created_at": "2020-05-30T00:00:00Z",
-            "amount": "10.00",
-            "descr": "Paid by check",
-            "subscription": "demo562-open-plus"
-        }
-    """
-    serializer_class = OfflineTransactionSerializer
+        responds
 
-    def perform_create(self, serializer):
+        .. code-block:: json
+
+            {
+               "detail":"Transaction imported successfully.",
+               "results":[
+                 {
+                   "created_at": "2020-05-30T00:00:00Z",
+                   "description": "Paid by check (alice)",
+                   "amount": "$10.00",
+                   "is_debit": false,
+                   "orig_account": "Receivable",
+                   "orig_organization": "djaoapp",
+                   "orig_amount": 1000,
+                   "orig_unit": "usd",
+                   "dest_account": "Payable",
+                   "dest_organization": "xia",
+                   "dest_amount": 1000,
+                   "dest_unit": "usd"
+                 },
+                 {
+                   "created_at": "2020-05-30T00:00:00Z",
+                   "description": "Paid by check (alice)",
+                   "amount": "$10.00",
+                   "is_debit": false,
+                   "orig_account": "Liability",
+                   "orig_organization": "xia",
+                   "orig_amount": 1000,
+                   "orig_unit": "usd",
+                   "dest_account": "Funds",
+                   "dest_organization": "djaoapp",
+                   "dest_amount": 1000,
+                   "dest_unit": "usd"
+                 },
+                 {
+                   "created_at": "2020-05-30T00:00:00Z",
+                   "description": "Keep a balanced ledger",
+                   "amount": "$10.00",
+                   "is_debit": false,
+                   "orig_account": "Payable",
+                   "orig_organization": "xia",
+                   "orig_amount": 1000,
+                   "orig_unit": "usd",
+                   "dest_account": "Liability",
+                   "dest_organization": "xia",
+                   "dest_amount": 1000,
+                   "dest_unit": "usd"
+                 },
+                 {
+                   "created_at": "2020-05-30T00:00:00Z",
+                   "description": "Paid by check (alice)",
+                   "amount": "$10.00",
+                   "is_debit": false,
+                   "orig_account": "Backlog",
+                   "orig_organization": "djaoapp",
+                   "orig_amount": 1000,
+                   "orig_unit": "usd",
+                   "dest_account": "Receivable",
+                   "dest_organization": "djaoapp",
+                   "dest_amount": 1000,
+                   "dest_unit": "usd"
+                 },
+                 {
+                   "created_at": "2020-05-30T00:00:00Z",
+                 "description":"Paid by check (alice) - Keep a balanced ledger",
+                   "amount":"$0.20",
+                   "is_debit":false,
+                   "orig_account":"Funds",
+                   "orig_organization":"djaoapp",
+                   "orig_amount":20,
+                   "orig_unit":"usd",
+                   "dest_account":"Offline",
+                   "dest_organization":"djaoapp",
+                   "dest_amount":20,
+                   "dest_unit":"usd"
+                 }
+               ]
+            }
+
+        """
+        return super(ImportTransactionsAPIView, self).post(
+            request, *args, **kwargs)
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
         parts = serializer.validated_data['subscription'].split(
             Subscription.SEP)
         if len(parts) != 2:
@@ -517,10 +585,19 @@ class ImportTransactionsAPIView(ProviderMixin, CreateAPIView):
             raise ValidationError({
                 'detail': _("Invalid combination of subscriber and plan,"\
 " or the subscription is no longer active.")})
-        Transaction.objects.offline_payment(
+        transactions = Transaction.objects.offline_payment(
             subscription, serializer.validated_data['amount'],
             descr=serializer.validated_data['descr'], user=self.request.user,
             created_at=serializer.validated_data.get('created_at'))
+
+        result_data = {
+            'detail': _("Transaction imported successfully."),
+            'results': TransactionSerializer(
+                many=True).to_representation(transactions)
+        }
+        headers = self.get_success_headers(result_data)
+        return Response(result_data,
+            status=status.HTTP_201_CREATED, headers=headers)
 
 
 class StatementBalanceAPIView(OrganizationMixin, APIView):

@@ -52,7 +52,7 @@
                    v-bind:href="'{{urls.provider.metrics_coupons}}' + coupon.code + '/'">[[coupon.code]]</a></td>
                 <td>[[coupon.discount_value / 100]]%</td>
                 <td ng-if="coupon.ends_at"
-                    v-if="coupon.ends_at">[[coupon.ends_at | formatDate]]
+                    v-if="coupon.ends_at">[[coupon.ends_at]]
                 </td>
                 <td ng-if="!coupon.ends_at"
                     v-if="!coupon.ends_at">Never
@@ -94,17 +94,17 @@
                    <span v-show="!coupon._editPlan">Plan:</span>
                    <span @click="editPlan(coupon)"
                      v-show="!coupon._editPlan">
-                     [[planTitle(coupon.plan)]]
+                     [[coupon.plan ? planTitle(coupon.plan) : "No Plan"]]
                    </span>
                    <select @blur="savePlan(coupon)" @keyup.13="savePlan(coupon)"
                        v-model="coupon.plan"
                        :ref="'editPlan_' + coupon.code"
                        v-show="coupon._editPlan">
-                         <option value="">Select plan</option>
+                         <option value="">No Plan</option>
                          <option :value="plan.slug" v-for="plan in plans">[[plan.title]]</option>
                    </select>
                 </td>
-                <td>[[coupon.created_at | formatDate]]</td>
+                <td>[[coupon.created_at]]</td>
                 <td><button ng-click="remove($index)" @click="remove(index)">Remove</button></td>
             </tr>
         </table>

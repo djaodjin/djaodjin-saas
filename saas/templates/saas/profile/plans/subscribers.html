@@ -68,13 +68,13 @@ Thank you,
                  v-bind:href="'{{urls.profile_base}}' + entry.organization.slug + '/subscriptions/'">[[entry.organization.printable_name]]</a>
             </td>
             <td>[[entry.plan.title]]</td>
-            <td>[[entry.created_at | formatDate]]</td>
-            <td>[[entry.ends_at | formatDate]]</td>
+            <td>[[entry.created_at]]</td>
+            <td>[[entry.ends_at]]</td>
             <td>
                 <span
                    ng-show="!entry.editDescription" ng-click="editDescription($event, entry)"
                    v-show="!entry.edit_description" @click="editDescription(entry, index)">
-                    [[entry.description]] <i class="fa fa-pencil"></i>
+                    [[entry.description]]
                 </span>
                 <input type="text"
                        ng-show="entry.editDescription"

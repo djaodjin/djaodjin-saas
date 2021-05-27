@@ -2,73 +2,8 @@
 // All rights reserved.
 // BSD 2-Clause license
 
-/*global Vue jQuery moment interpolate gettext showMessages showErrorMessages Stripe updateBarChart updateChart getUrlParameter $ */
+/*global Vue jQuery moment showMessages showErrorMessages Stripe updateBarChart updateChart getUrlParameter $ */
 
-
-Vue.filter('formatDate', function(value, format) {
-  if (value) {
-    if(!format){
-//        format = 'MM/DD/YYYY hh:mm'
-        format = "MMM D, YYYY";
-    }
-    if(!(value instanceof Date)){
-        value = String(value);
-    }
-    return moment(value).format(format)
-  }
-});
-
-
-Vue.filter("monthHeading", function(d) {
-    // shift each period by 1 month unless this is
-    // current month and not a first day of the month
-    if( typeof d === 'string' ) {
-        d = moment(d);
-    }
-    if(d.date() !== 1 || d.hour() !== 0
-       || d.minute() !== 0 || d.second() !== 0 ) {
-        return d.format("MMM'YY*");
-    }
-    return d.clone().subtract(1, 'months').format("MMM'YY");
-});
-
-
-Vue.filter('currencyToSymbol', function(currency) {
-    if( currency === "usd" || currency === "cad" ) { return "$"; }
-    else if( currency === "eur" ) { return "\u20ac"; }
-    return currency;
-});
-
-
-Vue.filter('humanizeCell', function(cell, unit, scale) {
-    var currencyFilter = Vue.filter('currency');
-    var currencyToSymbolFilter = Vue.filter('currencyToSymbol');
-    scale = scale || 1;
-    var value = cell * scale;
-    var symbol = '';
-    var precision = 0;
-    if(unit) {
-        symbol = currencyToSymbolFilter(unit);
-        precision = 2;
-    }
-    return currencyFilter(value, symbol, precision);
-});
-
-
-Vue.filter('relativeDate', function(at_time) {
-    var cutOff = moment();
-    if( this.ends_at ) {
-        cutOff = moment(this.ends_at, DATE_FORMAT);
-    }
-    var dateTime = moment(at_time);
-    if( dateTime <= cutOff ) {
-        return interpolate(gettext('%s ago'),
-            [moment.duration(cutOff.diff(dateTime)).humanize()]);
-    } else {
-        return interpolate(gettext('%s left'),
-            [moment.duration(dateTime.diff(cutOff)).humanize()]);
-    }
-});
 
 var countries = {
     "AF": "Afghanistan",
@@ -404,8 +339,6 @@ var regions = {
     }
 }
 
-var DATE_FORMAT = 'MMM DD, YYYY';
-
 
 var timezoneMixin = {
     data: function(){
@@ -424,6 +357,20 @@ var timezoneMixin = {
                     v[0] = isUTC ? moment.parseZone(v[0]) : moment(v[0]);
                 });
             });
+        },
+
+        // Used to be filters but Vue3 will not allow it.
+        monthHeading: function(datetime) {
+            // shift each period by 1 month unless this is
+            // current month and not a first day of the month
+            if( typeof datetime === 'string' ) {
+                datetime = moment(datetime);
+            }
+            if(datetime.date() !== 1 || datetime.hour() !== 0
+               || datetime.minute() !== 0 || datetime.second() !== 0 ) {
+                return datetime.format("MMM'YY*");
+            }
+            return datetime.clone().subtract(1, 'months').format("MMM'YY");
         },
     },
 }
@@ -1398,16 +1345,16 @@ Vue.component('coupon-list', {
             this.update(coupon);
         },
         planTitle: function(slug){
-            var title = gettext('No plan');
-            if(this.plans.length > 0){
-                this.plans.forEach(function(e){
-                    if(e.slug === slug){
-                        title = e.title;
-                        return;
+            var vm = this;
+            if( vm.plans.length > 0 ) {
+                for( var idx = 0; idx < vm.plans.length; ++idx ) {
+                    if( vm.plans[idx].slug === slug ) {
+                        console.log("plan is ", vm.plans[idx]);
+                        return vm.plans[idx].title;
                     }
-                });
+                }
             }
-            return title;
+            return "";
         },
     },
     mounted: function(){
@@ -1584,10 +1531,9 @@ Vue.component('metrics-charts', {
             vm.prepareCurrentTabData();
         },
         tabTitle: function(table){
-            var filter = Vue.filter('currencyToSymbol');
             var unit = '';
             if(table && table.unit){
-                unit = ' (' + filter(table.unit) + ')';
+                unit = ' (' + vm.currencyToSymbol(table.unit) + ')';
             }
             return table.title + unit;
         },
@@ -1596,9 +1542,65 @@ Vue.component('metrics-charts', {
             var base = 'nav-link';
             return (index === vm.activeTab) ? base + " active" : base;
         },
-        humanizeCell: function(value, unit, scale) {
-            var filter = Vue.filter('humanizeCell');
-            return filter(value, unit, scale);
+
+        currencyToSymbol: function(currency) {
+            // This is a copy/paste from the definition of `currencyToSymbol`
+            // in `itemListMixin`.
+            if( currency === "usd" || currency === "cad" ) { return "$"; }
+            else if( currency === "eur" ) { return "\u20ac"; }
+            return currency;
+        },
+        humanizeCell: function(cell, unit, scale) {
+            // This is almost a copy/paste from the definition of `humanizeCell`
+            // in `itemListMixin`.
+            var vm = this;
+
+            scale = scale || 1;
+            var value = cell * scale;
+
+            if( typeof Intl !== 'undefined' &&
+                typeof Intl.NumberFormat !== 'undefined') {
+                var locale = (vm.$i18n && vm.$i18n.locale) ?
+                    vm.$i18n.locale : 'en-US';
+                if( unit ) {
+                    return (new Intl.NumberFormat(locale, {
+                        style: 'currency', currency: unit})).format(value);
+                }
+                return (new Intl.NumberFormat(locale)).format(value);
+            }
+
+            // `Intl` is not present. Let's do what we can.
+            var precision = 0;
+            var thousandsSeparator = ',';
+            var decimalSeparator = '.';
+            var symbol = '';
+            var symbolOnLeft = true;
+
+            if( unit ) {
+                // We have a currency unit
+                if( unit === "usd" || unit === "cad" ) {
+                    symbol = "$";
+                } else if( unit === "eur" ) {
+                    symbol = "\u20ac";
+                }
+                precision = 2;
+            }
+
+            var stringified = Math.abs(value).toFixed(precision);
+            var decimalPart = precision ? stringified.slice(-1 - precision) : '';
+            var integralPart = precision ? stringified.slice(0, -1 - precision)
+                : stringified;
+
+            var rem = integralPart.length % 3;
+            var head = rem > 0 ? (integralPart.slice(0, rem) + (
+                integralPart.length > 3 ? thousandsSeparator : ''))
+                : '';
+            var sign = value < 0 ? '-' : '';
+            var valueFormatted = sign + head + integralPart.slice(rem).replace(
+                /(\d{3})(?=\d)/g, '$1' + thousandsSeparator) + decimalPart;
+
+            return symbolOnLeft ?
+                symbol + valueFormatted : valueFormatted + symbol;
         },
     },
     computed: {
@@ -1685,19 +1687,6 @@ Vue.component('lifetimevalue-list', {
         return {
             url: this.$urls.provider.api_metrics_lifetimevalue
         }
-    },
-    methods: {
-        humanizeCell: function(value, unit, scale) {
-            var vm = this;
-            if( typeof unit == 'undefined' ) {
-                unit = vm.items.unit;
-            }
-            if( typeof scale == 'undefined' ) {
-                scale = vm.items.scale;
-            }
-            var filter = Vue.filter('humanizeCell');
-            return filter(value, unit, scale);
-        },
     },
     mounted: function(){
         this.get();
@@ -1838,19 +1827,17 @@ Vue.component('import-transaction', {
     methods: {
         addPayment: function(){
             var vm = this;
-            var sel = vm.itemSelected
-            if(!sel.plan){
-                alert(gettext('select a subscription from dropdown'));
-                return;
+            if( vm.itemSelected ) {
+                vm.entry.subscription = (vm.itemSelected.organization.slug
+                    + ':' + vm.itemSelected.plan.slug);
             }
-            vm.entry.subscription = (
-                sel.organization.slug + ':' + sel.plan.slug);
             vm.entry.created_at = moment(vm.entry.created_at).toISOString();
             vm.reqPost(vm.url, vm.entry,
-            function () {
+            function(resp) {
                 vm.clearNewPayment();
-                showMessages([gettext("Transaction imported successfully.")],
-                    "success");
+                if( resp.detail ) {
+                    showMessages([resp.detail], "success");
+                }
             });
         },
         clearNewPayment: function() {
@@ -1977,8 +1964,7 @@ Vue.component('transfers-statement', {
         },
         humanizeBalance: function() {
             var vm = this;
-            var filter = Vue.filter('humanizeCell');
-            return filter(vm.balance_amount, vm.balance_unit, 0.01);
+            return vm.humanizeCell(vm.balance_amount, vm.balance_unit, 0.01);
         },
     },
     mounted: function(){
@@ -2164,17 +2150,6 @@ Vue.component('balance-list', {
                     rank: 0,
                 }
             });
-        },
-        humanizeCell: function(value, unit, scale) {
-            var vm = this;
-            if( typeof unit == 'undefined' ) {
-                unit = vm.items.unit;
-            }
-            if( typeof scale == 'undefined' ) {
-                scale = vm.items.scale;
-            }
-            var filter = Vue.filter('humanizeCell');
-            return filter(value, unit, scale);
         },
         remove: function(id){
             var vm = this;

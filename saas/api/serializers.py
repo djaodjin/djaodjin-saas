@@ -734,6 +734,31 @@ class TransactionSerializer(serializers.ModelSerializer):
             'dest_account', 'dest_organization', 'dest_amount', 'dest_unit')
 
 
+class CreateOfflineTransactionSerializer(NoModelSerializer):
+    """
+    Serializer to validate the input that creates an off-line transaction.
+    """
+    subscription = serializers.CharField(
+        help_text="The subscription the offline transaction refers to.")
+    created_at = serializers.DateTimeField(
+        help_text=_("Date/time of creation (in ISO format)"))
+    # XXX Shouldn't this be same format as TransactionSerializer.amount?
+    amount = serializers.DecimalField(None, 2)
+    descr = serializers.CharField(required=False,
+        help_text=_("Free-form text description for the %(object)s") % {
+            'object': 'transaction'})
+
+
+class OfflineTransactionSerializer(NoModelSerializer):
+    """
+    Serializer to format the output of importing an off-line transaction.
+    """
+    detail = serializers.CharField(required=False,
+        help_text=_("Describes the result of the action"\
+            " in human-readable form"))
+    results = TransactionSerializer(many=True)
+
+
 class UserSerializer(serializers.ModelSerializer):
 
     # Only way I found out to remove the ``UniqueValidator``. We are not

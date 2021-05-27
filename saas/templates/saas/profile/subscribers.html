@@ -48,7 +48,7 @@
                      v-bind:href="'{{urls.profile_redirect}}' + entry.slug + '/'">[[entry.full_name]]</a>
                 </td>
                 <td>
-                  [[entry.created_at | relativeDate]]
+                  [[entry.created_at]]
                 </td>
               </tr>
             </tbody>
@@ -110,8 +110,8 @@
                      >[[entry.organization.printable_name]]</a>
                 </td>
                 <td>[[entry.plan.title]]</td>
-                <td>[[entry.created_at | formatDate]]</td>
-                <td>[[entry.ends_at | formatDate]]</td>
+                <td>[[entry.created_at]]</td>
+                <td>[[entry.ends_at]]</td>
                 <td ng-prop-id="entry.id"
                     v-bind:id="entry.id">
                   <span ng-show="!entry.editDescription"

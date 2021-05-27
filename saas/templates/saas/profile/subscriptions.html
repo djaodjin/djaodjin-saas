@@ -51,10 +51,10 @@
                 <a :href="entry.plan.app_url + entry.organization.slug + '/' + entry.plan.slug + '/'">[[entry.plan.title]]</a>
               </td>
               <td>
-                [[entry.ends_at | formatDate]]
+                [[entry.ends_at]]
               </td>
               <td>
-                [[entry.ends_at | relativeDate]]
+                [[entry.ends_at]]
               </td>
               <td v-if="!entry.request_key">
                 <button class="unsubscribe"
@@ -126,10 +126,10 @@
                 <a :href="entry.plan.app_url + entry.organization.slug + '/' + entry.plan.slug + '/'">[[entry.plan.title]]</a>
               </td>
               <td>
-                [[entry.ends_at | formatDate]]
+                [[entry.ends_at]]
               </td>
               <td>
-                [[entry.ends_at | relativeDate]]
+                [[entry.ends_at]]
               </td>
             </tr>
           </tbody>

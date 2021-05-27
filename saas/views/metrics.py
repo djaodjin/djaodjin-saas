@@ -1,4 +1,4 @@
-# Copyright (c) 2020, DjaoDjin inc.
+# Copyright (c) 2021, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -69,7 +69,8 @@ djaodjin-saas/tree/master/saas/templates/saas/metrics/balances.html>`__).
             'download_balances': reverse(
                 'saas_balances_download', kwargs={'report': report}),
             'download_transactions': reverse(
-                'saas_transactions_download', kwargs=self.get_url_kwargs()),
+                'saas_transactions_download',
+                kwargs=self.get_url_kwargs(**kwargs)),
             'broker_transactions': reverse('saas_broker_transactions')})
         return context
 

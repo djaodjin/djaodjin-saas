@@ -54,13 +54,13 @@ class OrganizationMixinBase(object):
         return get_object_or_404(get_organization_model(),
             slug=self.kwargs.get(self.organization_url_kwarg))
 
-    def get_url_kwargs(self):
+    def get_url_kwargs(self, **kwargs):
         """
         Rebuilds the ``kwargs`` to pass to ``reverse()``.
         """
         url_kwargs = {}
-        if 'organization' in self.kwargs:
-            url_kwargs.update({'organization': self.kwargs['organization']})
+        if 'organization' in kwargs:
+            url_kwargs.update({'organization': kwargs['organization']})
         return url_kwargs
 
     def get_context_data(self, **kwargs):

@@ -44,7 +44,7 @@
           <tr>
             <td></td>
             <td ng-repeat="col in table.data[0].values"
-                v-for="col in table.data[0].values">[[col[0] | monthHeading]]</td>
+                v-for="col in table.data[0].values">[[ col[0] ]]</td>
           </tr>
           <tr ng-prop-id="row.key"
               ng-repeat="row in table.data"

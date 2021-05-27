@@ -24,7 +24,7 @@ Provider Dashboard
                           v-bind:href="'{{urls.profile_redirect}}' + entry.slug + '/'">[[entry.slug]]</td>
                     <td>[[entry.full_name]]</td>
                     <td>[[entry.email]]</td>
-                    <td>[[entry.created_at | relativeDate]]</td>
+                    <td>[[entry.created_at]]</td>
                 </tr>
             </tbody>
           </table>
@@ -58,7 +58,7 @@ No items to take care of Today.
                         <td>
                             <a ng-prop-href="'{{urls.accounts_base}}' + entry.slug + '/'"
                                v-bind:href="'{{urls.accounts_base}}' + entry.slug + '/'">[[entry.slug]]</td>
-                        <td>[[entry.created_at | relativeDate]]</td>
+                        <td>[[entry.created_at]]</td>
                     </tr>
                 </tbody>
             </table>
@@ -81,7 +81,7 @@ No items to take care of Today.
                         <td>
                             <a ng-prop-href="'{{urls.profile_base}}' + entry.dest_organization + '/billing/'"
                                v-bind:href="'{{urls.profile_base}}' + entry.dest_organization + '/billing/'">[[entry.amount]]</a></td>
-                        <td>[[entry.created_at | relativeDate]]</td>
+                        <td>[[entry.created_at]]</td>
                     </tr>
                 </tbody>
             </table>

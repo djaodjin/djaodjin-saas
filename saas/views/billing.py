@@ -153,7 +153,8 @@ class BankUpdateView(BankMixin, UpdateView):
             self.request.GET.get(REDIRECT_FIELD_NAME, None))
         if redirect_path:
             return redirect_path
-        return reverse('saas_transfer_info', kwargs=self.get_url_kwargs())
+        return reverse('saas_transfer_info',
+            kwargs=self.get_url_kwargs(**self.kwargs))
 
 
 class ProcessorDeAuthorizeView(BankUpdateView):
@@ -469,8 +470,8 @@ class BillingStatementView(OrganizationMixin, TransactionBaseView):
         context = super(BillingStatementView, self).get_context_data(**kwargs)
         context.update({
             'organization': self.organization,
-            'download_url': reverse(
-                'saas_statement_download', kwargs=self.get_url_kwargs())})
+            'download_url': reverse('saas_statement_download',
+                kwargs=self.get_url_kwargs(**kwargs))})
         update_context_urls(context,
             {'organization': {
                 'api_transactions': reverse(
@@ -511,8 +512,8 @@ djaodjin-saas/tree/master/saas/templates/saas/billing/transfers.html>`__).
     def get_context_data(self, **kwargs):
         context = super(TransferListView, self).get_context_data(**kwargs)
         context.update({
-            'download_url': reverse(
-                'saas_transfers_download', kwargs=self.get_url_kwargs())})
+            'download_url': reverse('saas_transfers_download',
+                kwargs=self.get_url_kwargs(**kwargs))})
         urls = {
             'organization': {
                 'api_transactions': reverse(
@@ -1053,7 +1054,8 @@ djaodjin-saas/tree/master/saas/templates/saas/billing/withdraw.html>`__).
             self.request.GET.get(REDIRECT_FIELD_NAME, None))
         if redirect_path:
             return redirect_path
-        return reverse('saas_transfer_info', kwargs=self.get_url_kwargs())
+        return reverse('saas_transfer_info',
+            kwargs=self.get_url_kwargs(**self.kwargs))
 
     def get(self, request, *args, **kwargs):
         if not (self.organization.processor_deposit_key
@@ -1110,4 +1112,5 @@ djaodjin-saas/tree/master/saas/templates/saas/billing/import.html>`__).
         return super(ImportTransactionsView, self).form_valid(form)
 
     def get_success_url(self):
-        return reverse('saas_transfer_info', kwargs=self.get_url_kwargs())
+        return reverse('saas_transfer_info',
+            kwargs=self.get_url_kwargs(**self.kwargs))
