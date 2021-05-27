@@ -207,9 +207,14 @@ def extend_subscriptions(at_time=None, dry_run=False):
     for subscription in Subscription.objects.valid_for(
             auto_renew=True, created_at__lte=at_time, ends_at__gt=at_time):
         lower, upper = subscription.clipped_period_for(at_time)
-        LOGGER.debug("at_time (%s) in period [%s, %s[ of %s ending at %s",
-            at_time, lower, upper, subscription, subscription.ends_at)
-        days_from_end = relativedelta(subscription.ends_at, at_time).days
+        # `relativedelta` will compute number of years, months, days, etc.
+        # `days` represents the difference in days after years and months have
+        # been substracted instead of a total number of days as `timedelta`
+        # does.
+        days_from_end = (subscription.ends_at - at_time).days
+        LOGGER.debug("at_time (%s) in period [%s, %s[ of %s ending at %s,"
+            " %d days from renewal", at_time, lower, upper, subscription,
+            subscription.ends_at, days_from_end)
         if (upper == subscription.ends_at
             and (days_from_end >= 0 and days_from_end < 1)):
             # We are in the last day of the last period.
