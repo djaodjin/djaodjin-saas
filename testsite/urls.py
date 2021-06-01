@@ -28,7 +28,6 @@ from django.conf.urls.static import static
 from django.core.exceptions import ImproperlyConfigured
 from django.contrib.auth.decorators import login_required
 from django.views.generic import TemplateView
-from django.views.i18n import JavaScriptCatalog
 from saas.compat import reverse_lazy
 from saas.decorators import (fail_agreement, fail_authenticated, fail_direct,
     fail_provider, fail_provider_only, fail_self_provider)
@@ -68,7 +67,6 @@ except ImproperlyConfigured: # Django <= 1.9
 urlpatterns += \
     static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT) + [
     url(r'^__debug__/', include(debug_toolbar.urls)),
-    url(r'^jsi18n/', JavaScriptCatalog.as_view(), name='javascript-catalog'),
     url_prefixed(r'register/$',
         PersonalRegistrationView.as_view(
             success_url=reverse_lazy('home')),
