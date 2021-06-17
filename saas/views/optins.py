@@ -1,4 +1,4 @@
-# Copyright (c) 2018, DjaoDjin inc.
+# Copyright (c) 2021, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -29,10 +29,10 @@ from django.contrib import messages
 from django.contrib.auth import REDIRECT_FIELD_NAME
 from django.utils.translation import ugettext_lazy as _
 from django.views.generic.base import RedirectView
-from rest_framework.generics import get_object_or_404
 
 from .. import signals
-from ..mixins import SubscriptionMixin
+from ..mixins import SubscriptionMixin, product_url
+from ..models import get_broker
 from ..utils import get_role_model, validate_redirect_url
 
 LOGGER = logging.getLogger(__name__)
@@ -40,20 +40,28 @@ LOGGER = logging.getLogger(__name__)
 
 class RoleGrantAcceptView(RedirectView):
 
-    pattern_name = 'organization_app'
+    pattern_name = 'saas_organization_profile'
     permanent = False
 
     @property
     def role(self):
         if not hasattr(self, '_role'):
-            self._role = get_object_or_404(get_role_model().objects.all(),
-                grant_key=self.kwargs.get('verification_key'))
+            self._role = get_role_model().objects.filter(
+                grant_key=self.kwargs.get('verification_key')).first()
         return self._role
 
     def get(self, request, *args, **kwargs):
         obj = self.role
+        if not obj:
+            # We either have a bogus `verification_key` or a `verification_key`
+            # that has already been used. Either way, it is better to redirect
+            # to the application page rather than showing a 404 to users
+            # clicking on the link in the grant e-mail multiple times.
+            return super(RoleGrantAcceptView, self).get(
+                request, *args, **kwargs)
+
         existing_role = get_role_model().objects.filter(
-            organization=self.role.organization, user=request.user).exclude(
+            organization=obj.organization, user=request.user).exclude(
             pk=obj.pk).first()
         if existing_role:
             messages.error(request, _("You already have a %(existing_role)s"\
@@ -91,24 +99,33 @@ class RoleGrantAcceptView(RedirectView):
             self.request.GET.get(REDIRECT_FIELD_NAME, None))
         if redirect_path:
             return redirect_path
-        return super(RoleGrantAcceptView, self).get_redirect_url(
-            *args, **kwargs)
+        if self.role:
+            return product_url(get_broker(),
+                subscriber=self.role.organization, request=self.request)
+        return product_url(get_broker(), request=self.request)
 
 
 class SubscriptionGrantAcceptView(SubscriptionMixin, RedirectView):
 
-    pattern_name = 'organization_app'
+    pattern_name = 'saas_organization_profile'
     permanent = False
 
     @property
     def subscription(self):
         if not hasattr(self, '_subscription'):
-            self._subscription = get_object_or_404(self.get_queryset(),
-                grant_key=self.kwargs.get('verification_key'))
+            self._subscription = self.get_queryset().filter(
+                grant_key=self.kwargs.get('verification_key')).first()
         return self._subscription
 
     def get(self, request, *args, **kwargs):
         obj = self.subscription
+        if not obj:
+            # We either have a bogus `verification_key` or a `verification_key`
+            # that has already been used. Either way, it is better to redirect
+            # to the application page rather than showing a 404 to users
+            # clicking on the link in the grant e-mail multiple times.
+            return super(SubscriptionGrantAcceptView, self).get(
+                request, *args, **kwargs)
         grant_key = obj.grant_key
         obj.grant_key = None
         obj.save()
@@ -128,21 +145,38 @@ class SubscriptionGrantAcceptView(SubscriptionMixin, RedirectView):
         return super(SubscriptionGrantAcceptView, self).get(
             request, *args, organization=kwargs.get('organization'))
 
+    def get_redirect_url(self, *args, **kwargs):
+        redirect_path = validate_redirect_url(
+            self.request.GET.get(REDIRECT_FIELD_NAME, None))
+        if redirect_path:
+            return redirect_path
+        if self.subscription:
+            return product_url(get_broker(),
+                subscriber=self.subscription.organization, request=self.request)
+        return product_url(get_broker(), request=self.request)
+
 
 class SubscriptionRequestAcceptView(SubscriptionMixin, RedirectView):
 
-    pattern_name = 'organization_app'
+    pattern_name = 'saas_organization_profile'
     permanent = False
 
     @property
     def subscription(self):
         if not hasattr(self, '_subscription'):
-            self._subscription = get_object_or_404(self.get_queryset(),
-                request_key=self.kwargs.get('request_key'))
+            self._subscription = self.get_queryset().filter(
+                request_key=self.kwargs.get('request_key')).first()
         return self._subscription
 
     def get(self, request, *args, **kwargs):
         obj = self.subscription
+        if not obj:
+            # We either have a bogus `verification_key` or a `verification_key`
+            # that has already been used. Either way, it is better to redirect
+            # to the application page rather than showing a 404 to users
+            # clicking on the link in the grant e-mail multiple times.
+            return super(SubscriptionRequestAcceptView, self).get(
+                request, *args, **kwargs)
         request_key = obj.request_key
         obj.request_key = None
         obj.save()
@@ -162,3 +196,13 @@ class SubscriptionRequestAcceptView(SubscriptionMixin, RedirectView):
             % {'organization': obj.plan.organization.printable_name})
         return super(SubscriptionRequestAcceptView, self).get(
             request, *args, organization=kwargs.get('organization'))
+
+    def get_redirect_url(self, *args, **kwargs):
+        redirect_path = validate_redirect_url(
+            self.request.GET.get(REDIRECT_FIELD_NAME, None))
+        if redirect_path:
+            return redirect_path
+        if self.subscription:
+            return product_url(get_broker(),
+                subscriber=self.subscription.organization, request=self.request)
+        return product_url(get_broker(), request=self.request)

@@ -43,7 +43,6 @@ from django.contrib.auth.hashers import is_password_usable
 from django.db import transaction
 from django.template.defaultfilters import slugify
 from django.utils.translation import ugettext_lazy as _
-from django.urls.exceptions import NoReverseMatch
 from django_countries.serializer_fields import CountryField
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
@@ -56,7 +55,7 @@ from ..decorators import _valid_manager
 from ..humanize import as_money
 from ..mixins import as_html_description, product_url
 from ..models import (AdvanceDiscount, BalanceLine, CartItem, Charge, Coupon,
-    Plan, RoleDescription, Subscription, Transaction)
+    Plan, RoleDescription, Subscription, Transaction, get_broker)
 from ..utils import (build_absolute_uri, get_organization_model, get_role_model)
 
 #pylint: disable=no-init
@@ -871,13 +870,8 @@ class AccessibleSerializer(serializers.ModelSerializer):
         return settings_location
 
     def get_home_url(self, obj):
-        try:
-            return build_absolute_uri(self.context['request'], location=reverse(
-                'organization_app', args=(obj.organization.slug,)))
-        except NoReverseMatch:
-            # serializer used in djaodjin-saas not in djaoapp
-            pass
-        return None
+        return product_url(get_broker(), subscriber=obj.organization,
+            request=self.context['request'])
 
 
 class RoleSerializer(serializers.ModelSerializer):

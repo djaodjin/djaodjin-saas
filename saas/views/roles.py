@@ -1,4 +1,4 @@
-# Copyright (c) 2020, DjaoDjin inc.
+# Copyright (c) 2021, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -33,8 +33,9 @@ from django.utils.translation import ugettext_lazy as _
 from django.views.generic.base import RedirectView
 
 from .. import settings
-from ..compat import reverse, NoReverseMatch
-from ..models import RoleDescription
+from ..compat import reverse
+from ..mixins import product_url
+from ..models import RoleDescription, get_broker
 from ..utils import (get_organization_model, get_role_model,
     validate_redirect_url)
 
@@ -111,10 +112,11 @@ class RoleImplicitGrantAcceptView(RedirectView):
         redirect_path = validate_redirect_url(
             self.request.GET.get(REDIRECT_FIELD_NAME, None), sub=True, **kwargs)
         if not redirect_path:
-            try:
-                redirect_path = reverse('organization_app',
-                    args=args, kwargs=kwargs)
-            except NoReverseMatch: # Django==2.0
+            organization = kwargs.get(self.slug_url_kwarg)
+            if organization:
+                redirect_path = product_url(
+                    get_broker(), subscriber=organization, request=self.request)
+            else:
                 redirect_path = reverse('product_default_start')
         return redirect_path
 
