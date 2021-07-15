@@ -59,7 +59,7 @@
                 v-if="!row.location">[[row.key]]</td>
             <td ng-repeat="col in row.values"
                 v-for="col in row.values">
-              [[humanizeCell(col[1], table.unit, table.scale)]]
+              [[col[1] ]] [[table.unit]] ([[table.scale]])
             </td>
           </tr>
           {% block metrics_extra_data %}

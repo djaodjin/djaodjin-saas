@@ -41,7 +41,8 @@ card_expires_soon = Signal(providing_args=['organization', 'nb_days'])
 subscription_upgrade = Signal(providing_args=['subscription', 'nb_days'])
 payment_method_absent = Signal(providing_args=['organization'])
 user_invited = Signal(providing_args=['user', 'invited_by'])
-processor_setup_error = Signal(providing_args=['provider', 'error_message'])
+processor_setup_error = Signal(providing_args=['provider', 'error_message',
+    'customer'])
 renewal_charge_failed = Signal(providing_args=['invoiced_items', 'total_price',
     'final_notice'])
 role_grant_accepted = Signal(providing_args=['role', 'grant_key'])

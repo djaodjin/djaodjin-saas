@@ -32,7 +32,7 @@
         <a id="one-time-charge" href="{{urls.organization.vtcharge}}">one-time charge</a>
         {% endif %}
         <dl ng-show="items.balance_amount >= 0" v-show="items.balance_amount >= 0">
-          <dt>[[humanizeBalance()]]</dt>
+          <dt>[[items.balance_amount]] [[items.balance_unit]]</dt>
           <dd ng-show="items.balance_amount >= 0" v-show="items.balance_amount >= 0">
             Balance due<span ng-if="items.balance_amount > 0" v-if="items.balance_amount > 0">(<a href="{{ urls.organization.balance }}">pay now</a>)</span>
           </dd>
@@ -45,7 +45,7 @@
         <form id="cancel-balance" method="post" ng-submit="cancelBalance($event)" @submit.prevent="cancelBalance">
           <h4>Cancel balance due</h4>
           <p>
-Are you sure you would like to cancel the whole balance of [[humanizeBalance()]] ?
+Are you sure you would like to cancel the whole balance of [[items.balance_amount]] [[items.balance_unit]] ?
           </p>
           <div slot="footer">
             <button data-dismiss="modal">Cancel</button>

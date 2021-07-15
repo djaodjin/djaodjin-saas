@@ -157,12 +157,16 @@ def cart_insert_item(request, **kwargs):
         else:
             # (anonymous) New item
             created = True
-            cart_items += [{'plan': str(plan), 'use': str(use),
+            inserted_item = {
+                'plan': str(plan),
+                'use': str(use),
                 'option': kwargs.get('option', 0),
                 'full_name': kwargs.get('full_name', ''),
                 'sync_on': sync_on,
                 'email': email,
-                'invoice_key': invoice_key}]
+                'invoice_key': invoice_key
+            }
+            cart_items += [inserted_item]
         request.session['cart_items'] = cart_items
     return inserted_item, created
 

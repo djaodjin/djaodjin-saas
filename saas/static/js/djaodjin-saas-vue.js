@@ -1349,7 +1349,6 @@ Vue.component('coupon-list', {
             if( vm.plans.length > 0 ) {
                 for( var idx = 0; idx < vm.plans.length; ++idx ) {
                     if( vm.plans[idx].slug === slug ) {
-                        console.log("plan is ", vm.plans[idx]);
                         return vm.plans[idx].title;
                     }
                 }
@@ -1525,12 +1524,20 @@ Vue.component('metrics-charts', {
                 }
             });
         },
+        currencyToSymbol: function(currency) {
+            // This is a copy/paste from the definition of `currencyToSymbol`
+            // in `itemListMixin`.
+            if( currency === "usd" || currency === "cad" ) { return "$"; }
+            else if( currency === "eur" ) { return "\u20ac"; }
+            return currency;
+        },
         tabClicked: function(index) {
             var vm = this;
             vm.activeTab = index;
             vm.prepareCurrentTabData();
         },
         tabTitle: function(table){
+            var vm = this;
             var unit = '';
             if(table && table.unit){
                 unit = ' (' + vm.currencyToSymbol(table.unit) + ')';
@@ -1541,66 +1548,6 @@ Vue.component('metrics-charts', {
             var vm = this;
             var base = 'nav-link';
             return (index === vm.activeTab) ? base + " active" : base;
-        },
-
-        currencyToSymbol: function(currency) {
-            // This is a copy/paste from the definition of `currencyToSymbol`
-            // in `itemListMixin`.
-            if( currency === "usd" || currency === "cad" ) { return "$"; }
-            else if( currency === "eur" ) { return "\u20ac"; }
-            return currency;
-        },
-        humanizeCell: function(cell, unit, scale) {
-            // This is almost a copy/paste from the definition of `humanizeCell`
-            // in `itemListMixin`.
-            var vm = this;
-
-            scale = scale || 1;
-            var value = cell * scale;
-
-            if( typeof Intl !== 'undefined' &&
-                typeof Intl.NumberFormat !== 'undefined') {
-                var locale = (vm.$i18n && vm.$i18n.locale) ?
-                    vm.$i18n.locale : 'en-US';
-                if( unit ) {
-                    return (new Intl.NumberFormat(locale, {
-                        style: 'currency', currency: unit})).format(value);
-                }
-                return (new Intl.NumberFormat(locale)).format(value);
-            }
-
-            // `Intl` is not present. Let's do what we can.
-            var precision = 0;
-            var thousandsSeparator = ',';
-            var decimalSeparator = '.';
-            var symbol = '';
-            var symbolOnLeft = true;
-
-            if( unit ) {
-                // We have a currency unit
-                if( unit === "usd" || unit === "cad" ) {
-                    symbol = "$";
-                } else if( unit === "eur" ) {
-                    symbol = "\u20ac";
-                }
-                precision = 2;
-            }
-
-            var stringified = Math.abs(value).toFixed(precision);
-            var decimalPart = precision ? stringified.slice(-1 - precision) : '';
-            var integralPart = precision ? stringified.slice(0, -1 - precision)
-                : stringified;
-
-            var rem = integralPart.length % 3;
-            var head = rem > 0 ? (integralPart.slice(0, rem) + (
-                integralPart.length > 3 ? thousandsSeparator : ''))
-                : '';
-            var sign = value < 0 ? '-' : '';
-            var valueFormatted = sign + head + integralPart.slice(rem).replace(
-                /(\d{3})(?=\d)/g, '$1' + thousandsSeparator) + decimalPart;
-
-            return symbolOnLeft ?
-                symbol + valueFormatted : valueFormatted + symbol;
         },
     },
     computed: {
@@ -1961,10 +1908,6 @@ Vue.component('transfers-statement', {
                 vm.bank_name = resp.bank_name;
                 vm.balanceLoaded = true;
             });
-        },
-        humanizeBalance: function() {
-            var vm = this;
-            return vm.humanizeCell(vm.balance_amount, vm.balance_unit, 0.01);
         },
     },
     mounted: function(){

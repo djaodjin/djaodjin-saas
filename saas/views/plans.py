@@ -72,7 +72,7 @@ class PlanFormMixin(OrganizationMixin, SingleObjectMixin):
         Rebuilds the ``kwargs`` to pass to ``reverse()``.
         """
         url_kwargs = super(PlanFormMixin, self).get_url_kwargs(**kwargs)
-        if hasattr(self, 'object'):
+        if hasattr(self, 'object') and self.object:
             plan_kwarg = self.object.slug
         else:
             plan_kwarg = kwargs.get('plan')

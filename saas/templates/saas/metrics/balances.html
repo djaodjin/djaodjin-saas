@@ -55,7 +55,7 @@
                     <a target="_blank"
                       ng-prop-href="'{{urls.broker_transactions}}' + row.selector + '/?start_at=' + startPeriod + '&ends_at=' + col[0] "
                       v-bind:href="'{{urls.broker_transactions}}' + row.selector + '/?start_at=' + startPeriod + '&ends_at=' + col[0] ">
-                    [[humanizeCell(col[1])]]
+                    [[col[1] ]]
                     </a>
                 </td>
             </tr>

@@ -10,7 +10,7 @@ Major Features:
 Tested with
 
 - **Python:** 3.6, **Django:** 2.2 ([LTS](https://www.djangoproject.com/download/)), **Django Rest Framework:** 3.12
-- **Python:** 3.6, **Django:** 3.0 (latest), **Django Rest Framework:** 3.12
+- **Python:** 3.6, **Django:** 3.2 (latest), **Django Rest Framework:** 3.12
 - **Python:** 2.7, **Django:** 1.11 (legacy), **Django Rest Framework:** 3.9.4
 
 This project contains bare bone templates which are compatible with Django
@@ -32,6 +32,9 @@ the prerequisites:
     $ python -m venv .venv
     $ source .venv/bin/activate
     $ pip install -r testsite/requirements.txt
+
+    # Installs Javascript prerequisites to run in the browser
+    $ make vendor-assets-prerequisites
 
 </code></pre>
 

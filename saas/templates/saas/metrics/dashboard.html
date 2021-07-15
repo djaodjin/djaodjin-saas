@@ -65,7 +65,7 @@ No items to take care of Today.
         </user-list>
         <today-sales inline-template id="today-sales-container" ng-controller="receivableListCtrl">
           <div>
-            <h4>Today Sales<span ng-show="items.$resolved" v-show="itemsLoaded">: [[humanizeTotal()]]</span></h4>
+            <h4>Today Sales<span ng-show="items.$resolved" v-show="itemsLoaded">: [[items.total]] [[items.unit]]</span></h4>
             <table>
                 <tbody ng-show="!items.$resolved" v-show="!itemsLoaded">
                     <tr>

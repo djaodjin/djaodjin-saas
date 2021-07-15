@@ -252,7 +252,7 @@ def trigger_expiration_notices(at_time=None, nb_days=15, dry_run=False):
                     if not dry_run:
                         signals.card_expires_soon.send(
                             sender=__name__, organization=organization,
-                            days=nb_days)
+                            nb_days=nb_days)
             except (KeyError, ValueError):
                 # exp info is missing or the format is incorrect
                 pass
@@ -304,7 +304,9 @@ def trigger_expiration_notices(at_time=None, nb_days=15, dry_run=False):
 
     # flushing the last organization
     if subscription and subscription.organization.id != prev_organization:
-        _handle_organization_notices(subscription.organization)
+        if subscription.auto_renew:
+            if subscription.plan.renewal_type == subscription.plan.AUTO_RENEW:
+                _handle_organization_notices(subscription.organization)
 
 
 def create_charges_for_balance(until=None, dry_run=False):

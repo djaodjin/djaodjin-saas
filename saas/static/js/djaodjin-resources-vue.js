@@ -457,14 +457,14 @@ var httpRequestMixin = {
                 },
             }).done(successCallback).fail(failureCallback);
         },
-        /** This method generates a DELETE HTTP request to `url` with a query
-            string built of a `queryParams` dictionnary.
+        /** This method generates multiple queries, and execute
+            success/failure callbacks when all have completed.
 
             It supports the following prototypes:
 
-            - reqDELETE(url)
-            - reqDELETE(url, successCallback)
-            - reqDELETE(url, successCallback, failureCallback)
+            - reqMultiple(queryArray)
+            - reqMultiple(queryArray, successCallback)
+            - reqMultiple(queryArray, successCallback, failureCallback)
 
             `successCallback` and `failureCallback` must be Javascript
             functions (i.e. instance of type `Function`).
@@ -865,87 +865,6 @@ var itemListMixin = {
                 result = '?' + result;
             }
             return result;
-        },
-        humanizeTotal: function() {
-            var vm = this;
-            return vm.humanizeCell(vm.items.total, vm.items.unit, 0.01);
-        },
-        humanizeBalance: function() {
-            var vm = this;
-            return vm.humanizeCell(
-                vm.items.balance_amount, vm.items.balance_unit, 0.01);
-        },
-
-        // Used to be filters but Vue3 will not allow it.
-        relativeDate: function(at_time) {
-            var vm = this;
-            var cutOff = vm.ends_at ? moment(vm.ends_at, DATE_FORMAT) : moment();
-            var dateTime = moment(at_time);
-            if( dateTime <= cutOff ) {
-                var timeAgoTemplate = (vm.$labels && vm.$labels.timeAgoTemplate) ?
-                    vm.$labels.timeAgoTemplate : "%(timedelta)s ago";
-                return timeAgoTemplate.replace("%(timedelta)s",
-                    moment.duration(cutOff.diff(dateTime)).humanize());
-            }
-            var timeLeftTemplate = (vm.$labels && vm.$labels.timeLeftTemplate) ?
-                vm.$labels.timeLeftTemplate : "%(timedelta)s ago";
-            return timeLeftTemplate.replace("%(timedelta)s",
-                moment.duration(dateTime.diff(cutOff)).humanize());
-        },
-        humanizeCell: function(cell, unit, scale) {
-            var vm = this;
-            if( typeof unit == 'undefined' ) {
-                unit = vm.items.unit;
-            }
-            if( typeof scale == 'undefined' ) {
-                scale = vm.items.scale;
-            }
-            scale = scale || 1;
-            var value = cell * scale;
-
-            if( typeof Intl !== 'undefined' &&
-                typeof Intl.NumberFormat !== 'undefined') {
-                var locale = (vm.$i18n && vm.$i18n.locale) ?
-                    vm.$i18n.locale : 'en-US';
-                if( unit ) {
-                    return (new Intl.NumberFormat(locale, {
-                        style: 'currency', currency: unit})).format(value);
-                }
-                return (new Intl.NumberFormat(locale)).format(value);
-            }
-
-            // `Intl` is not present. Let's do what we can.
-            var precision = 0;
-            var thousandsSeparator = ',';
-            var decimalSeparator = '.';
-            var symbol = '';
-            var symbolOnLeft = true;
-
-            if( unit ) {
-                // We have a currency unit
-                if( unit === "usd" || unit === "cad" ) {
-                    symbol = "$";
-                } else if( unit === "eur" ) {
-                    symbol = "\u20ac";
-                }
-                precision = 2;
-            }
-
-            var stringified = Math.abs(value).toFixed(precision);
-            var decimalPart = precision ? stringified.slice(-1 - precision) : '';
-            var integralPart = precision ? stringified.slice(0, -1 - precision)
-                : stringified;
-
-            var rem = integralPart.length % 3;
-            var head = rem > 0 ? (integralPart.slice(0, rem) + (
-                integralPart.length > 3 ? thousandsSeparator : ''))
-                : '';
-            var sign = value < 0 ? '-' : '';
-            var valueFormatted = sign + head + integralPart.slice(rem).replace(
-                /(\d{3})(?=\d)/g, '$1' + thousandsSeparator) + decimalPart;
-
-            return symbolOnLeft ?
-                symbol + valueFormatted : valueFormatted + symbol;
         },
     },
 }

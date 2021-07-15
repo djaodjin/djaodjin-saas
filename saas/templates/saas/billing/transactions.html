@@ -4,7 +4,7 @@
 <div ng-app="saasApp">
   <div ng-controller="transactionListCtrl">
     <section id="total">
-      <strong>Balance</strong> <span>[[humanizeBalance()]]</span>
+      <strong>Balance</strong> <span>[[items.balance_amount]] [[items.balance_unit]]</span>
     </section>
     <section id="transactions">
       <div>

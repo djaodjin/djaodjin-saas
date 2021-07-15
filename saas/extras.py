@@ -59,8 +59,9 @@ class OrganizationMixinBase(object):
         Rebuilds the ``kwargs`` to pass to ``reverse()``.
         """
         url_kwargs = {}
-        if 'organization' in kwargs:
-            url_kwargs.update({'organization': kwargs['organization']})
+        params = kwargs if kwargs else self.kwargs
+        if 'organization' in params:
+            url_kwargs.update({'organization': params['organization']})
         return url_kwargs
 
     def get_context_data(self, **kwargs):
