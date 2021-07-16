@@ -446,7 +446,7 @@ class SubscribersQuerysetMixin(OrganizationDecorateMixin, ProviderMixin):
 
     def get_queryset(self):
         queryset = get_organization_model().objects.filter(
-            subscriptions__organization=self.provider)
+            subscribes_to__organization=self.provider)
         return queryset
 
     def paginate_queryset(self, queryset):

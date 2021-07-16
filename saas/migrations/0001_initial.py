@@ -190,7 +190,7 @@ class Migration(migrations.Migration):
                 ('ends_at', models.DateTimeField()),
                 ('description', models.TextField(blank=True, null=True)),
                 ('extra', models.TextField(null=True)),
-                ('organization', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='saas.Organization')),
+                ('organization', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='saas.Organization', related_name='subscriptions')),
                 ('plan', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='saas.Plan')),
             ],
         ),
@@ -223,8 +223,8 @@ class Migration(migrations.Migration):
         ),
         migrations.AddField(
             model_name='organization',
-            name='subscriptions',
-            field=models.ManyToManyField(related_name='subscribes', through='saas.Subscription', to='saas.Plan'),
+            name='subscribes_to',
+            field=models.ManyToManyField(related_name='subscribers', through='saas.Subscription', to='saas.Plan'),
         ),
         migrations.AddField(
             model_name='coupon',

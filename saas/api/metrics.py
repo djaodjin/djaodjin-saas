@@ -513,7 +513,7 @@ class LifetimeValueMetricMixin(DateRangeContextMixin, ProviderMixin):
         organization_model = get_organization_model()
         if self.provider:
             queryset = organization_model.objects.filter(
-                subscriptions__organization=self.provider).distinct()
+                subscribes_to__organization=self.provider).distinct()
         else:
             queryset = organization_model.objects.all()
         queryset = queryset.filter(

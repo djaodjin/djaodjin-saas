@@ -289,8 +289,8 @@ class Organization(models.Model):
     # 2nd note: We could support multiple payment processors at the same
     # time by having a relation to a separate table. For simplicity we only
     # allow one processor per organization at a time.
-    subscriptions = models.ManyToManyField('Plan',
-        related_name='subscribes', through='Subscription')
+    subscribes_to = models.ManyToManyField('Plan',
+        related_name='subscribers', through='Subscription')
     billing_start = models.DateField(null=True, auto_now_add=True)
 
     funds_balance = models.PositiveIntegerField(default=0,
@@ -481,7 +481,7 @@ class Organization(models.Model):
 
     @property
     def natural_subscription_period(self):
-        plan_periods = self.subscriptions.values('period_type').distinct()
+        plan_periods = self.subscribes_to.values('period_type').distinct()
         interval = Plan.MONTHLY
         if plan_periods.exists():
             interval = Plan.YEARLY
@@ -1229,10 +1229,13 @@ class RoleDescription(models.Model):
             return '%s-%s' % (str(self.slug), str(self.organization))
         return str(self.slug)
 
-    def save(self, **kwargs):
+    def save(self, force_insert=False, force_update=False, using=None,
+             update_fields=None):
         if not self.slug:
             self.slug = self.normalize_slug(slugify(self.title))
-        super(RoleDescription, self).save(**kwargs)
+        super(RoleDescription, self).save(force_insert=force_insert,
+            force_update=force_update, using=using,
+            update_fields=update_fields)
 
     def is_global(self):
         return self.organization is None
@@ -1257,7 +1260,7 @@ class RoleManager(models.Manager):
             else:
                 kwargs = {'role_description__slug': role_descr}
         return self.filter(
-            user=user, organization__subscriptions__plan=plan, **kwargs)
+            user=user, organization__subscribes_to=plan, **kwargs)
 
     def valid_for(self, **kwargs):
         return self.filter(grant_key=None, request_key=None, **kwargs)
@@ -3235,7 +3238,8 @@ class Subscription(models.Model):
     description = models.TextField(null=True, blank=True,
         help_text=_("Free-form text description for the subscription"))
     organization = models.ForeignKey(Organization, on_delete=models.CASCADE,
-        help_text=_("Organization subscribed to the plan"))
+        help_text=_("Organization subscribed to the plan"),
+        related_name='subscriptions')
     plan = models.ForeignKey(Plan, on_delete=models.CASCADE,
         help_text=_("Plan the organization is subscribed to"))
     request_key = models.SlugField(max_length=40, null=True, blank=True)

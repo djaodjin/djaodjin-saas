@@ -60,7 +60,7 @@ class RegisteredQuerysetMixin(DateRangeContextMixin, ProviderMixin):
             # OK to use filter because we want to see all users here.
             # XXX `self.ends_at` is coming from `UserSmartListMixin`
             pk__in=get_role_model().objects.filter(
-            organization__subscription__created_at__lt=self.ends_at).values(
+            organization__subscriptions__created_at__lt=self.ends_at).values(
             'user')).order_by('-date_joined', 'last_name').distinct()
 
 
