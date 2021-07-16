@@ -1494,7 +1494,8 @@ class ChargeManager(models.Manager):
             # We implement (2) because the UI feedback to a user looks strange
             # when the Card is persisted while an error message is displayed.
             customer.processor_card_key = prev_processor_card_key
-            LOGGER.info('error: "%s" processing charge %s of %d %s to %s',
+            LOGGER.info('error: CardError "%s" processing charge'\
+                ' %s of %d %s to %s',
                 err.processor_details(), err.charge_processor_key,
                 amount, unit, customer,
                 extra={'event': 'card-error',
@@ -1508,15 +1509,17 @@ class ChargeManager(models.Manager):
             # it is not obviously a problem with the broker. So we send
             # a signal to alert the provider instead of triggering an error
             # that needs to be investigated by the broker hosting platform.
-            LOGGER.info('error: "%s" processing charge of %d %s to %s',
+            LOGGER.info('error: ProcessorSetupError "%s" processing charge'\
+                ' of %d %s to %s',
                 err.processor_details(), amount, unit, customer,
                 extra={'event': 'processor-setup-error',
                     'detail': err.processor_details(),
-                    'provider': err.provider,
+                    'provider': str(err.provider),
                     'organization': customer.slug,
                     'amount': amount, 'unit': unit})
             signals.processor_setup_error.send(sender=__name__,
-                provider=err.provider, error_message=str(err))
+                provider=err.provider, error_message=str(err),
+                customer=customer)
             raise
         except ProcessorError as err:
             # An error from the processor which indicates the logic might be

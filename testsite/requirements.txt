@@ -7,7 +7,7 @@ Markdown==3.2.2
 phonenumbers==8.12.6
 python-dateutil==2.8.1
 razorpay==0.2.0
-stripe==2.55.1
+stripe==2.60.0
 
 # testsite-only
 coverage==5.1
