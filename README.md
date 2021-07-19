@@ -99,13 +99,12 @@ saas/templates/notification/ directory.
 Release Notes
 =============
 
-0.9.5
+0.10.0
 
-  * keeps user model fields in sync with personal billing profile
-  * prints last4 as exactly 4 digits on receipts
-  * fixes index error in the presence of 100% discount and advance payments
-  * fixes statement balances in the presence of GroupBuy
-  * fixes PaymentIntent not found while using StripeConnect accounts
-  * redirects to login page on redirects-to-profile if user not authenticated
+  * works with with Django3.2
+  * prepares compatibility with Vue3
+  * moves all i18n translation server-side
+  * renames `subscriptions` key into `subscribes_to` as it points to a Plan
+  * categorizes a double-POST of the same Stripe token as a CardError
 
 [previous release notes](changelog)
