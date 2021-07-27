@@ -226,6 +226,7 @@ def fail_subscription(request, organization=None, plan=None):
                 pk=plan.organization.pk).exists():
             # The request.user has a role on the plan provider.
             return False
+        subscriptions = subscriptions.filter(plan=plan).order_by('ends_at')
 
     if not subscriptions.exists():
         if plan:
