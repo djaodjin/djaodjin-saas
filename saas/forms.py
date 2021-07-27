@@ -36,12 +36,25 @@ from django.utils.translation import ugettext_lazy as _
 from django_countries import countries
 from django_countries.fields import Country
 import localflavor.us.forms as us_forms
+from phonenumber_field.formfields import PhoneNumberField
 
 from . import settings
 from .models import AdvanceDiscount, Plan, Subscription
 from .utils import get_organization_model
 
 #pylint: disable=no-member,no-init
+
+class PhoneField(PhoneNumberField):
+
+    def __init__(self, *args, **kwargs):
+        region = kwargs.get('region')
+        if not region:
+            params = {'region': 'US'}
+            params.update(kwargs)
+        else:
+            params = kwargs
+        super(PhoneField, self).__init__(*args, **params)
+
 
 class BankForm(forms.ModelForm):
     """
@@ -169,7 +182,7 @@ class OrganizationForm(PostalFormMixin, forms.ModelForm):
         error_messages={'invalid': _("Display name may only contain letters,"\
             " digits and -/_ characters. Spaces are not allowed.")})
     street_address = forms.CharField(label=_("Street address"), required=False)
-    phone = forms.CharField(label=_("Phone number"), required=False)
+    phone = PhoneField(label=_("Phone number"), required=False)
 
     class Meta:
         model = get_organization_model()
