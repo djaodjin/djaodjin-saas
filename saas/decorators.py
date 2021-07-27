@@ -229,7 +229,7 @@ def fail_subscription(request, organization=None, plan=None):
         subscriptions = subscriptions.filter(plan=plan).order_by('ends_at')
 
     if not subscriptions.exists():
-        if plan:
+        if plan and not plan.is_not_priced:
             cart_insert_item(request, plan=plan)
             if organization:
                 return reverse('saas_organization_cart', args=(organization,))
