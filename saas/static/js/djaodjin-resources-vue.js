@@ -587,6 +587,7 @@ var paginationMixin = {
                 page: 1,
             },
             itemsPerPage: this.$itemsPerPage,
+            ellipsisThreshold: 4,
             getCompleteCb: 'getCompleted',
             getBeforeCb: 'resetPage',
             qsCache: null,
@@ -631,13 +632,58 @@ var paginationMixin = {
                 vm.get();
             }
         },
+        // For pagination buttons
+        onClick: function(pageNumber) {
+            var vm = this;
+            vm.$set(vm.params, 'page', pageNumber);
+            vm.get();
+        }
     },
     computed: {
         totalItems: function(){
             return this.items.count
         },
         pageCount: function(){
-            return Math.ceil(this.totalItems / this.itemsPerPage)
+            var nbFullPages = Math.ceil(this.totalItems / this.itemsPerPage);
+            if( nbFullPages * this.itemsPerPage < this.totalItems ) {
+                ++nbFullPages;
+            }
+            return nbFullPages;
+        },
+        minDirectPageLink: function() {
+            var vm = this;
+            var halfEllipsisThreshold = Math.ceil(vm.ellipsisThreshold / 2);
+            if( halfEllipsisThreshold * 2 == vm.ellipsisThreshold ) {
+                --halfEllipsisThreshold;
+            }
+            var minDPL = Math.max(
+                1, vm.params.page - halfEllipsisThreshold);
+            var maxDPL = Math.min(
+                vm.params.page + halfEllipsisThreshold, vm.pageCount);
+            return ( maxDPL == vm.pageCount ) ? Math.max(
+                vm.pageCount - vm.ellipsisThreshold + 1, 1) : minDPL;
+        },
+        maxDirectPageLink: function() {
+            var vm = this;
+            var halfEllipsisThreshold = Math.ceil(vm.ellipsisThreshold / 2);
+            if( halfEllipsisThreshold * 2 == vm.ellipsisThreshold ) {
+                --halfEllipsisThreshold;
+            }
+            var minDPL = Math.max(
+                1, vm.params.page - halfEllipsisThreshold);
+            var maxDPL = Math.min(
+                vm.params.page + halfEllipsisThreshold, vm.pageCount);
+            return ( minDPL == 1 ) ? Math.min(
+                vm.ellipsisThreshold, vm.pageCount) : maxDPL;
+        },
+        directPageLinks: function() {
+            var vm = this;
+            var pages = [];
+            for( var idx = vm.minDirectPageLink;
+                 idx <= vm.maxDirectPageLink; ++idx ){
+                pages.push(idx);
+            }
+            return pages;
         },
         ISState: function(){
             if(!this.$refs.infiniteLoading) return;
