@@ -108,22 +108,27 @@ class PhoneField(serializers.Field):
         """
         Returns a formatted phone number as a string.
         """
-        if self.required:
+        try:
+            phone_number = phonenumbers.parse(data, None)
+        except phonenumbers.NumberParseException as err:
+            LOGGER.info("tel %s:%s", data, err)
+            phone_number = None
+        if not phone_number:
             try:
-                phone_number = phonenumbers.parse(data, None)
-            except phonenumbers.NumberParseException as err:
+                phone_number = phonenumbers.parse(data, "US")
+            except phonenumbers.NumberParseException:
                 LOGGER.info("tel %s:%s", data, err)
                 phone_number = None
-            if not phone_number:
-                try:
-                    phone_number = phonenumbers.parse(data, "US")
-                except phonenumbers.NumberParseException:
-                    raise ValidationError(self.error_messages['invalid'])
-            if phone_number and not phonenumbers.is_valid_number(phone_number):
-                raise ValidationError(self.error_messages['invalid'])
-            return phonenumbers.format_number(
-                phone_number, phonenumbers.PhoneNumberFormat.E164)
-        return None
+
+        if not phone_number:
+            if self.required:
+                raise ValidationError(self.error_messages['required'])
+            return None
+
+        if not phonenumbers.is_valid_number(phone_number):
+            raise ValidationError(self.error_messages['invalid'])
+        return phonenumbers.format_number(
+            phone_number, phonenumbers.PhoneNumberFormat.E164)
 
 
 class PlanRelatedField(serializers.RelatedField):
