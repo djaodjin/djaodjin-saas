@@ -45,8 +45,10 @@ from rest_framework.pagination import PageNumberPagination
 
 from .. import settings, signals
 from ..docs import no_body, swagger_auto_schema
+from ..decorators import _has_valid_access
 from ..mixins import (OrganizationMixin, OrganizationSmartListMixin,
     RoleDescriptionMixin, RoleMixin, RoleSmartListMixin, UserMixin)
+from ..models import get_broker
 from ..utils import (full_name_natural_split, get_organization_model,
     get_role_model, generate_random_slug)
 from .organizations import OrganizationCreateMixin, OrganizationDecorateMixin
@@ -609,9 +611,9 @@ class RoleDescriptionQuerysetMixin(OrganizationMixin):
     def get_queryset(self):
         return self.organization.get_role_descriptions()
 
-    @staticmethod
-    def check_local(instance):
-        if instance.is_global():
+    def check_local(self, instance):
+        if (instance.is_global() and
+            not _has_valid_access(self.request, [get_broker()])):
             raise PermissionDenied()
 
 
