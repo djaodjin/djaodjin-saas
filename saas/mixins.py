@@ -827,8 +827,10 @@ class CartItemSmartListMixin(object):
                      'user__email')
 
     ordering_fields = [('slug', 'user__username'),
-                           ('plan', 'plan'),
-                           ('created_at', 'created_at')]
+                       ('plan', 'plan'),
+                       ('created_at', 'created_at')]
+
+    ordering = ('created_at',)
 
     filter_backends = (DateRangeFilter, OrderingFilter, SearchFilter)
 

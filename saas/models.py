@@ -3018,6 +3018,10 @@ class CartItemManager(models.Manager):
                 coupon_applied = True
                 item.coupon = redeemed
                 item.save()
+        if coupon_applied:
+            if redeemed.nb_attempts is not None and redeemed.nb_attempts > 0:
+                redeemed.nb_attempts -= 1
+                redeemed.save()
         return coupon_applied
 
 

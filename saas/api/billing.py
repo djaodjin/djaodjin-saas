@@ -570,7 +570,8 @@ of Xia",
                 opt_index = item['option'] - 1
                 if index >= len(queryset):
                     continue
-                if opt_index >= len(queryset[index]['options']):
+                if (opt_index < 0 or
+                    opt_index >= len(queryset[index]['options'])):
                     continue
                 selected = queryset[index]['options'][opt_index]
                 queryset[index]['lines'].append(selected)
@@ -588,5 +589,6 @@ of Xia",
                 result = ChargeSerializer(charge)
                 return Response(result.data, status=status.HTTP_200_OK)
         except ProcessorError as err:
-            return Response({'detail': err}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({
+                'detail': str(err)}, status=status.HTTP_400_BAD_REQUEST)
         return Response({}, status=status.HTTP_200_OK)

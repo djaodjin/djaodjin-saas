@@ -345,7 +345,8 @@ def describe_buy_periods(plan, ends_at, nb_periods, discount_by_types=None,
     if coupon:
         if coupon.code.startswith('cpn_'):
             if full_name:
-                descr_suffix += DESCRIBE_SUFFIX_GROUP_BUY % {'payer': full_name}
+                descr_suffix += DESCRIBE_SUFFIX_GROUP_BUY % {
+                    'payer': full_name}
         else:
             descr_suffix += DESCRIBE_SUFFIX_COUPON_APPLIED % {
                 'code': coupon.code}
