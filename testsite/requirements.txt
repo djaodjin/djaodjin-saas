@@ -1,7 +1,7 @@
 Django==2.2.24
 django-countries==7.1
 django-localflavor==3.0.1
-django-phonenumber-field==5.1.0
+django-phonenumber-field==5.2.0
 djangorestframework==3.12.4
 # We need Python Markdown for django.contrib.markup. markdown2 is not enough.
 Markdown==3.2.2
