@@ -261,7 +261,8 @@ class OptinBase(OrganizationDecorateMixin, OrganizationCreateMixin):
         # XXX There is currently a single relation created due to statement
         # `organizations = [organization]` earlier in the code.
         if notified:
-            resp_serializer = self.get_serializer(notified[0])
+            resp_serializer = self.serializer_class(
+                instance=notified[0], context=self.get_serializer_context())
             result = resp_serializer.data
         else:
             result = None

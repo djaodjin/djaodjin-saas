@@ -112,7 +112,7 @@ REST_FRAMEWORK = {
 MEDIA_ROOT = os.path.join(BASE_DIR, 'testsite', 'media')
 MEDIA_URL = '/media/'
 
-APP_STATIC_ROOT = os.path.join(BASE_DIR, 'htdocs', 'static')
+APP_STATIC_ROOT = os.path.join(BASE_DIR, 'testsite', 'static')
 STATIC_URL = '/static/'
 
 if DEBUG:

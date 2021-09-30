@@ -241,7 +241,8 @@ class PlanListCreateAPIView(PlanMixin, ListCreateAPIView):
     def perform_create(self, serializer):
         if self.organization.plans.filter(
                 title=serializer.validated_data.get('title')).exists():
-            raise ValidationError(_("A plan with this title already exists."))
+            raise ValidationError({
+                'title': _("A plan with this title already exists.")})
 
         unit = serializer.validated_data.get('unit', None)
         if not unit:

@@ -39,6 +39,7 @@ class BalancePagination(PageNumberPagination):
     """
 
     def paginate_queryset(self, queryset, request, view=None):
+        self.start_at = view.start_at
         self.ends_at = view.ends_at
         if view.selector is not None:
             dest_totals = sum_dest_amount(queryset.filter(

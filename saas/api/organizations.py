@@ -448,7 +448,8 @@ class OrganizationListAPIView(OrganizationSmartListMixin,
         self.decorate_personal(organization)
 
         # returns created profile
-        serializer = self.get_serializer(instance=organization)
+        serializer = self.serializer_class(instance=organization,
+            context=self.get_serializer_context())
         headers = self.get_success_headers(serializer.data)
         return Response(serializer.data,
             status=status.HTTP_201_CREATED, headers=headers)
