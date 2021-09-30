@@ -26,24 +26,35 @@
 
 from django.utils.translation import ugettext_lazy as _
 from rest_framework import status
+from rest_framework.exceptions import ValidationError
 from rest_framework.generics import (ListAPIView, ListCreateAPIView,
     RetrieveUpdateDestroyAPIView)
 from rest_framework.response import Response
 
-from .serializers import PlanSerializer
+from .. import settings
+from ..docs import OpenAPIResponse, swagger_auto_schema
 from ..mixins import PlanMixin, CartMixin
 from ..filters import DateRangeFilter, OrderingFilter
 from ..models import Coupon, Plan, Subscription
-from .. import settings
+from .serializers import PlanSerializer, PlanCreateSerializer
 
 
 class PricingAPIView(PlanMixin, CartMixin, ListAPIView):
     """
     Lists active plans
 
-    Returns a PAGE_SIZE list of plans.
+    Returns a list of {{PAGE_SIZE}} plans which are active and can
+    be subscribed to.
 
-    **Tags**: subscriptions
+    The queryset can be further refined to match a search filter (``q``)
+    and/or a range of dates ([``start_at``, ``ends_at``]),
+    and sorted on specific fields (``o``).
+
+    The API is typically used within an HTML
+    `pricing page </docs/themes/#workflow_pricing>`_
+    as present in the default theme.
+
+    **Tags**: subscriptions, visitor, planmodel
 
     **Examples**
 
@@ -79,13 +90,15 @@ class PricingAPIView(PlanMixin, CartMixin, ListAPIView):
           }]
         }
     """
-    serializer_class = PlanSerializer
-    filter_backends = (DateRangeFilter, OrderingFilter)
-    ordering_fields = [
+    ordering_fields = (
         ('title', 'title'),
         ('period_amount', 'period_amount'),
         ('is_active', 'is_active'),
-        ('created_at', 'created_at')]
+        ('created_at', 'created_at'),
+    )
+    ordering = ('period_amount',)
+    filter_backends = (DateRangeFilter, OrderingFilter)
+    serializer_class = PlanSerializer
 
     def get_queryset(self):
         queryset = Plan.objects.filter(organization=self.provider,
@@ -119,15 +132,19 @@ class PlanListCreateAPIView(PlanMixin, ListCreateAPIView):
     """
     Lists a provider plans
 
-    Returns a PAGE_SIZE list of plans whose provider is {organization}.
+    Returns a list of {{PAGE_SIZE}} plans managed by provider {organization}.
 
-    **Tags**: subscriptions
+    The queryset can be further refined to match a search filter (``q``)
+    and/or a range of dates ([``start_at``, ``ends_at``]),
+    and sorted on specific fields (``o``).
+
+    **Tags**: subscriptions, provider, planmodel
 
     **Examples**
 
     .. code-block:: http
 
-         GET /api/profile/cowork/plans HTTP/1.1
+         GET /api/profile/cowork/plans/ HTTP/1.1
 
     responds
 
@@ -157,32 +174,41 @@ class PlanListCreateAPIView(PlanMixin, ListCreateAPIView):
           }]
         }
     """
-    serializer_class = PlanSerializer
-    filter_backends = (DateRangeFilter, OrderingFilter)
-    ordering_fields = [
+    ordering_fields = (
         ('title', 'title'),
         ('period_amount', 'period_amount'),
         ('is_active', 'is_active'),
-        ('created_at', 'created_at')]
+        ('created_at', 'created_at')
+    )
+    ordering = ('period_amount',)
+    filter_backends = (DateRangeFilter, OrderingFilter)
+    serializer_class = PlanSerializer
 
+    def get_serializer_class(self):
+        if self.request.method.lower() == 'post':
+            return PlanCreateSerializer
+        return super(PlanListCreateAPIView, self).get_serializer_class()
+
+    @swagger_auto_schema(responses={
+      201: OpenAPIResponse("Create successful", PlanSerializer)})
     def post(self, request, *args, **kwargs):
         """
-        Creates a subscription plan
+        Creates a plan
 
-        Creates a subscription plan for provider {organization}.
+        Creates a new subscription plan that belongs to provider {organization}.
 
-        **Tags**: subscriptions
+        **Tags**: subscriptions, provider, planmodel
 
         **Examples**
 
         .. code-block:: http
 
-             POST /api/profile/cowork/plans HTTP/1.1
+             POST /api/profile/cowork/plans/ HTTP/1.1
 
         .. code-block:: json
 
             {
-                "title": "Open Space",
+                "title": "Popup Desk",
                 "description": "A desk in our coworking space",
                 "is_active": false,
                 "period_amount": 12000,
@@ -194,7 +220,7 @@ class PlanListCreateAPIView(PlanMixin, ListCreateAPIView):
         .. code-block:: json
 
             {
-                "title": "Open Space",
+                "title": "Popup Desk",
                 "description": "A desk in our coworking space",
                 "is_active": false,
                 "period_amount": 12000,
@@ -213,6 +239,10 @@ class PlanListCreateAPIView(PlanMixin, ListCreateAPIView):
         return queryset
 
     def perform_create(self, serializer):
+        if self.organization.plans.filter(
+                title=serializer.validated_data.get('title')).exists():
+            raise ValidationError(_("A plan with this title already exists."))
+
         unit = serializer.validated_data.get('unit', None)
         if not unit:
             first_plan = self.get_queryset().first()
@@ -225,7 +255,7 @@ class PlanListCreateAPIView(PlanMixin, ListCreateAPIView):
 
 class PlanDetailAPIView(PlanMixin, RetrieveUpdateDestroyAPIView):
     """
-    Retrieves a subscription plan
+    Retrieves a plan
 
     Returns the {plan} for provider {organization}
 
@@ -233,13 +263,17 @@ class PlanDetailAPIView(PlanMixin, RetrieveUpdateDestroyAPIView):
     to subscribe to it, or deactivate a plan, disabling users from subscribing
     to it.
 
-    **Tags**: subscriptions
+    The API is typically used within an HTML
+    `update plan page </docs/themes/#profile_plans_plan>`_
+    as present in the default theme.
+
+    **Tags**: subscriptions, provider, planmodel
 
     **Examples**
 
     .. code-block:: http
 
-        GET /api/profile/cowork/plans/open-space HTTP/1.1
+        GET /api/profile/cowork/plans/open-space/ HTTP/1.1
 
     responds
 
@@ -257,20 +291,24 @@ class PlanDetailAPIView(PlanMixin, RetrieveUpdateDestroyAPIView):
 
     def delete(self, request, *args, **kwargs):
         """
-        Deletes a subscription plan
+        Deletes a plan
 
         A plan can only be deleted when there are no subscriptions to it.
         Even if all subscriptions to a plan have expired, the plan cannot
         be deleted. It should be de-activated instead such that no customers
         can subscribes to it.
 
-        **Tags**: subscriptions
+        The API is typically used within an HTML
+        `update plan page </docs/themes/#profile_plans_plan>`_
+        as present in the default theme.
+
+        **Tags**: subscriptions, provider, planmodel
 
         **Examples**
 
         .. code-block:: http
 
-            DELETE /api/profile/cowork/plans/open-space HTTP/1.1
+            DELETE /api/profile/cowork/plans/open-space/ HTTP/1.1
         """
         return super(PlanDetailAPIView, self).delete(request, *args, **kwargs)
 
@@ -331,7 +369,7 @@ class PlanDetailAPIView(PlanMixin, RetrieveUpdateDestroyAPIView):
 
     def put(self, request, *args, **kwargs):
         """
-        Updates a subscription plan
+        Updates a plan
 
         Updates fields for {plan}. If the ``period_amount`` is modified,
         all subscriptions to this plan will be charged the ``period_amount``
@@ -341,13 +379,17 @@ class PlanDetailAPIView(PlanMixin, RetrieveUpdateDestroyAPIView):
         to subscribe to it, or deactivate a plan, disabling users
         from subscribing to it.
 
-        **Tags**: subscriptions
+        The API is typically used within an HTML
+        `update plan page </docs/themes/#profile_plans_plan>`_
+        as present in the default theme.
+
+        **Tags**: subscriptions, provider, planmodel
 
         **Examples**
 
         .. code-block:: http
 
-            PUT /api/profile/cowork/plans/open-space HTTP/1.1
+            PUT /api/profile/cowork/plans/open-space/ HTTP/1.1
 
         .. code-block:: json
 

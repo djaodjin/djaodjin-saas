@@ -31,7 +31,7 @@ from django.conf.urls import url
 from ....api.organizations import (
     OrganizationDetailAPIView, OrganizationPictureAPIView)
 from ....api.subscriptions import (SubscriptionDetailAPIView,
-    SubscriberSubscriptionListAPIView)
+    SubscribedSubscriptionListAPIView)
 from ....settings import ACCT_REGEX
 
 
@@ -41,7 +41,7 @@ urlpatterns = [
         SubscriptionDetailAPIView.as_view(),
         name='saas_api_subscription_detail'),
     url(r'^profile/(?P<organization>%s)/subscriptions/?' % ACCT_REGEX,
-        SubscriberSubscriptionListAPIView.as_view(),
+        SubscribedSubscriptionListAPIView.as_view(),
         name='saas_api_subscription_list'),
     url(r'^profile/(?P<organization>%s)/?$' % ACCT_REGEX,
         OrganizationDetailAPIView.as_view(), name='saas_api_organization'),

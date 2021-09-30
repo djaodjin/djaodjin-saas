@@ -32,6 +32,7 @@ from rest_framework.generics import (ListCreateAPIView,
 from rest_framework.response import Response
 
 from .serializers import CouponSerializer, CouponCreateSerializer
+from ..docs import swagger_auto_schema, OpenAPIResponse
 from ..filters import OrderingFilter, SearchFilter, DateRangeFilter
 from ..models import Coupon
 from ..mixins import CouponMixin, ProviderMixin
@@ -44,17 +45,21 @@ class SmartCouponListMixin(object):
     """
     ``Coupon`` list which is also searchable and sortable.
     """
-    search_fields = ('code',
-                     'description',
-                     'amount',
-                     'organization__full_name')
-
-    ordering_fields = [('code', 'code'),
-                           ('created_at', 'created_at'),
-                           ('description', 'description'),
-                           ('ends_at', 'ends_at'),
-                           ('discount_type', 'discount_type'),
-                           ('amount', 'amount')]
+    search_fields = (
+        'code',
+        'description',
+        'amount',
+        'organization__full_name'
+    )
+    ordering_fields = (
+        ('code', 'code'),
+        ('created_at', 'created_at'),
+        ('description', 'description'),
+        ('ends_at', 'ends_at'),
+        ('discount_type', 'discount_type'),
+        ('amount', 'amount')
+    )
+    ordering = ('ends_at',)
 
     filter_backends = (OrderingFilter, SearchFilter)
 
@@ -70,23 +75,23 @@ class CouponListCreateAPIView(SmartCouponListMixin, CouponQuerysetMixin,
     """
     Lists discount codes
 
-    Queries a page (``PAGE_SIZE`` records) of ``Coupon`` associated
-    to a provider.
+    Returns a list of {{PAGE_SIZE}} coupons for provider {organization}.
 
-    The queryset can be filtered to a range of dates
-    ([``start_at``, ``ends_at``]) and for at least one field to match a search
-    term (``q``).
+    The queryset can be further refined to match a search filter (``q``)
+    and/or a range of dates ([``start_at``, ``ends_at``]),
+    and sorted on specific fields (``o``).
 
-    Query results can be ordered by natural fields (``o``) in either ascending
-    or descending order (``ot``).
+    The API is typically used within an HTML
+    `coupons page </docs/themes/#dashboard_billing_coupons>`_
+    as present in the default theme.
 
-    **Tags**: billing
+    **Tags**: billing, provider, couponmodel
 
     **Examples**
 
     .. code-block:: http
 
-        GET /api/billing/cowork/coupons?o=code&ot=asc&q=DIS HTTP/1.1
+        GET /api/billing/cowork/coupons/?o=code&ot=asc&q=DIS HTTP/1.1
 
     retrieves the list of Coupon for provider cowork where `code`
     matches 'DIS', ordered by `code` in ascending order.
@@ -103,7 +108,7 @@ class CouponListCreateAPIView(SmartCouponListMixin, CouponQuerysetMixin,
                 {
                     "code": "DIS100",
                     "discount_type": "percentage",
-                    "amount": 10000,
+                    "discount_value": 10000,
                     "created_at": "2014-01-01T09:00:00Z",
                     "ends_at": null,
                     "description": null
@@ -111,7 +116,7 @@ class CouponListCreateAPIView(SmartCouponListMixin, CouponQuerysetMixin,
                 {
                     "code": "DIS50",
                     "discount_type": "percentage",
-                    "amount": 5000,
+                    "discount_value": 5000,
                     "created_at": "2014-01-01T09:00:00Z",
                     "ends_at": null,
                     "description": null
@@ -123,6 +128,13 @@ class CouponListCreateAPIView(SmartCouponListMixin, CouponQuerysetMixin,
     filter_backends = (SmartCouponListMixin.filter_backends +
         (DateRangeFilter,))
 
+    def get_serializer_class(self):
+        if self.request.method.lower() in ('post',):
+            return CouponCreateSerializer
+        return super(CouponListCreateAPIView, self).get_serializer_class()
+
+    @swagger_auto_schema(responses={
+        201: OpenAPIResponse("created", CouponSerializer)})
     def post(self, request, *args, **kwargs):
         """
         Creates a discount code
@@ -130,20 +142,24 @@ class CouponListCreateAPIView(SmartCouponListMixin, CouponQuerysetMixin,
         Customers will be able to use the `code` until `ends_at`
         to subscribe to plans from the Coupon's provider at a discount.
 
-        **Tags**: billing
+        The API is typically used within an HTML
+        `coupons page </docs/themes/#dashboard_billing_coupons>`_
+        as present in the default theme.
+
+        **Tags**: billing, provider, couponmodel
 
         **Examples**
 
         .. code-block:: http
 
-            POST /api/billing/cowork/coupons HTTP/1.1
+            POST /api/billing/cowork/coupons/ HTTP/1.1
 
         .. code-block:: json
 
             {
               "code": "DIS100",
               "discount_type": "percentage",
-              "amount": 10000,
+              "discount_value": 10000,
               "ends_at": null,
               "description": null
             }
@@ -155,7 +171,7 @@ class CouponListCreateAPIView(SmartCouponListMixin, CouponQuerysetMixin,
             {
               "code": "DIS100",
               "discount_type": "percentage",
-              "amount": 10000,
+              "discount_value": 10000,
               "ends_at": null,
               "description": null
             }
@@ -164,7 +180,7 @@ class CouponListCreateAPIView(SmartCouponListMixin, CouponQuerysetMixin,
 
     def create(self, request, *args, **kwargs):
         #pylint:disable=unused-argument
-        serializer = CouponCreateSerializer(data=request.data)
+        serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         # check plan belongs to organization
         plan = serializer.validated_data.get('plan')
@@ -176,7 +192,7 @@ class CouponListCreateAPIView(SmartCouponListMixin, CouponQuerysetMixin,
         except IntegrityError as err:
             handle_uniq_error(err)
         headers = self.get_success_headers(serializer.data)
-        return Response(self.get_serializer().to_representation(
+        return Response(CouponSerializer().to_representation(
             serializer.instance), status=status.HTTP_201_CREATED,
             headers=headers)
 
@@ -185,13 +201,17 @@ class CouponDetailAPIView(CouponMixin, RetrieveUpdateDestroyAPIView):
     """
     Retrieves a discount code
 
-    **Tags**: billing
+    The API is typically used within an HTML
+    `coupons page </docs/themes/#dashboard_billing_coupons>`_
+    as present in the default theme.
+
+    **Tags**: billing, provider, couponmodel
 
     **Examples**
 
     .. code-block:: http
 
-        GET /api/billing/cowork/coupons/DIS100 HTTP/1.1
+        GET /api/billing/cowork/coupons/DIS100/ HTTP/1.1
 
     responds
 
@@ -200,7 +220,7 @@ class CouponDetailAPIView(CouponMixin, RetrieveUpdateDestroyAPIView):
         {
             "code": "DIS100",
             "discount_type": "percentage",
-            "amount": 10000,
+            "discount_value": 10000,
             "created_at": "2014-01-01T09:00:00Z",
             "ends_at": null,
             "description": null
@@ -212,19 +232,23 @@ class CouponDetailAPIView(CouponMixin, RetrieveUpdateDestroyAPIView):
         """
         Updates a discount code
 
-        **Tags**: billing
+        The API is typically used within an HTML
+        `coupons page </docs/themes/#dashboard_billing_coupons>`_
+        as present in the default theme.
+
+        **Tags**: billing, provider, couponmodel
 
         **Examples**
 
         .. code-block:: http
 
-            PUT /api/billing/cowork/coupons/DIS100 HTTP/1.1
+            PUT /api/billing/cowork/coupons/DIS100/ HTTP/1.1
 
         .. code-block:: json
 
             {
                 "discount_type": "percentage",
-                "amount": 10000,
+                "discount_value": 10000,
                 "ends_at": null,
                 "description": null
             }
@@ -236,7 +260,7 @@ class CouponDetailAPIView(CouponMixin, RetrieveUpdateDestroyAPIView):
             {
                 "code": "DIS100",
                 "discount_type": "percentage",
-                "amount": 10000,
+                "discount_value": 10000,
                 "ends_at": null,
                 "description": null
             }
@@ -252,13 +276,17 @@ class CouponDetailAPIView(CouponMixin, RetrieveUpdateDestroyAPIView):
         at least once will be de-activated and still available for
         performance measurements.
 
-        **Tags**: billing
+        The API is typically used within an HTML
+        `coupons page </docs/themes/#dashboard_billing_coupons>`_
+        as present in the default theme.
+
+        **Tags**: billing, provider, couponmodel
 
         **Examples**
 
         .. code-block:: http
 
-            DELETE /api/billing/cowork/coupons/DIS100 HTTP/1.1
+            DELETE /api/billing/cowork/coupons/DIS100/ HTTP/1.1
         """
         return self.destroy(request, *args, **kwargs)
 

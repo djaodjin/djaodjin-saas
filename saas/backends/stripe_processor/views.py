@@ -71,6 +71,16 @@ class StripeProcessorRedirectView(RedirectView):
 class StripeWebhook(APIView):
     """
     Answers callback from Stripe.
+
+    **Examples**
+
+    .. code-block:: http
+
+        POST /api/stripe/postevent HTTP/1.1
+
+    .. code-block:: json
+
+        {}
     """
     swagger_schema = None
 

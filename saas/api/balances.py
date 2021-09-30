@@ -1,4 +1,4 @@
-# Copyright (c) 2020, DjaoDjin inc.
+# Copyright (c) 2021, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -24,8 +24,8 @@
 
 #pylint:disable=useless-super-delegation
 
-from django.db.models import F, Q, Max
 from django.db import transaction
+from django.db.models import F, Q, Max
 from rest_framework.generics import (get_object_or_404,
     GenericAPIView, ListCreateAPIView, RetrieveUpdateDestroyAPIView)
 from rest_framework.response import Response
@@ -36,7 +36,8 @@ from ..metrics.base import abs_monthly_balances, monthly_balances
 from ..models import BalanceLine
 from ..filters import DateRangeFilter
 from ..mixins import DateRangeContextMixin
-from .serializers import BalanceLineSerializer, MetricsSerializer
+from .serializers import (BalanceLineSerializer, MetricsSerializer,
+    UpdateRankSerializer)
 
 #pylint: disable=no-init
 
@@ -48,7 +49,7 @@ class BrokerBalancesAPIView(DateRangeContextMixin, GenericAPIView):
 
     To add lines in the report see `/api/metrics/balances/{report}/lines/`.
 
-    **Tags**: metrics
+    **Tags**: metrics, broker, transactionmodel
 
     **Examples**
 
@@ -112,7 +113,7 @@ class BalanceLineListAPIView(ListCreateAPIView):
 
     Queries the list of rows reported on a balance sheet named `{report}`.
 
-    **Tags**: metrics
+    **Tags**: metrics, broker, transactionmodel
 
     **Examples**
 
@@ -140,6 +141,11 @@ class BalanceLineListAPIView(ListCreateAPIView):
     serializer_class = BalanceLineSerializer
     queryset = BalanceLine.objects.all()
 
+    def get_serializer_class(self):
+        if self.request.method.lower() in ('patch',):
+            return UpdateRankSerializer
+        return super(BalanceLineListAPIView, self).get_serializer_class()
+
     def get_queryset(self):
         return self.queryset.filter(
             report=self.kwargs.get('report')).order_by('rank')
@@ -157,7 +163,7 @@ class BalanceLineListAPIView(ListCreateAPIView):
 
         Adds a new row on the ``{report}`` balance sheet.
 
-        **Tags**: metrics
+        **Tags**: metrics, broker, transactionmodel
 
         **Examples**
 
@@ -187,7 +193,7 @@ class BalanceLineListAPIView(ListCreateAPIView):
             request, *args, **kwargs)
 
     @swagger_auto_schema(responses={
-        200: OpenAPIResponse("success", BalanceLineSerializer)})
+        200: OpenAPIResponse("success", BalanceLineSerializer(many=True))})
     def patch(self, request, *args, **kwargs):
         """
         Updates the order in which lines are displayed
@@ -196,7 +202,7 @@ class BalanceLineListAPIView(ListCreateAPIView):
         it will move the line at position 3 to position 1, updating the
         rank of all lines in-between.
 
-        **Tags**: metrics
+        **Tags**: metrics, broker, transactionmodel
 
         **Examples**
 
@@ -255,7 +261,7 @@ class BalanceLineDetailAPIView(RetrieveUpdateDestroyAPIView):
 
     Describes a row reported on a balance sheet named `{report}`.
 
-    **Tags**: metrics
+    **Tags**: metrics, broker, transactionmodel
 
     **Examples**
 
@@ -274,6 +280,10 @@ class BalanceLineDetailAPIView(RetrieveUpdateDestroyAPIView):
         }
     """
     serializer_class = BalanceLineSerializer
+    queryset = BalanceLine.objects.all()
+
+    def get_queryset(self):
+        return self.queryset.filter(report=self.kwargs.get('report'))
 
     def put(self, request, *args, **kwargs):
         """
@@ -281,7 +291,7 @@ class BalanceLineDetailAPIView(RetrieveUpdateDestroyAPIView):
 
         Updates a row reported on a balance sheet named `{report}`.
 
-        **Tags**: metrics
+        **Tags**: metrics, broker, transactionmodel
 
         **Examples**
 
@@ -316,7 +326,7 @@ class BalanceLineDetailAPIView(RetrieveUpdateDestroyAPIView):
 
         Deletes a row reported on a balance sheet named `{report}`.
 
-        **Tags**: metrics
+        **Tags**: metrics, broker, transactionmodel
 
         **Examples**
 
@@ -324,10 +334,9 @@ class BalanceLineDetailAPIView(RetrieveUpdateDestroyAPIView):
 
             DELETE /api/metrics/balances/taxes/lines/1/ HTTP/1.1
         """
-        return super(BalanceLineDetailAPIView, self).put(
+        return super(BalanceLineDetailAPIView, self).delete(
             request, *args, **kwargs)
 
     def get_object(self):
         return get_object_or_404(self.get_queryset(),
-            report=self.kwargs.get('report'),
             rank=self.kwargs.get('rank'))

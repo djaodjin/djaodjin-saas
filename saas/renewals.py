@@ -60,7 +60,7 @@ def _recognize_subscription_income(subscription, until=None):
     recognize_start = subscription.created_at
     recognize_end = (subscription.created_at
         + relativedelta(months=recognize_period_idx + 1))
-    LOGGER.debug('process %s', subscription)
+    LOGGER.debug('process subscription %d %s', subscription.id, subscription)
     for order in Transaction.objects.get_subscription_receivable(
             subscription, until=until):
         # [``order_subscribe_beg``, ``order_subscribe_end``[ is
@@ -71,7 +71,7 @@ def _recognize_subscription_income(subscription, until=None):
         order_subscribe_end = subscription.plan.end_of_period(
             order_subscribe_beg, nb_periods=order_periods)
         min_end = min(order_subscribe_end, until)
-        LOGGER.debug('\tprocess order %d %s of %dc covering [%s, %s['\
+        LOGGER.debug('\tprocess transaction %d %s of %dc covering [%s, %s['\
             ' (%s periods) until %s', order.id,
             subscription, order.dest_amount,
             order_subscribe_beg, order_subscribe_end,

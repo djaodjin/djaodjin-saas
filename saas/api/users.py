@@ -1,4 +1,4 @@
-# Copyright (c) 2020, DjaoDjin inc.
+# Copyright (c) 2021, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -29,11 +29,11 @@ from rest_framework.response import Response
 from rest_framework.generics import ListAPIView, GenericAPIView
 from rest_framework.exceptions import ValidationError
 
-from .serializers import UserSerializer, AgreementSignSerializer
+from .serializers import AgreementSignSerializer
 from ..models import Agreement, Signature
 from ..mixins import (ProviderMixin, UserSmartListMixin,
     DateRangeContextMixin)
-from ..utils import get_role_model
+from ..utils import get_role_model, get_user_serializer
 
 
 #pylint: disable=no-init
@@ -73,23 +73,24 @@ class RegisteredAPIView(UserSmartListMixin, RegisteredBaseAPIView):
     """
     Lists top of funnel registered users
 
-    Lists all ``User`` which have no associated role or a role
-    to an ``Organization`` which has no Subscription, active or inactive.
+    Returns a list of {{PAGE_SIZE}} users which have no associated role
+    or a role to a profile which has no subscription, active or inactive.
 
-    The queryset can be filtered to a range of dates
-    ([``start_at``, ``ends_at``]) and for at least one field to match a search
-    term (``q``).
+    The queryset can be further refined to match a search filter (``q``)
+    and/or a range of dates ([``start_at``, ``ends_at``]),
+    and sorted on specific fields (``o``).
 
-    Query results can be ordered by natural fields (``o``) in either ascending
-    or descending order (``ot``).
+    The API is typically used within an HTML
+    `subscribers page </docs/themes/#dashboard_profile_subscribers>`_
+    as present in the default theme.
 
-    **Tags**: metrics
+    **Tags**: metrics, broker, usermodel
 
     **Examples**
 
     .. code-block:: http
 
-        GET  /api/metrics/registered?o=created_at&ot=desc HTTP/1.1
+        GET  /api/metrics/registered/ HTTP/1.1
 
     responds
 
@@ -102,14 +103,16 @@ class RegisteredAPIView(UserSmartListMixin, RegisteredBaseAPIView):
             "results": [
                 {
                     "slug": "alice",
+                    "created_at": "2014-01-01T00:00:00Z",
                     "email": "alice@djaodjin.com",
                     "full_name": "Alice Cooper",
-                    "created_at": "2014-01-01T00:00:00Z"
+                    "printable_name": "Alice Cooper",
+                    "username": "alice"
                 }
             ]
         }
     """
-    serializer_class = UserSerializer
+    serializer_class = get_user_serializer()
 
 
 class AgreementSignAPIView(GenericAPIView):
@@ -118,7 +121,11 @@ class AgreementSignAPIView(GenericAPIView):
 
     Indicates the request user has signed the required consent agreement.
 
-    **Tags**: profile
+    The API is typically used within an HTML
+    `legal agreement page </docs/themes/#workflow_legal_sign>`_
+    as present in the default theme.
+
+    **Tags**: profile, user, usermodel
 
     **Examples**
 

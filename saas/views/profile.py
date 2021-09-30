@@ -268,8 +268,7 @@ class OrganizationCreateView(RedirectFormMixin, CreateView):
             if not _valid_manager(self.request, [get_broker()]):
                 # If it is a manager of the broker platform creating
                 # the newly created Organization will be accessible anyway.
-                self.object.add_manager(
-                    self.request.user, request_user=self.request.user)
+                self.object.add_manager(self.request.user)
         return http.HttpResponseRedirect(self.get_success_url())
 
     def get_initial(self):

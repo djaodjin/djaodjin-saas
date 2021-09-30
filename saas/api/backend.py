@@ -32,7 +32,7 @@ from rest_framework.generics import (RetrieveAPIView,
 from rest_framework.response import Response
 
 from ..backends import ProcessorError
-from ..docs import swagger_auto_schema, Parameter, IN_PATH
+from ..docs import OpenAPIResponse, swagger_auto_schema, Parameter, IN_PATH
 from ..mixins import OrganizationMixin
 from ..models import get_broker
 from .serializers import (BankSerializer, CardSerializer,
@@ -44,15 +44,16 @@ class RetrieveBankAPIView(OrganizationMixin, RetrieveAPIView):
     """
     Retrieves a payout account
 
-    Pass through that calls the processor API to retrieve some details about
-    the deposit account associated to a provider (if that information is
+    Pass through that calls the payment processor API to retrieve some details
+    about the deposit account associated to a provider (if that information is
     available through the :doc:`payment processor backend<backends>` API).
 
     This API does not trigger payment of a subscriber to a provider. Checkout
     of a subscription cart is done either through the
-    :ref:`HTML page<pages_cart>` or :ref:`API end point<api_checkout>`.
+    :ref:`HTML page <pages_cart>` or
+    :ref:`API end point <api_checkout>`.
 
-    **Tags**: billing
+    **Tags**: billing, provider, profilemodel
 
     **Examples**
 
@@ -84,7 +85,7 @@ class PaymentMethodDetailAPIView(OrganizationMixin,
     """
     Retrieves a payment method
 
-    Pass through to the processor to retrieve some details about
+    Pass through to the payment processor to retrieve some details about
     the payment method (ex: credit card) associated to a subscriber.
 
     When you wish to update the payment method on file through
@@ -93,13 +94,17 @@ class PaymentMethodDetailAPIView(OrganizationMixin,
     in the processor.STRIPE_INTENT_SECRET field when the API is called
     with `?update=1` query parameters.
 
-    **Tags**: billing
+    The API is typically used within an HTML
+    `update payment method page </docs/themes/#dashboard_billing_card>`_
+    as present in the default theme.
+
+    **Tags**: billing, subscriber, profilemodel
 
     **Examples**
 
     .. code-block:: http
 
-        GET /api/billing/cowork/card/ HTTP/1.1
+        GET /api/billing/xia/card/ HTTP/1.1
 
     responds
 
@@ -112,20 +117,29 @@ class PaymentMethodDetailAPIView(OrganizationMixin,
     """
     serializer_class = CardSerializer
 
+    def get_serializer_class(self):
+        if self.request.method.lower() in ('put',):
+            return CardTokenSerializer
+        return super(PaymentMethodDetailAPIView, self).get_serializer_class()
+
     def delete(self, request, *args, **kwargs):
         """
         Deletes a payment method
 
-        Pass through to the processor to remove the payment method (ex: credit
-        card) associated to a subscriber.
+        Pass through to the payment processor to remove the payment method
+        (ex: credit card) associated to a subscriber.
 
-        **Tags**: billing
+        The API is typically used within an HTML
+        `update payment method page </docs/themes/#dashboard_billing_card>`_
+        as present in the default theme.
+
+        **Tags**: billing, subscriber, profilemodel
 
         **Examples**
 
         .. code-block:: http
 
-            DELETE /api/billing/cowork/card/ HTTP/1.1
+            DELETE /api/billing/xia/card/ HTTP/1.1
         """
         return super(PaymentMethodDetailAPIView, self).delete(
             request, *args, **kwargs)
@@ -138,21 +152,27 @@ class PaymentMethodDetailAPIView(OrganizationMixin,
         return super(PaymentMethodDetailAPIView, self).get(
             request, *args, **kwargs)
 
-    @swagger_auto_schema(request_body=CardTokenSerializer)
+    @swagger_auto_schema(responses={
+        200: OpenAPIResponse("Update successful", CardSerializer),
+    })
     def put(self, request, *args, **kwargs):
         """
         Updates a payment method
 
-        Pass through to the processor to update some details about
+        Pass through to the payment processor to update some details about
         the payment method (ex: credit card) associated to a subscriber.
 
-        **Tags**: billing
+        The API is typically used within an HTML
+        `update payment method page </docs/themes/#dashboard_billing_card>`_
+        as present in the default theme.
+
+        **Tags**: billing, subscriber, profilemodel
 
         **Examples**
 
         .. code-block:: http
 
-            PUT /api/billing/cowork/card/ HTTP/1.1
+            PUT /api/billing/xia/card/ HTTP/1.1
 
         .. code-block:: json
 
@@ -196,9 +216,10 @@ class PaymentMethodDetailAPIView(OrganizationMixin,
     def update(self, request, *args, **kwargs):
         #pylint:disable=unused-argument
         partial = kwargs.pop('partial', False)
-        serializer = CardTokenSerializer(data=request.data, partial=partial)
+        serializer = self.get_serializer_class()(
+            data=request.data, partial=partial)
         serializer.is_valid(raise_exception=True)
-        token = serializer.validated_data['token']
+        token = serializer.validated_data.get('token')
         try:
             new_card = self.organization.update_card(token, self.request.user)
         except ProcessorError as err:

@@ -120,7 +120,7 @@ class Migration(migrations.Migration):
                 ('processor_refresh_token', models.SlugField(blank=True, max_length=255, null=True)),
                 ('extra', models.TextField(null=True, blank=True, help_text='Extra meta data (can be stringify JSON)')),
                 ('processor', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='processes', to='saas.Organization')),
-                ('picture', models.URLField(blank=True, help_text='Profile picture', max_length=2083, null=True, verbose_name='Profile picture')),
+                ('picture', models.URLField(blank=True, help_text='URL location of the profile picture', max_length=2083, null=True, verbose_name='Profile picture')),
             ],
         ),
         migrations.CreateModel(

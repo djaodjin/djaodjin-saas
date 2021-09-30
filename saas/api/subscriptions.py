@@ -1,4 +1,4 @@
-# Copyright (c) 2020, DjaoDjin inc.
+# Copyright (c) 2021, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -27,12 +27,12 @@
 import logging
 
 from rest_framework import status
-from rest_framework.generics import (get_object_or_404, CreateAPIView,
+from rest_framework.generics import (get_object_or_404, GenericAPIView,
     ListAPIView, ListCreateAPIView, RetrieveUpdateDestroyAPIView)
 from rest_framework.response import Response
 
 from ..decorators import _valid_manager
-from ..docs import no_body, swagger_auto_schema
+from ..docs import OpenAPIResponse, no_body, swagger_auto_schema
 from ..filters import DateRangeFilter
 from ..mixins import (ChurnedQuerysetMixin, PlanSubscribersQuerysetMixin,
     ProviderMixin, SubscriptionMixin, SubscriptionSmartListMixin,
@@ -41,37 +41,42 @@ from .. import signals
 from ..models import Subscription
 from ..utils import generate_random_slug, datetime_or_now
 from .roles import OptinBase
-from .serializers import (ForceSerializer, SubscriptionSerializer,
-    SubscriptionCreateSerializer)
+from .serializers import (ForceSerializer,
+    ProvidedSubscriptionSerializer, ProvidedSubscriptionCreateSerializer,
+    SubscribedSubscriptionSerializer)
 
 #pylint: disable=no-init
 
 LOGGER = logging.getLogger(__name__)
 
 
-class SubscriberSubscriptionListBaseAPIView(SubscriptionMixin, ListAPIView):
+class SubscribedSubscriptionListBaseAPIView(SubscriptionMixin, ListAPIView):
 
     pass
 
 
-class SubscriberSubscriptionListAPIView(SubscriptionSmartListMixin,
-                                    SubscriberSubscriptionListBaseAPIView):
+class SubscribedSubscriptionListAPIView(SubscriptionSmartListMixin,
+                                    SubscribedSubscriptionListBaseAPIView):
     """
-    Lists subscriptions
+    Lists a subscriber subscriptions
 
-    Returns a PAGE_SIZE list of subscriptions past and present for
+    Returns a list of {{PAGE_SIZE}} subscriptions, past and present, for
     subscriber {organization}.
 
     The queryset can be further refined to match a search filter (``q``)
     and sorted on specific fields (``o``).
 
-    **Tags**: subscriptions
+    The API is typically used within an HTML
+    `subscriptions page </docs/themes/#dashboard_profile_subscriptions>`_
+    as present in the default theme.
+
+    **Tags**: subscriptions, subscriber, subscriptionmodel
 
     **Examples**
 
     .. code-block:: http
 
-        GET /api/profile/cowork/subscriptions/?o=created_at&ot=desc HTTP/1.1
+        GET /api/profile/xia/subscriptions/?o=created_at&ot=desc HTTP/1.1
 
     responds
 
@@ -108,7 +113,7 @@ class SubscriberSubscriptionListAPIView(SubscriptionSmartListMixin,
             ]
         }
     """
-    serializer_class = SubscriptionSerializer
+    serializer_class = SubscribedSubscriptionSerializer
 
     # No POST. We are talking about a subscriber Organization here.
 
@@ -121,7 +126,7 @@ class SubscriptionDetailAPIView(SubscriptionMixin,
 
     Returns the subscription of {organization} to {subscribed_plan}.
 
-    **Tags**: subscriptions
+    **Tags**: subscriptions, subscriber, subscriptionmodel
 
     **Examples**
 
@@ -181,7 +186,7 @@ class SubscriptionDetailAPIView(SubscriptionMixin,
           "request_key": null
         }
     """
-    serializer_class = SubscriptionSerializer
+    serializer_class = SubscribedSubscriptionSerializer
 
     def put(self, request, *args, **kwargs):
         """
@@ -189,7 +194,11 @@ class SubscriptionDetailAPIView(SubscriptionMixin,
 
         Unsubscribes {organization} from {subscribed_plan} at a future date.
 
-        **Tags**: subscriptions
+        The API is typically used within an HTML
+        `subscribers page </docs/themes/#dashboard_profile_subscribers>`_
+        as present in the default theme.
+
+        **Tags**: subscriptions, subscriber, subscriptionmodel
 
         **Examples**
 
@@ -261,11 +270,15 @@ class SubscriptionDetailAPIView(SubscriptionMixin,
 
     def delete(self, request, *args, **kwargs):
         """
-        Unsubscribes
+        Unsubscribes now
 
         Unsubscribes {organization} from {subscribed_plan}.
 
-        **Tags**: subscriptions
+        The API is typically used within an HTML
+        `subscribers page </docs/themes/#dashboard_profile_subscribers>`_
+        as present in the default theme.
+
+        **Tags**: subscriptions, subscriber, subscriptionmodel
 
         **Examples**
 
@@ -292,16 +305,20 @@ class SubscriptionDetailAPIView(SubscriptionMixin,
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
-class PlanSubscriptionsAPIView(SubscriptionSmartListMixin,
+class ProvidedSubscriptionsAPIView(SubscriptionSmartListMixin,
                                PlanSubscribersQuerysetMixin,
                                OptinBase, ListCreateAPIView):
     """
     Lists subscriptions to a plan
 
-    Returns a PAGE_SIZE records of subscriptions to {plan} provided by
+    Returns a list of {{PAGE_SIZE}} subscriptions to {plan} provided by
     {organization}.
 
-    **Tags**: subscriptions
+    The queryset can be further refined to match a search filter (``q``)
+    and/or a range of dates ([``start_at``, ``ends_at``]),
+    and sorted on specific fields (``o``).
+
+    **Tags**: subscriptions, provider, subscriptionmodel
 
     **Examples**
 
@@ -325,9 +342,14 @@ class PlanSubscriptionsAPIView(SubscriptionSmartListMixin,
             }]
         }
     """
-    serializer_class = SubscriptionSerializer
+    serializer_class = ProvidedSubscriptionSerializer
     filter_backends = SubscriptionSmartListMixin.filter_backends + (
         DateRangeFilter,)
+
+    def get_serializer_class(self):
+        if self.request.method.lower() == 'post':
+            return ProvidedSubscriptionCreateSerializer
+        return super(ProvidedSubscriptionsAPIView, self).get_serializer_class()
 
     def add_relations(self, organizations, user, ends_at=None):
         ends_at = datetime_or_now(ends_at)
@@ -359,15 +381,16 @@ class PlanSubscriptionsAPIView(SubscriptionSmartListMixin,
             subscriptions += [subscription]
         return subscriptions, created
 
-    @swagger_auto_schema(request_body=SubscriptionCreateSerializer,
+    @swagger_auto_schema(responses={
+      201: OpenAPIResponse("created", ProvidedSubscriptionSerializer)},
         query_serializer=ForceSerializer)
     def post(self, request, *args, **kwargs):
         """
-        Subscribes to a plan through the provider
+        Grants a subscription
 
         Subscribes a customer to the {plan} provided by {organization}.
 
-        **Tags**: subscriptions
+        **Tags**: subscriptions, provider, subscriptionmodel
 
         **Examples**
 
@@ -411,7 +434,7 @@ class PlanSubscriptionsAPIView(SubscriptionSmartListMixin,
               "auto_renew": true
             }
         """
-        return super(PlanSubscriptionsAPIView, self).post(
+        return super(ProvidedSubscriptionsAPIView, self).post(
             request, *args, **kwargs)
 
     def send_signals(self, relations, user, reason=None, invite=False):
@@ -421,19 +444,19 @@ class PlanSubscriptionsAPIView(SubscriptionSmartListMixin,
                 request=self.request)
 
     def create(self, request, *args, **kwargs): #pylint:disable=unused-argument
-        serializer = SubscriptionCreateSerializer(data=request.data)
+        serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         return self.perform_optin(serializer, request)
 
 
 class PlanSubscriptionDetailAPIView(ProviderMixin, SubscriptionDetailAPIView):
     """
-    Retrieves a subscription through the provider
+    Retrieves a subscription to a provider plan
 
     Returns the subscription of {subscriber} to {plan} from provider
     {organization}.
 
-    **Tags**: subscriptions
+    **Tags**: subscriptions, provider, subscriptionmodel
 
     **Examples**
 
@@ -494,7 +517,7 @@ class PlanSubscriptionDetailAPIView(ProviderMixin, SubscriptionDetailAPIView):
         }
     """
     subscriber_url_kwarg = 'subscriber'
-    serializer_class = SubscriptionSerializer
+    serializer_class = ProvidedSubscriptionSerializer
 
     def get_queryset(self):
         return super(PlanSubscriptionDetailAPIView, self).get_queryset().filter(
@@ -503,11 +526,11 @@ class PlanSubscriptionDetailAPIView(ProviderMixin, SubscriptionDetailAPIView):
 
     def delete(self, request, *args, **kwargs):
         """
-        Unsubscribes through the provider
+        Deletes a subscription to a provider plan
 
         Unsubscribes {subscriber} from {plan} provided by {organization}.
 
-        **Tags**: subscriptions
+        **Tags**: subscriptions, provider, subscriptionmodel
 
         **Examples**
 
@@ -522,12 +545,12 @@ class PlanSubscriptionDetailAPIView(ProviderMixin, SubscriptionDetailAPIView):
 
     def put(self, request, *args, **kwargs):
         """
-        Updates a subscription through the provider
+        Updates a subscription to a provider plan
 
         Updates the subscription of {subscriber} to {plan} from provider
         {organization}.
 
-        **Tags**: subscriptions
+        **Tags**: subscriptions, provider, subscriptionmodel
 
         **Examples**
 
@@ -622,13 +645,17 @@ class ActiveSubscriptionAPIView(SubscriptionSmartListMixin,
     Query results can be ordered by natural fields (``o``) in either ascending
     or descending order (``ot``).
 
-    **Tags**: metrics
+    The API is typically used within an HTML
+    `subscribers page </docs/themes/#dashboard_profile_subscribers>`_
+    as present in the default theme.
+
+    **Tags**: metrics, provider, profilemodel
 
     **Examples**
 
     .. code-block:: http
 
-        GET /api/metrics/cowork/active?o=created_at&ot=desc HTTP/1.1
+        GET /api/metrics/cowork/active/?o=created_at&ot=desc HTTP/1.1
 
     responds
 
@@ -665,7 +692,7 @@ class ActiveSubscriptionAPIView(SubscriptionSmartListMixin,
             ]
         }
     """
-    serializer_class = SubscriptionSerializer
+    serializer_class = ProvidedSubscriptionSerializer
     filter_backends = (SubscriptionSmartListMixin.filter_backends +
         (DateRangeFilter,))
 
@@ -680,22 +707,24 @@ class ChurnedSubscriptionAPIView(SubscriptionSmartListMixin,
     """
     Lists churned subscriptions
 
-    Lists all ``Subscription`` to a plan whose provider is
-    ``:organization`` which have ended already.
+    Returns a list of {{PAGE_SIZE}} subscriptions to a plan whose provider is
+    ``{organization}`` which have ended already.
 
-    The queryset can be further filtered to a range of dates between
-    ``start_at`` and ``ends_at``.
+    The queryset can be further refined to match a search filter (``q``)
+    and/or a range of dates ([``start_at``, ``ends_at``]),
+    and sorted on specific fields (``o``).
 
-    The queryset can be further filtered by passing a ``q`` parameter.
-    The result queryset can be ordered.
+    The API is typically used within an HTML
+    `subscribers page </docs/themes/#dashboard_profile_subscribers>`_
+    as present in the default theme.
 
-    **Tags**: metrics
+    **Tags**: metrics, provider, profilemodel
 
     **Examples**
 
     .. code-block:: http
 
-        GET /api/metrics/cowork/churned?o=created_at&ot=desc HTTP/1.1
+        GET /api/metrics/cowork/churned/?o=created_at&ot=desc HTTP/1.1
 
     responds
 
@@ -732,31 +761,44 @@ class ChurnedSubscriptionAPIView(SubscriptionSmartListMixin,
             ]
         }
     """
-    serializer_class = SubscriptionSerializer
+    serializer_class = ProvidedSubscriptionSerializer
 
 
-class SubscriptionRequestAcceptAPIView(CreateAPIView):
+class SubscriptionRequestAcceptAPIView(GenericAPIView):
     """
     Accepts a subscription request
     """
     provider_url_kwarg = 'organization'
-    serializer_class = SubscriptionSerializer
+    serializer_class = ProvidedSubscriptionSerializer
 
-    @swagger_auto_schema(request_body=no_body)
+    @property
+    def subscription(self):
+        if not hasattr(self, '_subscription'):
+            self._subscription = get_object_or_404(self.get_queryset(),
+                request_key=self.kwargs.get('request_key'))
+        return self._subscription
+
+    def get_queryset(self):
+        return Subscription.objects.active_with(
+            self.kwargs.get(self.provider_url_kwarg))
+
+    @swagger_auto_schema(request_body=no_body, responses={
+      200: OpenAPIResponse("Grant successful", ProvidedSubscriptionSerializer)})
     def post(self, request, *args, **kwargs):
         """
         Grants a subscription request
 
-        Accepts a subscription request.
+        Accepts a subscription request identified by {request_key}.
+        The subscription must be to a plan provider by {organization}.
 
-        **Tags**: rbac
+        **Tags**: rbac, provider, subscriptionmodel
 
         **Examples**
 
         .. code-block:: http
 
-            POST /api/profile/xia/subscribers/accept\
-    /a00000d0a0000001234567890123456789012345 HTTP/1.1
+            POST /api/profile/cowork/subscribers/accept\
+/a00000d0a0000001234567890123456789012345/ HTTP/1.1
 
         responds
 
@@ -810,37 +852,19 @@ class SubscriptionRequestAcceptAPIView(CreateAPIView):
               "request_key": null
             }
         """
-        return super(SubscriptionRequestAcceptAPIView, self).post(
-            request, *args, **kwargs)
-
-    def get_queryset(self):
-        return Subscription.objects.active_with(
-            self.kwargs.get(self.provider_url_kwarg))
-
-    @property
-    def subscription(self):
-        if not hasattr(self, '_subscription'):
-            self._subscription = get_object_or_404(self.get_queryset(),
-                request_key=self.kwargs.get('request_key'))
-        return self._subscription
-
-    def get_object(self):
-        return self.subscription
-
-    def perform_update(self, serializer):
-        request_key = serializer.instance.request_key
-        serializer.instance.request_key = None
-        serializer.instance.save()
+        #pylint:disable=unused-argument
+        request_key = self.kwargs.get('request_key')
+        self.subscription.request_key = None
         LOGGER.info(
             "%s accepted subscription of %s to plan %s (request_key=%s)",
-            self.request.user, serializer.instance.organization,
-            serializer.instance.plan, request_key, extra={
+            self.request.user, self.subscription.organization,
+            self.subscription.plan, request_key, extra={
                 'request': self.request, 'event': 'accept',
                 'user': str(self.request.user),
-                'organization': str(serializer.instance.organization),
-                'plan': str(serializer.instance.plan),
-                'ends_at': str(serializer.instance.ends_at),
+                'organization': str(self.subscription.organization),
+                'plan': str(self.subscription.plan),
+                'ends_at': str(self.subscription.ends_at),
                 'request_key': request_key})
         signals.subscription_request_accepted.send(sender=__name__,
-            subscription=serializer.instance,
+            subscription=self.subscription,
             request_key=request_key, request=self.request)

@@ -1,4 +1,4 @@
-# Copyright (c) 2020, DjaoDjin inc.
+# Copyright (c) 2021, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -30,7 +30,6 @@ from django.core.exceptions import FieldDoesNotExist
 from django.db import models
 from django.utils.encoding import force_text
 from django.utils.timezone import utc
-from rest_framework.compat import coreapi, coreschema
 from rest_framework.filters import (OrderingFilter as BaseOrderingFilter,
     SearchFilter as BaseSearchFilter, BaseFilterBackend)
 from rest_framework.compat import distinct
@@ -84,8 +83,11 @@ class SearchFilter(BaseSearchFilter):
 
         return tuple(valid_fields)
 
-    def get_valid_fields(self, request, queryset, view, context={}):
+    def get_valid_fields(self, request, queryset, view, context=None):
         #pylint:disable=protected-access,unused-argument
+        if context is None:
+            context = {}
+
         fields = self.get_query_fields(request)
         # client-supplied fields take precedence
         if fields:
@@ -129,30 +131,30 @@ class SearchFilter(BaseSearchFilter):
             queryset = distinct(queryset, base)
         return queryset
 
-    def get_schema_fields(self, view):
-        # validating presence of coreapi and coreschema
-        super(SearchFilter, self).get_schema_fields(view)
+    def get_schema_operation_parameters(self, view):
         search_fields = getattr(view, 'search_fields', [])
         search_fields_description = "search for matching text in %s"  % (
-            ', '.join([field_name for field_name in search_fields]))
-
+            ', '.join(search_fields))
         return [
-            coreapi.Field(
-                name='q',
-                required=False,
-                location='query',
-                schema=coreschema.String(
-                    title='Q',
-                    description=force_text(search_fields_description)
-                )
-            )
+            {
+                'name': self.search_param,
+                'required': False,
+                'in': 'query',
+                'description': force_text(search_fields_description),
+                'schema': {
+                    'type': 'string',
+                },
+            },
         ]
 
 
 class OrderingFilter(BaseOrderingFilter):
 
-    def get_valid_fields(self, queryset, view, context={}):
+    def get_valid_fields(self, queryset, view, context=None):
         #pylint:disable=protected-access
+        if context is None:
+            context = {}
+
         model_fields = set([
             field.name for field in queryset.model._meta.get_fields()])
         # XXX base
@@ -241,24 +243,24 @@ class OrderingFilter(BaseOrderingFilter):
             " ordering_fields=%s", params, default_ordering, ordering)
         return ordering
 
-    def get_schema_fields(self, view):
+    def get_schema_operation_parameters(self, view):
         # validating presence of coreapi and coreschema
         super(OrderingFilter, self).get_schema_fields(view)
         ordering_fields = getattr(view, 'ordering_fields', [])
         sort_fields_description = "sort by %s. If a field is preceded by"\
-            "a minus sign ('-'), the order will be reversed. Multiple 'o'"\
+            " a minus sign ('-'), the order will be reversed. Multiple 'o'"\
             " parameters can be specified to produce a stable"\
             " result." % ', '.join([field[1] for field in ordering_fields])
         return [
-            coreapi.Field(
-                name='o',
-                required=False,
-                location='query',
-                schema=coreschema.String(
-                    title='O',
-                    description=force_text(sort_fields_description)
-                )
-            ),
+            {
+                'name': self.ordering_param,
+                'required': False,
+                'in': 'query',
+                'description': force_text(sort_fields_description),
+                'schema': {
+                    'type': 'string',
+                },
+            },
         ]
 
 
@@ -311,26 +313,29 @@ class DateRangeFilter(BaseFilterBackend):
             kwargs.update({'%s__gte' % field: start_at})
         return queryset.filter(**kwargs)
 
-    def get_schema_fields(self, view):
-        return [
-            coreapi.Field(
-                name='start_at',
-                required=False,
-                location='query',
-                schema=coreschema.String(
-                    title='StartAt',
-                    description=force_text("date/time in ISO format"\
-                        " after which records were created.")
-                )
-            ),
-            coreapi.Field(
-                name='ends_at',
-                required=False,
-                location='query',
-                schema=coreschema.String(
-                    title='EndsAt',
-                    description=force_text("date/time in ISO format"\
-                        " before which records were created.")
-                )
-            ),
+    def get_schema_operation_parameters(self, view):
+        fields = super(DateRangeFilter,
+            self).get_schema_operation_parameters(view)
+        fields += [
+            {
+                'name': 'start_at',
+                'required': False,
+                'in': 'query',
+                'description': force_text("date/time in ISO format"\
+                        " after which records were created."),
+                'schema': {
+                    'type': 'string',
+                },
+            },
+            {
+                'name': 'ends_at',
+                'required': False,
+                'in': 'query',
+                'description': force_text("date/time in ISO format"\
+                        " before which records were created."),
+                'schema': {
+                    'type': 'string',
+                },
+            }
         ]
+        return fields

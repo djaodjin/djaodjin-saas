@@ -14,7 +14,7 @@ stripe==2.60.0
 coverage==5.1
 django-debug-toolbar==3.2.1
 django-extensions==3.1.3
-djaodjin-rules==0.2.7
+djaodjin-rules==0.2.8
 gunicorn==20.0.4
 whitenoise==5.1.0
 

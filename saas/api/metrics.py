@@ -50,18 +50,18 @@ LOGGER = logging.getLogger(__name__)
 class BalancesAPIView(DateRangeContextMixin, ProviderMixin,
                       GenericAPIView):
     """
-    Retrieves a default balance sheet
+    Retrieves 12-month trailing deferred balances
 
     Generate a table of revenue (rows) per months (columns) for a default
     balance sheet (Income, Backlog, Receivable).
 
-    **Tags**: metrics
+    **Tags**: metrics, provider, transactionmodel
 
     **Examples**
 
     .. code-block:: http
 
-        GET /api/metrics/cowork/balances HTTP/1.1
+        GET /api/metrics/cowork/balances/ HTTP/1.1
 
     responds
 
@@ -159,7 +159,11 @@ class RevenueMetricAPIView(DateRangeContextMixin, ProviderMixin,
 
     Produces sales, payments and refunds over a period of time.
 
-    **Tags**: metrics
+    The API is typically used within an HTML
+    `revenue page </docs/themes/#dashboard_metrics_revenue>`_
+    as present in the default theme.
+
+    **Tags**: metrics, provider, transactionmodel
 
     **Examples**
 
@@ -328,16 +332,15 @@ class CouponUsesAPIView(CartItemSmartListMixin, CouponUsesQuerysetMixin,
     """
     Retrieves performance of a discount code
 
-    Queries a page (``PAGE_SIZE`` records) of ``Coupon`` usage.
+    Returns a list of {{PAGE_SIZE}} cart items on which coupon with
+    code {coupon} was used. Coupon {coupon} must have been created by
+    provider {organization}.
 
-    The queryset can be filtered to a range of dates
-    ([``start_at``, ``ends_at``]) and for at least one field to match a search
-    term (``q``).
+    The queryset can be further refined to match a search filter (``q``)
+    and/or a range of dates ([``start_at``, ``ends_at``]),
+    and sorted on specific fields (``o``).
 
-    The result queryset can be ordered by passing an ``o`` (field name)
-    and ``ot`` (asc or desc) parameter.
-
-    **Tags**: metrics
+    **Tags**: metrics, provider, couponmodel
 
     **Examples**
 
@@ -357,9 +360,11 @@ class CouponUsesAPIView(CartItemSmartListMixin, CouponUsesQuerysetMixin,
                 {
                     "user": {
                         "slug": "xia",
+                        "created_at": "2012-09-14T23:16:55Z",
                         "email": "xia@localhost.localdomain",
                         "full_name": "Xia Doe",
-                        "created_at": "2012-09-14T23:16:55Z"
+                        "printable_name": "Xia Doe",
+                        "username": "xia"
                     },
                     "plan": "basic",
                     "created_at": "2014-01-01T09:00:00Z"
@@ -376,13 +381,17 @@ class CustomerMetricAPIView(DateRangeContextMixin, ProviderMixin,
     """
     Retrieves 12-month trailing customer counts
 
-    **Tags**: metrics
+    The API is typically used within an HTML
+    `revenue page </docs/themes/#dashboard_metrics_revenue>`_
+    as present in the default theme.
+
+    **Tags**: metrics, provider, profilemodel
 
     **Examples**
 
     .. code-block:: http
 
-        GET /api/metrics/cowork/customers HTTP/1.1
+        GET /api/metrics/cowork/customers/ HTTP/1.1
 
     responds
 
@@ -552,13 +561,13 @@ class LifetimeValueMetricAPIView(LifetimeValueMetricMixin, ListAPIView):
     """
     Retrieves customers lifetime value
 
-    **Tags**: metrics
+    **Tags**: metrics, provider, profilemodel
 
     **Examples**
 
     .. code-block:: http
 
-        GET /api/metrics/cowork/lifetimevalue HTTP/1.1
+        GET /api/metrics/cowork/lifetimevalue/ HTTP/1.1
 
     responds
 
@@ -570,14 +579,12 @@ class LifetimeValueMetricAPIView(LifetimeValueMetricMixin, ListAPIView):
             "previous": null,
             "results": [
                 {
-                    "profile": {
-                        "slug": "xia",
-                        "email": "xia@localhost.localdomain",
-                        "full_name": "Xia Doe",
-                        "created_at": "2012-09-14T23:16:55Z"
-                    },
+                    "slug": "xia",
+                    "email": "xia@localhost.localdomain",
+                    "full_name": "Xia Doe",
                     "created_at": "2014-01-01T09:00:00Z",
                     "ends_at": "2014-01-01T09:00:00Z",
+                    "unit": "usd",
                     "contract_value": 10000,
                     "cash_payments": 10000,
                     "deferred_revenue": 10000
@@ -597,13 +604,17 @@ class PlanMetricAPIView(DateRangeContextMixin, ProviderMixin, GenericAPIView):
     """
     Retrieves 12-month trailing plans performance
 
-    **Tags**: metrics
+    The API is typically used within an HTML
+    `plans metrics page </docs/themes/#dashboard_metrics_plans>`_
+    as present in the default theme.
+
+    **Tags**: metrics, provider, planmodel
 
     **Examples**
 
     .. code-block:: http
 
-        GET /api/metrics/cowork/plans HTTP/1.1
+        GET /api/metrics/cowork/plans/ HTTP/1.1
 
     responds
 

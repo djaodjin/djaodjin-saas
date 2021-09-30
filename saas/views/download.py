@@ -69,7 +69,8 @@ class CSVDownloadView(View):
             transaction, active_links=False).replace(
             '\\', '\\\\').replace('"', '\"')))
 
-    def decorate_queryset(self, queryset):
+    @staticmethod
+    def decorate_queryset(queryset):
         return queryset
 
     def filter_queryset(self, queryset):

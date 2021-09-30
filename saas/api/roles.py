@@ -25,9 +25,7 @@
 #pylint:disable=useless-super-delegation,too-many-lines
 
 import logging
-from collections import OrderedDict
 
-from django.core import validators
 from django.core.exceptions import ValidationError
 from django.contrib.auth import get_user_model
 from django.db import transaction, IntegrityError
@@ -41,21 +39,21 @@ from rest_framework.generics import (ListAPIView, ListCreateAPIView,
     DestroyAPIView, RetrieveUpdateDestroyAPIView,
     GenericAPIView, get_object_or_404)
 from rest_framework.response import Response
-from rest_framework.pagination import PageNumberPagination
 
 from .. import settings, signals
-from ..docs import no_body, swagger_auto_schema
+from ..docs import OpenAPIResponse, no_body, swagger_auto_schema
 from ..decorators import _has_valid_access
 from ..mixins import (OrganizationMixin, OrganizationSmartListMixin,
     RoleDescriptionMixin, RoleMixin, RoleSmartListMixin, UserMixin)
 from ..models import get_broker
+from ..pagination import RoleListPagination
 from ..utils import (full_name_natural_split, get_organization_model,
-    get_role_model, generate_random_slug)
+    get_role_model, get_role_serializer, generate_random_slug)
 from .organizations import OrganizationCreateMixin, OrganizationDecorateMixin
-from .serializers import (AccessibleSerializer,
-    CreateAccessibleRequestSerializer, ForceSerializer, NoModelSerializer,
-    OrganizationCreateSerializer, OrganizationDetailSerializer,
-    RoleDescriptionSerializer, RoleSerializer)
+from .serializers import (AccessibleSerializer, ForceSerializer,
+    OrganizationCreateSerializer,
+    OrganizationDetailSerializer, RoleDescriptionSerializer,
+    AccessibleCreateSerializer, RoleCreateSerializer)
 
 
 LOGGER = logging.getLogger(__name__)
@@ -137,59 +135,6 @@ def create_user_from_email(email, password=None, **kwargs):
     signals.user_invited.send(
         sender=__name__, user=user, invited_by=invited_by)
     return user
-
-
-class OrganizationRoleCreateSerializer(NoModelSerializer):
-    #pylint:disable=abstract-method
-
-    slug = serializers.CharField(required=False, validators=[
-        validators.RegexValidator(settings.ACCT_REGEX,
-            _("Enter a valid organization slug."), 'invalid')])
-    email = serializers.EmailField(required=False)
-    message = serializers.CharField(max_length=255, required=False)
-
-
-class UserRoleCreateSerializer(serializers.Serializer):
-    #pylint:disable=abstract-method,protected-access
-
-    slug = serializers.CharField(required=False,
-        help_text=_("Username"),
-        validators=[validators.RegexValidator(settings.ACCT_REGEX,
-            _("Enter a valid username."), 'invalid')])
-    email = serializers.EmailField(
-        max_length=get_user_model()._meta.get_field('email').max_length,
-        required=False, help_text=_("E-mail of the invitee"))
-    full_name = serializers.CharField(required=False,
-        help_text=_("Full name"))
-    message = serializers.CharField(max_length=255, required=False,
-        help_text=_("Message to send along the invitation"))
-
-    @staticmethod
-    def validate_slug(data):
-        # The ``slug`` / ``username`` is implicit in the addition of a role
-        # for a newly created user while adding a role. Hence we don't return
-        # a validation error if the length is too long but arbitrarly shorten
-        # the username.
-        user_model = get_user_model()
-        max_length = user_model._meta.get_field('username').max_length
-        if len(data) > max_length:
-            if '@' in data:
-                data = data.split('@')[0]
-            data = data[:max_length]
-        return data
-
-
-class RoleListPagination(PageNumberPagination):
-
-    def get_paginated_response(self, data):
-        return Response(OrderedDict([
-            ('invited_count', self.request.invited_count),
-            ('requested_count', self.request.requested_count),
-            ('count', self.page.paginator.count),
-            ('next', self.get_next_link()),
-            ('previous', self.get_previous_link()),
-            ('results', data)
-        ]))
 
 
 class OptinBase(OrganizationDecorateMixin, OrganizationCreateMixin):
@@ -297,7 +242,7 @@ class OptinBase(OrganizationDecorateMixin, OrganizationCreateMixin):
                         manager = user_model.objects.get(email__iexact=email)
                     except user_model.DoesNotExist:
                         manager = create_user_from_email(email, request=request)
-                    organization.add_manager(manager, request_user=request.user)
+                    organization.add_manager(manager)
                 organizations = [organization]
                 invite = True
 
@@ -382,19 +327,26 @@ class AccessibleByListAPIView(RoleSmartListMixin, InvitedRequestedListMixin,
     """
     Lists roles by user
 
-    Lists all relations where an ``Organization`` is accessible by
-    a ``User``. Typically the user was granted specific permissions through
-    a ``Role``.
+    Returns a list of {{PAGE_SIZE}} roles where a profile is accessible by
+    {user}. Typically the user was granted a role with specific permissions
+    on the profile.
+
+    The queryset can be further refined to match a search filter (``q``)
+    and sorted on specific fields (``o``).
+
+    The API is typically used within an HTML
+    `connected profiles page </docs/themes/#dashboard_users_roles>`_
+    as present in the default theme.
 
     see :doc:`Flexible Security Framework <security>`.
 
-    **Tags**: rbac
+    **Tags**: rbac, user, rolemodel
 
     **Examples**
 
     .. code-block:: http
 
-        GET  /api/users/alice/accessibles/ HTTP/1.1
+        GET  /api/users/xia/accessibles/ HTTP/1.1
 
     responds
 
@@ -404,6 +356,8 @@ class AccessibleByListAPIView(RoleSmartListMixin, InvitedRequestedListMixin,
             "count": 1,
             "next": null,
             "previous": null,
+            "invited_count": 0,
+            "requested_count": 0,
             "results": [
                 {
                     "slug": "cowork",
@@ -430,17 +384,27 @@ accessibles/manager/cowork",
     serializer_class = AccessibleSerializer
     pagination_class = RoleListPagination
 
-    @swagger_auto_schema(request_body=OrganizationRoleCreateSerializer,
+    def get_serializer_class(self):
+        if self.request.method.lower() == 'post':
+            return AccessibleCreateSerializer
+        return super(AccessibleByListAPIView, self).get_serializer_class()
+
+    @swagger_auto_schema(responses={
+      201: OpenAPIResponse("Create successful", AccessibleSerializer)},
         query_serializer=ForceSerializer)
     def post(self, request, *args, **kwargs):
         """
         Requests a role
 
-        Creates a request to attach a user to a role on an organization
+        Creates a request to attach {user} to a role on a profile
+
+        The API is typically used within an HTML
+        `connected profiles page </docs/themes/#dashboard_users_roles>`_
+        as present in the default theme.
 
         see :doc:`Flexible Security Framework <security>`.
 
-        **Tags**: rbac
+        **Tags**: rbac, user, rolemodel
 
         **Examples**
 
@@ -480,7 +444,7 @@ accessibles/manager/cowork",
             request, *args, **kwargs)
 
     def create(self, request, *args, **kwargs): #pylint:disable=unused-argument
-        serializer = OrganizationRoleCreateSerializer(data=request.data)
+        serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         return self.perform_optin(serializer, request, user=self.user)
 
@@ -492,18 +456,26 @@ class AccessibleByDescrListAPIView(RoleSmartListMixin,
     """
     Lists roles of specific type by user
 
-    Lists all relations where a ``User`` has a specified ``Role``
-    on an ``Organization``.
+    Returns a list of {{PAGE_SIZE}} roles where a profile is accessible by
+    {user} through a {role}. Typically the user was granted the {role}
+    with specific permissions on the profile.
+
+    The queryset can be further refined to match a search filter (``q``)
+    and sorted on specific fields (``o``).
+
+    The API is typically used within an HTML
+    `connected profiles page </docs/themes/#dashboard_users_roles>`_
+    as present in the default theme.
 
     see :doc:`Flexible Security Framework <security>`.
 
-    **Tags**: rbac
+    **Tags**: rbac, user, rolemodel
 
     **Examples**
 
     .. code-block:: http
 
-        GET  /api/users/alice/accessibles/manager/ HTTP/1.1
+        GET  /api/users/xia/accessibles/manager/ HTTP/1.1
 
     responds
 
@@ -513,6 +485,8 @@ class AccessibleByDescrListAPIView(RoleSmartListMixin,
             "count": 1,
             "next": null,
             "previous": null,
+            "invited_count": 0,
+            "requested_count": 0,
             "results": [
                 {
                     "slug": "cowork",
@@ -541,21 +515,26 @@ accessibles/manager/cowork",
 
     def get_serializer_class(self):
         if self.request.method.lower() == 'post':
-            return CreateAccessibleRequestSerializer
+            return AccessibleCreateSerializer
         return super(AccessibleByDescrListAPIView, self).get_serializer_class()
 
-    @swagger_auto_schema(request_body=OrganizationRoleCreateSerializer,
+    @swagger_auto_schema(responses={
+      201: OpenAPIResponse("Create successful", AccessibleSerializer)},
         query_serializer=ForceSerializer)
     def post(self, request, *args, **kwargs): #pylint:disable=unused-argument
         """
         Requests a role of a specified type
 
-        Creates a request to attach a user to an organization
-        with a specified role.
+        Creates a request to attach {user} to a role on a profile
+        with a specified {role}.
+
+        The API is typically used within an HTML
+        `connected profiles page </docs/themes/#dashboard_users_roles>`_
+        as present in the default theme.
 
         see :doc:`Flexible Security Framework <security>`.
 
-        **Tags**: rbac
+        **Tags**: rbac, user, rolemodel
 
         **Examples**
 
@@ -601,7 +580,7 @@ accessibles/manager/cowork",
             request, *args, **kwargs)
 
     def create(self, request, *args, **kwargs): #pylint:disable=unused-argument
-        serializer = OrganizationRoleCreateSerializer(data=request.data)
+        serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         return self.perform_optin(serializer, request, user=self.user)
 
@@ -626,13 +605,13 @@ class RoleDescriptionListCreateView(RoleDescriptionQuerysetMixin,
 
     see :doc:`Flexible Security Framework <security>`.
 
-    **Tags**: rbac
+    **Tags**: rbac, subscriber, rolemodel
 
     **Examples**
 
     .. code-block:: http
 
-        GET /api/profile/cowork/roles/describe/ HTTP/1.1
+        GET /api/profile/xia/roles/describe/ HTTP/1.1
 
     responds
 
@@ -642,6 +621,8 @@ class RoleDescriptionListCreateView(RoleDescriptionQuerysetMixin,
             "count": 2,
             "next": null,
             "previous": null,
+            "invited_count": 0,
+            "requested_count": 0,
             "results": [
                 {
                     "created_at": "2018-01-01T00:00:00Z",
@@ -669,13 +650,13 @@ class RoleDescriptionListCreateView(RoleDescriptionQuerysetMixin,
 
         see :doc:`Flexible Security Framework <security>`.
 
-        **Tags**: rbac
+        **Tags**: rbac, subscriber, rolemodel
 
         **Examples**
 
         .. code-block:: http
 
-            POST /api/profile/cowork/roles/describe/ HTTP/1.1
+            POST /api/profile/xia/roles/describe/ HTTP/1.1
 
         .. code-block:: json
 
@@ -708,13 +689,13 @@ class RoleDescriptionDetailView(RoleDescriptionQuerysetMixin,
 
     see :doc:`Flexible Security Framework <security>`.
 
-    **Tags**: rbac
+    **Tags**: rbac, subscriber, rolemodel
 
     **Examples**
 
     .. code-block:: http
 
-        GET /api/profile/cowork/roles/describe/manager HTTP/1.1
+        GET /api/profile/xia/roles/describe/support/ HTTP/1.1
 
     responds
 
@@ -751,13 +732,13 @@ class RoleDescriptionDetailView(RoleDescriptionQuerysetMixin,
 
         see :doc:`Flexible Security Framework <security>`.
 
-        **Tags**: rbac
+        **Tags**: rbac, subscriber, rolemodel
 
         **Examples**
 
         .. code-block:: http
 
-            DELETE /api/profile/cowork/roles/describe/manager HTTP/1.1
+            DELETE /api/profile/xia/roles/describe/support/ HTTP/1.1
         """
         return super(RoleDescriptionDetailView, self).delete(
             request, *args, **kwargs)
@@ -768,13 +749,13 @@ class RoleDescriptionDetailView(RoleDescriptionQuerysetMixin,
 
         see :doc:`Flexible Security Framework <security>`.
 
-        **Tags**: rbac
+        **Tags**: rbac, subscriber, rolemodel
 
         **Examples**
 
         .. code-block:: http
 
-            PUT /api/profile/cowork/roles/describe/manager HTTP/1.1
+            PUT /api/profile/xia/roles/describe/support/ HTTP/1.1
 
         .. code-block:: json
 
@@ -828,15 +809,15 @@ class RoleQuerysetBaseMixin(OrganizationMixin):
 class RoleListAPIView(RoleSmartListMixin, InvitedRequestedListMixin,
                       RoleQuerysetBaseMixin, ListAPIView):
     """
-    Lists roles for an organization
+    Lists users and their role on an profile
 
-    **Tags**: rbac
+    **Tags**: rbac, subscriber, rolemodel
 
     **Examples**
 
     .. code-block:: http
 
-        GET /api/profile/cowork/roles/ HTTP/1.1
+        GET /api/profile/xia/roles/ HTTP/1.1
 
     responds
 
@@ -846,6 +827,8 @@ class RoleListAPIView(RoleSmartListMixin, InvitedRequestedListMixin,
             "count": 1,
             "next": null,
             "previous": null,
+            "invited_count": 0,
+            "requested_count": 0,
             "results": [
                 {
                     "created_at": "2018-01-01T00:00:00Z",
@@ -872,7 +855,7 @@ class RoleListAPIView(RoleSmartListMixin, InvitedRequestedListMixin,
             ]
         }
     """
-    serializer_class = RoleSerializer
+    serializer_class = get_role_serializer()
     pagination_class = RoleListPagination
 
 
@@ -917,17 +900,17 @@ class RoleByDescrQuerysetMixin(RoleDescriptionMixin, RoleQuerysetBaseMixin):
 class RoleByDescrListAPIView(RoleSmartListMixin, RoleByDescrQuerysetMixin,
                              ListCreateAPIView):
     """
-    Lists roles of a specific type
+    Lists users of a specific role type on a profile
 
     Lists the specified role assignments for an organization.
 
-    **Tags**: rbac
+    **Tags**: rbac, subscriber, rolemodel
 
     **Examples**
 
     .. code-block:: http
 
-        GET /api/profile/cowork/roles/manager/ HTTP/1.1
+        GET /api/profile/xia/roles/manager/ HTTP/1.1
 
     responds
 
@@ -937,6 +920,8 @@ class RoleByDescrListAPIView(RoleSmartListMixin, RoleByDescrQuerysetMixin,
             "count": 1,
             "next": null,
             "previous": null,
+            "invited_count": 0,
+            "requested_count": 0,
             "results": [
                 {
                     "created_at": "2018-01-01T00:00:00Z",
@@ -963,12 +948,17 @@ class RoleByDescrListAPIView(RoleSmartListMixin, RoleByDescrQuerysetMixin,
             ]
         }
     """
-    serializer_class = RoleSerializer
+    serializer_class = get_role_serializer()
     pagination_class = RoleListPagination
+
+    def get_serializer_class(self):
+        if self.request.method.lower() == 'post':
+            return RoleCreateSerializer
+        return super(RoleByDescrListAPIView, self).get_serializer_class()
 
     def create(self, request, *args, **kwargs): #pylint:disable=unused-argument
         grant_key = None
-        serializer = UserRoleCreateSerializer(data=request.data)
+        serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user_model = get_user_model()
         user = None
@@ -1021,23 +1011,24 @@ class RoleByDescrListAPIView(RoleSmartListMixin, RoleByDescrQuerysetMixin,
         return Response(serializer.validated_data, status=resp_status,
             headers=self.get_success_headers(serializer.validated_data))
 
-    @swagger_auto_schema(request_body=UserRoleCreateSerializer,
+    @swagger_auto_schema(responses={
+      201: OpenAPIResponse("Create successful", get_role_serializer())},
         query_serializer=ForceSerializer)
     def post(self, request, *args, **kwargs):
         """
         Creates a role
 
-        Attaches a user to a role on an organization, typically granting
-        permissions to the user with regards to managing an organization profile
+        Attaches a user to a profile {organization} with a {role}, typically
+        granting permissions to the user with regards to managing the profile
         (see :doc:`Flexible Security Framework <security>`).
 
-        **Tags**: rbac
+        **Tags**: rbac, subscriber, rolemodel
 
         **Examples**
 
         .. code-block:: http
 
-            POST /api/profile/cowork/roles/manager/ HTTP/1.1
+            POST /api/profile/xia/roles/manager/ HTTP/1.1
 
         .. code-block:: json
 
@@ -1061,23 +1052,23 @@ class RoleDetailAPIView(RoleMixin, DestroyAPIView):
     """
     Re-sends and delete role for a user on a profile.
     """
-    serializer_class = RoleSerializer
+    serializer_class = get_role_serializer()
 
     @swagger_auto_schema(request_body=no_body)
     def post(self, request, *args, **kwargs):#pylint:disable=unused-argument
         """
-        Re-sends role invite
+        Sends invite notification for a role
 
-        Re-sends the invite e-mail that the user was granted a role
-        on the organization.
+        Re-sends the notification that the {user} was granted a {role}
+        on the profile {organization}.
 
-        **Tags**: rbac
+        **Tags**: rbac, subscriber, rolemodel
 
         **Examples**
 
         .. code-block:: http
 
-            POST /api/profile/cowork/roles/manager/xia/ HTTP/1.1
+            POST /api/profile/xia/roles/manager/xia/ HTTP/1.1
 
         responds
 
@@ -1121,17 +1112,17 @@ class RoleDetailAPIView(RoleMixin, DestroyAPIView):
         """
         Deletes a role
 
-        Dettach a user from one or all roles with regards to an organization,
-        typically resulting in revoking permissions from this user to manage
-        part of an organization profile.
+        Dettaches a {user} from one or all roles with regards to a profile
+        {organization}, typically resulting in revoking permissions
+        from the user to manage part of the profile.
 
-        **Tags**: rbac
+        **Tags**: rbac, subscriber, rolemodel
 
         **Examples**
 
         .. code-block:: http
 
-            DELETE /api/profile/cowork/roles/manager/xia/ HTTP/1.1
+            DELETE /api/profile/xia/roles/manager/xia/ HTTP/1.1
         """
         return super(RoleDetailAPIView, self).delete(request, *args, **kwargs)
 
@@ -1160,12 +1151,12 @@ class AccessibleDetailAPIView(RoleDetailAPIView):
     @swagger_auto_schema(request_body=no_body)
     def post(self, request, *args, **kwargs):
         """
-        Re-sends request for role
+        Sends request notification for role
 
-        Re-sends the request e-mail that the user is requesting a role
-        on the organization.
+        Re-sends the request notification that the {user} is requesting a {role}
+        on the profile {organization}.
 
-        **Tags**: rbac
+        **Tags**: rbac, user, rolemodel
 
         **Examples**
 
@@ -1213,9 +1204,13 @@ class AccessibleDetailAPIView(RoleDetailAPIView):
         """
         Deletes a role by type
 
-        Dettach a user from one or all roles with regards to an organization,
-        typically resulting in revoking permissions from this user to manage
-        part of an organization profile.
+        Dettaches {user} from one or all roles with regards to profile
+        {organization}, typically resulting in revoking permissions
+        from this user to manage part of the profile.
+
+        The API is typically used within an HTML
+        `connected profiles page </docs/themes/#dashboard_users_roles>`_
+        as present in the default theme.
 
         **Tags**: rbac
 
@@ -1238,15 +1233,20 @@ class RoleAcceptAPIView(UserMixin, GenericAPIView):
         """
         Accepts role invite
 
-        Accepts a role on an organization.
+        Accepts a role identified by {verification_key}.
 
-        **Tags**: rbac
+        The API is typically used within an HTML
+        `connected profiles page </docs/themes/#dashboard_users_roles>`_
+        as present in the default theme.
+
+        **Tags**: rbac, user, rolemodel
 
         **Examples**
 
         .. code-block:: http
 
-            PUT /api/users/xia/accessibles/accept/0123456789abcef/ HTTP/1.1
+            PUT /api/users/xia/accessibles/accept/\
+a00000d0a0000001234567890123456789012345/ HTTP/1.1
 
         responds
 
@@ -1314,20 +1314,15 @@ class UserProfileListAPIView(OrganizationSmartListMixin,
                              OrganizationDecorateMixin, OrganizationCreateMixin,
                              UserMixin, ListCreateAPIView):
     """
-    List billing profiles owned by user
+    Lists billing profiles with a user as a profile manager
 
-    Queries a page (``PAGE_SIZE`` records) of organization and user profiles.
+    Returns a list of {{PAGE_SIZE}} of profiles
 
-    The queryset can be filtered for at least one field to match a search
-    term (``q``).
+    The queryset can be further refined to match a search filter (``q``)
+    and/or a range of dates ([``start_at``, ``ends_at``]),
+    and sorted on specific fields (``o``).
 
-    The queryset can be ordered by a field by adding an HTTP query parameter
-    ``o=`` followed by the field name. A sequence of fields can be used
-    to create a complete ordering by adding a sequence of ``o`` HTTP query
-    parameters. To reverse the natural order of a field, prefix the field
-    name by a minus (-) sign.
-
-    **Tags**: profile
+    **Tags**: rbac, profile, user, profilemodel
 
     **Examples**
 
@@ -1343,6 +1338,8 @@ class UserProfileListAPIView(OrganizationSmartListMixin,
             "count": 1,
             "next": null,
             "previous": null,
+            "invited_count": 0,
+            "requested_count": 0,
             "results": [{
                 "slug": "xia",
                 "full_name": "Xia Lee",
@@ -1366,11 +1363,11 @@ class UserProfileListAPIView(OrganizationSmartListMixin,
 
     def get_queryset(self):
         return get_organization_model().objects.accessible_by(
-            self.user, role_description=settings.MANAGER)
+            self.user, role_descr=settings.MANAGER)
 
     def post(self, request, *args, **kwargs):
         """
-        Creates a new profile owned by user
+        Creates a billing profile with a user as a profile manager
 
         This end-point creates a new profile whose manager is user and
         returns an error if the profile already exists.
@@ -1378,7 +1375,7 @@ class UserProfileListAPIView(OrganizationSmartListMixin,
         If you want to request access to an already existing profile,
         see the accessibles end-point.
 
-        **Tags**: rbac
+        **Tags**: rbac, profile, user, profilemodel
 
         **Examples**
 
@@ -1413,7 +1410,7 @@ class UserProfileListAPIView(OrganizationSmartListMixin,
         # creates profile
         with transaction.atomic():
             organization = self.create_organization(serializer.validated_data)
-            organization.add_manager(self.user, request_user=self.request.user)
+            organization.add_manager(self.user)
         self.decorate_personal(organization)
 
         # returns created profile

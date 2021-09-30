@@ -29,13 +29,13 @@ from django.db.models import Q
 from django.utils.translation import ugettext_lazy as _
 from rest_framework import status
 from rest_framework.exceptions import PermissionDenied, ValidationError
-from rest_framework.generics import ListAPIView, CreateAPIView
+from rest_framework.generics import CreateAPIView, GenericAPIView, ListAPIView
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
-from rest_framework.views import APIView
 
 from .serializers import (CreateOfflineTransactionSerializer,
-    OfflineTransactionSerializer, TransactionSerializer)
+    OfflineTransactionSerializer, OrganizationBalanceSerializer,
+    TransactionSerializer)
 from ..decorators import _valid_manager
 from ..docs import swagger_auto_schema, OpenAPIResponse
 from ..filters import DateRangeFilter, OrderingFilter, SearchFilter
@@ -43,56 +43,8 @@ from ..mixins import OrganizationMixin, ProviderMixin, DateRangeContextMixin
 from ..models import (get_broker, sum_orig_amount, Subscription, Transaction,
     Organization, Plan)
 from ..backends import ProcessorError
-from ..pagination import BalancePagination
-
-
-class StatementBalancePagination(PageNumberPagination):
-    """
-    Decorate the results of an API call with the balance as shown
-    in an organization statement.
-    """
-
-    def paginate_queryset(self, queryset, request, view=None):
-        self.start_at = view.start_at
-        self.ends_at = view.ends_at
-        self.balance_amount, self.balance_unit \
-            = Transaction.objects.get_statement_balance(view.organization)
-        return super(StatementBalancePagination, self).paginate_queryset(
-            queryset, request, view=view)
-
-    def get_paginated_response(self, data):
-        return Response(OrderedDict([
-            ('start_at', self.start_at),
-            ('ends_at', self.ends_at),
-            ('balance_amount', self.balance_amount),
-            ('balance_unit', self.balance_unit),
-            ('count', self.page.paginator.count),
-            ('next', self.get_next_link()),
-            ('previous', self.get_previous_link()),
-            ('results', data)
-        ]))
-
-
-class TotalPagination(PageNumberPagination):
-
-    def paginate_queryset(self, queryset, request, view=None):
-        self.start_at = view.start_at
-        self.ends_at = view.ends_at
-        self.totals = view.totals
-        return super(TotalPagination, self).paginate_queryset(
-            queryset, request, view=view)
-
-    def get_paginated_response(self, data):
-        return Response(OrderedDict([
-            ('start_at', self.start_at),
-            ('ends_at', self.ends_at),
-            ('total', self.totals['amount']),
-            ('unit', self.totals['unit']),
-            ('count', self.page.paginator.count),
-            ('next', self.get_next_link()),
-            ('previous', self.get_previous_link()),
-            ('results', data)
-        ]))
+from ..pagination import (BalancePagination, StatementBalancePagination,
+    TotalPagination)
 
 
 class IncludesSyncErrorPagination(PageNumberPagination):
@@ -144,13 +96,16 @@ class SmartTransactionListMixin(TransactionFilterMixin):
     """
     ``Transaction`` list which is also searchable and sortable.
     """
-    ordering_fields = [('descr', 'description'),
-                           ('dest_amount', 'amount'),
-                           ('dest_organization__slug', 'dest_organization'),
-                           ('dest_account', 'dest_account'),
-                           ('orig_organization__slug', 'orig_organization'),
-                           ('orig_account', 'orig_account'),
-                           ('created_at', 'created_at')]
+    ordering_fields = (
+        ('descr', 'description'),
+        ('dest_amount', 'amount'),
+        ('dest_organization__slug', 'dest_organization'),
+        ('dest_account', 'dest_account'),
+        ('orig_organization__slug', 'orig_organization'),
+        ('orig_account', 'orig_account'),
+        ('created_at', 'created_at')
+    )
+    ordering = ('created_at',)
 
     filter_backends = (TransactionFilterMixin.filter_backends +
         (OrderingFilter,))
@@ -172,23 +127,19 @@ class TransactionListAPIView(SmartTransactionListMixin,
     """
     Lists ledger transactions
 
-    Queries a page (``PAGE_SIZE`` records) of ``Transaction`` from
-    the :doc:`ledger <ledger>`.
+    Returns a list of {{PAGE_SIZE}} transactions.
 
-    The queryset can be filtered to a range of dates
-    ([``start_at``, ``ends_at``]) and for at least one field to match a search
-    term (``q``).
+    The queryset can be further refined to match a search filter (``q``)
+    and/or a range of dates ([``start_at``, ``ends_at``]),
+    and sorted on specific fields (``o``).
 
-    Query results can be ordered by natural fields (``o``) in either ascending
-    or descending order (``ot``).
-
-    **Tags**: billing
+    **Tags**: billing, broker, transactionmodel
 
     **Examples**
 
     .. code-block:: http
 
-        GET /api/billing/transactions?start_at=2015-07-05T07:00:00.000Z\
+        GET /api/billing/transactions/?start_at=2015-07-05T07:00:00.000Z\
 &o=date&ot=desc HTTP/1.1
 
     responds
@@ -196,9 +147,10 @@ class TransactionListAPIView(SmartTransactionListMixin,
     .. code-block:: json
 
         {
+            "start_at": "2015-07-05T07:00:00.000Z",
             "ends_at": "2017-03-30T18:10:12.962859Z",
-            "balance": 11000,
-            "unit": "usd",
+            "balance_amount": 11000,
+            "balance_unit": "usd",
             "count": 1,
             "next": null,
             "previous": null,
@@ -238,27 +190,25 @@ class BillingsAPIView(SmartTransactionListMixin,
     """
     Lists subscriber transactions
 
-    Queries a page (``PAGE_SIZE`` records) of ``Transaction`` associated
-    to ``{organization}`` while the organization acts as a subscriber.
+    Returns a list of {{PAGE_SIZE}} transactions associated
+    to ``{organization}`` while the profile acts as a subscriber.
 
-    The queryset can be filtered to a range of dates
-    ([``start_at``, ``ends_at``]) and for at least one field to match a search
-    term (``q``).
+    The queryset can be further refined to match a search filter (``q``)
+    and/or a range of dates ([``start_at``, ``ends_at``]),
+    and sorted on specific fields (``o``).
 
-    Query results can be ordered by natural fields (``o``) in either ascending
-    or descending order (``ot``).
+    The API is typically used within an HTML
+    `billing history page </docs/themes/#dashboard_billing_history>`_
+    as present in the default theme.
 
-    This API end point is typically used to display orders, payments and refunds
-    of a subscriber (see :ref:`subscribers pages <pages_subscribers>`)
-
-    **Tags**: billing
+    **Tags**: billing, subscriber, transactionmodel
 
     **Examples**
 
     .. code-block:: http
 
-         GET /api/billing/xia/history?start_at=2015-07-05T07:00:00.000Z\
-&o=date&ot=desc HTTP/1.1
+         GET /api/billing/xia/history/?start_at=2015-07-05T07:00:00.000Z\
+ HTTP/1.1
 
     responds
 
@@ -268,8 +218,11 @@ class BillingsAPIView(SmartTransactionListMixin,
             "count": 1,
             "next": null,
             "previous": null,
-            "balance": 11000,
-            "unit": "usd",
+            "start_at": "2015-01-01T00:00:00Z",
+            "ends_at": "2016-01-01T00:00:00Z",
+            "balance_unit": "usd",
+            "balance_amount": 11000,
+            "balance_unit": "usd",
             "results": [
                 {
                     "created_at": "2015-08-01T00:00:00Z",
@@ -301,33 +254,30 @@ class ReceivablesQuerysetMixin(ProviderMixin):
         return self.provider.receivables().filter(orig_amount__gt=0)
 
 
-class ReceivablesListAPIView(TotalAnnotateMixin, TransactionFilterMixin,
+class ReceivablesListAPIView(TotalAnnotateMixin, SmartTransactionListMixin,
                              ReceivablesQuerysetMixin, ListAPIView):
     """
     Lists provider receivables
 
-    Queries a page (``PAGE_SIZE`` records) of ``Transaction`` marked
-    as receivables associated to ``{organization}`` while the organization
-    acts as a provider.
+    Returns a list of {{PAGE_SIZE}} transactions marked
+    as receivables associated to to ``{organization}`` while the profile acts as
+    a provider.
 
-    The queryset can be filtered to a range of dates
-    ([``start_at``, ``ends_at``]) and for at least one field to match a search
-    term (``q``).
-
-    Query results can be ordered by natural fields (``o``) in either ascending
-    or descending order (``ot``).
+    The queryset can be further refined to match a search filter (``q``)
+    and/or a range of dates ([``start_at``, ``ends_at``]),
+    and sorted on specific fields (``o``).
 
     This API endpoint is typically used to find all sales for ``{organization}``
     whether it was paid or not.
 
-    **Tags**: billing
+    **Tags**: billing, provider, transactionmodel
 
     **Examples**
 
     .. code-block:: http
 
-         GET /api/billing/cowork/receivables?start_at=2015-07-05T07:00:00.000Z\
-&o=date&ot=desc HTTP/1.1
+         GET /api/billing/cowork/receivables/?start_at=2015-07-05T07:00:00.000Z\
+ HTTP/1.1
 
     responds
 
@@ -335,15 +285,15 @@ class ReceivablesListAPIView(TotalAnnotateMixin, TransactionFilterMixin,
 
         {
             "count": 1,
-            "total": "112120",
-            "unit": "usd",
+            "balance_amount": "112120",
+            "balance_unit": "usd",
             "next": null,
             "previous": null,
             "results": [
                 {
                     "created_at": "2015-08-01T00:00:00Z",
                     "description": "Charge <a href='/billing/cowork/receipt/\
-1123'>1123</a> distribution for demo562-open-plus",
+1123'>1123</a> distribution for demo562-premium",
                     "amount": "112120",
                     "is_debit": false,
                     "orig_account": "Funds",
@@ -358,16 +308,6 @@ class ReceivablesListAPIView(TotalAnnotateMixin, TransactionFilterMixin,
             ]
         }
     """
-    ordering_fields = [('descr', 'description'),
-                           ('dest_amount', 'amount'),
-                           ('dest_organization__slug', 'dest_organization'),
-                           ('dest_account', 'dest_account'),
-                           ('orig_organization__slug', 'orig_organization'),
-                           ('orig_account', 'orig_account'),
-                           ('created_at', 'created_at')]
-
-    filter_backends = (TransactionFilterMixin.filter_backends +
-        (OrderingFilter,))
     serializer_class = TransactionSerializer
     pagination_class = TotalPagination
 
@@ -393,28 +333,25 @@ class TransferListAPIView(SmartTransactionListMixin, TransferQuerysetMixin,
     """
     Lists provider payouts
 
-    Queries a page (``PAGE_SIZE`` records) of ``Transaction`` associated
-    to ``{organization}`` while the organization acts as a provider.
+    Returns a list of {{PAGE_SIZE}} transactions associated
+    to ``{organization}`` while the profile acts as a provider.
 
-    The queryset can be filtered to a range of dates
-    ([``start_at``, ``ends_at``]) and for at least one field to match a search
-    term (``q``).
+    The queryset can be further refined to match a search filter (``q``)
+    and/or a range of dates ([``start_at``, ``ends_at``]),
+    and sorted on specific fields (``o``).
 
-    Query results can be ordered by natural fields (``o``) in either ascending
-    or descending order (``ot``).
+    The API is typically used within an HTML
+    `funds page </docs/themes/#dashboard_billing_transfers>`_
+    as present in the default theme.
 
-    This API endpoint is typically used to find sales, payments, refunds
-    and bank deposits for a provider.
-    (see :ref:`provider pages <pages_provider_transactions>`)
-
-    **Tags**: billing
+    **Tags**: billing, provider, transactionmodel
 
     **Examples**
 
     .. code-block:: http
 
-         GET /api/billing/cowork/transfers?start_at=2015-07-05T07:00:00.000Z\
-&o=date&ot=desc HTTP/1.1
+         GET /api/billing/cowork/transfers/?start_at=2015-07-05T07:00:00.000Z\
+ HTTP/1.1
 
     responds
 
@@ -428,7 +365,7 @@ class TransferListAPIView(SmartTransactionListMixin, TransferQuerysetMixin,
                 {
                     "created_at": "2015-08-01T00:00:00Z",
                     "description": "Charge <a href='/billing/cowork/receipt/\
-1123'>1123</a> distribution for demo562-open-plus",
+1123'>1123</a> distribution for demo562-premium",
                     "amount": "$1121.20",
                     "is_debit": false,
                     "orig_account": "Funds",
@@ -455,13 +392,13 @@ class ImportTransactionsAPIView(ProviderMixin, CreateAPIView):
         201: OpenAPIResponse("", OfflineTransactionSerializer)})
     def post(self, request, *args, **kwargs):
         """
-        Inserts an offline transactions.
+        Creates an offline transaction
 
         The primary purpose of this API call is for a provider to keep
         accurate metrics for the performance of the product sold, regardless
         of payment options (online or offline).
 
-        **Tags**: billing
+        **Tags**: billing, provider, transactionmodel
 
         **Examples**
 
@@ -475,7 +412,7 @@ class ImportTransactionsAPIView(ProviderMixin, CreateAPIView):
                "created_at": "2020-05-30T00:00:00Z",
                "amount": "10.00",
                "descr": "Paid by check",
-               "subscription": "demo562:open-plus"
+               "subscription": "xia:premium"
             }
 
         responds
@@ -601,19 +538,19 @@ class ImportTransactionsAPIView(ProviderMixin, CreateAPIView):
             status=status.HTTP_201_CREATED, headers=headers)
 
 
-class StatementBalanceAPIView(OrganizationMixin, APIView):
+class StatementBalanceAPIView(OrganizationMixin, GenericAPIView):
     """
     Retrieves a customer balance
 
     Get the statement balance due for an organization.
 
-    **Tags**: billing
+    **Tags**: billing, subscriber, transactionmodel
 
     **Examples**
 
     .. code-block:: http
 
-         GET  /api/billing/cowork/balance/ HTTP/1.1
+         GET  /api/billing/xia/balance/ HTTP/1.1
 
     responds
 
@@ -624,34 +561,34 @@ class StatementBalanceAPIView(OrganizationMixin, APIView):
             "balance_unit": "usd"
         }
     """
+    serializer_class = OrganizationBalanceSerializer
+    pagination_class = None
 
     def get(self, request, *args, **kwargs):
         #pylint:disable=unused-argument
         balance_amount, balance_unit \
             = Transaction.objects.get_statement_balance(self.organization)
-        return Response({'balance_amount': balance_amount,
-                         'balance_unit': balance_unit})
+        return Response(self.get_serializer_class()().to_representation(
+            {'balance_amount': balance_amount,
+             'balance_unit': balance_unit}))
 
     def delete(self, request, *args, **kwargs):
         """
         Cancels a balance due
 
-        Cancel the balance for a provider organization. This will create
-        a transaction for this balance cancellation. A manager can use
-        this endpoint to cancel balance dues that is known impossible
+        Cancel the balance due by profile {organization}. This will create
+        a transaction for this balance cancellation. A provider manager can
+        use this endpoint to cancel balance dues that is known impossible
         to be recovered (e.g. an external bank or credit card company
         act).
 
-        The endpoint returns the transaction created to cancel the
-        balance due.
-
-        **Tags**: billing
+        **Tags**: billing, provider, transactionmodel
 
         **Examples**
 
         .. code-block:: http
 
-             DELETE /api/billing/cowork/balance/ HTTP/1.1
+             DELETE /api/billing/xia/balance/ HTTP/1.1
         """
         return self.destroy(request, *args, **kwargs)
 

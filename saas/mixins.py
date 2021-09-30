@@ -821,15 +821,17 @@ class CartItemSmartListMixin(object):
       - user.last_name
       - created_at
     """
-    search_fields = ('user__username',
-                     'user__first_name',
-                     'user__last_name',
-                     'user__email')
-
-    ordering_fields = [('slug', 'user__username'),
-                       ('plan', 'plan'),
-                       ('created_at', 'created_at')]
-
+    search_fields = (
+        'user__username',
+        'user__first_name',
+        'user__last_name',
+        'user__email'
+    )
+    ordering_fields = (
+        ('slug', 'user__username'),
+        ('plan', 'plan'),
+        ('created_at', 'created_at')
+    )
     ordering = ('created_at',)
 
     filter_backends = (DateRangeFilter, OrderingFilter, SearchFilter)
@@ -881,11 +883,12 @@ class OrganizationSmartListMixin(object):
         # fields in User model:
         'username',
         'first_name',
-        'last_name')
-
+        'last_name'
+    )
     ordering_fields = (
-        'full_name',
-        'created_at')
+        ('full_name', 'full_name'),
+        ('created_at', 'created_at'),
+    )
 
     # XXX technically we should derive ('first_name', 'last_name')
     # from `alternate_fields` but it complicates the implementation
@@ -931,14 +934,14 @@ class RoleSmartListMixin(object):
         'role_description__title',
         'role_description__slug'
     )
-    ordering_fields = [
+    ordering_fields = (
         ('organization__full_name', 'full_name'),
         ('user__username', 'username'),
         ('role_description__title', 'role_name'),
         ('grant_key', 'grant_key'),
         ('request_key', 'request_key'),
         ('created_at', 'created_at')
-    ]
+    )
     ordering = ('-created_at', 'user__username',)
 
     filter_backends = (SearchFilter, OrderingFilter)
@@ -958,12 +961,12 @@ class SubscriptionSmartListMixin(object):
                      'organization__postal_code',
                      'organization__country',
                      'plan__title')
-
-    ordering_fields = [('organization__full_name', 'organization'),
-                           ('plan__title', 'plan'),
-                           ('created_at', 'created_at'),
-                           ('ends_at', 'ends_at')]
-
+    ordering_fields = (
+        ('organization__full_name', 'organization'),
+        ('plan__title', 'plan'),
+        ('created_at', 'created_at'),
+        ('ends_at', 'ends_at')
+    )
     ordering = ('ends_at',)
 
     filter_backends = (OrderingFilter, SearchFilter)
@@ -992,11 +995,13 @@ class UserSmartListMixin(object):
     search_fields = ('first_name',
                      'last_name',
                      'email')
-
-    ordering_fields = [('first_name', 'first_name'),
-                           ('last_name', 'last_name'),
-                           ('email', 'email'),
-                           ('date_joined', 'created_at')]
+    ordering_fields = (
+        ('first_name', 'first_name'),
+        ('last_name', 'last_name'),
+        ('email', 'email'),
+        ('date_joined', 'created_at')
+    )
+    ordering = ('first_name',)
 
     filter_backends = (DateRangeFilter, OrderingFilter, SearchFilter)
 

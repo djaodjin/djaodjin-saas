@@ -40,7 +40,7 @@ from .serializers import (OrganizationCreateSerializer,
 from .. import settings, signals
 from ..compat import urlparse, urlunparse
 from ..decorators import _valid_manager
-from ..docs import swagger_auto_schema
+from ..docs import OpenAPIResponse, swagger_auto_schema
 from ..mixins import (OrganizationMixin, OrganizationSmartListMixin,
     ProviderMixin, OrganizationDecorateMixin)
 from ..models import get_broker
@@ -97,8 +97,7 @@ class OrganizationCreateMixin(object):
                             email=organization.email,
                             first_name=first_name,
                             last_name=last_name)
-                    organization.add_manager(
-                        user, request_user=self.request.user)
+                    organization.add_manager(user)
                 else:
                     # When `slug` is not present, `save` would try to create
                     # one from the `full_name`.
@@ -119,7 +118,11 @@ class OrganizationDetailAPIView(OrganizationMixin, OrganizationQuerysetMixin,
     """
     Retrieves a billing profile
 
-    **Tags**: profile
+    The API is typically used within an HTML
+    `contact information page </docs/themes/#dashboard_profile>`_
+    as present in the default theme.
+
+    **Tags**: profile, subscriber, profilemodel
 
     **Examples**
 
@@ -167,7 +170,11 @@ class OrganizationDetailAPIView(OrganizationMixin, OrganizationQuerysetMixin,
         """
         Updates a billing profile
 
-        **Tags**: profile
+        The API is typically used within an HTML
+        `contact information page </docs/themes/#dashboard_profile>`_
+        as present in the default theme.
+
+        **Tags**: profile, subscriber, profilemodel
 
         **Examples**
 
@@ -208,11 +215,15 @@ class OrganizationDetailAPIView(OrganizationMixin, OrganizationQuerysetMixin,
         """
         Deletes a billing profile
 
-        We anonymize the organization instead of purely deleting
+        We anonymize the profile instead of purely deleting
         it from the database because we don't want to loose history
         on subscriptions and transactions.
 
-        **Tags**: profile
+        The API is typically used within an HTML
+        `contact information page </docs/themes/#dashboard_profile>`_
+        as present in the default theme.
+
+        **Tags**: profile, subscriber, profilemodel
 
         **Examples**
 
@@ -336,20 +347,15 @@ class OrganizationListAPIView(OrganizationSmartListMixin,
                               OrganizationQuerysetMixin,
                               OrganizationCreateMixin, ListCreateAPIView):
     """
-    List billing profiles
+    Lists billing profiles
 
-    Queries a page (``PAGE_SIZE`` records) of organization and user profiles.
+    Returns a list of {{PAGE_SIZE}} profile and user accounts.
 
-    The queryset can be filtered for at least one field to match a search
-    term (``q``).
+    The queryset can be further refined to match a search filter (``q``)
+    and/or a range of dates ([``start_at``, ``ends_at``]),
+    and sorted on specific fields (``o``).
 
-    The queryset can be ordered by a field by adding an HTTP query parameter
-    ``o=`` followed by the field name. A sequence of fields can be used
-    to create a complete ordering by adding a sequence of ``o`` HTTP query
-    parameters. To reverse the natural order of a field, prefix the field
-    name by a minus (-) sign.
-
-    **Tags**: profile
+    **Tags**: profile, broker, profilemodel
 
     **Examples**
 
@@ -377,7 +383,13 @@ class OrganizationListAPIView(OrganizationSmartListMixin,
     serializer_class = OrganizationDetailSerializer
     user_model = get_user_model()
 
-    @swagger_auto_schema(request_body=OrganizationCreateSerializer)
+    def get_serializer_class(self):
+        if self.request.method.lower() == 'post':
+            return OrganizationCreateSerializer
+        return super(OrganizationListAPIView, self).get_serializer_class()
+
+    @swagger_auto_schema(responses={
+      201: OpenAPIResponse("Create successful", OrganizationDetailSerializer)})
     def post(self, request, *args, **kwargs):
         """
         Creates an organization, personal or user profile.
@@ -460,10 +472,14 @@ class SubscribersAPIView(OrganizationSmartListMixin,
     """
     Lists subscribers for a provider
 
-    Returns a PAGE_SIZE list of subscriber profiles which have or had
-    a subscription to a plan provided by {organization}.
+    Returns a list of {{PAGE_SIZE}} subscriber profiles which have or
+    had a subscription to a plan provided by {organization}.
 
-    **Tags**: subscriptions
+    The queryset can be further refined to match a search filter (``q``)
+    and/or a range of dates ([``start_at``, ``ends_at``]),
+    and sorted on specific fields (``o``).
+
+    **Tags**: subscriptions, provider, profilemodel
 
     **Examples**
 

@@ -21,7 +21,7 @@
 # WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
+#pylint:disable=too-many-lines
 """
 Profiles appear at 3 level of details: slug, OrganizationSerializer and
 OrganizationDetailSerializer. The slug representation is used when
@@ -56,7 +56,8 @@ from ..humanize import as_money
 from ..mixins import as_html_description, product_url
 from ..models import (AdvanceDiscount, BalanceLine, CartItem, Charge, Coupon,
     Plan, RoleDescription, Subscription, Transaction, get_broker)
-from ..utils import (build_absolute_uri, get_organization_model, get_role_model)
+from ..utils import (build_absolute_uri, get_organization_model, get_role_model,
+    get_user_serializer)
 
 #pylint: disable=no-init
 
@@ -174,6 +175,14 @@ class BalanceLineSerializer(serializers.ModelSerializer):
         extra_kwargs = {'selector': {'required': False}}
 
 
+class UpdateRankSerializer(NoModelSerializer):
+
+    oldpos = serializers.IntegerField(
+        help_text=_("old rank for a line in the list of lines"))
+    newpos = serializers.IntegerField(
+        help_text=_("new rank for the line in the list of lines"))
+
+
 class BankSerializer(NoModelSerializer):
     """
     Information to verify a deposit account
@@ -260,20 +269,16 @@ class ChargeSerializer(serializers.ModelSerializer):
             'detail')
 
 
-class CouponCreateSerializer(serializers.ModelSerializer):
+class CouponSerializer(serializers.ModelSerializer):
     """
-    Serializer to create a coupon, including the `code`.
+    Serializer to retrieve or update a `Coupon`.
     """
+    code = serializers.CharField(required=False,
+        help_text=_("Unique identifier per provider, typically used in URLs"))
     discount_type = EnumField(choices=Coupon.DISCOUNT_CHOICES,
-        help_text=_("Type of discount (percentage or currency unit)"))
-    plan = PlanRelatedField(required=False, allow_null=True)
-
-    @staticmethod
-    def validate_plan(plan):
-        if plan and not plan.is_active:
-            raise ValidationError(_("The plan is inactive. "\
-                "As a result the coupon will have no effect."))
-        return plan
+        help_text=_("Type of discount ('percentage', 'currency', or 'period')"))
+    plan = PlanRelatedField(required=False, allow_null=True,
+        help_text=_("Coupon will only apply to this plan"))
 
     class Meta:
         model = Coupon
@@ -282,14 +287,27 @@ class CouponCreateSerializer(serializers.ModelSerializer):
             'nb_attempts', 'plan')
 
 
-class CouponSerializer(CouponCreateSerializer):
+class CouponCreateSerializer(CouponSerializer):
     """
-    Serializer to retrieve or update a `Coupon`.
+    Serializer to create a coupon, including the `code`.
     """
-    class Meta:
-        model = CouponCreateSerializer.Meta.model
-        fields = CouponCreateSerializer.Meta.fields
-        read_only_fields = ('code',)
+    code = serializers.CharField(required=True,
+        help_text=_("Unique identifier per provider, typically used in URLs"))
+    discount_type = EnumField(required=True, choices=Coupon.DISCOUNT_CHOICES,
+        help_text=_("Type of discount ('percentage', 'currency', or 'period')"))
+    discount_value = serializers.IntegerField(required=True,
+        help_text=_("Amount of the discount"))
+
+    @staticmethod
+    def validate_plan(plan):
+        if plan and not plan.is_active:
+            raise ValidationError(_("The plan is inactive. "\
+                "As a result the coupon will have no effect."))
+        return plan
+
+    class Meta(CouponSerializer.Meta):
+        model = CouponSerializer.Meta.model
+        fields = CouponSerializer.Meta.fields
 
 
 class EmailChargeReceiptSerializer(NoModelSerializer):
@@ -326,10 +344,11 @@ class TableSerializer(NoModelSerializer):
         help_text=_("Unique key in the table for the data series"))
     selector = serializers.CharField(
         required=False, # XXX only in balances.py
-        help_text=_("Filter on the Transaction accounts"))
+        help_text=_("Filter on transaction accounts"))
     values = serializers.ListField(
         child=DatetimeValueTuple(),
-        help_text=_("Datapoints in the serie"))
+        help_text=_("List of (datetime, integer) couples that represents"\
+        " the data serie"))
 
 
 class MetricsSerializer(NoModelSerializer):
@@ -341,7 +360,8 @@ class MetricsSerializer(NoModelSerializer):
         help_text=_("Three-letter ISO 4217 code for currency unit (ex: usd)"))
     title = serializers.CharField(
         help_text=_("Title for the table"))
-    table = TableSerializer(many=True)
+    table = TableSerializer(many=True,
+        help_text=_("Data series"))
 
 
 class RefundChargeItemSerializer(NoModelSerializer):
@@ -360,7 +380,37 @@ class RefundChargeSerializer(NoModelSerializer):
     """
     Response for the API call to send an e-mail duplicate to the customer.
     """
-    lines = RefundChargeItemSerializer(many=True)
+    lines = RefundChargeItemSerializer(many=True,
+        help_text=_("Line items in a charge to be refunded"))
+
+
+class OrganizationBalanceSerializer(NoModelSerializer):
+
+    balance_amount = serializers.IntegerField(read_only=True,
+      help_text=_("balance of all transactions in cents (i.e. 100ths) of unit"))
+    balance_unit = serializers.IntegerField(read_only=True,
+        help_text=_("three-letter ISO 4217 code for currency unit (ex: usd)"))
+
+    class Meta:
+        fields = ('balance_amount', 'balance_unit')
+
+
+class WithEndsAtByPlanSerializer(NoModelSerializer):
+
+    plan = serializers.SlugField(source='plan__slug', read_only=True)
+    ends_at = serializers.DateTimeField(source='ends_at__max', read_only=True)
+
+    class Meta:
+        fields = ('plan', 'ends_at')
+
+
+class WithSubscriptionSerializer(serializers.ModelSerializer):
+
+    plan = serializers.SlugRelatedField(read_only=True, slug_field='slug')
+
+    class Meta:
+        model = Subscription
+        fields = ('created_at', 'ends_at', 'plan', 'auto_renew')
 
 
 class OrganizationSerializer(serializers.ModelSerializer):
@@ -369,17 +419,24 @@ class OrganizationSerializer(serializers.ModelSerializer):
     # when one creates an opt-in subscription.
     # If we don't define ``slug`` here, the serializer validators will raise
     # an exception "Organization already exists in database".
-    slug = serializers.CharField(required=False, allow_blank=True,
+    slug = serializers.CharField(read_only=True,
         help_text=_("Unique identifier shown in the URL bar"))
-    full_name = serializers.CharField(
+    printable_name = serializers.SerializerMethodField(read_only=True,
+        help_text=_("Name that can be safely used for display in HTML pages"))
+    credentials = serializers.SerializerMethodField(read_only=True,
+        help_text=_("True if the account has valid login credentials"))
+    full_name = serializers.CharField(required=False,
         help_text=_("Full name"))
-    printable_name = serializers.CharField(read_only=True)
-    credentials = serializers.SerializerMethodField(read_only=True)
 
     class Meta:
         model = get_organization_model()
         fields = ('slug', 'full_name', 'printable_name', 'picture',
             'type', 'credentials')
+        read_only_fields = ('printable_name', 'type', 'credentials')
+
+    @staticmethod
+    def get_printable_name(obj):
+        return obj.printable_name
 
     @staticmethod
     def get_credentials(obj):
@@ -404,48 +461,8 @@ OrganizationSerializer._declared_fields["type"] = \
 
 class OrganizationDetailSerializer(OrganizationSerializer):
 
-    default_timezone = serializers.CharField(required=False,
-         help_text=_("Timezone to use when reporting metrics"))
-    email = serializers.EmailField(
-        help_text=_("E-mail address"))
-    phone = serializers.CharField(required=False, allow_blank=True,
-        help_text=_("Phone number"))
-    street_address = serializers.CharField(required=False, allow_blank=True,
-        help_text=_("Street address"))
-    locality = serializers.CharField(required=False, allow_blank=True,
-        help_text=_("City/Town"))
-    region = serializers.CharField(required=False, allow_blank=True,
-        help_text=_("State/Province/County"))
-    postal_code = serializers.CharField(required=False, allow_blank=True,
-        help_text=_("Zip/Postal code"))
-    country = CountryField(required=False, allow_blank=True,
-        help_text=_("Country"))
-    is_bulk_buyer = serializers.BooleanField(required=False, default=False,
-        help_text=_("Enable GroupBuy"))
-    extra = serializers.CharField(required=False, allow_null=True,
-        help_text=_("Extra meta data (can be stringify JSON)"))
-
-    detail = serializers.CharField(required=False,
-        help_text=_("Describes the result of the action"\
-            " in human-readable form"))
-
-    class Meta(OrganizationSerializer.Meta):
-        fields = OrganizationSerializer.Meta.fields + (
-            'created_at', 'email', 'phone',
-            'street_address', 'locality', 'region', 'postal_code', 'country',
-            'default_timezone', 'is_provider', 'is_bulk_buyer', 'extra',
-            'detail')
-        read_only_fields = ('created_at', 'detail')
-
-
-class OrganizationCreateSerializer(NoModelSerializer):
-    # We have a special serializer for Create (i.e. POST request)
-    # because we want to include the `type` field.
-
-    slug = serializers.SlugField(required=False, allow_blank=True,
+    slug = serializers.CharField(required=False,
         help_text=_("Unique identifier shown in the URL bar"))
-    full_name = serializers.CharField(required=False,
-        help_text=_("Full name"))
     default_timezone = serializers.CharField(required=False,
          help_text=_("Timezone to use when reporting metrics"))
     email = serializers.EmailField(required=False,
@@ -462,17 +479,27 @@ class OrganizationCreateSerializer(NoModelSerializer):
         help_text=_("Zip/Postal code"))
     country = CountryField(required=False, allow_blank=True,
         help_text=_("Country"))
+    is_bulk_buyer = serializers.BooleanField(required=False, default=False,
+        help_text=_("Enable GroupBuy"))
     extra = serializers.CharField(required=False, allow_null=True,
         help_text=_("Extra meta data (can be stringify JSON)"))
 
-    def validate(self, attrs):
-        # XXX This is because we use `OrganizationCreateSerializer`
-        # in `SubscriptionCreateSerializer`.
-        if not (attrs.get('slug') or (attrs.get('full_name') and
-                attrs.get('email') and attrs.get('type'))):
-            raise ValidationError(_("One of slug or (full_name, email,"\
-                " type) should be present"))
-        return super(OrganizationCreateSerializer, self).validate(attrs)
+    detail = serializers.CharField(read_only=True, required=False,
+        help_text=_("Describes the result of the action"\
+            " in human-readable form"))
+
+    class Meta(OrganizationSerializer.Meta):
+        fields = OrganizationSerializer.Meta.fields + (
+            'created_at', 'email', 'phone',
+            'street_address', 'locality', 'region', 'postal_code', 'country',
+            'default_timezone', 'is_provider', 'is_bulk_buyer', 'extra',
+            'detail')
+        read_only_fields = ('created_at', 'detail')
+
+
+class OrganizationCreateSerializer(OrganizationDetailSerializer):
+    # We have a special serializer for Create (i.e. POST request)
+    # because we want to include the `type` field.
 
     @staticmethod
     def validate_type(value):
@@ -481,60 +508,42 @@ class OrganizationCreateSerializer(NoModelSerializer):
                 _("type must be one of 'personal' or 'organization'."))
         return value
 
+    class Meta(OrganizationDetailSerializer.Meta):
+        fields = OrganizationDetailSerializer.Meta.fields
+
 OrganizationCreateSerializer._declared_fields["type"] = \
     serializers.CharField(required=False,#pylint:disable=protected-access
         help_text=_("One of 'organization', 'personal' or 'user'"))
 
 
-class WithEndsAtByPlanSerializer(NoModelSerializer):
-
-    plan = serializers.SlugField(source='plan__slug', read_only=True)
-    ends_at = serializers.DateTimeField(source='ends_at__max', read_only=True)
-
-    class Meta:
-        fields = ('plan', 'ends_at')
-
-
-class WithSubscriptionSerializer(serializers.ModelSerializer):
-
-    plan = serializers.SlugRelatedField(read_only=True, slug_field='slug')
-
-    class Meta:
-        model = Subscription
-        fields = ('created_at', 'ends_at', 'plan', 'auto_renew')
-
-
 class OrganizationWithSubscriptionsSerializer(OrganizationDetailSerializer):
-
-    is_bulk_buyer = serializers.BooleanField(required=False, default=False,
-        help_text=_("Enable GroupBuy"))
+    """
+    Operational information on an Organization,
+    bundled with its subscriptions.
+    """
     subscriptions = WithSubscriptionSerializer(
         source='subscription_set', many=True, read_only=True)
 
-    class Meta:
-        model = get_organization_model()
-        fields = ('slug', 'created_at', 'full_name',
-            'email', 'phone', 'street_address', 'locality',
-            'region', 'postal_code', 'country', 'default_timezone',
-            'printable_name', 'is_provider', 'is_bulk_buyer', 'type',
-            'extra', 'subscriptions', 'picture')
-        read_only_fields = ('slug', 'created_at', 'picture')
+    class Meta(OrganizationDetailSerializer.Meta):
+        fields = OrganizationDetailSerializer.Meta.fields + (
+            'subscriptions',)
+        read_only_fields = OrganizationDetailSerializer.Meta.read_only_fields\
+            + ('subscriptions',)
 
 
-class OrganizationWithEndsAtByPlanSerializer(serializers.ModelSerializer):
+class OrganizationWithEndsAtByPlanSerializer(OrganizationSerializer):
     """
     Operational information on an Organization,
     bundled with its active subscriptions.
     """
-
     subscriptions = WithEndsAtByPlanSerializer(
         source='get_ends_at_by_plan', many=True, read_only=True)
 
-    class Meta:
-        model = get_organization_model()
-        fields = ('slug', 'printable_name', 'created_at',
-            'email', 'subscriptions', )
-        read_only_fields = ('slug', 'created_at')
+    class Meta(OrganizationSerializer.Meta):
+        fields = OrganizationSerializer.Meta.fields + (
+            'email', 'subscriptions',)
+        read_only_fields = OrganizationSerializer.Meta.read_only_fields\
+            + ('subscriptions',)
 
 
 class AdvanceDiscountSerializer(serializers.ModelSerializer):
@@ -549,6 +558,8 @@ class AdvanceDiscountSerializer(serializers.ModelSerializer):
 
 class PlanSerializer(serializers.ModelSerializer):
 
+    slug = serializers.CharField(required=False,
+        help_text=_("Unique identifier shown in the URL bar"))
     title = serializers.CharField(required=False,
         help_text=_("Title for the plan"))
     description = serializers.CharField(required=False,
@@ -561,10 +572,13 @@ class PlanSerializer(serializers.ModelSerializer):
     period_amount = serializers.IntegerField(required=False,
         help_text=_("Amount billed every period"))
     period_type = EnumField(choices=Plan.INTERVAL_CHOICES, required=False,
-        help_text=_("Natural period for the subscription"))
+        help_text=_("Natural period length of a subscription to the plan"\
+        " (hourly, daily, weekly, monthly, yearly)"))
     renewal_type = EnumField(choices=Plan.RENEWAL_CHOICES, required=False,
-        help_text=_("Natural period for the subscription"))
-    app_url = serializers.SerializerMethodField()
+        help_text=_("What happens at the end of a subscription period"\
+        " (one-time, auto-renew, repeat)"))
+    app_url = serializers.SerializerMethodField(
+      help_text=_("URL to the homepage for the profile associated to the plan"))
     organization = OrganizationSerializer(read_only=True,
         help_text=_("Provider of the plan"))
     skip_optin_on_grant = serializers.BooleanField(required=False,
@@ -582,7 +596,7 @@ class PlanSerializer(serializers.ModelSerializer):
     is_cart_item = serializers.SerializerMethodField(required=False,
         help_text=_("The plan is part of the cart to checkout"))
 
-    detail = serializers.CharField(required=False,
+    detail = serializers.CharField(read_only=True, required=False,
         help_text=_("Describes the result of the action"\
             " in human-readable form"))
 
@@ -595,7 +609,7 @@ class PlanSerializer(serializers.ModelSerializer):
                   'created_at',
                   'skip_optin_on_grant', 'optin_on_request',
                   'discounted_period_amount', 'is_cart_item', 'detail')
-        read_only_fields = ('slug', 'app_url',
+        read_only_fields = ('app_url',
             'discounted_period_amount', 'is_cart_item', 'detail')
 
     @staticmethod
@@ -640,25 +654,39 @@ class PlanSerializer(serializers.ModelSerializer):
 
         return instance
 
-    def validate_title(self, title):
-        kwargs = {}
-        if 'provider' in self.context:
-            kwargs.update({'organization': self.context['provider']})
-        try:
-            exists = Plan.objects.get(title=title, **kwargs)
-            if self.instance is None or exists.pk != self.instance.pk:
-                # Rename is ok.
-                raise ValidationError(
-                    _("A plan with this title already exists."))
-        except Plan.DoesNotExist:
-            pass
-        return title
+
+class PlanCreateSerializer(PlanSerializer):
+    """
+    Serializer to create plans in POST requests
+    """
+    title = serializers.CharField(required=True,
+        help_text=_("Title for the plan"))
+
+    class Meta(PlanSerializer.Meta):
+        fields = PlanSerializer.Meta.fields
+
+
+class OrganizationInviteSerializer(OrganizationCreateSerializer):
+
+    def validate(self, attrs):
+        # XXX This is because we use `OrganizationInviteSerializer`
+        # in `ProvidedSubscriptionCreateSerializer`.
+        if not (attrs.get('slug') or (attrs.get('full_name') and
+                attrs.get('email') and attrs.get('type'))):
+            raise ValidationError(_("One of slug or (full_name, email,"\
+                " type) should be present"))
+        return super(OrganizationInviteSerializer, self).validate(attrs)
+
+    class Meta(OrganizationCreateSerializer.Meta):
+        fields = OrganizationCreateSerializer.Meta.fields
 
 
 class SubscriptionSerializer(serializers.ModelSerializer):
 
-    organization = OrganizationDetailSerializer(read_only=True)
-    plan = PlanSerializer(read_only=True)
+    organization = OrganizationDetailSerializer(read_only=True,
+        help_text=_("Profile subscribed to the plan"))
+    plan = PlanSerializer(read_only=True,
+        help_text=_("Plan the profile is subscribed to"))
     editable = serializers.SerializerMethodField(
         help_text=_("True if the request user is able to update"\
         " the subscription. Typically a manager for the plan provider."))
@@ -676,10 +704,53 @@ class SubscriptionSerializer(serializers.ModelSerializer):
             [subscription.plan.organization]))
 
 
-class SubscriptionCreateSerializer(serializers.ModelSerializer):
+class SubscribedSubscriptionSerializer(SubscriptionSerializer):
 
-    organization = OrganizationCreateSerializer()
-    message = serializers.CharField(required=False, allow_null=True)
+    remove_api_url = serializers.SerializerMethodField(
+        help_text=_("URL API endpoint to remove the subscription"\
+        " grant or request"))
+
+    class Meta(SubscriptionSerializer.Meta):
+        fields = SubscriptionSerializer.Meta.fields + (
+            'remove_api_url',)
+
+    def get_remove_api_url(self, obj):
+        return build_absolute_uri(self.context['request'], location=reverse(
+            'saas_api_subscription_detail', args=(
+                obj.organization, obj.plan,)))
+
+
+class ProvidedSubscriptionSerializer(SubscriptionSerializer):
+
+    accept_request_api_url = serializers.SerializerMethodField(
+        help_text=_("URL API endpoint to grant the subscription"))
+    remove_api_url = serializers.SerializerMethodField(
+        help_text=_("URL API endpoint to remove the subscription"\
+        " grant or request"))
+
+    class Meta(SubscriptionSerializer.Meta):
+        fields = SubscriptionSerializer.Meta.fields + (
+            'accept_request_api_url', 'remove_api_url')
+
+    def get_accept_request_api_url(self, obj):
+        if obj.request_key:
+            return build_absolute_uri(self.context['request'], location=reverse(
+                'saas_api_subscription_grant_accept', args=(
+                obj.plan.organization, obj.request_key)))
+        return None
+
+    def get_remove_api_url(self, obj):
+        return build_absolute_uri(self.context['request'], location=reverse(
+            'saas_api_plan_subscription', args=(
+                obj.plan.organization, obj.plan, obj.organization)))
+
+
+class ProvidedSubscriptionCreateSerializer(serializers.ModelSerializer):
+
+    organization = OrganizationInviteSerializer(
+        help_text=_("Profile subscribed to the plan"))
+    message = serializers.CharField(required=False, allow_null=True,
+        help_text=_("Message to send along the invitation"))
 
     class Meta:
         model = Subscription
@@ -692,11 +763,11 @@ class TransactionSerializer(serializers.ModelSerializer):
     """
 
     orig_organization = serializers.SlugRelatedField(
-        read_only=True, slug_field='slug', help_text=_("Source organization"\
-        " from which funds are withdrawn"))
+        read_only=True, slug_field='slug',
+        help_text=_("Billing profile from which funds are withdrawn"))
     dest_organization = serializers.SlugRelatedField(
-        read_only=True, slug_field='slug', help_text=_("Target organization"\
-        " to which funds are deposited"))
+        read_only=True, slug_field='slug',
+        help_text=_("Billing profile to which funds are deposited"))
     description = serializers.CharField(source='descr', read_only=True,
         help_text=_("Free-form text description for the %(object)s") % {
             'object': 'transaction'})
@@ -759,36 +830,9 @@ class OfflineTransactionSerializer(NoModelSerializer):
     """
     detail = serializers.CharField(required=False,
         help_text=_("Describes the result of the action"\
-            " in human-readable form"))
-    results = TransactionSerializer(many=True)
-
-
-class UserSerializer(serializers.ModelSerializer):
-
-    # Only way I found out to remove the ``UniqueValidator``. We are not
-    # interested to create new instances here.
-    slug = serializers.CharField(source='username', validators=[
-        validators.RegexValidator(r'^[\w.@+-]+$', _('Enter a valid username.'),
-            'invalid')],
-        help_text=_("Effectively the username. The variable is named `slug`"\
-            " such that front-end code can be re-used between Organization"\
-            " and User records."))
-    email = serializers.EmailField(read_only=True,
-        help_text=_("E-mail address for the user"))
-    created_at = serializers.DateTimeField(source='date_joined', required=False,
-        help_text=_("Date/time of creation (in ISO format)"))
-    full_name = serializers.SerializerMethodField(
-        help_text=_("Full name for the contact (effectively first name"\
-        " followed by last name)"))
-
-    class Meta:
-        model = get_user_model()
-        fields = ('slug', 'email', 'full_name', 'created_at')
-        read_only = ('full_name', 'created_at',)
-
-    @staticmethod
-    def get_full_name(obj):
-        return obj.get_full_name()
+        " in human-readable form"))
+    results = TransactionSerializer(many=True,
+        help_text=_("transactions being created by the import"))
 
 
 class CartItemSerializer(serializers.ModelSerializer):
@@ -797,13 +841,37 @@ class CartItemSerializer(serializers.ModelSerializer):
 
     This serializer is typically used in coupon performance metrics.
     """
-    user = UserSerializer(required=False)
-    plan = PlanRelatedField(read_only=False, required=True)
+    user = get_user_serializer()(
+        help_text=_("User the cart belongs to"))
+    plan = PlanRelatedField(
+        help_text=_("Item in the cart (if plan)"))
 
     class Meta:
         model = CartItem
-        fields = ('created_at', 'user', 'plan',
-            'option', 'full_name', 'sync_on')
+        fields = ('created_at', 'user', 'plan', 'option', 'full_name',
+            'sync_on', 'email')
+        read_only_fields = ('created_at', 'user')
+
+
+class CartItemCreateSerializer(serializers.ModelSerializer):
+    """
+    Serializer to build a request.user set of plans to subscribe to (i.e. cart).
+    """
+    plan = PlanRelatedField(read_only=False, required=True,
+        help_text=_("The plan to add into the request.user cart."))
+
+    class Meta:
+        model = CartItem
+        fields = ('created_at', 'plan', 'option', 'full_name',
+            'sync_on', 'email')
+        read_only_fields = ('created_at',)
+
+
+class CartItemUploadSerializer(NoModelSerializer):
+
+    created = CartItemSerializer(many=True)
+    updated = CartItemSerializer(many=True)
+    failed = CartItemSerializer(many=True)
 
 
 class InvoicableSerializer(NoModelSerializer):
@@ -820,7 +888,10 @@ class InvoicableSerializer(NoModelSerializer):
 
 class RoleDescriptionSerializer(serializers.ModelSerializer):
 
-    organization = OrganizationSerializer(read_only=True)
+    organization = OrganizationSerializer(read_only=True,
+        help_text=_("Profile the role type belongs to"))
+    is_global = serializers.BooleanField(required=False,
+        help_text=_("True when the role type is available for all profiles"))
 
     class Meta:
         model = RoleDescription
@@ -834,13 +905,19 @@ class AccessibleSerializer(serializers.ModelSerializer):
     """
     Formats an entry in a list of ``Organization`` accessible by a ``User``.
     """
-    organization = OrganizationSerializer(read_only=True)
-    role_description = RoleDescriptionSerializer(read_only=True)
-
-    accept_grant_api_url = serializers.SerializerMethodField()
-    remove_api_url = serializers.SerializerMethodField()
-    home_url = serializers.SerializerMethodField()
-    settings_url = serializers.SerializerMethodField()
+    organization = OrganizationSerializer(read_only=True,
+        help_text=_("Profile the user has a role on"))
+    role_description = RoleDescriptionSerializer(read_only=True,
+        help_text=_("Description of the role"))
+    accept_grant_api_url = serializers.SerializerMethodField(
+        help_text=_("URL API endpoint to grant the role"))
+    remove_api_url = serializers.SerializerMethodField(
+        help_text=_("URL API endpoint to remove the role grant or request"))
+    home_url = serializers.SerializerMethodField(
+      help_text=_("URL to the homepage for the profile associated to the role"))
+    settings_url = serializers.SerializerMethodField(
+        help_text=_("URL to the settings page for the profile associated"\
+        " to the role"))
 
     class Meta:
         model = get_role_model()
@@ -879,15 +956,34 @@ class AccessibleSerializer(serializers.ModelSerializer):
             request=self.context['request'])
 
 
+class AccessibleCreateSerializer(NoModelSerializer):
+    """
+    Invite a previously existing or new Organization
+    """
+    slug = serializers.CharField(required=False, validators=[
+        validators.RegexValidator(settings.ACCT_REGEX,
+            _("Enter a valid organization slug."), 'invalid')],
+        help_text=_("Profile to grant {user} a role onto"))
+    email = serializers.EmailField(required=False,
+        help_text=_("E-mail of profile to grant {user} a role onto"\
+            " (potentially generating an invite to the site)"))
+    message = serializers.CharField(max_length=255, required=False,
+        help_text=_("Message to send along the invitation"))
+
+
 class RoleSerializer(serializers.ModelSerializer):
 
-    user = UserSerializer(read_only=True)
-    organization = OrganizationDetailSerializer(read_only=True)
-    role_description = RoleDescriptionSerializer(read_only=True)
-    accept_request_api_url = serializers.SerializerMethodField()
-    remove_api_url = serializers.SerializerMethodField()
-
-    detail = serializers.CharField(required=False,
+    user = get_user_serializer()(read_only=True,
+        help_text=_("User with the role"))
+    organization = OrganizationDetailSerializer(read_only=True,
+        help_text=_("Profile the user has a role on"))
+    role_description = RoleDescriptionSerializer(read_only=True,
+        help_text=_("Description of the role"))
+    accept_request_api_url = serializers.SerializerMethodField(
+        help_text=_("URL API endpoint to grant the role"))
+    remove_api_url = serializers.SerializerMethodField(
+        help_text=_("URL API endpoint to remove the role grant or request"))
+    detail = serializers.CharField(read_only=True, required=False,
         help_text=_("Describes the result of the action"\
             " in human-readable form"))
 
@@ -914,6 +1010,41 @@ class RoleSerializer(serializers.ModelSerializer):
                 obj.organization, role_description, obj.user)))
 
 
+class RoleCreateSerializer(NoModelSerializer):
+    """
+    Invite a previously existing or new User
+    """
+
+    slug = serializers.CharField(required=False,
+        help_text=_("Username"),
+        validators=[validators.RegexValidator(settings.ACCT_REGEX,
+            _("Enter a valid username."), 'invalid')])
+    email = serializers.EmailField(
+        max_length=get_user_model()._meta.get_field('email').max_length,
+        required=False,
+        help_text=_("E-mail of user to grant role onto profile"\
+            " (potentially generating an invite to the site)"))
+    full_name = serializers.CharField(required=False,
+        help_text=_("Full name of user to grant role onto profile"\
+            " (potentially generating an invite to the site)"))
+    message = serializers.CharField(max_length=255, required=False,
+        help_text=_("Message to send along the invitation"))
+
+    @staticmethod
+    def validate_slug(data):
+        # The ``slug`` / ``username`` is implicit in the addition of a role
+        # for a newly created user while adding a role. Hence we don't return
+        # a validation error if the length is too long but arbitrarly shorten
+        # the username.
+        user_model = get_user_model()
+        max_length = user_model._meta.get_field('username').max_length
+        if len(data) > max_length:
+            if '@' in data:
+                data = data.split('@')[0]
+            data = data[:max_length]
+        return data
+
+
 class UploadBlobSerializer(NoModelSerializer):
     """
     Upload a picture or other POD content
@@ -923,17 +1054,15 @@ class UploadBlobSerializer(NoModelSerializer):
 
 
 class AgreementSignSerializer(NoModelSerializer):
-    read_terms = serializers.BooleanField(help_text=_(
-        "I have read and understand these terms and conditions"))
-    last_signed = serializers.DateTimeField(read_only=True)
 
+    read_terms = serializers.BooleanField(required=True,
+        help_text=_("I have read and understand these terms and conditions"))
+    last_signed = serializers.DateTimeField(read_only=True,
+        help_text=_("Date/time of signature (in ISO format)"))
 
-class CreateAccessibleRequestSerializer(NoModelSerializer):
-    """
-    Requests to be granted a role on a profile
-    """
-    organization = serializers.CharField()
-    message = serializers.CharField(max_length=255, required=False)
+    class Meta:
+        fields = ('read_terms', 'last_signed',)
+        read_only = ('last_signed',)
 
 
 class LifetimeSerializer(OrganizationSerializer):
@@ -967,3 +1096,83 @@ class ValidationErrorSerializer(NoModelSerializer):
     """
     detail = serializers.CharField(help_text=_("Describes the reason for"\
         " the error in plain text"))
+
+
+# Default implementation when not overriden
+
+class UserSerializer(serializers.ModelSerializer):
+
+    # Only way I found out to remove the ``UniqueValidator``. We are not
+    # interested to create new instances here.
+    slug = serializers.CharField(source='username', validators=[
+        validators.RegexValidator(r'^[\w.@+-]+$', _('Enter a valid username.'),
+            'invalid')],
+        help_text=_("Effectively the username. The variable is named `slug`"\
+            " such that front-end code can be re-used between Organization"\
+            " and User records."))
+    email = serializers.EmailField(read_only=True,
+        help_text=_("E-mail address for the user"))
+    created_at = serializers.DateTimeField(source='date_joined', required=False,
+        help_text=_("Date/time of creation (in ISO format)"))
+    full_name = serializers.SerializerMethodField(
+        help_text=_("Full name for the contact (effectively first name"\
+        " followed by last name)"))
+
+    class Meta:
+        model = get_user_model()
+        fields = ('slug', 'email', 'full_name', 'created_at')
+        read_only = ('full_name', 'created_at',)
+
+    @staticmethod
+    def get_full_name(obj):
+        return obj.get_full_name()
+
+
+class OrganizationCartSerializer(NoModelSerializer):
+    """
+    Items which will be charged on an order checkout action.
+    """
+    processor = ProcessorAuthSerializer(required=False,
+      help_text=_("Keys to authenticate the client with the payment processor"))
+    results = InvoicableSerializer(many=True,
+      help_text=_("Items that will be charged"))
+
+
+class CheckoutItemSerializer(NoModelSerializer):
+    option = serializers.IntegerField(
+        help_text=_("selected plan option during checkout"))
+
+
+class CheckoutSerializer(NoModelSerializer):
+    """
+    Processor token to charge the cart items.
+    """
+    items = CheckoutItemSerializer(required=False, many=True,
+        help_text=_("List of indices, one per subscription that has multiple"\
+        " advance discount options"))
+    remember_card = serializers.BooleanField(required=False,
+        help_text=_("attaches the payment method to the profile when true"))
+    processor_token = serializers.CharField(required=False, max_length=255,
+        help_text=_("one-time token generated by the processor"\
+            "from the payment card."))
+    street_address = serializers.CharField(required=False, allow_blank=True,
+        help_text=_("Street address"))
+    locality = serializers.CharField(required=False, allow_blank=True,
+        help_text=_("City/Town"))
+    region = serializers.CharField(required=False, allow_blank=True,
+        help_text=_("State/Province/County"))
+    postal_code = serializers.CharField(required=False, allow_blank=True,
+        help_text=_("Zip/Postal code"))
+    country = serializers.CharField(required=False, allow_blank=True,
+        help_text=_("Country"))
+
+
+class RedeemCouponSerializer(NoModelSerializer):
+    """
+    Serializer to redeem a ``Coupon``.
+    """
+
+    code = serializers.CharField(help_text=_("Coupon code to redeem"))
+
+    def create(self, validated_data):
+        return validated_data

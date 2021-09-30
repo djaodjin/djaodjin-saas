@@ -1,4 +1,4 @@
-# Copyright (c) 2020, DjaoDjin inc.
+# Copyright (c) 2021, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -26,10 +26,11 @@ from django.contrib.auth import get_user_model
 from rest_framework.generics import ListAPIView
 
 from .organizations import OrganizationQuerysetMixin
-from .serializers import (OrganizationSerializer, UserSerializer)
+from .serializers import OrganizationSerializer
 from .. import filters
 from ..mixins import (OrganizationSmartListMixin, UserSmartListMixin)
 from ..pagination import TypeaheadPagination
+from ..utils import get_user_serializer
 
 
 #pylint: disable=no-init
@@ -60,29 +61,36 @@ def get_order_func(fields):
         get_order_func(fields[1:])(left, right))
 
 
-class AccountsSearchAPIView(OrganizationSmartListMixin,
+class AccountsTypeaheadAPIView(OrganizationSmartListMixin,
                             OrganizationQuerysetMixin, ListAPIView):
     """
-    Searches billing and login profiles
+    Searches profile and user accounts
 
-    Queries a page (``PAGE_SIZE`` records) of organization and user profiles.
+    Returns a list of {{MAX_TYPEAHEAD_CANDIDATES}} candidate profiles
+    or user accounts based of a search criteria (``q``).
 
-    The queryset can be filtered for at least one field to match a search
-    term (``q``).
+    The API is designed to be used in typeahead input fields. As such
+    it only returns results when the number of candidates is less
+    than {{MAX_TYPEAHEAD_CANDIDATES}}.
 
-    The queryset can be ordered by a field by adding an HTTP query parameter
-    ``o=`` followed by the field name. A sequence of fields can be used
-    to create a complete ordering by adding a sequence of ``o`` HTTP query
-    parameters. To reverse the natural order of a field, prefix the field
-    name by a minus (-) sign.
+    If you need to list all profiles, please see
+    `Lists billing profiles </docs/api/#listOrganization>`_
 
-    **Tags**: profile
+    The queryset can be further refined by a range of dates
+    ([``start_at``, ``ends_at``]), and sorted on specific fields (``o``).
+
+    The API is typically used in pages for the support team to quickly
+    locate an account. For example, it is used within the HTML
+    `provider dashboard page </docs/themes/#dashboard_metrics_dashboard>`_
+    as present in the default theme.
+
+    **Tags**: profile, user
 
     **Examples**
 
     .. code-block:: http
 
-        GET /api/accounts/?o=created_at HTTP/1.1
+        GET /api/accounts/?q=xi HTTP/1.1
 
     responds
 
@@ -90,8 +98,6 @@ class AccountsSearchAPIView(OrganizationSmartListMixin,
 
         {
             "count": 1,
-            "next": null,
-            "previous": null,
             "results": [{
                 "slug": "xia",
                 "full_name": "Xia Lee",
@@ -103,6 +109,7 @@ class AccountsSearchAPIView(OrganizationSmartListMixin,
     """
     serializer_class = OrganizationSerializer
     user_model = get_user_model()
+    pagination_class = TypeaheadPagination
 
     def get_users_queryset(self):
         # All users not already picked up as an Organization.
@@ -189,27 +196,32 @@ class AccountsSearchAPIView(OrganizationSmartListMixin,
 class ProfilesTypeaheadAPIView(OrganizationSmartListMixin,
                             OrganizationQuerysetMixin, ListAPIView):
     """
-    Searches billing profiles
+    Searches profiles
 
-    Queries a page (``PAGE_SIZE`` records) of candidate profiles based
-    of a search criteria (``q``).
+    Returns a list of {{MAX_TYPEAHEAD_CANDIDATES}} candidate profiles
+    based of a search criteria (``q``).
 
-    This API differs from /api/profile in that it is designed to be used
-    in auto-completion input fields instead of designed to list all profiles.
+    The API is designed to be used in typeahead input fields. As such
+    it only returns results when the number of candidates is less
+    than {{MAX_TYPEAHEAD_CANDIDATES}}.
 
-    The queryset can be ordered by a field by adding an HTTP query parameter
-    ``o=`` followed by the field name. A sequence of fields can be used
-    to create a complete ordering by adding a sequence of ``o`` HTTP query
-    parameters. To reverse the natural order of a field, prefix the field
-    name by a minus (-) sign.
+    If you need to list all profiles, please see
+    `Lists billing profiles </docs/api/#listOrganization>`_
 
-    **Tags**: profile
+    The queryset can be further refined by a range of dates
+    ([``start_at``, ``ends_at``]), and sorted on specific fields (``o``).
+
+    The API is typically used within an HTML
+    `connected profiles page </docs/themes/#dashboard_users_roles>`_
+    as present in the default theme.
+
+    **Tags**: profile, user
 
     **Examples**
 
     .. code-block:: http
 
-        GET /api/accounts/profiles/?q=xia HTTP/1.1
+        GET /api/accounts/profiles/?q=xi HTTP/1.1
 
     responds
 
@@ -217,8 +229,6 @@ class ProfilesTypeaheadAPIView(OrganizationSmartListMixin,
 
         {
             "count": 1,
-            "next": null,
-            "previous": null,
             "results": [{
                 "slug": "xia",
                 "full_name": "Xia Lee",
@@ -250,24 +260,32 @@ class UserQuerysetMixin(object):
 class UsersTypeaheadAPIView(UserSmartListMixin, UserQuerysetMixin,
                             ListAPIView):
     """
-    Searches login profiles
+    Searches users
 
-    Queries a page (``PAGE_SIZE`` records) of ``User``.
+    Returns a list of {{MAX_TYPEAHEAD_CANDIDATES}} candidate users
+    based of a search criteria (``q``).
 
-    The queryset can be filtered to a range of dates
-    ([``start_at``, ``ends_at``]) and for at least one field to match a search
-    term (``q``).
+    The API is designed to be used in typeahead input fields. As such
+    it only returns results when the number of candidates is less
+    than {{MAX_TYPEAHEAD_CANDIDATES}}.
 
-    Query results can be ordered by natural fields (``o``) in either ascending
-    or descending order (``ot``).
+    If you need to list all users, please see
+    `Lists user accounts </docs/api/#listUserListCreate>`_
 
-    **Tags**: profile
+    The queryset can be further refined by a range of dates
+    ([``start_at``, ``ends_at``]), and sorted on specific fields (``o``).
+
+    The API is typically used within an HTML
+    `profile role page </docs/themes/#dashboard_profile_roles>`_
+    as present in the default theme.
+
+    **Tags**: profile, user
 
     **Examples**
 
     .. code-block:: http
 
-        GET  /api/accounts/users/?o=created_at&ot=desc HTTP/1.1
+        GET  /api/accounts/users/?q=ali HTTP/1.1
 
     responds
 
@@ -275,17 +293,17 @@ class UsersTypeaheadAPIView(UserSmartListMixin, UserQuerysetMixin,
 
         {
             "count": 1,
-            "next": null,
-            "previous": null,
             "results": [
                 {
                     "slug": "alice",
+                    "created_at": "2014-01-01T00:00:00Z",
                     "email": "alice@djaodjin.com",
                     "full_name": "Alice Cooper",
-                    "created_at": "2014-01-01T00:00:00Z"
+                    "printable_name": "Alice Cooper",
+                    "username": "alice"
                 }
             ]
         }
     """
-    serializer_class = UserSerializer
+    serializer_class = get_user_serializer()
     pagination_class = TypeaheadPagination

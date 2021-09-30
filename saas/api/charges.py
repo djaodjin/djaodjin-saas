@@ -69,7 +69,7 @@ class ChargeResourceView(RetrieveChargeMixin, RetrieveAPIView):
 
     Pass through to the processor and returns details about a ``Charge``.
 
-    **Tags**: billing
+    **Tags**: billing, subscriber, chargemodel
 
     **Examples**
 
@@ -100,14 +100,18 @@ class SmartChargeListMixin(object):
     """
     Subscriber list which is also searchable and sortable.
     """
-    search_fields = ('description',
-                     'processor_key',
-                     'customer__full_name')
-
-    ordering_fields = [('description', 'description'),
-                           ('amount', 'amount'),
-                           ('customer__full_name', 'Full name'),
-                           ('created_at', 'created_at')]
+    search_fields = (
+        'description',
+        'processor_key',
+        'customer__full_name'
+    )
+    ordering_fields = (
+        ('description', 'description'),
+        ('amount', 'amount'),
+        ('customer__full_name', 'Full name'),
+        ('created_at', 'created_at')
+    )
+    ordering = ('created_at',)
 
     filter_backends = (DateRangeFilter, OrderingFilter, SearchFilter)
 
@@ -124,23 +128,20 @@ class ChargeListAPIView(SmartChargeListMixin,
     """
     Lists processor charges
 
-    Queries a page (``PAGE_SIZE`` records) of ``Charge`` that were created
-    on the processor.
+    Returns a list of {{PAGE_SIZE}} charges that were created on the payment
+    processor (ex: Stripe).
 
-    The queryset can be filtered to a range of dates
-    ([``start_at``, ``ends_at``]) and for at least one field to match a search
-    term (``q``).
+    The queryset can be further refined to match a search filter (``q``)
+    and/or a range of dates ([``start_at``, ``ends_at``]),
+    and sorted on specific fields (``o``).
 
-    Query results can be ordered by natural fields (``o``) in either ascending
-    or descending order (``ot``).
-
-    **Tags**: billing
+    **Tags**: billing, broker, chargemodel
 
     **Examples**
 
     .. code-block:: http
 
-        GET /api/billing/charges?start_at=2015-07-05T07:00:00.000Z\
+        GET /api/billing/charges/?start_at=2015-07-05T07:00:00.000Z\
 &o=date&ot=desc HTTP/1.1
 
     Retrieves the list of charges that were created before
@@ -152,8 +153,8 @@ class ChargeListAPIView(SmartChargeListMixin,
 
         {
             "count": 1,
-            "unit": "usd",
-            "total": "112120",
+            "balance_amount": "112120",
+            "balance_unit": "usd",
             "next": null,
             "previous": null,
             "results": [{
@@ -172,6 +173,11 @@ class ChargeListAPIView(SmartChargeListMixin,
     serializer_class = ChargeSerializer
     pagination_class = TotalPagination
 
+    def get_queryset(self):
+        queryset = super(ChargeListAPIView, self).get_queryset()
+        self.totals = queryset.aggregate('unit', 'amount')
+        return queryset
+
 
 class OrganizationChargeQuerysetMixin(OrganizationMixin):
 
@@ -184,7 +190,7 @@ class OrganizationChargeListAPIView(SmartChargeListMixin,
                                     ListAPIView):
 
     """
-    List all ``Charge`` for a subscriber.
+    Lists all charges for a subscriber
 
     **Tags**: billing
 
@@ -192,7 +198,7 @@ class OrganizationChargeListAPIView(SmartChargeListMixin,
 
     .. code-block:: http
 
-         GET /api/charges?start_at=2015-07-05T07:00:00.000Z\
+         GET /api/billing/xia/charges?start_at=2015-07-05T07:00:00.000Z\
 &o=date&ot=desc HTTP/1.1
 
     .. code-block:: json
@@ -200,7 +206,8 @@ class OrganizationChargeListAPIView(SmartChargeListMixin,
         {
             "count": 1,
             "unit": "usd",
-            "total": "112120",
+            "balance_amount": "112120",
+            "balance_unit": "usd",
             "next": null,
             "previous": null,
             "results": [{
@@ -225,7 +232,7 @@ class ChargeRefundAPIView(RetrieveChargeMixin, CreateAPIView):
 
     Partially or totally refund all or a subset of line items on a ``Charge``.
 
-    **Tags**: billing
+    **Tags**: billing, provider, chargemodel
 
     **Examples**
 
@@ -321,7 +328,7 @@ class EmailChargeReceiptAPIView(RetrieveChargeMixin, GenericAPIView):
     The service sends a duplicate e-mail receipt for charge `ch_XAb124EF`
     to the e-mail address of the customer, i.e. `joe@localhost.localdomain`.
 
-    **Tags**: billing
+    **Tags**: billing, subscriber, chargemodel
 
     **Examples**
 
