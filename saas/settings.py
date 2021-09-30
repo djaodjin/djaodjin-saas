@@ -121,7 +121,7 @@ _SETTINGS = {
     'PROCESSOR_BACKEND_CALLABLE': None,
     'ROLE_RELATION': 'saas.Role',
     'ROLE_SERIALIZER': 'saas.api.serializers.RoleSerializer',
-    'USER_SERIALIZER': 'saas.api.serializers.UserSerializer',
+    'USER_SERIALIZER': 'saas.api.serializers_overrides.UserSerializer',
     'SEARCH_FIELDS_PARAM': 'q_f',
     'TERMS_OF_USE': 'terms-of-use',
 }

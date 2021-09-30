@@ -112,15 +112,15 @@ REST_FRAMEWORK = {
 MEDIA_ROOT = os.path.join(BASE_DIR, 'testsite', 'media')
 MEDIA_URL = '/media/'
 
-STATIC_ROOT = ''
+APP_STATIC_ROOT = os.path.join(BASE_DIR, 'htdocs', 'static')
 STATIC_URL = '/static/'
 
-# Additional locations of static files
-STATICFILES_DIRS = (
-    # Put strings here, like "/home/html/static" or "C:/www/django/static".
-    # Always use forward slashes, even on Windows.
-    # Don't forget to use absolute paths, not relative paths.
-)
+if DEBUG:
+    STATIC_ROOT = ''
+    # Additional locations of static files
+    STATICFILES_DIRS = (APP_STATIC_ROOT,)
+else:
+    STATIC_ROOT = APP_STATIC_ROOT
 
 # List of finder classes that know how to find static files in
 # various locations.
