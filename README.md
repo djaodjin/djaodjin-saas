@@ -99,12 +99,12 @@ saas/templates/notification/ directory.
 Release Notes
 =============
 
-0.10.0
+0.10.1
 
-  * works with with Django3.2
-  * prepares compatibility with Vue3
-  * moves all i18n translation server-side
-  * renames `subscriptions` key into `subscribes_to` as it points to a Plan
-  * categorizes a double-POST of the same Stripe token as a CardError
+  * moves serializers.UserSerializer to serializers_overrides.UserSerializer
+  * enables broker profile manager to update global RoleDescriptions
+  * normalizes phone number before saving them into the database
+  * prevents use of Coupon above nb_attempts limit (fix)
+  * enables to customize html/css for pagination links
 
 [previous release notes](changelog)

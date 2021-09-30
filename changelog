@@ -1,3 +1,13 @@
+0.10.1
+
+  * moves serializers.UserSerializer to serializers_overrides.UserSerializer
+  * enables broker profile manager to update global RoleDescriptions
+  * normalizes phone number before saving them into the database
+  * prevents use of Coupon above nb_attempts limit (fix)
+  * enables to customize html/css for pagination links
+
+ -- Sebastien Mirolo <smirolo@djaodjin.com>  Thu, 30 Sep 2021 00:00:00 -0700
+
 0.10.0
 
   * works with with Django3.2
