@@ -521,8 +521,7 @@ class OrganizationWithSubscriptionsSerializer(OrganizationDetailSerializer):
     Operational information on an Organization,
     bundled with its subscriptions.
     """
-    subscriptions = WithSubscriptionSerializer(
-        source='subscription_set', many=True, read_only=True)
+    subscriptions = WithSubscriptionSerializer(many=True, read_only=True)
 
     class Meta(OrganizationDetailSerializer.Meta):
         fields = OrganizationDetailSerializer.Meta.fields + (
