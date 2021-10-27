@@ -196,7 +196,7 @@ class CartItemAPIView(CartMixin, CreateAPIView):
 
 class CartItemUploadAPIView(CartMixin, GenericAPIView):
     """
-    Uploads multiple discount codes into a cart
+    Uploads multiple items into a cart
 
     Add a ``Plan`` into the subscription cart of multiple users as per the
     content of an uploaded file.

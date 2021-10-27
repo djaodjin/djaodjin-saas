@@ -1323,7 +1323,7 @@ class UserProfileListAPIView(OrganizationSmartListMixin,
     and/or a range of dates ([``start_at``, ``ends_at``]),
     and sorted on specific fields (``o``).
 
-    **Tags**: rbac, profile, user, profilemodel
+    **Tags**: rbac, profile, user, usermodel
 
     **Examples**
 
@@ -1376,7 +1376,7 @@ class UserProfileListAPIView(OrganizationSmartListMixin,
         If you want to request access to an already existing profile,
         see the accessibles end-point.
 
-        **Tags**: rbac, profile, user, profilemodel
+        **Tags**: rbac, profile, user, usermodel
 
         **Examples**
 

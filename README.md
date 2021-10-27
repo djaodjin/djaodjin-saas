@@ -99,12 +99,8 @@ saas/templates/notification/ directory.
 Release Notes
 =============
 
-0.10.1
+0.10.2
 
-  * moves serializers.UserSerializer to serializers_overrides.UserSerializer
-  * enables broker profile manager to update global RoleDescriptions
-  * normalizes phone number before saving them into the database
-  * prevents use of Coupon above nb_attempts limit (fix)
-  * enables to customize html/css for pagination links
+  * restores backward compatibility - subscriptions key in profile detail API
 
 [previous release notes](changelog)

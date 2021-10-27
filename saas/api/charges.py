@@ -65,7 +65,7 @@ class RetrieveChargeMixin(ChargeMixin):
 
 class ChargeResourceView(RetrieveChargeMixin, RetrieveAPIView):
     """
-    Retrieves a single processor charge
+    Retrieves a processor charge
 
     Pass through to the processor and returns details about a ``Charge``.
 
