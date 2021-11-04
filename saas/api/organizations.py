@@ -24,6 +24,7 @@
 
 import hashlib, os, re
 
+from dateutil.relativedelta import relativedelta
 from django.conf import settings as django_settings
 from django.contrib.auth import get_user_model, logout as auth_logout
 from django.db import transaction, IntegrityError
@@ -41,11 +42,12 @@ from .. import settings, signals
 from ..compat import urlparse, urlunparse
 from ..decorators import _valid_manager
 from ..docs import OpenAPIResponse, swagger_auto_schema
-from ..mixins import (OrganizationMixin, OrganizationSmartListMixin,
-    ProviderMixin, OrganizationDecorateMixin)
+from ..mixins import (DateRangeContextMixin, OrganizationMixin,
+    OrganizationSmartListMixin, ProviderMixin, OrganizationDecorateMixin)
 from ..models import get_broker
-from ..utils import (full_name_natural_split, get_organization_model,
-    get_role_model, handle_uniq_error, get_picture_storage)
+from ..utils import (datetime_or_now, full_name_natural_split,
+    get_organization_model, get_role_model, handle_uniq_error,
+    get_picture_storage)
 
 
 #pylint: disable=no-init
@@ -470,6 +472,65 @@ class SubscribersQuerysetMixin(OrganizationDecorateMixin, ProviderMixin):
 
 class SubscribersAPIView(OrganizationSmartListMixin,
                          SubscribersQuerysetMixin, ListAPIView):
+    """
+    Lists subscribers for a provider
+
+    Returns a list of {{PAGE_SIZE}} subscriber profiles which have or
+    had a subscription to a plan provided by {organization}.
+
+    The queryset can be further refined to match a search filter (``q``)
+    and/or a range of dates ([``start_at``, ``ends_at``]),
+    and sorted on specific fields (``o``).
+
+    **Tags**: subscriptions, provider, profilemodel
+
+    **Examples**
+
+    .. code-block:: http
+
+        GET /api/profile/cowork/subscribers/?o=created_at&ot=desc HTTP/1.1
+
+    responds
+
+    .. code-block:: json
+
+        {
+            "count": 1,
+            "next": null,
+            "previous": null,
+            "results": [
+                {
+                "slug": "xia",
+                "full_name": "Xia Lee",
+                "email": "xia@localhost.localdomain",
+                "created_at": "2016-01-14T23:16:55Z",
+                "ends_at": "2017-01-14T23:16:55Z"
+                }
+            ]
+        }
+    """
+    serializer_class = OrganizationDetailSerializer
+
+
+class InactiveSubscribersQuerysetMixin(DateRangeContextMixin,
+                                       SubscribersQuerysetMixin):
+
+    def get_queryset(self):
+        ends_at = datetime_or_now(self.ends_at)
+        kwargs = {'role__user__last_login__lt': ends_at}
+        if self.start_at:
+            kwargs.update({'role__user__last_login__gte': self.start_at})
+        else:
+            kwargs.update({
+                'role__user__last_login__gte': ends_at - relativedelta(
+                    days=settings.INACTIVITY_DAYS)})
+        queryset = get_organization_model().objects.filter(
+            subscribes_to__organization=self.provider).exclude(**kwargs)
+        return queryset
+
+
+class InactiveSubscribersAPIView(OrganizationSmartListMixin,
+                                 InactiveSubscribersQuerysetMixin, ListAPIView):
     """
     Lists subscribers for a provider
 

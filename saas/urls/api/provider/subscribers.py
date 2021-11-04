@@ -28,7 +28,7 @@ API URLs for a provider subcribers.
 
 from django.conf.urls import url
 
-from ....api.organizations import SubscribersAPIView
+from ....api.organizations import SubscribersAPIView, InactiveSubscribersAPIView
 from ....api.subscriptions import (ProvidedSubscriptionsAPIView,
     PlanSubscriptionDetailAPIView)
 from ....settings import ACCT_REGEX, VERIFICATION_KEY_RE
@@ -40,6 +40,9 @@ urlpatterns = [
         '(?P<request_key>%s)/' % (ACCT_REGEX, VERIFICATION_KEY_RE),
         SubscriptionRequestAcceptAPIView.as_view(),
         name='saas_api_subscription_grant_accept'),
+    url(r'^profile/(?P<organization>%s)/subscribers/inactive/?' % ACCT_REGEX,
+        InactiveSubscribersAPIView.as_view(),
+        name='saas_api_inactive_subscribers'),
     url(r'^profile/(?P<organization>%s)/subscribers/?' % ACCT_REGEX,
         SubscribersAPIView.as_view(), name='saas_api_subscribers'),
     url(r'^profile/(?P<organization>%s)/plans/(?P<plan>%s)/subscriptions/'\

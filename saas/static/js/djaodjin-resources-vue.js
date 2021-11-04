@@ -55,6 +55,21 @@ var httpRequestMixin = {
             return "";
         },
 
+        _safeUrl: function(base, path) {
+            if( !path ) return base;
+
+            if( base && base[base.length - 1] == '/') {
+                if( path && path[0] == '/') {
+                    return base + path.substring(1);
+                }
+                return base + path;
+            }
+            if( path && path[0] == '/') {
+                return base + path;
+            }
+            return base + '/' + path;
+        },
+
         /** This method generates a GET HTTP request to `url` with a query
             string built of a `queryParams` dictionnary.
 
