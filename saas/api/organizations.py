@@ -525,7 +525,8 @@ class InactiveSubscribersQuerysetMixin(DateRangeContextMixin,
                 'role__user__last_login__gte': ends_at - relativedelta(
                     days=settings.INACTIVITY_DAYS)})
         queryset = get_organization_model().objects.filter(
-            subscribes_to__organization=self.provider).exclude(**kwargs)
+            subscribes_to__organization=self.provider,
+            subscriptions__ends_at__gt=ends_at).exclude(**kwargs)
         return queryset
 
 
