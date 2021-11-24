@@ -274,7 +274,7 @@ class OrganizationRedirectView(TemplateResponseMixin, ContextMixin,
                 request, *args, **kwargs)
         redirects = []
         for organization in accessibles:
-            kwargs.update({self.slug_url_kwarg: organization})
+            kwargs.update({self.slug_url_kwarg: str(organization)})
             url = self.get_redirect_url(*args, **kwargs)
             redirects += [(url, organization.printable_name, organization.slug)]
         context = self.get_context_data(**kwargs)

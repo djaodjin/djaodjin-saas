@@ -425,7 +425,8 @@ class OrganizationSerializer(serializers.ModelSerializer):
         help_text=_("Name that can be safely used for display in HTML pages"))
     credentials = serializers.SerializerMethodField(read_only=True,
         help_text=_("True if the account has valid login credentials"))
-    full_name = serializers.CharField(help_text=_("Full name"))
+    full_name = serializers.CharField(required=False,
+        help_text=_("Full name"))
 
     class Meta:
         model = get_organization_model()

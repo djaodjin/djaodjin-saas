@@ -65,6 +65,7 @@ import datetime, logging, re
 
 from dateutil.relativedelta import relativedelta
 from django.contrib.auth import get_user_model
+from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db import (DatabaseError, IntegrityError, connections, models,
     transaction)
 from django.db.models import Max, Q, Sum
@@ -408,7 +409,11 @@ class Organization(models.Model):
                     force_insert=force_insert, force_update=force_update,
                     using=using, update_fields=update_fields)
         max_length = self._meta.get_field('slug').max_length
-        slug_base = slugify(self.full_name)
+        if self.full_name:
+            slug_base = slugify(self.full_name)
+        else:
+            slug_base = _clean_field(
+                self.__class__, 'slug', self.email.split('@')[0])
         if len(slug_base) > max_length:
             slug_base = slug_base[:max_length]
         self.slug = slug_base
@@ -4391,6 +4396,25 @@ class BalanceLine(models.Model):
 
     def __str__(self):
         return '%s/%d' % (self.report, int(self.rank))
+
+
+def _clean_field(model, field_name, value, prefix='profile_'):
+    #pylint:disable=protected-access
+    field = model._meta.get_field(field_name)
+    max_length = field.max_length
+    if len(value) > max_length:
+        orig = value
+        value = value[:max_length]
+        LOGGER.info("shorten %s '%s' to '%s' because it is longer than"\
+            " %d characters", field_name, orig, value, max_length)
+    try:
+        field.run_validators(value)
+    except DjangoValidationError:
+        orig = value
+        value = generate_random_slug(max_length, prefix=prefix)
+        LOGGER.info("'%s' is an invalid %s so use '%s' instead.",
+            orig, field_name, value)
+    return value
 
 
 def get_broker():
