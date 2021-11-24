@@ -419,14 +419,13 @@ class OrganizationSerializer(serializers.ModelSerializer):
     # when one creates an opt-in subscription.
     # If we don't define ``slug`` here, the serializer validators will raise
     # an exception "Organization already exists in database".
-    slug = serializers.CharField(read_only=True,
+    slug = serializers.SlugField(read_only=True,
         help_text=_("Unique identifier shown in the URL bar"))
     printable_name = serializers.SerializerMethodField(read_only=True,
         help_text=_("Name that can be safely used for display in HTML pages"))
     credentials = serializers.SerializerMethodField(read_only=True,
         help_text=_("True if the account has valid login credentials"))
-    full_name = serializers.CharField(required=False,
-        help_text=_("Full name"))
+    full_name = serializers.CharField(help_text=_("Full name"))
 
     class Meta:
         model = get_organization_model()
@@ -461,10 +460,10 @@ OrganizationSerializer._declared_fields["type"] = \
 
 class OrganizationDetailSerializer(OrganizationSerializer):
 
-    slug = serializers.CharField(required=False,
+    slug = serializers.SlugField(required=False,
         help_text=_("Unique identifier shown in the URL bar"))
     default_timezone = serializers.CharField(required=False,
-         help_text=_("Timezone to use when reporting metrics"))
+        help_text=_("Timezone to use when reporting metrics"))
     email = serializers.EmailField(required=False,
         help_text=_("E-mail address"))
     phone = serializers.CharField(required=False, allow_blank=True,
@@ -557,7 +556,7 @@ class AdvanceDiscountSerializer(serializers.ModelSerializer):
 
 class PlanSerializer(serializers.ModelSerializer):
 
-    slug = serializers.CharField(required=False,
+    slug = serializers.SlugField(required=False,
         help_text=_("Unique identifier shown in the URL bar"))
     title = serializers.CharField(required=False,
         help_text=_("Title for the plan"))
@@ -959,7 +958,7 @@ class AccessibleCreateSerializer(NoModelSerializer):
     """
     Invite a previously existing or new Organization
     """
-    slug = serializers.CharField(required=False, validators=[
+    slug = serializers.SlugField(required=False, validators=[
         validators.RegexValidator(settings.ACCT_REGEX,
             _("Enter a valid organization slug."), 'invalid')],
         help_text=_("Profile to grant {user} a role onto"))
@@ -1014,7 +1013,7 @@ class RoleCreateSerializer(NoModelSerializer):
     Invite a previously existing or new User
     """
 
-    slug = serializers.CharField(required=False,
+    slug = serializers.SlugField(required=False,
         help_text=_("Username"),
         validators=[validators.RegexValidator(settings.ACCT_REGEX,
             _("Enter a valid username."), 'invalid')])

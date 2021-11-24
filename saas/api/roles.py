@@ -1407,10 +1407,15 @@ class UserProfileListAPIView(OrganizationSmartListMixin,
         #pylint:disable=unused-argument
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
+        validated_data = dict(serializer.validated_data)
+        if 'email' not in validated_data:
+            # email is optional to create the profile but it is required
+            # to save the record in the database.
+            validated_data.update({'email': request.user.email})
 
         # creates profile
         with transaction.atomic():
-            organization = self.create_organization(serializer.validated_data)
+            organization = self.create_organization(validated_data)
             organization.add_manager(self.user)
         self.decorate_personal(organization)
 
