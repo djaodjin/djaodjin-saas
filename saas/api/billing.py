@@ -446,8 +446,11 @@ class CheckoutAPIView(InvoicablesMixin, BalanceAndCartMixin,
 
         The cart is manipulated through various API endpoints:
 
-        - `Redeems a discount code </docs/api/#createCouponRedeem>`_ applies a coupon code for a potential discount, and
-        - `Adds an item to the request user cart </docs/api/#createCartItem>`_, `Removes an item from the request user cart </docs/api/#destroyCartItem>`_ to update a cart.
+        - `Redeems a discount code </docs/api/#createCouponRedeem>`_ applies \
+a coupon code for a potential discount, and
+        - `Adds an item to the request user cart </docs/api/#createCartItem>`_,\
+ `Removes an item from the request user cart </docs/api/#destroyCartItem>`_\
+ to update a cart.
 
         The API is typically used within an HTML
         `checkout page </docs/themes/#workflow_billing_cart>`_

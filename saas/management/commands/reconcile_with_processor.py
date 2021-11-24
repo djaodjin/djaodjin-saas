@@ -1,4 +1,4 @@
-# Copyright (c) 2018, DjaoDjin inc.
+# Copyright (c) 2021, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -34,7 +34,7 @@ from django.db import transaction
 
 from ...models import Organization
 from ...utils import datetime_or_now
-from ...backends import get_processor_backend, ProcessorError
+from ...backends import ProcessorError
 
 
 LOGGER = logging.getLogger(__name__)
@@ -69,7 +69,7 @@ class Command(BaseCommand):
     def run_reconcile(self, created_at=None, dry_run=False):
         for provider in Organization.objects.filter(is_provider=True):
             self.stdout.write("reconcile payouts for %s ..." % str(provider))
-            backend = get_processor_backend(provider)
+            backend = provider.processor_backend
             if not created_at:
                 created_at = provider.created_at
             try:

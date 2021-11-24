@@ -95,6 +95,8 @@ class StripeBackend(object):
         self.priv_key = settings.PROCESSOR['PRIV_KEY']
         self.client_id = settings.PROCESSOR.get('CLIENT_ID', None)
         self.mode = settings.PROCESSOR.get('MODE', self.LOCAL)
+        self.connect_callback_url = settings.PROCESSOR.get(
+            'CONNECT_CALLBACK_URL', None)
 
     def _get_processor_charge(self, stripe_charge_key, broker,
                               includes_fee=False):
@@ -181,6 +183,13 @@ class StripeBackend(object):
         if self.mode != self.LOCAL:
             result = (result and self.client_id)
         return result
+
+    def requires_provider_keys(self):
+        """
+        Returns `True` if Stripe requires a provider key along
+        with the StripeConnect keys.
+        """
+        return self.mode != self.LOCAL
 
     def list_customers(self, org_pat=r'.*', broker=None):
         """
@@ -698,7 +707,7 @@ class StripeBackend(object):
         }
         authorize_url = "https://connect.stripe.com/oauth/authorize?response_type=code&client_id=%(client_id)s&scope=read_write&state=%(state)s" % data
         if not redirect_uri:
-            redirect_uri = settings.PROCESSOR_CONNECT_CALLBACK_URL
+            redirect_uri = self.connect_callback_url
         if redirect_uri:
             authorize_url += "&redirect_uri=%s" % redirect_uri
         return authorize_url
