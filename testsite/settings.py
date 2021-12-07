@@ -7,7 +7,7 @@ from saas.compat import reverse_lazy
 
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-RUN_DIR = os.getcwd()
+RUN_DIR = os.getenv('RUN_DIR', os.getcwd())
 
 TEMPLATE_REVERT_TO_DJANGO = True
 #JS_FRAMEWORK = 'angularjs'
