@@ -15,13 +15,16 @@ NPM           ?= npm
 PYTHON        := TESTSITE_SETTINGS_LOCATION=$(CONFIG_DIR) $(binDir)/python
 SQLITE        ?= sqlite3
 
+RUN_DIR       ?= $(srcDir)
+DB_NAME       ?= $(RUN_DIR)/db.sqlite
+
 # Django 1.7,1.8 sync tables without migrations by default while Django 1.9
 # requires a --run-syncdb argument.
 # Implementation Note: We have to wait for the config files to be installed
 # before running the manage.py command (else missing SECRECT_KEY).
 RUNSYNCDB     = $(if $(findstring --run-syncdb,$(shell cd $(srcDir) && $(PYTHON) manage.py migrate --help 2>/dev/null)),--run-syncdb,)
 
-install::
+install:: install-conf
 	cd $(srcDir) && $(PYTHON) ./setup.py --quiet \
 		build -b $(CURDIR)/build install
 
@@ -57,10 +60,10 @@ initdb-with-dummydata: initdb
 	cd $(srcDir) && $(PYTHON) ./manage.py load_test_transactions
 
 
-initdb: install-conf
-	-rm -f $(srcDir)/db.sqlite $(srcDir)/testsite-app.log
+initdb:
+	-rm -f $(DB_NAME)
 	cd $(srcDir) && $(PYTHON) ./manage.py migrate $(RUNSYNCDB) --noinput
-	echo "CREATE UNIQUE INDEX uniq_email ON auth_user(email);" | $(SQLITE) $(srcDir)/db.sqlite
+	echo "CREATE UNIQUE INDEX uniq_email ON auth_user(email);" | $(SQLITE) $(DB_NAME)
 	cd $(srcDir) && $(PYTHON) ./manage.py loaddata testsite/fixtures/initial_data.json testsite/fixtures/test_data.json testsite/fixtures/100-balance-due.json testsite/fixtures/110-balance-checkout.json
 
 

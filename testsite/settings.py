@@ -8,6 +8,8 @@ from saas.compat import reverse_lazy
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 RUN_DIR = os.getenv('RUN_DIR', os.getcwd())
+DB_NAME = os.path.join(RUN_DIR, 'db.sqlite')
+LOG_FILE = os.path.join(RUN_DIR, 'testsite-app.log')
 
 TEMPLATE_REVERT_TO_DJANGO = True
 #JS_FRAMEWORK = 'angularjs'
@@ -92,7 +94,7 @@ MIDDLEWARE = (
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': os.path.join(RUN_DIR, 'db.sqlite'),
+        'NAME': DB_NAME,
         'USER': '',
         'PASSWORD': '',
         'HOST': '',
@@ -261,7 +263,7 @@ LOGGING = {
 if logging.getLogger('gunicorn.error').handlers:
     LOGGING['handlers']['log'].update({
         'class':'logging.handlers.WatchedFileHandler',
-        'filename': os.path.join(RUN_DIR, 'testsite-app.log')
+        'filename': LOG_FILE
     })
 
 
