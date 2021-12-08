@@ -11,9 +11,11 @@ RUN_DIR = os.getenv('RUN_DIR', os.getcwd())
 DB_NAME = os.path.join(RUN_DIR, 'db.sqlite')
 LOG_FILE = os.path.join(RUN_DIR, 'testsite-app.log')
 
+DEBUG = True
+FEATURES_DEBUG = True
 TEMPLATE_REVERT_TO_DJANGO = True
-#JS_FRAMEWORK = 'angularjs'
 JS_FRAMEWORK = 'vuejs'
+
 
 def load_config(confpath):
     '''
@@ -53,9 +55,6 @@ if not hasattr(sys.modules[__name__], "SECRET_KEY"):
     from random import choice
     SECRET_KEY = "".join([choice(
         "abcdefghijklmnopqrstuvwxyz0123456789!@#$%^*-_=+") for i in range(50)])
-
-DEBUG = True
-FEATURES_DEBUG = True
 
 INSTALLED_APPS = (
     'django.contrib.auth',
