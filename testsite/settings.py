@@ -16,6 +16,7 @@ FEATURES_DEBUG = True
 TEMPLATE_REVERT_TO_DJANGO = True
 JS_FRAMEWORK = 'vuejs'
 
+ALLOWED_HOSTS = ('*',)
 
 def load_config(confpath):
     '''
