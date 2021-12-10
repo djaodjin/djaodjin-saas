@@ -9,8 +9,8 @@ Major Features:
 
 Tested with
 
-- **Python:** 3.6, **Django:** 2.2 ([LTS](https://www.djangoproject.com/download/)), **Django Rest Framework:** 3.12
-- **Python:** 3.6, **Django:** 3.2 (latest), **Django Rest Framework:** 3.12
+- **Python:** 3.7, **Django:** 2.2 ([LTS](https://www.djangoproject.com/download/)), **Django Rest Framework:** 3.12
+- **Python:** 3.7, **Django:** 3.2 (latest), **Django Rest Framework:** 3.12
 - **Python:** 2.7, **Django:** 1.11 (legacy), **Django Rest Framework:** 3.9.4
 
 This project contains bare bone templates which are compatible with Django
@@ -99,8 +99,9 @@ saas/templates/notification/ directory.
 Release Notes
 =============
 
-0.10.2
+0.10.3
 
-  * restores backward compatibility - subscriptions key in profile detail API
+  * adds API to retrieve inactive profiles
+  * fixes multiple issues with create profile and optional fields
 
 [previous release notes](changelog)

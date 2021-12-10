@@ -1,3 +1,10 @@
+0.10.3
+
+  * adds API to retrieve inactive profiles
+  * fixes multiple issues with create profile and optional fields
+
+ -- Sebastien Mirolo <smirolo@djaodjin.com>  Tue,  7 Dec 2021 03:12:00 -0700
+
 0.10.2
 
   * restores backward compatibility - subscriptions key in profile detail API
