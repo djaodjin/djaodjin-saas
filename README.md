@@ -30,7 +30,7 @@ the prerequisites:
 
 <pre><code>
     $ python -m venv .venv
-    $ source .venv/bin/activate
+    $ .venv/Scripts/activate
     $ pip install -r testsite/requirements.txt
 
     # Installs Javascript prerequisites to run in the browser
