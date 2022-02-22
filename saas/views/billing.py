@@ -320,9 +320,10 @@ class CheckoutFormMixin(CardFormMixin):
         try:
             # computed in `InvoicablesMixin.get_context_data`
             lines_price = context.get('lines_price')
+            provider = self.invoicables_provider
             context.update(
-                self.organization.processor_backend.get_payment_context(
-                    self.invoicables_provider,
+                provider.processor_backend.get_payment_context(
+                    provider,
                     self.organization.processor_card_key,
                     amount=lines_price.amount, unit=lines_price.unit,
                     broker_fee_amount=self.invoicables_broker_fee_amount,
@@ -390,9 +391,10 @@ class CardUpdateView(CardFormMixin, FormView):
         context = super(CardUpdateView, self).get_context_data(**kwargs)
         try:
             # computed in `InvoicablesMixin.get_context_data`
+            broker = get_broker()
             context.update(
-                self.organization.processor_backend.get_payment_context(
-                    get_broker(),
+                broker.processor_backend.get_payment_context(
+                    broker,
                     self.organization.processor_card_key,
                     subscriber_email=self.organization.email,
                     subscriber_slug=self.organization.slug))

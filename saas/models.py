@@ -1,6 +1,6 @@
 #pylint: disable=too-many-lines
 
-# Copyright (c) 2021, DjaoDjin inc.
+# Copyright (c) 2022, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -695,15 +695,17 @@ class Organization(models.Model):
         signals.bank_updated.send(self)
 
     def delete_card(self):
-        self.processor_backend.delete_card(self, broker=get_broker())
+        broker = get_broker()
+        broker.processor_backend.delete_card(self, broker=broker)
         self.processor_card_key = None
         self.save()
         LOGGER.info("Processor debit key for %s was deleted.",
             self, extra={'event': 'delete-debit', 'organization': self.slug})
 
     def update_card(self, card_token, user):
-        new_card = self.processor_backend.create_or_update_card(
-            self, card_token, user=user, broker=get_broker())
+        broker = get_broker()
+        new_card = broker.processor_backend.create_or_update_card(
+            self, card_token, user=user, broker=broker)
         self.nb_renewal_attempts = 0  # reset off-session failures counter
         # The following ``save`` will be rolled back in ``checkout``
         # if there is any ProcessorError.
@@ -902,7 +904,8 @@ class Organization(models.Model):
         """
         Returns associated credit card.
         """
-        return self.processor_backend.retrieve_card(self, broker=get_broker())
+        broker = get_broker()
+        return broker.processor_backend.retrieve_card(self, broker=broker)
 
     def get_transfers(self, reconcile=True):
         """
@@ -1459,7 +1462,6 @@ class ChargeManager(models.Manager):
         else:
             provider = get_broker()
         processor = provider.validate_processor()
-        processor_backend = provider.processor_backend
         descr = humanize.DESCRIBE_CHARGED_CARD % {
             'charge': '', 'organization': customer.printable_name}
         if user:
@@ -1471,7 +1473,7 @@ class ChargeManager(models.Manager):
 
             if customer.processor_card_key or token:
                 (processor_charge_id, created_at,
-                 receipt_info) = processor_backend.create_payment(
+                 receipt_info) = provider.processor_backend.create_payment(
                      amount, unit, provider,
                      processor_card_key=customer.processor_card_key,
                      token=token,

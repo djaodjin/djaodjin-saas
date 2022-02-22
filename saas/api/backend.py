@@ -1,4 +1,4 @@
-# Copyright (c) 2021, DjaoDjin inc.
+# Copyright (c) 2022, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -203,10 +203,11 @@ class PaymentMethodDetailAPIView(OrganizationMixin,
         #pylint:disable=unused-argument
         resp_data = self.organization.retrieve_card()
         if request.query_params.get('update', False):
+            broker = get_broker()
             resp_data.update({
                 'processor':
-                self.organization.processor_backend.get_payment_context(
-                    get_broker(),
+                broker.processor_backend.get_payment_context(
+                    broker,
                     self.organization.processor_card_key,
                     subscriber_email=self.organization.email,
                     subscriber_slug=self.organization.slug)

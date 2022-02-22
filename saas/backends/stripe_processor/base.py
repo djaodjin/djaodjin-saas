@@ -1,4 +1,4 @@
-# Copyright (c) 2021, DjaoDjin inc.
+# Copyright (c) 2022, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -26,7 +26,7 @@
 The `Stripe <https://stripe.com/>`_ backend works in 3 different modes:
 
   - ``LOCAL``
-  - ``FORMWARD``
+  - ``FORWARD``
   - ``REMOTE``
 
 In LOCAL mode, Stripe Customer and Charge objects are created on the Stripe

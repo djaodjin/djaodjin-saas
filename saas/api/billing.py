@@ -1,4 +1,4 @@
-# Copyright (c) 2021, DjaoDjin inc.
+# Copyright (c) 2022, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -490,10 +490,11 @@ of Xia",
         return self.create(request, *args, **kwargs)
 
     def get(self, request, *args, **kwargs):
+        provider = self.invoicables_provider
         resp_data = {
             'processor':
-            self.organization.processor_backend.get_payment_context(
-                self.invoicables_provider,
+            provider.processor_backend.get_payment_context(
+                provider,
                 self.organization.processor_card_key,
                 amount=self.invoicables_lines_price.amount,
                 unit=self.invoicables_lines_price.unit,
