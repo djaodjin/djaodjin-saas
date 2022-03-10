@@ -34,7 +34,7 @@
   | <a id="authenticated-user" href="{{request|url_profile}}">{{request.user.username}}</a>
   | <a href="/logout/">Sign Out</a>
   {% else %}
-  | <a href="/login/">Sign In</a>
+  | <a id="login" href="/login/">Sign In</a>
   {% endif %}
   </div>
   {% endblock %}

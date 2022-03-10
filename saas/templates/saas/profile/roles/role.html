@@ -20,7 +20,8 @@
           <td>Please wait...</td>
         </tr>
       </tbody>
-      <tbody ng-show="items.$resolved && items.results.length == 0" ng-cloak
+      <tbody class="has-no-results"
+        ng-show="items.$resolved && items.results.length == 0" ng-cloak
         v-show="itemsLoaded && items.results.length == 0" v-cloak>
         <tr colspan="4">
           <td>No users with role {{role_descr.title}} yet.</td>
@@ -50,7 +51,7 @@
            @submit.prevent="submit">
         <input type="hidden" name="csrfmiddlewaretoken" value="{{csrf_token}}">
         <input type="text" name="user" placeholder="Username or e-mail"
-               ng-model="unregistered.slug" v-model="unregistered.slug" />
+               ng-model="unregistered.slug" v-model="candidateId" />
         <div class="add-role-modal" v-show="profileRequestDone">
           <p>
 If the user couldn't be found in the system, it is a great occasion to invite
@@ -58,7 +59,8 @@ them.
           </p>
           <div>
             <label>To</label>
-            <input type="text" max-length="150"
+            <input id="new-request-email"
+                 type="text" max-length="150"
                  name="email" placeholder="invitee@example.com"
                  ng-model="unregistered.email"
                  v-model="unregistered.email "/>

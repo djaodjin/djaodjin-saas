@@ -44,9 +44,9 @@
     {% include "saas/_paginator.html" %}
     <!-- modal dialog to add a request to add a role to a user
          on an organization. -->
-    <div>
+    <div id="add-or-create-btn">
       <h4>Request access ...</h4>
-      <form @submit.prevent="submit" ng-submit="save($event)">
+      <form id="add-profile" @submit.prevent="submit" ng-submit="save($event)">
         <input id="userTypeahead" type="text"
                name="organization" placeholder="Name or email"
                autocomplete="off"

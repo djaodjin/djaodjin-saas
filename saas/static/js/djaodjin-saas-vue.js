@@ -782,6 +782,7 @@ var roleListMixin = {
             showRequested: false,
             profileRequestDone: false,
             inNewProfileFlow: false,
+            candidateId: "",
             unregistered: {
                 slug: '',
                 email: '',
@@ -803,7 +804,7 @@ var roleListMixin = {
             if( jQuery.type(item) === "string" ) {
                 var stringVal = item;
                 item = {slug: "", email: "", full_name: ""};
-                var pattern = /@[a-zA-Z\-]+\.[a-zA-Z\-]{2,3}/;
+                var pattern = /@[a-zA-Z0-9\-]+\.([a-zA-Z\-]{2,3}|localdomain)/;
                 if( pattern.test(stringVal) ) {
                     item['email'] = stringVal;
                 } else {
@@ -830,6 +831,7 @@ var roleListMixin = {
         },
         clearRequestProfile: function() {
             var vm = this;
+            vm.candidateId = "";
             vm.unregistered = {slug: "", email: "", full_name: ""};
             vm.profileRequestDone = false;
             if( vm.$refs.typeahead ) {
@@ -917,7 +919,11 @@ var roleListMixin = {
         },
         submit: function() {
             var vm = this;
-            this._addRole(vm.unregistered, vm.profileRequestDone);
+            if( vm.unregistered.slug || vm.unregistered.email) {
+                this._addRole(vm.unregistered, vm.profileRequestDone);
+            } else {
+                this._addRole(vm.candidateId, vm.profileRequestDone);
+            }
         },
         updateParams: function(){ // internal
             var vm = this;

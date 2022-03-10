@@ -90,6 +90,13 @@ def convert_dates_to_utc(dates):
     return [date.astimezone(utc) for date in dates]
 
 
+def as_timestamp(dtime_at=None):
+    if not dtime_at:
+        dtime_at = datetime_or_now()
+    return int((
+        dtime_at - datetime.datetime(1970, 1, 1, tzinfo=utc)).total_seconds())
+
+
 def datetime_or_now(dtime_at=None):
     if isinstance(dtime_at, six.string_types):
         dtime_at = parse_datetime(dtime_at)

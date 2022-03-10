@@ -35,8 +35,8 @@ from saas.views import OrganizationRedirectView, UserRedirectView
 from rules.urldecorators import include, url
 
 from testsite.views.app import AppView
+from testsite.views.auth import LoginAPIView, PersonalRegistrationView
 from testsite.views.organization import OrganizationListView, UserProfileView
-from testsite.views.registration import PersonalRegistrationView
 
 # Uncomment the next two lines to enable the admin:
 from django.contrib import admin
@@ -79,6 +79,7 @@ urlpatterns += \
     url_prefixed(r'users/',
         UserRedirectView.as_view(), name='accounts_profile',
         redirects=[fail_authenticated]),
+    url_prefixed(r'api/auth/', LoginAPIView.as_view(), name='api_login'),
     url_prefixed(r'', include('django.contrib.auth.urls')),
     url_prefixed(r'saas/$',
         OrganizationListView.as_view(), name='saas_organization_list',

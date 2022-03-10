@@ -57,6 +57,9 @@ if not hasattr(sys.modules[__name__], "SECRET_KEY"):
     SECRET_KEY = "".join([choice(
         "abcdefghijklmnopqrstuvwxyz0123456789!@#$%^*-_=+") for i in range(50)])
 
+JWT_SECRET_KEY = SECRET_KEY
+JWT_ALGORITHM = 'HS256'
+
 INSTALLED_APPS = (
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -86,7 +89,7 @@ MIDDLEWARE = (
     'django.middleware.common.CommonMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
-    'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'testsite.authentication.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware'
 )
@@ -103,9 +106,16 @@ DATABASES = {
 }
 
 REST_FRAMEWORK = {
-    'PAGE_SIZE': 25,
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'testsite.authentication.JWTAuthentication',
+        # `rest_framework.authentication.SessionAuthentication` is the last
+        # one in the list because it will raise a PermissionDenied if the CSRF
+        # is absent.
+        'rest_framework.authentication.SessionAuthentication',
+    ),
     'DEFAULT_PAGINATION_CLASS':
         'rest_framework.pagination.PageNumberPagination',
+    'PAGE_SIZE': 25,
     'ORDERING_PARAM': 'o',
     'SEARCH_PARAM': 'q'
 }
