@@ -845,4 +845,34 @@
       "user": 30
     },
     "model": "saas.signature", "pk": 30
+},
+{
+    "fields": {
+      "date_joined": "2022-01-01T00:00:00-09:00",
+      "email": "xia+7@example.com",
+      "first_name": "Xia",
+      "is_active": true,
+      "is_staff": false,
+      "is_superuser": false,
+      "last_login": "2022-01-01T00:00:00-09:00",
+      "last_name": "Login with SSO provider",
+      "password": "!iZdC6uHomlE07qGK/TqfcfxNzKJtFp03c0JILF1frRc=",
+      "username": "xia7"
+    },
+    "model": "auth.User", "pk": 19
+},
+{
+    "fields": {
+      "date_joined": "2022-01-01T00:00:00-09:00",
+      "email": "xia+8@example.com",
+      "first_name": "Xia",
+      "is_active": true,
+      "is_staff": false,
+      "is_superuser": false,
+      "last_login": "2022-01-01T00:00:00-09:00",
+      "last_name": "Activate with SSO provider",
+      "password": "!iZdC6uHomlE07qGK/TqfcfxNzKJtFp03c0JILF1frRc=",
+      "username": "xia8"
+    },
+    "model": "auth.User", "pk": 20
 }]

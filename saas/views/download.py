@@ -362,7 +362,7 @@ class TransactionDownloadView(SmartTransactionListMixin,
 class BillingStatementDownloadView(SmartTransactionListMixin,
                            BillingsQuerysetMixin, CSVDownloadView):
 
-    basename = 'statement'
+    basename = 'history'
     headings = [
         'CreatedAt',
         'Amount',

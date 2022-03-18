@@ -1,0 +1,33 @@
+[{
+    "fields": {
+      "date_joined": "2022-01-01T00:00:00+00:00",
+      "email": "alice+visit-card2@localhost.localdomain",
+      "first_name": "Alice",
+      "is_active": true,
+      "is_staff": false,
+      "is_superuser": false,
+      "last_login": "2022-01-01T00:00:00+00:00",
+      "last_name": "",
+      "password": "pbkdf2_sha256$10000$z0MBiWn0Rlem$iZdC6uHomlE07qGK/TqfcfxNzKJtFp03c0JILF1frRc=",
+      "username": "alice-visit-card2"
+    },
+    "model": "auth.User", "pk": 50
+},
+{
+    "fields": {
+      "last_signed": "2022-01-01T00:00:00+00:00",
+      "agreement": 1,
+      "user": 50
+    },
+    "model": "saas.signature", "pk": 50
+},
+{
+    "fields":{
+        "created_at":"2022-01-01T00:00:00+00:00",
+        "user": 2,
+        "plan": 1,
+        "option": 1,
+        "recorded": false
+    },
+    "model": "saas.CartItem", "pk": 50
+}]

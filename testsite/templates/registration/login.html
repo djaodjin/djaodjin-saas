@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 
 {% block content %}
-<form method="post" action="./?next={{next}}">
+<form method="post" action=".{% if next %}/?next={{next}}{% endif %}">
   <input type="hidden" name="csrfmiddlewaretoken" value="{{csrf_token}}">
   <div>
     <label for="id_username">Username:</label>
