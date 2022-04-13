@@ -70,7 +70,7 @@ from base64 import b64encode
 
 from django.db import transaction
 from django.utils.translation import ugettext_lazy as _
-import requests, stripe
+import stripe
 
 from .. import CardError, ProcessorError, ProcessorSetupError
 from ... import settings, signals
@@ -304,28 +304,22 @@ class StripeBackend(object):
 
         if not settings.BYPASS_PROCESSOR_AUTH:
             # Requires stripe version published after 2017
-            self._prepare_request()
-            resp = stripe.OAuth.token(
-                grant_type='authorization_code',
-                code=code)
+            try:
+                self._prepare_request()
+                data = stripe.OAuth.token(
+                    grant_type='authorization_code',
+                    code=code)
+            except stripe.error.StripeError as err:
+                LOGGER.exception(err)
+                raise ProcessorError(str(err), backend_except=err)
         else:
             # Use mockup bogus data
-            resp = requests.Response()
-            resp.status_code = 200
-            #pylint:disable=protected-access
-            resp._content = '{"stripe_publishable_key": "123456789",'\
-                '"access_token": "123456789",'\
-                '"stripe_user_id": "123456789",'\
-                '"refresh_token": "123456789"}'.encode('utf-8')
-        # Grab access_token (use this as your user's API key)
-        data = resp.json()
-        if resp.status_code != 200:
-            LOGGER.error(
-                "[connect_auth] status_code: %d, headers: %s, data: %s",
-                resp.status_code, resp.headers, data)
-            error = data.get('error', {})
-            raise ProcessorError(message="%s: %s" % (
-                error.get('type', "ukwn"), error.get('message', "")))
+            data = {
+                "stripe_publishable_key": "123456789",
+                "access_token": "123456789",
+                "stripe_user_id": "123456789",
+                "refresh_token": "123456789"
+            }
         LOGGER.debug("%s Stripe API returned: %s", organization, data)
         LOGGER.info("%s connect to Stripe authorized.", organization,
             extra={'event': 'connect-authorized', 'processor': 'stripe',
