@@ -302,14 +302,12 @@ class StripeBackend(object):
         organization.processor_deposit_key = None
         organization.processor_refresh_token = None
 
-        data = {'grant_type': 'authorization_code',
-                'client_secret': self.priv_key,
-                'code': code}
         if not settings.BYPASS_PROCESSOR_AUTH:
-            # Make /oauth/token endpoint POST request
-            # (XXX not available in stripe library code?)
-            resp = requests.post('https://connect.stripe.com/oauth/token',
-                params=data)
+            # Requires stripe version published after 2017
+            self._prepare_request()
+            resp = stripe.OAuth.token(
+                grant_type='authorization_code',
+                code=code)
         else:
             # Use mockup bogus data
             resp = requests.Response()
@@ -322,9 +320,12 @@ class StripeBackend(object):
         # Grab access_token (use this as your user's API key)
         data = resp.json()
         if resp.status_code != 200:
-            LOGGER.debug("[connect_auth] error headers: %s", resp.headers)
-            raise ProcessorError(
-                message="%s: %s" % (data['error'], data['error_description']))
+            LOGGER.error(
+                "[connect_auth] status_code: %d, headers: %s, data: %s",
+                resp.status_code, resp.headers, data)
+            error = data.get('error', {})
+            raise ProcessorError(message="%s: %s" % (
+                error.get('type', "ukwn"), error.get('message', ""))
         LOGGER.debug("%s Stripe API returned: %s", organization, data)
         LOGGER.info("%s connect to Stripe authorized.", organization,
             extra={'event': 'connect-authorized', 'processor': 'stripe',
