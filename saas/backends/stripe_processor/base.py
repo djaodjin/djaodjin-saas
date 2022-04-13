@@ -325,7 +325,7 @@ class StripeBackend(object):
                 resp.status_code, resp.headers, data)
             error = data.get('error', {})
             raise ProcessorError(message="%s: %s" % (
-                error.get('type', "ukwn"), error.get('message', ""))
+                error.get('type', "ukwn"), error.get('message', "")))
         LOGGER.debug("%s Stripe API returned: %s", organization, data)
         LOGGER.info("%s connect to Stripe authorized.", organization,
             extra={'event': 'connect-authorized', 'processor': 'stripe',
