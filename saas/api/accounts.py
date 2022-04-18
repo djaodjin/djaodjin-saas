@@ -1,4 +1,4 @@
-# Copyright (c) 2021, DjaoDjin inc.
+# Copyright (c) 2022, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -23,12 +23,16 @@
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 from django.contrib.auth import get_user_model
-from rest_framework.generics import ListAPIView
+from rest_framework import response as http, status
+from rest_framework.generics import ListAPIView, ListCreateAPIView
 
 from .organizations import OrganizationQuerysetMixin
-from .serializers import OrganizationSerializer
+from .serializers import (OrganizationSerializer, OrganizationCreateSerializer,
+    OrganizationDetailSerializer)
 from .. import filters
-from ..mixins import (OrganizationSmartListMixin, UserSmartListMixin)
+from ..docs import OpenAPIResponse, swagger_auto_schema
+from ..mixins import (OrganizationCreateMixin, OrganizationSmartListMixin,
+    UserSmartListMixin)
 from ..pagination import TypeaheadPagination
 from ..utils import get_user_serializer
 
@@ -194,7 +198,8 @@ class AccountsTypeaheadAPIView(OrganizationSmartListMixin,
 
 
 class ProfilesTypeaheadAPIView(OrganizationSmartListMixin,
-                            OrganizationQuerysetMixin, ListAPIView):
+                               OrganizationQuerysetMixin,
+                               OrganizationCreateMixin, ListCreateAPIView):
     """
     Searches profiles
 
@@ -241,10 +246,76 @@ class ProfilesTypeaheadAPIView(OrganizationSmartListMixin,
     serializer_class = OrganizationSerializer
     pagination_class = TypeaheadPagination
 
+    def get_serializer_class(self):
+        if self.request.method.lower() == 'post':
+            return OrganizationCreateSerializer
+        return super(ProfilesTypeaheadAPIView, self).get_serializer_class()
+
+    @swagger_auto_schema(responses={
+      201: OpenAPIResponse("Create successful", OrganizationDetailSerializer)})
+    def post(self, request, *args, **kwargs):
+        """
+        Creates a shadow profile
+
+        **Examples**
+
+        .. code-block:: http
+
+            POST /api/accounts/profile/ HTTP/1.1
+
+        .. code-block:: json
+
+            {
+              "email": "xia@locahost.localdomain",
+              "full_name": "Xia Lee",
+              "type": "personal"
+            }
+
+        responds
+
+        .. code-block:: json
+
+            {
+              "slug": "xia",
+              "email": "xia@locahost.localdomain",
+              "full_name": "Xia Lee",
+              "printable_name": "Xia Lee",
+              "type": "personal",
+              "credentials": true,
+              "default_timezone": "America/Los_Angeles",
+              "phone": "",
+              "street_address": "",
+              "locality": "",
+              "region": "",
+              "postal_code": "",
+              "country": "US",
+              "is_bulk_buyer": false,
+              "extra": null
+            }
+
+        """
+        return self.create(request, *args, **kwargs)
+
     def paginate_queryset(self, queryset):
         page = super(ProfilesTypeaheadAPIView, self).paginate_queryset(queryset)
         page = self.decorate_personal(page)
         return page
+
+    def create(self, request, *args, **kwargs):
+        #pylint:disable=unused-argument
+        serializer = OrganizationCreateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        # creates profile
+        organization = self.create_organization(serializer.validated_data)
+        self.decorate_personal(organization)
+
+        # returns created profile
+        serializer = self.serializer_class(instance=organization,
+            context=self.get_serializer_context())
+        headers = self.get_success_headers(serializer.data)
+        return http.Response(serializer.data,
+            status=status.HTTP_201_CREATED, headers=headers)
 
 
 class UserQuerysetMixin(object):

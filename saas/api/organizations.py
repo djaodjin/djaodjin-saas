@@ -1,4 +1,4 @@
-# Copyright (c) 2021, DjaoDjin inc.
+# Copyright (c) 2022, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -32,82 +32,19 @@ from django.utils.encoding import force_text
 from django.utils.translation import ugettext_lazy as _
 from rest_framework import parsers, status
 from rest_framework.generics import (CreateAPIView, ListAPIView,
-    ListCreateAPIView, RetrieveUpdateDestroyAPIView)
+    RetrieveUpdateDestroyAPIView)
 from rest_framework.response import Response
 
-from .serializers import (OrganizationCreateSerializer,
-    OrganizationDetailSerializer, OrganizationWithSubscriptionsSerializer,
-    UploadBlobSerializer)
+from .serializers import (OrganizationDetailSerializer,
+    OrganizationWithSubscriptionsSerializer, UploadBlobSerializer)
 from .. import settings, signals
 from ..compat import urlparse, urlunparse
 from ..decorators import _valid_manager
-from ..docs import OpenAPIResponse, swagger_auto_schema
 from ..mixins import (DateRangeContextMixin, OrganizationMixin,
     OrganizationSmartListMixin, ProviderMixin, OrganizationDecorateMixin)
 from ..models import get_broker
-from ..utils import (datetime_or_now, full_name_natural_split,
-    get_organization_model, get_role_model, handle_uniq_error,
-    get_picture_storage)
-
-
-#pylint: disable=no-init
-class OrganizationCreateMixin(object):
-
-    user_model = get_user_model()
-
-    def create_organization(self, validated_data):
-        organization_model = get_organization_model()
-        organization = organization_model(
-            slug=validated_data.get('slug', None),
-            full_name=validated_data.get('full_name'),
-            email=validated_data.get('email'),
-            default_timezone=validated_data.get(
-                'default_timezone', settings.TIME_ZONE),
-            phone=validated_data.get('phone', ""),
-            street_address=validated_data.get('street_address', ""),
-            locality=validated_data.get('locality', ""),
-            region=validated_data.get('region', ""),
-            postal_code=validated_data.get('postal_code', ""),
-            country=validated_data.get('country', ""),
-            extra=validated_data.get('extra'))
-        organization.is_personal = (validated_data.get('type') == 'personal')
-        with transaction.atomic():
-            try:
-                if organization.is_personal:
-                    try:
-                        user = self.user_model.objects.get(
-                            username=organization.slug)
-                        if not organization.full_name:
-                            organization.full_name = user.get_full_name()
-                        if not organization.email:
-                            organization.email = user.email
-                        # We are saving the `Organization` after the `User`
-                        # exists in the database so we can retrieve
-                        # the full_name and email from that attached user
-                        # if case they were not provided in the API call.
-                        organization.save()
-                    except self.user_model.DoesNotExist:
-                        #pylint:disable=unused-variable
-                        # We are saving the `Organization` when the `User`
-                        # does not exist so we have a chance to create
-                        # a slug/username.
-                        organization.save()
-                        first_name, mid, last_name = full_name_natural_split(
-                            organization.full_name)
-                        user = self.user_model.objects.create_user(
-                            username=organization.slug,
-                            email=organization.email,
-                            first_name=first_name,
-                            last_name=last_name)
-                    organization.add_manager(user)
-                else:
-                    # When `slug` is not present, `save` would try to create
-                    # one from the `full_name`.
-                    organization.save()
-            except IntegrityError as err:
-                handle_uniq_error(err)
-
-        return organization
+from ..utils import (datetime_or_now, get_organization_model, get_role_model,
+    handle_uniq_error, get_picture_storage)
 
 
 class OrganizationQuerysetMixin(OrganizationDecorateMixin):
@@ -347,7 +284,7 @@ class OrganizationPictureAPIView(OrganizationMixin, CreateAPIView):
 
 class OrganizationListAPIView(OrganizationSmartListMixin,
                               OrganizationQuerysetMixin,
-                              OrganizationCreateMixin, ListCreateAPIView):
+                              ListAPIView):
     """
     Lists billing profiles
 
@@ -385,76 +322,10 @@ class OrganizationListAPIView(OrganizationSmartListMixin,
     serializer_class = OrganizationDetailSerializer
     user_model = get_user_model()
 
-    def get_serializer_class(self):
-        if self.request.method.lower() == 'post':
-            return OrganizationCreateSerializer
-        return super(OrganizationListAPIView, self).get_serializer_class()
-
-    @swagger_auto_schema(responses={
-      201: OpenAPIResponse("Create successful", OrganizationDetailSerializer)})
-    def post(self, request, *args, **kwargs):
-        """
-        Creates an organization, personal or user profile.
-
-        **Examples**
-
-        .. code-block:: http
-
-            POST /api/profile/ HTTP/1.1
-
-        .. code-block:: json
-
-            {
-              "email": "xia@locahost.localdomain",
-              "full_name": "Xia Lee",
-              "type": "personal"
-            }
-
-        responds
-
-        .. code-block:: json
-
-            {
-              "slug": "xia",
-              "email": "xia@locahost.localdomain",
-              "full_name": "Xia Lee",
-              "printable_name": "Xia Lee",
-              "type": "personal",
-              "credentials": true,
-              "default_timezone": "America/Los_Angeles",
-              "phone": "",
-              "street_address": "",
-              "locality": "",
-              "region": "",
-              "postal_code": "",
-              "country": "US",
-              "is_bulk_buyer": false,
-              "extra": null
-            }
-
-        """
-        return self.create(request, *args, **kwargs)
-
     def paginate_queryset(self, queryset):
         page = super(OrganizationListAPIView, self).paginate_queryset(queryset)
         page = self.decorate_personal(page)
         return page
-
-    def create(self, request, *args, **kwargs):
-        #pylint:disable=unused-argument
-        serializer = OrganizationCreateSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-
-        # creates profile
-        organization = self.create_organization(serializer.validated_data)
-        self.decorate_personal(organization)
-
-        # returns created profile
-        serializer = self.serializer_class(instance=organization,
-            context=self.get_serializer_context())
-        headers = self.get_success_headers(serializer.data)
-        return Response(serializer.data,
-            status=status.HTTP_201_CREATED, headers=headers)
 
 
 class SubscribersQuerysetMixin(OrganizationDecorateMixin, ProviderMixin):

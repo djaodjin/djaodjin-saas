@@ -1,4 +1,4 @@
-# Copyright (c) 2021, DjaoDjin inc.
+# Copyright (c) 2022, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -42,13 +42,14 @@ from rest_framework.response import Response
 from .. import settings, signals
 from ..docs import OpenAPIResponse, no_body, swagger_auto_schema
 from ..decorators import _has_valid_access
-from ..mixins import (OrganizationMixin, OrganizationSmartListMixin,
-    RoleDescriptionMixin, RoleMixin, RoleSmartListMixin, UserMixin)
+from ..mixins import (OrganizationMixin, OrganizationCreateMixin,
+    OrganizationSmartListMixin, RoleDescriptionMixin, RoleMixin,
+    RoleSmartListMixin, UserMixin)
 from ..models import _clean_field, get_broker
 from ..pagination import RoleListPagination
 from ..utils import (full_name_natural_split, get_organization_model,
     get_role_model, get_role_serializer, generate_random_slug)
-from .organizations import OrganizationCreateMixin, OrganizationDecorateMixin
+from .organizations import OrganizationDecorateMixin
 from .serializers import (AccessibleSerializer, ForceSerializer,
     OrganizationCreateSerializer,
     OrganizationDetailSerializer, RoleDescriptionSerializer,

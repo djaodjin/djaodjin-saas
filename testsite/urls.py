@@ -1,4 +1,4 @@
-# Copyright (c) 2021, DjaoDjin inc.
+# Copyright (c) 2022, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -34,9 +34,9 @@ from saas.decorators import (fail_agreement, fail_authenticated, fail_direct,
 from saas.views import OrganizationRedirectView, UserRedirectView
 from rules.urldecorators import include, url
 
-from testsite.views.app import AppView
-from testsite.views.auth import LoginAPIView, PersonalRegistrationView
-from testsite.views.organization import OrganizationListView, UserProfileView
+from .views.app import AppView
+from .views.auth import LoginAPIView, PersonalRegistrationView
+from .views.organization import OrganizationListView, UserProfileView
 
 # Uncomment the next two lines to enable the admin:
 from django.contrib import admin

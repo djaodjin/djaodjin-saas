@@ -1,4 +1,4 @@
-# Copyright (c) 2021, DjaoDjin inc.
+# Copyright (c) 2022, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -29,7 +29,7 @@ import logging, re
 
 from django.contrib.auth import REDIRECT_FIELD_NAME, get_user_model
 from django.contrib.auth.hashers import UNUSABLE_PASSWORD_PREFIX
-from django.db.models import Q, F
+from django.db import models, transaction, IntegrityError
 from django.http import Http404
 from django.template.defaultfilters import slugify
 from django.utils.translation import ugettext_lazy as _
@@ -44,8 +44,8 @@ from .models import (CartItem, Charge, Coupon, Plan, Price,
     RoleDescription, Subscription, Transaction, get_broker, is_broker,
     sum_orig_amount)
 from .utils import (build_absolute_uri, datetime_or_now,
-    get_organization_model, get_role_model, update_context_urls,
-    validate_redirect_url)
+    full_name_natural_split, get_organization_model, get_role_model,
+    handle_uniq_error, update_context_urls, validate_redirect_url)
 from .extras import OrganizationMixinBase
 
 LOGGER = logging.getLogger(__name__)
@@ -293,14 +293,14 @@ class CartMixin(object):
                 full_name = cart_item.full_name.strip()
                 for_descr = ', for %s (%s)' % (full_name, cart_item.sync_on)
                 organization_queryset = get_organization_model().objects.filter(
-                    Q(slug=cart_item.sync_on)
-                    | Q(email__iexact=cart_item.sync_on))
+                    models.Q(slug=cart_item.sync_on)
+                    | models.Q(email__iexact=cart_item.sync_on))
                 if organization_queryset.exists():
                     organization = organization_queryset.get()
                 else:
                     user_queryset = get_user_model().objects.filter(
-                        Q(username=cart_item.sync_on)
-                        | Q(email__iexact=cart_item.sync_on))
+                        models.Q(username=cart_item.sync_on)
+                        | models.Q(email__iexact=cart_item.sync_on))
                     if not user_queryset.exists():
                         # XXX Hacky way to determine GroupBuy vs. notify.
                         organization = get_organization_model()(
@@ -470,6 +470,65 @@ class OrganizationMixin(OrganizationMixinBase, settings.EXTRA_MIXIN):
     pass
 
 
+class OrganizationCreateMixin(object):
+
+    user_model = get_user_model()
+
+    def create_organization(self, validated_data):
+        organization_model = get_organization_model()
+        organization = organization_model(
+            slug=validated_data.get('slug', None),
+            full_name=validated_data.get('full_name'),
+            email=validated_data.get('email'),
+            default_timezone=validated_data.get(
+                'default_timezone', settings.TIME_ZONE),
+            phone=validated_data.get('phone', ""),
+            street_address=validated_data.get('street_address', ""),
+            locality=validated_data.get('locality', ""),
+            region=validated_data.get('region', ""),
+            postal_code=validated_data.get('postal_code', ""),
+            country=validated_data.get('country', ""),
+            extra=validated_data.get('extra'))
+        organization.is_personal = (validated_data.get('type') == 'personal')
+        with transaction.atomic():
+            try:
+                if organization.is_personal:
+                    try:
+                        user = self.user_model.objects.get(
+                            username=organization.slug)
+                        if not organization.full_name:
+                            organization.full_name = user.get_full_name()
+                        if not organization.email:
+                            organization.email = user.email
+                        # We are saving the `Organization` after the `User`
+                        # exists in the database so we can retrieve
+                        # the full_name and email from that attached user
+                        # if case they were not provided in the API call.
+                        organization.save()
+                    except self.user_model.DoesNotExist:
+                        #pylint:disable=unused-variable
+                        # We are saving the `Organization` when the `User`
+                        # does not exist so we have a chance to create
+                        # a slug/username.
+                        organization.save()
+                        first_name, mid, last_name = full_name_natural_split(
+                            organization.full_name)
+                        user = self.user_model.objects.create_user(
+                            username=organization.slug,
+                            email=organization.email,
+                            first_name=first_name,
+                            last_name=last_name)
+                    organization.add_manager(user)
+                else:
+                    # When `slug` is not present, `save` would try to create
+                    # one from the `full_name`.
+                    organization.save()
+            except IntegrityError as err:
+                handle_uniq_error(err)
+
+        return organization
+
+
 class OrganizationDecorateMixin(object):
 
     @staticmethod
@@ -522,7 +581,7 @@ class OrganizationDecorateMixin(object):
         records = [page] if isinstance(page, organization_model) else page
         personal = dict(organization_model.objects.filter(
             pk__in=[profile.pk for profile in records if profile.pk],
-            role__user__username=F('slug')).extra(select={
+            role__user__username=models.F('slug')).extra(select={
             'credentials': ("NOT (password LIKE '" + UNUSABLE_PASSWORD_PREFIX
             + "%%')")}).values_list('pk', 'credentials'))
         for profile in records:
@@ -1211,15 +1270,15 @@ def _as_html_description(transaction_descr,
     return result
 
 
-def as_html_description(transaction, active_links=True):
+def as_html_description(transaction_model, active_links=True):
     """
     Add hyperlinks into a transaction description.
     """
     return _as_html_description(
-        transaction.descr,
-        transaction.orig_organization,
-        transaction.dest_organization,
-        transaction.dest_account,
+        transaction_model.descr,
+        transaction_model.orig_organization,
+        transaction_model.dest_organization,
+        transaction_model.dest_account,
         active_links=active_links)
 
 
