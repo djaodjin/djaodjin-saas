@@ -425,13 +425,10 @@ class OrganizationSerializer(serializers.ModelSerializer):
         help_text=_("Name that can be safely used for display in HTML pages"))
     credentials = serializers.SerializerMethodField(read_only=True,
         help_text=_("True if the account has valid login credentials"))
-    full_name = serializers.CharField(required=False,
-        help_text=_("Full name"))
 
     class Meta:
         model = get_organization_model()
-        fields = ('slug', 'full_name', 'printable_name', 'picture',
-            'type', 'credentials')
+        fields = ('slug', 'printable_name', 'picture', 'type', 'credentials')
         read_only_fields = ('printable_name', 'type', 'credentials')
 
     @staticmethod
@@ -463,6 +460,7 @@ class OrganizationDetailSerializer(OrganizationSerializer):
 
     slug = serializers.SlugField(required=False,
         help_text=_("Unique identifier shown in the URL bar"))
+    full_name = serializers.CharField(help_text=_("Full name"))
     default_timezone = serializers.CharField(required=False,
         help_text=_("Timezone to use when reporting metrics"))
     email = serializers.EmailField(required=False,
@@ -490,7 +488,7 @@ class OrganizationDetailSerializer(OrganizationSerializer):
 
     class Meta(OrganizationSerializer.Meta):
         fields = OrganizationSerializer.Meta.fields + (
-            'created_at', 'email', 'phone',
+            'full_name', 'created_at', 'email', 'phone',
             'street_address', 'locality', 'region', 'postal_code', 'country',
             'default_timezone', 'is_provider', 'is_bulk_buyer', 'extra',
             'detail')

@@ -24,7 +24,8 @@
 
 from django.contrib.auth import get_user_model
 from rest_framework import response as http, status
-from rest_framework.generics import ListAPIView, ListCreateAPIView
+from rest_framework.generics import (ListAPIView, ListCreateAPIView,
+    RetrieveAPIView)
 
 from .organizations import OrganizationQuerysetMixin
 from .serializers import (OrganizationSerializer, OrganizationCreateSerializer,
@@ -32,9 +33,9 @@ from .serializers import (OrganizationSerializer, OrganizationCreateSerializer,
 from .. import filters
 from ..docs import OpenAPIResponse, swagger_auto_schema
 from ..mixins import (OrganizationCreateMixin, OrganizationSmartListMixin,
-    UserSmartListMixin)
+    OrganizationMixin, OrganizationDecorateMixin, UserSmartListMixin)
 from ..pagination import TypeaheadPagination
-from ..utils import get_user_serializer
+from ..utils import get_organization_model, get_user_serializer
 
 
 #pylint: disable=no-init
@@ -311,11 +312,53 @@ class ProfilesTypeaheadAPIView(OrganizationSmartListMixin,
         self.decorate_personal(organization)
 
         # returns created profile
-        serializer = self.serializer_class(instance=organization,
+        serializer = OrganizationDetailSerializer(
+            instance=organization,
             context=self.get_serializer_context())
         headers = self.get_success_headers(serializer.data)
         return http.Response(serializer.data,
             status=status.HTTP_201_CREATED, headers=headers)
+
+
+
+class ProfileAPIView(OrganizationMixin, OrganizationDecorateMixin,
+                     RetrieveAPIView):
+    """
+    Retrieves a billing profile
+
+    The API is typically used within an HTML
+    `contact information page </docs/themes/#dashboard_profile>`_
+    as present in the default theme.
+
+    **Tags**: profile, subscriber, profilemodel
+
+    **Examples**
+
+    .. code-block:: http
+
+        GET /api/accounts/profiles/xia/ HTTP/1.1
+
+    responds
+
+    .. code-block:: json
+
+        {
+            "slug": "xia",
+            "printable_name": "Xia Lee",
+            "type": "organization",
+            "picture": null
+        }
+    """
+    lookup_field = 'slug'
+    lookup_url_kwarg = 'organization'
+    queryset = get_organization_model().objects.all()
+    serializer_class = OrganizationSerializer
+    user_model = get_user_model()
+
+    def get_object(self):
+        obj = super(ProfileAPIView, self).get_object()
+        self.decorate_personal(obj)
+        return obj
 
 
 class UserQuerysetMixin(object):

@@ -28,15 +28,18 @@ URLs to populate type-ahead candidate lists
 
 from django.conf.urls import url
 
-from ...api.accounts import (AccountsTypeaheadAPIView, ProfilesTypeaheadAPIView,
-    UsersTypeaheadAPIView)
+from ...api.accounts import (AccountsTypeaheadAPIView, ProfileAPIView,
+    ProfilesTypeaheadAPIView, UsersTypeaheadAPIView)
+from ...settings import ACCT_REGEX
 
 
 urlpatterns = [
-    url(r'^accounts/$', AccountsTypeaheadAPIView.as_view(),
-        name='saas_api_search_accounts'),
-    url(r'^accounts/users/$', UsersTypeaheadAPIView.as_view(),
+    url(r'^accounts/users/', UsersTypeaheadAPIView.as_view(),
         name='saas_api_search_users'),
-    url(r'^accounts/profiles/$', ProfilesTypeaheadAPIView.as_view(),
+    url(r'^accounts/profiles/(?P<organization>%s)' % ACCT_REGEX,
+        ProfileAPIView.as_view(), name='saas_api_search_profile'),
+    url(r'^accounts/profiles/', ProfilesTypeaheadAPIView.as_view(),
         name='saas_api_search_profiles'),
+    url(r'^accounts/', AccountsTypeaheadAPIView.as_view(),
+        name='saas_api_search_accounts'),
 ]
