@@ -1,4 +1,4 @@
-# Copyright (c) 2018, DjaoDjin inc.
+# Copyright (c) 2022, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -28,6 +28,8 @@ URLs API for provider resources related to billing
 
 from django.conf.urls import url
 
+from ....api.federations import (FederatedSubscribersAPIView,
+    SharedProfilesAPIView)
 from ....api.metrics import (BalancesAPIView, CouponUsesAPIView,
     CustomerMetricAPIView, LifetimeValueMetricAPIView, PlanMetricAPIView,
     RevenueMetricAPIView)
@@ -55,4 +57,12 @@ urlpatterns = [
     url(r'^metrics/(?P<organization>%s)/lifetimevalue/?' % ACCT_REGEX,
         LifetimeValueMetricAPIView.as_view(),
         name='saas_api_metrics_lifetimevalue'),
+
+    # Metrics for a federation of providers
+    url(r'metrics/(?P<organization>%s)/federated/shared/?' % ACCT_REGEX,
+        SharedProfilesAPIView.as_view(),
+        name="saas_api_shared_profiles"),
+    url(r'metrics/(?P<organization>%s)/federated/?' % ACCT_REGEX,
+        FederatedSubscribersAPIView.as_view(),
+        name="saas_api_federated_subscribers"),
 ]

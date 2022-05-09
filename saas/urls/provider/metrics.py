@@ -29,7 +29,8 @@ from django.conf.urls import url
 from ...settings import ACCT_REGEX
 from ...views.download import CartItemDownloadView
 from ...views.profile import DashboardView
-from ...views.metrics import (CouponMetricsView, LifeTimeValueDownloadView,
+from ...views.metrics import (SubscribersActivityView,
+    CouponMetricsView, LifeTimeValueDownloadView,
     LifeTimeValueMetricsView, PlansMetricsView, RevenueMetricsView)
 
 
@@ -54,4 +55,7 @@ urlpatterns = [
         name='saas_metrics_lifetimevalue_download'),
     url(r'^metrics/(?P<organization>%s)/lifetimevalue/' % ACCT_REGEX,
         LifeTimeValueMetricsView.as_view(), name='saas_metrics_lifetimevalue'),
+    url(r'metrics/(?P<organization>%s)/activity/' % ACCT_REGEX,
+        SubscribersActivityView.as_view(),
+        name='saas_subscribers_activity'),
 ]

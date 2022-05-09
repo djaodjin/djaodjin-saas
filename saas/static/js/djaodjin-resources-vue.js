@@ -32,6 +32,7 @@ var messagesMixin = {
     data: function() {
         return {
             messagesElement: '#messages-content',
+            scrollToTopOnMessages: true,
         }
     },
     methods: {
@@ -129,6 +130,8 @@ var messagesMixin = {
             var messagesContainer = messagesElement.parent();
             if( messagesContainer && messagesContainer.hasClass("hidden") ) {
                 messagesContainer.removeClass("hidden");
+            }
+            if( vm.scrollToTopOnMessages ) {
                 jQuery("html, body").animate({
                     // scrollTop: $("#messages").offset().top - 50
                     // avoid weird animation when messages at the top:

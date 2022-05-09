@@ -64,6 +64,7 @@
         <a name="{{tab.slug}}" href="#{{tab.slug}}"><h2>{{tab.title}}</h2></a>
         {% include "saas/_filter.html" %}
         <div>
+          <a href="{{urls.subscribers_activity}}">Activity</a>
           <a id="download-{{tab.slug}}" role="button"
              ng-prop-href="'{{tab.urls.download}}?q=' + params.q"
              v-bind:href="'{{tab.urls.download}}' + getQueryString(['page'])">CSV Download</a>

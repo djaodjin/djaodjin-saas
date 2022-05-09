@@ -28,6 +28,7 @@ from dateutil.relativedelta import relativedelta
 from django.conf import settings as django_settings
 from django.contrib.auth import get_user_model, logout as auth_logout
 from django.db import transaction, IntegrityError
+from django.db.models import F
 from django.utils.encoding import force_text
 from django.utils.translation import ugettext_lazy as _
 from rest_framework import parsers, status
@@ -35,11 +36,13 @@ from rest_framework.generics import (CreateAPIView, ListAPIView,
     RetrieveUpdateDestroyAPIView)
 from rest_framework.response import Response
 
-from .serializers import (OrganizationDetailSerializer,
-    OrganizationWithSubscriptionsSerializer, UploadBlobSerializer)
+from .serializers import (ActiveSubscribersSerializer,
+    OrganizationDetailSerializer, OrganizationWithSubscriptionsSerializer,
+    UploadBlobSerializer)
 from .. import settings, signals
 from ..compat import urlparse, urlunparse
 from ..decorators import _valid_manager
+from ..filters import DateRangeFilter, OrderingFilter, SearchFilter
 from ..mixins import (DateRangeContextMixin, OrganizationMixin,
     OrganizationSmartListMixin, ProviderMixin, OrganizationDecorateMixin)
 from ..models import get_broker
@@ -383,6 +386,58 @@ class SubscribersAPIView(OrganizationSmartListMixin,
     serializer_class = OrganizationDetailSerializer
 
 
+class ActiveSubscribersSmartListMixin(object):
+    """
+    reporting entities list which is also searchable and sortable.
+    """
+    date_field = 'user__last_login'
+
+    search_fields = (
+        'first_name',
+        'last_name',
+        'organization_full_name')
+
+    ordering_fields = [('user__last_login', 'created_at'),
+                       ('user__first_name', 'first_name'),
+                       ('user__last_name', 'last_name'),
+                       ('organization__full_name', 'organization_full_name')]
+
+    ordering = ('user__last_login',)
+
+    filter_backends = (DateRangeFilter, SearchFilter, OrderingFilter)
+
+
+class ActiveSubscribersQuerysetMixin(DateRangeContextMixin,
+                                     SubscribersQuerysetMixin):
+
+    def get_queryset(self):
+        filter_params = {}
+        ends_at = datetime_or_now()
+        start_at = ends_at - relativedelta(days=7)
+        filter_params.update({
+            'user__last_login__lt': ends_at,
+            'user__last_login__gte': start_at
+        })
+        queryset = get_role_model().objects.filter(
+            organization__in=get_organization_model().objects.filter(
+                subscribes_to__organization=self.provider,
+                subscriptions__ends_at__gt=ends_at),
+            **filter_params
+        ).values(
+                 last_login=F('user__last_login'),
+                 first_name=F('user__first_name'),
+                 last_name=F('user__last_name'),
+                 organization_full_name=F('organization__full_name'))
+        return queryset
+
+
+class ActiveSubscribersAPIView(ActiveSubscribersSmartListMixin,
+                               ActiveSubscribersQuerysetMixin,
+                               ListAPIView):
+
+    serializer_class = ActiveSubscribersSerializer
+
+
 class InactiveSubscribersQuerysetMixin(DateRangeContextMixin,
                                        SubscribersQuerysetMixin):
 
@@ -419,7 +474,8 @@ class InactiveSubscribersAPIView(OrganizationSmartListMixin,
 
     .. code-block:: http
 
-        GET /api/profile/cowork/subscribers/?o=created_at&ot=desc HTTP/1.1
+        GET /api/profile/cowork/subscribers/inactive?o=created_at&ot=desc\
+ HTTP/1.1
 
     responds
 

@@ -1,4 +1,4 @@
-# Copyright (c) 2021, DjaoDjin inc.
+# Copyright (c) 2022, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -25,6 +25,7 @@
 import json
 from datetime import datetime
 
+from dateutil.relativedelta import relativedelta
 from django.views.generic import TemplateView
 
 from .download import CSVDownloadView
@@ -34,6 +35,25 @@ from ..compat import reverse
 from ..mixins import CouponMixin, ProviderMixin, MetricsMixin
 from ..models import CartItem, Plan
 from ..utils import datetime_or_now, update_context_urls
+
+
+class SubscribersActivityView(ProviderMixin, TemplateView):
+
+    template_name = 'saas/metrics/activity.html'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        expires_at = datetime_or_now() - relativedelta(years=1)
+        context.update({
+            'expires_at': expires_at,
+        })
+        update_context_urls(context, {
+            'api_active_subscribers': reverse(
+                'saas_api_active_subscribers', args=(self.provider,)),
+            'api_inactive_subscribers': reverse(
+                'saas_api_inactive_subscribers', args=(self.provider,)),
+        })
+        return context
 
 
 class BalancesView(ProviderMixin, TemplateView):

@@ -2564,6 +2564,57 @@ Vue.component('plan-update', {
     },
 });
 
+// Widgets for activity page
+// -------------------------
+Vue.component('active-subscribers', {
+    mixins: [
+        itemListMixin
+    ],
+    data: function(){
+        return {
+            url: this.$urls.api_active_subscribers,
+            messagesElement: '#active-subscribers-content',
+            scrollToTopOnMessages: false
+        }
+    },
+    methods: {
+    },
+    mounted: function(){
+        this.params.ends_at = null;
+        this.get();
+    },
+});
+
+
+Vue.component('inactive-subscribers', {
+    mixins: [
+        itemListMixin
+    ],
+    data: function(){
+        return {
+            url: this.$urls.api_inactive_subscribers,
+            messagesElement: '#inactive-subscribers-content',
+            scrollToTopOnMessages: false
+        }
+    },
+    methods: {
+        showHideRoles: function(entry) {
+            var vm = this;
+            if( !entry.roles ) {
+                vm.reqGet(vm._safeUrl(vm.$urls.organization.api_profile_base,
+                    entry.slug) + '/roles',
+                function success(resp) {
+                    // Vue.set(entry, 'roles', [{printable_name: "Alice"}]);
+                    Vue.set(entry, 'roles', resp.results);
+                });
+            }
+        }
+    },
+    mounted: function(){
+        this.get()
+    },
+});
+
 
 // Widgets for dashboard
 // ---------------------

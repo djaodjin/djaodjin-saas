@@ -153,8 +153,13 @@ djaodjin-saas/tree/master/saas/templates/saas/profile/subscribers.html>`__).
               'saas_subscriber_pipeline_download_churned', args=(provider,))
             }}]
         context.update({'tabs': tabs})
+        update_context_urls(context, {
+            'subscribers_activity': reverse('saas_subscribers_activity',
+            args=(provider,))
+        })
         if provider.is_broker:
-            context.update({'registered': {'urls': {'download': reverse(
+            update_context_urls(context, {
+                'registered': {'urls': {'download': reverse(
                 'saas_subscriber_pipeline_download_registered')}}})
         return context
 

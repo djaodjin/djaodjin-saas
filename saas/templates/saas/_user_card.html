@@ -1,0 +1,28 @@
+<div :id="item.user.slug">
+  <div>
+    <button @click="removeConfirm(index)">remove</button>
+  </div>
+  <div>
+    <div>
+      <div>
+        <div>
+          <a :href="'/users/' + item.user.slug + '/'"><img v-bind:src="item.user.picture"></a>
+        </div>
+      </div>
+      <div>
+        <h5><a :href="'/users/' + item.user.slug + '/'">[[item.user.printable_name]]</a></h5>
+        <h6>[[item.user.email]]</h6>
+        <div v-if="item.accept_request_api_url">
+          <hr />
+          <small>requested [[item.created_at]]</small>
+          <button @click="save(item.user)">Grant</button>
+        </div>
+        <div v-if="item.grant_key">
+          <hr />
+          <small>invited [[item.created_at]]</small>
+          <button @click="sendInvite(item.user.slug)">Resend Invite</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

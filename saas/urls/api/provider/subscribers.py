@@ -1,4 +1,4 @@
-# Copyright (c) 2021, DjaoDjin inc.
+# Copyright (c) 2022, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -28,7 +28,8 @@ API URLs for a provider subcribers.
 
 from django.conf.urls import url
 
-from ....api.organizations import SubscribersAPIView, InactiveSubscribersAPIView
+from ....api.organizations import (ActiveSubscribersAPIView,
+    InactiveSubscribersAPIView, SubscribersAPIView)
 from ....api.subscriptions import (ProvidedSubscriptionsAPIView,
     PlanSubscriptionDetailAPIView)
 from ....settings import ACCT_REGEX, VERIFICATION_KEY_RE
@@ -40,6 +41,9 @@ urlpatterns = [
         '(?P<request_key>%s)/' % (ACCT_REGEX, VERIFICATION_KEY_RE),
         SubscriptionRequestAcceptAPIView.as_view(),
         name='saas_api_subscription_grant_accept'),
+    url(r'profile/(?P<organization>%s)/subscribers/active/?' % ACCT_REGEX,
+        ActiveSubscribersAPIView.as_view(),
+        name='saas_api_active_subscribers'),
     url(r'^profile/(?P<organization>%s)/subscribers/inactive/?' % ACCT_REGEX,
         InactiveSubscribersAPIView.as_view(),
         name='saas_api_inactive_subscribers'),

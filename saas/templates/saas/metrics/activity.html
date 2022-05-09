@@ -1,0 +1,153 @@
+{% extends "saas/base_dashboard.html" %}
+
+{% block saas_title %}
+{{title}} for {{organization.printable_name}}
+{% endblock %}
+
+{% block saas_content %}
+<div>
+  <div>
+    <h1 class="text-center">Active within the last 7 days</h1>
+    <active-subscribers inline-template>
+      <div>
+        <div>
+          <div v-if="!itemsLoaded">
+            <h3>loading...</h3>
+          </div>
+          <div v-if="itemsLoaded">
+            <div>
+              [[items.count]] users
+            </div>
+          </div>
+        </div>
+        <!-- Start Data Tables -->
+        <table class="table table-striped mb-4" infinite-wrapper>
+          <thead>
+            <tr>
+              <th>
+                Last login
+                <a href="#" @click.prevent="sortBy('created_at')">
+                  <i :class="sortIcon('created_at')"></i>
+                </a>
+              </th>
+              <th>
+                Full name
+                <a href="#" @click.prevent="sortBy('first_name')">
+                  <i :class="sortIcon('first_name')"></i>
+                </a>
+              </th>
+              <th>
+                Organization
+                <a href="#" @click.prevent="sortBy('organization_full_name')">
+                  <i :class="sortIcon('organization_full_name')"></i>
+                </a>
+              </th>
+            </tr>
+          </thead>
+
+          <!-- Show Loader -->
+          <tbody v-if="!itemsLoaded">
+            <tr>
+              <td colspan="4">
+                <h3>loading...</h3>
+              </td>
+            </tr>
+          </tbody>
+
+          <!-- Show no items -->
+          <tbody v-show="itemsLoaded && items.results.length == 0" v-cloak>
+            <tr>
+              <td colspan="4">
+                <h3>No items<span v-show="params.q"> [[params.q]]</span></h3>
+              </td>
+            </tr>
+          </tbody>
+
+          <!-- Show Data Entries -->
+          <tbody id="has-items" v-show="itemsLoaded && items.results.length > 0" v-cloak>
+            <tr v-for="(entry, index) in items.results" :class="{'bg-info': isInfiniteScroll && params.page > 1 && (itemsPerPage * (params.page - 1)) === index}">
+              <td>[[ (humanizeDate(entry.last_login)) ]]</td>
+              <td>[[entry.first_name]] [[entry.last_name]]</td>
+              <td>[[entry.organization]]</td>
+            </tr>
+          </tbody>
+        </table>
+
+        {% include "saas/_paginator.html" %}
+      </div>
+    </active-subscribers>
+  </div>
+
+  <div>
+    <h1 class="text-center">Inactive since {{expires_at|date}}</h1>
+    <inactive-subscribers inline-template>
+      <div>
+        <div>
+          <div v-if="!itemsLoaded">
+            <h3>loading ...</h3>
+          </div>
+          <div v-if="itemsLoaded">
+            <div>
+              [[items.count]] reporting entities
+            </div>
+          </div>
+        </div>
+        <!-- Start Data Tables -->
+        <table infinite-wrapper>
+          <thead>
+            <tr>
+              <th>
+                Organization
+                <a href="#" @click.prevent="sortBy('organization_full_name')">
+                  <i :class="sortIcon('organization_full_name')"></i>
+                </a>
+              </th>
+            </tr>
+            <tr>
+              <td>Click on a name to show contacts at the organization.</td>
+            </tr>
+          </thead>
+
+          <!-- Show Loader -->
+          <tbody v-if="!itemsLoaded">
+            <tr>
+              <td>
+                <h3>loading...</h3>
+              </td>
+            </tr>
+          </tbody>
+
+          <!-- Show no items -->
+          <tbody v-show="itemsLoaded && items.results.length == 0" v-cloak>
+            <tr>
+              <td>
+                <h3>No items<span v-show="params.q"> [[params.q]]</span></h3>
+              </td>
+            </tr>
+          </tbody>
+
+          <!-- Show Data Entries -->
+          <tbody id="has-items" v-show="itemsLoaded && items.results.length > 0" v-cloak>
+            <tr v-for="(entry, index) in items.results" :class="{'bg-info': isInfiniteScroll && params.page > 1 && (itemsPerPage * (params.page - 1)) === index}">
+              <td>
+                <a :href="'#collapse-'+ entry.slug"
+                   @click="showHideRoles(entry)">[[entry.printable_name]]</a>
+                <div :id="'collapse-'+ entry.slug">
+                  <div v-if="!entry.roles">
+                    loading ...
+                  </div>
+                  <div v-for="item in entry.roles" v-if="entry.roles">
+                    {% include "saas/_user_card.html" %}
+                  </div>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+
+        {% include "saas/_paginator.html" %}
+      </div>
+    </inactive-subscribers>
+  </div>
+</div>
+{% endblock %}
