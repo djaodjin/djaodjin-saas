@@ -83,14 +83,13 @@ class RoleDetailView(RoleDescriptionMixin, TemplateView):
         context = super(RoleDetailView, self).get_context_data(**kwargs)
         role = self.kwargs.get('role', None)
         context.update({'role_descr': self.role_description})
-        urls = {
+        update_context_urls(context, {
             'api_candidates': reverse('saas_api_search_users'),
             'organization': {
                 'api_roles': reverse(
                     'saas_api_roles_by_descr', args=(
                         self.organization, role)),
-        }}
-        update_context_urls(context, urls)
+        }})
         return context
 
 
@@ -104,13 +103,12 @@ class RoleListView(OrganizationMixin, TemplateView):
 
     def get_context_data(self, **kwargs):
         context = super(RoleListView, self).get_context_data(**kwargs)
-        urls = {'organization': {
+        update_context_urls(context, {'organization': {
             'api_roles': reverse(
                 'saas_api_roles', args=(self.organization,)),
             'api_role_descriptions': reverse(
                 'saas_api_role_description_list', args=(self.organization,)),
-        }}
-        update_context_urls(context, urls)
+        }})
         return context
 
 
@@ -178,8 +176,9 @@ subscribers.html>`__).
     def get_context_data(self, **kwargs):
         context = super(PlanSubscribersListView, self).get_context_data(
             **kwargs)
-        context['urls']['provider']['api_plan_subscribers'] = reverse(
-            'saas_api_plan_subscriptions', args=(self.provider, self.plan))
+        update_context_urls(context, {
+            'provider': {'api_plan_subscribers': reverse(
+            'saas_api_plan_subscriptions', args=(self.provider, self.plan))}})
         return context
 
 

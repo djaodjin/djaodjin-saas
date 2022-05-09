@@ -183,7 +183,7 @@ class OrganizationRedirectView(TemplateResponseMixin, ContextMixin,
 
         if self.role_model.objects.filter(
             user=request.user, grant_key__isnull=False).exists():
-            return redirect_to
+            return http.HttpResponseRedirect(redirect_to)
 
         accessibles = self.organization_model.objects.accessible_by(
             request.user)

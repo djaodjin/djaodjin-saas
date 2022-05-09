@@ -34,11 +34,3 @@
 {% endif %}
 
 {# Broker menu items #}
-{% if urls.pages or urls.rules %}
-  {% if urls.pages.theme_base %}
-    <a id="pages_theme" href="{{urls.pages.theme_base}}">Theme</a>
-  {% endif %}
-  {% if urls.rules and urls.rules.app %}
-    <a id="rules_update" href="{{urls.rules.app}}">Rules</a>
-  {% endif %}
-{% endif %}

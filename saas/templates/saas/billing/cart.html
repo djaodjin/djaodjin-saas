@@ -2,25 +2,26 @@
 
 {% block content %}
 <h1>{% block order_title %}Place Order{% endblock %}</h1>
-{% block order_head %}
-<div>
+<div id="app">
+  {% block order_head %}
+  <div>
     <form method="post" id="redeem-form">
-        <input type="hidden" name="csrfmiddlewaretoken" value="{{csrf_token}}">
-        <div>
-            <label>
+      <input type="hidden" name="csrfmiddlewaretoken" value="{{csrf_token}}">
+      <div>
+        <label>
 If you have a coupon code, it is time to redeem it now!
-            </label>
-            <div id="redeem-code">
-                <div class="collapsible">
-                    <input name="code" type="text" placeholder="Coupon code">
-                    <button type="submit" class="submit-code">Redeem</button>
-                </div>
-            </div>
+        </label>
+        <div id="redeem-code">
+          <div class="collapsible">
+            <input name="code" type="text" placeholder="Coupon code">
+            <button type="submit" class="submit-code">Redeem</button>
+          </div>
         </div>
+      </div>
     </form>
-</div>
-{% endblock %}
-<div>
+  </div>
+  {% endblock %}
+  <div>
     <form id="payment-form" method="post" action=".{% if next %}/?next={{ next }}{% endif %}">
         <input type="hidden" name="csrfmiddlewaretoken" value="{{csrf_token}}">
         {% if invoicables %}
@@ -47,6 +48,7 @@ Either variables RAZORPAY_PUB_KEY or STRIPE_PUB_KEY must be defined.
         {% endif %}
         {% endblock %}
     </form>
+  </div>
 </div>
 {% endblock %}
 
@@ -58,7 +60,7 @@ jQuery(document).ready(function($) {
 {% if urls and urls.api_cart %}
     if( cardForm.length > 0 ) {
         cardForm.find("#invoicables").invoice(
-            {currency_unit: '{{lines_unit}}',
+            {currency_unit: "{% if lines_price %}{{ lines_price.unit }}{% endif %}",
              saas_api_cart: "{{ urls.api_cart }}" });
     }
 {% endif %}

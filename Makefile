@@ -12,17 +12,19 @@ LOCALSTATEDIR ?= $(installTop)/var
 installDirs   ?= install -d
 installFiles  ?= install -p -m 644
 NPM           ?= npm
-PYTHON        := TESTSITE_SETTINGS_LOCATION=$(CONFIG_DIR) $(binDir)/python
+PYTHON        := $(binDir)/python
 SQLITE        ?= sqlite3
 
 RUN_DIR       ?= $(srcDir)
 DB_NAME       ?= $(RUN_DIR)/db.sqlite
 
+MANAGE        := TESTSITE_SETTINGS_LOCATION=$(CONFIG_DIR) RUN_DIR=$(RUN_DIR) $(PYTHON) manage.py
+
 # Django 1.7,1.8 sync tables without migrations by default while Django 1.9
 # requires a --run-syncdb argument.
 # Implementation Note: We have to wait for the config files to be installed
 # before running the manage.py command (else missing SECRECT_KEY).
-RUNSYNCDB     = $(if $(findstring --run-syncdb,$(shell cd $(srcDir) && $(PYTHON) manage.py migrate --help 2>/dev/null)),--run-syncdb,)
+RUNSYNCDB     = $(if $(findstring --run-syncdb,$(shell cd $(srcDir) && $(MANAGE) migrate --help 2>/dev/null)),--run-syncdb,)
 
 install:: install-conf
 	cd $(srcDir) && $(PYTHON) ./setup.py --quiet \
@@ -57,14 +59,20 @@ $(DESTDIR)$(CONFIG_DIR)/gunicorn.conf: $(srcDir)/testsite/etc/gunicorn.conf
 
 
 initdb-with-dummydata: initdb
-	cd $(srcDir) && $(PYTHON) ./manage.py load_test_transactions
+	cd $(srcDir) && $(MANAGE) load_test_transactions
 
 
 initdb:
 	-rm -f $(DB_NAME)
-	cd $(srcDir) && $(PYTHON) ./manage.py migrate $(RUNSYNCDB) --noinput
+	cd $(srcDir) && $(MANAGE) migrate $(RUNSYNCDB) --noinput
 	echo "CREATE UNIQUE INDEX uniq_email ON auth_user(email);" | $(SQLITE) $(DB_NAME)
-	cd $(srcDir) && $(PYTHON) ./manage.py loaddata testsite/fixtures/initial_data.json testsite/fixtures/test_data.json testsite/fixtures/50-visit-card2.json testsite/fixtures/100-balance-due.json testsite/fixtures/110-balance-checkout.json testsite/fixtures/120-subscriptions.json
+	cd $(srcDir) && $(MANAGE) loaddata \
+        testsite/fixtures/initial_data.json \
+        testsite/fixtures/test_data.json \
+        testsite/fixtures/50-visit-card2.json \
+        testsite/fixtures/100-balance-due.json \
+        testsite/fixtures/110-balance-checkout.json \
+        testsite/fixtures/120-subscriptions.json
 
 
 doc:

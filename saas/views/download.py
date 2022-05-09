@@ -193,12 +193,17 @@ class CartItemDownloadView(CartItemSmartListMixin, CartItemQuerysetMixin,
         'Plan',
     ]
 
+    @property
+    def coupon_code(self):
+        if not hasattr(self, '_coupon_code'):
+            self._coupon_code = self.kwargs.get(self.coupon_url_kwarg)
+        return self._coupon_code
+
     def get_coupons(self):
-        coupon_code = self.kwargs.get(self.coupon_url_kwarg)
-        if coupon_code:
+        if self.coupon_code:
             coupon = get_object_or_404(
                 Coupon.objects.filter(organization=self.provider),
-                code=self.kwargs.get(self.coupon_url_kwarg))
+                code=self.coupon_code)
             return [coupon]
         view = CouponDownloadView()
         if hasattr(view, 'setup'):
@@ -214,7 +219,9 @@ class CartItemDownloadView(CartItemSmartListMixin, CartItemQuerysetMixin,
         return self.headings
 
     def get_filename(self):
-        return datetime_or_now().strftime('coupons-%Y%m%d.csv')
+        filename_tpl = ((self.coupon_code if self.coupon_code else 'coupons')
+            + '-%Y%m%d.csv')
+        return datetime_or_now().strftime(filename_tpl)
 
     def get_queryset(self):
         '''

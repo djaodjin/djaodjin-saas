@@ -24,7 +24,7 @@
 {
     "fields":{
         "created_at":"2022-01-01T00:00:00+00:00",
-        "user": 2,
+        "user": 1,
         "plan": 1,
         "option": 1,
         "recorded": false

@@ -47,16 +47,14 @@
       <tr class="invoice-item">
         <td></td>
         <td class="line-amount">{{line.dest_price|humanize_money}}</td>
-        <td class="line-descr">{{line.descr}}
-        </td>
+        <td class="line-descr">{{line.descr}}</td>
       </tr>
       {% endfor %}
       {% for line in entry.options %}
       <tr>
         <td><input type="radio" name="{{entry.name}}" data-amount="{{line.dest_amount}}" value="{{line.rank}}" {% if line.rank == entry.selected_option %}checked="1"{% endif %}></input></td>
         <td class="line-amount">{{line.dest_price|humanize_money}}</td>
-        <td class="line-descr">{{line.descr}}
-        </td>
+        <td class="line-descr">{{line.descr}}</td>
       </tr>
       {% endfor %}
       {% endfor %}

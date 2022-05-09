@@ -877,7 +877,7 @@ var roleListMixin = {
                 );
             }
         },
-        updateItemSelected: function(item) { // user-typeahead @item-selected="updateItemSelected"
+        updateItemSelected: function(item) {
             var vm = this;
             if( item ) {
                 vm.unregistered = item;
@@ -922,7 +922,9 @@ var roleListMixin = {
             if( vm.unregistered.slug || vm.unregistered.email) {
                 this._addRole(vm.unregistered, vm.profileRequestDone);
             } else {
-                this._addRole(vm.candidateId, vm.profileRequestDone);
+                this._addRole((vm.$refs.account && vm.$refs.account.query) ?
+                    vm.$refs.account.query : vm.candidateId,
+                    vm.profileRequestDone);
             }
         },
         updateParams: function(){ // internal
@@ -1765,7 +1767,6 @@ Vue.component('import-transaction', {
             url: this.$urls.organization.api_import,
             typeaheadUrl: this.$urls.provider.api_subscribers_active,
             itemSelected: '',
-            searching: false,
             entry: {
                 subscription: null,
                 created_at: moment().format("YYYY-MM-DD"),
@@ -1805,20 +1806,6 @@ Vue.component('import-transaction', {
         },
         get: function() {
             // We want to keep a single template for `date_input_field`.
-        },
-        getSubscriptions: function(query, done) {
-            var vm = this;
-            vm.searching = true;
-            vm.reqGet(vm.typeaheadUrl, {q: query}, function(res){
-                vm.searching = false;
-                // current typeahead implementation does not
-                // support dynamic keys that's why we are
-                // creating them here
-                res.results.forEach(function(e){
-                    e.itemKey = e.organization.slug + ':' + e.plan.slug
-                });
-                done(res.results)
-            });
         },
         updateItemSelected: function(item) {
             var vm = this;
