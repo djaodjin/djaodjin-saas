@@ -36,9 +36,8 @@ from rest_framework.generics import (CreateAPIView, ListAPIView,
     RetrieveUpdateDestroyAPIView)
 from rest_framework.response import Response
 
-from .serializers import (ActiveSubscribersSerializer,
-    OrganizationDetailSerializer, OrganizationWithSubscriptionsSerializer,
-    UploadBlobSerializer)
+from .serializers import (OrganizationDetailSerializer,
+    OrganizationWithSubscriptionsSerializer, UploadBlobSerializer)
 from .. import settings, signals
 from ..compat import urlparse, urlunparse
 from ..decorators import _valid_manager
@@ -47,7 +46,7 @@ from ..mixins import (DateRangeContextMixin, OrganizationMixin,
     OrganizationSmartListMixin, ProviderMixin, OrganizationDecorateMixin)
 from ..models import get_broker
 from ..utils import (datetime_or_now, get_organization_model, get_role_model,
-    handle_uniq_error, get_picture_storage)
+    get_role_serializer, handle_uniq_error, get_picture_storage)
 
 
 class OrganizationQuerysetMixin(OrganizationDecorateMixin):
@@ -386,7 +385,7 @@ class SubscribersAPIView(OrganizationSmartListMixin,
     serializer_class = OrganizationDetailSerializer
 
 
-class ActiveSubscribersSmartListMixin(object):
+class EngagedSubscribersSmartListMixin(object):
     """
     reporting entities list which is also searchable and sortable.
     """
@@ -407,38 +406,36 @@ class ActiveSubscribersSmartListMixin(object):
     filter_backends = (DateRangeFilter, SearchFilter, OrderingFilter)
 
 
-class ActiveSubscribersQuerysetMixin(DateRangeContextMixin,
+class EngagedSubscribersQuerysetMixin(DateRangeContextMixin,
                                      SubscribersQuerysetMixin):
 
     def get_queryset(self):
         filter_params = {}
-        ends_at = datetime_or_now()
-        start_at = ends_at - relativedelta(days=7)
+        ends_at = datetime_or_now(self.ends_at)
+        start_at = self.start_at
+        if not start_at:
+            start_at = ends_at - relativedelta(days=7)
         filter_params.update({
             'user__last_login__lt': ends_at,
             'user__last_login__gte': start_at
         })
         queryset = get_role_model().objects.filter(
             organization__in=get_organization_model().objects.filter(
-                subscribes_to__organization=self.provider,
+                subscriptions__plan__organization=self.provider,
                 subscriptions__ends_at__gt=ends_at),
             **filter_params
-        ).values(
-                 last_login=F('user__last_login'),
-                 first_name=F('user__first_name'),
-                 last_name=F('user__last_name'),
-                 organization_full_name=F('organization__full_name'))
+        ).select_related('user', 'organization')
         return queryset
 
 
-class ActiveSubscribersAPIView(ActiveSubscribersSmartListMixin,
-                               ActiveSubscribersQuerysetMixin,
+class EngagedSubscribersAPIView(EngagedSubscribersSmartListMixin,
+                               EngagedSubscribersQuerysetMixin,
                                ListAPIView):
 
-    serializer_class = ActiveSubscribersSerializer
+    serializer_class = get_role_serializer()
 
 
-class InactiveSubscribersQuerysetMixin(DateRangeContextMixin,
+class UnengagedSubscribersQuerysetMixin(DateRangeContextMixin,
                                        SubscribersQuerysetMixin):
 
     def get_queryset(self):
@@ -456,8 +453,9 @@ class InactiveSubscribersQuerysetMixin(DateRangeContextMixin,
         return queryset
 
 
-class InactiveSubscribersAPIView(OrganizationSmartListMixin,
-                                 InactiveSubscribersQuerysetMixin, ListAPIView):
+class UnengagedSubscribersAPIView(OrganizationSmartListMixin,
+                                  UnengagedSubscribersQuerysetMixin,
+                                  ListAPIView):
     """
     Lists subscribers for a provider
 

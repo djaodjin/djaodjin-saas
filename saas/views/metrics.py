@@ -43,15 +43,17 @@ class SubscribersActivityView(ProviderMixin, TemplateView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        expires_at = datetime_or_now() - relativedelta(years=1)
+        ends_at = datetime_or_now()
+        expires_at = ends_at - relativedelta(years=1)
         context.update({
             'expires_at': expires_at,
+            'start_at': ends_at - relativedelta(days=7)
         })
         update_context_urls(context, {
-            'api_active_subscribers': reverse(
-                'saas_api_active_subscribers', args=(self.provider,)),
-            'api_inactive_subscribers': reverse(
-                'saas_api_inactive_subscribers', args=(self.provider,)),
+            'api_engaged_subscribers': reverse(
+                'saas_api_engaged_subscribers', args=(self.provider,)),
+            'api_unengaged_subscribers': reverse(
+                'saas_api_unengaged_subscribers', args=(self.provider,)),
         })
         return context
 

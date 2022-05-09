@@ -1042,14 +1042,6 @@ class RoleCreateSerializer(NoModelSerializer):
         return data
 
 
-class ActiveSubscribersSerializer(NoModelSerializer):
-
-    last_login = serializers.CharField()
-    first_name = serializers.CharField()
-    last_name = serializers.CharField()
-    organization = serializers.CharField(source='organization_full_name')
-
-
 class UploadBlobSerializer(NoModelSerializer):
     """
     Upload a picture or other POD content

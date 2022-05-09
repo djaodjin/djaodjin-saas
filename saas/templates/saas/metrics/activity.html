@@ -7,8 +7,8 @@
 {% block saas_content %}
 <div>
   <div>
-    <h1 class="text-center">Active within the last 7 days</h1>
-    <active-subscribers inline-template>
+    <h1 class="text-center">Active since {{start_at}}</h1>
+    <engaged-subscribers inline-template>
       <div>
         <div>
           <div v-if="!itemsLoaded">
@@ -66,21 +66,21 @@
           <!-- Show Data Entries -->
           <tbody id="has-items" v-show="itemsLoaded && items.results.length > 0" v-cloak>
             <tr v-for="(entry, index) in items.results" :class="{'bg-info': isInfiniteScroll && params.page > 1 && (itemsPerPage * (params.page - 1)) === index}">
-              <td>[[ (humanizeDate(entry.last_login)) ]]</td>
-              <td>[[entry.first_name]] [[entry.last_name]]</td>
-              <td>[[entry.organization]]</td>
+              <td>[[ entry.user.last_login ]]</td>
+              <td>[[entry.user.full_name]]</td>
+              <td>[[entry.organization.printable_name]]</td>
             </tr>
           </tbody>
         </table>
 
         {% include "saas/_paginator.html" %}
       </div>
-    </active-subscribers>
+    </engaged-subscribers>
   </div>
 
   <div>
-    <h1 class="text-center">Inactive since {{expires_at|date}}</h1>
-    <inactive-subscribers inline-template>
+    <h1 class="text-center">Unengaged since {{expires_at}}</h1>
+    <unengaged-subscribers inline-template>
       <div>
         <div>
           <div v-if="!itemsLoaded">
@@ -147,7 +147,7 @@
 
         {% include "saas/_paginator.html" %}
       </div>
-    </inactive-subscribers>
+    </unengaged-subscribers>
   </div>
 </div>
 {% endblock %}

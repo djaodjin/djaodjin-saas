@@ -2566,14 +2566,14 @@ Vue.component('plan-update', {
 
 // Widgets for activity page
 // -------------------------
-Vue.component('active-subscribers', {
+Vue.component('engaged-subscribers', {
     mixins: [
         itemListMixin
     ],
     data: function(){
         return {
-            url: this.$urls.api_active_subscribers,
-            messagesElement: '#active-subscribers-content',
+            url: this.$urls.api_engaged_subscribers,
+            messagesElement: '#engaged-subscribers-content',
             scrollToTopOnMessages: false
         }
     },
@@ -2586,14 +2586,14 @@ Vue.component('active-subscribers', {
 });
 
 
-Vue.component('inactive-subscribers', {
+Vue.component('unengaged-subscribers', {
     mixins: [
         itemListMixin
     ],
     data: function(){
         return {
-            url: this.$urls.api_inactive_subscribers,
-            messagesElement: '#inactive-subscribers-content',
+            url: this.$urls.api_unengaged_subscribers,
+            messagesElement: '#unengaged-subscribers-content',
             scrollToTopOnMessages: false
         }
     },
