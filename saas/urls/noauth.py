@@ -1,4 +1,4 @@
-# Copyright (c) 2018, DjaoDjin inc.
+# Copyright (c) 2022, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -22,19 +22,20 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from django.conf.urls import url
-
-from ..settings import ACCT_REGEX
+from .. import settings
+from ..compat import re_path
 from ..views.billing import RedeemCouponView
 from ..views.legal import AgreementDetailView, AgreementListView
 from ..views.plans import CartPlanListView
 
 
 urlpatterns = [
-    url(r'^legal/(?P<agreement>%s)/$' % ACCT_REGEX,
+    re_path(r'^legal/(?P<agreement>%s)/$' % settings.SLUG_RE,
         AgreementDetailView.as_view(), name='legal_agreement'),
-    url(r'^legal/$', AgreementListView.as_view(), name='legal_agreement_list'),
-    url(r'^pricing/', CartPlanListView.as_view(), name='saas_cart_plan_list'),
-    url(r'^redeem/', RedeemCouponView.as_view(),
-        name='saas_redeem_coupon'),
+    re_path(r'^legal/$',
+        AgreementListView.as_view(), name='legal_agreement_list'),
+    re_path(r'^pricing/',
+        CartPlanListView.as_view(), name='saas_cart_plan_list'),
+    re_path(r'^redeem/',
+        RedeemCouponView.as_view(), name='saas_redeem_coupon'),
 ]

@@ -1,4 +1,4 @@
-# Copyright (c) 2021, DjaoDjin inc.
+# Copyright (c) 2022, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -24,7 +24,6 @@
 from __future__ import unicode_literals
 
 from django.db import IntegrityError
-from django.utils.translation import ugettext_lazy as _
 from rest_framework import status
 from rest_framework.exceptions import ValidationError
 from rest_framework.generics import (ListCreateAPIView,
@@ -32,6 +31,7 @@ from rest_framework.generics import (ListCreateAPIView,
 from rest_framework.response import Response
 
 from .serializers import CouponSerializer, CouponCreateSerializer
+from ..compat import gettext_lazy as _
 from ..docs import swagger_auto_schema, OpenAPIResponse
 from ..filters import OrderingFilter, SearchFilter, DateRangeFilter
 from ..models import Coupon

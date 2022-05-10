@@ -1,4 +1,4 @@
-# Copyright (c) 2019, DjaoDjin inc.
+# Copyright (c) 2022, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -26,27 +26,30 @@
 URLs related to provider bank account information.
 """
 
-from django.conf.urls import url
-
-from ...settings import ACCT_REGEX
+from ... import settings
+from ...compat import re_path
 from ...views.download import TransferDownloadView
 from ...views.billing import (ProcessorAuthorizeView, ProcessorDeAuthorizeView,
     CouponListView, ImportTransactionsView, TransferListView, WithdrawView)
 
 
 urlpatterns = [
-    url(r'^billing/(?P<organization>%s)/bank/deauthorize/' % ACCT_REGEX,
+    re_path(r'^billing/(?P<organization>%s)/bank/deauthorize/' %
+        settings.SLUG_RE,
         ProcessorDeAuthorizeView.as_view(), name='saas_deauthorize_processor'),
-    url(r'^billing/(?P<organization>%s)/bank/' % ACCT_REGEX,
+    re_path(r'^billing/(?P<organization>%s)/bank/' % settings.SLUG_RE,
         ProcessorAuthorizeView.as_view(), name='saas_update_bank'),
-    url(r'^billing/(?P<organization>%s)/coupons/' % ACCT_REGEX,
+    re_path(r'^billing/(?P<organization>%s)/coupons/' % settings.SLUG_RE,
         CouponListView.as_view(), name='saas_coupon_list'),
-    url(r'^billing/(?P<organization>%s)/transfers/download/?' % ACCT_REGEX,
+    re_path(r'^billing/(?P<organization>%s)/transfers/download/?' %
+        settings.SLUG_RE,
         TransferDownloadView.as_view(), name='saas_transfers_download'),
-    url(r'^billing/(?P<organization>%s)/transfers/import/' % ACCT_REGEX,
+    re_path(r'^billing/(?P<organization>%s)/transfers/import/' %
+        settings.SLUG_RE,
         ImportTransactionsView.as_view(), name='saas_import_transactions'),
-    url(r'^billing/(?P<organization>%s)/transfers/withdraw/' % ACCT_REGEX,
+    re_path(r'^billing/(?P<organization>%s)/transfers/withdraw/' %
+        settings.SLUG_RE,
         WithdrawView.as_view(), name='saas_withdraw_funds'),
-    url(r'^billing/(?P<organization>%s)/transfers/' % ACCT_REGEX,
+    re_path(r'^billing/(?P<organization>%s)/transfers/' % settings.SLUG_RE,
         TransferListView.as_view(), name='saas_transfer_info'),
 ]

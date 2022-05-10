@@ -1,4 +1,4 @@
-# Copyright (c) 2020, DjaoDjin inc.
+# Copyright (c) 2022, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -24,21 +24,20 @@
 
 '''URL for the request user to sign legal agreements.'''
 
-from django.conf.urls import url
-
-from ..settings import ACCT_REGEX, VERIFICATION_KEY_RE
+from .. import settings
+from ..compat import re_path
 from ..views.legal import AgreementSignView
 from ..views.optins import RoleGrantAcceptView
 from ..views.roles import RoleImplicitGrantAcceptView
 
 
 urlpatterns = [
-    url(r'users/roles/accept/$',
+    re_path(r'users/roles/accept/$',
         RoleImplicitGrantAcceptView.as_view(),
         name='saas_role_implicit_grant_accept'),
-    url(r'users/roles/accept/(?P<verification_key>%s)/' % (
-        VERIFICATION_KEY_RE),
+    re_path(r'users/roles/accept/(?P<verification_key>%s)/' % (
+        settings.VERIFICATION_KEY_RE),
         RoleGrantAcceptView.as_view(), name='saas_role_grant_accept'),
-    url(r'^legal/(?P<agreement>%s)/sign/' % ACCT_REGEX,
+    re_path(r'^legal/(?P<agreement>%s)/sign/' % settings.SLUG_RE,
         AgreementSignView.as_view(), name='legal_sign_agreement'),
 ]

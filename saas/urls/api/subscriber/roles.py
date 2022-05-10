@@ -1,4 +1,4 @@
-# Copyright (c) 2019, DjaoDjin inc.
+# Copyright (c) 2022, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -26,21 +26,20 @@
 URLs API for profile managers and custom roles on an Organization
 """
 
-from django.conf.urls import url
-
+from .... import settings
 from ....api.roles import (RoleListAPIView, RoleByDescrListAPIView,
     RoleDetailAPIView)
-from ....settings import ACCT_REGEX, MAYBE_EMAIL_REGEX
+from ....compat import re_path
 
 
 urlpatterns = [
-    url(r'^profile/(?P<organization>%s)/roles/(?P<role>%s)/(?P<user>%s)/?'
-        % (ACCT_REGEX, ACCT_REGEX, MAYBE_EMAIL_REGEX),
+    re_path(r'^profile/(?P<organization>%s)/roles/(?P<role>%s)/(?P<user>%s)/?'
+        % (settings.SLUG_RE, settings.SLUG_RE, settings.MAYBE_EMAIL_REGEX),
         RoleDetailAPIView.as_view(), name='saas_api_role_detail'),
-    url(r'^profile/(?P<organization>%s)/roles/(?P<role>%s)/?'
-        % (ACCT_REGEX, ACCT_REGEX),
+    re_path(r'^profile/(?P<organization>%s)/roles/(?P<role>%s)/?'
+        % (settings.SLUG_RE, settings.SLUG_RE),
         RoleByDescrListAPIView.as_view(),
         name='saas_api_roles_by_descr'),
-    url(r'^profile/(?P<organization>%s)/roles/?' % ACCT_REGEX,
+    re_path(r'^profile/(?P<organization>%s)/roles/?' % settings.SLUG_RE,
         RoleListAPIView.as_view(), name='saas_api_roles'),
 ]

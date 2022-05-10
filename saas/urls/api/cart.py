@@ -1,4 +1,4 @@
-# Copyright (c) 2020, DjaoDjin inc.
+# Copyright (c) 2022, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -26,19 +26,18 @@
 URLs for the cart API of djaodjin saas.
 """
 
-from django.conf.urls import url
-
+from ... import settings
 from ...api.billing import (CartItemAPIView, CartItemUploadAPIView,
                             CouponRedeemAPIView)
 from ...api.plans import PricingAPIView
-from ...settings import ACCT_REGEX
+from ...compat import re_path
 
 urlpatterns = [
-    url(r'^pricing/',
+    re_path(r'^pricing/',
         PricingAPIView.as_view(), name='saas_api_pricing'),
-    url(r'^cart/redeem/',
+    re_path(r'^cart/redeem/',
         CouponRedeemAPIView.as_view(), name='saas_api_redeem_coupon'),
-    url(r'^cart/(?P<plan>%s)/upload/' % ACCT_REGEX,
+    re_path(r'^cart/(?P<plan>%s)/upload/' % settings.SLUG_RE,
         CartItemUploadAPIView.as_view(), name='saas_api_cart_upload'),
-    url(r'^cart/', CartItemAPIView.as_view(), name='saas_api_cart')
+    re_path(r'^cart/', CartItemAPIView.as_view(), name='saas_api_cart')
 ]

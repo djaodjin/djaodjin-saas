@@ -30,8 +30,6 @@ from django.contrib.auth import get_user_model
 from django.db import transaction, IntegrityError
 from django.db.models import Q
 from django.http import Http404
-from django.utils.encoding import force_text
-from django.utils.translation import ugettext_lazy as _
 from rest_framework import serializers, status
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.generics import (ListAPIView, ListCreateAPIView,
@@ -40,6 +38,7 @@ from rest_framework.generics import (ListAPIView, ListCreateAPIView,
 from rest_framework.response import Response
 
 from .. import settings, signals
+from ..compat import force_str, gettext_lazy as _
 from ..docs import OpenAPIResponse, no_body, swagger_auto_schema
 from ..decorators import _has_valid_access
 from ..mixins import (OrganizationMixin, OrganizationCreateMixin,
@@ -149,7 +148,7 @@ class OptinBase(OrganizationDecorateMixin, OrganizationCreateMixin):
             user = request.user
         reason = serializer.validated_data.get('message', None)
         if reason:
-            reason = force_text(reason)
+            reason = force_str(reason)
         organization_data = serializer.validated_data.get('organization', {})
         slug = serializer.validated_data.get('slug',
             organization_data.get('slug', None))
@@ -982,7 +981,7 @@ class RoleByDescrListAPIView(RoleSmartListMixin, RoleByDescrQuerysetMixin,
             grant_key = generate_random_slug()
         reason = serializer.validated_data.get('message', None)
         if reason:
-            reason = force_text(reason)
+            reason = force_str(reason)
         created = self.organization.add_role(
             user, self.role_description, grant_key=grant_key, reason=reason,
             request_user=request.user)

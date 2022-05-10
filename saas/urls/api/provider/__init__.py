@@ -1,4 +1,4 @@
-# Copyright (c) 2019, DjaoDjin inc.
+# Copyright (c) 2022, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -24,15 +24,14 @@
 
 '''API URLs typically associated with the provider.'''
 
-from django.conf.urls import include, url
+from ....compat import include, re_path
 
-from ....settings import ACCT_REGEX
 
 urlpatterns = [
-    url(r'^', include('saas.urls.api.provider.charges')),
-    url(r'^', include('saas.urls.api.provider.billing')),
-    url(r'^', include('saas.urls.api.provider.roles')),
-    url(r'^', include('saas.urls.api.provider.subscribers')),
-    url(r'^', include('saas.urls.api.provider.plans')),
-    url(r'^', include('saas.urls.api.provider.metrics')),
+    re_path(r'^', include('saas.urls.api.provider.charges')),
+    re_path(r'^', include('saas.urls.api.provider.billing')),
+    re_path(r'^', include('saas.urls.api.provider.roles')),
+    re_path(r'^', include('saas.urls.api.provider.subscribers')),
+    re_path(r'^', include('saas.urls.api.provider.plans')),
+    re_path(r'^', include('saas.urls.api.provider.metrics')),
 ]

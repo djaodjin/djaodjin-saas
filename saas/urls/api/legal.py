@@ -1,4 +1,4 @@
-# Copyright (c) 2019, DjaoDjin inc.
+# Copyright (c) 2022, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -26,12 +26,12 @@
 URLs for API related to signing legal agreements.
 """
 
-from django.conf.urls import url
-
-from ...api.users import AgreementSignAPIView
 from ... import settings
+from ...api.users import AgreementSignAPIView
+from ...compat import re_path
+
 
 urlpatterns = [
-    url(r'^legal/(?P<agreement>%s)/sign/$' % settings.ACCT_REGEX,
+    re_path(r'^legal/(?P<agreement>%s)/sign/$' % settings.SLUG_RE,
         AgreementSignAPIView.as_view(), name='saas_api_sign_agreement'),
 ]

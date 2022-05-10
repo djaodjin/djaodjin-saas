@@ -1,4 +1,4 @@
-# Copyright (c) 2020, DjaoDjin inc.
+# Copyright (c) 2022, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -38,11 +38,11 @@ from django.core.exceptions import PermissionDenied
 from django.contrib.auth import REDIRECT_FIELD_NAME
 
 from django.shortcuts import get_object_or_404
-from django.utils.translation import ugettext_lazy as _
 
 from . import settings
 from .cart import cart_insert_item
-from .compat import available_attrs, is_authenticated, reverse, six
+from .compat import (available_attrs, gettext_lazy as _, is_authenticated,
+    reverse, six)
 from .models import Charge, Plan, Signature, Subscription, get_broker
 from .utils import datetime_or_now, get_organization_model, get_role_model
 

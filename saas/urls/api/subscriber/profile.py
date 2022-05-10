@@ -1,4 +1,4 @@
-# Copyright (c) 2020, DjaoDjin inc.
+# Copyright (c) 2022, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -26,26 +26,26 @@
 URLs API for profile resources (managers, custom roles and subscriptions)
 """
 
-from django.conf.urls import url
-
+from .... import settings
 from ....api.organizations import (
     OrganizationDetailAPIView, OrganizationPictureAPIView)
 from ....api.subscriptions import (SubscriptionDetailAPIView,
     SubscribedSubscriptionListAPIView)
-from ....settings import ACCT_REGEX
+from ....compat import re_path
 
 
 urlpatterns = [
-    url(r'^profile/(?P<organization>%s)/subscriptions/(?P<subscribed_plan>%s)/?'
-        % (ACCT_REGEX, ACCT_REGEX),
+    re_path(
+        r'^profile/(?P<organization>%s)/subscriptions/(?P<subscribed_plan>%s)/?'
+        % (settings.SLUG_RE, settings.SLUG_RE),
         SubscriptionDetailAPIView.as_view(),
         name='saas_api_subscription_detail'),
-    url(r'^profile/(?P<organization>%s)/subscriptions/?' % ACCT_REGEX,
+    re_path(r'^profile/(?P<organization>%s)/subscriptions/?' % settings.SLUG_RE,
         SubscribedSubscriptionListAPIView.as_view(),
         name='saas_api_subscription_list'),
-    url(r'^profile/(?P<organization>%s)/?$' % ACCT_REGEX,
+    re_path(r'^profile/(?P<organization>%s)/?$' % settings.SLUG_RE,
         OrganizationDetailAPIView.as_view(), name='saas_api_organization'),
-    url(r'^profile/(?P<organization>%s)/picture/$' % ACCT_REGEX,
+    re_path(r'^profile/(?P<organization>%s)/picture/$' % settings.SLUG_RE,
         OrganizationPictureAPIView.as_view(),
         name='saas_api_organization_picture'),
 ]

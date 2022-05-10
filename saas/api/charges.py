@@ -25,7 +25,6 @@ from __future__ import unicode_literals
 
 from django.http import Http404
 from django.db import transaction
-from django.utils.translation import ugettext_lazy as _
 from rest_framework import status
 from rest_framework.generics import (CreateAPIView, ListAPIView,
     GenericAPIView, RetrieveAPIView)
@@ -34,6 +33,7 @@ from rest_framework.response import Response
 from .serializers import (ChargeSerializer, EmailChargeReceiptSerializer,
     RefundChargeSerializer, ValidationErrorSerializer)
 from .. import signals
+from ..compat import gettext_lazy as _
 from ..docs import OpenAPIResponse, no_body, swagger_auto_schema
 from ..filters import DateRangeFilter, OrderingFilter, SearchFilter
 from ..humanize import as_money

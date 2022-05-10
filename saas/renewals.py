@@ -1,4 +1,4 @@
-# Copyright (c) 2021, DjaoDjin inc.
+# Copyright (c) 2022, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -32,11 +32,10 @@ import logging
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
 from django.db import transaction
-from django.utils.translation import ugettext_lazy as _
 
 from . import humanize, settings, signals
 from .backends import CardError, ProcessorError
-from .compat import six
+from .compat import gettext_lazy as _, six
 from .models import (Charge, Plan, Price, Subscription, Transaction,
     sum_dest_amount, get_period_usage, get_sub_event_id)
 from .utils import datetime_or_now, get_organization_model

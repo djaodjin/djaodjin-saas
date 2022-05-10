@@ -1,4 +1,4 @@
-# Copyright (c) 2020, DjaoDjin inc.
+# Copyright (c) 2022, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -26,25 +26,26 @@
 URLs for API related to users accessible by.
 """
 
-from django.conf.urls import url
-
+from ... import settings
 from ...api.roles import (AccessibleByListAPIView, AccessibleDetailAPIView,
     RoleAcceptAPIView, AccessibleByDescrListAPIView, UserProfileListAPIView)
-from ... import settings
+from ...compat import re_path
 
 urlpatterns = [
-    url(r'^users/(?P<user>%s)/accessibles/accept/(?P<verification_key>%s)/' % (
+    re_path(
+        r'^users/(?P<user>%s)/accessibles/accept/(?P<verification_key>%s)/' % (
         settings.MAYBE_EMAIL_REGEX, settings.VERIFICATION_KEY_RE),
         RoleAcceptAPIView.as_view(), name='saas_api_accessibles_accept'),
-    url(r'^users/(?P<user>%s)/accessibles/(?P<role>%s)/(?P<organization>%s)/?'
-        % (settings.ACCT_REGEX, settings.ACCT_REGEX, settings.ACCT_REGEX),
+    re_path(
+        r'^users/(?P<user>%s)/accessibles/(?P<role>%s)/(?P<organization>%s)/?'
+        % (settings.SLUG_RE, settings.SLUG_RE, settings.SLUG_RE),
         AccessibleDetailAPIView.as_view(), name='saas_api_accessible_detail'),
-    url(r'^users/(?P<user>%s)/accessibles/(?P<role>%s)/?' % (
-        settings.ACCT_REGEX, settings.ACCT_REGEX),
+    re_path(r'^users/(?P<user>%s)/accessibles/(?P<role>%s)/?' % (
+        settings.SLUG_RE, settings.SLUG_RE),
         AccessibleByDescrListAPIView.as_view(),
         name='saas_api_accessibles_by_descr'),
-    url(r'^users/(?P<user>%s)/accessibles/?' % settings.MAYBE_EMAIL_REGEX,
+    re_path(r'^users/(?P<user>%s)/accessibles/?' % settings.MAYBE_EMAIL_REGEX,
         AccessibleByListAPIView.as_view(), name='saas_api_accessibles'),
-    url(r'^users/(?P<user>%s)/profiles/?' % settings.MAYBE_EMAIL_REGEX,
+    re_path(r'^users/(?P<user>%s)/profiles/?' % settings.MAYBE_EMAIL_REGEX,
         UserProfileListAPIView.as_view(), name='saas_api_user_profiles'),
 ]

@@ -26,8 +26,7 @@
 URLs API for provider resources related to billing
 """
 
-from django.conf.urls import url
-
+from .... import settings
 from ....api.federations import (FederatedSubscribersAPIView,
     SharedProfilesAPIView)
 from ....api.metrics import (BalancesAPIView, CouponUsesAPIView,
@@ -35,34 +34,34 @@ from ....api.metrics import (BalancesAPIView, CouponUsesAPIView,
     RevenueMetricAPIView)
 from ....api.subscriptions import (ActiveSubscriptionAPIView,
     ChurnedSubscriptionAPIView)
-from ....settings import ACCT_REGEX
+from ....compat import re_path
 
 
 urlpatterns = [
-    url(r'^metrics/(?P<organization>%s)/coupons/(?P<coupon>%s)/?' % (
-        ACCT_REGEX, ACCT_REGEX), CouponUsesAPIView.as_view(),
+    re_path(r'^metrics/(?P<organization>%s)/coupons/(?P<coupon>%s)/?' % (
+        settings.SLUG_RE, settings.SLUG_RE), CouponUsesAPIView.as_view(),
         name='saas_api_coupon_uses'),
-    url(r'^metrics/(?P<organization>%s)/active/?' % ACCT_REGEX,
+    re_path(r'^metrics/(?P<organization>%s)/active/?' % settings.SLUG_RE,
         ActiveSubscriptionAPIView.as_view(), name='saas_api_subscribed'),
-    url(r'^metrics/(?P<organization>%s)/balances/?' % ACCT_REGEX,
+    re_path(r'^metrics/(?P<organization>%s)/balances/?' % settings.SLUG_RE,
         BalancesAPIView.as_view(), name='saas_api_balances'),
-    url(r'^metrics/(?P<organization>%s)/churned/?' % ACCT_REGEX,
+    re_path(r'^metrics/(?P<organization>%s)/churned/?' % settings.SLUG_RE,
         ChurnedSubscriptionAPIView.as_view(), name='saas_api_churned'),
-    url(r'^metrics/(?P<organization>%s)/customers/?' % ACCT_REGEX,
+    re_path(r'^metrics/(?P<organization>%s)/customers/?' % settings.SLUG_RE,
         CustomerMetricAPIView.as_view(), name='saas_api_customer'),
-    url(r'^metrics/(?P<organization>%s)/plans/?' % ACCT_REGEX,
+    re_path(r'^metrics/(?P<organization>%s)/plans/?' % settings.SLUG_RE,
         PlanMetricAPIView.as_view(), name='saas_api_metrics_plans'),
-    url(r'^metrics/(?P<organization>%s)/funds/?' % ACCT_REGEX,
+    re_path(r'^metrics/(?P<organization>%s)/funds/?' % settings.SLUG_RE,
         RevenueMetricAPIView.as_view(), name='saas_api_revenue'),
-    url(r'^metrics/(?P<organization>%s)/lifetimevalue/?' % ACCT_REGEX,
+    re_path(r'^metrics/(?P<organization>%s)/lifetimevalue/?' % settings.SLUG_RE,
         LifetimeValueMetricAPIView.as_view(),
         name='saas_api_metrics_lifetimevalue'),
 
     # Metrics for a federation of providers
-    url(r'metrics/(?P<organization>%s)/federated/shared/?' % ACCT_REGEX,
-        SharedProfilesAPIView.as_view(),
+    re_path(r'metrics/(?P<organization>%s)/federated/shared/?' %
+        settings.SLUG_RE, SharedProfilesAPIView.as_view(),
         name="saas_api_shared_profiles"),
-    url(r'metrics/(?P<organization>%s)/federated/?' % ACCT_REGEX,
+    re_path(r'metrics/(?P<organization>%s)/federated/?' % settings.SLUG_RE,
         FederatedSubscribersAPIView.as_view(),
         name="saas_api_federated_subscribers"),
 ]

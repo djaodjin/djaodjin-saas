@@ -7,8 +7,9 @@ import django.core.validators
 from django.db import migrations, models
 import django.db.models.deletion
 from django.utils.safestring import mark_safe
-from django.utils.translation import ugettext_lazy as _
 import django_countries.fields
+
+from ..compat import gettext_lazy as _
 
 
 class Migration(migrations.Migration):

@@ -1,4 +1,4 @@
-# Copyright (c) 2021, DjaoDjin inc.
+# Copyright (c) 2022, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -32,13 +32,13 @@ from decimal import Decimal
 from django import forms
 from django.template.defaultfilters import slugify
 from django.utils.safestring import mark_safe
-from django.utils.translation import ugettext_lazy as _
 from django_countries import countries
 from django_countries.fields import Country
 import localflavor.us.forms as us_forms
 from phonenumber_field.formfields import PhoneNumberField
 
 from . import settings
+from .compat import gettext_lazy as _
 from .models import AdvanceDiscount, Plan, Subscription
 from .utils import get_organization_model
 

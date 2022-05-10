@@ -26,36 +26,36 @@
 API URLs for a provider subcribers.
 """
 
-from django.conf.urls import url
-
+from .... import settings
 from ....api.organizations import (EngagedSubscribersAPIView,
     UnengagedSubscribersAPIView, SubscribersAPIView)
 from ....api.subscriptions import (ProvidedSubscriptionsAPIView,
     PlanSubscriptionDetailAPIView)
-from ....settings import ACCT_REGEX, VERIFICATION_KEY_RE
 from ....api.subscriptions import SubscriptionRequestAcceptAPIView
+from ....compat import re_path
 
 
 urlpatterns = [
-    url(r'^profile/(?P<organization>%s)/subscribers/accept/'\
-        '(?P<request_key>%s)/' % (ACCT_REGEX, VERIFICATION_KEY_RE),
+    re_path(r'^profile/(?P<organization>%s)/subscribers/accept/'\
+        '(?P<request_key>%s)/' % (
+        settings.SLUG_RE, settings.VERIFICATION_KEY_RE),
         SubscriptionRequestAcceptAPIView.as_view(),
         name='saas_api_subscription_grant_accept'),
-    url(r'profile/(?P<organization>%s)/subscribers/engaged/?' % ACCT_REGEX,
-        EngagedSubscribersAPIView.as_view(),
+    re_path(r'profile/(?P<organization>%s)/subscribers/engaged/?' %
+        settings.SLUG_RE, EngagedSubscribersAPIView.as_view(),
         name='saas_api_engaged_subscribers'),
-    url(r'^profile/(?P<organization>%s)/subscribers/unengaged/?' % ACCT_REGEX,
-        UnengagedSubscribersAPIView.as_view(),
+    re_path(r'^profile/(?P<organization>%s)/subscribers/unengaged/?' %
+        settings.SLUG_RE, UnengagedSubscribersAPIView.as_view(),
         name='saas_api_unengaged_subscribers'),
-    url(r'^profile/(?P<organization>%s)/subscribers/?' % ACCT_REGEX,
+    re_path(r'^profile/(?P<organization>%s)/subscribers/?' % settings.SLUG_RE,
         SubscribersAPIView.as_view(), name='saas_api_subscribers'),
-    url(r'^profile/(?P<organization>%s)/plans/(?P<plan>%s)/subscriptions/'\
+    re_path(r'^profile/(?P<organization>%s)/plans/(?P<plan>%s)/subscriptions/'\
     '(?P<subscriber>%s)/'
-        % (ACCT_REGEX, ACCT_REGEX, ACCT_REGEX),
+        % (settings.SLUG_RE, settings.SLUG_RE, settings.SLUG_RE),
         PlanSubscriptionDetailAPIView.as_view(),
         name='saas_api_plan_subscription'),
-    url(r'^profile/(?P<organization>%s)/plans/(?P<plan>%s)/subscriptions/'
-        % (ACCT_REGEX, ACCT_REGEX),
+    re_path(r'^profile/(?P<organization>%s)/plans/(?P<plan>%s)/subscriptions/'
+        % (settings.SLUG_RE, settings.SLUG_RE),
         ProvidedSubscriptionsAPIView.as_view(),
         name='saas_api_plan_subscriptions'),
 ]

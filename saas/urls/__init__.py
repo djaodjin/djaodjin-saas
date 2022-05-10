@@ -1,4 +1,4 @@
-# Copyright (c) 2018, DjaoDjin inc.
+# Copyright (c) 2022, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -26,12 +26,12 @@
 URLs for the saas django app
 """
 
-from django.conf.urls import include, url
+from ..compat import include, re_path
 
 
 urlpatterns = [
-    url(r'^api/', include('saas.urls.api')),
-    url(r'^', include('saas.urls.noauth')),
-    url(r'^', include('saas.urls.provider')),
-    url(r'^', include('saas.urls.subscriber')),
+    re_path(r'^api/', include('saas.urls.api')),
+    re_path(r'^', include('saas.urls.noauth')),
+    re_path(r'^', include('saas.urls.provider')),
+    re_path(r'^', include('saas.urls.subscriber')),
 ]

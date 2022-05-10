@@ -24,7 +24,6 @@
 
 #pylint:disable=useless-super-delegation
 
-from django.utils.translation import ugettext_lazy as _
 from rest_framework import status
 from rest_framework.exceptions import ValidationError
 from rest_framework.generics import (RetrieveAPIView,
@@ -32,6 +31,7 @@ from rest_framework.generics import (RetrieveAPIView,
 from rest_framework.response import Response
 
 from ..backends import ProcessorError
+from ..compat import gettext_lazy as _
 from ..docs import OpenAPIResponse, swagger_auto_schema, Parameter, IN_PATH
 from ..mixins import OrganizationMixin
 from ..models import get_broker

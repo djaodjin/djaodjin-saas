@@ -1,4 +1,4 @@
-# Copyright (c) 2020, DjaoDjin inc.
+# Copyright (c) 2022, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -26,18 +26,17 @@
 URLs API for resources
 """
 
-from django.conf.urls import url
-
+from .... import settings
 from ....api.charges import ChargeResourceView, EmailChargeReceiptAPIView
-from ....settings import ACCT_REGEX
+from ....compat import re_path
 
 
 # Actually a <charge> slug. We are using <organization> here such that
 # it plays nice with the rules-based permission checks.
 urlpatterns = [
-    url(r'^billing/charges/(?P<organization>%s)/email/' % ACCT_REGEX,
+    re_path(r'^billing/charges/(?P<organization>%s)/email/' % settings.SLUG_RE,
         EmailChargeReceiptAPIView.as_view(),
         name='saas_api_email_charge_receipt'),
-    url(r'^billing/charges/(?P<organization>%s)/?' % ACCT_REGEX,
+    re_path(r'^billing/charges/(?P<organization>%s)/?' % settings.SLUG_RE,
         ChargeResourceView.as_view(), name='saas_api_charge'),
 ]

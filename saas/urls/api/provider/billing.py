@@ -1,4 +1,4 @@
-# Copyright (c) 2019, DjaoDjin inc.
+# Copyright (c) 2022, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -26,27 +26,26 @@
 URLs API for provider resources related to billing
 """
 
-from django.conf.urls import url
-
-from ....settings import ACCT_REGEX
+from .... import settings
 from ....api.backend import RetrieveBankAPIView
 from ....api.coupons import CouponListCreateAPIView, CouponDetailAPIView
 from ....api.transactions import (ReceivablesListAPIView,
     TransferListAPIView, ImportTransactionsAPIView)
+from ....compat import re_path
 
 urlpatterns = [
-    url(r'^billing/(?P<organization>%s)/bank/?' % ACCT_REGEX,
+    re_path(r'^billing/(?P<organization>%s)/bank/?' % settings.SLUG_RE,
         RetrieveBankAPIView.as_view(), name='saas_api_bank'),
-    url(r'^billing/(?P<organization>%s)/coupons/(?P<coupon>%s)/?'
-        % (ACCT_REGEX, ACCT_REGEX),
+    re_path(r'^billing/(?P<organization>%s)/coupons/(?P<coupon>%s)/?'
+        % (settings.SLUG_RE, settings.SLUG_RE),
         CouponDetailAPIView.as_view(), name='saas_api_coupon_detail'),
-    url(r'^billing/(?P<organization>%s)/coupons/?'  % ACCT_REGEX,
+    re_path(r'^billing/(?P<organization>%s)/coupons/?'  % settings.SLUG_RE,
         CouponListCreateAPIView.as_view(), name='saas_api_coupon_list'),
-    url(r'^billing/(?P<organization>%s)/receivables/?' % ACCT_REGEX,
+    re_path(r'^billing/(?P<organization>%s)/receivables/?' % settings.SLUG_RE,
         ReceivablesListAPIView.as_view(), name='saas_api_receivables'),
-    url(r'^billing/(?P<organization>%s)/transfers/import/' % ACCT_REGEX,
-        ImportTransactionsAPIView.as_view(),
+    re_path(r'^billing/(?P<organization>%s)/transfers/import/' %
+        settings.SLUG_RE, ImportTransactionsAPIView.as_view(),
         name='saas_api_import_transactions'),
-    url(r'^billing/(?P<organization>%s)/transfers/?' % ACCT_REGEX,
+    re_path(r'^billing/(?P<organization>%s)/transfers/?' % settings.SLUG_RE,
         TransferListAPIView.as_view(), name='saas_api_transfer_list'),
 ]

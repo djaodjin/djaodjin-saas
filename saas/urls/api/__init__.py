@@ -1,4 +1,4 @@
-# Copyright (c) 2019, DjaoDjin inc.
+# Copyright (c) 2022, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -24,13 +24,14 @@
 
 '''API URLs for the saas application'''
 
-from django.conf.urls import include, url
+from ...compat import include, re_path
+
 
 urlpatterns = [
-    url(r'^', include('saas.urls.api.cart')),
-    url(r'^', include('saas.urls.api.legal')),
-    url(r'^', include('saas.urls.api.users')),
-    url(r'^', include('saas.urls.api.broker')),
-    url(r'^', include('saas.urls.api.provider')),
-    url(r'^', include('saas.urls.api.subscriber')),
+    re_path(r'^', include('saas.urls.api.cart')),
+    re_path(r'^', include('saas.urls.api.legal')),
+    re_path(r'^', include('saas.urls.api.users')),
+    re_path(r'^', include('saas.urls.api.broker')),
+    re_path(r'^', include('saas.urls.api.provider')),
+    re_path(r'^', include('saas.urls.api.subscriber')),
 ]

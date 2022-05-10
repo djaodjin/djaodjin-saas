@@ -27,11 +27,11 @@ from importlib import import_module
 
 from django.conf import settings as django_settings
 from django.core.exceptions import ImproperlyConfigured
-from django.utils.translation import ugettext_lazy as _
 from stripe.error import APIConnectionError as ProcessorConnectionError
 
 from .. import settings
-from ..compat import import_string, python_2_unicode_compatible
+from ..compat import (import_string, gettext_lazy as _,
+    python_2_unicode_compatible)
 
 
 @python_2_unicode_compatible

@@ -1,4 +1,4 @@
-# Copyright (c) 2019, DjaoDjin inc.
+# Copyright (c) 2022, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -24,9 +24,8 @@
 
 '''Urls to metrics'''
 
-from django.conf.urls import url
-
-from ...settings import ACCT_REGEX
+from ... import settings
+from ...compat import re_path
 from ...views.download import CartItemDownloadView
 from ...views.profile import DashboardView
 from ...views.metrics import (SubscribersActivityView,
@@ -35,27 +34,27 @@ from ...views.metrics import (SubscribersActivityView,
 
 
 urlpatterns = [
-    url(r'^metrics/(?P<organization>%s)/coupons/download/?' % ACCT_REGEX,
-        CartItemDownloadView.as_view(),
+    re_path(r'^metrics/(?P<organization>%s)/coupons/download/?' %
+        settings.SLUG_RE, CartItemDownloadView.as_view(),
         name='saas_metrics_coupons_download'),
-    url(r'^metrics/(?P<organization>%s)/coupons/(?P<coupon>%s)/download/?'
-        % (ACCT_REGEX, ACCT_REGEX),
+    re_path(r'^metrics/(?P<organization>%s)/coupons/(?P<coupon>%s)/download/?'
+        % (settings.SLUG_RE, settings.SLUG_RE),
         CartItemDownloadView.as_view(), name='saas_coupon_uses_download'),
-    url(r'^metrics/(?P<organization>%s)/coupons/((?P<coupon>%s)/)?'
-        % (ACCT_REGEX, ACCT_REGEX),
+    re_path(r'^metrics/(?P<organization>%s)/coupons/((?P<coupon>%s)/)?'
+        % (settings.SLUG_RE, settings.SLUG_RE),
         CouponMetricsView.as_view(), name='saas_metrics_coupons'),
-    url(r'^metrics/(?P<organization>%s)/dashboard/' % ACCT_REGEX,
+    re_path(r'^metrics/(?P<organization>%s)/dashboard/' % settings.SLUG_RE,
         DashboardView.as_view(), name='saas_dashboard'),
-    url(r'^metrics/(?P<organization>%s)/revenue/' % ACCT_REGEX,
+    re_path(r'^metrics/(?P<organization>%s)/revenue/' % settings.SLUG_RE,
         RevenueMetricsView.as_view(), name='saas_metrics_summary'),
-    url(r'^metrics/(?P<organization>%s)/plans/' % ACCT_REGEX,
+    re_path(r'^metrics/(?P<organization>%s)/plans/' % settings.SLUG_RE,
         PlansMetricsView.as_view(), name='saas_metrics_plans'),
-    url(r'^metrics/(?P<organization>%s)/lifetimevalue/download/?' % ACCT_REGEX,
-        LifeTimeValueDownloadView.as_view(),
+    re_path(r'^metrics/(?P<organization>%s)/lifetimevalue/download/?' %
+        settings.SLUG_RE, LifeTimeValueDownloadView.as_view(),
         name='saas_metrics_lifetimevalue_download'),
-    url(r'^metrics/(?P<organization>%s)/lifetimevalue/' % ACCT_REGEX,
+    re_path(r'^metrics/(?P<organization>%s)/lifetimevalue/' % settings.SLUG_RE,
         LifeTimeValueMetricsView.as_view(), name='saas_metrics_lifetimevalue'),
-    url(r'metrics/(?P<organization>%s)/activity/' % ACCT_REGEX,
+    re_path(r'metrics/(?P<organization>%s)/activity/' % settings.SLUG_RE,
         SubscribersActivityView.as_view(),
         name='saas_subscribers_activity'),
 ]

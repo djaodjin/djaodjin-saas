@@ -32,13 +32,13 @@ from django.contrib.auth.hashers import UNUSABLE_PASSWORD_PREFIX
 from django.db import models, transaction, IntegrityError
 from django.http import Http404
 from django.template.defaultfilters import slugify
-from django.utils.translation import ugettext_lazy as _
 from django.views.generic.detail import SingleObjectMixin
 from rest_framework.generics import get_object_or_404
 
 from . import humanize, settings
 from .cart import cart_insert_item
-from .compat import six, NoReverseMatch, is_authenticated, reverse
+from .compat import (NoReverseMatch, gettext_lazy as _, is_authenticated,
+    reverse, six)
 from .filters import DateRangeFilter, OrderingFilter, SearchFilter
 from .models import (CartItem, Charge, Coupon, Plan, Price,
     RoleDescription, Subscription, Transaction, get_broker, is_broker,

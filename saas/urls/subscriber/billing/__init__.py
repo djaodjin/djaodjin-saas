@@ -1,4 +1,4 @@
-# Copyright (c) 2018, DjaoDjin inc.
+# Copyright (c) 2022, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -26,10 +26,10 @@
 URLs related to billing.
 """
 
-from django.conf.urls import url, include
+from ....compat import include, re_path
 
 
 urlpatterns = [
-    url(r'^', include('saas.urls.subscriber.billing.payment')),
-    url(r'^', include('saas.urls.subscriber.billing.info')),
+    re_path(r'^', include('saas.urls.subscriber.billing.payment')),
+    re_path(r'^', include('saas.urls.subscriber.billing.info')),
 ]

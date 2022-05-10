@@ -28,7 +28,7 @@ from functools import WRAPPER_ASSIGNMENTS
 import six
 
 #pylint:disable=import-error
-from six.moves.urllib.parse import urlparse, urlunparse
+from six.moves.urllib.parse import urlparse, urlunparse, quote as urlquote
 from six import StringIO
 
 try:
@@ -43,9 +43,25 @@ except ImportError: # django < 3.0
     python_2_unicode_compatible = six.python_2_unicode_compatible
 
 try:
+    if six.PY3:
+        from django.utils.encoding import force_str
+    else:
+        from django.utils.encoding import force_text as force_str
+except ImportError: # django < 3.0
+    from django.utils.encoding import force_text as force_str
+
+
+try:
     from django.utils.module_loading import import_string
 except ImportError: # django < 1.7
     from django.utils.module_loading import import_by_path as import_string
+
+
+try:
+    from django.utils.translation import gettext_lazy
+except ImportError: # django < 3.0
+    from django.utils.translation import ugettext_lazy as gettext_lazy
+
 
 #pylint:disable=bad-except-order
 # The only way to be compatible between Python2 and Python3 is to catch
@@ -57,6 +73,11 @@ except ImportError: # <= Django 1.10, Python<3.6
 except ModuleNotFoundError: #pylint:disable=undefined-variable
     # <= Django 1.10, Python>=3.6
     from django.core.urlresolvers import NoReverseMatch, reverse, reverse_lazy
+
+try:
+    from django.urls import include, re_path
+except ImportError: # <= Django 2.0, Python<3.6
+    from django.conf.urls import include, url as re_path
 
 
 def get_model_class(full_name, settings_meta):

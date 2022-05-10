@@ -30,7 +30,6 @@ from __future__ import unicode_literals
 import csv, logging
 
 from django.contrib import messages
-from django.utils.translation import ugettext_lazy as _
 from rest_framework.generics import (CreateAPIView,
     GenericAPIView, RetrieveAPIView)
 from rest_framework.mixins import CreateModelMixin
@@ -38,7 +37,7 @@ from rest_framework.response import Response
 from rest_framework import status
 
 from ..backends import ProcessorError
-from ..compat import is_authenticated, StringIO
+from ..compat import gettext_lazy as _, is_authenticated, StringIO
 from ..docs import swagger_auto_schema, OpenAPIResponse
 from ..mixins import BalanceAndCartMixin, CartMixin, InvoicablesMixin
 from ..models import CartItem

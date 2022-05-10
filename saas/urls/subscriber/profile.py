@@ -1,4 +1,4 @@
-# Copyright (c) 2018, DjaoDjin inc.
+# Copyright (c) 2022, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -24,25 +24,25 @@
 
 '''Urls'''
 
-from django.conf.urls import url
-
-from ...settings import ACCT_REGEX, VERIFICATION_KEY_RE
+from ... import settings
+from ...compat import re_path
 from ...views.profile import (RoleDetailView, RoleListView,
     OrganizationProfileView, SubscriptionListView)
 from ...views.optins import SubscriptionGrantAcceptView
 
 urlpatterns = [
-    url(r'^profile/(?P<organization>%s)/roles/(?P<role>%s)/'
-        % (ACCT_REGEX, ACCT_REGEX),
+    re_path(r'^profile/(?P<organization>%s)/roles/(?P<role>%s)/'
+        % (settings.SLUG_RE, settings.SLUG_RE),
         RoleDetailView.as_view(), name='saas_role_detail'),
-    url(r'^profile/(?P<organization>%s)/roles/$' % ACCT_REGEX,
+    re_path(r'^profile/(?P<organization>%s)/roles/$' % settings.SLUG_RE,
         RoleListView.as_view(), name='saas_role_list'),
-    url(r'^profile/(?P<organization>%s)/subscriptions/accept/'\
-        '(?P<verification_key>%s)/' % (ACCT_REGEX, VERIFICATION_KEY_RE),
+    re_path(r'^profile/(?P<organization>%s)/subscriptions/accept/'\
+        '(?P<verification_key>%s)/' % (
+        settings.SLUG_RE, settings.VERIFICATION_KEY_RE),
         SubscriptionGrantAcceptView.as_view(),
         name='subscription_grant_accept'),
-    url(r'^profile/(?P<organization>%s)/subscriptions/' % ACCT_REGEX,
+    re_path(r'^profile/(?P<organization>%s)/subscriptions/' % settings.SLUG_RE,
         SubscriptionListView.as_view(), name='saas_subscription_list'),
-    url(r'^profile/(?P<organization>%s)/contact/' % ACCT_REGEX,
+    re_path(r'^profile/(?P<organization>%s)/contact/' % settings.SLUG_RE,
         OrganizationProfileView.as_view(), name='saas_organization_profile'),
 ]

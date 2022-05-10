@@ -1,4 +1,4 @@
-# Copyright (c) 2018, DjaoDjin inc.
+# Copyright (c) 2022, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -27,28 +27,27 @@ URLs updating processing information and inserting transactions
 through POST requests.
 """
 
-from django.conf.urls import url
-
-from ....settings import ACCT_REGEX
+from .... import settings
+from ....compat import re_path
 from ....views.billing import (CartPeriodsView, CartSeatsView,
     CardUpdateView, CartView, BalanceView, CheckoutView)
 
 
 urlpatterns = [
-    url(r'^billing/(?P<organization>%s)/checkout/' % ACCT_REGEX,
+    re_path(r'^billing/(?P<organization>%s)/checkout/' % settings.SLUG_RE,
         CheckoutView.as_view(), name='saas_checkout'),
-    url(r'^billing/(?P<organization>%s)/cart-seats/' % ACCT_REGEX,
+    re_path(r'^billing/(?P<organization>%s)/cart-seats/' % settings.SLUG_RE,
         CartSeatsView.as_view(), name='saas_cart_seats'),
-    url(r'^billing/(?P<organization>%s)/cart-periods/' % ACCT_REGEX,
+    re_path(r'^billing/(?P<organization>%s)/cart-periods/' % settings.SLUG_RE,
         CartPeriodsView.as_view(), name='saas_cart_periods'),
-    url(r'^billing/(?P<organization>%s)/cart/' % ACCT_REGEX,
+    re_path(r'^billing/(?P<organization>%s)/cart/' % settings.SLUG_RE,
         CartView.as_view(), name='saas_organization_cart'),
-    url(r'^billing/(?P<organization>%s)/card/' % ACCT_REGEX,
+    re_path(r'^billing/(?P<organization>%s)/card/' % settings.SLUG_RE,
         CardUpdateView.as_view(), name='saas_update_card'),
     # Implementation Note: <subscribed_plan> (not <plan>) such that
     # the required_manager decorator does not raise a PermissionDenied
     # for a plan <organization> is subscribed to.
-    url(r'^billing/(?P<organization>%s)/balance/((?P<subscribed_plan>%s)/)?'
-        % (ACCT_REGEX, ACCT_REGEX),
+    re_path(r'^billing/(?P<organization>%s)/balance/((?P<subscribed_plan>%s)/)?'
+        % (settings.SLUG_RE, settings.SLUG_RE),
         BalanceView.as_view(), name='saas_organization_balance'),
 ]

@@ -1,4 +1,4 @@
-# Copyright (c) 2020, DjaoDjin inc.
+# Copyright (c) 2022, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -26,10 +26,8 @@ from __future__ import unicode_literals
 
 import datetime, re
 
-from django.utils.translation import ugettext_lazy as _
-
 from . import settings
-
+from .compat import gettext_lazy as _
 
 # prevents an import loop with models.py
 HOURLY = 1

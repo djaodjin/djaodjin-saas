@@ -1,4 +1,4 @@
-# Copyright (c) 2021, DjaoDjin inc.
+# Copyright (c) 2022, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -24,12 +24,12 @@
 
 from django.http import Http404
 from django.contrib.auth import get_user_model
-from django.utils.translation import ugettext_lazy as _
 from rest_framework.response import Response
 from rest_framework.generics import ListAPIView, GenericAPIView
 from rest_framework.exceptions import ValidationError
 
 from .serializers import AgreementSignSerializer
+from ..compat import gettext_lazy as _
 from ..models import Agreement, Signature
 from ..mixins import (ProviderMixin, UserSmartListMixin,
     DateRangeContextMixin)

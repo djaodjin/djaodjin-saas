@@ -1,4 +1,4 @@
-# Copyright (c) 2019, DjaoDjin inc.
+# Copyright (c) 2022, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -24,11 +24,12 @@
 
 '''API URLs typically associated with the subscriber.'''
 
-from django.conf.urls import include, url
+from ....compat import include, re_path
+
 
 urlpatterns = [
-    url(r'^', include('saas.urls.api.subscriber.charges')),
-    url(r'^', include('saas.urls.api.subscriber.billing')),
-    url(r'^', include('saas.urls.api.subscriber.roles')),
-    url(r'^', include('saas.urls.api.subscriber.profile')),
+    re_path(r'^', include('saas.urls.api.subscriber.charges')),
+    re_path(r'^', include('saas.urls.api.subscriber.billing')),
+    re_path(r'^', include('saas.urls.api.subscriber.roles')),
+    re_path(r'^', include('saas.urls.api.subscriber.profile')),
 ]

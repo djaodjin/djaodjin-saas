@@ -29,11 +29,10 @@ from django import http
 from django.contrib import messages
 from django.contrib.auth import REDIRECT_FIELD_NAME, get_user_model
 from django.db.models import Q
-from django.utils.translation import ugettext_lazy as _
 from django.views.generic.base import RedirectView
 
 from .. import settings
-from ..compat import reverse
+from ..compat import gettext_lazy as _, reverse
 from ..mixins import product_url
 from ..models import RoleDescription, get_broker
 from ..utils import (get_organization_model, get_role_model,

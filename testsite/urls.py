@@ -32,7 +32,7 @@ from saas.compat import reverse_lazy
 from saas.decorators import (fail_agreement, fail_authenticated, fail_direct,
     fail_provider, fail_provider_only, fail_self_provider)
 from saas.views import OrganizationRedirectView, UserRedirectView
-from rules.urldecorators import include, url
+from rules.urldecorators import include, re_path
 
 from .views.app import AppView
 from .views.auth import LoginAPIView, PersonalRegistrationView
@@ -49,24 +49,24 @@ def url_prefixed(regex, view, name=None, redirects=None):
     """
     Returns a urlpattern for public pages.
     """
-    return url(r'^' + regex, view, name=name, redirects=redirects)
+    return re_path(r'^' + regex, view, name=name, redirects=redirects)
 
 
 # admin doc and panel
 try:
     urlpatterns = [
-        url(r'^admin/doc/', include('django.contrib.admindocs.urls')),
-        url(r'^admin/', admin.site.urls),
+        re_path(r'^admin/doc/', include('django.contrib.admindocs.urls')),
+        re_path(r'^admin/', admin.site.urls),
     ]
 except ImproperlyConfigured: # Django <= 1.9
     urlpatterns = [
-        url(r'^admin/doc/', include('django.contrib.admindocs.urls')),
-        url(r'^admin/', include(admin.site.urls)),
+        re_path(r'^admin/doc/', include('django.contrib.admindocs.urls')),
+        re_path(r'^admin/', include(admin.site.urls)),
     ]
 
 urlpatterns += \
     static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT) + [
-    url(r'^__debug__/', include(debug_toolbar.urls)),
+    re_path(r'^__debug__/', include(debug_toolbar.urls)),
     url_prefixed(r'register/$',
         PersonalRegistrationView.as_view(
             success_url=reverse_lazy('home')),

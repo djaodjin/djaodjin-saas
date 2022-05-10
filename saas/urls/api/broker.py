@@ -1,4 +1,4 @@
-# Copyright (c) 2020, DjaoDjin inc.
+# Copyright (c) 2022, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -26,8 +26,6 @@
 URLs API for resources available typically only to the broker platform.
 """
 
-from django.conf.urls import url
-
 from ... import settings
 from ...api.balances import (BalanceLineListAPIView, BrokerBalancesAPIView,
     BalanceLineDetailAPIView)
@@ -35,23 +33,24 @@ from ...api.charges import ChargeListAPIView
 from ...api.organizations import OrganizationListAPIView
 from ...api.transactions import TransactionListAPIView
 from ...api.users import RegisteredAPIView
+from ...compat import re_path
 
 
 urlpatterns = [
-    url(r'^billing/transactions/?',
+    re_path(r'^billing/transactions/?',
         TransactionListAPIView.as_view(), name='saas_api_transactions'),
-    url(r'^billing/charges/?$', ChargeListAPIView.as_view(),
+    re_path(r'^billing/charges/?$', ChargeListAPIView.as_view(),
         name='saas_api_charges'),
-    url(r'^metrics/balances/(?P<report>%s)/lines/(?P<rank>\d+)/?' % (
-        settings.ACCT_REGEX), BalanceLineDetailAPIView.as_view(),
+    re_path(r'^metrics/balances/(?P<report>%s)/lines/(?P<rank>\d+)/?' % (
+        settings.SLUG_RE), BalanceLineDetailAPIView.as_view(),
         name='saas_api_balance_line'),
-    url(r'^metrics/balances/(?P<report>%s)/lines/?' % settings.ACCT_REGEX,
+    re_path(r'^metrics/balances/(?P<report>%s)/lines/?' % settings.SLUG_RE,
         BalanceLineListAPIView.as_view(), name='saas_api_balance_lines'),
-    url(r'^metrics/balances/(?P<report>%s)/?' % settings.ACCT_REGEX,
+    re_path(r'^metrics/balances/(?P<report>%s)/?' % settings.SLUG_RE,
         BrokerBalancesAPIView.as_view(), name='saas_api_broker_balances'),
-    url(r'^metrics/registered/?',
+    re_path(r'^metrics/registered/?',
         RegisteredAPIView.as_view(), name='saas_api_registered'),
-    url(r'^profile/$',
+    re_path(r'^profile/$',
         OrganizationListAPIView.as_view(),
         name='saas_api_profile'),
 ]

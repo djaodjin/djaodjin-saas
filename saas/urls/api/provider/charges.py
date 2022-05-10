@@ -1,4 +1,4 @@
-# Copyright (c) 2020, DjaoDjin inc.
+# Copyright (c) 2022, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -26,15 +26,13 @@
 URLs API for charges that can only be accessed by a provider.
 """
 
-from django.conf.urls import url
-
-from ....settings import ACCT_REGEX
+from .... import settings
 from ....api.charges import ChargeRefundAPIView
+from ....compat import re_path
 
 # Actually a <charge> slug. We are using <organization> here such that
 # it plays nice with the rules-based permission checks.
 urlpatterns = [
-    url(r'^billing/charges/(?P<organization>%s)/refund/' % ACCT_REGEX,
-        ChargeRefundAPIView.as_view(),
-        name='saas_api_charge_refund'),
+    re_path(r'^billing/charges/(?P<organization>%s)/refund/' % settings.SLUG_RE,
+        ChargeRefundAPIView.as_view(), name='saas_api_charge_refund'),
 ]

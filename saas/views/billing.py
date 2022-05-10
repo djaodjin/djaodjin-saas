@@ -45,12 +45,12 @@ from django.db import transaction
 from django.db.models import Q
 from django.contrib import messages
 from django.shortcuts import get_object_or_404
-from django.utils.translation import ugettext_lazy as _
 from django.views.generic import (DetailView, FormView, ListView, TemplateView,
     UpdateView)
 from django.utils.http import urlencode
 
 from .. import settings, humanize
+from ..compat import gettext_lazy as _
 from ..cart import session_cart_to_database
 from ..compat import is_authenticated, reverse, six
 from ..backends import ProcessorError, ProcessorConnectionError

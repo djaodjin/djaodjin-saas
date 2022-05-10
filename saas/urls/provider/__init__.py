@@ -1,4 +1,4 @@
-# Copyright (c) 2018, DjaoDjin inc.
+# Copyright (c) 2022, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -26,10 +26,11 @@
 URLs related to provider pages
 """
 
-from django.conf.urls import include, url
+from ...compat import include, re_path
+
 
 urlpatterns = [
-    url(r'^', include('saas.urls.provider.billing')),
-    url(r'^', include('saas.urls.provider.metrics')),
-    url(r'^', include('saas.urls.provider.profile')),
+    re_path(r'^', include('saas.urls.provider.billing')),
+    re_path(r'^', include('saas.urls.provider.metrics')),
+    re_path(r'^', include('saas.urls.provider.profile')),
 ]

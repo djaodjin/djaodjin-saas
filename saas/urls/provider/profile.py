@@ -1,4 +1,4 @@
-# Copyright (c) 2019, DjaoDjin inc.
+# Copyright (c) 2022, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -26,38 +26,39 @@
 URLs related to provider bank account information.
 """
 
-from django.conf.urls import url
-
-from ...settings import ACCT_REGEX, VERIFICATION_KEY_RE
+from ... import settings
+from ...compat import re_path
 from ...views.download import (ActiveSubscriptionDownloadView,
     ChurnedSubscriptionDownloadView)
 from ...views.optins import SubscriptionRequestAcceptView
 from ...views.plans import PlanCreateView, PlanUpdateView, PlanListView
 from ...views.profile import SubscriberListView, PlanSubscribersListView
 
+
 urlpatterns = [
-    url(r'^profile/(?P<organization>%s)/plans/(?P<plan>%s)/subscribers/'
-        % (ACCT_REGEX, ACCT_REGEX),
+    re_path(r'^profile/(?P<organization>%s)/plans/(?P<plan>%s)/subscribers/'
+        % (settings.SLUG_RE, settings.SLUG_RE),
         PlanSubscribersListView.as_view(), name='saas_plan_subscribers'),
-    url(r'^profile/(?P<organization>%s)/plans/new/' % ACCT_REGEX,
+    re_path(r'^profile/(?P<organization>%s)/plans/new/' % settings.SLUG_RE,
         PlanCreateView.as_view(), name='saas_plan_new'),
-    url(r'^profile/(?P<organization>%s)/plans/(?P<plan>%s)/'
-        % (ACCT_REGEX, ACCT_REGEX),
+    re_path(r'^profile/(?P<organization>%s)/plans/(?P<plan>%s)/'
+        % (settings.SLUG_RE, settings.SLUG_RE),
         PlanUpdateView.as_view(), name='saas_plan_edit'),
-    url(r'^profile/(?P<organization>%s)/plans/' % ACCT_REGEX,
+    re_path(r'^profile/(?P<organization>%s)/plans/' % settings.SLUG_RE,
         PlanListView.as_view(), name='saas_plan_base'),
-    url(r'^profile/(?P<organization>%s)/subscribers/active/download/?'
-        % ACCT_REGEX,
+    re_path(r'^profile/(?P<organization>%s)/subscribers/active/download/?'
+        % settings.SLUG_RE,
         ActiveSubscriptionDownloadView.as_view(),
         name='saas_subscriber_pipeline_download_subscribed'),
-    url(r'profile/(?P<organization>%s)/subscribers/churned/download/?'
-        % ACCT_REGEX,
+    re_path(r'profile/(?P<organization>%s)/subscribers/churned/download/?'
+        % settings.SLUG_RE,
         ChurnedSubscriptionDownloadView.as_view(),
         name='saas_subscriber_pipeline_download_churned'),
-    url(r'^profile/(?P<organization>%s)/subscribers/accept/'\
-        '(?P<request_key>%s)/' % (ACCT_REGEX, VERIFICATION_KEY_RE),
+    re_path(r'^profile/(?P<organization>%s)/subscribers/accept/'\
+        '(?P<request_key>%s)/' % (
+        settings.SLUG_RE, settings.VERIFICATION_KEY_RE),
         SubscriptionRequestAcceptView.as_view(),
         name='subscription_grant_accept'),
-    url(r'^profile/(?P<organization>%s)/subscribers/' % ACCT_REGEX,
+    re_path(r'^profile/(?P<organization>%s)/subscribers/' % settings.SLUG_RE,
         SubscriberListView.as_view(), name='saas_subscriber_list'),
 ]

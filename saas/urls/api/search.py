@@ -1,4 +1,4 @@
-# Copyright (c) 2021, DjaoDjin inc.
+# Copyright (c) 2022, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -26,20 +26,19 @@
 URLs to populate type-ahead candidate lists
 """
 
-from django.conf.urls import url
-
+from ... import settings
 from ...api.accounts import (AccountsTypeaheadAPIView, ProfileAPIView,
     ProfilesTypeaheadAPIView, UsersTypeaheadAPIView)
-from ...settings import ACCT_REGEX
+from ...compat import re_path
 
 
 urlpatterns = [
-    url(r'^accounts/users/', UsersTypeaheadAPIView.as_view(),
+    re_path(r'^accounts/users/', UsersTypeaheadAPIView.as_view(),
         name='saas_api_search_users'),
-    url(r'^accounts/profiles/(?P<organization>%s)' % ACCT_REGEX,
+    re_path(r'^accounts/profiles/(?P<organization>%s)' % settings.SLUG_RE,
         ProfileAPIView.as_view(), name='saas_api_search_profile'),
-    url(r'^accounts/profiles/', ProfilesTypeaheadAPIView.as_view(),
+    re_path(r'^accounts/profiles/', ProfilesTypeaheadAPIView.as_view(),
         name='saas_api_search_profiles'),
-    url(r'^accounts/', AccountsTypeaheadAPIView.as_view(),
+    re_path(r'^accounts/', AccountsTypeaheadAPIView.as_view(),
         name='saas_api_search_accounts'),
 ]

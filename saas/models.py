@@ -74,16 +74,15 @@ from django.db.models.signals import post_save
 from django.db.utils import DEFAULT_DB_ALIAS
 from django.dispatch import receiver
 from django.template.defaultfilters import slugify
-from django.utils.http import quote
 from django.utils.safestring import mark_safe
-from django.utils.translation import ugettext_lazy as _
 from django_countries.fields import CountryField
 from rest_framework.exceptions import ValidationError
 
 from . import humanize, settings, signals
 from .backends import (get_processor_backend, CardError, ProcessorError,
     ProcessorSetupError)
-from .compat import import_string, python_2_unicode_compatible, six
+from .compat import (import_string, gettext_lazy as _,
+    python_2_unicode_compatible, six, urlquote)
 from .utils import (SlugTitleMixin, datetime_or_now, full_name_natural_split,
     generate_random_slug, handle_uniq_error)
 from .utils import get_organization_model, get_role_model
@@ -3147,7 +3146,7 @@ class CartItem(models.Model):
     def name(self):
         result = 'cart-%s' % self.plan.slug
         if self.sync_on:
-            result = '%s-%s' % (result, quote(self.sync_on))
+            result = '%s-%s' % (result, urlquote(self.sync_on))
         return result
 
 

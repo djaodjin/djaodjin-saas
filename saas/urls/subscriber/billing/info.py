@@ -1,4 +1,4 @@
-# Copyright (c) 2018, DjaoDjin inc.
+# Copyright (c) 2022, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -26,17 +26,16 @@
 URLs responding to GET requests with billing history.
 """
 
-from django.conf.urls import url
-
-from ....settings import ACCT_REGEX
+from .... import settings
+from ....compat import re_path
 from ....views.billing import ChargeReceiptView, BillingStatementView
 from ....views.download import BillingStatementDownloadView
 
 try:
     from ....views.extra import PrintableChargeReceiptView
     urlpatterns = [
-        url(r'^billing/(?P<organization>%s)/'\
-'receipt/(?P<charge>[a-zA-Z0-9_]+)/printable/' % ACCT_REGEX,
+        re_path(r'^billing/(?P<organization>%s)/'\
+'receipt/(?P<charge>[a-zA-Z0-9_]+)/printable/' % settings.SLUG_RE,
             PrintableChargeReceiptView.as_view(),
             name='saas_printable_charge_receipt'),
         ]
@@ -44,12 +43,12 @@ except ImportError:
     urlpatterns = []
 
 urlpatterns += [
-    url(r'^billing/(?P<organization>%s)/receipt/(?P<charge>[a-zA-Z0-9_]+)$'
-        % ACCT_REGEX,
+    re_path(r'^billing/(?P<organization>%s)/receipt/(?P<charge>[a-zA-Z0-9_]+)$'
+        % settings.SLUG_RE,
         ChargeReceiptView.as_view(), name='saas_charge_receipt'),
-    url(r'^billing/(?P<organization>%s)/history/download/?' % ACCT_REGEX,
-        BillingStatementDownloadView.as_view(),
+    re_path(r'^billing/(?P<organization>%s)/history/download/?' %
+        settings.SLUG_RE, BillingStatementDownloadView.as_view(),
         name='saas_statement_download'),
-    url(r'^billing/(?P<organization>%s)/history/' % ACCT_REGEX,
+    re_path(r'^billing/(?P<organization>%s)/history/' % settings.SLUG_RE,
         BillingStatementView.as_view(), name='saas_billing_info'),
 ]

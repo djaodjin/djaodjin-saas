@@ -29,8 +29,6 @@ from django.conf import settings as django_settings
 from django.contrib.auth import get_user_model, logout as auth_logout
 from django.db import transaction, IntegrityError
 from django.db.models import F
-from django.utils.encoding import force_text
-from django.utils.translation import ugettext_lazy as _
 from rest_framework import parsers, status
 from rest_framework.generics import (CreateAPIView, ListAPIView,
     RetrieveUpdateDestroyAPIView)
@@ -39,7 +37,7 @@ from rest_framework.response import Response
 from .serializers import (OrganizationDetailSerializer,
     OrganizationWithSubscriptionsSerializer, UploadBlobSerializer)
 from .. import settings, signals
-from ..compat import urlparse, urlunparse
+from ..compat import force_str, gettext_lazy as _, urlparse, urlunparse
 from ..decorators import _valid_manager
 from ..filters import DateRangeFilter, OrderingFilter, SearchFilter
 from ..mixins import (DateRangeContextMixin, OrganizationMixin,
@@ -264,7 +262,7 @@ class OrganizationPictureAPIView(OrganizationMixin, CreateAPIView):
 
         # tentatively extract file extension.
         parts = os.path.splitext(
-            force_text(uploaded_file.name.replace('\\', '/')))
+            force_str(uploaded_file.name.replace('\\', '/')))
         ext = parts[-1].lower() if len(parts) > 1 else ""
         key_name = "%s%s" % (
             hashlib.sha256(uploaded_file.read()).hexdigest(), ext)

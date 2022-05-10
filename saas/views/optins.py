@@ -1,4 +1,4 @@
-# Copyright (c) 2021, DjaoDjin inc.
+# Copyright (c) 2022, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -27,10 +27,10 @@ import logging
 
 from django.contrib import messages
 from django.contrib.auth import REDIRECT_FIELD_NAME
-from django.utils.translation import ugettext_lazy as _
 from django.views.generic.base import RedirectView
 
 from .. import signals
+from ..compat import gettext_lazy as _
 from ..mixins import SubscriptionMixin, product_url
 from ..models import get_broker
 from ..utils import get_role_model, validate_redirect_url

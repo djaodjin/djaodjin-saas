@@ -1,4 +1,4 @@
-# Copyright (c) 2021, DjaoDjin inc.
+# Copyright (c) 2022, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -26,7 +26,6 @@ from __future__ import unicode_literals
 from collections import OrderedDict
 
 from django.db.models import Q
-from django.utils.translation import ugettext_lazy as _
 from rest_framework import status
 from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.generics import CreateAPIView, GenericAPIView, ListAPIView
@@ -36,6 +35,7 @@ from rest_framework.response import Response
 from .serializers import (CreateOfflineTransactionSerializer,
     OfflineTransactionSerializer, OrganizationBalanceSerializer,
     TransactionSerializer)
+from ..compat import gettext_lazy as _
 from ..decorators import _valid_manager
 from ..docs import swagger_auto_schema, OpenAPIResponse
 from ..filters import DateRangeFilter, OrderingFilter, SearchFilter

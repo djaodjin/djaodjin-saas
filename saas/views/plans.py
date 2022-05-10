@@ -1,4 +1,4 @@
-# Copyright (c) 2020, DjaoDjin inc.
+# Copyright (c) 2022, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -26,7 +26,6 @@ from __future__ import unicode_literals
 from django import forms
 from django.contrib import messages
 from django.http import HttpResponseRedirect
-from django.utils.translation import ugettext_lazy as _
 from django.views.generic import (CreateView, ListView, UpdateView,
     TemplateView)
 from django.views.generic.detail import SingleObjectMixin
@@ -34,7 +33,8 @@ from django.template.context_processors import csrf
 
 from . import RedirectFormMixin
 from .. import settings
-from ..compat import is_authenticated, reverse, reverse_lazy
+from ..compat import (gettext_lazy as _, is_authenticated, reverse,
+    reverse_lazy)
 from ..forms import PlanForm
 from ..mixins import CartMixin, OrganizationMixin, ProviderMixin
 from ..models import CartItem, Coupon, Plan

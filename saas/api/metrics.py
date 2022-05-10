@@ -24,14 +24,13 @@
 
 import logging
 
-from django.utils.translation import ugettext_lazy as _
 from rest_framework.generics import GenericAPIView, ListAPIView
 from rest_framework.response import Response
 
 from .serializers import (CartItemSerializer, LifetimeSerializer,
     MetricsSerializer)
 from .. import settings
-from ..compat import reverse, six
+from ..compat import gettext_lazy as _, reverse, six
 from ..filters import DateRangeFilter
 from ..metrics.base import (abs_monthly_balances,
     aggregate_transactions_by_period, month_periods,

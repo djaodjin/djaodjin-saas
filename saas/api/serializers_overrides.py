@@ -1,4 +1,4 @@
-# Copyright (c) 2021, DjaoDjin inc.
+# Copyright (c) 2022, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -29,8 +29,9 @@ from __future__ import unicode_literals
 
 from django.core import validators
 from django.contrib.auth import get_user_model
-from django.utils.translation import ugettext_lazy as _
 from rest_framework import serializers
+
+from ..compat import gettext_lazy as _
 
 
 class UserSerializer(serializers.ModelSerializer):

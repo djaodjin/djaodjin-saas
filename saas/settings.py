@@ -129,7 +129,8 @@ _SETTINGS = {
 _SETTINGS.update(getattr(settings, 'SAAS', {}))
 
 
-ACCT_REGEX = r'[a-zA-Z0-9_\-\+\.]+'
+SLUG_RE = r'[a-zA-Z0-9_\-\+\.]+'
+ACCT_REGEX = SLUG_RE
 MAYBE_EMAIL_REGEX = r'[a-zA-Z0-9_\-\+\.\@]+'
 SELECTOR_RE = r'[a-zA-Z0-9_\-\:]+'
 VERIFICATION_KEY_RE = r'[a-f0-9]{40}'

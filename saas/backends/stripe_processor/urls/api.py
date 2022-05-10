@@ -1,4 +1,4 @@
-# Copyright (c) 2018, DjaoDjin inc.
+# Copyright (c) 2022, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -22,12 +22,11 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from django.conf.urls import url
-
 from ..views import StripeWebhook
 from ....settings import PROCESSOR_HOOK_URL
+from ....compat import re_path
 
 urlpatterns = [
-    url(r'^%s' % PROCESSOR_HOOK_URL,
+    re_path(r'^%s' % PROCESSOR_HOOK_URL,
         StripeWebhook.as_view(), name='saas_processor_hook')
 ]

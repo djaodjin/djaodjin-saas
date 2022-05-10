@@ -1,4 +1,4 @@
-# Copyright (c) 2018, DjaoDjin inc.
+# Copyright (c) 2022, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -26,13 +26,12 @@
 URLs for pages from a ``User`` perspective.
 """
 
-from django.conf.urls import url
-
-from ..settings import ACCT_REGEX
+from .. import settings
+from ..compat import re_path
 from ..views.users import ProductListView
 
 
 urlpatterns = [
-    url(r'users/(?P<user>%s)/roles/' % ACCT_REGEX,
+    re_path(r'users/(?P<user>%s)/roles/' % settings.SLUG_RE,
         ProductListView.as_view(), name='saas_user_product_list'),
 ]

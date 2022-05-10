@@ -1,4 +1,4 @@
-# Copyright (c) 2019, DjaoDjin inc.
+# Copyright (c) 2022, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -26,16 +26,15 @@
 API URLs for a provider plans
 """
 
-from django.conf.urls import url
-
+from .... import settings
 from ....api.plans import (PlanListCreateAPIView, PlanDetailAPIView)
-from ....settings import ACCT_REGEX
+from ....compat import re_path
 
 
 urlpatterns = [
-    url(r'^profile/(?P<organization>%s)/plans/(?P<plan>%s)/?'
-        % (ACCT_REGEX, ACCT_REGEX),
+    re_path(r'^profile/(?P<organization>%s)/plans/(?P<plan>%s)/?'
+        % (settings.SLUG_RE, settings.SLUG_RE),
         PlanDetailAPIView.as_view(), name='saas_api_plan'),
-    url(r'^profile/(?P<organization>%s)/plans/?' % ACCT_REGEX,
+    re_path(r'^profile/(?P<organization>%s)/plans/?' % settings.SLUG_RE,
         PlanListCreateAPIView.as_view(), name='saas_api_plans'),
 ]

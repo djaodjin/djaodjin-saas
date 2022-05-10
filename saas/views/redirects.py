@@ -1,4 +1,4 @@
-# Copyright (c) 2021, DjaoDjin inc.
+# Copyright (c) 2022, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -35,14 +35,14 @@ from django.contrib import messages
 from django.contrib.auth import REDIRECT_FIELD_NAME, get_user_model
 from django.db import IntegrityError, transaction
 from django.db.models import Q
-from django.utils.translation import ugettext_lazy as _
 from django.views.generic import RedirectView
 from django.views.generic.base import ContextMixin, TemplateResponseMixin
 from django.views.generic.edit import FormMixin
 
 from .. import settings
+from ..compat import  (NoReverseMatch, gettext_lazy as _, is_authenticated,
+    reverse)
 from ..cart import session_cart_to_database
-from ..compat import is_authenticated, reverse, NoReverseMatch
 from ..decorators import fail_direct
 from ..models import RoleDescription, get_broker
 from ..utils import (get_organization_model, get_role_model,
