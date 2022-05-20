@@ -387,7 +387,7 @@ class OrganizationBalanceSerializer(NoModelSerializer):
 
     balance_amount = serializers.IntegerField(read_only=True,
       help_text=_("balance of all transactions in cents (i.e. 100ths) of unit"))
-    balance_unit = serializers.IntegerField(read_only=True,
+    balance_unit = serializers.CharField(read_only=True,
         help_text=_("three-letter ISO 4217 code for currency unit (ex: usd)"))
 
     class Meta:
