@@ -785,7 +785,7 @@ class Organization(models.Model):
                 code='cpn_%s' % generate_random_slug(),
                 organization=coupon_provider,
                 discount_type=Coupon.PERCENTAGE, discount_value=10000,
-                nb_attempts=0,
+                nb_attempts=1,
                 description=('Auto-generated after payment by %s'
                     % self.printable_name))
             LOGGER.info('Auto-generated Coupon %s for %s',
