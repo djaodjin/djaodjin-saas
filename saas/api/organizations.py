@@ -399,7 +399,7 @@ class EngagedSubscribersSmartListMixin(object):
                        ('user__last_name', 'last_name'),
                        ('organization__full_name', 'organization_full_name')]
 
-    ordering = ('user__last_login',)
+    ordering = ('created_at',)
 
     filter_backends = (DateRangeFilter, SearchFilter, OrderingFilter)
 
@@ -419,6 +419,7 @@ class EngagedSubscribersQuerysetMixin(DateRangeContextMixin,
         })
         queryset = get_role_model().objects.filter(
             organization__in=get_organization_model().objects.filter(
+                is_active=True,
                 subscriptions__plan__organization=self.provider,
                 subscriptions__ends_at__gt=ends_at),
             **filter_params
@@ -446,8 +447,9 @@ class UnengagedSubscribersQuerysetMixin(DateRangeContextMixin,
                 'role__user__last_login__gte': ends_at - relativedelta(
                     days=settings.INACTIVITY_DAYS)})
         queryset = get_organization_model().objects.filter(
+            is_active=True,
             subscribes_to__organization=self.provider,
-            subscriptions__ends_at__gt=ends_at).exclude(**kwargs)
+            subscriptions__ends_at__gt=ends_at).exclude(**kwargs).distinct()
         return queryset
 
 
