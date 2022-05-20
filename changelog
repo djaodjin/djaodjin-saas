@@ -1,3 +1,17 @@
+Roadmap
+=======
+
+1.0
+  * fix group buy issues (balance statement, #155, #154)
+  * move views under saas.urls.views and update 'getting-started.rst'.
+  * adds <profile> in charge API
+  * rename <organization> into <profile> in url paths
+  * support for Vue3
+  * adds APIs for UseCharge
+
+Released versions
+=================
+
 0.10.3
 
   * adds API to retrieve inactive profiles

@@ -126,13 +126,12 @@
     "model": "auth.User", "pk": 3
 },
 {
-    "fields":{
-      "created_at": "2022-01-01T00:00:00+00:00",
-      "role_description": 1,
-      "organization": 5,
+    "fields": {
+      "last_signed": "2022-01-01T00:00:00+00:00",
+      "agreement": 1,
       "user": 3
     },
-    "model": "saas.Role", "pk": 3
+    "model": "saas.signature", "pk": 3
 },
 {
     "fields":{
@@ -142,14 +141,6 @@
       "user": 3
     },
     "model": "saas.Role", "pk": 4
-},
-{
-    "fields": {
-      "last_signed": "2022-01-01T00:00:00+00:00",
-      "agreement": 1,
-      "user": 3
-    },
-    "model": "saas.signature", "pk": 3
 },
 {
     "fields": {
@@ -280,15 +271,6 @@
       "user": 5
     },
     "model": "saas.Role", "pk": 6
-},
-{
-    "fields": {
-      "created_at": "2022-01-01T00:00:00+00:00",
-      "role_description": 1,
-      "organization": 5,
-      "user": 1
-    },
-    "model": "saas.Role", "pk": 7
 },
 {
     "fields": {
@@ -463,69 +445,6 @@
     "model": "saas.Role", "pk": 10
 },
 {
-    "fields": {
-      "slug": "dibaggio-parents",
-      "email": "cowork@djaodjin.com",
-      "full_name": "Di Baggio Middle School Parents Association",
-      "created_at": "2022-01-01T00:00:00+00:00",
-      "processor": 1,
-      "is_provider": 1,
-      "is_active": 1
-    },
-    "model": "saas.Organization", "pk": 12
-},
-{
-    "fields":{
-        "slug":"standard",
-        "title":"Di Baggio Middle School Parents Association",
-        "created_at":"2022-01-01T00:00:00+00:00",
-        "setup_amount":0,
-        "period_amount":18900,
-        "broker_fee_percent": 0,
-        "period_type": 5,
-        "description": "",
-        "organization": 12,
-        "is_active": 1
-    },
-    "model": "saas.Plan", "pk": 12
-},
-{
-    "fields": {
-      "slug": "tennis-club",
-      "email": "cowork@djaodjin.com",
-      "full_name": "Tennis Club of North Beach",
-      "created_at": "2022-01-01T00:00:00+00:00",
-      "processor": 1,
-      "is_provider": 1,
-      "is_active": 1
-    },
-    "model": "saas.Organization", "pk": 14
-},
-{
-    "fields": {
-      "created_at": "2022-01-01T00:00:00+00:00",
-      "role_description": 1,
-      "organization": 14,
-      "user": 1
-    },
-    "model": "saas.Role", "pk": 11
-},
-{
-    "fields":{
-        "slug": "tennis-club",
-        "title":"Tennis Club of North Beach",
-        "created_at":"2022-01-01T00:00:00+00:00",
-        "setup_amount":0,
-        "period_amount":18900,
-        "broker_fee_percent": 0,
-        "period_type": 5,
-        "description":"",
-        "organization": 14,
-        "is_active": 1
-    },
-    "model": "saas.Plan", "pk": 13
-},
-{
     "fields":{
         "created_at":"2022-01-01T00:00:00+00:00",
         "user": 4,
@@ -605,7 +524,122 @@
       "user": 8,
       "request_key": "a00000d0a0d00001234567890123456789012345"
     },
+    "model": "saas.Role", "pk": 11
+},
+
+
+{
+    "fields": {
+      "date_joined": "2022-01-01T00:00:00-09:00",
+      "email": "xia+10@localhost.localdomain",
+      "first_name": "Xia10",
+      "is_active": true,
+      "is_staff": false,
+      "is_superuser": false,
+      "last_login": "2022-01-01T00:00:00-09:00",
+      "last_name": "BillingCard10",
+      "password": "pbkdf2_sha256$10000$z0MBiWn0Rlem$iZdC6uHomlE07qGK/TqfcfxNzKJtFp03c0JILF1frRc=", 
+      "username": "xia10"
+    },
+    "model": "auth.User", "pk": 12
+},
+{
+    "fields": {
+      "last_signed": "2022-01-01T00:00:00+00:00",
+      "agreement": 1,
+      "user": 12
+    },
+    "model": "saas.signature", "pk": 12
+},
+{
+    "fields": {
+      "slug": "xia10",
+      "full_name": "Xia10",
+      "created_at": "2022-01-01T00:00:00+00:00",
+      "email": "xia+10@localhost.localdomain",
+      "phone": "555-555-5555",
+      "street_address": "350 Bay St.",
+      "locality":  "San Francisco",
+      "region": "CA",
+      "postal_code": "94133",
+      "country": "US",
+      "processor": 1,
+      "is_active": 1
+    },
+    "model": "saas.Organization", "pk": 12
+},
+{
+    "fields": {
+      "created_at": "2022-01-01T00:00:00+00:00",
+      "role_description": 1,
+      "organization": 12,
+      "user": 12
+    },
     "model": "saas.Role", "pk": 12
+},
+
+{
+    "fields": {
+      "slug": "dibaggio-parents",
+      "email": "cowork@djaodjin.com",
+      "full_name": "Di Baggio Middle School Parents Association",
+      "created_at": "2022-01-01T00:00:00+00:00",
+      "processor": 1,
+      "is_provider": 1,
+      "is_active": 1
+    },
+    "model": "saas.Organization", "pk": 13
+},
+{
+    "fields":{
+        "slug":"standard",
+        "title":"Di Baggio Middle School Parents Association",
+        "created_at":"2022-01-01T00:00:00+00:00",
+        "setup_amount":0,
+        "period_amount":18900,
+        "broker_fee_percent": 0,
+        "period_type": 5,
+        "description": "",
+        "organization": 13,
+        "is_active": 1
+    },
+    "model": "saas.Plan", "pk": 12
+},
+{
+    "fields": {
+      "slug": "tennis-club",
+      "email": "cowork@djaodjin.com",
+      "full_name": "Tennis Club of North Beach",
+      "created_at": "2022-01-01T00:00:00+00:00",
+      "processor": 1,
+      "is_provider": 1,
+      "is_active": 1
+    },
+    "model": "saas.Organization", "pk": 14
+},
+{
+    "fields": {
+      "created_at": "2022-01-01T00:00:00+00:00",
+      "role_description": 1,
+      "organization": 14,
+      "user": 1
+    },
+    "model": "saas.Role", "pk": 13
+},
+{
+    "fields":{
+        "slug": "tennis-club",
+        "title":"Tennis Club of North Beach",
+        "created_at":"2022-01-01T00:00:00+00:00",
+        "setup_amount":0,
+        "period_amount":18900,
+        "broker_fee_percent": 0,
+        "period_type": 5,
+        "description":"",
+        "organization": 14,
+        "is_active": 1
+    },
+    "model": "saas.Plan", "pk": 13
 },
 {
     "fields": {
@@ -637,7 +671,7 @@
       "user": 13,
       "grant_key": "b0e0000000ed0123456789012345678901234578"
     },
-    "model": "saas.Role", "pk": 13
+    "model": "saas.Role", "pk": 14
 },
 {
     "fields": {
@@ -646,7 +680,7 @@
       "organization": 4,
       "user": 13
     },
-    "model": "saas.Role", "pk": 14
+    "model": "saas.Role", "pk": 15
 },
 {
     "fields": {
@@ -655,7 +689,7 @@
       "user": 13,
       "request_key": "b0e000e00e0001234567890123456789012345"
     },
-    "model": "saas.Role", "pk": 15
+    "model": "saas.Role", "pk": 16
 },
 {
     "fields": {
@@ -665,7 +699,7 @@
       "user": 13,
       "request_key": "1234567890123456789012345b0e000e00e000"
     },
-    "model": "saas.Role", "pk": 16
+    "model": "saas.Role", "pk": 17
 },
 {
     "fields": {
@@ -734,7 +768,7 @@
       "organization": 17,
       "user": 17
     },
-    "model": "saas.Role", "pk": 17
+    "model": "saas.Role", "pk": 18
 },
 {
     "fields": {
@@ -790,7 +824,7 @@
       "organization": 18,
       "user": 18
     },
-    "model": "saas.Role", "pk": 18
+    "model": "saas.Role", "pk": 19
 },
 {
     "fields": {
@@ -811,40 +845,6 @@
       "extra": "bogus duplicate subscription"
     },
     "model": "saas.subscription", "pk": 19
-},
-{
-    "fields": {
-      "slug": "djaoapp-roles-card1",
-      "full_name": "RolesCard1",
-      "email": "djaoapp-roles-card1@localhost.localdomain",
-      "created_at": "2022-01-01T00:00:00+00:00",
-      "processor": 1,
-      "is_provider": 1,
-      "is_active": 1
-    },
-    "model": "saas.Organization", "pk": 30
-},
-{
-    "fields": {
-      "date_joined": "2022-01-01T00:00:00-00:00",
-      "email": "xia+roles-card1@localhost.localdomain",
-      "first_name": "Xia",
-      "last_name": "Roles Card1",
-      "is_active": true,
-      "is_staff": false,
-      "is_superuser": false,
-      "password": "pbkdf2_sha256$10000$z0MBiWn0Rlem$iZdC6uHomlE07qGK/TqfcfxNzKJtFp03c0JILF1frRc=", 
-      "username": "xia-roles-card1"
-    },
-    "model": "auth.User", "pk": 30
-},
-{
-    "fields": {
-      "last_signed": "2022-01-01T00:00:00+00:00",
-      "agreement": 1,
-      "user": 30
-    },
-    "model": "saas.signature", "pk": 30
 },
 {
     "fields": {
@@ -875,4 +875,82 @@
       "username": "xia8"
     },
     "model": "auth.User", "pk": 20
+},
+{
+    "fields": {
+      "date_joined": "2022-01-01T00:00:00-09:00",
+      "email": "xia+21@example.com",
+      "first_name": "Xia21",
+      "is_active": true,
+      "is_staff": false,
+      "is_superuser": false,
+      "last_login": "2022-01-01T00:00:00-09:00",
+      "last_name": "",
+      "password": "pbkdf2_sha256$10000$z0MBiWn0Rlem$iZdC6uHomlE07qGK/TqfcfxNzKJtFp03c0JILF1frRc=",
+      "username": "xia21"
+    },
+    "model": "auth.User", "pk": 21
+},
+{
+    "fields": {
+      "last_signed": "2022-01-01T00:00:00+00:00",
+      "agreement": 1,
+      "user": 21
+    },
+    "model": "saas.signature", "pk": 21
+},
+{
+    "fields": {
+      "slug": "xia21",
+      "full_name": "BillingAPI13",
+      "email": "xia+21@localhost.localdomain",
+      "created_at": "2022-01-01T00:00:00+00:00",
+      "processor": 1,
+      "is_provider": 1,
+      "is_active": 1
+    },
+    "model": "saas.Organization", "pk": 21
+},
+{
+    "fields": {
+      "created_at": "2022-01-01T00:00:00+00:00",
+      "role_description": 1,
+      "organization": 21,
+      "user": 21
+    },
+    "model": "saas.Role", "pk": 21
+},
+{
+    "fields": {
+      "date_joined": "2022-01-01T00:00:00-00:00",
+      "email": "xia+roles-card1@localhost.localdomain",
+      "first_name": "Xia",
+      "last_name": "Roles Card1",
+      "is_active": true,
+      "is_staff": false,
+      "is_superuser": false,
+      "password": "pbkdf2_sha256$10000$z0MBiWn0Rlem$iZdC6uHomlE07qGK/TqfcfxNzKJtFp03c0JILF1frRc=", 
+      "username": "xia-roles-card1"
+    },
+    "model": "auth.User", "pk": 30
+},
+{
+    "fields": {
+      "last_signed": "2022-01-01T00:00:00+00:00",
+      "agreement": 1,
+      "user": 30
+    },
+    "model": "saas.signature", "pk": 30
+},
+{
+    "fields": {
+      "slug": "djaoapp-roles-card1",
+      "full_name": "RolesCard1",
+      "email": "djaoapp-roles-card1@localhost.localdomain",
+      "created_at": "2022-01-01T00:00:00+00:00",
+      "processor": 1,
+      "is_provider": 1,
+      "is_active": 1
+    },
+    "model": "saas.Organization", "pk": 30
 }]

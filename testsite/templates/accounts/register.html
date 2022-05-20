@@ -4,7 +4,7 @@
 <div>
   <h1>Sign up</div>
     <div>
-      <form action="/register/{% if next %}?next={{next}}{% endif %}" method="post">
+      <form id="register-form" action="/register/{% if next %}?next={{next}}{% endif %}" method="post">
         <input type="hidden" name="csrfmiddlewaretoken" value="{{csrf_token}}">
         <div>
             <label>Username</label>
