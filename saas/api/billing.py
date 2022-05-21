@@ -41,9 +41,11 @@ from ..compat import gettext_lazy as _, is_authenticated, StringIO
 from ..docs import swagger_auto_schema, OpenAPIResponse
 from ..mixins import BalanceAndCartMixin, CartMixin, InvoicablesMixin
 from ..models import CartItem
-from .serializers import (CartItemCreateSerializer, CartItemUploadSerializer,
-    ChargeSerializer, CheckoutSerializer, OrganizationCartSerializer,
-    RedeemCouponSerializer, ValidationErrorSerializer)
+from ..utils import datetime_or_now
+from .serializers import (CartItemSerializer, CartItemCreateSerializer,
+    CartItemUploadSerializer, ChargeSerializer, CheckoutSerializer,
+    OrganizationCartSerializer, RedeemCouponSerializer,
+    ValidationErrorSerializer)
 
 #pylint: disable=no-init
 LOGGER = logging.getLogger(__name__)
@@ -108,6 +110,9 @@ class CartItemAPIView(CartMixin, CreateAPIView):
     # and csrf, unfortunately it prevents authenticated users to add into
     # their db cart, instead put their choices into the unauth session.
     # authentication_classes = []
+    @swagger_auto_schema(responses={
+      200: OpenAPIResponse("updated", CartItemSerializer),
+      201: OpenAPIResponse("created", CartItemSerializer)})
     def post(self, request, *args, **kwargs):
         items = None
         serializer = self.get_serializer(data=request.data)
@@ -122,17 +127,18 @@ class CartItemAPIView(CartMixin, CreateAPIView):
                 serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
         cart_items = []
+        at_time = datetime_or_now()
         status_code = status.HTTP_200_OK
+        serializer = CartItemSerializer()
         for item in items:
-            cart_item, created = self.insert_item(request, **item)
+            cart_item, created = self.insert_item(
+                request, at_time=at_time, **item)
             if created:
                 status_code = status.HTTP_201_CREATED
             # insert_item will either return a dict or a CartItem instance
             # (which cannot be directly serialized).
             if isinstance(cart_item, CartItem):
                 cart_item = serializer.to_representation(cart_item)
-            if cart_item.get('sync_on'):
-                cart_item.update({'detail': _("User was added.")})
             cart_items += [cart_item]
         if len(items) > 1:
             headers = self.get_success_headers(cart_items)
@@ -258,6 +264,9 @@ class CartItemUploadAPIView(CartMixin, GenericAPIView):
         filed = csv.reader(StringIO(uploaded.read().decode(
             'utf-8', 'ignore')) if uploaded else StringIO())
 
+        at_time = datetime_or_now()
+        status_code = status.HTTP_200_OK
+        resp_serializer = CartItemSerializer()
         for row in filed:
             try:
                 if len(row) == 2:
@@ -277,11 +286,13 @@ class CartItemUploadAPIView(CartMixin, GenericAPIView):
                           'sync_on': email,
                           'email': email})
                 if serializer.is_valid():
+                    # similar code as `CartItemAPIView.post`
                     cart_item, created = self.insert_item(
-                        request, **serializer.data)
+                        request, at_time=at_time, **serializer.data)
                     if isinstance(cart_item, CartItem):
-                        cart_item = serializer.to_representation(cart_item)
+                        cart_item = resp_serializer.to_representation(cart_item)
                     if created:
+                        status_code = status.HTTP_201_CREATED
                         response['created'].append(cart_item)
                     else:
                         response['updated'].append(cart_item)
@@ -289,7 +300,7 @@ class CartItemUploadAPIView(CartMixin, GenericAPIView):
                     response['failed'].append({'data': serializer.data,
                                                'error': serializer.errors})
 
-        return Response(response)
+        return Response(response, status=status_code)
 
 
 class CouponRedeemAPIView(GenericAPIView):

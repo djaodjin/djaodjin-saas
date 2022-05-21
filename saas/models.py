@@ -725,7 +725,7 @@ class Organization(models.Model):
         claim_carts = {}
         invoiced_items = []
         new_organizations = []
-        coupon_providers = set([])
+        coupon_by_plans = {}
         for invoicable in invoicables:
             subscription = invoicable['subscription']
             # If the invoicable we are checking out is somehow related to
@@ -759,7 +759,10 @@ class Organization(models.Model):
                 if not key in new_organizations:
                     claim_carts[key] = []
                     new_organizations += [subscription.organization]
-                    coupon_providers |= set([subscription.provider])
+                    if subscription.plan not in coupon_by_plans:
+                        coupon_by_plans.update({subscription.plan: 1})
+                    else:
+                        coupon_by_plans[subscription.plan] += 1
                 assert cart_item is not None
                 claim_carts[key] += [cart_item]
             else:
@@ -780,20 +783,22 @@ class Organization(models.Model):
         # their cart automatically.
         coupons = {}
         claim_codes = {}
-        for coupon_provider in coupon_providers:
+        for plan, nb_attempts in six.iteritems(coupon_by_plans):
             coupon = Coupon.objects.create(
                 code='cpn_%s' % generate_random_slug(),
-                organization=coupon_provider,
+                organization=plan.organization,
                 discount_type=Coupon.PERCENTAGE, discount_value=10000,
-                nb_attempts=1,
+                ends_at=None,
+                plan=plan,
+                nb_attempts=nb_attempts,
                 description=('Auto-generated after payment by %s'
                     % self.printable_name))
             LOGGER.info('Auto-generated Coupon %s for %s',
-                coupon.code, coupon_provider,
+                coupon.code, plan.organization,
                 extra={'event': 'create-coupon',
-                    'coupon': coupon.code, 'auto': True,
-                    'provider': coupon_provider.slug})
-            coupons.update({coupon_provider.id: coupon})
+                'coupon': coupon.code, 'auto': True,
+                'provider': plan.organization.slug})
+            coupons.update({plan.pk: coupon})
         for key, cart_items in six.iteritems(claim_carts):
             claim_code = None
             for cart_item in cart_items:
@@ -806,7 +811,7 @@ class Organization(models.Model):
                     if not claim_code:
                         claim_code = generate_random_slug()
                     cart_item.claim_code = claim_code
-                cart_item.coupon = coupons[cart_item.plan.organization.id]
+                cart_item.coupon = coupons[cart_item.plan.pk]
                 cart_item.save()
             if claim_code:
                 nb_cart_items = len(cart_items)
@@ -825,7 +830,7 @@ class Organization(models.Model):
             if subscription.id:
                 event_id = get_sub_event_id(subscription)
             else:
-                coupon = coupons[subscription.provider.id]
+                coupon = coupons[subscription.plan.pk]
                 # XXX should we not use a `cpn_` prefixed event_id here?
                 #     see also InvoicedItem.get_event()
                 event_id = coupon.code
@@ -3216,6 +3221,18 @@ class SubscriptionManager(models.Manager):
                 ends_at=plan.end_of_period(created_at), **kwargs)
         return super(SubscriptionManager, self).create(**kwargs)
 
+    def from_cart_item(self, cart_item, at_time=None):
+        """
+        Returns a candidate Subscription based on a cart_item.
+        """
+        if cart_item.sync_on:
+            return self.get(
+                Q(organization__slug=cart_item.sync_on)
+                | Q(organization__email__iexact=cart_item.sync_on),
+                plan=cart_item.plan,
+                ends_at__gt=datetime_or_now(at_time))
+        raise Subscription.DoesNotExist()
+
     def get_by_event_id(self, event_id):
         """
         Returns a `Subscription` based on a `Transaction.event_id` key.
@@ -3999,7 +4016,7 @@ class TransactionManager(models.Manager):
                 full_name = subscription.organization.printable_name
             descr = humanize.describe_buy_periods(
                 subscription.plan, ends_at, nb_periods,
-                full_name=full_name)
+                full_name=full_name) # full_name without a coupon
         elif not descr:
             LOGGER.warning("creating a `new_subscription_order` for %s"\
                 " with amount %d has no description.",

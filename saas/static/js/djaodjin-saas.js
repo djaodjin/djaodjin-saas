@@ -542,20 +542,15 @@
             }
         },
 
-        createLineMessage: function(data) {
-            return data.full_name + " (" + data.sync_on + ")";
-        },
-
         insertLine: function(data) {
-            var msg = this.createLineMessage(data);
+            var msg = data.detail;
             var prevLine = this.element.find("tbody[data-plan='" +
                 data.plan + "'] .invoice-item").last();
             var newLine = prevLine.clone();
             var clonedNode = newLine.children("td.line-descr");
 
             prevLine.removeClass("alert alert-info");
-            var txt = clonedNode.text().split(', for');
-            clonedNode.text(txt[0] + ", for " + msg);
+            clonedNode.text(msg);
             newLine.insertAfter(prevLine);
             newLine.addClass("alert alert-info");
 
@@ -563,7 +558,7 @@
         },
 
         updateLine: function(data) {
-            var msg = this.createLineMessage(data);
+            var msg =  data.detail;
             var prevLine = this.element.find("tbody[data-plan='" +
                 data.plan + "'] .invoice-item")
             var dup = null;
@@ -580,9 +575,7 @@
             }
             var newLine = prevLine;
             var descrNode = newLine.children("td.line-descr");
-
-            var txt = descrNode.text().split(', for');
-            descrNode.text(txt[0] + ", for " + msg);
+            descrNode.text(msg);
             newLine.addClass("alert alert-info");
 
             this.updateTotalAmount();

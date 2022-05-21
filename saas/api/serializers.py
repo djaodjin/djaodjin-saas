@@ -841,12 +841,23 @@ class CartItemSerializer(serializers.ModelSerializer):
         help_text=_("User the cart belongs to"))
     plan = PlanRelatedField(
         help_text=_("Item in the cart (if plan)"))
+    detail = serializers.SerializerMethodField(read_only=True, required=False,
+        help_text=_("Describes the result of the action"\
+            " in human-readable form"))
 
     class Meta:
         model = CartItem
         fields = ('created_at', 'user', 'plan', 'option', 'full_name',
-            'sync_on', 'email')
-        read_only_fields = ('created_at', 'user')
+            'sync_on', 'email', 'detail')
+        read_only_fields = ('created_at', 'user', 'detail')
+
+    @staticmethod
+    def get_detail(obj):
+        if hasattr(obj, 'detail'):
+            return obj.detail
+        if isinstance(obj, dict):
+            return obj.get('detail')
+        return None
 
 
 class CartItemCreateSerializer(serializers.ModelSerializer):
@@ -1015,6 +1026,7 @@ class RoleCreateSerializer(NoModelSerializer):
         help_text=_("Username"),
         validators=[validators.RegexValidator(settings.ACCT_REGEX,
             _("Enter a valid username."), 'invalid')])
+    #pylint:disable=protected-access
     email = serializers.EmailField(
         max_length=get_user_model()._meta.get_field('email').max_length,
         required=False,
@@ -1033,6 +1045,7 @@ class RoleCreateSerializer(NoModelSerializer):
         # a validation error if the length is too long but arbitrarly shorten
         # the username.
         user_model = get_user_model()
+        #pylint:disable=protected-access
         max_length = user_model._meta.get_field('username').max_length
         if len(data) > max_length:
             if '@' in data:

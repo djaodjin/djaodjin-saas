@@ -113,9 +113,22 @@ class CartMixin(object):
     Mixin to retrieve a user's cart as line items for a checkout workflow.
     """
 
-    @staticmethod
-    def insert_item(request, **kwargs):
-        return cart_insert_item(request, **kwargs)
+    def insert_item(self, request, at_time=None, **kwargs):
+        cart_item, created = cart_insert_item(request, **kwargs)
+        detail = None
+        # insert_item will either return a dict or a CartItem instance
+        # (which cannot be directly serialized).
+        if isinstance(cart_item, CartItem):
+            try:
+                invoicable = self.cart_item_as_invoicable(
+                    cart_item, at_time=at_time)
+                if (not invoicable.get('options') and
+                    len(invoicable.get('lines', [])) == 1):
+                    detail = invoicable['lines'][0].descr
+            except get_organization_model().DoesNotExist:
+                detail = None
+            cart_item.detail = detail
+        return cart_item, created
 
     def get_cart(self):
         """
@@ -139,7 +152,7 @@ class CartMixin(object):
 
     @staticmethod
     def get_cart_options(subscription, created_at=None,
-                               prorate_to=None, cart_item=None):
+                         prorate_to=None, cart_item=None):
         """
         Return a set of lines that must charged Today and a set of choices
         based on current subscriptions that the user might be willing
@@ -158,13 +171,7 @@ class CartMixin(object):
             prorated_amount = plan.prorate_period(created_at, prorate_to)
         full_amount = prorated_amount + plan.period_amount
 
-        coupon = None
-        full_name = None
-        if cart_item:
-            coupon = cart_item.coupon
-            if coupon:
-                if coupon.code.startswith('cpn_'):
-                    full_name = cart_item.full_name
+        coupon = cart_item.coupon if cart_item else None
 
         discount_by_types = {}
         coupon_discount_amount = 0
@@ -195,10 +202,8 @@ class CartMixin(object):
                 created_at=created_at)]
 
         else:
-            nb_periods = subscription.plan.period_length
-            ends_at = subscription.plan.end_of_period(
-                subscription.ends_at, nb_periods)
-
+            ends_at = plan.end_of_period(
+                subscription.ends_at, plan.period_length)
             option_items += [Transaction.objects.new_subscription_order(
                 subscription,
                 amount=amount,
@@ -206,7 +211,7 @@ class CartMixin(object):
                     plan, ends_at, 1,
                     discount_by_types=discount_by_types,
                     coupon=coupon,
-                    full_name=full_name),
+                    cart_item=cart_item),
                 created_at=created_at)]
 
             advance_discounts = plan.advance_discounts.all().order_by('length')
@@ -245,10 +250,99 @@ class CartMixin(object):
                         plan, ends_at, nb_periods,
                         discount_by_types=discount_by_types,
                         coupon=coupon,
-                        full_name=full_name),
+                        cart_item=cart_item),
                     created_at=created_at)]
 
         return option_items
+
+    def cart_item_as_invoicable(self, cart_item, customer=None, at_time=None):
+        created_at = datetime_or_now(at_time)
+        prorate_to_billing = False
+        prorate_to = None
+        if prorate_to_billing:
+            # XXX First we add enough periods to get the next billing date later
+            # than created_at but no more than one period in the future.
+            prorate_to = customer.billing_start
+        subscriber = customer
+        organization_model = get_organization_model()
+        if cart_item.sync_on:
+            try:
+                subscriber = organization_model.objects.get(
+                    models.Q(slug=cart_item.sync_on)
+                    | models.Q(email__iexact=cart_item.sync_on))
+            except organization_model.DoesNotExist:
+                # commit c30c4c58 states "not a groupbuy when sync_on is
+                # a username"
+                user_queryset = get_user_model().objects.filter(
+                    models.Q(username=cart_item.sync_on)
+                    | models.Q(email__iexact=cart_item.sync_on))
+                if not user_queryset.exists():
+                    # XXX Hacky way to determine GroupBuy vs. notify.
+                    subscriber = get_organization_model()(
+                        full_name=cart_item.full_name.strip(),
+                        email=cart_item.sync_on)
+        if not subscriber:
+            # We cannot figure out a subscriber from the cart_item
+            # and not profile was passed as a customer to be billed.
+            raise organization_model.DoesNotExist()
+        try:
+            # If we can extend a current ``Subscription`` we will.
+            # XXX For each (organization, plan) there should not
+            #     be overlapping timeframe [created_at, ends_at[,
+            #     None-the-less, it might be a good idea to catch
+            #     and throw a nice error message in case.
+            subscription = Subscription.objects.get(
+                organization=subscriber, plan=cart_item.plan,
+                ends_at__gt=created_at)
+        except Subscription.DoesNotExist:
+            ends_at = prorate_to if prorate_to else created_at
+            subscription = Subscription.objects.new_instance(
+                subscriber, cart_item.plan, ends_at=ends_at)
+        lines = []
+        options = []
+        if cart_item.use:
+            # We are dealing with an additional use charge instead
+            # of the base subscription.
+            lines += [Transaction.objects.new_use_charge(subscription,
+                cart_item.use, cart_item.option)]
+        else:
+            options = self.get_cart_options(subscription,
+                created_at=created_at, prorate_to=prorate_to,
+                cart_item=cart_item)
+            # option is selected
+            if len(options) == 1:
+                # We only have one option.
+                # It could happen when we use a 100% discount coupon
+                # with advance discounts; in which case the advance
+                # discounts would be cancelled. nothing is totally free.
+                line = options[0]
+                lines += [line]
+                options = []
+            elif (cart_item.option > 0 and
+                (cart_item.option - 1) < len(options)):
+                # The number of periods was already selected so we generate
+                # a line instead.
+                line = options[cart_item.option - 1]
+                lines += [line]
+                options = []
+        # Both ``TransactionManager.new_use_charge``
+        # and ``TransactionManager.new_subscription_order`` will have
+        # created a ``Transaction`` with the ultimate subscriber
+        # as payee. Overriding ``dest_organization`` here
+        # insures in all cases (bulk and direct buying),
+        # the transaction is recorded (in ``execute_order``)
+        # on behalf of the customer on the checkout page.
+        for line in lines:
+            line.dest_organization = customer
+
+        return {
+            'subscription': subscription,
+            'name': cart_item.name,
+            'lines': lines,
+            'options': options,
+            'descr': cart_item.descr,
+        }
+
 
     def as_invoicables(self, user, customer, at_time=None):
         """
@@ -279,92 +373,10 @@ class CartMixin(object):
         """
         #pylint: disable=too-many-locals
         created_at = datetime_or_now(at_time)
-        prorate_to_billing = False
-        prorate_to = None
-        if prorate_to_billing:
-            # XXX First we add enough periods to get the next billing date later
-            # than created_at but no more than one period in the future.
-            prorate_to = customer.billing_start
         invoicables = []
         for cart_item in CartItem.objects.get_cart(user=user):
-            for_descr = ''
-            organization = customer
-            if cart_item.sync_on:
-                full_name = cart_item.full_name.strip()
-                for_descr = ', for %s (%s)' % (full_name, cart_item.sync_on)
-                organization_queryset = get_organization_model().objects.filter(
-                    models.Q(slug=cart_item.sync_on)
-                    | models.Q(email__iexact=cart_item.sync_on))
-                if organization_queryset.exists():
-                    organization = organization_queryset.get()
-                else:
-                    user_queryset = get_user_model().objects.filter(
-                        models.Q(username=cart_item.sync_on)
-                        | models.Q(email__iexact=cart_item.sync_on))
-                    if not user_queryset.exists():
-                        # XXX Hacky way to determine GroupBuy vs. notify.
-                        organization = get_organization_model()(
-                            full_name=cart_item.full_name,
-                            email=cart_item.sync_on)
-            try:
-                # If we can extend a current ``Subscription`` we will.
-                # XXX For each (organization, plan) there should not
-                #     be overlapping timeframe [created_at, ends_at[,
-                #     None-the-less, it might be a good idea to catch
-                #     and throw a nice error message in case.
-                subscription = Subscription.objects.get(
-                    organization=organization, plan=cart_item.plan,
-                    ends_at__gt=datetime_or_now())
-            except Subscription.DoesNotExist:
-                ends_at = prorate_to
-                if not ends_at:
-                    ends_at = created_at
-                subscription = Subscription.objects.new_instance(
-                    organization, cart_item.plan, ends_at=ends_at)
-            lines = []
-            options = []
-            if cart_item.use:
-                # We are dealing with an additional use charge instead
-                # of the base subscription.
-                lines += [Transaction.objects.new_use_charge(subscription,
-                    cart_item.use, cart_item.option)]
-            else:
-                options = self.get_cart_options(subscription,
-                    created_at=created_at, prorate_to=prorate_to,
-                    cart_item=cart_item)
-                # option is selected
-                if len(options) == 1:
-                    # We only have one option.
-                    # It could happen when we use a 100% discount coupon
-                    # with advance discounts; in which case the advance
-                    # discounts would be cancelled. nothing is totally free.
-                    line = options[0]
-                    lines += [line]
-                    options = []
-                elif (cart_item.option > 0 and
-                    (cart_item.option - 1) < len(options)):
-                    # The number of periods was already selected so we generate
-                    # a line instead.
-                    line = options[cart_item.option - 1]
-                    lines += [line]
-                    options = []
-            # Both ``TransactionManager.new_use_charge``
-            # and ``TransactionManager.new_subscription_order`` will have
-            # created a ``Transaction`` with the ultimate subscriber
-            # as payee. Overriding ``dest_organization`` here
-            # insures in all cases (bulk and direct buying),
-            # the transaction is recorded (in ``execute_order``)
-            # on behalf of the customer on the checkout page.
-            for line in lines:
-                line.dest_organization = customer
-                line.descr += for_descr
-            invoicables += [{
-                'subscription': subscription,
-                'name': cart_item.name,
-                'lines': lines,
-                'options': options,
-                'descr': cart_item.descr,
-            }]
+            invoicables += [self.cart_item_as_invoicable(
+                cart_item, customer, at_time=created_at)]
         return invoicables
 
 

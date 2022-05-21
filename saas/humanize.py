@@ -102,6 +102,9 @@ DESCRIBE_SUFFIX_DISCOUNT_PERIOD = \
 DESCRIBE_SUFFIX_DISCOUNT_CURRENCY = \
     "a %(amount)s off"
 
+DESCRIBE_SUFFIX_TARGET_SUBSCRIBER = \
+    "for %(subscriber)s (%(sync_on)s)"
+
 DESCRIBE_SUFFIX_GROUP_BUY = \
     ", complimentary of %(payer)s"
 
@@ -126,7 +129,9 @@ REGEXES = {
     'plan': r'(?P<plan>\S+)',
     'quantity': r'(?P<quantity>\d+)',
     'refund_type': r'(?P<refund_type>\S+)',
+    'subscriber': r'(?P<subscriber>\S+)',
     'subscription': r'(?P<subscriber>\S+):(?P<plan>\S+)',
+    'sync_on': r'(?P<sync_on>\S+)',
     'use_charge': r'(?P<use_charge>\S+)',
     'unlock_event': r'(?P<unlock_event>\S+)',
 }
@@ -269,6 +274,7 @@ def translate_descr_suffix(descr):
         r"(%(nb_periods)s %(period_name)s free)?( and )?"\
         r"(a %(amount)s off)?"\
         r"(, complimentary of %(payer)s)?"\
+        r"(\s*for %(subscriber)s \(%(sync_on)s\))?"\
         r"( \(code: %(code)s\))?" % REGEXES
     look = re.match(pat, descr_suffix)
     if look:
@@ -308,7 +314,7 @@ def translate_descr_suffix(descr):
 
 
 def describe_buy_periods(plan, ends_at, nb_periods, discount_by_types=None,
-                         coupon=None, full_name=None):
+                         coupon=None, cart_item=None, full_name=None):
     #pylint:disable=too-many-arguments
     descr = DESCRIBE_BUY_PERIODS % {
         'plan': plan,
@@ -318,8 +324,16 @@ def describe_buy_periods(plan, ends_at, nb_periods, discount_by_types=None,
     sep = ""
     descr_suffix = ""
 
-    if not coupon and full_name:
+    # triggered by `new_subscription_order` through the renewals
+    # process (amount is None).
+    # XXX It seems to be able to figure out which account was billed
+    # when receiving multiple receipts.
+    if full_name:
         descr_suffix += "%s" % full_name
+
+    if coupon and not discount_by_types:
+        discount_by_types = {}
+        discount_by_types[coupon.discount_type] = coupon.discount_value
 
     if discount_by_types:
         discount_amount = discount_by_types.get(DISCOUNT_PERCENTAGE)
@@ -342,12 +356,24 @@ def describe_buy_periods(plan, ends_at, nb_periods, discount_by_types=None,
 
     if coupon:
         if coupon.code.startswith('cpn_'):
-            if full_name:
+            # We have switched the full_name from the target subscriber
+            # to the group buyer in `execute_order`.
+            if cart_item and cart_item.full_name:
                 descr_suffix += DESCRIBE_SUFFIX_GROUP_BUY % {
                     'payer': full_name}
         else:
             descr_suffix += DESCRIBE_SUFFIX_COUPON_APPLIED % {
                 'code': coupon.code}
+
+    if cart_item and cart_item.sync_on:
+        # We also set sync_on to None in `execute_order`, so both
+        # above DESCRIBE_SUFFIX_GROUP_BUY and here cannot happen
+        # at the same time.
+        if descr_suffix:
+            descr_suffix += " "
+        descr_suffix += DESCRIBE_SUFFIX_TARGET_SUBSCRIBER % {
+            'subscriber': cart_item.full_name,
+            'sync_on': cart_item.sync_on}
 
     if descr_suffix:
         descr += " - %s" % descr_suffix
