@@ -3476,6 +3476,27 @@ class TransactionQuerySet(models.QuerySet):
             dest_balance_per_events[event_id].update({
                 dest_balance['dest_unit']: dest_balance['dest_balance']})
 
+        # If the subscription is extended by a group buyer, `dest_organization`
+        # will be the group buyer, not the final subscriber. On the other hand
+        # `orig_balances` (BACKLOG to RECEIVABLE) references the provider.
+        groupbuy_dest_balances = self.filter(
+            Q(dest_account=Transaction.PAYABLE),
+            event_id__in=dest_balance_per_events.keys(),
+            created_at__lt=until).exclude(
+                dest_organization=organization).values(
+                'event_id', 'dest_unit').annotate(
+                dest_balance=Sum('dest_amount'),
+                last_activity_at=Max('created_at')).order_by(
+                    'last_activity_at')
+        for dest_balance in groupbuy_dest_balances:
+            event_id = dest_balance['event_id']
+            by_units = dest_balance_per_events.get(event_id, {})
+            balance_amount = (by_units.get(dest_balance['dest_unit'], 0) +
+                dest_balance['dest_balance'])
+            by_units.update({dest_balance['dest_unit']: balance_amount})
+            if event_id not in dest_balance_per_events:
+                dest_balance_per_events.update({event_id: by_units})
+
         # Then all payments for these orders will either be of the form:
         #     yyyy/mm/dd sub_***** distribution to provider (backlog accounting)
         #        provider:Receivable                      plan_amount
