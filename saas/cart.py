@@ -25,6 +25,7 @@
 from __future__ import unicode_literals
 
 from django.db import transaction
+from django.db.models import Q
 from rest_framework.generics import get_object_or_404
 
 from .compat import is_authenticated
@@ -40,132 +41,231 @@ def cart_insert_item(request, **kwargs):
     #pylint: disable=too-many-locals
     created = False
     inserted_item = None
-    template_item = None
     invoice_key = kwargs.get('invoice_key')
     sync_on = kwargs.get('sync_on', '')
     option = kwargs.get('option', 0)
-    email = kwargs.get('email', '')
+    full_name = kwargs.get('full_name', '')
     plan = kwargs['plan']
     if not isinstance(plan, Plan):
         plan = get_object_or_404(Plan.objects.all(), slug=plan)
     use = kwargs.get('use', None)
     if use and not isinstance(use, UseCharge):
-        use = get_object_or_404(UseCharge.objects.filter(
-            plan=plan), slug=use)
+        use = get_object_or_404(UseCharge.objects.filter(plan=plan), slug=use)
+    redeemed = request.session.get('redeemed', None)
+    if redeemed:
+        redeemed = Coupon.objects.active(
+            plan.organization, redeemed, plan=plan).first()
+
     if is_authenticated(request):
         # If the user is authenticated, we just create the cart items
         # into the database.
+        template_item = None
         queryset = CartItem.objects.get_cart(
             request.user, plan=plan).order_by('-sync_on')
-        if queryset.exists():
-            template_item = queryset.first()
+        template_item = queryset.first()
         if template_item:
-            created = False
-            inserted_item = template_item
+            # Can we find a better template?
+            filter_args = None
             if sync_on:
-                account = queryset.filter(email=email)
-                if account.exists():
-                    inserted_item = template_item = account.first()
-
-                template_option = template_item.option
-                if option > 0:
-                    template_option = option
-                # Bulk buyer subscribes someone else than request.user
-                if template_item.sync_on:
-                    if sync_on != template_item.sync_on:
-                        # Copy/Replace in template CartItem
-                        created = True
-                        inserted_item = CartItem.objects.create(
-                            user=request.user,
-                            plan=template_item.plan,
-                            use=template_item.use,
-                            coupon=template_item.coupon,
-                            option=template_option,
-                            full_name=kwargs.get('full_name', ''),
-                            sync_on=sync_on,
-                            email=email,
-                            claim_code=invoice_key)
+                if filter_args:
+                    filter_args |= Q(sync_on=sync_on)
                 else:
-                    # Use template CartItem
-                    inserted_item.full_name = kwargs.get('full_name', '')
-                    inserted_item.option = template_option
-                    inserted_item.sync_on = sync_on
-                    inserted_item.email = email
-                    inserted_item.save()
-            else:
-                # Use template CartItem
-                inserted_item.full_name = kwargs.get('full_name', '')
-                inserted_item.option = option
-                inserted_item.save()
-        else:
+                    filter_args = Q(sync_on=sync_on)
+            if option:
+                if filter_args:
+                    filter_args |= Q(option=option)
+                else:
+                    filter_args = Q(option=option)
+            if use:
+                if filter_args:
+                    filter_args |= Q(use=use)
+                else:
+                    filter_args = Q(use=use)
+            if filter_args:
+                better_template_item = queryset.filter(filter_args).order_by(
+                    'sync_on', 'option', 'use').first()
+                if better_template_item:
+                    template_item = better_template_item
+            # Merge default values
+            if not sync_on:
+                sync_on = template_item.sync_on
+            if not option:
+                option = template_item.option
+            if not use:
+                use = template_item.use
+            # Can we use that template?
+            if sync_on:
+                if template_item.sync_on and template_item.sync_on != sync_on:
+                    # conflicting sync_on. we cannot use the template.
+                    template_item = None
+            if template_item and option:
+                if template_item.option and template_item.option != option:
+                    # conflicting option. we cannot use the template.
+                    template_item = None
+            if template_item and use:
+                if template_item.use and template_item.use != use:
+                    # conflicting use. we cannot use the template.
+                    template_item = None
+            if template_item:
+                # There is no conflict. We can use the template.
+                if sync_on and not template_item.sync_on:
+                    template_item.sync_on = sync_on
+                if option and not template_item.option:
+                    template_item.option = option
+                if use and not template_item.use:
+                    template_item.use = use
+                if full_name:
+                    template_item.full_name = full_name
+                if not template_item.coupon:
+                    template_item.coupon = redeemed
+                template_item.save()
+                inserted_item = template_item
+        if not inserted_item:
             # New CartItem
             created = True
-            item_queryset = CartItem.objects.get_cart(user=request.user,
-                plan=plan, sync_on=sync_on)
-            # TODO this conditional is not necessary: at this point
-            # we have already checked that there is no such CartItem, right?
-            if item_queryset.exists():
-                inserted_item = item_queryset.get()
-            else:
-                redeemed = request.session.get('redeemed', None)
-                if redeemed:
-                    redeemed = Coupon.objects.active(
-                        plan.organization, redeemed).first()
-                inserted_item = CartItem.objects.create(
-                    plan=plan, use=use, coupon=redeemed,
-                    user=request.user,
-                    option=option,
-                    full_name=kwargs.get('full_name', ''),
-                    sync_on=sync_on, claim_code=invoice_key)
-
+            inserted_item = CartItem.objects.create(
+                plan=plan,
+                use=use,
+                coupon=redeemed,
+                user=request.user,
+                option=option,
+                full_name=full_name,
+                sync_on=sync_on,
+                claim_code=invoice_key)
     else:
         # We have an anonymous user so let's play some tricks with
         # the session data.
+        template_item = {}
         cart_items = []
         if 'cart_items' in request.session:
             cart_items = request.session['cart_items']
+        # Can we find a template?
         for item in cart_items:
             if item['plan'] == str(plan):
                 if not template_item:
                     template_item = item
-                elif ('sync_on' in template_item and 'sync_on' in item
-                  and len(template_item['sync_on']) > len(item['sync_on'])):
-                    template_item = item
+                    continue
+                if sync_on:
+                    item_sync_on = item.get('sync_on')
+                    if item_sync_on and item_sync_on == sync_on:
+                        if not template_item:
+                            template_item = item
+                            continue
+                        if template_item.get('sync_on') != sync_on:
+                            # The item matches on sync_on but the template
+                            # does not.
+                            template_item = item
+                            continue
+                        # We have a template_item with sync_on. Let's see
+                        # if we find a better candidate.
+                        if option:
+                            item_option = item.get('option')
+                            if item_option and item_option == option:
+                                if not template_item:
+                                    template_item = item
+                                    continue
+                                if template_item.get('option') != option:
+                                    template_item = item
+                                    continue
+                                if use:
+                                    item_use = item.get('use')
+                                    if item_use and item_use == use:
+                                        if not template_item:
+                                            template_item = item
+                                            continue
+                                        if template_item.get('use') != use:
+                                            template_item = item
+                                            continue
+                    if (template_item and
+                        template_item.get('sync_on') == sync_on):
+                        # We already have a template matching on `sync_on`.
+                        continue
+                # Couldn't match on `sync_on`. next is `option`.
+                if option:
+                    item_option = item.get('option')
+                    if item_option and item_option == option:
+                        if not template_item:
+                            template_item = item
+                            continue
+
+                        if template_item.get('option') != option:
+                            template_item = item
+                            continue
+                        if use:
+                            item_use = item.get('use')
+                            if item_use and item_use == use:
+                                if not template_item:
+                                    template_item = item
+                                    continue
+                                if template_item.get('use') != use:
+                                    template_item = item
+                                    continue
+                    if (template_item and
+                        template_item.get('option') == option):
+                        # We already have a template matching on `sync_on`
+                        # or `option`.
+                        continue
+                # Couldn't match on `sync_on` not `option`. next is `use`.
+                if use:
+                    item_use = item.get('use')
+                    if item_use and item_use == use:
+                        if not template_item:
+                            template_item = item
+                            continue
+                        if template_item.get('use') != use:
+                            template_item = item
+                            continue
+
         if template_item:
-            created = False
-            inserted_item = template_item
+            # Merge default values
+            if not sync_on:
+                sync_on = template_item.get('sync_on')
+            if not option:
+                option = template_item.get('option')
+            if not use:
+                use = template_item.get('use')
+            # Can we use that template?
             if sync_on:
-                # Bulk buyer subscribes someone else than request.user
-                if template_item.sync_on:
-                    if sync_on != template_item.sync_on:
-                        # (anonymous) Copy/Replace in template item
-                        created = True
-                        cart_items += [{
-                            'plan': template_item['plan'],
-                            'use': template_item['use'],
-                            'option': template_item['option'],
-                            'full_name': kwargs.get('full_name', ''),
-                            'sync_on': sync_on,
-                            'email': email,
-                            'invoice_key': invoice_key}]
-                else:
-                    # (anonymous) Use template item
-                    inserted_item['full_name'] = kwargs.get(
-                        'full_name', '')
-                    inserted_item['sync_on'] = sync_on
-                    inserted_item['email'] = email
-        else:
+                template_sync_on = template_item.get('sync_on')
+                if template_sync_on and template_sync_on != sync_on:
+                    # conflicting sync_on. we cannot use the template.
+                    template_item = None
+            if template_item and option:
+                template_option = template_item.get('option')
+                if template_option and template_option != option:
+                    # conflicting option. we cannot use the template.
+                    template_item = None
+            if template_item and use:
+                template_use = template_item.get('use')
+                if template_use and template_use != use:
+                    # conflicting use. we cannot use the template.
+                    template_item = None
+            if template_item:
+                # There is no conflict. We can use the template.
+                if sync_on and not template_item.get('sync_on'):
+                    template_item.update({'sync_on': sync_on})
+                if option and not template_item.get('option'):
+                    template_item.update({'option': option})
+                if use and not template_item.get('use'):
+                    template_item.update({'use': str(use)})
+                if full_name:
+                    template_item.update({'full_name': full_name})
+                if not template_item.get('coupon') and redeemed:
+                    template_item.update({'coupon': str(redeemed)})
+                inserted_item = template_item
+        if not inserted_item:
             # (anonymous) New item
             created = True
             inserted_item = {
                 'plan': str(plan),
                 'use': str(use),
-                'option': kwargs.get('option', 0),
-                'full_name': kwargs.get('full_name', ''),
+                'option': option,
+                'full_name': full_name,
                 'sync_on': sync_on,
-                'email': email,
                 'invoice_key': invoice_key
             }
+            if redeemed:
+                inserted_item.update({'coupon': str(redeemed)})
             cart_items += [inserted_item]
         request.session['cart_items'] = cart_items
     return inserted_item, created

@@ -2881,10 +2881,12 @@ class AdvanceDiscount(models.Model):
 
 class CouponManager(models.Manager):
 
-    def active(self, organization, code, at_time=None):
+    def active(self, organization, code, plan=None, at_time=None):
         at_time = datetime_or_now(at_time)
-        return self.filter(
-            Q(ends_at__isnull=True) | Q(ends_at__gt=at_time),
+        filter_args = Q(ends_at__isnull=True) | Q(ends_at__gt=at_time)
+        if plan:
+            filter_args |= Q(plan__isnull=True) | Q(plan=plan)
+        return self.filter(filter_args,
             code__iexact=code, # case incensitive search.
             organization=organization)
 
