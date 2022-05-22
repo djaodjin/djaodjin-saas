@@ -28,7 +28,6 @@ from dateutil.relativedelta import relativedelta
 from django.conf import settings as django_settings
 from django.contrib.auth import get_user_model, logout as auth_logout
 from django.db import transaction, IntegrityError
-from django.db.models import F
 from rest_framework import parsers, status
 from rest_framework.generics import (CreateAPIView, ListAPIView,
     RetrieveUpdateDestroyAPIView)

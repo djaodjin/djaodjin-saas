@@ -37,10 +37,21 @@ jQuery(document).ready(function($) {
         saas_metrics_plans: "{{ urls.provider.metrics_plans }}"
     });
 {% endif %}
+
 {% if urls and urls.api_redeem %}
     $("#redeem-form").redeem(
         {'saas_api_redeem_coupon': "{{ urls.api_redeem }}" });
 {% endif %}
+
+{% if urls and urls.api_cart %}
+    $(".remove-cart-item").cartItem({
+        api_cart: "{{ urls.api_cart }}",
+        addLabel: "Add to Cart",
+        removeLabel: "Remove from Cart",
+        reload: true
+    });
+{% endif %}
+
 {% if charge %}
     $(".charge-refund").click(function () {
         var self = $(this);
