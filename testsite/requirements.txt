@@ -13,7 +13,7 @@ stripe==2.71.0
 
 # testsite-only
 coverage==5.1
-django-debug-toolbar==3.4.0
+django-debug-toolbar==3.2.4          # version 3.4.0 requires Django>=3.2
 django-extensions==3.1.5
 djaodjin-rules==0.2.9
 gunicorn==20.0.4
