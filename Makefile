@@ -64,6 +64,7 @@ initdb-with-dummydata: initdb
 
 initdb:
 	-rm -f $(DB_NAME)
+	$(installDirs) $(dir $(DB_NAME))
 	cd $(srcDir) && $(MANAGE) migrate $(RUNSYNCDB) --noinput
 	echo "CREATE UNIQUE INDEX uniq_email ON auth_user(email);" | $(SQLITE) $(DB_NAME)
 	cd $(srcDir) && $(MANAGE) loaddata \
