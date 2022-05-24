@@ -17,7 +17,8 @@ import os, signal
 
 #pylint: disable=invalid-name
 
-def save_coverage():
+def save_coverage(*args, **kwargs):
+    #pylint:disable=unused-argument
     sys.stderr.write("saving coverage\n")
     cov.stop()
     cov.save()
