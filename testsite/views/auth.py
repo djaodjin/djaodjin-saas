@@ -126,8 +126,8 @@ class PersonalRegistrationForm(forms.Form):
     email2 = forms.EmailField(
         widget=forms.TextInput(attrs={'maxlength': 75}),
         label="E-mail confirmation")
-    password = forms.CharField(widget=forms.PasswordInput, label="Password")
-    password2 = forms.CharField(
+    new_password = forms.CharField(widget=forms.PasswordInput, label="Password")
+    new_password2 = forms.CharField(
         widget=forms.PasswordInput, label="Password confirmation")
     first_name = forms.CharField(label='First name', max_length=30)
     last_name = forms.CharField(label='Last name', max_length=30)
@@ -162,18 +162,18 @@ class PersonalRegistrationForm(forms.Form):
                     del self.cleaned_data['email2']
                 raise forms.ValidationError(
                     "Email and E-mail confirmation do not match.")
-        if not ('password' in self._errors or 'password2' in self._errors):
-            password = self.cleaned_data.get('password', False)
-            password2 = self.cleaned_data.get('password2', True)
+        if not ('new_password' in self._errors or 'new_password2' in self._errors):
+            password = self.cleaned_data.get('new_password', False)
+            password2 = self.cleaned_data.get('new_password2', True)
             if password != password2:
-                self._errors['password'] = self.error_class(["This field does"\
+                self._errors['new_password'] = self.error_class(["This field does"\
     " not match Password."])
-                self._errors['password2'] = self.error_class(["This field does"\
+                self._errors['new_password2'] = self.error_class(["This field does"\
     " not match Password confirmation."])
-                if 'password' in self.cleaned_data:
-                    del self.cleaned_data['password']
-                if 'password2' in self.cleaned_data:
-                    del self.cleaned_data['password2']
+                if 'new_password' in self.cleaned_data:
+                    del self.cleaned_data['new_password']
+                if 'new_password2' in self.cleaned_data:
+                    del self.cleaned_data['new_password2']
                 raise forms.ValidationError(
                     "Password and Password confirmation do not match.")
         return self.cleaned_data
@@ -264,7 +264,7 @@ class PersonalRegistrationView(FormView):
     @method_decorator(transaction.atomic)
     def register(self, **cleaned_data):
         username = cleaned_data['username']
-        password = cleaned_data['password']
+        password = cleaned_data['new_password']
         first_name = cleaned_data['first_name']
         last_name = cleaned_data['last_name']
 
