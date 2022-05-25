@@ -471,6 +471,9 @@ class Organization(models.Model):
 
     @property
     def has_bank_account(self):
+        if is_broker(self):
+            processor_backend = self.processor_backend
+            return processor_backend.pub_key and processor_backend.priv_key
         return self.processor_deposit_key
 
     @property

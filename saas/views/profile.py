@@ -336,18 +336,21 @@ class DashboardView(OrganizationMixin, DetailView):
 
     def get_context_data(self, **kwargs):
         context = super(DashboardView, self).get_context_data(**kwargs)
+        update_context_urls(context, {
+            'accounts_base': reverse('saas_profile'),
+            'provider': {
+                'bank': reverse('saas_update_bank', args=(self.organization,))
+            }
+        })
         if self.organization.is_broker:
-            urls = {
-                'accounts_base': reverse('saas_profile'),
+            update_context_urls(context, {
                 'provider': {
-                    'api_accounts': reverse('saas_api_search_accounts')}}
+                    'api_accounts': reverse('saas_api_search_accounts')}})
         else:
-            urls = {
-                'accounts_base': reverse('saas_profile'),
+            update_context_urls(context, {
                 'provider': {
-                    'api_accounts': reverse(
-                        'saas_api_subscribers', args=(self.organization,))}}
-        update_context_urls(context, urls)
+                    'api_accounts': reverse('saas_api_subscribers',
+                        args=(self.organization,))}})
         return context
 
     def get_object(self, queryset=None):
