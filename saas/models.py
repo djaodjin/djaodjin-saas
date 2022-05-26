@@ -413,9 +413,14 @@ class Organization(models.Model):
         else:
             slug_base = _clean_field(
                 self.__class__, 'slug', self.email.split('@')[0])
-        if len(slug_base) > max_length:
-            slug_base = slug_base[:max_length]
-        self.slug = slug_base
+        if len(slug_base) > (max_length - 7 - 1):
+            slug_base = slug_base[:(max_length - 7 - 1)]
+        if slug_base:
+            self.slug = slug_base
+            slug_base += '-'
+        else:
+            self.slug = generate_random_slug(
+                length=min(max_length, len(slug_base) + 7))
         for idx in range(1, 10): #pylint:disable=unused-variable
             try:
                 try:
@@ -436,11 +441,9 @@ class Organization(models.Model):
             except ValidationError as err:
                 if not (isinstance(err.detail, dict) and 'slug' in err.detail):
                     raise err
-                suffix = '-%s' % generate_random_slug(length=7)
-                if len(slug_base) + len(suffix) > max_length:
-                    self.slug = slug_base[:(max_length - len(suffix))] + suffix
-                else:
-                    self.slug = slug_base + suffix
+                self.slug = generate_random_slug(
+                    length=min(max_length, len(slug_base) + 7),
+                    prefix=slug_base)
         raise ValidationError({'detail':
             "Unable to create a unique URL slug from '%s'" % self.full_name})
 
