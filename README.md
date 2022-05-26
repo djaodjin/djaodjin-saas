@@ -99,9 +99,12 @@ saas/templates/notification/ directory.
 Release Notes
 =============
 
-0.10.3
+0.11.0
 
-  * adds API to retrieve inactive profiles
-  * fixes multiple issues with create profile and optional fields
+  * fixes balance when extending a subscription through a group buy
+  * fixes line items when checkout a group buy (#154, #155)
+  * adds engaged/unengaged subscribers APIs
+  * moves create shadow profile to /api/accounts/profiles/
+  * adds inital compatibility with Django4.0
 
 [previous release notes](changelog)

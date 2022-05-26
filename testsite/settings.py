@@ -228,7 +228,7 @@ LOGGING = {
         },
     },
     'handlers': {
-        'log':{
+        'log': {
             'level':'DEBUG',
             'formatter': 'simple',
             'class':'logging.StreamHandler',
