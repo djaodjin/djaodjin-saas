@@ -53,7 +53,7 @@ LOGGER = logging.getLogger(__name__)
 
 class CartItemAPIView(CartMixin, CreateAPIView):
     """
-    Adds an item to the request user cart
+    Adds an item to the user cart
 
     Adds a plan into the cart of the user identified through the HTTP request.
 
@@ -96,8 +96,17 @@ class CartItemAPIView(CartMixin, CreateAPIView):
     .. code-block:: json
 
         {
-            "plan": "premium",
-            "option": 1
+            "plan": {
+              "slug": "premium",
+              "title": "Premium"
+            },
+            "option": 1,
+            "user": {
+              "username": "xia",
+              "slug": "xia",
+              "full_name": "Xia Lee",
+              "email": "xia@localhost.localdomain"
+            }
         }
 
     """
@@ -174,7 +183,7 @@ class CartItemAPIView(CartMixin, CreateAPIView):
 
     def delete(self, request, *args, **kwargs):
         """
-        Removes an item from the request user cart
+        Removes an item from the user cart
 
         Removes an item from the ``request.user`` cart.
 
@@ -201,7 +210,7 @@ class CartItemAPIView(CartMixin, CreateAPIView):
 
 class CartItemUploadAPIView(CartMixin, GenericAPIView):
     """
-    Uploads multiple items into a cart
+    Uploads multiple items into a user cart
 
     Add a ``Plan`` into the subscription cart of multiple users as per the
     content of an uploaded file.
@@ -236,16 +245,28 @@ class CartItemUploadAPIView(CartMixin, GenericAPIView):
         {
             "created": [
                 {
-                    "first_name": "Joe",
-                    "last_name": "Smith",
-                    "email": "joesmith@example.com",
-                    "plan": "basic"
+                    "plan": {
+                      "slug": "basic",
+                      "title": "Basic"
+                    },
+                    "user": {
+                        "username": "joe",
+                        "slug": "joe",
+                        "full_name": "Joe Smith",
+                        "email": "joesmith@example.com"
+                    }
                 },
                 {
-                    "first_name": "Marie",
-                    "last_name": "Johnson",
-                    "email": "mariejohnson@example.com",
-                    "plan": "basic"
+                    "plan": {
+                      "slug": "basic",
+                      "title": "Basic"
+                    },
+                    "user": {
+                        "username": "mariejohnson",
+                        "slug": "mariejohnson",
+                        "full_name": "Marie Johnson",
+                        "email": "mariejohnson@example.com"
+                    }
                 }
             ],
             "updated": [],

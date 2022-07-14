@@ -429,7 +429,44 @@ class EngagedSubscribersQuerysetMixin(DateRangeContextMixin,
 class EngagedSubscribersAPIView(EngagedSubscribersSmartListMixin,
                                EngagedSubscribersQuerysetMixin,
                                ListAPIView):
+    """
+    Lists engaged subscribers
 
+    Returns a list of {{PAGE_SIZE}} subscriber profiles which have or
+    had a subscription to a plan provided by {organization}.
+
+    The queryset can be further refined to match a search filter (``q``)
+    and/or a range of dates ([``start_at``, ``ends_at``]),
+    and sorted on specific fields (``o``).
+
+    **Tags**: subscriptions, provider, profilemodel
+
+    **Examples**
+
+    .. code-block:: http
+
+        GET /api/profile/cowork/subscribers/engaged/?o=created_at&ot=desc\
+ HTTP/1.1
+
+    responds
+
+    .. code-block:: json
+
+        {
+            "count": 1,
+            "next": null,
+            "previous": null,
+            "results": [
+                {
+                "slug": "xia",
+                "full_name": "Xia Lee",
+                "email": "xia@localhost.localdomain",
+                "created_at": "2016-01-14T23:16:55Z",
+                "ends_at": "2017-01-14T23:16:55Z"
+                }
+            ]
+        }
+    """
     serializer_class = get_role_serializer()
 
 
@@ -456,7 +493,7 @@ class UnengagedSubscribersAPIView(OrganizationSmartListMixin,
                                   UnengagedSubscribersQuerysetMixin,
                                   ListAPIView):
     """
-    Lists subscribers for a provider
+    Lists inactive subscribers
 
     Returns a list of {{PAGE_SIZE}} subscriber profiles which have or
     had a subscription to a plan provided by {organization}.
@@ -471,7 +508,7 @@ class UnengagedSubscribersAPIView(OrganizationSmartListMixin,
 
     .. code-block:: http
 
-        GET /api/profile/cowork/subscribers/inactive?o=created_at&ot=desc\
+        GET /api/profile/cowork/subscribers/unengaged/?o=created_at&ot=desc\
  HTTP/1.1
 
     responds

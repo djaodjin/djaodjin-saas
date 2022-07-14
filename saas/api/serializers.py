@@ -1,4 +1,4 @@
-# Copyright (c) 2021, DjaoDjin inc.
+# Copyright (c) 2022, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -558,6 +558,14 @@ class PlanSerializer(serializers.ModelSerializer):
         help_text=_("Unique identifier shown in the URL bar"))
     title = serializers.CharField(required=False,
         help_text=_("Title for the plan"))
+
+    class Meta:
+        model = Plan
+        fields = ('slug', 'title',)
+
+
+class PlanDetailSerializer(PlanSerializer):
+
     description = serializers.CharField(required=False,
         help_text=_("Free-form text description for the %(object)s") % {
             'object': 'plan'})
@@ -597,14 +605,13 @@ class PlanSerializer(serializers.ModelSerializer):
             " in human-readable form"))
 
     class Meta:
-        model = Plan
-        fields = ('slug', 'title', 'description', 'is_active',
-                  'setup_amount', 'period_amount', 'period_type', 'app_url',
-                  'advance_discounts', 'unit', 'organization', 'extra',
-                  'period_length', 'renewal_type', 'is_not_priced',
-                  'created_at',
-                  'skip_optin_on_grant', 'optin_on_request',
-                  'discounted_period_amount', 'is_cart_item', 'detail')
+        model = PlanSerializer.Meta.model
+        fields = PlanSerializer.Meta.fields + ('description', 'is_active',
+            'setup_amount', 'period_amount', 'period_type', 'app_url',
+            'advance_discounts', 'unit', 'organization', 'extra',
+            'period_length', 'renewal_type', 'is_not_priced',
+            'created_at', 'skip_optin_on_grant', 'optin_on_request',
+            'discounted_period_amount', 'is_cart_item', 'detail')
         read_only_fields = ('app_url',
             'discounted_period_amount', 'is_cart_item', 'detail')
 
@@ -651,15 +658,15 @@ class PlanSerializer(serializers.ModelSerializer):
         return instance
 
 
-class PlanCreateSerializer(PlanSerializer):
+class PlanCreateSerializer(PlanDetailSerializer):
     """
     Serializer to create plans in POST requests
     """
     title = serializers.CharField(required=True,
         help_text=_("Title for the plan"))
 
-    class Meta(PlanSerializer.Meta):
-        fields = PlanSerializer.Meta.fields
+    class Meta(PlanDetailSerializer.Meta):
+        fields = PlanDetailSerializer.Meta.fields
 
 
 class OrganizationInviteSerializer(OrganizationCreateSerializer):
@@ -839,7 +846,7 @@ class CartItemSerializer(serializers.ModelSerializer):
     """
     user = get_user_serializer()(
         help_text=_("User the cart belongs to"))
-    plan = PlanRelatedField(
+    plan = PlanSerializer(
         help_text=_("Item in the cart (if plan)"))
     detail = serializers.SerializerMethodField(read_only=True, required=False,
         help_text=_("Describes the result of the action"\

@@ -365,7 +365,10 @@ class CouponUsesAPIView(CartItemSmartListMixin, CouponUsesQuerysetMixin,
                         "printable_name": "Xia Doe",
                         "username": "xia"
                     },
-                    "plan": "basic",
+                    "plan": {
+                      "slug": "basic",
+                      "title": "Basic"
+                    },
                     "created_at": "2014-01-01T09:00:00Z"
                 }
             ]

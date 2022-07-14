@@ -343,7 +343,7 @@ var regions = {
 var timezoneMixin = {
     data: function(){
         return {
-            timezone: 'local',
+            timezone: moment.tz.guess(),
         }
     },
     methods: {
@@ -372,6 +372,27 @@ var timezoneMixin = {
             }
             return datetime.clone().subtract(1, 'months').format("MMM'YY");
         },
+        datetimeOrNow: function(dateISOString, offset) {
+            var dateTime = moment(dateISOString);
+            if( dateTime.isValid() ) {
+                return dateISOString;
+            }
+            if( offset === "startOfDay" ) {
+                return moment().startOf('day').toISOString();
+            } else if( offset === "endOfDay" ) {
+                return moment().endOf('day').toISOString();
+            }
+            return moment().toISOString();
+        },
+        // Same as itemListMixin
+        asDateInputField: function(dateISOString) {
+            const dateValue = moment(dateISOString);
+            return dateValue.isValid() ? dateValue.format("YYYY-MM-DD") : null;
+        },
+        asDateISOString: function(dateInputField) {
+            const dateValue = moment(dateInputField, "YYYY-MM-DD");
+            return dateValue.isValid() ? dateValue.toISOString() : null;
+        }
     },
 }
 
@@ -974,12 +995,19 @@ var roleListMixin = {
     }
 }
 
-
+/**
+ XXX used in conjunction with ``itemListMixin`` in ``subscriptionListMixin``
+ to compute cut-off dates.
+ */
 var subscriptionDetailMixin = {
+    mixins: [
+        timezoneMixin
+    ],
     data: function(){
         return {
             api_profile_url: this.$urls.organization.api_profile_base,
-            ends_at: moment().endOf("day").format(DATE_FORMAT),
+            ends_at: this.datetimeOrNow(
+                this.$dateRange ? this.$dateRange.ends_at : null, 'endOfDay'),
         }
     },
     methods: {
@@ -1001,7 +1029,7 @@ var subscriptionDetailMixin = {
         },
         endsSoon: function(subscription) {
             var vm = this;
-            var cutOff = moment(vm.ends_at, DATE_FORMAT).add(5, 'days');
+            var cutOff = moment(vm.ends_at).add(5, 'days');
             var subEndsAt = moment(subscription.ends_at);
             if( subEndsAt < cutOff ) {
                 return "bg-warning";
@@ -1023,6 +1051,18 @@ var subscriptionDetailMixin = {
             this.$set(item, 'edit_description', false);
             delete item.edit_description;
             this.update(item);
+        },
+        toggleEndsAt: function (item, event) {
+            var vm = this;
+            vm.$set(item, '_editEndsAt', !item._editEndsAt);
+            if( item._editEndsAt ) {
+                vm.$nextTick(function(){
+                    vm.$refs['editEndsAt_' + item.code][0].focus();
+                });
+            } else {
+                item.ends_at = vm.asDateISOString(event.target.value);
+                vm.update(item);
+            }
         },
         update: function(item) {
             var vm = this;
@@ -1227,23 +1267,7 @@ var couponDetailMixin = {
             var vm = this;
             vm.reqPut(vm.url + '/' + coupon.code, coupon,
             function(){
-                vm.get();
-                if(cb) cb();
-            });
-        },
-        editPlan: function(item){
-            var vm = this;
-            vm.$set(item, '_editPlan', true);
-            vm.$nextTick(function(){
-                vm.$refs['editPlan_' + item.code][0].focus();
-            });
-        },
-        savePlan: function(item){
-            var vm = this;
-            if(!item._editPlan) return;
-            vm.update(item, function(){
-                vm.$set(item, '_editPlan', false);
-                delete item._editPlan;
+                if(cb) cb(); else vm.get();
             });
         },
         editAttempts: function(item){
@@ -1278,6 +1302,35 @@ var couponDetailMixin = {
                 this.$set(this.edit_description, idx, false)
                 this.update(this.items.results[idx])
             }
+        },
+        toggleEndsAt: function (item, event) {
+            var vm = this;
+            if( item._editEndsAt ) {
+                item.ends_at = vm.asDateISOString(event.target.value);
+                vm.update(item, function() {
+                    vm.$set(item, '_editEndsAt', !item._editEndsAt);
+                });
+            } else {
+                vm.$set(item, '_editEndsAt', !item._editEndsAt);
+                vm.$nextTick(function(){
+                    vm.$refs['editEndsAt_' + item.code][0].focus();
+                });
+            }
+        },
+        editPlan: function(item){
+            var vm = this;
+            vm.$set(item, '_editPlan', true);
+            vm.$nextTick(function(){
+                vm.$refs['editPlan_' + item.code][0].focus();
+            });
+        },
+        savePlan: function(item){
+            var vm = this;
+            if(!item._editPlan) return;
+            vm.update(item, function(){
+                vm.$set(item, '_editPlan', false);
+                delete item._editPlan;
+            });
         },
     }
 }
@@ -1371,15 +1424,21 @@ Vue.component('coupon-list', {
 });
 
 
+/** Lists users recently registered.
+    XXX only used in saas testsite.
+ */
 Vue.component('user-list', {
     mixins: [
-        itemListMixin
+        itemListMixin,
+        timezoneMixin
     ],
     data: function() {
         return {
             url: this.$urls.provider.api_accounts,
             params: {
-                start_at: moment().startOf('day'),
+                start_at: this.datetimeOrNow(
+                    this.$dateRange ? this.$dateRange.start_at : null,
+                    'startOfDay'),
                 o: '-created_at'
             }
         }
@@ -1448,6 +1507,8 @@ Vue.component('role-user-list', {
 });
 
 
+/** XXX We need an ends_at and timezone to compute metrics accurately.
+ */
 Vue.component('metrics-charts', {
     mixins: [
         httpRequestMixin,
@@ -1458,24 +1519,18 @@ Vue.component('metrics-charts', {
             tables: this.$tables,
             activeTab: 0,
             params: {
-                ends_at: moment(),
+                ends_at: this.datetimeOrNow(
+                    this.$dateRange ? this.$dateRange.ends_at : null),
             },
         }
-        if( this.$dateRange && this.$dateRange.ends_at ) {
-            var ends_at = moment(this.$dateRange.ends_at);
-            if(ends_at.isValid()){
-                data.params.ends_at = ends_at;
-            }
-        }
-        data.params.ends_at = data.params.ends_at.format(DATE_FORMAT);
         return data;
     },
     methods: {
         fetchTableData: function(table, cb){
             var vm = this;
-            var params = {"ends_at": moment(vm.params.ends_at, DATE_FORMAT).toISOString()};
+            var params = {ends_at: vm.params.ends_at};
             if( vm.timezone !== 'utc' ) {
-                params["timezone"] = moment.tz.guess();
+                params["timezone"] = vm.timezone;
             }
             vm.reqGet(table.location, params, function(resp){
                 var unit = resp.unit;
@@ -1578,11 +1633,27 @@ Vue.component('metrics-charts', {
                 res = data[0].values;
             }
             return res;
+        },
+        // Same as in `itemListMixin`.
+        _ends_at: {
+            get: function() {
+                // form field input="date" will expect ends_at as a String
+                // but will literally cut the hour part regardless of timezone.
+                // We don't want an empty list as a result.
+                // If we use moment `endOfDay` we get 23:59:59 so we
+                // add a full day instead.
+                const dateValue = moment(this.params.ends_at).add(1,'days');
+                return dateValue.isValid() ? dateValue.format("YYYY-MM-DD") : null;
+            },
+            set: function(newVal) {
+                this.$set(this.params, 'ends_at', this.asDateISOString(newVal));
+                this.get();
+            }
         }
     },
     mounted: function(){
         var vm = this;
-        vm.prepareCurrentTabData();
+        vm.get();
         if( false ) {
             // XXX donot pretetch other tabs to match angularjs code
             //     and pass tests.
@@ -1757,35 +1828,36 @@ Vue.component('plan-list', {
     }
 });
 
-
+/** XXX default value to import new transactions.
+ */
 Vue.component('import-transaction', {
     mixins: [
-        httpRequestMixin
+        httpRequestMixin,
+        timezoneMixin,
     ],
     data: function() {
         return {
             url: this.$urls.organization.api_import,
             typeaheadUrl: this.$urls.provider.api_subscribers_active,
             itemSelected: '',
-            entry: {
-                subscription: null,
-                created_at: moment().format("YYYY-MM-DD"),
-                amount: 0,
-                descr: '',
-            },
-            params: {
-                timezone: 'local'
-            }
+            entry: this.defaultNewItem(),
         }
     },
     methods: {
+        defaultNewItem: function() {
+            return {
+                subscription: null,
+                created_at: this.datetimeOrNow(),
+                amount: 0,
+                descr: '',
+            }
+        },
         addPayment: function(){
             var vm = this;
             if( vm.itemSelected ) {
                 vm.entry.subscription = (vm.itemSelected.organization.slug
                     + ':' + vm.itemSelected.plan.slug);
             }
-            vm.entry.created_at = moment(vm.entry.created_at).toISOString();
             vm.reqPost(vm.url, vm.entry,
             function(resp) {
                 vm.clearNewPayment();
@@ -1797,12 +1869,7 @@ Vue.component('import-transaction', {
         clearNewPayment: function() {
             var vm = this;
             vm.itemSelected = '';
-            vm.entry = {
-                subscription: null,
-                created_at: moment().format("YYYY-MM-DD"),
-                amount: 0,
-                descr: '',
-            };
+            vm.entry = vm.defaultNewItem();
         },
         get: function() {
             // We want to keep a single template for `date_input_field`.
@@ -2633,13 +2700,16 @@ Vue.component('search-profile', {
 
 Vue.component('today-sales', {
     mixins: [
-        itemListMixin
+        itemListMixin,
+        timezoneMixin
     ],
     data: function() {
         return {
             url: this.$urls.provider.api_receivables,
             params: {
-                start_at: moment().startOf('day'),
+                start_at: this.datetimeOrNow(
+                    this.$dateRange ? this.$dateRange.start_at : null,
+                    'startOfDay'),
                 o: '-created_at',
             }
         }

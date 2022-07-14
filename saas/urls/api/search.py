@@ -33,12 +33,12 @@ from ...compat import re_path
 
 
 urlpatterns = [
-    re_path(r'^accounts/users/', UsersTypeaheadAPIView.as_view(),
+    re_path(r'^accounts/users/?', UsersTypeaheadAPIView.as_view(),
         name='saas_api_search_users'),
-    re_path(r'^accounts/profiles/(?P<organization>%s)' % settings.SLUG_RE,
+    re_path(r'^accounts/profiles/(?P<organization>%s)/?' % settings.SLUG_RE,
         ProfileAPIView.as_view(), name='saas_api_search_profile'),
-    re_path(r'^accounts/profiles/', ProfilesTypeaheadAPIView.as_view(),
+    re_path(r'^accounts/profiles/?', ProfilesTypeaheadAPIView.as_view(),
         name='saas_api_search_profiles'),
-    re_path(r'^accounts/', AccountsTypeaheadAPIView.as_view(),
+    re_path(r'^accounts/?', AccountsTypeaheadAPIView.as_view(),
         name='saas_api_search_accounts'),
 ]

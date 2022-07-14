@@ -81,7 +81,7 @@ class StripeWebhook(APIView):
 
         {}
     """
-    swagger_schema = None
+    schema = None
 
     def post(self, request, *args, **kwargs):
         #pylint:disable=unused-argument,no-self-use

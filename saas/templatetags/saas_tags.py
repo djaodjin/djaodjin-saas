@@ -38,7 +38,7 @@ from ..compat import gettext_lazy as _, six
 from ..decorators import fail_direct, _valid_manager
 from ..humanize import as_money, as_percentage
 from ..mixins import as_html_description, product_url as utils_product_url
-from ..models import Subscription, Plan, get_broker
+from ..models import Plan, Price, Subscription, get_broker
 from ..utils import get_organization_model
 
 register = template.Library()
@@ -69,12 +69,31 @@ def date_in_future(value, arg=None):
 
 @register.filter(needs_autoescape=False)
 def describe(transaction):
+    try:
+        return transaction['description']
+    except (TypeError, KeyError):
+        pass
     return mark_safe(as_html_description(transaction))
 
 
 @register.filter(needs_autoescape=False)
 def describe_no_links(transaction):
     return mark_safe(as_html_description(transaction, active_links=False))
+
+
+@register.filter()
+def price(item):
+    return Price(item['amount'], item['unit'])
+
+
+@register.filter()
+def dest_price(item):
+    return Price(item['dest_amount'], item['dest_unit'])
+
+
+@register.filter()
+def orig_price(item):
+    return Price(item['orig_amount'], item['orig_unit'])
 
 
 @register.filter()

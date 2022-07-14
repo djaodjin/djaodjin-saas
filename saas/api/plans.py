@@ -36,7 +36,7 @@ from ..docs import OpenAPIResponse, swagger_auto_schema
 from ..mixins import PlanMixin, CartMixin
 from ..filters import DateRangeFilter, OrderingFilter
 from ..models import Coupon, Plan, Subscription
-from .serializers import PlanSerializer, PlanCreateSerializer
+from .serializers import PlanDetailSerializer, PlanCreateSerializer
 
 
 class PricingAPIView(PlanMixin, CartMixin, ListAPIView):
@@ -98,7 +98,7 @@ class PricingAPIView(PlanMixin, CartMixin, ListAPIView):
     )
     ordering = ('period_amount',)
     filter_backends = (DateRangeFilter, OrderingFilter)
-    serializer_class = PlanSerializer
+    serializer_class = PlanDetailSerializer
 
     def get_queryset(self):
         queryset = Plan.objects.filter(organization=self.provider,
@@ -182,7 +182,7 @@ class PlanListCreateAPIView(PlanMixin, ListCreateAPIView):
     )
     ordering = ('period_amount',)
     filter_backends = (DateRangeFilter, OrderingFilter)
-    serializer_class = PlanSerializer
+    serializer_class = PlanDetailSerializer
 
     def get_serializer_class(self):
         if self.request.method.lower() == 'post':
@@ -190,7 +190,7 @@ class PlanListCreateAPIView(PlanMixin, ListCreateAPIView):
         return super(PlanListCreateAPIView, self).get_serializer_class()
 
     @swagger_auto_schema(responses={
-      201: OpenAPIResponse("Create successful", PlanSerializer)})
+      201: OpenAPIResponse("Create successful", PlanDetailSerializer)})
     def post(self, request, *args, **kwargs):
         """
         Creates a plan
@@ -288,7 +288,7 @@ class PlanDetailAPIView(PlanMixin, RetrieveUpdateDestroyAPIView):
             "interval": "monthly"
         }
     """
-    serializer_class = PlanSerializer
+    serializer_class = PlanDetailSerializer
 
     def delete(self, request, *args, **kwargs):
         """

@@ -262,7 +262,7 @@ class ProfilesTypeaheadAPIView(OrganizationSmartListMixin,
 
         .. code-block:: http
 
-            POST /api/accounts/profile/ HTTP/1.1
+            POST /api/accounts/profiles/ HTTP/1.1
 
         .. code-block:: json
 

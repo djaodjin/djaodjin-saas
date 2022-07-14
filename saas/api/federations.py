@@ -29,6 +29,7 @@ from django.db.models import Count, Max, Min, Q
 from rest_framework import generics
 from rest_framework.response import Response as HttpResponse
 
+from .serializers import MetricsSerializer
 from ..compat import six
 from ..models import Plan
 from ..mixins import DateRangeContextMixin, ProviderMixin
@@ -49,7 +50,7 @@ class FederatedMetricsMixin(DateRangeContextMixin, ProviderMixin):
 class FederatedSubscribersAPIView(FederatedMetricsMixin,
                                   generics.RetrieveAPIView):
     """
-    Federation churned vs. new subscribers
+    Retrieves churned vs. new subscribers for a federation
 
     Returns the number of churned vs. new subscribers per plans for a period
     for all members of a federation of provider.
@@ -60,17 +61,17 @@ class FederatedSubscribersAPIView(FederatedMetricsMixin,
 
     .. code-block:: http
 
-        GET /api/metrics/cowork/federated HTTP/1.1
+        GET /api/metrics/cowork/federated/ HTTP/1.1
 
     responds
 
     .. code-block:: json
 
         {
-          "title":"Invited",
-          "scale":1,
-          "unit":"profiles",
-          "table":[{
+          "title": "Invited",
+          "scale": 1,
+          "unit": "profiles",
+          "table": [{
             "key":"removed profiles",
             "values":[
               ["Energy utility",0]
@@ -85,10 +86,11 @@ class FederatedSubscribersAPIView(FederatedMetricsMixin,
             "values":[
               ["Energy utility",0]
             ]
-          }
+          }]
         }
     """
     title = 'invited profiles'
+    serializer_class = MetricsSerializer
 
     def get(self, request, *args, **kwargs):
         #pylint:disable=too-many-locals
@@ -208,7 +210,7 @@ class FederatedSubscribersAPIView(FederatedMetricsMixin,
 class SharedProfilesAPIView(FederatedMetricsMixin,
                             generics.RetrieveAPIView):
     """
-    shared profiles
+    Retrieves shared profiles within a federation
 
     Returns the number of shared profiles
 
@@ -218,35 +220,36 @@ class SharedProfilesAPIView(FederatedMetricsMixin,
 
     .. code-block:: http
 
-        GET /api/metrics/cowork/federated/shared HTTP/1.1
+        GET /api/metrics/cowork/federated/shared/ HTTP/1.1
 
     responds
 
     .. code-block:: json
 
         {
-          "title":"Invited",
-          "scale":1,
-          "unit":"profiles",
-          "table":[{
-            "key":"removed profiles",
-            "values":[
+          "title": "Invited",
+          "scale": 1,
+          "unit": "profiles",
+          "table": [{
+            "key": "removed profiles",
+            "values": [
               ["Energy utility",0]
             ]
           }, {
-            "key":"invited profiles",
-            "values":[
+            "key": "invited profiles",
+            "values": [
               ["Energy utility",0]
             ]
           }, {
-            "key":"newly invited profiles",
-            "values":[
+            "key": "newly invited profiles",
+            "values": [
               ["Energy utility",0]
             ]
-          }
+          }]
         }
     """
     title = 'shared profiles'
+    serializer_class = MetricsSerializer
 
     def get(self, request, *args, **kwargs):
         period_end = datetime_or_now(self.ends_at)

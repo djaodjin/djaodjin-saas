@@ -45,7 +45,7 @@ from django.db import transaction
 from django.db.models import Q
 from django.contrib import messages
 from django.shortcuts import get_object_or_404
-from django.views.generic import (DetailView, FormView, ListView, TemplateView,
+from django.views.generic import (DetailView, FormView, TemplateView,
     UpdateView)
 from django.utils.http import urlencode
 
@@ -908,7 +908,7 @@ djaodjin-saas/tree/master/saas/templates/saas/billing/receipt.html>`__).
         return context
 
 
-class CouponListView(ProviderMixin, ListView):
+class CouponListView(DateRangeContextMixin, ProviderMixin, TemplateView):
     """
     View to manage discounts (i.e. ``Coupon``)
 
@@ -932,17 +932,12 @@ coupons.html>`__).
 
     def get_context_data(self, **kwargs):
         context = super(CouponListView, self).get_context_data(**kwargs)
-        urls_provider = {
-            'download_coupons': reverse(
-                'saas_metrics_coupons_download', args=(self.provider,))
-        }
-        if 'urls' in context:
-            if 'provider' in context['urls']:
-                context['urls']['provider'].update(urls_provider)
-            else:
-                context['urls'].update({'provider': urls_provider})
-        else:
-            context.update({'urls': {'provider': urls_provider}})
+        update_context_urls(context, {
+            'provider': {
+                'download_coupons': reverse(
+                    'saas_metrics_coupons_download', args=(self.provider,))
+            }
+        })
         return context
 
 

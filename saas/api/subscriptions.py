@@ -402,7 +402,8 @@ class ProvidedSubscriptionsAPIView(SubscriptionSmartListMixin,
 
             {
               "organization": {
-                "slug": "xia"
+                "slug": "xia",
+                "full_name": "Xia Lee"
               }
             }
 

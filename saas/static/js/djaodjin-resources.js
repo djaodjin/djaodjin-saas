@@ -1,15 +1,32 @@
 /** These are plumbing functions to connect the UI and API backends.
  */
 
+(function (root, factory) {
+    if (typeof define === 'function' && define.amd) {
+        // AMD. Register as an anonymous module.
+        define(['exports', 'jQuery'], factory);
+    } else if (typeof exports === 'object' && typeof exports.nodeName !== 'string') {
+        // CommonJS
+        factory(exports, require('jQuery'));
+    } else {
+        // Browser true globals added to `window`.
+        factory(root, root.jQuery);
+        // If we want to put the exports in a namespace, use the following line
+        // instead.
+        // factory((root.djResources = {}), root.jQuery);
+    }
+}(typeof self !== 'undefined' ? self : this, function (exports, jQuery) {
+
+
 function clearMessages() {
     "use strict";
-    $("#messages-content").empty();
+    jQuery("#messages-content").empty();
 };
 
 function showMessages(messages, style) {
     "use strict";
     if( typeof toastr !== 'undefined'
-        && $(toastr.options.containerId).length > 0 ) {
+        && jQuery(toastr.options.containerId).length > 0 ) {
         for( var i = 0; i < messages.length; ++i ) {
             toastr[style](messages[i]);
         }
@@ -31,13 +48,13 @@ function showMessages(messages, style) {
             messageBlock += "<div>" + messages[i] + "</div>";
          }
          messageBlock += "</div>";
-         $("#messages-content").append(messageBlock);
+         jQuery("#messages-content").append(messageBlock);
     }
-    $("#messages").removeClass("hidden");
-    $("html, body").animate({
-        // scrollTop: $("#messages").offset().top - 50
+    jQuery("#messages").removeClass("hidden");
+    jQuery("html, body").animate({
+        // scrollTop: jQuery("#messages").offset().top - 50
         // avoid weird animation when messages at the top:
-        scrollTop: $("body").offset().top
+        scrollTop: jQuery("body").offset().top
     }, 500);
 };
 
@@ -80,7 +97,7 @@ function _showErrorMessages(resp) {
                             message = data[key].detail;
                         }
                         messages.push(key + ": " + message);
-                        var inputField = $("[name=\"" + key + "\"]");
+                        var inputField = jQuery("[name=\"" + key + "\"]");
                         var parent = inputField.parents('.form-group');
                         inputField.addClass("is-invalid");
                         parent.addClass("has-error");
@@ -114,10 +131,6 @@ function showErrorMessages(resp) {
 };
 
 
-/** Formats a date shown to the user.
-*/
-var DATE_FORMAT = 'MMM DD, YYYY';
-
 /** Retrieves the csrf-token from a <head> meta tag.
 
     <meta name="csrf-token" content="{{csrf_token}}">
@@ -145,3 +158,12 @@ function getUrlParameter(name) {
     var results = regex.exec(location.search);
     return results === null ? '' : decodeURIComponent(results[1].replace(/\+/g, ' '));
 };
+
+    // attach properties to the exports object to define
+    // the exported module properties.
+    exports.clearMessages = clearMessages;
+    exports.showMessages = showMessages;
+    exports.showErrorMessages = showErrorMessages;
+    exports.getMetaCSRFToken = getMetaCSRFToken;
+    exports.getUrlParameter = getUrlParameter;
+}));
