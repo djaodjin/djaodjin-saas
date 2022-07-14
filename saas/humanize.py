@@ -103,7 +103,7 @@ DESCRIBE_SUFFIX_DISCOUNT_CURRENCY = \
     "a %(amount)s off"
 
 DESCRIBE_SUFFIX_TARGET_SUBSCRIBER = \
-    "for %(subscriber)s (%(sync_on)s)"
+    "for %(subscriber_full_name)s (%(sync_on)s)"
 
 DESCRIBE_SUFFIX_GROUP_BUY = \
     ", complimentary of %(payer)s"
@@ -129,7 +129,7 @@ REGEXES = {
     'plan': r'(?P<plan>\S+)',
     'quantity': r'(?P<quantity>\d+)',
     'refund_type': r'(?P<refund_type>\S+)',
-    'subscriber': r'(?P<subscriber>\S+)',
+    'subscriber_full_name': r'(?P<subscriber_full_name>(\S| )+)',
     'subscription': r'(?P<subscriber>\S+):(?P<plan>\S+)',
     'sync_on': r'(?P<sync_on>\S+)',
     'use_charge': r'(?P<use_charge>\S+)',
@@ -274,7 +274,7 @@ def translate_descr_suffix(descr):
         r"(%(nb_periods)s %(period_name)s free)?( and )?"\
         r"(a %(amount)s off)?"\
         r"(, complimentary of %(payer)s)?"\
-        r"(\s*for %(subscriber)s \(%(sync_on)s\))?"\
+        r"(\s*for %(subscriber_full_name)s \(%(sync_on)s\))?"\
         r"( \(code: %(code)s\))?" % REGEXES
     look = re.match(pat, descr_suffix)
     if look:
@@ -285,28 +285,35 @@ def translate_descr_suffix(descr):
         sep = ""
         percent = look.group('percent')
         if percent:
-            descr_suffix += sep + _("a %(percent)s discount") % {
+            descr_suffix += sep + _(DESCRIBE_SUFFIX_DISCOUNT_PERCENTAGE) % {
                 'percent': percent}
             sep = _(" and ")
         nb_periods = look.group('nb_periods')
         period_name = look.group('period_name')
         if nb_periods and period_name:
             nb_periods = int(nb_periods)
-            descr_suffix += sep + _("%(nb_periods)d %(period_name)s free") % {
+            descr_suffix += sep + _(DESCRIBE_SUFFIX_DISCOUNT_PERIOD) % {
                 'nb_periods': nb_periods,
                 'period_name': translate_period_name(period_name, nb_periods)}
             sep = _(" and ")
         amount = look.group('amount')
         if amount:
-            descr_suffix += sep + _("a %(amount)s off") % {
+            descr_suffix += sep + _(DESCRIBE_SUFFIX_DISCOUNT_CURRENCY) % {
                 'amount': amount}
             sep = _(" and ")
         payer = look.group('payer')
         if payer:
             descr_suffix += _(", complimentary of %(payer)s") % {'payer': payer}
+        subscriber_full_name = look.group('subscriber_full_name')
+        sync_on = look.group('sync_on')
+        if subscriber_full_name and sync_on:
+            descr_suffix += " " + _(DESCRIBE_SUFFIX_TARGET_SUBSCRIBER) % {
+                'subscriber_full_name': subscriber_full_name,
+                'sync_on': sync_on
+            }
         code = look.group('code')
         if code:
-            descr_suffix += _(" (code: %(code)s)") % {'code': code}
+            descr_suffix += _(DESCRIBE_SUFFIX_COUPON_APPLIED) % {'code': code}
 
     if descr_suffix:
         descr += " - %s" % descr_suffix
@@ -372,7 +379,7 @@ def describe_buy_periods(plan, ends_at, nb_periods, discount_by_types=None,
         if descr_suffix:
             descr_suffix += " "
         descr_suffix += DESCRIBE_SUFFIX_TARGET_SUBSCRIBER % {
-            'subscriber': cart_item.full_name,
+            'subscriber_full_name': cart_item.full_name,
             'sync_on': cart_item.sync_on}
 
     if descr_suffix:

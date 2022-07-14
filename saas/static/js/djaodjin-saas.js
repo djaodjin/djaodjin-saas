@@ -544,8 +544,9 @@
 
         insertLine: function(data) {
             var msg = data.detail;
-            var prevLine = this.element.find("tbody[data-plan='" +
-                data.plan + "'] .invoice-item").last();
+            var planSlug = data.plan.slug;
+            var prevLine = this.element.find(
+                "tbody[data-plan='" + planSlug + "'] .invoice-item").last();
             var newLine = prevLine.clone();
             var clonedNode = newLine.children("td.line-descr");
 
@@ -559,8 +560,9 @@
 
         updateLine: function(data) {
             var msg =  data.detail;
-            var prevLine = this.element.find("tbody[data-plan='" +
-                data.plan + "'] .invoice-item")
+            var planSlug = data.plan.slug;
+            var prevLine = this.element.find(
+                "tbody[data-plan='" + planSlug + "'] .invoice-item");
             var dup = null;
             prevLine.each(function(i){
                 var $t = $(this);
