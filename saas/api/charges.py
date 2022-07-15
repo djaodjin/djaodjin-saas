@@ -43,27 +43,8 @@ from ..pagination import TotalPagination
 
 #pylint: disable=no-init
 
-class RetrieveChargeMixin(ChargeMixin):
-    """
-    Mixin for a ``Charge`` object that will first retrieve the state of
-    the ``Charge`` from the processor API.
 
-    This mixin is intended to be used for API requests. Pages should
-    use the parent ChargeMixin and use AJAX calls to retrieve the state
-    of a ``Charge`` in order to deal with latency and service errors
-    from the processor.
-    """
-    model = Charge
-    slug_field = 'processor_key'
-    slug_url_kwarg = 'organization' # See comment in urls.api.subscriber.charges
-
-    def get_object(self, queryset=None):
-        charge = super(RetrieveChargeMixin, self).get_object(queryset)
-        charge.retrieve()
-        return charge
-
-
-class ChargeResourceView(RetrieveChargeMixin, RetrieveAPIView):
+class ChargeResourceView(ChargeMixin, RetrieveAPIView):
     """
     Retrieves a processor charge
 
@@ -226,7 +207,7 @@ class OrganizationChargeListAPIView(SmartChargeListMixin,
     pagination_class = TotalPagination
 
 
-class ChargeRefundAPIView(RetrieveChargeMixin, CreateAPIView):
+class ChargeRefundAPIView(ChargeMixin, CreateAPIView):
     """
     Refunds a processor charge
 
@@ -319,7 +300,7 @@ class ChargeRefundAPIView(RetrieveChargeMixin, CreateAPIView):
         return Response(ChargeSerializer().to_representation(self.object))
 
 
-class EmailChargeReceiptAPIView(RetrieveChargeMixin, GenericAPIView):
+class EmailChargeReceiptAPIView(ChargeMixin, GenericAPIView):
     """
     Re-sends a charge receipt
 

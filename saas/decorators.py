@@ -43,7 +43,7 @@ from . import settings
 from .cart import cart_insert_item
 from .compat import (available_attrs, gettext_lazy as _, is_authenticated,
     reverse, six)
-from .models import Charge, Plan, Signature, Subscription, get_broker
+from .models import Plan, Signature, Subscription, get_broker
 from .utils import datetime_or_now, get_organization_model, get_role_model
 
 
@@ -291,18 +291,16 @@ def fail_paid_subscription(request, organization=None, plan=None):
 def _fail_direct(request, organization=None, roledescription=None,
                  strength=NORMAL):
     organization_model = get_organization_model()
-    candidates = [get_broker()]
+    if organization and not isinstance(organization, organization_model):
+        try:
+            organization = organization_model.objects.get(
+                slug=str(organization))
+        except organization_model.DoesNotExist:
+            organization = None
     if organization:
-        if isinstance(organization, Charge):
-            # implicit natural conversion
-            organization = organization.customer
-        elif not isinstance(organization, organization_model):
-            try:
-                organization = organization_model.objects.get(slug=organization)
-            except organization_model.DoesNotExist:
-                charge = get_object_or_404(Charge, processor_key=organization)
-                organization = charge.customer
-        candidates += [organization]
+        candidates = [get_broker(), organization]
+    else:
+        candidates = [get_broker()]
     return not(_has_valid_access(request, candidates,
         strength=strength, roledescription=roledescription))
 
@@ -365,15 +363,12 @@ def fail_provider_readable(request, organization=None, roledescription=None):
     or to a provider of ``organization`` and ``request.method`` is GET.
     """
     organization_model = get_organization_model()
-    if isinstance(organization, Charge):
-        # implicit natural conversion
-        organization = organization.customer
-    elif organization and not isinstance(organization, organization_model):
+    if organization and not isinstance(organization, organization_model):
         try:
-            organization = organization_model.objects.get(slug=organization)
+            organization = organization_model.objects.get(
+                slug=str(organization))
         except organization_model.DoesNotExist:
-            charge = get_object_or_404(Charge, processor_key=organization)
-            organization = charge.customer
+            organization = None
     if organization:
         redirect_url = _fail_direct(request, organization=organization,
             roledescription=roledescription, strength=NORMAL)
@@ -394,17 +389,14 @@ def fail_provider_readable(request, organization=None, roledescription=None):
 def _fail_provider(request, organization=None,
                    strength=NORMAL, roledescription=None):
     organization_model = get_organization_model()
+    if organization and not isinstance(organization, organization_model):
+        try:
+            organization = organization_model.objects.get(
+                slug=str(organization))
+        except organization_model.DoesNotExist:
+            organization = None
     candidates = [get_broker()]
     if organization:
-        if isinstance(organization, Charge):
-            # implicit natural conversion
-            organization = organization.customer
-        elif not isinstance(organization, organization_model):
-            try:
-                organization = organization_model.objects.get(slug=organization)
-            except organization_model.DoesNotExist:
-                charge = get_object_or_404(Charge, processor_key=organization)
-                organization = charge.customer
         candidates += ([organization]
                 + list(organization_model.objects.providers_to(organization)))
     return not _has_valid_access(request, candidates,
@@ -456,17 +448,14 @@ def fail_provider_strong(request, organization=None):
 def _fail_provider_only(request, organization=None, strength=NORMAL,
                         roledescription=None):
     organization_model = get_organization_model()
+    if organization and not isinstance(organization, organization_model):
+        try:
+            organization = organization_model.objects.get(
+                slug=str(organization))
+        except organization_model.DoesNotExist:
+            organization = None
     candidates = [get_broker()]
     if organization:
-        if isinstance(organization, Charge):
-            # implicit natural conversion
-            organization = organization.customer
-        elif not isinstance(organization, organization_model):
-            try:
-                organization = organization_model.objects.get(slug=organization)
-            except organization_model.DoesNotExist:
-                charge = get_object_or_404(Charge, processor_key=organization)
-                organization = charge.customer
         candidates += list(
             organization_model.objects.providers_to(organization))
     return not _has_valid_access(request, candidates,
@@ -726,7 +715,7 @@ def requires_direct(function=None, roledescription=None,
     def decorator(view_func):
         @wraps(view_func, assigned=available_attrs(view_func))
         def _wrapped_view(request, *args, **kwargs):
-            slug = kwargs.get('charge', kwargs.get('organization', None))
+            slug = kwargs.get('organization', None)
             redirect_url = fail_direct(request, organization=slug,
                     roledescription=roledescription)
             if redirect_url:
@@ -755,7 +744,7 @@ def requires_direct_weak(function=None, roledescription=None,
     def decorator(view_func):
         @wraps(view_func, assigned=available_attrs(view_func))
         def _wrapped_view(request, *args, **kwargs):
-            slug = kwargs.get('charge', kwargs.get('organization', None))
+            slug = kwargs.get('organization', None)
             redirect_url = fail_direct_weak(request, organization=slug,
                     roledescription=roledescription)
             if redirect_url:
@@ -788,20 +777,15 @@ def requires_provider(function=None, roledescription=None,
     def decorator(view_func):
         @wraps(view_func, assigned=available_attrs(view_func))
         def _wrapped_view(request, *args, **kwargs):
-            charge = kwargs.get('charge', None)
-            if charge is not None:
-                obj = get_object_or_404(Charge, processor_key=charge)
-            else:
-                obj = kwargs.get('organization', None)
-            redirect_url = fail_provider(request, organization=obj,
+            slug = kwargs.get('organization', None)
+            redirect_url = fail_provider(request, organization=slug,
                 roledescription=roledescription)
             if redirect_url:
                 return redirect_or_denied(request, redirect_url,
                     redirect_field_name=redirect_field_name,
                     descr=_("%(auth)s is neither a manager of"\
 " %(organization)s nor a manager of one of %(organization)s providers.") % {
-    'auth': request.user,
-    'organization': kwargs.get('charge', kwargs.get('organization', None))})
+    'auth': request.user, 'organization': slug})
             return view_func(request, *args, **kwargs)
         return _wrapped_view
 
@@ -825,20 +809,15 @@ def requires_provider_weak(function=None, roledescription=None,
     def decorator(view_func):
         @wraps(view_func, assigned=available_attrs(view_func))
         def _wrapped_view(request, *args, **kwargs):
-            charge = kwargs.get('charge', None)
-            if charge is not None:
-                obj = get_object_or_404(Charge, processor_key=charge)
-            else:
-                obj = kwargs.get('organization', None)
-            redirect_url = fail_provider_weak(request, organization=obj,
+            slug = kwargs.get('organization', None)
+            redirect_url = fail_provider_weak(request, organization=slug,
                     roledescription=roledescription)
             if redirect_url:
                 return redirect_or_denied(request, redirect_url,
                     redirect_field_name=redirect_field_name,
                     descr=_("%(auth)s is neither a manager of"\
 " %(organization)s nor a manager of one of %(organization)s providers.") % {
-    'auth': request.user,
-    'organization': kwargs.get('charge', kwargs.get('organization', None))})
+    'auth': request.user, 'organization': slug})
             return view_func(request, *args, **kwargs)
         return _wrapped_view
 
@@ -862,19 +841,15 @@ def requires_provider_only(function=None, roledescription=None,
     def decorator(view_func):
         @wraps(view_func, assigned=available_attrs(view_func))
         def _wrapped_view(request, *args, **kwargs):
-            charge = kwargs.get('charge', None)
-            if charge is not None:
-                obj = get_object_or_404(Charge, processor_key=charge)
-            else:
-                obj = kwargs.get('organization', None)
-            redirect_url = fail_provider_only(request, organization=obj,
+            slug = kwargs.get('organization', None)
+            redirect_url = fail_provider_only(request, organization=slug,
                     roledescription=roledescription)
             if redirect_url:
                 return redirect_or_denied(request, redirect_url,
                     redirect_field_name=redirect_field_name,
                     descr=_("%(auth)s is not a manager of one of"\
-" %(organization)s providers.") % {'auth': request.user,
-        'organization': kwargs.get('charge', kwargs.get('organization', None))})
+" %(organization)s providers.") % {
+    'auth': request.user, 'organization': slug})
             return view_func(request, *args, **kwargs)
         return _wrapped_view
 
@@ -896,19 +871,15 @@ def requires_provider_only_weak(function=None, roledescription=None,
     def decorator(view_func):
         @wraps(view_func, assigned=available_attrs(view_func))
         def _wrapped_view(request, *args, **kwargs):
-            charge = kwargs.get('charge', None)
-            if charge is not None:
-                obj = get_object_or_404(Charge, processor_key=charge)
-            else:
-                obj = kwargs.get('organization', None)
-            redirect_url = fail_provider_only_weak(request, organization=obj,
+            slug = kwargs.get('organization', None)
+            redirect_url = fail_provider_only_weak(request, organization=slug,
                     roledescription=roledescription)
             if redirect_url:
                 return redirect_or_denied(request, redirect_url,
                     redirect_field_name=redirect_field_name,
                     descr=_("%(auth)s is not a manager of one of"\
-" %(organization)s providers.") % {'auth': request.user,
-        'organization': kwargs.get('charge', kwargs.get('organization', None))})
+" %(organization)s providers.") % {
+    'auth': request.user, 'organization': slug})
             return view_func(request, *args, **kwargs)
         return _wrapped_view
 

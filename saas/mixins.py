@@ -32,7 +32,6 @@ from django.contrib.auth.hashers import UNUSABLE_PASSWORD_PREFIX
 from django.db import models, transaction, IntegrityError
 from django.http import Http404
 from django.template.defaultfilters import slugify
-from django.views.generic.detail import SingleObjectMixin
 from rest_framework.generics import get_object_or_404
 
 from . import humanize, settings
@@ -380,34 +379,6 @@ class CartMixin(object):
         return invoicables
 
 
-class ChargeMixin(SingleObjectMixin):
-    """
-    Mixin for a ``Charge`` object.
-    """
-    model = Charge
-    slug_field = 'processor_key'
-    slug_url_kwarg = 'charge'
-
-    def get_context_data(self, **kwargs):
-        context = super(ChargeMixin, self).get_context_data(**kwargs)
-        charge = self.object
-        context.update(get_charge_context(charge))
-        urls = {'charge': {
-            'api_base': reverse('saas_api_charge', args=(charge,)),
-            'api_email_receipt': reverse(
-                'saas_api_email_charge_receipt', args=(charge,)),
-            'api_refund': reverse('saas_api_charge_refund', args=(charge,))}}
-        try:
-            # optional
-            urls['charge'].update({'printable_receipt': reverse(
-                'saas_printable_charge_receipt',
-                args=(charge.customer, charge,))})
-        except NoReverseMatch:
-            pass
-        update_context_urls(context, urls)
-        return context
-
-
 class UserMixin(object):
     """
     Returns an ``User`` from a URL.
@@ -601,6 +572,31 @@ class OrganizationDecorateMixin(object):
                 profile.is_personal = True
                 profile.credentials = personal[profile.pk]
         return page
+
+
+class ChargeMixin(OrganizationMixin):
+    """
+    Mixin for a ``Charge`` object that will first retrieve the state of
+    the ``Charge`` from the processor API.
+
+    This mixin is intended to be used for API requests. Pages should
+    use the parent ChargeMixin and use AJAX calls to retrieve the state
+    of a ``Charge`` in order to deal with latency and service errors
+    from the processor.
+    """
+    model = Charge
+    slug_field = 'processor_key'
+    slug_url_kwarg = 'charge'
+
+    def get_object(self, queryset=None):
+        if not queryset:
+            queryset = self.model.objects.filter(
+                models.Q(customer=self.organization) | models.Q(
+                charge_items__invoiced__orig_organization=self.organization))
+        kwargs = {self.slug_field: self.kwargs.get('slug_url_kwarg')}
+        charge = get_object_or_404(queryset, **kwargs)
+        charge.retrieve()
+        return charge
 
 
 class DateRangeContextMixin(object):

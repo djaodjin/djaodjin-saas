@@ -50,7 +50,7 @@ from django.views.generic import (DetailView, FormView, TemplateView,
 from django.utils.http import urlencode
 
 from .. import settings, humanize
-from ..compat import gettext_lazy as _
+from ..compat import NoReverseMatch, gettext_lazy as _
 from ..cart import session_cart_to_database
 from ..compat import is_authenticated, reverse, six
 from ..backends import ProcessorError, ProcessorConnectionError
@@ -59,7 +59,7 @@ from ..forms import (BankForm, CartPeriodsForm, CreditCardForm,
     ImportTransactionForm, RedeemCouponForm, VTChargeForm, WithdrawForm)
 from ..mixins import (BalanceDueMixin, BalanceAndCartMixin, ChargeMixin,
     DateRangeContextMixin, InvoicablesMixin, OrganizationMixin,
-    ProviderMixin, product_url)
+    ProviderMixin, get_charge_context, product_url)
 from ..models import (CartItem, Charge, Coupon,
     Plan, Price, Subscription, Transaction, UseCharge, get_broker)
 from ..utils import (get_organization_model, update_context_urls,
@@ -873,7 +873,7 @@ class ChargeListView(ProviderMixin, TemplateView):
         return context
 
 
-class ChargeReceiptView(ChargeMixin, ProviderMixin, DetailView):
+class ChargeReceiptView(ProviderMixin, ChargeMixin, DetailView):
                         # ``ProviderMixin`` to include menubar urls.
     """
     Display a receipt for a ``Charge``.
@@ -900,6 +900,25 @@ djaodjin-saas/tree/master/saas/templates/saas/billing/receipt.html>`__).
 
     def get_context_data(self, **kwargs):
         context = super(ChargeReceiptView, self).get_context_data(**kwargs)
+        charge = self.object
+        context.update(get_charge_context(charge))
+        urls = {'charge': {
+            'api_base': reverse('saas_api_charge', args=(
+                charge.customer, charge,)),
+            'api_email_receipt': reverse(
+                'saas_api_email_charge_receipt', args=(
+                charge.customer, charge,)),
+            'api_refund': reverse('saas_api_charge_refund', args=(
+                charge.customer, charge,))}}
+        try:
+            # optional
+            urls['charge'].update({'printable_receipt': reverse(
+                'saas_printable_charge_receipt',
+                args=(charge.customer, charge,))})
+        except NoReverseMatch:
+            pass
+        update_context_urls(context, urls)
+
         for rank, line in enumerate(context['charge_items']):
             event = line.invoiced.get_event()
             setattr(line, 'rank', rank)

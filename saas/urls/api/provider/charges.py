@@ -33,6 +33,7 @@ from ....compat import re_path
 # Actually a <charge> slug. We are using <organization> here such that
 # it plays nice with the rules-based permission checks.
 urlpatterns = [
-    re_path(r'^billing/charges/(?P<organization>%s)/refund/' % settings.SLUG_RE,
+    re_path(r'^billing/(?P<organization>%s)/charges/(?P<charge>%s)/refund/' % (
+        settings.SLUG_RE, settings.SLUG_RE),
         ChargeRefundAPIView.as_view(), name='saas_api_charge_refund'),
 ]

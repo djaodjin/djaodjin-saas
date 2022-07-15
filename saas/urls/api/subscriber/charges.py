@@ -31,12 +31,12 @@ from ....api.charges import ChargeResourceView, EmailChargeReceiptAPIView
 from ....compat import re_path
 
 
-# Actually a <charge> slug. We are using <organization> here such that
-# it plays nice with the rules-based permission checks.
 urlpatterns = [
-    re_path(r'^billing/charges/(?P<organization>%s)/email/' % settings.SLUG_RE,
+    re_path(r'^billing/(?P<organization>%s)/charges/(?P<charge>%s)/email/' % (
+        settings.SLUG_RE, settings.SLUG_RE),
         EmailChargeReceiptAPIView.as_view(),
         name='saas_api_email_charge_receipt'),
-    re_path(r'^billing/charges/(?P<organization>%s)/?' % settings.SLUG_RE,
+    re_path(r'^billing/(?P<organization>%s)/charges/(?P<charge>%s)/?' % (
+        settings.SLUG_RE, settings.SLUG_RE),
         ChargeResourceView.as_view(), name='saas_api_charge'),
 ]
