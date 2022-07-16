@@ -23,13 +23,15 @@
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 """
-URLs related to billing.
+URLs for pages from a ``User`` perspective.
 """
 
-from ....compat import include, path
+from ... import settings
+from ...compat import re_path
+from ...views.users import ProductListView
 
 
 urlpatterns = [
-    path('', include('saas.urls.subscriber.billing.payment')),
-    path('', include('saas.urls.subscriber.billing.info')),
+    re_path(r'users/(?P<user>%s)/roles/' % settings.SLUG_RE,
+        ProductListView.as_view(), name='saas_user_product_list'),
 ]

@@ -26,17 +26,17 @@
 Urls specific to the hosting site (i.e. broker).
 """
 
-from .. import settings
-from ..compat import re_path
-from ..views.metrics import BalancesView
-from ..views.billing import AllTransactions, ChargeListView, VTChargeView
-from ..views.download import (BalancesDownloadView, RegisteredDownloadView,
+from ... import settings
+from ...compat import path, re_path
+from ...views.metrics import BalancesView
+from ...views.billing import AllTransactions, ChargeListView, VTChargeView
+from ...views.download import (BalancesDownloadView, RegisteredDownloadView,
     TransactionDownloadView)
 
 urlpatterns = [
-    re_path(r'^billing/charges/',
+    path('billing/charges/',
         ChargeListView.as_view(), name='saas_charges'),
-    re_path(r'^billing/transactions/((?P<selector>%s)/)?download/?',
+    re_path(r'billing/transactions/((?P<selector>%s)/)?download',
         TransactionDownloadView.as_view(),
         name='saas_transactions_download'),
     re_path(r'^billing/transactions/((?P<selector>%s)/)?' %
@@ -45,13 +45,13 @@ urlpatterns = [
     # Organization refers to the subscriber in the following URL pattern.
     re_path(r'^billing/(?P<customer>%s)/vtcharge/' % settings.SLUG_RE,
         VTChargeView.as_view(), name='saas_organization_vtcharge'),
-    re_path(r'^metrics/balances/(?P<report>%s)/((?P<year>\d\d\d\d)/)?download/?'
+    re_path(r'^metrics/balances/(?P<report>%s)/((?P<year>\d\d\d\d)/)?download'
         % settings.SLUG_RE,
         BalancesDownloadView.as_view(), name='saas_balances_download'),
     re_path(r'^metrics/balances/(?P<report>%s)/((?P<year>\d\d\d\d)/)?'
         % settings.SLUG_RE,
         BalancesView.as_view(), name='saas_balance'),
-    re_path(r'^metrics/registered/download/?',
+    path('metrics/registered/download',
         RegisteredDownloadView.as_view(),
         name='saas_subscriber_pipeline_download_registered'),
 ]

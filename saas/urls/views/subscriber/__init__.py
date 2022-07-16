@@ -26,11 +26,11 @@
 URLs for the saas django app
 """
 
-from ...compat import include, path
+from ....compat import include, path
 
 
 urlpatterns = [
-    path('', include('saas.urls.subscriber.billing')),
-    path('', include('saas.urls.subscriber.profile')),
-    path('', include('saas.urls.users')),
+    path('', include('saas.urls.views.subscriber.billing')),
+    path('', include('saas.urls.views.subscriber.profile')),
+    path('', include('saas.urls.views.users')),
 ]

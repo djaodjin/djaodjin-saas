@@ -22,15 +22,19 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-"""
-URLs related to provider pages
-"""
-
-from ...compat import include, path
+from ...compat import path
+from ...views.billing import RedeemCouponView
+from ...views.legal import AgreementDetailView, AgreementListView
+from ...views.plans import CartPlanListView
 
 
 urlpatterns = [
-    path('', include('saas.urls.provider.billing')),
-    path('', include('saas.urls.provider.metrics')),
-    path('', include('saas.urls.provider.profile')),
+    path('legal/<slug:agreement>)/',
+        AgreementDetailView.as_view(), name='legal_agreement'),
+    path('legal/',
+        AgreementListView.as_view(), name='legal_agreement_list'),
+    path('pricing/',
+        CartPlanListView.as_view(), name='saas_cart_plan_list'),
+    path('redeem/',
+        RedeemCouponView.as_view(), name='saas_redeem_coupon'),
 ]

@@ -22,20 +22,15 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from .. import settings
-from ..compat import re_path
-from ..views.billing import RedeemCouponView
-from ..views.legal import AgreementDetailView, AgreementListView
-from ..views.plans import CartPlanListView
+"""
+URLs related to provider pages
+"""
+
+from ....compat import include, path
 
 
 urlpatterns = [
-    re_path(r'^legal/(?P<agreement>%s)/$' % settings.SLUG_RE,
-        AgreementDetailView.as_view(), name='legal_agreement'),
-    re_path(r'^legal/$',
-        AgreementListView.as_view(), name='legal_agreement_list'),
-    re_path(r'^pricing/',
-        CartPlanListView.as_view(), name='saas_cart_plan_list'),
-    re_path(r'^redeem/',
-        RedeemCouponView.as_view(), name='saas_redeem_coupon'),
+    path('', include('saas.urls.views.provider.billing')),
+    path('', include('saas.urls.views.provider.metrics')),
+    path('', include('saas.urls.views.provider.profile')),
 ]

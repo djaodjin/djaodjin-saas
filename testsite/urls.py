@@ -28,6 +28,7 @@ from django.conf.urls.static import static
 from django.core.exceptions import ImproperlyConfigured
 from django.contrib.auth.decorators import login_required
 from django.views.generic import TemplateView
+from saas import settings as saas_settings
 from saas.compat import reverse_lazy
 from saas.decorators import (fail_agreement, fail_authenticated, fail_direct,
     fail_provider, fail_provider_only, fail_self_provider)
@@ -71,7 +72,7 @@ urlpatterns += \
         PersonalRegistrationView.as_view(
             success_url=reverse_lazy('home')),
         name='registration_register'),
-    url_prefixed(r'', include('saas.urls.users'),
+    url_prefixed(r'', include('saas.urls.views.users'),
         redirects=[fail_authenticated]),
     url_prefixed(r'users/(?P<user>[\w.@+-]+)/',
         UserProfileView.as_view(), name='users_profile',
@@ -126,19 +127,20 @@ urlpatterns += \
     url_prefixed(r'api/', include('saas.urls.api.subscriber'),
         redirects=[fail_authenticated, fail_provider]),
     # views
-    url_prefixed(r'', include('saas.urls.request'),
+    url_prefixed(r'', include('saas.urls.views.request'),
         redirects=[fail_authenticated]),
-    url_prefixed(r'', include('saas.urls.noauth')),
-    url_prefixed(r'', include('saas.urls.broker'),
+    url_prefixed(r'', include('saas.urls.views.noauth')),
+    url_prefixed(r'', include('saas.urls.views.broker'),
         redirects=[fail_authenticated, fail_direct]),
-    url_prefixed(r'', include('saas.urls.redirects'),
+    url_prefixed(r'', include('saas.urls.views.redirects'),
         redirects=[fail_authenticated]),
-    url_prefixed(r'', include('saas.urls.provider'),
+    url_prefixed(r'', include('saas.urls.views.provider'),
         redirects=[fail_authenticated, fail_direct]),
-    url_prefixed(r'', include('saas.urls.subscriber'),
+    url_prefixed(r'', include('saas.urls.views.subscriber'),
         redirects=[fail_authenticated, fail_agreement, fail_provider]),
     url_prefixed(r'', include('saas.backends.urls.views')),
-    url_prefixed(r'app/((?P<organization>[a-zA-Z0-9_-]+)/)?',
+    url_prefixed(r'app/((?P<%s>%s)/)?' % (
+        saas_settings.PROFILE_URL_KWARG, saas_settings.SLUG_RE),
         AppView.as_view(template_name='app.html'), name='app',
         redirects=[fail_authenticated]),
 ]

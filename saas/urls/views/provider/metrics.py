@@ -23,39 +23,50 @@
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 """
-URLs updating processing information and inserting transactions
-through POST requests.
+Urls to metrics
 """
 
 from .... import settings
 from ....compat import path
-from ....views.billing import (CartPeriodsView, CartSeatsView,
-    CardUpdateView, CartView, BalanceView, CheckoutView)
+from ....views.download import CartItemDownloadView
+from ....views.profile import DashboardView
+from ....views.metrics import (SubscribersActivityView,
+    CouponMetricsView, LifeTimeValueDownloadView,
+    LifeTimeValueMetricsView, PlansMetricsView, RevenueMetricsView)
 
 
 urlpatterns = [
-    path('billing/<slug:%s>/checkout/' %
+    path('metrics/<slug:%s>/coupons/download' %
         settings.PROFILE_URL_KWARG,
-        CheckoutView.as_view(), name='saas_checkout'),
-    path('billing/<slug:%s>/cart-seats/' %
+        CartItemDownloadView.as_view(),
+        name='saas_metrics_coupons_download'),
+    path('metrics/<slug:%s>/coupons/<slug:coupon>/download' %
         settings.PROFILE_URL_KWARG,
-        CartSeatsView.as_view(), name='saas_cart_seats'),
-    path('billing/<slug:%s>/cart-periods/' %
+        CartItemDownloadView.as_view(), name='saas_coupon_uses_download'),
+    path('metrics/<slug:%s>/coupons/<slug:coupon>/' %
         settings.PROFILE_URL_KWARG,
-        CartPeriodsView.as_view(), name='saas_cart_periods'),
-    path('billing/<slug:%s>/cart/' %
+        CouponMetricsView.as_view(), name='saas_metrics_coupon'),
+    path('metrics/<slug:%s>/coupons/' %
         settings.PROFILE_URL_KWARG,
-        CartView.as_view(), name='saas_organization_cart'),
-    path('billing/<slug:%s>/card/' %
+        CouponMetricsView.as_view(), name='saas_metrics_coupons'),
+    path('metrics/<slug:%s>/dashboard/' %
         settings.PROFILE_URL_KWARG,
-        CardUpdateView.as_view(), name='saas_update_card'),
-    # Implementation Note: <subscribed_plan> (not <plan>) such that
-    # the required_manager decorator does not raise a PermissionDenied
-    # for a plan <organization> is subscribed to.
-    path('billing/<slug:%s>/balance/<slug:subscribed_plan>/' %
+        DashboardView.as_view(), name='saas_dashboard'),
+    path('metrics/<slug:%s>/revenue/' %
         settings.PROFILE_URL_KWARG,
-        BalanceView.as_view(), name='saas_subscription_balance'),
-    path('billing/<slug:%s>/balance/' %
+        RevenueMetricsView.as_view(), name='saas_metrics_summary'),
+    path('metrics/<slug:%s>/plans/' %
         settings.PROFILE_URL_KWARG,
-        BalanceView.as_view(), name='saas_organization_balance'),
+        PlansMetricsView.as_view(), name='saas_metrics_plans'),
+    path('metrics/<slug:%s>/lifetimevalue/download' %
+        settings.PROFILE_URL_KWARG,
+        LifeTimeValueDownloadView.as_view(),
+        name='saas_metrics_lifetimevalue_download'),
+    path('metrics/<slug:%s>/lifetimevalue/' %
+        settings.PROFILE_URL_KWARG,
+        LifeTimeValueMetricsView.as_view(), name='saas_metrics_lifetimevalue'),
+    path('metrics/<slug:%s>/activity/' %
+        settings.PROFILE_URL_KWARG,
+        SubscribersActivityView.as_view(),
+        name='saas_subscribers_activity'),
 ]

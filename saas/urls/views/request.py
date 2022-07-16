@@ -22,37 +22,22 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-"""
-URLs related to provider bank account information.
-"""
+'''URL for the request user to sign legal agreements.'''
 
 from ... import settings
-from ...compat import path
-from ...views.download import TransferDownloadView
-from ...views.billing import (ProcessorAuthorizeView, ProcessorDeAuthorizeView,
-    CouponListView, ImportTransactionsView, TransferListView, WithdrawView)
+from ...compat import path, re_path
+from ...views.legal import AgreementSignView
+from ...views.optins import RoleGrantAcceptView
+from ...views.roles import RoleImplicitGrantAcceptView
 
 
 urlpatterns = [
-    path('billing/<slug:%s>/bank/deauthorize/' %
-        settings.PROFILE_URL_KWARG,
-        ProcessorDeAuthorizeView.as_view(), name='saas_deauthorize_processor'),
-    path('billing/<slug:%s>/bank/' %
-        settings.PROFILE_URL_KWARG,
-        ProcessorAuthorizeView.as_view(), name='saas_update_bank'),
-    path('billing/<slug:%s>/coupons/' %
-        settings.PROFILE_URL_KWARG,
-        CouponListView.as_view(), name='saas_coupon_list'),
-    path('billing/<slug:%s>/transfers/download' %
-        settings.PROFILE_URL_KWARG,
-        TransferDownloadView.as_view(), name='saas_transfers_download'),
-    path('billing/<slug:%s>/transfers/import/' %
-        settings.PROFILE_URL_KWARG,
-        ImportTransactionsView.as_view(), name='saas_import_transactions'),
-    path('billing/<slug:%s>/transfers/withdraw/' %
-        settings.PROFILE_URL_KWARG,
-        WithdrawView.as_view(), name='saas_withdraw_funds'),
-    path('billing/<slug:%s>/transfers/' %
-        settings.PROFILE_URL_KWARG,
-        TransferListView.as_view(), name='saas_transfer_info'),
+    re_path(r'users/roles/accept/(?P<verification_key>%s)/' % (
+        settings.VERIFICATION_KEY_RE),
+        RoleGrantAcceptView.as_view(), name='saas_role_grant_accept'),
+    path('users/roles/accept/',
+        RoleImplicitGrantAcceptView.as_view(),
+        name='saas_role_implicit_grant_accept'),
+    path('legal/<slug:agreement>/sign/',
+        AgreementSignView.as_view(), name='legal_sign_agreement'),
 ]

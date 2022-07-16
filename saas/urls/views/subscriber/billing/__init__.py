@@ -22,22 +22,14 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-'''URL for the request user to sign legal agreements.'''
+"""
+URLs related to billing.
+"""
 
-from .. import settings
-from ..compat import re_path
-from ..views.legal import AgreementSignView
-from ..views.optins import RoleGrantAcceptView
-from ..views.roles import RoleImplicitGrantAcceptView
+from .....compat import include, path
 
 
 urlpatterns = [
-    re_path(r'users/roles/accept/$',
-        RoleImplicitGrantAcceptView.as_view(),
-        name='saas_role_implicit_grant_accept'),
-    re_path(r'users/roles/accept/(?P<verification_key>%s)/' % (
-        settings.VERIFICATION_KEY_RE),
-        RoleGrantAcceptView.as_view(), name='saas_role_grant_accept'),
-    re_path(r'^legal/(?P<agreement>%s)/sign/' % settings.SLUG_RE,
-        AgreementSignView.as_view(), name='legal_sign_agreement'),
+    path('', include('saas.urls.views.subscriber.billing.payment')),
+    path('', include('saas.urls.views.subscriber.billing.info')),
 ]

@@ -23,45 +23,39 @@
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 """
-URLs related to provider bank account information.
+URLs updating processing information and inserting transactions
+through POST requests.
 """
 
-from ... import settings
-from ...compat import path, re_path
-from ...views.download import (ActiveSubscriptionDownloadView,
-    ChurnedSubscriptionDownloadView)
-from ...views.optins import SubscriptionRequestAcceptView
-from ...views.plans import PlanCreateView, PlanUpdateView, PlanListView
-from ...views.profile import SubscriberListView, PlanSubscribersListView
+from ..... import settings
+from .....compat import path
+from .....views.billing import (CartPeriodsView, CartSeatsView,
+    CardUpdateView, CartView, BalanceView, CheckoutView)
 
 
 urlpatterns = [
-    path('profile/<slug:%s>/plans/<slug:plan>/subscribers/' %
+    path('billing/<slug:%s>/checkout/' %
         settings.PROFILE_URL_KWARG,
-        PlanSubscribersListView.as_view(), name='saas_plan_subscribers'),
-    path('profile/<slug:%s>/plans/new/' %
+        CheckoutView.as_view(), name='saas_checkout'),
+    path('billing/<slug:%s>/cart-seats/' %
         settings.PROFILE_URL_KWARG,
-        PlanCreateView.as_view(), name='saas_plan_new'),
-    path('profile/<slug:%s>/plans/<slug:plan>/' %
+        CartSeatsView.as_view(), name='saas_cart_seats'),
+    path('billing/<slug:%s>/cart-periods/' %
         settings.PROFILE_URL_KWARG,
-        PlanUpdateView.as_view(), name='saas_plan_edit'),
-    path('profile/<slug:%s>/plans/' %
+        CartPeriodsView.as_view(), name='saas_cart_periods'),
+    path('billing/<slug:%s>/cart/' %
         settings.PROFILE_URL_KWARG,
-        PlanListView.as_view(), name='saas_plan_base'),
-    path('profile/<slug:%s>/subscribers/active/download' %
+        CartView.as_view(), name='saas_organization_cart'),
+    path('billing/<slug:%s>/card/' %
         settings.PROFILE_URL_KWARG,
-        ActiveSubscriptionDownloadView.as_view(),
-        name='saas_subscriber_pipeline_download_subscribed'),
-    path('profile/<slug:%s>/subscribers/churned/download' %
+        CardUpdateView.as_view(), name='saas_update_card'),
+    # Implementation Note: <subscribed_plan> (not <plan>) such that
+    # the required_manager decorator does not raise a PermissionDenied
+    # for a plan <organization> is subscribed to.
+    path('billing/<slug:%s>/balance/<slug:subscribed_plan>/' %
         settings.PROFILE_URL_KWARG,
-        ChurnedSubscriptionDownloadView.as_view(),
-        name='saas_subscriber_pipeline_download_churned'),
-    re_path(r'profile/(?P<%s>%s)/subscribers/accept/(?P<request_key>%s)/' % (
-        settings.PROFILE_URL_KWARG, settings.SLUG_RE,
-        settings.VERIFICATION_KEY_RE),
-        SubscriptionRequestAcceptView.as_view(),
-        name='subscription_grant_accept'),
-    path('profile/<slug:%s>/subscribers/' %
+        BalanceView.as_view(), name='saas_subscription_balance'),
+    path('billing/<slug:%s>/balance/' %
         settings.PROFILE_URL_KWARG,
-        SubscriberListView.as_view(), name='saas_subscriber_list'),
+        BalanceView.as_view(), name='saas_organization_balance'),
 ]

@@ -26,11 +26,11 @@
 Urls for profiles
 """
 
-from ... import settings
-from ...compat import path, re_path
-from ...views.profile import (RoleDetailView, RoleListView,
+from .... import settings
+from ....compat import path, re_path
+from ....views.profile import (RoleDetailView, RoleListView,
     OrganizationProfileView, SubscriptionListView)
-from ...views.optins import SubscriptionGrantAcceptView
+from ....views.optins import SubscriptionGrantAcceptView
 
 urlpatterns = [
     path('profile/<slug:%s>/roles/<slug:role>/' %

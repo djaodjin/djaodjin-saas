@@ -23,33 +23,36 @@
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 """
-URLs responding to GET requests with billing history.
+URLs related to provider bank account information.
 """
 
 from .... import settings
 from ....compat import path
-from ....views.billing import ChargeReceiptView, BillingStatementView
-from ....views.download import BillingStatementDownloadView
+from ....views.download import TransferDownloadView
+from ....views.billing import (ProcessorAuthorizeView, ProcessorDeAuthorizeView,
+    CouponListView, ImportTransactionsView, TransferListView, WithdrawView)
 
-try:
-    from ....views.extra import PrintableChargeReceiptView
-    urlpatterns = [
-        path('billing/<slug:%s>/receipt/<slug:charge>/printable/' %
-            settings.PROFILE_URL_KWARG,
-            PrintableChargeReceiptView.as_view(),
-            name='saas_printable_charge_receipt'),
-        ]
-except ImportError:
-    urlpatterns = []
 
-urlpatterns += [
-    path('billing/<slug:%s>/receipt/<slug:charge>/' %
+urlpatterns = [
+    path('billing/<slug:%s>/bank/deauthorize/' %
         settings.PROFILE_URL_KWARG,
-        ChargeReceiptView.as_view(), name='saas_charge_receipt'),
-    path('billing/<slug:%s>/history/download' %
+        ProcessorDeAuthorizeView.as_view(), name='saas_deauthorize_processor'),
+    path('billing/<slug:%s>/bank/' %
         settings.PROFILE_URL_KWARG,
-        BillingStatementDownloadView.as_view(), name='saas_statement_download'),
-    path('billing/<slug:%s>/history/' %
+        ProcessorAuthorizeView.as_view(), name='saas_update_bank'),
+    path('billing/<slug:%s>/coupons/' %
         settings.PROFILE_URL_KWARG,
-        BillingStatementView.as_view(), name='saas_billing_info'),
+        CouponListView.as_view(), name='saas_coupon_list'),
+    path('billing/<slug:%s>/transfers/download' %
+        settings.PROFILE_URL_KWARG,
+        TransferDownloadView.as_view(), name='saas_transfers_download'),
+    path('billing/<slug:%s>/transfers/import/' %
+        settings.PROFILE_URL_KWARG,
+        ImportTransactionsView.as_view(), name='saas_import_transactions'),
+    path('billing/<slug:%s>/transfers/withdraw/' %
+        settings.PROFILE_URL_KWARG,
+        WithdrawView.as_view(), name='saas_withdraw_funds'),
+    path('billing/<slug:%s>/transfers/' %
+        settings.PROFILE_URL_KWARG,
+        TransferListView.as_view(), name='saas_transfer_info'),
 ]

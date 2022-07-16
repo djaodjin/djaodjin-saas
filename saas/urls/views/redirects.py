@@ -24,11 +24,11 @@
 
 from django.views.generic import RedirectView
 
-from .. import settings
-from ..compat import path
-from ..views import (OrganizationRedirectView, ProviderRedirectView,
+from ... import settings
+from ...compat import path
+from ...views import (OrganizationRedirectView, ProviderRedirectView,
     UserRedirectView)
-from ..views.profile import OrganizationCreateView
+from ...views.profile import OrganizationCreateView
 
 
 urlpatterns = [
