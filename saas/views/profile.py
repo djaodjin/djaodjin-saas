@@ -249,6 +249,7 @@ class OrganizationCreateView(RedirectFormMixin, CreateView):
 
     model = get_organization_model()
     organization_model = get_organization_model()
+    organization_url_kwarg = settings.PROFILE_URL_KWARG
     form_class = OrganizationCreateForm
     pattern_name = 'saas_organization_cart'
     template_name = "saas/profile/new.html"
@@ -294,7 +295,7 @@ class OrganizationCreateView(RedirectFormMixin, CreateView):
         return redirect_path
 
     def get_success_url(self):
-        self.kwargs.update({'organization': self.object})
+        self.kwargs.update({self.organization_url_kwarg: self.object})
         success_url = self.get_redirect_url(*self.args, **self.kwargs)
         return str(success_url)
 
@@ -331,7 +332,7 @@ class DashboardView(OrganizationMixin, DetailView):
     """
 
     model = get_organization_model()
-    slug_url_kwarg = 'organization'
+    slug_url_kwarg = settings.PROFILE_URL_KWARG
     template_name = 'saas/metrics/dashboard.html'
 
     def get_context_data(self, **kwargs):
@@ -376,7 +377,7 @@ class OrganizationProfileView(OrganizationMixin, UpdateView):
     model = get_organization_model()
     form_class = OrganizationForm
     slug_field = 'slug'
-    slug_url_kwarg = 'organization'
+    slug_url_kwarg = settings.PROFILE_URL_KWARG
     template_name = "saas/profile/index.html"
 
     def update_attached_user(self, form):

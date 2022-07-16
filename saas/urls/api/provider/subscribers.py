@@ -32,30 +32,33 @@ from ....api.organizations import (EngagedSubscribersAPIView,
 from ....api.subscriptions import (ProvidedSubscriptionsAPIView,
     PlanSubscriptionDetailAPIView)
 from ....api.subscriptions import SubscriptionRequestAcceptAPIView
-from ....compat import re_path
+from ....compat import path, re_path
 
 
 urlpatterns = [
-    re_path(r'^profile/(?P<organization>%s)/subscribers/accept/'\
-        '(?P<request_key>%s)/' % (
-        settings.SLUG_RE, settings.VERIFICATION_KEY_RE),
+    re_path(r'profile/(?P<%s>%s)/subscribers/accept/(?P<request_key>%s)' % (
+        settings.PROFILE_URL_KWARG, settings.SLUG_RE,
+        settings.VERIFICATION_KEY_RE),
         SubscriptionRequestAcceptAPIView.as_view(),
         name='saas_api_subscription_grant_accept'),
-    re_path(r'profile/(?P<organization>%s)/subscribers/engaged/?' %
-        settings.SLUG_RE, EngagedSubscribersAPIView.as_view(),
+    path('profile/<slug:%s>/subscribers/engaged' %
+        settings.PROFILE_URL_KWARG,
+        EngagedSubscribersAPIView.as_view(),
         name='saas_api_engaged_subscribers'),
-    re_path(r'^profile/(?P<organization>%s)/subscribers/unengaged/?' %
-        settings.SLUG_RE, UnengagedSubscribersAPIView.as_view(),
+    path('profile/<slug:%s>/subscribers/unengaged' %
+        settings.PROFILE_URL_KWARG,
+        UnengagedSubscribersAPIView.as_view(),
         name='saas_api_unengaged_subscribers'),
-    re_path(r'^profile/(?P<organization>%s)/subscribers/?' % settings.SLUG_RE,
+    path('profile/<slug:%s>/subscribers' %
+        settings.PROFILE_URL_KWARG,
         SubscribersAPIView.as_view(), name='saas_api_subscribers'),
-    re_path(r'^profile/(?P<organization>%s)/plans/(?P<plan>%s)/subscriptions/'\
-    '(?P<subscriber>%s)/'
-        % (settings.SLUG_RE, settings.SLUG_RE, settings.SLUG_RE),
+    path(
+    'profile/<slug:%s>/plans/<slug:plan>/subscriptions/<slug:subscriber>' %
+        settings.PROFILE_URL_KWARG,
         PlanSubscriptionDetailAPIView.as_view(),
         name='saas_api_plan_subscription'),
-    re_path(r'^profile/(?P<organization>%s)/plans/(?P<plan>%s)/subscriptions/'
-        % (settings.SLUG_RE, settings.SLUG_RE),
+    path('profile/<slug:%s>/plans/<slug:plan>/subscriptions' %
+        settings.PROFILE_URL_KWARG,
         ProvidedSubscriptionsAPIView.as_view(),
         name='saas_api_plan_subscriptions'),
 ]

@@ -34,34 +34,43 @@ from ....api.metrics import (BalancesAPIView, CouponUsesAPIView,
     RevenueMetricAPIView)
 from ....api.subscriptions import (ActiveSubscriptionAPIView,
     ChurnedSubscriptionAPIView)
-from ....compat import re_path
+from ....compat import path
 
 
 urlpatterns = [
-    re_path(r'^metrics/(?P<organization>%s)/coupons/(?P<coupon>%s)/?' % (
-        settings.SLUG_RE, settings.SLUG_RE), CouponUsesAPIView.as_view(),
-        name='saas_api_coupon_uses'),
-    re_path(r'^metrics/(?P<organization>%s)/active/?' % settings.SLUG_RE,
+    path('metrics/<slug:%s>/coupons/<slug:coupon>' %
+        settings.PROFILE_URL_KWARG,
+        CouponUsesAPIView.as_view(), name='saas_api_coupon_uses'),
+    path('metrics/<slug:%s>/active' %
+        settings.PROFILE_URL_KWARG,
         ActiveSubscriptionAPIView.as_view(), name='saas_api_subscribed'),
-    re_path(r'^metrics/(?P<organization>%s)/balances/?' % settings.SLUG_RE,
+    path('metrics/<slug:%s>/balances' %
+        settings.PROFILE_URL_KWARG,
         BalancesAPIView.as_view(), name='saas_api_balances'),
-    re_path(r'^metrics/(?P<organization>%s)/churned/?' % settings.SLUG_RE,
+    path('metrics/<slug:%s>/churned' %
+        settings.PROFILE_URL_KWARG,
         ChurnedSubscriptionAPIView.as_view(), name='saas_api_churned'),
-    re_path(r'^metrics/(?P<organization>%s)/customers/?' % settings.SLUG_RE,
+    path('metrics/<slug:%s>/customers' %
+        settings.PROFILE_URL_KWARG,
         CustomerMetricAPIView.as_view(), name='saas_api_customer'),
-    re_path(r'^metrics/(?P<organization>%s)/plans/?' % settings.SLUG_RE,
+    path('metrics/<slug:%s>/plans' %
+        settings.PROFILE_URL_KWARG,
         PlanMetricAPIView.as_view(), name='saas_api_metrics_plans'),
-    re_path(r'^metrics/(?P<organization>%s)/funds/?' % settings.SLUG_RE,
+    path('metrics/<slug:%s>/funds' %
+        settings.PROFILE_URL_KWARG,
         RevenueMetricAPIView.as_view(), name='saas_api_revenue'),
-    re_path(r'^metrics/(?P<organization>%s)/lifetimevalue/?' % settings.SLUG_RE,
+    path('metrics/<slug:%s>/lifetimevalue' %
+        settings.PROFILE_URL_KWARG,
         LifetimeValueMetricAPIView.as_view(),
         name='saas_api_metrics_lifetimevalue'),
 
     # Metrics for a federation of providers
-    re_path(r'metrics/(?P<organization>%s)/federated/shared/?' %
-        settings.SLUG_RE, SharedProfilesAPIView.as_view(),
+    path('metrics/<slug:%s>/federated/shared' %
+        settings.PROFILE_URL_KWARG,
+        SharedProfilesAPIView.as_view(),
         name="saas_api_shared_profiles"),
-    re_path(r'metrics/(?P<organization>%s)/federated/?' % settings.SLUG_RE,
+    path('metrics/<slug:%s>/federated' %
+        settings.PROFILE_URL_KWARG,
         FederatedSubscribersAPIView.as_view(),
         name="saas_api_federated_subscribers"),
 ]

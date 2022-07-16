@@ -283,7 +283,7 @@ def fail_paid_subscription(request, organization=None, plan=None):
         return reverse('saas_cart_plan_list')
 
     if active_subscription.is_locked:
-        return reverse('saas_organization_balance', args=(
+        return reverse('saas_subscription_balance', args=(
             active_subscription.organization, active_subscription.plan))
     return False
 
@@ -625,7 +625,7 @@ def requires_agreement(function=None,
 
 
 def requires_subscription(function=None,
-                organization_kwarg_slug='organization',
+                organization_kwarg_slug=settings.PROFILE_URL_KWARG,
                 plan_kwarg_slug='subscribed_plan',
                 redirect_field_name=REDIRECT_FIELD_NAME,
                 strength=NORMAL,
@@ -662,7 +662,7 @@ def requires_subscription(function=None,
 
 
 def requires_paid_subscription(function=None,
-                organization_kwarg_slug='organization',
+                organization_kwarg_slug=settings.PROFILE_URL_KWARG,
                 plan_kwarg_slug='subscribed_plan',
                 redirect_field_name=REDIRECT_FIELD_NAME,
                 strength=NORMAL,
@@ -715,7 +715,7 @@ def requires_direct(function=None, roledescription=None,
     def decorator(view_func):
         @wraps(view_func, assigned=available_attrs(view_func))
         def _wrapped_view(request, *args, **kwargs):
-            slug = kwargs.get('organization', None)
+            slug = kwargs.get(settings.PROFILE_URL_KWARG, None)
             redirect_url = fail_direct(request, organization=slug,
                     roledescription=roledescription)
             if redirect_url:
@@ -744,7 +744,7 @@ def requires_direct_weak(function=None, roledescription=None,
     def decorator(view_func):
         @wraps(view_func, assigned=available_attrs(view_func))
         def _wrapped_view(request, *args, **kwargs):
-            slug = kwargs.get('organization', None)
+            slug = kwargs.get(settings.PROFILE_URL_KWARG, None)
             redirect_url = fail_direct_weak(request, organization=slug,
                     roledescription=roledescription)
             if redirect_url:
@@ -777,7 +777,7 @@ def requires_provider(function=None, roledescription=None,
     def decorator(view_func):
         @wraps(view_func, assigned=available_attrs(view_func))
         def _wrapped_view(request, *args, **kwargs):
-            slug = kwargs.get('organization', None)
+            slug = kwargs.get(settings.PROFILE_URL_KWARG, None)
             redirect_url = fail_provider(request, organization=slug,
                 roledescription=roledescription)
             if redirect_url:
@@ -809,7 +809,7 @@ def requires_provider_weak(function=None, roledescription=None,
     def decorator(view_func):
         @wraps(view_func, assigned=available_attrs(view_func))
         def _wrapped_view(request, *args, **kwargs):
-            slug = kwargs.get('organization', None)
+            slug = kwargs.get(settings.PROFILE_URL_KWARG, None)
             redirect_url = fail_provider_weak(request, organization=slug,
                     roledescription=roledescription)
             if redirect_url:
@@ -841,7 +841,7 @@ def requires_provider_only(function=None, roledescription=None,
     def decorator(view_func):
         @wraps(view_func, assigned=available_attrs(view_func))
         def _wrapped_view(request, *args, **kwargs):
-            slug = kwargs.get('organization', None)
+            slug = kwargs.get(settings.PROFILE_URL_KWARG, None)
             redirect_url = fail_provider_only(request, organization=slug,
                     roledescription=roledescription)
             if redirect_url:
@@ -871,7 +871,7 @@ def requires_provider_only_weak(function=None, roledescription=None,
     def decorator(view_func):
         @wraps(view_func, assigned=available_attrs(view_func))
         def _wrapped_view(request, *args, **kwargs):
-            slug = kwargs.get('organization', None)
+            slug = kwargs.get(settings.PROFILE_URL_KWARG, None)
             redirect_url = fail_provider_only_weak(request, organization=slug,
                     roledescription=roledescription)
             if redirect_url:

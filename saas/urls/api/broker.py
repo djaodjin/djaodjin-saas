@@ -33,24 +33,24 @@ from ...api.charges import ChargeListAPIView
 from ...api.organizations import OrganizationListAPIView
 from ...api.transactions import TransactionListAPIView
 from ...api.users import RegisteredAPIView
-from ...compat import re_path
+from ...compat import path, re_path
 
 
 urlpatterns = [
-    re_path(r'^billing/transactions/?',
+    path('billing/transactions',
         TransactionListAPIView.as_view(), name='saas_api_transactions'),
-    re_path(r'^billing/charges/?$', ChargeListAPIView.as_view(),
+    path('billing/charges', ChargeListAPIView.as_view(),
         name='saas_api_charges'),
-    re_path(r'^metrics/balances/(?P<report>%s)/lines/(?P<rank>\d+)/?' % (
+    re_path(r'^metrics/balances/(?P<report>%s)/lines/(?P<rank>\d+)' % (
         settings.SLUG_RE), BalanceLineDetailAPIView.as_view(),
         name='saas_api_balance_line'),
-    re_path(r'^metrics/balances/(?P<report>%s)/lines/?' % settings.SLUG_RE,
+    path('metrics/balances/<slug:report>/lines',
         BalanceLineListAPIView.as_view(), name='saas_api_balance_lines'),
-    re_path(r'^metrics/balances/(?P<report>%s)/?' % settings.SLUG_RE,
+    path('metrics/balances/<slug:report>',
         BrokerBalancesAPIView.as_view(), name='saas_api_broker_balances'),
-    re_path(r'^metrics/registered/?',
+    path('metrics/registered',
         RegisteredAPIView.as_view(), name='saas_api_registered'),
-    re_path(r'^profile/$',
+    path('profile',
         OrganizationListAPIView.as_view(),
         name='saas_api_profile'),
 ]

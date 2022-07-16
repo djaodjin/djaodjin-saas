@@ -1076,12 +1076,13 @@ var subscriptionDetailMixin = {
         },
         acceptRequestURL: function(organization, request_key) {
            var vm = this;
-           return (vm.api_profile_url +
+           return vm._safeUrl(vm.api_profile_url,
                 organization + "/subscribers/accept/" + request_key + "/");
         },
         subscriptionURL: function(organization, plan) {
            var vm = this;
-            return vm.api_profile_url + organization + "/subscriptions/" + plan;
+            return vm._safeUrl(vm.api_profile_url,
+                organization + "/subscriptions/" + plan);
         },
     }
 }
@@ -1191,7 +1192,8 @@ var subscriptionListMixin = {
         },
         subscribersURL: function(provider, plan) {
             var vm = this;
-            return vm.api_profile_url + provider + "/plans/" + plan + "/subscriptions/";
+            return vm._safeUrl(vm.api_profile_url,
+                provider + "/plans/" + plan + "/subscriptions");
         },
     },
     mounted: function(){

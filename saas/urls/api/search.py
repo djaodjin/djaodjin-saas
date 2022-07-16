@@ -29,16 +29,17 @@ URLs to populate type-ahead candidate lists
 from ... import settings
 from ...api.accounts import (AccountsTypeaheadAPIView, ProfileAPIView,
     ProfilesTypeaheadAPIView, UsersTypeaheadAPIView)
-from ...compat import re_path
+from ...compat import path
 
 
 urlpatterns = [
-    re_path(r'^accounts/users/?', UsersTypeaheadAPIView.as_view(),
-        name='saas_api_search_users'),
-    re_path(r'^accounts/profiles/(?P<organization>%s)/?' % settings.SLUG_RE,
+    path('accounts/users',
+        UsersTypeaheadAPIView.as_view(), name='saas_api_search_users'),
+    path('accounts/profiles/<slug:%s>' %
+        settings.PROFILE_URL_KWARG,
         ProfileAPIView.as_view(), name='saas_api_search_profile'),
-    re_path(r'^accounts/profiles/?', ProfilesTypeaheadAPIView.as_view(),
-        name='saas_api_search_profiles'),
-    re_path(r'^accounts/?', AccountsTypeaheadAPIView.as_view(),
-        name='saas_api_search_accounts'),
+    path('accounts/profiles',
+        ProfilesTypeaheadAPIView.as_view(), name='saas_api_search_profiles'),
+    path('accounts',
+        AccountsTypeaheadAPIView.as_view(), name='saas_api_search_accounts'),
 ]

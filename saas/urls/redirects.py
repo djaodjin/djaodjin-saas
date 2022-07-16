@@ -25,93 +25,83 @@
 from django.views.generic import RedirectView
 
 from .. import settings
-from ..compat import re_path
+from ..compat import path
 from ..views import (OrganizationRedirectView, ProviderRedirectView,
     UserRedirectView)
 from ..views.profile import OrganizationCreateView
 
 
 urlpatterns = [
-    re_path(r'^billing/bank/$', ProviderRedirectView.as_view(
+    path('billing/bank/', ProviderRedirectView.as_view(
         pattern_name='saas_update_bank'), name='saas_provider_update_bank'),
-    re_path(r'^billing/coupons/$', ProviderRedirectView.as_view(
+    path('billing/coupons/', ProviderRedirectView.as_view(
         pattern_name='saas_coupon_list'), name='saas_provider_coupon_list'),
-    re_path(r'^billing/import/$', ProviderRedirectView.as_view(
+    path('billing/import/', ProviderRedirectView.as_view(
         pattern_name='saas_provider_import_transactions'),
         name='saas_import_transactions'),
-    re_path(r'^billing/transfers/download/?$',
-        ProviderRedirectView.as_view(pattern_name='saas_transfers_download'),
-        name='saas_provider_transfers_download'),
-    re_path(r'^billing/transfers/$', ProviderRedirectView.as_view(
+    path('billing/transfers/', ProviderRedirectView.as_view(
         pattern_name='saas_transfer_info'), name='saas_provider_transfer_info'),
-    re_path(r'^billing/withdraw/$', ProviderRedirectView.as_view(
+    path('billing/withdraw/', ProviderRedirectView.as_view(
         pattern_name='saas_withdraw_funds'),
         name='saas_provider_withdraw_funds'),
-    re_path(r'^billing/cart/',
+    path('billing/cart/',
         OrganizationRedirectView.as_view(pattern_name='saas_organization_cart'),
         name='saas_cart'),
-    re_path(r'^profile/roles/(?P<role>%s)/$' % settings.SLUG_RE,
+    path('profile/roles/<slug:role>/',
         ProviderRedirectView.as_view(pattern_name='saas_role_detail'),
         name='saas_provider_role_list'),
-    re_path(r'^profile/plans/new/$',
+    path('profile/plans/new/',
         ProviderRedirectView.as_view(pattern_name='saas_plan_new'),
         name='saas_provider_plan_new'),
-    re_path(r'^profile/plans/(?P<plan>%s)/$' % settings.SLUG_RE,
+    path('profile/plans/<slug:plan>/',
         ProviderRedirectView.as_view(pattern_name='saas_plan_edit'),
         name='saas_provider_plan_edit'),
-    re_path(r'^profile/plans/$',
+    path('profile/plans/',
         ProviderRedirectView.as_view(pattern_name='saas_plan_base'),
         name='saas_provider_plan_base'),
-    re_path(r'^profile/subscribers/active/download/?$',
-        ProviderRedirectView.as_view(
-            pattern_name='saas_subscriber_pipeline_download_subscribed'),
-        name='saas_provider_subscriber_pipeline_download_subscribed'),
-    re_path(r'^profile/subscribers/churned/download/?$',
-        ProviderRedirectView.as_view(
-            pattern_name='saas_subscriber_pipeline_download_churned'),
-        name='saas_provider_subscriber_pipeline_download_churned'),
-    re_path(r'^profile/subscribers/$',
+    path('profile/subscribers/',
         ProviderRedirectView.as_view(pattern_name='saas_subscriber_list'),
         name='saas_provider_subscriber_list'),
-    re_path(r'^metrics/dashboard/$',
+    path('metrics/dashboard/',
         ProviderRedirectView.as_view(pattern_name='saas_dashboard'),
         name='saas_provider_dashboard'),
-    re_path(r'^metrics/revenue/$',
+    path('metrics/revenue/',
         ProviderRedirectView.as_view(pattern_name='saas_metrics_summary'),
         name='saas_provider_metrics_revenue'),
-    re_path(r'^metrics/plans/$',
+    path('metrics/plans/',
         ProviderRedirectView.as_view(pattern_name='saas_metrics_plans'),
         name='saas_provider_metrics_plans'),
-    re_path(r'^metrics/coupons/download/?$',
-        ProviderRedirectView.as_view(
-            pattern_name='saas_metrics_coupons_download'),
-        name='saas_provider_metrics_coupons_download'),
-    re_path(r'^metrics/coupons/((?P<coupon>%s)/)?$' % settings.SLUG_RE,
+    path('metrics/coupons/<slug:coupon>/',
         ProviderRedirectView.as_view(pattern_name='saas_metrics_coupons'),
-        name='saas_provider_metrics_coupons'),
+        name='saas_provider_metrics_coupon'),
+    path('metrics/coupons/',
+        ProviderRedirectView.as_view(pattern_name='saas_metrics_coupons'),
+        name='saas_provider_metrics_coupon_list'),
 
-    re_path(r'^billing/(?P<organization>%s)/$' % settings.SLUG_RE,
+    path(r'billing/<slug:%s>/' %
+        settings.PROFILE_URL_KWARG,
         RedirectView.as_view(permanent=False, pattern_name='saas_billing_info'),
         name='saas_billing_redirect'),
-    re_path(r'^billing/$',
+    path('billing/',
         OrganizationRedirectView.as_view(pattern_name='saas_billing_info'),
         name='saas_billing_base'),
-    re_path(r'^profile/new/', OrganizationCreateView.as_view(),
+    path('profile/new/', OrganizationCreateView.as_view(),
         name='saas_organization_create'),
-    re_path(r'^profile/(?P<organization>%s)/$' % settings.SLUG_RE,
+    path(r'profile/<slug:%s>/' %
+        settings.PROFILE_URL_KWARG,
         RedirectView.as_view(permanent=False,
             pattern_name='saas_organization_profile'),
         name='saas_profile_redirect'),
-    re_path(r'^profile/$', OrganizationRedirectView.as_view(
+    path('profile/', OrganizationRedirectView.as_view(
             pattern_name='saas_organization_profile'),
         name='saas_profile'),
-    re_path(r'^provider/$',
+    path('provider/',
         ProviderRedirectView.as_view(pattern_name='saas_organization_profile'),
         name='saas_provider_profile'),
-    re_path(r'^metrics/$',
+    path('metrics/',
         ProviderRedirectView.as_view(pattern_name='saas_metrics_summary'),
         name='saas_provider_metrics_summary'),
-    re_path(r'^users/roles/$',
+    path('users/roles/',
         UserRedirectView.as_view(pattern_name='saas_user_product_list'),
         name='saas_accessibles'),
 ]

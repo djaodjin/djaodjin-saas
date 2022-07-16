@@ -46,7 +46,7 @@ class RoleImplicitGrantAcceptView(RedirectView):
     Accept implicit role on an organization if no role exists for the user.
     """
     permanent = False
-    slug_url_kwarg = 'organization'
+    slug_url_kwarg = settings.PROFILE_URL_KWARG
     role_model = get_role_model()
     user_model = get_user_model()
     organization_model = get_organization_model()

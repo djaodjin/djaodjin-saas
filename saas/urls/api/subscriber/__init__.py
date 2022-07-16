@@ -24,12 +24,12 @@
 
 '''API URLs typically associated with the subscriber.'''
 
-from ....compat import include, re_path
+from ....compat import include, path
 
 
 urlpatterns = [
-    re_path(r'^', include('saas.urls.api.subscriber.charges')),
-    re_path(r'^', include('saas.urls.api.subscriber.billing')),
-    re_path(r'^', include('saas.urls.api.subscriber.roles')),
-    re_path(r'^', include('saas.urls.api.subscriber.profile')),
+    path('', include('saas.urls.api.subscriber.charges')),
+    path('', include('saas.urls.api.subscriber.billing')),
+    path('', include('saas.urls.api.subscriber.roles')),
+    path('', include('saas.urls.api.subscriber.profile')),
 ]

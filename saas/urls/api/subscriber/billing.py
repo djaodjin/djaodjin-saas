@@ -23,24 +23,27 @@
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 """
-URLs API for resources
+URLs billing API for subscribers
 """
 
 from .... import settings
 from ....api.billing import CheckoutAPIView
 from ....api.backend import PaymentMethodDetailAPIView
 from ....api.transactions import BillingsAPIView, StatementBalanceAPIView
-from ....compat import re_path
+from ....compat import path
 
 
 urlpatterns = [
-    re_path(r'^billing/(?P<organization>%s)/balance/?' % settings.SLUG_RE,
-        StatementBalanceAPIView.as_view(),
-        name='saas_api_cancel_balance_due'),
-    re_path(r'^billing/(?P<organization>%s)/history/?' % settings.SLUG_RE,
+    path('billing/<slug:%s>/balance' %
+        settings.PROFILE_URL_KWARG,
+        StatementBalanceAPIView.as_view(), name='saas_api_cancel_balance_due'),
+    path('billing/<slug:%s>/history' %
+        settings.PROFILE_URL_KWARG,
         BillingsAPIView.as_view(), name='saas_api_billings'),
-    re_path(r'^billing/(?P<organization>%s)/card/?' % settings.SLUG_RE,
+    path('billing/<slug:%s>/card' %
+        settings.PROFILE_URL_KWARG,
         PaymentMethodDetailAPIView.as_view(), name='saas_api_card'),
-    re_path(r'^billing/(?P<organization>%s)/checkout/?' % settings.SLUG_RE,
+    path('billing/<slug:%s>/checkout' %
+        settings.PROFILE_URL_KWARG,
         CheckoutAPIView.as_view(), name='saas_api_checkout'),
 ]

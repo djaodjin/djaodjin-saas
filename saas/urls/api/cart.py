@@ -26,18 +26,17 @@
 URLs for the cart API of djaodjin saas.
 """
 
-from ... import settings
 from ...api.billing import (CartItemAPIView, CartItemUploadAPIView,
                             CouponRedeemAPIView)
 from ...api.plans import PricingAPIView
-from ...compat import re_path
+from ...compat import path
 
 urlpatterns = [
-    re_path(r'^pricing/',
+    path('pricing',
         PricingAPIView.as_view(), name='saas_api_pricing'),
-    re_path(r'^cart/redeem/',
+    path('cart/redeem',
         CouponRedeemAPIView.as_view(), name='saas_api_redeem_coupon'),
-    re_path(r'^cart/(?P<plan>%s)/upload/' % settings.SLUG_RE,
+    path('cart/<slug:plan>/upload',
         CartItemUploadAPIView.as_view(), name='saas_api_cart_upload'),
-    re_path(r'^cart/', CartItemAPIView.as_view(), name='saas_api_cart')
+    path('cart', CartItemAPIView.as_view(), name='saas_api_cart')
 ]

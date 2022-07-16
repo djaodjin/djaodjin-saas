@@ -94,7 +94,7 @@ class OrganizationRedirectView(TemplateResponseMixin, ContextMixin,
     role_model = get_role_model()
     user_model = get_user_model()
     template_name = 'saas/organization_redirects.html'
-    slug_url_kwarg = 'organization'
+    slug_url_kwarg = settings.PROFILE_URL_KWARG
     permanent = False
     create_more = False
     implicit_create_on_none = False

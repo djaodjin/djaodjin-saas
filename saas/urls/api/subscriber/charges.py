@@ -28,15 +28,15 @@ URLs API for resources
 
 from .... import settings
 from ....api.charges import ChargeResourceView, EmailChargeReceiptAPIView
-from ....compat import re_path
+from ....compat import path
 
 
 urlpatterns = [
-    re_path(r'^billing/(?P<organization>%s)/charges/(?P<charge>%s)/email/' % (
-        settings.SLUG_RE, settings.SLUG_RE),
+    path('billing/<slug:%s>/charges/<slug:charge>/email' %
+        settings.PROFILE_URL_KWARG,
         EmailChargeReceiptAPIView.as_view(),
         name='saas_api_email_charge_receipt'),
-    re_path(r'^billing/(?P<organization>%s)/charges/(?P<charge>%s)/?' % (
-        settings.SLUG_RE, settings.SLUG_RE),
+    path('billing/<slug:%s>/charges/<slug:charge>' %
+        settings.PROFILE_URL_KWARG,
         ChargeResourceView.as_view(), name='saas_api_charge'),
 ]

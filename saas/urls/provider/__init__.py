@@ -26,11 +26,11 @@
 URLs related to provider pages
 """
 
-from ...compat import include, re_path
+from ...compat import include, path
 
 
 urlpatterns = [
-    re_path(r'^', include('saas.urls.provider.billing')),
-    re_path(r'^', include('saas.urls.provider.metrics')),
-    re_path(r'^', include('saas.urls.provider.profile')),
+    path('', include('saas.urls.provider.billing')),
+    path('', include('saas.urls.provider.metrics')),
+    path('', include('saas.urls.provider.profile')),
 ]

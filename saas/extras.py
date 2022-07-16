@@ -42,7 +42,8 @@ class OrganizationMixinBase(object):
     Returns an ``Organization`` from a URL.
     """
 
-    organization_url_kwarg = 'organization'
+    organization_url_kwarg = 'organization'  # XXX PROFILE_URL_KWARG
+    #organization_url_kwarg = 'profile'       # XXX PROFILE_URL_KWARG
 
     @property
     def organization(self):
@@ -60,8 +61,9 @@ class OrganizationMixinBase(object):
         """
         url_kwargs = {}
         params = kwargs if kwargs else self.kwargs
-        if 'organization' in params:
-            url_kwargs.update({'organization': params['organization']})
+        if self.organization_url_kwarg in params:
+            url_kwargs.update({self.organization_url_kwarg:
+                params[self.organization_url_kwarg]})
         return url_kwargs
 
     def get_context_data(self, **kwargs):

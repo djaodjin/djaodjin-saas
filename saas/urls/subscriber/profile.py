@@ -22,27 +22,33 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-'''Urls'''
+"""
+Urls for profiles
+"""
 
 from ... import settings
-from ...compat import re_path
+from ...compat import path, re_path
 from ...views.profile import (RoleDetailView, RoleListView,
     OrganizationProfileView, SubscriptionListView)
 from ...views.optins import SubscriptionGrantAcceptView
 
 urlpatterns = [
-    re_path(r'^profile/(?P<organization>%s)/roles/(?P<role>%s)/'
-        % (settings.SLUG_RE, settings.SLUG_RE),
+    path('profile/<slug:%s>/roles/<slug:role>/' %
+        settings.PROFILE_URL_KWARG,
         RoleDetailView.as_view(), name='saas_role_detail'),
-    re_path(r'^profile/(?P<organization>%s)/roles/$' % settings.SLUG_RE,
+    path('profile/<slug:%s>/roles/' %
+        settings.PROFILE_URL_KWARG,
         RoleListView.as_view(), name='saas_role_list'),
-    re_path(r'^profile/(?P<organization>%s)/subscriptions/accept/'\
+    re_path(r'profile/(?P<%s>%s)/subscriptions/accept/'\
         '(?P<verification_key>%s)/' % (
-        settings.SLUG_RE, settings.VERIFICATION_KEY_RE),
+            settings.PROFILE_URL_KWARG, settings.SLUG_RE,
+            settings.VERIFICATION_KEY_RE),
         SubscriptionGrantAcceptView.as_view(),
         name='subscription_grant_accept'),
-    re_path(r'^profile/(?P<organization>%s)/subscriptions/' % settings.SLUG_RE,
+    path('profile/<slug:%s>/subscriptions/' %
+        settings.PROFILE_URL_KWARG,
         SubscriptionListView.as_view(), name='saas_subscription_list'),
-    re_path(r'^profile/(?P<organization>%s)/contact/' % settings.SLUG_RE,
+    path('profile/<slug:%s>/contact/' %
+        settings.PROFILE_URL_KWARG,
         OrganizationProfileView.as_view(), name='saas_organization_profile'),
 ]

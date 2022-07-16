@@ -22,10 +22,12 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-'''Urls to metrics'''
+"""
+Urls to metrics
+"""
 
 from ... import settings
-from ...compat import re_path
+from ...compat import path
 from ...views.download import CartItemDownloadView
 from ...views.profile import DashboardView
 from ...views.metrics import (SubscribersActivityView,
@@ -34,27 +36,37 @@ from ...views.metrics import (SubscribersActivityView,
 
 
 urlpatterns = [
-    re_path(r'^metrics/(?P<organization>%s)/coupons/download/?' %
-        settings.SLUG_RE, CartItemDownloadView.as_view(),
+    path('metrics/<slug:%s>/coupons/download' %
+        settings.PROFILE_URL_KWARG,
+        CartItemDownloadView.as_view(),
         name='saas_metrics_coupons_download'),
-    re_path(r'^metrics/(?P<organization>%s)/coupons/(?P<coupon>%s)/download/?'
-        % (settings.SLUG_RE, settings.SLUG_RE),
+    path('metrics/<slug:%s>/coupons/<slug:coupon>/download' %
+        settings.PROFILE_URL_KWARG,
         CartItemDownloadView.as_view(), name='saas_coupon_uses_download'),
-    re_path(r'^metrics/(?P<organization>%s)/coupons/((?P<coupon>%s)/)?'
-        % (settings.SLUG_RE, settings.SLUG_RE),
+    path('metrics/<slug:%s>/coupons/<slug:coupon>/' %
+        settings.PROFILE_URL_KWARG,
+        CouponMetricsView.as_view(), name='saas_metrics_coupon'),
+    path('metrics/<slug:%s>/coupons/' %
+        settings.PROFILE_URL_KWARG,
         CouponMetricsView.as_view(), name='saas_metrics_coupons'),
-    re_path(r'^metrics/(?P<organization>%s)/dashboard/' % settings.SLUG_RE,
+    path('metrics/<slug:%s>/dashboard/' %
+        settings.PROFILE_URL_KWARG,
         DashboardView.as_view(), name='saas_dashboard'),
-    re_path(r'^metrics/(?P<organization>%s)/revenue/' % settings.SLUG_RE,
+    path('metrics/<slug:%s>/revenue/' %
+        settings.PROFILE_URL_KWARG,
         RevenueMetricsView.as_view(), name='saas_metrics_summary'),
-    re_path(r'^metrics/(?P<organization>%s)/plans/' % settings.SLUG_RE,
+    path('metrics/<slug:%s>/plans/' %
+        settings.PROFILE_URL_KWARG,
         PlansMetricsView.as_view(), name='saas_metrics_plans'),
-    re_path(r'^metrics/(?P<organization>%s)/lifetimevalue/download/?' %
-        settings.SLUG_RE, LifeTimeValueDownloadView.as_view(),
+    path('metrics/<slug:%s>/lifetimevalue/download' %
+        settings.PROFILE_URL_KWARG,
+        LifeTimeValueDownloadView.as_view(),
         name='saas_metrics_lifetimevalue_download'),
-    re_path(r'^metrics/(?P<organization>%s)/lifetimevalue/' % settings.SLUG_RE,
+    path('metrics/<slug:%s>/lifetimevalue/' %
+        settings.PROFILE_URL_KWARG,
         LifeTimeValueMetricsView.as_view(), name='saas_metrics_lifetimevalue'),
-    re_path(r'metrics/(?P<organization>%s)/activity/' % settings.SLUG_RE,
+    path('metrics/<slug:%s>/activity/' %
+        settings.PROFILE_URL_KWARG,
         SubscribersActivityView.as_view(),
         name='saas_subscribers_activity'),
 ]

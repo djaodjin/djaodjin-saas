@@ -590,10 +590,8 @@ class ChargeMixin(OrganizationMixin):
 
     def get_object(self, queryset=None):
         if not queryset:
-            queryset = self.model.objects.filter(
-                models.Q(customer=self.organization) | models.Q(
-                charge_items__invoiced__orig_organization=self.organization))
-        kwargs = {self.slug_field: self.kwargs.get('slug_url_kwarg')}
+            queryset = self.model.objects.filter(customer=self.organization)
+        kwargs = {self.slug_field: self.kwargs.get(self.slug_url_kwarg)}
         charge = get_object_or_404(queryset, **kwargs)
         charge.retrieve()
         return charge
@@ -817,7 +815,7 @@ class MetricsMixin(DateRangeContextMixin, ProviderMixin):
 class SubscriptionMixin(OrganizationDecorateMixin):
 
     model = Subscription
-    subscriber_url_kwarg = 'organization'
+    subscriber_url_kwarg = settings.PROFILE_URL_KWARG
 
     def get_queryset(self):
         kwargs = {}

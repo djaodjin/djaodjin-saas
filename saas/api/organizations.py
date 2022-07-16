@@ -100,7 +100,7 @@ class OrganizationDetailAPIView(OrganizationMixin, OrganizationQuerysetMixin,
         }
     """
     lookup_field = 'slug'
-    lookup_url_kwarg = 'organization'
+    lookup_url_kwarg = settings.PROFILE_URL_KWARG
     serializer_class = OrganizationWithSubscriptionsSerializer
     user_model = get_user_model()
 

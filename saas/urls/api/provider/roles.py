@@ -29,15 +29,16 @@ API URLs for a provider custom roles
 from .... import settings
 from ....api.roles import (RoleDescriptionListCreateView,
     RoleDescriptionDetailView)
-from ....compat import re_path
+from ....compat import path
 
 
 urlpatterns = [
-    re_path(r'^profile/(?P<organization>%s)/roles/describe/(?P<role>%s)/?'
-        % (settings.SLUG_RE, settings.SLUG_RE),
+    path(r'profile/<slug:%s>/roles/describe/<slug:role>' %
+        settings.PROFILE_URL_KWARG,
         RoleDescriptionDetailView.as_view(),
         name='saas_api_role_description_detail'),
-    re_path(r'^profile/(?P<organization>%s)/roles/describe/?' %
-        settings.SLUG_RE, RoleDescriptionListCreateView.as_view(),
+    path(r'profile/<slug:%s>/roles/describe' %
+        settings.PROFILE_URL_KWARG,
+        RoleDescriptionListCreateView.as_view(),
         name='saas_api_role_description_list'),
 ]

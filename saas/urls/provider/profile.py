@@ -27,7 +27,7 @@ URLs related to provider bank account information.
 """
 
 from ... import settings
-from ...compat import re_path
+from ...compat import path, re_path
 from ...views.download import (ActiveSubscriptionDownloadView,
     ChurnedSubscriptionDownloadView)
 from ...views.optins import SubscriptionRequestAcceptView
@@ -36,29 +36,32 @@ from ...views.profile import SubscriberListView, PlanSubscribersListView
 
 
 urlpatterns = [
-    re_path(r'^profile/(?P<organization>%s)/plans/(?P<plan>%s)/subscribers/'
-        % (settings.SLUG_RE, settings.SLUG_RE),
+    path('profile/<slug:%s>/plans/<slug:plan>/subscribers/' %
+        settings.PROFILE_URL_KWARG,
         PlanSubscribersListView.as_view(), name='saas_plan_subscribers'),
-    re_path(r'^profile/(?P<organization>%s)/plans/new/' % settings.SLUG_RE,
+    path('profile/<slug:%s>/plans/new/' %
+        settings.PROFILE_URL_KWARG,
         PlanCreateView.as_view(), name='saas_plan_new'),
-    re_path(r'^profile/(?P<organization>%s)/plans/(?P<plan>%s)/'
-        % (settings.SLUG_RE, settings.SLUG_RE),
+    path('profile/<slug:%s>/plans/<slug:plan>/' %
+        settings.PROFILE_URL_KWARG,
         PlanUpdateView.as_view(), name='saas_plan_edit'),
-    re_path(r'^profile/(?P<organization>%s)/plans/' % settings.SLUG_RE,
+    path('profile/<slug:%s>/plans/' %
+        settings.PROFILE_URL_KWARG,
         PlanListView.as_view(), name='saas_plan_base'),
-    re_path(r'^profile/(?P<organization>%s)/subscribers/active/download/?'
-        % settings.SLUG_RE,
+    path('profile/<slug:%s>/subscribers/active/download' %
+        settings.PROFILE_URL_KWARG,
         ActiveSubscriptionDownloadView.as_view(),
         name='saas_subscriber_pipeline_download_subscribed'),
-    re_path(r'profile/(?P<organization>%s)/subscribers/churned/download/?'
-        % settings.SLUG_RE,
+    path('profile/<slug:%s>/subscribers/churned/download' %
+        settings.PROFILE_URL_KWARG,
         ChurnedSubscriptionDownloadView.as_view(),
         name='saas_subscriber_pipeline_download_churned'),
-    re_path(r'^profile/(?P<organization>%s)/subscribers/accept/'\
-        '(?P<request_key>%s)/' % (
-        settings.SLUG_RE, settings.VERIFICATION_KEY_RE),
+    re_path(r'profile/(?P<%s>%s)/subscribers/accept/(?P<request_key>%s)/' % (
+        settings.PROFILE_URL_KWARG, settings.SLUG_RE,
+        settings.VERIFICATION_KEY_RE),
         SubscriptionRequestAcceptView.as_view(),
         name='subscription_grant_accept'),
-    re_path(r'^profile/(?P<organization>%s)/subscribers/' % settings.SLUG_RE,
+    path('profile/<slug:%s>/subscribers/' %
+        settings.PROFILE_URL_KWARG,
         SubscriberListView.as_view(), name='saas_subscriber_list'),
 ]

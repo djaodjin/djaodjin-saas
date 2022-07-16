@@ -26,10 +26,10 @@
 URLs related to billing.
 """
 
-from ....compat import include, re_path
+from ....compat import include, path
 
 
 urlpatterns = [
-    re_path(r'^', include('saas.urls.subscriber.billing.payment')),
-    re_path(r'^', include('saas.urls.subscriber.billing.info')),
+    path('', include('saas.urls.subscriber.billing.payment')),
+    path('', include('saas.urls.subscriber.billing.info')),
 ]

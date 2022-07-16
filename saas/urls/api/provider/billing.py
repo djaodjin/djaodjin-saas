@@ -31,21 +31,26 @@ from ....api.backend import RetrieveBankAPIView
 from ....api.coupons import CouponListCreateAPIView, CouponDetailAPIView
 from ....api.transactions import (ReceivablesListAPIView,
     TransferListAPIView, ImportTransactionsAPIView)
-from ....compat import re_path
+from ....compat import path
 
 urlpatterns = [
-    re_path(r'^billing/(?P<organization>%s)/bank/?' % settings.SLUG_RE,
+    path('billing/<slug:%s>/bank' %
+        settings.PROFILE_URL_KWARG,
         RetrieveBankAPIView.as_view(), name='saas_api_bank'),
-    re_path(r'^billing/(?P<organization>%s)/coupons/(?P<coupon>%s)/?'
-        % (settings.SLUG_RE, settings.SLUG_RE),
+    path('billing/<slug:%s>/coupons/<slug:coupon>' %
+        settings.PROFILE_URL_KWARG,
         CouponDetailAPIView.as_view(), name='saas_api_coupon_detail'),
-    re_path(r'^billing/(?P<organization>%s)/coupons/?'  % settings.SLUG_RE,
+    path('billing/<slug:%s>/coupons' %
+        settings.PROFILE_URL_KWARG,
         CouponListCreateAPIView.as_view(), name='saas_api_coupon_list'),
-    re_path(r'^billing/(?P<organization>%s)/receivables/?' % settings.SLUG_RE,
+    path('billing/<slug:%s>/receivables' %
+        settings.PROFILE_URL_KWARG,
         ReceivablesListAPIView.as_view(), name='saas_api_receivables'),
-    re_path(r'^billing/(?P<organization>%s)/transfers/import/' %
-        settings.SLUG_RE, ImportTransactionsAPIView.as_view(),
+    path('billing/<slug:%s>/transfers/import' %
+        settings.PROFILE_URL_KWARG,
+        ImportTransactionsAPIView.as_view(),
         name='saas_api_import_transactions'),
-    re_path(r'^billing/(?P<organization>%s)/transfers/?' % settings.SLUG_RE,
+    path('billing/<slug:%s>/transfers' %
+        settings.PROFILE_URL_KWARG,
         TransferListAPIView.as_view(), name='saas_api_transfer_list'),
 ]

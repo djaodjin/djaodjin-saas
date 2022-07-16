@@ -28,13 +28,14 @@ API URLs for a provider plans
 
 from .... import settings
 from ....api.plans import (PlanListCreateAPIView, PlanDetailAPIView)
-from ....compat import re_path
+from ....compat import path
 
 
 urlpatterns = [
-    re_path(r'^profile/(?P<organization>%s)/plans/(?P<plan>%s)/?'
-        % (settings.SLUG_RE, settings.SLUG_RE),
+    path('profile/<slug:%s>/plans/<slug:plan>' %
+        settings.PROFILE_URL_KWARG,
         PlanDetailAPIView.as_view(), name='saas_api_plan'),
-    re_path(r'^profile/(?P<organization>%s)/plans/?' % settings.SLUG_RE,
+    path('profile/<slug:%s>/plans' %
+        settings.PROFILE_URL_KWARG,
         PlanListCreateAPIView.as_view(), name='saas_api_plans'),
 ]

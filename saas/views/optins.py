@@ -29,7 +29,7 @@ from django.contrib import messages
 from django.contrib.auth import REDIRECT_FIELD_NAME
 from django.views.generic.base import RedirectView
 
-from .. import signals
+from .. import settings, signals
 from ..compat import gettext_lazy as _
 from ..mixins import SubscriptionMixin, product_url
 from ..models import get_broker
@@ -160,6 +160,7 @@ class SubscriptionRequestAcceptView(SubscriptionMixin, RedirectView):
 
     pattern_name = 'saas_organization_profile'
     permanent = False
+    organization_url_kwarg = settings.PROFILE_URL_KWARG
 
     @property
     def subscription(self):
@@ -194,8 +195,8 @@ class SubscriptionRequestAcceptView(SubscriptionMixin, RedirectView):
             subscription=obj, request_key=request_key, request=request)
         messages.success(request, _("Request from %(organization)s accepted.")
             % {'organization': obj.plan.organization.printable_name})
-        return super(SubscriptionRequestAcceptView, self).get(
-            request, *args, organization=kwargs.get('organization'))
+        return super(SubscriptionRequestAcceptView, self).get(request,
+            *args, organization=kwargs.get(self.organization_url_kwarg))
 
     def get_redirect_url(self, *args, **kwargs):
         redirect_path = validate_redirect_url(

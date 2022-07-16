@@ -169,11 +169,13 @@ TERMS_OF_USE = _SETTINGS.get('TERMS_OF_USE')
 # BE EXTRA CAREFUL! This variable is used to bypass PermissionDenied
 # exceptions. It is solely intended as a debug flexibility nob.
 BYPASS_PERMISSION_CHECK = _SETTINGS.get('BYPASS_PERMISSION_CHECK')
+PICTURE_STORAGE_CALLABLE = _SETTINGS.get('PICTURE_STORAGE_CALLABLE')
+EXTRA_FIELD = _SETTINGS.get('EXTRA_FIELD')
 
 LOGIN_URL = getattr(settings, 'LOGIN_URL')
 TIME_ZONE = getattr(settings, 'TIME_ZONE')
-MANAGER = 'manager'
-CONTRIBUTOR = 'contributor'
 
-PICTURE_STORAGE_CALLABLE = _SETTINGS.get('PICTURE_STORAGE_CALLABLE')
-EXTRA_FIELD = _SETTINGS.get('EXTRA_FIELD')
+CONTRIBUTOR = 'contributor'
+MANAGER = 'manager'
+PROFILE_URL_KWARG = 'organization'
+#PROFILE_URL_KWARG = 'profile'

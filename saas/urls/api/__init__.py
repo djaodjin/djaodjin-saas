@@ -24,14 +24,14 @@
 
 '''API URLs for the saas application'''
 
-from ...compat import include, re_path
+from ...compat import include, path
 
 
 urlpatterns = [
-    re_path(r'^', include('saas.urls.api.cart')),
-    re_path(r'^', include('saas.urls.api.legal')),
-    re_path(r'^', include('saas.urls.api.users')),
-    re_path(r'^', include('saas.urls.api.broker')),
-    re_path(r'^', include('saas.urls.api.provider')),
-    re_path(r'^', include('saas.urls.api.subscriber')),
+    path('', include('saas.urls.api.cart')),
+    path('', include('saas.urls.api.legal')),
+    path('', include('saas.urls.api.users')),
+    path('', include('saas.urls.api.broker')),
+    path('', include('saas.urls.api.provider')),
+    path('', include('saas.urls.api.subscriber')),
 ]

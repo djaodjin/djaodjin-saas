@@ -1,4 +1,4 @@
-# Copyright (c) 2021, DjaoDjin inc.
+# Copyright (c) 2022, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -43,7 +43,7 @@ class StripeProcessorRedirectView(RedirectView):
     Stripe will call an hard-coded URL hook. We normalize the ``state``
     parameter into a actual slug part of the URL and redirect there.
     """
-    slug_url_kwarg = 'organization'
+    slug_url_kwarg = settings.PROFILE_URL_KWARG
     query_string = True
 
     def get_redirect_url(self, *args, **kwargs):

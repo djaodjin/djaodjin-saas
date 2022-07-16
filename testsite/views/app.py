@@ -25,9 +25,9 @@
 from django.contrib import messages
 from django.http import HttpResponseRedirect
 from django.views.generic import TemplateView
+from saas import settings as saas_settings
 from saas.backends import ProcessorConnectionError
 from saas.compat import reverse
-from saas.settings import MANAGER
 from saas.utils import get_organization_model
 
 
@@ -35,14 +35,15 @@ class AppView(TemplateView):
 
     template_name = 'app.html'
     organization_model = get_organization_model()
+    organization_url_kwarg = saas_settings.PROFILE_URL_KWARG
 
     @property
     def organization(self):
-        organization_slug = self.kwargs.get('organization')
+        organization_slug = self.kwargs.get(self.organization_url_kwarg)
         if organization_slug:
             return self.organization_model.objects.get(slug=organization_slug)
         return self.organization_model.objects.accessible_by(
-            self.request.user, role_descr=MANAGER).first()
+            self.request.user, role_descr=saas_settings.MANAGER).first()
 
     def get_context_data(self, **kwargs):
         context = super(AppView, self).get_context_data(**kwargs)

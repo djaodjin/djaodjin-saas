@@ -29,17 +29,19 @@ URLs API for profile managers and custom roles on an Organization
 from .... import settings
 from ....api.roles import (RoleListAPIView, RoleByDescrListAPIView,
     RoleDetailAPIView)
-from ....compat import re_path
+from ....compat import path, re_path
 
 
 urlpatterns = [
-    re_path(r'^profile/(?P<organization>%s)/roles/(?P<role>%s)/(?P<user>%s)/?'
-        % (settings.SLUG_RE, settings.SLUG_RE, settings.MAYBE_EMAIL_REGEX),
+    re_path(r'profile/(?P<%s>%s)/roles/(?P<role>%s)/(?P<user>%s)' % (
+        settings.PROFILE_URL_KWARG, settings.SLUG_RE,
+        settings.SLUG_RE, settings.MAYBE_EMAIL_REGEX),
         RoleDetailAPIView.as_view(), name='saas_api_role_detail'),
-    re_path(r'^profile/(?P<organization>%s)/roles/(?P<role>%s)/?'
-        % (settings.SLUG_RE, settings.SLUG_RE),
+    path('profile/<slug:%s>/roles/<slug:role>' %
+        settings.PROFILE_URL_KWARG,
         RoleByDescrListAPIView.as_view(),
         name='saas_api_roles_by_descr'),
-    re_path(r'^profile/(?P<organization>%s)/roles/?' % settings.SLUG_RE,
+    path('profile/<slug:%s>/roles' %
+        settings.PROFILE_URL_KWARG,
         RoleListAPIView.as_view(), name='saas_api_roles'),
 ]

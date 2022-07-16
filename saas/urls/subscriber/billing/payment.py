@@ -28,26 +28,34 @@ through POST requests.
 """
 
 from .... import settings
-from ....compat import re_path
+from ....compat import path
 from ....views.billing import (CartPeriodsView, CartSeatsView,
     CardUpdateView, CartView, BalanceView, CheckoutView)
 
 
 urlpatterns = [
-    re_path(r'^billing/(?P<organization>%s)/checkout/' % settings.SLUG_RE,
+    path('billing/<slug:%s>/checkout/' %
+        settings.PROFILE_URL_KWARG,
         CheckoutView.as_view(), name='saas_checkout'),
-    re_path(r'^billing/(?P<organization>%s)/cart-seats/' % settings.SLUG_RE,
+    path('billing/<slug:%s>/cart-seats/' %
+        settings.PROFILE_URL_KWARG,
         CartSeatsView.as_view(), name='saas_cart_seats'),
-    re_path(r'^billing/(?P<organization>%s)/cart-periods/' % settings.SLUG_RE,
+    path('billing/<slug:%s>/cart-periods/' %
+        settings.PROFILE_URL_KWARG,
         CartPeriodsView.as_view(), name='saas_cart_periods'),
-    re_path(r'^billing/(?P<organization>%s)/cart/' % settings.SLUG_RE,
+    path('billing/<slug:%s>/cart/' %
+        settings.PROFILE_URL_KWARG,
         CartView.as_view(), name='saas_organization_cart'),
-    re_path(r'^billing/(?P<organization>%s)/card/' % settings.SLUG_RE,
+    path('billing/<slug:%s>/card/' %
+        settings.PROFILE_URL_KWARG,
         CardUpdateView.as_view(), name='saas_update_card'),
     # Implementation Note: <subscribed_plan> (not <plan>) such that
     # the required_manager decorator does not raise a PermissionDenied
     # for a plan <organization> is subscribed to.
-    re_path(r'^billing/(?P<organization>%s)/balance/((?P<subscribed_plan>%s)/)?'
-        % (settings.SLUG_RE, settings.SLUG_RE),
+    path('billing/<slug:%s>/balance/<slug:subscribed_plan>/' %
+        settings.PROFILE_URL_KWARG,
+        BalanceView.as_view(), name='saas_subscription_balance'),
+    path('billing/<slug:%s>/balance/' %
+        settings.PROFILE_URL_KWARG,
         BalanceView.as_view(), name='saas_organization_balance'),
 ]

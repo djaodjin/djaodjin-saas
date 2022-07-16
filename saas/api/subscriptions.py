@@ -37,7 +37,7 @@ from ..filters import DateRangeFilter
 from ..mixins import (ChurnedQuerysetMixin, PlanSubscribersQuerysetMixin,
     ProviderMixin, SubscriptionMixin, SubscriptionSmartListMixin,
     SubscribedQuerysetMixin)
-from .. import signals
+from .. import settings, signals
 from ..models import Subscription
 from ..utils import generate_random_slug, datetime_or_now
 from .roles import OptinBase
@@ -769,7 +769,7 @@ class SubscriptionRequestAcceptAPIView(GenericAPIView):
     """
     Accepts a subscription request
     """
-    provider_url_kwarg = 'organization'
+    provider_url_kwarg = settings.PROFILE_URL_KWARG
     serializer_class = ProvidedSubscriptionSerializer
 
     @property

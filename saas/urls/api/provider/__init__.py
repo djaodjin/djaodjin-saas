@@ -24,14 +24,14 @@
 
 '''API URLs typically associated with the provider.'''
 
-from ....compat import include, re_path
+from ....compat import include, path
 
 
 urlpatterns = [
-    re_path(r'^', include('saas.urls.api.provider.charges')),
-    re_path(r'^', include('saas.urls.api.provider.billing')),
-    re_path(r'^', include('saas.urls.api.provider.roles')),
-    re_path(r'^', include('saas.urls.api.provider.subscribers')),
-    re_path(r'^', include('saas.urls.api.provider.plans')),
-    re_path(r'^', include('saas.urls.api.provider.metrics')),
+    path('', include('saas.urls.api.provider.charges')),
+    path('', include('saas.urls.api.provider.billing')),
+    path('', include('saas.urls.api.provider.roles')),
+    path('', include('saas.urls.api.provider.subscribers')),
+    path('', include('saas.urls.api.provider.plans')),
+    path('', include('saas.urls.api.provider.metrics')),
 ]

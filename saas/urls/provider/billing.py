@@ -27,29 +27,32 @@ URLs related to provider bank account information.
 """
 
 from ... import settings
-from ...compat import re_path
+from ...compat import path
 from ...views.download import TransferDownloadView
 from ...views.billing import (ProcessorAuthorizeView, ProcessorDeAuthorizeView,
     CouponListView, ImportTransactionsView, TransferListView, WithdrawView)
 
 
 urlpatterns = [
-    re_path(r'^billing/(?P<organization>%s)/bank/deauthorize/' %
-        settings.SLUG_RE,
+    path('billing/<slug:%s>/bank/deauthorize/' %
+        settings.PROFILE_URL_KWARG,
         ProcessorDeAuthorizeView.as_view(), name='saas_deauthorize_processor'),
-    re_path(r'^billing/(?P<organization>%s)/bank/' % settings.SLUG_RE,
+    path('billing/<slug:%s>/bank/' %
+        settings.PROFILE_URL_KWARG,
         ProcessorAuthorizeView.as_view(), name='saas_update_bank'),
-    re_path(r'^billing/(?P<organization>%s)/coupons/' % settings.SLUG_RE,
+    path('billing/<slug:%s>/coupons/' %
+        settings.PROFILE_URL_KWARG,
         CouponListView.as_view(), name='saas_coupon_list'),
-    re_path(r'^billing/(?P<organization>%s)/transfers/download/?' %
-        settings.SLUG_RE,
+    path('billing/<slug:%s>/transfers/download' %
+        settings.PROFILE_URL_KWARG,
         TransferDownloadView.as_view(), name='saas_transfers_download'),
-    re_path(r'^billing/(?P<organization>%s)/transfers/import/' %
-        settings.SLUG_RE,
+    path('billing/<slug:%s>/transfers/import/' %
+        settings.PROFILE_URL_KWARG,
         ImportTransactionsView.as_view(), name='saas_import_transactions'),
-    re_path(r'^billing/(?P<organization>%s)/transfers/withdraw/' %
-        settings.SLUG_RE,
+    path('billing/<slug:%s>/transfers/withdraw/' %
+        settings.PROFILE_URL_KWARG,
         WithdrawView.as_view(), name='saas_withdraw_funds'),
-    re_path(r'^billing/(?P<organization>%s)/transfers/' % settings.SLUG_RE,
+    path('billing/<slug:%s>/transfers/' %
+        settings.PROFILE_URL_KWARG,
         TransferListView.as_view(), name='saas_transfer_info'),
 ]

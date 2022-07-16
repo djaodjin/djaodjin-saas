@@ -45,6 +45,7 @@ class PlanFormMixin(OrganizationMixin, SingleObjectMixin):
 
     model = Plan
     form_class = PlanForm
+    plan_url_kwarg = 'plan'
 
     def get_initial(self):
         """
@@ -75,9 +76,9 @@ class PlanFormMixin(OrganizationMixin, SingleObjectMixin):
         if hasattr(self, 'object') and self.object:
             plan_kwarg = self.object.slug
         else:
-            plan_kwarg = kwargs.get('plan')
+            plan_kwarg = kwargs.get(self.plan_url_kwarg)
         if plan_kwarg:
-            url_kwargs.update({'plan': plan_kwarg})
+            url_kwargs.update({self.plan_url_kwarg: plan_kwarg})
         return url_kwargs
 
 

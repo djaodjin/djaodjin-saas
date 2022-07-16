@@ -31,21 +31,23 @@ from ....api.organizations import (
     OrganizationDetailAPIView, OrganizationPictureAPIView)
 from ....api.subscriptions import (SubscriptionDetailAPIView,
     SubscribedSubscriptionListAPIView)
-from ....compat import re_path
+from ....compat import path
 
 
 urlpatterns = [
-    re_path(
-        r'^profile/(?P<organization>%s)/subscriptions/(?P<subscribed_plan>%s)/?'
-        % (settings.SLUG_RE, settings.SLUG_RE),
+    path('profile/<slug:%s>/subscriptions/<slug:subscribed_plan>' %
+        settings.PROFILE_URL_KWARG,
         SubscriptionDetailAPIView.as_view(),
         name='saas_api_subscription_detail'),
-    re_path(r'^profile/(?P<organization>%s)/subscriptions/?' % settings.SLUG_RE,
+    path('profile/<slug:%s>/subscriptions' %
+        settings.PROFILE_URL_KWARG,
         SubscribedSubscriptionListAPIView.as_view(),
         name='saas_api_subscription_list'),
-    re_path(r'^profile/(?P<organization>%s)/?$' % settings.SLUG_RE,
-        OrganizationDetailAPIView.as_view(), name='saas_api_organization'),
-    re_path(r'^profile/(?P<organization>%s)/picture/$' % settings.SLUG_RE,
+    path('profile/<slug:%s>/picture' %
+        settings.PROFILE_URL_KWARG,
         OrganizationPictureAPIView.as_view(),
         name='saas_api_organization_picture'),
+    path('profile/<slug:%s>' %
+        settings.PROFILE_URL_KWARG,
+        OrganizationDetailAPIView.as_view(), name='saas_api_organization'),
 ]

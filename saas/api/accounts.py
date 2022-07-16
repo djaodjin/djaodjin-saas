@@ -30,7 +30,7 @@ from rest_framework.generics import (ListAPIView, ListCreateAPIView,
 from .organizations import OrganizationQuerysetMixin
 from .serializers import (OrganizationSerializer, OrganizationCreateSerializer,
     OrganizationDetailSerializer)
-from .. import filters
+from .. import filters, settings
 from ..docs import OpenAPIResponse, swagger_auto_schema
 from ..mixins import (OrganizationCreateMixin, OrganizationSmartListMixin,
     OrganizationMixin, OrganizationDecorateMixin, UserSmartListMixin)
@@ -350,7 +350,7 @@ class ProfileAPIView(OrganizationMixin, OrganizationDecorateMixin,
         }
     """
     lookup_field = 'slug'
-    lookup_url_kwarg = 'organization'
+    lookup_url_kwarg = settings.PROFILE_URL_KWARG
     queryset = get_organization_model().objects.all()
     serializer_class = OrganizationSerializer
     user_model = get_user_model()
