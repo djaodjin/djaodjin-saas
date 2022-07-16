@@ -437,7 +437,7 @@
                     formData.append("file", file.get(0).files[0]);
                     $.ajax({
                         type: "POST",
-                        url: "/api/cart/" + plan + "/upload/",
+                        url:self.options.saas_api_cart + "/" + plan + "/upload",
                         beforeSend: function(xhr) {
                             xhr.setRequestHeader(
                                 "X-CSRFToken", self._getCSRFToken());
@@ -591,7 +591,7 @@
 
     $.fn.invoice.defaults = {
         currency_unit: "usd",
-        saas_api_cart: "/api/cart/"
+        saas_api_cart: "/api/cart"
     };
 
    /** redeem a ``Coupon``.
@@ -711,7 +711,7 @@
         "use strict";
         var self = this;
         $.ajax({ type: "POST",
-                 url: self.options.saas_api_plan + "/",
+                 url: self.options.saas_api_plan,
                  beforeSend: function(xhr) {
                      xhr.setRequestHeader("X-CSRFToken", self._getCSRFToken());
                  },
@@ -734,7 +734,7 @@
         "use strict";
         var self = this;
         $.ajax({ type: "PUT",
-                 url: self.options.saas_api_plan + "/" + self.id + "/",
+                 url: self.options.saas_api_plan + "/" + self.id,
                  beforeSend: function(xhr) {
                      xhr.setRequestHeader("X-CSRFToken", self._getCSRFToken());
                  },
@@ -750,7 +750,7 @@
         "use strict";
         var self = this;
         $.ajax({ type: "DELETE",
-                 url: self.options.saas_api_plan + "/" + self.id + "/",
+                 url: self.options.saas_api_plan + "/" + self.id,
                  beforeSend: function(xhr) {
                      xhr.setRequestHeader("X-CSRFToken", self._getCSRFToken());
                  },
@@ -769,7 +769,7 @@
         "use strict";
         var self = this;
         $.ajax({ type: "GET",
-                 url: self.options.saas_api_plan + "/" + self.id + "/",
+                 url: self.options.saas_api_plan + "/" + self.id,
                  success: successFunction
                });
       },
@@ -781,7 +781,7 @@
           var self = this;
           var button = self.element.find(".activate");
           $.ajax({type: "PUT",
-                 url: self.options.saas_api_plan + "/" + self.id + "/",
+                 url: self.options.saas_api_plan + "/" + self.id,
                  beforeSend: function(xhr) {
                      xhr.setRequestHeader("X-CSRFToken", self._getCSRFToken());
                  },
