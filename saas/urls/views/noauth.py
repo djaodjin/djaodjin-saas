@@ -29,7 +29,7 @@ from ...views.plans import CartPlanListView
 
 
 urlpatterns = [
-    path('legal/<slug:agreement>)/',
+    path('legal/<slug:agreement>/',
         AgreementDetailView.as_view(), name='legal_agreement'),
     path('legal/',
         AgreementListView.as_view(), name='legal_agreement_list'),
