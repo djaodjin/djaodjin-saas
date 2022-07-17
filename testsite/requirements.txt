@@ -1,4 +1,4 @@
-Django==3.2.14
+jmnkmxjnDjango==3.2.14
 django-countries==7.2.1
 django-localflavor==3.1
 django-phonenumber-field==5.2.0
@@ -13,8 +13,9 @@ stripe==2.71.0
 
 # testsite-only
 coverage==6.3.2
-django-debug-toolbar==2.2.1       # 3.4.0 requires Django>=3.2
+django-debug-toolbar==3.5.0       # 3.4.0 requires Django>=3.2
                                   # 3.2.4 fails with SQLPanel is not scriptable
+                                  # 2.2.1 is the last version for Django2.2
 django-extensions==3.1.5
 djaodjin-rules==0.2.9
 gunicorn==20.0.4
