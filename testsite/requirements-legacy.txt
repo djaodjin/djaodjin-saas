@@ -12,7 +12,7 @@ razorpay==0.2.0
 stripe==2.55.1
 
 # native packages
-cryptography==2.2.2
+cryptography==3.3.2
 
 # testsite-only
 coverage==4.0.3
