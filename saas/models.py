@@ -4590,7 +4590,7 @@ def sum_dest_amount(transactions):
     if isinstance(transactions, QuerySet):
         if transactions.exists():
             query_result = transactions._clone()#pylint:disable=protected-access
-            query_result.query.clear_ordering(force_empty=True)
+            query_result.query.clear_ordering(True)
             query_result = query_result.values('dest_unit').annotate(
                 Sum('dest_amount'), Max('created_at')).distinct()
     else:
@@ -4625,7 +4625,7 @@ def sum_orig_amount(transactions):
     if isinstance(transactions, QuerySet):
         if transactions.exists():
             query_result = transactions._clone()#pylint:disable=protected-access
-            query_result.query.clear_ordering(force_empty=True)
+            query_result.query.clear_ordering(True)
             query_result = query_result.values('orig_unit').annotate(
                 Sum('orig_amount'), Max('created_at')).distinct()
     else:
