@@ -23,18 +23,39 @@
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 """
-URLs for the saas django app
+Redirects that need to appear after `urls.views.provider` and
+`urls.views.subscriber`
 """
 
-from ...compat import include, path
+from django.views.generic import RedirectView
 
+from ... import settings
+from ...compat import path
+from ...views import OrganizationRedirectView, ProviderRedirectView
 
 urlpatterns = [
-    path('', include('saas.urls.views.request')),
-    path('', include('saas.urls.views.noauth')),
-    path('', include('saas.urls.views.headredirects')),
-    path('', include('saas.urls.views.broker')),
-    path('', include('saas.urls.views.provider')),
-    path('', include('saas.urls.views.subscriber')),
-    path('', include('saas.urls.views.tailredirects')),
+    path(r'billing/<slug:%s>/' %
+        settings.PROFILE_URL_KWARG,
+        RedirectView.as_view(permanent=False, pattern_name='saas_billing_info'),
+        name='saas_billing_redirect'),
+    path('billing/',
+        OrganizationRedirectView.as_view(pattern_name='saas_billing_info'),
+        name='saas_billing_base'),
+
+    path(r'profile/<slug:%s>/' %
+        settings.PROFILE_URL_KWARG,
+        RedirectView.as_view(permanent=False,
+            pattern_name='saas_organization_profile'),
+        name='saas_profile_redirect'),
+    path('profile/', OrganizationRedirectView.as_view(
+            pattern_name='saas_organization_profile'),
+        name='saas_profile'),
+
+    path('metrics/',
+        ProviderRedirectView.as_view(pattern_name='saas_metrics_summary'),
+        name='saas_provider_metrics_summary'),
+
+    path('provider/',
+        ProviderRedirectView.as_view(pattern_name='saas_organization_profile'),
+        name='saas_provider_profile'),
 ]

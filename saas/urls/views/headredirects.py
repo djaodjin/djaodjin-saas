@@ -22,9 +22,11 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from django.views.generic import RedirectView
+"""
+Redirects that need to appear before `urls.views.provider` and
+`urls.views.subscriber`
+"""
 
-from ... import settings
 from ...compat import path
 from ...views import (OrganizationRedirectView, ProviderRedirectView,
     UserRedirectView)
@@ -47,6 +49,9 @@ urlpatterns = [
     path('billing/cart/',
         OrganizationRedirectView.as_view(pattern_name='saas_organization_cart'),
         name='saas_cart'),
+
+    path('profile/new/', OrganizationCreateView.as_view(),
+        name='saas_organization_create'),
     path('profile/roles/<slug:role>/',
         ProviderRedirectView.as_view(pattern_name='saas_role_detail'),
         name='saas_provider_role_list'),
@@ -62,6 +67,7 @@ urlpatterns = [
     path('profile/subscribers/',
         ProviderRedirectView.as_view(pattern_name='saas_subscriber_list'),
         name='saas_provider_subscriber_list'),
+
     path('metrics/dashboard/',
         ProviderRedirectView.as_view(pattern_name='saas_dashboard'),
         name='saas_provider_dashboard'),
@@ -78,29 +84,6 @@ urlpatterns = [
         ProviderRedirectView.as_view(pattern_name='saas_metrics_coupons'),
         name='saas_provider_metrics_coupon_list'),
 
-    path(r'billing/<slug:%s>/' %
-        settings.PROFILE_URL_KWARG,
-        RedirectView.as_view(permanent=False, pattern_name='saas_billing_info'),
-        name='saas_billing_redirect'),
-    path('billing/',
-        OrganizationRedirectView.as_view(pattern_name='saas_billing_info'),
-        name='saas_billing_base'),
-    path('profile/new/', OrganizationCreateView.as_view(),
-        name='saas_organization_create'),
-    path(r'profile/<slug:%s>/' %
-        settings.PROFILE_URL_KWARG,
-        RedirectView.as_view(permanent=False,
-            pattern_name='saas_organization_profile'),
-        name='saas_profile_redirect'),
-    path('profile/', OrganizationRedirectView.as_view(
-            pattern_name='saas_organization_profile'),
-        name='saas_profile'),
-    path('provider/',
-        ProviderRedirectView.as_view(pattern_name='saas_organization_profile'),
-        name='saas_provider_profile'),
-    path('metrics/',
-        ProviderRedirectView.as_view(pattern_name='saas_metrics_summary'),
-        name='saas_provider_metrics_summary'),
     path('users/roles/',
         UserRedirectView.as_view(pattern_name='saas_user_product_list'),
         name='saas_accessibles'),
