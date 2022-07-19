@@ -12,6 +12,14 @@ Roadmap
 Released versions
 =================
 
+0.11.1
+
+  * Add abstract classes for Role and Organization Model
+  * Map foreign keys to settings ORGANIZATION_MODEL instead of explicit Organization model
+  * Fix model choices to be tuple instead of set
+
+-- Amir Raouf <amir2raouf@gmail.com>  Tue, Jul 19 13:34:29 2022 +0200
+
 0.11.0
 
   * fixes balance when extending a subscription through a group buy

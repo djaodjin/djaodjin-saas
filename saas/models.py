@@ -218,7 +218,7 @@ class OrganizationManager(models.Manager):
 
 
 @python_2_unicode_compatible
-class Organization(models.Model):
+class AbstractOrganization(models.Model):
     """
     The Organization table stores information about who gets
     charged (subscriber) and who gets paid (provider) for using a service.
@@ -289,8 +289,8 @@ class Organization(models.Model):
     # 2nd note: We could support multiple payment processors at the same
     # time by having a relation to a separate table. For simplicity we only
     # allow one processor per organization at a time.
-    subscribes_to = models.ManyToManyField('Plan',
-        related_name='subscribers', through='Subscription')
+    subscribes_to = models.ManyToManyField('saas.Plan',
+        related_name='subscribers', through='saas.Subscription')
     billing_start = models.DateField(null=True, auto_now_add=True)
 
     funds_balance = models.PositiveIntegerField(default=0,
@@ -298,7 +298,7 @@ class Organization(models.Model):
     nb_renewal_attempts = models.PositiveIntegerField(default=0,
         help_text=_("Number of successive failed charges"))
     processor = models.ForeignKey(
-        'Organization', null=True, blank=True, on_delete=models.SET_NULL,
+        settings.ORGANIZATION_MODEL, null=True, blank=True, on_delete=models.SET_NULL,
         related_name='processes',)
     processor_card_key = models.SlugField(max_length=255, null=True, blank=True)
     processor_deposit_key = models.SlugField(max_length=255, null=True,
@@ -311,6 +311,9 @@ class Organization(models.Model):
 
     extra = get_extra_field_class()(null=True, blank=True,
         help_text=_("Extra meta data (can be stringify JSON)"))
+
+    class Meta:
+        abstract = True
 
     def __str__(self):
         return str(self.slug)
@@ -370,6 +373,7 @@ class Organization(models.Model):
 
     def validate_processor(self):
         #pylint:disable=no-member,access-member-before-definition
+        Organization = get_organization_model()
         if not self.processor_id:
             try:
                 self.processor = Organization.objects.get(
@@ -404,7 +408,7 @@ class Organization(models.Model):
                         save_user = True
                     if save_user:
                         user.save()
-                return super(Organization, self).save(
+                return super(AbstractOrganization, self).save(
                     force_insert=force_insert, force_update=force_update,
                     using=using, update_fields=update_fields)
         max_length = self._meta.get_field('slug').max_length
@@ -432,7 +436,7 @@ class Organization(models.Model):
                             if self.email:
                                 user.email = self.email
                             user.save()
-                        return super(Organization, self).save(
+                        return super(AbstractOrganization, self).save(
                             force_insert=force_insert,
                             force_update=force_update,
                             using=using, update_fields=update_fields)
@@ -1210,6 +1214,10 @@ class Organization(models.Model):
                                 'organization': self.slug,
                                 'amount': balance_due})
 
+if settings.ORGANIZATION_MODEL == "saas.Organization":
+    class Organization(AbstractOrganization):
+        pass
+
 
 @python_2_unicode_compatible
 class RoleDescription(models.Model):
@@ -1225,7 +1233,7 @@ class RoleDescription(models.Model):
     slug = models.SlugField(
         help_text=_("Unique identifier shown in the URL bar"))
     organization = models.ForeignKey(
-        Organization, null=True, on_delete=models.CASCADE,
+        settings.ORGANIZATION_MODEL, null=True, on_delete=models.CASCADE,
         related_name="role_descriptions")
     title = models.CharField(max_length=20,
         help_text=_("Short description of the role. Grammatical rules to"\
@@ -1285,16 +1293,16 @@ class RoleManager(models.Manager):
 
 
 @python_2_unicode_compatible
-class Role(models.Model):
+class AbstractRole(models.Model):
 
     objects = RoleManager()
 
     created_at = models.DateTimeField(auto_now_add=True,
         help_text=_("Date/time of creation (in ISO format)"))
-    organization = models.ForeignKey(Organization, on_delete=models.CASCADE,
-        related_name='role')
+    organization = models.ForeignKey(settings.ORGANIZATION_MODEL, on_delete=models.CASCADE,
+        related_name='roles')
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE,
-        db_column='user_id', related_name='role')
+        db_column='user_id', related_name='roles')
     role_description = models.ForeignKey(RoleDescription, null=True,
         on_delete=models.CASCADE)
     request_key = models.SlugField(max_length=40, null=True, blank=True,
@@ -1305,12 +1313,16 @@ class Role(models.Model):
         help_text=_("Extra meta data (can be stringify JSON)"))
 
     class Meta:
+        abstract = True
         unique_together = ('organization', 'user')
 
     def __str__(self):
         return '%s-%s-%s' % (str(self.role_description),
             str(self.organization), str(self.user))
 
+if settings.ROLE_RELATION == "saas.Role":
+    class Role(AbstractRole):
+        pass
 
 @python_2_unicode_compatible
 class Agreement(models.Model):
@@ -1564,12 +1576,12 @@ class Charge(models.Model):
     DONE = 1
     FAILED = 2
     DISPUTED = 3
-    CHARGE_STATES = {
+    CHARGE_STATES = (
         (CREATED, 'created'),
         (DONE, 'done'),
         (FAILED, 'failed'),
         (DISPUTED, 'disputed')
-    }
+    )
 
     objects = ChargeManager()
 
@@ -1582,7 +1594,7 @@ class Charge(models.Model):
         help_text=_("Total amount in currency unit"))
     unit = models.CharField(max_length=3, default=settings.DEFAULT_UNIT,
         help_text=_("Three-letter ISO 4217 code for currency unit (ex: usd)"))
-    customer = models.ForeignKey(Organization, on_delete=models.PROTECT,
+    customer = models.ForeignKey(settings.ORGANIZATION_MODEL, on_delete=models.PROTECT,
         help_text=_("Organization charged"))
     description = models.TextField(null=True,
         help_text=_("Description for the charge as appears on billing"\
@@ -1592,7 +1604,7 @@ class Charge(models.Model):
     exp_date = models.DateField(null=True,
         help_text=_("Expiration date of the credit card used"))
     card_name = models.CharField(max_length=50, null=True)
-    processor = models.ForeignKey('Organization', on_delete=models.PROTECT,
+    processor = models.ForeignKey(settings.ORGANIZATION_MODEL, on_delete=models.PROTECT,
         related_name='charges')
     processor_key = models.SlugField(max_length=255, unique=True, db_index=True,
         help_text=_("Unique identifier returned by the payment processor"))
@@ -2281,7 +2293,7 @@ class ChargeItemManager(models.Manager):
         to be notified about.
         """
         results = self.filter(Q(sync_on=user.username) | Q(sync_on=user.email)
-            | Q(sync_on__in=Organization.objects.accessible_by(user).values(
+            | Q(sync_on__in=get_organization_model().objects.accessible_by(user).values(
                 'slug').distinct()),
             charge__state=Charge.DONE, invoice_key__isnull=False)
         return results
@@ -2641,7 +2653,7 @@ class Plan(SlugTitleMixin, models.Model):
         help_text=_("Date/time of creation (in ISO format)"))
     discontinued_at = models.DateTimeField(null=True, blank=True,
         help_text=_("Date/time the plan was discountinued (in ISO format)"))
-    organization = models.ForeignKey(Organization, on_delete=models.CASCADE,
+    organization = models.ForeignKey(settings.ORGANIZATION_MODEL, on_delete=models.CASCADE,
         related_name='plans',
         help_text=_("Profile the plan belongs to"))
     unit = models.CharField(max_length=3, default=settings.DEFAULT_UNIT,
@@ -2926,7 +2938,7 @@ class Coupon(models.Model):
     discount_value = models.PositiveIntegerField(default=0,
         help_text=_('Amount of the discount'))
     # restrict use in scope
-    organization = models.ForeignKey(Organization, on_delete=models.CASCADE,
+    organization = models.ForeignKey(settings.ORGANIZATION_MODEL, on_delete=models.CASCADE,
         help_text=_("Coupon will only apply to purchased plans"\
             " from this provider"))
     plan = models.ForeignKey('saas.Plan', on_delete=models.CASCADE, null=True,
@@ -3171,7 +3183,7 @@ class SubscriptionQuerySet(models.QuerySet):
         is the owner of the plan.
         """
         ends_at = datetime_or_now(ends_at)
-        if isinstance(provider, Organization):
+        if isinstance(provider, get_organization_model()):
             return self.valid_for(
                 plan__organization=provider, ends_at__gte=ends_at, **kwargs)
         return self.valid_for(
@@ -3203,7 +3215,7 @@ class SubscriptionManager(models.Manager):
         Returns active subscriptions for *organization*
         """
         ends_at = datetime_or_now(ends_at)
-        if isinstance(organization, Organization):
+        if isinstance(organization, get_organization_model()):
             return self.valid_for(
                 organization=organization, ends_at__gte=ends_at, **kwargs)
         return self.valid_for(
@@ -3302,7 +3314,7 @@ class Subscription(models.Model):
         " (in ISO format)"))
     description = models.TextField(null=True, blank=True,
         help_text=_("Free-form text description for the subscription"))
-    organization = models.ForeignKey(Organization, on_delete=models.CASCADE,
+    organization = models.ForeignKey(settings.ORGANIZATION_MODEL, on_delete=models.CASCADE,
         help_text=_("Profile subscribed to the plan"),
         related_name='subscriptions')
     plan = models.ForeignKey(Plan, on_delete=models.CASCADE,
@@ -4340,7 +4352,7 @@ class Transaction(models.Model):
 
     orig_account = models.CharField(max_length=255, default="unknown",
         help_text=_("Source account from which funds are withdrawn"))
-    orig_organization = models.ForeignKey(Organization,
+    orig_organization = models.ForeignKey(settings.ORGANIZATION_MODEL,
         on_delete=models.PROTECT,
         related_name="outgoing",
         help_text=_("Billing profile from which funds are withdrawn"))
@@ -4351,7 +4363,7 @@ class Transaction(models.Model):
             " (ex: usd)"))
     dest_account = models.CharField(max_length=255, default="unknown",
         help_text=_("Target account to which funds are deposited"))
-    dest_organization = models.ForeignKey(Organization,
+    dest_organization = models.ForeignKey(settings.ORGANIZATION_MODEL,
         on_delete=models.PROTECT,
         related_name="incoming",
         help_text=_("Billing profile to which funds are deposited"))
