@@ -99,12 +99,10 @@ saas/templates/notification/ directory.
 Release Notes
 =============
 
-0.11.0
+0.11.1
 
-  * fixes balance when extending a subscription through a group buy
-  * fixes line items when checkout a group buy (#154, #155)
-  * adds engaged/unengaged subscribers APIs
-  * moves create shadow profile to /api/accounts/profiles/
-  * adds inital compatibility with Django4.0
+  * Add abstract classes for Role and Organization Model
+  * Map foreign keys to settings ORGANIZATION_MODEL instead of explicit Organization model
+  * Fix model choices to be tuple instead of set
 
 [previous release notes](changelog)

@@ -40,11 +40,11 @@ from ..decorators import _valid_manager
 from ..docs import swagger_auto_schema, OpenAPIResponse
 from ..filters import DateRangeFilter, OrderingFilter, SearchFilter
 from ..mixins import OrganizationMixin, ProviderMixin, DateRangeContextMixin
-from ..models import (get_broker, sum_orig_amount, Subscription, Transaction,
-    Organization, Plan)
+from ..models import get_broker, sum_orig_amount, Subscription, Transaction, Plan
 from ..backends import ProcessorError
 from ..pagination import (BalancePagination, StatementBalancePagination,
     TotalPagination)
+from ..utils import get_organization_model
 
 
 class IncludesSyncErrorPagination(PageNumberPagination):
@@ -510,7 +510,7 @@ class ImportTransactionsAPIView(ProviderMixin, CreateAPIView):
                 'detail': _("Invalid subscription/plan field format")})
         subscriber = parts[0]
         plan = parts[1]
-        subscriber = Organization.objects.filter(slug=subscriber).first()
+        subscriber = get_organization_model().objects.filter(slug=subscriber).first()
         if subscriber is None:
             raise ValidationError({'detail': _("Invalid subscriber")})
         plan = Plan.objects.filter(
