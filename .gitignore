@@ -3,3 +3,4 @@
 .DS_Store
 credentials
 db.sqlite
+.idea/
