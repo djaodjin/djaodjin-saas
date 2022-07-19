@@ -103,7 +103,7 @@ urlpatterns += \
         redirects=[fail_authenticated]),
     url_prefixed(r'api/', include('saas.urls.api.users'),
         redirects=[fail_authenticated, fail_self_provider]),
-    url_prefixed(r'api/', include('saas.urls.api.broker'),
+    url_prefixed(r'api/', include('saas.urls.api.headbroker'),
         redirects=[fail_authenticated, fail_provider_only]),
     # api/charges/:charge/refund must be before api/charges/
     url_prefixed(r'api/',
@@ -126,6 +126,8 @@ urlpatterns += \
         redirects=[fail_authenticated, fail_direct]),
     url_prefixed(r'api/', include('saas.urls.api.subscriber'),
         redirects=[fail_authenticated, fail_provider]),
+    url_prefixed(r'api/', include('saas.urls.api.tailbroker'),
+        redirects=[fail_authenticated, fail_provider_only]),
     # views
     url_prefixed(r'', include('saas.urls.views.request'),
         redirects=[fail_authenticated]),

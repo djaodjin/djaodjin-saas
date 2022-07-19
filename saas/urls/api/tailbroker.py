@@ -23,33 +23,15 @@
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 """
-URLs API for resources available typically only to the broker platform.
+URLs for API available typically only to the broker platform and
+that must be included after the provider and subscriber urls.
 """
 
-from ... import settings
-from ...api.balances import (BalanceLineListAPIView, BrokerBalancesAPIView,
-    BalanceLineDetailAPIView)
-from ...api.charges import ChargeListAPIView
 from ...api.organizations import OrganizationListAPIView
-from ...api.transactions import TransactionListAPIView
-from ...api.users import RegisteredAPIView
 from ...compat import path, re_path
 
 
 urlpatterns = [
-    path('billing/transactions',
-        TransactionListAPIView.as_view(), name='saas_api_transactions'),
-    path('billing/charges', ChargeListAPIView.as_view(),
-        name='saas_api_charges'),
-    re_path(r'^metrics/balances/(?P<report>%s)/lines/(?P<rank>\d+)' % (
-        settings.SLUG_RE), BalanceLineDetailAPIView.as_view(),
-        name='saas_api_balance_line'),
-    path('metrics/balances/<slug:report>/lines',
-        BalanceLineListAPIView.as_view(), name='saas_api_balance_lines'),
-    path('metrics/balances/<slug:report>',
-        BrokerBalancesAPIView.as_view(), name='saas_api_broker_balances'),
-    path('metrics/registered',
-        RegisteredAPIView.as_view(), name='saas_api_registered'),
     path('profile',
         OrganizationListAPIView.as_view(),
         name='saas_api_profile'),
