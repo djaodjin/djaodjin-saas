@@ -289,8 +289,8 @@ class AbstractOrganization(models.Model):
     # 2nd note: We could support multiple payment processors at the same
     # time by having a relation to a separate table. For simplicity we only
     # allow one processor per organization at a time.
-    subscribes_to = models.ManyToManyField('Plan',
-        related_name='subscribers', through='Subscription')
+    subscribes_to = models.ManyToManyField('saas.Plan',
+        related_name='subscribers', through='saas.Subscription')
     billing_start = models.DateField(null=True, auto_now_add=True)
 
     funds_balance = models.PositiveIntegerField(default=0,
@@ -1214,9 +1214,9 @@ class AbstractOrganization(models.Model):
                                 'organization': self.slug,
                                 'amount': balance_due})
 
-
-class Organization(AbstractOrganization):
-    pass
+if settings.ORGANIZATION_MODEL == "saas.Organization":
+    class Organization(AbstractOrganization):
+        pass
 
 
 @python_2_unicode_compatible
@@ -1300,9 +1300,9 @@ class AbstractRole(models.Model):
     created_at = models.DateTimeField(auto_now_add=True,
         help_text=_("Date/time of creation (in ISO format)"))
     organization = models.ForeignKey(settings.ORGANIZATION_MODEL, on_delete=models.CASCADE,
-        related_name='role')
+        related_name='roles')
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE,
-        db_column='user_id', related_name='role')
+        db_column='user_id', related_name='roles')
     role_description = models.ForeignKey(RoleDescription, null=True,
         on_delete=models.CASCADE)
     request_key = models.SlugField(max_length=40, null=True, blank=True,
@@ -1320,10 +1320,9 @@ class AbstractRole(models.Model):
         return '%s-%s-%s' % (str(self.role_description),
             str(self.organization), str(self.user))
 
-
-class Role(AbstractRole):
-    pass
-
+if settings.ROLE_RELATION == "saas.Role":
+    class Role(AbstractRole):
+        pass
 
 @python_2_unicode_compatible
 class Agreement(models.Model):
