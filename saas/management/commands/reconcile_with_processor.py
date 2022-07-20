@@ -32,8 +32,7 @@ import logging
 from django.core.management.base import BaseCommand
 from django.db import transaction
 
-from ...models import Organization
-from ...utils import datetime_or_now
+from ...utils import datetime_or_now, get_organization_model
 from ...backends import ProcessorError
 
 
@@ -67,7 +66,7 @@ class Command(BaseCommand):
         self.run_reconcile(created_at=created_at, dry_run=dry_run)
 
     def run_reconcile(self, created_at=None, dry_run=False):
-        for provider in Organization.objects.filter(is_provider=True):
+        for provider in get_organization_model().objects.filter(is_provider=True):
             self.stdout.write("reconcile payouts for %s ..." % str(provider))
             backend = provider.processor_backend
             if not created_at:
