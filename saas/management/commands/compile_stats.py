@@ -29,7 +29,8 @@ import datetime
 from django.core.management.base import BaseCommand
 from django.contrib.auth import get_user_model
 
-from ...models import Organization
+from saas.utils import get_organization_model
+
 
 class Command(BaseCommand):
     """Daily usage for the service"""
@@ -45,7 +46,7 @@ class Command(BaseCommand):
                 user.username, user.email))
 
         self.stdout.write('\n')
-        for organization in Organization.objects.filter(
+        for organization in get_organization_model().objects.filter(
             created_at__gt=start_period):
             self.stdout.write('%s %s\n'
                 % (organization.created_at, organization))

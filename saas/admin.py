@@ -25,8 +25,11 @@
 from django.contrib import admin
 
 from .models import (AdvanceDiscount, Agreement, CartItem, Charge, ChargeItem,
-    Coupon, Organization, Role, RoleDescription, Plan, Signature, Subscription,
-    Transaction)
+                     Coupon, RoleDescription, Plan, Signature, Subscription, Transaction)
+from .utils import get_organization_model, get_role_model
+
+Organization = get_organization_model()
+Role = get_role_model()
 
 admin.site.register(AdvanceDiscount)
 admin.site.register(Agreement)
