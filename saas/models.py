@@ -1300,9 +1300,9 @@ class AbstractRole(models.Model):
     created_at = models.DateTimeField(auto_now_add=True,
         help_text=_("Date/time of creation (in ISO format)"))
     organization = models.ForeignKey(settings.ORGANIZATION_MODEL, on_delete=models.CASCADE,
-        related_name='roles')
+        related_name='role')
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE,
-        db_column='user_id', related_name='roles')
+        db_column='user_id', related_name='role')
     role_description = models.ForeignKey(RoleDescription, null=True,
         on_delete=models.CASCADE)
     request_key = models.SlugField(max_length=40, null=True, blank=True,
