@@ -101,7 +101,8 @@ _SETTINGS = {
     'INACTIVITY_DAYS': 90,
     'MAX_RENEWAL_ATTEMPTS': 3,
     'MAX_TYPEAHEAD_CANDIDATES': 5,
-    'ORGANIZATION_MODEL': 'saas.Organization',
+    'ORGANIZATION_MODEL': getattr(settings, 'SAAS_ORGANIZATION_MODEL',
+        'saas.Organization'),
     'PAGE_SIZE': 25,
     'PICTURE_STORAGE_CALLABLE': None,
     'PROCESSOR': {
@@ -120,7 +121,7 @@ _SETTINGS = {
         'WEBHOOK_SECRET': None,
     },
     'PROCESSOR_BACKEND_CALLABLE': None,
-    'ROLE_RELATION': 'saas.Role',
+    'ROLE_RELATION': getattr(settings, 'SAAS_ROLE_MODEL', 'saas.Role'),
     'ROLE_SERIALIZER': 'saas.api.serializers.RoleSerializer',
     'USER_SERIALIZER': 'saas.api.serializers_overrides.UserSerializer',
     'SEARCH_FIELDS_PARAM': 'q_f',
