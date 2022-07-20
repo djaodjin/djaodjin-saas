@@ -1364,7 +1364,7 @@ Vue.component('coupon-list', {
         remove: function(idx){
             var vm = this;
             var code = this.items.results[idx].code;
-            vm.reqDelete(vm.url + '/' + code,
+            vm.reqDelete(vm._safeUrl(vm.url, code),
             function() {
                 vm.get();
             });
@@ -2158,7 +2158,7 @@ Vue.component('balance-list', {
         },
         remove: function(id){
             var vm = this;
-            vm.reqDelete(vm.balanceLineUrl + '/' + id, function() {
+            vm.reqDelete(vm._safeUrl(vm.balanceLineUrl, id), function() {
                 vm.get()
             });
         },

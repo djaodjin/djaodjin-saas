@@ -166,6 +166,14 @@ class NoModelSerializer(serializers.Serializer):
         raise RuntimeError('`update()` should not be called.')
 
 
+class PriceSerializer(NoModelSerializer):
+
+    amount = serializers.IntegerField(
+        help_text=_("amount in unit"))
+    unit = serializers.CharField(
+        help_text=_("Three-letter ISO 4217 code for currency unit (ex: usd)"))
+
+
 class BalanceLineSerializer(serializers.ModelSerializer):
 
     class Meta:
@@ -810,6 +818,12 @@ class TransactionSerializer(serializers.ModelSerializer):
         fields = ('created_at', 'description', 'amount', 'is_debit',
             'orig_account', 'orig_organization', 'orig_amount', 'orig_unit',
             'dest_account', 'dest_organization', 'dest_amount', 'dest_unit')
+
+
+class ChargeItemSerializer(NoModelSerializer):
+
+    invoiced = TransactionSerializer()
+    refunded = TransactionSerializer(many=True)
 
 
 class CreateOfflineTransactionSerializer(NoModelSerializer):
