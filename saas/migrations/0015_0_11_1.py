@@ -166,18 +166,8 @@ class Migration(migrations.Migration):
         ),
         migrations.AlterField(
             model_name='role',
-            name='organization',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='roles', to='saas.organization'),
-        ),
-        migrations.AlterField(
-            model_name='role',
             name='request_key',
             field=models.SlugField(blank=True, help_text='Key to identify the request for the role', max_length=40, null=True),
-        ),
-        migrations.AlterField(
-            model_name='role',
-            name='user',
-            field=models.ForeignKey(db_column='user_id', on_delete=django.db.models.deletion.CASCADE, related_name='roles', to=settings.AUTH_USER_MODEL),
         ),
         migrations.AlterField(
             model_name='roledescription',
