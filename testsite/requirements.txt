@@ -7,7 +7,7 @@ djangorestframework==3.12.4
 Markdown==3.2.2
 phonenumbers==8.12.6
 python-dateutil==2.8.1
-PyJWT==2.0.1
+PyJWT==2.4.0
 razorpay==0.2.0
 stripe==2.71.0
 

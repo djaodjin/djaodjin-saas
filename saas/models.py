@@ -298,8 +298,8 @@ class AbstractOrganization(models.Model):
     nb_renewal_attempts = models.PositiveIntegerField(default=0,
         help_text=_("Number of successive failed charges"))
     processor = models.ForeignKey(
-        settings.ORGANIZATION_MODEL, null=True, blank=True, on_delete=models.SET_NULL,
-        related_name='processes',)
+        settings.ORGANIZATION_MODEL, null=True, blank=True,
+        on_delete=models.SET_NULL, related_name='processes',)
     processor_card_key = models.SlugField(max_length=255, null=True, blank=True)
     processor_deposit_key = models.SlugField(max_length=255, null=True,
         blank=True,
@@ -1214,9 +1214,11 @@ class AbstractOrganization(models.Model):
                                 'organization': self.slug,
                                 'amount': balance_due})
 
-if settings.ORGANIZATION_MODEL == "saas.Organization":
-    class Organization(AbstractOrganization):
-        pass
+
+class Organization(AbstractOrganization):
+
+    class Meta(AbstractOrganization.Meta):
+        swappable = 'SAAS_ORGANIZATION_MODEL'
 
 
 @python_2_unicode_compatible
@@ -1299,8 +1301,8 @@ class AbstractRole(models.Model):
 
     created_at = models.DateTimeField(auto_now_add=True,
         help_text=_("Date/time of creation (in ISO format)"))
-    organization = models.ForeignKey(settings.ORGANIZATION_MODEL, on_delete=models.CASCADE,
-        related_name='role')
+    organization = models.ForeignKey(settings.ORGANIZATION_MODEL,
+        on_delete=models.CASCADE, related_name='role')
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE,
         db_column='user_id', related_name='role')
     role_description = models.ForeignKey(RoleDescription, null=True,
@@ -1320,9 +1322,12 @@ class AbstractRole(models.Model):
         return '%s-%s-%s' % (str(self.role_description),
             str(self.organization), str(self.user))
 
-if settings.ROLE_RELATION == "saas.Role":
-    class Role(AbstractRole):
-        pass
+
+class Role(AbstractRole):
+
+    class Meta(AbstractRole.Meta):
+        swappable = 'SAAS_ROLE_MODEL'
+
 
 @python_2_unicode_compatible
 class Agreement(models.Model):
