@@ -82,7 +82,7 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='organization',
             name='default_timezone',
-            field=models.CharField(default='America/Chicago', help_text='Timezone to use when reporting metrics', max_length=100),
+            field=models.CharField(default=settings.TIME_ZONE, help_text='Timezone to use when reporting metrics', max_length=100),
         ),
         migrations.AlterField(
             model_name='plan',
