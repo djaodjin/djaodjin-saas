@@ -107,7 +107,7 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='charge',
             name='customer',
-            field=models.ForeignKey(help_text='Organization charged', on_delete=django.db.models.deletion.PROTECT, to='saas.Organization'),
+            field=models.ForeignKey(help_text='Organization charged', on_delete=django.db.models.deletion.PROTECT, to=settings.SAAS_ORGANIZATION_MODEL),
         ),
         migrations.AlterField(
             model_name='charge',
@@ -172,7 +172,7 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='coupon',
             name='organization',
-            field=models.ForeignKey(help_text='Coupon will only apply to purchased plans from this provider', on_delete=django.db.models.deletion.CASCADE, to='saas.Organization'),
+            field=models.ForeignKey(help_text='Coupon will only apply to purchased plans from this provider', on_delete=django.db.models.deletion.CASCADE, to=settings.SAAS_ORGANIZATION_MODEL),
         ),
         migrations.AlterField(
             model_name='coupon',
@@ -187,7 +187,7 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='role',
             name='organization',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='role', to='saas.Organization'),
+            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='role', to=settings.SAAS_ORGANIZATION_MODEL),
         ),
         migrations.AlterField(
             model_name='role',
@@ -242,7 +242,7 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='subscription',
             name='organization',
-            field=models.ForeignKey(help_text='Organization subscribed to the plan', on_delete=django.db.models.deletion.CASCADE, to='saas.Organization'),
+            field=models.ForeignKey(help_text='Organization subscribed to the plan', on_delete=django.db.models.deletion.CASCADE, to=settings.SAAS_ORGANIZATION_MODEL),
         ),
         migrations.AlterField(
             model_name='subscription',
@@ -272,7 +272,7 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='transaction',
             name='dest_organization',
-            field=models.ForeignKey(help_text='Target organization to which funds are deposited', on_delete=django.db.models.deletion.PROTECT, related_name='incoming', to='saas.Organization'),
+            field=models.ForeignKey(help_text='Target organization to which funds are deposited', on_delete=django.db.models.deletion.PROTECT, related_name='incoming', to=settings.SAAS_ORGANIZATION_MODEL),
         ),
         migrations.AlterField(
             model_name='transaction',
@@ -297,7 +297,7 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='transaction',
             name='orig_organization',
-            field=models.ForeignKey(help_text='Source organization from which funds are withdrawn', on_delete=django.db.models.deletion.PROTECT, related_name='outgoing', to='saas.Organization'),
+            field=models.ForeignKey(help_text='Source organization from which funds are withdrawn', on_delete=django.db.models.deletion.PROTECT, related_name='outgoing', to=settings.SAAS_ORGANIZATION_MODEL),
         ),
         migrations.AlterField(
             model_name='transaction',
