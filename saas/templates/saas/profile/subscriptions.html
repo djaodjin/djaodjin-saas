@@ -20,7 +20,8 @@
             {% if plans %}
             <tr>
               <td colspan="4">
-                <form id="subscribe" @submit.prevent="subscribe('{{organization}}')">
+                <form id="subscribe"
+                      @submit.prevent="subscribe({slug: '{{organization.slug}}', full_name: '{{organization.full_name}}'})">
                   <div>
                     <select name="plan" v-model="plan">
                       <option selected :value="{}">Select a plan...</option>

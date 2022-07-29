@@ -1158,11 +1158,7 @@ var subscriptionListMixin = {
         subscribe: function(org){ // XXX same as `save`?
             var vm = this;
             var url = vm.subscribersURL(vm.plan.organization, vm.plan.slug);
-            var data = {
-                organization: {
-                  slug: org
-                }
-            }
+            var data = {organization: org};
             vm.itemsLoaded = false;
             vm.reqPost(url, data, function (){
                 vm.get();
