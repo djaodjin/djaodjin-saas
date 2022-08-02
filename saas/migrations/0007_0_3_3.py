@@ -27,12 +27,12 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='charge',
             name='customer',
-            field=models.ForeignKey(help_text='organization charged', on_delete=django.db.models.deletion.PROTECT, to='saas.Organization'),
+            field=models.ForeignKey(help_text='organization charged', on_delete=django.db.models.deletion.PROTECT, to=settings.SAAS_ORGANIZATION_MODEL),
         ),
         migrations.AlterField(
             model_name='charge',
             name='processor',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, related_name='charges', to='saas.Organization'),
+            field=models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, related_name='charges', to=settings.SAAS_ORGANIZATION_MODEL),
         ),
         migrations.AlterField(
             model_name='charge',
@@ -67,11 +67,11 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='transaction',
             name='dest_organization',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, related_name='incoming', to='saas.Organization'),
+            field=models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, related_name='incoming', to=settings.SAAS_ORGANIZATION_MODEL),
         ),
         migrations.AlterField(
             model_name='transaction',
             name='orig_organization',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, related_name='outgoing', to='saas.Organization'),
+            field=models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, related_name='outgoing', to=settings.SAAS_ORGANIZATION_MODEL),
         ),
     ]

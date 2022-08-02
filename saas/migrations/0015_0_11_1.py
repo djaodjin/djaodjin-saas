@@ -82,7 +82,7 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='organization',
             name='default_timezone',
-            field=models.CharField(default='America/Chicago', help_text='Timezone to use when reporting metrics', max_length=100),
+            field=models.CharField(default=settings.TIME_ZONE, help_text='Timezone to use when reporting metrics', max_length=100),
         ),
         migrations.AlterField(
             model_name='plan',
@@ -117,7 +117,7 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='plan',
             name='organization',
-            field=models.ForeignKey(help_text='Profile the plan belongs to', on_delete=django.db.models.deletion.CASCADE, related_name='plans', to='saas.organization'),
+            field=models.ForeignKey(help_text='Profile the plan belongs to', on_delete=django.db.models.deletion.CASCADE, related_name='plans', to=settings.SAAS_ORGANIZATION_MODEL),
         ),
         migrations.AlterField(
             model_name='plan',
@@ -177,16 +177,16 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='subscription',
             name='organization',
-            field=models.ForeignKey(help_text='Profile subscribed to the plan', on_delete=django.db.models.deletion.CASCADE, related_name='subscriptions', to='saas.organization'),
+            field=models.ForeignKey(help_text='Profile subscribed to the plan', on_delete=django.db.models.deletion.CASCADE, related_name='subscriptions', to=settings.SAAS_ORGANIZATION_MODEL),
         ),
         migrations.AlterField(
             model_name='transaction',
             name='dest_organization',
-            field=models.ForeignKey(help_text='Billing profile to which funds are deposited', on_delete=django.db.models.deletion.PROTECT, related_name='incoming', to='saas.organization'),
+            field=models.ForeignKey(help_text='Billing profile to which funds are deposited', on_delete=django.db.models.deletion.PROTECT, related_name='incoming', to=settings.SAAS_ORGANIZATION_MODEL),
         ),
         migrations.AlterField(
             model_name='transaction',
             name='orig_organization',
-            field=models.ForeignKey(help_text='Billing profile from which funds are withdrawn', on_delete=django.db.models.deletion.PROTECT, related_name='outgoing', to='saas.organization'),
+            field=models.ForeignKey(help_text='Billing profile from which funds are withdrawn', on_delete=django.db.models.deletion.PROTECT, related_name='outgoing', to=settings.SAAS_ORGANIZATION_MODEL),
         ),
     ]
