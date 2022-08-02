@@ -126,6 +126,9 @@ _SETTINGS = {
     'USER_SERIALIZER': 'saas.api.serializers_overrides.UserSerializer',
     'SEARCH_FIELDS_PARAM': 'q_f',
     'TERMS_OF_USE': 'terms-of-use',
+    'MANAGER': 'manager',
+    'CONTRIBUTOR': 'contributor',
+    'PROFILE_URL_KWARG': 'organization'
 }
 _SETTINGS.update(getattr(settings, 'SAAS', {}))
 
@@ -176,7 +179,7 @@ EXTRA_FIELD = _SETTINGS.get('EXTRA_FIELD')
 LOGIN_URL = getattr(settings, 'LOGIN_URL')
 TIME_ZONE = getattr(settings, 'TIME_ZONE')
 
-CONTRIBUTOR = 'contributor'
-MANAGER = 'manager'
-PROFILE_URL_KWARG = 'organization'
+CONTRIBUTOR = _SETTINGS.get('CONTRIBUTOR')
+MANAGER = _SETTINGS.get('MANAGER')
+PROFILE_URL_KWARG = _SETTINGS.get('PROFILE_URL_KWARG')
 #PROFILE_URL_KWARG = 'profile'
