@@ -319,6 +319,3 @@ else:
             'environment': 'testsite.jinja2.environment'
         }
     }]
-
-
-SAAS_ORGANIZATION_MODEL = "saas.Organization"
