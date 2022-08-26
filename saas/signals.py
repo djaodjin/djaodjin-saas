@@ -25,7 +25,7 @@
 from django.dispatch import Signal
 
 #pylint: disable=invalid-name
-organization_updated = Signal(
+profile_updated = Signal(
 #    providing_args=['organization', 'changes', 'user']
 )
 plan_created = Signal(

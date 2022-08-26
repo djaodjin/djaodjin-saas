@@ -11,7 +11,7 @@
     {% endif %}
   >
   <div>
-    <h1>Update Card for {{ organization }}</h1>
+    <h1>Update Card for {{organization}}</h1>
     <form id="update-card" method="post"
         action=".{% if next %}/?next={{next}}{% endif %}"
         v-on:submit.prevent="save">

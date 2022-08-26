@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 
 {% block content %}
-<h1>Create a new organization ...</h1>
+<h1>Create a new profile ...</h1>
 <form method="post" action=".">
     <input type="hidden" name="csrfmiddlewaretoken" value="{{csrf_token}}">
     {{ form.as_p }}

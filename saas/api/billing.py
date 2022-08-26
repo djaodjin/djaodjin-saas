@@ -82,7 +82,7 @@ class CartItemAPIView(CartMixin, CreateAPIView):
 
     .. code-block:: http
 
-        POST /api/cart/ HTTP/1.1
+        POST /api/cart HTTP/1.1
 
     .. code-block:: json
 
@@ -193,7 +193,7 @@ class CartItemAPIView(CartMixin, CreateAPIView):
 
         .. code-block:: http
 
-            DELETE /api/cart/?plan=premium HTTP/1.1
+            DELETE /api/cart?plan=premium HTTP/1.1
         """
         #pylint:disable=unused-argument
         plan = None
@@ -233,7 +233,7 @@ class CartItemUploadAPIView(CartMixin, GenericAPIView):
 
     .. code-block:: http
 
-        POST /api/cart/basic/upload/ HTTP/1.1
+        POST /api/cart/basic/upload HTTP/1.1
 
         Content-Disposition: form-data; name="file"; filename="names.csv"
         Content-Type: text/csv
@@ -337,7 +337,7 @@ class CouponRedeemAPIView(GenericAPIView):
 
     .. code-block:: http
 
-         POST /api/cart/redeem/ HTTP/1.1
+         POST /api/cart/redeem HTTP/1.1
 
     .. code-block:: json
 
@@ -406,7 +406,7 @@ class CheckoutAPIView(InvoicablesMixin, BalanceAndCartMixin,
 
     .. code-block:: http
 
-        GET /api/billing/xia/checkout/ HTTP/1.1
+        GET /api/billing/xia/checkout HTTP/1.1
 
     responds
 
@@ -419,22 +419,16 @@ class CheckoutAPIView(InvoicablesMixin, BalanceAndCartMixin,
               "created_at":"2016-06-21T23:24:09.242925Z",
               "ends_at":"2016-10-21T23:24:09.229768Z",
               "description":null,
-              "organization": {
-                  "slug":"xia",
-                  "full_name":"Xia",
-                  "printable_name":"Xia",
-                  "created_at":"2012-08-14T23:16:55Z",
-                  "email":"xia@localhost.localdomain"
+              "profile": {
+                  "slug": "xia",
+                  "printable_name": "Xia Lee",
+                  "picture": null,
+                  "type": "personal",
+                  "credentials": true
               },
               "plan": {
                   "slug": "basic",
-                  "title": "Basic",
-                  "description": "Basic Plan",
-                  "is_active": true,
-                  "setup_amount": 0,
-                  "period_amount": 2000,
-                  "period_type": "monthly",
-                  "app_url":"/app/"
+                  "title": "Basic"
               },
               "auto_renew":true
             },
@@ -445,11 +439,23 @@ class CheckoutAPIView(InvoicablesMixin, BalanceAndCartMixin,
               "amount":"$20.00",
               "is_debit":false,
               "orig_account":"Receivable",
-              "orig_organization":"cowork",
+              "orig_profile": {
+                  "slug": "cowork",
+                  "printable_name": "Coworking Space",
+                  "picture": null,
+                  "type": "organization",
+                  "credentials": false
+              },
               "orig_amount":2000,
               "orig_unit":"usd",
               "dest_account":"Payable",
-              "dest_organization":"xia",
+              "dest_profile": {
+                  "slug": "xia",
+                  "printable_name": "Xia Lee",
+                  "picture": null,
+                  "type": "personal",
+                  "credentials": true
+              },
               "dest_amount":2000,
               "dest_unit":"usd"
             }],
@@ -471,7 +477,7 @@ class CheckoutAPIView(InvoicablesMixin, BalanceAndCartMixin,
         Checkouts a cart
 
         Places an order for the subscription items in the cart and creates
-        a ``Charge`` on the ``{organization}`` payment card.
+        a ``Charge`` on the billing profile payment method.
 
         If the charge fails a balance is due, to be collected later.
 
@@ -493,7 +499,7 @@ a coupon code for a potential discount, and
 
         .. code-block:: http
 
-            POST /api/billing/xia/checkout/ HTTP/1.1
+            POST /api/billing/xia/checkout HTTP/1.1
 
         .. code-block:: json
 

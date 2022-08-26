@@ -129,6 +129,7 @@ _SETTINGS = {
     'MANAGER': 'manager',
     'CONTRIBUTOR': 'contributor',
     'PROFILE_URL_KWARG': 'organization'
+#XXX   'PROFILE_URL_KWARG': 'profile'
 }
 _SETTINGS.update(getattr(settings, 'SAAS', {}))
 
@@ -182,4 +183,3 @@ TIME_ZONE = getattr(settings, 'TIME_ZONE')
 CONTRIBUTOR = _SETTINGS.get('CONTRIBUTOR')
 MANAGER = _SETTINGS.get('MANAGER')
 PROFILE_URL_KWARG = _SETTINGS.get('PROFILE_URL_KWARG')
-#PROFILE_URL_KWARG = 'profile'

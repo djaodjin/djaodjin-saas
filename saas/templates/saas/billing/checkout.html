@@ -14,7 +14,7 @@
           <tr v-for="(item, itemIndex) in items.results">
             <td>
               <em>[[item.subscription.plan.title]] from
-                [[item.subscription.plan.organization]]</em>
+                [[item.subscription.plan.profile.printable_name]]</em>
               <button type="button" @click="remove(item.subscription.plan.slug)">delete</button>
               <table>
                 <tbody>

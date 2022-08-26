@@ -991,18 +991,18 @@ class RoleSmartListMixin(object):
       - created_at
     """
     search_fields = (
-        'organization__slug',
-        'organization__full_name',
-        'organization__email',
-        'user__username',
-        'user__email',
-        'role_description__title',
-        'role_description__slug'
+        ('organization__slug', 'profile'),
+        ('organization__full_name', 'profile__full_name'),
+        ('organization__email', 'profile__email'),
+        ('user__username', 'user'),
+        ('user__email', 'user__email'),
+        ('role_description__title', 'role__title'),
+        ('role_description__slug', 'role')
     )
     ordering_fields = (
-        ('organization__full_name', 'full_name'),
-        ('user__username', 'username'),
-        ('role_description__title', 'role_name'),
+        ('organization__full_name', 'profile__full_name'),
+        ('user__username', 'user'),
+        ('role_description__title', 'role__title'),
         ('grant_key', 'grant_key'),
         ('request_key', 'request_key'),
         ('created_at', 'created_at')
@@ -1016,21 +1016,33 @@ class SubscriptionSmartListMixin(object):
     """
     ``Subscription`` list which is also searchable and sortable.
     """
-    search_fields = ('organization__slug',
-                     'organization__full_name',
-                     'organization__email',
-                     'organization__phone',
-                     'organization__street_address',
-                     'organization__locality',
-                     'organization__region',
-                     'organization__postal_code',
-                     'organization__country',
-                     'plan__title')
+    search_fields = (
+        ('organization__slug', 'profile'),
+        ('organization__full_name', 'profile__full_name'),
+        ('organization__email', 'profile__email'),
+        ('organization__phone', 'profile__phone'),
+        ('organization__street_address', 'profile__street_address'),
+        ('organization__locality', 'profile__locality'),
+        ('organization__region', 'profile__region'),
+        ('organization__postal_code', 'profile__postal_code'),
+        ('organization__country', 'profile__country'),
+        ('plan__slug', 'plan'),
+        ('plan__title', 'plan__title')
+    )
     ordering_fields = (
-        ('organization__full_name', 'organization'),
-        ('plan__title', 'plan'),
         ('created_at', 'created_at'),
-        ('ends_at', 'ends_at')
+        ('ends_at', 'ends_at'),
+        ('organization__slug', 'profile'),
+        ('organization__full_name', 'profile__full_name'),
+        ('organization__email', 'profile__email'),
+        ('organization__phone', 'profile__phone'),
+        ('organization__street_address', 'profile__street_address'),
+        ('organization__locality', 'profile__locality'),
+        ('organization__region', 'profile__region'),
+        ('organization__postal_code', 'profile__postal_code'),
+        ('organization__country', 'profile__country'),
+        ('plan__slug', 'plan'),
+        ('plan__title', 'plan__title')
     )
     ordering = ('ends_at',)
 

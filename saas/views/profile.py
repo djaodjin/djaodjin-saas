@@ -418,7 +418,7 @@ class OrganizationProfileView(OrganizationMixin, UpdateView):
         except ValidationError:
             return self.form_invalid(form)
 
-        signals.organization_updated.send(sender=__name__,
+        signals.profile_updated.send(sender=__name__,
                 organization=self.object, changes=changes,
                 user=self.request.user)
         return http.HttpResponseRedirect(self.get_success_url())

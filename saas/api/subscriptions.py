@@ -61,7 +61,7 @@ class SubscribedSubscriptionListAPIView(SubscriptionSmartListMixin,
     Lists a subscriber subscriptions
 
     Returns a list of {{PAGE_SIZE}} subscriptions, past and present, for
-    subscriber {organization}.
+    a specified subscriber.
 
     The queryset can be further refined to match a search filter (``q``)
     and sorted on specific fields (``o``).
@@ -76,7 +76,7 @@ class SubscribedSubscriptionListAPIView(SubscriptionSmartListMixin,
 
     .. code-block:: http
 
-        GET /api/profile/xia/subscriptions/?o=created_at&ot=desc HTTP/1.1
+        GET /api/profile/xia/subscriptions?o=created_at&ot=desc HTTP/1.1
 
     responds
 
@@ -91,22 +91,16 @@ class SubscribedSubscriptionListAPIView(SubscriptionSmartListMixin,
                     "created_at": "2016-01-14T23:16:55Z",
                     "ends_at": "2017-01-14T23:16:55Z",
                     "description": null,
-                    "organization": {
+                    "profile": {
                         "slug": "xia",
-                        "printable_name": "Xia Lee"
+                        "printable_name": "Xia Lee",
+                        "picture": null,
+                        "type": "personal",
+                        "credentials": true
                     },
                     "plan": {
                         "slug": "open-space",
-                        "title": "Open Space",
-                        "description": "open space desk, High speed internet
-                                      - Ethernet or WiFi, Unlimited printing,
-                                      Unlimited scanning, Unlimited fax service
-                                      (send and receive)",
-                        "is_active": true,
-                        "setup_amount": 0,
-                        "period_amount": 17999,
-                        "period_type": "monthly",
-                        "app_url": "http://localhost:8020/app"
+                        "title": "Open Space"
                     },
                     "auto_renew": true
                 }
@@ -124,7 +118,8 @@ class SubscriptionDetailAPIView(SubscriptionMixin,
     """
     Retrieves a subscription
 
-    Returns the subscription of {organization} to {subscribed_plan}.
+    Returns a subscription to plan {subscribed_plan} for the specified
+    subscriber.
 
     **Tags**: subscriptions, subscriber, subscriptionmodel
 
@@ -132,7 +127,7 @@ class SubscriptionDetailAPIView(SubscriptionMixin,
 
     .. code-block:: http
 
-        GET /api/profile/xia/subscriptions/open-space/ HTTP/1.1
+        GET /api/profile/xia/subscriptions/open-space HTTP/1.1
 
     responds
 
@@ -142,42 +137,16 @@ class SubscriptionDetailAPIView(SubscriptionMixin,
           "created_at": "2019-01-01T00:00:00Z",
           "ends_at": "2020-01-01T00:00:00Z",
           "description": null,
-          "organization": {
-            "slug": "xia",
-            "created_at": "2019-01-01T00:00:00Z",
-            "full_name": "Xia Lee",
-            "email": "xia@localhost.localdomain",
-            "phone": "555-555-5555",
-            "street_address": "350 Bay St.",
-            "locality": "San Francisco",
-            "region": "CA",
-            "postal_code": "94133",
-            "country": "US",
-            "default_timezone": "UTC",
-            "printable_name": "Xia Lee",
-            "is_provider": false,
-            "is_bulk_buyer": false,
-            "type": "personal",
-            "credentials": true,
-            "extra": null
+          "profile": {
+              "slug": "xia",
+              "printable_name": "Xia Lee",
+              "picture": null,
+              "type": "personal",
+              "credentials": true
           },
           "plan": {
             "slug": "open-space",
-            "title": "Open Space",
-            "description": "open space desk",
-            "is_active": true,
-            "setup_amount": 0,
-            "period_amount": 17999,
-            "period_length": 1,
-            "interval": "monthly",
-            "unit": "cad",
-            "organization": "cowork",
-            "renewal_type": "auto-renew",
-            "is_not_priced": false,
-            "created_at": "2019-01-01T00:00:00Z",
-            "skip_optin_on_grant": false,
-            "optin_on_request": false,
-            "extra": null
+            "title": "Open Space"
           },
           "auto_renew": true,
           "editable": true,
@@ -192,7 +161,8 @@ class SubscriptionDetailAPIView(SubscriptionMixin,
         """
         Unsubscribes  at a future date
 
-        Unsubscribes {organization} from {subscribed_plan} at a future date.
+        Unsubscribes a specified subscriber from a plan {subscribed_plan}
+        at a future date.
 
         The API is typically used within an HTML
         `subscribers page </docs/themes/#dashboard_profile_subscribers>`_
@@ -204,7 +174,7 @@ class SubscriptionDetailAPIView(SubscriptionMixin,
 
         .. code-block:: http
 
-            PUT /api/profile/xia/subscriptions/open-space/ HTTP/1.1
+            PUT /api/profile/xia/subscriptions/open-space HTTP/1.1
 
         .. code-block:: json
 
@@ -220,42 +190,16 @@ class SubscriptionDetailAPIView(SubscriptionMixin,
               "created_at": "2019-01-01T00:00:00Z",
               "ends_at": "2020-01-01T00:00:00Z",
               "description": null,
-              "organization": {
-                "slug": "xia",
-                "created_at": "2019-01-01T00:00:00Z",
-                "full_name": "Xia Lee",
-                "email": "xia@localhost.localdomain",
-                "phone": "555-555-5555",
-                "street_address": "350 Bay St.",
-                "locality": "San Francisco",
-                "region": "CA",
-                "postal_code": "94133",
-                "country": "US",
-                "default_timezone": "UTC",
-                "printable_name": "Xia Lee",
-                "is_provider": false,
-                "is_bulk_buyer": false,
-                "type": "personal",
-                "credentials": true,
-                "extra": null
+              "profile": {
+                  "slug": "xia",
+                  "printable_name": "Xia Lee",
+                  "picture": null,
+                  "type": "personal",
+                  "credentials": true
               },
               "plan": {
                 "slug": "open-space",
-                "title": "Open Space",
-                "description": "open space desk",
-                "is_active": true,
-                "setup_amount": 0,
-                "period_amount": 17999,
-                "period_length": 1,
-                "interval": "monthly",
-                "unit": "cad",
-                "organization": "cowork",
-                "renewal_type": "auto-renew",
-                "is_not_priced": false,
-                "created_at": "2019-01-01T00:00:00Z",
-                "skip_optin_on_grant": false,
-                "optin_on_request": false,
-                "extra": null
+                "title": "Open Space"
               },
               "auto_renew": true,
               "editable": true,
@@ -272,7 +216,7 @@ class SubscriptionDetailAPIView(SubscriptionMixin,
         """
         Unsubscribes now
 
-        Unsubscribes {organization} from {subscribed_plan}.
+        Unsubscribes a specified subscriber from a plan {subscribed_plan}.
 
         The API is typically used within an HTML
         `subscribers page </docs/themes/#dashboard_profile_subscribers>`_
@@ -284,7 +228,7 @@ class SubscriptionDetailAPIView(SubscriptionMixin,
 
         .. code-block:: http
 
-            DELETE /api/profile/xia/subscriptions/open-space/ HTTP/1.1
+            DELETE /api/profile/xia/subscriptions/open-space HTTP/1.1
         """
         return super(SubscriptionDetailAPIView, self).delete(
             request, *args, **kwargs)
@@ -311,20 +255,20 @@ class ProvidedSubscriptionsAPIView(SubscriptionSmartListMixin,
     """
     Lists subscriptions to a plan
 
-    Returns a list of {{PAGE_SIZE}} subscriptions to {plan} provided by
-    {organization}.
+    Returns a list of {{PAGE_SIZE}} subscriptions to a plan {plan}
+    of the specified provider.
 
     The queryset can be further refined to match a search filter (``q``)
     and/or a range of dates ([``start_at``, ``ends_at``]),
     and sorted on specific fields (``o``).
 
-    **Tags**: subscriptions, provider, subscriptionmodel
+    **Tags**: subscriptions, list, provider, subscriptionmodel
 
     **Examples**
 
     .. code-block:: http
 
-        GET /api/profile/cowork/plans/premium/subscriptions/ HTTP/1.1
+        GET /api/profile/cowork/plans/premium/subscriptions HTTP/1.1
 
     responds
 
@@ -388,7 +332,7 @@ class ProvidedSubscriptionsAPIView(SubscriptionSmartListMixin,
         """
         Grants a subscription
 
-        Subscribes a customer to the {plan} provided by {organization}.
+        Subscribes a customer to the plan {plan} of the specified provider.
 
         **Tags**: subscriptions, provider, subscriptionmodel
 
@@ -396,12 +340,12 @@ class ProvidedSubscriptionsAPIView(SubscriptionSmartListMixin,
 
         .. code-block:: http
 
-            POST /api/profile/cowork/plans/premium/subscriptions/ HTTP/1.1
+            POST /api/profile/cowork/plans/premium/subscriptions HTTP/1.1
 
         .. code-block:: json
 
             {
-              "organization": {
+              "profile": {
                 "slug": "xia",
                 "full_name": "Xia Lee"
               }
@@ -415,7 +359,7 @@ class ProvidedSubscriptionsAPIView(SubscriptionSmartListMixin,
               "created_at": "2016-01-14T23:16:55Z",
               "ends_at": "2017-01-14T23:16:55Z",
               "description": null,
-              "organization": {
+              "profile": {
                 "slug": "xia",
                 "printable_name": "Xia Lee"
               },
@@ -454,8 +398,8 @@ class PlanSubscriptionDetailAPIView(ProviderMixin, SubscriptionDetailAPIView):
     """
     Retrieves a subscription to a provider plan
 
-    Returns the subscription of {subscriber} to {plan} from provider
-    {organization}.
+    Returns the subscription of {subscriber} to a plan {plan}
+    of the specified provider.
 
     **Tags**: subscriptions, provider, subscriptionmodel
 
@@ -463,7 +407,7 @@ class PlanSubscriptionDetailAPIView(ProviderMixin, SubscriptionDetailAPIView):
 
     .. code-block:: http
 
-        GET /api/profile/cowork/plans/open-space/subscriptions/xia/ HTTP/1.1
+        GET /api/profile/cowork/plans/open-space/subscriptions/xia HTTP/1.1
 
     responds
 
@@ -472,44 +416,18 @@ class PlanSubscriptionDetailAPIView(ProviderMixin, SubscriptionDetailAPIView):
         {
           "created_at": "2019-01-01T00:00:00Z",
           "ends_at": "2020-01-01T00:00:00Z",
-          "description": null,
-          "organization": {
-            "slug": "xia",
-            "created_at": "2019-01-01T00:00:00Z",
-            "full_name": "Xia Lee",
-            "email": "xia@localhost.localdomain",
-            "phone": "555-555-5555",
-            "street_address": "350 Bay St.",
-            "locality": "San Francisco",
-            "region": "CA",
-            "postal_code": "94133",
-            "country": "US",
-            "default_timezone": "UTC",
-            "printable_name": "Xia Lee",
-            "is_provider": false,
-            "is_bulk_buyer": false,
-            "type": "personal",
-            "credentials": true,
-            "extra": null
+          "profile": {
+              "slug": "xia",
+              "printable_name": "Xia Lee",
+              "picture": null,
+              "type": "personal",
+              "credentials": true
           },
           "plan": {
             "slug": "open-space",
-            "title": "Open Space",
-            "description": "open space desk",
-            "is_active": true,
-            "setup_amount": 0,
-            "period_amount": 17999,
-            "period_length": 1,
-            "interval": "monthly",
-            "unit": "cad",
-            "organization": "cowork",
-            "renewal_type": "auto-renew",
-            "is_not_priced": false,
-            "created_at": "2019-01-01T00:00:00Z",
-            "skip_optin_on_grant": false,
-            "optin_on_request": false,
-            "extra": null
+            "title": "Open Space"
           },
+          "description": null,
           "auto_renew": true,
           "editable": true,
           "extra": null,
@@ -521,7 +439,8 @@ class PlanSubscriptionDetailAPIView(ProviderMixin, SubscriptionDetailAPIView):
     serializer_class = ProvidedSubscriptionSerializer
 
     def get_queryset(self):
-        return super(PlanSubscriptionDetailAPIView, self).get_queryset().filter(
+        return super(
+            PlanSubscriptionDetailAPIView, self).get_queryset().filter(
             plan__organization=self.provider)
 
 
@@ -529,7 +448,8 @@ class PlanSubscriptionDetailAPIView(ProviderMixin, SubscriptionDetailAPIView):
         """
         Deletes a subscription to a provider plan
 
-        Unsubscribes {subscriber} from {plan} provided by {organization}.
+        Unsubscribes {subscriber} from a plan {plan}
+        of the specified provider.
 
         **Tags**: subscriptions, provider, subscriptionmodel
 
@@ -537,7 +457,7 @@ class PlanSubscriptionDetailAPIView(ProviderMixin, SubscriptionDetailAPIView):
 
         .. code-block:: http
 
-            DELETE /api/profile/cowork/plans/open-space/subscriptions/xia/\
+            DELETE /api/profile/cowork/plans/open-space/subscriptions/xia\
  HTTP/1.1
         """
         return super(PlanSubscriptionDetailAPIView, self).delete(
@@ -548,8 +468,8 @@ class PlanSubscriptionDetailAPIView(ProviderMixin, SubscriptionDetailAPIView):
         """
         Updates a subscription to a provider plan
 
-        Updates the subscription of {subscriber} to {plan} from provider
-        {organization}.
+        Updates the subscription of {subscriber} to a plan {plan}
+        of the specified provider.
 
         **Tags**: subscriptions, provider, subscriptionmodel
 
@@ -557,7 +477,7 @@ class PlanSubscriptionDetailAPIView(ProviderMixin, SubscriptionDetailAPIView):
 
         .. code-block:: http
 
-            PUT /api/profile/cowork/plans/open-space/subscriptions/xia/ HTTP/1.1
+            PUT /api/profile/cowork/plans/open-space/subscriptions/xia HTTP/1.1
 
         .. code-block:: json
 
@@ -570,52 +490,26 @@ class PlanSubscriptionDetailAPIView(ProviderMixin, SubscriptionDetailAPIView):
 
         .. code-block:: json
 
-             {
-               "created_at": "2019-01-01T00:00:00Z",
-               "ends_at": "2020-01-01T00:00:00Z",
-               "description": null,
-               "organization": {
-                 "slug": "xia",
-                 "created_at": "2019-01-01T00:00:00Z",
-                 "full_name": "Xia Lee",
-                 "email": "xia@localhost.localdomain",
-                 "phone": "555-555-5555",
-                 "street_address": "350 Bay St.",
-                 "locality": "San Francisco",
-                 "region": "CA",
-                 "postal_code": "94133",
-                 "country": "US",
-                 "default_timezone": "UTC",
-                 "printable_name": "Xia Lee",
-                 "is_provider": false,
-                 "is_bulk_buyer": false,
-                 "type": "personal",
-                 "credentials": true,
-                 "extra": null
-               },
-               "plan": {
-                 "slug": "open-space",
-                 "title": "Open Space",
-                 "description": "open space desk",
-                 "is_active": true,
-                 "setup_amount": 0,
-                 "period_amount": 17999,
-                 "period_length": 1,
-                 "interval": "monthly",
-                 "unit": "cad",
-                 "organization": "cowork",
-                 "renewal_type": "auto-renew",
-                 "is_not_priced": false,
-                 "created_at": "2019-01-01T00:00:00Z",
-                 "skip_optin_on_grant": false,
-                 "optin_on_request": false,
-                 "extra": null
-               },
-               "auto_renew": true,
-               "editable": true,
-               "extra": null,
-               "grant_key": null,
-               "request_key": null
+            {
+                "created_at": "2019-01-01T00:00:00Z",
+                "ends_at": "2020-01-01T00:00:00Z",
+                "profile": {
+                    "slug": "xia",
+                    "printable_name": "Xia Lee",
+                    "picture": null,
+                    "type": "personal",
+                    "credentials": true
+                },
+                "plan": {
+                    "slug": "open-space",
+                    "title": "Open Space"
+                },
+                "description": null,
+                "auto_renew": true,
+                "editable": true,
+                "extra": null,
+                "grant_key": null,
+                "request_key": null
              }
         """
         return super(PlanSubscriptionDetailAPIView, self).put(
@@ -632,8 +526,8 @@ class ActiveSubscriptionAPIView(SubscriptionSmartListMixin,
     """
     Lists active subscriptions
 
-    Lists all ``Subscription`` to a plan whose provider is
-    ``{organization}`` and which are currently in progress.
+    Lists {{PAGE_SIZE}} subscriptions whose renewal date is in the future
+    and the owner of the subscription plan is the specified provider.
 
     Optionnaly when an ``ends_at`` query parameter is specified,
     returns a queryset of ``Subscription`` that were active
@@ -650,13 +544,13 @@ class ActiveSubscriptionAPIView(SubscriptionSmartListMixin,
     `subscribers page </docs/themes/#dashboard_profile_subscribers>`_
     as present in the default theme.
 
-    **Tags**: metrics, provider, profilemodel
+    **Tags**: metrics, list, provider, profilemodel
 
     **Examples**
 
     .. code-block:: http
 
-        GET /api/metrics/cowork/active/?o=created_at&ot=desc HTTP/1.1
+        GET /api/metrics/cowork/active?o=created_at&ot=desc HTTP/1.1
 
     responds
 
@@ -671,22 +565,15 @@ class ActiveSubscriptionAPIView(SubscriptionSmartListMixin,
                     "created_at": "2016-01-14T23:16:55Z",
                     "ends_at": "2017-01-14T23:16:55Z",
                     "description": null,
-                    "organization": {
+                    "profile": {
                         "slug": "xia",
-                        "printable_name": "Xia Lee"
+                        "printable_name": "Xia Lee",
+                        "type": "personal",
+                        "credentials": true
                     },
                     "plan": {
                         "slug": "open-space",
-                        "title": "Open Space",
-                        "description": "open space desk, High speed internet
-                                    - Ethernet or WiFi, Unlimited printing,
-                                    Unlimited scanning, Unlimited fax service
-                                    (send and receive)",
-                        "is_active": true,
-                        "setup_amount": 0,
-                        "period_amount": 17999,
-                        "interval": 4,
-                        "app_url": "http://localhost:8020/app"
+                        "title": "Open Space"
                     },
                     "auto_renew": true
                 }
@@ -708,8 +595,8 @@ class ChurnedSubscriptionAPIView(SubscriptionSmartListMixin,
     """
     Lists churned subscriptions
 
-    Returns a list of {{PAGE_SIZE}} subscriptions to a plan whose provider is
-    ``{organization}`` which have ended already.
+    Returns a list of {{PAGE_SIZE}} subscriptions to a plan owned by
+    the specified provider and which have ended already.
 
     The queryset can be further refined to match a search filter (``q``)
     and/or a range of dates ([``start_at``, ``ends_at``]),
@@ -719,13 +606,13 @@ class ChurnedSubscriptionAPIView(SubscriptionSmartListMixin,
     `subscribers page </docs/themes/#dashboard_profile_subscribers>`_
     as present in the default theme.
 
-    **Tags**: metrics, provider, profilemodel
+    **Tags**: metrics, list, provider, profilemodel
 
     **Examples**
 
     .. code-block:: http
 
-        GET /api/metrics/cowork/churned/?o=created_at&ot=desc HTTP/1.1
+        GET /api/metrics/cowork/churned?o=created_at&ot=desc HTTP/1.1
 
     responds
 
@@ -740,7 +627,7 @@ class ChurnedSubscriptionAPIView(SubscriptionSmartListMixin,
                     "created_at": "2016-01-14T23:16:55Z",
                     "ends_at": "2017-01-14T23:16:55Z",
                     "description": null,
-                    "organization": {
+                    "profile": {
                         "slug": "xia",
                         "printable_name": "Xia Lee"
                     },
@@ -790,7 +677,8 @@ class SubscriptionRequestAcceptAPIView(GenericAPIView):
         Grants a subscription request
 
         Accepts a subscription request identified by {request_key}.
-        The subscription must be to a plan provider by {organization}.
+        The subscription must be to a plan that belongs to the specified
+        provider.
 
         **Tags**: rbac, provider, subscriptionmodel
 
@@ -798,8 +686,8 @@ class SubscriptionRequestAcceptAPIView(GenericAPIView):
 
         .. code-block:: http
 
-            POST /api/profile/cowork/subscribers/accept\
-/a00000d0a0000001234567890123456789012345/ HTTP/1.1
+            POST /api/profile/cowork/subscribers/accept/\
+a00000d0a0000001234567890123456789012345 HTTP/1.1
 
         responds
 
@@ -809,42 +697,16 @@ class SubscriptionRequestAcceptAPIView(GenericAPIView):
               "created_at": "2019-01-01T00:00:00Z",
               "ends_at": "2020-01-01T00:00:00Z",
               "description": null,
-              "organization": {
+              "profile": {
                 "slug": "xia",
-                "created_at": "2019-01-01T00:00:00Z",
-                "full_name": "Xia Lee",
-                "email": "xia@localhost.localdomain",
-                "phone": "555-555-5555",
-                "street_address": "350 Bay St.",
-                "locality": "San Francisco",
-                "region": "CA",
-                "postal_code": "94133",
-                "country": "US",
-                "default_timezone": "UTC",
                 "printable_name": "Xia Lee",
-                "is_provider": false,
-                "is_bulk_buyer": false,
+                "picture": null,
                 "type": "personal",
-                "credentials": true,
-                "extra": null
+                "credentials": true
               },
               "plan": {
                 "slug": "open-space",
-                "title": "Open Space",
-                "description": "open space desk",
-                "is_active": true,
-                "setup_amount": 0,
-                "period_amount": 17999,
-                "period_length": 1,
-                "interval": "monthly",
-                "unit": "cad",
-                "organization": "cowork",
-                "renewal_type": "auto-renew",
-                "is_not_priced": false,
-                "created_at": "2019-01-01T00:00:00Z",
-                "skip_optin_on_grant": false,
-                "optin_on_request": false,
-                "extra": null
+                "title": "Open Space"
               },
               "auto_renew": true,
               "editable": true,

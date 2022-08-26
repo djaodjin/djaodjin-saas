@@ -61,7 +61,7 @@ class FederatedSubscribersAPIView(FederatedMetricsMixin,
 
     .. code-block:: http
 
-        GET /api/metrics/cowork/federated/ HTTP/1.1
+        GET /api/metrics/cowork/federated HTTP/1.1
 
     responds
 
@@ -220,7 +220,7 @@ class SharedProfilesAPIView(FederatedMetricsMixin,
 
     .. code-block:: http
 
-        GET /api/metrics/cowork/federated/shared/ HTTP/1.1
+        GET /api/metrics/cowork/federated/shared HTTP/1.1
 
     responds
 

@@ -425,7 +425,7 @@ var cardMixin = {
             },
             countries: countries,
             regions: regions,
-            organization: {},
+            profile: {},
             updateCard: false, //used in legacy checkout
             errors: {},
             validate: [
@@ -665,7 +665,7 @@ var cardMixin = {
                 if(org.region){
                     vm.region = org.region;
                 }
-                vm.organization = org;
+                vm.profile = org;
             }).fail(showErrorMessages);
         },
         validateForm: function(){
@@ -903,7 +903,7 @@ var roleListMixin = {
             if( item ) {
                 vm.unregistered = item;
                 vm.profileRequestDone = false;
-                vm.clearNewProfile();
+                vm.submit();
             }
         },
         refresh: function() {
@@ -1011,9 +1011,9 @@ var subscriptionDetailMixin = {
         }
     },
     methods: {
-        acceptRequest: function(organization, request_key) {
+        acceptRequest: function(profile, request_key) {
             var vm = this;
-            vm.reqPost(vm.acceptRequestURL(organization, request_key),
+            vm.reqPost(vm.acceptRequestURL(profile, request_key),
             function (){
                 vm.get();
             });
@@ -1037,7 +1037,7 @@ var subscriptionDetailMixin = {
             return "";
         },
         refId: function(item, id){
-            var ids = [item.organization.slug,
+            var ids = [item.profile.slug,
                 item.plan.slug, id];
             return ids.join('_').replace(new RegExp('[-:]', 'g'), '');
         },
@@ -1066,23 +1066,22 @@ var subscriptionDetailMixin = {
         },
         update: function(item) {
             var vm = this;
-            var url = vm.subscriptionURL(
-                item.organization.slug, item.plan.slug);
+            var url = vm.subscriptionURL(item.profile.slug, item.plan.slug);
             var data = {
                 description: item.description,
                 ends_at: item.ends_at
             };
             vm.reqPatch(url, data);
         },
-        acceptRequestURL: function(organization, request_key) {
+        acceptRequestURL: function(profile, request_key) {
            var vm = this;
            return vm._safeUrl(vm.api_profile_url,
-                organization + "/subscribers/accept/" + request_key + "/");
+                profile + "/subscribers/accept/" + request_key + "/");
         },
-        subscriptionURL: function(organization, plan) {
+        subscriptionURL: function(profile, plan) {
            var vm = this;
             return vm._safeUrl(vm.api_profile_url,
-                organization + "/subscriptions/" + plan);
+                profile + "/subscriptions/" + plan);
         },
     }
 }
@@ -1157,8 +1156,8 @@ var subscriptionListMixin = {
         },
         subscribe: function(org){ // XXX same as `save`?
             var vm = this;
-            var url = vm.subscribersURL(vm.plan.organization, vm.plan.slug);
-            var data = {organization: org};
+            var url = vm.subscribersURL(vm.plan.profile, vm.plan.slug);
+            var data = {profile: org};
             vm.itemsLoaded = false;
             vm.reqPost(url, data, function (){
                 vm.get();
@@ -1853,7 +1852,7 @@ Vue.component('import-transaction', {
         addPayment: function(){
             var vm = this;
             if( vm.itemSelected ) {
-                vm.entry.subscription = (vm.itemSelected.organization.slug
+                vm.entry.subscription = (vm.itemSelected.profile.slug
                     + ':' + vm.itemSelected.plan.slug);
             }
             vm.reqPost(vm.url, vm.entry,
@@ -2231,7 +2230,7 @@ Vue.component('checkout', {
                         periods[plan] = 1;
                     }
                 }
-                if( elm.subscription.organization.is_bulk_buyer ) {
+                if( elm.subscription.profile.is_bulk_buyer ) {
                     seatsConfirmed = false;
                 }
                 users[plan] = {

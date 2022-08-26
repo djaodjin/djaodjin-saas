@@ -41,6 +41,7 @@ from .. import settings, signals
 from ..compat import force_str, gettext_lazy as _
 from ..docs import OpenAPIResponse, no_body, swagger_auto_schema
 from ..decorators import _has_valid_access
+from ..filters import OrderingFilter, SearchFilter
 from ..mixins import (OrganizationMixin, OrganizationCreateMixin,
     OrganizationSmartListMixin, RoleDescriptionMixin, RoleMixin,
     RoleSmartListMixin, UserMixin)
@@ -330,7 +331,7 @@ class AccessibleByListAPIView(RoleSmartListMixin, InvitedRequestedListMixin,
 
     .. code-block:: http
 
-        GET  /api/users/xia/accessibles/ HTTP/1.1
+        GET  /api/users/xia/accessibles HTTP/1.1
 
     responds
 
@@ -344,16 +345,18 @@ class AccessibleByListAPIView(RoleSmartListMixin, InvitedRequestedListMixin,
             "requested_count": 0,
             "results": [
                 {
-                    "slug": "cowork",
-                    "created_at": "2018-01-01T00:00:00Z",
-                    "printable_name": "ABC Corp.",
-                    "email": "help@cowork.net",
+                    "profile": {
+                        "slug": "cowork",
+                        "printable_name": "ABC Corp.",
+                        "type": "organization",
+                        "credentials": false
+                    },
                     "role_description": {
                         "slug": "manager",
                         "created_at": "2018-01-01T00:00:00Z",
                         "title": "Profile Manager",
                         "is_global": true,
-                        "organization": null
+                        "profile": null
                     },
                     "request_key": null,
                     "accept_grant_api_url": null,
@@ -361,7 +364,7 @@ class AccessibleByListAPIView(RoleSmartListMixin, InvitedRequestedListMixin,
 accessibles/manager/cowork",
                     "home_url": "https://cowork.net/app/",
                     "settings_url": "https://cowork.net/profile/cowork/contact/"
-                 }
+                }
             ]
         }
     """
@@ -394,7 +397,7 @@ accessibles/manager/cowork",
 
         .. code-block:: http
 
-            POST /api/users/xia/accessibles/ HTTP/1.1
+            POST /api/users/xia/accessibles HTTP/1.1
 
         .. code-block:: json
 
@@ -407,7 +410,7 @@ accessibles/manager/cowork",
         .. code-block:: json
 
             {
-              "organization": {
+              "profile": {
                 "slug": "cowork",
                 "full_name": "Cowork",
                 "printable_name": "Cowork",
@@ -459,7 +462,7 @@ class AccessibleByDescrListAPIView(RoleSmartListMixin,
 
     .. code-block:: http
 
-        GET  /api/users/xia/accessibles/manager/ HTTP/1.1
+        GET  /api/users/xia/accessibles/manager HTTP/1.1
 
     responds
 
@@ -473,16 +476,18 @@ class AccessibleByDescrListAPIView(RoleSmartListMixin,
             "requested_count": 0,
             "results": [
                 {
-                    "slug": "cowork",
-                    "created_at": "2018-01-01T00:00:00Z",
-                    "printable_name": "ABC Corp.",
-                    "email": "help@cowork.net",
+                    "profile": {
+                        "slug": "cowork",
+                        "printable_name": "ABC Corp.",
+                        "type": "organization",
+                        "credentials": false
+                    },
                     "role_description": {
                         "slug": "manager",
                         "created_at": "2018-01-01T00:00:00Z",
                         "title": "Profile manager",
                         "is_global": true,
-                        "organization": null
+                        "profile": null
                     },
                     "request_key": null,
                     "accept_grant_api_url": null,
@@ -524,7 +529,7 @@ accessibles/manager/cowork",
 
         .. code-block:: http
 
-            POST /api/users/xia/accessibles/manager/ HTTP/1.1
+            POST /api/users/xia/accessibles/manager HTTP/1.1
 
         .. code-block:: json
 
@@ -537,7 +542,7 @@ accessibles/manager/cowork",
         .. code-block:: json
 
             {
-              "organization": {
+              "profile": {
                 "slug": "cowork",
                 "full_name": "Cowork",
                 "printable_name": "Cowork",
@@ -552,7 +557,7 @@ accessibles/manager/cowork",
                 "created_at": "2018-01-01T00:00:00Z",
                 "title": "Profile manager",
                 "is_global": true,
-                "organization": null
+                "profile": null
               },
               "home_url": "/app/cowork/",
               "settings_url": "/profile/cowork/contact/",
@@ -570,6 +575,30 @@ accessibles/manager/cowork",
 
 
 class RoleDescriptionQuerysetMixin(OrganizationMixin):
+    """
+    The queryset can be further filtered by passing a ``q`` parameter.
+    The value in ``q`` will be matched against:
+
+      - slug
+      - title
+
+    The result queryset can be ordered by passing an ``o`` (field name),
+    prefixing by the minus sign ('-') for reverse order.
+
+      - slug
+      - title
+    """
+    search_fields = (
+        ('slug', 'slug'),
+        ('title', 'title'),
+    )
+    ordering_fields = (
+        ('slug', 'slug'),
+        ('title', 'title'),
+    )
+    ordering = ('slug',)
+
+    filter_backends = (SearchFilter, OrderingFilter)
 
     def get_queryset(self):
         return self.organization.get_role_descriptions()
@@ -589,13 +618,13 @@ class RoleDescriptionListCreateView(RoleDescriptionQuerysetMixin,
 
     see :doc:`Flexible Security Framework <security>`.
 
-    **Tags**: rbac, subscriber, rolemodel
+    **Tags**: rbac, list, subscriber, rolemodel
 
     **Examples**
 
     .. code-block:: http
 
-        GET /api/profile/xia/roles/describe/ HTTP/1.1
+        GET /api/profile/xia/roles/describe HTTP/1.1
 
     responds
 
@@ -618,8 +647,7 @@ class RoleDescriptionListCreateView(RoleDescriptionQuerysetMixin,
                     "created_at": "2018-01-01T00:00:00Z",
                     "title": "Contributors",
                     "slug": "contributor",
-                    "is_global": false,
-                    "roles": []
+                    "is_global": false
                 }
             ]
         }
@@ -630,7 +658,7 @@ class RoleDescriptionListCreateView(RoleDescriptionQuerysetMixin,
         """
         Creates a role type
 
-        Creates a role that users can take on an organization.
+        Creates a role that users can take on a profile.
 
         see :doc:`Flexible Security Framework <security>`.
 
@@ -640,7 +668,7 @@ class RoleDescriptionListCreateView(RoleDescriptionQuerysetMixin,
 
         .. code-block:: http
 
-            POST /api/profile/xia/roles/describe/ HTTP/1.1
+            POST /api/profile/xia/roles/describe HTTP/1.1
 
         .. code-block:: json
 
@@ -656,8 +684,7 @@ class RoleDescriptionListCreateView(RoleDescriptionQuerysetMixin,
               "created_at": "2018-01-01T00:00:00Z",
               "title": "Support",
               "slug": "support",
-              "is_global": false,
-              "roles": []
+              "is_global": false
             }
 
         """
@@ -679,7 +706,7 @@ class RoleDescriptionDetailView(RoleDescriptionQuerysetMixin,
 
     .. code-block:: http
 
-        GET /api/profile/xia/roles/describe/support/ HTTP/1.1
+        GET /api/profile/xia/roles/describe/support HTTP/1.1
 
     responds
 
@@ -689,20 +716,7 @@ class RoleDescriptionDetailView(RoleDescriptionQuerysetMixin,
             "created_at": "2018-01-01T00:00:00Z",
             "slug": "manager",
             "title": "Profile Managers",
-            "is_global": true,
-            "roles": [
-                {
-                    "created_at": "2018-01-01T00:00:00Z",
-                    "user": {
-                        "slug": "donny",
-                        "email": "donny@localhost.localdomain",
-                        "full_name": "Donny Cooper",
-                        "created_at": "2018-01-01T00:00:00Z"
-                    },
-                    "request_key": null,
-                    "grant_key": null
-                }
-            ]
+            "is_global": true
         }
 
     """
@@ -722,7 +736,7 @@ class RoleDescriptionDetailView(RoleDescriptionQuerysetMixin,
 
         .. code-block:: http
 
-            DELETE /api/profile/xia/roles/describe/support/ HTTP/1.1
+            DELETE /api/profile/xia/roles/describe/support HTTP/1.1
         """
         return super(RoleDescriptionDetailView, self).delete(
             request, *args, **kwargs)
@@ -739,7 +753,7 @@ class RoleDescriptionDetailView(RoleDescriptionQuerysetMixin,
 
         .. code-block:: http
 
-            PUT /api/profile/xia/roles/describe/support/ HTTP/1.1
+            PUT /api/profile/xia/roles/describe/support HTTP/1.1
 
         .. code-block:: json
 
@@ -754,21 +768,8 @@ class RoleDescriptionDetailView(RoleDescriptionQuerysetMixin,
             {
                 "created_at": "2018-01-01T00:00:00Z",
                 "title": "Profile managers",
-                "slug": "manager",
-                "is_global": true,
-                "roles": [
-                    {
-                        "created_at": "2018-01-01T00:00:00Z",
-                        "user": {
-                            "slug": "donny",
-                            "email": "donny@localhost.localdomain",
-                            "full_name": "Donny Cooper",
-                            "created_at": "2018-01-01T00:00:00Z"
-                        },
-                        "request_key": null,
-                        "grant_key": null
-                    }
-                ]
+                "slug": "support",
+                "is_global": true
             }
 
         """
@@ -795,13 +796,13 @@ class RoleListAPIView(RoleSmartListMixin, InvitedRequestedListMixin,
     """
     Lists users and their role on an profile
 
-    **Tags**: rbac, subscriber, rolemodel
+    **Tags**: rbac, list, subscriber, rolemodel
 
     **Examples**
 
     .. code-block:: http
 
-        GET /api/profile/xia/roles/ HTTP/1.1
+        GET /api/profile/xia/roles HTTP/1.1
 
     responds
 
@@ -815,23 +816,17 @@ class RoleListAPIView(RoleSmartListMixin, InvitedRequestedListMixin,
             "requested_count": 0,
             "results": [
                 {
-                    "created_at": "2018-01-01T00:00:00Z",
+                    "created_at": "2022-01-01T00:00:00Z",
                     "role_description": {
-                        "name": "Manager",
+                        "title": "Manager",
                         "slug": "manager",
-                        "organization": {
-                            "slug": "cowork",
-                            "full_name": "ABC Corp.",
-                            "printable_name": "ABC Corp.",
-                            "created_at": "2018-01-01T00:00:00Z",
-                            "email": "support@localhost.localdomain"
-                        }
+                        "profile": null
                     },
                     "user": {
-                        "slug": "alice",
-                        "email": "alice@localhost.localdomain",
-                        "full_name": "Alice Doe",
-                        "created_at": "2018-01-01T00:00:00Z"
+                        "slug": "xia",
+                        "username": "xia",
+                        "printable_name": "Xia Lee",
+                        "picture": null
                     },
                     "request_key": "1",
                     "grant_key": null
@@ -886,15 +881,15 @@ class RoleByDescrListAPIView(RoleSmartListMixin, RoleByDescrQuerysetMixin,
     """
     Lists users of a specific role type on a profile
 
-    Lists the specified role assignments for an organization.
+    Lists the specified role assignments for a profile.
 
-    **Tags**: rbac, subscriber, rolemodel
+    **Tags**: rbac, list, subscriber, rolemodel
 
     **Examples**
 
     .. code-block:: http
 
-        GET /api/profile/xia/roles/manager/ HTTP/1.1
+        GET /api/profile/cowork/roles/manager HTTP/1.1
 
     responds
 
@@ -911,20 +906,13 @@ class RoleByDescrListAPIView(RoleSmartListMixin, RoleByDescrQuerysetMixin,
                     "created_at": "2018-01-01T00:00:00Z",
                     "role_description": {
                         "name": "Manager",
-                        "slug": "manager",
-                        "organization": {
-                            "slug": "cowork",
-                            "full_name": "ABC Corp.",
-                            "printable_name": "ABC Corp.",
-                            "created_at": "2018-01-01T00:00:00Z",
-                            "email": "support@localhost.localdomain"
-                        }
+                        "slug": "manager"
                     },
                     "user": {
                         "slug": "alice",
-                        "email": "alice@localhost.localdomain",
-                        "full_name": "Alice Doe",
-                        "created_at": "2018-01-01T00:00:00Z"
+                        "username": "alice",
+                        "printable_name": "Alice Doe",
+                        "picture": null
                     },
                     "request_key": "1",
                     "grant_key": null
@@ -1002,8 +990,9 @@ class RoleByDescrListAPIView(RoleSmartListMixin, RoleByDescrQuerysetMixin,
         """
         Creates a role
 
-        Attaches a user to a profile {organization} with a {role}, typically
-        granting permissions to the user with regards to managing the profile
+        Attaches a user to a specified billing profile with a {role},
+        typically granting permissions to the user with regards
+        to managing the profile
         (see :doc:`Flexible Security Framework <security>`).
 
         **Tags**: rbac, subscriber, rolemodel
@@ -1012,7 +1001,7 @@ class RoleByDescrListAPIView(RoleSmartListMixin, RoleByDescrQuerysetMixin,
 
         .. code-block:: http
 
-            POST /api/profile/xia/roles/manager/ HTTP/1.1
+            POST /api/profile/xia/roles/manager HTTP/1.1
 
         .. code-block:: json
 
@@ -1044,7 +1033,7 @@ class RoleDetailAPIView(RoleMixin, DestroyAPIView):
         Sends invite notification for a role
 
         Re-sends the notification that the {user} was granted a {role}
-        on the profile {organization}.
+        on the specified billing profile.
 
         **Tags**: rbac, subscriber, rolemodel
 
@@ -1052,7 +1041,7 @@ class RoleDetailAPIView(RoleMixin, DestroyAPIView):
 
         .. code-block:: http
 
-            POST /api/profile/xia/roles/manager/xia/ HTTP/1.1
+            POST /api/profile/xia/roles/manager/xia HTTP/1.1
 
         responds
 
@@ -1064,20 +1053,13 @@ class RoleDetailAPIView(RoleMixin, DestroyAPIView):
                     "created_at": "2018-01-01T00:00:00Z",
                     "title": "Profile Manager",
                     "slug": "manager",
-                    "is_global": true,
-                    "organization": {
-                        "slug": "cowork",
-                        "full_name": "ABC Corp.",
-                        "printable_name": "ABC Corp.",
-                        "created_at": "2018-01-01T00:00:00Z",
-                        "email": "support@localhost.localdomain"
-                    }
+                    "is_global": true
                 },
                 "user": {
-                    "slug": "alice",
-                    "email": "alice@localhost.localdomain",
-                    "full_name": "Alice Doe",
-                    "created_at": "2018-01-01T00:00:00Z"
+                    "slug": "xia",
+                    "username": "xia",
+                    "printable_name": "Xia Lee",
+                    "picture": null
                 },
                 "request_key": "1",
                 "grant_key": null
@@ -1096,9 +1078,9 @@ class RoleDetailAPIView(RoleMixin, DestroyAPIView):
         """
         Deletes a role
 
-        Dettaches a {user} from one or all roles with regards to a profile
-        {organization}, typically resulting in revoking permissions
-        from the user to manage part of the profile.
+        Dettaches a {user} from one or all roles with regards to the
+        specified billing profile, typically resulting in revoking
+        permissions from the user to manage part of the profile.
 
         **Tags**: rbac, subscriber, rolemodel
 
@@ -1106,7 +1088,7 @@ class RoleDetailAPIView(RoleMixin, DestroyAPIView):
 
         .. code-block:: http
 
-            DELETE /api/profile/xia/roles/manager/xia/ HTTP/1.1
+            DELETE /api/profile/xia/roles/manager/xia HTTP/1.1
         """
         return super(RoleDetailAPIView, self).delete(request, *args, **kwargs)
 
@@ -1125,6 +1107,7 @@ class AccessibleDetailAPIView(RoleDetailAPIView):
     """
     Re-sends and delete role for a user on a profile.
     """
+    serializer_class = AccessibleSerializer
 
     def get_queryset(self):
         # We never take the `role_description` into account when removing
@@ -1137,8 +1120,8 @@ class AccessibleDetailAPIView(RoleDetailAPIView):
         """
         Sends request notification for role
 
-        Re-sends the request notification that the {user} is requesting a {role}
-        on the profile {organization}.
+        Re-sends the notification that the {user} is requesting a {role}
+        on the specified billing profile.
 
         **Tags**: rbac, user, rolemodel
 
@@ -1146,7 +1129,7 @@ class AccessibleDetailAPIView(RoleDetailAPIView):
 
         .. code-block:: http
 
-            POST /api/users/xia/accessibles/manager/cowork/ HTTP/1.1
+            POST /api/users/xia/accessibles/manager/cowork HTTP/1.1
 
         responds
 
@@ -1158,20 +1141,13 @@ class AccessibleDetailAPIView(RoleDetailAPIView):
                     "created_at": "2018-01-01T00:00:00Z",
                     "title": "Profile Manager",
                     "slug": "manager",
-                    "is_global": true,
-                    "organization": {
-                        "slug": "cowork",
-                        "full_name": "ABC Corp.",
-                        "printable_name": "ABC Corp.",
-                        "created_at": "2018-01-01T00:00:00Z",
-                        "email": "support@localhost.localdomain"
-                    }
+                    "is_global": true
                 },
-                "user": {
-                    "slug": "alice",
-                    "email": "alice@localhost.localdomain",
-                    "full_name": "Alice Doe",
-                    "created_at": "2018-01-01T00:00:00Z"
+                "profile": {
+                    "slug": "cowork",
+                    "printable_name": "ABC Corp.",
+                    "type": "organization",
+                    "credentials": false
                 },
                 "request_key": "1",
                 "grant_key": null
@@ -1188,9 +1164,9 @@ class AccessibleDetailAPIView(RoleDetailAPIView):
         """
         Deletes a role by type
 
-        Dettaches {user} from one or all roles with regards to profile
-        {organization}, typically resulting in revoking permissions
-        from this user to manage part of the profile.
+        Dettaches {user} from one or all roles with regards to the
+        specified billing profile, typically resulting in revoking
+        permissions from this user to manage part of the profile.
 
         The API is typically used within an HTML
         `connected profiles page </docs/themes/#dashboard_users_roles>`_
@@ -1202,7 +1178,7 @@ class AccessibleDetailAPIView(RoleDetailAPIView):
 
         .. code-block:: http
 
-            DELETE /api/users/xia/accessibles/manager/cowork/ HTTP/1.1
+            DELETE /api/users/xia/accessibles/manager/cowork HTTP/1.1
         """
         return super(AccessibleDetailAPIView, self).delete(
             request, *args, **kwargs)
@@ -1230,7 +1206,7 @@ class RoleAcceptAPIView(UserMixin, GenericAPIView):
         .. code-block:: http
 
             PUT /api/users/xia/accessibles/accept/\
-a00000d0a0000001234567890123456789012345/ HTTP/1.1
+a00000d0a0000001234567890123456789012345 HTTP/1.1
 
         responds
 
@@ -1242,23 +1218,14 @@ a00000d0a0000001234567890123456789012345/ HTTP/1.1
                     "created_at": "2018-01-01T00:00:00Z",
                     "title": "Profile Manager",
                     "slug": "manager",
-                    "is_global": true,
-                    "organization": {
-                        "slug": "cowork",
-                        "full_name": "ABC Corp.",
-                        "printable_name": "ABC Corp.",
-                        "created_at": "2018-01-01T00:00:00Z",
-                        "email": "support@localhost.localdomain"
-                    }
+                    "is_global": true
                 },
-                "user": {
-                    "slug": "alice",
-                    "email": "alice@localhost.localdomain",
-                    "full_name": "Alice Doe",
-                    "created_at": "2018-01-01T00:00:00Z"
-                },
-                "request_key": "1",
-                "grant_key": null
+                "profile": {
+                    "slug": "cowork",
+                    "printable_name": "ABC Corp.",
+                    "type": "organization",
+                    "credentials": false
+                }
             }
         """
         key = kwargs.get('verification_key')
@@ -1312,7 +1279,7 @@ class UserProfileListAPIView(OrganizationSmartListMixin,
 
     .. code-block:: http
 
-        GET /api/users/xia/profiles/?o=created_at HTTP/1.1
+        GET /api/users/xia/profiles?o=created_at HTTP/1.1
 
     responds
 
@@ -1324,12 +1291,24 @@ class UserProfileListAPIView(OrganizationSmartListMixin,
             "previous": null,
             "invited_count": 0,
             "requested_count": 0,
-            "results": [{
-                "slug": "xia",
-                "full_name": "Xia Lee",
-                "email": "xia@localhost.localdomain",
-                "printable_name": "Xia Lee",
-                "created_at": "2016-01-14T23:16:55Z"
+            "results": [
+                {
+                    "created_at": "2018-01-01T00:00:00Z",
+                    "email": "xia@locahost.localdomain",
+                    "full_name": "Xia Lee",
+                    "printable_name": "Xia Lee",
+                    "slug": "xia",
+                    "phone": "555-555-5555",
+                    "street_address": "185 Berry St #550",
+                    "locality": "San Francisco",
+                    "region": "CA",
+                    "postal_code": "",
+                    "country": "US",
+                    "default_timezone": "Europe/Kiev",
+                    "is_provider": false,
+                    "is_bulk_buyer": false,
+                    "type": "personal",
+                    "picture": ""
             }]
         }
     """
@@ -1367,7 +1346,7 @@ class UserProfileListAPIView(OrganizationSmartListMixin,
 
         .. code-block:: http
 
-            POST /api/users/xia/profiles/ HTTP/1.1
+            POST /api/users/xia/profiles HTTP/1.1
 
         .. code-block:: json
 

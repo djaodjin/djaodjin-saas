@@ -30,7 +30,8 @@ from rest_framework.generics import (ListCreateAPIView,
     RetrieveUpdateDestroyAPIView)
 from rest_framework.response import Response
 
-from .serializers import CouponSerializer, CouponCreateSerializer
+from .serializers import (CouponSerializer, CouponCreateSerializer,
+    CouponUpdateSerializer)
 from ..compat import gettext_lazy as _
 from ..docs import swagger_auto_schema, OpenAPIResponse
 from ..filters import OrderingFilter, SearchFilter, DateRangeFilter
@@ -46,18 +47,22 @@ class SmartCouponListMixin(object):
     ``Coupon`` list which is also searchable and sortable.
     """
     search_fields = (
-        'code',
-        'description',
-        'amount',
-        'organization__full_name'
+        ('amount', 'amount'),
+        ('code', 'code'),
+        ('description', 'description'),
+        ('discount_type', 'discount_type'),
+        ('organization__slug', 'profile'),
+        ('organization__full_name', 'profile__full_name')
     )
     ordering_fields = (
+        ('amount', 'amount'),
         ('code', 'code'),
         ('created_at', 'created_at'),
         ('description', 'description'),
         ('ends_at', 'ends_at'),
         ('discount_type', 'discount_type'),
-        ('amount', 'amount')
+        ('organization__slug', 'profile'),
+        ('organization__full_name', 'profile__full_name')
     )
     ordering = ('ends_at',)
 
@@ -75,7 +80,7 @@ class CouponListCreateAPIView(SmartCouponListMixin, CouponQuerysetMixin,
     """
     Lists discount codes
 
-    Returns a list of {{PAGE_SIZE}} coupons for provider {organization}.
+    Returns a list of {{PAGE_SIZE}} coupons created by a provider profile.
 
     The queryset can be further refined to match a search filter (``q``)
     and/or a range of dates ([``start_at``, ``ends_at``]),
@@ -85,13 +90,13 @@ class CouponListCreateAPIView(SmartCouponListMixin, CouponQuerysetMixin,
     `coupons page </docs/themes/#dashboard_billing_coupons>`_
     as present in the default theme.
 
-    **Tags**: billing, provider, couponmodel
+    **Tags**: billing, list, provider, couponmodel
 
     **Examples**
 
     .. code-block:: http
 
-        GET /api/billing/cowork/coupons/?o=code&ot=asc&q=DIS HTTP/1.1
+        GET /api/billing/cowork/coupons?o=code&ot=asc&q=DIS HTTP/1.1
 
     retrieves the list of Coupon for provider cowork where `code`
     matches 'DIS', ordered by `code` in ascending order.
@@ -152,7 +157,7 @@ class CouponListCreateAPIView(SmartCouponListMixin, CouponQuerysetMixin,
 
         .. code-block:: http
 
-            POST /api/billing/cowork/coupons/ HTTP/1.1
+            POST /api/billing/cowork/coupons HTTP/1.1
 
         .. code-block:: json
 
@@ -211,7 +216,7 @@ class CouponDetailAPIView(CouponMixin, RetrieveUpdateDestroyAPIView):
 
     .. code-block:: http
 
-        GET /api/billing/cowork/coupons/DIS100/ HTTP/1.1
+        GET /api/billing/cowork/coupons/DIS100 HTTP/1.1
 
     responds
 
@@ -228,6 +233,13 @@ class CouponDetailAPIView(CouponMixin, RetrieveUpdateDestroyAPIView):
     """
     serializer_class = CouponSerializer
 
+    def get_serializer_class(self):
+        if self.request.method.lower() in ('put', 'patch'):
+            return CouponUpdateSerializer
+        return super(CouponDetailAPIView, self).get_serializer_class()
+
+    @swagger_auto_schema(responses={
+        200: OpenAPIResponse("updated", CouponSerializer)})
     def put(self, request, *args, **kwargs):
         """
         Updates a discount code
@@ -242,7 +254,7 @@ class CouponDetailAPIView(CouponMixin, RetrieveUpdateDestroyAPIView):
 
         .. code-block:: http
 
-            PUT /api/billing/cowork/coupons/DIS100/ HTTP/1.1
+            PUT /api/billing/cowork/coupons/DIS100 HTTP/1.1
 
         .. code-block:: json
 
@@ -267,6 +279,22 @@ class CouponDetailAPIView(CouponMixin, RetrieveUpdateDestroyAPIView):
         """
         return self.update(request, *args, **kwargs)
 
+    def update(self, request, *args, **kwargs):
+        partial = kwargs.pop('partial', False)
+        instance = self.get_object()
+        serializer = self.get_serializer(
+            instance, data=request.data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+
+        if getattr(instance, '_prefetched_objects_cache', None):
+            # If 'prefetch_related' has been applied to a queryset, we need to
+            # forcibly invalidate the prefetch cache on the instance.
+            instance._prefetched_objects_cache = {}
+
+        return Response(CouponSerializer().to_representation(
+            serializer.instance))
+
     def delete(self, request, *args, **kwargs):
         """
         Deletes a discount code
@@ -286,7 +314,7 @@ class CouponDetailAPIView(CouponMixin, RetrieveUpdateDestroyAPIView):
 
         .. code-block:: http
 
-            DELETE /api/billing/cowork/coupons/DIS100/ HTTP/1.1
+            DELETE /api/billing/cowork/coupons/DIS100 HTTP/1.1
         """
         return self.destroy(request, *args, **kwargs)
 

@@ -56,7 +56,7 @@ class ChargeResourceView(ChargeMixin, RetrieveAPIView):
 
     .. code-block:: http
 
-        GET /api/billing/charges/ch_XAb124EF/ HTTP/1.1
+        GET /api/billing/xia/charges/ch_XAb124EF HTTP/1.1
 
     responds
 
@@ -116,13 +116,13 @@ class ChargeListAPIView(SmartChargeListMixin,
     and/or a range of dates ([``start_at``, ``ends_at``]),
     and sorted on specific fields (``o``).
 
-    **Tags**: billing, broker, chargemodel
+    **Tags**: billing, list, broker, chargemodel
 
     **Examples**
 
     .. code-block:: http
 
-        GET /api/billing/charges/?start_at=2015-07-05T07:00:00.000Z\
+        GET /api/billing/charges?start_at=2015-07-05T07:00:00.000Z\
 &o=date&ot=desc HTTP/1.1
 
     Retrieves the list of charges that were created before
@@ -219,7 +219,7 @@ class ChargeRefundAPIView(ChargeMixin, CreateAPIView):
 
     .. code-block:: http
 
-        POST /api/billing/charges/ch_XAb124EF/refund/ HTTP/1.1
+        POST /api/billing/xia/charges/ch_XAb124EF/refund HTTP/1.1
 
     .. code-block:: json
 
@@ -315,7 +315,7 @@ class EmailChargeReceiptAPIView(ChargeMixin, GenericAPIView):
 
     .. code-block:: http
 
-        POST /api/billing/charges/ch_XAb124EF/email/  HTTP/1.1
+        POST /api/billing/xia/charges/ch_XAb124EF/email  HTTP/1.1
 
     responds
 

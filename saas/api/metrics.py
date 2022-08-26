@@ -54,13 +54,13 @@ class BalancesAPIView(DateRangeContextMixin, ProviderMixin,
     Generate a table of revenue (rows) per months (columns) for a default
     balance sheet (Income, Backlog, Receivable).
 
-    **Tags**: metrics, provider, transactionmodel
+    **Tags**: chart, metrics, provider, transactionmodel
 
     **Examples**
 
     .. code-block:: http
 
-        GET /api/metrics/cowork/balances/ HTTP/1.1
+        GET /api/metrics/cowork/balances HTTP/1.1
 
     responds
 
@@ -162,13 +162,13 @@ class RevenueMetricAPIView(DateRangeContextMixin, ProviderMixin,
     `revenue page </docs/themes/#dashboard_metrics_revenue>`_
     as present in the default theme.
 
-    **Tags**: metrics, provider, transactionmodel
+    **Tags**: chart, metrics, provider, transactionmodel
 
     **Examples**
 
     .. code-block:: http
 
-        GET /api/metrics/cowork/funds/ HTTP/1.1
+        GET /api/metrics/cowork/funds HTTP/1.1
 
     responds
 
@@ -333,19 +333,19 @@ class CouponUsesAPIView(CartItemSmartListMixin, CouponUsesQuerysetMixin,
 
     Returns a list of {{PAGE_SIZE}} cart items on which coupon with
     code {coupon} was used. Coupon {coupon} must have been created by
-    provider {organization}.
+    the specified provider.
 
     The queryset can be further refined to match a search filter (``q``)
     and/or a range of dates ([``start_at``, ``ends_at``]),
     and sorted on specific fields (``o``).
 
-    **Tags**: metrics, provider, couponmodel
+    **Tags**: metrics, list, provider, couponmodel
 
     **Examples**
 
     .. code-block:: http
 
-        GET /api/metrics/cowork/coupons/DIS100/ HTTP/1.1
+        GET /api/metrics/cowork/coupons/DIS100 HTTP/1.1
 
     responds
 
@@ -359,11 +359,9 @@ class CouponUsesAPIView(CartItemSmartListMixin, CouponUsesQuerysetMixin,
                 {
                     "user": {
                         "slug": "xia",
-                        "created_at": "2012-09-14T23:16:55Z",
-                        "email": "xia@localhost.localdomain",
-                        "full_name": "Xia Doe",
-                        "printable_name": "Xia Doe",
-                        "username": "xia"
+                        "username": "xia",
+                        "printable_name": "Xia Lee",
+                        "picture": null
                     },
                     "plan": {
                       "slug": "basic",
@@ -387,13 +385,13 @@ class CustomerMetricAPIView(DateRangeContextMixin, ProviderMixin,
     `revenue page </docs/themes/#dashboard_metrics_revenue>`_
     as present in the default theme.
 
-    **Tags**: metrics, provider, profilemodel
+    **Tags**: chart, metrics, provider, profilemodel
 
     **Examples**
 
     .. code-block:: http
 
-        GET /api/metrics/cowork/customers/ HTTP/1.1
+        GET /api/metrics/cowork/customers HTTP/1.1
 
     responds
 
@@ -563,13 +561,13 @@ class LifetimeValueMetricAPIView(LifetimeValueMetricMixin, ListAPIView):
     """
     Retrieves customers lifetime value
 
-    **Tags**: metrics, provider, profilemodel
+    **Tags**: metrics, list, provider, profilemodel
 
     **Examples**
 
     .. code-block:: http
 
-        GET /api/metrics/cowork/lifetimevalue/ HTTP/1.1
+        GET /api/metrics/cowork/lifetimevalue HTTP/1.1
 
     responds
 
@@ -582,8 +580,10 @@ class LifetimeValueMetricAPIView(LifetimeValueMetricMixin, ListAPIView):
             "results": [
                 {
                     "slug": "xia",
-                    "email": "xia@localhost.localdomain",
-                    "full_name": "Xia Doe",
+                    "printable_name": "Xia Lee",
+                    "picture": null,
+                    "type": "personal",
+                    "credentials": true,
                     "created_at": "2014-01-01T09:00:00Z",
                     "ends_at": "2014-01-01T09:00:00Z",
                     "unit": "usd",
@@ -610,13 +610,13 @@ class PlanMetricAPIView(DateRangeContextMixin, ProviderMixin, GenericAPIView):
     `plans metrics page </docs/themes/#dashboard_metrics_plans>`_
     as present in the default theme.
 
-    **Tags**: metrics, provider, planmodel
+    **Tags**: chart, metrics, provider, planmodel
 
     **Examples**
 
     .. code-block:: http
 
-        GET /api/metrics/cowork/plans/ HTTP/1.1
+        GET /api/metrics/cowork/plans HTTP/1.1
 
     responds
 

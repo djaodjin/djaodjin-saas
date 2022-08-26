@@ -1169,7 +1169,7 @@ var TypeAhead = Vue.extend({
     },
     methods: {
         activeClass: function activeClass(index) {
-            return {active: this.current === index};
+            return this.current === index ? " active" : "";
         },
 
         cancel: function() {},

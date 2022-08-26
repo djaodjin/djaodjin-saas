@@ -15,9 +15,9 @@
             <tr>
               <th>Date<button ng-click="sortBy('created_at')">[[dir.created_at ? 'down' : 'up']]</button></th>
               <th>Amount<button ng-click="sortBy('amount')">[[dir.amount ? 'down' : 'up']]</button></th>
-              <th>Origin Organization<button ng-click="sortBy('orig_organization')">[[dir.orig_organization ? 'down' : 'up']]</button></th>
+              <th>Origin Profile<button ng-click="sortBy('orig_profile')">[[dir.orig_profile ? 'down' : 'up']]</button></th>
               <th>Origin Account<button ng-click="sortBy('orig_account')">[[dir.orig_account ? 'down' : 'up']]</button></th>
-              <th>Destination Organization<button ng-click="sortBy('dest_organization')">[[dir.dest_organization ? 'down' : 'up']]</button></th>
+              <th>Destination Profile<button ng-click="sortBy('dest_profile')">[[dir.dest_profile ? 'down' : 'up']]</button></th>
               <th>Destination Account<button ng-click="sortBy('dest_account')">[[dir.dest_account ? 'down' : 'up']]</button></th>
               <th>Description<button ng-click="sortBy('description')">[[dir.description ? 'down' : 'up']]</button></th>
             </tr>
@@ -40,9 +40,9 @@
             <tr ng-repeat="entry in items.results">
               <td>[[entry.created_at | date : mediumDate]]</td>
               <td>[[entry.amount]]</td>
-              <td>[[entry.orig_organization]]</td>
+              <td>[[entry.orig_profile.printable_name]]</td>
               <td>[[entry.orig_account]]</td>
-              <td>[[entry.dest_organization]]</td>
+              <td>[[entry.dest_profile.printable_name]]</td>
               <td>[[entry.dest_account]]</td>
               <td ng-bind-html="entry.description | unsafe"></td>
             </tr>

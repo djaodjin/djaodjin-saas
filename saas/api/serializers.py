@@ -276,6 +276,18 @@ class ChargeSerializer(serializers.ModelSerializer):
             'detail')
 
 
+class PlanSerializer(serializers.ModelSerializer):
+
+    slug = serializers.SlugField(required=False,
+        help_text=_("Unique identifier shown in the URL bar"))
+    title = serializers.CharField(required=False,
+        help_text=_("Title for the plan"))
+
+    class Meta:
+        model = Plan
+        fields = ('slug', 'title',)
+
+
 class CouponSerializer(serializers.ModelSerializer):
     """
     Serializer to retrieve or update a `Coupon`.
@@ -284,7 +296,7 @@ class CouponSerializer(serializers.ModelSerializer):
         help_text=_("Unique identifier per provider, typically used in URLs"))
     discount_type = EnumField(choices=Coupon.DISCOUNT_CHOICES,
         help_text=_("Type of discount ('percentage', 'currency', or 'period')"))
-    plan = PlanRelatedField(required=False, allow_null=True,
+    plan = PlanSerializer(required=False, allow_null=True,
         help_text=_("Coupon will only apply to this plan"))
 
     class Meta:
@@ -294,16 +306,12 @@ class CouponSerializer(serializers.ModelSerializer):
             'nb_attempts', 'plan')
 
 
-class CouponCreateSerializer(CouponSerializer):
+class CouponUpdateSerializer(CouponSerializer):
     """
-    Serializer to create a coupon, including the `code`.
+    Serializer to update a coupon
     """
-    code = serializers.CharField(required=True,
-        help_text=_("Unique identifier per provider, typically used in URLs"))
-    discount_type = EnumField(required=True, choices=Coupon.DISCOUNT_CHOICES,
-        help_text=_("Type of discount ('percentage', 'currency', or 'period')"))
-    discount_value = serializers.IntegerField(required=True,
-        help_text=_("Amount of the discount"))
+    plan = PlanRelatedField(required=False, allow_null=True,
+        help_text=_("Coupon will only apply to this plan"))
 
     @staticmethod
     def validate_plan(plan):
@@ -315,6 +323,22 @@ class CouponCreateSerializer(CouponSerializer):
     class Meta(CouponSerializer.Meta):
         model = CouponSerializer.Meta.model
         fields = CouponSerializer.Meta.fields
+
+
+class CouponCreateSerializer(CouponUpdateSerializer):
+    """
+    Serializer to create a coupon, including the `code`.
+    """
+    code = serializers.CharField(required=True,
+        help_text=_("Unique identifier per provider, typically used in URLs"))
+    discount_type = EnumField(required=True, choices=Coupon.DISCOUNT_CHOICES,
+        help_text=_("Type of discount ('percentage', 'currency', or 'period')"))
+    discount_value = serializers.IntegerField(required=True,
+        help_text=_("Amount of the discount"))
+
+    class Meta(CouponUpdateSerializer.Meta):
+        model = CouponUpdateSerializer.Meta.model
+        fields = CouponUpdateSerializer.Meta.fields
 
 
 class EmailChargeReceiptSerializer(NoModelSerializer):
@@ -428,9 +452,9 @@ class OrganizationSerializer(serializers.ModelSerializer):
     # an exception "Organization already exists in database".
     slug = serializers.SlugField(read_only=True,
         help_text=_("Unique identifier shown in the URL bar"))
-    printable_name = serializers.SerializerMethodField(read_only=True,
+    printable_name = serializers.SerializerMethodField(
         help_text=_("Name that can be safely used for display in HTML pages"))
-    credentials = serializers.SerializerMethodField(read_only=True,
+    credentials = serializers.SerializerMethodField(
         help_text=_("True if the account has valid login credentials"))
 
     class Meta:
@@ -560,18 +584,6 @@ class AdvanceDiscountSerializer(serializers.ModelSerializer):
         fields = ('discount_type', 'discount_value', 'length')
 
 
-class PlanSerializer(serializers.ModelSerializer):
-
-    slug = serializers.SlugField(required=False,
-        help_text=_("Unique identifier shown in the URL bar"))
-    title = serializers.CharField(required=False,
-        help_text=_("Title for the plan"))
-
-    class Meta:
-        model = Plan
-        fields = ('slug', 'title',)
-
-
 class PlanDetailSerializer(PlanSerializer):
 
     description = serializers.CharField(required=False,
@@ -591,7 +603,7 @@ class PlanDetailSerializer(PlanSerializer):
         " (one-time, auto-renew, repeat)"))
     app_url = serializers.SerializerMethodField(
       help_text=_("URL to the homepage for the profile associated to the plan"))
-    organization = OrganizationSerializer(read_only=True,
+    profile = OrganizationSerializer(source='organization', read_only=True,
         help_text=_("Provider of the plan"))
     skip_optin_on_grant = serializers.BooleanField(required=False,
         help_text=_("True when a subscriber can automatically be subscribed"\
@@ -616,7 +628,7 @@ class PlanDetailSerializer(PlanSerializer):
         model = PlanSerializer.Meta.model
         fields = PlanSerializer.Meta.fields + ('description', 'is_active',
             'setup_amount', 'period_amount', 'period_type', 'app_url',
-            'advance_discounts', 'unit', 'organization', 'extra',
+            'advance_discounts', 'unit', 'profile', 'extra',
             'period_length', 'renewal_type', 'is_not_priced',
             'created_at', 'skip_optin_on_grant', 'optin_on_request',
             'discounted_period_amount', 'is_cart_item', 'detail')
@@ -694,7 +706,10 @@ class OrganizationInviteSerializer(OrganizationCreateSerializer):
 
 class SubscriptionSerializer(serializers.ModelSerializer):
 
-    organization = OrganizationDetailSerializer(read_only=True,
+    # XXX used to be OrganizationDetailSerializer. because it is used
+    # in checkout with group buy, do we need the e-mail?
+    profile = OrganizationSerializer(source='organization',
+        read_only=True,
         help_text=_("Profile subscribed to the plan"))
     plan = PlanSerializer(read_only=True,
         help_text=_("Plan the profile is subscribed to"))
@@ -705,7 +720,7 @@ class SubscriptionSerializer(serializers.ModelSerializer):
     class Meta:
         model = Subscription
         fields = ('created_at', 'ends_at', 'description',
-                  'organization', 'plan', 'auto_renew',
+                  'profile', 'plan', 'auto_renew',
                   'editable', 'extra', 'grant_key', 'request_key')
         # XXX grant_key and request_key should probably be removed.
         read_only_fields = ('grant_key', 'request_key')
@@ -758,14 +773,14 @@ class ProvidedSubscriptionSerializer(SubscriptionSerializer):
 
 class ProvidedSubscriptionCreateSerializer(serializers.ModelSerializer):
 
-    organization = OrganizationInviteSerializer(
+    profile = OrganizationInviteSerializer(source='organization',
         help_text=_("Profile subscribed to the plan"))
     message = serializers.CharField(required=False, allow_null=True,
         help_text=_("Message to send along the invitation"))
 
     class Meta:
         model = Subscription
-        fields = ('organization', 'message')
+        fields = ('profile', 'message')
 
 
 class TransactionSerializer(serializers.ModelSerializer):
@@ -773,11 +788,11 @@ class TransactionSerializer(serializers.ModelSerializer):
     A `Transaction` in the double-entry bookkeeping ledger.
     """
 
-    orig_organization = serializers.SlugRelatedField(
-        read_only=True, slug_field='slug',
+    orig_profile = OrganizationSerializer(source='orig_organization',
+        read_only=True,
         help_text=_("Billing profile from which funds are withdrawn"))
-    dest_organization = serializers.SlugRelatedField(
-        read_only=True, slug_field='slug',
+    dest_profile = OrganizationSerializer(source='dest_organization',
+        read_only=True,
         help_text=_("Billing profile to which funds are deposited"))
     description = serializers.CharField(source='descr', read_only=True,
         help_text=_("Free-form text description for the %(object)s") % {
@@ -816,8 +831,8 @@ class TransactionSerializer(serializers.ModelSerializer):
     class Meta:
         model = Transaction
         fields = ('created_at', 'description', 'amount', 'is_debit',
-            'orig_account', 'orig_organization', 'orig_amount', 'orig_unit',
-            'dest_account', 'dest_organization', 'dest_amount', 'dest_unit')
+            'orig_account', 'orig_profile', 'orig_amount', 'orig_unit',
+            'dest_account', 'dest_profile', 'dest_amount', 'dest_unit')
 
 
 class ChargeItemSerializer(NoModelSerializer):
@@ -830,6 +845,11 @@ class CreateOfflineTransactionSerializer(NoModelSerializer):
     """
     Serializer to validate the input that creates an off-line transaction.
     """
+#XXX    profile = serializers.SlugRelatedField(
+#        help_text="The subscription the offline transaction refers to.")
+#    plan = serializers.SlugRelatedField(
+#        help_text="The subscription the offline transaction refers to.")
+# deprecate following field.
     subscription = serializers.CharField(
         help_text="The subscription the offline transaction refers to.")
     created_at = serializers.DateTimeField(
@@ -916,7 +936,7 @@ class InvoicableSerializer(NoModelSerializer):
 
 class RoleDescriptionSerializer(serializers.ModelSerializer):
 
-    organization = OrganizationSerializer(read_only=True,
+    profile = OrganizationSerializer(source='organization', read_only=True,
         help_text=_("Profile the role type belongs to"))
     is_global = serializers.BooleanField(required=False,
         help_text=_("True when the role type is available for all profiles"))
@@ -925,7 +945,7 @@ class RoleDescriptionSerializer(serializers.ModelSerializer):
         model = RoleDescription
         fields = ('created_at', 'slug', 'title',
                   'skip_optin_on_grant', 'implicit_create_on_none',
-                  'is_global', 'organization', 'extra')
+                  'is_global', 'profile', 'extra')
         read_only_fields = ('created_at', 'slug', 'is_global')
 
 
@@ -933,7 +953,7 @@ class AccessibleSerializer(serializers.ModelSerializer):
     """
     Formats an entry in a list of ``Organization`` accessible by a ``User``.
     """
-    organization = OrganizationSerializer(read_only=True,
+    profile = OrganizationSerializer(source='organization',# read_only=True,
         help_text=_("Profile the user has a role on"))
     role_description = RoleDescriptionSerializer(read_only=True,
         help_text=_("Description of the role"))
@@ -950,7 +970,7 @@ class AccessibleSerializer(serializers.ModelSerializer):
     class Meta:
         model = get_role_model()
         fields = ('created_at', 'request_key',
-            'organization', 'role_description',
+            'profile', 'role_description',
             'home_url', 'settings_url',
             'accept_grant_api_url', 'remove_api_url')
         read_only_fields = ('created_at', 'request_key')
@@ -1003,8 +1023,6 @@ class RoleSerializer(serializers.ModelSerializer):
 
     user = get_user_serializer()(read_only=True,
         help_text=_("User with the role"))
-    organization = OrganizationDetailSerializer(read_only=True,
-        help_text=_("Profile the user has a role on"))
     role_description = RoleDescriptionSerializer(read_only=True,
         help_text=_("Description of the role"))
     accept_request_api_url = serializers.SerializerMethodField(
@@ -1018,7 +1036,7 @@ class RoleSerializer(serializers.ModelSerializer):
     class Meta:
         model = get_role_model()
         fields = ('created_at', 'user', 'grant_key',
-            'organization', 'role_description', 'accept_request_api_url',
+            'role_description', 'accept_request_api_url',
             'remove_api_url', 'detail')
         read_only_fields = ('created_at', 'grant_key', 'role_description',
             'detail')
@@ -1073,6 +1091,19 @@ class RoleCreateSerializer(NoModelSerializer):
                 data = data.split('@')[0]
             data = data[:max_length]
         return data
+
+
+class EngagedSubscriberSerializer(RoleSerializer):
+    """
+    The engaged subscribers API gives users with a role to a subscriber
+    that have logged in within a time period.
+    """
+
+    profile = OrganizationSerializer(source='organization',
+        help_text=_("Profile the user has a role on"))
+
+    class Meta(RoleSerializer.Meta):
+        fields = RoleSerializer.Meta.fields + ('profile',)
 
 
 class UploadBlobSerializer(NoModelSerializer):

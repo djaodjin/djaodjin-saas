@@ -55,7 +55,7 @@ class BrokerBalancesAPIView(DateRangeContextMixin, GenericAPIView):
 
     .. code-block:: http
 
-        GET /api/metrics/balances/taxes/ HTTP/1.1
+        GET /api/metrics/balances/taxes HTTP/1.1
 
     responds
 
@@ -119,7 +119,7 @@ class BalanceLineListAPIView(ListCreateAPIView):
 
     .. code-block:: http
 
-        GET  /api/metrics/balances/taxes/lines/ HTTP/1.1
+        GET  /api/metrics/balances/taxes/lines HTTP/1.1
 
     responds
 
@@ -169,7 +169,7 @@ class BalanceLineListAPIView(ListCreateAPIView):
 
         .. code-block:: http
 
-            POST /api/metrics/balances/taxes/lines/ HTTP/1.1
+            POST /api/metrics/balances/taxes/lines HTTP/1.1
 
         .. code-block:: json
 
@@ -208,7 +208,7 @@ class BalanceLineListAPIView(ListCreateAPIView):
 
         .. code-block:: http
 
-            PATCH /api/metrics/balances/taxes/lines/ HTTP/1.1
+            PATCH /api/metrics/balances/taxes/lines HTTP/1.1
 
         .. code-block:: json
 
@@ -267,7 +267,7 @@ class BalanceLineDetailAPIView(RetrieveUpdateDestroyAPIView):
 
     .. code-block:: http
 
-        GET  /api/metrics/balances/taxes/lines/1/ HTTP/1.1
+        GET  /api/metrics/balances/taxes/lines/1 HTTP/1.1
 
     responds
 
@@ -297,7 +297,7 @@ class BalanceLineDetailAPIView(RetrieveUpdateDestroyAPIView):
 
         .. code-block:: http
 
-            PUT /api/metrics/balances/taxes/lines/1/ HTTP/1.1
+            PUT /api/metrics/balances/taxes/lines/1 HTTP/1.1
 
         .. code-block:: json
 
@@ -332,7 +332,7 @@ class BalanceLineDetailAPIView(RetrieveUpdateDestroyAPIView):
 
         .. code-block:: http
 
-            DELETE /api/metrics/balances/taxes/lines/1/ HTTP/1.1
+            DELETE /api/metrics/balances/taxes/lines/1 HTTP/1.1
         """
         return super(BalanceLineDetailAPIView, self).delete(
             request, *args, **kwargs)

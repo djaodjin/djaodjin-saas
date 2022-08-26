@@ -90,7 +90,7 @@ class RegisteredAPIView(UserSmartListMixin, RegisteredBaseAPIView):
 
     .. code-block:: http
 
-        GET  /api/metrics/registered/ HTTP/1.1
+        GET  /api/metrics/registered HTTP/1.1
 
     responds
 
@@ -103,11 +103,9 @@ class RegisteredAPIView(UserSmartListMixin, RegisteredBaseAPIView):
             "results": [
                 {
                     "slug": "alice",
-                    "created_at": "2014-01-01T00:00:00Z",
-                    "email": "alice@djaodjin.com",
-                    "full_name": "Alice Cooper",
+                    "username": "alice",
                     "printable_name": "Alice Cooper",
-                    "username": "alice"
+                    "picture": null
                 }
             ]
         }
@@ -131,7 +129,7 @@ class AgreementSignAPIView(GenericAPIView):
 
     .. code-block:: http
 
-         POST /api/legal/terms-of-use/sign/ HTTP/1.1
+         POST /api/legal/terms-of-use/sign HTTP/1.1
 
     .. code-block:: json
 

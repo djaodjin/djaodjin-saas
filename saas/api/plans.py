@@ -60,7 +60,7 @@ class PricingAPIView(PlanMixin, CartMixin, ListAPIView):
 
     .. code-block:: http
 
-         GET /api/pricing/ HTTP/1.1
+         GET /api/pricing HTTP/1.1
 
     responds
 
@@ -73,7 +73,7 @@ class PricingAPIView(PlanMixin, CartMixin, ListAPIView):
           "results": [{
             "slug": "managed",
             "title": "Managed",
-            "description": "Ideal for growing organizations",
+            "description": "Ideal for growing businesses",
             "is_active": true,
             "setup_amount": 0,
             "period_amount": 2900,
@@ -83,7 +83,7 @@ class PricingAPIView(PlanMixin, CartMixin, ListAPIView):
             "is_not_priced": false,
             "renewal_type": "auto-renew",
             "created_at": "2019-01-01T00:00:00Z",
-            "organization": "cowork",
+            "profile": "cowork",
             "extra": null,
             "skip_optin_on_grant": false,
             "optin_on_request": false
@@ -132,19 +132,19 @@ class PlanListCreateAPIView(PlanMixin, ListCreateAPIView):
     """
     Lists a provider plans
 
-    Returns a list of {{PAGE_SIZE}} plans managed by provider {organization}.
+    Returns a list of {{PAGE_SIZE}} plans managed by a specified provider.
 
     The queryset can be further refined to match a search filter (``q``)
     and/or a range of dates ([``start_at``, ``ends_at``]),
     and sorted on specific fields (``o``).
 
-    **Tags**: subscriptions, provider, planmodel
+    **Tags**: subscriptions, list, provider, planmodel
 
     **Examples**
 
     .. code-block:: http
 
-         GET /api/profile/cowork/plans/ HTTP/1.1
+         GET /api/profile/cowork/plans HTTP/1.1
 
     responds
 
@@ -157,7 +157,7 @@ class PlanListCreateAPIView(PlanMixin, ListCreateAPIView):
           "results": [{
             "slug": "managed",
             "title": "Managed",
-            "description": "Ideal for growing organizations",
+            "description": "Ideal for growing businesses",
             "is_active": true,
             "setup_amount": 0,
             "period_amount": 2900,
@@ -167,7 +167,7 @@ class PlanListCreateAPIView(PlanMixin, ListCreateAPIView):
             "is_not_priced": false,
             "renewal_type": "auto-renew",
             "created_at": "2019-01-01T00:00:00Z",
-            "organization": "cowork",
+            "profile": "cowork",
             "extra": null,
             "skip_optin_on_grant": false,
             "optin_on_request": false
@@ -195,7 +195,8 @@ class PlanListCreateAPIView(PlanMixin, ListCreateAPIView):
         """
         Creates a plan
 
-        Creates a new subscription plan that belongs to provider {organization}.
+        Creates a new subscription plan that belongs
+        to the specified provider.
 
         **Tags**: subscriptions, provider, planmodel
 
@@ -203,7 +204,7 @@ class PlanListCreateAPIView(PlanMixin, ListCreateAPIView):
 
         .. code-block:: http
 
-             POST /api/profile/cowork/plans/ HTTP/1.1
+             POST /api/profile/cowork/plans HTTP/1.1
 
         .. code-block:: json
 
@@ -258,7 +259,7 @@ class PlanDetailAPIView(PlanMixin, RetrieveUpdateDestroyAPIView):
     """
     Retrieves a plan
 
-    Returns the {plan} for provider {organization}
+    Returns the {plan} that belongs to the specified provider.
 
     The ``is_active`` boolean is used to activate a plan, enabling users
     to subscribe to it, or deactivate a plan, disabling users from subscribing
@@ -274,7 +275,7 @@ class PlanDetailAPIView(PlanMixin, RetrieveUpdateDestroyAPIView):
 
     .. code-block:: http
 
-        GET /api/profile/cowork/plans/open-space/ HTTP/1.1
+        GET /api/profile/cowork/plans/open-space HTTP/1.1
 
     responds
 
@@ -309,7 +310,7 @@ class PlanDetailAPIView(PlanMixin, RetrieveUpdateDestroyAPIView):
 
         .. code-block:: http
 
-            DELETE /api/profile/cowork/plans/open-space/ HTTP/1.1
+            DELETE /api/profile/cowork/plans/open-space HTTP/1.1
         """
         return super(PlanDetailAPIView, self).delete(request, *args, **kwargs)
 
@@ -390,7 +391,7 @@ class PlanDetailAPIView(PlanMixin, RetrieveUpdateDestroyAPIView):
 
         .. code-block:: http
 
-            PUT /api/profile/cowork/plans/open-space/ HTTP/1.1
+            PUT /api/profile/cowork/plans/open-space HTTP/1.1
 
         .. code-block:: json
 

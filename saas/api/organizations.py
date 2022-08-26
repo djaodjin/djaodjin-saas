@@ -33,8 +33,9 @@ from rest_framework.generics import (CreateAPIView, ListAPIView,
     RetrieveUpdateDestroyAPIView)
 from rest_framework.response import Response
 
-from .serializers import (OrganizationDetailSerializer,
-    OrganizationWithSubscriptionsSerializer, UploadBlobSerializer)
+from .serializers import (EngagedSubscriberSerializer, OrganizationSerializer,
+    OrganizationDetailSerializer, OrganizationWithSubscriptionsSerializer,
+    UploadBlobSerializer)
 from .. import settings, signals
 from ..compat import force_str, gettext_lazy as _, urlparse, urlunparse
 from ..decorators import _valid_manager
@@ -43,7 +44,7 @@ from ..mixins import (DateRangeContextMixin, OrganizationMixin,
     OrganizationSmartListMixin, ProviderMixin, OrganizationDecorateMixin)
 from ..models import get_broker
 from ..utils import (datetime_or_now, get_organization_model, get_role_model,
-    get_role_serializer, handle_uniq_error, get_picture_storage)
+    handle_uniq_error, get_picture_storage)
 
 
 class OrganizationQuerysetMixin(OrganizationDecorateMixin):
@@ -66,7 +67,7 @@ class OrganizationDetailAPIView(OrganizationMixin, OrganizationQuerysetMixin,
 
     .. code-block:: http
 
-        GET /api/profile/xia/ HTTP/1.1
+        GET /api/profile/xia HTTP/1.1
 
     responds
 
@@ -87,7 +88,7 @@ class OrganizationDetailAPIView(OrganizationMixin, OrganizationQuerysetMixin,
             "default_timezone": "Europe/Kiev",
             "is_provider": false,
             "is_bulk_buyer": false,
-            "type": "",
+            "type": "personal",
             "picture": "",
             "subscriptions": [
                 {
@@ -118,7 +119,7 @@ class OrganizationDetailAPIView(OrganizationMixin, OrganizationQuerysetMixin,
 
         .. code-block:: http
 
-            PUT /api/profile/xia/ HTTP/1.1
+            PUT /api/profile/xia HTTP/1.1
 
         .. code-block:: json
 
@@ -167,7 +168,7 @@ class OrganizationDetailAPIView(OrganizationMixin, OrganizationQuerysetMixin,
 
         .. code-block:: http
 
-            DELETE /api/profile/xia/ HTTP/1.1
+            DELETE /api/profile/xia HTTP/1.1
         """
         return self.destroy(request, *args, **kwargs)
 
@@ -195,7 +196,7 @@ class OrganizationDetailAPIView(OrganizationMixin, OrganizationQuerysetMixin,
         try:
             serializer.save(is_provider=is_provider)
             serializer.instance.detail = _("Profile was updated.")
-            signals.organization_updated.send(sender=__name__,
+            signals.profile_updated.send(sender=__name__,
                 organization=serializer.instance, changes=changes,
                 user=self.request.user)
         except IntegrityError as err:
@@ -239,7 +240,7 @@ class OrganizationPictureAPIView(OrganizationMixin, CreateAPIView):
 
         .. code-block:: http
 
-            POST /api/profile/xia/picture/ HTTP/1.1
+            POST /api/profile/xia/picture HTTP/1.1
 
         responds
 
@@ -293,13 +294,13 @@ class OrganizationListAPIView(OrganizationSmartListMixin,
     and/or a range of dates ([``start_at``, ``ends_at``]),
     and sorted on specific fields (``o``).
 
-    **Tags**: profile, broker, profilemodel
+    **Tags**: profile, list, broker, profilemodel
 
     **Examples**
 
     .. code-block:: http
 
-        GET /api/profile/?o=created_at HTTP/1.1
+        GET /api/profile?o=created_at HTTP/1.1
 
     responds
 
@@ -309,13 +310,26 @@ class OrganizationListAPIView(OrganizationSmartListMixin,
             "count": 1,
             "next": null,
             "previous": null,
-            "results": [{
-                "slug": "xia",
-                "full_name": "Xia Lee",
-                "email": "xia@localhost.localdomain",
-                "printable_name": "Xia Lee",
-                "created_at": "2016-01-14T23:16:55Z"
-            }]
+            "results": [
+                {
+                    "slug": "xia",
+                    "created_at": "2018-01-01T00:00:00Z",
+                    "email": "xia@locahost.localdomain",
+                    "full_name": "Xia Lee",
+                    "printable_name": "Xia Lee",
+                    "phone": "555-555-5555",
+                    "street_address": "185 Berry St #550",
+                    "locality": "San Francisco",
+                    "region": "CA",
+                    "postal_code": "",
+                    "country": "US",
+                    "default_timezone": "Los Angeles",
+                    "is_provider": false,
+                    "is_bulk_buyer": false,
+                    "type": "personal",
+                    "picture": ""
+                }
+            ]
         }
     """
     serializer_class = OrganizationDetailSerializer
@@ -346,19 +360,19 @@ class SubscribersAPIView(OrganizationSmartListMixin,
     Lists subscribers for a provider
 
     Returns a list of {{PAGE_SIZE}} subscriber profiles which have or
-    had a subscription to a plan provided by {organization}.
+    had a subscription to a plan of the specified provider.
 
     The queryset can be further refined to match a search filter (``q``)
     and/or a range of dates ([``start_at``, ``ends_at``]),
     and sorted on specific fields (``o``).
 
-    **Tags**: subscriptions, provider, profilemodel
+    **Tags**: list, provider, profilemodel, subscriptions
 
     **Examples**
 
     .. code-block:: http
 
-        GET /api/profile/cowork/subscribers/?o=created_at&ot=desc HTTP/1.1
+        GET /api/profile/cowork/subscribers?o=created_at&ot=desc HTTP/1.1
 
     responds
 
@@ -370,16 +384,16 @@ class SubscribersAPIView(OrganizationSmartListMixin,
             "previous": null,
             "results": [
                 {
-                "slug": "xia",
-                "full_name": "Xia Lee",
-                "email": "xia@localhost.localdomain",
-                "created_at": "2016-01-14T23:16:55Z",
-                "ends_at": "2017-01-14T23:16:55Z"
+                    "slug": "xia",
+                    "printable_name": "Xia Lee",
+                    "picture": null,
+                    "type": "personal",
+                    "credentials": true
                 }
             ]
         }
     """
-    serializer_class = OrganizationDetailSerializer
+    serializer_class = OrganizationSerializer
 
 
 class EngagedSubscribersSmartListMixin(object):
@@ -389,14 +403,19 @@ class EngagedSubscribersSmartListMixin(object):
     date_field = 'user__last_login'
 
     search_fields = (
-        'first_name',
-        'last_name',
-        'organization_full_name')
+        ('first_name', 'first_name'),
+        ('last_name', 'last_name'),
+        ('organization__slug', 'profile'),
+        ('organization__full_name', 'profile__full_name')
+    )
 
-    ordering_fields = [('user__last_login', 'created_at'),
-                       ('user__first_name', 'first_name'),
-                       ('user__last_name', 'last_name'),
-                       ('organization__full_name', 'organization_full_name')]
+    ordering_fields = (
+        ('user__last_login', 'created_at'),
+        ('user__first_name', 'first_name'),
+        ('user__last_name', 'last_name'),
+        ('organization__slug', 'profile'),
+        ('organization__full_name', 'profile__full_name')
+    )
 
     ordering = ('created_at',)
 
@@ -433,19 +452,19 @@ class EngagedSubscribersAPIView(EngagedSubscribersSmartListMixin,
     Lists engaged subscribers
 
     Returns a list of {{PAGE_SIZE}} subscriber profiles which have or
-    had a subscription to a plan provided by {organization}.
+    had a subscription to a plan of the specified provider.
 
     The queryset can be further refined to match a search filter (``q``)
     and/or a range of dates ([``start_at``, ``ends_at``]),
     and sorted on specific fields (``o``).
 
-    **Tags**: subscriptions, provider, profilemodel
+    **Tags**: list, provider, rolemodel, subscriptions
 
     **Examples**
 
     .. code-block:: http
 
-        GET /api/profile/cowork/subscribers/engaged/?o=created_at&ot=desc\
+        GET /api/profile/cowork/subscribers/engaged?o=created_at&ot=desc\
  HTTP/1.1
 
     responds
@@ -458,16 +477,35 @@ class EngagedSubscribersAPIView(EngagedSubscribersSmartListMixin,
             "previous": null,
             "results": [
                 {
-                "slug": "xia",
-                "full_name": "Xia Lee",
-                "email": "xia@localhost.localdomain",
-                "created_at": "2016-01-14T23:16:55Z",
-                "ends_at": "2017-01-14T23:16:55Z"
+                  "created_at": "2022-01-01T00:00:00Z",
+                  "user": {
+                    "slug": "xia23",
+                    "username": "xia23",
+                    "printable_name": "Xia23",
+                    "picture": null
+                  },
+                  "role_description": {
+                    "created_at": "2022-01-01T00:00:00Z",
+                    "slug": "manager",
+                    "title": "Profile Manager",
+                    "skip_optin_on_grant": false,
+                    "implicit_create_on_none": false,
+                    "is_global": true,
+                    "profile": null,
+                    "extra": null
+                  },
+                  "profile": {
+                    "slug": "xia23",
+                    "printable_name": "Xia23",
+                    "picture": null,
+                    "type": "organization",
+                    "credentials": false
+                  }
                 }
             ]
         }
     """
-    serializer_class = get_role_serializer()
+    serializer_class = EngagedSubscriberSerializer
 
 
 class UnengagedSubscribersQuerysetMixin(DateRangeContextMixin,
@@ -496,19 +534,19 @@ class UnengagedSubscribersAPIView(OrganizationSmartListMixin,
     Lists inactive subscribers
 
     Returns a list of {{PAGE_SIZE}} subscriber profiles which have or
-    had a subscription to a plan provided by {organization}.
+    had a subscription to a plan of the specified provider.
 
     The queryset can be further refined to match a search filter (``q``)
     and/or a range of dates ([``start_at``, ``ends_at``]),
     and sorted on specific fields (``o``).
 
-    **Tags**: subscriptions, provider, profilemodel
+    **Tags**: list, provider, profilemodel, subscriptions
 
     **Examples**
 
     .. code-block:: http
 
-        GET /api/profile/cowork/subscribers/unengaged/?o=created_at&ot=desc\
+        GET /api/profile/cowork/subscribers/unengaged?o=created_at&ot=desc\
  HTTP/1.1
 
     responds
@@ -522,12 +560,11 @@ class UnengagedSubscribersAPIView(OrganizationSmartListMixin,
             "results": [
                 {
                 "slug": "xia",
-                "full_name": "Xia Lee",
-                "email": "xia@localhost.localdomain",
+                "printable_name": "Xia Lee",
                 "created_at": "2016-01-14T23:16:55Z",
                 "ends_at": "2017-01-14T23:16:55Z"
                 }
             ]
         }
     """
-    serializer_class = OrganizationDetailSerializer
+    serializer_class = OrganizationSerializer

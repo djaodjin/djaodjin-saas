@@ -59,7 +59,7 @@ class RetrieveBankAPIView(OrganizationMixin, RetrieveAPIView):
 
     .. code-block:: http
 
-        GET /api/billing/cowork/bank/ HTTP/1.1
+        GET /api/billing/cowork/bank HTTP/1.1
 
     responds
 
@@ -104,7 +104,7 @@ class PaymentMethodDetailAPIView(OrganizationMixin,
 
     .. code-block:: http
 
-        GET /api/billing/xia/card/ HTTP/1.1
+        GET /api/billing/xia/card HTTP/1.1
 
     responds
 
@@ -139,7 +139,7 @@ class PaymentMethodDetailAPIView(OrganizationMixin,
 
         .. code-block:: http
 
-            DELETE /api/billing/xia/card/ HTTP/1.1
+            DELETE /api/billing/xia/card HTTP/1.1
         """
         return super(PaymentMethodDetailAPIView, self).delete(
             request, *args, **kwargs)
@@ -172,7 +172,7 @@ class PaymentMethodDetailAPIView(OrganizationMixin,
 
         .. code-block:: http
 
-            PUT /api/billing/xia/card/ HTTP/1.1
+            PUT /api/billing/xia/card HTTP/1.1
 
         .. code-block:: json
 

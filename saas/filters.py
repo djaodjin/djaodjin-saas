@@ -1,4 +1,4 @@
-# Copyright (c) 2021, DjaoDjin inc.
+# Copyright (c) 2022, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -167,11 +167,18 @@ class SearchFilter(BaseSearchFilter):
 
 
     def get_schema_operation_parameters(self, view):
-        search_fields = getattr(view, 'search_fields', [])
+        search_fields = getattr(view, 'search_fields', None)
+        search_field_names = []
+        if search_fields:
+            for search_field in search_fields:
+                if isinstance(search_field, tuple):
+                    search_field_names += [search_field[1]]
+                else:
+                    search_field_names += [search_field]
         search_fields_description = (
             "restrict searches to one or more fields in: %s."\
             " searches all fields when unspecified."  % (
-            ', '.join(search_fields)))
+            ', '.join(search_field_names)))
         return [
             {
                 'name': self.search_param,
@@ -362,8 +369,8 @@ class DateRangeFilter(BaseFilterBackend):
         return queryset.filter(**kwargs)
 
     def get_schema_operation_parameters(self, view):
-        fields = super(DateRangeFilter,
-            self).get_schema_operation_parameters(view)
+        fields = super(DateRangeFilter, self).get_schema_operation_parameters(
+            view)
         fields += [
             {
                 'name': 'start_at',

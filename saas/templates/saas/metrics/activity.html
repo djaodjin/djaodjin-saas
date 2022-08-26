@@ -37,9 +37,9 @@
                 </a>
               </th>
               <th>
-                Organization
-                <a href="#" @click.prevent="sortBy('organization_full_name')">
-                  <i :class="sortIcon('organization_full_name')"></i>
+                Profile
+                <a href="#" @click.prevent="sortBy('profile_full_name')">
+                  <i :class="sortIcon('profile_full_name')"></i>
                 </a>
               </th>
             </tr>
@@ -68,7 +68,7 @@
             <tr v-for="(entry, index) in items.results" :class="{'bg-info': isInfiniteScroll && params.page > 1 && (itemsPerPage * (params.page - 1)) === index}">
               <td>[[ entry.user.last_login ]]</td>
               <td>[[entry.user.full_name]]</td>
-              <td>[[entry.organization.printable_name]]</td>
+              <td>[[entry.profile.printable_name]]</td>
             </tr>
           </tbody>
         </table>
@@ -97,14 +97,14 @@
           <thead>
             <tr>
               <th>
-                Organization
-                <a href="#" @click.prevent="sortBy('organization_full_name')">
-                  <i :class="sortIcon('organization_full_name')"></i>
+                Profile
+                <a href="#" @click.prevent="sortBy('profile_full_name')">
+                  <i :class="sortIcon('profile_full_name')"></i>
                 </a>
               </th>
             </tr>
             <tr>
-              <td>Click on a name to show contacts at the organization.</td>
+              <td>Click on a name to show contacts at the profile.</td>
             </tr>
           </thead>
 

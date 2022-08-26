@@ -29,23 +29,21 @@ URLs for API related to users accessible by.
 from ... import settings
 from ...api.roles import (AccessibleByListAPIView, AccessibleDetailAPIView,
     RoleAcceptAPIView, AccessibleByDescrListAPIView, UserProfileListAPIView)
-from ...compat import re_path
+from ...compat import path, re_path
 
 urlpatterns = [
     re_path(
         r'^users/(?P<user>%s)/accessibles/accept/(?P<verification_key>%s)' % (
-        settings.MAYBE_EMAIL_REGEX, settings.VERIFICATION_KEY_RE),
+        settings.SLUG_RE, settings.VERIFICATION_KEY_RE),
         RoleAcceptAPIView.as_view(), name='saas_api_accessibles_accept'),
-    re_path(
-        r'^users/(?P<user>%s)/accessibles/(?P<role>%s)/(?P<organization>%s)'
-        % (settings.SLUG_RE, settings.SLUG_RE, settings.SLUG_RE),
+    path('users/<slug:user>/accessibles/<slug:role>/<slug:%s>' %
+        settings.PROFILE_URL_KWARG,
         AccessibleDetailAPIView.as_view(), name='saas_api_accessible_detail'),
-    re_path(r'^users/(?P<user>%s)/accessibles/(?P<role>%s)' % (
-        settings.SLUG_RE, settings.SLUG_RE),
+    path('users/<slug:user>/accessibles/<slug:role>',
         AccessibleByDescrListAPIView.as_view(),
         name='saas_api_accessibles_by_descr'),
-    re_path(r'^users/(?P<user>%s)/accessibles' % settings.MAYBE_EMAIL_REGEX,
+    path('users/<slug:user>/accessibles',
         AccessibleByListAPIView.as_view(), name='saas_api_accessibles'),
-    re_path(r'^users/(?P<user>%s)/profiles' % settings.MAYBE_EMAIL_REGEX,
+    path('users/<slug:user>/profiles',
         UserProfileListAPIView.as_view(), name='saas_api_user_profiles'),
 ]

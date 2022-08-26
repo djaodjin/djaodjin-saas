@@ -26,12 +26,11 @@
 URLs for API related to signing legal agreements.
 """
 
-from ... import settings
 from ...api.users import AgreementSignAPIView
-from ...compat import re_path
+from ...compat import path
 
 
 urlpatterns = [
-    re_path(r'^legal/(?P<agreement>%s)/sign/$' % settings.SLUG_RE,
+    path('legal/<slug:agreement>/sign',
         AgreementSignAPIView.as_view(), name='saas_api_sign_agreement'),
 ]

@@ -26,7 +26,7 @@
                     <select name="plan" v-model="plan">
                       <option selected :value="{}">Select a plan...</option>
                       {% for choice in plans %}
-                      <option :value='{"slug":"{{choice.slug}}","organization":"{{choice.organization.slug}}"}'>{{choice.title}}</option>
+                      <option :value='{"slug":"{{choice.slug}}","profile":"{{choice.organization.slug}}"}'>{{choice.title}}</option>
                       {% endfor %}
                     </select>
                     <button type="submit">Subscribe</button>
@@ -49,7 +49,7 @@
           <tbody v-for="entry in items.results" v-show="itemsLoaded && items.results.length > 0" v-cloak>
             <tr :class="endsSoon(entry)">
               <td>
-                <a :href="entry.plan.app_url + entry.organization.slug + '/' + entry.plan.slug + '/'">[[entry.plan.title]]</a>
+                <a :href="entry.plan.app_url + entry.profile.slug + '/' + entry.plan.slug + '/'">[[entry.plan.title]]</a>
               </td>
               <td>
                 [[entry.ends_at]]
@@ -60,7 +60,7 @@
               <td v-if="!entry.request_key">
                 <button class="unsubscribe"
                         data-toggle="modal" data-target="#unsubscribe-action"
-                        @click="unsubscribeConfirm(entry.organization.slug, entry.plan.slug)">
+                        @click="unsubscribeConfirm(entry.profile.slug, entry.plan.slug)">
                   Unsubscribe Now
                 </button>
               </td>
@@ -68,10 +68,10 @@
                 <button
                   class="unsubscribe"
                   data-toggle="modal" data-target="#unsubscribe-action"
-                  @click="unsubscribeConfirm(entry.organization.slug, entry.plan.slug)">
+                  @click="unsubscribeConfirm(entry.profile.slug, entry.plan.slug)">
                   Deny
                 </button>
-                <button @click="acceptRequest(entry.plan.organization, entry.request_key)">
+                <button @click="acceptRequest(entry.plan.profile, entry.request_key)">
                   Accept
                 </button>
               </td>
@@ -124,7 +124,7 @@
           <tbody v-for="entry in items.results" v-show="itemsLoaded && items.results.length > 0" v-cloak>
             <tr>
               <td>
-                <a :href="entry.plan.app_url + entry.organization.slug + '/' + entry.plan.slug + '/'">[[entry.plan.title]]</a>
+                <a :href="entry.plan.app_url + entry.profile.slug + '/' + entry.plan.slug + '/'">[[entry.plan.title]]</a>
               </td>
               <td>
                 [[entry.ends_at]]

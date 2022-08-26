@@ -85,9 +85,13 @@ class TransactionFilterMixin(DateRangeContextMixin):
     ``Transaction`` list result of a search query, filtered by dates.
     """
 
-    search_fields = ('descr',
-                     'orig_organization__full_name',
-                     'dest_organization__full_name')
+    search_fields = (
+        ('descr', 'description'),
+        ('dest_organization__full_name', 'dest_profile__full_name'),
+        ('dest_organization__slug', 'dest_profile'),
+        ('orig_organization__full_name', 'orig_profile__full_name'),
+        ('orig_organization__slug', 'orig_profile')
+    )
 
     filter_backends = (DateRangeFilter, SearchFilter)
 
@@ -99,9 +103,11 @@ class SmartTransactionListMixin(TransactionFilterMixin):
     ordering_fields = (
         ('descr', 'description'),
         ('dest_amount', 'amount'),
-        ('dest_organization__slug', 'dest_organization'),
+        ('dest_organization__slug', 'dest_profile'),
+        ('dest_organization__full_name', 'dest_profile__full_name'),
         ('dest_account', 'dest_account'),
-        ('orig_organization__slug', 'orig_organization'),
+        ('orig_organization__slug', 'orig_profile'),
+        ('orig_organization__full_name', 'orig_profile__full_name'),
         ('orig_account', 'orig_account'),
         ('created_at', 'created_at')
     )
@@ -133,13 +139,13 @@ class TransactionListAPIView(SmartTransactionListMixin,
     and/or a range of dates ([``start_at``, ``ends_at``]),
     and sorted on specific fields (``o``).
 
-    **Tags**: billing, broker, transactionmodel
+    **Tags**: billing, list, broker, transactionmodel
 
     **Examples**
 
     .. code-block:: http
 
-        GET /api/billing/transactions/?start_at=2015-07-05T07:00:00.000Z\
+        GET /api/billing/transactions?start_at=2015-07-05T07:00:00.000Z\
 &o=date&ot=desc HTTP/1.1
 
     responds
@@ -161,11 +167,23 @@ class TransactionListAPIView(SmartTransactionListMixin,
                     "amount": "($356.00)",
                     "is_debit": true,
                     "orig_account": "Liability",
-                    "orig_organization": "xia",
+                    "orig_profile": {
+                        "slug": "xia",
+                        "printable_name": "Xia",
+                        "picture": null,
+                        "type": "personal",
+                        "credentials": true
+                    },
                     "orig_amount": 112120,
                     "orig_unit": "usd",
                     "dest_account": "Funds",
-                    "dest_organization": "stripe",
+                    "dest_profile": {
+                        "slug": "stripe",
+                        "printable_name": "Stripe",
+                        "picture": null,
+                        "type": "organization",
+                        "credentials": false
+                    },
                     "dest_amount": 112120,
                     "dest_unit": "usd"
                 }
@@ -191,7 +209,7 @@ class BillingsAPIView(SmartTransactionListMixin,
     Lists subscriber transactions
 
     Returns a list of {{PAGE_SIZE}} transactions associated
-    to ``{organization}`` while the profile acts as a subscriber.
+    to a billing profile while the profile acts as a subscriber.
 
     The queryset can be further refined to match a search filter (``q``)
     and/or a range of dates ([``start_at``, ``ends_at``]),
@@ -201,13 +219,13 @@ class BillingsAPIView(SmartTransactionListMixin,
     `billing history page </docs/themes/#dashboard_billing_history>`_
     as present in the default theme.
 
-    **Tags**: billing, subscriber, transactionmodel
+    **Tags**: billing, list, subscriber, transactionmodel
 
     **Examples**
 
     .. code-block:: http
 
-         GET /api/billing/xia/history/?start_at=2015-07-05T07:00:00.000Z\
+         GET /api/billing/xia/history?start_at=2015-07-05T07:00:00.000Z\
  HTTP/1.1
 
     responds
@@ -230,11 +248,23 @@ class BillingsAPIView(SmartTransactionListMixin,
                     "amount": "($356.00)",
                     "is_debit": true,
                     "orig_account": "Liability",
-                    "orig_organization": "xia",
+                    "orig_profile": {
+                        "slug": "xia",
+                        "printable_name": "Xia",
+                        "picture": null,
+                        "type": "personal",
+                        "credentials": true
+                    },
                     "orig_amount": 112120,
                     "orig_unit": "usd",
                     "dest_account": "Funds",
-                    "dest_organization": "stripe",
+                    "dest_profile": {
+                        "slug": "stripe",
+                        "printable_name": "Stripe",
+                        "picture": null,
+                        "type": "organization",
+                        "credentials": false
+                    },
                     "dest_amount": 112120,
                     "dest_unit": "usd"
                 }
@@ -259,24 +289,23 @@ class ReceivablesListAPIView(TotalAnnotateMixin, SmartTransactionListMixin,
     """
     Lists provider receivables
 
-    Returns a list of {{PAGE_SIZE}} transactions marked
-    as receivables associated to to ``{organization}`` while the profile acts as
-    a provider.
+    Returns a list of {{PAGE_SIZE}} transactions marked as receivables
+    associated to a billing profile while the profile acts as a provider.
 
     The queryset can be further refined to match a search filter (``q``)
     and/or a range of dates ([``start_at``, ``ends_at``]),
     and sorted on specific fields (``o``).
 
-    This API endpoint is typically used to find all sales for ``{organization}``
+    This API endpoint is typically used to find all sales for a provider,
     whether it was paid or not.
 
-    **Tags**: billing, provider, transactionmodel
+    **Tags**: billing, list, provider, transactionmodel
 
     **Examples**
 
     .. code-block:: http
 
-         GET /api/billing/cowork/receivables/?start_at=2015-07-05T07:00:00.000Z\
+         GET /api/billing/cowork/receivables?start_at=2015-07-05T07:00:00.000Z\
  HTTP/1.1
 
     responds
@@ -297,11 +326,23 @@ class ReceivablesListAPIView(TotalAnnotateMixin, SmartTransactionListMixin,
                     "amount": "112120",
                     "is_debit": false,
                     "orig_account": "Funds",
-                    "orig_organization": "stripe",
+                    "orig_profile": {
+                        "slug": "stripe",
+                        "printable_name": "Stripe",
+                        "picture": null,
+                        "type": "organization",
+                        "credentials": false
+                    },
                     "orig_amount": 112120,
                     "orig_unit": "usd",
                     "dest_account": "Funds",
-                    "dest_organization": "cowork",
+                    "dest_profile": {
+                        "slug": "cowork",
+                        "printable_name": "Coworking Space",
+                        "picture": null,
+                        "type": "organization",
+                        "credentials": false
+                    },
                     "dest_amount": 112120,
                     "dest_unit": "usd"
                 }
@@ -334,7 +375,7 @@ class TransferListAPIView(SmartTransactionListMixin, TransferQuerysetMixin,
     Lists provider payouts
 
     Returns a list of {{PAGE_SIZE}} transactions associated
-    to ``{organization}`` while the profile acts as a provider.
+    to a billing profile while the profile acts as a provider.
 
     The queryset can be further refined to match a search filter (``q``)
     and/or a range of dates ([``start_at``, ``ends_at``]),
@@ -344,13 +385,13 @@ class TransferListAPIView(SmartTransactionListMixin, TransferQuerysetMixin,
     `funds page </docs/themes/#dashboard_billing_transfers>`_
     as present in the default theme.
 
-    **Tags**: billing, provider, transactionmodel
+    **Tags**: billing, list, provider, transactionmodel
 
     **Examples**
 
     .. code-block:: http
 
-         GET /api/billing/cowork/transfers/?start_at=2015-07-05T07:00:00.000Z\
+         GET /api/billing/cowork/transfers?start_at=2015-07-05T07:00:00.000Z\
  HTTP/1.1
 
     responds
@@ -369,11 +410,23 @@ class TransferListAPIView(SmartTransactionListMixin, TransferQuerysetMixin,
                     "amount": "$1121.20",
                     "is_debit": false,
                     "orig_account": "Funds",
-                    "orig_organization": "stripe",
+                    "orig_profile": {
+                        "slug": "stripe",
+                        "printable_name": "Stripe",
+                        "picture": null,
+                        "type": "organization",
+                        "credentials": false
+                    },
                     "orig_amount": 112120,
                     "orig_unit": "usd",
                     "dest_account": "Funds",
-                    "dest_organization": "cowork",
+                    "dest_profile": {
+                        "slug": "cowork",
+                        "printable_name": "Coworking Space",
+                        "picture": null,
+                        "type": "organization",
+                        "credentials": false
+                    },
                     "dest_amount": 112120,
                     "dest_unit": "usd"
                 }
@@ -404,7 +457,7 @@ class ImportTransactionsAPIView(ProviderMixin, CreateAPIView):
 
         .. code-block:: http
 
-             POST /api/billing/cowork/transfers/import/ HTTP/1.1
+             POST /api/billing/cowork/transfers/import HTTP/1.1
 
         .. code-block:: json
 
@@ -428,11 +481,23 @@ class ImportTransactionsAPIView(ProviderMixin, CreateAPIView):
                    "amount": "$10.00",
                    "is_debit": false,
                    "orig_account": "Receivable",
-                   "orig_organization": "djaoapp",
+                   "orig_profile": {
+                        "slug": "djaoapp",
+                        "printable_name": "DjaoApp",
+                        "picture": null,
+                        "type": "organization",
+                        "credentials": false
+                   },
                    "orig_amount": 1000,
                    "orig_unit": "usd",
                    "dest_account": "Payable",
-                   "dest_organization": "xia",
+                   "dest_profile": {
+                        "slug": "xia",
+                        "printable_name": "Xia",
+                        "picture": null,
+                        "type": "personal",
+                        "credentials": true
+                   },
                    "dest_amount": 1000,
                    "dest_unit": "usd"
                  },
@@ -442,11 +507,23 @@ class ImportTransactionsAPIView(ProviderMixin, CreateAPIView):
                    "amount": "$10.00",
                    "is_debit": false,
                    "orig_account": "Liability",
-                   "orig_organization": "xia",
+                   "orig_profile": {
+                        "slug": "xia",
+                        "printable_name": "Xia",
+                        "picture": null,
+                        "type": "personal",
+                        "credentials": true
+                   },
                    "orig_amount": 1000,
                    "orig_unit": "usd",
                    "dest_account": "Funds",
-                   "dest_organization": "djaoapp",
+                   "dest_profile": {
+                        "slug": "djaoapp",
+                        "printable_name": "DjaoApp",
+                        "picture": null,
+                        "type": "organization",
+                        "credentials": false
+                   },
                    "dest_amount": 1000,
                    "dest_unit": "usd"
                  },
@@ -456,11 +533,23 @@ class ImportTransactionsAPIView(ProviderMixin, CreateAPIView):
                    "amount": "$10.00",
                    "is_debit": false,
                    "orig_account": "Payable",
-                   "orig_organization": "xia",
+                   "orig_profile": {
+                        "slug": "xia",
+                        "printable_name": "Xia",
+                        "picture": null,
+                        "type": "personal",
+                        "credentials": true
+                   },
                    "orig_amount": 1000,
                    "orig_unit": "usd",
                    "dest_account": "Liability",
-                   "dest_organization": "xia",
+                   "dest_profile": {
+                        "slug": "xia",
+                        "printable_name": "Xia",
+                        "picture": null,
+                        "type": "personal",
+                        "credentials": true
+                   },
                    "dest_amount": 1000,
                    "dest_unit": "usd"
                  },
@@ -470,11 +559,23 @@ class ImportTransactionsAPIView(ProviderMixin, CreateAPIView):
                    "amount": "$10.00",
                    "is_debit": false,
                    "orig_account": "Backlog",
-                   "orig_organization": "djaoapp",
+                   "orig_profile": {
+                        "slug": "djaoapp",
+                        "printable_name": "DjaoApp",
+                        "picture": null,
+                        "type": "organization",
+                        "credentials": false
+                   },
                    "orig_amount": 1000,
                    "orig_unit": "usd",
                    "dest_account": "Receivable",
-                   "dest_organization": "djaoapp",
+                   "dest_profile": {
+                        "slug": "djaoapp",
+                        "printable_name": "DjaoApp",
+                        "picture": null,
+                        "type": "organization",
+                        "credentials": false
+                   },
                    "dest_amount": 1000,
                    "dest_unit": "usd"
                  },
@@ -484,11 +585,23 @@ class ImportTransactionsAPIView(ProviderMixin, CreateAPIView):
                    "amount":"$0.20",
                    "is_debit":false,
                    "orig_account":"Funds",
-                   "orig_organization":"djaoapp",
+                   "orig_profile": {
+                        "slug": "djaoapp",
+                        "printable_name": "DjaoApp",
+                        "picture": null,
+                        "type": "organization",
+                        "credentials": false
+                   },
                    "orig_amount":20,
                    "orig_unit":"usd",
                    "dest_account":"Offline",
-                   "dest_organization":"djaoapp",
+                   "dest_profile": {
+                        "slug": "djaoapp",
+                        "printable_name": "DjaoApp",
+                        "picture": null,
+                        "type": "organization",
+                        "credentials": false
+                   },
                    "dest_amount":20,
                    "dest_unit":"usd"
                  }
@@ -542,7 +655,7 @@ class StatementBalanceAPIView(OrganizationMixin, GenericAPIView):
     """
     Retrieves a customer balance
 
-    Get the statement balance due for an organization.
+    Get the statement balance due for a billing profile.
 
     **Tags**: billing, subscriber, transactionmodel
 
@@ -550,7 +663,7 @@ class StatementBalanceAPIView(OrganizationMixin, GenericAPIView):
 
     .. code-block:: http
 
-         GET  /api/billing/xia/balance/ HTTP/1.1
+         GET  /api/billing/xia/balance HTTP/1.1
 
     responds
 
@@ -576,7 +689,7 @@ class StatementBalanceAPIView(OrganizationMixin, GenericAPIView):
         """
         Cancels a balance due
 
-        Cancel the balance due by profile {organization}. This will create
+        Cancel the balance due by profile. This will create
         a transaction for this balance cancellation. A provider manager can
         use this endpoint to cancel balance dues that is known impossible
         to be recovered (e.g. an external bank or credit card company
@@ -588,7 +701,7 @@ class StatementBalanceAPIView(OrganizationMixin, GenericAPIView):
 
         .. code-block:: http
 
-             DELETE /api/billing/xia/balance/ HTTP/1.1
+             DELETE /api/billing/xia/balance HTTP/1.1
         """
         return self.destroy(request, *args, **kwargs)
 

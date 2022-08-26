@@ -89,13 +89,13 @@ class AccountsTypeaheadAPIView(OrganizationSmartListMixin,
     `provider dashboard page </docs/themes/#dashboard_metrics_dashboard>`_
     as present in the default theme.
 
-    **Tags**: profile, user
+    **Tags**: list, profile, user
 
     **Examples**
 
     .. code-block:: http
 
-        GET /api/accounts/?q=xi HTTP/1.1
+        GET /api/accounts?q=xi HTTP/1.1
 
     responds
 
@@ -105,10 +105,10 @@ class AccountsTypeaheadAPIView(OrganizationSmartListMixin,
             "count": 1,
             "results": [{
                 "slug": "xia",
-                "full_name": "Xia Lee",
-                "email": "xia@localhost.localdomain",
-                "created_at": "2016-01-14T23:16:55Z",
-                "printable_name": "Xia Lee"
+                "printable_name": "Xia Lee",
+                "picture": null,
+                "type": "personal",
+                "credentials": true
             }]
         }
     """
@@ -221,13 +221,13 @@ class ProfilesTypeaheadAPIView(OrganizationSmartListMixin,
     `connected profiles page </docs/themes/#dashboard_users_roles>`_
     as present in the default theme.
 
-    **Tags**: profile, user
+    **Tags**: list, profile, user
 
     **Examples**
 
     .. code-block:: http
 
-        GET /api/accounts/profiles/?q=xi HTTP/1.1
+        GET /api/accounts/profiles?q=xi HTTP/1.1
 
     responds
 
@@ -237,10 +237,10 @@ class ProfilesTypeaheadAPIView(OrganizationSmartListMixin,
             "count": 1,
             "results": [{
                 "slug": "xia",
-                "full_name": "Xia Lee",
-                "email": "xia@localhost.localdomain",
-                "created_at": "2016-01-14T23:16:55Z",
-                "printable_name": "Xia Lee"
+                "printable_name": "Xia Lee",
+                "picture": null,
+                "type": "personal",
+                "credentials": true
             }]
         }
     """
@@ -262,7 +262,7 @@ class ProfilesTypeaheadAPIView(OrganizationSmartListMixin,
 
         .. code-block:: http
 
-            POST /api/accounts/profiles/ HTTP/1.1
+            POST /api/accounts/profiles HTTP/1.1
 
         .. code-block:: json
 
@@ -336,7 +336,7 @@ class ProfileAPIView(OrganizationMixin, OrganizationDecorateMixin,
 
     .. code-block:: http
 
-        GET /api/accounts/profiles/xia/ HTTP/1.1
+        GET /api/accounts/profiles/xia HTTP/1.1
 
     responds
 
@@ -345,8 +345,9 @@ class ProfileAPIView(OrganizationMixin, OrganizationDecorateMixin,
         {
             "slug": "xia",
             "printable_name": "Xia Lee",
+            "picture": null,
             "type": "organization",
-            "picture": null
+            "crednetials": true
         }
     """
     lookup_field = 'slug'
@@ -393,13 +394,13 @@ class UsersTypeaheadAPIView(UserSmartListMixin, UserQuerysetMixin,
     `profile role page </docs/themes/#dashboard_profile_roles>`_
     as present in the default theme.
 
-    **Tags**: profile, user
+    **Tags**: list, profile, user
 
     **Examples**
 
     .. code-block:: http
 
-        GET  /api/accounts/users/?q=ali HTTP/1.1
+        GET  /api/accounts/users?q=ali HTTP/1.1
 
     responds
 
@@ -410,11 +411,9 @@ class UsersTypeaheadAPIView(UserSmartListMixin, UserQuerysetMixin,
             "results": [
                 {
                     "slug": "alice",
-                    "created_at": "2014-01-01T00:00:00Z",
-                    "email": "alice@djaodjin.com",
-                    "full_name": "Alice Cooper",
+                    "username": "alice",
                     "printable_name": "Alice Cooper",
-                    "username": "alice"
+                    "picture": null
                 }
             ]
         }
