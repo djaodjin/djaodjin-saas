@@ -13,6 +13,15 @@ Roadmap
 Released versions
 =================
 
+0.14.0
+
+  * consistently uses profile fields in serializers
+  * searches one of space-separated terms (use "" for `and`)
+  * makes definition of SAAS_ORGANIZATION_MODEL optionnal (regression 0.12.0)
+  * expects `full_name` when creating subscription
+
+ -- Sebastien Mirolo <smirolo@djaodjin.com>  Thu, 25 Aug 2022 20:58:00 -0700
+
 0.12.0
 
   * removes trailing '/' for all API endpoints

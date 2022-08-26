@@ -99,22 +99,11 @@ saas/templates/notification/ directory.
 Release Notes
 =============
 
-0.12.0
+0.14.0
 
-  * removes trailing '/' for all API endpoints
-  * adds profile slug in charge APIs (/api/billing/{profile}/charges/{charge})
-  * returns plan title in CartItemSerializer
-  * supports Django4.0
-  * upgrades testsite to default to Django3.2
-  * moves HTML views urls to urls.views module
-  * prepares change from organization_url_kwarg to profile_url_kwarg
-
-  Thank you to [Amir Raouf](https://github.com/amirraouf)
-  for the following contributions:
-
-  * Add abstract classes for Role and Organization Model
-  * Map foreign keys to settings ORGANIZATION_MODEL instead of explicit
-        Organization model
-  * Fix model choices to be tuple instead of set
+  * consistently uses profile fields in serializers
+  * searches one of space-separated terms (use "" for `and`)
+  * makes definition of SAAS_ORGANIZATION_MODEL optionnal (regression 0.12.0)
+  * expects `full_name` when creating subscription
 
 [previous release notes](changelog)
