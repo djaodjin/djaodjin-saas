@@ -213,7 +213,7 @@ class PlanListCreateAPIView(PlanMixin, ListCreateAPIView):
                 "description": "A desk in our coworking space",
                 "is_active": false,
                 "period_amount": 12000,
-                "interval": "monthly"
+                "period_type": "monthly"
             }
 
         responds
@@ -225,7 +225,7 @@ class PlanListCreateAPIView(PlanMixin, ListCreateAPIView):
                 "description": "A desk in our coworking space",
                 "is_active": false,
                 "period_amount": 12000,
-                "interval": "monthly"
+                "period_type": "monthly"
             }
         """
         return super(PlanListCreateAPIView, self).post(request, *args, **kwargs)
@@ -286,7 +286,7 @@ class PlanDetailAPIView(PlanMixin, RetrieveUpdateDestroyAPIView):
             "description": "A desk in our coworking space",
             "is_active": false,
             "period_amount": 12000,
-            "interval": "monthly"
+            "period_type": "monthly"
         }
     """
     serializer_class = PlanDetailSerializer
@@ -408,7 +408,7 @@ class PlanDetailAPIView(PlanMixin, RetrieveUpdateDestroyAPIView):
                 "description": "A desk in our coworking space",
                 "is_active": false,
                 "period_amount": 12000,
-                "interval": "monthly"
+                "period_type": "monthly"
             }
         """
         return super(PlanDetailAPIView, self).put(request, *args, **kwargs)

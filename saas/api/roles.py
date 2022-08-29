@@ -634,8 +634,6 @@ class RoleDescriptionListCreateView(RoleDescriptionQuerysetMixin,
             "count": 2,
             "next": null,
             "previous": null,
-            "invited_count": 0,
-            "requested_count": 0,
             "results": [
                 {
                     "created_at": "2018-01-01T00:00:00Z",
@@ -1014,7 +1012,20 @@ class RoleByDescrListAPIView(RoleSmartListMixin, RoleByDescrQuerysetMixin,
         .. code-block:: json
 
             {
-              "slug": "xia"
+                "created_at": "2018-01-01T00:00:00Z",
+                "role_description": {
+                    "created_at": "2018-01-01T00:00:00Z",
+                    "title": "Profile Manager",
+                    "slug": "manager",
+                    "is_global": true
+                },
+                "user": {
+                    "slug": "xia",
+                    "username": "xia",
+                    "printable_name": "Xia Lee",
+                    "picture": null
+                },
+                "grant_key": null
             }
         """
         return super(RoleByDescrListAPIView, self).post(
@@ -1061,7 +1072,6 @@ class RoleDetailAPIView(RoleMixin, DestroyAPIView):
                     "printable_name": "Xia Lee",
                     "picture": null
                 },
-                "request_key": "1",
                 "grant_key": null
             }
         """
@@ -1149,8 +1159,7 @@ class AccessibleDetailAPIView(RoleDetailAPIView):
                     "type": "organization",
                     "credentials": false
                 },
-                "request_key": "1",
-                "grant_key": null
+                "request_key": null
             }
         """
         role = self.get_object()
@@ -1289,8 +1298,6 @@ class UserProfileListAPIView(OrganizationSmartListMixin,
             "count": 1,
             "next": null,
             "previous": null,
-            "invited_count": 0,
-            "requested_count": 0,
             "results": [
                 {
                     "created_at": "2018-01-01T00:00:00Z",

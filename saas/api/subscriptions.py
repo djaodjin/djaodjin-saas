@@ -1,4 +1,4 @@
-# Copyright (c) 2021, DjaoDjin inc.
+# Copyright (c) 2022, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -373,7 +373,7 @@ class ProvidedSubscriptionsAPIView(SubscriptionSmartListMixin,
                 "is_active": true,
                 "setup_amount": 0,
                 "period_amount": 17999,
-                "interval": "monthly",
+                "period_type": "monthly",
                 "app_url": "http://localhost:8020/app"
               },
               "auto_renew": true
@@ -641,7 +641,7 @@ class ChurnedSubscriptionAPIView(SubscriptionSmartListMixin,
                         "is_active": true,
                         "setup_amount": 0,
                         "period_amount": 17999,
-                        "interval": 4,
+                        "period_type": "monthly",
                         "app_url": "http://localhost:8020/app"
                     },
                     "auto_renew": true

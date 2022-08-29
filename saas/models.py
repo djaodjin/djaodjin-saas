@@ -1609,8 +1609,8 @@ class Charge(models.Model):
     exp_date = models.DateField(null=True,
         help_text=_("Expiration date of the credit card used"))
     card_name = models.CharField(max_length=50, null=True)
-    processor = models.ForeignKey(settings.ORGANIZATION_MODEL, on_delete=models.PROTECT,
-        related_name='charges')
+    processor = models.ForeignKey(settings.ORGANIZATION_MODEL,
+        on_delete=models.PROTECT, related_name='charges')
     processor_key = models.SlugField(max_length=255, unique=True, db_index=True,
         help_text=_("Unique identifier returned by the payment processor"))
     state = models.PositiveSmallIntegerField(
@@ -2653,7 +2653,8 @@ class Plan(SlugTitleMixin, models.Model):
         help_text=_("Description of the plan"))
     is_active = models.BooleanField(default=False,
         help_text=_("True when a profile can subscribe to the plan"))
-    is_not_priced = models.BooleanField(default=False)
+    is_not_priced = models.BooleanField(default=False,
+        help_text=_("True if the plan has no pricing (i.e. contact us)"))
     created_at = models.DateTimeField(auto_now_add=True,
         help_text=_("Date/time of creation (in ISO format)"))
     discontinued_at = models.DateTimeField(null=True, blank=True,
@@ -3324,8 +3325,10 @@ class Subscription(models.Model):
         related_name='subscriptions')
     plan = models.ForeignKey(Plan, on_delete=models.CASCADE,
         help_text=_("Plan the organization is subscribed to"))
-    request_key = models.SlugField(max_length=40, null=True, blank=True)
-    grant_key = models.SlugField(max_length=40, null=True, blank=True)
+    request_key = models.SlugField(max_length=40, null=True, blank=True,
+        help_text=_("Unique key generated when a request is initiated"))
+    grant_key = models.SlugField(max_length=40, null=True, blank=True,
+        help_text=_("Unique key generated when a grant is initiated"))
     extra = get_extra_field_class()(null=True,
         help_text=_("Extra meta data (can be stringify JSON)"))
 

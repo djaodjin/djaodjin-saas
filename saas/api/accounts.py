@@ -347,7 +347,7 @@ class ProfileAPIView(OrganizationMixin, OrganizationDecorateMixin,
             "printable_name": "Xia Lee",
             "picture": null,
             "type": "organization",
-            "crednetials": true
+            "credentials": true
         }
     """
     lookup_field = 'slug'

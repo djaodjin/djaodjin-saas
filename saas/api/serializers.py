@@ -437,7 +437,8 @@ class WithEndsAtByPlanSerializer(NoModelSerializer):
 
 class WithSubscriptionSerializer(serializers.ModelSerializer):
 
-    plan = serializers.SlugRelatedField(read_only=True, slug_field='slug')
+    plan = PlanSerializer(read_only=True,
+        help_text=_("Plan the profile is subscribed to"))
 
     class Meta:
         model = Subscription
@@ -550,7 +551,8 @@ class OrganizationWithSubscriptionsSerializer(OrganizationDetailSerializer):
     Operational information on an Organization,
     bundled with its subscriptions.
     """
-    subscriptions = WithSubscriptionSerializer(many=True, read_only=True)
+    subscriptions = WithSubscriptionSerializer(many=True, read_only=True,
+        help_text=_("Active subscriptions for the profile"))
 
     class Meta(OrganizationDetailSerializer.Meta):
         fields = OrganizationDetailSerializer.Meta.fields + (
@@ -855,7 +857,8 @@ class CreateOfflineTransactionSerializer(NoModelSerializer):
     created_at = serializers.DateTimeField(
         help_text=_("Date/time of creation (in ISO format)"))
     # XXX Shouldn't this be same format as TransactionSerializer.amount?
-    amount = serializers.DecimalField(None, 2)
+    amount = serializers.DecimalField(None, 2,
+        help_text=_("Total amount in currency unit"))
     descr = serializers.CharField(required=False,
         help_text=_("Free-form text description for the %(object)s") % {
             'object': 'transaction'})
@@ -917,9 +920,12 @@ class CartItemCreateSerializer(serializers.ModelSerializer):
 
 class CartItemUploadSerializer(NoModelSerializer):
 
-    created = CartItemSerializer(many=True)
-    updated = CartItemSerializer(many=True)
-    failed = CartItemSerializer(many=True)
+    created = CartItemSerializer(many=True,
+        help_text=_("Items that have been created in the cart"))
+    updated = CartItemSerializer(many=True,
+        help_text=_("Rows that have been uploaded"))
+    failed = CartItemSerializer(many=True,
+        help_text=_("Rows that have failed to be created in the cart"))
 
 
 class InvoicableSerializer(NoModelSerializer):
