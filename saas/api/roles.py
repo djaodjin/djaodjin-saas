@@ -320,7 +320,7 @@ class AccessibleByListAPIView(RoleSmartListMixin, InvitedRequestedListMixin,
     and sorted on specific fields (``o``).
 
     The API is typically used within an HTML
-    `connected profiles page </docs/themes/#dashboard_users_roles>`_
+    `connected profiles page </docs/guides/themes/#dashboard_users_roles>`_
     as present in the default theme.
 
     see :doc:`Flexible Security Framework <security>`.
@@ -386,7 +386,7 @@ accessibles/manager/cowork",
         Creates a request to attach {user} to a role on a profile
 
         The API is typically used within an HTML
-        `connected profiles page </docs/themes/#dashboard_users_roles>`_
+        `connected profiles page </docs/guides/themes/#dashboard_users_roles>`_
         as present in the default theme.
 
         see :doc:`Flexible Security Framework <security>`.
@@ -451,7 +451,7 @@ class AccessibleByDescrListAPIView(RoleSmartListMixin,
     and sorted on specific fields (``o``).
 
     The API is typically used within an HTML
-    `connected profiles page </docs/themes/#dashboard_users_roles>`_
+    `connected profiles page </docs/guides/themes/#dashboard_users_roles>`_
     as present in the default theme.
 
     see :doc:`Flexible Security Framework <security>`.
@@ -518,7 +518,7 @@ accessibles/manager/cowork",
         with a specified {role}.
 
         The API is typically used within an HTML
-        `connected profiles page </docs/themes/#dashboard_users_roles>`_
+        `connected profiles page </docs/guides/themes/#dashboard_users_roles>`_
         as present in the default theme.
 
         see :doc:`Flexible Security Framework <security>`.
@@ -1178,7 +1178,7 @@ class AccessibleDetailAPIView(RoleDetailAPIView):
         permissions from this user to manage part of the profile.
 
         The API is typically used within an HTML
-        `connected profiles page </docs/themes/#dashboard_users_roles>`_
+        `connected profiles page </docs/guides/themes/#dashboard_users_roles>`_
         as present in the default theme.
 
         **Tags**: rbac
@@ -1205,7 +1205,7 @@ class RoleAcceptAPIView(UserMixin, GenericAPIView):
         Accepts a role identified by {verification_key}.
 
         The API is typically used within an HTML
-        `connected profiles page </docs/themes/#dashboard_users_roles>`_
+        `connected profiles page </docs/guides/themes/#dashboard_users_roles>`_
         as present in the default theme.
 
         **Tags**: rbac, user, rolemodel

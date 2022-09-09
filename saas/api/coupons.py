@@ -87,7 +87,7 @@ class CouponListCreateAPIView(SmartCouponListMixin, CouponQuerysetMixin,
     and sorted on specific fields (``o``).
 
     The API is typically used within an HTML
-    `coupons page </docs/themes/#dashboard_billing_coupons>`_
+    `coupons page </docs/guides/themes/#dashboard_billing_coupons>`_
     as present in the default theme.
 
     **Tags**: billing, list, provider, couponmodel
@@ -148,7 +148,7 @@ class CouponListCreateAPIView(SmartCouponListMixin, CouponQuerysetMixin,
         to subscribe to plans from the Coupon's provider at a discount.
 
         The API is typically used within an HTML
-        `coupons page </docs/themes/#dashboard_billing_coupons>`_
+        `coupons page </docs/guides/themes/#dashboard_billing_coupons>`_
         as present in the default theme.
 
         **Tags**: billing, provider, couponmodel
@@ -207,7 +207,7 @@ class CouponDetailAPIView(CouponMixin, RetrieveUpdateDestroyAPIView):
     Retrieves a discount code
 
     The API is typically used within an HTML
-    `coupons page </docs/themes/#dashboard_billing_coupons>`_
+    `coupons page </docs/guides/themes/#dashboard_billing_coupons>`_
     as present in the default theme.
 
     **Tags**: billing, provider, couponmodel
@@ -245,7 +245,7 @@ class CouponDetailAPIView(CouponMixin, RetrieveUpdateDestroyAPIView):
         Updates a discount code
 
         The API is typically used within an HTML
-        `coupons page </docs/themes/#dashboard_billing_coupons>`_
+        `coupons page </docs/guides/themes/#dashboard_billing_coupons>`_
         as present in the default theme.
 
         **Tags**: billing, provider, couponmodel
@@ -305,7 +305,7 @@ class CouponDetailAPIView(CouponMixin, RetrieveUpdateDestroyAPIView):
         performance measurements.
 
         The API is typically used within an HTML
-        `coupons page </docs/themes/#dashboard_billing_coupons>`_
+        `coupons page </docs/guides/themes/#dashboard_billing_coupons>`_
         as present in the default theme.
 
         **Tags**: billing, provider, couponmodel

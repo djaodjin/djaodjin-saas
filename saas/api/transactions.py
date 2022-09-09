@@ -216,7 +216,7 @@ class BillingsAPIView(SmartTransactionListMixin,
     and sorted on specific fields (``o``).
 
     The API is typically used within an HTML
-    `billing history page </docs/themes/#dashboard_billing_history>`_
+    `billing history page </docs/guides/themes/#dashboard_billing_history>`_
     as present in the default theme.
 
     **Tags**: billing, list, subscriber, transactionmodel
@@ -382,7 +382,7 @@ class TransferListAPIView(SmartTransactionListMixin, TransferQuerysetMixin,
     and sorted on specific fields (``o``).
 
     The API is typically used within an HTML
-    `funds page </docs/themes/#dashboard_billing_transfers>`_
+    `funds page </docs/guides/themes/#dashboard_billing_transfers>`_
     as present in the default theme.
 
     **Tags**: billing, list, provider, transactionmodel

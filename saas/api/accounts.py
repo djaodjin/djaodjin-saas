@@ -86,7 +86,7 @@ class AccountsTypeaheadAPIView(OrganizationSmartListMixin,
 
     The API is typically used in pages for the support team to quickly
     locate an account. For example, it is used within the HTML
-    `provider dashboard page </docs/themes/#dashboard_metrics_dashboard>`_
+    `provider dashboard page </docs/guides/themes/#dashboard_metrics_dashboard>`_
     as present in the default theme.
 
     **Tags**: list, profile, user
@@ -218,7 +218,7 @@ class ProfilesTypeaheadAPIView(OrganizationSmartListMixin,
     ([``start_at``, ``ends_at``]), and sorted on specific fields (``o``).
 
     The API is typically used within an HTML
-    `connected profiles page </docs/themes/#dashboard_users_roles>`_
+    `connected profiles page </docs/guides/themes/#dashboard_users_roles>`_
     as present in the default theme.
 
     **Tags**: list, profile, user
@@ -327,7 +327,7 @@ class ProfileAPIView(OrganizationMixin, OrganizationDecorateMixin,
     Retrieves a billing profile
 
     The API is typically used within an HTML
-    `contact information page </docs/themes/#dashboard_profile>`_
+    `contact information page </docs/guides/themes/#dashboard_profile>`_
     as present in the default theme.
 
     **Tags**: profile, subscriber, profilemodel
@@ -391,7 +391,7 @@ class UsersTypeaheadAPIView(UserSmartListMixin, UserQuerysetMixin,
     ([``start_at``, ``ends_at``]), and sorted on specific fields (``o``).
 
     The API is typically used within an HTML
-    `profile role page </docs/themes/#dashboard_profile_roles>`_
+    `profile role page </docs/guides/themes/#dashboard_profile_roles>`_
     as present in the default theme.
 
     **Tags**: list, profile, user

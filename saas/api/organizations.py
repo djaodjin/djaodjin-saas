@@ -58,7 +58,7 @@ class OrganizationDetailAPIView(OrganizationMixin, OrganizationQuerysetMixin,
     Retrieves a billing profile
 
     The API is typically used within an HTML
-    `contact information page </docs/themes/#dashboard_profile>`_
+    `contact information page </docs/guides/themes/#dashboard_profile>`_
     as present in the default theme.
 
     **Tags**: profile, subscriber, profilemodel
@@ -113,7 +113,7 @@ class OrganizationDetailAPIView(OrganizationMixin, OrganizationQuerysetMixin,
         Updates a billing profile
 
         The API is typically used within an HTML
-        `contact information page </docs/themes/#dashboard_profile>`_
+        `contact information page </docs/guides/themes/#dashboard_profile>`_
         as present in the default theme.
 
         **Tags**: profile, subscriber, profilemodel
@@ -162,7 +162,7 @@ class OrganizationDetailAPIView(OrganizationMixin, OrganizationQuerysetMixin,
         on subscriptions and transactions.
 
         The API is typically used within an HTML
-        `contact information page </docs/themes/#dashboard_profile>`_
+        `contact information page </docs/guides/themes/#dashboard_profile>`_
         as present in the default theme.
 
         **Tags**: profile, subscriber, profilemodel

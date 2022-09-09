@@ -159,7 +159,7 @@ class RevenueMetricAPIView(DateRangeContextMixin, ProviderMixin,
     Produces sales, payments and refunds over a period of time.
 
     The API is typically used within an HTML
-    `revenue page </docs/themes/#dashboard_metrics_revenue>`_
+    `revenue page </docs/guides/themes/#dashboard_metrics_revenue>`_
     as present in the default theme.
 
     **Tags**: chart, metrics, provider, transactionmodel
@@ -382,7 +382,7 @@ class CustomerMetricAPIView(DateRangeContextMixin, ProviderMixin,
     Retrieves 12-month trailing customer counts
 
     The API is typically used within an HTML
-    `revenue page </docs/themes/#dashboard_metrics_revenue>`_
+    `revenue page </docs/guides/themes/#dashboard_metrics_revenue>`_
     as present in the default theme.
 
     **Tags**: chart, metrics, provider, profilemodel
@@ -607,7 +607,7 @@ class PlanMetricAPIView(DateRangeContextMixin, ProviderMixin, GenericAPIView):
     Retrieves 12-month trailing plans performance
 
     The API is typically used within an HTML
-    `plans metrics page </docs/themes/#dashboard_metrics_plans>`_
+    `plans metrics page </docs/guides/themes/#dashboard_metrics_plans>`_
     as present in the default theme.
 
     **Tags**: chart, metrics, provider, planmodel

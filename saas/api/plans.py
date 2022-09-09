@@ -51,7 +51,7 @@ class PricingAPIView(PlanMixin, CartMixin, ListAPIView):
     and sorted on specific fields (``o``).
 
     The API is typically used within an HTML
-    `pricing page </docs/themes/#workflow_pricing>`_
+    `pricing page </docs/guides/themes/#workflow_pricing>`_
     as present in the default theme.
 
     **Tags**: subscriptions, visitor, planmodel
@@ -266,7 +266,7 @@ class PlanDetailAPIView(PlanMixin, RetrieveUpdateDestroyAPIView):
     to it.
 
     The API is typically used within an HTML
-    `update plan page </docs/themes/#profile_plans_plan>`_
+    `update plan page </docs/guides/themes/#profile_plans_plan>`_
     as present in the default theme.
 
     **Tags**: subscriptions, provider, planmodel
@@ -301,7 +301,7 @@ class PlanDetailAPIView(PlanMixin, RetrieveUpdateDestroyAPIView):
         can subscribes to it.
 
         The API is typically used within an HTML
-        `update plan page </docs/themes/#profile_plans_plan>`_
+        `update plan page </docs/guides/themes/#profile_plans_plan>`_
         as present in the default theme.
 
         **Tags**: subscriptions, provider, planmodel
@@ -382,7 +382,7 @@ class PlanDetailAPIView(PlanMixin, RetrieveUpdateDestroyAPIView):
         from subscribing to it.
 
         The API is typically used within an HTML
-        `update plan page </docs/themes/#profile_plans_plan>`_
+        `update plan page </docs/guides/themes/#profile_plans_plan>`_
         as present in the default theme.
 
         **Tags**: subscriptions, provider, planmodel

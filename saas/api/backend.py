@@ -95,7 +95,7 @@ class PaymentMethodDetailAPIView(OrganizationMixin,
     with `?update=1` query parameters.
 
     The API is typically used within an HTML
-    `update payment method page </docs/themes/#dashboard_billing_card>`_
+    `update payment method page </docs/guides/themes/#dashboard_billing_card>`_
     as present in the default theme.
 
     **Tags**: billing, subscriber, profilemodel
@@ -130,7 +130,7 @@ class PaymentMethodDetailAPIView(OrganizationMixin,
         (ex: credit card) associated to a subscriber.
 
         The API is typically used within an HTML
-        `update payment method page </docs/themes/#dashboard_billing_card>`_
+        `update payment method page </docs/guides/themes/#dashboard_billing_card>`_
         as present in the default theme.
 
         **Tags**: billing, subscriber, profilemodel
@@ -163,7 +163,7 @@ class PaymentMethodDetailAPIView(OrganizationMixin,
         the payment method (ex: credit card) associated to a subscriber.
 
         The API is typically used within an HTML
-        `update payment method page </docs/themes/#dashboard_billing_card>`_
+     `update payment method page </docs/guides/themes/#dashboard_billing_card>`_
         as present in the default theme.
 
         **Tags**: billing, subscriber, profilemodel

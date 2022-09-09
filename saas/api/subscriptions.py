@@ -67,7 +67,7 @@ class SubscribedSubscriptionListAPIView(SubscriptionSmartListMixin,
     and sorted on specific fields (``o``).
 
     The API is typically used within an HTML
-    `subscriptions page </docs/themes/#dashboard_profile_subscriptions>`_
+    `subscriptions page </docs/guides/themes/#dashboard_profile_subscriptions>`_
     as present in the default theme.
 
     **Tags**: subscriptions, subscriber, subscriptionmodel
@@ -165,7 +165,7 @@ class SubscriptionDetailAPIView(SubscriptionMixin,
         at a future date.
 
         The API is typically used within an HTML
-        `subscribers page </docs/themes/#dashboard_profile_subscribers>`_
+        `subscribers page </docs/guides/themes/#dashboard_profile_subscribers>`_
         as present in the default theme.
 
         **Tags**: subscriptions, subscriber, subscriptionmodel
@@ -219,7 +219,7 @@ class SubscriptionDetailAPIView(SubscriptionMixin,
         Unsubscribes a specified subscriber from a plan {subscribed_plan}.
 
         The API is typically used within an HTML
-        `subscribers page </docs/themes/#dashboard_profile_subscribers>`_
+        `subscribers page </docs/guides/themes/#dashboard_profile_subscribers>`_
         as present in the default theme.
 
         **Tags**: subscriptions, subscriber, subscriptionmodel
@@ -541,7 +541,7 @@ class ActiveSubscriptionAPIView(SubscriptionSmartListMixin,
     or descending order (``ot``).
 
     The API is typically used within an HTML
-    `subscribers page </docs/themes/#dashboard_profile_subscribers>`_
+    `subscribers page </docs/guides/themes/#dashboard_profile_subscribers>`_
     as present in the default theme.
 
     **Tags**: metrics, list, provider, profilemodel
@@ -603,7 +603,7 @@ class ChurnedSubscriptionAPIView(SubscriptionSmartListMixin,
     and sorted on specific fields (``o``).
 
     The API is typically used within an HTML
-    `subscribers page </docs/themes/#dashboard_profile_subscribers>`_
+    `subscribers page </docs/guides/themes/#dashboard_profile_subscribers>`_
     as present in the default theme.
 
     **Tags**: metrics, list, provider, profilemodel

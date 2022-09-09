@@ -58,7 +58,7 @@ class CartItemAPIView(CartMixin, CreateAPIView):
     Adds a plan into the cart of the user identified through the HTTP request.
 
     The cart can later be checked out and paid by a billing profile, either
-    through the `HTML checkout page </docs/themes/#workflow_billing_cart>`_
+    through the `HTML checkout page </docs/guides/themes/#workflow_billing_cart>`_
     or `API end point </docs/api/#createCheckout>`_.
 
     This end point is typically used when a user is presented with a list
@@ -397,7 +397,7 @@ class CheckoutAPIView(InvoicablesMixin, BalanceAndCartMixin,
     period in advance at a discount. The options reflects that.
 
     The API is typically used within an HTML
-    `checkout page </docs/themes/#workflow_billing_cart>`_
+    `checkout page </docs/guides/themes/#workflow_billing_cart>`_
     as present in the default theme.
 
     **Tags**: billing, subscriber, cartmodel
@@ -490,7 +490,7 @@ a coupon code for a potential discount, and
  to update a cart.
 
         The API is typically used within an HTML
-        `checkout page </docs/themes/#workflow_billing_cart>`_
+        `checkout page </docs/guides/themes/#workflow_billing_cart>`_
         as present in the default theme.
 
         **Tags**: billing, subscriber, cartmodel

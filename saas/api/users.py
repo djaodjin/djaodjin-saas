@@ -81,7 +81,7 @@ class RegisteredAPIView(UserSmartListMixin, RegisteredBaseAPIView):
     and sorted on specific fields (``o``).
 
     The API is typically used within an HTML
-    `subscribers page </docs/themes/#dashboard_profile_subscribers>`_
+    `subscribers page </docs/guides/themes/#dashboard_profile_subscribers>`_
     as present in the default theme.
 
     **Tags**: metrics, broker, usermodel
@@ -120,7 +120,7 @@ class AgreementSignAPIView(GenericAPIView):
     Indicates the request user has signed the required consent agreement.
 
     The API is typically used within an HTML
-    `legal agreement page </docs/themes/#workflow_legal_sign>`_
+    `legal agreement page </docs/guides/themes/#workflow_legal_sign>`_
     as present in the default theme.
 
     **Tags**: profile, user, usermodel
