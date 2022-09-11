@@ -36,7 +36,7 @@ from django.views.generic import (CreateView, DetailView, ListView,
 
 from . import RedirectFormMixin
 from .. import settings, signals
-from ..compat import reverse, NoReverseMatch
+from ..compat import reverse, NoReverseMatch, gettext_lazy as _
 from ..decorators import _valid_manager
 from ..forms import (OrganizationForm, OrganizationCreateForm,
     ManagerAndOrganizationForm)
@@ -142,13 +142,13 @@ djaodjin-saas/tree/master/saas/templates/saas/profile/subscribers.html>`__).
         tabs = [{
             "is_active": True,
             "slug": "subscribed",
-            "title": "Active",
+            "title": _("Active"),
             "urls": {"download": reverse(
               'saas_subscriber_pipeline_download_subscribed', args=(provider,))
             }},
                 {
             "slug": "churned",
-            "title": "Churned",
+            "title": _("Churned"),
             "urls": {"download": reverse(
               'saas_subscriber_pipeline_download_churned', args=(provider,))
             }}]
@@ -158,7 +158,7 @@ djaodjin-saas/tree/master/saas/templates/saas/profile/subscribers.html>`__).
             args=(provider,))
         })
         if provider.is_broker:
-            update_context_urls(context, {
+            context.update({
                 'registered': {'urls': {'download': reverse(
                 'saas_subscriber_pipeline_download_registered')}}})
         return context
