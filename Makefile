@@ -42,7 +42,7 @@ install-conf:: $(DESTDIR)$(CONFIG_DIR)/credentials \
 build-assets: vendor-assets-prerequisites
 
 
-clean: clean-dbs
+clean:: clean-dbs
 	[ ! -f $(srcDir)/package-lock.json ] || rm $(srcDir)/package-lock.json
 	find $(srcDir) -name '__pycache__' -exec rm -rf {} +
 	find $(srcDir) -name '*~' -exec rm -rf {} +

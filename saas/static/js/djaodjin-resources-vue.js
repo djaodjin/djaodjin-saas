@@ -164,6 +164,12 @@ var httpRequestMixin = {
     mixins: [
         messagesMixin
     ],
+// XXX conflitcs when params defined as props
+//    data: function() {
+//        return {
+//            params: {}
+//        }
+//    },
     // basically a wrapper around jQuery ajax functions
     methods: {
 
@@ -219,6 +225,34 @@ var httpRequestMixin = {
                 return base + path;
             }
             return base + '/' + path;
+        },
+
+        getParams: function(excludes){
+            var vm = this;
+            var params = {};
+            for( var key in vm.params ) {
+                if( vm.params.hasOwnProperty(key) && vm.params[key] ) {
+                    if( excludes && key in excludes ) continue;
+                    params[key] = vm.params[key];
+                }
+            }
+            return params;
+        },
+        getQueryString: function(excludes){
+            var vm = this;
+            var sep = "";
+            var result = "";
+            var params = vm.getParams(excludes);
+            for( var key in params ) {
+                if( params.hasOwnProperty(key) ) {
+                    result += sep + key + '=' + params[key].toString();
+                    sep = "&";
+                }
+            }
+            if( result ) {
+                result = '?' + result;
+            }
+            return result;
         },
 
         /** This method generates a GET HTTP request to `url` with a query
@@ -1084,33 +1118,6 @@ var itemListMixin = {
                 vm[vm.getBeforeCb]();
             }
             vm.reqGet(vm.url, vm.getParams(), cb);
-        },
-        getParams: function(excludes){
-            var vm = this;
-            var params = {};
-            for( var key in vm.params ) {
-                if( vm.params.hasOwnProperty(key) && vm.params[key] ) {
-                    if( excludes && key in excludes ) continue;
-                    params[key] = vm.params[key];
-                }
-            }
-            return params;
-        },
-        getQueryString: function(excludes){
-            var vm = this;
-            var sep = "";
-            var result = "";
-            var params = vm.getParams(excludes);
-            for( var key in params ) {
-                if( params.hasOwnProperty(key) ) {
-                    result += sep + key + '=' + params[key].toString();
-                    sep = "&";
-                }
-            }
-            if( result ) {
-                result = '?' + result;
-            }
-            return result;
         },
         asDateInputField: function(dateISOString) {
             const dateValue = moment(dateISOString);
