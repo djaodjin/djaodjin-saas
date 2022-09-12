@@ -523,10 +523,13 @@ class UnengagedSubscribersQuerysetMixin(DateRangeContextMixin,
             kwargs.update({
                 'role__user__last_login__gte': ends_at - relativedelta(
                     days=settings.INACTIVITY_DAYS)})
+        one_login_within_period = get_organization_model().objects.filter(
+            **kwargs)
         queryset = get_organization_model().objects.filter(
             is_active=True,
             subscribes_to__organization=self.provider,
-            subscriptions__ends_at__gt=ends_at).exclude(**kwargs).distinct()
+            subscriptions__ends_at__gt=ends_at).exclude(
+                pk__in=one_login_within_period).distinct()
         return queryset
 
 
@@ -571,3 +574,6 @@ class UnengagedSubscribersAPIView(OrganizationSmartListMixin,
         }
     """
     serializer_class = OrganizationSerializer
+    filter_backends = (SearchFilter, OrderingFilter) # if we don't remove
+         # the DateRangeFilter, then we will only get unengaged Organization
+         # that were created within the date range.

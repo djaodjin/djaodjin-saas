@@ -518,7 +518,7 @@ class OrganizationDecorateMixin(object):
     def as_organization(user):
         organization = get_organization_model()(
             slug=user.username, email=user.email,
-            full_name=user.get_full_name(), created_at=user.date_joined)
+            full_name=user.get_full_name(), created_at=user.last_login)
         organization.user = user
         return organization
 

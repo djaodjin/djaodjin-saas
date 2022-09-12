@@ -460,8 +460,10 @@ class OrganizationSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = get_organization_model()
-        fields = ('slug', 'printable_name', 'picture', 'type', 'credentials')
-        read_only_fields = ('printable_name', 'type', 'credentials')
+        fields = ('slug', 'printable_name', 'picture', 'type', 'credentials',
+            'created_at')
+        read_only_fields = ('printable_name', 'type', 'credentials',
+            'created_at')
 
     @staticmethod
     def get_printable_name(obj):
