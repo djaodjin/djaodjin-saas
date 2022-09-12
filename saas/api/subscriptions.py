@@ -43,7 +43,7 @@ from ..utils import generate_random_slug, datetime_or_now
 from .roles import OptinBase
 from .serializers import (ForceSerializer,
     ProvidedSubscriptionSerializer, ProvidedSubscriptionCreateSerializer,
-    SubscribedSubscriptionSerializer)
+    ProvidedSubscriptionDetailSerializer,SubscribedSubscriptionSerializer)
 
 #pylint: disable=no-init
 
@@ -550,7 +550,7 @@ class ActiveSubscriptionAPIView(SubscriptionSmartListMixin,
 
     .. code-block:: http
 
-        GET /api/metrics/cowork/active?o=created_at&ot=desc HTTP/1.1
+        GET /api/metrics/cowork/subscribers/active?o=created_at&ot=desc HTTP/1.1
 
     responds
 
@@ -580,9 +580,8 @@ class ActiveSubscriptionAPIView(SubscriptionSmartListMixin,
             ]
         }
     """
-    serializer_class = ProvidedSubscriptionSerializer
-    filter_backends = (SubscriptionSmartListMixin.filter_backends +
-        (DateRangeFilter,))
+    serializer_class = ProvidedSubscriptionDetailSerializer
+    filter_backends = SubscriptionSmartListMixin.filter_backends
 
 
 class ChurnedSubscriptionBaseAPIView(ChurnedQuerysetMixin, ListAPIView):
@@ -612,7 +611,7 @@ class ChurnedSubscriptionAPIView(SubscriptionSmartListMixin,
 
     .. code-block:: http
 
-        GET /api/metrics/cowork/churned?o=created_at&ot=desc HTTP/1.1
+        GET /api/metrics/cowork/subscribers/churned?o=created_at&ot=desc HTTP/1.1
 
     responds
 

@@ -124,6 +124,7 @@ _SETTINGS = {
     'ROLE_RELATION': getattr(settings, 'SAAS_ROLE_MODEL', 'saas.Role'),
     'ROLE_SERIALIZER': 'saas.api.serializers.RoleSerializer',
     'USER_SERIALIZER': 'saas.api.serializers_overrides.UserSerializer',
+    'USER_DETAIL_SERIALIZER': 'saas.api.serializers_overrides.UserSerializer',
     'SEARCH_FIELDS_PARAM': 'q_f',
     'TERMS_OF_USE': 'terms-of-use',
     'MANAGER': 'manager',
@@ -168,6 +169,7 @@ PROCESSOR_HOOK_SECRET = PROCESSOR.get('WEBHOOK_SECRET')
 ROLE_RELATION = _SETTINGS.get('ROLE_RELATION')
 ROLE_SERIALIZER = _SETTINGS.get('ROLE_SERIALIZER')
 USER_SERIALIZER = _SETTINGS.get('USER_SERIALIZER')
+USER_DETAIL_SERIALIZER = _SETTINGS.get('USER_DETAIL_SERIALIZER')
 SEARCH_FIELDS_PARAM = _SETTINGS.get('SEARCH_FIELDS_PARAM')
 TERMS_OF_USE = _SETTINGS.get('TERMS_OF_USE')
 

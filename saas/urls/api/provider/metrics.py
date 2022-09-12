@@ -32,8 +32,6 @@ from ....api.federations import (FederatedSubscribersAPIView,
 from ....api.metrics import (BalancesAPIView, CouponUsesAPIView,
     CustomerMetricAPIView, LifetimeValueMetricAPIView, PlanMetricAPIView,
     RevenueMetricAPIView)
-from ....api.subscriptions import (ActiveSubscriptionAPIView,
-    ChurnedSubscriptionAPIView)
 from ....compat import path
 
 
@@ -41,15 +39,9 @@ urlpatterns = [
     path('metrics/<slug:%s>/coupons/<slug:coupon>' %
         settings.PROFILE_URL_KWARG,
         CouponUsesAPIView.as_view(), name='saas_api_coupon_uses'),
-    path('metrics/<slug:%s>/active' %
-        settings.PROFILE_URL_KWARG,
-        ActiveSubscriptionAPIView.as_view(), name='saas_api_subscribed'),
     path('metrics/<slug:%s>/balances' %
         settings.PROFILE_URL_KWARG,
         BalancesAPIView.as_view(), name='saas_api_balances'),
-    path('metrics/<slug:%s>/churned' %
-        settings.PROFILE_URL_KWARG,
-        ChurnedSubscriptionAPIView.as_view(), name='saas_api_churned'),
     path('metrics/<slug:%s>/customers' %
         settings.PROFILE_URL_KWARG,
         CustomerMetricAPIView.as_view(), name='saas_api_customer'),

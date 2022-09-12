@@ -29,9 +29,9 @@ API URLs for a provider subcribers.
 from .... import settings
 from ....api.organizations import (EngagedSubscribersAPIView,
     UnengagedSubscribersAPIView, SubscribersAPIView)
-from ....api.subscriptions import (ProvidedSubscriptionsAPIView,
-    PlanSubscriptionDetailAPIView)
-from ....api.subscriptions import SubscriptionRequestAcceptAPIView
+from ....api.subscriptions import (ActiveSubscriptionAPIView,
+    ChurnedSubscriptionAPIView, ProvidedSubscriptionsAPIView,
+    PlanSubscriptionDetailAPIView, SubscriptionRequestAcceptAPIView)
 from ....compat import path, re_path
 
 
@@ -41,6 +41,12 @@ urlpatterns = [
         settings.VERIFICATION_KEY_RE),
         SubscriptionRequestAcceptAPIView.as_view(),
         name='saas_api_subscription_grant_accept'),
+    path('metrics/<slug:%s>/subscribers/active' %
+        settings.PROFILE_URL_KWARG,
+        ActiveSubscriptionAPIView.as_view(), name='saas_api_subscribed'),
+    path('metrics/<slug:%s>/subscribers/churned' %
+        settings.PROFILE_URL_KWARG,
+        ChurnedSubscriptionAPIView.as_view(), name='saas_api_churned'),
     path('profile/<slug:%s>/subscribers/engaged' %
         settings.PROFILE_URL_KWARG,
         EngagedSubscribersAPIView.as_view(),

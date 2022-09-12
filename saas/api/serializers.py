@@ -56,7 +56,7 @@ from ..mixins import as_html_description, product_url
 from ..models import (AdvanceDiscount, BalanceLine, CartItem, Charge, Coupon,
     Plan, RoleDescription, Subscription, Transaction, get_broker)
 from ..utils import (build_absolute_uri, get_organization_model, get_role_model,
-    get_user_serializer)
+    get_user_serializer, get_user_detail_serializer)
 
 #pylint: disable=no-init
 
@@ -773,6 +773,18 @@ class ProvidedSubscriptionSerializer(SubscriptionSerializer):
                 obj.plan.organization, obj.plan, obj.organization)))
 
 
+class ProvidedSubscriptionDetailSerializer(SubscriptionSerializer):
+    """
+    For active subscriptions we return the contact information for the profile.
+    """
+    profile = OrganizationDetailSerializer(source='organization',
+        read_only=True,
+        help_text=_("Profile subscribed to the plan"))
+
+    class Meta(SubscriptionSerializer.Meta):
+        pass
+
+
 class ProvidedSubscriptionCreateSerializer(serializers.ModelSerializer):
 
     profile = OrganizationInviteSerializer(source='organization',
@@ -1027,7 +1039,7 @@ class AccessibleCreateSerializer(NoModelSerializer):
 
 class RoleSerializer(serializers.ModelSerializer):
 
-    user = get_user_serializer()(read_only=True,
+    user = get_user_detail_serializer()(read_only=True,
         help_text=_("User with the role"))
     role_description = RoleDescriptionSerializer(read_only=True,
         help_text=_("Description of the role"))

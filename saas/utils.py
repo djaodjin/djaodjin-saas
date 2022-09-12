@@ -206,6 +206,14 @@ def get_user_serializer():
     return import_string(settings.USER_SERIALIZER)
 
 
+def get_user_detail_serializer():
+    """
+    Returns the user serializer model that is active in this project.
+    """
+    from . import settings
+    return import_string(settings.USER_DETAIL_SERIALIZER)
+
+
 def start_of_day(dtime_at=None):
     """
     Returns the local (user timezone) start of day, that's,
