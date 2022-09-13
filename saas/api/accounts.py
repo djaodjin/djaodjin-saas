@@ -38,8 +38,6 @@ from ..pagination import TypeaheadPagination
 from ..utils import get_organization_model, get_user_serializer
 
 
-#pylint: disable=no-init
-
 def get_order_func(fields):
     """
     Builds a lambda function that can be used to order two records
@@ -51,18 +49,22 @@ def get_order_func(fields):
         if fields[0].startswith('-'):
             field_name = fields[0][1:]
             return lambda left, right: (
-                getattr(left, field_name) > getattr(right, field_name))
+                (getattr(left, field_name) and getattr(right, field_name) and
+                getattr(left, field_name) > getattr(right, field_name)))
         field_name = fields[0]
         return lambda left, right: (
-            getattr(left, field_name) < getattr(right, field_name))
+            (getattr(left, field_name) and getattr(right, field_name) and
+            getattr(left, field_name) < getattr(right, field_name)))
     if fields[0].startswith('-'):
         field_name = fields[0][1:]
         return lambda left, right: (
-            getattr(left, field_name) > getattr(right, field_name) or
+            (getattr(left, field_name) and getattr(right, field_name) and
+            getattr(left, field_name) > getattr(right, field_name)) or
             get_order_func(fields[1:])(left, right))
     field_name = fields[0]
     return lambda left, right: (
-        getattr(left, field_name) < getattr(right, field_name) or
+        (getattr(left, field_name) and getattr(right, field_name) and
+        getattr(left, field_name) < getattr(right, field_name)) or
         get_order_func(fields[1:])(left, right))
 
 
