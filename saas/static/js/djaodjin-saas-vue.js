@@ -1738,9 +1738,6 @@ Vue.component('subscription-list', {
     data: function() {
         return {
             url: this.$urls.organization.api_subscriptions,
-            params: {
-                state: 'active',
-            },
         }
     }
 });
@@ -1752,10 +1749,7 @@ Vue.component('expired-subscription-list', {
     ],
     data: function() {
         return {
-            url: this.$urls.organization.api_subscriptions,
-            params: {
-                state: 'expired',
-            },
+            url: this._safeUrl(this.$urls.organization.api_subscriptions, 'expired')
         }
     }
 });

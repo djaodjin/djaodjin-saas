@@ -41,7 +41,7 @@ from .serializers import PlanDetailSerializer, PlanCreateSerializer
 
 class PricingAPIView(PlanMixin, CartMixin, ListAPIView):
     """
-    Lists active pricing plans
+    Lists pricing plans
 
     Returns a list of {{PAGE_SIZE}} plans which are active and can
     be subscribed to.

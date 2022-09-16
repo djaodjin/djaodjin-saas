@@ -88,7 +88,8 @@ initdb: clean-dbs
         testsite/fixtures/50-visit-card2.json \
         testsite/fixtures/100-balance-due.json \
         testsite/fixtures/110-balance-checkout.json \
-        testsite/fixtures/120-subscriptions.json
+        testsite/fixtures/120-subscriptions.json \
+        testsite/fixtures/130-subscriptions.json
 
 
 doc:

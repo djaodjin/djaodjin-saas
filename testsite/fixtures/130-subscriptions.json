@@ -1,0 +1,228 @@
+[
+{
+    "fields": {
+      "date_joined": "2022-01-01T00:00:00+00:00",
+      "email": "donny+130@localhost.localdomain",
+      "first_name": "Donny",
+      "last_name": "ListSubscriptions",
+      "is_active": true,
+      "is_staff": false,
+      "is_superuser": false,
+      "last_login": "2022-01-01T00:00:00+00:00",
+      "password": "pbkdf2_sha256$10000$z0MBiWn0Rlem$iZdC6uHomlE07qGK/TqfcfxNzKJtFp03c0JILF1frRc=", 
+      "username": "donny130"
+    },
+    "model": "auth.User", "pk": 130
+},
+{
+    "fields": {
+      "last_signed": "2022-01-01T00:00:00+00:00",
+      "agreement": 1,
+      "user": 130
+    },
+    "model": "saas.signature", "pk": 130
+},
+{
+    "fields": {
+      "slug": "club130",
+      "email": "club+130@localhost.localdomain",
+      "full_name": "Club130",
+      "created_at": "2022-01-01T00:00:00+00:00",
+      "processor": 1,
+      "is_provider": 0,
+      "is_active": 1
+    },
+    "model": "saas.Organization", "pk": 130
+},
+{
+    "fields": {
+      "created_at": "2022-01-01T00:00:00+00:00",
+      "role_description": 1,
+      "organization": 130,
+      "user": 130
+    },
+    "model": "saas.Role", "pk": 130
+},
+{
+    "fields":{
+        "slug":"plan130",
+        "title":"Club130 Plan",
+        "created_at":"2022-01-01T00:00:00+00:00",
+        "setup_amount": 0,
+        "period_amount": 1000,
+        "broker_fee_percent": 0,
+        "period_type": 5,
+        "description": "",
+        "organization": 130,
+        "is_active": 1
+    },
+    "model" : "saas.Plan", "pk": 130
+},
+{
+    "fields":{
+        "slug":"plan131",
+        "title":"Club131 Plan",
+        "created_at":"2022-01-01T00:00:00+00:00",
+        "setup_amount": 0,
+        "period_amount": 2000,
+        "broker_fee_percent": 0,
+        "period_type": 5,
+        "description": "",
+        "organization": 130,
+        "is_active": 1
+    },
+    "model" : "saas.Plan", "pk": 131
+},
+{
+    "fields": {
+      "slug": "subscriber131",
+      "email": "subscriber+131@localhost.localdomain",
+      "full_name": "Subscriber131",
+      "created_at": "2022-01-01T00:00:00+00:00",
+      "processor": 1,
+      "is_provider": 0,
+      "is_active": 1
+    },
+    "model": "saas.Organization", "pk": 131
+},
+{
+    "fields": {
+      "created_at": "2022-01-01T00:00:00+00:00",
+      "ends_at": "2022-03-31T23:59:59-00:00",
+      "organization": 131,
+      "plan": 130
+    },
+    "model": "saas.subscription", "pk": 131
+},
+{
+    "fields": {
+      "created_at": "2022-01-01T00:00:00+00:00",
+      "ends_at": "2022-03-31T23:59:59-00:00",
+      "organization": 131,
+      "plan": 131
+    },
+    "model": "saas.subscription", "pk": 132
+},
+{
+    "fields": {
+      "slug": "subscriber133",
+      "email": "subscriber+132@localhost.localdomain",
+      "full_name": "Subscriber133",
+      "created_at": "2022-01-01T00:00:00+00:00",
+      "processor": 1,
+      "is_provider": 0,
+      "is_active": 1
+    },
+    "model": "saas.Organization", "pk": 133
+},
+{
+    "fields": {
+      "created_at": "2022-01-01T00:00:00+00:00",
+      "ends_at": "2022-06-30T23:59:59-00:00",
+      "organization": 133,
+      "plan": 130
+    },
+    "model": "saas.subscription", "pk": 133
+},
+{
+    "fields": {
+      "created_at": "2022-01-01T00:00:00+00:00",
+      "ends_at": "2022-06-30T23:59:59-00:00",
+      "organization": 133,
+      "plan": 131
+    },
+    "model": "saas.subscription", "pk": 134
+},
+{
+    "fields": {
+      "slug": "subscriber135",
+      "email": "subscriber+135@localhost.localdomain",
+      "full_name": "Subscriber135",
+      "created_at": "2022-01-01T00:00:00+00:00",
+      "processor": 1,
+      "is_provider": 0,
+      "is_active": 1
+    },
+    "model": "saas.Organization", "pk": 135
+},
+{
+    "fields": {
+      "created_at": "2022-07-01T00:00:00+00:00",
+      "ends_at": "2022-12-31T23:59:59-00:00",
+      "organization": 135,
+      "plan": 130
+    },
+    "model": "saas.subscription", "pk": 135
+},
+{
+    "fields": {
+      "created_at": "2022-07-01T00:00:00+00:00",
+      "ends_at": "2022-12-31T23:59:59-00:00",
+      "organization": 135,
+      "plan": 131
+    },
+    "model": "saas.subscription", "pk": 136
+},
+{
+    "fields": {
+      "slug": "subscriber137",
+      "email": "subscriber+137@localhost.localdomain",
+      "full_name": "Subscriber137",
+      "created_at": "2022-01-01T00:00:00+00:00",
+      "processor": 1,
+      "is_provider": 0,
+      "is_active": 1
+    },
+    "model": "saas.Organization", "pk": 137
+},
+{
+    "fields": {
+      "created_at": "2022-11-01T00:00:00+00:00",
+      "ends_at": "2022-12-31T23:59:59-00:00",
+      "organization": 137,
+      "plan": 130
+    },
+    "model": "saas.subscription", "pk": 137
+},
+{
+    "fields": {
+      "created_at": "2022-11-01T00:00:00+00:00",
+      "ends_at": "2022-12-31T23:59:59-00:00",
+      "organization": 137,
+      "plan": 131
+    },
+    "model": "saas.subscription", "pk": 138
+},
+
+{
+    "fields": {
+      "slug": "subscriber139",
+      "email": "subscriber+139@localhost.localdomain",
+      "full_name": "Subscriber139",
+      "created_at": "2022-01-01T00:00:00+00:00",
+      "processor": 1,
+      "is_provider": 0,
+      "is_active": 1
+    },
+    "model": "saas.Organization", "pk": 139
+},
+{
+    "fields": {
+      "created_at": "2022-01-01T00:00:00+00:00",
+      "ends_at": "2022-12-31T23:59:59-00:00",
+      "organization": 139,
+      "plan": 130
+    },
+    "model": "saas.subscription", "pk": 139
+},
+{
+    "fields": {
+      "created_at": "2022-01-01T00:00:00+00:00",
+      "ends_at": "2022-12-31T23:59:59-00:00",
+      "organization": 139,
+      "plan": 131
+    },
+    "model": "saas.subscription", "pk": 140
+}
+]
+

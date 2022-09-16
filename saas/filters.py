@@ -331,8 +331,9 @@ class DateRangeFilter(BaseFilterBackend):
         tz_ob = parse_tz(request.GET.get('timezone'))
         if not tz_ob:
             tz_ob = utc
-
-        ends_at = request.GET.get(self.ends_at_param)
+        ends_at = None
+        if self.ends_at_param:
+            ends_at = request.GET.get(self.ends_at_param)
         start_at = request.GET.get(self.start_at_param)
         forced_date_range = getattr(view, 'forced_date_range',
             self.forced_date_range)
@@ -371,26 +372,100 @@ class DateRangeFilter(BaseFilterBackend):
     def get_schema_operation_parameters(self, view):
         fields = super(DateRangeFilter, self).get_schema_operation_parameters(
             view)
-        fields += [
-            {
-                'name': 'start_at',
-                'required': False,
-                'in': 'query',
-                'description': force_str("date/time in ISO format"\
-                        " after which records were created."),
-                'schema': {
-                    'type': 'string',
-                },
+        fields += [{
+            'name': self.start_at_param,
+            'required': False,
+            'in': 'query',
+            'description': force_str("date/time in ISO format"),
+            'schema': {
+                'type': 'string',
             },
-            {
-                'name': 'ends_at',
+        }]
+        if self.ends_at_param:
+            fields += [{
+                'name': self.ends_at_param,
                 'required': False,
                 'in': 'query',
-                'description': force_str("date/time in ISO format"\
-                        " before which records were created."),
+                'description': force_str("date/time in ISO format"),
                 'schema': {
                     'type': 'string',
                 },
-            }
-        ]
+            }]
         return fields
+
+
+class IntersectPeriodFilter(DateRangeFilter):
+    """
+    Returns any subscription, active or churned, that intersects
+    the period specified by [start_at,ends_at[
+    """
+    forced_date_range = False
+
+    def get_period_fields(self, model):
+        return ('created_at', 'ends_at')
+
+    def filter_queryset(self, request, queryset, view):
+        start_at, ends_at = self.get_params(request, view)
+        start_field, ends_field = self.get_period_fields(queryset.model)
+        if not (start_field and ends_field):
+            return queryset
+        # We assume the following condition always holds true:
+        #   ``model.start_field < model.ends_field``
+        kwargs = {}
+        if ends_at:
+            kwargs.update({'%s__lt' % start_field: ends_at})
+        if start_at:
+            kwargs.update({'%s__gte' % ends_field: start_at})
+        return queryset.filter(**kwargs)
+
+
+class ActiveInPeriodFilter(IntersectPeriodFilter):
+    """
+    Returns active subscriptions that intersects
+    the period specified by [start_at,ends_at[
+
+    ``subscription.created_at < ends_at && subscription.ends_at >= end_at``
+    """
+    forced_date_range = True
+    ends_at_param = None
+
+    def filter_queryset(self, request, queryset, view):
+        start_at, ends_at = self.get_params(request, view)
+        start_field, ends_field = self.get_period_fields(queryset.model)
+        if not (start_field and ends_field):
+            return queryset
+        # We assume the following condition always holds true:
+        #   ``model.start_field < model.ends_field``
+        kwargs = {}
+        if ends_at:
+            kwargs.update({
+                '%s__lt' % start_field: ends_at,
+                '%s__gte' % ends_field: ends_at
+            })
+        if start_at:
+            kwargs.update({'%s__lt' % start_field: start_at})
+        return queryset.filter(**kwargs)
+
+
+class ChurnedInPeriodFilter(IntersectPeriodFilter):
+    """
+    Returns any churned subscription that intersects
+    the period specified by [start_at,ends_at[
+
+    ``subscription.ends_at >= start_at && subscription.ends_at < end_at``
+    """
+    forced_date_range = True
+
+    def filter_queryset(self, request, queryset, view):
+        start_at, ends_at = self.get_params(request, view)
+        start_field, ends_field = self.get_period_fields(queryset.model)
+        if not (start_field and ends_field):
+            return queryset
+        # We assume the following condition always holds true:
+        #   ``model.start_field < model.ends_field``
+        kwargs = {}
+        if start_at:
+            kwargs.update({'%s__gte' % ends_field: start_at})
+        if ends_at:
+            kwargs.update({'%s__lt' % ends_field: ends_at})
+        return queryset.filter(**kwargs)

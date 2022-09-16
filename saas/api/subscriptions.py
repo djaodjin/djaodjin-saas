@@ -26,17 +26,20 @@
 
 import logging
 
+from django.http import Http404
 from rest_framework import status
 from rest_framework.generics import (get_object_or_404, GenericAPIView,
     ListAPIView, ListCreateAPIView, RetrieveUpdateDestroyAPIView)
 from rest_framework.response import Response
 
+from ..compat import gettext_lazy as _
 from ..decorators import _valid_manager
 from ..docs import OpenAPIResponse, no_body, swagger_auto_schema
-from ..filters import DateRangeFilter
-from ..mixins import (ChurnedQuerysetMixin, PlanSubscribersQuerysetMixin,
-    ProviderMixin, SubscriptionMixin, SubscriptionSmartListMixin,
-    SubscribedQuerysetMixin)
+from ..filters import (ActiveInPeriodFilter, ChurnedInPeriodFilter,
+    IntersectPeriodFilter)
+from ..mixins import (PlanProvidedSubscriptionsMixin,
+    ProvidedSubscriptionsMixin, SubscribedSubscriptionsMixin,
+    SubscriptionSmartListMixin)
 from .. import settings, signals
 from ..models import Subscription
 from ..utils import generate_random_slug, datetime_or_now
@@ -50,21 +53,30 @@ from .serializers import (ForceSerializer,
 LOGGER = logging.getLogger(__name__)
 
 
-class SubscribedSubscriptionListBaseAPIView(SubscriptionMixin, ListAPIView):
+class ActiveSubscribedSubscriptionsMixin(SubscriptionSmartListMixin,
+                                         SubscribedSubscriptionsMixin):
 
-    pass
+    filter_backends = SubscriptionSmartListMixin.filter_backends + (
+        ActiveInPeriodFilter,)
 
 
-class SubscribedSubscriptionListAPIView(SubscriptionSmartListMixin,
-                                    SubscribedSubscriptionListBaseAPIView):
+class SubscribedSubscriptionListAPIView(ActiveSubscribedSubscriptionsMixin,
+                                        ListAPIView):
     """
-    Lists a subscriber subscriptions
+    Lists present subscriptions
 
-    Returns a list of {{PAGE_SIZE}} subscriptions, past and present, for
-    a specified subscriber.
+    Returns a list of {{PAGE_SIZE}} subscriptions for subscriber {profile}
+    whose renewal date is later than the time at which the API call was made.
 
-    The queryset can be further refined to match a search filter (``q``)
-    and sorted on specific fields (``o``).
+    The queryset can be filtered such that each subscription initial start
+    date is greater than the ``start_at`` query parameter.
+
+    The queryset can be filtered for at least one field to match a search
+    term (``q``).
+
+    Returned results can be ordered by natural fields (``o``) in either
+    ascending or descending order by using the minus sign ('-') in front
+    of the ordering field name.
 
     The API is typically used within an HTML
     `subscriptions page </docs/guides/themes/#dashboard_profile_subscriptions>`_
@@ -112,11 +124,111 @@ class SubscribedSubscriptionListAPIView(SubscriptionSmartListMixin,
     # No POST. We are talking about a subscriber Organization here.
 
 
+class ExpiredSubscriptionsMixin(SubscriptionSmartListMixin,
+                                SubscribedSubscriptionsMixin):
 
-class SubscriptionDetailAPIView(SubscriptionMixin,
+    filter_backends = SubscriptionSmartListMixin.filter_backends + (
+        ChurnedInPeriodFilter,)
+
+
+class ExpiredSubscriptionsAPIView(ExpiredSubscriptionsMixin, ListAPIView):
+    """
+    Lists expired subscriptions
+
+    Returns a list of {{PAGE_SIZE}} subscriptions for subscriber {profile}
+    which have ended already the time at which the API call was made.
+
+    Optionally by defining either ``start_at``, ``ends_at`` , or both,
+    it is possible to find subscriptions which have expired within
+    a specified period.
+
+    The queryset can be filtered for at least one field to match a search
+    term (``q``).
+
+    Returned results can be ordered by natural fields (``o``) in either
+    ascending or descending order by using the minus sign ('-') in front
+    of the ordering field name.
+
+    The API is typically used within an HTML
+    `subscriptions page </docs/guides/themes/#dashboard_profile_subscriptions>`_
+    as present in the default theme.
+
+    **Tags**: subscriptions, subscriber, subscriptionmodel
+
+    **Examples**
+
+    .. code-block:: http
+
+        GET /api/profile/xia/subscriptions/expired?o=created_at&ot=desc HTTP/1.1
+
+    responds
+
+    .. code-block:: json
+
+        {
+            "count": 1,
+            "next": null,
+            "previous": null,
+            "results": [
+                {
+                    "created_at": "2016-01-14T23:16:55Z",
+                    "ends_at": "2017-01-14T23:16:55Z",
+                    "description": null,
+                    "profile": {
+                        "slug": "xia",
+                        "printable_name": "Xia Lee",
+                        "picture": null,
+                        "type": "personal",
+                        "credentials": true
+                    },
+                    "plan": {
+                        "slug": "open-space",
+                        "title": "Open Space"
+                    },
+                    "auto_renew": true
+                }
+            ]
+        }
+    """
+    serializer_class = SubscribedSubscriptionSerializer
+
+
+class SubscriptionDetailMixin(object):
+
+    def get_object(self):
+        queryset = self.get_queryset()
+        obj = queryset.filter(
+            ends_at__gt=datetime_or_now()).order_by('ends_at').first()
+        if not obj:
+            raise Http404(_("cannot find active subscription to"\
+                " %(plan)s for %(organization)s") % {
+                'plan': self.kwargs.get('plan', self.kwargs.get(
+                    'subscribed_plan', None)),
+                'organization': self.kwargs.get(self.subscriber_url_kwarg)})
+        self.decorate_personal(obj.organization)
+        return obj
+
+    def perform_update(self, serializer):
+        if not _valid_manager(
+                self.request, [serializer.instance.plan.organization]):
+            serializer.validated_data['created_at'] \
+                = serializer.instance.created_at
+            serializer.validated_data['ends_at'] = serializer.instance.ends_at
+        super(SubscriptionDetailMixin, self).perform_update(serializer)
+
+    def destroy(self, request, *args, **kwargs):
+        #pylint:disable=unused-argument
+        at_time = datetime_or_now()
+        queryset = self.get_queryset().filter(ends_at__gt=at_time)
+        queryset.unsubscribe(at_time=at_time)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class SubscriptionDetailAPIView(SubscriptionDetailMixin,
+                                SubscribedSubscriptionsMixin,
                                 RetrieveUpdateDestroyAPIView):
     """
-    Retrieves a subscription
+    Retrieves a subscriber subscription
 
     Returns a subscription to plan {subscribed_plan} for the specified
     subscriber.
@@ -233,34 +345,144 @@ class SubscriptionDetailAPIView(SubscriptionMixin,
         return super(SubscriptionDetailAPIView, self).delete(
             request, *args, **kwargs)
 
-    def perform_update(self, serializer):
-        if not _valid_manager(
-                self.request, [serializer.instance.plan.organization]):
-            serializer.validated_data['created_at'] \
-                = serializer.instance.created_at
-            serializer.validated_data['ends_at'] = serializer.instance.ends_at
-        super(SubscriptionDetailAPIView, self).perform_update(serializer)
 
-    def destroy(self, request, *args, **kwargs):
-        #pylint:disable=unused-argument
-        at_time = datetime_or_now()
-        queryset = self.get_queryset().filter(ends_at__gt=at_time)
-        queryset.unsubscribe(at_time=at_time)
-        return Response(status=status.HTTP_204_NO_CONTENT)
-
-
-class ProvidedSubscriptionsAPIView(SubscriptionSmartListMixin,
-                               PlanSubscribersQuerysetMixin,
-                               OptinBase, ListCreateAPIView):
+class PlanSubscriptionDetailAPIView(SubscriptionDetailMixin,
+                                    PlanProvidedSubscriptionsMixin,
+                                    RetrieveUpdateDestroyAPIView):
     """
-    Lists subscriptions to a plan
+    Retrieves a plan subscription
 
-    Returns a list of {{PAGE_SIZE}} subscriptions to a plan {plan}
+    Returns the subscription of {subscriber} to a plan {plan}
     of the specified provider.
 
-    The queryset can be further refined to match a search filter (``q``)
-    and/or a range of dates ([``start_at``, ``ends_at``]),
-    and sorted on specific fields (``o``).
+    **Tags**: subscriptions, provider, subscriptionmodel
+
+    **Examples**
+
+    .. code-block:: http
+
+        GET /api/profile/cowork/plans/open-space/subscriptions/xia HTTP/1.1
+
+    responds
+
+    .. code-block:: json
+
+        {
+          "created_at": "2019-01-01T00:00:00Z",
+          "ends_at": "2020-01-01T00:00:00Z",
+          "profile": {
+              "slug": "xia",
+              "printable_name": "Xia Lee",
+              "picture": null,
+              "type": "personal",
+              "credentials": true
+          },
+          "plan": {
+            "slug": "open-space",
+            "title": "Open Space"
+          },
+          "description": null,
+          "auto_renew": true,
+          "editable": true,
+          "extra": null,
+          "grant_key": null,
+          "request_key": null
+        }
+    """
+    subscriber_url_kwarg = 'subscriber'
+    serializer_class = ProvidedSubscriptionSerializer
+
+
+    def delete(self, request, *args, **kwargs):
+        """
+        Cancels subscription
+
+        Provider cancels a {subscriber}'s subscription to a plan {plan},
+        effective at the time the API is called.
+
+
+        **Tags**: subscriptions, provider, subscriptionmodel
+
+        **Examples**
+
+        .. code-block:: http
+
+            DELETE /api/profile/cowork/plans/open-space/subscriptions/xia HTTP/1.1
+        """
+        return super(PlanSubscriptionDetailAPIView, self).delete(
+            request, *args, **kwargs)
+
+
+    def put(self, request, *args, **kwargs):
+        """
+        Updates a plan subscription
+
+        Updates the subscription of {subscriber} to a plan {plan}
+        of the specified provider.
+
+        **Tags**: subscriptions, provider, subscriptionmodel
+
+        **Examples**
+
+        .. code-block:: http
+
+            PUT /api/profile/cowork/plans/open-space/subscriptions/xia HTTP/1.1
+
+        .. code-block:: json
+
+             {
+               "ends_at": "2020-01-01T00:00:00Z",
+               "description": "extended after call with customer"
+             }
+
+        responds
+
+        .. code-block:: json
+
+            {
+                "created_at": "2019-01-01T00:00:00Z",
+                "ends_at": "2020-01-01T00:00:00Z",
+                "profile": {
+                    "slug": "xia",
+                    "printable_name": "Xia Lee",
+                    "picture": null,
+                    "type": "personal",
+                    "credentials": true
+                },
+                "plan": {
+                    "slug": "open-space",
+                    "title": "Open Space"
+                },
+                "description": null,
+                "auto_renew": true,
+                "editable": true,
+                "extra": null,
+                "grant_key": null,
+                "request_key": null
+             }
+        """
+        return super(PlanSubscriptionDetailAPIView, self).put(
+            request, *args, **kwargs)
+
+
+class PlanAllSubscribersBaseAPIView(PlanProvidedSubscriptionsMixin,
+                                    ListAPIView):
+    pass
+
+class PlanAllSubscribersAPIView(SubscriptionSmartListMixin,
+                                PlanAllSubscribersBaseAPIView):
+    """
+    Lists plan subscriptions
+
+    Returns a list of {{PAGE_SIZE}} subscriptions to a plan {plan}
+    of the provider {profile}.
+
+    The queryset can be filtered for at least one field to match a search
+    term (``q``) and/or intersects a period (``start_at``, ``ends_at``).
+
+    Returned results can be ordered by natural fields (``o``) in either
+    ascending or descending order by using the minus sign ('-') in front
+    of the ordering field name.
 
     **Tags**: subscriptions, list, provider, subscriptionmodel
 
@@ -268,7 +490,7 @@ class ProvidedSubscriptionsAPIView(SubscriptionSmartListMixin,
 
     .. code-block:: http
 
-        GET /api/profile/cowork/plans/premium/subscriptions HTTP/1.1
+        GET /api/profile/cowork/plans/premium/subscriptions/all HTTP/1.1
 
     responds
 
@@ -288,12 +510,86 @@ class ProvidedSubscriptionsAPIView(SubscriptionSmartListMixin,
     """
     serializer_class = ProvidedSubscriptionSerializer
     filter_backends = SubscriptionSmartListMixin.filter_backends + (
-        DateRangeFilter,)
+        IntersectPeriodFilter,)
+
+
+class PlanActiveSubscribersBaseAPIView(PlanProvidedSubscriptionsMixin,
+                                       OptinBase, ListCreateAPIView):
+
+    pass
+
+
+class PlanActiveSubscribersAPIView(SubscriptionSmartListMixin,
+                                   PlanActiveSubscribersBaseAPIView):
+    """
+    Lists plan active subscriptions
+
+    Returns a list of {{PAGE_SIZE}} subscriptions to a {plan}
+    of the provider {profile} whose renewal date is later than the time
+    at which the API call was made.
+
+    Optionnaly when an ``start_at`` query parameter is specified,
+    the returned queryset is filtered such that each subscription
+    start date (i.e. ``created_at`` field) is greater than ``start_at``.
+    Using the ``start_at`` query parameter, it is effectively possible
+    to construct cohorts of active subscribers by period of initial
+    subscription.
+
+    The queryset can be filtered for at least one field to match a search
+    term (``q``).
+
+    Returned results can be ordered by natural fields (``o``) in either
+    ascending or descending order by using the minus sign ('-') in front
+    of the ordering field name.
+
+    The API is typically used within an HTML
+    `subscribers page </docs/guides/themes/#dashboard_profile_subscribers>`_
+    as present in the default theme.
+
+    **Tags**: subscriptions, list, provider, subscriptionmodel
+
+    **Examples**
+
+    .. code-block:: http
+
+        GET /api/profile/cowork/plans/open-space/subscriptions?o=created_at&ot=desc HTTP/1.1
+
+    responds
+
+    .. code-block:: json
+
+        {
+            "count": 1,
+            "next": null,
+            "previous": null,
+            "results": [
+                {
+                    "created_at": "2016-01-14T23:16:55Z",
+                    "ends_at": "2017-01-14T23:16:55Z",
+                    "description": null,
+                    "profile": {
+                        "slug": "xia",
+                        "printable_name": "Xia Lee",
+                        "type": "personal",
+                        "credentials": true
+                    },
+                    "plan": {
+                        "slug": "open-space",
+                        "title": "Open Space"
+                    },
+                    "auto_renew": true
+                }
+            ]
+        }
+    """
+    serializer_class = ProvidedSubscriptionDetailSerializer
+    filter_backends = SubscriptionSmartListMixin.filter_backends + (
+        ActiveInPeriodFilter,)
 
     def get_serializer_class(self):
         if self.request.method.lower() == 'post':
             return ProvidedSubscriptionCreateSerializer
-        return super(ProvidedSubscriptionsAPIView, self).get_serializer_class()
+        return super(PlanActiveSubscribersAPIView, self).get_serializer_class()
 
     def add_relations(self, organizations, user, ends_at=None):
         ends_at = datetime_or_now(ends_at)
@@ -379,7 +675,7 @@ class ProvidedSubscriptionsAPIView(SubscriptionSmartListMixin,
               "auto_renew": true
             }
         """
-        return super(ProvidedSubscriptionsAPIView, self).post(
+        return super(PlanActiveSubscribersAPIView, self).post(
             request, *args, **kwargs)
 
     def send_signals(self, relations, user, reason=None, invite=False):
@@ -394,163 +690,194 @@ class ProvidedSubscriptionsAPIView(SubscriptionSmartListMixin,
         return self.perform_optin(serializer, request)
 
 
-class PlanSubscriptionDetailAPIView(ProviderMixin, SubscriptionDetailAPIView):
+class PlanChurnedSubscribersBaseAPIView(PlanProvidedSubscriptionsMixin,
+                                        ListAPIView):
+
+    pass
+
+
+class PlanChurnedSubscribersAPIView(SubscriptionSmartListMixin,
+                                    PlanChurnedSubscribersBaseAPIView):
     """
-    Retrieves a subscription to a provider plan
+    Lists plan churned subscriptions
 
-    Returns the subscription of {subscriber} to a plan {plan}
-    of the specified provider.
+    Returns a list of {{PAGE_SIZE}} subscriptions to a {plan}
+    of the provider {profile} which have ended already at the time
+    the API call was made.
 
-    **Tags**: subscriptions, provider, subscriptionmodel
+    Optionally by defining either ``start_at``, ``ends_at`` , or both,
+    it is possible to construct cohorts of subscribers that have churned
+    within a period.
+
+    The queryset can be filtered for at least one field to match a search
+    term (``q``).
+
+    Returned results can be ordered by natural fields (``o``) in either
+    ascending or descending order by using the minus sign ('-') in front
+    of the ordering field name.
+
+    The API is typically used within an HTML
+    `subscribers page </docs/guides/themes/#dashboard_profile_subscribers>`_
+    as present in the default theme.
+
+    **Tags**: subscriptions, list, provider, subscriptionmodel
 
     **Examples**
 
     .. code-block:: http
 
-        GET /api/profile/cowork/plans/open-space/subscriptions/xia HTTP/1.1
+        GET /api/profile/cowork/plans/open-space/subscriptions/churned?o=created_at&ot=desc HTTP/1.1
 
     responds
 
     .. code-block:: json
 
         {
-          "created_at": "2019-01-01T00:00:00Z",
-          "ends_at": "2020-01-01T00:00:00Z",
-          "profile": {
-              "slug": "xia",
-              "printable_name": "Xia Lee",
-              "picture": null,
-              "type": "personal",
-              "credentials": true
-          },
-          "plan": {
-            "slug": "open-space",
-            "title": "Open Space"
-          },
-          "description": null,
-          "auto_renew": true,
-          "editable": true,
-          "extra": null,
-          "grant_key": null,
-          "request_key": null
+            "count": 1,
+            "next": null,
+            "previous": null,
+            "results": [
+                {
+                    "created_at": "2016-01-14T23:16:55Z",
+                    "ends_at": "2017-01-14T23:16:55Z",
+                    "description": null,
+                    "profile": {
+                        "slug": "xia",
+                        "printable_name": "Xia Lee"
+                    },
+                    "plan": {
+                        "slug": "open-space",
+                        "title": "Open Space",
+                        "description": "open space desk, High speed internet
+                                    - Ethernet or WiFi, Unlimited printing,
+                                    Unlimited scanning, Unlimited fax service
+                                    (send and receive)",
+                        "is_active": true,
+                        "setup_amount": 0,
+                        "period_amount": 17999,
+                        "period_type": "monthly",
+                        "app_url": "http://localhost:8020/app"
+                    },
+                    "auto_renew": true
+                }
+            ]
         }
     """
-    subscriber_url_kwarg = 'subscriber'
     serializer_class = ProvidedSubscriptionSerializer
-
-    def get_queryset(self):
-        return super(
-            PlanSubscriptionDetailAPIView, self).get_queryset().filter(
-            plan__organization=self.provider)
+    filter_backends = SubscriptionSmartListMixin.filter_backends + (
+        ChurnedInPeriodFilter,)
 
 
-    def delete(self, request, *args, **kwargs):
-        """
-        Deletes a subscription to a provider plan
-
-        Unsubscribes {subscriber} from a plan {plan}
-        of the specified provider.
-
-        **Tags**: subscriptions, provider, subscriptionmodel
-
-        **Examples**
-
-        .. code-block:: http
-
-            DELETE /api/profile/cowork/plans/open-space/subscriptions/xia\
- HTTP/1.1
-        """
-        return super(PlanSubscriptionDetailAPIView, self).delete(
-            request, *args, **kwargs)
-
-
-    def put(self, request, *args, **kwargs):
-        """
-        Updates a subscription to a provider plan
-
-        Updates the subscription of {subscriber} to a plan {plan}
-        of the specified provider.
-
-        **Tags**: subscriptions, provider, subscriptionmodel
-
-        **Examples**
-
-        .. code-block:: http
-
-            PUT /api/profile/cowork/plans/open-space/subscriptions/xia HTTP/1.1
-
-        .. code-block:: json
-
-             {
-               "ends_at": "2020-01-01T00:00:00Z",
-               "description": "extended after call with customer"
-             }
-
-        responds
-
-        .. code-block:: json
-
-            {
-                "created_at": "2019-01-01T00:00:00Z",
-                "ends_at": "2020-01-01T00:00:00Z",
-                "profile": {
-                    "slug": "xia",
-                    "printable_name": "Xia Lee",
-                    "picture": null,
-                    "type": "personal",
-                    "credentials": true
-                },
-                "plan": {
-                    "slug": "open-space",
-                    "title": "Open Space"
-                },
-                "description": null,
-                "auto_renew": true,
-                "editable": true,
-                "extra": null,
-                "grant_key": null,
-                "request_key": null
-             }
-        """
-        return super(PlanSubscriptionDetailAPIView, self).put(
-            request, *args, **kwargs)
-
-
-class ActiveSubscriptionBaseAPIView(SubscribedQuerysetMixin, ListAPIView):
+class AllSubscribersBaseAPIView(ProvidedSubscriptionsMixin, ListAPIView):
 
     pass
 
 
-class ActiveSubscriptionAPIView(SubscriptionSmartListMixin,
-                                ActiveSubscriptionBaseAPIView):
+class AllSubscribersAPIView(SubscriptionSmartListMixin,
+                            AllSubscribersBaseAPIView):
     """
-    Lists active subscriptions
+    Lists provider subscriptions
 
-    Lists {{PAGE_SIZE}} subscriptions whose renewal date is in the future
-    and the owner of the subscription plan is the specified provider.
-
-    Optionnaly when an ``ends_at`` query parameter is specified,
-    returns a queryset of ``Subscription`` that were active
-    at ``ends_at``. When a ``start_at`` query parameter is specified,
-    only considers ``Subscription`` that were created after ``start_at``.
+    Returns a list of {{PAGE_SIZE}} subscriber profiles which have or
+    had a subscription to a plan of the specified provider.
 
     The queryset can be filtered for at least one field to match a search
-    term (``q``).
+    term (``q``)  and/or intersects a period (``start_at``, ``ends_at``).
 
-    Query results can be ordered by natural fields (``o``) in either ascending
-    or descending order (``ot``).
+    Returned results can be ordered by natural fields (``o``) in either
+    ascending or descending order by using the minus sign ('-') in front
+    of the ordering field name.
 
-    The API is typically used within an HTML
-    `subscribers page </docs/guides/themes/#dashboard_profile_subscribers>`_
-    as present in the default theme.
-
-    **Tags**: metrics, list, provider, profilemodel
+    **Tags**: subscriptions, list, provider, subscriptionmodel
 
     **Examples**
 
     .. code-block:: http
 
-        GET /api/metrics/cowork/subscribers/active?o=created_at&ot=desc HTTP/1.1
+        GET /api/profile/cowork/subscribers/subscriptions/all?o=created_at&ot=desc HTTP/1.1
+
+    responds
+
+    .. code-block:: json
+
+        {
+            "count": 1,
+            "next": null,
+            "previous": null,
+            "results": [
+                {
+                    "created_at": "2016-01-14T23:16:55Z",
+                    "ends_at": "2022-01-14T23:16:55Z",
+                    "description": null,
+                    "profile": {
+                        "slug": "xia",
+                        "printable_name": "Xia Lee"
+                    },
+                    "plan": {
+                        "slug": "open-space",
+                        "title": "Open Space",
+                        "description": "open space desk, High speed internet
+                                    - Ethernet or WiFi, Unlimited printing,
+                                    Unlimited scanning, Unlimited fax service
+                                    (send and receive)",
+                        "is_active": true,
+                        "setup_amount": 0,
+                        "period_amount": 17999,
+                        "period_type": "monthly",
+                        "app_url": "http://localhost:8020/app"
+                    },
+                    "auto_renew": true
+                }
+            ]
+        }
+    """
+    serializer_class = ProvidedSubscriptionSerializer
+    filter_backends = SubscriptionSmartListMixin.filter_backends + (
+        IntersectPeriodFilter,)
+
+
+
+class ActiveSubscribersMixin(SubscriptionSmartListMixin,
+                             ProvidedSubscriptionsMixin):
+
+    filter_backends = SubscriptionSmartListMixin.filter_backends + (
+        ActiveInPeriodFilter,)
+
+
+class ActiveSubscribersAPIView(ActiveSubscribersMixin, ListAPIView):
+    """
+    Lists provider active subscriptions
+
+    Returns a list of {{PAGE_SIZE}} subscriptions whose renewal
+    date is later than the time at which the API call was made,
+    and the owner of the subscription plan is the specified provider
+    {profile}.
+
+    Optionnaly when an ``start_at`` query parameter is specified,
+    the returned queryset is filtered such that each subscription
+    start date (i.e. ``created_at`` field) is greater than ``start_at``.
+    Using the ``start_at`` query parameter, it is effectively possible
+    to construct cohorts of active subscribers by period of initial
+    subscription.
+
+    The queryset can be filtered for at least one field to match a search
+    term (``q``).
+
+    Returned results can be ordered by natural fields (``o``) in either
+    ascending or descending order by using the minus sign ('-') in front
+    of the ordering field name.
+
+    The API is typically used within an HTML
+    `subscribers page </docs/guides/themes/#dashboard_profile_subscribers>`_
+    as present in the default theme.
+
+    **Tags**: subscriptions, list, provider, subscriptionmodel
+
+    **Examples**
+
+    .. code-block:: http
+
+        GET /api/profile/cowork/subscribers/subscriptions?o=created_at&ot=desc HTTP/1.1
 
     responds
 
@@ -581,37 +908,45 @@ class ActiveSubscriptionAPIView(SubscriptionSmartListMixin,
         }
     """
     serializer_class = ProvidedSubscriptionDetailSerializer
-    filter_backends = SubscriptionSmartListMixin.filter_backends
 
 
-class ChurnedSubscriptionBaseAPIView(ChurnedQuerysetMixin, ListAPIView):
+class ChurnedSubscribersMixin(SubscriptionSmartListMixin,
+                              ProvidedSubscriptionsMixin):
 
-    pass
+    filter_backends = SubscriptionSmartListMixin.filter_backends + (
+        ChurnedInPeriodFilter,)
 
 
-class ChurnedSubscriptionAPIView(SubscriptionSmartListMixin,
-                                 ChurnedSubscriptionBaseAPIView):
+class ChurnedSubscribersAPIView(ChurnedSubscribersMixin, ListAPIView):
     """
-    Lists churned subscriptions
+    Lists provider churned subscriptions
 
-    Returns a list of {{PAGE_SIZE}} subscriptions to a plan owned by
-    the specified provider and which have ended already.
+    Returns a list of {{PAGE_SIZE}} subscriptions which have ended already
+    the time at which the API call was made, and the owner of the subscription
+    plan is the specified provider {profile}.
 
-    The queryset can be further refined to match a search filter (``q``)
-    and/or a range of dates ([``start_at``, ``ends_at``]),
-    and sorted on specific fields (``o``).
+    Optionally by defining either ``start_at``, ``ends_at`` , or both,
+    it is possible to construct cohorts of subscribers that have churned
+    within a period.
+
+    The queryset can be filtered for at least one field to match a search
+    term (``q``).
+
+    Returned results can be ordered by natural fields (``o``) in either
+    ascending or descending order by using the minus sign ('-') in front
+    of the ordering field name.
 
     The API is typically used within an HTML
     `subscribers page </docs/guides/themes/#dashboard_profile_subscribers>`_
     as present in the default theme.
 
-    **Tags**: metrics, list, provider, profilemodel
+    **Tags**: subscriptions, list, provider, subscriptionmodel
 
     **Examples**
 
     .. code-block:: http
 
-        GET /api/metrics/cowork/subscribers/churned?o=created_at&ot=desc HTTP/1.1
+        GET /api/profile/cowork/subscribers/subscriptions/churned?o=created_at&ot=desc HTTP/1.1
 
     responds
 

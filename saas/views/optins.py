@@ -31,7 +31,8 @@ from django.views.generic.base import RedirectView
 
 from .. import settings, signals
 from ..compat import gettext_lazy as _
-from ..mixins import SubscriptionMixin, product_url
+from ..mixins import (ProvidedSubscriptionsMixin, SubscribedSubscriptionsMixin,
+    product_url)
 from ..models import get_broker
 from ..utils import get_role_model, validate_redirect_url
 
@@ -105,7 +106,7 @@ class RoleGrantAcceptView(RedirectView):
         return product_url(get_broker(), request=self.request)
 
 
-class SubscriptionGrantAcceptView(SubscriptionMixin, RedirectView):
+class SubscriptionGrantAcceptView(SubscribedSubscriptionsMixin, RedirectView):
 
     pattern_name = 'saas_organization_profile'
     permanent = False
@@ -156,7 +157,7 @@ class SubscriptionGrantAcceptView(SubscriptionMixin, RedirectView):
         return product_url(get_broker(), request=self.request)
 
 
-class SubscriptionRequestAcceptView(SubscriptionMixin, RedirectView):
+class SubscriptionRequestAcceptView(ProvidedSubscriptionsMixin, RedirectView):
 
     pattern_name = 'saas_organization_profile'
     permanent = False

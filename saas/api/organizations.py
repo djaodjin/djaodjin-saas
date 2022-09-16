@@ -357,17 +357,22 @@ class SubscribersQuerysetMixin(OrganizationDecorateMixin, ProviderMixin):
         return page
 
 
-class SubscribersAPIView(OrganizationSmartListMixin,
-                         SubscribersQuerysetMixin, ListAPIView):
+class ProviderAccessiblesAPIView(OrganizationSmartListMixin,
+                                 SubscribersQuerysetMixin, ListAPIView):
     """
-    Lists subscribers for a provider
+    Lists subscribers
 
-    Returns a list of {{PAGE_SIZE}} subscriber profiles which have or
-    had a subscription to a plan of the specified provider.
+    Returns a list of {{PAGE_SIZE}} subscribers which have or
+    had a subscription to a plan of the specified provider {profile}.
 
-    The queryset can be further refined to match a search filter (``q``)
-    and/or a range of dates ([``start_at``, ``ends_at``]),
-    and sorted on specific fields (``o``).
+    The queryset can be filtered for at least one field to match a search
+    term (``q``) and/or intersects a period (``start_at``, ``ends_at``).
+
+    Returned results can be ordered by natural fields (``o``) in either
+    ascending or descending order by using the minus sign ('-') in front
+    of the ordering field name.
+
+    The API is typically used in search forms linked to providers.
 
     **Tags**: list, provider, profilemodel, subscriptions
 
@@ -454,8 +459,8 @@ class EngagedSubscribersAPIView(EngagedSubscribersSmartListMixin,
     """
     Lists engaged subscribers
 
-    Returns a list of {{PAGE_SIZE}} subscriber profiles which have or
-    had a subscription to a plan of the specified provider.
+    Returns a list of {{PAGE_SIZE}} subscribers which have or
+    had a subscription to a plan of the specified provider {profile}.
 
     The queryset can be further refined to match a search filter (``q``)
     and/or a range of dates ([``start_at``, ``ends_at``]),
@@ -539,8 +544,8 @@ class UnengagedSubscribersAPIView(OrganizationSmartListMixin,
     """
     Lists inactive subscribers
 
-    Returns a list of {{PAGE_SIZE}} subscriber profiles which have or
-    had a subscription to a plan of the specified provider.
+    Returns a list of {{PAGE_SIZE}} subscribers which have or
+    had a subscription to a plan of the specified provider {profile}.
 
     The queryset can be further refined to match a search filter (``q``)
     and/or a range of dates ([``start_at``, ``ends_at``]),

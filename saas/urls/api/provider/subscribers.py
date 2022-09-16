@@ -28,9 +28,10 @@ API URLs for a provider subcribers.
 
 from .... import settings
 from ....api.organizations import (EngagedSubscribersAPIView,
-    UnengagedSubscribersAPIView, SubscribersAPIView)
-from ....api.subscriptions import (ActiveSubscriptionAPIView,
-    ChurnedSubscriptionAPIView, ProvidedSubscriptionsAPIView,
+    ProviderAccessiblesAPIView, UnengagedSubscribersAPIView)
+from ....api.subscriptions import (ActiveSubscribersAPIView,
+    AllSubscribersAPIView, ChurnedSubscribersAPIView, PlanAllSubscribersAPIView,
+    PlanActiveSubscribersAPIView, PlanChurnedSubscribersAPIView,
     PlanSubscriptionDetailAPIView, SubscriptionRequestAcceptAPIView)
 from ....compat import path, re_path
 
@@ -41,12 +42,17 @@ urlpatterns = [
         settings.VERIFICATION_KEY_RE),
         SubscriptionRequestAcceptAPIView.as_view(),
         name='saas_api_subscription_grant_accept'),
-    path('metrics/<slug:%s>/subscribers/active' %
+    path('profile/<slug:%s>/subscribers/subscriptions/all' %
         settings.PROFILE_URL_KWARG,
-        ActiveSubscriptionAPIView.as_view(), name='saas_api_subscribed'),
-    path('metrics/<slug:%s>/subscribers/churned' %
+        AllSubscribersAPIView.as_view(), name='saas_api_subscribers_all'),
+    path('profile/<slug:%s>/subscribers/subscriptions/churned' %
         settings.PROFILE_URL_KWARG,
-        ChurnedSubscriptionAPIView.as_view(), name='saas_api_churned'),
+        ChurnedSubscribersAPIView.as_view(),
+        name='saas_api_churned'),
+    path('profile/<slug:%s>/subscribers/subscriptions' %
+        settings.PROFILE_URL_KWARG,
+        ActiveSubscribersAPIView.as_view(), name='saas_api_subscribed'),
+
     path('profile/<slug:%s>/subscribers/engaged' %
         settings.PROFILE_URL_KWARG,
         EngagedSubscribersAPIView.as_view(),
@@ -57,7 +63,16 @@ urlpatterns = [
         name='saas_api_unengaged_subscribers'),
     path('profile/<slug:%s>/subscribers' %
         settings.PROFILE_URL_KWARG,
-        SubscribersAPIView.as_view(), name='saas_api_subscribers'),
+        ProviderAccessiblesAPIView.as_view(), name='saas_api_subscribers'),
+
+    path('profile/<slug:%s>/plans/<slug:plan>/subscriptions/all' %
+        settings.PROFILE_URL_KWARG,
+        PlanAllSubscribersAPIView.as_view(),
+        name='saas_api_plan_subscribers_all'),
+    path('profile/<slug:%s>/plans/<slug:plan>/subscriptions/churned' %
+        settings.PROFILE_URL_KWARG,
+        PlanChurnedSubscribersAPIView.as_view(),
+        name='saas_api_plan_subscribers_churned'),
     path(
     'profile/<slug:%s>/plans/<slug:plan>/subscriptions/<slug:subscriber>' %
         settings.PROFILE_URL_KWARG,
@@ -65,6 +80,6 @@ urlpatterns = [
         name='saas_api_plan_subscription'),
     path('profile/<slug:%s>/plans/<slug:plan>/subscriptions' %
         settings.PROFILE_URL_KWARG,
-        ProvidedSubscriptionsAPIView.as_view(),
-        name='saas_api_plan_subscriptions'),
+        PlanActiveSubscribersAPIView.as_view(),
+        name='saas_api_plan_subscribers'),
 ]

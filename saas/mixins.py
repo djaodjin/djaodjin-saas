@@ -812,59 +812,6 @@ class MetricsMixin(DateRangeContextMixin, ProviderMixin):
     filter_backends = (DateRangeFilter,)
 
 
-class SubscriptionMixin(OrganizationDecorateMixin):
-
-    model = Subscription
-    subscriber_url_kwarg = settings.PROFILE_URL_KWARG
-
-    def get_queryset(self):
-        kwargs = {}
-        state = self.request.GET.get('state')
-        if state:
-            today = datetime_or_now()
-            if state == 'active':
-                kwargs.update({'ends_at__gt': today})
-            elif state == 'expired':
-                kwargs.update({'ends_at__lt': today})
-        else:
-            starts_at = self.request.GET.get('expires_after')
-            ends_at = self.request.GET.get('expires_before')
-            #tz = self.request.GET.get('timezone')
-            if starts_at:
-                starts_at = datetime_or_now(starts_at)
-                kwargs.update({'ends_at__gt': starts_at})
-            if ends_at:
-                ends_at = datetime_or_now(ends_at)
-                kwargs.update({'ends_at__lt': ends_at})
-        plan = self.kwargs.get('plan', self.kwargs.get('subscribed_plan', None))
-        if plan:
-            kwargs.update({'plan__slug': plan})
-        # Use ``filter`` instead of active_for here because we want to list
-        # through the API subscriptions which are pending opt-in.
-        return Subscription.objects.filter(
-            organization__slug=self.kwargs.get(self.subscriber_url_kwarg),
-            **kwargs)
-
-    def paginate_queryset(self, queryset):
-        page = super(SubscriptionMixin, self).paginate_queryset(
-            queryset)
-        self.decorate_personal([sub.organization for sub in page])
-        return page
-
-    def get_object(self):
-        queryset = self.get_queryset()
-        obj = queryset.filter(
-            ends_at__gt=datetime_or_now()).order_by('ends_at').first()
-        if not obj:
-            raise Http404(_("cannot find active subscription to"\
-                " %(plan)s for %(organization)s") % {
-                'plan': self.kwargs.get('plan', self.kwargs.get(
-                    'subscribed_plan', None)),
-                'organization': self.kwargs.get(self.subscriber_url_kwarg)})
-        self.decorate_personal(obj.organization)
-        return obj
-
-
 class CartItemSmartListMixin(object):
     """
     The queryset can be further filtered to a range of dates between
@@ -1012,43 +959,6 @@ class RoleSmartListMixin(object):
     filter_backends = (SearchFilter, OrderingFilter)
 
 
-class SubscriptionSmartListMixin(object):
-    """
-    ``Subscription`` list which is also searchable and sortable.
-    """
-    search_fields = (
-        ('organization__slug', 'profile'),
-        ('organization__full_name', 'profile__full_name'),
-        ('organization__email', 'profile__email'),
-        ('organization__phone', 'profile__phone'),
-        ('organization__street_address', 'profile__street_address'),
-        ('organization__locality', 'profile__locality'),
-        ('organization__region', 'profile__region'),
-        ('organization__postal_code', 'profile__postal_code'),
-        ('organization__country', 'profile__country'),
-        ('plan__slug', 'plan'),
-        ('plan__title', 'plan__title')
-    )
-    ordering_fields = (
-        ('created_at', 'created_at'),
-        ('ends_at', 'ends_at'),
-        ('organization__slug', 'profile'),
-        ('organization__full_name', 'profile__full_name'),
-        ('organization__email', 'profile__email'),
-        ('organization__phone', 'profile__phone'),
-        ('organization__street_address', 'profile__street_address'),
-        ('organization__locality', 'profile__locality'),
-        ('organization__region', 'profile__region'),
-        ('organization__postal_code', 'profile__postal_code'),
-        ('organization__country', 'profile__country'),
-        ('plan__slug', 'plan'),
-        ('plan__title', 'plan__title')
-    )
-    ordering = ('ends_at',)
-
-    filter_backends = (OrderingFilter, SearchFilter)
-
-
 class UserSmartListMixin(object):
     """
     ``User`` list which is also searchable and sortable.
@@ -1083,7 +993,30 @@ class UserSmartListMixin(object):
     filter_backends = (DateRangeFilter, OrderingFilter, SearchFilter)
 
 
-class SubscribersQuerysetMixin(OrganizationDecorateMixin, ProviderMixin):
+class SubscribedSubscriptionsMixin(OrganizationDecorateMixin):
+
+    model = Subscription
+    subscriber_url_kwarg = settings.PROFILE_URL_KWARG
+
+    def get_queryset(self):
+        plan = self.kwargs.get('plan', self.kwargs.get('subscribed_plan', None))
+        kwargs = {}
+        if plan:
+            kwargs.update({'plan__slug': plan})
+        # Use ``filter`` instead of active_for here because we want to list
+        # through the API subscriptions which are pending opt-in.
+        return Subscription.objects.filter(
+            organization__slug=self.kwargs.get(self.subscriber_url_kwarg),
+            **kwargs)
+
+    def paginate_queryset(self, queryset):
+        page = super(SubscribedSubscriptionsMixin, self).paginate_queryset(
+            queryset)
+        self.decorate_personal([sub.organization for sub in page])
+        return page
+
+
+class ProvidedSubscriptionsMixin(OrganizationDecorateMixin, ProviderMixin):
 
     model = Subscription
 
@@ -1093,63 +1026,59 @@ class SubscribersQuerysetMixin(OrganizationDecorateMixin, ProviderMixin):
             plan__organization=self.provider)
 
     def paginate_queryset(self, queryset):
-        page = super(SubscribersQuerysetMixin, self).paginate_queryset(
+        page = super(ProvidedSubscriptionsMixin, self).paginate_queryset(
             queryset)
         self.decorate_personal([sub.organization for sub in page])
         return page
 
 
-class PlanSubscribersQuerysetMixin(PlanMixin, SubscribersQuerysetMixin):
+class PlanProvidedSubscriptionsMixin(PlanMixin, ProvidedSubscriptionsMixin):
 
     def get_queryset(self):
-        return super(PlanSubscribersQuerysetMixin, self).get_queryset().filter(
+        return super(
+            PlanProvidedSubscriptionsMixin, self).get_queryset().filter(
             plan__slug=self.kwargs.get(self.plan_url_kwarg))
 
 
-class ChurnedQuerysetMixin(DateRangeContextMixin, SubscribersQuerysetMixin):
+class SubscriptionSmartListMixin(object):
     """
-    ``QuerySet`` of ``Subscription`` which are no longer active.
+    ``Subscription`` list which is also searchable and sortable.
     """
+    search_fields = (
+        ('organization__slug', 'profile'),
+        ('organization__full_name', 'profile__full_name'),
+        ('organization__email', 'profile__email'),
+        ('organization__phone', 'profile__phone'),
+        ('organization__street_address', 'profile__street_address'),
+        ('organization__locality', 'profile__locality'),
+        ('organization__region', 'profile__region'),
+        ('organization__postal_code', 'profile__postal_code'),
+        ('organization__country', 'profile__country'),
+        ('plan__slug', 'plan'),
+        ('plan__title', 'plan__title')
+    )
+    ordering_fields = (
+        ('created_at', 'created_at'),
+        ('ends_at', 'ends_at'),
+        ('organization__slug', 'profile'),
+        ('organization__full_name', 'profile__full_name'),
+        ('organization__email', 'profile__email'),
+        ('organization__phone', 'profile__phone'),
+        ('organization__street_address', 'profile__street_address'),
+        ('organization__locality', 'profile__locality'),
+        ('organization__region', 'profile__region'),
+        ('organization__postal_code', 'profile__postal_code'),
+        ('organization__country', 'profile__country'),
+        ('plan__slug', 'plan'),
+        ('plan__title', 'plan__title')
+    )
+    ordering = ('ends_at',)
 
-    filter_backends = (DateRangeFilter,)
-
-    def get_queryset(self):
-        queryset = super(ChurnedQuerysetMixin, self).get_queryset()
-        kwargs = {}
-        start_at = self.request.GET.get('start_at', None)
-        if start_at:
-            # We don't want to constraint the start date if it is not
-            # explicitely set.
-            kwargs.update({'ends_at__gte': self.start_at})
-        return queryset.valid_for(
-            ends_at__lt=self.ends_at, **kwargs).order_by('-ends_at')
-
-
-class SubscribedQuerysetMixin(DateRangeContextMixin, SubscribersQuerysetMixin):
-    """
-    ``QuerySet`` of ``Subscription`` which are currently active.
-
-    Optionnaly when an ``ends_at`` query parameter is specified,
-    returns a ``QuerySet`` of ``Subscription`` that were active
-    at ``ends_at``.
-
-    Optionnaly when a ``start_at`` query parameter is specified,
-    only considers ``Subscription`` that were created after ``start_at``.
-    """
-
-    model = Subscription
-    filter_backends = (DateRangeFilter,)
-
-    def get_queryset(self):
-        queryset = super(SubscribedQuerysetMixin, self).get_queryset()
-        kwargs = {}
-        start_at = self.request.GET.get('start_at', None)
-        if start_at:
-            # We don't want to constraint the start date if it is not
-            # explicitely set.
-            kwargs.update({'created_at__lt': self.start_at})
-        return queryset.active_with(
-            self.provider, ends_at=self.ends_at, **kwargs).order_by('-ends_at')
+    filter_backends = (OrderingFilter, SearchFilter) # We are not including
+        # `DateRangeFilter` here because: 1) the filtering algorithm is done
+        # on the subscription period, i.e. both fields [created_at, ends_at[
+        # and 2) the filtering algorithm is different depending on whether
+        # we are looking for active or churned subscriptions.
 
 
 class RoleDescriptionMixin(OrganizationMixin):

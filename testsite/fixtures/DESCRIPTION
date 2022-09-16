@@ -5,3 +5,6 @@ A charge has failed after a balance was already due.
 There is a balance due on a subscription and a user is adding the plan
 in the cart again.
 
+130-subscriptions.json
+Defines a provider a 2 plans and 5 subscribers such that each subscription
+period intersects [2022-04-01,2022-07-31[ in a different way.

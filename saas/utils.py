@@ -1,4 +1,4 @@
-# Copyright (c) 2021, DjaoDjin inc.
+# Copyright (c) 2022, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -30,7 +30,7 @@ from django.conf import settings as django_settings
 from django.db import transaction, IntegrityError
 from django.http.request import split_domain_port, validate_host
 from django.template.defaultfilters import slugify
-from django.utils.dateparse import parse_datetime
+from django.utils.dateparse import parse_date, parse_datetime
 from django.utils.timezone import utc, get_current_timezone
 from rest_framework.exceptions import ValidationError
 from rest_framework.settings import api_settings
@@ -97,13 +97,19 @@ def as_timestamp(dtime_at=None):
 
 
 def datetime_or_now(dtime_at=None):
+    as_datetime = dtime_at
     if isinstance(dtime_at, six.string_types):
-        dtime_at = parse_datetime(dtime_at)
-    if not dtime_at:
-        dtime_at = datetime.datetime.utcnow().replace(tzinfo=utc)
-    if dtime_at.tzinfo is None:
-        dtime_at = dtime_at.replace(tzinfo=utc)
-    return dtime_at
+        as_datetime = parse_datetime(dtime_at)
+        if not as_datetime:
+            as_date = parse_date(dtime_at)
+            if as_date:
+                as_datetime = datetime.datetime.combine(
+                    as_date, datetime.time.min)
+    if not as_datetime:
+        as_datetime = datetime.datetime.utcnow().replace(tzinfo=utc)
+    if as_datetime.tzinfo is None:
+        as_datetime = as_datetime.replace(tzinfo=utc)
+    return as_datetime
 
 
 def datetime_to_utctimestamp(dtime_at, epoch=None):

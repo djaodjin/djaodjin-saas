@@ -40,6 +40,7 @@ from rest_framework.request import Request
 
 from .. import humanize
 from ..api.coupons import CouponQuerysetMixin, SmartCouponListMixin
+from ..api.subscriptions import ActiveSubscribersMixin, ChurnedSubscribersMixin
 from ..api.transactions import (BillingsQuerysetMixin,
     SmartTransactionListMixin, TransactionQuerysetMixin, TransferQuerysetMixin)
 from ..api.users import RegisteredQuerysetMixin
@@ -47,8 +48,7 @@ from ..compat import six
 from ..metrics.base import (abs_monthly_balances, monthly_balances,
     month_periods)
 from ..mixins import (CartItemSmartListMixin, ProviderMixin,
-    MetricsMixin, ChurnedQuerysetMixin, SubscriptionSmartListMixin,
-    SubscribedQuerysetMixin, UserSmartListMixin, as_html_description)
+    MetricsMixin, UserSmartListMixin, as_html_description)
 from ..models import BalanceLine, CartItem, Coupon
 from ..utils import datetime_or_now
 
@@ -57,6 +57,7 @@ class CSVDownloadView(View):
 
     basename = 'download'
     headings = []
+    filter_backends = []
 
     @staticmethod
     def encode(text):
@@ -301,27 +302,16 @@ class SubscriptionBaseDownloadView(CSVDownloadView):
         ]
 
 
-class ActiveSubscriptionBaseDownloadView(SubscribedQuerysetMixin,
-                                         SubscriptionBaseDownloadView):
+class ActiveSubscriptionDownloadView(ActiveSubscribersMixin,
+                                     SubscriptionBaseDownloadView):
 
     subscriber_type = 'active'
 
-class ActiveSubscriptionDownloadView(SubscriptionSmartListMixin,
-                                     ActiveSubscriptionBaseDownloadView):
 
-    pass
-
-
-class ChurnedSubscriptionBaseDownloadView(ChurnedQuerysetMixin,
-                                         SubscriptionBaseDownloadView):
+class ChurnedSubscriptionDownloadView(ChurnedSubscribersMixin,
+                                      SubscriptionBaseDownloadView):
 
     subscriber_type = 'churned'
-
-
-class ChurnedSubscriptionDownloadView(SubscriptionSmartListMixin,
-                                      ChurnedSubscriptionBaseDownloadView):
-
-    pass
 
 
 class TransactionDownloadView(SmartTransactionListMixin,
