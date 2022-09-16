@@ -6,12 +6,18 @@ Roadmap
   * rename <organization> into <profile> in url paths
   * support for Vue3
   * adds APIs for UseCharge
-  * fix group buy issues (balance statement, #155, #154) - done in 0.11.0
-  * move views under saas.urls.views - done in 0.12.0
-  * adds <profile> in charge API - done in 0.12.0
 
 Released versions
 =================
+
+0.15.0
+
+  * reworks API for active, all and churned subscriptions for consistency
+  * reverts to detail serializer in key list APIs
+  * fixes unengaged db query (ORM did not produce expected code)
+  * fixes regression to show registered users to broker
+
+ -- Sebastien Mirolo <smirolo@djaodjin.com>  Fri, 16 Sep 2022 13:40:00 -0700
 
 0.14.0
 

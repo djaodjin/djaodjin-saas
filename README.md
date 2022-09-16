@@ -99,11 +99,11 @@ saas/templates/notification/ directory.
 Release Notes
 =============
 
-0.14.0
+0.15.0
 
-  * consistently uses profile fields in serializers
-  * searches one of space-separated terms (use "" for `and`)
-  * makes definition of SAAS_ORGANIZATION_MODEL optionnal (regression 0.12.0)
-  * expects `full_name` when creating subscription
+  * reworks API for active, all and churned subscriptions for consistency
+  * reverts to detail serializer in key list APIs
+  * fixes unengaged db query (ORM did not produce expected code)
+  * fixes regression to show registered users to broker
 
 [previous release notes](changelog)
