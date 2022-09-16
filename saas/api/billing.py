@@ -47,7 +47,7 @@ from .serializers import (CartItemSerializer, CartItemCreateSerializer,
     OrganizationCartSerializer, RedeemCouponSerializer,
     ValidationErrorSerializer)
 
-#pylint: disable=no-init
+
 LOGGER = logging.getLogger(__name__)
 
 

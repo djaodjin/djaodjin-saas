@@ -84,7 +84,7 @@ class StripeWebhook(APIView):
     schema = None
 
     def post(self, request, *args, **kwargs):
-        #pylint:disable=unused-argument,no-self-use
+        #pylint:disable=unused-argument
         processor_backend = get_broker().processor_backend
         stripe.api_key = processor_backend.priv_key
 

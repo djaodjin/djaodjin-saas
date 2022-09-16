@@ -50,6 +50,7 @@ from ..utils import get_organization_model
 class IncludesSyncErrorPagination(PageNumberPagination):
 
     def paginate_queryset(self, queryset, request, view=None):
+        #pylint:disable=attribute-defined-outside-init
         if view and hasattr(view, 'processor_error'):
             self.detail = view.processor_error
         return super(IncludesSyncErrorPagination, self).paginate_queryset(

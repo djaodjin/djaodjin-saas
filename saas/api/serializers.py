@@ -58,7 +58,6 @@ from ..models import (AdvanceDiscount, BalanceLine, CartItem, Charge, Coupon,
 from ..utils import (build_absolute_uri, get_organization_model, get_role_model,
     get_user_serializer, get_user_detail_serializer)
 
-#pylint: disable=no-init
 
 LOGGER = logging.getLogger(__name__)
 
@@ -486,7 +485,7 @@ class OrganizationSerializer(serializers.ModelSerializer):
         return 'organization'
 
 OrganizationSerializer._declared_fields["type"] = \
-    serializers.SerializerMethodField(#pylint:disable=protected-access
+    serializers.SerializerMethodField(#pylint:disable=protected-access,no-member
     help_text=_("One of 'organization', 'personal' or 'user'"))
 
 
@@ -544,7 +543,8 @@ class OrganizationCreateSerializer(OrganizationDetailSerializer):
         fields = OrganizationDetailSerializer.Meta.fields
 
 OrganizationCreateSerializer._declared_fields["type"] = \
-    serializers.CharField(required=False,#pylint:disable=protected-access
+    serializers.CharField(#pylint:disable=protected-access,no-member
+        required=False,
         help_text=_("One of 'organization', 'personal' or 'user'"))
 
 

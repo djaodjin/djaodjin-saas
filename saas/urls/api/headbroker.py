@@ -30,7 +30,6 @@ from ... import settings
 from ...api.balances import (BalanceLineListAPIView, BrokerBalancesAPIView,
     BalanceLineDetailAPIView)
 from ...api.charges import ChargeListAPIView
-from ...api.organizations import OrganizationListAPIView
 from ...api.transactions import TransactionListAPIView
 from ...api.users import RegisteredAPIView
 from ...compat import path, re_path

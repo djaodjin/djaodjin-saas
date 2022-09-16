@@ -38,7 +38,6 @@ from ..models import get_broker
 from .serializers import (BankSerializer, CardSerializer,
     CardTokenSerializer)
 
-#pylint: disable=no-init
 
 class RetrieveBankAPIView(OrganizationMixin, RetrieveAPIView):
     """

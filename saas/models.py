@@ -90,8 +90,6 @@ from .utils import get_organization_model, get_role_model
 
 LOGGER = logging.getLogger(__name__)
 
-#pylint: disable=no-init
-
 
 class InsufficientFunds(Exception):
 
@@ -324,6 +322,7 @@ class AbstractOrganization(models.Model):
         Returns ``True`` if the organization is the hosting platform
         for the service.
         """
+        #pylint:disable=attribute-defined-outside-init
         if not hasattr(self, '_is_broker'):
             # We do a string compare here because both ``Organization`` might
             # come from a different db.
@@ -373,12 +372,13 @@ class AbstractOrganization(models.Model):
 
     def validate_processor(self):
         #pylint:disable=no-member,access-member-before-definition
-        Organization = get_organization_model()
+        #pylint:disable=attribute-defined-outside-init
+        organization_model = get_organization_model()
         if not self.processor_id:
             try:
-                self.processor = Organization.objects.get(
+                self.processor = organization_model.objects.get(
                     pk=settings.PROCESSOR_ID)
-            except Organization.DoesNotExist:
+            except organization_model.DoesNotExist:
                 # If the processor organization does not exist yet, it means
                 # we are inserting the first record to bootstrap the db.
                 self.processor_id = settings.PROCESSOR_ID
@@ -505,6 +505,7 @@ class AbstractOrganization(models.Model):
 
     @property
     def processor_backend(self):
+        #pylint:disable=attribute-defined-outside-init
         if not hasattr(self, '_processor_backend'):
             self._processor_backend = get_processor_backend(self)
         return self._processor_backend
@@ -987,6 +988,7 @@ class AbstractOrganization(models.Model):
             created = False
             if amount > 0:
                 #pylint:disable=protected-access
+                #pylint:disable=attribute-defined-outside-init
                 Transaction.objects._for_write = True
                 # The get() needs to be targeted at the write database in order
                 # to avoid potential transaction consistency problems.
@@ -1029,6 +1031,7 @@ class AbstractOrganization(models.Model):
                 # Stripe will draw back from the bank account to cover
                 # a refund, etc.
                 #pylint:disable=protected-access
+                #pylint:disable=attribute-defined-outside-init
                 Transaction.objects._for_write = True
                 # The get() needs to be targeted at the write database in order
                 # to avoid potential transaction consistency problems.
@@ -1215,10 +1218,14 @@ class AbstractOrganization(models.Model):
                                 'amount': balance_due})
 
 
+@python_2_unicode_compatible
 class Organization(AbstractOrganization):
 
     class Meta(AbstractOrganization.Meta):
         swappable = 'SAAS_ORGANIZATION_MODEL'
+
+    def __str__(self):
+        return str(self.slug)
 
 
 @python_2_unicode_compatible
@@ -1323,10 +1330,15 @@ class AbstractRole(models.Model):
             str(self.organization), str(self.user))
 
 
+@python_2_unicode_compatible
 class Role(AbstractRole):
 
     class Meta(AbstractRole.Meta):
         swappable = 'SAAS_ROLE_MODEL'
+
+    def __str__(self):
+        return '%s-%s-%s' % (str(self.role_description),
+            str(self.organization), str(self.user))
 
 
 @python_2_unicode_compatible
@@ -1630,6 +1642,7 @@ class Charge(models.Model):
 
     @property
     def broker_fee_amount(self):
+        #pylint:disable=attribute-defined-outside-init
         if not hasattr(self, '_broker_fee_amount'):
             self._broker_fee_amount = 0
             for charge_item in self.charge_items.all():
@@ -1660,8 +1673,8 @@ class Charge(models.Model):
 
     @property
     def processor_backend(self):
+        #pylint:disable=attribute-defined-outside-init
         if not hasattr(self, '_processor_backend'):
-            #pylint:disable=no-member
             self._processor_backend = self.broker.processor_backend
         return self._processor_backend
 
@@ -3269,7 +3282,6 @@ class SubscriptionManager(models.Manager):
         return self.get(pk=int(look.group(1)))
 
     def new_instance(self, organization, plan, ends_at=None):
-        #pylint: disable=no-self-use
         """
         New ``Subscription`` instance which is explicitely not in the db.
         """
@@ -4405,6 +4417,7 @@ class Transaction(models.Model):
         Returns the `Subscription` object associated to the `Transaction`
         or `None` if it could not be deduced from the `event_id`.
         """
+        #pylint:disable=attribute-defined-outside-init
         if not hasattr(self, '_subscription'):
             self._subscription = None
             if self.event_id:

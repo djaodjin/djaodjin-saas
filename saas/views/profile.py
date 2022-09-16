@@ -255,7 +255,7 @@ class OrganizationCreateView(RedirectFormMixin, CreateView):
     template_name = "saas/profile/new.html"
     implicit_create_on_none = False
 
-    def create_organization_from_user(self, user):#pylint:disable=no-self-use
+    def create_organization_from_user(self, user):
         with transaction.atomic():
             organization = self.organization_model.objects.create(
                 slug=user.username,
@@ -269,6 +269,7 @@ class OrganizationCreateView(RedirectFormMixin, CreateView):
 
     def form_valid(self, form):
         with transaction.atomic():
+            #pylint:disable=attribute-defined-outside-init
             self.object = form.save()
             if not _valid_manager(self.request, [get_broker()]):
                 # If it is a manager of the broker platform creating
@@ -306,6 +307,7 @@ class OrganizationCreateView(RedirectFormMixin, CreateView):
         if count == 0:
             if self.get_implicit_create_on_none():
                 try:
+                    #pylint:disable=attribute-defined-outside-init
                     self.object = self.create_organization_from_user(
                         request.user)
                     return http.HttpResponseRedirect(self.get_success_url())

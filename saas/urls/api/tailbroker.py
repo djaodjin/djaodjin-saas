@@ -28,7 +28,7 @@ that must be included after the provider and subscriber urls.
 """
 
 from ...api.organizations import OrganizationListAPIView
-from ...compat import path, re_path
+from ...compat import path
 
 
 urlpatterns = [

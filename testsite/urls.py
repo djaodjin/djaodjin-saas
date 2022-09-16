@@ -26,24 +26,23 @@ import debug_toolbar
 from django.conf import settings
 from django.conf.urls.static import static
 from django.core.exceptions import ImproperlyConfigured
+from django.contrib import admin
 from django.contrib.auth.decorators import login_required
 from django.views.generic import TemplateView
+from rules.urldecorators import include, re_path
 from saas import settings as saas_settings
 from saas.compat import reverse_lazy
 from saas.decorators import (fail_agreement, fail_authenticated, fail_direct,
     fail_provider, fail_provider_only, fail_self_provider)
 from saas.views import OrganizationRedirectView, UserRedirectView
-from rules.urldecorators import include, re_path
 
+from . import signals
 from .views.app import AppView
 from .views.auth import LoginAPIView, PersonalRegistrationView
 from .views.organization import OrganizationListView, UserProfileView
 
-# Uncomment the next two lines to enable the admin:
-from django.contrib import admin
-admin.autodiscover()
 
-from . import signals
+admin.autodiscover()
 
 
 def url_prefixed(regex, view, name=None, redirects=None):

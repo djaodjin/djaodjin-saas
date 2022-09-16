@@ -39,7 +39,6 @@ from ..mixins import DateRangeContextMixin
 from .serializers import (BalanceLineSerializer, MetricsSerializer,
     UpdateRankSerializer)
 
-#pylint: disable=no-init
 
 class BrokerBalancesAPIView(DateRangeContextMixin, GenericAPIView):
     """

@@ -140,7 +140,7 @@ class RazorpayBackend(object):
         return self.get_deposit_context()
 
     def retrieve_card(self, subscriber, broker=None):
-        #pylint:disable=unused-argument,no-self-use
+        #pylint:disable=unused-argument
         context = {}
         return context
 

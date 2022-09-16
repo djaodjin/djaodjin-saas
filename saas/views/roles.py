@@ -54,7 +54,7 @@ class RoleImplicitGrantAcceptView(RedirectView):
     def check_email_verified(self, request, user,
                              redirect_field_name=REDIRECT_FIELD_NAME,
                              next_url=None):
-        #pylint:disable=unused-argument,no-self-use
+        #pylint:disable=unused-argument
         return True
 
     def get_implicit_grant_response(self, next_url, role, *args, **kwargs):
@@ -70,8 +70,8 @@ class RoleImplicitGrantAcceptView(RedirectView):
                 'role_descr': role_descr.title,
                 'organization': organization.printable_name,
                 'managers': ', '.join([user.get_full_name() for user
-                    in organization.with_role(settings.MANAGER)]).exclude(
-                        pk=self.request.user.pk)})
+                    in organization.with_role(settings.MANAGER).exclude(
+                        pk=self.request.user.pk)])})
         else:
             messages.info(self.request, _("You need to verify"\
                 " your e-mail address before going further. Please"\

@@ -46,6 +46,7 @@ class RoleGrantAcceptView(RedirectView):
 
     @property
     def role(self):
+        #pylint:disable=attribute-defined-outside-init
         if not hasattr(self, '_role'):
             self._role = get_role_model().objects.filter(
                 grant_key=self.kwargs.get('verification_key')).first()
@@ -113,6 +114,7 @@ class SubscriptionGrantAcceptView(SubscribedSubscriptionsMixin, RedirectView):
 
     @property
     def subscription(self):
+        #pylint:disable=attribute-defined-outside-init
         if not hasattr(self, '_subscription'):
             self._subscription = self.get_queryset().filter(
                 grant_key=self.kwargs.get('verification_key')).first()
@@ -165,6 +167,7 @@ class SubscriptionRequestAcceptView(ProvidedSubscriptionsMixin, RedirectView):
 
     @property
     def subscription(self):
+        #pylint:disable=attribute-defined-outside-init
         if not hasattr(self, '_subscription'):
             self._subscription = self.get_queryset().filter(
                 request_key=self.kwargs.get('request_key')).first()

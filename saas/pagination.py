@@ -39,6 +39,7 @@ class BalancePagination(PageNumberPagination):
     """
 
     def paginate_queryset(self, queryset, request, view=None):
+        #pylint:disable=attribute-defined-outside-init
         self.start_at = view.start_at
         self.ends_at = view.ends_at
         if view.selector is not None:
@@ -170,6 +171,7 @@ class StatementBalancePagination(PageNumberPagination):
     """
 
     def paginate_queryset(self, queryset, request, view=None):
+        #pylint:disable=attribute-defined-outside-init
         self.start_at = view.start_at
         self.ends_at = view.ends_at
         self.balance_amount, self.balance_unit \
@@ -241,6 +243,7 @@ class StatementBalancePagination(PageNumberPagination):
 class TotalPagination(PageNumberPagination):
 
     def paginate_queryset(self, queryset, request, view=None):
+        #pylint:disable=attribute-defined-outside-init
         self.start_at = view.start_at
         self.ends_at = view.ends_at
         self.totals = view.totals
@@ -300,6 +303,7 @@ class TypeaheadPagination(PageNumberPagination):
     page_size = settings.MAX_TYPEAHEAD_CANDIDATES
 
     def paginate_queryset(self, queryset, request, view=None):
+        #pylint:disable=attribute-defined-outside-init
         self.count = queryset.count()
         if self.count > self.page_size:
             # returning an empty set if the number of results is greater than

@@ -219,6 +219,7 @@ djaodjin-saas/tree/master/saas/templates/saas/billing/bank.html>`__).
             auth_code = request.GET.get('code', None)
             if auth_code:
                 try:
+                    #pylint:disable=attribute-defined-outside-init
                     self.object = self.get_object()
                     self.connect_auth(auth_code)
                     self.object.save()
@@ -425,6 +426,7 @@ class TransactionBaseView(DateRangeContextMixin, TemplateView):
 
     def get_context_data(self, **kwargs):
         context = super(TransactionBaseView, self).get_context_data(**kwargs)
+        #pylint:disable=attribute-defined-outside-init
         self.selector = self.kwargs.get('selector', None)
         api_location = reverse('saas_api_transactions')
         if self.selector:
@@ -829,6 +831,7 @@ class VTChargeView(CardFormMixin, FormView):
                     Price(form.cleaned_data['amount'], settings.DEFAULT_UNIT),
                     provider, form.cleaned_data['descr'])
                 invoiced_item.save()
+                #pylint:disable=attribute-defined-outside-init
                 self.charge = Charge.objects.charge_card(
                     self.organization, [invoiced_item], user=self.request.user,
                     token=processor_token, remember_card=remember_card)

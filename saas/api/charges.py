@@ -41,8 +41,6 @@ from ..models import Charge, InsufficientFunds
 from ..mixins import ChargeMixin, OrganizationMixin
 from ..pagination import TotalPagination
 
-#pylint: disable=no-init
-
 
 class ChargeResourceView(ChargeMixin, RetrieveAPIView):
     """
@@ -99,8 +97,7 @@ class SmartChargeListMixin(object):
 
 class ChargeQuerysetMixin(object):
 
-    @staticmethod
-    def get_queryset():
+    def get_queryset(self):
         return Charge.objects.all()
 
 
@@ -156,6 +153,7 @@ class ChargeListAPIView(SmartChargeListMixin,
 
     def get_queryset(self):
         queryset = super(ChargeListAPIView, self).get_queryset()
+        #pylint:disable=attribute-defined-outside-init
         self.totals = queryset.aggregate('unit', 'amount')
         return queryset
 
@@ -263,6 +261,7 @@ class ChargeRefundAPIView(ChargeMixin, CreateAPIView):
     def post(self, request, *args, **kwargs): #pylint: disable=unused-argument
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
+        #pylint:disable=attribute-defined-outside-init
         self.object = self.get_object()
         charge = self.object
         if charge.state != charge.DONE:
@@ -331,6 +330,7 @@ class EmailChargeReceiptAPIView(ChargeMixin, GenericAPIView):
 
     @swagger_auto_schema(request_body=no_body)
     def post(self, request, *args, **kwargs): #pylint: disable=unused-argument
+        #pylint:disable=attribute-defined-outside-init
         self.object = self.get_object()
         signals.charge_updated.send(
             sender=__name__, charge=self.object, user=request.user)

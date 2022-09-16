@@ -29,7 +29,7 @@ from django.http import Http404
 from django.shortcuts import get_object_or_404
 
 # Implementation Note:
-#
+# pylint:disable=import-outside-toplevel
 # saas.settings cannot be imported at this point because this file (extras.py)
 # will be imported before ``django.conf.settings`` is fully initialized.
 from .compat import (NoReverseMatch, gettext_lazy as _, is_authenticated,

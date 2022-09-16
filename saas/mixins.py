@@ -69,7 +69,7 @@ class BalanceDueMixin(object):
         return options
 
     def as_invoicables(self, user, customer, at_time=None):
-        #pylint: disable=too-many-locals,unused-argument,no-self-use
+        #pylint: disable=too-many-locals,unused-argument
         invoicables = []
         at_time = datetime_or_now(at_time)
         balances = Transaction.objects.get_statement_balances(
@@ -179,9 +179,7 @@ class CartMixin(object):
                 prorated_amount=prorated_amount,
                 period_amount=plan.period_amount)
             discount_by_types[coupon.discount_type] = coupon.discount_value
-        amount = full_amount - coupon_discount_amount
-        if amount <= 0:
-            amount = 0
+        amount = max(full_amount - coupon_discount_amount, 0)
 
         if plan.unlock_event:
             # Locked plans are free until an event.

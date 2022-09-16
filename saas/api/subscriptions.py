@@ -48,7 +48,6 @@ from .serializers import (ForceSerializer,
     ProvidedSubscriptionSerializer, ProvidedSubscriptionCreateSerializer,
     ProvidedSubscriptionDetailSerializer,SubscribedSubscriptionSerializer)
 
-#pylint: disable=no-init
 
 LOGGER = logging.getLogger(__name__)
 
@@ -995,6 +994,7 @@ class SubscriptionRequestAcceptAPIView(GenericAPIView):
 
     @property
     def subscription(self):
+        #pylint:disable=attribute-defined-outside-init
         if not hasattr(self, '_subscription'):
             self._subscription = get_object_or_404(self.get_queryset(),
                 request_key=self.kwargs.get('request_key'))

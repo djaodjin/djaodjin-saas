@@ -196,6 +196,7 @@ class CartItemDownloadView(CartItemSmartListMixin, CartItemQuerysetMixin,
 
     @property
     def coupon_code(self):
+        #pylint:disable=attribute-defined-outside-init
         if not hasattr(self, '_coupon_code'):
             self._coupon_code = self.kwargs.get(self.coupon_url_kwarg)
         return self._coupon_code
@@ -207,6 +208,7 @@ class CartItemDownloadView(CartItemSmartListMixin, CartItemQuerysetMixin,
                 code=self.coupon_code)
             return [coupon]
         view = CouponDownloadView()
+        #pylint:disable=attribute-defined-outside-init
         if hasattr(view, 'setup'):
             # `setup` is only defined in Django 2.2+
             view.setup(self.request, *self.args, **self.kwargs)

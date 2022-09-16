@@ -104,10 +104,10 @@ class OrganizationRedirectView(TemplateResponseMixin, ContextMixin,
     def check_email_verified(self, request, user,
                              redirect_field_name=REDIRECT_FIELD_NAME,
                              next_url=None):
-        #pylint:disable=unused-argument,no-self-use
+        #pylint:disable=unused-argument
         return True
 
-    def create_organization_from_user(self, user):#pylint:disable=no-self-use
+    def create_organization_from_user(self, user):
         with transaction.atomic():
             organization = self.organization_model.objects.create(
                 slug=user.username,

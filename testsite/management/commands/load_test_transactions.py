@@ -183,7 +183,7 @@ class Command(BaseCommand):
                 'organization': broker,
                 'is_active': True
         })
-        advance_discount = AdvanceDiscount.objects.get_or_create(
+        AdvanceDiscount.objects.get_or_create(
             plan=plan,
             discount_type=AdvanceDiscount.PERCENTAGE,
             discount_value=1000,
@@ -210,7 +210,7 @@ class Command(BaseCommand):
                 'organization': broker,
                 'is_active': True
         })
-        advance_discount = AdvanceDiscount.objects.get_or_create(
+        AdvanceDiscount.objects.get_or_create(
             plan=plan,
             discount_type=AdvanceDiscount.PERCENTAGE,
             discount_value=81,

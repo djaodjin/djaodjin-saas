@@ -126,7 +126,7 @@ class OptinBase(OrganizationDecorateMixin, OrganizationCreateMixin):
     organization_model = get_organization_model()
 
     def add_relations(self, organizations, user, ends_at=None):
-        #pylint:disable=no-self-use,unused-argument
+        #pylint:disable=unused-argument
         roles = []
         created = False
         for organization in organizations:
@@ -138,7 +138,7 @@ class OptinBase(OrganizationDecorateMixin, OrganizationCreateMixin):
         return roles, created
 
     def send_signals(self, relations, user, reason=None, invite=False):
-        #pylint:disable=no-self-use,unused-argument
+        #pylint:disable=unused-argument
         for role in relations:
             signals.role_request_created.send(sender=__name__,
                 role=role, reason=reason)

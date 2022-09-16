@@ -402,6 +402,7 @@ class IntersectPeriodFilter(DateRangeFilter):
     forced_date_range = False
 
     def get_period_fields(self, model):
+        #pylint:disable=unused-argument
         return ('created_at', 'ends_at')
 
     def filter_queryset(self, request, queryset, view):

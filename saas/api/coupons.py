@@ -39,8 +39,6 @@ from ..models import Coupon
 from ..mixins import CouponMixin, ProviderMixin
 from ..utils import handle_uniq_error
 
-#pylint: disable=no-init
-
 
 class SmartCouponListMixin(object):
     """
@@ -290,6 +288,7 @@ class CouponDetailAPIView(CouponMixin, RetrieveUpdateDestroyAPIView):
         if getattr(instance, '_prefetched_objects_cache', None):
             # If 'prefetch_related' has been applied to a queryset, we need to
             # forcibly invalidate the prefetch cache on the instance.
+            #pylint:disable=protected-access
             instance._prefetched_objects_cache = {}
 
         return Response(CouponSerializer().to_representation(

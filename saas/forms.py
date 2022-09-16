@@ -42,7 +42,7 @@ from .compat import gettext_lazy as _
 from .models import AdvanceDiscount, Plan, Subscription
 from .utils import get_organization_model
 
-#pylint: disable=no-member,no-init
+#pylint: disable=no-member
 
 class PhoneField(PhoneNumberField):
 

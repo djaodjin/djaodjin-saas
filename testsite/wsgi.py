@@ -15,7 +15,8 @@ framework.
 """
 import os, signal
 
-#pylint: disable=invalid-name
+from django.core.wsgi import get_wsgi_application
+
 
 def save_coverage(*args, **kwargs):
     #pylint:disable=unused-argument
@@ -43,6 +44,5 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "testsite.settings")
 # This application object is used by any WSGI server configured to use this
 # file. This includes Django's development server, if the WSGI_APPLICATION
 # setting points here.
-from django.core.wsgi import get_wsgi_application
 #pylint: disable=invalid-name
 application = get_wsgi_application()

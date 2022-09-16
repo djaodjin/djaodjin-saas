@@ -36,8 +36,6 @@ from ..mixins import (ProviderMixin, UserSmartListMixin,
 from ..utils import get_role_model, get_user_serializer
 
 
-#pylint: disable=no-init
-
 class RegisteredQuerysetMixin(DateRangeContextMixin, ProviderMixin):
     """
     All ``User`` that have registered, and who are not associated
