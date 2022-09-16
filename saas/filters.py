@@ -421,10 +421,9 @@ class IntersectPeriodFilter(DateRangeFilter):
 
 class ActiveInPeriodFilter(IntersectPeriodFilter):
     """
-    Returns active subscriptions that intersects
-    the period specified by [start_at,ends_at[
-
-    ``subscription.created_at < ends_at && subscription.ends_at >= end_at``
+    Returns subscriptions that are currently active,
+    extends beyond `ends_at` and were started after
+    `start_at` when specified.
     """
     forced_date_range = True
     ends_at_param = None
@@ -443,7 +442,7 @@ class ActiveInPeriodFilter(IntersectPeriodFilter):
                 '%s__gte' % ends_field: ends_at
             })
         if start_at:
-            kwargs.update({'%s__lt' % start_field: start_at})
+            kwargs.update({'%s__gte' % start_field: start_at})
         return queryset.filter(**kwargs)
 
 
