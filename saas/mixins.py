@@ -936,14 +936,23 @@ class RoleSmartListMixin(object):
       - created_at
     """
     search_fields = (
-        ('organization__slug', 'profile'),
-        ('organization__full_name', 'profile__full_name'),
-        ('organization__email', 'profile__email'),
-        ('user__username', 'user'),
-        ('user__email', 'user__email'),
-        ('role_description__title', 'role__title'),
-        ('role_description__slug', 'role')
+        'profile',
+        'profile__full_name',
+        'profile__email',
+        'user',
+        'user__email',
+        'role__title',
+        'role'
     )
+    alternate_fields = {
+        'profile': 'organization__slug',
+        'profile__full_name': 'organization__full_name',
+        'profile__email': 'organization__email',
+        'user': 'user__username',
+        'role': 'role_description__slug',
+        'role__title': 'role_description__title',
+    }
+
     ordering_fields = (
         ('organization__full_name', 'profile__full_name'),
         ('user__username', 'user'),
@@ -1043,18 +1052,31 @@ class SubscriptionSmartListMixin(object):
     ``Subscription`` list which is also searchable and sortable.
     """
     search_fields = (
-        ('organization__slug', 'profile'),
-        ('organization__full_name', 'profile__full_name'),
-        ('organization__email', 'profile__email'),
-        ('organization__phone', 'profile__phone'),
-        ('organization__street_address', 'profile__street_address'),
-        ('organization__locality', 'profile__locality'),
-        ('organization__region', 'profile__region'),
-        ('organization__postal_code', 'profile__postal_code'),
-        ('organization__country', 'profile__country'),
-        ('plan__slug', 'plan'),
-        ('plan__title', 'plan__title')
+        'profile',
+        'profile__full_name',
+        'profile__email',
+        'profile__phone',
+        'profile__street_address',
+        'profile__locality',
+        'profile__region',
+        'profile__postal_code',
+        'profile__country',
+        'plan',
+        'plan__title',
     )
+    alternate_fields = {
+        'profile': 'organization__slug',
+        'profile__full_name': 'organization__full_name',
+        'profile__email': 'organization__email',
+        'profile__phone': 'organization__phone',
+        'profile__street_address': 'organization__street_address',
+        'profile__locality': 'organization__locality',
+        'profile__region': 'organization__region',
+        'profile__postal_code': 'organization__postal_code',
+        'profile__country': 'organization__country',
+        'plan': 'plan__slug',
+    }
+
     ordering_fields = (
         ('created_at', 'created_at'),
         ('ends_at', 'ends_at'),

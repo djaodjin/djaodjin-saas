@@ -411,12 +411,15 @@ class EngagedSubscribersSmartListMixin(object):
     date_field = 'user__last_login'
 
     search_fields = (
-        ('first_name', 'first_name'),
-        ('last_name', 'last_name'),
-        ('organization__slug', 'profile'),
-        ('organization__full_name', 'profile__full_name')
+        'first_name',
+        'last_name',
+        'profile',
+        'profile__full_name'
     )
-
+    alternate_fields = {
+        'profile': 'organization__slug',
+        'profile__full_name': 'organization__full_name'
+    }
     ordering_fields = (
         ('user__last_login', 'created_at'),
         ('user__first_name', 'first_name'),

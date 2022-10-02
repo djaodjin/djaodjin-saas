@@ -45,13 +45,17 @@ class SmartCouponListMixin(object):
     ``Coupon`` list which is also searchable and sortable.
     """
     search_fields = (
-        ('amount', 'amount'),
-        ('code', 'code'),
-        ('description', 'description'),
-        ('discount_type', 'discount_type'),
-        ('organization__slug', 'profile'),
-        ('organization__full_name', 'profile__full_name')
+        'amount',
+        'code',
+        'description',
+        'discount_type',
+        'profile',
+        'profile__full_name'
     )
+    alternate_fields = {
+        'profile': 'organization__slug',
+        'profile__full_name': 'organization__full_name'
+    }
     ordering_fields = (
         ('amount', 'amount'),
         ('code', 'code'),

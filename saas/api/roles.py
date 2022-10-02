@@ -589,8 +589,8 @@ class RoleDescriptionQuerysetMixin(OrganizationMixin):
       - title
     """
     search_fields = (
-        ('slug', 'slug'),
-        ('title', 'title'),
+        'slug',
+        'title',
     )
     ordering_fields = (
         ('slug', 'slug'),

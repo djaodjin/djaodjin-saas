@@ -87,12 +87,19 @@ class TransactionFilterMixin(DateRangeContextMixin):
     """
 
     search_fields = (
-        ('descr', 'description'),
-        ('dest_organization__full_name', 'dest_profile__full_name'),
-        ('dest_organization__slug', 'dest_profile'),
-        ('orig_organization__full_name', 'orig_profile__full_name'),
-        ('orig_organization__slug', 'orig_profile')
+        'description',
+        'dest_profile',
+        'dest_profile__full_name',
+        'orig_profile',
+        'orig_profile__full_name',
     )
+    alternate_fields = {
+        'description': 'descr',
+        'dest_profile': 'dest_organization__slug',
+        'dest_profile__full_name': 'dest_organization__full_name',
+        'orig_profile': 'orig_organization__slug',
+        'orig_profile__full_name': 'orig_organization__full_name',
+    }
 
     filter_backends = (DateRangeFilter, SearchFilter)
 
