@@ -99,11 +99,9 @@ saas/templates/notification/ directory.
 Release Notes
 =============
 
-0.15.0
+0.15.1
 
-  * reworks API for active, all and churned subscriptions for consistency
-  * reverts to detail serializer in key list APIs
-  * fixes unengaged db query (ORM did not produce expected code)
-  * fixes regression to show registered users to broker
+  * uses serialized transactions in notifications (fixes regression)
+  * fitlers by a search term (fixes regression)
 
 [previous release notes](changelog)

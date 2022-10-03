@@ -10,6 +10,13 @@ Roadmap
 Released versions
 =================
 
+0.15.1
+
+  * uses serialized transactions in notifications (fixes regression)
+  * fitlers by a search term (fixes regression)
+
+ -- Sebastien Mirolo <smirolo@djaodjin.com>  Mon,  3 Oct 2022 14:45:00 -0700
+
 0.15.0
 
   * reworks API for active, all and churned subscriptions for consistency
