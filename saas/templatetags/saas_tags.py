@@ -70,10 +70,11 @@ def date_in_future(value, arg=None):
 @register.filter(needs_autoescape=False)
 def describe(transaction):
     try:
-        return transaction['description']
+        descr = transaction['description']  # Serializers have already run
+                                            # `as_html_description`.
     except (TypeError, KeyError):
-        pass
-    return mark_safe(as_html_description(transaction))
+        descr = as_html_description(transaction)
+    return mark_safe(descr)
 
 
 @register.filter(needs_autoescape=False)
