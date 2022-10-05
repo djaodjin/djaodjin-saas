@@ -5,8 +5,10 @@
   <h1>Charge Receipt</h1>
   <div>
     <a id="email-charge-receipt" href="">Email Again</a>
+    {% if urls.charge and urls.charge.printable_receipt %}
     <a id="charge-printable" target="_blank"
-   href="{% if urls.charge.printable_receipt %}{{urls.charge.printable_receipt}}{% endif %}">Printable</a>
+       href="{{urls.charge.printable_receipt}}">Printable</a>
+    {% endif %}
   </div>
   <section id="status">
       <p>

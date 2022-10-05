@@ -32,7 +32,7 @@ from .....views.billing import ChargeReceiptView, BillingStatementView
 from .....views.download import BillingStatementDownloadView
 
 try:
-    from ....views.extra import PrintableChargeReceiptView
+    from .....views.extra import PrintableChargeReceiptView
     urlpatterns = [
         path('billing/<slug:%s>/receipt/<slug:charge>/printable/' %
             settings.PROFILE_URL_KWARG,
