@@ -267,6 +267,12 @@ class SubscriptionDetailAPIView(SubscriptionDetailMixin,
         }
     """
     serializer_class = SubscribedSubscriptionSerializer
+    plan_url_kwarg = 'subscribed_plan'
+
+    def get_queryset(self):
+        queryset = super(SubscriptionDetailAPIView, self).get_queryset().filter(
+            plan__slug=self.kwargs.get(self.plan_url_kwarg))
+        return queryset
 
     def put(self, request, *args, **kwargs):
         """
@@ -391,6 +397,11 @@ class PlanSubscriptionDetailAPIView(SubscriptionDetailMixin,
     subscriber_url_kwarg = 'subscriber'
     serializer_class = ProvidedSubscriptionSerializer
 
+    def get_queryset(self):
+        queryset = super(
+            PlanSubscriptionDetailAPIView, self).get_queryset().filter(
+                organization__slug=self.kwargs.get(self.subscriber_url_kwarg))
+        return queryset
 
     def delete(self, request, *args, **kwargs):
         """

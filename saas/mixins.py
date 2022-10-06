@@ -1006,15 +1006,10 @@ class SubscribedSubscriptionsMixin(OrganizationDecorateMixin):
     subscriber_url_kwarg = settings.PROFILE_URL_KWARG
 
     def get_queryset(self):
-        plan = self.kwargs.get('plan', self.kwargs.get('subscribed_plan', None))
-        kwargs = {}
-        if plan:
-            kwargs.update({'plan__slug': plan})
         # Use ``filter`` instead of active_for here because we want to list
         # through the API subscriptions which are pending opt-in.
         return Subscription.objects.filter(
-            organization__slug=self.kwargs.get(self.subscriber_url_kwarg),
-            **kwargs)
+            organization__slug=self.kwargs.get(self.subscriber_url_kwarg))
 
     def paginate_queryset(self, queryset):
         page = super(SubscribedSubscriptionsMixin, self).paginate_queryset(
