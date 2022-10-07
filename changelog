@@ -10,6 +10,13 @@ Roadmap
 Released versions
 =================
 
+0.15.2
+
+  * adds optional URL to download a PDF version of a receipt
+  * unsubscribes only subscriber through a plan API (fixes regression)
+
+ -- Sebastien Mirolo <smirolo@djaodjin.com>  Fri,  7 Oct 2022 13:35:00 -0700
+
 0.15.1
 
   * uses serialized transactions in notifications (fixes regression)

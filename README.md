@@ -99,9 +99,9 @@ saas/templates/notification/ directory.
 Release Notes
 =============
 
-0.15.1
+0.15.2
 
-  * uses serialized transactions in notifications (fixes regression)
-  * fitlers by a search term (fixes regression)
+  * adds optional URL to download a PDF version of a receipt
+  * unsubscribes only subscriber through a plan API (fixes regression)
 
 [previous release notes](changelog)
