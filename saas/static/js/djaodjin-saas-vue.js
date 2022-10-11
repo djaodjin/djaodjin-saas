@@ -891,9 +891,18 @@ var roleListMixin = {
                     }
                 }
                 vm.reqPost(vm.create_url, data,
-                    function() {
+                    function(resp) {
                         vm.clearNewProfile();
-                        vm.refresh();
+                        const queryString = window.location.search;
+                        const params = new URLSearchParams(queryString);
+                        const next = params.get('next');
+                        if( next ) {
+                            const redirectTo = next.replace(
+                                '/:profile/', '/' + resp.slug + '/');
+                            window.location = redirectTo
+                        } else {
+                            vm.refresh();
+                        }
                     }
                 );
             }
