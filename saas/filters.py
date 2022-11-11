@@ -109,7 +109,12 @@ class SearchFilter(BaseSearchFilter):
                 except FieldDoesNotExist:
                     pass
             elif field in model_fields:
-                valid_fields.append(field)
+                rel = queryset.model._meta.get_field(field).remote_field
+                if not rel:
+                    # if it is a relation fields (as a result valid),
+                    # we don't want to end-up with a problem later on
+                    # when we are trying `field__icontains=`.
+                    valid_fields.append(field)
 
         return tuple(valid_fields)
 
