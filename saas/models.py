@@ -2672,8 +2672,8 @@ class Plan(SlugTitleMixin, models.Model):
         help_text=_("Date/time of creation (in ISO format)"))
     discontinued_at = models.DateTimeField(null=True, blank=True,
         help_text=_("Date/time the plan was discountinued (in ISO format)"))
-    organization = models.ForeignKey(settings.ORGANIZATION_MODEL, on_delete=models.CASCADE,
-        related_name='plans',
+    organization = models.ForeignKey(settings.ORGANIZATION_MODEL,
+        on_delete=models.CASCADE, related_name='plans',
         help_text=_("Profile the plan belongs to"))
     unit = models.CharField(max_length=3, default=settings.DEFAULT_UNIT,
         help_text=_("Three-letter ISO 4217 code for currency unit (ex: usd)"))

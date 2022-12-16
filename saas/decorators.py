@@ -198,18 +198,12 @@ def fail_active_roles(request):
     return False
 
 
-def fail_subscription(request, organization=None, plan=None):
+def _valid_subscriptions(request, organization=None, plan=None):
     """
-    Subscribed or was subscribed to %(saas.Plan)s
-
-    When a ``plan`` is specified, providers of the plan will also pass
-    this check. Without a ``plan``, only users with valid access to the broker
-    will also pass the check.
+    Returns a tuple of providers and subscriptions accessible
+    by the request.user based on ``organization`` and ``plan``.
     """
     organization_model = get_organization_model()
-    if _has_valid_access(request, [get_broker()]):
-        # Bypass if a manager for the broker.
-        return False
     if organization:
         if not isinstance(organization, organization_model):
             organization = get_object_or_404(organization_model,
@@ -217,23 +211,71 @@ def fail_subscription(request, organization=None, plan=None):
         candidates = [organization]
     else:
         candidates = organization_model.objects.accessible_by(request.user)
-    subscriptions = Subscription.objects.valid_for(
-        organization__in=candidates).order_by('ends_at')
+    subscriptions = Subscription.objects.valid_for(organization__in=candidates)
     if plan:
-        if not isinstance(plan, Plan):
-            plan = get_object_or_404(Plan, slug=plan)
-        if organization_model.objects.accessible_by(request.user).filter(
-                pk=plan.organization.pk).exists():
-            # The request.user has a role on the plan provider.
-            return False
-        subscriptions = subscriptions.filter(plan=plan).order_by('ends_at')
+        if isinstance(plan, (list, tuple)):
+            # We are looking at user with a role on the plan provider
+            uses_objects = False
+            for item in plan:
+                if not isinstance(item, Plan):
+                    uses_objects = False
+                    break
+            if uses_objects:
+                accessible_providers_filters = {'plans__in': plan}
+                subscriptions_filters = {'plan__in': plan}
+            else:
+                accessible_providers_filters = {'plans__slug__in': plan}
+                subscriptions_filters = {'plan__slug__in': plan}
+        else:
+            if isinstance(plan, Plan):
+                accessible_providers_filters = {'plans__in': plan}
+                subscriptions_filters = {'plan__in': plan}
+            else:
+                accessible_providers_filters = {'plans__slug__in': plan}
+                subscriptions_filters = {'plan__slug__in': plan}
+    else:
+        accessible_providers_filters = {
+            'plans__pk__in': subscriptions.values_list('pk', flat=True)}
+        subscriptions_filters = {}
+
+    accessible_providers = organization_model.objects.accessible_by(
+        request.user).filter(**accessible_providers_filters)
+    subscriptions = subscriptions.filter(
+        **subscriptions_filters).order_by('ends_at')
+
+    return accessible_providers, subscriptions
+
+
+def fail_subscription(request, organization=None, plan=None):
+    """
+    Subscribed or was subscribed to %(saas.Plan)s
+
+    When a ``plan`` is specified, either as a single plan or a list of plans,
+    users with a role on providers of these plans will also pass this check.
+    Without a ``plan``, it is implicitely assumed to be the list of plans
+    the ``profile`` is subscribed or was subscribed to.
+    Users with valid access to the broker will always pass the check.
+    """
+    if _has_valid_access(request, [get_broker()]):
+        # Bypass if a manager for the broker.
+        return False
+    accessible_providers, subscriptions = _valid_subscriptions(
+        request, organization=organization, plan=plan)
+
+    if accessible_providers.exists():
+        # The request.user has a role on the plan provider.
+        return False
 
     if not subscriptions.exists():
-        if plan and not plan.is_not_priced:
-            cart_insert_item(request, plan=plan)
-            if organization:
-                return reverse('saas_organization_cart', args=(organization,))
-            return reverse('saas_cart')
+        if plan and not isinstance(plan, (list, tuple)):
+            if not isinstance(plan, Plan):
+                plan = get_object_or_404(Plan, slug=plan)
+            if not plan.is_not_priced:
+                cart_insert_item(request, plan=plan)
+                if organization:
+                    return reverse('saas_organization_cart',
+                        args=(organization,))
+                return reverse('saas_cart')
         return reverse('saas_cart_plan_list')
 
     return False
@@ -248,34 +290,27 @@ def fail_paid_subscription(request, organization=None, plan=None):
     will also pass the check.
     """
     #pylint:disable=too-many-return-statements
-    subscribed_at = datetime_or_now()
-    organization_model = get_organization_model()
     if _has_valid_access(request, [get_broker()]):
         # Bypass if a manager for the broker.
         return False
-    if organization:
-        if not isinstance(organization, organization_model):
-            organization = get_object_or_404(organization_model,
-                slug=organization)
-        candidates = [organization]
-    else:
-        candidates = organization_model.objects.accessible_by(request.user)
-    subscriptions = Subscription.objects.valid_for(organization__in=candidates,
-        ends_at__gte=subscribed_at).order_by('ends_at')
+
+    subscribed_at = datetime_or_now()
+    accessible_providers, subscriptions = _valid_subscriptions(
+        request, organization=organization, plan=plan)
+
+    if accessible_providers.exists():
+        # The request.user has a role on the plan provider.
+        return False
+
+    subscriptions = subscriptions.filter(ends_at__gte=subscribed_at)
     # ``order_by("ends_at")`` will get the subscription that ends the earliest,
     # yet is greater than Today (``subscribed_at``).
-    if plan:
-        if not isinstance(plan, Plan):
-            plan = get_object_or_404(Plan, slug=plan)
-        subscriptions = subscriptions.filter(plan=plan)
-        if organization_model.objects.accessible_by(request.user).filter(
-                pk=plan.organization.pk).exists():
-            # The request.user has a role on the plan provider.
-            return False
 
     active_subscription = subscriptions.first()
     if active_subscription is None:
-        if plan:
+        if plan and not isinstance(plan, (list, tuple)):
+            if not isinstance(plan, Plan):
+                plan = get_object_or_404(Plan, slug=plan)
             cart_insert_item(request, plan=plan)
             if organization:
                 return reverse('saas_organization_cart', args=(organization,))
