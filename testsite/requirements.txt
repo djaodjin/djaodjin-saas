@@ -24,3 +24,8 @@ whitenoise==5.1.0
 # development
 Sphinx==3.0.3
 sphinxcontrib-httpdomain==1.7.0
+
+# When running with Py37, we transitively use the `importlib-metadata`
+# package through `djangorestframework` -> `makrdown`. Latest version (>=5.0)
+# lead to an error: `'EntryPoints' object has no attribute 'get'`.
+importlib-metadata==4.13.0
