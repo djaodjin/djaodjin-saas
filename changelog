@@ -10,6 +10,15 @@ Roadmap
 Released versions
 =================
 
+0.15.3
+
+  * supports list of plans in fail_subcription
+  * fixes search by ForeignKey in roles page
+  * adds computed boolean `outdated` query params
+  * redirects when creating a profile as part of workflow
+
+ -- Sebastien Mirolo <smirolo@djaodjin.com>  Fri, 16 Dec 2022 21:22:00 -0700
+
 0.15.2
 
   * adds optional URL to download a PDF version of a receipt

@@ -99,9 +99,11 @@ saas/templates/notification/ directory.
 Release Notes
 =============
 
-0.15.2
+0.15.3
 
-  * adds optional URL to download a PDF version of a receipt
-  * unsubscribes only subscriber through a plan API (fixes regression)
+  * supports list of plans in fail_subcription
+  * fixes search by ForeignKey in roles page
+  * adds computed boolean `outdated` query params
+  * redirects when creating a profile as part of workflow
 
 [previous release notes](changelog)
