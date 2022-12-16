@@ -1060,6 +1060,8 @@ var itemListMixin = {
                     // The timezone for both start_at and ends_at.
                     timezone: 'local'
                 },
+                lastGetParams: {},
+                autoreload: true,
                 getCb: null,
                 getCompleteCb: null,
                 getBeforeCb: null,
@@ -1117,7 +1119,8 @@ var itemListMixin = {
             if(vm[vm.getBeforeCb]){
                 vm[vm.getBeforeCb]();
             }
-            vm.reqGet(vm.url, vm.getParams(), cb);
+            vm.lastGetParams = vm.getParams();
+            vm.reqGet(vm.url, vm.lastGetParams, cb);
         },
         asDateInputField: function(dateISOString) {
             const dateValue = moment(dateISOString);
@@ -1134,9 +1137,13 @@ var itemListMixin = {
                 return this.asDateInputField(this.params.start_at);
             },
             set: function(newVal) {
-                this.$set(this.params, 'start_at',
-                    this.asDateISOString(newVal));
-                this.get();
+                if( newVal ) {
+                    // The setter might be call with `newVal === null`
+                    // when the date is incorrect (ex: 09/31/2022).
+                    this.$set(this.params, 'start_at',
+                        this.asDateISOString(newVal));
+                    if( this.autoreload && this.outdated ) this.get();
+                }
             }
         },
         _ends_at: {
@@ -1145,14 +1152,42 @@ var itemListMixin = {
                 // but will literally cut the hour part regardless of timezone.
                 // We don't want an empty list as a result.
                 // If we use moment `endOfDay` we get 23:59:59 so we
-                // add a full day instead.
-                const dateValue = moment(this.params.ends_at).add(1,'days');
-                return dateValue.isValid() ? dateValue.format("YYYY-MM-DD") : null;
+                // add a full day instead. It seemed clever to run the following
+                // code but that prevented entering the year part in the input
+                // field (as oppossed to use the widget).
+                //
+                // const dateValue = moment(this.params.ends_at).add(1,'days');
+                // return dateValue.isValid() ? dateValue.format("YYYY-MM-DD") : null;
+                return this.asDateInputField(this.params.ends_at);
             },
             set: function(newVal) {
-                this.$set(this.params, 'ends_at', this.asDateISOString(newVal));
-                this.get();
+                if( newVal ) {
+                    // The setter might be call with `newVal === null`
+                    // when the date is incorrect (ex: 09/31/2022).
+                    this.$set(this.params, 'ends_at',
+                        this.asDateISOString(newVal));
+                    if( this.autoreload && this.outdated ) this.get();
+                }
             }
+        },
+        outdated: function() {
+            var vm = this;
+            const params = vm.getParams();
+            for( var key in vm.lastGetParams ) {
+                if( vm.lastGetParams.hasOwnProperty(key) ) {
+                    if( vm.lastGetParams[key] !== params[key] ) {
+                        return true;
+                    }
+                }
+            }
+            for( var key in params ) {
+                if( params.hasOwnProperty(key) ) {
+                    if( params[key] !== vm.lastGetParams[key] ) {
+                        return true;
+                    }
+                }
+            }
+            return false;
         }
     }
 };
