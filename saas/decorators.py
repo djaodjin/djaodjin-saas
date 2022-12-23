@@ -228,11 +228,11 @@ def _valid_subscriptions(request, organization=None, plan=None):
                 subscriptions_filters = {'plan__slug__in': plan}
         else:
             if isinstance(plan, Plan):
-                accessible_providers_filters = {'plans__in': plan}
-                subscriptions_filters = {'plan__in': plan}
+                accessible_providers_filters = {'plans': plan}
+                subscriptions_filters = {'plan': plan}
             else:
-                accessible_providers_filters = {'plans__slug__in': plan}
-                subscriptions_filters = {'plan__slug__in': plan}
+                accessible_providers_filters = {'plans__slug': plan}
+                subscriptions_filters = {'plan__slug': plan}
     else:
         accessible_providers_filters = {
             'plans__pk__in': subscriptions.values_list('pk', flat=True)}
