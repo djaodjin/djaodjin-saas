@@ -118,6 +118,7 @@ def get_extra_field_class():
 class OrganizationManager(models.Manager):
 
     def create_organization(self, name, creation_time):
+        # XXX This method seems deprecated
         creation_time = datetime.datetime.fromtimestamp(creation_time)
         billing_start = creation_time
         if billing_start.day > 28:

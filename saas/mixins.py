@@ -940,15 +940,18 @@ class RoleSmartListMixin(object):
         'profile__full_name',
         'profile__email',
         'user',
+        'user__full_name',
         'user__email',
-        'role__title',
-        'role'
+        'role',
+        'role__title'
     )
+
     alternate_fields = {
         'profile': 'organization__slug',
         'profile__full_name': 'organization__full_name',
         'profile__email': 'organization__email',
         'user': 'user__username',
+        'user__full_name': ('user__first_name', 'user__last_name'),
         'role': 'role_description__slug',
         'role__title': 'role_description__title',
     }
@@ -956,6 +959,7 @@ class RoleSmartListMixin(object):
     ordering_fields = (
         ('organization__full_name', 'profile__full_name'),
         ('user__username', 'user'),
+        ('user__full_name', 'user__full_name'),
         ('role_description__title', 'role__title'),
         ('grant_key', 'grant_key'),
         ('request_key', 'request_key'),

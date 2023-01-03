@@ -67,7 +67,7 @@ class SearchFilter(BaseSearchFilter):
                 for orm_lookup in orm_lookups
             ]
             conditions.append(reduce(operator.or_, queries))
-        queryset = queryset.filter(reduce(operator.or_, conditions))
+        queryset = queryset.filter(reduce(operator.and_, conditions))
 
         if self.must_call_distinct(queryset, search_fields):
             # Filtering against a many-to-many field requires us to
@@ -125,32 +125,15 @@ class SearchFilter(BaseSearchFilter):
 
     def get_search_terms(self, request):
         """
-        Search terms are set by a ?search=... query parameter,
-        and may be comma and/or whitespace delimited.
+        Search terms are set by a ?q=... query parameter.
+        When multiple search terms must be matched, they can be delimited
+        by a plus sign.
         """
         params = request.query_params.get(self.search_param, '')
         params = params.replace('\x00', '')  # strip null characters
-        params = params.replace(',', ' ')
-        results = []
-        inside = False
-        first = 0
-        for last, letter in enumerate(params):
-            if inside:
-                if letter == '"':
-                    if first < last:
-                        results += [params[first:last]]
-                    first = last + 1
-                    inside = False
-            else:
-                if letter in (' ', '\t'):
-                    if first < last:
-                        results += [params[first:last]]
-                    first = last + 1
-                elif letter == '"':
-                    inside = True
-                    first = last + 1
-        if first < len(params):
-            results += [params[first:len(params)]]
+
+        results = params.split('+')
+
         return results
 
 

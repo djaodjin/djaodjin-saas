@@ -139,6 +139,7 @@ class AccountsTypeaheadAPIView(OrganizationSmartListMixin,
 
         users_queryset = self.filter_queryset(self.get_users_queryset())
         users_page = self.paginate_queryset(users_queryset)
+
         # Since we run a second `paginate_queryset`, the paginator.count
         # is not the number of users.
         if hasattr(self.paginator, 'page'):
@@ -259,6 +260,8 @@ class ProfilesTypeaheadAPIView(OrganizationSmartListMixin,
     def post(self, request, *args, **kwargs):
         """
         Creates a shadow profile
+
+        **Tags**: profile
 
         **Examples**
 

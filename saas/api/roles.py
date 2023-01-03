@@ -368,6 +368,14 @@ accessibles/manager/cowork",
             ]
         }
     """
+    search_fields = (
+        'profile',
+        'profile__full_name',
+        'profile__email',
+        'role',
+        'role__title'
+    )
+
     serializer_class = AccessibleSerializer
     pagination_class = RoleListPagination
 
@@ -383,7 +391,7 @@ accessibles/manager/cowork",
         """
         Requests a role
 
-        Creates a request to attach {user} to a role on a profile
+        Creates a request to connect {user} to a profile
 
         The API is typically used within an HTML
         `connected profiles page </docs/guides/themes/#dashboard_users_roles>`_
@@ -499,6 +507,12 @@ accessibles/manager/cowork",
             ]
         }
     """
+    search_fields = (
+        'profile',
+        'profile__full_name',
+        'profile__email'
+    )
+
     serializer_class = AccessibleSerializer
     pagination_class = RoleListPagination
 
@@ -514,7 +528,7 @@ accessibles/manager/cowork",
         """
         Requests a role of a specified type
 
-        Creates a request to attach {user} to a role on a profile
+        Creates a request to connect {user} to a profile
         with a specified {role}.
 
         The API is typically used within an HTML
@@ -832,6 +846,14 @@ class RoleListAPIView(RoleSmartListMixin, InvitedRequestedListMixin,
             ]
         }
     """
+    search_fields = (
+        'user',
+        'user__full_name',
+        'user__email',
+        'role',
+        'role__title'
+    )
+
     serializer_class = get_role_serializer()
     pagination_class = RoleListPagination
 
@@ -918,6 +940,12 @@ class RoleByDescrListAPIView(RoleSmartListMixin, RoleByDescrQuerysetMixin,
             ]
         }
     """
+    search_fields = (
+        'user',
+        'user__full_name',
+        'user__email'
+    )
+
     serializer_class = get_role_serializer()
     pagination_class = RoleListPagination
 
@@ -1339,13 +1367,14 @@ class UserProfileListAPIView(OrganizationSmartListMixin,
       201: OpenAPIResponse("Create successful", OrganizationDetailSerializer)})
     def post(self, request, *args, **kwargs):
         """
-        Creates a billing profile with a user as a profile manager
+        Creates a connected profile
 
-        This end-point creates a new profile whose manager is user and
-        returns an error if the profile already exists.
+        This end-point creates a new profile whose manager is {user}.
+        It returns an error if the profile already exists.
 
         If you want to request access to an already existing profile,
-        see the accessibles end-point.
+        see the `accessibles <#createAccessibleByList>`_
+        end-point.
 
         **Tags**: rbac, profile, user, usermodel
 
