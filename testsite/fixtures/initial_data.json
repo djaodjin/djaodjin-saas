@@ -20,7 +20,7 @@
     "fields": {
       "slug": "cowork",
       "full_name": "ABC Corp.",
-      "created_at": "2021-12-31T00:00:00-00:00",
+      "created_at": "2023-01-01T00:00:00-00:00",
       "email": "alice+support@localhost.localdomain",
       "phone": "555-555-5555",
       "street_address": "1 ABC loop",
@@ -36,7 +36,7 @@
 },
 {
     "fields": {
-      "created_at": "2021-12-31T00:00:00-00:00",
+      "created_at": "2023-01-01T00:00:00-00:00",
       "slug": "manager",
       "title": "Profile Manager"
     },
