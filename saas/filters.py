@@ -67,7 +67,7 @@ class SearchFilter(BaseSearchFilter):
                 for orm_lookup in orm_lookups
             ]
             conditions.append(reduce(operator.or_, queries))
-        queryset = queryset.filter(reduce(operator.and_, conditions))
+        queryset = queryset.filter(reduce(operator.or_, conditions))
 
         if self.must_call_distinct(queryset, search_fields):
             # Filtering against a many-to-many field requires us to
@@ -132,7 +132,7 @@ class SearchFilter(BaseSearchFilter):
         params = request.query_params.get(self.search_param, '')
         params = params.replace('\x00', '')  # strip null characters
 
-        results = params.split('+')
+        results = params.split(',')
 
         return results
 
