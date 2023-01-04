@@ -1230,7 +1230,7 @@ class Organization(AbstractOrganization):
 
 
 @python_2_unicode_compatible
-class RoleDescription(models.Model):
+class RoleDescription(SlugTitleMixin, models.Model):
     """
     By default, when a ``User`` grants a ``Role`` on an ``Organization``
     to another ``User``, the grantee is required to opt-in the relationship
@@ -1240,7 +1240,7 @@ class RoleDescription(models.Model):
 
     created_at = models.DateTimeField(auto_now_add=True,
         help_text=_("Date/time of creation (in ISO format)"))
-    slug = models.SlugField(
+    slug = models.SlugField(unique=True,
         help_text=_("Unique identifier shown in the URL bar"))
     organization = models.ForeignKey(
         settings.ORGANIZATION_MODEL, null=True, on_delete=models.CASCADE,
@@ -1258,20 +1258,12 @@ class RoleDescription(models.Model):
         help_text=_("Extra meta data (can be stringify JSON)"))
 
     class Meta:
-        unique_together = ('organization', 'slug')
+        unique_together = ('slug', 'organization')
 
     def __str__(self):
         if self.organization is not None:
             return '%s-%s' % (str(self.slug), str(self.organization))
         return str(self.slug)
-
-    def save(self, force_insert=False, force_update=False, using=None,
-             update_fields=None):
-        if not self.slug:
-            self.slug = self.normalize_slug(slugify(self.title))
-        super(RoleDescription, self).save(force_insert=force_insert,
-            force_update=force_update, using=using,
-            update_fields=update_fields)
 
     def is_global(self):
         return self.organization is None

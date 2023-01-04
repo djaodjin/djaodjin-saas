@@ -133,7 +133,7 @@ class Migration(migrations.Migration):
                 ('title', models.CharField(max_length=50, null=True)),
                 ('description', models.TextField()),
                 ('is_active', models.BooleanField(default=False)),
-                ('is_not_priced', models.BooleanField(default=False)),
+                ('is_not_priced', models.BooleanField(default=False, help_text='True if the plan has no pricing (i.e. contact us)')),
                 ('created_at', models.DateTimeField(auto_now_add=True)),
                 ('discontinued_at', models.DateTimeField(blank=True, null=True)),
                 ('unit', models.CharField(default='usd', max_length=3)),
@@ -288,7 +288,7 @@ class Migration(migrations.Migration):
         ),
         migrations.AlterUniqueTogether(
             name='roledescription',
-            unique_together=set([('organization', 'slug')]),
+            unique_together=set([('slug', 'organization')]),
         ),
         migrations.AlterUniqueTogether(
             name='role',
