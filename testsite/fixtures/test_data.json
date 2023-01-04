@@ -923,13 +923,13 @@
 
 {
     "fields": {
-      "date_joined": "2023-01-01T00:00:00-09:00",
+      "date_joined": "2022-12-20T00:00:00+00:00",
       "email": "xia+22@localhost.localdomain",
       "first_name": "Xia22",
       "is_active": true,
       "is_staff": false,
       "is_superuser": false,
-      "last_login": "2023-01-01T00:00:00-09:00",
+      "last_login": "2022-12-20T00:00:00+00:00",
       "last_name": "",
       "password": "pbkdf2_sha256$10000$z0MBiWn0Rlem$iZdC6uHomlE07qGK/TqfcfxNzKJtFp03c0JILF1frRc=",
       "username": "xia22"

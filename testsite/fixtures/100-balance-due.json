@@ -37,7 +37,7 @@
       "is_active": true,
       "is_staff": false,
       "is_superuser": false,
-      "last_login": "2020-12-20T00:00:00Z",
+      "last_login": "2023-01-01T00:00:00Z",
       "last_name": "BalanceDue",
       "password": "pbkdf2_sha256$10000$z0MBiWn0Rlem$iZdC6uHomlE07qGK/TqfcfxNzKJtFp03c0JILF1frRc=",
       "user_permissions": [],
