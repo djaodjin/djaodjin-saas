@@ -958,7 +958,7 @@ class RoleDescriptionSerializer(serializers.ModelSerializer):
 
     profile = OrganizationSerializer(source='organization', read_only=True,
         help_text=_("Profile the role type belongs to"))
-    is_global = serializers.BooleanField(required=False,
+    is_global = serializers.BooleanField(read_only=True,
         help_text=_("True when the role type is available for all profiles"))
 
     class Meta:

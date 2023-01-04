@@ -1,4 +1,4 @@
-# Copyright (c) 2022, DjaoDjin inc.
+# Copyright (c) 2023, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -353,7 +353,7 @@ class AccessibleByListAPIView(RoleSmartListMixin, InvitedRequestedListMixin,
                     },
                     "role_description": {
                         "slug": "manager",
-                        "created_at": "2018-01-01T00:00:00Z",
+                        "created_at": "2023-01-01T00:00:00Z",
                         "title": "Profile Manager",
                         "is_global": true,
                         "profile": null
@@ -492,7 +492,7 @@ class AccessibleByDescrListAPIView(RoleSmartListMixin,
                     },
                     "role_description": {
                         "slug": "manager",
-                        "created_at": "2018-01-01T00:00:00Z",
+                        "created_at": "2023-01-01T00:00:00Z",
                         "title": "Profile manager",
                         "is_global": true,
                         "profile": null
@@ -568,7 +568,7 @@ accessibles/manager/cowork",
               "request_key": "53a1b0657c7cf738514bf791e6f20f36429e57aa",
               "role_description": {
                 "slug": "manager",
-                "created_at": "2018-01-01T00:00:00Z",
+                "created_at": "2023-01-01T00:00:00Z",
                 "title": "Profile manager",
                 "is_global": true,
                 "profile": null
@@ -589,30 +589,6 @@ accessibles/manager/cowork",
 
 
 class RoleDescriptionQuerysetMixin(OrganizationMixin):
-    """
-    The queryset can be further filtered by passing a ``q`` parameter.
-    The value in ``q`` will be matched against:
-
-      - slug
-      - title
-
-    The result queryset can be ordered by passing an ``o`` (field name),
-    prefixing by the minus sign ('-') for reverse order.
-
-      - slug
-      - title
-    """
-    search_fields = (
-        'slug',
-        'title',
-    )
-    ordering_fields = (
-        ('slug', 'slug'),
-        ('title', 'title'),
-    )
-    ordering = ('slug',)
-
-    filter_backends = (SearchFilter, OrderingFilter)
 
     def get_queryset(self):
         return self.organization.get_role_descriptions()
@@ -650,20 +626,44 @@ class RoleDescriptionListCreateView(RoleDescriptionQuerysetMixin,
             "previous": null,
             "results": [
                 {
-                    "created_at": "2018-01-01T00:00:00Z",
-                    "title": "Managers",
+                    "created_at": "2023-01-01T00:00:00Z",
                     "slug": "manager",
+                    "title": "Manager",
+                    "skip_optin_on_grant": false,
+                    "implicit_create_on_none": false,
                     "is_global": true
                 },
                 {
-                    "created_at": "2018-01-01T00:00:00Z",
-                    "title": "Contributors",
+                    "created_at": "2023-01-01T00:00:00Z",
                     "slug": "contributor",
-                    "is_global": false
+                    "title": "Contributor",
+                    "skip_optin_on_grant": true,
+                    "implicit_create_on_none": false,
+                    "is_global": false,
+                    "profile": {
+                        "slug": "xia",
+                        "printable_name": "Xia",
+                        "picture": null,
+                        "type": "personal",
+                        "credentials": true,
+                        "created_at": "2023-01-01T00:00:00Z"
+                    }
                 }
             ]
         }
     """
+    search_fields = (
+        'slug',
+        'title',
+    )
+    ordering_fields = (
+        ('slug', 'slug'),
+        ('title', 'title'),
+    )
+    ordering = ('slug',)
+
+    filter_backends = (SearchFilter, OrderingFilter)
+
     serializer_class = RoleDescriptionSerializer
 
     def post(self, request, *args, **kwargs):
@@ -693,16 +693,28 @@ class RoleDescriptionListCreateView(RoleDescriptionQuerysetMixin,
         .. code-block:: json
 
             {
-              "created_at": "2018-01-01T00:00:00Z",
+              "created_at": "2023-01-01T00:00:00Z",
               "title": "Support",
               "slug": "support",
-              "is_global": false
+              "skip_optin_on_grant": false,
+              "implicit_create_on_none": false,
+              "is_global": false,
+              "profile": {
+                  "slug": "xia",
+                  "printable_name": "Xia",
+                  "picture": null,
+                  "type": "personal",
+                  "credentials": true,
+                  "created_at": "2023-01-01T00:00:00Z"
+              }
             }
 
         """
         return super(RoleDescriptionListCreateView, self).post(
             request, *args, **kwargs)
 
+    def perform_create(self, serializer):
+        serializer.save(organization=self.organization if not self.organization.is_broker else None)
 
 
 class RoleDescriptionDetailView(RoleDescriptionQuerysetMixin,
@@ -718,16 +730,18 @@ class RoleDescriptionDetailView(RoleDescriptionQuerysetMixin,
 
     .. code-block:: http
 
-        GET /api/profile/xia/roles/describe/support HTTP/1.1
+        GET /api/profile/xia/roles/describe/manager HTTP/1.1
 
     responds
 
     .. code-block:: json
 
         {
-            "created_at": "2018-01-01T00:00:00Z",
+            "created_at": "2023-01-01T00:00:00Z",
             "slug": "manager",
-            "title": "Profile Managers",
+            "title": "Profile Manager",
+            "skip_optin_on_grant": false,
+            "implicit_create_on_none": false,
             "is_global": true
         }
 
@@ -770,7 +784,7 @@ class RoleDescriptionDetailView(RoleDescriptionQuerysetMixin,
         .. code-block:: json
 
             {
-                "title": "Profile managers"
+                "title": "Associate"
             }
 
         responds
@@ -778,10 +792,20 @@ class RoleDescriptionDetailView(RoleDescriptionQuerysetMixin,
         .. code-block:: json
 
             {
-                "created_at": "2018-01-01T00:00:00Z",
-                "title": "Profile managers",
+                "created_at": "2023-01-01T00:00:00Z",
                 "slug": "support",
-                "is_global": true
+                "title": "Associate",
+                "skip_optin_on_grant": false,
+                "implicit_create_on_none": false,
+                "is_global": false,
+                "profile": {
+                    "slug": "xia",
+                    "printable_name": "Xia",
+                    "picture": null,
+                    "type": "personal",
+                    "credentials": true,
+                    "created_at": "2023-01-01T00:00:00Z"
+                }
             }
 
         """
@@ -923,7 +947,7 @@ class RoleByDescrListAPIView(RoleSmartListMixin, RoleByDescrQuerysetMixin,
             "requested_count": 0,
             "results": [
                 {
-                    "created_at": "2018-01-01T00:00:00Z",
+                    "created_at": "2023-01-01T00:00:00Z",
                     "role_description": {
                         "name": "Manager",
                         "slug": "manager"
@@ -1040,9 +1064,9 @@ class RoleByDescrListAPIView(RoleSmartListMixin, RoleByDescrQuerysetMixin,
         .. code-block:: json
 
             {
-                "created_at": "2018-01-01T00:00:00Z",
+                "created_at": "2023-01-01T00:00:00Z",
                 "role_description": {
-                    "created_at": "2018-01-01T00:00:00Z",
+                    "created_at": "2023-01-01T00:00:00Z",
                     "title": "Profile Manager",
                     "slug": "manager",
                     "is_global": true
@@ -1087,9 +1111,9 @@ class RoleDetailAPIView(RoleMixin, DestroyAPIView):
         .. code-block:: json
 
             {
-                "created_at": "2018-01-01T00:00:00Z",
+                "created_at": "2023-01-01T00:00:00Z",
                 "role_description": {
-                    "created_at": "2018-01-01T00:00:00Z",
+                    "created_at": "2023-01-01T00:00:00Z",
                     "title": "Profile Manager",
                     "slug": "manager",
                     "is_global": true
@@ -1174,9 +1198,9 @@ class AccessibleDetailAPIView(RoleDetailAPIView):
         .. code-block:: json
 
             {
-                "created_at": "2018-01-01T00:00:00Z",
+                "created_at": "2023-01-01T00:00:00Z",
                 "role_description": {
-                    "created_at": "2018-01-01T00:00:00Z",
+                    "created_at": "2023-01-01T00:00:00Z",
                     "title": "Profile Manager",
                     "slug": "manager",
                     "is_global": true
@@ -1250,9 +1274,9 @@ a00000d0a0000001234567890123456789012345 HTTP/1.1
         .. code-block:: json
 
             {
-                "created_at": "2018-01-01T00:00:00Z",
+                "created_at": "2023-01-01T00:00:00Z",
                 "role_description": {
-                    "created_at": "2018-01-01T00:00:00Z",
+                    "created_at": "2023-01-01T00:00:00Z",
                     "title": "Profile Manager",
                     "slug": "manager",
                     "is_global": true
@@ -1328,7 +1352,7 @@ class UserProfileListAPIView(OrganizationSmartListMixin,
             "previous": null,
             "results": [
                 {
-                    "created_at": "2018-01-01T00:00:00Z",
+                    "created_at": "2023-01-01T00:00:00Z",
                     "email": "xia@locahost.localdomain",
                     "full_name": "Xia Lee",
                     "printable_name": "Xia Lee",
