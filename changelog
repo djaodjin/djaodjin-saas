@@ -10,6 +10,14 @@ Roadmap
 Released versions
 =================
 
+0.15.4
+
+  * uses unique slug for RoleDescription to be consistent with Plan
+  * escapes comma instead of spaces in typeahead search to improve usability
+  * fixes `fail_subcription` when dealing with a single Plan
+
+ -- Sebastien Mirolo <smirolo@djaodjin.com>  Wed,  4 Jan 2023 12:05:00 -0700
+
 0.15.3
 
   * supports list of plans in fail_subcription

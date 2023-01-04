@@ -99,11 +99,10 @@ saas/templates/notification/ directory.
 Release Notes
 =============
 
-0.15.3
+0.15.4
 
-  * supports list of plans in fail_subcription
-  * fixes search by ForeignKey in roles page
-  * adds computed boolean `outdated` query params
-  * redirects when creating a profile as part of workflow
+  * uses unique slug for RoleDescription to be consistent with Plan
+  * escapes comma instead of spaces in typeahead search to improve usability
+  * fixes `fail_subcription` when dealing with a single Plan
 
 [previous release notes](changelog)
