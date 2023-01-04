@@ -127,13 +127,30 @@ class SearchFilter(BaseSearchFilter):
         """
         Search terms are set by a ?q=... query parameter.
         When multiple search terms must be matched, they can be delimited
-        by a plus sign.
+        by a comma.
         """
         params = request.query_params.get(self.search_param, '')
         params = params.replace('\x00', '')  # strip null characters
-
-        results = params.split(',')
-
+        results = []
+        inside = False
+        first = 0
+        for last, letter in enumerate(params):
+            if inside:
+                if letter == '"':
+                    if first < last:
+                        results += [params[first:last]]
+                    first = last + 1
+                    inside = False
+            else:
+                if letter in (',',):
+                    if first < last:
+                        results += [params[first:last]]
+                    first = last + 1
+                elif letter == '"':
+                    inside = True
+                    first = last + 1
+        if first < len(params):
+            results += [params[first:len(params)]]
         return results
 
 
