@@ -44,7 +44,8 @@ from .cart import cart_insert_item
 from .compat import (available_attrs, gettext_lazy as _, is_authenticated,
     reverse, six)
 from .models import Plan, Signature, Subscription, get_broker
-from .utils import datetime_or_now, get_organization_model, get_role_model
+from .utils import (build_absolute_uri, datetime_or_now,
+    get_organization_model, get_role_model)
 
 
 LOGGER = logging.getLogger(__name__)
@@ -139,7 +140,7 @@ def _insert_url(request, redirect_field_name=REDIRECT_FIELD_NAME,
     request path.'''
     # This code is pretty much straightforward
     # from contrib.auth.user_passes_test
-    path = request.build_absolute_uri()
+    path = build_absolute_uri(request)
     # If the login url is the same scheme and net location then just
     # use the path as the "next" url.
     login_scheme, login_netloc = six.moves.urllib.parse.urlparse(

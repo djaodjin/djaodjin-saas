@@ -43,8 +43,9 @@ from ..filters import DateRangeFilter, OrderingFilter, SearchFilter
 from ..mixins import (DateRangeContextMixin, OrganizationMixin,
     OrganizationSmartListMixin, ProviderMixin, OrganizationDecorateMixin)
 from ..models import get_broker
-from ..utils import (datetime_or_now, get_organization_model, get_role_model,
-    handle_uniq_error, get_picture_storage)
+from ..utils import (build_absolute_uri, datetime_or_now,
+    get_organization_model, get_role_model, get_picture_storage,
+    handle_uniq_error)
 
 
 class OrganizationQuerysetMixin(OrganizationDecorateMixin):
@@ -278,7 +279,7 @@ class OrganizationPictureAPIView(OrganizationMixin, CreateAPIView):
         parts = urlparse(location)
         location = urlunparse((parts.scheme, parts.netloc, parts.path,
             "", "", ""))
-        location = self.request.build_absolute_uri(location)
+        location = build_absolute_uri(self.request, location=location)
 
         self.organization.picture = location
         self.organization.save()
