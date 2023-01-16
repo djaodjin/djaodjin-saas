@@ -1,4 +1,4 @@
-# Copyright (c) 2022, DjaoDjin inc.
+# Copyright (c) 2023, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -33,7 +33,6 @@ from .. import settings, signals
 from ..compat import gettext_lazy as _
 from ..mixins import (ProvidedSubscriptionsMixin, SubscribedSubscriptionsMixin,
     product_url)
-from ..models import get_broker
 from ..utils import get_role_model, validate_redirect_url
 
 LOGGER = logging.getLogger(__name__)
@@ -102,9 +101,9 @@ class RoleGrantAcceptView(RedirectView):
         if redirect_path:
             return redirect_path
         if self.role:
-            return product_url(get_broker(),
-                subscriber=self.role.organization, request=self.request)
-        return product_url(get_broker(), request=self.request)
+            return product_url(subscriber=self.role.organization,
+                request=self.request)
+        return product_url(request=self.request)
 
 
 class SubscriptionGrantAcceptView(SubscribedSubscriptionsMixin, RedirectView):
@@ -154,9 +153,9 @@ class SubscriptionGrantAcceptView(SubscribedSubscriptionsMixin, RedirectView):
         if redirect_path:
             return redirect_path
         if self.subscription:
-            return product_url(get_broker(),
-                subscriber=self.subscription.organization, request=self.request)
-        return product_url(get_broker(), request=self.request)
+            return product_url(subscriber=self.subscription.organization,
+                plan=self.subscription.plan, request=self.request)
+        return product_url(request=self.request)
 
 
 class SubscriptionRequestAcceptView(ProvidedSubscriptionsMixin, RedirectView):
@@ -208,6 +207,6 @@ class SubscriptionRequestAcceptView(ProvidedSubscriptionsMixin, RedirectView):
         if redirect_path:
             return redirect_path
         if self.subscription:
-            return product_url(get_broker(),
-                subscriber=self.subscription.organization, request=self.request)
-        return product_url(get_broker(), request=self.request)
+            return product_url(subscriber=self.subscription.organization,
+                plan=self.subscription.plan, request=self.request)
+        return product_url(request=self.request)

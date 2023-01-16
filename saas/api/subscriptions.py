@@ -1,4 +1,4 @@
-# Copyright (c) 2022, DjaoDjin inc.
+# Copyright (c) 2023, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -113,7 +113,8 @@ class SubscribedSubscriptionListAPIView(ActiveSubscribedSubscriptionsMixin,
                         "slug": "open-space",
                         "title": "Open Space"
                     },
-                    "auto_renew": true
+                    "auto_renew": true,
+                    "app_url": "http://localhost:8020/app/xia/open-space/"
                 }
             ]
         }
@@ -184,7 +185,8 @@ class ExpiredSubscriptionsAPIView(ExpiredSubscriptionsMixin, ListAPIView):
                         "slug": "open-space",
                         "title": "Open Space"
                     },
-                    "auto_renew": true
+                    "auto_renew": true,
+                    "app_url": "http://localhost:8020/app/xia/open-space/"
                 }
             ]
         }
@@ -260,6 +262,7 @@ class SubscriptionDetailAPIView(SubscriptionDetailMixin,
             "title": "Open Space"
           },
           "auto_renew": true,
+          "app_url": "http://localhost:8020/app/xia/open-space/",
           "editable": true,
           "extra": null,
           "grant_key": null,
@@ -679,8 +682,7 @@ class PlanActiveSubscribersAPIView(SubscriptionSmartListMixin,
                 "is_active": true,
                 "setup_amount": 0,
                 "period_amount": 17999,
-                "period_type": "monthly",
-                "app_url": "http://localhost:8020/app"
+                "period_type": "monthly"
               },
               "auto_renew": true
             }
@@ -765,8 +767,7 @@ class PlanChurnedSubscribersAPIView(SubscriptionSmartListMixin,
                         "is_active": true,
                         "setup_amount": 0,
                         "period_amount": 17999,
-                        "period_type": "monthly",
-                        "app_url": "http://localhost:8020/app"
+                        "period_type": "monthly"
                     },
                     "auto_renew": true
                 }
@@ -833,8 +834,7 @@ class AllSubscribersAPIView(SubscriptionSmartListMixin,
                         "is_active": true,
                         "setup_amount": 0,
                         "period_amount": 17999,
-                        "period_type": "monthly",
-                        "app_url": "http://localhost:8020/app"
+                        "period_type": "monthly"
                     },
                     "auto_renew": true
                 }
@@ -985,8 +985,7 @@ class ChurnedSubscribersAPIView(ChurnedSubscribersMixin, ListAPIView):
                         "is_active": true,
                         "setup_amount": 0,
                         "period_amount": 17999,
-                        "period_type": "monthly",
-                        "app_url": "http://localhost:8020/app"
+                        "period_type": "monthly"
                     },
                     "auto_renew": true
                 }

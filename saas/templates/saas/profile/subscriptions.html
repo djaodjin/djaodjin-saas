@@ -49,7 +49,7 @@
           <tbody v-for="entry in items.results" v-show="itemsLoaded && items.results.length > 0" v-cloak>
             <tr :class="endsSoon(entry)">
               <td>
-                <a :href="entry.plan.app_url + entry.profile.slug + '/' + entry.plan.slug + '/'">[[entry.plan.title]]</a>
+                <a :href="entry.app_url">[[entry.plan.title]]</a>
               </td>
               <td>
                 [[entry.ends_at]]
@@ -124,7 +124,7 @@
           <tbody v-for="entry in items.results" v-show="itemsLoaded && items.results.length > 0" v-cloak>
             <tr>
               <td>
-                <a :href="entry.plan.app_url + entry.profile.slug + '/' + entry.plan.slug + '/'">[[entry.plan.title]]</a>
+                <a :href="entry.app_url">[[entry.plan.title]]</a>
               </td>
               <td>
                 [[entry.ends_at]]

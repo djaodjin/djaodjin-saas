@@ -121,6 +121,7 @@ _SETTINGS = {
         'WEBHOOK_SECRET': None,
     },
     'PROCESSOR_BACKEND_CALLABLE': None,
+    'PRODUCT_URL_CALLABLE': None,
     'ROLE_RELATION': getattr(settings, 'SAAS_ROLE_MODEL', 'saas.Role'),
     'ROLE_SERIALIZER': 'saas.api.serializers.RoleSerializer',
     'USER_SERIALIZER': 'saas.api.serializers_overrides.UserSerializer',
@@ -166,6 +167,16 @@ PROCESSOR_FALLBACK = PROCESSOR.get('FALLBACK', [])
 PROCESSOR_ID = PROCESSOR.get('INSTANCE_PK', 1)
 PROCESSOR_HOOK_URL = PROCESSOR.get('WEBHOOK_URL', 'stripe/postevent')
 PROCESSOR_HOOK_SECRET = PROCESSOR.get('WEBHOOK_SECRET')
+
+#: overrides the implementation of `saas.mixins.product_url`
+#: This function must return a absolute URL from a `provider`, `subscriber`,
+#: `plan` and `request` arguments, all of which except the `provider` can be
+#: `None`. For example, the default implementation returns either:
+#: /app/, or
+#: /app/{subscriber}/, or
+#: /app/{subscriber}/{plan}/.
+PRODUCT_URL_CALLABLE = PROCESSOR.get('PRODUCT_URL_CALLABLE')
+
 ROLE_RELATION = _SETTINGS.get('ROLE_RELATION')
 ROLE_SERIALIZER = _SETTINGS.get('ROLE_SERIALIZER')
 USER_SERIALIZER = _SETTINGS.get('USER_SERIALIZER')

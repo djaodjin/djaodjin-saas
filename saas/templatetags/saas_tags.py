@@ -1,5 +1,4 @@
-# -*- coding: utf-8 -*-
-# Copyright (c) 2021, DjaoDjin inc.
+# Copyright (c) 2023, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -37,7 +36,7 @@ from django.utils.timezone import utc
 from ..compat import gettext_lazy as _, six
 from ..decorators import fail_direct, _valid_manager
 from ..humanize import as_money, as_percentage
-from ..mixins import as_html_description, product_url as utils_product_url
+from ..mixins import as_html_description
 from ..models import Plan, Price, Subscription, get_broker
 from ..utils import get_organization_model
 
@@ -223,11 +222,6 @@ def products(subscriptions):
         return subscriptions.values(
             'organization__slug', 'organization__full_name').distinct()
     return []
-
-
-@register.filter(needs_autoescape=False)
-def product_url(organization, subscriber=None):
-    return utils_product_url(organization, subscriber)
 
 
 @register.filter()

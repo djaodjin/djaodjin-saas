@@ -349,10 +349,11 @@ class CheckoutFormMixin(CardFormMixin):
         if redirect_path:
             return redirect_path
         if self.sole_provider:
-            return product_url(self.sole_provider, self.organization,
+            # XXX If there is only one plan we should add it here
+            # as an argument.
+            return product_url(subscriber=self.organization,
                 request=self.request)
-        return product_url(get_broker(), self.organization,
-            request=self.request)
+        return product_url(subscriber=self.organization, request=self.request)
 
 
 class CardUpdateView(CardFormMixin, FormView):

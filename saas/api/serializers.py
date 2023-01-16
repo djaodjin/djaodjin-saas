@@ -1,4 +1,4 @@
-# Copyright (c) 2022, DjaoDjin inc.
+# Copyright (c) 2023, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -54,7 +54,7 @@ from ..decorators import _valid_manager
 from ..humanize import as_money
 from ..mixins import as_html_description, product_url
 from ..models import (AdvanceDiscount, BalanceLine, CartItem, Charge, Coupon,
-    Plan, RoleDescription, Subscription, Transaction, get_broker)
+    Plan, RoleDescription, Subscription, Transaction)
 from ..utils import (build_absolute_uri, get_organization_model, get_role_model,
     get_user_serializer, get_user_detail_serializer)
 
@@ -605,8 +605,6 @@ class PlanDetailSerializer(PlanSerializer):
     renewal_type = EnumField(choices=Plan.RENEWAL_CHOICES, required=False,
         help_text=_("What happens at the end of a subscription period"\
         " (one-time, auto-renew, repeat)"))
-    app_url = serializers.SerializerMethodField(
-      help_text=_("URL to the homepage for the profile associated to the plan"))
     profile = OrganizationSerializer(source='organization', read_only=True,
         help_text=_("Provider of the plan"))
     skip_optin_on_grant = serializers.BooleanField(required=False,
@@ -631,13 +629,13 @@ class PlanDetailSerializer(PlanSerializer):
     class Meta:
         model = PlanSerializer.Meta.model
         fields = PlanSerializer.Meta.fields + ('description', 'is_active',
-            'setup_amount', 'period_amount', 'period_type', 'app_url',
+            'setup_amount', 'period_amount', 'period_type',
             'advance_discounts', 'unit', 'profile', 'extra',
             'period_length', 'renewal_type', 'is_not_priced',
             'created_at', 'skip_optin_on_grant', 'optin_on_request',
             'discounted_period_amount', 'is_cart_item', 'detail')
-        read_only_fields = ('app_url',
-            'discounted_period_amount', 'is_cart_item', 'detail')
+        read_only_fields = ('discounted_period_amount', 'is_cart_item',
+            'detail')
 
     @staticmethod
     def get_discounted_period_amount(obj):
@@ -646,10 +644,6 @@ class PlanDetailSerializer(PlanSerializer):
     @staticmethod
     def get_is_cart_item(obj):
         return getattr(obj, 'is_cart_item', False)
-
-    @staticmethod
-    def get_app_url(obj):
-        return product_url(obj.organization)
 
     def create(self, validated_data):
         advance_discounts = validated_data.pop('advance_discounts', [])
@@ -720,6 +714,8 @@ class SubscriptionSerializer(serializers.ModelSerializer):
     editable = serializers.SerializerMethodField(
         help_text=_("True if the request user is able to update"\
         " the subscription. Typically a manager for the plan provider."))
+    app_url = serializers.SerializerMethodField(
+      help_text=_("URL to access the subscribed service"))
 
     class Meta:
         model = Subscription
@@ -728,6 +724,10 @@ class SubscriptionSerializer(serializers.ModelSerializer):
                   'editable', 'extra', 'grant_key', 'request_key')
         # XXX grant_key and request_key should probably be removed.
         read_only_fields = ('grant_key', 'request_key')
+
+    def get_app_url(self, obj):
+        return product_url(subscriber=obj.organization, plan=obj.plan,
+            request=self.context['request'])
 
     def get_editable(self, subscription):
         return bool(_valid_manager(self.context['request'],
@@ -1020,7 +1020,7 @@ class AccessibleSerializer(serializers.ModelSerializer):
         return settings_location
 
     def get_home_url(self, obj):
-        return product_url(get_broker(), subscriber=obj.organization,
+        return product_url(subscriber=obj.organization,
             request=self.context['request'])
 
 

@@ -34,7 +34,7 @@ from django.views.generic.base import RedirectView
 from .. import settings
 from ..compat import gettext_lazy as _, reverse
 from ..mixins import product_url
-from ..models import RoleDescription, get_broker
+from ..models import RoleDescription
 from ..utils import (get_organization_model, get_role_model,
     validate_redirect_url)
 
@@ -113,8 +113,8 @@ class RoleImplicitGrantAcceptView(RedirectView):
         if not redirect_path:
             organization = kwargs.get(self.slug_url_kwarg)
             if organization:
-                redirect_path = product_url(
-                    get_broker(), subscriber=organization, request=self.request)
+                redirect_path = product_url(subscriber=organization,
+                    request=self.request)
             else:
                 redirect_path = reverse('product_default_start')
         return redirect_path

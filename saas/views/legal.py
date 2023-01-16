@@ -1,4 +1,4 @@
-# Copyright (c) 2019, DjaoDjin inc.
+# Copyright (c) 2023, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -33,7 +33,6 @@ from django.contrib.auth import REDIRECT_FIELD_NAME
 from django.http import HttpResponseRedirect
 from django.views.generic import CreateView, DetailView, ListView
 
-from .. import settings
 from ..compat import reverse
 from ..mixins import ProviderMixin
 from ..models import Agreement, Signature, get_broker
@@ -117,9 +116,10 @@ def _read_agreement_file(slug, context=None, request=None):
     import markdown
     if not context:
         broker = get_broker()
-        context = {'organization': broker}
-        if settings.BUILD_ABSOLUTE_URI_CALLABLE:
-            context.update({'site_url': build_absolute_uri(request)})
+        context = {
+            'organization': broker,
+            'site_url': build_absolute_uri(request),
+        }
     # We use context and not context=context in the following statement
     # such that the code is compatible with Django 1.7 and Django 1.8
     return markdown.markdown(

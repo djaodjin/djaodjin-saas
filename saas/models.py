@@ -362,6 +362,10 @@ class AbstractOrganization(models.Model):
             pre_value = getattr(self, field_name, None)
             post_value = update_fields.get(field_name, None)
             if post_value is not None and pre_value != post_value:
+                # The changes will be used to trigger a signal and notification
+                # to the primary contact that can then check for potential
+                # nefarious activity. It is also possible the notification
+                # is used to keep a separate service (CRM, etc.) in sync.
                 if field_name == 'is_bulk_buyer':
                     changes['GroupBuy'] = {
                         'pre': _('enabled') if pre_value else _('disabled'),
@@ -417,7 +421,7 @@ class AbstractOrganization(models.Model):
             slug_base = slugify(self.full_name)
         else:
             slug_base = _clean_field(
-                self.__class__, 'slug', self.email.split('@')[0])
+                self.__class__, 'slug', self.email.split('@', maxsplit=1)[0])
         if len(slug_base) > (max_length - 7 - 1):
             slug_base = slug_base[:(max_length - 7 - 1)]
         if slug_base:

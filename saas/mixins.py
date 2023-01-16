@@ -1,4 +1,4 @@
-# Copyright (c) 2022, DjaoDjin inc.
+# Copyright (c) 2023, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -36,12 +36,11 @@ from rest_framework.generics import get_object_or_404
 
 from . import humanize, settings
 from .cart import cart_insert_item
-from .compat import (NoReverseMatch, gettext_lazy as _, is_authenticated,
-    reverse, six)
+from .compat import (NoReverseMatch, gettext_lazy as _, import_string,
+    is_authenticated, reverse, six)
 from .filters import DateRangeFilter, OrderingFilter, SearchFilter
 from .models import (CartItem, Charge, Coupon, Plan, Price,
-    RoleDescription, Subscription, Transaction, get_broker, is_broker,
-    sum_orig_amount)
+    RoleDescription, Subscription, Transaction, get_broker, sum_orig_amount)
 from .utils import (build_absolute_uri, datetime_or_now,
     full_name_natural_split, get_organization_model, get_role_model,
     handle_uniq_error, update_context_urls, validate_redirect_url)
@@ -1209,17 +1208,16 @@ def _as_html_description(transaction_descr,
                 subscriber = dest_organization
 
             plan = groups.get('plan')
-            if (plan and
-                provider and subscriber):
+            if (plan and provider and subscriber):
                 try:
                     plan_title = Plan.objects.get(slug=plan).title
                 except Plan.DoesNotExist:
                     plan_title = plan
                 if active_links:
                     groups.update({'plan':
-                        ('<a href="%s%s/">%s</a>' % (
-                        product_url(provider, subscriber),
-                        plan, plan_title))})
+                        ('<a href="%s">%s</a>' % (
+                        product_url(subscriber=subscriber, plan=plan),
+                        plan_title))})
                 else:
                     groups.update({'plan': plan_title})
 
@@ -1264,16 +1262,20 @@ def get_charge_context(charge):
     return context
 
 
-def product_url(provider, subscriber=None, request=None):
+def product_url(subscriber=None, plan=None, request=None):
     """
-    We cannot use a basic ``reverse('product_default_start')`` here because
-    *organization* and ``get_broker`` might be different.
+    Returns an URL to the service subscribed by ``subscriber`` through ``plan``.
     """
-    location = '/app/'
+    try:
+        return import_string(settings.PRODUCT_URL_CALLABLE)(
+            subscriber=subscriber, plan=plan, request=request)
+    except ImportError:
+        pass
+    location = reverse('product_default_start')
     if subscriber:
         location += '%s/' % subscriber
+    if plan:
+        location += '%s/' % plan
     if settings.BUILD_ABSOLUTE_URI_CALLABLE:
-        return build_absolute_uri(request, location=location, provider=provider)
-    if not is_broker(provider):
-        location = '/%s' % provider + location
+        return build_absolute_uri(request, location=location)
     return location
