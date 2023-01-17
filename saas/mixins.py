@@ -1266,11 +1266,12 @@ def product_url(subscriber=None, plan=None, request=None):
     """
     Returns an URL to the service subscribed by ``subscriber`` through ``plan``.
     """
-    try:
-        return import_string(settings.PRODUCT_URL_CALLABLE)(
-            subscriber=subscriber, plan=plan, request=request)
-    except ImportError:
-        pass
+    if settings.PRODUCT_URL_CALLABLE:
+        try:
+            return import_string(settings.PRODUCT_URL_CALLABLE)(
+                subscriber=subscriber, plan=plan, request=request)
+        except ImportError:
+            pass
     location = reverse('product_default_start')
     if subscriber:
         location += '%s/' % subscriber
