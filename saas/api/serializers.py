@@ -721,7 +721,8 @@ class SubscriptionSerializer(serializers.ModelSerializer):
         model = Subscription
         fields = ('created_at', 'ends_at', 'description',
                   'profile', 'plan', 'auto_renew',
-                  'editable', 'extra', 'grant_key', 'request_key')
+                  'extra', 'grant_key', 'request_key',
+                  'editable', 'app_url')
         # XXX grant_key and request_key should probably be removed.
         read_only_fields = ('grant_key', 'request_key')
 
