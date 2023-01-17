@@ -184,7 +184,7 @@ USE_TZ = True
 
 
 LOGIN_URL = reverse_lazy('login')
-LOGIN_REDIRECT_URL = reverse_lazy('app')
+LOGIN_REDIRECT_URL = reverse_lazy('product_default_start')
 
 # Allow user to enter month in durationfield
 DURATIONFIELD_ALLOW_MONTHS = True

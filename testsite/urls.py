@@ -143,8 +143,11 @@ urlpatterns += \
         redirects=[fail_authenticated]),
 
     url_prefixed(r'', include('saas.backends.urls.views')),
-    url_prefixed(r'app/((?P<%s>%s)/)?' % (
+    url_prefixed(r'app/(?P<%s>%s)/' % (
         saas_settings.PROFILE_URL_KWARG, saas_settings.SLUG_RE),
         AppView.as_view(template_name='app.html'), name='app',
+        redirects=[fail_authenticated]),
+    url_prefixed(r'app/',
+        AppView.as_view(template_name='app.html'), name='product_default_start',
         redirects=[fail_authenticated]),
 ]
