@@ -390,4 +390,8 @@ def build_absolute_uri(request, location='/', provider=None, with_scheme=True):
                     with_scheme=with_scheme)
         except ImportError:
             pass
-    return request.build_absolute_uri(location)
+    if request:
+        return request.build_absolute_uri(location)
+    # If we don't have a `request` object, better to return a URL path
+    # than throwing an error.
+    return location

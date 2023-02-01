@@ -9,7 +9,7 @@ phonenumbers==8.12.6
 python-dateutil==2.8.1
 PyJWT==2.4.0
 razorpay==0.2.0
-stripe==2.71.0
+stripe==5.0.0
 
 # testsite-only
 coverage==6.3.2

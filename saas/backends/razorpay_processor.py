@@ -1,4 +1,4 @@
-# Copyright (c) 2021, DjaoDjin inc.
+# Copyright (c) 2023, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -65,7 +65,8 @@ class RazorpayBackend(object):
         self.priv_key = settings.PROCESSOR['PRIV_KEY']
         self.razor = razorpay.Client(auth=(self.pub_key, self.priv_key))
 
-    def charge_distribution(self, charge, refunded=0, unit='inr'):
+    def charge_distribution(self, charge, refunded=0,
+                            orig_total_broker_fee_amount=0, unit='inr'):
         if self.bypass_api:
             processor_charge = {
                 'fee': 0, 'service_tax': 0, 'amount': charge.amount}
@@ -87,10 +88,9 @@ class RazorpayBackend(object):
                 processor_fee_amount, processor_fee_unit,
                 broker_fee_amount, broker_fee_unit)
 
-    def create_payment(self, amount, unit, provider,
-                       processor_card_key=None, token=None,
+    def create_payment(self, amount, unit, token,
                        descr=None, stmt_descr=None, created_at=None,
-                       broker_fee_amount=0):
+                       broker_fee_amount=0, provider=None, broker=None):
         #pylint: disable=too-many-arguments,unused-argument
         LOGGER.debug('create_payment(amount=%s, unit=%s, descr=%s)',
             amount, unit, descr)
@@ -109,6 +109,14 @@ class RazorpayBackend(object):
             'card_name': ""}
         return (processor_charge['id'], created_at, receipt_info)
 
+    def create_or_update_card(self, subscriber, token,
+                              user=None, provider=None, broker=None):
+        """
+        Create or update a card associated to a subscriber.
+        """
+        #pylint:disable=too-many-arguments
+        raise NotImplementedError()
+
     def delete_card(self, subscriber, broker=None):
         """
         Removes a card associated to an subscriber.
@@ -121,9 +129,9 @@ class RazorpayBackend(object):
         }
         return context
 
-    def get_payment_context(self, provider, processor_card_key,
+    def get_payment_context(self, subscriber,
                             amount=None, unit=None, broker_fee_amount=0,
-                            subscriber_email=None, subscriber_slug=None):
+                            provider=None, broker=None):
         #pylint:disable=too-many-arguments,unused-argument
         context = {
             'RAZORPAY_PUB_KEY': self.pub_key

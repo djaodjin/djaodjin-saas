@@ -138,7 +138,7 @@ These API end points manage the subscription logic, payments excluded.
 .. http:get:: /api/profile/:organization/plans/:plan/subscriptions/
 .. http:post:: /api/profile/:organization/plans/:plan/subscriptions/
 
-.. autoclass:: saas.api.subscriptions.PlanSubscriptionsAPIView
+.. autoclass:: saas.api.subscriptions.PlanAllSubscribersAPIView
 
 
 .. http:get::  /api/profile/:organization/
@@ -188,11 +188,11 @@ These API end points manage the subscription logic, payments excluded.
 
 .. http:get:: /api/profile/:organization/subscribers/
 
-.. autoclass:: saas.api.organizations.SubscribersAPIView
+.. autoclass:: saas.api.organizations.ProviderAccessiblesAPIView
 
 .. http:get:: /api/profile/:organization/subscriptions/
 
-.. autoclass:: saas.api.subscriptions.SubscriberSubscriptionListAPIView
+.. autoclass:: saas.api.subscriptions.SubscribedSubscriptionListAPIView
 
 
 .. http:delete:: /api/profile/:organization/subscriptions/<subscribed_plan>/
@@ -211,7 +211,7 @@ Metrics API
 
 .. http:get:: /api/metrics/:organization/active/
 
-.. autoclass:: saas.api.subscriptions.ActiveSubscriptionAPIView
+.. autoclass:: saas.api.subscriptions.ActiveSubscribersAPIView
 
 
 .. _api_metrics_balances:
@@ -237,7 +237,7 @@ Metrics API
 
 .. http:get:: /api/metrics/:organization/churned/
 
-.. autoclass:: saas.api.subscriptions.ChurnedSubscriptionAPIView
+.. autoclass:: saas.api.subscriptions.ChurnedSubscribersAPIView
 
 
 .. http:get:: /api/metrics/:organization/coupons/:coupon/

@@ -1160,8 +1160,9 @@ class RoleMixin(RoleDescriptionMixin):
 
 def _as_html_description(transaction_descr,
                          orig_organization=None, dest_organization=None,
-                         dest_account=None, active_links=True):
-    #pylint:disable=too-many-locals
+                         dest_account=None, request=None, force_links=False):
+    #pylint:disable=too-many-arguments,too-many-locals
+    active_links = force_links or (request is not None)
     result = transaction_descr
     for pat, trans in six.iteritems(humanize.REGEX_TO_TRANSLATION):
         look = re.match(pat, transaction_descr)
@@ -1234,7 +1235,7 @@ def _as_html_description(transaction_descr,
     return result
 
 
-def as_html_description(transaction_model, active_links=True):
+def as_html_description(transaction_model, request=None, force_links=False):
     """
     Add hyperlinks into a transaction description.
     """
@@ -1243,7 +1244,8 @@ def as_html_description(transaction_model, active_links=True):
         transaction_model.orig_organization,
         transaction_model.dest_organization,
         transaction_model.dest_account,
-        active_links=active_links)
+        request=request,
+        force_links=force_links)
 
 
 def get_charge_context(charge):
@@ -1277,6 +1279,4 @@ def product_url(subscriber=None, plan=None, request=None):
         location += '%s/' % subscriber
     if plan:
         location += '%s/' % plan
-    if settings.BUILD_ABSOLUTE_URI_CALLABLE:
-        return build_absolute_uri(request, location=location)
-    return location
+    return build_absolute_uri(request, location=location)

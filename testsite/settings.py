@@ -194,8 +194,10 @@ SAAS = {
   'BROKER': {
       'GET_INSTANCE': 'cowork',
   },
+  'PLATFORM_NAME': 'cowork',
   'PROCESSOR': {
       'BACKEND': 'saas.backends.stripe_processor.StripeBackend',
+      'MODE': 0, # `LOCAL`
       'PRIV_KEY': getattr(sys.modules[__name__], "STRIPE_PRIV_KEY", None),
       'PUB_KEY': getattr(sys.modules[__name__], "STRIPE_PUB_KEY", None),
       'CLIENT_ID': getattr(sys.modules[__name__], "STRIPE_CLIENT_ID", None),

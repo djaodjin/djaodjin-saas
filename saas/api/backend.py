@@ -205,11 +205,9 @@ class PaymentMethodDetailAPIView(OrganizationMixin,
             broker = get_broker()
             resp_data.update({
                 'processor':
-                broker.processor_backend.get_payment_context(
-                    broker,
-                    self.organization.processor_card_key,
-                    subscriber_email=self.organization.email,
-                    subscriber_slug=self.organization.slug)
+                broker.processor_backend.get_payment_context(# card update
+                    self.organization,
+                    provider=broker, broker=broker)
             })
         return Response(resp_data)
 

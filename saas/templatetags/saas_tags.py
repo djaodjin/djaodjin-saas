@@ -72,13 +72,18 @@ def describe(transaction):
         descr = transaction['description']  # Serializers have already run
                                             # `as_html_description`.
     except (TypeError, KeyError):
-        descr = as_html_description(transaction)
+        # We would need the request here but we don;t have it
+        # so we set `force_links` to `True` in order to generate
+        # URL paths anyway.
+        descr = as_html_description(transaction, force_links=True)
     return mark_safe(descr)
 
 
+# `describe_no_links` is used on the checkout page to show plans
+# that will be subscribed to.
 @register.filter(needs_autoescape=False)
 def describe_no_links(transaction):
-    return mark_safe(as_html_description(transaction, active_links=False))
+    return mark_safe(as_html_description(transaction))
 
 
 @register.filter()

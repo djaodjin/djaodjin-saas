@@ -66,8 +66,7 @@ class CSVDownloadView(View):
         return text
 
     def encode_descr(self, transaction):
-        return self.encode(('"%s"' % as_html_description(
-            transaction, active_links=False).replace(
+        return self.encode(('"%s"' % as_html_description(transaction).replace(
             '\\', '\\\\').replace('"', '\"')))
 
     @staticmethod

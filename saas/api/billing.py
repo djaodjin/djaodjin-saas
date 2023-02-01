@@ -1,4 +1,4 @@
-# Copyright (c) 2022, DjaoDjin inc.
+# Copyright (c) 2023, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -40,7 +40,7 @@ from ..backends import ProcessorError
 from ..compat import gettext_lazy as _, is_authenticated, StringIO
 from ..docs import swagger_auto_schema, OpenAPIResponse
 from ..mixins import BalanceAndCartMixin, CartMixin, InvoicablesMixin
-from ..models import CartItem
+from ..models import CartItem, get_broker
 from ..utils import datetime_or_now
 from .serializers import (CartItemSerializer, CartItemCreateSerializer,
     CartItemUploadSerializer, ChargeSerializer, CheckoutSerializer,
@@ -530,14 +530,12 @@ of Xia",
         provider = self.invoicables_provider
         resp_data = {
             'processor':
-            provider.processor_backend.get_payment_context(
-                provider,
-                self.organization.processor_card_key,
+            provider.processor_backend.get_payment_context(# checkout
+                self.organization,
                 amount=self.invoicables_lines_price.amount,
                 unit=self.invoicables_lines_price.unit,
                 broker_fee_amount=self.invoicables_broker_fee_amount,
-                subscriber_email=self.organization.email,
-                subscriber_slug=self.organization.slug),
+                provider=provider, broker=get_broker()),
             'results': self.get_queryset()
         }
         serializer = self.get_serializer(resp_data)

@@ -1,4 +1,4 @@
-# Copyright (c) 2022, DjaoDjin inc.
+# Copyright (c) 2023, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -31,14 +31,15 @@ The `Stripe <https://stripe.com/>`_ backend works in 3 different modes:
 
 In LOCAL mode, Stripe Customer and Charge objects are created on the Stripe
 Account identified by settings.PROCESSOR['PRIV_KEY']. All transfers are made to
-the bank account associated to that account.
+the bank account associated to that account. Stripe fees are paid by the broker.
 
 In FORWARD mode, Stripe Customer and Charge objects are also created on
 the Stripe account identified by settings.PROCESSOR['PRIV_KEY'] but each
 Charge is tied automatically to a Stripe Transfer to a Stripe Connect Account.
+Stripe fees are paid by the broker.
 
 In REMOTE mode, Stripe Customer and Charge objects are created on
-the Stripe Connect Account.
+the Stripe Connect Account. Stripe fees are paid by the provider.
 
 To configure Stripe Connect, follow the instructions
 at https://stripe.com/docs/connect,
@@ -100,21 +101,22 @@ class StripeBackend(object):
     def _get_processor_charge(self, stripe_charge_key, broker,
                               includes_fee=False):
         stripe_charge = None
-        headers = self._prepare_charge_request(broker)
-        kwargs = headers
+        provider = None # XXX
+        charge_headers = self._prepare_charge_request(provider, broker)
+        kwargs = charge_headers
         if includes_fee:
             kwargs = {}
-            kwargs.update(headers)
-            kwargs.update({'expand': ['application_fee',
-                'balance_transaction', 'refunds.data.balance_transaction']})
+            kwargs.update(charge_headers)
+            kwargs.update({'expand': ['application_fee', 'balance_transaction',
+                #'transfer.destination_payment',
+                'refunds.data.balance_transaction']})
         if stripe_charge_key.startswith('ch_'):
             try:
                 stripe_charge = stripe.Charge.retrieve(
                     stripe_charge_key, **kwargs)
             except stripe.error.InvalidRequestError:
                 if (stripe_charge_key in settings.PROCESSOR_FALLBACK and
-                    (self.mode == self.REMOTE and
-                     not self._is_platform(broker))):
+                    self.mode == self.REMOTE):
                     LOGGER.warning("Attempt fallback on charge %s.",
                         stripe_charge_key)
                     kwargs = self._prepare_request()
@@ -123,9 +125,9 @@ class StripeBackend(object):
         else:
             try:
                 payment_intent = stripe.PaymentIntent.retrieve(
-                    stripe_charge_key, **kwargs)
-                if payment_intent.charges.data:
-                    stripe_charge = payment_intent.charges.data[0]
+                    stripe_charge_key, expand=['latest_charge'], **kwargs)
+                if payment_intent.latest_charge:
+                    stripe_charge = payment_intent.latest_charge
             except stripe.error.StripeErrorWithParamCode as err:
                 raise CardError(str(err), err.code, backend_except=err)
             except stripe.error.AuthenticationError as err:
@@ -136,40 +138,70 @@ class StripeBackend(object):
                 LOGGER.exception(err)
                 raise ProcessorError(str(err), backend_except=err)
 
-        return stripe_charge, headers
+        return stripe_charge, charge_headers
 
-    @staticmethod
-    def _is_platform(provider):
-        #pylint:disable=protected-access
-        return provider._state.db == 'default' and provider.is_broker
+    def _is_platform(self, profile):
+        return profile and str(profile) == settings.PLATFORM_NAME
 
     def _prepare_request(self):
-        stripe.api_version = '2020-08-27'
+        stripe.api_version = '2022-11-15'
         stripe.api_key = self.priv_key
         return {}
 
-    def _prepare_charge_request(self, broker):
-        kwargs = self._prepare_request()
-        if self.mode == self.REMOTE and not self._is_platform(broker):
-            # We generate Stripe data into the StripeConnect account.
+    def _prepare_card_request(self, broker):
+        card_kwargs = self._prepare_request()
+        if self.mode in (self.REMOTE,):
+            if not self._is_platform(broker):
+                # Card is also generated in the connect account.
+                # https://stripe.com/docs/connect/enable-payment-acceptance-\
+                #guide?platform=web#create-a-payment-intent
+                card_kwargs.update({
+                    'stripe_account': broker.processor_deposit_key})
+        return card_kwargs
+
+    def _prepare_charge_request(self, provider, broker):
+        charge_kwargs = self._prepare_request()
+        if self.mode in (self.FORWARD,) and provider:
+            if not provider.processor_deposit_key:
+                raise ProcessorSetupError(
+                (_("%(organization)s is not connected to a Stripe account.") +
+                 "[_prepare_charge_request/FORWARD]") % {
+                     'organization': provider}, provider)
+            if not self._is_platform(provider):
+                # Charge is generated in connected account.
+                charge_kwargs.update({
+                    'transfer_data': {
+                        'destination': provider.processor_deposit_key}})
+        elif self.mode in (self.REMOTE,) and broker:
             if not broker.processor_deposit_key:
                 raise ProcessorSetupError(
-                    _("%(organization)s is not connected to a Stripe account."
-                    ) % {'organization': broker}, broker)
-            # https://stripe.com/docs/connect/enable-payment-acceptance-guide?\
-            #platform=web#create-a-payment-intent
-            kwargs.update({'stripe_account': broker.processor_deposit_key})
-        return kwargs
+                (_("%(organization)s is not connected to a Stripe account.") +
+                 "[_prepare_charge_request/REMOTE]") % {
+                     'organization': broker}, broker)
+            if not self._is_platform(broker):
+                charge_kwargs.update({
+                    'stripe_account': broker.processor_deposit_key})
+            if provider and provider != broker:
+                # Charge is generated in connected account.
+                stripe_account = charge_kwargs.get('stripe_account')
+                if (stripe_account and
+                    stripe_account != provider.processor_deposit_key):
+                    # corner case where we set the same Stripe keys for provider
+                    # and broker. It should only happen during testing.
+                    charge_kwargs.update({
+                        'transfer_data': {
+                            'destination': provider.processor_deposit_key}})
+        return charge_kwargs
 
     def _prepare_transfer_request(self, provider):
         kwargs = self._prepare_request()
-        if (self.mode in (self.FORWARD, self.REMOTE)
-            and  not self._is_platform(provider)):
+        if self.mode in (self.FORWARD, self.REMOTE):
             # We generate Stripe data into the StripeConnect account.
             if not provider.processor_deposit_key:
                 raise ProcessorSetupError(
-                    _("%(organization)s is not connected to a Stripe account."
-                    ) % {'organization': provider}, provider)
+                (_("%(organization)s is not connected to a Stripe account.") +
+                "[_prepare_transfer_request]") % {'organization': provider},
+                provider)
             kwargs.update({'stripe_account': provider.processor_deposit_key})
         return kwargs
 
@@ -195,10 +227,10 @@ class StripeBackend(object):
         Returns a list of Stripe.Customer objects whose description field
         matches *org_pat*.
         """
-        kwargs = self._prepare_charge_request(broker)
+        card_kwargs = self._prepare_card_request(broker)
         customers = []
         nb_customers_listed = 0
-        response = stripe.Customer.list(**kwargs)
+        response = stripe.Customer.list(**card_kwargs)
         all_custs = response['data']
         while all_custs:
             for cust in all_custs:
@@ -208,12 +240,13 @@ class StripeBackend(object):
                     customers.append(cust)
             nb_customers_listed = nb_customers_listed + len(all_custs)
             response = stripe.Customer.list(
-                offset=nb_customers_listed, **kwargs)
+                offset=nb_customers_listed, **card_kwargs)
             all_custs = response['data']
         return customers
 
     def charge_distribution(self, charge,
-                            refunded=0, unit=settings.DEFAULT_UNIT):
+                            refunded=0, orig_total_broker_fee_amount=0,
+                            unit=settings.DEFAULT_UNIT):
         #pylint:disable=too-many-locals
         stripe_charge, kwargs = self._get_processor_charge(
             charge.processor_key, charge.broker, includes_fee=True)
@@ -226,6 +259,13 @@ class StripeBackend(object):
                     0, unit,
                     0, unit)
 
+        distribute_amount = 0
+        distribute_unit = None
+        broker_fee_amount = 0
+        broker_fee_unit = None
+        processor_fee_amount = 0
+        processor_fee_unit = None
+
         balance_transaction = stripe_charge.balance_transaction
         if isinstance(balance_transaction, six.string_types):
             balance_transaction = stripe.BalanceTransaction.retrieve(
@@ -235,20 +275,50 @@ class StripeBackend(object):
                 " => balance_transaction=\n%s", charge.processor_key,
                 refunded, unit, balance_transaction)
 
-        distribute_amount = balance_transaction.net
-        distribute_unit = balance_transaction.currency
-        broker_fee_amount = 0
-        broker_fee_unit = distribute_unit
-        processor_fee_amount = 0
-        processor_fee_unit = distribute_unit
+        if not distribute_amount:
+            distribute_amount = balance_transaction.net
+            distribute_unit = balance_transaction.currency
         for stripe_fee in balance_transaction.fee_details:
             if stripe_fee.type == 'application_fee':
-                broker_fee_amount = stripe_fee.amount
+                broker_fee_amount += stripe_fee.amount
                 broker_fee_unit = stripe_fee.currency
             elif stripe_fee.type == 'stripe_fee':
-                processor_fee_amount = stripe_fee.amount
+                processor_fee_amount += stripe_fee.amount
                 processor_fee_unit = stripe_fee.currency
 
+        # The broker fees actually do not show up
+        # in `balance_transaction.fee_details` but in `application_fee`.
+        # Same, refunds of broker fee do not appear in refunds
+        # but in application_fee.refunds instead.
+        application_fee = stripe_charge.application_fee
+        if application_fee:
+            if isinstance(application_fee, six.string_types):
+                application_fee = stripe.ApplicationFee.retrieve(
+                    application_fee, **kwargs)
+                LOGGER.debug(
+                    "charge_distribution(charge=%s, refunded=%d, unit=%s)"\
+                    " => application_fee=\n%s", charge.processor_key,
+                    refunded, unit, application_fee)
+            if not broker_fee_amount:
+                broker_fee_amount = application_fee.amount
+                broker_fee_unit = application_fee.currency
+                # The amount to distribute is not reflected in
+                # `balance_transaction` but instead computed as such.
+                # XXX the amount to distribute is not
+                #     in `transfer.destination_payment`.
+                #     Have to investigate about cross-currency transfers.
+                distribute_amount = stripe_charge.amount - broker_fee_amount
+
+        if self.mode == self.LOCAL and orig_total_broker_fee_amount:
+            broker_fee_amount = orig_total_broker_fee_amount
+            distribute_amount -= broker_fee_amount
+
+        # Refunds
+        if application_fee:
+            for stripe_fee in application_fee.refunds.data:
+                if stripe_fee.object == 'fee_refund':
+                    broker_fee_amount -= stripe_fee.amount
+                    distribute_amount += stripe_fee.amount
         for refund in stripe_charge.refunds:
             balance_transaction = refund.balance_transaction
             if isinstance(balance_transaction, six.string_types):
@@ -264,21 +334,15 @@ class StripeBackend(object):
                 if stripe_fee.type == 'stripe_fee':
                     processor_fee_amount += stripe_fee.amount
 
-        # Refunds of broker fee do not appear in refunds
-        # but in application_fee.refunds instead.
-        application_fee = stripe_charge.application_fee
-        if application_fee:
-            if isinstance(application_fee, six.string_types):
-                application_fee = stripe.ApplicationFee.retrieve(
-                    application_fee, **kwargs)
-                LOGGER.debug(
-                    "charge_distribution(charge=%s, refunded=%d, unit=%s)"\
-                    " => application_fee=\n%s", charge.processor_key,
-                    refunded, unit, application_fee)
-            for stripe_fee in application_fee.refunds.data:
-                if stripe_fee.object == 'fee_refund':
-                    broker_fee_amount -= stripe_fee.amount
-                    distribute_amount += stripe_fee.amount
+        if self.mode == self.LOCAL and orig_total_broker_fee_amount:
+            distribute_amount += processor_fee_amount
+
+        if not distribute_unit:
+            distribute_unit = stripe_charge.currency
+        if not broker_fee_unit:
+            broker_fee_unit = distribute_unit
+        if not processor_fee_unit:
+            processor_fee_unit = distribute_unit
 
         LOGGER.debug("charge_distribution(charge=%s, refunded=%d, unit=%s)"\
             " distribute: %d %s,"\
@@ -328,31 +392,22 @@ class StripeBackend(object):
         organization.processor_deposit_key = data.get('stripe_user_id')
         organization.processor_refresh_token = data.get('refresh_token')
 
-    def create_payment(self, amount, unit, provider,
-                       processor_card_key=None, token=None,
+    def create_payment(self, amount, unit, token,
                        descr=None, stmt_descr=None, created_at=None,
-                       broker_fee_amount=0):
+                       provider=None,
+                       broker_fee_amount=0, broker=None):
         """
         Create either a Stripe ``Charge`` or ``PaymentIntent`` for an *amount*
-        of *unit* (ex: $12) if *processor_card_key*/*token* is set or
-        neither is set respectively.
+        of *unit* (ex: $12) if *token* is set or neither is set respectively.
 
         Create a charge on the default card associated to the customer
-        if processor_card_key is set or on a specific card is token
-        is set.
+        or on a specific card based on token prefix.
 
         *stmt_descr* can only be 15 characters maximum.
         """
         #pylint: disable=too-many-arguments,too-many-locals,too-many-statements
-        assert processor_card_key is not None or token is not None
-        kwargs = self._prepare_charge_request(provider)
-        if self.mode == self.FORWARD and not self._is_platform(provider):
-            # We generate Stripe data into the StripeConnect account.
-            if not provider.processor_deposit_key:
-                raise ProcessorSetupError(
-                    _("%(organization)s is not connected to a Stripe account."
-                    ) % {'organization': provider}, provider)
-            kwargs.update({'destination': provider.processor_deposit_key})
+        card_kwargs = self._prepare_card_request(broker)
+        charge_kwargs = self._prepare_charge_request(provider, broker)
 
         receipt_info = {}
         if token and token.startswith('pi_'):
@@ -360,12 +415,12 @@ class StripeBackend(object):
             # already been created.
             try:
                 payment_intent = stripe.PaymentIntent.retrieve(id=token,
-                    **kwargs)
+                    expand=['latest_charge'], **charge_kwargs)
                 LOGGER.debug("stripe.PaymentIntent.retrieve("\
                     "id=%s, kwargs=%s) =>\n%s",
-                    token, kwargs, str(payment_intent))
-                if payment_intent.charges.data:
-                    stripe_charge = payment_intent.charges.data[0]
+                    token, charge_kwargs, str(payment_intent))
+                if payment_intent.latest_charge:
+                    stripe_charge = payment_intent.latest_charge
             except stripe.error.StripeErrorWithParamCode as err:
                 raise CardError(str(err), err.code, backend_except=err)
             except stripe.error.AuthenticationError as err:
@@ -377,42 +432,55 @@ class StripeBackend(object):
                 raise ProcessorError(str(err), backend_except=err)
         else:
             try:
-                if processor_card_key is not None:
+                if token and token.startswith('cus_'):
                     stripe_customer = stripe.Customer.retrieve(
-                        processor_card_key,
+                        token,
                         expand=['invoice_settings.default_payment_method'],
-                        **kwargs)
-                    kwargs.update({
-                        'customer': processor_card_key,
+                        **card_kwargs)
+                    charge_kwargs.update({
+                        'customer': token,
                         'payment_method': stripe_customer.invoice_settings\
                             .default_payment_method,
                     })
+                # XXX Are we creating the card in the connect account even
+                # if `FORWARD` is specified?
                 elif token is not None:
-                    kwargs.update({'payment_method_data': {
+                    charge_kwargs.update({'payment_method_data': {
                         'type': 'card', 'card': {'token': token}}
                     })
-                if broker_fee_amount:
-                    kwargs.update({'application_fee_amount': broker_fee_amount})
+                if broker_fee_amount and self.mode in (
+                        self.FORWARD, self.REMOTE):
+                    # We cannot create an application_fee if we donot use
+                    # a Connect account.
+                    # The transfer will show up as `amount` with a zero fee
+                    # in Stripe's dashboard but looking at the `py_` in
+                    # the destination account will show the
+                    # `application_fee_amount`. Stripe will assert the
+                    # processor fee in the broker, transfer the full amount
+                    # to the provider, then claw back the application fee
+                    # to the broker.
+                    charge_kwargs.update({
+                        'application_fee_amount': broker_fee_amount})
                 if stmt_descr is None and provider is not None:
                     stmt_descr = provider.printable_name
 
-                idempotency_key = self.generate_idempotent_key(amount,
-                    unit, provider, descr, stmt_descr, created_at,
-                    processor_card_key, token)
+                idempotency_key = self._generate_idempotent_key(amount,
+                    unit, provider, descr, stmt_descr, created_at, token)
                 payment_intent = stripe.PaymentIntent.create(
                     amount=amount, currency=unit,
                     description=descr, statement_descriptor=stmt_descr[:15],
                     off_session=True,
                     confirm=True,
                     idempotency_key=idempotency_key,
-                    **kwargs)
-                if payment_intent.charges.data:
-                    stripe_charge = payment_intent.charges.data[0]
+                    expand=['latest_charge'],
+                    **charge_kwargs)
+                if payment_intent.latest_charge:
+                    stripe_charge = payment_intent.latest_charge
                 LOGGER.debug("stripe.PaymentIntent.create("\
                     "amount=%d, currency=%s, description=%s, "\
                     "statement_descriptor=%s, kwargs=%s)"\
                     " =>\n%s\nstripe_charge=%s",
-                    amount, unit, descr, stmt_descr, kwargs,
+                    amount, unit, descr, stmt_descr, charge_kwargs,
                     str(payment_intent), str(stripe_charge))
             except stripe.error.StripeErrorWithParamCode as err:
                 # If the card is declined, Stripe will record a failed
@@ -479,7 +547,7 @@ class StripeBackend(object):
                 currency=currency,
                 description=descr,
                 statement_descriptor=provider.printable_name[:15],
-                idempotency_key=self.generate_idempotent_key(
+                idempotency_key=self._generate_idempotent_key(
                     provider, amount, currency, descr),
                 **kwargs)
         except stripe.error.StripeErrorWithParamCode as err:
@@ -499,7 +567,7 @@ class StripeBackend(object):
         """
         Removes a card associated to an subscriber.
         """
-        kwargs = self._prepare_charge_request(broker)
+        card_kwargs = self._prepare_card_request(broker)
         # Save customer on the platform
         p_customer = None
         if subscriber.processor_card_key:
@@ -507,7 +575,7 @@ class StripeBackend(object):
                 p_customer = stripe.Customer.retrieve(
                     subscriber.processor_card_key,
                     expand=['invoice_settings.default_payment_method'],
-                    **kwargs)
+                    **card_kwargs)
                 stripe.PaymentMethod.detach(
                     p_customer.invoice_settings.default_payment_method)
             except stripe.error.CardError as err:
@@ -543,13 +611,13 @@ class StripeBackend(object):
             raise ProcessorError(str(err), backend_except=err)
 
     def create_or_update_card(self, subscriber, token,
-                              user=None, broker=None):
+                              user=None, provider=None, broker=None):
         """
         Create or update a card associated to an subscriber on Stripe.
         """
-        #pylint:disable=too-many-statements
-        kwargs = self._prepare_charge_request(broker)
-
+        #pylint:disable=too-many-arguments,too-many-statements
+        card_kwargs = self._prepare_card_request(broker)
+        charge_kwargs = self._prepare_charge_request(provider, broker)
         old_card = {}
         p_customer = None
         if subscriber.processor_card_key:
@@ -557,7 +625,7 @@ class StripeBackend(object):
                 p_customer = stripe.Customer.retrieve(
                     subscriber.processor_card_key,
                     expand=['invoice_settings.default_payment_method',
-                            'default_source'], **kwargs)
+                            'default_source'], **card_kwargs)
                 old_card = self._retrieve_card(subscriber, broker=broker,
                     stripe_customer=p_customer)
             except stripe.error.CardError as err:
@@ -573,13 +641,15 @@ class StripeBackend(object):
                 raise ProcessorError(str(err), backend_except=err)
 
         if token.startswith('pi_'):
-            payment_intent = stripe.PaymentIntent.retrieve(id=token, **kwargs)
+            payment_intent = stripe.PaymentIntent.retrieve(
+                id=token, **charge_kwargs)
             card_token = payment_intent.payment_method
             if not subscriber.processor_card_key:
                 subscriber.processor_card_key = payment_intent.customer
                 # We rely on caller (``update_card``) to do the ``save``.
         elif token.startswith('seti_'):
-            setup_intent = stripe.SetupIntent.retrieve(id=token, **kwargs)
+            setup_intent = stripe.SetupIntent.retrieve(
+                id=token, **charge_kwargs)
             card_token = setup_intent.payment_method
             if not subscriber.processor_card_key:
                 subscriber.processor_card_key = setup_intent.customer
@@ -589,9 +659,9 @@ class StripeBackend(object):
                 if p_customer is None:
                     p_customer = stripe.Customer.create(
                         email=subscriber.email, description=subscriber.slug,
-                        idempotency_key=self.generate_idempotent_key(
+                        idempotency_key=self._generate_idempotent_key(
                             subscriber, user, broker),
-                        **kwargs)
+                        **card_kwargs)
                     subscriber.processor_card_key = p_customer.id
                     # We rely on caller (``update_card``) to do the ``save``.
 
@@ -606,7 +676,7 @@ class StripeBackend(object):
                     p_customer = stripe.Customer.retrieve(
                         subscriber.processor_card_key,
                         expand=['invoice_settings.default_payment_method',
-                                'default_source'], **kwargs)
+                                'default_source'], **card_kwargs)
                     card_token = p_customer.default_source
                 else:
                     # Implementation note: If we create a SetupIntent on
@@ -618,7 +688,7 @@ class StripeBackend(object):
                         customer=p_customer,
                         payment_method_data={
                             'type': 'card', 'card': {'token': token}},
-                        **kwargs)
+                        **card_kwargs)
                     card_token = setup_intent.payment_method
             except stripe.error.StripeErrorWithParamCode as err:
                 raise CardError(str(err), err.code, backend_except=err)
@@ -633,7 +703,7 @@ class StripeBackend(object):
         try:
             stripe.Customer.modify(subscriber.processor_card_key,
                 invoice_settings={'default_payment_method': card_token},
-                **kwargs)
+                **card_kwargs)
             new_card = self._retrieve_card(subscriber, broker=broker)
             if old_card:
                 signals.card_updated.send(
@@ -655,14 +725,14 @@ class StripeBackend(object):
         """
         Refund a charge on the associated card.
         """
-        kwargs = self._prepare_charge_request(charge.broker)
+        card_kwargs = self._prepare_card_request(charge.broker)
         try:
             refund = stripe.Refund.create(
                 charge=charge.processor_key,
                 amount=amount,
                 refund_application_fee=False,
                 expand=['charge'],
-                **kwargs)
+                **card_kwargs)
             LOGGER.debug(
                 "refund_charge(charge=%s, amount=%d, broker_amount=%d)"\
                 " => refund=\n%s", charge.processor_key, amount, broker_amount,
@@ -686,8 +756,6 @@ class StripeBackend(object):
             raise ProcessorError(str(err), backend_except=err)
 
     def get_authorize_url(self, provider, client_id=None, redirect_uri=None):
-        if self._is_platform(provider):
-            return None
         state = str(provider)
         connect_state_func = settings.PROCESSOR.get(
             'CONNECT_STATE_CALLABLE', None)
@@ -707,18 +775,16 @@ class StripeBackend(object):
         return authorize_url
 
     def get_deauthorize_url(self, provider):
-        if self._is_platform(provider):
-            return None
         return reverse('saas_deauthorize_processor', args=(provider,))
 
-    def get_payment_context(self, provider, processor_card_key,
+    def get_payment_context(self, subscriber,
                             amount=None, unit=None, broker_fee_amount=0,
-                            subscriber_email=None, subscriber_slug=None):
+                            provider=None, broker=None):
         """
         Returns a dictionnary of values that needs to be passed to the browser
         client in order for the processor to create a payment.
         """
-        #pylint:disable=too-many-arguments
+        #pylint:disable=too-many-arguments,too-many-locals
         context = {
             'STRIPE_PUB_KEY': self.pub_key,
         }
@@ -729,53 +795,50 @@ class StripeBackend(object):
         if amount is not None and amount == 0:
             return context
 
-        kwargs = self._prepare_charge_request(provider)
-        if self.mode == self.FORWARD and not self._is_platform(provider):
-            # We generate Stripe data into the StripeConnect account.
-            if not provider.processor_deposit_key:
-                raise ProcessorSetupError(
-                    _("%(organization)s is not connected to a Stripe account."
-                    ) % {'organization': provider}, provider)
-            kwargs.update({'destination': provider.processor_deposit_key})
-
+        processor_card_key = subscriber.processor_card_key
+        subscriber_slug = subscriber.slug
+        subscriber_email = subscriber.email
+        card_kwargs = self._prepare_card_request(broker)
+        charge_kwargs = self._prepare_charge_request(provider, broker)
         try:
             if processor_card_key is None:
                 p_customer = stripe.Customer.create(
                     email=subscriber_email, description=subscriber_slug,
-                    idempotency_key=self.generate_idempotent_key(
+                    idempotency_key=self._generate_idempotent_key(
                         subscriber_slug, provider),
-                    **kwargs)
+                    **card_kwargs)
                 processor_card_key = p_customer.id
-            kwargs.update({'customer': processor_card_key})
+            charge_kwargs.update({'customer': processor_card_key})
 
             if amount is None:
                 # We are updating a card for later payments.
-                setup_intent = stripe.SetupIntent.create(**kwargs)
+                setup_intent = stripe.SetupIntent.create(**charge_kwargs)
                 LOGGER.debug("stripe.PaymentIntent.create("\
                     "amount=%d, currency=%s, kwargs=%s) =>\n%s",
-                    amount, unit, kwargs, str(setup_intent))
+                    amount, unit, charge_kwargs, str(setup_intent))
                 context.update({
                     'STRIPE_INTENT_SECRET': setup_intent.client_secret})
-                if 'stripe_account' in kwargs:
+                if 'stripe_account' in charge_kwargs:
                     context.update({
-                        'STRIPE_ACCOUNT': kwargs.get('stripe_account')})
+                        'STRIPE_ACCOUNT': charge_kwargs.get('stripe_account')})
 
             elif amount > 0:
                 if broker_fee_amount:
-                    kwargs.update({'application_fee_amount': broker_fee_amount})
+                    charge_kwargs.update({
+                        'application_fee_amount': broker_fee_amount})
                 try:
                     payment_intent = stripe.PaymentIntent.create(
                         amount=amount, currency=unit,
                         setup_future_usage='off_session',
-                        **kwargs)
+                        **charge_kwargs)
                     LOGGER.debug("stripe.PaymentIntent.create("\
                         "amount=%d, currency=%s, kwargs=%s) =>\n%s",
-                        amount, unit, kwargs, str(payment_intent))
+                        amount, unit, charge_kwargs, str(payment_intent))
                     context.update({
                         'STRIPE_INTENT_SECRET': payment_intent.client_secret})
-                    if 'stripe_account' in kwargs:
+                    if 'stripe_account' in charge_kwargs:
                         context.update({
-                            'STRIPE_ACCOUNT': kwargs.get('stripe_account')})
+                         'STRIPE_ACCOUNT': charge_kwargs.get('stripe_account')})
 
                 except stripe.error.StripeErrorWithParamCode as err:
                     # If the card is declined, Stripe will record a failed
@@ -870,7 +933,7 @@ class StripeBackend(object):
     def _retrieve_card(self, subscriber, broker=None, stripe_customer=None):
         context = {}
         try:
-            kwargs = self._prepare_charge_request(broker)
+            card_kwargs = self._prepare_card_request(broker)
             if not stripe_customer:
                 if subscriber.processor_card_key:
                     try:
@@ -878,10 +941,10 @@ class StripeBackend(object):
                             subscriber.processor_card_key,
                             expand=['invoice_settings.default_payment_method',
                                 'default_source'],
-                            **kwargs)
+                            **card_kwargs)
                     except stripe.error.StripeError as err:
                         LOGGER.exception("%s (mode=%s)", err,
-                            "REMOTE" if kwargs else "LOCAL")
+                            "REMOTE" if card_kwargs else "LOCAL")
                         raise ProcessorError(str(err), backend_except=err)
 
             stripe_card = None
@@ -901,10 +964,10 @@ class StripeBackend(object):
                         stripe.Customer.modify(subscriber.processor_card_key,
                             invoice_settings={
                                'default_payment_method': stripe_card},
-                            **kwargs)
+                            **card_kwargs)
                     except stripe.error.StripeError as err:
                         LOGGER.exception("%s (mode=%s)", err,
-                            "REMOTE" if kwargs else "LOCAL")
+                            "REMOTE" if card_kwargs else "LOCAL")
                         raise ProcessorError(str(err), backend_except=err)
 
             if stripe_card:
@@ -1033,7 +1096,7 @@ class StripeBackend(object):
         return 0
 
     @staticmethod
-    def generate_idempotent_key(*data):
+    def _generate_idempotent_key(*data):
         key = ''
         if data:
             hsh = sha512()

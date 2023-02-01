@@ -1,4 +1,4 @@
-# Copyright (c) 2021, DjaoDjin inc.
+# Copyright (c) 2023, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -47,7 +47,8 @@ class FakeProcessorBackend(object):
         self.mode = settings.PROCESSOR.get('MODE', 0)
 
     @staticmethod
-    def charge_distribution(charge, refunded=0, unit=settings.DEFAULT_UNIT):
+    def charge_distribution(charge, refunded=0, orig_total_broker_fee_amount=0,
+                            unit=settings.DEFAULT_UNIT):
         # Stripe processing fee associated to a transaction
         # is 2.9% + 30 cents.
         # Stripe rounds up so we do the same here. Be careful Python 3.x
@@ -69,10 +70,10 @@ class FakeProcessorBackend(object):
                 broker_fee_amount, broker_fee_unit)
 
     @staticmethod
-    def create_payment(amount, unit, provider,
-                       processor_card_key=None, token=None,
+    def create_payment(amount, unit, token,
+                       processor_card_key=None,
                        descr=None, stmt_descr=None, created_at=None,
-                       broker_fee_amount=0):
+                       broker_fee_amount=0, provider=None, broker=None):
         #pylint: disable=too-many-arguments,unused-argument
         created_at = datetime_or_now(created_at)
         receipt_info = {
@@ -96,15 +97,24 @@ class FakeProcessorBackend(object):
         created_at = datetime_or_now()
         return (generate_random_slug(), created_at)
 
+    def create_or_update_card(self, subscriber, token,
+                              user=None, provider=None, broker=None):
+        """
+        Create or update a card associated to a subscriber.
+        """
+        #pylint:disable=too-many-arguments
+        raise NotImplementedError()
+
     def delete_card(self, subscriber, broker=None):
         """
         Removes a card associated to an subscriber.
         """
+        raise NotImplementedError()
 
     @staticmethod
-    def get_payment_context(provider, processor_card_key,
+    def get_payment_context(subscriber,
                             amount=None, unit=None, broker_fee_amount=0,
-                            subscriber_email=None, subscriber_slug=None):
+                            provider=None, broker=None):
         #pylint:disable=too-many-arguments,unused-argument
         context = {}
         return context

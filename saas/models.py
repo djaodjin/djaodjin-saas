@@ -717,10 +717,10 @@ class AbstractOrganization(models.Model):
         LOGGER.info("Processor debit key for %s was deleted.",
             self, extra={'event': 'delete-debit', 'organization': self.slug})
 
-    def update_card(self, card_token, user):
+    def update_card(self, card_token, user, provider=None):
         broker = get_broker()
         new_card = broker.processor_backend.create_or_update_card(
-            self, card_token, user=user, broker=broker)
+            self, card_token, user=user, provider=provider, broker=broker)
         self.nb_renewal_attempts = 0  # reset off-session failures counter
         # The following ``save`` will be rolled back in ``checkout``
         # if there is any ProcessorError.
@@ -1505,16 +1505,17 @@ class ChargeManager(models.Manager):
         prev_processor_card_key = customer.processor_card_key
         try:
             if token and remember_card:
-                customer.update_card(token, user)
+                customer.update_card(token, user, provider=provider)
+                token = customer.processor_card_key
+            if not token:
+                token = customer.processor_card_key
 
-            if customer.processor_card_key or token:
+            if token:
                 (processor_charge_id, created_at,
                  receipt_info) = provider.processor_backend.create_payment(
-                     amount, unit, provider,
-                     processor_card_key=customer.processor_card_key,
-                     token=token,
-                     descr=descr, created_at=created_at,
-                     broker_fee_amount=broker_fee_amount)
+                     amount, unit, token,
+                     descr=descr, created_at=created_at, provider=provider,
+                     broker_fee_amount=broker_fee_amount, broker=get_broker())
             else:
                 raise ProcessorError(_("%(organization)s is not associated"\
                     " to an account on the processor and no token was passed."
@@ -1897,8 +1898,8 @@ class Charge(models.Model):
 
             ; Distribute processor fee and funds to the provider
 
-            yyyy/mm/dd cha_***** processor fee paid by provider
-                provider:Expenses                        processor_fee
+            yyyy/mm/dd cha_***** processor fee paid by broker for provider
+                broker:Expenses                          processor_fee
                 processor:Backlog
 
             yyyy/mm/dd cha_***** broker fee paid by provider
@@ -1974,10 +1975,12 @@ class Charge(models.Model):
             # 2014/01/15 charge on xia card
             #     stripe:Funds                                 15800
             #     xia:Liability
+            orig_total_broker_fee_amount = self.broker_fee_amount
             charge_available_amount, funds_unit, \
                 charge_processor_fee_amount, processor_funds_unit, \
                 charge_broker_fee_amount, broker_funds_unit \
-                = self.processor_backend.charge_distribution(self)
+                = self.processor_backend.charge_distribution(self,
+                    orig_total_broker_fee_amount=orig_total_broker_fee_amount)
             charge_amount = (charge_available_amount
                 + charge_processor_fee_amount + charge_broker_fee_amount)
             assert isinstance(charge_amount, six.integer_types)
@@ -1995,9 +1998,9 @@ class Charge(models.Model):
                 orig_amount=self.amount,
                 orig_account=Transaction.LIABILITY,
                 orig_organization=self.customer)
+
             # Once we have created a transaction for the charge, let's
             # redistribute the funds to their rightful owners.
-            orig_total_broker_fee_amount = self.broker_fee_amount
             for charge_item in self.charge_items.all():
                 invoiced_item = charge_item.invoiced
 
@@ -2116,7 +2119,7 @@ class Charge(models.Model):
                         dest_unit=funds_unit,
                         dest_amount=processor_fee_amount,
                         dest_account=Transaction.EXPENSES,
-                        dest_organization=provider,
+                        dest_organization=broker,
                         orig_unit=self.unit,
                         orig_amount=orig_processor_fee_amount,
                         orig_account=Transaction.BACKLOG,
@@ -2141,11 +2144,11 @@ class Charge(models.Model):
                             'charge': self.processor_key, 'event': event_id},
                         event_id=get_charge_event_id(self),
                         dest_unit=funds_unit,
-                        dest_amount=broker_fee_amount,
+                        dest_amount=item_amount - distribute_amount,
                         dest_account=Transaction.EXPENSES,
                         dest_organization=provider,
                         orig_unit=self.unit,
-                        orig_amount=orig_broker_fee_amount,
+                        orig_amount=orig_item_amount - orig_distribute_amount,
                         orig_account=Transaction.BACKLOG,
                         orig_organization=broker)
                     Transaction.objects.create(
@@ -2154,11 +2157,13 @@ class Charge(models.Model):
                         descr=humanize.DESCRIBE_CHARGED_CARD_BROKER % {
                                 'charge': self.processor_key, 'event': event},
                         dest_unit=funds_unit,
-                        dest_amount=broker_fee_amount,
+                        dest_amount=(item_amount -
+                            processor_fee_amount - distribute_amount),
                         dest_account=Transaction.FUNDS,
                         dest_organization=broker,
                         orig_unit=self.unit,
-                        orig_amount=orig_broker_fee_amount,
+                        orig_amount=(orig_item_amount -
+                            orig_processor_fee_amount - orig_distribute_amount),
                         orig_account=Transaction.FUNDS,
                         orig_organization=self.processor)
                     broker.funds_balance += broker_fee_amount
