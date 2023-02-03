@@ -841,7 +841,7 @@ class TransactionSerializer(serializers.ModelSerializer):
             amount = as_money(instance.dest_amount, instance.dest_unit)
         ret.update({
             'description': as_html_description(instance,
-                request=self.context['request']),
+                request=self.context.get('request')),
             'is_debit': is_debit,
             'amount': amount})
         return ret

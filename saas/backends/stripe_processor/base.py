@@ -994,6 +994,9 @@ class StripeBackend(object):
         if stripe_charge is None:
             stripe_charge, _ = self._get_processor_charge(
                 charge.processor_key, charge.broker)
+            if stripe_charge is None:
+                # cannot find charge on Stripe.
+                return charge
         if event_type is None:
             if charge.is_progress:
                 if stripe_charge.paid and stripe_charge.status == 'succeeded':
