@@ -183,7 +183,7 @@ subscribers.html>`__).
             **kwargs)
         update_context_urls(context, {
             'provider': {'api_plan_subscribers': reverse(
-            'saas_api_plan_subscriptions', args=(self.provider, self.plan))}})
+            'saas_api_plan_subscribers', args=(self.provider, self.plan))}})
         return context
 
 
