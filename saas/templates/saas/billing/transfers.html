@@ -28,6 +28,12 @@
       {% include "saas/_transactions.html" %}
     </div>
     <div>
+      {% if urls.raw_charges %}
+      <a id="row-charges" href="{{urls.raw_charges}}">Charges</a>
+      {% endif %}
+      {% if urls.raw_transactions %}
+      <a id="row-transactions" href="{{urls.raw_transactions}}">Transaction Ledger</a>
+      {% endif %}
       <a id="add-offline-transaction" href="{{urls.provider.import_transactions}}">Add offline transaction</a>
     </div>
   </div>

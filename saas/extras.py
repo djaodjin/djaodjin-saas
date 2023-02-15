@@ -138,8 +138,12 @@ class OrganizationMixinBase(object):
                 'api_plans': reverse('saas_api_plans', args=(provider,)),
                 'api_receivables': reverse(
                     'saas_api_receivables', args=(provider,)),
-                'api_revenue': reverse(
-                    'saas_api_revenue', args=(self.organization,)),
+                'api_revenue': reverse('saas_api_revenue',
+                    args=(self.organization,)),
+                'api_balances': reverse('saas_api_balances',
+                    args=(self.organization,)),
+                'api_customer': reverse('saas_api_customer',
+                    args=(self.organization,)),
                 'api_subscribers_active': reverse(
                     'saas_api_subscribed', args=(provider,)),
                 'api_subscribers_churned': reverse(
@@ -149,16 +153,20 @@ class OrganizationMixinBase(object):
                 'metrics_coupons': reverse(
                     'saas_metrics_coupons', args=(provider,)),
                 'metrics_plans': reverse(
-                    'saas_metrics_plans', args=(provider,)),
+                    'saas_plan_base', args=(provider,)),
                 'plans': reverse(
                     'saas_plan_base', args=(provider,)),
                 'metrics_sales': reverse(
                     'saas_metrics_summary', args=(provider,)),
                 'metrics_lifetimevalue': reverse(
                     'saas_metrics_lifetimevalue', args=(provider,)),
+                'ledger_balances': reverse(
+                    'saas_balance', args=(provider,)),
                 'profile': reverse('saas_provider_profile'),
                 'subscribers': reverse(
                     'saas_subscriber_list', args=(provider,)),
+                'subscribers_activity': reverse(
+                    'saas_subscribers_activity', args=(provider,)),
                 'transfers': reverse(
                     'saas_transfer_info', args=(provider,)),
             }})
@@ -168,7 +176,7 @@ class OrganizationMixinBase(object):
                 'charges': reverse('saas_charges'),
             }})
             urls['organization'].update({
-                'role_description': reverse('saas_role_list', args=(provider,)),
+                'role_list': reverse('saas_role_list', args=(provider,)),
             })
 
         if is_authenticated(self.request):

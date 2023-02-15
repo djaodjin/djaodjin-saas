@@ -116,13 +116,13 @@ class LifeTimeValueMetricsView(ProviderMixin, TemplateView):
     def get_context_data(self, **kwargs):
         context = super(LifeTimeValueMetricsView, self).get_context_data(
             **kwargs)
-        urls = {
-            'metrics_lifetimevalue_download': reverse(
+        update_context_urls(context, {
+            'download': reverse(
                 'saas_metrics_lifetimevalue_download', args=(self.provider,)),
             'provider': {
                 'api_metrics_lifetimevalue': reverse(
-                    'saas_api_metrics_lifetimevalue', args=(self.provider,))}}
-        update_context_urls(context, urls)
+                    'saas_api_metrics_lifetimevalue', args=(self.provider,))}
+        })
         return context
 
 
@@ -130,6 +130,8 @@ class LifeTimeValueDownloadView(LifetimeValueMetricMixin, CSVDownloadView):
     """
     Export customers lifetime value as a CSV file.
     """
+    basename = 'lifetimevalue'
+
     headings = ['Profile', 'Since', 'Ends at',
         'Contract value', 'Cash payments', 'Deferred revenue']
 
@@ -259,19 +261,27 @@ class RevenueMetricsView(MetricsMixin, TemplateView):
             unit = a_receivable.orig_unit
         context.update({
             "title": "Sales",
-            "tables": json.dumps(
-                [{"key": "cash",
-                        "title": "Amounts",
-                        "unit": unit,
-                        "location": reverse('saas_api_revenue',
-                            args=(self.organization,))},
-                       {"key": "customer",
-                        "title": "Customers",
-                        "location": reverse('saas_api_customer',
-                            args=(self.organization,))},
-                       {"key": "balances",
-                        "title": "Balances",
-                        "unit": unit,
-                        "location": reverse('saas_api_balances',
-                            args=(self.organization,))}])})
+            "tables": json.dumps([{
+                "key": "cash",
+                "title": "Amounts",
+                "unit": unit,
+                "location": reverse('saas_api_revenue',
+                    args=(self.organization,))
+            }, {
+                "key": "balances",
+                "title": "Balances",
+                "unit": unit,
+                "location": reverse('saas_api_balances',
+                    args=(self.organization,))
+            }, {
+                "key": "customer",
+                "title": "Customers",
+                "location": reverse('saas_api_customer',
+                    args=(self.organization,))
+            }, {
+                "key": "plan",
+                "title": "Active subscribers",
+                "location": reverse('saas_api_metrics_plans',
+                    args=(self.organization,))
+            }])})
         return context

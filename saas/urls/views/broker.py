@@ -30,10 +30,12 @@ from ... import settings
 from ...compat import path, re_path
 from ...views.metrics import BalancesView
 from ...views.billing import AllTransactions, ChargeListView, VTChargeView
-from ...views.download import (BalancesDownloadView, RegisteredDownloadView,
-    TransactionDownloadView)
+from ...views.download import (BalancesDownloadView, ChargesDownloadView,
+    RegisteredDownloadView, TransactionDownloadView)
 
 urlpatterns = [
+    path('billing/charges/download/',
+        ChargesDownloadView.as_view(), name='saas_charges_download'),
     path('billing/charges/',
         ChargeListView.as_view(), name='saas_charges'),
     re_path(r'billing/transactions/((?P<selector>%s)/)?download',

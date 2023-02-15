@@ -1,4 +1,10 @@
 {% extends "saas/metrics/base.html" %}
 
 {% block metrics_extra_info %}
+{% if urls.provider and urls.provider.metrics_lifetimevalue %}
+<a id="lifetimevalue" href="{{urls.provider.metrics_lifetimevalue}}">Lifetime value</a>
+{% endif %}
+{% if urls.provider and urls.provider.ledger_balances %}
+<a id="balance-sheet" href="{{urls.provider.ledger_balances}}">Balance Sheet</a>
+{% endif %}
 {% endblock %}

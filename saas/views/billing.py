@@ -443,6 +443,13 @@ class AllTransactions(ProviderMixin, TransactionBaseView):
 
     template_name = 'saas/billing/transactions.html'
 
+    def get_context_data(self, **kwargs):
+        context = super(AllTransactions, self).get_context_data(**kwargs)
+        update_context_urls(context, {
+            'download': reverse('saas_transactions_download',
+                kwargs=self.get_url_kwargs(**kwargs))
+        })
+        return context
 
 class BillingStatementView(OrganizationMixin, TransactionBaseView):
     """
@@ -469,12 +476,11 @@ class BillingStatementView(OrganizationMixin, TransactionBaseView):
 
     def get_context_data(self, **kwargs):
         context = super(BillingStatementView, self).get_context_data(**kwargs)
-        context.update({
-            'organization': self.organization,
-            'download_url': reverse('saas_statement_download',
-                kwargs=self.get_url_kwargs(**kwargs))})
-        update_context_urls(context,
-            {'organization': {
+        context.update({'organization': self.organization})
+        update_context_urls(context, {
+            'download': reverse('saas_statement_download',
+                kwargs=self.get_url_kwargs(**kwargs)),
+            'organization': {
                 'api_transactions': reverse(
                     'saas_api_billings', args=(self.organization,)),
                 'balance': reverse(
@@ -512,10 +518,9 @@ djaodjin-saas/tree/master/saas/templates/saas/billing/transfers.html>`__).
 
     def get_context_data(self, **kwargs):
         context = super(TransferListView, self).get_context_data(**kwargs)
-        context.update({
-            'download_url': reverse('saas_transfers_download',
-                kwargs=self.get_url_kwargs(**kwargs))})
-        urls = {
+        update_context_urls(context, {
+            'download': reverse('saas_transfers_download',
+                kwargs=self.get_url_kwargs(**kwargs)),
             'organization': {
                 'api_transactions': reverse(
                 'saas_api_transfer_list', args=(self.provider,)),
@@ -526,8 +531,13 @@ djaodjin-saas/tree/master/saas/templates/saas/billing/transfers.html>`__).
                     'saas_import_transactions', args=(self.provider,)),
                 'withdraw_funds': reverse(
                     'saas_withdraw_funds', args=(self.provider,)),
-        }}
-        update_context_urls(context, urls)
+        }})
+        if self.provider.is_broker:
+            update_context_urls(context, {
+                'raw_charges': reverse('saas_charges'),
+                'raw_transactions': reverse('saas_broker_transactions')
+            })
+
         return context
 
 
@@ -866,10 +876,11 @@ class ChargeListView(ProviderMixin, TemplateView):
 
     def get_context_data(self, **kwargs):
         context = super(ChargeListView, self).get_context_data(**kwargs)
-        urls = {'broker': {
-            'api_charges': reverse('saas_api_charges'),
-        }}
-        update_context_urls(context, urls)
+        update_context_urls(context, {
+            'download': reverse('saas_charges_download'),
+            'broker': {
+                'api_charges': reverse('saas_api_charges'),
+            }})
         return context
 
 

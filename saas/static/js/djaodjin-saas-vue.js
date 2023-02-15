@@ -786,6 +786,8 @@ var roleDetailMixin = {
 }
 
 
+/** list users with roles on a profile or profiles connected to a user.
+ */
 var roleListMixin = {
     mixins: [
         itemListMixin,
@@ -1734,9 +1736,92 @@ Vue.component('plan-subscriber-list', {
         return {
             url: this.$urls.provider.api_plan_subscribers,
             typeaheadUrl: this.$urls.api_candidates,
-            newProfile: {},
+            profileRequestDone: false,
+            newItem: {},
         }
-    }
+    },
+    methods: {
+        _addItem: function(item, force) {
+            var vm = this;
+            if( jQuery.type(item) === "string" ) {
+                var stringVal = item;
+                item = {slug: "", email: "", full_name: ""};
+                var pattern = /@[a-zA-Z0-9\-]+\.([a-zA-Z\-]{2,3}|localdomain)/;
+                if( pattern.test(stringVal) ) {
+                    item['email'] = stringVal;
+                } else {
+                    item['full_name'] = stringVal;
+                }
+            }
+            var data = {'profile':{'type': 'organization'}};
+            var fields = ['slug', 'email', 'full_name', 'message'];
+            for( var idx = 0; idx < fields.length; ++idx ) {
+                if( item[fields[idx]] ) {
+                    data['profile'][fields[idx]] = item[fields[idx]];
+                }
+            }
+            vm.reqPost(vm.url + (force ? "?force=1" : ""), data,
+                function() {
+                    vm.resetNewItem();
+                    vm.refresh();
+                }, function() {
+                    vm.profileRequestDone = true;
+                    vm.newItem = item;
+                    vm.$emit('invite');
+                }
+            );
+        },
+        resetNewItem: function() {
+            var vm = this;
+            vm.candidateId = "";
+            vm.newItem = {slug: "", email: "", full_name: ""};
+            vm.profileRequestDone = false;
+            if( vm.$refs.account ) {
+                vm.$refs.account.reset();
+            }
+            vm.$emit('invite-completed');
+        },
+        refresh: function() {
+            this.get();
+        },
+        submit: function() {
+            var vm = this;
+            if( vm.newItem.slug || vm.newItem.email) {
+                this._addItem(vm.newItem, vm.profileRequestDone);
+            } else {
+                this._addItem((vm.$refs.account && vm.$refs.account.query) ?
+                    vm.$refs.account.query : vm.candidateId,
+                    vm.profileRequestDone);
+            }
+        },
+        updateItemSelected: function(item) {
+            var vm = this;
+            if( item ) {
+                vm.newItem = item;
+                vm.profileRequestDone = false;
+                vm.submit();
+            }
+        },
+    },
+    computed: {
+        requestedProfilePrintableName: function() {
+            var vm = this;
+            if( typeof vm.newItem !== 'undefined' ) {
+                if( jQuery.type(vm.newItem) === "string" ) {
+                    return vm.newItem ? vm.newItem : "The profile";
+                }
+                if( typeof vm.newItem.full_name !== 'undefined' &&
+                    vm.newItem.full_name ) {
+                    return vm.newItem.full_name;
+                }
+                if( typeof vm.newItem.email !== 'undefined' &&
+                    vm.newItem.email ) {
+                    return vm.newItem.email;
+                }
+            }
+            return  "The profile";
+        }
+    },
 });
 
 

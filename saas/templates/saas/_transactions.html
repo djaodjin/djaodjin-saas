@@ -3,8 +3,8 @@
   {% include "saas/_filter.html" %}
   <div>
     <a id="download" role="button"
-       ng-prop-href="'{{download_url}}' + getQueryString(['page'])"
-       v-bind:href="'{{download_url}}' + getQueryString(['page'])">CSV Download</a>
+       ng-prop-href="'{{urls.download}}' + getQueryString(['page'])"
+       v-bind:href="'{{urls.download}}' + getQueryString(['page'])">CSV Download</a>
   </div>
   <table>
     <thead>

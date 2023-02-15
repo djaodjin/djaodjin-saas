@@ -1,4 +1,4 @@
-# Copyright (c) 2020, DjaoDjin inc.
+# Copyright (c) 2023, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -25,6 +25,7 @@ from __future__ import unicode_literals
 
 from django.http import Http404
 from django.db import transaction
+from django.db.models import Sum
 from rest_framework import status
 from rest_framework.generics import (CreateAPIView, ListAPIView,
     GenericAPIView, RetrieveAPIView)
@@ -38,7 +39,7 @@ from ..docs import OpenAPIResponse, no_body, swagger_auto_schema
 from ..filters import DateRangeFilter, OrderingFilter, SearchFilter
 from ..humanize import as_money
 from ..models import Charge, InsufficientFunds
-from ..mixins import ChargeMixin, OrganizationMixin
+from ..mixins import ChargeMixin, DateRangeContextMixin, OrganizationMixin
 from ..pagination import TotalPagination
 
 
@@ -75,7 +76,7 @@ class ChargeResourceView(ChargeMixin, RetrieveAPIView):
     serializer_class = ChargeSerializer
 
 
-class SmartChargeListMixin(object):
+class SmartChargeListMixin(DateRangeContextMixin):
     """
     Subscriber list which is also searchable and sortable.
     """
@@ -154,7 +155,11 @@ class ChargeListAPIView(SmartChargeListMixin,
     def get_queryset(self):
         queryset = super(ChargeListAPIView, self).get_queryset()
         #pylint:disable=attribute-defined-outside-init
-        self.totals = queryset.aggregate('unit', 'amount')
+        totals = queryset.values('unit').annotate(amount=Sum('amount'))
+        if totals:
+            self.totals = totals[0]
+        else:
+            self.totals = {'amount': 0, 'unit': settings.DEFAULT_UNIT}
         return queryset
 
 

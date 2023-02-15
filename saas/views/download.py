@@ -39,6 +39,7 @@ from rest_framework.generics import get_object_or_404
 from rest_framework.request import Request
 
 from .. import humanize
+from ..api.charges import SmartChargeListMixin, ChargeQuerysetMixin
 from ..api.coupons import CouponQuerysetMixin, SmartCouponListMixin
 from ..api.subscriptions import ActiveSubscribersMixin, ChurnedSubscribersMixin
 from ..api.transactions import (BillingsQuerysetMixin,
@@ -143,6 +144,30 @@ class BalancesDownloadView(MetricsMixin, CSVDownloadView):
         else:
             # means we have a heading only
             row = [balance_line.title]
+        return row
+
+
+class ChargesDownloadView(SmartChargeListMixin, ChargeQuerysetMixin,
+                          CSVDownloadView):
+    """
+    Export charges as a CSV file.
+    """
+    basename = 'charges'
+
+    headings = [
+        'Created At'
+        'Amount',
+        'State',
+        'Description',
+    ]
+
+    def queryrow_to_columns(self, record):
+        row = [
+            record.created_at.date(),
+            record.amount,
+            record.state,
+            record.description
+        ]
         return row
 
 

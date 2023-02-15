@@ -1,4 +1,4 @@
-# Copyright (c) 2022, DjaoDjin inc.
+# Copyright (c) 2023, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -180,7 +180,7 @@ djaodjin-saas/tree/master/saas/templates/saas/profile/plans/plan.html>`__).
         messages.success(
             self.request, _("Successfully created plan titled '%(title)s'.") % {
                 'title': self.object.title})
-        return reverse('saas_metrics_plans', args=(self.organization,))
+        return reverse('saas_plan_base', args=(self.organization,))
 
 
 class PlanUpdateView(PlanFormMixin, UpdateView):
@@ -238,8 +238,12 @@ djaodjin-saas/tree/master/saas/templates/saas/profile/plans/index.html>`__).
 
     def get_context_data(self, **kwargs):
         context = super(PlanListView, self).get_context_data(**kwargs)
-        context.update({
-            'download_url': reverse(
+        update_context_urls(context, {
+            'download': reverse(
                 'saas_subscriber_pipeline_download_subscribed',
-                kwargs=self.get_url_kwargs(**kwargs))})
+                kwargs=self.get_url_kwargs(**kwargs)),
+            'provider': {
+                'plan_new': reverse('saas_plan_new', args=(self.organization,))
+            }
+        })
         return context

@@ -182,6 +182,7 @@ subscribers.html>`__).
         context = super(PlanSubscribersListView, self).get_context_data(
             **kwargs)
         update_context_urls(context, {
+            'api_candidates': reverse('saas_api_search_profiles'),
             'provider': {'api_plan_subscribers': reverse(
             'saas_api_plan_subscribers', args=(self.provider, self.plan))}})
         return context

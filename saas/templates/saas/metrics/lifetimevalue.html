@@ -1,0 +1,34 @@
+{% extends "saas/base_dashboard.html" %}
+
+{% block saas_title %}
+Lifetime value
+{% endblock %}
+
+{% block saas_content %}
+<lifetimevalue-list inline-template>
+  <div>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Contract Value</th>
+          <th>Cash Payments</th>
+          <th>Deferred Revenue</th>
+          <th>Created at</th>
+          <th>Ends at</th>
+        </tr>
+      </thead>
+      <tr :id="item.slug" v-for="(item, index) in items.results" v-show="itemsLoaded && items.results.length > 0">
+        <td>
+          <a :href="'{{urls.profile_redirect}}' + item.slug + '/'">[[item.printable_name]]</a>
+        </td>
+        <td>[[item.contract_value]]</td>
+        <td>[[item.cash_payments]]</td>
+        <td>[[item.deferred_revenue]]</td>
+        <td>[[item.created_at]]</td>
+        <td>[[item.ends_at]]</td>
+      </tr>
+    </table>
+  </div>
+</lifetimevalue-list>
+{% endblock %}
