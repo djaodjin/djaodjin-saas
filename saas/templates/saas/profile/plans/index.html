@@ -4,10 +4,15 @@
 <plan-list inline-template id="plan-list-container">
   <div>
     <h2>Plans</h2>
-    <div v-for="item in items.results">
-        <!-- TODO just basic template instead of an error page -->
-        <a :href="'{{urls.provider.plans}}' + item.slug + '/'">[[item.title]]</a>
-    </div>
+    <a id="plan-new" href="{{ urls.provider.plan_new }}" title="Create plan">Add Plan ...</a>
+    <table id="data-in-rows">
+      <tr :id="item.slug" v-for="item in items.results">
+        <td>
+          <!-- TODO just basic template instead of an error page -->
+          <a :href="'{{urls.provider.plans}}' + item.slug + '/'">[[item.title]]</a>
+        </td>
+      </tr>
+    </table>
   </div>
 </plan-list>
 {% endblock %}

@@ -23,8 +23,7 @@ are restricted to read-only permissions.
 Examples
 --------
 
-Let's say you want to give POST access to contributors on
-:doc:`/api/billing/charges/:charge/refund/<api>`,
+Let's say you want to give POST access to contributors on the refund API,
 you would write the following in your urls.py:
 
 .. code-block:: python

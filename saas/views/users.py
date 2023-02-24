@@ -38,8 +38,9 @@ class ProductListView(UserMixin, TemplateView):
     To edit the layout of this page, create a local \
     ``saas/users/roles.html`` (`example <https://github.com/djaodjin\
 /djaodjin-saas/tree/master/saas/templates/saas/users/roles.html>`__).
-    You should insure the page will call back the
-    :ref:`/api/users/:user/roles/ <api_accessibles>`
+    You should insure the page will call the
+    `/api/users/{user}/accessibles <https://www.djaodjin.com/docs/\
+reference/djaoapp/latest/api/#listAccessibleBy>`__
     API end point to fetch the set of organization accessible by the user.
 
     Template context:

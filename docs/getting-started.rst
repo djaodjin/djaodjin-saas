@@ -159,8 +159,8 @@ Selling add-ons plans
 ---------------------
 
 Subscribers can be subscribed to any number of ``Plan``.
-The :doc:`cart API<_api_cart>` and :doc:`checkout pipeline<orders>` support
-orders for multiple plans in one payment. All you have to do is thus:
+The :doc:`checkout pipeline<orders>` support orders for multiple plans
+in one payment. All you have to do is thus:
 
 1. Create a new ``Plan``
 2. Modify the pricing page from a one-click to a shopping cart experience

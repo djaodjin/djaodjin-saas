@@ -52,9 +52,6 @@ EXTRA_MIXIN               object            Class to to inject into the parents
                                             of the Mixin hierarchy.
                                             (useful for composition of Django
                                             apps)
-ORGANIZATION_MODEL        saas.Organization Replace the ``Organization`` model
-                                            (useful for composition of Django
-                                            apps)
 PAGE_SIZE                 25                Maximum number of objects to return
                                             per API calls.
 PROCESSOR                :doc:`Stripe backend<backends>`
@@ -67,9 +64,6 @@ PROVIDER_SITE_CALLABLE   None               Optional function that returns
                                             an object with a ``domain``
                                             field that is used to generate
                                             fully qualified URLs.
-                                            (useful for composition of Django
-                                            apps)
-ROLE_RELATION            saas.Role          Replace the ``Role`` model
                                             (useful for composition of Django
                                             apps)
 TERMS_OF_USE             'terms-of-use'     slug for the ``Agreement`` stating
@@ -124,7 +118,7 @@ _SETTINGS = {
     },
     'PROCESSOR_BACKEND_CALLABLE': None,
     'PRODUCT_URL_CALLABLE': None,
-    'ROLE_RELATION': getattr(settings, 'SAAS_ROLE_MODEL', 'saas.Role'),
+    'ROLE_MODEL': getattr(settings, 'SAAS_ROLE_MODEL', 'saas.Role'),
     'ROLE_SERIALIZER': 'saas.api.serializers.RoleSerializer',
     'USER_SERIALIZER': 'saas.api.serializers_overrides.UserSerializer',
     'USER_DETAIL_SERIALIZER': 'saas.api.serializers_overrides.UserSerializer',
@@ -146,8 +140,19 @@ VERIFICATION_KEY_RE = r'[a-f0-9]{40}'
 AUTH_USER_MODEL = getattr(
     settings, 'AUTH_USER_MODEL', 'django.contrib.auth.models.User')
 
+#: overrides the implementation of `saas.models.get_broker`
+#: This function must return an `Organization` instance.
+#: It is often necessary to override the default implementation
+#: when you are dealing with a Web hosting service and each Website
+#: has its own database of users, profiles, etc.
 BROKER_CALLABLE = _SETTINGS.get('BROKER').get('GET_INSTANCE', None)
 BROKER_FEE_PERCENTAGE = _SETTINGS.get('BROKER').get('FEE_PERCENTAGE', 0)
+
+#: overrides the implementation of `saas.utils.build_absolute_uri`
+#: This function must return fully qualified URL.
+#: It is often necessary to override the default implementation
+#: when you are dealing with a Web hosting service and each Website
+#: has its own database of users, profiles, etc.
 BUILD_ABSOLUTE_URI_CALLABLE = _SETTINGS.get('BROKER').get(
     'BUILD_ABSOLUTE_URI_CALLABLE')
 BYPASS_IMPLICIT_GRANT = _SETTINGS.get('BYPASS_IMPLICIT_GRANT')
@@ -180,7 +185,7 @@ PROCESSOR_HOOK_SECRET = PROCESSOR.get('WEBHOOK_SECRET')
 #: /app/{subscriber}/{plan}/.
 PRODUCT_URL_CALLABLE = _SETTINGS.get('PRODUCT_URL_CALLABLE')
 
-ROLE_RELATION = _SETTINGS.get('ROLE_RELATION')
+ROLE_MODEL = _SETTINGS.get('ROLE_MODEL')
 ROLE_SERIALIZER = _SETTINGS.get('ROLE_SERIALIZER')
 USER_SERIALIZER = _SETTINGS.get('USER_SERIALIZER')
 USER_DETAIL_SERIALIZER = _SETTINGS.get('USER_DETAIL_SERIALIZER')
@@ -190,6 +195,9 @@ TERMS_OF_USE = _SETTINGS.get('TERMS_OF_USE')
 # BE EXTRA CAREFUL! This variable is used to bypass PermissionDenied
 # exceptions. It is solely intended as a debug flexibility nob.
 BYPASS_PERMISSION_CHECK = _SETTINGS.get('BYPASS_PERMISSION_CHECK')
+
+#: A callable function which returns a `Storage` object that will be used
+#: to upload a contact picture
 PICTURE_STORAGE_CALLABLE = _SETTINGS.get('PICTURE_STORAGE_CALLABLE')
 EXTRA_FIELD = _SETTINGS.get('EXTRA_FIELD')
 

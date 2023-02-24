@@ -59,7 +59,7 @@ Connecting Two Organizations to each other
 
 In ninety-nine percent of the cases, two organizations become connected
 together when one subscribes to a plan provided by the second through
-the :doc:`orders<checkout page>`.
+the :doc:`checkout pipeline<orders>`.
 
 There are two special cases. First, a provider can decide to directly grant
 a subscription to a plan for multiple reasons (ex: demo, invite-only plans,

@@ -193,7 +193,7 @@ def get_organization_model():
 def get_role_model():
     # delayed import so we can load ``OrganizationMixinBase`` in django.conf
     from . import settings #pylint:disable=import-outside-toplevel
-    return get_model_class(settings.ROLE_RELATION, 'ROLE_RELATION')
+    return get_model_class(settings.ROLE_MODEL, 'ROLE_MODEL')
 
 
 def get_role_serializer():

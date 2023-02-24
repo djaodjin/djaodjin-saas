@@ -8,7 +8,7 @@ and deposit transactions.
 ``Organization`` with pk=1 will be considered to be the default processor.
 This can be overridden by defining ``PROCESSOR_ID`` in the settings block.
 
-.. code-block:: python
+.. code-block::
 
     $ cat settings.py
 

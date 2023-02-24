@@ -123,9 +123,10 @@ class SubscriberListView(ProviderMixin, TemplateView):
 djaodjin-saas/tree/master/saas/templates/saas/profile/subscribers.html>`__).
 
     This page will typically call back
-    :ref:`/api/metrics/:organization/active/ <api_metrics_subscribers_active>`
-    and/or :ref:`/api/metrics/:organization/churned/\
- <api_metrics_subscribers_churned>`
+    `/api/profile/{profile}/subscribers/subscriptions <https://www.djaodjin.com\
+/docs/reference/djaoapp/latest/api/#listActiveSubscribers>`__
+    and/or `/api/profile/{profile}/subscribers/subscriptions/churned <https://\
+www.djaodjin.com/docs/reference/djaoapp/latest/api/#listChurnedSubscribers>`__
     to fetch the set of active and/or churned subscribers for a provider
     plans.
 
@@ -198,7 +199,8 @@ class SubscriptionListView(OrganizationMixin, ListView):
     ``saas/profile/subscriptions.html`` (`example <https://github.com/djaodjin\
 /djaodjin-saas/tree/master/saas/templates/saas/profile/subscriptions.html>`__).
     You should insure the page will call back the
-    :ref:`/api/profile/:organization/subscriptions/ <api_subscriptions>`
+    `/api/profile/{profile}/subscriptions <https://www.djaodjin.com/docs/\
+reference/djaoapp/latest/api/#listSubscribedSubscription>`__
     API end point to fetch the set of subscriptions for the organization.
 
     Template context:

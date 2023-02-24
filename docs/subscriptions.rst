@@ -92,8 +92,8 @@ There would be 18 (3 * 2 * 3) combinations of expiration notices if a
 few combinations could not happen.
 
 - ``Subscription.auto_renew`` shall be false when ``Plan.renewal_type`` is
-``ONE_TIME`` because it does not make sense to have a subscription that
-renews if the plan states the subscription length is fixed to one period.
+  ``ONE_TIME`` because it does not make sense to have a subscription that
+  renews if the plan states the subscription length is fixed to one period.
 
 - ``Subscription.auto_renew`` shall also be set to false when
   ``Plan.renewal_type`` is ``REPEAT``. Without adding this constraint,

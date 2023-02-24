@@ -462,7 +462,8 @@ class BillingStatementView(OrganizationMixin, TransactionBaseView):
     ``saas/billing/index.html`` (`example <https://github.com/djaodjin\
 /djaodjin-saas/tree/master/saas/templates/saas/billing/index.html>`__).
     You should insure the page will call back the
-    :ref:`/api/billing/:organization/payments/ <api_billing_payments>`
+    `/api/billing/{profile}/history <https://www.djaodjin.com/docs/\
+reference/djaoapp/latest/api/#listBillings>`__
     API end point to fetch the set of transactions.
 
     Template context:
@@ -506,8 +507,9 @@ class TransferListView(BankMixin, TransactionBaseView):
     To edit the layout of this page, create a local \
     ``saas/billing/transfers.html`` (`example <https://github.com/djaodjin/\
 djaodjin-saas/tree/master/saas/templates/saas/billing/transfers.html>`__).
-    You should insure the page will call back the
-    :ref:`/api/billing/:organization/transfers/ <api_billing_transfers>`
+    You should insure the page will call the
+    `/api/billing/{profile}/transfers <https://www.djaodjin.com/docs/\
+reference/djaoapp/latest/api/#listTransfer>`__
     API end point to fetch the set of transactions.
 
     Template context:
@@ -948,8 +950,9 @@ class CouponListView(DateRangeContextMixin, ProviderMixin, TemplateView):
     ``saas/billing/coupons.html`` (`example <https://github.com/\
 djaodjin/djaodjin-saas/tree/master/saas/templates/saas/billing/\
 coupons.html>`__).
-    You should insure the page will call back the
-    :ref:`/api/billing/:organization/coupons/ <api_billing_coupons>`
+    You should insure the page will call the
+    `/api/billing/{profile}/coupons <https://www.djaodjin.com/docs/\
+reference/djaoapp/latest/api/#listCouponListCreate>`
     API end point to fetch the set of coupons for the provider organization.
 
 

@@ -189,8 +189,9 @@ class PlansMetricsView(ProviderMixin, TemplateView):
     To edit the layout of this page, create a local \
     ``saas/metrics/plans.html`` (`example <https://github.com/djaodjin\
 /djaodjin-saas/tree/master/saas/templates/saas/metrics/plans.html>`__).
-    The page will typically call back
-    :ref:`/api/metrics/:organization/plans/ <api_metrics_plans>`
+    The page will typically call
+    `/api/metrics/{profile}/plans <https://www.djaodjin.com/docs/\
+reference/djaoapp/latest/api/#listPlanMetric>`__
     to fetch the 12 month trailing performance in terms of subscribers
     of the plans of a provider.
 
@@ -235,14 +236,17 @@ class RevenueMetricsView(MetricsMixin, TemplateView):
     ``saas/metrics/revenue.html`` (`example <https://github.com/djaodjin\
 /djaodjin-saas/tree/master/saas/templates/saas/metrics/revenue.html>`__).
 
-    The page will typically call back
-    :ref:`/api/metrics/:organization/funds/ <api_metrics_funds>`
+    The page will typically call
+    `/api/metrics/{profile}/funds <https://www.djaodjin.com/docs/\
+reference/djaoapp/latest/api/#listRevenueMetric>`
     to fetch the 12 month trailing cash flow table, and/or
-    :ref:`/api/metrics/:organization/balances/ <api_metrics_balances>`
+    `/api/metrics/{profile}/balances <https://www.djaodjin.com/docs/\
+reference/djaoapp/latest/api/#listBalances>`__
     to fetch the 12 month trailing receivable/backlog/income revenue.
 
-    The example page also calls back
-    :ref:`/api/metrics/:organization/customers/ <api_metrics_customers>`
+    The example page also calls
+    `/api/metrics/{profile}/customers <https://www.djaodjin.com/docs/\
+reference/djaoapp/latest/api/#listCustomerMetric>`__
     to fetch the distinct number of customers that generated the cash
     transactions.
 

@@ -27,11 +27,11 @@ Contents:
    ledger
    security
    relations
-   periodic-tasks
-   pages
-   api
    models
+   views
+   periodic-tasks
    backends
+   extensions
 
 Indices and tables
 ==================
