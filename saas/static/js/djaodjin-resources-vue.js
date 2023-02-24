@@ -155,6 +155,136 @@ var messagesMixin = {
     }
 };
 
+
+/** compute outdated based on params.
+
+    A subclass of this mixin must define either the function `autoReload`
+    or `reload` in order to make updates as a user is typing in input fields
+    or when a button is pressed respectively.
+ */
+var paramsMixin = {
+    data: function(){
+        var data = {
+            lastGetParams: {},
+            params: {
+                // The following dates will be stored as `String` objects
+                // as oppossed to `moment` or `Date` objects because this
+                // is how form fields input="date" will update them.
+                start_at: null,
+                ends_at: null,
+                // The timezone for both start_at and ends_at.
+                timezone: 'local'
+            }
+        }
+        if( this.$dateRange ) {
+            if( this.$dateRange.start_at ) {
+                data.params['start_at'] = this.$dateRange.start_at;
+            }
+            if( this.$dateRange.ends_at ) {
+                data.params['ends_at'] = this.$dateRange.ends_at;
+            }
+            if( this.$dateRange.timezone ) {
+                data.params['timezone'] = this.$dateRange.timezone;
+            }
+        }
+        return data;
+    },
+    methods: {
+        asDateInputField: function(dateISOString) {
+            const dateValue = moment(dateISOString);
+            return dateValue.isValid() ? dateValue.format("YYYY-MM-DD") : null;
+        },
+        asDateISOString: function(dateInputField) {
+            const dateValue = moment(dateInputField, "YYYY-MM-DD");
+            return dateValue.isValid() ? dateValue.toISOString() : null;
+        },
+        autoReload: function() {
+        },
+        reload: function() {
+        },
+        getParams: function(excludes){
+            var vm = this;
+            var params = {};
+            for( var key in vm.params ) {
+                if( vm.params.hasOwnProperty(key) && vm.params[key] ) {
+                    if( excludes && key in excludes ) continue;
+                    params[key] = vm.params[key];
+                }
+            }
+            return params;
+        },
+    },
+    computed: {
+        _start_at: {
+            get: function() {
+                return this.asDateInputField(this.params.start_at);
+            },
+            set: function(newVal) {
+                if( newVal ) {
+                    // The setter might be call with `newVal === null`
+                    // when the date is incorrect (ex: 09/31/2022).
+                    this.$set(this.params, 'start_at',
+                        this.asDateISOString(newVal));
+                    if( this.outdated ) this.debouncedAutoReload();
+                }
+            }
+        },
+        _ends_at: {
+            get: function() {
+                // form field input="date" will expect ends_at as a String
+                // but will literally cut the hour part regardless of timezone.
+                // We don't want an empty list as a result.
+                // If we use moment `endOfDay` we get 23:59:59 so we
+                // add a full day instead. It seemed clever to run the following
+                // code but that prevented entering the year part in the input
+                // field (as oppossed to use the widget).
+                //
+                // const dateValue = moment(this.params.ends_at).add(1,'days');
+                // return dateValue.isValid() ? dateValue.format("YYYY-MM-DD") : null;
+                return this.asDateInputField(this.params.ends_at);
+            },
+            set: function(newVal) {
+                if( newVal ) {
+                    // The setter might be call with `newVal === null`
+                    // when the date is incorrect (ex: 09/31/2022).
+                    this.$set(this.params, 'ends_at',
+                        this.asDateISOString(newVal));
+                    if( this.outdated ) this.debouncedAutoReload();
+                }
+            }
+        },
+        outdated: function() {
+            var vm = this;
+            const params = vm.getParams();
+            for( var key in vm.lastGetParams ) {
+                if( vm.lastGetParams.hasOwnProperty(key) ) {
+                    if( vm.lastGetParams[key] !== params[key] ) {
+                        return true;
+                    }
+                }
+            }
+            for( var key in params ) {
+                if( params.hasOwnProperty(key) ) {
+                    if( params[key] !== vm.lastGetParams[key] ) {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
+    },
+    created: function () {
+        // _.debounce is a function provided by lodash to limit how
+        // often a particularly expensive operation can be run.
+        if( typeof _ != 'undefined' && typeof _.debounce != 'undefined' ) {
+            this.debouncedAutoReload = _.debounce(this.autoReload, 500);
+        } else {
+            this.debouncedAutoReload = this.autoReload;
+        }
+    },
+};
+
+
 /** A wrapper around jQuery ajax functions that adds authentication
     parameters as necessary.
 
@@ -162,7 +292,8 @@ var messagesMixin = {
 */
 var httpRequestMixin = {
     mixins: [
-        messagesMixin
+        messagesMixin,
+        paramsMixin
     ],
 // XXX conflitcs when params defined as props
 //    data: function() {
@@ -227,17 +358,6 @@ var httpRequestMixin = {
             return base + '/' + path;
         },
 
-        getParams: function(excludes){
-            var vm = this;
-            var params = {};
-            for( var key in vm.params ) {
-                if( vm.params.hasOwnProperty(key) && vm.params[key] ) {
-                    if( excludes && key in excludes ) continue;
-                    params[key] = vm.params[key];
-                }
-            }
-            return params;
-        },
         getQueryString: function(excludes){
             var vm = this;
             var sep = "";
@@ -793,75 +913,48 @@ var itemMixin = {
 }
 
 
-var filterableMixin = {
-    data: function(){
-        return {
-            params: {
-                q: '',
-            },
-            mixinFilterCb: 'get',
-        }
-    },
-    methods: {
-        filterList: function(){
-            if(this.params.q) {
-                if ("page" in this.params){
-                    this.params.page = 1;
-                }
-            }
-            if(this[this.mixinFilterCb]){
-                this[this.mixinFilterCb]();
-            }
-        },
-    },
-}
-
-
 var paginationMixin = {
     data: function(){
         return {
             params: {
                 page: 1,
             },
+            mergeResults: false,
             itemsPerPage: this.$itemsPerPage,
             ellipsisThreshold: 4,
+            preReload: ['resetPage'],
             getCompleteCb: 'getCompleted',
             getBeforeCb: 'resetPage',
-            qsCache: null,
-            isInfiniteScroll: false,
         }
     },
     methods: {
         resetPage: function(){
             var vm = this;
-            if(!vm.ISState) return;
-            if(vm.qsCache && vm.qsCache !== vm.qs){
-                vm.params.page = 1;
-                vm.ISState.reset();
-            }
-            vm.qsCache = vm.qs;
+            vm.params.page = 1;
         },
         getCompleted: function(){
             var vm = this;
-            if(!vm.ISState) return;
             vm.mergeResults = false;
-            if(vm.pageCount > 0){
-                vm.ISState.loaded();
-            }
-            if(vm.params.page >= vm.pageCount){
-                vm.ISState.complete();
+        },
+        handleScroll: function(evt) {
+            var vm = this;
+            let element = this.$el;
+            if( element.getBoundingClientRect().bottom < window.innerHeight ) {
+                let menubar = vm.$el.querySelector('[role="pagination"]');
+                var style = window.getComputedStyle(menubar);
+                if( style.display == 'none' ) {
+                    // We are not displaying the pagination menubar,
+                    // so let's scroll!
+                    vm.paginationHandler();
+                }
             }
         },
         paginationHandler: function($state){
             var vm = this;
-            if(!vm.ISState) return;
-            if(!vm.itemsLoaded){
-                // this handler is triggered on initial get too
+            if( !vm.itemsLoaded || vm.mergeResults ) {
+                // this handler is triggered on initial get() too.
                 return;
             }
-            // rudimentary way to detect which type of pagination
-            // is active. ideally need to monitor resolution changes
-            vm.isInfiniteScroll = true;
             var nxt = vm.params.page + 1;
             if(nxt <= vm.pageCount){
                 vm.$set(vm.params, 'page', nxt);
@@ -926,13 +1019,13 @@ var paginationMixin = {
             }
             return pages;
         },
-        ISState: function(){
-            if(!this.$refs.infiniteLoading) return;
-            return this.$refs.infiniteLoading.stateChanger;
-        },
-        qs: function(){
-            return this.getQueryString({page: null});
-        },
+    },
+    mounted: function() {
+        var vm = this;
+        window.addEventListener("scroll", vm.handleScroll);
+    },
+    unmounted: function () {
+        window.removeEventListener("scroll", vm.handleScroll);
     }
 }
 
@@ -1035,7 +1128,6 @@ var itemListMixin = {
     mixins: [
         httpRequestMixin,
         paginationMixin,
-        filterableMixin,
         sortableMixin
     ],
     data: function(){
@@ -1050,31 +1142,10 @@ var itemListMixin = {
                     results: [],
                     count: 0
                 },
-                mergeResults: false,
-                params: {
-                    // The following dates will be stored as `String` objects
-                    // as oppossed to `moment` or `Date` objects because this
-                    // is how form fields input="date" will update them.
-                    start_at: null,
-                    ends_at: null,
-                    // The timezone for both start_at and ends_at.
-                    timezone: 'local'
-                },
-                lastGetParams: {},
-                autoreload: true,
                 getCb: null,
-                getCompleteCb: null,
                 getBeforeCb: null,
-            }
-            if( this.$dateRange ) {
-                if( this.$dateRange.start_at ) {
-                    data.params['start_at'] = this.$dateRange.start_at;
-                }
-                if( this.$dateRange.ends_at ) {
-                    data.params['ends_at'] = this.$dateRange.ends_at;
-                }
-                if( this.$dateRange.timezone ) {
-                    data.params['timezone'] = this.$dateRange.timezone;
+                params: {
+                    q: '',
                 }
             }
             return data;
@@ -1122,74 +1193,14 @@ var itemListMixin = {
             vm.lastGetParams = vm.getParams();
             vm.reqGet(vm.url, vm.lastGetParams, cb);
         },
-        asDateInputField: function(dateISOString) {
-            const dateValue = moment(dateISOString);
-            return dateValue.isValid() ? dateValue.format("YYYY-MM-DD") : null;
+        reload: function() {
+            let vm = this;
+            for( let idx = 0; idx < vm.preReload.length; ++ idx ) {
+                vm[vm.preReload[idx]]();
+            }
+            vm.get();
         },
-        asDateISOString: function(dateInputField) {
-            const dateValue = moment(dateInputField, "YYYY-MM-DD");
-            return dateValue.isValid() ? dateValue.toISOString() : null;
-        }
     },
-    computed: {
-        _start_at: {
-            get: function() {
-                return this.asDateInputField(this.params.start_at);
-            },
-            set: function(newVal) {
-                if( newVal ) {
-                    // The setter might be call with `newVal === null`
-                    // when the date is incorrect (ex: 09/31/2022).
-                    this.$set(this.params, 'start_at',
-                        this.asDateISOString(newVal));
-                    if( this.autoreload && this.outdated ) this.get();
-                }
-            }
-        },
-        _ends_at: {
-            get: function() {
-                // form field input="date" will expect ends_at as a String
-                // but will literally cut the hour part regardless of timezone.
-                // We don't want an empty list as a result.
-                // If we use moment `endOfDay` we get 23:59:59 so we
-                // add a full day instead. It seemed clever to run the following
-                // code but that prevented entering the year part in the input
-                // field (as oppossed to use the widget).
-                //
-                // const dateValue = moment(this.params.ends_at).add(1,'days');
-                // return dateValue.isValid() ? dateValue.format("YYYY-MM-DD") : null;
-                return this.asDateInputField(this.params.ends_at);
-            },
-            set: function(newVal) {
-                if( newVal ) {
-                    // The setter might be call with `newVal === null`
-                    // when the date is incorrect (ex: 09/31/2022).
-                    this.$set(this.params, 'ends_at',
-                        this.asDateISOString(newVal));
-                    if( this.autoreload && this.outdated ) this.get();
-                }
-            }
-        },
-        outdated: function() {
-            var vm = this;
-            const params = vm.getParams();
-            for( var key in vm.lastGetParams ) {
-                if( vm.lastGetParams.hasOwnProperty(key) ) {
-                    if( vm.lastGetParams[key] !== params[key] ) {
-                        return true;
-                    }
-                }
-            }
-            for( var key in params ) {
-                if( params.hasOwnProperty(key) ) {
-                    if( params[key] !== vm.lastGetParams[key] ) {
-                        return true;
-                    }
-                }
-            }
-            return false;
-        }
-    }
 };
 
 
@@ -1244,9 +1255,8 @@ var TypeAhead = Vue.extend({
 
         reset: function() {
             var vm = this;
-            vm.items = [];
+            vm.clear();
             vm.query = '';
-            vm.loading = false;
         },
 
         setActive: function(index) {
@@ -1315,9 +1325,10 @@ var TypeAhead = Vue.extend({
 
     // attach properties to the exports object to define
     // the exported module properties.
-    exports.messagesMixin = messagesMixin;
     exports.httpRequestMixin = httpRequestMixin;
-    exports.itemMixin = itemMixin;
     exports.itemListMixin = itemListMixin;
+    exports.itemMixin = itemMixin;
+    exports.messagesMixin = messagesMixin;
+    exports.paramsMixin = paramsMixin;
     exports.TypeAhead = TypeAhead;
 }));
