@@ -10,7 +10,7 @@ Major Features:
 Tested with
 
 - **Python:** 3.7, **Django:** 3.2 ([LTS](https://www.djangoproject.com/download/)), **Django Rest Framework:** 3.12
-- **Python:** 3.10, **Django:** 4.0 (latest), **Django Rest Framework:** 3.12
+- **Python:** 3.10, **Django:** 4.1 (latest), **Django Rest Framework:** 3.12
 - **Python:** 2.7, **Django:** 1.11 (legacy), **Django Rest Framework:** 3.9.4
 
 This project contains bare bone templates which are compatible with Django
@@ -99,10 +99,10 @@ saas/templates/notification/ directory.
 Release Notes
 =============
 
-0.15.4
+0.15.5
 
-  * uses unique slug for RoleDescription to be consistent with Plan
-  * escapes comma instead of spaces in typeahead search to improve usability
-  * fixes `fail_subcription` when dealing with a single Plan
+  * removes dependency on vue-infinite-loading for pagination
+  * makes broker fee functional
+  * enables override of product_url
 
 [previous release notes](changelog)

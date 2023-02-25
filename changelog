@@ -10,6 +10,14 @@ Roadmap
 Released versions
 =================
 
+0.15.5
+
+  * removes dependency on vue-infinite-loading for pagination
+  * makes broker fee functional
+  * enables override of product_url
+
+ -- Sebastien Mirolo <smirolo@djaodjin.com>  Sat, 25 Feb 2023 06:54:00 -0700
+
 0.15.4
 
   * uses unique slug for RoleDescription to be consistent with Plan
