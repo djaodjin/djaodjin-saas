@@ -1319,7 +1319,9 @@ var TypeAhead = Vue.extend({
         }
     },
     mounted: function(){
-        // do nothing.
+        if( this.$el.dataset && this.$el.dataset.url ) {
+            this.url = this.$el.dataset.url;
+        }
     }
 });
 

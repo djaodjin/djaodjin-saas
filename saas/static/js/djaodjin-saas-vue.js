@@ -1966,6 +1966,21 @@ Vue.component('import-transaction', {
             }
         },
     },
+    computed: {
+        _created_at: {
+            get: function() {
+                return this.asDateInputField(this.entry.created_at);
+            },
+            set: function(newVal) {
+                if( newVal ) {
+                    // The setter might be call with `newVal === null`
+                    // when the date is incorrect (ex: 09/31/2022).
+                    this.$set(this.entry, 'created_at',
+                        this.asDateISOString(newVal));
+                }
+            }
+        },
+    }
 });
 
 
@@ -2771,16 +2786,25 @@ Vue.component('unengaged-subscribers', {
 // Widgets for dashboard
 // ---------------------
 
-Vue.component('search-profile', {
-    mixins: [
-        itemListMixin
-    ],
+Vue.component('search-profile', TypeAhead.extend({
     data: function() {
         return {
             url: this.$urls.provider.api_accounts,
         }
-    },
-});
+    }
+}));
+
+
+Vue.component('subscription-typeahead', TypeAhead.extend({
+  methods: {
+    onHit: function onHit(newItem) {
+      var vm = this;
+      vm.$emit('selectitem', newItem);
+      vm.clear();
+    }
+  }
+}));
+
 
 
 Vue.component('today-sales', {
