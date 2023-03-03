@@ -71,9 +71,8 @@ class OrganizationMixinBase(object):
 
         organization = self.organization
         if not organization:
-            # If we don't even have a broker/provider for a site.
-            raise Http404(
-                _("It seems a broker was not defined, or defined incorrectly."))
+            return context
+
         context.update({'organization': organization})
         # XXX These might be moved to a higher-level
         urls = {
