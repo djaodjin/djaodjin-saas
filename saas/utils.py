@@ -277,8 +277,15 @@ def validate_redirect_url(next_url, sub=False, **kwargs):
         try:
             # We replace all ':slug/' by '%(slug)s/' so that we can further
             # create an instantiated url through Python string expansion.
+            pat_kwargs = kwargs
+            if 'profile' not in kwargs:
+                # XXX deployutils is using :profile but djaoapp still generates
+                #     :organization for the time being.
+                profile = kwargs.get('organization')
+                pat_kwargs = kwargs.copy()
+                pat_kwargs.update({'profile': profile})
             path = re.sub(r':(%s)/' % settings.ACCT_REGEX,
-                r'%(\1)s/', path) % kwargs
+                r'%(\1)s/', path) % pat_kwargs
         except KeyError:
             # We don't have all keys necessary. A safe defaults is to remove
             # them. Most likely a redirect URL is present to pick between
