@@ -10,7 +10,7 @@
         <th><label>Filter</label>
           <input type="text"
               ng-model="params.q" ng-change="filterList(params.q)"
-              v-model="params.q" @input="filterList" /></th>
+              v-model="params.q" @input="debouncedAutoReload" /></th>
       </tr>
     </thead>
     <tbody

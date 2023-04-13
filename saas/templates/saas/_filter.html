@@ -4,5 +4,6 @@
     <label>To</label>
     <input type="date" ng-model="params.ends_at" v-model="_ends_at"></input>
     <label>Filter</label>
-    <input type="text" ng-model="params.q" v-model="params.q" @input="filterList" />
+    <input type="text" ng-model="params.q"
+           v-model="params.q" @input="debouncedAutoReload" />
 </div>

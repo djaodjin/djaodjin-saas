@@ -11,7 +11,7 @@ Provider Dashboard
           <div>
             <input type="text" placeholder="Search..."
                 ng-model="params.q" ng-change="filterList(params.q)"
-                v-model="params.q" @input="filterList" />
+                v-model="params.q" @input="debouncedAutoReload" />
           </div>
           <table>
             <tbody id="has-registered"

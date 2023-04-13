@@ -6,8 +6,7 @@
         "moment": "~2.29.4",
         "moment-timezone": "0.5.33",
         "vue": "^2.6.14",
-        "vue-croppa": "^1.3.8",
-        "vue-infinite-loading": "^2.4.5"
+        "vue-croppa": "^1.3.8"
     },
     "engines": {
         "node": ">=v10.16.1",

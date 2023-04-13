@@ -156,7 +156,10 @@ var messagesMixin = {
 };
 
 
-/** compute outdated based on params.
+/** compute outdated based on `params`.
+
+    `params = {start_at, ends_at}` must exist in either the `props` or `data`
+    of the component.
 
     A subclass of this mixin must define either the function `autoReload`
     or `reload` in order to make updates as a user is typing in input fields
@@ -166,26 +169,6 @@ var paramsMixin = {
     data: function(){
         var data = {
             lastGetParams: {},
-            params: {
-                // The following dates will be stored as `String` objects
-                // as oppossed to `moment` or `Date` objects because this
-                // is how form fields input="date" will update them.
-                start_at: null,
-                ends_at: null,
-                // The timezone for both start_at and ends_at.
-                timezone: 'local'
-            }
-        }
-        if( this.$dateRange ) {
-            if( this.$dateRange.start_at ) {
-                data.params['start_at'] = this.$dateRange.start_at;
-            }
-            if( this.$dateRange.ends_at ) {
-                data.params['ends_at'] = this.$dateRange.ends_at;
-            }
-            if( this.$dateRange.timezone ) {
-                data.params['timezone'] = this.$dateRange.timezone;
-            }
         }
         return data;
     },
@@ -212,6 +195,23 @@ var paramsMixin = {
                 }
             }
             return params;
+        },
+        getQueryString: function(excludes){
+            var vm = this;
+            var sep = "";
+            var result = "";
+            var params = vm.getParams(excludes);
+            for( var key in params ) {
+                if( params.hasOwnProperty(key) ) {
+                    result += sep + key + '=' + encodeURIComponent(
+                        params[key].toString());
+                    sep = "&";
+                }
+            }
+            if( result ) {
+                result = '?' + result;
+            }
+            return result;
         },
     },
     computed: {
@@ -281,7 +281,7 @@ var paramsMixin = {
         } else {
             this.debouncedAutoReload = this.autoReload;
         }
-    },
+    }
 };
 
 
@@ -346,33 +346,33 @@ var httpRequestMixin = {
         _safeUrl: function(base, path) {
             if( !path ) return base;
 
-            if( base && base[base.length - 1] == '/') {
-                if( path && path[0] == '/') {
-                    return base + path.substring(1);
+            const parts = [base].concat(
+                ( typeof path === 'string' ) ? [path] : path);
+            var cleanParts = [];
+            var start, end;
+            for( var idx = 0; idx < parts.length; ++idx ) {
+                const part = parts[idx];
+                for( start = 0; start < part.length; ++start ) {
+                    if( part[start] !== '/') {
+                        break;
+                    }
                 }
-                return base + path;
-            }
-            if( path && path[0] == '/') {
-                return base + path;
-            }
-            return base + '/' + path;
-        },
-
-        getQueryString: function(excludes){
-            var vm = this;
-            var sep = "";
-            var result = "";
-            var params = vm.getParams(excludes);
-            for( var key in params ) {
-                if( params.hasOwnProperty(key) ) {
-                    result += sep + key + '=' + params[key].toString();
-                    sep = "&";
+                for( end = part.length - 1; end >= 0; --end ) {
+                    if( part[end] !== '/') {
+                        break;
+                    }
+                }
+                if( start < end ) {
+                    cleanParts.push(part.slice(start, end + 1));
+                } else {
+                    cleanParts.push(part);
                 }
             }
-            if( result ) {
-                result = '?' + result;
+            var cleanUrl = cleanParts[0];
+            for( idx = 1; idx < cleanParts.length; ++idx ) {
+                cleanUrl += '/' + cleanParts[idx];
             }
-            return result;
+            return cleanUrl.startsWith('http') ? cleanUrl[0] : '/' + cleanUrl;
         },
 
         /** This method generates a GET HTTP request to `url` with a query
@@ -831,30 +831,29 @@ var httpRequestMixin = {
                 failureCallback = vm.showErrorMessages;
             }
             for(var idx = 0; idx < queryArray.length; ++idx ) {
-                ajaxCalls.push(function () {
-                    return $.ajax({
-                        method: queryArray[idx].method,
-                        url: queryArray[idx].url,
-                        data: JSON.stringify(queryArray[idx].data),
-                        beforeSend: function(xhr, settings) {
-                            var authToken = vm._getAuthToken();
-                            if( authToken ) {
-                                xhr.setRequestHeader("Authorization",
-                                                     "Bearer " + authToken);
-                            } else {
-                                if( !vm._csrfSafeMethod(settings.type) ) {
-                                    var csrfToken = vm._getCSRFToken();
-                                    if( csrfToken ) {
-                                        xhr.setRequestHeader("X-CSRFToken", csrfToken);
-                                    }
+                ajaxCalls.push($.ajax({
+                    method: queryArray[idx].method,
+                    url: queryArray[idx].url,
+                    data: JSON.stringify(queryArray[idx].data),
+                    beforeSend: function(xhr, settings) {
+                        var authToken = vm._getAuthToken();
+                        if( authToken ) {
+                            xhr.setRequestHeader("Authorization",
+                                                 "Bearer " + authToken);
+                        } else {
+                            if( !vm._csrfSafeMethod(settings.type) ) {
+                                var csrfToken = vm._getCSRFToken();
+                                if( csrfToken ) {
+                                    xhr.setRequestHeader("X-CSRFToken", csrfToken);
                                 }
                             }
-                        },
-                        contentType: 'application/json',
-                    });
-                }());
+                        }
+                    },
+                    contentType: 'application/json',
+                }));
             }
-            jQuery.when(ajaxCalls).done(successCallback).fail(failureCallback);
+            jQuery.when.apply(jQuery, ajaxCalls).done(successCallback).fail(
+                failureCallback);
         },
     }
 }
@@ -1137,15 +1136,35 @@ var itemListMixin = {
         getInitData: function(){
             var data = {
                 url: null,
+                params: {
+                    // The following dates will be stored as `String` objects
+                    // as oppossed to `moment` or `Date` objects because this
+                    // is how form fields input="date" will update them.
+                    start_at: null,
+                    ends_at: null,
+                    // The timezone for both start_at and ends_at.
+                    timezone: 'local',
+                    q: '',
+                },
                 itemsLoaded: false,
                 items: {
                     results: [],
                     count: 0
                 },
+                mergeResults: false,
                 getCb: null,
+                getCompleteCb: null,
                 getBeforeCb: null,
-                params: {
-                    q: '',
+            }
+            if( this.$dateRange ) {
+                if( this.$dateRange.start_at ) {
+                    data.params['start_at'] = this.$dateRange.start_at;
+                }
+                if( this.$dateRange.ends_at ) {
+                    data.params['ends_at'] = this.$dateRange.ends_at;
+                }
+                if( this.$dateRange.timezone ) {
+                    data.params['timezone'] = this.$dateRange.timezone;
                 }
             }
             return data;
@@ -1190,6 +1209,10 @@ var itemListMixin = {
             if(vm[vm.getBeforeCb]){
                 vm[vm.getBeforeCb]();
             }
+            vm.fetch(cb);
+        },
+        fetch: function(cb) {
+            let vm = this;
             vm.lastGetParams = vm.getParams();
             vm.reqGet(vm.url, vm.lastGetParams, cb);
         },
@@ -1204,7 +1227,7 @@ var itemListMixin = {
 };
 
 
-var TypeAhead = Vue.extend({
+var TypeAheadMixin = {
     mixins: [
         httpRequestMixin
     ],
@@ -1250,7 +1273,7 @@ var TypeAhead = Vue.extend({
         },
 
         onHit: function onHit() {
-            Vue.util.warn('You need to implement the `onHit` method', this);
+            console.warn('You need to implement the `onHit` method', this);
         },
 
         reset: function() {
@@ -1323,7 +1346,7 @@ var TypeAhead = Vue.extend({
             this.url = this.$el.dataset.url;
         }
     }
-});
+};
 
     // attach properties to the exports object to define
     // the exported module properties.
@@ -1332,5 +1355,5 @@ var TypeAhead = Vue.extend({
     exports.itemMixin = itemMixin;
     exports.messagesMixin = messagesMixin;
     exports.paramsMixin = paramsMixin;
-    exports.TypeAhead = TypeAhead;
+    exports.TypeAheadMixin = TypeAheadMixin;
 }));

@@ -2786,25 +2786,30 @@ Vue.component('unengaged-subscribers', {
 // Widgets for dashboard
 // ---------------------
 
-Vue.component('search-profile', TypeAhead.extend({
+Vue.component('search-profile', {
+    mixins: [
+        TypeAheadMixin
+    ],
     data: function() {
         return {
             url: this.$urls.provider.api_accounts,
         }
     }
-}));
+});
 
 
-Vue.component('subscription-typeahead', TypeAhead.extend({
-  methods: {
-    onHit: function onHit(newItem) {
-      var vm = this;
-      vm.$emit('selectitem', newItem);
-      vm.clear();
+Vue.component('subscription-typeahead', {
+    mixins: [
+        TypeAheadMixin
+    ],
+    methods: {
+        onHit: function onHit(newItem) {
+            var vm = this;
+            vm.$emit('selectitem', newItem);
+            vm.clear();
+        }
     }
-  }
-}));
-
+});
 
 
 Vue.component('today-sales', {

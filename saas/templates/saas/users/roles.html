@@ -6,7 +6,10 @@
 <role-profile-list inline-template id="accessible-list-container" ng-app="saasApp">
   <div ng-controller="accessibleListCtrl">
     <div>
-      <span>Filter</span> <input type="text" ng-model="params.q" ng-change="filterList(params.q)" v-model="params.q" @input="filterList" />
+      <span>Filter</span>
+      <input type="text"
+             ng-model="params.q" ng-change="filterList(params.q)"
+             v-model="params.q" @input="debouncedAutoReload" />
     </div>
     <table>
       <thead>

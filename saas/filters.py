@@ -1,4 +1,4 @@
-# Copyright (c) 2022, DjaoDjin inc.
+# Copyright (c) 2023, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -81,8 +81,8 @@ class SearchFilter(BaseSearchFilter):
     @staticmethod
     def filter_valid_fields(queryset, fields, view):
         #pylint:disable=protected-access
-        model_fields = set([
-            field.name for field in queryset.model._meta.get_fields()])
+        model_fields = {
+            field.name for field in queryset.model._meta.get_fields()}
         # We add all the fields that could be aliases then filter out the ones
         # which are not present in the model.
         alternate_fields = getattr(view, 'alternate_fields', {})
@@ -215,8 +215,8 @@ class OrderingFilter(BaseOrderingFilter):
         if context is None:
             context = {}
 
-        model_fields = set([
-            field.name for field in queryset.model._meta.get_fields()])
+        model_fields = {
+            field.name for field in queryset.model._meta.get_fields()}
         # XXX base
         base_fields = super(OrderingFilter, self).get_valid_fields(
             queryset, view, context=context)
@@ -354,8 +354,8 @@ class DateRangeFilter(BaseFilterBackend):
 
     def get_date_field(self, model):
         #pylint:disable=protected-access
-        model_fields = set([
-            field.name for field in model._meta.get_fields()])
+        model_fields = {
+            field.name for field in model._meta.get_fields()}
         if self.date_field in model_fields:
             return self.date_field
         if self.alternate_date_field in model_fields:
