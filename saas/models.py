@@ -3829,6 +3829,10 @@ class TransactionManager(models.Manager):
             pay_now = True
             subscription = invoiced_item.get_event()
             if subscription and isinstance(subscription, Subscription):
+                # There are some applications that are automatically extending
+                # subscriptions to a free plan and do not wish to notify
+                # subscribers about it.
+                pay_now = not(subscription.plan.is_not_priced)
                 subscription.ends_at = subscription.plan.end_of_period(
                     subscription.ends_at,
                     subscription.plan.period_number(invoiced_item.descr))

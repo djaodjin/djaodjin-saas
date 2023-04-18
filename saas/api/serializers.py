@@ -631,7 +631,7 @@ class PlanDetailSerializer(PlanSerializer):
         fields = PlanSerializer.Meta.fields + ('description', 'is_active',
             'setup_amount', 'period_amount', 'period_type',
             'advance_discounts', 'unit', 'profile', 'extra',
-            'period_length', 'renewal_type', 'is_not_priced',
+            'period_length', 'renewal_type', 'is_not_priced', 'unlock_event',
             'created_at', 'skip_optin_on_grant', 'optin_on_request',
             'discounted_period_amount', 'is_cart_item', 'detail')
         read_only_fields = ('discounted_period_amount', 'is_cart_item',
