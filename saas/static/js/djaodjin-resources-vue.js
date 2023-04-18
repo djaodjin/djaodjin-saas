@@ -1227,7 +1227,7 @@ var itemListMixin = {
 };
 
 
-var TypeAheadMixin = {
+var typeAheadMixin = {
     mixins: [
         httpRequestMixin
     ],
@@ -1355,5 +1355,5 @@ var TypeAheadMixin = {
     exports.itemMixin = itemMixin;
     exports.messagesMixin = messagesMixin;
     exports.paramsMixin = paramsMixin;
-    exports.TypeAheadMixin = TypeAheadMixin;
+    exports.typeAheadMixin = typeAheadMixin;
 }));

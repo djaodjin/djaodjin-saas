@@ -858,7 +858,7 @@ var roleListMixin = {
             vm.unregistered = {slug: "", email: "", full_name: ""};
             vm.profileRequestDone = false;
             if( vm.$refs.typeahead ) {
-                vm.$refs.typeahead.clear();
+                vm.$refs.typeahead.reset();
             }
             vm.$emit('invite-completed');
         },
@@ -866,6 +866,9 @@ var roleListMixin = {
             var vm = this;
             vm.newProfile = {slug: "", email: "", full_name: ""};
             vm.inNewProfileFlow = false;
+            if( vm.$refs.typeahead ) {
+                vm.$refs.typeahead.reset();
+            }
             vm.$emit('create-completed');
         },
         create: function() { // create a new profile to be owned by user.
@@ -915,6 +918,12 @@ var roleListMixin = {
                 vm.unregistered = item;
                 vm.profileRequestDone = false;
                 vm.submit();
+            } else {
+                vm.newProfile.full_name = vm.$refs.typeahead.query;
+                vm.newProfile.email = vm.requestUser ? (
+                    vm.requestUser.email ? vm.requestUser.email : vm.requestUser) : "";
+//                vm.newProfile.slug = "XXX";
+                vm.create();
             }
         },
         refresh: function() {
@@ -946,17 +955,35 @@ var roleListMixin = {
                 vm.$emit('remove-completed');
             });
         },
+        reset: function() {
+            var vm = this;
+            vm.candidateId = "";
+            vm.unregistered = {slug: "", email: "", full_name: ""};
+            vm.newProfile = {slug: "", email: "", full_name: ""};
+            vm.profileRequestDone = false;
+            vm.inNewProfileFlow = false;
+            if( vm.$refs.typeahead ) {
+                vm.$refs.typeahead.reset();
+                vm.$refs.typeahead.$refs.input.focus();
+            }
+        },
         save: function(item){ // user-typeahead @item-save="save"
             this._addRole(item);
         },
         submit: function() {
             var vm = this;
-            if( vm.unregistered.slug || vm.unregistered.email) {
-                this._addRole(vm.unregistered, vm.profileRequestDone);
+            if( vm.newProfile.full_name || vm.newProfile.full_name ||
+                vm.newProfile.email ) {
+                vm.create();
             } else {
-                this._addRole((vm.$refs.account && vm.$refs.account.query) ?
-                    vm.$refs.account.query : vm.candidateId,
-                    vm.profileRequestDone);
+                if( vm.unregistered.slug || vm.unregistered.email) {
+                    this._addRole(vm.unregistered, vm.profileRequestDone);
+                } else {
+                    this._addRole(
+                        (vm.$refs.typeahead && vm.$refs.typeahead.query) ?
+                            vm.$refs.typeahead.query : vm.candidateId,
+                        vm.profileRequestDone);
+                }
             }
         },
         updateParams: function(){ // internal
@@ -2788,7 +2815,7 @@ Vue.component('unengaged-subscribers', {
 
 Vue.component('search-profile', {
     mixins: [
-        TypeAheadMixin
+        typeAheadMixin
     ],
     data: function() {
         return {
@@ -2800,7 +2827,7 @@ Vue.component('search-profile', {
 
 Vue.component('subscription-typeahead', {
     mixins: [
-        TypeAheadMixin
+        typeAheadMixin
     ],
     methods: {
         onHit: function onHit(newItem) {
