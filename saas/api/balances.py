@@ -1,4 +1,4 @@
-# Copyright (c) 2021, DjaoDjin inc.
+# Copyright (c) 2023, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -64,9 +64,10 @@ class BrokerBalancesAPIView(DateRangeContextMixin, GenericAPIView):
             "scale": 0.01,
             "unit": "usd",
             "title": "Balances: taxes",
-            "table": [
+            "results": [
                 {
-                    "key": "Sales",
+                    "slug": "sales",
+                    "title": "Sales",
                     "selector": "Receivable",
                     "values": [
                         ["2015-05-01T00:00:00Z", 0],
@@ -98,12 +99,13 @@ class BrokerBalancesAPIView(DateRangeContextMixin, GenericAPIView):
                 unit = _unit
 
             result += [{
-                'key': line.title,
+                'slug': line.title,
+                'title': line.title,
                 'selector': line.selector,
                 'values': values
             }]
         return Response({'title': "Balances: %s" % report,
-            'unit': unit, 'scale': 0.01, 'table': result})
+            'unit': unit, 'scale': 0.01, 'results': result})
 
 
 class BalanceLineListAPIView(ListCreateAPIView):

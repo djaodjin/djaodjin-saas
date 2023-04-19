@@ -98,6 +98,21 @@ class EnumField(serializers.Field):
         return result
 
 
+class ExtraField(serializers.CharField):
+
+    def to_internal_value(self, data):
+        if isinstance(data, dict):
+            return json.dumps(data)
+        return super(ExtraField, self).to_internal_value(data)
+
+    def to_representation(self, value):
+        try:
+            return json.loads(value)
+        except (TypeError, ValueError):
+            pass
+        return super(ExtraField, self).to_representation(value)
+
+
 class PhoneField(serializers.Field):
 
     def to_representation(self, value):
@@ -369,16 +384,21 @@ class DatetimeValueTuple(serializers.ListField):
 
 class TableSerializer(NoModelSerializer):
 
-    # XXX use `key` instead of `slug` here?
-    key = serializers.CharField(
+    slug = serializers.SlugField(
         help_text=_("Unique key in the table for the data series"))
-    selector = serializers.CharField(
-        required=False, # XXX only in balances.py
-        help_text=_("Filter on transaction accounts"))
+    title = serializers.CharField(required=False, read_only=True,
+        help_text=_("Title of data serie that can be safely used for display"\
+        " in HTML pages"))
+    extra = ExtraField(required=False, read_only=True,
+        help_text=_("Extra meta data (can be stringify JSON)"))
     values = serializers.ListField(
         child=DatetimeValueTuple(),
         help_text=_("List of (datetime, integer) couples that represents"\
         " the data serie"))
+    # XXX only in balances.py
+    selector = serializers.CharField(
+        required=False,
+        help_text=_("Filter on transaction accounts"))
 
 
 class MetricsSerializer(NoModelSerializer):
@@ -390,7 +410,7 @@ class MetricsSerializer(NoModelSerializer):
         help_text=_("Three-letter ISO 4217 code for currency unit (ex: usd)"))
     title = serializers.CharField(
         help_text=_("Title for the table"))
-    table = TableSerializer(many=True,
+    results = TableSerializer(many=True,
         help_text=_("Data series"))
 
 

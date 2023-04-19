@@ -1,4 +1,4 @@
-# Copyright (c) 2021, DjaoDjin inc.
+# Copyright (c) 2023, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -154,32 +154,37 @@ class Command(BaseCommand):
         if units:
             unit = units[0]
 
-        table = [
-            {'key': "Total Sales",
+        table = [{
+            'slug': "Total Sales",
+            'title': "Total Sales",
              'values': {
                 'last': account_table[0]['values'][1][1],
                 'prev': account_table[0]['values'][0][1],
                 'prev_year': account_table_prev_year[0]['values'][0][1]
-            }},
-            {'key': "New Sales",
+            }}, {
+             'slug': "New Sales",
+             'title': "New Sales",
              'values': {
                 'last': account_table[1]['values'][1][1],
                 'prev': account_table[1]['values'][0][1],
                 'prev_year': account_table_prev_year[1]['values'][0][1]
-            }},
-            {'key': "Churned Sales",
+            }}, {
+             'slug': "Churned Sales",
+             'title': "Churned Sales",
              'values': {
                  'last': account_table[2]['values'][1][1],
                 'prev': account_table[2]['values'][0][1],
                 'prev_year': account_table_prev_year[2]['values'][0][1]
-            }},
-            {'key': "Payments",
+            }}, {
+             'slug': "Payments",
+             'title': "Payments",
              'values': {
                  'last': payment_amounts[1][1],
                  'prev': payment_amounts[0][1],
                  'prev_year': payment_amounts_prev_year[0][1]
-            }},
-            {'key': "Refunds",
+            }}, {
+             'slug': "Refunds",
+             'title': "Refunds",
              'values': {
                 'last': refund_amounts[1][1],
                 'prev': refund_amounts[0][1],

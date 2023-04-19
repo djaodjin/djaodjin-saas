@@ -1,4 +1,4 @@
-# Copyright (c) 2022, DjaoDjin inc.
+# Copyright (c) 2023, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -71,18 +71,21 @@ class FederatedSubscribersAPIView(FederatedMetricsMixin,
           "title": "Invited",
           "scale": 1,
           "unit": "profiles",
-          "table": [{
-            "key":"removed profiles",
+          "results": [{
+            "slug": "removed-profiles",
+            "title": "removed profiles",
             "values":[
               ["Energy utility",0]
             ]
           }, {
-            "key":"invited profiles",
+            "slug":"invited-profiles",
+            "title": "invited profiles",
             "values":[
               ["Energy utility",0]
             ]
           }, {
-            "key":"newly invited profiles",
+            "slug":"newly-invited-profiles",
+            "title":"newly invited profiles",
             "values":[
               ["Energy utility",0]
             ]
@@ -189,17 +192,20 @@ class FederatedSubscribersAPIView(FederatedMetricsMixin,
             "title": self.title,
             'scale': self.scale,
             'unit': self.unit,
-            'table': [
+            'results': [
                 {
-                    "key": "churned",
+                    "slug": "churned",
+                    "title": "churned",
                     "values": churned_by_plans_data
                 },
                 {
-                    "key": "previously subscribed",
+                    "slug": "previously-subscribed",
+                    "title": "previously subscribed",
                     "values": prev_active_by_plans_data
                 },
                 {
-                    "key": "newly subscribed",
+                    "slug": "newly-subscribed",
+                    "title": "newly subscribed",
                     "values": newly_active_by_plans_data
                 }
             ]
@@ -227,21 +233,12 @@ class SharedProfilesAPIView(FederatedMetricsMixin,
     .. code-block:: json
 
         {
-          "title": "Invited",
+          "title": "shared profiles",
           "scale": 1,
           "unit": "profiles",
-          "table": [{
-            "key": "removed profiles",
-            "values": [
-              ["Energy utility",0]
-            ]
-          }, {
-            "key": "invited profiles",
-            "values": [
-              ["Energy utility",0]
-            ]
-          }, {
-            "key": "newly invited profiles",
+          "results": [{
+            "slug": "shared",
+            "title": "Shared",
             "values": [
               ["Energy utility",0]
             ]
@@ -282,10 +279,11 @@ class SharedProfilesAPIView(FederatedMetricsMixin,
             "title": self.title,
             'scale': self.scale,
             'unit': self.unit,
-            'table': [
+            'results': [
                 {
-                    "key": "shared",
-                    "values": by_profiles
+                    'slug': "shared",
+                    'title': "shared",
+                    'values': by_profiles
                 }
             ]
         }

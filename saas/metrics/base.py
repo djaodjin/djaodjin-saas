@@ -1,4 +1,4 @@
-# Copyright (c) 2020, DjaoDjin inc.
+# Copyright (c) 2023, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -328,33 +328,41 @@ def aggregate_transactions_change_by_period(organization, account, date_periods,
         else:
             cust_churn_percent += [(period, 0)]
         last_nb_total_custs = nb_total_custs
-    account_table = [{"key": "Total %s" % account_title,
-                     "values": total_account
-                     },
-                    {"key": "New %s" % account_title,
-                     "values": new_account
-                     },
-                    {"key": "Churned %s" % account_title,
-                     "values": churned_account
-                     },
-                    ]
-    customer_table = [{"key": "Total # of Customers",
-                       "values": total_custs
-                       },
-                      {"key": "# of new Customers",
-                       "values": new_custs
-                       },
-                      {"key": "# of churned Customers",
-                       "values": churned_custs
-                       },
-                      {"key": "Net New Customers",
-                       "values": net_new_custs
-                       },
-                      ]
-    customer_extra = [{"key": "% Customer Churn",
-                       "values": cust_churn_percent
-                       },
-                      ]
+    account_table = [{
+        'slug': "Total %s" % account_title,
+        'title': "Total %s" % account_title,
+        'values': total_account
+    }, {
+        'slug': "New %s" % account_title,
+        'title': "New %s" % account_title,
+        'values': new_account
+    }, {
+        'slug': "Churned %s" % account_title,
+        'title': "Churned %s" % account_title,
+        'values': churned_account
+    }]
+    customer_table = [{
+        'slug': "total-customers",
+        'title': "Total # of Customers",
+        'values': total_custs
+    }, {
+        'slug': "new-customers",
+        'title': "# of new Customers",
+        'values': new_custs
+    }, {
+        'slug': "churned-customers",
+        'title': "# of churned Customers",
+        'values': churned_custs
+    }, {
+        'slug': "net-new-customers",
+        'title': "Net New Customers",
+        'values': net_new_custs
+    }]
+    customer_extra = [{
+        'slug': "percent-customer-churn",
+        'title': "% Customer Churn",
+        'values': cust_churn_percent
+    }]
     return account_table, customer_table, customer_extra, unit
 
 

@@ -16,7 +16,7 @@
                 <th>Delete</th>
                 <th>Title</th>
                 <td style="text-align:right;"
-                    ng-repeat="col in balances.table[0].values" ng-cloak
+                    ng-repeat="col in balances.results[0].values" ng-cloak
                     v-for="col in values" v-cloak>
                     [[ col[0] ]]
                 </td>
@@ -30,8 +30,8 @@
         </tr>
       </tbody>
       <tbody
-        ng-show="items.$resolved && items.table.length > 0" ng-cloak
-        v-show="itemsLoaded && items.table.length == 0" v-cloak>
+        ng-show="items.$resolved && items.results.length > 0" ng-cloak
+        v-show="itemsLoaded && items.results.length == 0" v-cloak>
         <tr>
           <td colspan="16">
             <h4 class="text-center"><em>No aggregated balances defined for this report. Add the first one with the form below.</em></h4>
@@ -39,10 +39,10 @@
         </tr>
       </tbody>
         <tbody saas-dnd-list="balances"
-            ng-show="items.$resolved && items.table.length > 0" ng-cloak
-            v-show="itemsLoaded && items.table.length > 0" v-cloak>
-            <tr ng-repeat="row in balances.table"
-                v-for="(row, index) in items.table">
+            ng-show="items.$resolved && items.results.length > 0" ng-cloak
+            v-show="itemsLoaded && items.results.length > 0" v-cloak>
+            <tr ng-repeat="row in balances.results"
+                v-for="(row, index) in items.results">
                 <td>Move</td>
                 <td>
                     <button ng-click="remove($index)" @click="remove(row.key)">

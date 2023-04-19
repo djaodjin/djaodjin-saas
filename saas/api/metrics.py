@@ -1,4 +1,4 @@
-# Copyright (c) 2022, DjaoDjin inc.
+# Copyright (c) 2023, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -70,9 +70,10 @@ class BalancesAPIView(DateRangeContextMixin, ProviderMixin,
             "title": "Balances",
             "scale": 0.01,
             "unit": "usd",
-            "table": [
+            "results": [
                 {
-                    "key": "Income",
+                    "slug": "income",
+                    "title": "Income",
                     "values": [
                         ["2014-09-01T00:00:00Z", 0],
                         ["2014-10-01T00:00:00Z", 1532624],
@@ -90,7 +91,8 @@ class BalancesAPIView(DateRangeContextMixin, ProviderMixin,
                     ]
                 },
                 {
-                    "key": "Backlog",
+                    "slug": "backlog",
+                    "title": "Backlog",
                     "values": [
                         ["2014-09-01T00:00:00Z", 1712624],
                         ["2014-10-01T00:00:00Z", 3698340],
@@ -108,7 +110,8 @@ class BalancesAPIView(DateRangeContextMixin, ProviderMixin,
                     ]
                 },
                 {
-                    "key": "Receivable",
+                    "slug": "Receivable",
+                    "title": "Receivable",
                     "values": [
                         ["2014-09-01T00:00:00Z", 0],
                         ["2014-10-01T00:00:00Z", 0],
@@ -144,11 +147,11 @@ class BalancesAPIView(DateRangeContextMixin, ProviderMixin,
                 unit = _unit
 
             result += [{
-                'key': key,
+                'slug': key,
                 'values': values
             }]
         return Response({'title': "Balances",
-            'unit': unit, 'scale': 0.01, 'table': result})
+            'unit': unit, 'scale': 0.01, 'results': result})
 
 
 class RevenueMetricAPIView(DateRangeContextMixin, ProviderMixin,
@@ -178,9 +181,10 @@ class RevenueMetricAPIView(DateRangeContextMixin, ProviderMixin,
             "title": "Amount",
             "scale": 0.01,
             "unit": "usd",
-            "table": [
+            "results": [
                 {
-                    "key": "Total Sales",
+                    "slug": "total-sales",
+                    "title": "Total Sales",
                     "values": [
                         ["2014-10-01T00:00:00Z", 1985716],
                         ["2014-11-01T00:00:00Z", 3516430],
@@ -197,7 +201,8 @@ class RevenueMetricAPIView(DateRangeContextMixin, ProviderMixin,
                     ]
                 },
                 {
-                    "key": "New Sales",
+                    "slug": "new-sales",
+                    "title": "New Sales",
                     "values": [
                         ["2014-10-01T00:00:00Z", 0],
                         ["2014-11-01T00:00:00Z", 0],
@@ -214,7 +219,8 @@ class RevenueMetricAPIView(DateRangeContextMixin, ProviderMixin,
                     ]
                 },
                 {
-                    "key": "Churned Sales",
+                    "slug": "churned-sales",
+                    "title": "Churned Sales",
                     "values": [
                         ["2014-10-01T00:00:00Z", 0],
                         ["2014-11-01T00:00:00Z", 0],
@@ -231,7 +237,8 @@ class RevenueMetricAPIView(DateRangeContextMixin, ProviderMixin,
                     ]
                 },
                 {
-                    "key": "Payments",
+                    "slug": "payments",
+                    "title": "Payments",
                     "values": [
                         ["2014-10-01T00:00:00Z", 1787144],
                         ["2014-11-01T00:00:00Z", 3164787],
@@ -248,7 +255,8 @@ class RevenueMetricAPIView(DateRangeContextMixin, ProviderMixin,
                     ]
                 },
                 {
-                    "key": "Refunds",
+                    "slug": "refunds",
+                    "title": "Refunds",
                     "values": [
                         ["2014-10-01T00:00:00Z", 0],
                         ["2014-11-01T00:00:00Z", 0],
@@ -304,15 +312,21 @@ class RevenueMetricAPIView(DateRangeContextMixin, ProviderMixin,
         if units:
             unit = units[0]
 
-        account_table += [
-            {"key": "Payments", "values": payment_amounts},
-            {"key": "Refunds", "values": refund_amounts}]
+        account_table += [{
+            'slug': "payments",
+            'title': "Payments",
+            'values': payment_amounts
+        }, {
+            'slug': "refunds",
+            'title': "Refunds",
+            'values': refund_amounts
+        }]
 
         resp = {
-            "title": "Amount",
-            "unit": unit,
-            "scale": 0.01,
-            "table": account_table
+            'title': "Amount",
+            'unit': unit,
+            'scale': 0.01,
+            'results': account_table
         }
         if not self.provider.has_bank_account:
             resp.update({'processor_hint': 'connect_provider'})
@@ -360,7 +374,7 @@ class CouponUsesAPIView(CartItemSmartListMixin, CouponUsesQuerysetMixin,
                     "user": {
                         "slug": "xia",
                         "username": "xia",
-                        "printable_name": "Xia Lee",
+                        "title": "Xia Lee",
                         "picture": null
                     },
                     "plan": {
@@ -399,9 +413,10 @@ class CustomerMetricAPIView(DateRangeContextMixin, ProviderMixin,
 
         {
             "title": "Customers",
-            "table": [
+            "results": [
                 {
-                    "key": "Total # of Customers",
+                    "slug": "total-customers",
+                    "title": "Total # of Customers",
                     "values": [
                         ["2014-10-01T00:00:00Z", 15],
                         ["2014-11-01T00:00:00Z", 17],
@@ -418,7 +433,8 @@ class CustomerMetricAPIView(DateRangeContextMixin, ProviderMixin,
                     ]
                 },
                 {
-                    "key": "# of new Customers",
+                    "slug": "new-customers",
+                    "title": "# of new Customers",
                     "values": [
                         ["2014-10-01T00:00:00Z", 2],
                         ["2014-11-01T00:00:00Z", 2],
@@ -435,7 +451,8 @@ class CustomerMetricAPIView(DateRangeContextMixin, ProviderMixin,
                     ]
                 },
                 {
-                    "key": "# of churned Customers",
+                    "slug": "churned-customers",
+                    "title": "# of churned Customers",
                     "values": [
                         ["2014-10-01T00:00:00Z", 0],
                         ["2014-11-01T00:00:00Z", 0],
@@ -452,7 +469,8 @@ class CustomerMetricAPIView(DateRangeContextMixin, ProviderMixin,
                     ]
                 },
                 {
-                    "key": "Net New Customers",
+                    "slug": "net-new-customers",
+                    "title": "Net New Customers",
                     "values": [
                         ["2014-10-01T00:00:00Z", 2],
                         ["2014-11-01T00:00:00Z", 2],
@@ -466,25 +484,6 @@ class CustomerMetricAPIView(DateRangeContextMixin, ProviderMixin,
                         ["2015-07-01T00:00:00Z", 6],
                         ["2015-08-01T00:00:00Z", 6],
                         ["2015-08-06T05:20:24.537Z", -60]
-                    ]
-                }
-            ],
-            "extra": [
-                {
-                    "key": "% Customer Churn",
-                    "values": [
-                        ["2014-10-01T00:00:00Z", 0],
-                        ["2014-11-01T00:00:00Z", 0.0],
-                        ["2014-12-01T00:00:00Z", 0.0],
-                        ["2015-01-01T00:00:00Z", 0.0],
-                        ["2015-02-01T00:00:00Z", 0.0],
-                        ["2015-03-01T00:00:00Z", 0.0],
-                        ["2015-04-01T00:00:00Z", 0.0],
-                        ["2015-05-01T00:00:00Z", 0.0],
-                        ["2015-06-01T00:00:00Z", 0.0],
-                        ["2015-07-01T00:00:00Z", 0.0],
-                        ["2015-08-01T00:00:00Z", 2.08],
-                        ["2015-08-06T05:20:24.537Z", 111.11]
                     ]
                 }
             ]
@@ -507,9 +506,11 @@ class CustomerMetricAPIView(DateRangeContextMixin, ProviderMixin,
                 account_title=account_title,
                 date_periods=dates)
 
-        return Response(
-            {"title": "Customers",
-                "table": customer_table, "extra": customer_extra})
+        return Response({
+            "title": "Customers",
+            "results": customer_table,
+            "extra": customer_extra
+        })
 
 
 class LifetimeValueMetricMixin(DateRangeContextMixin, ProviderMixin):
@@ -580,7 +581,7 @@ class LifetimeValueMetricAPIView(LifetimeValueMetricMixin, ListAPIView):
             "results": [
                 {
                     "slug": "xia",
-                    "printable_name": "Xia Lee",
+                    "title": "Xia Lee",
                     "picture": null,
                     "type": "personal",
                     "credentials": true,
@@ -624,10 +625,11 @@ class PlanMetricAPIView(DateRangeContextMixin, ProviderMixin, GenericAPIView):
 
         {
             "title": "Active Subscribers",
-            "table": [
+            "results": [
                 {
                     "is_active": true,
-                    "key": "open-space",
+                    "slug": "open-space",
+                    "title": "Open Space",
                     "location": "/profile/plan/open-space/",
                     "values": [
                         ["2014-09-01T00:00:00Z", 4],
@@ -647,7 +649,8 @@ class PlanMetricAPIView(DateRangeContextMixin, ProviderMixin, GenericAPIView):
                 },
                 {
                     "is_active": true,
-                    "key": "open-plus",
+                    "slug": "open-plus",
+                    "title": "Open Plus",
                     "location": "/profile/plan/open-plus/",
                     "values": [
                         ["2014-09-01T00:00:00Z", 7],
@@ -667,7 +670,8 @@ class PlanMetricAPIView(DateRangeContextMixin, ProviderMixin, GenericAPIView):
                 },
                 {
                     "is_active": true,
-                    "key": "private",
+                    "slug": "private",
+                    "title": "Private",
                     "location": "/profile/plan/private/",
                     "values": [
                         ["2014-09-01T00:00:00Z", 3],
@@ -685,26 +689,6 @@ class PlanMetricAPIView(DateRangeContextMixin, ProviderMixin, GenericAPIView):
                         ["2015-08-06T05:37:50.023Z", 18]
                     ]
                 }
-            ],
-            "extra": [
-                {
-                    "key": "churn",
-                    "values": [
-                        ["2014-09-01T00:00:00Z", 0],
-                        ["2014-10-01T00:00:00Z", 0],
-                        ["2014-11-01T00:00:00Z", 0],
-                        ["2014-12-01T00:00:00Z", 0],
-                        ["2015-01-01T00:00:00Z", 0],
-                        ["2015-02-01T00:00:00Z", 0],
-                        ["2015-03-01T00:00:00Z", 0],
-                        ["2015-04-01T00:00:00Z", 0],
-                        ["2015-05-01T00:00:00Z", 0],
-                        ["2015-06-01T00:00:00Z", 0],
-                        ["2015-07-01T00:00:00Z", 0],
-                        ["2015-08-01T00:00:00Z", 1],
-                        ["2015-08-06T05:37:50.031Z", 1]
-                    ]
-                }
             ]
         }
     """
@@ -719,16 +703,19 @@ class PlanMetricAPIView(DateRangeContextMixin, ProviderMixin, GenericAPIView):
             values = active_subscribers(
                 plan, from_date=self.ends_at, tz=self.timezone)
             table.append({
-                "key": plan.slug,
-                "title": plan.title,
-                "values": values,
-                "location": reverse(
+                'slug': plan.slug,
+                'title': plan.title,
+                'values': values,
+                'location': reverse(
                     'saas_plan_edit', args=(self.provider, plan)),
-                "is_active": plan.is_active})
-        extra = [{"key": "churn",
-            "values": churn_subscribers(
+                'is_active': plan.is_active})
+        extra = [{
+            'slug': 'churn',
+            'values': churn_subscribers(
                 from_date=self.ends_at, tz=self.timezone)}]
 
-        return Response(
-            {"title": _("Active subscribers"),
-                "table": table, "extra": extra})
+        return Response({
+            'title': _("Active subscribers"),
+            'results': table,
+            'extra': extra
+        })

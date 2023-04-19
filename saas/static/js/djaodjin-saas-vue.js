@@ -1583,7 +1583,7 @@ Vue.component('metrics-charts', {
                     location: table.location,
                     unit: unit,
                     scale: scale,
-                    data: resp.table
+                    data: resp.results
                 }
                 vm.convertDatetime(tableData.data, vm.timezone === 'utc');
                 for( var idx = 0; idx < vm.tables.length; ++idx ) {
@@ -2874,8 +2874,8 @@ Vue.component('monthly-revenue', {
         amount: function(){
             var amount = 0;
             if(this.itemLoaded){
-                this.item.table.forEach(function(e){
-                    if(e.key === 'Total Sales'){
+                this.item.results.forEach(function(e){
+                    if(e.slug === 'Total Sales'){
                         // get MRR from last month
                         amount = e.values[e.values.length - 2][1];
                     }
