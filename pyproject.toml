@@ -1,0 +1,64 @@
+# This pyproject.toml seems to work to build a new package
+# when `setuptools==67.6.1` is installed.
+[project]
+name = "djaodjin-saas"
+dynamic = ["version"]
+description = "Django application for software-as-service and subscription businesses"
+readme = "README.md"
+requires-python = ">=3.7"
+license =  {text = "BSD-2-Clause"}
+keywords = ["django", "stripe", "saas", "subscriptions", "razorpay", "plans"]
+authors = [
+  {name = "The DjaoDjin Team", email = "help@djaodjin.com"}
+]
+maintainers = [
+  {name = "The DjaoDjin Team", email = "help@djaodjin.com"}
+]
+classifiers = [
+  "Framework :: Django",
+  "Environment :: Web Environment",
+  "Programming Language :: Python",
+  "License :: OSI Approved :: BSD License"
+]
+dependencies = [
+  "Django>=1.11",
+  "django-countries>=2.1.2",
+  "django-localflavor>=1.0",
+  "django-phonenumber-field>=2.4.0",
+  "djangorestframework>=3.3.1",
+# We need Python Markdown for django.contrib.markup. markdown2 is not enough.
+  "Markdown>=2.4",
+  "phonenumbers>=8.12.6",
+  "python-dateutil>=2.2",
+  "stripe>=2.71.0",
+  "razorpay>=0.2.0"
+]
+
+[project.urls]
+repository = "https://github.com/djaodjin/djaodjin-saas"
+documentation = "https://djaodjin-saas.readthedocs.io/"
+changelog = "https://github.com/djaodjin/djaodjin-saas/changelog"
+
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["saas*"]
+
+[tool.setuptools.package-data]
+saas = [
+  'fixtures/*',
+  'static/js/*.js',
+  'templates/saas/*.html',
+  'templates/saas/agreements/*.md',
+  'templates/saas/billing/*.html',
+  'templates/saas/legal/*.html',
+  'templates/saas/metrics/*.html',
+  'templates/saas/profile/*.html',
+  'templates/saas/profile/roles/*.html',
+  'templates/saas/users/*.html'
+]
+
+[tool.setuptools.dynamic]
+version = {attr = "saas.__version__"}

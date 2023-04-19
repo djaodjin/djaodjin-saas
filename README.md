@@ -7,12 +7,6 @@ Major Features:
 - Double entry book keeping ledger
 - Flexible security framework
 
-Tested with
-
-- **Python:** 3.7, **Django:** 3.2 ([LTS](https://www.djangoproject.com/download/)), **Django Rest Framework:** 3.12
-- **Python:** 3.10, **Django:** 4.1 (latest), **Django Rest Framework:** 3.12
-- **Python:** 2.7, **Django:** 1.11 (legacy), **Django Rest Framework:** 3.9.4
-
 This project contains bare bone templates which are compatible with Django
 and Jinja2 template engines. To see djaodjin-saas in action as part
 of a full-fledged subscription-based session proxy, take a look
@@ -98,6 +92,12 @@ saas/templates/notification/ directory.
 
 Release Notes
 =============
+
+Tested with
+
+- **Python:** 3.7, **Django:** 3.2 ([LTS](https://www.djangoproject.com/download/))
+- **Python:** 3.10, **Django:** 4.2 (latest)
+- **Python:** 2.7, **Django:** 1.11 (legacy) - use testsite/requirements-legacy.txt
 
 0.15.5
 
