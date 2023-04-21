@@ -99,10 +99,13 @@ Tested with
 - **Python:** 3.10, **Django:** 4.2 (latest)
 - **Python:** 2.7, **Django:** 1.11 (legacy) - use testsite/requirements-legacy.txt
 
-0.15.5
+0.16.0
 
-  * removes dependency on vue-infinite-loading for pagination
-  * makes broker fee functional
-  * enables override of product_url
+  * publishes distribution using pyproject.toml
+  * fixes UI for import of offline payments
+  * merges workflow to connect and create a profile
+  * does not record/notify automatic extensions of `is_not_priced` plans
+  * integrates with djaodjin-signup users pages
+  * normalizes metrics APIs returned results to match djaodjin-survey
 
 [previous release notes](changelog)

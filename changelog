@@ -4,11 +4,25 @@ Roadmap
 1.0
 
   * rename <organization> into <profile> in url paths
-  * support for Vue3
   * adds APIs for UseCharge
+
+  (initially we anticipated to support Vue3 but there are so many features
+   in Vue2 that lead us to pick Vue from a front-end UI framework and that
+   were removed in Vue3 that it does not make sense to migrate to Vue3)
 
 Released versions
 =================
+
+0.16.0
+
+  * publishes distribution using pyproject.toml
+  * fixes UI for import of offline payments
+  * merges workflow to connect and create a profile
+  * does not record/notify automatic extensions of `is_not_priced` plans
+  * integrates with djaodjin-signup users pages
+  * normalizes metrics APIs returned results to match djaodjin-survey
+
+ -- Sebastien Mirolo <smirolo@djaodjin.com>  Fri, 21 Feb 2023 09:55:00 -0700
 
 0.15.5
 
