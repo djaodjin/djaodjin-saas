@@ -51,7 +51,7 @@
       <h4>Request access ...</h4>
       <form id="add-profile" @submit.prevent="submit" ng-submit="save($event)">
         <input id="userTypeahead" type="text"
-               name="organization" placeholder="Name or email"
+               name="profile" placeholder="Name or email"
                autocomplete="off"
                ng-model="unregistered.slug"
                v-model="unregistered.slug"
@@ -80,7 +80,8 @@ I would like to request access to [[unregistered.full_name]].
 Thank you,
 - {{request.user.first_name}}
           </textarea>
-          <button type="submit">Request access</button>
+          <button id="create-profile-submit"
+                  type="submit">Request access</button>
         </div>
       </form>
     </div>

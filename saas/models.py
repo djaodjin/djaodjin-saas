@@ -408,7 +408,10 @@ class AbstractOrganization(models.Model):
                     if user.last_name != last_name:
                         user.last_name = last_name
                         save_user = True
-                    if user.email != self.email:
+                    if user.email != self.email and (user.email or self.email):
+                        # When registering with a phone number only,
+                        # self.email might be ''. We don't want to override
+                        # `user.email is None`.
                         user.email = self.email
                         save_user = True
                     if save_user:

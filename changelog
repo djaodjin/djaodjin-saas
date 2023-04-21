@@ -13,6 +13,12 @@ Roadmap
 Released versions
 =================
 
+0.16.1
+
+  * integrates nicely with projects login users through `auth_user.email`
+
+ -- Sebastien Mirolo <smirolo@djaodjin.com>  Fri, 21 Feb 2023 15:50:00 -0700
+
 0.16.0
 
   * publishes distribution using pyproject.toml
