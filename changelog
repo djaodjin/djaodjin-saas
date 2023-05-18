@@ -13,6 +13,12 @@ Roadmap
 Released versions
 =================
 
+0.16.2
+
+  * searches profiles by e-mail domain even if a qualified e-mail is provided
+
+ -- Sebastien Mirolo <smirolo@djaodjin.com>  Thu, 18 May 2023 16:40:00 -0700
+
 0.16.1
 
   * integrates nicely with projects login users through `auth_user.email`

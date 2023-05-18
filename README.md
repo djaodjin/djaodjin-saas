@@ -99,6 +99,10 @@ Tested with
 - **Python:** 3.10, **Django:** 4.2 (latest)
 - **Python:** 2.7, **Django:** 1.11 (legacy) - use testsite/requirements-legacy.txt
 
+0.16.2
+
+  * searches profiles by e-mail domain even if a qualified e-mail is provided
+
 0.16.1
 
   * integrates nicely with projects login users through `auth_user.email`
