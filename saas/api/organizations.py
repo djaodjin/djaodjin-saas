@@ -1,4 +1,4 @@
-# Copyright (c) 2022, DjaoDjin inc.
+# Copyright (c) 2023, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -22,7 +22,7 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-import hashlib, os, re
+import hashlib, logging, os, re
 
 from dateutil.relativedelta import relativedelta
 from django.conf import settings as django_settings
@@ -46,6 +46,9 @@ from ..models import get_broker
 from ..utils import (build_absolute_uri, datetime_or_now,
     get_organization_model, get_role_model, get_picture_storage,
     handle_uniq_error)
+
+
+LOGGER = logging.getLogger(__name__)
 
 
 class OrganizationQuerysetMixin(OrganizationDecorateMixin):
@@ -272,6 +275,8 @@ class OrganizationPictureAPIView(OrganizationMixin, CreateAPIView):
             hashlib.sha256(uploaded_file.read()).hexdigest(), ext)
         default_storage = get_picture_storage(request)
 
+        LOGGER.debug("upload picture to %s on storage %s",
+            key_name, default_storage)
         location = default_storage.url(
             default_storage.save(key_name, uploaded_file))
         # We are removing the query parameters, as they contain

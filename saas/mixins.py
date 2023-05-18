@@ -889,6 +889,9 @@ class OrganizationSmartListMixin(object):
         'region',
         'postal_code',
         'country',
+        # For B2B organizations, we often have a user e-mail address
+        # and we want the profile using the same domain name.
+        'domain',
         # fields in User model:
         'username',
         'first_name',

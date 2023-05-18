@@ -43,7 +43,7 @@ LOGGER = logging.getLogger(__name__)
 class SearchFilter(BaseSearchFilter):
 
     search_field_param = settings.SEARCH_FIELDS_PARAM
-
+    mail_provider_domains = settings.MAIL_PROVIDER_DOMAINS
 
     def filter_queryset(self, request, queryset, view):
         search_fields = self.get_valid_fields(request, queryset, view)
@@ -67,6 +67,12 @@ class SearchFilter(BaseSearchFilter):
                 for orm_lookup in orm_lookups
             ]
             conditions.append(reduce(operator.or_, queries))
+            if ('@' in search_term and 'domain' in view.search_fields and
+                'email' in search_fields):
+                domain = search_term.split('@')[-1]
+                if not domain in self.mail_provider_domains:
+                    queries = [models.Q(**{'email__iendswith': domain})]
+                    conditions.append(reduce(operator.or_, queries))
         queryset = queryset.filter(reduce(operator.or_, conditions))
 
         if self.must_call_distinct(queryset, search_fields):
