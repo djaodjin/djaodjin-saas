@@ -2127,12 +2127,14 @@ Vue.component('profile-update', {
         return {
             url: this.$urls.organization.api_base,
             picture_url: this.$urls.organization.api_profile_picture,
+            verify_url: null,
             redirect_url: this.$urls.profile_redirect,
             formFields: {},
             countries: countries,
             regions: regions,
             currentPicture: null,
             picture: null,
+            codeSent: false
         }
     },
     methods: {
@@ -2189,6 +2191,48 @@ Vue.component('profile-update', {
                 });
             }, 'image/jpeg');
         },
+        verifyEmail: function() {
+            var vm = this;
+            vm.reqPost(vm.verify_url, {email: vm.$refs.email.value},
+            function(resp) {
+                vm.modalHide();
+                if( resp.detail ) {
+                    vm.showMessages([resp.detail], "success");
+                }
+            }, function(resp) {
+                vm.codeSent = true;
+                if( resp.detail ) {
+                    vm.showMessages([resp.detail], "success");
+                }
+            });
+        },
+        verifyPhone: function() {
+            var vm = this;
+            vm.reqPost(vm.verify_url, {email: vm.$refs.phone.value},
+            function(resp) {
+                vm.codeSent = true;
+                if( resp.detail ) {
+                    vm.showMessages([resp.detail], "success");
+                }
+            }, function(resp) {
+                vm.codeSent = true;
+                if( resp.detail ) {
+                    vm.showMessages([resp.detail], "success");
+                }
+            });
+        },
+        submitCode: function() {
+            // submit the one-time code that was e-mailed
+            // or sent by text message.
+            var vm = this;
+            vm.reqPost(vm.verify_url, {code: vm.$refs.code.value},
+            function(resp) {
+                vm.modalHide();
+                if( resp.detail ) {
+                    vm.showMessages([resp.detail], "success");
+                }
+            });
+        }
     },
     computed: {
         imageSelected: function(){
