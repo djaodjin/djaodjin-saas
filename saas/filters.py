@@ -40,6 +40,35 @@ from .utils import datetime_or_now, parse_tz
 LOGGER = logging.getLogger(__name__)
 
 
+def search_terms_as_list(params):
+    """
+    Search terms are set by a ?q=... query parameter.
+    When multiple search terms must be matched, they can be delimited
+    by a comma.
+    """
+    params = params.replace('\x00', '')  # strip null characters
+    results = []
+    inside = False
+    first = 0
+    for last, letter in enumerate(params):
+        if inside:
+            if letter == '"':
+                if first < last:
+                    results += [params[first:last]]
+                first = last + 1
+                inside = False
+        else:
+            if letter in (',',):
+                if first < last:
+                    results += [params[first:last]]
+                first = last + 1
+            elif letter == '"':
+                inside = True
+                first = last + 1
+    if first < len(params):
+        results += [params[first:len(params)]]
+    return results
+
 class SearchFilter(BaseSearchFilter):
 
     search_field_param = settings.SEARCH_FIELDS_PARAM
@@ -69,8 +98,8 @@ class SearchFilter(BaseSearchFilter):
             conditions.append(reduce(operator.or_, queries))
             if ('@' in search_term and 'domain' in view.search_fields and
                 'email' in search_fields):
-                domain = search_term.split('@')[-1]
-                if not domain in self.mail_provider_domains:
+                domain = '@' + search_term.split('@')[-1]
+                if domain not in self.mail_provider_domains:
                     queries = [models.Q(**{'email__iendswith': domain})]
                     conditions.append(reduce(operator.or_, queries))
         queryset = queryset.filter(reduce(operator.or_, conditions))
@@ -84,8 +113,7 @@ class SearchFilter(BaseSearchFilter):
         return queryset
 
 
-    @staticmethod
-    def filter_valid_fields(queryset, fields, view):
+    def filter_valid_fields(self, queryset, fields, view):
         #pylint:disable=protected-access
         model_fields = {
             field.name for field in queryset.model._meta.get_fields()}
@@ -93,8 +121,14 @@ class SearchFilter(BaseSearchFilter):
         # which are not present in the model.
         alternate_fields = getattr(view, 'alternate_fields', {})
         for field in fields:
+            field_lookup = field[0]
+            lookup = self.lookup_prefixes.get(field_lookup)
+            if lookup:
+                field = field[1:]
             alternate_field = alternate_fields.get(field, None)
             if alternate_field:
+                if lookup:
+                    alternate_field = field_lookup + alternate_field
                 if isinstance(alternate_field, (list, tuple)):
                     fields += tuple(alternate_field)
                 else:
@@ -102,8 +136,12 @@ class SearchFilter(BaseSearchFilter):
 
         valid_fields = []
         for field in fields:
-            if '__' in field:
-                relation, rel_field = field.split('__')
+            field_name = field
+            lookup = self.lookup_prefixes.get(field_name[0])
+            if lookup:
+                field_name = field_name[1:]
+            if '__' in field_name:
+                relation, rel_field = field_name.split('__')
                 try:
                     # check if the field is a relation
                     rel = queryset.model._meta.get_field(relation).remote_field
@@ -114,8 +152,8 @@ class SearchFilter(BaseSearchFilter):
                         valid_fields.append(field)
                 except FieldDoesNotExist:
                     pass
-            elif field in model_fields:
-                rel = queryset.model._meta.get_field(field).remote_field
+            elif field_name in model_fields:
+                rel = queryset.model._meta.get_field(field_name).remote_field
                 if not rel:
                     # if it is a relation fields (as a result valid),
                     # we don't want to end-up with a problem later on
@@ -135,29 +173,8 @@ class SearchFilter(BaseSearchFilter):
         When multiple search terms must be matched, they can be delimited
         by a comma.
         """
-        params = request.query_params.get(self.search_param, '')
-        params = params.replace('\x00', '')  # strip null characters
-        results = []
-        inside = False
-        first = 0
-        for last, letter in enumerate(params):
-            if inside:
-                if letter == '"':
-                    if first < last:
-                        results += [params[first:last]]
-                    first = last + 1
-                    inside = False
-            else:
-                if letter in (',',):
-                    if first < last:
-                        results += [params[first:last]]
-                    first = last + 1
-                elif letter == '"':
-                    inside = True
-                    first = last + 1
-        if first < len(params):
-            results += [params[first:len(params)]]
-        return results
+        return search_terms_as_list(
+            request.query_params.get(self.search_param, ''))
 
 
     def get_valid_fields(self, request, queryset, view, context=None):

@@ -1,4 +1,4 @@
-# Copyright (c) 2021, DjaoDjin inc.
+# Copyright (c) 2023, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -26,8 +26,10 @@ from collections import OrderedDict
 
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
+from rest_framework.settings import api_settings
 
 from . import settings
+from .filters import search_terms_as_list
 from .models import (sum_dest_amount, sum_orig_amount, sum_balance_amount,
     Transaction)
 
@@ -304,8 +306,12 @@ class TypeaheadPagination(PageNumberPagination):
 
     def paginate_queryset(self, queryset, request, view=None):
         #pylint:disable=attribute-defined-outside-init
+        search_terms = search_terms_as_list(
+            request.query_params.get(api_settings.SEARCH_PARAM, ''))
+        page_size = max(len(search_terms), self.page_size)
+
         self.count = queryset.count()
-        if self.count > self.page_size:
+        if self.count > page_size:
             # returning an empty set if the number of results is greater than
             # MAX_TYPEAHEAD_CANDIDATES
             queryset = queryset.none()

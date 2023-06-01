@@ -302,6 +302,24 @@ class ProfilesTypeaheadAPIView(OrganizationSmartListMixin,
         """
         return self.create(request, *args, **kwargs)
 
+    def list(self, request, *args, **kwargs):
+        queryset = self.filter_queryset(self.get_queryset())
+
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            if not page:
+                # For B2B organizations, we often have a user e-mail address
+                # and we want the profile using the same domain name.
+                self.search_fields = self.__class__.search_fields + ('domain',)
+                queryset = self.filter_queryset(self.get_queryset())
+                page = self.paginate_queryset(queryset)
+
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+
+        serializer = self.get_serializer(queryset, many=True)
+        return http.Response(serializer.data)
+
     def paginate_queryset(self, queryset):
         page = super(ProfilesTypeaheadAPIView, self).paginate_queryset(queryset)
         page = self.decorate_personal(page)
