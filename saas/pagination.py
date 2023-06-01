@@ -32,6 +32,7 @@ from . import settings
 from .filters import search_terms_as_list
 from .models import (sum_dest_amount, sum_orig_amount, sum_balance_amount,
     Transaction)
+from .utils import datetime_or_now
 
 
 class BalancePagination(PageNumberPagination):
@@ -42,19 +43,23 @@ class BalancePagination(PageNumberPagination):
 
     def paginate_queryset(self, queryset, request, view=None):
         #pylint:disable=attribute-defined-outside-init
-        self.start_at = view.start_at
-        self.ends_at = view.ends_at
-        if view.selector is not None:
-            dest_totals = sum_dest_amount(queryset.filter(
-                dest_account__icontains=view.selector))
-            orig_totals = sum_orig_amount(queryset.filter(
-                orig_account__icontains=view.selector))
+        self.start_at = getattr(view, 'start_at', None)
+        self.ends_at = getattr(view, 'ends_at', datetime_or_now())
+        if hasattr(view, 'balance_amount') and hasattr(view, 'balance_unit'):
+            self.balance_amount = view.balance_amount
+            self.balance_unit = view.balance_unit
         else:
-            dest_totals = sum_dest_amount(queryset)
-            orig_totals = sum_orig_amount(queryset)
-        balance = sum_balance_amount(dest_totals, orig_totals)
-        self.balance_amount = balance['amount']
-        self.balance_unit = balance['unit']
+            if view.selector is not None:
+                dest_totals = sum_dest_amount(queryset.filter(
+                    dest_account__icontains=view.selector))
+                orig_totals = sum_orig_amount(queryset.filter(
+                    orig_account__icontains=view.selector))
+            else:
+                dest_totals = sum_dest_amount(queryset)
+                orig_totals = sum_orig_amount(queryset)
+            balance = sum_balance_amount(dest_totals, orig_totals)
+            self.balance_amount = balance['amount']
+            self.balance_unit = balance['unit']
         return super(BalancePagination, self).paginate_queryset(
             queryset, request, view=view)
 

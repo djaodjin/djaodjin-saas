@@ -1,6 +1,4 @@
-#pylint: disable=too-many-lines
-
-# Copyright (c) 2022, DjaoDjin inc.
+# Copyright (c) 2023, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -23,6 +21,8 @@
 # WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+#pylint: disable=too-many-lines
 
 # Implementation Note:
 #   The models and managers are declared in the same file to avoid messy
@@ -3809,10 +3809,10 @@ class TransactionManager(models.Manager):
 
 
     def distinct_accounts(self):
-        return (set([val['orig_account']
-                    for val in self.all().values('orig_account').distinct()])
-                | set([val['dest_account']
-                    for val in self.all().values('dest_account').distinct()]))
+        return ({val['orig_account']
+                 for val in self.all().values('orig_account').distinct()}
+                | {val['dest_account']
+                    for val in self.all().values('dest_account').distinct()})
 
     @staticmethod
     def record_order(invoiced_items, user=None):
@@ -3824,6 +3824,7 @@ class TransactionManager(models.Manager):
 
         Constraints: All invoiced_items to same customer
         """
+        # XXX need more explainations here !!!
         order_executed_items = []
         for invoiced_item in invoiced_items:
             # When an customer pays on behalf of an organization
@@ -3835,7 +3836,7 @@ class TransactionManager(models.Manager):
                 # There are some applications that are automatically extending
                 # subscriptions to a free plan and do not wish to notify
                 # subscribers about it.
-                pay_now = not(subscription.plan.is_not_priced)
+                pay_now = not subscription.plan.is_not_priced
                 subscription.ends_at = subscription.plan.end_of_period(
                     subscription.ends_at,
                     subscription.plan.period_number(invoiced_item.descr))
@@ -3853,6 +3854,7 @@ class TransactionManager(models.Manager):
         if order_executed_items:
             signals.order_executed.send(
                 sender=__name__, invoiced_items=order_executed_items, user=user)
+        return order_executed_items
 
     def get_invoiceables(self, organization, until=None):
         """
@@ -3939,15 +3941,29 @@ class TransactionManager(models.Manager):
         """
         balances = self.get_statement_balances(
             subscription.organization, until=until)
-        event_id = get_sub_event_id(subscription)
-        balance = balances.get(event_id, {})
-        if len(balance) > 1:
-            raise ValueError(_("balances with multiple currency units (%s)") %
-                str(balance))
-        try:
-            dest_unit, dest_amount = next(six.iteritems(balance))
-        except StopIteration:
-            dest_amount = 0
+        subscription_event_id = get_sub_event_id(subscription)
+        dest_amount = 0
+        dest_unit = None
+        for event_id, balance in six.iteritems(balances):
+            # subscription_event_id endswith a '/' which is garenteed
+            # to be a terminal character.
+            if event_id.startswith(subscription_event_id):
+                if len(balance) > 1:
+                    raise ValueError(
+                        _("balance with multiple currency units (%s)") %
+                        str(balance))
+                try:
+                    balance_unit, balance_amount = next(six.iteritems(balance))
+                    dest_amount += balance_amount
+                    if dest_unit and balance_unit != dest_unit:
+                        raise ValueError(
+                            _("balances with multiple currency units"\
+                              " (%(dest_unit)s, %(balance_unit)s)") % (
+                                dest_unit, balance_unit))
+                    dest_unit = balance_unit
+                except StopIteration:
+                    pass
+        if not dest_unit:
             dest_unit = settings.DEFAULT_UNIT
         return dest_amount, dest_unit
 
@@ -4572,7 +4588,7 @@ def get_sub_event_id(subscription, use_charge=None):
     return substr
 
 
-def record_use_charge(subscription, use_charge):
+def record_use_charge(subscription, use_charge, quantity=1):
     usage = get_period_usage(subscription, use_charge,
         subscription.created_at, subscription.ends_at)
     amount = None
@@ -4582,9 +4598,11 @@ def record_use_charge(subscription, use_charge):
         amount = 0
         descr = (humanize.describe_buy_use(use_charge, 1)
             + " (complimentary in plan)")
+    if not quantity:
+        quantity = 1
     return Transaction.objects.record_order([
         Transaction.objects.new_use_charge(subscription,
-            use_charge, 1, custom_amount=amount, descr=descr)])
+            use_charge, quantity, custom_amount=amount, descr=descr)])
 
 
 def sum_balance_amount(dest_balances, orig_balances):

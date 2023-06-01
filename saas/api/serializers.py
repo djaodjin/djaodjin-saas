@@ -35,7 +35,7 @@ granted access to personal information.
 """
 from __future__ import unicode_literals
 
-import logging
+import json, logging
 
 from django.core import validators
 from django.contrib.auth import get_user_model
@@ -54,7 +54,7 @@ from ..decorators import _valid_manager
 from ..humanize import as_money
 from ..mixins import as_html_description, product_url
 from ..models import (AdvanceDiscount, BalanceLine, CartItem, Charge, Coupon,
-    Plan, RoleDescription, Subscription, Transaction)
+    Plan, RoleDescription, Subscription, Transaction, UseCharge)
 from ..utils import (build_absolute_uri, get_organization_model, get_role_model,
     get_user_serializer, get_user_detail_serializer)
 
@@ -156,6 +156,19 @@ class PlanRelatedField(serializers.RelatedField):
 
     def to_internal_value(self, data):
         return get_object_or_404(Plan.objects.all(), slug=data)
+
+
+class UseChargeRelatedField(serializers.RelatedField):
+
+    def __init__(self, **kwargs):
+        super(UseChargeRelatedField, self).__init__(
+            queryset=UseCharge.objects.all(), **kwargs)
+
+    def to_representation(self, value):
+        return value.slug
+
+    def to_internal_value(self, data):
+        return get_object_or_404(UseCharge.objects.all(), slug=data)
 
 
 class RoleDescriptionRelatedField(serializers.RelatedField):
@@ -434,17 +447,6 @@ class RefundChargeSerializer(NoModelSerializer):
         help_text=_("Line items in a charge to be refunded"))
 
 
-class OrganizationBalanceSerializer(NoModelSerializer):
-
-    balance_amount = serializers.IntegerField(read_only=True,
-      help_text=_("balance of all transactions in cents (i.e. 100ths) of unit"))
-    balance_unit = serializers.CharField(read_only=True,
-        help_text=_("three-letter ISO 4217 code for currency unit (ex: usd)"))
-
-    class Meta:
-        fields = ('balance_amount', 'balance_unit')
-
-
 class WithEndsAtByPlanSerializer(NoModelSerializer):
 
     plan = serializers.SlugField(source='plan__slug', read_only=True)
@@ -608,6 +610,14 @@ class AdvanceDiscountSerializer(serializers.ModelSerializer):
         fields = ('discount_type', 'discount_value', 'length')
 
 
+class UseChargeSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = UseCharge
+        fields = ('slug', 'title', 'description', 'created_at',
+            'use_amount', 'quota', 'extra')
+
+
 class PlanDetailSerializer(PlanSerializer):
 
     description = serializers.CharField(required=False,
@@ -636,7 +646,8 @@ class PlanDetailSerializer(PlanSerializer):
         " to the plan initiated by a subscriber. (defaults to False)"))
     advance_discounts = AdvanceDiscountSerializer(many=True, required=False,
         help_text=_("Discounts when periods are paid in advance."))
-
+    use_charges = UseChargeSerializer(many=True, required=False,
+        help_text=_("Variable pricing based on usage"))
     discounted_period_amount = serializers.SerializerMethodField(required=False,
         help_text=_("Discounted amount for the first period"))
     is_cart_item = serializers.SerializerMethodField(required=False,
@@ -650,7 +661,7 @@ class PlanDetailSerializer(PlanSerializer):
         model = PlanSerializer.Meta.model
         fields = PlanSerializer.Meta.fields + ('description', 'is_active',
             'setup_amount', 'period_amount', 'period_type',
-            'advance_discounts', 'unit', 'profile', 'extra',
+            'advance_discounts', 'use_charges', 'unit', 'profile', 'extra',
             'period_length', 'renewal_type', 'is_not_priced', 'unlock_event',
             'created_at', 'skip_optin_on_grant', 'optin_on_request',
             'discounted_period_amount', 'is_cart_item', 'detail')
@@ -667,6 +678,7 @@ class PlanDetailSerializer(PlanSerializer):
 
     def create(self, validated_data):
         advance_discounts = validated_data.pop('advance_discounts', [])
+        use_charges = validated_data.pop('use_charges', [])
         with transaction.atomic():
             instance = Plan.objects.create(**validated_data)
             for advance_discount in advance_discounts:
@@ -675,11 +687,21 @@ class PlanDetailSerializer(PlanSerializer):
                     discount_type=advance_discount.get('discount_type'),
                     discount_value=advance_discount.get('discount_value'),
                     length=advance_discount.get('length'))
+            for use_charge in use_charges:
+                UseCharge.objects.create(
+                    plan=instance,
+                    slug=use_charge.get('slug'),
+                    title=use_charge.get('title'),
+                    description=use_charge.get('description', ""),
+                    use_amount=use_charge.get('use_amount', 0),
+                    quota=use_charge.get('quota', 0),
+                    extra=use_charge.get('extra'))
 
         return instance
 
     def update(self, instance, validated_data):
         advance_discounts = validated_data.pop('advance_discounts', [])
+        use_charges = validated_data.pop('use_charges', [])
         for attr, value in six.iteritems(validated_data):
             setattr(instance, attr, value)
 
@@ -692,6 +714,20 @@ class PlanDetailSerializer(PlanSerializer):
                     discount_type=advance_discount.get('discount_type'),
                     discount_value=advance_discount.get('discount_value'),
                     length=advance_discount.get('length'))
+
+            instance.use_charges.exclude(slug__in=[
+                use_charge.get('slug') for use_charge in use_charges]).delete()
+            for use_charge in use_charges:
+                use_charge_slug = use_charge.get('slug')
+                UseCharge.objects.update_or_create(
+                    defaults={
+                        'title': use_charge.get('title'),
+                        'description': use_charge.get('description'),
+                        'use_amount': use_charge.get('use_amount'),
+                        'quota': use_charge.get('quota'),
+                        'extra': use_charge.get('extra')
+                    },
+                    plan=instance, slug=use_charge_slug)
 
         return instance
 
@@ -927,8 +963,9 @@ class CartItemSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = CartItem
-        fields = ('created_at', 'user', 'plan', 'option', 'full_name',
-            'sync_on', 'email', 'detail')
+        fields = ('created_at', 'user',
+            'plan', 'option', 'use', 'quantity',
+            'sync_on', 'full_name', 'email', 'detail')
         read_only_fields = ('created_at', 'user', 'detail')
 
     @staticmethod
@@ -946,11 +983,14 @@ class CartItemCreateSerializer(serializers.ModelSerializer):
     """
     plan = PlanRelatedField(read_only=False, required=True,
         help_text=_("The plan to add into the request.user cart."))
+    use = UseChargeRelatedField(required=False,
+        help_text=_("The use charge to add into the request.user cart."))
 
     class Meta:
         model = CartItem
-        fields = ('created_at', 'plan', 'option', 'full_name',
-            'sync_on', 'email')
+        fields = ('created_at', 'plan', 'option',
+                  'use', 'quantity',
+                  'sync_on', 'full_name', 'email')
         read_only_fields = ('created_at',)
 
 

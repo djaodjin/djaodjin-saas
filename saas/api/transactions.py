@@ -1,4 +1,4 @@
-# Copyright (c) 2022, DjaoDjin inc.
+# Copyright (c) 2023, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -26,25 +26,24 @@ from __future__ import unicode_literals
 from collections import OrderedDict
 
 from django.db.models import Q
-from rest_framework import status
+from rest_framework import generics, status, response as http
 from rest_framework.exceptions import PermissionDenied, ValidationError
-from rest_framework.generics import CreateAPIView, GenericAPIView, ListAPIView
 from rest_framework.pagination import PageNumberPagination
-from rest_framework.response import Response
 
-from .serializers import (CreateOfflineTransactionSerializer,
-    OfflineTransactionSerializer, OrganizationBalanceSerializer,
+from .serializers import (CartItemCreateSerializer,
+    CreateOfflineTransactionSerializer, OfflineTransactionSerializer,
     TransactionSerializer)
 from ..compat import gettext_lazy as _
 from ..decorators import _valid_manager
 from ..docs import swagger_auto_schema, OpenAPIResponse
 from ..filters import DateRangeFilter, OrderingFilter, SearchFilter
 from ..mixins import OrganizationMixin, ProviderMixin, DateRangeContextMixin
-from ..models import get_broker, sum_orig_amount, Subscription, Transaction, Plan
+from ..models import (get_broker, record_use_charge, sum_orig_amount,
+    Subscription, Transaction, Plan)
 from ..backends import ProcessorError
 from ..pagination import (BalancePagination, StatementBalancePagination,
     TotalPagination)
-from ..utils import get_organization_model
+from ..utils import datetime_or_now, get_organization_model
 
 
 class IncludesSyncErrorPagination(PageNumberPagination):
@@ -65,7 +64,7 @@ class IncludesSyncErrorPagination(PageNumberPagination):
         ]
         if hasattr(self, 'detail'):
             paginated += [('detail', self.detail)]
-        return Response(OrderedDict(paginated))
+        return http.Response(OrderedDict(paginated))
 
 
 class TotalAnnotateMixin(object):
@@ -137,7 +136,7 @@ class TransactionQuerysetMixin(object):
 
 
 class TransactionListAPIView(SmartTransactionListMixin,
-                             TransactionQuerysetMixin, ListAPIView):
+                             TransactionQuerysetMixin, generics.ListAPIView):
     """
     Lists ledger transactions
 
@@ -212,7 +211,7 @@ class BillingsQuerysetMixin(OrganizationMixin):
 
 
 class BillingsAPIView(SmartTransactionListMixin,
-                      BillingsQuerysetMixin, ListAPIView):
+                      BillingsQuerysetMixin, generics.ListAPIView):
     """
     Lists subscriber transactions
 
@@ -293,7 +292,7 @@ class ReceivablesQuerysetMixin(ProviderMixin):
 
 
 class ReceivablesListAPIView(TotalAnnotateMixin, SmartTransactionListMixin,
-                             ReceivablesQuerysetMixin, ListAPIView):
+                             ReceivablesQuerysetMixin, generics.ListAPIView):
     """
     Lists provider receivables
 
@@ -378,7 +377,7 @@ class TransferQuerysetMixin(ProviderMixin):
 
 
 class TransferListAPIView(SmartTransactionListMixin, TransferQuerysetMixin,
-                          ListAPIView):
+                          generics.ListAPIView):
     """
     Lists provider payouts
 
@@ -445,7 +444,7 @@ class TransferListAPIView(SmartTransactionListMixin, TransferQuerysetMixin,
     pagination_class = IncludesSyncErrorPagination
 
 
-class ImportTransactionsAPIView(ProviderMixin, CreateAPIView):
+class ImportTransactionsAPIView(ProviderMixin, generics.CreateAPIView):
 
     serializer_class = CreateOfflineTransactionSerializer
 
@@ -655,11 +654,20 @@ class ImportTransactionsAPIView(ProviderMixin, CreateAPIView):
                 many=True).to_representation(transactions)
         }
         headers = self.get_success_headers(result_data)
-        return Response(result_data,
+        return http.Response(result_data,
             status=status.HTTP_201_CREATED, headers=headers)
 
 
-class StatementBalanceAPIView(OrganizationMixin, GenericAPIView):
+class StatementBalanceQuerysetMixin(OrganizationMixin):
+
+    def get_queryset(self):
+        return Transaction.objects.filter(
+            dest_organization=self.organization,
+            dest_account=Transaction.PAYABLE)
+
+
+class StatementBalanceAPIView(SmartTransactionListMixin,
+                    StatementBalanceQuerysetMixin, generics.ListCreateAPIView):
     """
     Retrieves a customer balance
 
@@ -679,19 +687,126 @@ class StatementBalanceAPIView(OrganizationMixin, GenericAPIView):
 
         {
             "balance_amount": "1200",
-            "balance_unit": "usd"
+            "balance_unit": "usd",
+            "count": 1,
+            "next": null,
+            "previous": null,
+            "results": [
+                {
+                  "created_at":"2016-06-21T23:42:13.863739Z",
+                  "description":"Subscription to basic until 2016/11/21 (1 month)",
+                  "amount":"$20.00",
+                  "is_debit":false,
+                  "orig_account":"Receivable",
+                  "orig_profile": {
+                      "slug": "cowork",
+                      "printable_name": "Coworking Space",
+                      "picture": null,
+                      "type": "organization",
+                      "credentials": false
+                  },
+                  "orig_amount":2000,
+                  "orig_unit":"usd",
+                  "dest_account":"Payable",
+                  "dest_profile": {
+                      "slug": "xia",
+                      "printable_name": "Xia Lee",
+                      "picture": null,
+                      "type": "personal",
+                      "credentials": true
+                  },
+                  "dest_amount":2000,
+                  "dest_unit":"usd"
+                }]
         }
     """
-    serializer_class = OrganizationBalanceSerializer
-    pagination_class = None
+    pagination_class = BalancePagination
+    serializer_class = TransactionSerializer
+
+    def get_serializer_class(self):
+        if self.request.method.lower() in ('post',):
+            return CartItemCreateSerializer
+        return super(StatementBalanceAPIView, self).get_serializer_class()
 
     def get(self, request, *args, **kwargs):
-        #pylint:disable=unused-argument
-        balance_amount, balance_unit \
+        self.balance_amount, self.balance_unit \
             = Transaction.objects.get_statement_balance(self.organization)
-        return Response(self.get_serializer_class()().to_representation(
-            {'balance_amount': balance_amount,
-             'balance_unit': balance_unit}))
+        return super(StatementBalanceAPIView, self).get(
+            request, *args, **kwargs)
+
+    @swagger_auto_schema(responses={
+        201: OpenAPIResponse("", TransactionSerializer)})
+    def post(self, request, *args, **kwargs):
+        """
+        Adds to the order balance
+
+        This API endpoint can be used to add use charges to a subscriber
+        invoice while charging the subscriber at a later date.
+
+        **Tags**: billing, subscriber
+
+        **Examples**
+
+        .. code-block:: http
+
+            POST /api/billing/xia/balance HTTP/1.1
+
+        .. code-block:: json
+
+            {
+                "plan": "premium",
+                "use": "requests"
+            }
+
+        responds
+
+        .. code-block:: json
+
+            {
+              "created_at":"2016-06-21T23:42:13.863739Z",
+              "description":"Subscription to basic until 2016/11/21 (1 month)",
+              "amount":"$20.00",
+              "is_debit":false,
+              "orig_account":"Receivable",
+              "orig_profile": {
+                  "slug": "cowork",
+                  "printable_name": "Coworking Space",
+                  "picture": null,
+                  "type": "organization",
+                  "credentials": false
+              },
+              "orig_amount":2000,
+              "orig_unit":"usd",
+              "dest_account":"Payable",
+              "dest_profile": {
+                  "slug": "xia",
+                  "printable_name": "Xia Lee",
+                  "picture": null,
+                  "type": "personal",
+                  "credentials": true
+              },
+              "dest_amount":2000,
+              "dest_unit":"usd"
+            }
+        """
+        return self.create(request, *args, **kwargs)
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        plan = serializer.validated_data.get('plan')
+        use_charge = serializer.validated_data.get('use')
+        quantity = serializer.validated_data.get('quantity')
+        if use_charge:
+            subscription = Subscription.objects.valid_for(
+                organization=self.organization, plan=plan,
+                ends_at__gt=datetime_or_now()).first()
+            order_executed_items = record_use_charge(
+                subscription, use_charge, quantity=quantity)
+            serializer = self.serializer_class(instance=order_executed_items[0])
+            return http.Response(serializer.data, status=status.HTTP_201_CREATED)
+        return http.Response({}, status=status.HTTP_200_OK)
+
 
     def delete(self, request, *args, **kwargs):
         """
@@ -719,4 +834,4 @@ class StatementBalanceAPIView(OrganizationMixin, GenericAPIView):
             # to subscribers and providers.
             raise PermissionDenied()
         self.organization.create_cancel_transactions(user=request.user)
-        return Response(status=status.HTTP_204_NO_CONTENT)
+        return http.Response(status=status.HTTP_204_NO_CONTENT)

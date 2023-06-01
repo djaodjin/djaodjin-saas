@@ -126,8 +126,8 @@ Example fixtures for a $29/month and a 20% discount if paid yearly::
         "model": "saas.Plan", "pk": 1
     }
 
-Quota pricing
--------------
+Usage-based pricing
+-------------------
 
 In some cases, the business model requires to charge base on usage (HTTP
 requests, Gigabytes, messages, telephony minutes).

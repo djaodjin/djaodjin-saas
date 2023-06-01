@@ -30,10 +30,9 @@ from __future__ import unicode_literals
 import csv, logging
 
 from django.contrib import messages
-from rest_framework.generics import (CreateAPIView,
-    GenericAPIView, RetrieveAPIView)
+from rest_framework import generics
 from rest_framework.mixins import CreateModelMixin
-from rest_framework.response import Response
+from rest_framework import response as http
 from rest_framework import status
 
 from ..backends import ProcessorError
@@ -51,7 +50,7 @@ from .serializers import (CartItemSerializer, CartItemCreateSerializer,
 LOGGER = logging.getLogger(__name__)
 
 
-class CartItemAPIView(CartMixin, CreateAPIView):
+class CartItemAPIView(CartMixin, generics.CreateAPIView):
     """
     Adds an item to the user cart
 
@@ -124,16 +123,14 @@ class CartItemAPIView(CartMixin, CreateAPIView):
       201: OpenAPIResponse("created", CartItemSerializer)})
     def post(self, request, *args, **kwargs):
         items = None
-        serializer = self.get_serializer(data=request.data)
-        if serializer.is_valid():
-            items = [serializer.validated_data]
+        if isinstance(request.data, dict):
+            serializer = self.get_serializer(data=request.data)
+            if serializer.is_valid(raise_exception=True):
+                items = [serializer.validated_data]
         else:
-            serializer = self.get_serializer(data=request.data, many=True)
-            if serializer.is_valid():
-                items = serializer.validated_data
-        if not items:
-            return Response(
-                serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            serializer_list = self.get_serializer(data=request.data, many=True)
+            if serializer_list.is_valid(raise_exception=True):
+                items = serializer_list.validated_data
 
         cart_items = []
         at_time = datetime_or_now()
@@ -151,9 +148,9 @@ class CartItemAPIView(CartMixin, CreateAPIView):
             cart_items += [cart_item]
         if len(items) > 1:
             headers = self.get_success_headers(cart_items)
-            return Response(cart_items, status=status_code, headers=headers)
+            return http.Response(cart_items, status=status_code, headers=headers)
         headers = self.get_success_headers(cart_items[0])
-        return Response(cart_items[0], status=status_code, headers=headers)
+        return http.Response(cart_items[0], status=status_code, headers=headers)
 
     @staticmethod
     def destroy_in_session(request, plan=None, email=None):
@@ -205,10 +202,10 @@ class CartItemAPIView(CartMixin, CreateAPIView):
             # If the user is authenticated, we delete the cart items
             # from the database.
             self.destroy_in_db(request, plan=plan, email=email)
-        return Response(status=status.HTTP_204_NO_CONTENT)
+        return http.Response(status=status.HTTP_204_NO_CONTENT)
 
 
-class CartItemUploadAPIView(CartMixin, GenericAPIView):
+class CartItemUploadAPIView(CartMixin, generics.GenericAPIView):
     """
     Uploads multiple items into a user cart
 
@@ -321,10 +318,10 @@ class CartItemUploadAPIView(CartMixin, GenericAPIView):
                     response['failed'].append({'data': serializer.data,
                                                'error': serializer.errors})
 
-        return Response(response, status=status_code)
+        return http.Response(response, status=status_code)
 
 
-class CouponRedeemAPIView(GenericAPIView):
+class CouponRedeemAPIView(generics.GenericAPIView):
     """
     Redeems a discount code
 
@@ -376,17 +373,17 @@ class CouponRedeemAPIView(GenericAPIView):
                 # of this statement just yet.
                 #pylint: disable=protected-access
                 messages.success(request._request, details['detail'])
-                return Response(details, status=status.HTTP_200_OK,
+                return http.Response(details, status=status.HTTP_200_OK,
                                 headers=headers)
             details = {'detail': (
                 _("No items can be discounted using this coupon: %(code)s.") % {
                 'code': coupon_code})}
-            return Response(details, status=status.HTTP_400_BAD_REQUEST)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            return http.Response(details, status=status.HTTP_400_BAD_REQUEST)
+        return http.Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 class CheckoutAPIView(InvoicablesMixin, BalanceAndCartMixin,
-                      CreateModelMixin, RetrieveAPIView):
+                      CreateModelMixin, generics.RetrieveAPIView):
     """
     Retrieves a cart for checkout
 
@@ -539,7 +536,7 @@ of Xia",
             'results': self.get_queryset()
         }
         serializer = self.get_serializer(resp_data)
-        return Response(serializer.data)
+        return http.Response(serializer.data)
 
     def create(self, request, *args, **kwargs):#pylint:disable=unused-argument
         serializer = CheckoutSerializer(data=request.data)
@@ -569,8 +566,8 @@ of Xia",
                 remember_card=data.get('remember_card', False))
             if charge and charge.invoiced_total.amount > 0:
                 result = ChargeSerializer(charge)
-                return Response(result.data, status=status.HTTP_200_OK)
+                return http.Response(result.data, status=status.HTTP_200_OK)
         except ProcessorError as err:
-            return Response({
+            return http.Response({
                 'detail': str(err)}, status=status.HTTP_400_BAD_REQUEST)
-        return Response({}, status=status.HTTP_200_OK)
+        return http.Response({}, status=status.HTTP_200_OK)

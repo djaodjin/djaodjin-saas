@@ -586,14 +586,13 @@ class CartBaseView(InvoicablesMixin, BalanceAndCartMixin, FormView):
             'submit_title': _("Subscribe")})
         return context
 
-    @staticmethod
-    def get_empty_cart_redirect_url(request, *args, **kwargs):
+    def get_empty_cart_redirect_url(self, request, *args, **kwargs):
         """
         Returns URL to pricing page if the cart is empty.
         """
         #pylint:disable=unused-argument
         if is_authenticated(request):
-            if not CartItem.objects.get_cart(user=request.user).exists():
+            if not self.invoicables:
                 messages.info(request,
                     _("Your Cart is empty. Please add some items to your cart"
 " before you check out."))
