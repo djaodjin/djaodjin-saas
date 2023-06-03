@@ -889,9 +889,6 @@ class OrganizationSmartListMixin(object):
         'region',
         'postal_code',
         'country',
-        # For B2B organizations, we often have a user e-mail address
-        # and we want the profile using the same domain name.
-        'domain',
         # fields in User model:
         'username',
         'first_name',
@@ -1261,7 +1258,7 @@ def get_charge_context(charge):
         'charge': charge,
         'refunded': charge.refunded.exists(),
         'charge_items': charge.line_items,
-        'organization': charge.customer,
+        'organization': charge.customer, # XXX Use settings.PROFILE_URL_KWARG?
         'provider': charge.broker, # XXX update templates
     }
     return context

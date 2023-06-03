@@ -2673,6 +2673,9 @@ class Plan(SlugTitleMixin, models.Model):
         help_text=_("True when a profile can subscribe to the plan"))
     is_not_priced = models.BooleanField(default=False,
         help_text=_("True if the plan has no pricing (i.e. contact us)"))
+    is_personal = models.BooleanField(default=False,
+        help_text=_("True when the plan is meant for personal profiles"\
+        " first and foremost"))
     created_at = models.DateTimeField(auto_now_add=True,
         help_text=_("Date/time of creation (in ISO format)"))
     discontinued_at = models.DateTimeField(null=True, blank=True,
@@ -3070,6 +3073,9 @@ class CartItemManager(models.Manager):
         # billing/cart(-.*)/ pages.
         return self.filter(user=user, recorded=False,
             *args, **kwargs).order_by('plan', 'id')
+
+    def get_personal_cart(self, user):
+        return self.get_cart(user).filter(plan__is_personal=True)
 
     def by_claim_code(self, claim_code, *args, **kwargs):
         # Order by plan then id so the order is consistent between

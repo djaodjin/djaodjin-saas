@@ -729,6 +729,7 @@ class StatementBalanceAPIView(SmartTransactionListMixin,
         return super(StatementBalanceAPIView, self).get_serializer_class()
 
     def get(self, request, *args, **kwargs):
+        #pylint:disable=attribute-defined-outside-init
         self.balance_amount, self.balance_unit \
             = Transaction.objects.get_statement_balance(self.organization)
         return super(StatementBalanceAPIView, self).get(

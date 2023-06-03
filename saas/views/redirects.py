@@ -1,4 +1,4 @@
-# Copyright (c) 2022, DjaoDjin inc.
+# Copyright (c) 2023, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -44,7 +44,7 @@ from ..compat import  (NoReverseMatch, gettext_lazy as _, is_authenticated,
     reverse)
 from ..cart import session_cart_to_database
 from ..decorators import fail_direct
-from ..models import RoleDescription, get_broker
+from ..models import CartItem, RoleDescription, get_broker
 from ..utils import (get_organization_model, get_role_model,
     update_context_urls, validate_redirect_url as validate_redirect_url_base)
 
@@ -93,6 +93,7 @@ class OrganizationRedirectView(TemplateResponseMixin, ContextMixin,
     organization_model = get_organization_model()
     role_model = get_role_model()
     user_model = get_user_model()
+    accessible_profiles_pattern = 'saas_user_product_list'
     template_name = 'saas/organization_redirects.html'
     slug_url_kwarg = settings.PROFILE_URL_KWARG
     permanent = False
@@ -117,7 +118,8 @@ class OrganizationRedirectView(TemplateResponseMixin, ContextMixin,
         return organization
 
     def get_implicit_create_on_none(self):
-        return self.implicit_create_on_none
+        return (self.implicit_create_on_none or
+            CartItem.objects.get_personal_cart(self.request.user).exists())
 
     def get_implicit_grant_response(self, next_url, role, *args, **kwargs):
         #pylint:disable=unused-argument
@@ -176,7 +178,8 @@ class OrganizationRedirectView(TemplateResponseMixin, ContextMixin,
 
         session_cart_to_database(request)
 
-        redirect_to = reverse('saas_user_product_list', args=(request.user,))
+        redirect_to = reverse(self.accessible_profiles_pattern,
+            args=(request.user,))
         next_url = self.request.GET.get(REDIRECT_FIELD_NAME, None)
         if next_url:
             redirect_to += '?%s=%s' % (REDIRECT_FIELD_NAME, next_url)

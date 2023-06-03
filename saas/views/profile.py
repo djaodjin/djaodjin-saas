@@ -258,6 +258,21 @@ class OrganizationCreateView(RedirectFormMixin, CreateView):
     template_name = "saas/profile/new.html"
     implicit_create_on_none = False
 
+    def get_context_data(self, **kwargs):
+        context = super(OrganizationCreateView, self).get_context_data(
+            **kwargs)
+        user = self.request.user
+        urls = {
+            'api_candidates': reverse('saas_api_search_profiles'),
+            'user': {
+                'api_accessibles': reverse(
+                    'saas_api_accessibles', args=(user,)),
+                'api_profile_create': reverse(
+                    'saas_api_user_profiles', args=(user,)),
+        }}
+        update_context_urls(context, urls)
+        return context
+
     def create_organization_from_user(self, user):
         with transaction.atomic():
             organization = self.organization_model.objects.create(
