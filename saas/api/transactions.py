@@ -661,9 +661,7 @@ class ImportTransactionsAPIView(ProviderMixin, generics.CreateAPIView):
 class StatementBalanceQuerysetMixin(OrganizationMixin):
 
     def get_queryset(self):
-        return Transaction.objects.filter(
-            dest_organization=self.organization,
-            dest_account=Transaction.PAYABLE)
+        return self.organization.last_unpaid_orders()
 
 
 class StatementBalanceAPIView(SmartTransactionListMixin,
@@ -688,6 +686,8 @@ class StatementBalanceAPIView(SmartTransactionListMixin,
         {
             "balance_amount": "1200",
             "balance_unit": "usd",
+            "start_at": "2023-01-01T00:00:00Z",
+            "ends_at": "2023-06-01T23:42:13.863739Z",
             "count": 1,
             "next": null,
             "previous": null,

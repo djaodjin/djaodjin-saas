@@ -4598,14 +4598,13 @@ def record_use_charge(subscription, use_charge, quantity=1):
     usage = get_period_usage(subscription, use_charge,
         subscription.created_at, subscription.ends_at)
     amount = None
-    event_id = get_sub_event_id(subscription, use_charge)
-    descr = event_id
-    if usage < use_charge.quota:
-        amount = 0
-        descr = (humanize.describe_buy_use(use_charge, 1)
-            + " (complimentary in plan)")
     if not quantity:
         quantity = 1
+    event_id = get_sub_event_id(subscription, use_charge)
+    descr = humanize.describe_buy_use(use_charge, quantity)
+    if usage < use_charge.quota:
+        amount = 0
+        descr += " (complimentary in plan)"
     return Transaction.objects.record_order([
         Transaction.objects.new_use_charge(subscription,
             use_charge, quantity, custom_amount=amount, descr=descr)])
