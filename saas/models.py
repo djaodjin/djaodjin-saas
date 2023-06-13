@@ -207,6 +207,20 @@ class OrganizationManager(models.Manager):
             return self.filter(pk__in=selectors)
         return self.none()
 
+    def receivable_providers(self, invoiced_items):
+        """
+        Returns a list of unique providers referenced by *invoiced_items*.
+        """
+        results = set([])
+        for invoiced_item in invoiced_items:
+            assert invoiced_item.orig_account == Transaction.RECEIVABLE
+            results |= set([invoiced_item.orig_organization])
+            event = invoiced_item.get_event()
+            if event:
+                results |= set([event.provider])
+        return list(results)
+
+
     def providers_to(self, organization):
         """
         Set of ``Organization`` which provides active services
@@ -1495,7 +1509,9 @@ class ChargeManager(models.Manager):
                     invoiced_item.subscription.plan.prorate_transaction(
                         invoiced_item.dest_amount)
 
-        providers = Transaction.objects.providers(transactions)
+        organization_model = get_organization_model()
+        providers = organization_model.objects.receivable_providers(
+            transactions)
         if len(providers) == 1:
             provider = providers[0]
         else:
@@ -1751,8 +1767,9 @@ class Charge(models.Model):
         broker ``Organization``.
         """
         #pylint: disable=no-member
-        providers = Transaction.objects.providers([charge_item.invoiced
-            for charge_item in self.charge_items.all()])
+        organization_model = get_organization_model()
+        providers = organization_model.objects.receivable_providers([
+            charge_item.invoiced for charge_item in self.charge_items.all()])
         nb_providers = len(providers)
         assert nb_providers <= 1
         if nb_providers:
@@ -4322,19 +4339,6 @@ class TransactionManager(models.Manager):
             "[%s] amount(%dc) should be zero for subscription %d" % (
                 subscription._state.db, amount, subscription.pk))
         return created_transactions
-
-    @staticmethod
-    def providers(invoiced_items):
-        """
-        If all subscriptions referenced by *invoiced_items* are to the same
-        provider, return it otherwise return the site owner.
-        """
-        results = set([])
-        for invoiced_item in invoiced_items:
-            event = invoiced_item.get_event()
-            if event:
-                results |= set([event.provider])
-        return list(results)
 
     @staticmethod
     def by_processor_key(invoiced_items):

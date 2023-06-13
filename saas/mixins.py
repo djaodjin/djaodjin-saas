@@ -659,10 +659,12 @@ class InvoicablesMixin(OrganizationMixin):
     @property
     def invoicables_provider(self):
         if not hasattr(self, '_invoicables_provider'):
+            organization_model = get_organization_model()
             providers = set([])
             for invoicable in self.invoicables:
-                providers |= set(Transaction.objects.providers(
-                    invoicable['lines']))
+                providers |= set(
+                    organization_model.objects.receivable_providers(
+                        invoicable['lines']))
             if len(providers) == 1:
                 self._invoicables_provider = list(providers)[0]
             else:
