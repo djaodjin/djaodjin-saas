@@ -723,6 +723,8 @@ class StatementBalanceAPIView(SmartTransactionListMixin,
     pagination_class = BalancePagination
     serializer_class = TransactionSerializer
 
+    ordering = ('-created_at',)
+
     def get_serializer_class(self):
         if self.request.method.lower() in ('post',):
             return CartItemCreateSerializer

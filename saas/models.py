@@ -681,7 +681,7 @@ class AbstractOrganization(models.Model):
             orig_organization=self,
             orig_account=Transaction.LIABILITY,
             dest_organization=self.processor,
-            dest_account=Transaction.FUNDS).order_by('created_at').first()
+            dest_account=Transaction.FUNDS).order_by('-created_at').first()
 
     def last_unpaid_orders(self, subscription=None, at_time=None):
         """
@@ -700,7 +700,7 @@ class AbstractOrganization(models.Model):
             dest_organization=self,
             dest_account=Transaction.PAYABLE,
             orig_account=Transaction.RECEIVABLE,
-            **kwargs).order_by('created_at')
+            **kwargs).order_by('-created_at')
         return queryset
 
     def receivables(self):
