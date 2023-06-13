@@ -213,7 +213,8 @@ class OrganizationManager(models.Manager):
         """
         results = set([])
         for invoiced_item in invoiced_items:
-            assert invoiced_item.orig_account == Transaction.RECEIVABLE
+            assert invoiced_item.orig_account in (Transaction.RECEIVABLE,
+                Transaction.SETTLED)
             results |= set([invoiced_item.orig_organization])
             event = invoiced_item.get_event()
             if event:
