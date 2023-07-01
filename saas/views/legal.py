@@ -113,7 +113,7 @@ class SignatureForm(forms.ModelForm):
 
 
 def _read_agreement_file(slug, context=None, request=None):
-    import markdown
+    import markdown #pylint:disable=import-outside-toplevel
     if not context:
         broker = get_broker()
         context = {

@@ -69,6 +69,7 @@ def search_terms_as_list(params):
         results += [params[first:len(params)]]
     return results
 
+
 class SearchFilter(BaseSearchFilter):
 
     search_field_param = settings.SEARCH_FIELDS_PARAM
@@ -163,8 +164,16 @@ class SearchFilter(BaseSearchFilter):
         return tuple(valid_fields)
 
 
+    def get_query_param(self, request, key, default_value=None):
+        try:
+            return request.query_params.get(key, default_value)
+        except AttributeError:
+            pass
+        return request.GET.get(key, default_value)
+
+
     def get_query_fields(self, request):
-        return request.query_params.getlist(self.search_field_param)
+        return self.get_query_param(request, self.search_field_param)
 
 
     def get_search_terms(self, request):
@@ -174,7 +183,7 @@ class SearchFilter(BaseSearchFilter):
         by a comma.
         """
         return search_terms_as_list(
-            request.query_params.get(self.search_param, ''))
+            self.get_query_param(request, self.search_param, ''))
 
 
     def get_valid_fields(self, request, queryset, view, context=None):
@@ -232,6 +241,13 @@ class SearchFilter(BaseSearchFilter):
 
 
 class OrderingFilter(BaseOrderingFilter):
+
+    def get_query_param(self, request, key, default_value=None):
+        try:
+            return request.query_params.getlist(key, default_value)
+        except AttributeError:
+            pass
+        return request.GET.get(key, default_value)
 
     def get_valid_fields(self, queryset, view, context=None):
         #pylint:disable=protected-access
@@ -297,7 +313,7 @@ class OrderingFilter(BaseOrderingFilter):
             ordering = self.remove_invalid_fields(
                 queryset, default, view, request)
         default_ordering = list(ordering)
-        params = request.query_params.getlist(self.ordering_param)
+        params = self.get_query_param(request, self.ordering_param)
         if params:
             if isinstance(params, six.string_types):
                 params = params.split(',')

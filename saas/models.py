@@ -1510,13 +1510,14 @@ class ChargeManager(models.Manager):
                     invoiced_item.subscription.plan.prorate_transaction(
                         invoiced_item.dest_amount)
 
+        broker = get_broker()
         organization_model = get_organization_model()
         providers = organization_model.objects.receivable_providers(
             transactions)
         if len(providers) == 1:
             provider = providers[0]
         else:
-            provider = get_broker()
+            provider = broker
         processor = provider.validate_processor()
         descr = humanize.DESCRIBE_CHARGED_CARD % {
             'charge': '', 'organization': customer.printable_name}
@@ -1535,7 +1536,7 @@ class ChargeManager(models.Manager):
                  receipt_info) = provider.processor_backend.create_payment(
                      amount, unit, token,
                      descr=descr, created_at=created_at, provider=provider,
-                     broker_fee_amount=broker_fee_amount, broker=get_broker())
+                     broker_fee_amount=broker_fee_amount, broker=broker)
             else:
                 raise ProcessorError(_("%(organization)s is not associated"\
                     " to an account on the processor and no token was passed."
@@ -4605,7 +4606,6 @@ def record_use_charge(subscription, use_charge, quantity=1):
     amount = None
     if not quantity:
         quantity = 1
-    event_id = get_sub_event_id(subscription, use_charge)
     descr = humanize.describe_buy_use(use_charge, quantity)
     if usage < use_charge.quota:
         amount = 0

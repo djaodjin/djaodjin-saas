@@ -200,7 +200,7 @@ def get_role_serializer():
     """
     Returns the role serializer model that is active in this project.
     """
-    from . import settings
+    from . import settings #pylint:disable=import-outside-toplevel
     return import_string(settings.ROLE_SERIALIZER)
 
 
@@ -208,7 +208,7 @@ def get_user_serializer():
     """
     Returns the user serializer model that is active in this project.
     """
-    from . import settings
+    from . import settings #pylint:disable=import-outside-toplevel
     return import_string(settings.USER_SERIALIZER)
 
 
@@ -216,7 +216,7 @@ def get_user_detail_serializer():
     """
     Returns the user serializer model that is active in this project.
     """
-    from . import settings
+    from . import settings #pylint:disable=import-outside-toplevel
     return import_string(settings.USER_DETAIL_SERIALIZER)
 
 
