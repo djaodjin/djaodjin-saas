@@ -534,7 +534,7 @@ class OrganizationDetailSerializer(OrganizationSerializer):
         help_text=_("Country"))
     is_bulk_buyer = serializers.BooleanField(required=False, default=False,
         help_text=_("Enable GroupBuy"))
-    extra = serializers.CharField(required=False, allow_null=True,
+    extra = ExtraField(required=False, allow_null=True,
         help_text=_("Extra meta data (can be stringify JSON)"))
 
     detail = serializers.CharField(read_only=True, required=False,
