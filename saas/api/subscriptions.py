@@ -29,7 +29,7 @@ import logging
 from django.http import Http404
 from rest_framework import status
 from rest_framework.generics import (get_object_or_404, GenericAPIView,
-    ListAPIView, ListCreateAPIView, RetrieveUpdateDestroyAPIView)
+    ListAPIView, RetrieveUpdateDestroyAPIView)
 from rest_framework.response import Response
 
 from ..compat import gettext_lazy as _
@@ -43,7 +43,7 @@ from ..mixins import (PlanProvidedSubscriptionsMixin,
 from .. import settings, signals
 from ..models import Subscription
 from ..utils import generate_random_slug, datetime_or_now
-from .roles import OptinBase
+from .roles import ListOptinAPIView
 from .serializers import (ForceSerializer,
     ProvidedSubscriptionSerializer, ProvidedSubscriptionCreateSerializer,
     ProvidedSubscriptionDetailSerializer,SubscribedSubscriptionSerializer)
@@ -527,8 +527,7 @@ class PlanAllSubscribersAPIView(SubscriptionSmartListMixin,
 
 
 class PlanActiveSubscribersBaseAPIView(PlanProvidedSubscriptionsMixin,
-                                       OptinBase, ListCreateAPIView):
-
+                                       ListOptinAPIView):
     pass
 
 

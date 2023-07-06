@@ -121,16 +121,23 @@ def create_user_from_email(email, password=None, **kwargs):
     return user
 
 
-class OptinBase(OrganizationDecorateMixin, OrganizationCreateMixin):
+class ListOptinAPIView(OrganizationDecorateMixin, OrganizationCreateMixin,
+                       ListCreateAPIView):
 
     organization_model = get_organization_model()
+    serializer_class = AccessibleSerializer
+
+    @property
+    def role_descr(self):
+        return self.kwargs.get('role')
 
     def add_relations(self, organizations, user, ends_at=None):
         #pylint:disable=unused-argument
         roles = []
         created = False
         for organization in organizations:
-            role = organization.add_role_request(user)
+            role = organization.add_role_request(
+                user, role_descr=self.role_descr)
             if role:
                 created = True
                 roles += [role]
@@ -306,9 +313,10 @@ class AccessibleByDescrQuerysetMixin(AccessibleByQuerysetMixin):
             ).filter(role_description__slug=self.kwargs.get('role'))
 
 
-class AccessibleByListAPIView(RoleSmartListMixin, InvitedRequestedListMixin,
+class AccessibleByListAPIView(RoleSmartListMixin,
+                              InvitedRequestedListMixin,
                               AccessibleByQuerysetMixin,
-                              OptinBase, ListCreateAPIView):
+                              ListOptinAPIView):
     """
     Lists roles by user
 
@@ -446,8 +454,8 @@ accessibles/manager/cowork",
 
 class AccessibleByDescrListAPIView(RoleSmartListMixin,
                                    InvitedRequestedListMixin,
-                                   AccessibleByDescrQuerysetMixin, UserMixin,
-                                   ListCreateAPIView):
+                                   AccessibleByDescrQuerysetMixin,
+                                   ListOptinAPIView):
     """
     Lists roles of specific type by user
 
@@ -1448,8 +1456,8 @@ class UserProfileListAPIView(OrganizationSmartListMixin,
         self.decorate_personal(organization)
 
         # returns created profile
-        serializer = super(UserProfileListAPIView, self).get_serializer_class()(
-            instance=organization)
+        serializer = self.serializer_class(
+            instance=organization, context=self.get_serializer_context())
         headers = self.get_success_headers(serializer.data)
         return Response(serializer.data,
             status=status.HTTP_201_CREATED, headers=headers)
