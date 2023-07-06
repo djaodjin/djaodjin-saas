@@ -247,7 +247,7 @@ def _valid_subscriptions(request, organization=None, plan=None):
     return accessible_providers, subscriptions
 
 
-def fail_subscription(request, organization=None, plan=None):
+def fail_subscription(request, profile=None, plan=None):
     """
     Subscribed or was subscribed to %(saas.Plan)s
 
@@ -261,7 +261,7 @@ def fail_subscription(request, organization=None, plan=None):
         # Bypass if a manager for the broker.
         return False
     accessible_providers, subscriptions = _valid_subscriptions(
-        request, organization=organization, plan=plan)
+        request, organization=profile, plan=plan)
 
     if accessible_providers.exists():
         # The request.user has a role on the plan provider.
@@ -273,16 +273,15 @@ def fail_subscription(request, organization=None, plan=None):
                 plan = get_object_or_404(Plan, slug=plan)
             if not plan.is_not_priced:
                 cart_insert_item(request, plan=plan)
-                if organization:
-                    return reverse('saas_organization_cart',
-                        args=(organization,))
+                if profile:
+                    return reverse('saas_organization_cart', args=(profile,))
                 return reverse('saas_cart')
         return reverse('saas_cart_plan_list')
 
     return False
 
 
-def fail_paid_subscription(request, organization=None, plan=None):
+def fail_paid_subscription(request, profile=None, plan=None):
     """
     Subscribed to %(saas.Plan)s
 
@@ -297,7 +296,7 @@ def fail_paid_subscription(request, organization=None, plan=None):
 
     subscribed_at = datetime_or_now()
     accessible_providers, subscriptions = _valid_subscriptions(
-        request, organization=organization, plan=plan)
+        request, organization=profile, plan=plan)
 
     if accessible_providers.exists():
         # The request.user has a role on the plan provider.
@@ -313,8 +312,8 @@ def fail_paid_subscription(request, organization=None, plan=None):
             if not isinstance(plan, Plan):
                 plan = get_object_or_404(Plan, slug=plan)
             cart_insert_item(request, plan=plan)
-            if organization:
-                return reverse('saas_organization_cart', args=(organization,))
+            if profile:
+                return reverse('saas_organization_cart', args=(profile,))
             return reverse('saas_cart')
         return reverse('saas_cart_plan_list')
 
@@ -341,12 +340,12 @@ def _fail_direct(request, organization=None, roledescription=None,
         strength=strength, roledescription=roledescription))
 
 
-def fail_direct(request, organization=None, roledescription=None):
+def fail_direct(request, profile=None, roledescription=None):
     """
-    Direct %(saas.RoleDescription)s for :organization restricted to GET
+    Direct %(saas.RoleDescription)s for :profile restricted to GET
 
     Returns False if the authenticated ``request.user`` is a direct
-    ``roledescription`` (ex: contributor) or manager for ``organization``
+    ``roledescription`` (ex: contributor) or manager for ``profile``
     and the user's role allows for ``request.method``.
 
     Managers can issue all types of requests (GET, POST, etc.) while
@@ -356,16 +355,16 @@ def fail_direct(request, organization=None, roledescription=None):
     Note: In order to handle support requests effectively, a manager
     for the broker will always have access to the URL end-point.
     """
-    return _fail_direct(request, organization=organization,
+    return _fail_direct(request, organization=profile,
         strength=NORMAL, roledescription=roledescription)
 
 
-def fail_direct_weak(request, organization=None, roledescription=None):
+def fail_direct_weak(request, profile=None, roledescription=None):
     """
-    Direct %(saas.RoleDescription)s for :organization
+    Direct %(saas.RoleDescription)s for :profile
 
     Returns False if the authenticated ``request.user`` is a direct
-    ``roledescription`` (ex: contributor) or manager for ``organization``.
+    ``roledescription`` (ex: contributor) or manager for ``profile``.
 
     Both ``roledescription`` and managers can issue all types of requests
     (GET, POST, etc.).
@@ -375,49 +374,49 @@ def fail_direct_weak(request, organization=None, roledescription=None):
 
     .. image:: perms-contrib.*
     """
-    return _fail_direct(request, organization=organization,
+    return _fail_direct(request, organization=profile,
         strength=WEAK, roledescription=roledescription)
 
 
-def fail_direct_strong(request, organization=None):
+def fail_direct_strong(request, profile=None):
     """
-    Direct Managers for :organization
+    Direct Managers for :profile
 
     Note: In order to handle support requests effectively, a manager
     for the broker will always have access to the URL end-point.
     """
-    return _fail_direct(request, organization=organization, strength=STRONG)
+    return _fail_direct(request, organization=profile, strength=STRONG)
 
 
-def fail_provider_readable(request, organization=None, roledescription=None):
+def fail_provider_readable(request, profile=None, roledescription=None):
     #pylint:disable=line-too-long
     """
-    Direct %(saas.RoleDescription)s for :organization or provider restricted to GET
+    Direct %(saas.RoleDescription)s for :profile or provider restricted to GET
 
     Returns False if the authenticated ``request.user`` is a direct
-    ``roledescription`` (ex: contributor) or manager for ``organization``,
-    or to a provider of ``organization`` and ``request.method`` is GET.
+    ``roledescription`` (ex: contributor) or manager for ``profile``,
+    or to a provider of ``profile`` and ``request.method`` is GET.
     """
     organization_model = get_organization_model()
-    if organization and not isinstance(organization, organization_model):
+    if profile and not isinstance(profile, organization_model):
         try:
-            organization = organization_model.objects.get(
-                slug=str(organization))
+            profile = organization_model.objects.get(
+                slug=str(profile))
         except organization_model.DoesNotExist:
-            organization = None
-    if organization:
-        redirect_url = _fail_direct(request, organization=organization,
+            profile = None
+    if profile:
+        redirect_url = _fail_direct(request, organization=profile,
             roledescription=roledescription, strength=NORMAL)
         if not redirect_url:
-            # We found a manager or `roledescription` for `organization`.
+            # We found a manager or `roledescription` for `profile`.
             return False
     if request.method.lower() not in ("get", "options"):
         # Not a direct manager/`roledescription`
         # and not a read-only method? Don't even bother.
         return True
     candidates = []
-    if organization:
-        candidates = list(organization_model.objects.providers_to(organization))
+    if profile:
+        candidates = list(organization_model.objects.providers_to(profile))
     return not _has_valid_access(request, candidates,
         strength=NORMAL, roledescription=roledescription)
 
@@ -439,46 +438,46 @@ def _fail_provider(request, organization=None,
         strength=strength, roledescription=roledescription)
 
 
-def fail_provider(request, organization=None, roledescription=None):
+def fail_provider(request, profile=None, roledescription=None):
     #pylint:disable=line-too-long
     """
-    Provider or Direct %(saas.RoleDescription)s for :organization restricted to GET
+    Provider or Direct %(saas.RoleDescription)s for :profile restricted to GET
 
     Returns False if the authenticated ``request.user`` is a direct
-    ``roledescription`` (ex: contributor) or manager for ``organization``,
-    or to a provider of ``organization``, and the user's role allows for
+    ``roledescription`` (ex: contributor) or manager for ``profile``,
+    or to a provider of ``profile``, and the user's role allows for
     ``request.method``.
 
     Managers can issue all types of requests (GET, POST, etc.) while
     the ``request.user`` with another role (ex: contributor) are restricted
     to GET requests.
     """
-    return _fail_provider(request, organization=organization,
+    return _fail_provider(request, organization=profile,
         strength=NORMAL, roledescription=roledescription)
 
 
-def fail_provider_weak(request, organization=None, roledescription=None):
+def fail_provider_weak(request, profile=None, roledescription=None):
     """
-    Provider or Direct %(saas.RoleDescription)s for :organization
+    Provider or Direct %(saas.RoleDescription)s for :profile
 
     Returns False if the authenticated ``request.user`` is a direct
-    ``roledescription`` (ex: contributor) or manager for ``organization``
-    or to a provider of ``organization``.
+    ``roledescription`` (ex: contributor) or manager for ``profile``
+    or to a provider of ``profile``.
 
     Both ``roledescription`` and managers can issue all types of requests
     (GET, POST, etc.).
 
     .. image:: perms-contrib-subscribes.*
     """
-    return _fail_provider(request, organization=organization,
+    return _fail_provider(request, organization=profile,
         strength=WEAK, roledescription=roledescription)
 
 
-def fail_provider_strong(request, organization=None):
+def fail_provider_strong(request, profile=None):
     """
-    Provider or Direct Managers for :organization
+    Provider or Direct Managers for :profile
     """
-    return _fail_provider(request, organization=organization, strength=STRONG)
+    return _fail_provider(request, organization=profile, strength=STRONG)
 
 
 def _fail_provider_only(request, organization=None, strength=NORMAL,
@@ -498,9 +497,9 @@ def _fail_provider_only(request, organization=None, strength=NORMAL,
         strength=strength, roledescription=roledescription)
 
 
-def fail_provider_only(request, organization=None, roledescription=None):
+def fail_provider_only(request, profile=None, roledescription=None):
     """
-    Provider %(saas.RoleDescription)s for :organization restricted to GET
+    Provider %(saas.RoleDescription)s for :profile restricted to GET
 
     Returns False if the request authenticated ``User``
     is a contributor (or manager) for a provider to the ``Organization``
@@ -510,16 +509,16 @@ def fail_provider_only(request, organization=None, roledescription=None):
     (GET, POST, etc.).
     """
     return _fail_provider_only(
-        request, organization=organization,
+        request, organization=profile,
         strength=NORMAL, roledescription=roledescription)
 
 
-def fail_provider_only_weak(request, organization=None, roledescription=None):
+def fail_provider_only_weak(request, profile=None, roledescription=None):
     """
-    Provider %(saas.RoleDescription)s for :organization
+    Provider %(saas.RoleDescription)s for :profile
 
     Returns False if the authenticated ``request.user`` is a ``roledescription``
-    (ex: contributor) or manager for a provider of ``organization``.
+    (ex: contributor) or manager for a provider of ``profile``.
 
     Both ``roledescription`` and managers can issue all types of requests
     (GET, POST, etc.).
@@ -527,16 +526,16 @@ def fail_provider_only_weak(request, organization=None, roledescription=None):
     .. image:: perms-contrib-provider-only.*
     """
     return _fail_provider_only(
-        request, organization=organization,
+        request, organization=profile,
         strength=NORMAL, roledescription=roledescription)
 
 
-def fail_provider_only_strong(request, organization=None):
+def fail_provider_only_strong(request, profile=None):
     """
-    Provider Managers for :organization
+    Provider Managers for :profile
     """
     return _fail_provider_only(
-        request, organization=organization, strength=STRONG)
+        request, organization=profile, strength=STRONG)
 
 
 def _fail_self_provider(request, user=None, strength=NORMAL,
@@ -685,7 +684,7 @@ def requires_subscription(function=None,
 " of %(organization)s nor a manager of one of %(organization)s providers.")
                 % {'auth': request.user, 'organization': subscriber})
             redirect_url = fail_subscription(request,
-                organization=subscriber, plan=kwargs.get(plan_kwarg_slug, None))
+                profile=subscriber, plan=kwargs.get(plan_kwarg_slug, None))
             if redirect_url:
                 return redirect_or_denied(request, redirect_url,
                     redirect_field_name=redirect_field_name)
@@ -724,7 +723,7 @@ def requires_paid_subscription(function=None,
 " of %(organization)s nor a manager of one of %(organization)s providers.")
                 % {'auth': request.user, 'organization': subscriber})
             redirect_url = fail_paid_subscription(request,
-                organization=subscriber, plan=kwargs.get(plan_kwarg_slug, None))
+                profile=subscriber, plan=kwargs.get(plan_kwarg_slug, None))
             if redirect_url:
                 return redirect_or_denied(request, redirect_url,
                     redirect_field_name=redirect_field_name)
@@ -752,7 +751,7 @@ def requires_direct(function=None, roledescription=None,
         @wraps(view_func, assigned=available_attrs(view_func))
         def _wrapped_view(request, *args, **kwargs):
             slug = kwargs.get(settings.PROFILE_URL_KWARG, None)
-            redirect_url = fail_direct(request, organization=slug,
+            redirect_url = fail_direct(request, profile=slug,
                     roledescription=roledescription)
             if redirect_url:
                 return redirect_or_denied(request, redirect_url,
@@ -781,7 +780,7 @@ def requires_direct_weak(function=None, roledescription=None,
         @wraps(view_func, assigned=available_attrs(view_func))
         def _wrapped_view(request, *args, **kwargs):
             slug = kwargs.get(settings.PROFILE_URL_KWARG, None)
-            redirect_url = fail_direct_weak(request, organization=slug,
+            redirect_url = fail_direct_weak(request, profile=slug,
                     roledescription=roledescription)
             if redirect_url:
                 return redirect_or_denied(request, redirect_url,
@@ -814,7 +813,7 @@ def requires_provider(function=None, roledescription=None,
         @wraps(view_func, assigned=available_attrs(view_func))
         def _wrapped_view(request, *args, **kwargs):
             slug = kwargs.get(settings.PROFILE_URL_KWARG, None)
-            redirect_url = fail_provider(request, organization=slug,
+            redirect_url = fail_provider(request, profile=slug,
                 roledescription=roledescription)
             if redirect_url:
                 return redirect_or_denied(request, redirect_url,
@@ -846,7 +845,7 @@ def requires_provider_weak(function=None, roledescription=None,
         @wraps(view_func, assigned=available_attrs(view_func))
         def _wrapped_view(request, *args, **kwargs):
             slug = kwargs.get(settings.PROFILE_URL_KWARG, None)
-            redirect_url = fail_provider_weak(request, organization=slug,
+            redirect_url = fail_provider_weak(request, profile=slug,
                     roledescription=roledescription)
             if redirect_url:
                 return redirect_or_denied(request, redirect_url,
@@ -878,7 +877,7 @@ def requires_provider_only(function=None, roledescription=None,
         @wraps(view_func, assigned=available_attrs(view_func))
         def _wrapped_view(request, *args, **kwargs):
             slug = kwargs.get(settings.PROFILE_URL_KWARG, None)
-            redirect_url = fail_provider_only(request, organization=slug,
+            redirect_url = fail_provider_only(request, profile=slug,
                     roledescription=roledescription)
             if redirect_url:
                 return redirect_or_denied(request, redirect_url,
@@ -908,7 +907,7 @@ def requires_provider_only_weak(function=None, roledescription=None,
         @wraps(view_func, assigned=available_attrs(view_func))
         def _wrapped_view(request, *args, **kwargs):
             slug = kwargs.get(settings.PROFILE_URL_KWARG, None)
-            redirect_url = fail_provider_only_weak(request, organization=slug,
+            redirect_url = fail_provider_only_weak(request, profile=slug,
                     roledescription=roledescription)
             if redirect_url:
                 return redirect_or_denied(request, redirect_url,

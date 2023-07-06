@@ -295,7 +295,7 @@ class ProviderRedirectView(OrganizationRedirectView):
     """
     def get(self, request, *args, **kwargs):
         provider = get_broker()
-        if fail_direct(request, organization=provider):
+        if fail_direct(request, profile=provider):
             return super(ProviderRedirectView, self).get(
                 request, *args, **kwargs)
         kwargs.update({self.slug_url_kwarg: provider})

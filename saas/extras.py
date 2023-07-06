@@ -1,4 +1,4 @@
-# Copyright (c) 2022, DjaoDjin inc.
+# Copyright (c) 2023, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -25,15 +25,13 @@ from __future__ import unicode_literals
 
 from collections import OrderedDict
 
-from django.http import Http404
 from django.shortcuts import get_object_or_404
 
 # Implementation Note:
 # pylint:disable=import-outside-toplevel
 # saas.settings cannot be imported at this point because this file (extras.py)
 # will be imported before ``django.conf.settings`` is fully initialized.
-from .compat import (NoReverseMatch, gettext_lazy as _, is_authenticated,
-    reverse, six)
+from .compat import NoReverseMatch, is_authenticated, reverse, six
 from .utils import get_organization_model
 
 
@@ -42,8 +40,7 @@ class OrganizationMixinBase(object):
     Returns an ``Organization`` from a URL.
     """
 
-    organization_url_kwarg = 'organization'  # XXX PROFILE_URL_KWARG
-    #organization_url_kwarg = 'profile'       # XXX PROFILE_URL_KWARG
+    organization_url_kwarg = 'profile'  # Also modify settings.PROFILE_URL_KWARG
 
     @property
     def organization(self):

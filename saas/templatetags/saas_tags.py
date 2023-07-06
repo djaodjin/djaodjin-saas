@@ -178,7 +178,7 @@ def is_incomplete_month(date):
 def is_direct(request, organization=None):
     if organization is None:
         organization = get_broker()
-    return not fail_direct(request, organization=organization)
+    return not fail_direct(request, profile=organization)
 
 
 @register.filter

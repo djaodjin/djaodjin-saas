@@ -127,8 +127,7 @@ _SETTINGS = {
     'TERMS_OF_USE': 'terms-of-use',
     'MANAGER': 'manager',
     'CONTRIBUTOR': 'contributor',
-    'PROFILE_URL_KWARG': 'organization'
-#XXX   'PROFILE_URL_KWARG': 'profile'
+    'PROFILE_URL_KWARG': 'profile' #Also modify organization_url_kwarg in extras
 }
 _SETTINGS.update(getattr(settings, 'SAAS', {}))
 

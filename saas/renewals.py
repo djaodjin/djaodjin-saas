@@ -388,7 +388,7 @@ def create_charges_for_balance(until=None, dry_run=False):
                             total_price=Price(
                                 invoiceable_amount, invoiceable_unit),
                             final_notice=final_notice)
-                    except ProcessorError as err:
+                    except ProcessorError:
                         # An error from the processor which indicates
                         # the logic might be incorrect, the network down,
                         # etc. We have already notified the admin
