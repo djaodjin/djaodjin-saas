@@ -172,8 +172,16 @@ class SearchFilter(BaseSearchFilter):
         return request.GET.get(key, default_value)
 
 
+    def get_query_param_list(self, request, key, default_value=None):
+        try:
+            return request.query_params.getlist(key, default_value)
+        except AttributeError:
+            pass
+        return request.GET.getlist(key, default_value)
+
+
     def get_query_fields(self, request):
-        return self.get_query_param(request, self.search_field_param)
+        return self.get_query_param_list(request, self.search_field_param)
 
 
     def get_search_terms(self, request):
