@@ -3,8 +3,7 @@ Roadmap
 
 1.0
 
-  * rename <organization> into <profile> in url paths
-  * adds APIs for UseCharge
+  * completes documentation of new features in 0.17.0
 
   (initially we anticipated to support Vue3 but there are so many features
    in Vue2 that lead us to pick Vue from a front-end UI framework and that
@@ -12,6 +11,17 @@ Roadmap
 
 Released versions
 =================
+
+0.17.0
+
+  * defaults to {profile} in url patterns
+  * adds POST /api/billing/{profile}/balance for Usage-based pricing
+  * returns last unpaid orders in balance API
+  * fixes last_payment to return most recent payment
+  * creates implicit personal profile if hint is present in plan
+  * search for exact slugs returns more than MAX_TYPEAHEAD_CANDIDATES results
+
+ -- Sebastien Mirolo <smirolo@djaodjin.com>  Fri, 7 Jul 2023 09:20:00 -0700
 
 0.16.2
 

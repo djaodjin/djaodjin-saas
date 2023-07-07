@@ -940,11 +940,13 @@ var paginationMixin = {
             let element = this.$el;
             if( element.getBoundingClientRect().bottom < window.innerHeight ) {
                 let menubar = vm.$el.querySelector('[role="pagination"]');
-                var style = window.getComputedStyle(menubar);
-                if( style.display == 'none' ) {
-                    // We are not displaying the pagination menubar,
-                    // so let's scroll!
-                    vm.paginationHandler();
+                if( menubar) {
+                    var style = window.getComputedStyle(menubar);
+                    if( style.display == 'none' ) {
+                        // We are not displaying the pagination menubar,
+                        // so let's scroll!
+                        vm.paginationHandler();
+                    }
                 }
             }
         },

@@ -99,21 +99,13 @@ Tested with
 - **Python:** 3.10, **Django:** 4.2 (latest)
 - **Python:** 2.7, **Django:** 1.11 (legacy) - use testsite/requirements-legacy.txt
 
-0.16.2
+0.17.0
 
-  * searches profiles by e-mail domain even if a qualified e-mail is provided
-
-0.16.1
-
-  * integrates nicely with projects login users through `auth_user.email`
-
-0.16.0
-
-  * publishes distribution using pyproject.toml
-  * fixes UI for import of offline payments
-  * merges workflow to connect and create a profile
-  * does not record/notify automatic extensions of `is_not_priced` plans
-  * integrates with djaodjin-signup users pages
-  * normalizes metrics APIs returned results to match djaodjin-survey
+  * defaults to {profile} in url patterns
+  * adds POST /api/billing/{profile}/balance for Usage-based pricing
+  * returns last unpaid orders in balance API
+  * fixes last_payment to return most recent payment
+  * creates implicit personal profile if hint is present in plan
+  * search for exact slugs returns more than MAX_TYPEAHEAD_CANDIDATES results
 
 [previous release notes](changelog)
