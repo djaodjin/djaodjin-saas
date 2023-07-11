@@ -281,7 +281,7 @@ def validate_redirect_url(next_url, sub=False, **kwargs):
             if 'profile' not in kwargs:
                 # XXX deployutils is using :profile but djaoapp still generates
                 #     :organization for the time being.
-                profile = kwargs.get('organization')
+                profile = kwargs['organization']
                 pat_kwargs = kwargs.copy()
                 pat_kwargs.update({'profile': profile})
             path = re.sub(r':(%s)/' % settings.ACCT_REGEX,

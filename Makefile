@@ -40,7 +40,7 @@ install-conf:: $(DESTDIR)$(CONFIG_DIR)/credentials \
 	$(installDirs) $(DESTDIR)$(LOCALSTATEDIR)/log/gunicorn
 
 
-dist:
+dist::
 	$(PYTHON) -m build
 	$(TWINE) check dist/*
 	$(TWINE) upload dist/*
@@ -116,3 +116,6 @@ $(installTop)/.npm/djaodjin-saas-packages: $(srcDir)/testsite/package.json
 	$(installFiles) $(installTop)/node_modules/vue/dist/vue.js $(srcDir)/testsite/static/vendor
 	$(installFiles) $(installTop)/node_modules/vue-croppa/dist/vue-croppa.js $(srcDir)/testsite/static/vendor
 	touch $@
+
+
+.PHONY: all check dist doc install
