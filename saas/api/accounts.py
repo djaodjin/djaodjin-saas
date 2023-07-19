@@ -27,7 +27,6 @@ from rest_framework import response as http, status
 from rest_framework.generics import (ListAPIView, ListCreateAPIView,
     RetrieveAPIView)
 
-from .organizations import OrganizationQuerysetMixin
 from .serializers import (OrganizationSerializer, OrganizationCreateSerializer,
     OrganizationDetailSerializer)
 from .. import filters, settings
@@ -66,6 +65,16 @@ def get_order_func(fields):
         (getattr(left, field_name) and getattr(right, field_name) and
         getattr(left, field_name) < getattr(right, field_name)) or
         get_order_func(fields[1:])(left, right))
+
+
+class OrganizationQuerysetMixin(OrganizationDecorateMixin):
+
+    # Implementation Note: We are using this query in typeahead API calls.
+    # Typeaheads are more often than not used to request/grant access to
+    # a profile. We don't want to return profiles that cannot be notified
+    # of a request.
+    queryset = get_organization_model().objects.filter(
+        is_active=True, email__isnull=False).exclude(email="")
 
 
 class AccountsTypeaheadAPIView(OrganizationSmartListMixin,

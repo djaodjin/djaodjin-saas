@@ -57,7 +57,8 @@ saas = [
   'templates/saas/metrics/*.html',
   'templates/saas/profile/*.html',
   'templates/saas/profile/roles/*.html',
-  'templates/saas/users/*.html'
+  'templates/saas/users/*.html',
+  'templates/saas/users/roles/*.html'
 ]
 
 [tool.setuptools.dynamic]

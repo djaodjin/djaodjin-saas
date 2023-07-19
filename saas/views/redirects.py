@@ -165,8 +165,9 @@ class OrganizationRedirectView(TemplateResponseMixin, ContextMixin,
                 request.user, user, organization)
         else:
             user = request.user
-            organization = self.organization_model.objects.filter(
-                email__endswith=domain).get()
+            organization = \
+                self.organization_model.objects.find_candidates_by_domain(
+                domain).get()
         return user, organization
 
     def get(self, request, *args, **kwargs):

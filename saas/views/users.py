@@ -1,4 +1,4 @@
-# Copyright (c) 2020, DjaoDjin inc.
+# Copyright (c) 2023, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -36,8 +36,8 @@ class ProductListView(UserMixin, TemplateView):
     Template:
 
     To edit the layout of this page, create a local \
-    ``saas/users/roles.html`` (`example <https://github.com/djaodjin\
-/djaodjin-saas/tree/master/saas/templates/saas/users/roles.html>`__).
+    ``saas/users/roles/index.html`` (`example <https://github.com/djaodjin\
+/djaodjin-saas/tree/master/saas/templates/saas/users/roles/index.html>`__).
     You should insure the page will call the
     `/api/users/{user}/accessibles <https://www.djaodjin.com/docs/\
 reference/djaoapp/latest/api/#listAccessibleBy>`__
@@ -47,9 +47,13 @@ reference/djaoapp/latest/api/#listAccessibleBy>`__
       - ``user`` The organization object users have permissions to.
       - ``request`` The HTTP request object
     """
-    # XXX We use ``OrganizationMixin`` so that urls.pricing is defined.
+    template_name = 'saas/users/roles/index.html'
 
-    template_name = 'saas/users/roles.html'
+    def get_template_names(self):
+        return super(ProductListView, self).get_template_names() + [
+            # Implementation note: backward compatibility
+            'saas/users/roles.html'
+        ]
 
     def get_context_data(self, **kwargs):
         context = super(ProductListView, self).get_context_data(**kwargs)

@@ -1,0 +1,27 @@
+{% extends "saas/base.html" %}
+
+{% block content %}
+<section>
+  <div>
+    {% if role %}
+    <p>
+Based on your e-mail address we have granted you a {{role_descr}} role on {{organization}}.
+    </p>
+    <p>
+      {% if contacts %}
+If you need extra permissions, please contact one of the profile managers for {{organization}}: {{contacts}}.
+      {% else %}
+If you have any questions, please <a href="/contact/">contact us</a>.
+      {% endif %}
+    </p>
+    <div>
+      <a id="ok" href="{{next}}">Continue</a>
+    </div>
+    {% else %}
+    <p>
+We found a matching profile for your e-mail domain! Please verify your e-mail address before going further. To do so click on the link in the e-mail we just sent you.
+    </p>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

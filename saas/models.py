@@ -169,7 +169,11 @@ class OrganizationManager(models.Manager):
                     str(descr) for descr in role_descr]})
         roles = get_role_model().objects.db_manager(
             using=self._db).valid_for(**kwargs)
-        return self.filter(pk__in=roles.values('organization')).distinct()
+        return self.filter(
+            is_active=True, pk__in=roles.values('organization')).distinct()
+
+    def find_candidates_by_domain(self, domain):
+        return self.filter(is_active=True, email__endswith=domain)
 
     def find_candidates(self, full_name, user=None):
         """
@@ -2907,7 +2911,7 @@ class AdvanceDiscount(models.Model):
     discount_value = models.PositiveIntegerField(default=0,
         help_text=_('Amount of the discount'))
     length = models.PositiveSmallIntegerField(default=1,
-        help_text=_('Contract length associated with the period'))
+      help_text=_("Contract length associated with the period (defaults to 1)"))
 
     def __str__(self):
         return "%s-%s-%d" % (self.plan, slugify(
