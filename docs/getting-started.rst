@@ -115,7 +115,7 @@ provider / broker together with three ``Plan`` that belong to the provider
         "created_at": "2016-01-01T00:00:00-09:00",
         "setup_amount": 0,
         "period_amount": 2000,
-        "period_type": "monthly",
+        "period_type": 4,
         "description": "Basic Plan",
         "organization" : 2,
         "is_active": 1
@@ -129,7 +129,7 @@ provider / broker together with three ``Plan`` that belong to the provider
         "created_at":"2016-01-01T00:00:00-09:00",
         "setup_amount": 0,
         "period_amount": 6900,
-        "period_type": "monthly",
+        "period_type": 4,
         "description": "Premium Plan",
         "organization" : 2,
         "is_active": 1
@@ -143,7 +143,7 @@ provider / broker together with three ``Plan`` that belong to the provider
         "created_at": "2016-01-01T00:00:00-09:00",
         "setup_amount": 0,
         "period_amount": 8900,
-        "period_type": "monthly",
+        "period_type": 4,
         "description": "Ultimate Plan",
         "organization" : 2,
         "is_active": 1
