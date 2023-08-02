@@ -403,7 +403,7 @@ class UserMixin(object):
         if self.user:
             top_accessibles = []
             queryset = get_organization_model().objects.accessible_by(
-                self.user).filter(is_active=True).exclude(
+                self.user).exclude(
                 slug=self.user.username)[:self.SHORT_LIST_CUT_OFF + 1]
             for organization in queryset:
                 if organization.is_provider:
@@ -559,7 +559,7 @@ class OrganizationDecorateMixin(object):
         # A raw query cannot be furthered filtered either.
         organization_model = get_organization_model()
         records = [page] if isinstance(page, organization_model) else page
-        personal = dict(organization_model.objects.filter(
+        personal = dict(organization_model.objects.filter(#XXX ok if not active?
             pk__in=[profile.pk for profile in records if profile.pk],
             role__user__username=models.F('slug')).extra(select={
             'credentials': ("NOT (password LIKE '" + UNUSABLE_PASSWORD_PREFIX
@@ -991,9 +991,20 @@ class UserSmartListMixin(object):
       - User.email
       - User.created_at
     """
-    search_fields = ('first_name',
-                     'last_name',
-                     'email')
+    alternate_fields = {
+        'slug': 'username',
+        'full_name': ('first_name', 'last_name'),
+        'created_at': 'date_joined',
+    }
+    search_fields = (
+        'username',
+        'first_name',
+        'last_name',
+        'email',
+        # fields to match Organization searches:
+        'slug',
+        'full_name',
+    )
     ordering_fields = (
         ('first_name', 'first_name'),
         ('last_name', 'last_name'),
@@ -1002,7 +1013,7 @@ class UserSmartListMixin(object):
     )
     ordering = ('first_name',)
 
-    filter_backends = (DateRangeFilter, OrderingFilter, SearchFilter)
+    filter_backends = (DateRangeFilter, SearchFilter, OrderingFilter)
 
 
 class SubscribedSubscriptionsMixin(OrganizationDecorateMixin):

@@ -384,7 +384,7 @@ class ProfileAPIView(OrganizationMixin, OrganizationDecorateMixin,
     """
     lookup_field = 'slug'
     lookup_url_kwarg = settings.PROFILE_URL_KWARG
-    queryset = get_organization_model().objects.all()
+    queryset = get_organization_model().objects.filter(is_active=True)
     serializer_class = OrganizationSerializer
     user_model = get_user_model()
 
