@@ -2272,14 +2272,14 @@ class Charge(models.Model):
             # XXX partial refunds with refunded_amount
             refunded_broker_fee_amount = invoiced_broker_fee.orig_amount
 
-        balances = sum_orig_amount(self.refunded)
+        balances = sum_orig_amount(charge_item.refunded)
         if len(balances) > 1:
             raise ValueError(_("balances with multiple currency units (%s)") %
                 str(balances))
         # `sum_orig_amount` guarentees at least one result.
         previously_refunded = balances[0]['amount']
-        refund_available = min(invoiced_item.dest_amount,
-                               self.amount - previously_refunded)
+        refund_available = max(
+            invoiced_item.dest_amount - previously_refunded, 0)
         if refunded_amount > refund_available:
             raise InsufficientFunds(_("Cannot refund %(refund_required)s"\
 " while there is only %(refund_available)s available on the line item.")
