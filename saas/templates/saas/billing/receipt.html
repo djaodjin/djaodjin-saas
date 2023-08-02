@@ -92,7 +92,8 @@
   {% endif %}
 </div>
 <!-- modal dialog for Refunds -->
-<div id="charge-refund" class="show">
+<form id="charge-refund" class="show"
+     method="post" action=".">
   <h4>Refund</h4>
   {% if charge.state == charge.DONE %}
     <input name="amount" maxlength="32" type="text" value="0" />
@@ -103,6 +104,6 @@
   {% else %}
     You cannot refund a disputed charge
   {% endif %}
-</div>
+</form>
 <!-- end of modal dialog for Refunds -->
 {% endblock %}

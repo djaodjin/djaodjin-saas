@@ -274,11 +274,12 @@
     Refund.prototype = {
         init: function () {
             var self = this;
-            var submitButton = self.element.find("[type='submit']");
             // Make sure we unbind the previous handler to avoid double submits
-            submitButton.off("click.refund");
-            submitButton.on("click.refund", function() {
-                return self.submit();
+            self.element.off("submit.refund");
+            self.element.on("submit.refund", function() {
+                self.submit();
+                // prevent the form from submitting with the default action
+                return false;
             });
         },
 
@@ -343,6 +344,7 @@
                     }
                 });
             }
+            return false;
         }
     };
 
