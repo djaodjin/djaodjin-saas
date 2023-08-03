@@ -3,7 +3,7 @@ Roadmap
 
 1.0
 
-  * completes documentation of new features in 0.17.0
+  * completes documentation of new features in 0.17
 
   (initially we anticipated to support Vue3 but there are so many features
    in Vue2 that lead us to pick Vue from a front-end UI framework and that
@@ -11,6 +11,15 @@ Roadmap
 
 Released versions
 =================
+
+0.17.1
+
+  * compatibles with Bootstrap5
+  * verifies request.user e-mail whenever we attempt an implicit grant
+  * only returns active profiles in typeahead (fix)
+  * limits refund per line item (fix)
+
+ -- Sebastien Mirolo <smirolo@djaodjin.com>  Fri, 2 Aug 2023 10:35:00 -0700
 
 0.17.0
 

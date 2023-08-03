@@ -99,13 +99,11 @@ Tested with
 - **Python:** 3.10, **Django:** 4.2 (latest)
 - **Python:** 2.7, **Django:** 1.11 (legacy) - use testsite/requirements-legacy.txt
 
-0.17.0
+0.17.1
 
-  * defaults to {profile} in url patterns
-  * adds POST /api/billing/{profile}/balance for Usage-based pricing
-  * returns last unpaid orders in balance API
-  * fixes last_payment to return most recent payment
-  * creates implicit personal profile if hint is present in plan
-  * search for exact slugs returns more than MAX_TYPEAHEAD_CANDIDATES results
+  * compatibles with Bootstrap5
+  * verifies request.user e-mail whenever we attempt an implicit grant
+  * only returns active profiles in typeahead (fix)
+  * limits refund per line item (fix)
 
 [previous release notes](changelog)
