@@ -53,6 +53,7 @@ function showMessages(messages, style) {
             messageBlock = jQuery(div.firstChild);
         } else {
             messageBlock = jQuery(messageBlock[0].cloneNode(true));
+            messageBlock.find('div').remove();
         }
 
         // insert the actual messages

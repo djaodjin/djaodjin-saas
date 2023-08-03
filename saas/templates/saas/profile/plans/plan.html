@@ -28,7 +28,7 @@
         {{form.advance_discount_type}}
         {{form.advance_discount_value}}
         {{form.advance_discount_length}}
-        <button type="submit">Submit</button>
+        <button type="submit">{% if form.submit_title %}{{form.submit_title}}{% else %}Submit{% endif %}</button>
     </form>
     {% if show_delete %}
     <div id="confirm-delete" data-plan="{{form.instance.slug}}">
