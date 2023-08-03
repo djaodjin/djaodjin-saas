@@ -32,23 +32,40 @@ function showMessages(messages, style) {
         }
 
     } else {
-        var messageBlock = "<div class=\"alert alert-block alert-dismissible fade show";
+        var messagesElement = jQuery("#messages-content");
+        var blockStyle = "";
         if( style ) {
             if( style === "error" ) {
                 style = "danger";
             }
-            messageBlock += " alert-" + style;
+            blockStyle = " alert-" + style;
         }
-        messageBlock += "\">";
+        var messageBlock = messagesElement.find(
+            ".alert" + blockStyle.replace(' ', '.'));
+        if( messageBlock.length === 0 ) {
+            const blockText = "<div class=\"alert" + blockStyle
+                  + " alert-dismissible fade show\">"
+                  + "<button type=\"button\" class=\"btn-close\""
+                  + " data-bs-dismiss=\"alert\" aria-label=\"Close\">"
+                  + "</button></div>";
+            var div = document.createElement('div');
+            div.innerHTML = blockText;
+            messageBlock = jQuery(div.firstChild);
+        } else {
+            messageBlock = jQuery(messageBlock[0].cloneNode(true));
+        }
 
+        // insert the actual messages
         if( typeof messages === "string" ) {
             messages = [messages];
         }
         for( var i = 0; i < messages.length; ++i ) {
-            messageBlock += "<div>" + messages[i] + "</div>";
-         }
-         messageBlock += "<button type=\"button\" class=\"btn-close\" data-bs-dismiss=\"alert\" aria-label=\"Close\"></button></div>";
-         jQuery("#messages-content").append(messageBlock);
+            messageBlock.append("<div>" + messages[i] + "</div>");
+        }
+        if( messageBlock.css('display') === 'none' ) {
+            messageBlock.css('display', 'block');
+        }
+        messagesElement.append(messageBlock);
     }
     jQuery("#messages").removeClass("hidden");
     jQuery("html, body").animate({
