@@ -1429,6 +1429,7 @@ Vue.component('coupon-list', {
             vm.reqGet(vm.api_plans_url,
                 {active: true}, function(res){
                 vm.plans = res.results;
+                vm.$forceUpdate();
             });
         },
         selected: function(idx){
@@ -1440,11 +1441,14 @@ Vue.component('coupon-list', {
             }
             this.update(coupon);
         },
-        planTitle: function(slug){
+        planTitle: function(plan){
             var vm = this;
+            if( typeof plan.title !== 'undefined' ) {
+                return plan.title;
+            }
             if( vm.plans.length > 0 ) {
                 for( var idx = 0; idx < vm.plans.length; ++idx ) {
-                    if( vm.plans[idx].slug === slug ) {
+                    if( vm.plans[idx].slug === plan ) {
                         return vm.plans[idx].title;
                     }
                 }
