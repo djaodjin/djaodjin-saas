@@ -277,6 +277,9 @@
             // Make sure we unbind the previous handler to avoid double submits
             self.element.off("submit.refund");
             self.element.on("submit.refund", function() {
+                if( typeof self.element.modal !== 'undefined' ) {
+                    self.element.modal("hide");
+                }
                 self.submit();
                 // prevent the form from submitting with the default action
                 return false;
