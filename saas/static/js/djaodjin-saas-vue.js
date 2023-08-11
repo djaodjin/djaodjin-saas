@@ -2067,6 +2067,7 @@ Vue.component('billing-statement', {
             );
         },
         modalHide: function() {
+            var vm = this;
             if( vm.dialog ) {
                 vm.dialog.modal("hide");
             }
