@@ -2055,6 +2055,7 @@ Vue.component('billing-statement', {
         },
         cancelBalance: function(){
             var vm = this;
+            vm.modalHide();
             vm.reqDelete(vm.api_cancel_balance_url,
                 function() {
                     vm.reload()
@@ -2064,7 +2065,20 @@ Vue.component('billing-statement', {
                     showErrorMessages(resp);
                 }
             );
+        },
+        modalHide: function() {
+            if( vm.dialog ) {
+                vm.dialog.modal("hide");
+            }
         }
+    },
+    computed: {
+        dialog: function(){ // XXX depends on jQuery / bootstrap.js
+            var dialog = $(this.$el).find('.modal');
+            if(dialog && jQuery().modal){
+                return dialog;
+            }
+        },
     },
     mounted: function(){
         this.getCard();
