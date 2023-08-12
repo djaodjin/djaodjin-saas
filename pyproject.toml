@@ -50,12 +50,14 @@ include = ["saas*"]
 saas = [
   'fixtures/*',
   'static/js/*.js',
+  'templates/notification/*.eml',
   'templates/saas/*.html',
   'templates/saas/agreements/*.md',
   'templates/saas/billing/*.html',
   'templates/saas/legal/*.html',
   'templates/saas/metrics/*.html',
   'templates/saas/profile/*.html',
+  'templates/saas/profile/plans/*.html',
   'templates/saas/profile/roles/*.html',
   'templates/saas/users/*.html',
   'templates/saas/users/roles/*.html'

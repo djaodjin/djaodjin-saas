@@ -1698,7 +1698,10 @@ class Charge(models.Model):
     def processor_backend(self):
         #pylint:disable=attribute-defined-outside-init
         if not hasattr(self, '_processor_backend'):
-            self._processor_backend = self.broker.processor_backend
+            # XXX We should load the backend from `self.processor`.
+            #     As long we do not change processor, this workaround
+            #     will do.
+            self._processor_backend = get_broker().processor_backend
         return self._processor_backend
 
     @property
@@ -1778,10 +1781,10 @@ class Charge(models.Model):
             charge_item.invoiced for charge_item in self.charge_items.all()])
         nb_providers = len(providers)
         assert nb_providers <= 1
-        if nb_providers:
-            # So it does not look weird when we are testing receipts
-            return get_broker()
-        return providers[0]
+        if nb_providers == 1:
+            return providers[0]
+        # So it does not look weird when we are testing receipts
+        return get_broker()
 
     def dispute_created(self):
         #pylint: disable=too-many-locals
