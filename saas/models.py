@@ -879,8 +879,9 @@ class AbstractOrganization(models.Model):
 
         # Insures all invoiced_items have been stored
         # as ``Transaction`` into the database.
-        Transaction.objects.record_order(invoiced_items, user)
-        return new_organizations, claim_codes, invoiced_items
+        order_executed_items = Transaction.objects.record_order(
+            invoiced_items, user)
+        return new_organizations, claim_codes, order_executed_items
 
     def checkout(self, invoicables, user, token=None, remember_card=True):
         """
