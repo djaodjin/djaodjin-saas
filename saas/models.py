@@ -1305,6 +1305,14 @@ class RoleDescription(SlugTitleMixin, models.Model):
 
 class RoleManager(models.Manager):
 
+    # This returns a queryset with roles that are currently active
+    # Applies to all existing roles/role queries
+    # Uncomment if this is the approach to use
+    # POTENTIALLY RISKY
+
+    # def get_queryset(self):
+    #     return super().get_queryset().filter(models.Q(ends_at__isnull=True) | models.Q(ends_at__gt=datetime_or_now()))
+
     def role_on_subscriber(self, user, plan, role_descr=None):
         user_model = get_user_model()
         if not isinstance(user, user_model):
@@ -1319,6 +1327,15 @@ class RoleManager(models.Manager):
 
     def valid_for(self, **kwargs):
         return self.filter(grant_key=None, request_key=None, **kwargs)
+
+    # This returns valid roles.
+    # Uncomment if this is the approach to take.
+    # Doesn't apply to existing queries since it isn't using the get_queryset method
+    def valid_roles(self):
+        """
+        Returns roles that are currently valid
+        """
+        return self.filter(Q(ends_at__isnull=True) | Q(ends_at__gt=datetime_or_now()))
 
 
 @python_2_unicode_compatible
@@ -1340,14 +1357,22 @@ class AbstractRole(models.Model):
         help_text=_("Key to identify the grant of the role"))
     extra = get_extra_field_class()(null=True,
         help_text=_("Extra meta data (can be stringify JSON)"))
-
+    ends_at = models.DateTimeField(null=True, blank=True,
+                                   help_text=_('Date/time when the role ends'))
     class Meta:
         abstract = True
         unique_together = ('organization', 'user')
 
     def __str__(self):
         return '%s-%s-%s' % (str(self.role_description),
-            str(self.organization), str(self.user))
+                             str(self.organization), str(self.user))
+
+    def is_valid(self):
+        """
+        Check whether the role is valid. It is considered valid if ends_at is None
+        or the current time is less than ends_at
+        """
+        return self.ends_at is None or datetime_or_now() < self.ends_at
 
 
 @python_2_unicode_compatible
