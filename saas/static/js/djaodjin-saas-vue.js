@@ -2251,7 +2251,24 @@ Vue.component('profile-update', {
                     vm.showMessages([resp.detail], "success");
                 }
             });
-        }
+        },
+            convertToOrganization: function(username, organizationSlug, csrfToken) {
+              var url = '/api/users/' + username + '/profiles/' + organizationSlug + '/';
+              fetch(url, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'X-CSRFToken': csrfToken
+                }
+              })
+              .then(response => response.json())
+              .then(data => {
+                window.location.href = '/profile/' + username + 'org/contact/';
+              })
+              .catch(error => {
+                console.error('Error converting to organization:', error);
+              });
+            }
     },
     computed: {
         imageSelected: function(){

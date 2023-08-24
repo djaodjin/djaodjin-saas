@@ -36,6 +36,7 @@ from rest_framework.generics import (ListAPIView, ListCreateAPIView,
     DestroyAPIView, RetrieveUpdateDestroyAPIView,
     GenericAPIView, get_object_or_404)
 from rest_framework.response import Response
+from rest_framework.views import APIView
 
 from .. import settings, signals
 from ..compat import force_str, gettext_lazy as _
@@ -1461,3 +1462,34 @@ class UserProfileListAPIView(OrganizationSmartListMixin,
         headers = self.get_success_headers(serializer.data)
         return Response(serializer.data,
             status=status.HTTP_201_CREATED, headers=headers)
+
+class ConvertToOrganizationView(OrganizationMixin, APIView):
+    def get(self, request, *args, **kwargs):
+        return Response({'error': 'Method Not Allowed'}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
+
+    def post(self, request, *args, **kwargs):
+        organization = self.get_organization()
+
+        #Check to ensure that the user is attached to the organization
+        if not self.is_authorized_user(request.user, organization):
+            return Response({'error': 'Unauthorized'}, status=status.HTTP_403_FORBIDDEN)
+
+        profile_slug = self.kwargs.get(self.organization_url_kwarg)
+        #Check to ensure organization exists, attached user exists, and the organization slug != profile slug
+        if not self.is_valid_convert_to_organization_request(organization, profile_slug):
+            return Response({'error': 'Invalid request.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Change the personal-profile organization into a non-personal-profile organization
+        new_slug = profile_slug + 'org'
+        organization.slug = new_slug
+        organization.save()
+
+        return Response({'message': 'Profile converted into an organization.'}, status=status.HTTP_200_OK)
+
+    def is_valid_convert_to_organization_request(self, organization, profile_slug):
+        if not organization or not organization.attached_user() or organization.slug != profile_slug:
+            return False
+        return True
+
+    def is_authorized_user(self, user, organization):
+        return user == organization.attached_user()
