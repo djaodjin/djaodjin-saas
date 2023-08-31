@@ -36,7 +36,6 @@ from rest_framework.generics import (ListAPIView, ListCreateAPIView,
     DestroyAPIView, RetrieveUpdateDestroyAPIView,
     GenericAPIView, get_object_or_404)
 from rest_framework.response import Response
-from rest_framework.views import APIView
 
 from .. import settings, signals
 from ..compat import force_str, gettext_lazy as _
@@ -54,7 +53,7 @@ from .organizations import OrganizationDecorateMixin
 from .serializers import (AccessibleSerializer, ForceSerializer,
     OrganizationCreateSerializer,
     OrganizationDetailSerializer, RoleDescriptionSerializer,
-    AccessibleCreateSerializer, RoleCreateSerializer)
+    AccessibleCreateSerializer, RoleCreateSerializer, OrganizationUpdateSlugSerializer)
 
 
 LOGGER = logging.getLogger(__name__)
@@ -1435,61 +1434,52 @@ class UserProfileListAPIView(OrganizationSmartListMixin,
         """
         return super(UserProfileListAPIView, self).post(
             request, *args, **kwargs)
+    def is_authorized_user(self, user, organization):
+        return user == organization.attached_user()
+
+    def is_valid_convert_to_organization_request(self, organization, profile_slug):
+        return not (not organization or not organization.attached_user() or organization.slug != profile_slug)
 
     def create(self, request, *args, **kwargs): #pylint:disable=unused-argument
         #pylint:disable=unused-argument
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        validated_data = dict(serializer.validated_data)
-        if 'email' not in validated_data:
-            # email is optional to create the profile but it is required
-            # to save the record in the database.
-            validated_data.update({'email': request.user.email})
-        if 'full_name' not in validated_data:
-            # full_name is optional to create the profile but it is required
-            # to save the record in the database.
-            validated_data.update({'full_name': ""})
+        if request.query_params.get('convert-from-personal') == '1':
+            serializer = OrganizationUpdateSlugSerializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+            accessed_user_slug = self.kwargs.get('user')
+            print(accessed_user_slug)
+            organization = get_object_or_404(get_organization_model(), slug=accessed_user_slug)
 
-        # creates profile
-        with transaction.atomic():
-            organization = self.create_organization(validated_data)
-            organization.add_manager(self.user)
-        self.decorate_personal(organization)
+            if not self.is_authorized_user(request.user, organization):
+                return Response({'error': 'Unauthorized'}, status=status.HTTP_403_FORBIDDEN)
 
-        # returns created profile
-        serializer = self.serializer_class(
-            instance=organization, context=self.get_serializer_context())
-        headers = self.get_success_headers(serializer.data)
-        return Response(serializer.data,
-            status=status.HTTP_201_CREATED, headers=headers)
+            if not self.is_valid_convert_to_organization_request(organization, accessed_user_slug):
+                return Response({'error': 'Invalid request.'}, status=status.HTTP_400_BAD_REQUEST)
 
-class ConvertToOrganizationView(OrganizationMixin, APIView):
-    def get(self, request, *args, **kwargs):
-        return Response({'error': 'Method Not Allowed'}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
+            organization.slug = serializer.validated_data['new_slug']
+            organization.save()
+            return Response({'message': _('Profile converted into an organization.')}, status=status.HTTP_200_OK)
+        else:
+            serializer = self.get_serializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+            validated_data = dict(serializer.validated_data)
+            if 'email' not in validated_data:
+                # email is optional to create the profile but it is required
+                # to save the record in the database.
+                validated_data.update({'email': request.user.email})
+            if 'full_name' not in validated_data:
+                # full_name is optional to create the profile but it is required
+                # to save the record in the database.
+                validated_data.update({'full_name': ""})
 
-    def post(self, request, *args, **kwargs):
-        organization = self.get_organization()
+            # creates profile
+            with transaction.atomic():
+                organization = self.create_organization(validated_data)
+                organization.add_manager(self.user)
+            self.decorate_personal(organization)
 
-        #Check to ensure that the user is attached to the organization
-        if not self.is_authorized_user(request.user, organization):
-            return Response({'error': 'Unauthorized'}, status=status.HTTP_403_FORBIDDEN)
-
-        profile_slug = self.kwargs.get(self.organization_url_kwarg)
-        #Check to ensure organization exists, attached user exists, and the organization slug != profile slug
-        if not self.is_valid_convert_to_organization_request(organization, profile_slug):
-            return Response({'error': 'Invalid request.'}, status=status.HTTP_400_BAD_REQUEST)
-
-        # Change the personal-profile organization into a non-personal-profile organization
-        new_slug = profile_slug + 'org'
-        organization.slug = new_slug
-        organization.save()
-
-        return Response({'message': 'Profile converted into an organization.'}, status=status.HTTP_200_OK)
-
-    def is_valid_convert_to_organization_request(self, organization, profile_slug):
-        if not organization or not organization.attached_user() or organization.slug != profile_slug:
-            return False
-        return True
-
-    def is_authorized_user(self, user, organization):
-        return user == organization.attached_user()
+            # returns created profile
+            serializer = self.serializer_class(
+                instance=organization, context=self.get_serializer_context())
+            headers = self.get_success_headers(serializer.data)
+            return Response(serializer.data,
+                status=status.HTTP_201_CREATED, headers=headers)

@@ -29,7 +29,7 @@ URLs for API related to users accessible by.
 from ... import settings
 from ...api.roles import (AccessibleByListAPIView, AccessibleDetailAPIView,
                           RoleAcceptAPIView, AccessibleByDescrListAPIView, UserProfileListAPIView,
-                          ConvertToOrganizationView)
+                          )
 from ...compat import path, re_path
 
 urlpatterns = [
@@ -47,6 +47,4 @@ urlpatterns = [
         AccessibleByListAPIView.as_view(), name='saas_api_accessibles'),
     path('users/<slug:user>/profiles',
         UserProfileListAPIView.as_view(), name='saas_api_user_profiles'),
-    path('users/<slug:user>/profiles/<slug:profile>/',
-         ConvertToOrganizationView.as_view(), name='saas_api_convert_to_organization')
 ]

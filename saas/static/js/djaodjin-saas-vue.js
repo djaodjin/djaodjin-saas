@@ -2153,7 +2153,9 @@ Vue.component('profile-update', {
             regions: regions,
             currentPicture: null,
             picture: null,
-            codeSent: false
+            codeSent: false,
+            showSlugInput: false,
+            newSlug: '',
         }
     },
     methods: {
@@ -2252,23 +2254,26 @@ Vue.component('profile-update', {
                 }
             });
         },
-            convertToOrganization: function(username, organizationSlug, csrfToken) {
-              var url = '/api/users/' + username + '/profiles/' + organizationSlug + '/';
-              fetch(url, {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                  'X-CSRFToken': csrfToken
-                }
-              })
-              .then(response => response.json())
-              .then(data => {
-                window.location.href = '/profile/' + username + 'org/contact/';
-              })
-              .catch(error => {
-                console.error('Error converting to organization:', error);
-              });
+            toggleSlugInput: function() {
+              this.showSlugInput = !this.showSlugInput;
+        },
+            convertToOrganization: function(username) {
+            var vm = this;
+            if (vm.showSlugInput) {
+                var payload = { new_slug: vm.newSlug };
+                vm.reqPost(`/api/users/${username}/profiles?convert-from-personal=1`, payload,
+                    function(resp) {
+                        if (  resp.detail  ) {
+                            vm.showMessages([resp.detail], "success");
+                        }
+                        window.location.href = `/users/${username}/`;
+                    }
+                );
+                vm.showSlugInput = false;
+            } else {
+                vm.showSlugInput = true;
             }
+        },
     },
     computed: {
         imageSelected: function(){
