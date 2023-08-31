@@ -1445,14 +1445,13 @@ class UserProfileListAPIView(OrganizationSmartListMixin,
         if request.query_params.get('convert-from-personal') == '1':
             serializer = OrganizationUpdateSlugSerializer(data=request.data)
             serializer.is_valid(raise_exception=True)
-            accessed_user_slug = self.kwargs.get('user')
-            print(accessed_user_slug)
-            organization = get_object_or_404(get_organization_model(), slug=accessed_user_slug)
+            user_slug = self.kwargs.get('user')
+            organization = get_object_or_404(get_organization_model(), slug=user_slug)
 
             if not self.is_authorized_user(request.user, organization):
                 return Response({'error': 'Unauthorized'}, status=status.HTTP_403_FORBIDDEN)
 
-            if not self.is_valid_convert_to_organization_request(organization, accessed_user_slug):
+            if not self.is_valid_convert_to_organization_request(organization, user_slug):
                 return Response({'error': 'Invalid request.'}, status=status.HTTP_400_BAD_REQUEST)
 
             organization.slug = serializer.validated_data['new_slug']
