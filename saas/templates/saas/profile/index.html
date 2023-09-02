@@ -32,10 +32,11 @@
         </div>
       </div>
     </div>
-      {% if organization.slug == user.username %}
-        <button @click="convertToOrganization('{{user.username}}')">Convert to Organization</button>
-        <input v-if="showSlugInput" v-model="newSlug" placeholder="Enter new slug">
-      {% endif %}
+    {% if user.username == organization.slug %}
+    <button @click="convertToOrganization()">
+        Turn into an organization
+    </button>
+    {% endif %}
   </div>
 </profile-update>
 {% endblock %}

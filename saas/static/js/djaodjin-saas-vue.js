@@ -2154,8 +2154,7 @@ Vue.component('profile-update', {
             currentPicture: null,
             picture: null,
             codeSent: false,
-            showSlugInput: false,
-            newSlug: '',
+            profile_url: this.$urls.user_profiles,
         }
     },
     methods: {
@@ -2254,25 +2253,15 @@ Vue.component('profile-update', {
                 }
             });
         },
-            toggleSlugInput: function() {
-              this.showSlugInput = !this.showSlugInput;
-        },
-            convertToOrganization: function(username) {
-            var vm = this;
-            if (vm.showSlugInput) {
-                var payload = { new_slug: vm.newSlug };
-                vm.reqPost(`/api/users/${username}/profiles?convert-from-personal=1`, payload,
+            convertToOrganization: function() {
+              var vm = this;
+                vm.reqPost(vm.profile_url + `?convert-from-personal=1`, { full_name: vm.formFields.full_name },
                     function(resp) {
                         if (  resp.detail  ) {
                             vm.showMessages([resp.detail], "success");
                         }
-                        window.location.href = `/users/${username}/`;
                     }
                 );
-                vm.showSlugInput = false;
-            } else {
-                vm.showSlugInput = true;
-            }
         },
     },
     computed: {

@@ -1289,14 +1289,3 @@ class RedeemCouponSerializer(NoModelSerializer):
 
     def create(self, validated_data):
         return validated_data
-
-class OrganizationUpdateSlugSerializer(OrganizationSerializer):
-    new_slug = serializers.SlugField(max_length=255)
-
-    def validate_new_slug(self, value):
-        if get_organization_model().objects.filter(slug=value).exists():
-            raise serializers.ValidationError("The slug already exists. Enter a different slug.")
-        return value
-
-    class Meta(OrganizationSerializer.Meta):
-        fields = OrganizationSerializer.Meta.fields + ('new_slug',)

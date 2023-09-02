@@ -53,7 +53,7 @@ from .organizations import OrganizationDecorateMixin
 from .serializers import (AccessibleSerializer, ForceSerializer,
     OrganizationCreateSerializer,
     OrganizationDetailSerializer, RoleDescriptionSerializer,
-    AccessibleCreateSerializer, RoleCreateSerializer, OrganizationUpdateSlugSerializer)
+    AccessibleCreateSerializer, RoleCreateSerializer)
 
 
 LOGGER = logging.getLogger(__name__)
@@ -1434,29 +1434,29 @@ class UserProfileListAPIView(OrganizationSmartListMixin,
         """
         return super(UserProfileListAPIView, self).post(
             request, *args, **kwargs)
-    def is_authorized_user(self, user, organization):
-        return user == organization.attached_user()
 
     def is_valid_convert_to_organization_request(self, organization, profile_slug):
-        return not (not organization or not organization.attached_user() or organization.slug != profile_slug)
-
+        return organization and organization.attached_user() and organization.slug == profile_slug
     def create(self, request, *args, **kwargs): #pylint:disable=unused-argument
         #pylint:disable=unused-argument
         if request.query_params.get('convert-from-personal') == '1':
-            serializer = OrganizationUpdateSlugSerializer(data=request.data)
+            organization_model = get_organization_model()
+            try:
+                organization = organization_model.objects.get(slug__exact=self.user.username)
+            except organization_model.DoesNotExist:
+                organization = None
+
+            if not self.is_valid_convert_to_organization_request(organization, self.user.username):
+                return Response({'error': _('Invalid request.')}, status=status.HTTP_400_BAD_REQUEST)
+
+            serializer = self.get_serializer(data=request.data)
             serializer.is_valid(raise_exception=True)
-            user_slug = self.kwargs.get('user')
-            organization = get_object_or_404(get_organization_model(), slug=user_slug)
-
-            if not self.is_authorized_user(request.user, organization):
-                return Response({'error': 'Unauthorized'}, status=status.HTTP_403_FORBIDDEN)
-
-            if not self.is_valid_convert_to_organization_request(organization, user_slug):
-                return Response({'error': 'Invalid request.'}, status=status.HTTP_400_BAD_REQUEST)
-
-            organization.slug = serializer.validated_data['new_slug']
+            organization.full_name = serializer.validated_data.get('full_name')
+            organization.slug = serializer.validated_data.get('slug', None)
             organization.save()
-            return Response({'message': _('Profile converted into an organization.')}, status=status.HTTP_200_OK)
+
+            return Response({"detail": _("Successfully converted personal profile to organization.")},
+                            status=status.HTTP_200_OK)
         else:
             serializer = self.get_serializer(data=request.data)
             serializer.is_valid(raise_exception=True)
