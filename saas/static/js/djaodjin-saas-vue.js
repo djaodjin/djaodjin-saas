@@ -1504,6 +1504,7 @@ Vue.component('role-profile-list', {
             showRequested: false,
             params: {
                 role_status: "",
+                include_personal_profile: "1",
             },
         }
     },

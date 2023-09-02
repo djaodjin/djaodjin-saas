@@ -58,17 +58,12 @@ reference/djaoapp/latest/api/#listAccessibleBy>`__
     def get_context_data(self, **kwargs):
         context = super(ProductListView, self).get_context_data(**kwargs)
         user = self.user
-        api_accessibles_url = reverse(
-            'saas_api_accessibles', args=(user,)
-        )
-
-        # Append the query parameter to include the personal profile
-        api_accessibles_url += '?include_personal_profile=true'
 
         urls = {
             'api_candidates': reverse('saas_api_search_profiles'),
             'user': {
-                'api_accessibles': api_accessibles_url,
+                'api_accessibles': reverse(
+            'saas_api_accessibles', args=(user,)),
                 'api_profile_create': reverse(
                     'saas_api_user_profiles', args=(user,)),
             }}
