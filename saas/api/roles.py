@@ -1435,50 +1435,46 @@ class UserProfileListAPIView(OrganizationSmartListMixin,
         return super(UserProfileListAPIView, self).post(
             request, *args, **kwargs)
 
-    def is_valid_convert_to_organization_request(self, organization, profile_slug):
-        return organization and organization.attached_user() and organization.slug == profile_slug
+    def is_valid_convert_to_organization_request(self, organization):
+        return organization and organization.attached_user() == self.user
+
     def create(self, request, *args, **kwargs): #pylint:disable=unused-argument
         #pylint:disable=unused-argument
-        if request.query_params.get('convert-from-personal') == '1':
-            organization_model = get_organization_model()
-            try:
-                organization = organization_model.objects.get(slug__exact=self.user.username)
-            except organization_model.DoesNotExist:
-                organization = None
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        validated_data = dict(serializer.validated_data)
 
-            if not self.is_valid_convert_to_organization_request(organization, self.user.username):
+        # If we're creating an organization from a personal profile
+        if request.query_params.get('convert-from-personal') == '1':
+            organization = self.get_queryset().filter(slug__exact=self.user.username).first()
+
+            if not self.is_valid_convert_to_organization_request(organization):
                 return Response({'error': _('Invalid request.')}, status=status.HTTP_400_BAD_REQUEST)
 
-            serializer = self.get_serializer(data=request.data)
-            serializer.is_valid(raise_exception=True)
             organization.full_name = serializer.validated_data.get('full_name')
             organization.slug = serializer.validated_data.get('slug', None)
             organization.save()
 
             return Response({"detail": _("Successfully converted personal profile to organization.")},
                             status=status.HTTP_200_OK)
-        else:
-            serializer = self.get_serializer(data=request.data)
-            serializer.is_valid(raise_exception=True)
-            validated_data = dict(serializer.validated_data)
-            if 'email' not in validated_data:
-                # email is optional to create the profile but it is required
-                # to save the record in the database.
-                validated_data.update({'email': request.user.email})
-            if 'full_name' not in validated_data:
-                # full_name is optional to create the profile but it is required
-                # to save the record in the database.
-                validated_data.update({'full_name': ""})
+        if 'email' not in validated_data:
+            # email is optional to create the profile but it is required
+            # to save the record in the database.
+            validated_data.update({'email': request.user.email})
+        if 'full_name' not in validated_data:
+            # full_name is optional to create the profile but it is required
+            # to save the record in the database.
+            validated_data.update({'full_name': ""})
 
-            # creates profile
-            with transaction.atomic():
-                organization = self.create_organization(validated_data)
-                organization.add_manager(self.user)
-            self.decorate_personal(organization)
+        # creates profile
+        with transaction.atomic():
+            organization = self.create_organization(validated_data)
+            organization.add_manager(self.user)
+        self.decorate_personal(organization)
 
-            # returns created profile
-            serializer = self.serializer_class(
-                instance=organization, context=self.get_serializer_context())
-            headers = self.get_success_headers(serializer.data)
-            return Response(serializer.data,
-                status=status.HTTP_201_CREATED, headers=headers)
+        # returns created profile
+        serializer = self.serializer_class(
+            instance=organization, context=self.get_serializer_context())
+        headers = self.get_success_headers(serializer.data)
+        return Response(serializer.data,
+            status=status.HTTP_201_CREATED, headers=headers)
