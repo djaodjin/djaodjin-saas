@@ -1,4 +1,4 @@
-# Copyright (c) 2022, DjaoDjin inc.
+# Copyright (c) 2023, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -26,6 +26,7 @@
 URLs for the cart API of djaodjin saas.
 """
 
+from ...api.agreements import AgreementDetailAPIView, AgreementListAPIView
 from ...api.billing import (CartItemAPIView, CartItemUploadAPIView,
                             CouponRedeemAPIView)
 from ...api.plans import PricingAPIView
@@ -38,5 +39,8 @@ urlpatterns = [
         CouponRedeemAPIView.as_view(), name='saas_api_redeem_coupon'),
     path('cart/<slug:plan>/upload',
         CartItemUploadAPIView.as_view(), name='saas_api_cart_upload'),
-    path('cart', CartItemAPIView.as_view(), name='saas_api_cart')
+    path('cart', CartItemAPIView.as_view(), name='saas_api_cart'),
+    path('legal/<slug:agreement>', AgreementDetailAPIView.as_view(),
+         name='saas_api_legal_detail'),
+    path('legal', AgreementListAPIView.as_view(), name='saas_api_legal'),
 ]

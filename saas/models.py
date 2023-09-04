@@ -1364,9 +1364,12 @@ class Role(AbstractRole):
 @python_2_unicode_compatible
 class Agreement(models.Model):
 
-    slug = models.SlugField(unique=True)
-    title = models.CharField(max_length=150, unique=True)
-    modified = models.DateTimeField(auto_now_add=True)
+    slug = models.SlugField(unique=True,
+        help_text=_("Unique identifier shown in the URL bar"))
+    title = models.CharField(max_length=150, unique=True,
+        help_text=_("Short description of the agreement"))
+    modified = models.DateTimeField(auto_now_add=True,
+        help_text=_("Date/time the agreement was last updated (in ISO format)"))
 
     def __str__(self):
         return str(self.slug)

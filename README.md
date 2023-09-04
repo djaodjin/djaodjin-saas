@@ -1,3 +1,8 @@
+DjaoDjin-SaaS
+=============
+
+[![Documentation Status](https://readthedocs.org/projects/djaodjin-saas/badge/?version=latest)](https://djaodjin-saas.readthedocs.io/en/latest/?badge=latest)
+
 djaodjin-saas is a Django application that implements the logic to support
 subscription-based Software-as-a-Service businesses.
 

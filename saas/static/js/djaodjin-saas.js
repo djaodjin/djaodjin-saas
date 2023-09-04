@@ -617,7 +617,8 @@
    Redeem.prototype = {
       init: function () {
           var self = this;
-          self.element.find(".submit-code").click(function() {
+          self.element.find(".submit-code").click(function(event) {
+              event.preventDefault();
               var code = self.element.find("[name='code']").val();
               self.redeemCode(code);
               // prevent the form from submitting with the default action

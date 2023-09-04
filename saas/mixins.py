@@ -1293,3 +1293,17 @@ def product_url(subscriber=None, plan=None, request=None):
     if plan:
         location += '%s/' % plan
     return build_absolute_uri(request, location=location)
+
+
+def read_agreement_file(slug, context=None, request=None):
+    import markdown #pylint:disable=import-outside-toplevel
+    if not context:
+        broker = get_broker()
+        context = {
+            'organization': broker,
+            'site_url': build_absolute_uri(request),
+        }
+    # We use context and not context=context in the following statement
+    # such that the code is compatible with Django 1.7 and Django 1.8
+    return markdown.markdown(
+        render_to_string('saas/agreements/%s.md' % slug, context))

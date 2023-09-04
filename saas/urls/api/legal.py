@@ -32,5 +32,5 @@ from ...compat import path
 
 urlpatterns = [
     path('legal/<slug:agreement>/sign',
-        AgreementSignAPIView.as_view(), name='saas_api_sign_agreement'),
+        AgreementSignAPIView.as_view(), name='saas_api_sign_agreement')
 ]

@@ -12,6 +12,9 @@
     {% for agreement in agreements %}
     <li><a id="{{agreement.slug}}" href="{{agreement.location}}">{{agreement.title}}</a>
       {% endfor %}
+      <form>
+        New Agreement
+      </form>
   </ul>
   {% else %}
   <em>No Terms nor policies yet</em>

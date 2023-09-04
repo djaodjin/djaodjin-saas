@@ -52,9 +52,9 @@ from .. import settings
 from ..compat import gettext_lazy as _, reverse, six
 from ..decorators import _valid_manager
 from ..humanize import as_money
-from ..mixins import as_html_description, product_url
-from ..models import (AdvanceDiscount, BalanceLine, CartItem, Charge, Coupon,
-    Plan, RoleDescription, Subscription, Transaction, UseCharge)
+from ..mixins import as_html_description, product_url, read_agreement_file
+from ..models import (AdvanceDiscount, Agreement, BalanceLine, CartItem,
+    Charge, Coupon, Plan, RoleDescription, Subscription, Transaction, UseCharge)
 from ..utils import (build_absolute_uri, get_organization_model, get_role_model,
     get_user_serializer, get_user_detail_serializer)
 
@@ -1194,6 +1194,49 @@ class UploadBlobSerializer(NoModelSerializer):
     """
     location = serializers.URLField(
         help_text=_("URL to uploaded content"))
+
+
+class AgreementSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = Agreement
+        fields = ('slug', 'title', 'modified')
+        read_only_fields = ('slug', 'modified')
+
+
+class AgreementDetailSerializer(AgreementSerializer):
+    """
+    Serializer to retrieve the text of an agreement
+    """
+    text = serializers.SerializerMethodField(
+        help_text=_("Text of the agreement"))
+
+    def get_text(self, obj):
+        return read_agreement_file(obj.slug, request=self.context['request'])
+
+    class Meta(AgreementSerializer.Meta):
+        fields = AgreementSerializer.Meta.fields + ('text',)
+
+
+class AgreementUpdateSerializer(AgreementSerializer):
+    """
+    Serializer to update an agreement
+    """
+    modified = serializers.DateTimeField(read_only=False,
+        help_text=_("Date/time of  (in ISO format)"))
+
+    class Meta(AgreementSerializer.Meta):
+        model = AgreementSerializer.Meta.model
+        fields = AgreementSerializer.Meta.fields
+
+
+class AgreementCreateSerializer(AgreementUpdateSerializer):
+    """
+    Serializer to create an agreement
+    """
+    class Meta(AgreementUpdateSerializer.Meta):
+        model = AgreementUpdateSerializer.Meta.model
+        fields = AgreementUpdateSerializer.Meta.fields
 
 
 class AgreementSignSerializer(NoModelSerializer):

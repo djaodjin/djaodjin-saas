@@ -1,4 +1,4 @@
-# Copyright (c) 2022, DjaoDjin inc.
+# Copyright (c) 2023, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -27,6 +27,7 @@ URLs API for resources available typically only to the broker platform.
 """
 
 from ... import settings
+from ...api.agreements import AgreementListCreateAPIView, AgreementUpdateAPIView
 from ...api.balances import (BalanceLineListAPIView, BrokerBalancesAPIView,
     BalanceLineDetailAPIView)
 from ...api.charges import ChargeListAPIView
@@ -36,6 +37,10 @@ from ...compat import path, re_path
 
 
 urlpatterns = [
+    path('agreements/<slug:agreement>',
+        AgreementUpdateAPIView.as_view(), name='saas_api_agreement_detail'),
+    path('agreements',
+        AgreementListCreateAPIView.as_view(), name='saas_api_agreements'),
     path('billing/transactions',
         TransactionListAPIView.as_view(), name='saas_api_transactions'),
     path('billing/charges', ChargeListAPIView.as_view(),
