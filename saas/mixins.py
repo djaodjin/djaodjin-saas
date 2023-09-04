@@ -32,6 +32,7 @@ from django.contrib.auth.hashers import UNUSABLE_PASSWORD_PREFIX
 from django.db import models, transaction, IntegrityError
 from django.http import Http404
 from django.template.defaultfilters import slugify
+from django.template.loader import render_to_string
 from rest_framework.generics import get_object_or_404
 
 from . import humanize, settings

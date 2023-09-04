@@ -25,17 +25,14 @@
 from django.db import IntegrityError
 from django.template.defaultfilters import slugify
 from rest_framework import generics, status
-from rest_framework.exceptions import ValidationError
 from rest_framework.mixins import (CreateModelMixin, DestroyModelMixin,
     UpdateModelMixin)
 from rest_framework.response import Response
 
 from .serializers import (AgreementSerializer, AgreementCreateSerializer,
     AgreementDetailSerializer, AgreementUpdateSerializer)
-from ..compat import gettext_lazy as _
 from ..docs import swagger_auto_schema, OpenAPIResponse
-from ..filters import OrderingFilter, SearchFilter, DateRangeFilter
-from ..mixins import read_agreement_file
+from ..filters import OrderingFilter, SearchFilter
 from ..models import Agreement
 from ..utils import handle_uniq_error
 
@@ -47,7 +44,8 @@ class AgreementListAPIView(generics.ListAPIView):
     List all legal agreements a user might be requested to sign such as
     "terms of use" or "security policy". This end point can be used by
     unauthenticated users. As such it is perfect for
-    `legal disclosure pages <https://www.djaodjin.com/docs/guides/themes/#workflow_legal_index>`_.
+    `legal disclosure pages <https://www.djaodjin.com/docs/guides/themes/\
+#workflow_legal_index>`_.
 
     **Tags**: broker, visitor
 
@@ -186,7 +184,8 @@ class AgreementDetailAPIView(generics.RetrieveAPIView):
 
     Retrieves the text of legal agreement a user might be requested to sign.
     This end point can be used by unauthenticated users. As such it is perfect
-    for `legal disclosure pages <https://www.djaodjin.com/docs/guides/themes/#workflow_legal_agreement>`_.
+    for `legal disclosure pages <https://www.djaodjin.com/docs/guides/themes/\
+#workflow_legal_agreement>`_.
 
     **Tags**: broker, visitor
 

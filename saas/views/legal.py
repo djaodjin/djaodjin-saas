@@ -27,7 +27,6 @@ Dynamic pages dealing with legal agreements.
 """
 
 from django import forms
-from django.template.loader import render_to_string
 from django.forms.widgets import CheckboxInput
 from django.contrib.auth import REDIRECT_FIELD_NAME
 from django.http import HttpResponseRedirect
@@ -35,8 +34,8 @@ from django.views.generic import CreateView, DetailView, ListView
 
 from ..compat import reverse
 from ..mixins import ProviderMixin, read_agreement_file
-from ..models import Agreement, Signature, get_broker
-from ..utils import build_absolute_uri, validate_redirect_url
+from ..models import Agreement, Signature
+from ..utils import validate_redirect_url
 
 
 class AgreementDetailView(DetailView):
