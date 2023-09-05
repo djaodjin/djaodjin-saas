@@ -303,7 +303,15 @@ class AccessibleByQuerysetMixin(UserMixin):
     role_model = get_role_model()
 
     def get_queryset(self):
-        return self.role_model.objects.filter(user=self.user)
+        queryset = self.role_model.objects.filter(user=self.user)
+
+        truth_values = ['true', '1']
+        personal_params = self.request.query_params.get('include_personal_profile', '')
+        include_personal_profile = personal_params.lower() in truth_values
+        if not include_personal_profile:
+            queryset = queryset.exclude(organization__slug=self.user)
+
+        return queryset
 
 
 class AccessibleByDescrQuerysetMixin(AccessibleByQuerysetMixin):
