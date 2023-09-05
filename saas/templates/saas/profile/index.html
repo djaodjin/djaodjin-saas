@@ -32,6 +32,11 @@
         </div>
       </div>
     </div>
+    {% if user.username == organization.slug %}
+    <button @click="convertToOrganization()">
+        Turn into an organization
+    </button>
+    {% endif %}
   </div>
 </profile-update>
 {% endblock %}

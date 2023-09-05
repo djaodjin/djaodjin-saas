@@ -28,7 +28,8 @@ URLs for API related to users accessible by.
 
 from ... import settings
 from ...api.roles import (AccessibleByListAPIView, AccessibleDetailAPIView,
-    RoleAcceptAPIView, AccessibleByDescrListAPIView, UserProfileListAPIView)
+                          RoleAcceptAPIView, AccessibleByDescrListAPIView, UserProfileListAPIView,
+                          )
 from ...compat import path, re_path
 
 urlpatterns = [
