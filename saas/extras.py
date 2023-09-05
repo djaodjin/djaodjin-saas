@@ -65,7 +65,6 @@ class OrganizationMixinBase(object):
 
     def get_context_data(self, **kwargs):
         context = super(OrganizationMixinBase, self).get_context_data(**kwargs)
-
         organization = self.organization
         if not organization:
             return context
@@ -81,6 +80,7 @@ class OrganizationMixinBase(object):
         # URLs for both sides (subscriber and provider).
         urls.update({
             'profile_base': reverse('saas_profile'),
+            'user_profiles': reverse('saas_api_user_profiles', args=(organization,)),
             'organization': {
                 'api_base': reverse(
                     'saas_api_organization', args=(organization,)),

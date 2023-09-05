@@ -2153,7 +2153,8 @@ Vue.component('profile-update', {
             regions: regions,
             currentPicture: null,
             picture: null,
-            codeSent: false
+            codeSent: false,
+            profile_url: this.$urls.user_profiles,
         }
     },
     methods: {
@@ -2251,7 +2252,17 @@ Vue.component('profile-update', {
                     vm.showMessages([resp.detail], "success");
                 }
             });
-        }
+        },
+            convertToOrganization: function() {
+              var vm = this;
+                vm.reqPost(vm.profile_url + `?convert-from-personal=1`, { full_name: vm.formFields.full_name },
+                    function(resp) {
+                        if (  resp.detail  ) {
+                            vm.showMessages([resp.detail], "success");
+                        }
+                    }
+                );
+        },
     },
     computed: {
         imageSelected: function(){

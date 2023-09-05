@@ -1435,11 +1435,28 @@ class UserProfileListAPIView(OrganizationSmartListMixin,
         return super(UserProfileListAPIView, self).post(
             request, *args, **kwargs)
 
+    def is_valid_convert_to_organization_request(self, organization):
+        return organization and organization.attached_user() == self.user
+
     def create(self, request, *args, **kwargs): #pylint:disable=unused-argument
         #pylint:disable=unused-argument
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         validated_data = dict(serializer.validated_data)
+
+        # If we're creating an organization from a personal profile
+        if request.query_params.get('convert-from-personal') == '1':
+            organization = self.get_queryset().filter(slug__exact=self.user.username).first()
+
+            if not self.is_valid_convert_to_organization_request(organization):
+                return Response({'error': _('Invalid request.')}, status=status.HTTP_400_BAD_REQUEST)
+
+            organization.full_name = serializer.validated_data.get('full_name')
+            organization.slug = serializer.validated_data.get('slug', None)
+            organization.save()
+
+            return Response({"detail": _("Successfully converted personal profile to organization.")},
+                            status=status.HTTP_200_OK)
         if 'email' not in validated_data:
             # email is optional to create the profile but it is required
             # to save the record in the database.
