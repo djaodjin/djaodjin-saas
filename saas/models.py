@@ -1318,7 +1318,7 @@ class RoleManager(models.Manager):
             user=user, organization__subscribes_to=plan, **kwargs)
 
     def valid_for(self, **kwargs):
-        return self.filter(grant_key=None, request_key=None, **kwargs)
+        return self.filter(Q(ends_at__isnull=True) | Q(ends_at__gt=datetime_or_now()), grant_key=None, request_key=None, **kwargs)
 
 
 @python_2_unicode_compatible
@@ -1340,14 +1340,15 @@ class AbstractRole(models.Model):
         help_text=_("Key to identify the grant of the role"))
     extra = get_extra_field_class()(null=True,
         help_text=_("Extra meta data (can be stringify JSON)"))
-
+    ends_at = models.DateTimeField(null=True, blank=True,
+                                   help_text=_('Date/time when the role ends'))
     class Meta:
         abstract = True
         unique_together = ('organization', 'user')
 
     def __str__(self):
         return '%s-%s-%s' % (str(self.role_description),
-            str(self.organization), str(self.user))
+                             str(self.organization), str(self.user))
 
 
 @python_2_unicode_compatible
