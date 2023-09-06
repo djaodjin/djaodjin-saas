@@ -1200,8 +1200,8 @@ class AgreementSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Agreement
-        fields = ('slug', 'title', 'modified')
-        read_only_fields = ('slug', 'modified')
+        fields = ('slug', 'title', 'updated_at')
+        read_only_fields = ('slug', 'updated_at')
 
 
 class AgreementDetailSerializer(AgreementSerializer):
@@ -1222,7 +1222,7 @@ class AgreementUpdateSerializer(AgreementSerializer):
     """
     Serializer to update an agreement
     """
-    modified = serializers.DateTimeField(read_only=False,
+    updated_at = serializers.DateTimeField(read_only=False,
         help_text=_("Date/time of  (in ISO format)"))
 
     class Meta(AgreementSerializer.Meta):

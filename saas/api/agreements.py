@@ -67,7 +67,7 @@ class AgreementListAPIView(generics.ListAPIView):
                 {
                     "slug": "terms-of-use",
                     "title": "Terms of Use",
-                    "modified": "2023-08-16T00:00:00Z"
+                    "updated_at": "2023-08-16T00:00:00Z"
                 }
             ]
         }
@@ -78,7 +78,7 @@ class AgreementListAPIView(generics.ListAPIView):
     )
     ordering_fields = (
         ('title', 'title'),
-        ('modified', 'modified'),
+        ('updated_at', 'updated_at'),
     )
     ordering = ('title',)
 
@@ -117,7 +117,7 @@ class AgreementListCreateAPIView(CreateModelMixin, AgreementListAPIView):
                 {
                     "slug": "terms-of-use",
                     "title": "Terms of Use",
-                    "modified": "2023-08-16T00:00:00Z"
+                    "updated_at": "2023-08-16T00:00:00Z"
                 }
             ]
         }
@@ -159,7 +159,7 @@ class AgreementListCreateAPIView(CreateModelMixin, AgreementListAPIView):
             {
                 "slug": "terms-of-use",
                 "title": "Terms of Use",
-                "modified": "2023-08-16T00:00:00Z"
+                "updated_at": "2023-08-16T00:00:00Z"
             }
         """
         return self.create(request, *args, **kwargs)
@@ -202,7 +202,7 @@ class AgreementDetailAPIView(generics.RetrieveAPIView):
            {
                 "slug": "terms-of-use",
                 "title": "Terms of Use",
-                "modified": "2023-08-16T00:00:00Z",
+                "updated_at": "2023-08-16T00:00:00Z",
                 "text": "..."
             }
     """
@@ -237,7 +237,7 @@ class AgreementUpdateAPIView(UpdateModelMixin, DestroyModelMixin,
            {
                 "slug": "terms-of-use",
                 "title": "Terms of Use",
-                "modified": "2023-08-16T00:00:00Z",
+                "updated_at": "2023-08-16T00:00:00Z",
                 "text": "..."
             }
     """
@@ -252,7 +252,7 @@ class AgreementUpdateAPIView(UpdateModelMixin, DestroyModelMixin,
 
         All users visiting an URL decorated with an "Agreed to {agreement}"
         access control rule will be prompted to sign the agreement again
-        if the last time they signed is older that the `modified` date set
+        if the last time they signed is older that the `updated_at` date set
         here.
 
         **Tags**: broker
@@ -267,7 +267,7 @@ class AgreementUpdateAPIView(UpdateModelMixin, DestroyModelMixin,
 
             {
                 "title": "Terms of Use",
-                "modified": "2023-08-16T00:00:00Z"
+                "updated_at": "2023-08-16T00:00:00Z"
             }
 
         responds
@@ -277,10 +277,13 @@ class AgreementUpdateAPIView(UpdateModelMixin, DestroyModelMixin,
             {
                 "slug": "terms-of-use",
                 "title": "Terms of Use",
-                "modified": "2023-08-16T00:00:00Z"
+                "updated_at": "2023-08-16T00:00:00Z"
             }
         """
         return self.update(request, *args, **kwargs)
+
+    def patch(self, request, *args, **kwargs):
+        return self.partial_update(request, *args, **kwargs)
 
 
     def delete(self, request, *args, **kwargs): #pylint:disable=unused-argument

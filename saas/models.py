@@ -1369,7 +1369,7 @@ class Agreement(models.Model):
         help_text=_("Unique identifier shown in the URL bar"))
     title = models.CharField(max_length=150, unique=True,
         help_text=_("Short description of the agreement"))
-    modified = models.DateTimeField(auto_now_add=True,
+    updated_at = models.DateTimeField(auto_now_add=True,
         help_text=_("Date/time the agreement was last updated (in ISO format)"))
 
     def __str__(self):
@@ -1396,7 +1396,7 @@ class SignatureManager(models.Manager):
             agreement = Agreement.objects.get(slug=agreement)
         try:
             sig = self.get(agreement=agreement, user=user)
-            if sig.last_signed < agreement.modified:
+            if sig.last_signed < agreement.updated_at:
                 return False
         except Signature.DoesNotExist:
             return False

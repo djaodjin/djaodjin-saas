@@ -15,9 +15,9 @@ class Migration(migrations.Migration):
             name='ends_at',
             field=models.DateTimeField(blank=True, help_text='Date/time when the role ends', null=True),
         ),
-        migrations.AlterField(
-            model_name='advancediscount',
-            name='length',
-            field=models.PositiveSmallIntegerField(default=1, help_text='Contract length associated with the period (defaults to 1)'),
+        migrations.RenameField(
+            model_name='agreement',
+            old_name='modified',
+            new_name='updated_at',
         ),
     ]

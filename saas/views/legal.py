@@ -94,7 +94,7 @@ templates/saas/legal/index.html>`__).
             agreements += [{
                 'slug': agreement.slug,
                 'title': agreement.title,
-                'updated_at': agreement.modified,
+                'updated_at': agreement.updated_at,
                 'location': reverse('legal_agreement', args=(agreement,))}]
         context['agreements'] = agreements
         return context
