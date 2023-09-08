@@ -43,8 +43,8 @@ class FederatedMetricsMixin(DateRangeContextMixin, ProviderMixin):
 
     def get_members(self, ends_at=None):
         return get_organization_model().objects.filter(
-            subscription__plan__organzation=self.provider,
-            subscription__ends_at__gte=datetime_or_now(ends_at))
+            subscriptions__plan__organization=self.provider,
+            subscriptions__ends_at__gte=datetime_or_now(ends_at))
 
 
 class FederatedSubscribersAPIView(FederatedMetricsMixin,
@@ -97,7 +97,6 @@ class FederatedSubscribersAPIView(FederatedMetricsMixin,
 
     def get(self, request, *args, **kwargs):
         #pylint:disable=too-many-locals
-        self._start_time()
         period_end = datetime_or_now(self.ends_at)
         period_begin = datetime_or_now(self.start_at)
         period_start = period_end - relativedelta(years=1)
@@ -156,8 +155,8 @@ class FederatedSubscribersAPIView(FederatedMetricsMixin,
             by_plans[member][1] = nb_subscribers
 
         by_subscribers = get_organization_model().objects.filter(
-            Q(subscription__plan__organization=self.provider) |
-            Q(subscription__plan__in=subscribed_to_members)).annotate(
+            Q(subscriptions__plan__organization=self.provider) |
+            Q(subscriptions__plan__in=subscribed_to_members)).annotate(
                 starts_at=Min('subscriptions__created_at'),
                 ends_at=Max('subscriptions__ends_at'))
 
@@ -255,7 +254,7 @@ class SharedProfilesAPIView(FederatedMetricsMixin,
 
         by_subscribers = get_organization_model().objects.filter(
             subscriptions__ends_at__gt=period_end,
-            subscription__plan__organization=members).annotate(
+            subscriptions__plan__organization__in=members).annotate(
                 nb_subscriptions=Count('subscriptions__plan'))
 
 # XXX maybe use this in loop below instead?
