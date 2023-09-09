@@ -25,6 +25,7 @@
 """Command for the cron job. Send revenue report for the last week"""
 
 import logging
+
 from dateutil.relativedelta import relativedelta, SU
 from django.core.management.base import BaseCommand
 
@@ -48,13 +49,17 @@ class Command(BaseCommand):
             dest='at_time', default=None,
             help='Specifies the time at which the command runs'
         )
-        parser.add_argument('--provider', action='append',
+        parser.add_argument(
+            '--provider', action='append',
             dest='providers', default=None,
-            help='Specifies provider to generate reports for.')
-        parser.add_argument('--period', action='store',
+            help='Specifies provider to generate reports for.'
+        )
+        parser.add_argument(
+            '--period', action='store',
             dest='period', default='weekly',
             choices=['hourly', 'daily', 'weekly', 'monthly', 'yearly'],
-            help='Specifies the period to generate reports for')
+            help='Specifies the period to generate reports for'
+        )
 
     @staticmethod
     def construct_date_periods(at_time, period='weekly', timezone=None):
@@ -62,6 +67,9 @@ class Command(BaseCommand):
         tzinfo = parse_tz(timezone)
 
         def localize_time(time):
+            # we are interested in 00:00 local time, if we don't have
+            # local time zone, fall back to 00:00 utc time
+            # in case we have local timezone, replace utc with it
             return tzinfo.localize(time.replace(tzinfo=None)) if tzinfo else time
 
         base_time = at_time.replace(minute=0, second=0, microsecond=0)
@@ -79,7 +87,7 @@ class Command(BaseCommand):
         prev_period, prev_year = None, None
         if period == 'weekly':
             last_sunday = base_time if base_time.weekday() == SU else (base_time
-                          + relativedelta(weeks=-1, weekday=SU))
+                                                                       + relativedelta(weeks=-1, weekday=SU))
             prev_sunday = last_sunday - relativedelta(weeks=1)
             prev_period = [prev_sunday - relativedelta(weeks=1),
                            prev_sunday,
@@ -96,7 +104,7 @@ class Command(BaseCommand):
             # - 'prev_period' would be [2022-01-01, 2023-01-01, 2023-09-06]
             # - 'prev_year' would be [2021-01-01, 2022-01-01]
             first_of_year = base_time if (base_time.month, base_time.day) == (1, 1) else (
-                            base_time.replace(month=1, day=1))
+                base_time.replace(month=1, day=1))
             prev_year_start = first_of_year - relativedelta(years=1)
             prev_period = [prev_year_start,
                            first_of_year,
@@ -105,7 +113,7 @@ class Command(BaseCommand):
                          prev_year_start]
         elif period == 'monthly':
             first_day_of_month = base_time if base_time.day == 1 else (
-                                base_time + relativedelta(months=-1, day=1))
+                    base_time + relativedelta(months=-1, day=1))
             prev_month = first_day_of_month - relativedelta(months=1)
             prev_period = [prev_month - relativedelta(months=1),
                            prev_month,
@@ -114,7 +122,7 @@ class Command(BaseCommand):
                          prev_month - relativedelta(years=1)]
         elif period == 'daily':
             first_hour_of_day = base_time if base_time.hour == 0 else (
-                base_time + relativedelta(days=-1, hour=0)
+                    base_time + relativedelta(days=-1, hour=0)
             )
             prev_day = first_hour_of_day - relativedelta(days=1)
             prev_period = [prev_day - relativedelta(days=1),
@@ -124,7 +132,7 @@ class Command(BaseCommand):
                          first_hour_of_day - relativedelta(years=1)]
         elif period == 'hourly':
             first_min_of_hour = base_time if base_time.minute == 0 else (
-                                base_time + relativedelta(hours=-1))
+                    base_time + relativedelta(hours=-1))
             prev_hour = first_min_of_hour - relativedelta(hours=1)
             prev_period = [prev_hour - relativedelta(hours=1),
                            prev_hour,
@@ -148,6 +156,7 @@ class Command(BaseCommand):
                 return percentage
             except ZeroDivisionError:
                 return 'N/A'
+
         for row in table:
             val = row['values']
             val['prev'] = calculate_percentage_change(val['last'], val['prev'])
@@ -157,7 +166,7 @@ class Command(BaseCommand):
 
     @staticmethod
     def get_perf_data(provider, prev_periods, prev_year_periods, period_type):
-        #pylint:disable=too-many-locals
+        # pylint:disable=too-many-locals
         account_table, _, _, table_unit = aggregate_transactions_change_by_period(
             provider, Transaction.RECEIVABLE, account_title='Sales',
             orig='orig', dest='dest', date_periods=prev_periods
