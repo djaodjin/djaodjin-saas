@@ -31,7 +31,6 @@ from django.template.defaultfilters import slugify
 from django.utils.timezone import utc
 
 from saas import humanize
-from saas.backends.razorpay_processor import RazorpayBackend
 from saas.models import (AdvanceDiscount, Charge, ChargeItem,
     Plan, Subscription, Transaction, get_broker)
 from saas.metrics.base import month_periods
@@ -161,7 +160,11 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         #pylint: disable=too-many-locals,too-many-statements
-        RazorpayBackend.bypass_api = True
+
+        # forces to use the fake processor. We don't want to take a lot
+        # of time to go to Stripe to create test charges.
+        settings.SAAS['PROCESSOR']['BACKEND'] = \
+            'saas.backends.fake_processor.FakeProcessorBackend'
 
         now = datetime.datetime.utcnow().replace(tzinfo=utc)
         from_date = now

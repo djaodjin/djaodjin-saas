@@ -124,8 +124,10 @@ class StripeBackend(object):
                         stripe_charge_key, **kwargs)
         else:
             try:
+                kwargs.update({
+                    'expand': kwargs.get('expand', []) + ['latest_charge']})
                 payment_intent = stripe.PaymentIntent.retrieve(
-                    stripe_charge_key, expand=['latest_charge'], **kwargs)
+                    stripe_charge_key, **kwargs)
                 if payment_intent.latest_charge:
                     stripe_charge = payment_intent.latest_charge
             except stripe.error.StripeErrorWithParamCode as err:
