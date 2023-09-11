@@ -155,11 +155,7 @@ class ChargeListAPIView(SmartChargeListMixin,
     def get_queryset(self):
         queryset = super(ChargeListAPIView, self).get_queryset()
         #pylint:disable=attribute-defined-outside-init
-        totals = queryset.values('unit').annotate(amount=Sum('amount'))
-        if totals:
-            self.totals = totals[0]
-        else:
-            self.totals = {'amount': 0, 'unit': settings.DEFAULT_UNIT}
+        self.totals = queryset.values('unit').annotate(amount=Sum('amount'))
         return queryset
 
 

@@ -759,6 +759,13 @@ class OrganizationInviteSerializer(OrganizationCreateSerializer):
 
 
 class SubscriptionSerializer(serializers.ModelSerializer):
+    """
+    Base class to serialize `Subscription` instances.
+
+    The actual serializer used in API endpoints will either
+    be `SubscribedSubscriptionSerializer` for subscriber-side APIs
+    or `ProvidedSubscriptionSerializer` for provider-side APIs.
+    """
 
     # XXX used to be OrganizationDetailSerializer. because it is used
     # in checkout with group buy, do we need the e-mail?
@@ -767,9 +774,6 @@ class SubscriptionSerializer(serializers.ModelSerializer):
         help_text=_("Profile subscribed to the plan"))
     plan = PlanSerializer(read_only=True,
         help_text=_("Plan the profile is subscribed to"))
-    editable = serializers.SerializerMethodField(
-        help_text=_("True if the request user is able to update"\
-        " the subscription. Typically a manager for the plan provider."))
     app_url = serializers.SerializerMethodField(
       help_text=_("URL to access the subscribed service"))
 
@@ -778,7 +782,7 @@ class SubscriptionSerializer(serializers.ModelSerializer):
         fields = ('created_at', 'ends_at', 'description',
                   'profile', 'plan', 'auto_renew',
                   'extra', 'grant_key', 'request_key',
-                  'editable', 'app_url')
+                  'app_url')
         # XXX grant_key and request_key should probably be removed.
         read_only_fields = ('grant_key', 'request_key')
 
@@ -786,20 +790,26 @@ class SubscriptionSerializer(serializers.ModelSerializer):
         return product_url(subscriber=obj.organization, plan=obj.plan,
             request=self.context['request'])
 
-    def get_editable(self, subscription):
-        return bool(_valid_manager(self.context['request'],
-            [subscription.plan.organization]))
-
 
 class SubscribedSubscriptionSerializer(SubscriptionSerializer):
 
     remove_api_url = serializers.SerializerMethodField(
-        help_text=_("URL API endpoint to remove the subscription"\
-        " grant or request"))
+        help_text=_("URL API endpoint to remove the subscription request"))
+
+    # `editable` is only subscribed-side since all APIs provider-side
+    # will by definition return subscribers / subscriptions a profile manager
+    # for the plan provider has permission to.
+    editable = serializers.SerializerMethodField(
+        help_text=_("True if the request user is able to update the"\
+        " subscription. Typically a profile manager for the plan provider."))
 
     class Meta(SubscriptionSerializer.Meta):
         fields = SubscriptionSerializer.Meta.fields + (
-            'remove_api_url',)
+            'remove_api_url', 'editable')
+
+    def get_editable(self, subscription):
+        return bool(_valid_manager(self.context['request'],
+            [subscription.plan.organization]))
 
     def get_remove_api_url(self, obj):
         return build_absolute_uri(self.context['request'], location=reverse(
@@ -812,8 +822,7 @@ class ProvidedSubscriptionSerializer(SubscriptionSerializer):
     accept_request_api_url = serializers.SerializerMethodField(
         help_text=_("URL API endpoint to grant the subscription"))
     remove_api_url = serializers.SerializerMethodField(
-        help_text=_("URL API endpoint to remove the subscription"\
-        " grant or request"))
+        help_text=_("URL API endpoint to remove the subscription grant"))
 
     class Meta(SubscriptionSerializer.Meta):
         fields = SubscriptionSerializer.Meta.fields + (

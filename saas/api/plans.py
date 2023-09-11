@@ -103,6 +103,10 @@ class PricingAPIView(PlanMixin, CartMixin, ListAPIView):
     def get_queryset(self):
         queryset = Plan.objects.filter(organization=self.provider,
             is_active=True).order_by('is_not_priced', 'period_amount')
+        # `PlanDetailSerializer` will expand `organization`,
+        # `advance_discounts` and `use_charges`.
+        queryset = queryset.select_related('organization').prefetch_related(
+            'advance_discounts').prefetch_related('use_charges')
         return queryset
 
     def paginate_queryset(self, queryset):
@@ -237,6 +241,10 @@ class PlanListCreateAPIView(PlanMixin, ListCreateAPIView):
         if is_active:
             value = is_active.lower() in truth_values
             queryset = queryset.filter(is_active=value)
+        # `PlanDetailSerializer` will expand `organization`,
+        # `advance_discounts` and `use_charges`.
+        queryset = queryset.select_related('organization').prefetch_related(
+            'advance_discounts').prefetch_related('use_charges')
         return queryset
 
     def perform_create(self, serializer):

@@ -71,12 +71,7 @@ class TotalAnnotateMixin(object):
 
     def get_queryset(self):
         queryset = super(TotalAnnotateMixin, self).get_queryset()
-        balances = sum_orig_amount(queryset)
-        if len(balances) > 1:
-            raise ValueError(_("balances with multiple currency units (%s)") %
-                str(balances))
-        # `sum_orig_amount` guarentees at least one result.
-        self.totals = balances[0]
+        self.totals = sum_orig_amount(queryset)
         return queryset
 
 
@@ -129,10 +124,17 @@ class TransactionQuerysetMixin(object):
     def get_queryset(self):
         self.selector = self.request.GET.get('selector', None)
         if self.selector is not None:
-            return Transaction.objects.filter(
+            queryset = Transaction.objects.filter(
                 Q(dest_account__icontains=self.selector)
                 | Q(orig_account__icontains=self.selector))
-        return Transaction.objects.all()
+        else:
+            queryset = Transaction.objects.all()
+        # `TransactionSerializer` will expand `orig_organization`
+        # and `dest_organization` so we add `select_related` for the ORM
+        # to generate expected SQL.
+        queryset = queryset.select_related(
+            'orig_organization').select_related('dest_organization')
+        return queryset
 
 
 class TransactionListAPIView(SmartTransactionListMixin,
@@ -288,7 +290,13 @@ class ReceivablesQuerysetMixin(ProviderMixin):
         """
         Get the list of transactions for this organization.
         """
-        return self.provider.receivables().filter(orig_amount__gt=0)
+        queryset = self.provider.receivables().filter(orig_amount__gt=0)
+        # `TransactionSerializer` will expand `orig_organization`
+        # and `dest_organization` so we add `select_related` for the ORM
+        # to generate expected SQL.
+        queryset = queryset.select_related(
+            'orig_organization').select_related('dest_organization')
+        return queryset
 
 
 class ReceivablesListAPIView(TotalAnnotateMixin, SmartTransactionListMixin,

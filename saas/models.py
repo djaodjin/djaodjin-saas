@@ -3374,7 +3374,8 @@ class Subscription(models.Model):
         " (in ISO format)"))
     description = models.TextField(null=True, blank=True,
         help_text=_("Free-form text description for the subscription"))
-    organization = models.ForeignKey(settings.ORGANIZATION_MODEL, on_delete=models.CASCADE,
+    organization = models.ForeignKey(settings.ORGANIZATION_MODEL,
+        on_delete=models.CASCADE,
         help_text=_("Profile subscribed to the plan"),
         related_name='subscriptions')
     plan = models.ForeignKey(Plan, on_delete=models.CASCADE,

@@ -1025,8 +1025,12 @@ class SubscribedSubscriptionsMixin(OrganizationDecorateMixin):
     def get_queryset(self):
         # Use ``filter`` instead of active_for here because we want to list
         # through the API subscriptions which are pending opt-in.
-        return Subscription.objects.filter(
+        queryset = Subscription.objects.filter(
             organization__slug=self.kwargs.get(self.subscriber_url_kwarg))
+        # `SubscriptionSerializer` will expand `organization` and `plan`.
+        queryset = queryset.select_related('organization').select_related(
+            'plan')
+        return queryset
 
     def paginate_queryset(self, queryset):
         page = super(SubscribedSubscriptionsMixin, self).paginate_queryset(
@@ -1041,8 +1045,11 @@ class ProvidedSubscriptionsMixin(OrganizationDecorateMixin, ProviderMixin):
 
     def get_queryset(self):
         # OK to use ``filter`` here since we want to list all subscriptions.
-        return Subscription.objects.filter(
-            plan__organization=self.provider)
+        queryset = Subscription.objects.filter(plan__organization=self.provider)
+        # `SubscriptionSerializer` will expand `organization` and `plan`.
+        queryset = queryset.select_related('organization').select_related(
+            'plan')
+        return queryset
 
     def paginate_queryset(self, queryset):
         page = super(ProvidedSubscriptionsMixin, self).paginate_queryset(
@@ -1054,9 +1061,10 @@ class ProvidedSubscriptionsMixin(OrganizationDecorateMixin, ProviderMixin):
 class PlanProvidedSubscriptionsMixin(PlanMixin, ProvidedSubscriptionsMixin):
 
     def get_queryset(self):
-        return super(
+        queryset = super(
             PlanProvidedSubscriptionsMixin, self).get_queryset().filter(
             plan__slug=self.kwargs.get(self.plan_url_kwarg))
+        return queryset
 
 
 class SubscriptionSmartListMixin(object):
@@ -1157,8 +1165,13 @@ class RoleMixin(RoleDescriptionMixin):
             kwargs = {}
         # OK to use filter here since we want to present all pending grants
         # and requests.
-        return get_role_model().objects.filter(
+        queryset = get_role_model().objects.filter(
             organization=self.organization, user=self.user, **kwargs)
+        # `RoleSerializer` will expand `user` and `role_description`.
+        queryset = queryset.select_related('user').select_related(
+            'role_description')
+        return queryset
+
 
     def get_object(self):
         # Since there is no lookup_field for relations, we must override

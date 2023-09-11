@@ -29,6 +29,7 @@ from rest_framework.response import Response
 from rest_framework.settings import api_settings
 
 from . import settings
+from .compat import gettext_lazy as _
 from .filters import search_terms_as_list
 from .models import (sum_dest_amount, sum_orig_amount, sum_balance_amount,
     Transaction)
@@ -258,11 +259,19 @@ class TotalPagination(PageNumberPagination):
             queryset, request, view=view)
 
     def get_paginated_response(self, data):
+        balances = list(self.totals)
+        if len(balances) > 1:
+            raise ValueError(_("balances with multiple currency units (%s)") %
+                str(balances))
+        if balances:
+            total_balance = balances[0]
+        else:
+            total_balance = {'amount': 0, 'unit': settings.DEFAULT_UNIT}
         return Response(OrderedDict([
             ('start_at', self.start_at),
             ('ends_at', self.ends_at),
-            ('balance_amount', self.totals['amount']),
-            ('balance_unit', self.totals['unit']),
+            ('balance_amount', total_balance['amount']),
+            ('balance_unit', total_balance['unit']),
             ('count', self.page.paginator.count),
             ('next', self.get_next_link()),
             ('previous', self.get_previous_link()),

@@ -1010,8 +1010,13 @@ class SubscriptionRequestAcceptAPIView(GenericAPIView):
         return self._subscription
 
     def get_queryset(self):
-        return Subscription.objects.active_with(
+        queryset = Subscription.objects.active_with(
             self.kwargs.get(self.provider_url_kwarg))
+        # `ProvidedSubscriptionSerializer` derives from `SubscriptionSerializer`
+        # thus will expand `organization` and `plan`.
+        queryset = queryset.select_related('organization').select_related(
+            'plan')
+        return queryset
 
     @swagger_auto_schema(request_body=no_body, responses={
       200: OpenAPIResponse("Grant successful", ProvidedSubscriptionSerializer)})

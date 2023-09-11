@@ -306,10 +306,15 @@ class AccessibleByQuerysetMixin(UserMixin):
         queryset = self.role_model.objects.filter(user=self.user)
 
         truth_values = ['true', '1']
-        personal_params = self.request.query_params.get('include_personal_profile', '')
+        personal_params = self.request.query_params.get(
+            'include_personal_profile', '')
         include_personal_profile = personal_params.lower() in truth_values
         if not include_personal_profile:
             queryset = queryset.exclude(organization__slug=self.user)
+
+        # `RoleSerializer` will expand `user` and `role_description`.
+        queryset = queryset.select_related('user').select_related(
+            'role_description')
 
         return queryset
 
@@ -840,7 +845,12 @@ class RoleDescriptionDetailView(RoleDescriptionQuerysetMixin,
 class RoleQuerysetBaseMixin(OrganizationMixin):
 
     def get_queryset(self):
-        return get_role_model().objects.filter(organization=self.organization)
+        queryset = get_role_model().objects.filter(
+            organization=self.organization)
+        # `RoleSerializer` will expand `user` and `role_description`.
+        queryset = queryset.select_related('user').select_related(
+            'role_description')
+        return queryset
 
 
 class RoleListAPIView(RoleSmartListMixin, InvitedRequestedListMixin,
@@ -1190,8 +1200,12 @@ class AccessibleDetailAPIView(RoleDetailAPIView):
     def get_queryset(self):
         # We never take the `role_description` into account when removing
         # on the accessibles page.
-        return get_role_model().objects.filter(
+        queryset = get_role_model().objects.filter(
             organization=self.organization, user=self.user)
+        # `RoleSerializer` will expand `user` and `role_description`.
+        queryset = queryset.select_related('user').select_related(
+            'role_description')
+        return queryset
 
     @swagger_auto_schema(request_body=no_body)
     def post(self, request, *args, **kwargs):
@@ -1400,8 +1414,13 @@ class UserProfileListAPIView(OrganizationSmartListMixin,
         return super(UserProfileListAPIView, self).get_serializer_class()
 
     def get_queryset(self):
-        return get_organization_model().objects.accessible_by(
+        queryset = get_organization_model().objects.accessible_by(
             self.user, role_descr=settings.MANAGER)
+        # `RoleSerializer` will expand `user` and `role_description`.
+        queryset = queryset.select_related('user').select_related(
+            'role_description')
+        return queryset
+
 
     @swagger_auto_schema(responses={
       201: OpenAPIResponse("Create successful", OrganizationDetailSerializer)})
