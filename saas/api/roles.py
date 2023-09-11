@@ -1416,9 +1416,6 @@ class UserProfileListAPIView(OrganizationSmartListMixin,
     def get_queryset(self):
         queryset = get_organization_model().objects.accessible_by(
             self.user, role_descr=settings.MANAGER)
-        # `RoleSerializer` will expand `user` and `role_description`.
-        queryset = queryset.select_related('user').select_related(
-            'role_description')
         return queryset
 
 
