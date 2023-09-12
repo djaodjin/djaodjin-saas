@@ -1,8 +1,34 @@
 Getting Started
 ===============
 
+`djaodjin-saas<https://github.com/djaodjin-saas/>`_ is a Django app
+that implements the logic to support subscription-based Software-as-a-Service
+businesses.
+
+As such you will need to be familiar with Django Apps and Django Projects (see
+`Getting started with Django<https://docs.djangoproject.com/en/4.2/intro/>`_).
+
+If you are looking to see the features djaodjin-saas brings to your Django
+project without going through the setup inside your own Django project, run
+the testsite committed alongside the application code (see steps in
+`README.md<https://github.com/djaodjin/djaodjin-saas/blob/master/README.md>`_).
+
+If you are interested in what a fully-integrated SaaS Django project could look
+like, browse the `djaoapp<https://github.com/djaodjin/djaoapp/>`_ code
+repository and/or the `djaoapp livedemo<https://livedemo.djaoapp.com/>`_
+(**Warning:** the livedemo is for the djaoapp, fully-integrated SaaS Django
+project. There is quite some work to integrate an auth app, a rule-based
+access control app as well as HTML/CSS required to make all of it acceptable
+to modern UI standards).
+
+
 Installation and configuration
 ------------------------------
+
+We assume here you already created a
+`Python virtual environment<https://docs.python.org/3/library/venv.html>`,
+installed Django and created a Django project which will be using
+the `djaodjin-saas<https://github.com/djaodjin-saas/>`_ Django App.
 
 First download and install the latest version of djaodjin-saas into your
 Python virtual environment.
@@ -67,6 +93,9 @@ an ``Organization`` for the payment processor and an ``Organization`` for the
 provider / broker together with three ``Plan`` that belong to the provider
 (see :doc:`database schema <models>`). We will also need to create an default
 ``Agreement`` for the terms of use of the site.
+
+Following is a fixtures file doing just that (ref:
+`How to load fixtures in a Django project<https://docs.djangoproject.com/en/4.2/topics/db/fixtures/>`_)
 
 **Example fixtures**:
 
