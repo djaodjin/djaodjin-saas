@@ -46,6 +46,18 @@ def active_subscribers(plan, from_date=None, tz=None):
             Subscription.objects.active_at(end_period, plan=plan).count()])
     return values
 
+def active_subscribers_by_period(plan, from_date=None, tz=None, period_func=None, periods=13):
+    """
+    List of active subscribers for a *plan* for a certain time period.
+    """
+    #pylint:disable=invalid-name
+    values = []
+    for end_period in convert_dates_to_utc(period_func(
+                from_date=from_date, tz=tz, periods=periods)):
+        values.append([end_period,
+            Subscription.objects.active_at(end_period, plan=plan).count()])
+    return values
+
 
 def churn_subscribers(plan=None, from_date=None, tz=None):
     """
@@ -64,6 +76,22 @@ def churn_subscribers(plan=None, from_date=None, tz=None):
         start_period = end_period
     return values
 
+def churn_subscribers_by_period(plan=None, from_date=None, tz=None, period_func=None):
+    """
+    List of churn subscribers from the previous period for a *plan* for specific time periods.
+    """
+    #pylint:disable=invalid-name
+    values = []
+    dates = convert_dates_to_utc(period_func(13, from_date, tz=tz))
+    start_period = dates[0]
+    kwargs = {}
+    if plan:
+        kwargs = {'plan': plan}
+    for end_period in dates[1:]:
+        values.append([end_period, Subscription.objects.churn_in_period(
+            start_period, end_period, **kwargs).count()])
+        start_period = end_period
+    return values
 
 def subscribers_age(provider=None):
     if provider:

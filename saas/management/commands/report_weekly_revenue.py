@@ -33,8 +33,9 @@ from ... import settings
 from ... import signals
 from ...humanize import as_money
 from ...metrics.base import (aggregate_transactions_by_period,
-                             aggregate_transactions_change_by_period, get_different_units)
-from ...models import Transaction
+                             aggregate_transactions_change_by_period, get_different_units,
+                             hour_periods, day_periods, week_periods, month_periods_v2, year_periods)
+from ...models import Transaction, Plan
 from ...utils import datetime_or_now, get_organization_model, parse_tz
 
 LOGGER = logging.getLogger(__name__)
@@ -57,91 +58,53 @@ class Command(BaseCommand):
         parser.add_argument(
             '--period', action='store',
             dest='period', default='weekly',
-            choices=['hourly', 'daily', 'weekly', 'monthly', 'yearly'],
+            choices=[x[1].lower() for x in Plan.INTERVAL_CHOICES],
             help='Specifies the period to generate reports for'
         )
 
     @staticmethod
     def construct_date_periods(at_time, period='weekly', timezone=None):
-        # discarding time, keeping utc tzinfo (00:00:00 utc)
         tzinfo = parse_tz(timezone)
-
         def localize_time(time):
             # we are interested in 00:00 local time, if we don't have
             # local time zone, fall back to 00:00 utc time
             # in case we have local timezone, replace utc with it
             return tzinfo.localize(time.replace(tzinfo=None)) if tzinfo else time
 
-        base_time = at_time.replace(minute=0, second=0, microsecond=0)
-        current_time = localize_time(at_time)
 
-        normalization_rules = {
-            'daily': {'hour': 0},
-            'weekly': {'hour': 0},
-            'monthly': {'day': 1, 'hour': 0},
-            'yearly': {'month': 1, 'day': 1, 'hour': 0},
-        }
+        base_time = at_time.replace(
+            minute=0 if period != 'yearly' else at_time.minute,
+            second=0,
+            microsecond=0
+        )
+
         base_time = localize_time(base_time)
-        base_time = base_time.replace(**normalization_rules.get(period, {}))
 
-        prev_period, prev_year = None, None
-        if period == 'weekly':
-            last_sunday = base_time if base_time.weekday() == SU else (base_time
-                                                                       + relativedelta(weeks=-1, weekday=SU))
-            prev_sunday = last_sunday - relativedelta(weeks=1)
-            prev_period = [prev_sunday - relativedelta(weeks=1),
-                           prev_sunday,
-                           last_sunday]
-            prev_year = [last_sunday + relativedelta(years=-1, weeks=-1, weekday=SU),
-                         last_sunday + relativedelta(years=-1, weekday=SU)]
-        elif period == 'yearly':
-            # For 'yearly' period:
-            # - 'prev_period' represents the time range starting from the first day of the previous year
-            #   up to the current time. If today is the first day of the year, it starts from today.
-            # - 'prev_year' represents the time range of the year before the 'prev_period'.
-            #
-            # For example, if today's date is 2023-09-06:
-            # - 'prev_period' would be [2022-01-01, 2023-01-01, 2023-09-06]
-            # - 'prev_year' would be [2021-01-01, 2022-01-01]
-            first_of_year = base_time if (base_time.month, base_time.day) == (1, 1) else (
-                base_time.replace(month=1, day=1))
-            prev_year_start = first_of_year - relativedelta(years=1)
-            prev_period = [prev_year_start,
-                           first_of_year,
-                           current_time]
-            prev_year = [prev_year_start - relativedelta(years=1),
-                         prev_year_start]
-        elif period == 'monthly':
-            first_day_of_month = base_time if base_time.day == 1 else (
-                    base_time + relativedelta(months=-1, day=1))
-            prev_month = first_day_of_month - relativedelta(months=1)
-            prev_period = [prev_month - relativedelta(months=1),
-                           prev_month,
-                           first_day_of_month]
-            prev_year = [prev_month - relativedelta(years=1, months=1),
-                         prev_month - relativedelta(years=1)]
-        elif period == 'daily':
-            first_hour_of_day = base_time if base_time.hour == 0 else (
-                    base_time + relativedelta(days=-1, hour=0)
-            )
-            prev_day = first_hour_of_day - relativedelta(days=1)
-            prev_period = [prev_day - relativedelta(days=1),
-                           prev_day,
-                           first_hour_of_day]
-            prev_year = [first_hour_of_day - relativedelta(years=1, days=1),
-                         first_hour_of_day - relativedelta(years=1)]
-        elif period == 'hourly':
-            first_min_of_hour = base_time if base_time.minute == 0 else (
-                    base_time + relativedelta(hours=-1))
-            prev_hour = first_min_of_hour - relativedelta(hours=1)
-            prev_period = [prev_hour - relativedelta(hours=1),
-                           prev_hour,
-                           first_min_of_hour]
-            prev_year = [first_min_of_hour - relativedelta(years=1, hours=1),
-                         first_min_of_hour - relativedelta(years=1)]
+        # Map period types to corresponding date-generating functions.
+        period_func = {
+            'hourly': hour_periods,
+            'daily': day_periods,
+            'weekly': week_periods,
+            'monthly': month_periods_v2,
+            'yearly': year_periods,
+        }.get(period)
 
-        if period not in ['hourly', 'daily', 'weekly', 'monthly', 'yearly']:
+        if not period_func:
             return None, None
+        # 'yearly' is unique in its treatment of the starting date.
+        # Flag set for special handling later.
+        include_start = (period == 'yearly')
+
+        # Calculate the date exactly one year prior to base_time;
+        prev_year_from_date = base_time - relativedelta(years=1)
+
+        # Logic for dealing with cases where it's the first day of the year
+        if base_time.day == 1 and base_time.month == 1:
+            prev_year_from_date -= relativedelta(years=1)
+        # Generates the most recent two periods and the recent period from a year ago
+        # using date-generating functions.
+        prev_period = period_func(2, from_date=base_time, tz=tzinfo, include_start_date=include_start)
+        prev_year = period_func(1, from_date=prev_year_from_date, tz=tzinfo, include_start_date=False)
 
         return prev_period, prev_year
 
@@ -200,7 +163,7 @@ class Command(BaseCommand):
         units = get_different_units(table_unit, payments_unit, refund_unit)
 
         if len(units) > 1:
-            LOGGER.error("different units in get_%s_perf_data: %s", period_type, units)
+            LOGGER.error("different units in get_perf_data(period_type=%s): %s", period_type, units)
 
         if units:
             unit = units[0]
@@ -246,7 +209,7 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         # aware utc datetime object
         at_time = datetime_or_now(options.get('at_time'))
-        period = options.get('period', 'weekly')
+        period = options.get('period')
 
         self.stdout.write("running report_weekly_revenue for %s %s period at %s" %
                           ('an' if period == 'hourly' else 'a', period, at_time))
@@ -281,4 +244,4 @@ class Command(BaseCommand):
                 )
             data, unit = self.get_perf_data(provider, prev_period, prev_year, period_type=period)
             table = self.construct_table(data, unit)
-            signals.weekly_sales_report_created.send(sender=__name__, provider=provider, dates=dates, data=table)
+            signals.period_sales_report_created.send(sender=__name__, provider=provider, dates=dates, data=table)

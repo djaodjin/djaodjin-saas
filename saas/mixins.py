@@ -46,6 +46,8 @@ from .utils import (build_absolute_uri, datetime_or_now,
     full_name_natural_split, get_organization_model, get_role_model,
     handle_uniq_error, update_context_urls, validate_redirect_url)
 from .extras import OrganizationMixinBase
+from .metrics.base import (hour_periods, day_periods, week_periods,
+                           month_periods, year_periods)
 
 LOGGER = logging.getLogger(__name__)
 
@@ -599,6 +601,16 @@ class DateRangeContextMixin(object):
 
     forced_date_range = True
 
+    # A function-map that uses the older month_periods function
+    # and newer functions for the rest of the periods
+    PERIOD_FUNC_MAP = {
+        'monthly': month_periods,
+        'daily': day_periods,
+        'hourly': hour_periods,
+        'weekly': week_periods,
+        'yearly': year_periods
+    }
+
     @property
     def start_at(self):
         if not hasattr(self, '_start_at'):
@@ -630,6 +642,14 @@ class DateRangeContextMixin(object):
         if self.ends_at:
             context.update({'ends_at': self.ends_at})
         return context
+
+    @property
+    def period_func(self):
+        # Returns the period function from the request with a default
+        # set to month_periods
+        period = self.request.GET.get('period')
+        return self.PERIOD_FUNC_MAP.get(period, month_periods)
+
 
 
 class InvoicablesMixin(OrganizationMixin):

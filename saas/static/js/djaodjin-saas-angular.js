@@ -917,6 +917,7 @@ metricsControllers.controller("metricsCtrl",
             $scope.ends_at = $scope.ends_at.toDate();
         }
     }
+    $scope.period = 'monthly';
 
     // these aren't documented; do they do anything?
     $scope.formats = ["MMM dd, yyyy", "yyyy/MM/dd"];
@@ -961,7 +962,10 @@ metricsControllers.controller("metricsCtrl",
     };
 
     $scope.query = function(queryset) {
-        var params = {"ends_at": moment($scope.ends_at).format()};
+        var params = {
+            "ends_at": moment($scope.ends_at).format(),
+            "period": $scope.period,
+        };
         if( $scope.timezone !== 'utc' ) {
             params["timezone"] = moment.tz.guess();
         }
@@ -992,9 +996,10 @@ metricsControllers.controller("metricsCtrl",
         });
     };
 
-    $scope.prepareCurrentTabData = function(ends_at, timezone) {
+    $scope.prepareCurrentTabData = function(ends_at, timezone, period) {
         $scope.ends_at = ends_at;
         $scope.timezone = timezone;
+        $scope.period = period;
         $scope.refreshTable();
     };
 

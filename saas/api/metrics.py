@@ -34,9 +34,10 @@ from ..compat import gettext_lazy as _, reverse, six
 from ..filters import DateRangeFilter
 from ..metrics.base import (abs_monthly_balances,
     aggregate_transactions_by_period, month_periods,
-    aggregate_transactions_change_by_period, get_different_units)
+    aggregate_transactions_change_by_period, get_different_units,
+    abs_periodic_balances)
 from ..metrics.subscriptions import (active_subscribers, churn_subscribers,
-    subscribers_age)
+    subscribers_age, active_subscribers_by_period, churn_subscribers_by_period)
 from ..metrics.transactions import lifetime_value
 from ..mixins import (CartItemSmartListMixin, CouponMixin,
     ProviderMixin, DateRangeContextMixin)
@@ -49,7 +50,9 @@ LOGGER = logging.getLogger(__name__)
 class BalancesAPIView(DateRangeContextMixin, ProviderMixin,
                       GenericAPIView):
     """
-    Retrieves 12-month trailing deferred balances
+    Retrieves deferred balances for various time periods.
+
+    Default: 12-month trailing table of revenue.
 
     Generate a table of revenue (rows) per months (columns) for a default
     balance sheet (Income, Backlog, Receivable).
@@ -139,9 +142,24 @@ class BalancesAPIView(DateRangeContextMixin, ProviderMixin,
         unit = settings.DEFAULT_UNIT
         for key in [Transaction.INCOME, Transaction.BACKLOG,
                     Transaction.RECEIVABLE]:
-            values, _unit = abs_monthly_balances(
-                organization=self.provider, account=key,
-                until=self.ends_at, tz=self.timezone)
+            # Common arguments needed for both monthly and custom
+            # period balances
+            common_args = {
+                'organization': self.provider,
+                'account': key,
+                'until': self.ends_at,
+                'tz': self.timezone
+            }
+            # If the period is monthly, use the existing monthly
+            # balance function
+            if self.period_func == month_periods:
+                values, _unit = abs_monthly_balances(**common_args)
+            # If the period is not monthly, add extra arguments and use
+            # abs_periodic_balances
+            else:
+                values, _unit = abs_periodic_balances(
+                    period_func=self.period_func, periods=12,
+                    **common_args)
 
             if _unit:
                 unit = _unit
@@ -157,7 +175,9 @@ class BalancesAPIView(DateRangeContextMixin, ProviderMixin,
 class RevenueMetricAPIView(DateRangeContextMixin, ProviderMixin,
                            GenericAPIView):
     """
-    Retrieves 12-month trailing revenue
+    Retrieves trailing revenue data for various time periods.
+
+    Default: 12-month trailing data for sales, payments, and refunds.
 
     Produces sales, payments and refunds over a period of time.
 
@@ -281,8 +301,8 @@ class RevenueMetricAPIView(DateRangeContextMixin, ProviderMixin,
     def get(self, request, *args, **kwargs):
         #pylint:disable=unused-argument
         dates = convert_dates_to_utc(
-            month_periods(12, self.ends_at, tz=self.timezone))
-
+            self.period_func(12, from_date=self.ends_at, tz=self.timezone)
+        )
         unit = settings.DEFAULT_UNIT
 
         account_table, _, _, table_unit = \
@@ -393,7 +413,9 @@ class CouponUsesAPIView(CartItemSmartListMixin, CouponUsesQuerysetMixin,
 class CustomerMetricAPIView(DateRangeContextMixin, ProviderMixin,
                             GenericAPIView):
     """
-    Retrieves 12-month trailing customer counts
+    Retrieves trailing customer count for various time periods.
+
+    Default: 12-month trailing customer count.
 
     The API is typically used within an HTML
     `revenue page </docs/guides/themes/#dashboard_metrics_revenue>`_
@@ -500,7 +522,8 @@ class CustomerMetricAPIView(DateRangeContextMixin, ProviderMixin,
         # or orders, not the number of payments.
 
         dates = convert_dates_to_utc(
-            month_periods(12, self.ends_at, tz=self.timezone))
+            self.period_func(12, self.ends_at, tz=self.timezone)
+        )
         _, customer_table, customer_extra, _ = \
             aggregate_transactions_change_by_period(self.provider, account,
                 account_title=account_title,
@@ -605,7 +628,9 @@ class LifetimeValueMetricAPIView(LifetimeValueMetricMixin, ListAPIView):
 
 class PlanMetricAPIView(DateRangeContextMixin, ProviderMixin, GenericAPIView):
     """
-    Retrieves 12-month trailing plans performance
+    Retrieves trailing plans performance for various time periods.
+
+    Default: 12-month trailing data.
 
     The API is typically used within an HTML
     `plans metrics page </docs/guides/themes/#dashboard_metrics_plans>`_
@@ -696,23 +721,52 @@ class PlanMetricAPIView(DateRangeContextMixin, ProviderMixin, GenericAPIView):
     filter_backends = (DateRangeFilter,)
 
     def get(self, request, *args, **kwargs):
-        #pylint:disable=unused-argument
+        # pylint:disable=unused-argument
         table = []
+
+        common_args = {
+            'from_date': self.ends_at,
+            'tz': self.timezone,
+        }
+
         for plan in Plan.objects.filter(
                 organization=self.provider).order_by('title'):
-            values = active_subscribers(
-                plan, from_date=self.ends_at, tz=self.timezone)
+
+            # If we're using monthly periods, get the active subscribers using
+            # the month_periods function.
+
+            if self.period_func == month_periods:
+                values = active_subscribers(plan, **common_args)
+            else:
+                # If it's not monthly, we need to use active_subscribers_by_period
+                # and add more details like 'periods'.
+                specific_args = {'period_func': self.period_func, 'periods': 12}
+                values = active_subscribers_by_period(plan, **{**common_args,
+                                                               **specific_args})
+
             table.append({
                 'slug': plan.slug,
                 'title': plan.title,
                 'values': values,
-                'location': reverse(
-                    'saas_plan_edit', args=(self.provider, plan)),
-                'is_active': plan.is_active})
+                'location': reverse('saas_plan_edit', args=(self.provider,
+                                                            plan)),
+                'is_active': plan.is_active
+            })
+
+        # Similar to above, but for churn metrics. Monthly periods use older function.
+        if self.period_func == month_periods:
+            extra_values = churn_subscribers(**common_args)
+        else:
+            # For other periods, add 'period_func' and get churn values using
+            # churn_subscribers_by_period.
+            specific_args = {'period_func': self.period_func}
+            extra_values = churn_subscribers_by_period(**{**common_args,
+                                                          **specific_args})
+
         extra = [{
             'slug': 'churn',
-            'values': churn_subscribers(
-                from_date=self.ends_at, tz=self.timezone)}]
+            'values': extra_values
+        }]
 
         return Response({
             'title': _("Active subscribers"),

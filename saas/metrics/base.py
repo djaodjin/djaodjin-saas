@@ -36,13 +36,12 @@ from ..utils import datetime_or_now, parse_tz, convert_dates_to_utc
 
 LOGGER = logging.getLogger(__name__)
 
-
-def _handle_tz(at_time, tz_ob, orig_tz):
-    if tz_ob:
+def localize_time(time_to_convert, target_timezone, original_timezone):
+    if target_timezone:
         # adding timezone info
         # + accounting for DST
-        return tz_ob.localize(at_time)
-    return at_time.replace(tzinfo=orig_tz)
+        return target_timezone.localize(time_to_convert)
+    return time_to_convert.replace(tzinfo=original_timezone)
 
 
 def month_periods(nb_months=12, from_date=None, step_months=1,
@@ -79,11 +78,11 @@ def month_periods(nb_months=12, from_date=None, step_months=1,
     if tz_ob:
         from_date = from_date.astimezone(tz_ob)
     dates.append(from_date)
-    last = _handle_tz(
+    last = localize_time(
         datetime(day=from_date.day, month=from_date.month, year=from_date.year),
         tz_ob, orig_tz)
     if last.day != 1:
-        last = _handle_tz(
+        last = localize_time(
             datetime(day=1, month=last.month, year=last.year),
             tz_ob, orig_tz)
         dates.append(last)
@@ -101,33 +100,89 @@ def month_periods(nb_months=12, from_date=None, step_months=1,
             else:
                 month = month % 12
         last = datetime(day=1, month=month, year=year)
-        last = _handle_tz(last, tz_ob, orig_tz)
+        last = localize_time(last, tz_ob, orig_tz)
         dates.append(last)
     dates.reverse()
 
     return dates
 
 
-def day_periods(nb_days=7, from_date=None, step_days=1, tz=None):
-    #pylint:disable=invalid-name
-    dates = []
-    from_date = datetime_or_now(from_date)
-    orig_tz = from_date.tzinfo
-    tz_ob = parse_tz(tz)
-    if tz_ob:
-        from_date = from_date.astimezone(tz_ob)
-    dates.append(from_date)
-    last = _handle_tz(datetime(day=from_date.day, month=from_date.month,
-        year=from_date.year), tz_ob, orig_tz)
-    if last != from_date:
-        nb_days -= 1
-        dates.append(last)
-    for _ in range(1, nb_days):
-        last = last - relativedelta(days=step_days)
-        dates.append(last)
-    dates.reverse()
+def set_to_start_of_period(date, time_unit):
+    # Define common time attributes to reset
+    common_replacements = {"minute": 0, "second": 0, "microsecond": 0}
 
-    return dates
+    # Reset attributes based on time_unit
+    if time_unit == 'hour':
+        date = date.replace(**common_replacements)
+    if time_unit == 'day':
+        date = date.replace(hour=0, **common_replacements)
+    elif time_unit == 'week':
+        date = date - relativedelta(days=date.weekday())
+        date = date.replace(hour=0, **common_replacements)
+    elif time_unit == 'month':
+        date = date.replace(day=1, hour=0, **common_replacements)
+    elif time_unit == 'year':
+        date = date.replace(day=1, month=1, hour=0, **common_replacements)
+    return date
+
+
+def _generate_periods(time_unit, num_units, start_date, step_units, timezone_str, include_start_date=True):
+    period_dates = []
+    start_date = datetime_or_now(start_date)
+    original_timezone = start_date.tzinfo
+
+    target_timezone = parse_tz(timezone_str)
+    if target_timezone:
+        start_date = start_date.astimezone(target_timezone)
+
+    # Create a naive version of start_date
+    start_date_naive = start_date.replace(tzinfo=None)
+
+    # Check if start_date_naive is the start of a time period
+    is_start_date_first_of_period = start_date_naive == set_to_start_of_period(start_date_naive, time_unit)
+
+    # Include the unaltered start_date if applicable
+    if include_start_date and not is_start_date_first_of_period:
+        current_time = localize_time(start_date_naive, target_timezone, original_timezone)
+        period_dates.append(current_time)
+
+    # Adjust num_units based on include_start_date
+    if not include_start_date:
+        num_units += 1
+    if is_start_date_first_of_period and include_start_date:
+        num_units += 1
+
+    # Generate period dates
+    for i in range(num_units):
+        delta_args = {f"{time_unit}s": -i * step_units}
+        next_date = start_date_naive + relativedelta(**delta_args)
+
+        datetime_object = set_to_start_of_period(next_date, time_unit)
+        last_date = localize_time(datetime_object, target_timezone, original_timezone)
+
+        period_dates.append(last_date)
+
+    return list(reversed(period_dates))
+
+
+def hour_periods(periods=12, from_date=None, step_units=1, tz=None, include_start_date=True):
+    return _generate_periods('hour', periods, from_date, step_units, tz, include_start_date=include_start_date)
+
+
+def day_periods(periods=12, from_date=None, step_units=1, tz=None, include_start_date=True):
+    return _generate_periods('day', periods, from_date, step_units, tz, include_start_date=include_start_date)
+
+
+def week_periods(periods=12, from_date=None, step_units=1, tz=None, include_start_date=True):
+    return _generate_periods('week', periods, from_date, step_units, tz, include_start_date=include_start_date)
+
+
+def month_periods_v2(periods=12, from_date=None, step_units=1, tz=None, include_start_date=True):
+    return _generate_periods('month', periods, from_date, step_units, tz, include_start_date=include_start_date)
+
+
+def year_periods(periods=12, from_date=None, step_units=1, tz=None, include_start_date=True):
+    return _generate_periods('year', periods, from_date, step_units, tz, include_start_date=include_start_date)
 
 
 def aggregate_transactions_by_period(organization, account, date_periods,
@@ -382,6 +437,28 @@ def monthly_balances(organization=None, account=None, like_account=None,
     unit = None
     for end_period in convert_dates_to_utc(month_periods(
             from_date=until, step_months=step_months, tz=tz)):
+        balance = Transaction.objects.get_balance(organization=organization,
+            account=account, like_account=like_account, ends_at=end_period)
+        values.append([end_period, balance['amount']])
+        _unit = balance.get('unit')
+        if _unit:
+            unit = _unit
+    return values, unit
+
+def abs_periodic_balances(organization=None, account=None, like_account=None,
+                         until=None, period_func=month_periods, step_units=1, tz=None, periods=12):
+    balances, unit = periodic_balances(organization=organization,
+        account=account, like_account=like_account,
+        until=until, period_func=period_func, step_units=step_units, tz=tz, periods=periods)
+    return [(item[0], abs(item[1])) for item in balances], unit
+
+
+def periodic_balances(organization=None, account=None, like_account=None,
+                     until=None, period_func=None, periods=12, step_units=1, tz=None):
+    values = []
+    unit = None
+    for end_period in convert_dates_to_utc(period_func(from_date=until, step_units=step_units, tz=tz,
+                                                       include_start_date=True, periods=periods)):
         balance = Transaction.objects.get_balance(organization=organization,
             account=account, like_account=like_account, ends_at=end_period)
         values.append([end_period, balance['amount']])
