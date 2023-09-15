@@ -12,6 +12,18 @@ Roadmap
 Released versions
 =================
 
+0.18.0
+
+  * adds APIs for agreements
+  * adds expiration date to roles (migrations)
+  * renames `agreement.modified` to `agreement.updated_at` (migrations)
+  * reduces number of query in list APIs by using `select_related`
+  * simplifies personal profile to organization profile convertion
+  * fixes `expand` argument specified twice (#270)
+  * fixes display of coupons restricted to plan
+
+ -- Sebastien Mirolo <smirolo@djaodjin.com>  Fri, 15 Aug 2023 15:40:00 -0700
+
 0.17.1
 
   * compatibles with Bootstrap5

@@ -2,7 +2,6 @@ DjaoDjin-SaaS
 =============
 
 [![Documentation Status](https://readthedocs.org/projects/djaodjin-saas/badge/?version=latest)](https://djaodjin-saas.readthedocs.io/en/latest/?badge=latest)
-
 [![PyPI version](https://badge.fury.io/py/djaodjin-saas.svg)](https://badge.fury.io/py/djaodjin-saas)
 
 djaodjin-saas is a Django application that implements the logic to support
@@ -106,11 +105,14 @@ Tested with
 - **Python:** 3.10, **Django:** 4.2 (latest)
 - **Python:** 2.7, **Django:** 1.11 (legacy) - use testsite/requirements-legacy.txt
 
-0.17.1
+0.18.0
 
-  * compatibles with Bootstrap5
-  * verifies request.user e-mail whenever we attempt an implicit grant
-  * only returns active profiles in typeahead (fix)
-  * limits refund per line item (fix)
+  * adds APIs for agreements
+  * adds expiration date to roles (migrations)
+  * renames `agreement.modified` to `agreement.updated_at` (migrations)
+  * reduces number of query in list APIs by using `select_related`
+  * simplifies personal profile to organization profile convertion
+  * fixes `expand` argument specified twice (#270)
+  * fixes display of coupons restricted to plan
 
 [previous release notes](changelog)
