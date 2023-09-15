@@ -58,19 +58,20 @@ class Command(BaseCommand):
         parser.add_argument(
             '--period', action='store',
             dest='period', default='weekly',
-            choices=[x[1].lower() for x in Plan.INTERVAL_CHOICES],
+            choices=[choice[1].lower() for choice in Plan.INTERVAL_CHOICES],
             help='Specifies the period to generate reports for'
         )
 
     @staticmethod
     def construct_date_periods(at_time, period='weekly', timezone=None):
+        # discarding time, keeping utc tzinfo (00:00:00 utc)
         tzinfo = parse_tz(timezone)
+
         def localize_time(time):
             # we are interested in 00:00 local time, if we don't have
             # local time zone, fall back to 00:00 utc time
             # in case we have local timezone, replace utc with it
             return tzinfo.localize(time.replace(tzinfo=None)) if tzinfo else time
-
 
         base_time = at_time.replace(
             minute=0 if period != 'yearly' else at_time.minute,

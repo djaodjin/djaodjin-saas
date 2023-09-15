@@ -50,12 +50,13 @@ LOGGER = logging.getLogger(__name__)
 class BalancesAPIView(DateRangeContextMixin, ProviderMixin,
                       GenericAPIView):
     """
-    Retrieves deferred balances for various time periods.
-
-    Default: 12-month trailing table of revenue.
+    Retrieves 12-month trailing deferred balances
 
     Generate a table of revenue (rows) per months (columns) for a default
     balance sheet (Income, Backlog, Receivable).
+
+    Also supports other time periods to retrieve data for: hourly, daily,
+    weekly, yearly.
 
     **Tags**: chart, metrics, provider, transactionmodel
 
@@ -175,11 +176,12 @@ class BalancesAPIView(DateRangeContextMixin, ProviderMixin,
 class RevenueMetricAPIView(DateRangeContextMixin, ProviderMixin,
                            GenericAPIView):
     """
-    Retrieves trailing revenue data for various time periods.
-
-    Default: 12-month trailing data for sales, payments, and refunds.
+    Retrieves 12-month trailing revenue.
 
     Produces sales, payments and refunds over a period of time.
+
+    Also supports other time periods to retrieve data for: hourly, daily,
+    weekly, yearly.
 
     The API is typically used within an HTML
     `revenue page </docs/guides/themes/#dashboard_metrics_revenue>`_
@@ -413,9 +415,10 @@ class CouponUsesAPIView(CartItemSmartListMixin, CouponUsesQuerysetMixin,
 class CustomerMetricAPIView(DateRangeContextMixin, ProviderMixin,
                             GenericAPIView):
     """
-    Retrieves trailing customer count for various time periods.
+    Retrieves 12-month trailing customer counts.
 
-    Default: 12-month trailing customer count.
+    Also supports other time periods to retrieve data for: hourly, daily,
+    weekly, yearly.
 
     The API is typically used within an HTML
     `revenue page </docs/guides/themes/#dashboard_metrics_revenue>`_
@@ -628,9 +631,10 @@ class LifetimeValueMetricAPIView(LifetimeValueMetricMixin, ListAPIView):
 
 class PlanMetricAPIView(DateRangeContextMixin, ProviderMixin, GenericAPIView):
     """
-    Retrieves trailing plans performance for various time periods.
+    Retrieves 12-month trailing plans performance
 
-    Default: 12-month trailing data.
+    Also supports other time periods to retrieve data for: hourly, daily,
+    weekly, yearly.
 
     The API is typically used within an HTML
     `plans metrics page </docs/guides/themes/#dashboard_metrics_plans>`_
