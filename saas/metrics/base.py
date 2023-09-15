@@ -33,6 +33,8 @@ from django.db.models.sql.query import RawQuery
 from ..compat import six
 from ..models import Plan, Transaction
 from ..utils import datetime_or_now, parse_tz, convert_dates_to_utc
+from ..humanize import (HOURLY, DAILY, WEEKLY, MONTHLY, YEARLY,
+                        _describe_period_name)
 
 LOGGER = logging.getLogger(__name__)
 
@@ -112,16 +114,16 @@ def set_to_start_of_period(date, time_unit):
     common_replacements = {"minute": 0, "second": 0, "microsecond": 0}
 
     # Reset attributes based on time_unit
-    if time_unit == 'hour':
+    if time_unit == HOURLY:
         date = date.replace(**common_replacements)
-    if time_unit == 'day':
+    elif time_unit == DAILY:
         date = date.replace(hour=0, **common_replacements)
-    elif time_unit == 'week':
+    elif time_unit == WEEKLY:
         date = date - relativedelta(days=date.weekday())
         date = date.replace(hour=0, **common_replacements)
-    elif time_unit == 'month':
+    elif time_unit == MONTHLY:
         date = date.replace(day=1, hour=0, **common_replacements)
-    elif time_unit == 'year':
+    elif time_unit == YEARLY:
         date = date.replace(day=1, month=1, hour=0, **common_replacements)
     return date
 
@@ -154,7 +156,8 @@ def _generate_periods(time_unit, num_units, start_date, step_units, timezone_str
 
     # Generate period dates
     for i in range(num_units):
-        delta_args = {f"{time_unit}s": -i * step_units}
+        time_unit_str = _describe_period_name(time_unit, 2)
+        delta_args = {f"{time_unit_str}": -i * step_units}
         next_date = start_date_naive + relativedelta(**delta_args)
 
         datetime_object = set_to_start_of_period(next_date, time_unit)
@@ -166,23 +169,23 @@ def _generate_periods(time_unit, num_units, start_date, step_units, timezone_str
 
 
 def hour_periods(periods=12, from_date=None, step_units=1, tz=None, include_start_date=True):
-    return _generate_periods('hour', periods, from_date, step_units, tz, include_start_date=include_start_date)
+    return _generate_periods(HOURLY, periods, from_date, step_units, tz, include_start_date=include_start_date)
 
 
 def day_periods(periods=12, from_date=None, step_units=1, tz=None, include_start_date=True):
-    return _generate_periods('day', periods, from_date, step_units, tz, include_start_date=include_start_date)
+    return _generate_periods(DAILY, periods, from_date, step_units, tz, include_start_date=include_start_date)
 
 
 def week_periods(periods=12, from_date=None, step_units=1, tz=None, include_start_date=True):
-    return _generate_periods('week', periods, from_date, step_units, tz, include_start_date=include_start_date)
+    return _generate_periods(WEEKLY, periods, from_date, step_units, tz, include_start_date=include_start_date)
 
 
 def month_periods_v2(periods=12, from_date=None, step_units=1, tz=None, include_start_date=True):
-    return _generate_periods('month', periods, from_date, step_units, tz, include_start_date=include_start_date)
+    return _generate_periods(MONTHLY, periods, from_date, step_units, tz, include_start_date=include_start_date)
 
 
 def year_periods(periods=12, from_date=None, step_units=1, tz=None, include_start_date=True):
-    return _generate_periods('year', periods, from_date, step_units, tz, include_start_date=include_start_date)
+    return _generate_periods(YEARLY, periods, from_date, step_units, tz, include_start_date=include_start_date)
 
 
 def aggregate_transactions_by_period(organization, account, date_periods,
