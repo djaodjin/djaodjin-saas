@@ -241,8 +241,16 @@ class AgreementUpdateAPIView(UpdateModelMixin, DestroyModelMixin,
                 "text": "..."
             }
     """
-    serializer_class = AgreementUpdateSerializer
+    serializer_class = AgreementDetailSerializer
+    lookup_url_kwarg = 'document'
 
+    def get_serializer_class(self):
+        if self.request.method.lower() in ('put', 'patch'):
+            return AgreementUpdateSerializer
+        return super(AgreementUpdateAPIView, self).get_serializer_class()
+
+    @swagger_auto_schema(responses={
+        200: OpenAPIResponse("", AgreementDetailSerializer)})
     def put(self, request, *args, **kwargs): #pylint:disable=unused-argument
         """
         Updates a legal agreement
@@ -277,11 +285,14 @@ class AgreementUpdateAPIView(UpdateModelMixin, DestroyModelMixin,
             {
                 "slug": "terms-of-use",
                 "title": "Terms of Use",
-                "updated_at": "2023-08-16T00:00:00Z"
+                "updated_at": "2023-08-16T00:00:00Z",
+                "text": "..."
             }
         """
         return self.update(request, *args, **kwargs)
 
+    @swagger_auto_schema(responses={
+        200: OpenAPIResponse("", AgreementDetailSerializer)})
     def patch(self, request, *args, **kwargs):
         return self.partial_update(request, *args, **kwargs)
 

@@ -2288,17 +2288,15 @@ Vue.component('roledescr-list', {
     data: function() {
         return {
             url: this.$urls.organization.api_role_descriptions,
-            role: {
-                title: '',
-            },
+            newItem: {title: ''},
         }
     },
     methods: {
-        create: function(){
+        save: function(){
             var vm = this;
-            vm.reqPost(vm.url, vm.role,
+            vm.reqPost(vm.url, vm.newItem,
             function() {
-                vm.role.title = '';
+                vm.newItem.title = '';
                 vm.params.page = 1;
                 vm.get()
             });

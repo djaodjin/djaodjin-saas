@@ -37,7 +37,9 @@ from ...compat import path, re_path
 
 
 urlpatterns = [
-    path('agreements/<slug:agreement>',
+    path('agreements/<slug:document>',# We use `document`, not `agreement` here
+         # to avoid the `fail_agreement` decorator to send us a curve ball
+         # asking to sign a document we just uploaded.
         AgreementUpdateAPIView.as_view(), name='saas_api_agreement_detail'),
     path('agreements',
         AgreementListCreateAPIView.as_view(), name='saas_api_agreements'),

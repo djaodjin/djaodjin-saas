@@ -53,8 +53,9 @@ from ..compat import gettext_lazy as _, reverse, six
 from ..decorators import _valid_manager
 from ..humanize import as_money
 from ..mixins import as_html_description, product_url, read_agreement_file
-from ..models import (AdvanceDiscount, Agreement, BalanceLine, CartItem,
-    Charge, Coupon, Plan, RoleDescription, Subscription, Transaction, UseCharge)
+from ..models import (get_broker, AdvanceDiscount, Agreement, BalanceLine,
+    CartItem, Charge, Coupon, Plan, RoleDescription, Subscription, Transaction,
+    UseCharge)
 from ..utils import (build_absolute_uri, get_organization_model, get_role_model,
     get_user_serializer, get_user_detail_serializer)
 
@@ -1032,12 +1033,37 @@ class RoleDescriptionSerializer(serializers.ModelSerializer):
     is_global = serializers.BooleanField(read_only=True,
         help_text=_("True when the role type is available for all profiles"))
 
+    # `editable` means the request user can update / delete the role
+    # description.
+    editable = serializers.SerializerMethodField(
+        help_text=_("True if the request user is able to update the"\
+        " role description. Typically a profile manager"\
+        " for the organization (local role description) or the broker"\
+        " (global role descriptions)."))
+
     class Meta:
         model = RoleDescription
         fields = ('created_at', 'slug', 'title',
                   'skip_optin_on_grant', 'implicit_create_on_none',
-                  'is_global', 'profile', 'extra')
-        read_only_fields = ('created_at', 'slug', 'is_global')
+                  'is_global', 'profile', 'extra', 'editable')
+        read_only_fields = ('created_at', 'slug', 'is_global', 'editable')
+
+    def get_editable(self, obj):
+        candidates = [get_broker()]
+        try:
+            if obj.organization:
+                candidates += [obj.organization]
+        except AttributeError:
+            # serializers for notification will use this serializer,
+            # though passing dictionnaries instead of an object.
+            # the `editable` field was never intended for notifications
+            # so it is ok to ignore here.
+            pass
+        # In notifications (triggered by signals), we will not have
+        # `request` in the context either.
+        if 'request' in self.context:
+            return bool(_valid_manager(self.context['request'], candidates))
+        return False
 
 
 class AccessibleSerializer(serializers.ModelSerializer):
@@ -1243,6 +1269,9 @@ class AgreementCreateSerializer(AgreementUpdateSerializer):
     """
     Serializer to create an agreement
     """
+    updated_at = serializers.DateTimeField(required=False,
+        help_text=_("Date/time of  (in ISO format)"))
+
     class Meta(AgreementUpdateSerializer.Meta):
         model = AgreementUpdateSerializer.Meta.model
         fields = AgreementUpdateSerializer.Meta.fields

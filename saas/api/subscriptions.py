@@ -391,7 +391,6 @@ class PlanSubscriptionDetailAPIView(SubscriptionDetailMixin,
           },
           "description": null,
           "auto_renew": true,
-          "editable": true,
           "extra": null,
           "grant_key": null,
           "request_key": null
@@ -468,7 +467,6 @@ class PlanSubscriptionDetailAPIView(SubscriptionDetailMixin,
                 },
                 "description": null,
                 "auto_renew": true,
-                "editable": true,
                 "extra": null,
                 "grant_key": null,
                 "request_key": null
@@ -1057,7 +1055,6 @@ a00000d0a0000001234567890123456789012345 HTTP/1.1
                 "title": "Open Space"
               },
               "auto_renew": true,
-              "editable": true,
               "extra": null,
               "grant_key": null,
               "request_key": null

@@ -1263,6 +1263,12 @@ class RoleDescription(SlugTitleMixin, models.Model):
     to another ``User``, the grantee is required to opt-in the relationship
     unless ``skip_optin_on_grant`` is ``True``. Then the newly created
     relationship is effective immediately.
+
+    In ``Plan`` instances, ``plan.organization`` cannot be ``None`` so
+    in a SaaS Web application setting, plans belongs to the broker explicitely.
+    In ``RoleDescription`` instances, When ``role_description.organization``
+    is ``None``, it is a role description available to all profiles. It
+    is thus possible to define role descriptions that are broker-specific.
     """
 
     created_at = models.DateTimeField(auto_now_add=True,

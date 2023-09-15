@@ -1,5 +1,13 @@
 [
 {
+    "fields": {
+      "slug": "security",
+      "title": "Security Policy",
+      "updated_at": "2023-01-01T00:00:00+00:00"
+    },
+    "model": "saas.agreement", "pk": 2
+},
+{
   "fields": {
     "slug": "basic",
     "title": "Basic",
@@ -63,7 +71,6 @@
 {
     "fields": {
       "created_at": "2023-01-01T00:00:00+00:00",
-      "organization": 2,
       "slug": "contributor",
       "title": "Contributor"
     },
