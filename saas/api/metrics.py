@@ -28,7 +28,7 @@ from rest_framework.generics import GenericAPIView, ListAPIView
 from rest_framework.response import Response
 
 from .serializers import (CartItemSerializer, LifetimeSerializer,
-    MetricsSerializer)
+    MetricsSerializer, PeriodSerializer)
 from .. import settings
 from ..compat import gettext_lazy as _, reverse, six
 from ..filters import DateRangeFilter
@@ -43,6 +43,7 @@ from ..mixins import (CartItemSmartListMixin, CouponMixin,
     ProviderMixin, DateRangeContextMixin)
 from ..models import CartItem, Plan, Transaction
 from ..utils import convert_dates_to_utc, get_organization_model
+from ..docs import swagger_auto_schema
 
 LOGGER = logging.getLogger(__name__)
 
@@ -54,9 +55,6 @@ class BalancesAPIView(DateRangeContextMixin, ProviderMixin,
 
     Generate a table of revenue (rows) per months (columns) for a default
     balance sheet (Income, Backlog, Receivable).
-
-    Also supports other time periods to retrieve data for: hourly, daily,
-    weekly, yearly.
 
     **Tags**: chart, metrics, provider, transactionmodel
 
@@ -137,30 +135,41 @@ class BalancesAPIView(DateRangeContextMixin, ProviderMixin,
     """
     serializer_class = MetricsSerializer
     filter_backends = (DateRangeFilter,)
+    queryset = Transaction.objects.all()
+    from drf_spectacular.utils import extend_schema
 
-    def get(self, request, *args, **kwargs): #pylint: disable=unused-argument
+    @extend_schema(request=PeriodSerializer)
+    def get(self, request, *args, **kwargs):
+
+        #pylint: disable=unused-argument
         result = []
         unit = settings.DEFAULT_UNIT
         for key in [Transaction.INCOME, Transaction.BACKLOG,
                     Transaction.RECEIVABLE]:
             # Common arguments needed for both monthly and custom
             # period balances
-            common_args = {
+            period_func_kwargs = {
                 'organization': self.provider,
                 'account': key,
                 'until': self.ends_at,
-                'tz': self.timezone
+                'tz': self.timezone,
             }
+            if self.num_periods:
+                # If a num_periods argument is passed in, we use 'nb_months'
+                # or 'periods' depending on the period used
+                arg_name = 'nb_months' if self.period_func == month_periods \
+                    else 'num_periods'
+                period_func_kwargs[arg_name] = self.num_periods
+
             # If the period is monthly, use the existing monthly
             # balance function
             if self.period_func == month_periods:
-                values, _unit = abs_monthly_balances(**common_args)
-            # If the period is not monthly, add extra arguments and use
-            # abs_periodic_balances
+                values, _unit = abs_monthly_balances(**period_func_kwargs)
+            # If the period is not monthly, use abs_periodic_balances
             else:
                 values, _unit = abs_periodic_balances(
-                    period_func=self.period_func, periods=12,
-                    **common_args)
+                    period_func=self.period_func,
+                    **period_func_kwargs)
 
             if _unit:
                 unit = _unit
@@ -176,12 +185,9 @@ class BalancesAPIView(DateRangeContextMixin, ProviderMixin,
 class RevenueMetricAPIView(DateRangeContextMixin, ProviderMixin,
                            GenericAPIView):
     """
-    Retrieves 12-month trailing revenue.
+    Retrieves 12-month trailing revenue
 
     Produces sales, payments and refunds over a period of time.
-
-    Also supports other time periods to retrieve data for: hourly, daily,
-    weekly, yearly.
 
     The API is typically used within an HTML
     `revenue page </docs/guides/themes/#dashboard_metrics_revenue>`_
@@ -300,11 +306,19 @@ class RevenueMetricAPIView(DateRangeContextMixin, ProviderMixin,
     serializer_class = MetricsSerializer
     filter_backends = (DateRangeFilter,)
 
+    @swagger_auto_schema(query_serializer=PeriodSerializer)
     def get(self, request, *args, **kwargs):
         #pylint:disable=unused-argument
+        period_func_kwargs = {'from_date': self.ends_at,
+                              'tz': self.timezone}
+
+        if self.num_periods:
+            arg_name = 'nb_months' if (self.period_func ==
+                                       month_periods) else 'periods'
+            period_func_kwargs[arg_name] = self.num_periods
+
         dates = convert_dates_to_utc(
-            self.period_func(12, from_date=self.ends_at, tz=self.timezone)
-        )
+            self.period_func(**period_func_kwargs))
         unit = settings.DEFAULT_UNIT
 
         account_table, _, _, table_unit = \
@@ -415,10 +429,7 @@ class CouponUsesAPIView(CartItemSmartListMixin, CouponUsesQuerysetMixin,
 class CustomerMetricAPIView(DateRangeContextMixin, ProviderMixin,
                             GenericAPIView):
     """
-    Retrieves 12-month trailing customer counts.
-
-    Also supports other time periods to retrieve data for: hourly, daily,
-    weekly, yearly.
+    Retrieves 12-month trailing customer counts
 
     The API is typically used within an HTML
     `revenue page </docs/guides/themes/#dashboard_metrics_revenue>`_
@@ -517,15 +528,21 @@ class CustomerMetricAPIView(DateRangeContextMixin, ProviderMixin,
     serializer_class = MetricsSerializer
     filter_backends = (DateRangeFilter,)
 
+    @swagger_auto_schema(query_serializer=PeriodSerializer)
     def get(self, request, *args, **kwargs):
         #pylint:disable=unused-argument
         account_title = 'Payments'
         account = Transaction.RECEIVABLE
         # We use ``Transaction.RECEIVABLE`` which technically counts the number
         # or orders, not the number of payments.
+        period_func_kwargs = {'from_date': self.ends_at, 'tz': self.timezone}
+
+        if self.num_periods:
+            arg_name = 'nb_months' if self.period_func == month_periods else 'periods'
+            period_func_kwargs[arg_name] = self.num_periods
 
         dates = convert_dates_to_utc(
-            self.period_func(12, self.ends_at, tz=self.timezone)
+            self.period_func(**period_func_kwargs)
         )
         _, customer_table, customer_extra, _ = \
             aggregate_transactions_change_by_period(self.provider, account,
@@ -633,9 +650,6 @@ class PlanMetricAPIView(DateRangeContextMixin, ProviderMixin, GenericAPIView):
     """
     Retrieves 12-month trailing plans performance
 
-    Also supports other time periods to retrieve data for: hourly, daily,
-    weekly, yearly.
-
     The API is typically used within an HTML
     `plans metrics page </docs/guides/themes/#dashboard_metrics_plans>`_
     as present in the default theme.
@@ -724,6 +738,7 @@ class PlanMetricAPIView(DateRangeContextMixin, ProviderMixin, GenericAPIView):
     serializer_class = MetricsSerializer
     filter_backends = (DateRangeFilter,)
 
+    @swagger_auto_schema(query_serializer=PeriodSerializer)
     def get(self, request, *args, **kwargs):
         # pylint:disable=unused-argument
         table = []
@@ -732,19 +747,20 @@ class PlanMetricAPIView(DateRangeContextMixin, ProviderMixin, GenericAPIView):
             'from_date': self.ends_at,
             'tz': self.timezone,
         }
+        if self.num_periods:
+            arg_name = 'nb_months' if self.period_func == month_periods else 'num_periods'
+            common_args[arg_name] = self.num_periods
 
         for plan in Plan.objects.filter(
                 organization=self.provider).order_by('title'):
 
-            # If we're using monthly periods, get the active subscribers using
-            # the month_periods function.
+            # If we're using monthly periods, we use active_subscribers.
 
             if self.period_func == month_periods:
                 values = active_subscribers(plan, **common_args)
             else:
-                # If it's not monthly, we need to use active_subscribers_by_period
-                # and add more details like 'periods'.
-                specific_args = {'period_func': self.period_func, 'periods': 12}
+                # For other periods, we use active_subscribers_by_period
+                specific_args = {'period_func': self.period_func}
                 values = active_subscribers_by_period(plan, **{**common_args,
                                                                **specific_args})
 
@@ -757,7 +773,7 @@ class PlanMetricAPIView(DateRangeContextMixin, ProviderMixin, GenericAPIView):
                 'is_active': plan.is_active
             })
 
-        # Similar to above, but for churn metrics. Monthly periods use older function.
+        # Similar to above, but for churn metrics. Monthly periods use churn_subscriber.
         if self.period_func == month_periods:
             extra_values = churn_subscribers(**common_args)
         else:

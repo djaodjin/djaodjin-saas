@@ -172,11 +172,11 @@ def hour_periods(periods=12, from_date=None, step_units=1, tz=None, include_star
     return _generate_periods(HOURLY, periods, from_date, step_units, tz, include_start_date=include_start_date)
 
 
-def day_periods(periods=12, from_date=None, step_units=1, tz=None, include_start_date=True):
+def day_periods(periods=7, from_date=None, step_units=1, tz=None, include_start_date=True):
     return _generate_periods(DAILY, periods, from_date, step_units, tz, include_start_date=include_start_date)
 
 
-def week_periods(periods=12, from_date=None, step_units=1, tz=None, include_start_date=True):
+def week_periods(periods=8, from_date=None, step_units=1, tz=None, include_start_date=True):
     return _generate_periods(WEEKLY, periods, from_date, step_units, tz, include_start_date=include_start_date)
 
 
@@ -184,7 +184,7 @@ def month_periods_v2(periods=12, from_date=None, step_units=1, tz=None, include_
     return _generate_periods(MONTHLY, periods, from_date, step_units, tz, include_start_date=include_start_date)
 
 
-def year_periods(periods=12, from_date=None, step_units=1, tz=None, include_start_date=True):
+def year_periods(periods=5, from_date=None, step_units=1, tz=None, include_start_date=True):
     return _generate_periods(YEARLY, periods, from_date, step_units, tz, include_start_date=include_start_date)
 
 
@@ -425,21 +425,21 @@ def aggregate_transactions_change_by_period(organization, account, date_periods,
 
 
 def abs_monthly_balances(organization=None, account=None, like_account=None,
-                         until=None, step_months=1, tz=None):
+                         until=None, step_months=1, tz=None, nb_months=12):
     #pylint:disable=invalid-name,too-many-arguments
     balances, unit = monthly_balances(organization=organization,
         account=account, like_account=like_account,
-        until=until, step_months=step_months, tz=tz)
+        until=until, step_months=step_months, tz=tz, nb_months=nb_months)
     return [(item[0], abs(item[1])) for item in balances], unit
 
 
 def monthly_balances(organization=None, account=None, like_account=None,
-                     until=None, step_months=1, tz=None):
+                     until=None, step_months=1, tz=None, nb_months=12):
     #pylint:disable=invalid-name,too-many-arguments
     values = []
     unit = None
     for end_period in convert_dates_to_utc(month_periods(
-            from_date=until, step_months=step_months, tz=tz)):
+            from_date=until, step_months=step_months, tz=tz, nb_months=nb_months)):
         balance = Transaction.objects.get_balance(organization=organization,
             account=account, like_account=like_account, ends_at=end_period)
         values.append([end_period, balance['amount']])
@@ -449,19 +449,26 @@ def monthly_balances(organization=None, account=None, like_account=None,
     return values, unit
 
 def abs_periodic_balances(organization=None, account=None, like_account=None,
-                         until=None, period_func=month_periods, step_units=1, tz=None, periods=12):
+                         until=None, period_func=month_periods, step_units=1, tz=None,
+                         num_periods=None):
     balances, unit = periodic_balances(organization=organization,
         account=account, like_account=like_account,
-        until=until, period_func=period_func, step_units=step_units, tz=tz, periods=periods)
+        until=until, period_func=period_func, step_units=step_units, tz=tz,
+        num_periods=num_periods)
     return [(item[0], abs(item[1])) for item in balances], unit
 
 
 def periodic_balances(organization=None, account=None, like_account=None,
-                     until=None, period_func=None, periods=12, step_units=1, tz=None):
+                     until=None, period_func=None, step_units=1, tz=None,
+                     num_periods=None):
     values = []
     unit = None
-    for end_period in convert_dates_to_utc(period_func(from_date=until, step_units=step_units, tz=tz,
-                                                       include_start_date=True, periods=periods)):
+    period_func_kwargs = {'from_date': until, 'step_units': step_units, 'tz': tz,
+                   'include_start_date': True}
+    if num_periods:
+        period_func_kwargs['periods'] = num_periods
+
+    for end_period in convert_dates_to_utc(period_func(**period_func_kwargs)):
         balance = Transaction.objects.get_balance(organization=organization,
             account=account, like_account=like_account, ends_at=end_period)
         values.append([end_period, balance['amount']])

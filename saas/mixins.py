@@ -650,6 +650,21 @@ class DateRangeContextMixin(object):
         period = self.request.GET.get('period')
         return self.PERIOD_FUNC_MAP.get(period, month_periods)
 
+    @property
+    def num_periods(self):
+        if not hasattr(self, '_num_periods'):
+            num_periods = self.request.GET.get('num_periods', None)
+            try:
+                # Keeping the maximum value of num_periods to 100
+                if num_periods and 0 < int(num_periods) < 100:
+                    self._num_periods = int(num_periods)
+                else:
+                    self._num_periods = None
+            except ValueError:
+                # In case a string or other non-integer values are
+                # passed in
+                self._num_periods = None
+        return self._num_periods
 
 
 class InvoicablesMixin(OrganizationMixin):
