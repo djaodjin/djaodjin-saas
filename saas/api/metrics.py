@@ -136,9 +136,8 @@ class BalancesAPIView(DateRangeContextMixin, ProviderMixin,
     serializer_class = MetricsSerializer
     filter_backends = (DateRangeFilter,)
     queryset = Transaction.objects.all()
-    from drf_spectacular.utils import extend_schema
 
-    @extend_schema(request=PeriodSerializer)
+    @swagger_auto_schema(query_serializer=PeriodSerializer)
     def get(self, request, *args, **kwargs):
 
         #pylint: disable=unused-argument
