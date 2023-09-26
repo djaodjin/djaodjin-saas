@@ -12,15 +12,25 @@
         <span>To</span>
         <input type="date"
            ng-model="ends_at"
-           ng-change="prepareCurrentTabData(ends_at, timezone)"
+           ng-change="prepareCurrentTabData(ends_at, timezone, period)"
            v-model="_ends_at"
            v-on:input="prepareCurrentTabData"></input>
         <select ng-model="timezone"
-              ng-change="prepareCurrentTabData(ends_at, timezone)"
+              ng-change="prepareCurrentTabData(ends_at, timezone, period)"
               v-model="timezone"
               @change="prepareCurrentTabData">
           <option value="local">Local</option>
           <option value="utc">UTC</option>
+        </select>
+        <select ng-model="period"
+                ng-change="prepareCurrentTabData(ends_at, timezone, period)"
+                v-model="period"
+                @change="prepareCurrentTabData">
+            <option value="hourly">Hourly</option>
+            <option value="daily">Daily</option>
+            <option value="weekly">Weekly</option>
+            <option value="monthly">Monthly</option>
+            <option value="yearly">Yearly</option>
         </select>
       </div>
     </div><!-- /choose report date -->
