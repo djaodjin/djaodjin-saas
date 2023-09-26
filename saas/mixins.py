@@ -1293,3 +1293,61 @@ def product_url(subscriber=None, plan=None, request=None):
     if plan:
         location += '%s/' % plan
     return build_absolute_uri(request, location=location)
+
+class BalanceDueMixin(object):
+    @property
+    def basic_queryset(self):
+        return super().get_queryset()
+    # Caching because we're calling the same data twice, once in the queryset
+    # and once in the serializer_context
+    def cache_balances_due(self):
+        if not hasattr(self, '_cached_balances_due'):
+            self._cached_balances_due, self._cached_non_zero_balance_ids = \
+                self.get_balances_due(self.basic_queryset, datetime_or_now())
+
+    def get_cached_balances_due(self):
+        self.cache_balances_due()
+        return self._cached_balances_due, self._cached_non_zero_balance_ids
+
+    def get_balances_due(self, queryset, at_time):
+        provider_subscriptions = Subscription.objects.filter(
+            plan__organization=self.provider).values_list('id', flat=True)
+        print(provider_subscriptions)
+        balances_due_by_subscription = {}
+        non_zero_balance_ids = []
+        for subscriber in queryset:
+            subscriber_id = subscriber.id
+            # Get all balances for a subscriber
+            all_balances = Transaction.objects.get_statement_balances(subscriber_id, until=at_time)
+            total_due_by_subscription = {}
+            print(all_balances)
+            for event_id, balance_data in six.iteritems(all_balances):
+                # Check whether the event belongs to self.provider
+                sub_id = int(event_id.split('_')[1].split('/')[0])
+                if sub_id in provider_subscriptions:
+                    total_due_by_subscription[event_id] = next(iter(balance_data.values()))
+                    unit = next(iter(balance_data.keys()))
+                    if total_due_by_subscription[event_id] > 0:
+                        if subscriber_id not in balances_due_by_subscription:
+                            balances_due_by_subscription[subscriber_id] = {}
+                        balances_due_by_subscription[subscriber_id][event_id] = \
+                            {'balance': total_due_by_subscription[event_id], 'unit': unit}
+                        non_zero_balance_ids.append(subscriber_id)
+        return balances_due_by_subscription, non_zero_balance_ids
+
+    def get_queryset(self):
+        self.cache_balances_due()
+        return (self.basic_queryset.filter(id__in=self._cached_non_zero_balance_ids).
+                order_by('created_at'))
+
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        # Separately send in the balances due and non_zero_balance_ids because we're
+        # using a serializer than inherits from OrganizationSerializer that needs
+        # organization ids.
+        balances_due, non_zero_balance_ids = self.get_cached_balances_due()
+        if balances_due:
+            context.update({'balances_due': balances_due})
+        if non_zero_balance_ids:
+            context.update({'non_zero_balance_ids': non_zero_balance_ids})
+        return context

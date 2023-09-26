@@ -1289,3 +1289,23 @@ class RedeemCouponSerializer(NoModelSerializer):
 
     def create(self, validated_data):
         return validated_data
+
+
+class BalanceDueSerializer(OrganizationSerializer):
+    balances_due = serializers.SerializerMethodField()
+
+    class Meta(OrganizationSerializer.Meta):
+        fields = OrganizationSerializer.Meta.fields + ('balances_due',)
+
+    def get_balances_due(self, obj):
+        balances_due = self.context.get('balances_due', {})
+        subscriptions = balances_due.get(obj.id, {})
+        return {subscription_id: {
+            'balance_due': subscription_data.get('balance', 0),
+            'unit': subscription_data.get('unit', None)
+        } for subscription_id, subscription_data in subscriptions.items()}
+
+    def to_representation(self, instance):
+        rep = super().to_representation(instance)
+        rep['balances_due'] = rep.pop('balances_due', {})
+        return rep

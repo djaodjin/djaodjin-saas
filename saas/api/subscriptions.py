@@ -32,21 +32,23 @@ from rest_framework.generics import (get_object_or_404, GenericAPIView,
     ListAPIView, RetrieveUpdateDestroyAPIView)
 from rest_framework.response import Response
 
-from ..compat import gettext_lazy as _
+from ..compat import gettext_lazy as _, six
 from ..decorators import _valid_manager
 from ..docs import OpenAPIResponse, no_body, swagger_auto_schema
 from ..filters import (ActiveInPeriodFilter, ChurnedInPeriodFilter,
     IntersectPeriodFilter)
 from ..mixins import (PlanProvidedSubscriptionsMixin,
     ProvidedSubscriptionsMixin, SubscribedSubscriptionsMixin,
-    SubscriptionSmartListMixin)
+    SubscriptionSmartListMixin, BalanceDueMixin)
 from .. import settings, signals
-from ..models import Subscription
+from ..models import (Subscription, Transaction)
 from ..utils import generate_random_slug, datetime_or_now
 from .roles import ListOptinAPIView
 from .serializers import (ForceSerializer,
     ProvidedSubscriptionSerializer, ProvidedSubscriptionCreateSerializer,
-    ProvidedSubscriptionDetailSerializer,SubscribedSubscriptionSerializer)
+    ProvidedSubscriptionDetailSerializer,SubscribedSubscriptionSerializer,
+    BalanceDueSerializer)
+from .organizations import SubscribersQuerysetMixin
 
 
 LOGGER = logging.getLogger(__name__)
@@ -1074,3 +1076,64 @@ a00000d0a0000001234567890123456789012345 HTTP/1.1
         signals.subscription_request_accepted.send(sender=__name__,
             subscription=self.subscription,
             request_key=request_key, request=self.request)
+
+
+class SubscribersWithBalanceDueAPIView(BalanceDueMixin, SubscribersQuerysetMixin,ListAPIView):
+    """
+    Lists subscribers with due balances for a provider
+
+    Returns a list of subscribers that have balances due at the
+    time of the API call. The subscribers have a subscription plan
+    from the specified provider {profile}.
+
+    Returned results are ordered by the field `created_at`.
+
+    **Tags**: subscriptions, subscribers, provider, balances
+
+    **Examples**
+
+    .. code-block:: http
+
+        GET /api/profile/cowork/subscribers/balance_due HTTP/1.1
+
+    responds
+
+    .. code-block:: json
+
+        {
+            "count": 2,
+            "next": null,
+            "previous": null,
+            "results": [
+                 {
+                    "slug": "demo470",
+                    "printable_name": "Samantha Collins",
+                    "picture": null,
+                    "type": "organization",
+                    "credentials": false,
+                    "created_at": "2022-08-31T19:00:00-05:00",
+                    "balances_due": {
+                        "sub_2/": {
+                            "balance_due": 37800,
+                            "unit": "usd"
+                        }
+                    }
+                },
+                {
+                    "slug": "demo418",
+                    "printable_name": "Anthony Walker",
+                    "picture": null,
+                    "type": "organization",
+                    "credentials": false,
+                    "created_at": "2022-08-31T19:00:00-05:00",
+                    "balances_due": {
+                        "sub_4": {
+                            "balance_due": 49800,
+                            "unit": "usd"
+                        }
+                    }
+                },
+            ]
+        }
+    """
+    serializer_class = BalanceDueSerializer

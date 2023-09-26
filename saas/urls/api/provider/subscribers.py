@@ -32,7 +32,8 @@ from ....api.organizations import (EngagedSubscribersAPIView,
 from ....api.subscriptions import (ActiveSubscribersAPIView,
     AllSubscribersAPIView, ChurnedSubscribersAPIView, PlanAllSubscribersAPIView,
     PlanActiveSubscribersAPIView, PlanChurnedSubscribersAPIView,
-    PlanSubscriptionDetailAPIView, SubscriptionRequestAcceptAPIView)
+    PlanSubscriptionDetailAPIView, SubscriptionRequestAcceptAPIView,
+    SubscribersWithBalanceDueAPIView)
 from ....compat import path, re_path
 
 
@@ -82,4 +83,8 @@ urlpatterns = [
         settings.PROFILE_URL_KWARG,
         PlanActiveSubscribersAPIView.as_view(),
         name='saas_api_plan_subscribers'),
+    path('profile/<slug:%s>/subscribers/balance_due' %
+         settings.PROFILE_URL_KWARG,
+         SubscribersWithBalanceDueAPIView.as_view(),
+         name='saas_api_subscribers_with_balance_due')
 ]
