@@ -1304,8 +1304,3 @@ class BalanceDueSerializer(OrganizationSerializer):
             'balance_due': subscription_data.get('balance', 0),
             'unit': subscription_data.get('unit', None)
         } for subscription_id, subscription_data in subscriptions.items()}
-
-    def to_representation(self, instance):
-        rep = super().to_representation(instance)
-        rep['balances_due'] = rep.pop('balances_due', {})
-        return rep

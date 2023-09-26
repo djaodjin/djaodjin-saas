@@ -1312,7 +1312,6 @@ class BalanceDueMixin(object):
     def get_balances_due(self, queryset, at_time):
         provider_subscriptions = Subscription.objects.filter(
             plan__organization=self.provider).values_list('id', flat=True)
-        print(provider_subscriptions)
         balances_due_by_subscription = {}
         non_zero_balance_ids = []
         for subscriber in queryset:
@@ -1320,7 +1319,6 @@ class BalanceDueMixin(object):
             # Get all balances for a subscriber
             all_balances = Transaction.objects.get_statement_balances(subscriber_id, until=at_time)
             total_due_by_subscription = {}
-            print(all_balances)
             for event_id, balance_data in six.iteritems(all_balances):
                 # Check whether the event belongs to self.provider
                 sub_id = int(event_id.split('_')[1].split('/')[0])
