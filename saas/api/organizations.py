@@ -59,7 +59,7 @@ class OrganizationQuerysetMixin(OrganizationDecorateMixin):
 class OrganizationDetailAPIView(OrganizationMixin, OrganizationQuerysetMixin,
                                 RetrieveUpdateDestroyAPIView):
     """
-    Retrieves a billing profile
+    Retrieves a profile
 
     The API is typically used within an HTML
     `contact information page </docs/guides/themes/#dashboard_profile>`_
@@ -114,7 +114,7 @@ class OrganizationDetailAPIView(OrganizationMixin, OrganizationQuerysetMixin,
 
     def put(self, request, *args, **kwargs):
         """
-        Updates a billing profile
+        Updates a profile
 
         The API is typically used within an HTML
         `contact information page </docs/guides/themes/#dashboard_profile>`_
@@ -159,7 +159,7 @@ class OrganizationDetailAPIView(OrganizationMixin, OrganizationQuerysetMixin,
 
     def delete(self, request, *args, **kwargs):
         """
-        Deletes a billing profile
+        Deletes a profile
 
         We anonymize the profile instead of purely deleting
         it from the database because we don't want to loose history
@@ -295,7 +295,7 @@ class OrganizationListAPIView(OrganizationSmartListMixin,
                               OrganizationQuerysetMixin,
                               ListAPIView):
     """
-    Lists billing profiles
+    Lists profiles
 
     Returns a list of {{PAGE_SIZE}} profile and user accounts.
 

@@ -49,8 +49,8 @@ class RetrieveBankAPIView(OrganizationMixin, RetrieveAPIView):
 
     This API does not trigger payment of a subscriber to a provider. Checkout
     of a subscription cart is done either through the
-    :ref:`HTML page <pages_cart>` or
-    :ref:`API end point <api_checkout>`.
+    `HTML page </docs/guides/themes/#workflow_billing_cart>`_ or
+    `API end point <#createCheckout>`_.
 
     **Tags**: billing, provider, profilemodel
 

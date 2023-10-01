@@ -270,7 +270,9 @@ class ProfilesTypeaheadAPIView(OrganizationSmartListMixin,
         """
         Creates a shadow profile
 
-        **Tags**: profile
+        Creates a profile that is not associated to any user.
+
+        **Tags**: profile, user
 
         **Examples**
 
@@ -356,11 +358,12 @@ class ProfilesTypeaheadAPIView(OrganizationSmartListMixin,
 class ProfileAPIView(OrganizationMixin, OrganizationDecorateMixin,
                      RetrieveAPIView):
     """
-    Retrieves a billing profile
+    Retrieves a profile summary
 
-    The API is typically used within an HTML
-    `contact information page </docs/guides/themes/#dashboard_profile>`_
-    as present in the default theme.
+    While the `profiles typeahead <#listProfilesTypeahead>`_ API returns
+    a list of profiles summary based on search criteria, if you already
+    know the unique slug of a profile, you can get the same summary
+    by using this API.
 
     **Tags**: profile, subscriber, profilemodel
 

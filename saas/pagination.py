@@ -24,7 +24,8 @@
 
 from collections import OrderedDict
 
-from rest_framework.pagination import PageNumberPagination
+from rest_framework.pagination import (
+    PageNumberPagination as PageNumberPaginationBase)
 from rest_framework.response import Response
 from rest_framework.settings import api_settings
 
@@ -34,6 +35,14 @@ from .filters import search_terms_as_list
 from .models import (sum_dest_amount, sum_orig_amount, sum_balance_amount,
     Transaction)
 from .utils import datetime_or_now
+
+
+class PageNumberPagination(PageNumberPaginationBase):
+
+    max_page_size = 100
+    page_size_query_param = 'page_size'
+    page_size_query_description = _("Number of results to return per page"\
+    " between 1 and 100 (defaults to 25).")
 
 
 class BalancePagination(PageNumberPagination):

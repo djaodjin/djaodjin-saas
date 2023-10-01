@@ -41,13 +41,12 @@ class AgreementListAPIView(generics.ListAPIView):
     """
     List legal agreements
 
-    List all legal agreements a user might be requested to sign such as
-    "terms of use" or "security policy". This end point can be used by
-    unauthenticated users. As such it is perfect for
-    `legal disclosure pages <https://www.djaodjin.com/docs/guides/themes/\
-#workflow_legal_index>`_.
+    Returns a list of {{PAGE_SIZE}} legal agreements a user might be requested
+    to sign such as "terms of use" or "security policy". This end point can be
+    used by unauthenticated users. As such it is perfect for
+    `legal disclosure pages </docs/guides/themes/#workflow_legal_index>`_.
 
-    **Tags**: broker, visitor
+    **Tags**: visitor
 
     **Examples**
 
@@ -184,8 +183,8 @@ class AgreementDetailAPIView(generics.RetrieveAPIView):
 
     Retrieves the text of legal agreement a user might be requested to sign.
     This end point can be used by unauthenticated users. As such it is perfect
-    for `legal disclosure pages <https://www.djaodjin.com/docs/guides/themes/\
-#workflow_legal_agreement>`_.
+    for `legal disclosure pages
+    </docs/guides/themes/#workflow_legal_agreement>`_.
 
     **Tags**: broker, visitor
 
