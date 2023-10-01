@@ -164,12 +164,8 @@ class StripeBackend(object):
     def _prepare_charge_request(self, provider, broker):
         charge_kwargs = self._prepare_request()
         if self.mode in (self.FORWARD,) and provider:
-            if not provider.processor_deposit_key:
-                raise ProcessorSetupError(
-                (_("%(organization)s is not connected to a Stripe account.") +
-                 "[_prepare_charge_request/FORWARD]") % {
-                     'organization': provider}, provider)
-            if not self._is_platform(provider):
+            if (not self._is_platform(provider) and
+                provider.processor_deposit_key):
                 # Charge is generated in connected account.
                 charge_kwargs.update({
                     'transfer_data': {
@@ -277,11 +273,13 @@ class StripeBackend(object):
                 " => balance_transaction=\n%s", charge.processor_key,
                 refunded, unit, balance_transaction)
 
+        has_stripe_application_fee = False
         if not distribute_amount:
             distribute_amount = balance_transaction.net
             distribute_unit = balance_transaction.currency
         for stripe_fee in balance_transaction.fee_details:
             if stripe_fee.type == 'application_fee':
+                has_stripe_application_fee = True
                 broker_fee_amount += stripe_fee.amount
                 broker_fee_unit = stripe_fee.currency
             elif stripe_fee.type == 'stripe_fee':
@@ -294,6 +292,7 @@ class StripeBackend(object):
         # but in application_fee.refunds instead.
         application_fee = stripe_charge.application_fee
         if application_fee:
+            has_stripe_application_fee = True
             if isinstance(application_fee, six.string_types):
                 application_fee = stripe.ApplicationFee.retrieve(
                     application_fee, **kwargs)
@@ -311,7 +310,7 @@ class StripeBackend(object):
                 #     Have to investigate about cross-currency transfers.
                 distribute_amount = stripe_charge.amount - broker_fee_amount
 
-        if self.mode == self.LOCAL and orig_total_broker_fee_amount:
+        if not has_stripe_application_fee and orig_total_broker_fee_amount:
             broker_fee_amount = orig_total_broker_fee_amount
             distribute_amount -= broker_fee_amount
 
@@ -450,8 +449,9 @@ class StripeBackend(object):
                     charge_kwargs.update({'payment_method_data': {
                         'type': 'card', 'card': {'token': token}}
                     })
-                if broker_fee_amount and self.mode in (
-                        self.FORWARD, self.REMOTE):
+                if (broker_fee_amount and
+                    ('transfer_data' in charge_kwargs or
+                     'stripe_account' in charge_kwargs)):
                     # We cannot create an application_fee if we donot use
                     # a Connect account.
                     # The transfer will show up as `amount` with a zero fee
@@ -825,7 +825,9 @@ class StripeBackend(object):
                         'STRIPE_ACCOUNT': charge_kwargs.get('stripe_account')})
 
             elif amount > 0:
-                if broker_fee_amount:
+                if (broker_fee_amount and
+                    ('transfer_data' in charge_kwargs or
+                     'stripe_account' in charge_kwargs)):
                     charge_kwargs.update({
                         'application_fee_amount': broker_fee_amount})
                 try:

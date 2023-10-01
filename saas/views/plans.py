@@ -82,7 +82,7 @@ class PlanFormMixin(OrganizationMixin, SingleObjectMixin):
         return url_kwargs
 
 
-class CartPlanListView(ProviderMixin, CartMixin, RedirectFormMixin, ListView):
+class CartPlanListView(CartMixin, RedirectFormMixin, ListView):
     """
     GET displays the active plans available for subscription.
 
@@ -107,8 +107,8 @@ djaodjin-saas/tree/master/saas/templates/saas/pricing.html>`__).
     form_class = forms.Form # Solely to avoid errors on Django 1.9.1
 
     def get_queryset(self):
-        queryset = Plan.objects.filter(organization=self.provider,
-            is_active=True).order_by('is_not_priced', 'period_amount')
+        queryset = Plan.objects.filter(is_active=True).order_by(
+            'is_not_priced', 'period_amount')
         return queryset
 
     def get_context_data(self, **kwargs):
@@ -125,16 +125,16 @@ djaodjin-saas/tree/master/saas/templates/saas/pricing.html>`__).
         if 'cart_items' in self.request.session:
             items_selected += [item['plan']
                 for item in self.request.session['cart_items']]
-        redeemed = self.request.session.get('redeemed', None)
-        if redeemed is not None:
-            redeemed = Coupon.objects.active(self.provider, redeemed,
-                at_time=at_time).first()
+        coupon_code = self.request.session.get('redeemed', None)
         for index, plan in enumerate(context['plan_list']):
             if index % self.line_break == 0:
                 setattr(plan, 'is_line_break', True)
-            if redeemed and redeemed.is_valid(plan, at_time=at_time):
-                setattr(plan, 'discounted_period_price',
-                    plan.get_discounted_period_price(redeemed))
+            if coupon_code is not None:
+                redeemed = Coupon.objects.active(plan.organization, coupon_code,
+                    plan=plan, at_time=at_time).first()
+                if redeemed and redeemed.is_valid(plan, at_time=at_time):
+                    setattr(plan, 'discounted_period_price',
+                        plan.get_discounted_period_price(redeemed))
             if is_authenticated(self.request):
                 setattr(plan, 'managed_subscribers',
                     get_role_model().objects.role_on_subscriber(
@@ -142,12 +142,8 @@ djaodjin-saas/tree/master/saas/templates/saas/pricing.html>`__).
         if len(context['plan_list']) % self.line_break == 0:
             setattr(context['plan_list'], 'is_line_break', True)
         context.update({
-            'items_selected': items_selected, 'redeemed': redeemed})
-        urls = {'cart': reverse('saas_cart')}
-        if 'urls' in context:
-            context['urls'].update(urls)
-        else:
-            context.update({'urls': urls})
+            'items_selected': items_selected, 'redeemed': coupon_code})
+        context = update_context_urls(context, {'cart': reverse('saas_cart')})
         return context
 
     def post(self, request, *args, **kwargs):

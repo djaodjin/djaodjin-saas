@@ -101,8 +101,8 @@ class PricingAPIView(PlanMixin, CartMixin, ListAPIView):
     serializer_class = PlanDetailSerializer
 
     def get_queryset(self):
-        queryset = Plan.objects.filter(organization=self.provider,
-            is_active=True).order_by('is_not_priced', 'period_amount')
+        queryset = Plan.objects.filter(is_active=True).order_by(
+            'is_not_priced', 'period_amount')
         # `PlanDetailSerializer` will expand `organization`,
         # `advance_discounts` and `use_charges`.
         queryset = queryset.select_related('organization').prefetch_related(
@@ -110,18 +110,18 @@ class PricingAPIView(PlanMixin, CartMixin, ListAPIView):
         return queryset
 
     def paginate_queryset(self, queryset):
+        at_time = datetime_or_now()
         page = super(PricingAPIView, self).paginate_queryset(queryset)
         decorate_queryset = page if page else queryset
 
         cart_items_by_plan = {
             cart_item['plan']: cart_item for cart_item in self.get_cart()}
-
-        redeemed = self.request.session.get('redeemed', None)
-        if redeemed is not None:
-            redeemed = Coupon.objects.active(self.provider, redeemed).first()
+        coupon_code = self.request.session.get('redeemed', None)
 
         #pylint:disable=unused-variable
         for index, plan in enumerate(decorate_queryset):
+            redeemed = Coupon.objects.active(plan.organization, coupon_code,
+                plan=plan, at_time=at_time).first()
             if redeemed and redeemed.is_valid(plan):
                 setattr(plan, 'discounted_period_amount',
                     plan.get_discounted_period_amount(redeemed))
