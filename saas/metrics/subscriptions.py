@@ -34,26 +34,43 @@ from .base import month_periods
 LOGGER = logging.getLogger(__name__)
 
 
-def active_subscribers(plan, from_date=None, tz=None):
+def active_subscribers(plan, from_date=None, tz=None, nb_months=12):
     """
     List of active subscribers for a *plan*.
     """
     #pylint:disable=invalid-name
     values = []
     for end_period in convert_dates_to_utc(month_periods(
-                            from_date=from_date, tz=tz)):
+                            nb_months=nb_months, from_date=from_date, tz=tz)):
+        values.append([end_period,
+            Subscription.objects.active_at(end_period, plan=plan).count()])
+    return values
+
+def active_subscribers_by_period(plan, from_date=None, tz=None, period_func=None,
+                                 num_periods=None):
+    """
+    List of active subscribers for a *plan* for a certain time period.
+    """
+    #pylint:disable=invalid-name
+    values = []
+    func_kwargs = {'from_date': from_date, 'tz': tz}
+    if num_periods:
+        func_kwargs['periods'] = num_periods
+
+    for end_period in convert_dates_to_utc(period_func(**func_kwargs)):
         values.append([end_period,
             Subscription.objects.active_at(end_period, plan=plan).count()])
     return values
 
 
-def churn_subscribers(plan=None, from_date=None, tz=None):
+def churn_subscribers(plan=None, from_date=None, tz=None, nb_months=12):
     """
     List of churn subscribers from the previous period for a *plan*.
     """
     #pylint:disable=invalid-name
     values = []
-    dates = convert_dates_to_utc(month_periods(13, from_date, tz=tz))
+    dates = convert_dates_to_utc(month_periods(nb_months=nb_months,
+                                               from_date=from_date, tz=tz))
     start_period = dates[0]
     kwargs = {}
     if plan:
@@ -64,6 +81,28 @@ def churn_subscribers(plan=None, from_date=None, tz=None):
         start_period = end_period
     return values
 
+def churn_subscribers_by_period(plan=None, from_date=None, tz=None,
+                                period_func=None, num_periods=None):
+    """
+    List of churn subscribers from the previous period for a *plan* for specific time
+     periods.
+    """
+    #pylint:disable=invalid-name
+    values = []
+    func_kwargs = {'from_date': from_date, 'tz': tz}
+    if num_periods:
+        func_kwargs['periods'] = num_periods
+
+    dates = convert_dates_to_utc(period_func(**func_kwargs))
+    start_period = dates[0]
+    kwargs = {}
+    if plan:
+        kwargs = {'plan': plan}
+    for end_period in dates[1:]:
+        values.append([end_period, Subscription.objects.churn_in_period(
+            start_period, end_period, **kwargs).count()])
+        start_period = end_period
+    return values
 
 def subscribers_age(provider=None):
     if provider:

@@ -1561,6 +1561,7 @@ Vue.component('metrics-charts', {
             params: {
                 ends_at: this.datetimeOrNow(
                     this.$dateRange ? this.$dateRange.ends_at : null),
+                period: "monthly"
             },
         }
         return data;
@@ -1568,7 +1569,10 @@ Vue.component('metrics-charts', {
     methods: {
         fetchTableData: function(table, cb){
             var vm = this;
-            var params = {ends_at: vm.params.ends_at};
+            var params = {
+                ends_at: vm.params.ends_at,
+                period: vm.params.period,
+            };
             if( vm.timezone !== 'utc' ) {
                 params["timezone"] = vm.timezone;
             }
@@ -1689,7 +1693,16 @@ Vue.component('metrics-charts', {
                 this.$set(this.params, 'ends_at', this.asDateISOString(newVal));
                 this.get();
             }
+        },
+        period: {
+        get: function() {
+          return this.params.period;
+        },
+        set: function(newVal) {
+          this.$set(this.params, 'period', newVal);
+          this.get();
         }
+      },
     },
     mounted: function(){
         var vm = this;

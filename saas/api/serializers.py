@@ -389,6 +389,20 @@ class ForceSerializer(NoModelSerializer):
         " not be found"))
 
 
+class PeriodSerializer(NoModelSerializer):
+
+    periods = serializers.ChoiceField(required=False,
+        choices=[choice[1].lower() for choice in
+                 Plan.INTERVAL_CHOICES],
+        default='monthly',
+        help_text=_("Set time granularity: 'hourly,' 'daily,' 'weekly,' "
+        "'monthly,' or 'yearly.' Default is 'monthly.'"))
+
+    num_periods = serializers.IntegerField(required=False,
+        min_value=1, help_text=_("Specify the number of periods to include. "
+        "Min value is 1."))
+
+
 class DatetimeValueTuple(serializers.ListField):
 
     child = serializers.CharField() # XXX (Datetime, Integer)
