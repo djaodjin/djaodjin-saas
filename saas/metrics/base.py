@@ -157,7 +157,7 @@ def _generate_periods(time_unit, num_units, start_date, step_units, timezone_str
     # Generate period dates
     for i in range(num_units):
         time_unit_str = _describe_period_name(time_unit, 2)
-        delta_args = {f"{time_unit_str}": -i * step_units}
+        delta_args = {time_unit_str: -i * step_units}
         next_date = start_date_naive + relativedelta(**delta_args)
 
         datetime_object = set_to_start_of_period(next_date, time_unit)
