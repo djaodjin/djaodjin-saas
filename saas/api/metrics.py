@@ -760,8 +760,8 @@ class PlanMetricAPIView(DateRangeContextMixin, ProviderMixin, GenericAPIView):
             else:
                 # For other periods, we use active_subscribers_by_period
                 specific_args = {'period_func': self.period_func}
-                values = active_subscribers_by_period(plan, **{**common_args,
-                                                               **specific_args})
+                specific_args.update(common_args)
+                values = active_subscribers_by_period(plan, **specific_args)
 
             table.append({
                 'slug': plan.slug,
@@ -779,8 +779,8 @@ class PlanMetricAPIView(DateRangeContextMixin, ProviderMixin, GenericAPIView):
             # For other periods, add 'period_func' and get churn values using
             # churn_subscribers_by_period.
             specific_args = {'period_func': self.period_func}
-            extra_values = churn_subscribers_by_period(**{**common_args,
-                                                          **specific_args})
+            specific_args.update(common_args)
+            extra_values = churn_subscribers_by_period(**specific_args)
 
         extra = [{
             'slug': 'churn',
