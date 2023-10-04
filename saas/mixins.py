@@ -48,6 +48,7 @@ from .utils import (build_absolute_uri, datetime_or_now,
 from .extras import OrganizationMixinBase
 from .metrics.base import (hour_periods, day_periods, week_periods,
                            month_periods, year_periods)
+from .metrics.transactions import get_balances_due
 
 LOGGER = logging.getLogger(__name__)
 
@@ -1218,6 +1219,43 @@ class RoleMixin(RoleDescriptionMixin):
             #pylint:disable=protected-access
             raise Http404('No %s matches the given query.'
                 % queryset.model._meta.object_name)
+
+class BalancesDueMixin(DateRangeContextMixin, ProviderMixin):
+
+    filter_backends = (DateRangeFilter,)
+
+    @property
+    def balances_due(self):
+        if not hasattr(self, "_balances_due"):
+            self._balances_due = get_balances_due(provider=self.provider)
+        return self._balances_due
+
+    def get_queryset(self):
+        organization_model = get_organization_model()
+        if self.provider:
+            queryset = organization_model.objects.filter(
+                subscribes_to__organization=self.provider).distinct()
+        else:
+            queryset = organization_model.objects.all()
+        decorated_queryset = self.decorate_queryset(queryset)
+        return decorated_queryset
+
+    def decorate_queryset(self, queryset):
+        # Decorating the queryset to "attach" the balance values
+        # to the queryset so we can use the OrganizationSerializer
+        organization_ids = []
+        for organization in queryset:
+            customer = self.balances_due.get(organization.slug)
+            if customer:
+                if any(val['balance'] > 0 for val in six.itervalues(customer)):
+                    organization_ids.append(organization.id)
+        decorated_queryset = queryset.filter(id__in=organization_ids).order_by('full_name')
+        return decorated_queryset
+
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        context['balances_due'] = self.balances_due
+        return context
 
 
 def _as_html_description(transaction_descr,

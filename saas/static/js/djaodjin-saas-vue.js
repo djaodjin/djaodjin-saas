@@ -1772,6 +1772,25 @@ Vue.component('lifetimevalue-list', {
     }
 });
 
+Vue.component('balancesdue-list', {
+    mixins: [
+        itemListMixin
+    ],
+    data: function() {
+        return {
+            url: this.$urls.provider.api_metrics_balances_due
+        }
+    },
+    mounted: function(){
+        this.get();
+    },
+    methods: {
+        getUnits: function(balances_due) {
+            return Object.keys(balances_due);
+        }
+    }
+});
+
 
 Vue.component('plan-subscriber-list', {
     mixins: [

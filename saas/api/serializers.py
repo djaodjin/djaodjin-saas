@@ -1384,3 +1384,27 @@ class RedeemCouponSerializer(NoModelSerializer):
 
     def create(self, validated_data):
         return validated_data
+
+
+class BalancesDueSerializer(OrganizationSerializer):
+
+    balances_due = serializers.DictField(
+        child=serializers.IntegerField(),
+        help_text=_("Dictionary of balances due, keyed by unit"),
+        read_only=True)
+
+    class Meta(OrganizationSerializer.Meta):
+        fields = OrganizationSerializer.Meta.fields + ('balances_due',)
+
+    def to_representation(self, obj):
+        representation = super().to_representation(obj)
+        balances_due = self.context.get('balances_due', {})
+        customer = balances_due.get(obj.slug, {})
+        representation['balances_due'] = {
+            unit: {
+                'contract_value': val['contract_value'],
+                'payments': val['payments'],
+                'balance_due': val['balance'],
+            } for unit, val in six.iteritems(customer)
+        }
+        return representation

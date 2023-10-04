@@ -1,0 +1,36 @@
+{% extends "saas/base_dashboard.html" %}
+
+{% block saas_title %}
+Balances due
+{% endblock %}
+
+{% block saas_content %}
+<balancesdue-list inline-template>
+  <div>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Unit</th>
+          <th>Contract Value</th>
+          <th>Cash Payments</th>
+          <th>Balance Due</th>
+          <th>Created at</th>
+        </tr>
+      </thead>
+      <template v-for="(item, index) in items.results">
+        <tr v-for="unit in getUnits(item.balances_due)" :key="unit" :id="item.slug + '-' + unit" v-show="itemsLoaded && items.results.length > 0">
+          <td>
+            <a :href="'{{urls.profile_redirect}}' + item.slug + '/'">[[item.printable_name]]</a>
+          </td>
+          <td>[[unit]]</td>
+          <td>[[item.balances_due[unit].contract_value]]</td>
+          <td>[[item.balances_due[unit].payments]]</td>
+          <td>[[item.balances_due[unit].balance_due]]</td>
+          <td>[[item.created_at]]</td>
+        </tr>
+      </template>
+    </table>
+  </div>
+</balancesdue-list>
+{% endblock %}

@@ -289,3 +289,29 @@ reference/djaoapp/latest/api/#listCustomerMetric>`__
                     args=(self.organization,))
             }])})
         return context
+
+class BalancesDueView(ProviderMixin, TemplateView):
+    """
+    Customers with balances due
+
+    Template:
+
+    To edit the layout of this page, create a local \
+    ``saas/metrics/balances_due.html`` (`example <https://github.com/djaodjin\
+/djaodjin-saas/tree/master/saas/templates/saas/metrics/balances_due.html>`__).
+
+    Template context:
+      - ``organization`` The provider object
+      - ``request`` The HTTP request object
+    """
+    template_name = 'saas/metrics/balances_due.html'
+
+    def get_context_data(self, **kwargs):
+        context = super(BalancesDueView, self).get_context_data(
+            **kwargs)
+        update_context_urls(context, {
+            'provider': {
+                'api_metrics_balances_due': reverse(
+                    'saas_api_metrics_balances_due', args=(self.provider,))}
+        })
+        return context

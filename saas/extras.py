@@ -158,6 +158,8 @@ class OrganizationMixinBase(object):
                     'saas_metrics_lifetimevalue', args=(provider,)),
                 'ledger_balances': reverse(
                     'saas_balance', args=(provider,)),
+                'metrics_balances_due': reverse(
+                    'saas_metrics_balances_due', args=(provider,)),
                 'profile': reverse('saas_provider_profile'),
                 'subscribers': reverse(
                     'saas_subscriber_list', args=(provider,)),
