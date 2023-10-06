@@ -1,49 +1,52 @@
-# Copyright (c) 2021, DjaoDjin inc.
-# All rights reserved.
-#
-# Redistribution and use in source and binary forms, with or without
-# modification, are permitted provided that the following conditions are met:
-#
-# 1. Redistributions of source code must retain the above copyright notice,
-#    this list of conditions and the following disclaimer.
-# 2. Redistributions in binary form must reproduce the above copyright
-#    notice, this list of conditions and the following disclaimer in the
-#    documentation and/or other materials provided with the distribution.
-#
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
-# "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED
-# TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
-# PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR
-# CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
-# EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-# PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
-# OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
-# WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
-# OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
-# ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+# Copyright (c) 2023, DjaoDjin inc.
+# see LICENSE
 
-import datetime, logging, random
+import datetime, logging, os, random
+from collections import defaultdict
 
 from django.conf import settings
 from django.core.management.base import BaseCommand
+from django.contrib.auth import get_user_model
 from django.db.utils import IntegrityError
 from django.template.defaultfilters import slugify
 from django.utils.timezone import utc
+from faker import Faker
+from saas.models import (CartItem, Charge, ChargeItem, Coupon, Organization,
+    Plan, Subscription, Transaction)
 
-from saas import humanize
-from saas.models import (AdvanceDiscount, Charge, ChargeItem,
-    Plan, Subscription, Transaction, get_broker)
-from saas.metrics.base import month_periods
-from saas.utils import datetime_or_now, get_organization_model
-from saas.settings import PROCESSOR_ID
+from saas import humanize, settings as saas_settings
+from saas.utils import datetime_or_now, generate_random_slug
+from saas import signals as saas_signals
+from signup.helpers import full_name_natural_split
+from signup import signals as signup_signals
 
 LOGGER = logging.getLogger(__name__)
 
 
+class DisableSignals(object):
+    def __init__(self, disabled_signals):
+        self.stashed_signals = defaultdict(list)
+        self.disabled_signals = disabled_signals
+
+    def __enter__(self):
+        for signal in self.disabled_signals:
+            self.disconnect(signal)
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        for signal in list(self.stashed_signals):
+            self.reconnect(signal)
+
+    def disconnect(self, signal):
+        self.stashed_signals[signal] = signal.receivers
+        signal.receivers = []
+
+    def reconnect(self, signal):
+        signal.receivers = self.stashed_signals.get(signal, [])
+        del self.stashed_signals[signal]
+
+
 class Command(BaseCommand):
-    """
-    Load the database with random transactions (testing purposes).
-    """
+    help = "Load the database with random transactions (testing purposes)."
 
     USE_OF_SERVICE = 0
     PAY_BALANCE = 1
@@ -52,115 +55,39 @@ class Command(BaseCommand):
     CHARGEBACK = 4
     WRITEOFF = 5
 
-    FIRST_NAMES = (
-        'Anthony',
-        'Alexander',
-        'Alexis',
-        'Alicia',
-        'Ashley',
-        'Benjamin',
-        'Bruce',
-        'Chloe',
-        'Christopher',
-        'Daniel',
-        'David',
-        'Edward',
-        'Emily',
-        'Emma',
-        'Ethan',
-        'Grace',
-        'Isabella',
-        'Jacob',
-        'James',
-        'Jayden',
-        'Jennifer',
-        'John',
-        'Julia',
-        'Lily',
-        'Lucie',
-        'Luis',
-        'Matthew',
-        'Michael',
-        'Olivia',
-        'Ryan',
-        'Samantha',
-        'Samuel',
-        'Scott',
-        'Sophia',
-        'Williom',
-        )
-
-    LAST_NAMES = (
-        'Smith',
-        'Johnson',
-        'Williams',
-        'Jones',
-        'Brown',
-        'Davis',
-        'Miller',
-        'Wilson',
-        'Moore',
-        'Taylor',
-        'Anderson',
-        'Thomas',
-        'Jackson',
-        'White',
-        'Harris',
-        'Martin',
-        'Thompson',
-        'Garcia',
-        'Martinez',
-        'Robinson',
-        'Clark',
-        'Rogriguez',
-        'Lewis',
-        'Lee',
-        'Walker',
-        'Hall',
-        'Allen',
-        'Young',
-        'Hernandez',
-        'King',
-        'Wright',
-        'Lopez',
-        'Hill',
-        'Green',
-        'Baker',
-        'Gonzalez',
-        'Nelson',
-        'Mitchell',
-        'Perez',
-        'Roberts',
-        'Turner',
-        'Philips',
-        'Campbell',
-        'Parker',
-        'Collins',
-        'Stewart',
-        'Sanchez',
-        'Morris',
-        'Rogers',
-        'Reed',
-        'Cook',
-        'Bell',
-        'Cooper',
-        'Richardson',
-        'Cox',
-        'Ward',
-        'Peterson',
-        )
-
-    organization_model = get_organization_model()
-
     def add_arguments(self, parser):
         parser.add_argument('--provider',
-            action='store', dest='provider',
-            default=settings.SAAS['BROKER']['GET_INSTANCE'],
+            action='store', dest='provider', default='cowork',
             help='create sample subscribers on this provider')
+        parser.add_argument('--coupon',
+            action='store', dest='coupon', default=None,
+            help='create uses of the specified coupon')
+        parser.add_argument('--profile-pictures',
+            action='store', dest='profile_pictures', default=None,
+            help='directory where random profile pictures are stored')
 
     def handle(self, *args, **options):
-        #pylint: disable=too-many-locals,too-many-statements
+        sigs = [
+            saas_signals.charge_updated,
+            saas_signals.claim_code_generated,
+            saas_signals.card_updated,
+            saas_signals.expires_soon,
+            saas_signals.order_executed,
+            saas_signals.profile_updated,
+            saas_signals.role_grant_created,
+            saas_signals.role_request_created,
+            saas_signals.role_grant_accepted,
+            saas_signals.subscription_grant_accepted,
+            saas_signals.subscription_grant_created,
+            saas_signals.subscription_request_accepted,
+            saas_signals.subscription_request_created,
+            saas_signals.period_sales_report_created
+        ]
+        # disabling email notifications
+        with DisableSignals(sigs):
+            self._handle(*args, **options)
 
+    def _handle(self, *args, **options):
         # forces to use the fake processor. We don't want to take a lot
         # of time to go to Stripe to create test charges.
         settings.SAAS['PROCESSOR']['BACKEND'] = \
@@ -173,54 +100,97 @@ class Command(BaseCommand):
         if args:
             from_date = datetime.datetime.strptime(
                 args[0], '%Y-%m-%d')
-        # Create a set of 3 plans
-        broker = get_broker()
-        plan, _ = Plan.objects.get_or_create(
-            slug='basic',
-            defaults={
-                'title': "Basic",
-                'description': "Basic Plan",
-                'period_amount': 24900,
-                'broker_fee_percent': 0,
-                'period_type': 4,
-                'organization': broker,
-                'is_active': True
-        })
-        AdvanceDiscount.objects.get_or_create(
-            plan=plan,
-            discount_type=AdvanceDiscount.PERCENTAGE,
-            discount_value=1000,
-            length=12)
-        Plan.objects.get_or_create(
-            slug='medium',
-            defaults={
-                'title': "Medium",
-                'description': "Medium Plan",
-                'period_amount': 24900,
-                'broker_fee_percent': 0,
-                'period_type': 4,
-                'organization': broker,
-                'is_active': True
-        })
-        plan, _ = Plan.objects.get_or_create(
-            slug='premium',
-            defaults={
-                'title': "Premium",
-                'description': "Premium Plan",
-                'period_amount': 18900,
-                'broker_fee_percent': 0,
-                'period_type': 4,
-                'organization': broker,
-                'is_active': True
-        })
-        AdvanceDiscount.objects.get_or_create(
-            plan=plan,
-            discount_type=AdvanceDiscount.PERCENTAGE,
-            discount_value=81,
-            length=12)
-        # Create Income transactions that represents a growing bussiness.
-        provider = self.organization_model.objects.get(slug=options['provider'])
-        processor = self.organization_model.objects.get(pk=PROCESSOR_ID)
+        provider = Organization.objects.get(slug=options['provider'])
+        processor = Organization.objects.get(pk=saas_settings.PROCESSOR_ID)
+        self.generate_coupons(provider)
+        self.generate_transactions(provider, processor, from_date, now,
+            profile_pictures_dir=options['profile_pictures'])
+        subscriber = Organization.objects.filter(slug='stephanie').first()
+        if subscriber:
+            self.generate_subscriptions(subscriber)
+        coupon_code = options['coupon']
+        if coupon_code:
+            self.generate_coupon_uses(coupon_code, provider=provider)
+
+    def generate_coupons(self, provider, nb_coupons=None):
+        if nb_coupons is None:
+            nb_coupons = settings.REST_FRAMEWORK['PAGE_SIZE'] * 4
+        self.stdout.write("%d coupons\n" % nb_coupons)
+        for _ in range(0, nb_coupons):
+            coupon_percent = random.randint(1, 100)
+            coupon_code = "%s%d" % ("".join([
+                random.choice("ABCDEFGHIJKLMNOPQRSTUVWXYZ")
+                for _ in range(0, 3)]), coupon_percent)
+            Coupon.objects.get_or_create(code=coupon_code,
+                defaults={'discount_value': coupon_percent * 100,
+                'organization': provider})
+
+    def generate_coupon_uses(self, coupon_code, provider=None, nb_uses=None):
+        user_model = get_user_model()
+        if nb_uses is None:
+            nb_uses = settings.REST_FRAMEWORK['PAGE_SIZE'] * 4
+        self.stdout.write("%d uses of coupon %s\n" % (nb_uses, coupon_code))
+        if provider:
+            kwargs = {'organization': provider}
+        coupon = Coupon.objects.filter(code=coupon_code, **kwargs).first()
+        if coupon:
+            plans = list(Plan.objects.filter(organization=coupon.organization))
+            for _ in range(0, nb_uses):
+                try:
+                    user = user_model.objects.get(
+                        pk=random.randint(1, user_model.objects.count() - 1))
+                    if len(plans) > 1:
+                        plan = plans[random.randint(1, len(plans) - 1)]
+                    else:
+                        plan = plans[0]
+                    CartItem.objects.create(
+                        user=user, coupon=coupon, plan=plan, recorded=True)
+                except user_model.DoesNotExist:
+                    pass
+
+
+    def generate_subscriptions(self, subscriber, nb_subscriptions=None,
+                               fake=None):
+        at_time = datetime_or_now()
+        if nb_subscriptions is None:
+            nb_subscriptions = settings.REST_FRAMEWORK['PAGE_SIZE'] * 4
+        self.stdout.write("%d subscriptions\n" % nb_subscriptions)
+        nb_plans = Plan.objects.count()
+        if not fake:
+            fake = Faker()
+        for _ in range(0, nb_subscriptions):
+            rank = random.randint(1, nb_plans - 1)
+            plan = Plan.objects.all().order_by('pk')[rank]
+            created_at = datetime_or_now(fake.date_time_between_dates(
+                datetime_start=at_time - datetime.timedelta(365),
+                datetime_end=at_time + datetime.timedelta(365)))
+            Subscription.objects.create(
+                organization=subscriber,
+                plan=plan,
+                created_at=created_at,
+                ends_at=created_at + datetime.timedelta(30))
+
+    def generate_transactions(self, provider, processor, from_date, ends_at,
+                              fake=None, profile_pictures_dir=None):
+        """
+        Create Income transactions that represents a growing bussiness.
+        """
+        #pylint: disable=too-many-locals,too-many-arguments
+        from saas.metrics.base import month_periods # avoid import loop
+        if not fake:
+            fake = Faker()
+        user_model = get_user_model()
+        # Load list of profile pcitures
+        profile_pictures_males = []
+        profile_pictures_females = []
+        if profile_pictures_dir:
+            for picture_name in os.listdir(profile_pictures_dir):
+                if picture_name.startswith("1"):
+                    profile_pictures_males += [
+                        "/media/livedemo/profiles/%s" % picture_name]
+                else:
+                    profile_pictures_females += [
+                        "/media/livedemo/profiles/%s" % picture_name]
         for end_period in month_periods(from_date=from_date):
             nb_new_customers = random.randint(0, 9)
             for _ in range(nb_new_customers):
@@ -231,26 +201,51 @@ class Command(BaseCommand):
                 trials = 0
                 while not created:
                     try:
-                        first_name = self.FIRST_NAMES[random.randint(
-                            0, len(self.FIRST_NAMES)-1)]
-                        last_name = self.LAST_NAMES[random.randint(
-                            0, len(self.LAST_NAMES)-1)]
-                        full_name = '%s %s' % (first_name, last_name)
+                        picture = None
+                        if random.randint(0, 1):
+                            full_name = fake.name_male()
+                            if profile_pictures_males:
+                                picture = profile_pictures_males[
+                                    random.randint(
+                                        0, len(profile_pictures_males) - 1)]
+                        else:
+                            full_name = fake.name_female()
+                            if profile_pictures_females:
+                                picture = profile_pictures_females[
+                                    random.randint(
+                                        0, len(profile_pictures_females) - 1)]
                         slug = slugify('demo%d' % random.randint(1, 1000))
-                        customer, created = \
-                            self.organization_model.objects.get_or_create(
-                                slug=slug, full_name=full_name)
+                        email = "%s@%s" % (slug, fake.domain_name())
+                        first_name, _, last_name = \
+                            full_name_natural_split(full_name)
+                        customer, created = Organization.objects.get_or_create(
+                            slug=slug,
+                            full_name=full_name,
+                            email=email,
+                            phone=fake.phone_number(),
+                            street_address=fake.street_address(),
+                            locality=fake.city(),
+                            postal_code=fake.postcode(),
+                            region=fake.state_abbr(),
+                            country=fake.country_code(),
+                            picture=picture)
+                        user, created = user_model.objects.get_or_create(
+                            username=slug,
+                            email=email,
+                            first_name=first_name,
+                            last_name=last_name)
+                        customer.add_manager(user, at_time=end_period)
                     #pylint: disable=catching-non-exception
                     except IntegrityError:
                         trials = trials + 1
                         if trials > 10:
                             raise RuntimeError(
                          'impossible to create a new customer after 10 trials.')
-                self.organization_model.objects.filter(pk=customer.id).update(
+                Organization.objects.filter(pk=customer.id).update(
                     created_at=end_period)
                 subscription = Subscription.objects.create(
                     organization=customer, plan=plan,
-                    ends_at=now + datetime.timedelta(days=31))
+                    ends_at=ends_at + datetime.timedelta(days=31))
                 Subscription.objects.filter(
                     pk=subscription.id).update(created_at=end_period)
             # Insert some churn in %
@@ -263,17 +258,18 @@ class Command(BaseCommand):
                 all_subscriptions.count() - nb_churn_customers)
             for subscription in subscriptions:
                 nb_periods = random.randint(1, 6)
-                amount = nb_periods * subscription.plan.period_amount
-                ends_at = subscription.plan.end_of_period(
-                    subscription.ends_at, nb_periods)
+                subscription.ends_at = subscription.plan.end_of_period(
+                    subscription.ends_at,
+                    nb_periods=nb_periods)
                 transaction_item = Transaction.objects.new_subscription_order(
                     subscription,
-                    amount=amount,
+                    amount=subscription.plan.period_amount * nb_periods,
                     descr=humanize.describe_buy_periods(
-                        subscription.plan, ends_at, nb_periods),
+                        subscription.plan, subscription.ends_at, nb_periods),
                     created_at=end_period)
                 if transaction_item.dest_amount < 50:
                     continue
+                subscription.save()
                 transaction_item.orig_amount = transaction_item.dest_amount
                 transaction_item.orig_unit = transaction_item.dest_unit
                 transaction_item.save()
@@ -281,23 +277,24 @@ class Command(BaseCommand):
                     created_at=transaction_item.created_at,
                     amount=transaction_item.dest_amount,
                     customer=subscription.organization,
-                    description='Charge for %d periods' % nb_periods,
+                    description=humanize.DESCRIBE_CHARGED_CARD % {
+                        'charge': generate_random_slug(prefix='ch_'),
+                        'organization': subscription.organization
+                    },
+                    last4=1241,
+                    exp_date=datetime_or_now(),
                     processor=processor,
-                    processor_key=str(transaction_item.pk),
-# XXX We can't do that yet because of
-# ``PROCESSOR_BACKEND.charge_distribution(self)``
-#                    unit=transaction_item.dest_unit,
+                    processor_key="ch_%s" % str(transaction_item.pk),
                     state=Charge.CREATED)
                 charge.created_at = transaction_item.created_at
                 charge.save()
                 ChargeItem.objects.create(
                     invoiced=transaction_item, charge=charge)
-                charge.payment_successful(
-                    receipt_info={'last4': 1241, 'exp_date': datetime_or_now()})
+                charge.payment_successful()
             churned = all_subscriptions.exclude(
                 pk__in=[subscription.pk for subscription in subscriptions])
             for subscription in churned:
                 subscription.ends_at = end_period
                 subscription.save()
-            self.stdout.write("%d new and %d churned customers at %s" % (
+            self.stdout.write("%d new and %d churned customers at %s\n" % (
                 nb_new_customers, nb_churn_customers, end_period))
