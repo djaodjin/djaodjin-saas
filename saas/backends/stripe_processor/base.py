@@ -218,7 +218,9 @@ class StripeBackend(object):
         Returns `True` if Stripe requires a provider key along
         with the StripeConnect keys.
         """
-        return self.mode != self.LOCAL
+        # For LOCAL mode we don't need provider keys. For FORWARD mode,
+        # they are optional.
+        return self.mode == self.REMOTE
 
     def list_customers(self, org_pat=r'.*', broker=None):
         """
