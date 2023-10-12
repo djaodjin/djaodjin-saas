@@ -45,7 +45,7 @@ from ..utils import datetime_or_now, get_user_serializer
 from .serializers import (CartItemSerializer, CartItemCreateSerializer,
     CartItemUploadSerializer, ChargeSerializer, CheckoutSerializer,
     OrganizationCartSerializer, RedeemCouponSerializer,
-    ValidationErrorSerializer, UserCartDataSerializer,
+    ValidationErrorSerializer,
     ActiveCartItemUpdateSerializer,ActiveCartItemCreateSerializer)
 
 
@@ -776,6 +776,7 @@ class ActiveCartItemRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIV
 
         return http.Response(response.data, status=response.status_code)
 
+
 class UserCartItemListView(UserMixin, generics.ListAPIView):
     """
     Lists cart items for a specific user.
@@ -824,7 +825,26 @@ class UserCartItemListView(UserMixin, generics.ListAPIView):
                 }]
         }
     """
-    serializer_class = UserCartDataSerializer
+    serializer_class = CartItemSerializer
+
+    def get_serializer(self, *args, **kwargs):
+        serializer = super().get_serializer(*args, **kwargs)
+        if hasattr(serializer, 'child'):
+            # Accessing child serializer because ListSerializer is the
+            # parent serializer
+            child_serializer = serializer.child
+            original_to_representation = child_serializer.to_representation
+
+            def _to_representation(instance):
+                # Adding the "id" field
+                representation = original_to_representation(instance)
+                representation['id'] = instance.id
+                # Removing the "user" field
+                representation.pop('user', None)
+                return representation
+
+            child_serializer.to_representation = _to_representation
+        return serializer
 
     def get_queryset(self):
         user = self.user if self.user is not None else self.request.user
