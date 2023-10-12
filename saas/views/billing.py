@@ -1152,6 +1152,7 @@ class ActiveCartItemsView(TemplateView):
         context = super().get_context_data(**kwargs)
         update_context_urls(context, {
             'saas_api_cartitems': reverse('saas_api_cartitems'),
+            'saas_api_pricing': reverse('saas_api_pricing'),
         })
         return context
 

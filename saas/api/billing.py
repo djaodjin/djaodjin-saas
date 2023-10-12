@@ -46,8 +46,7 @@ from .serializers import (CartItemSerializer, CartItemCreateSerializer,
     CartItemUploadSerializer, ChargeSerializer, CheckoutSerializer,
     OrganizationCartSerializer, RedeemCouponSerializer,
     ValidationErrorSerializer, UserCartDataSerializer,
-    ActiveCartItemSerializer, ActiveCartItemUpdateSerializer,
-    ActiveCartItemCreateSerializer)
+    ActiveCartItemUpdateSerializer,ActiveCartItemCreateSerializer)
 
 
 LOGGER = logging.getLogger(__name__)
@@ -623,7 +622,7 @@ class ActiveCartItemListCreateView(generics.ListCreateAPIView):
             "sync_on": null,
             "full_name": "Xia Lee",
             "email": "xia@example.com",
-            "amount": 24900
+            "detail": null
           }]
         }
 
@@ -649,34 +648,34 @@ class ActiveCartItemListCreateView(generics.ListCreateAPIView):
     .. code-block:: json
 
         {
-          "detail": "Cart item created",
-          "cart_item": {
             "user": "xia",
             "plan": "basic",
-            "created_at": "2023-10-11T23:22:54.407880-05:00",
+            "created_at": "2023-10-12T05:47:17.421103-05:00",
             "option": 3,
             "use": null,
             "quantity": 50,
-            "sync_on": null,
+            "sync_on": "",
             "full_name": "Xia Lee",
-            "email": "xia@example.com"
-            }
+            "email": "xia@example.com",
+            "detail": "Cart item created"
         }
     """
 
     queryset = CartItem.objects.filter(recorded=False).order_by('user')
-    serializer_class = ActiveCartItemSerializer
+    serializer_class = CartItemSerializer
 
     def get_serializer_class(self):
         if self.request.method.lower() in ['post']:
             return ActiveCartItemCreateSerializer
-        return ActiveCartItemSerializer
+        return CartItemSerializer
 
-    @swagger_auto_schema(responses={201: OpenAPIResponse(_("Cart item created"), ActiveCartItemSerializer)})
+    @swagger_auto_schema(responses={201: OpenAPIResponse(_("Cart item created"), CartItemSerializer)})
     def post(self, request, *args, **kwargs):
         response = super().create(request, *args, **kwargs)
-        data = {'detail': 'Cart item created', 'cart_item': response.data}
-        return http.Response(data, status=status.HTTP_201_CREATED, headers=response.headers)
+        if response.status_code == status.HTTP_201_CREATED:
+            response.data['detail'] = _('Cart item created')
+
+        return http.Response(response.data, status=status.HTTP_201_CREATED, headers=response.headers)
 
 
 class ActiveCartItemRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
@@ -726,28 +725,25 @@ class ActiveCartItemRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIV
     .. code-block:: json
 
         {
-            "detail": "Cart item updated",
-                "cart_item": {
-                "created_at": "2023-10-12T00:14:24.510679-05:00",
-                "user": {
-                    "slug": "xia",
-                    "email": "xia@example.com",
-                    "full_name": "Xia Lee",
-                    "created_at": "2023-09-06T21:49:28.003319-05:00",
-                    "last_login": "2023-10-11T03:31:10.138177-05:00"
-                },
-                "plan": {
-                    "slug": "premium",
-                    "title": "Premium"
-                },
-                "option": 3,
-                "use": null,
-                "quantity": 5,
-                "sync_on": null,
-                "full_name": "",
-                "email": null,
-                "amount": 94500
-            }
+            "created_at": "2023-10-12T02:04:49.151044-05:00",
+            "user": {
+                "slug": "xia",
+                "email": "xia@example.com",
+                "full_name": "Xia Lee",
+                "created_at": "2023-09-06T21:58:07.969908-05:00",
+                "last_login": "2023-10-12T01:49:13.092566-05:00"
+            },
+            "plan": {
+                "slug": "basic",
+                "title": "Basic"
+            },
+            "option": 0,
+            "use": null,
+            "quantity": 4,
+            "sync_on": "",
+            "full_name": "",
+            "email": "",
+            "detail": "Cart item updated"
         }
 
     .. code-block:: http
@@ -769,14 +765,16 @@ class ActiveCartItemRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIV
     def get_serializer_class(self):
         if self.request.method.lower() in ['put', 'patch']:
             return ActiveCartItemUpdateSerializer
-        return ActiveCartItemSerializer
+        return CartItemSerializer
 
     @swagger_auto_schema(responses={200: OpenAPIResponse(_("Cart item updated"), ActiveCartItemUpdateSerializer)})
     def update(self, request, *args, **kwargs):
         response = super().update(request, *args, **kwargs)
-        return http.Response({'detail': 'Cart item updated', 'cart_item': response.data},
-                             status=response.status_code)
+        response.data['detail'] = _("Successfully updated plan")
+        if response.status_code == status.HTTP_200_OK:
+            response.data['detail'] = _('Cart item updated')
 
+        return http.Response(response.data, status=response.status_code)
 
 class UserCartItemListView(UserMixin, generics.ListAPIView):
     """
@@ -823,7 +821,6 @@ class UserCartItemListView(UserMixin, generics.ListAPIView):
                     "sync_on": null,
                     "full_name": "",
                     "email": null,
-                    "amount": 49800
                 }]
         }
     """

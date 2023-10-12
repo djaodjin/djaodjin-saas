@@ -2980,26 +2980,37 @@ Vue.component('active-carts', {
    data: function(){
        return {
            url: this.$urls.saas_api_cartitems,
+           api_pricing: this.$urls.saas_api_pricing,
            users: {},
+           plans: {}
        };
    },
    methods: {
        addCartItemToUser: function(cartItem) {
-           const user = this.users[cartItem.user.slug] ||
+           var vm = this;
+           var user = vm.users[cartItem.user.slug] ||
                         { username: cartItem.user.slug, email: cartItem.user.email,
                             totalAmount: 0,
                           totalItems: 0, latestUpdate: cartItem.user.created_at };
 
-           user.totalAmount += cartItem.amount*0.01;
+           var plan = vm.plans[cartItem.plan.slug];
+                       if (plan) {
+                           user.totalAmount += cartItem.quantity * plan.period_amount*0.01;
+                       }
            user.totalItems += 1;
            user.latestUpdate = cartItem.created_at > user.latestUpdate ?
                cartItem.created_at : user.latestUpdate;
-           this.$set(this.users, cartItem.user.slug, user);
+           vm.$set(vm.users, cartItem.user.slug, user);
        },
        get: function() {
            var vm = this;
-           this.reqGet(this.url, function(resp) {
-               resp.results.forEach(vm.addCartItemToUser);
+           vm.reqGet(vm.$urls.saas_api_pricing, function(resp) {
+               resp.results.forEach(function (plan) {
+                   vm.$set(vm.plans, plan.slug, plan);
+               });
+               vm.reqGet(vm.url, function (resp) {
+                   resp.results.forEach(vm.addCartItemToUser);
+               });
            });
        },
    },
@@ -3024,12 +3035,13 @@ Vue.component('user-active-cart', {
    },
    methods: {
        addItem: function() {
-           const data = {
-               user: this.user.slug,
-               plan: this.newItemPlan,
-               quantity: this.newItemQuantity
+           var vm = this;
+           var data = {
+               user: vm.user.slug,
+               plan: vm.newItemPlan,
+               quantity: vm.newItemQuantity
            };
-           this.reqPost(this.crudUrl, data, this.get);
+           vm.reqPost(vm.crudUrl, data, vm.get);
        },
        updateItem: function(cartItem) {
            var vm = this;
@@ -3038,17 +3050,18 @@ Vue.component('user-active-cart', {
            vm.reqPatch(url, data, vm.get);
        },
        removeItem: function(cartItem) {
-           this.reqDelete(this._safeUrl(this.crudUrl, cartItem.id), this.get);
+           var vm = this;
+           vm.reqDelete(vm._safeUrl(vm.crudUrl, cartItem.id), vm.get);
        },
        fetchPlans: function() {
            var vm = this;
-           this.reqGet(this.api_pricing, function(resp) {
+           vm.reqGet(vm.api_pricing, function(resp) {
                vm.plans = resp.results || [];
            });
        },
        get: function() {
            var vm = this;
-           this.reqGet(this.url, function(resp) {
+           vm.reqGet(vm.url, function(resp) {
                vm.user = resp.user || null;
                vm.cartItems = resp.cartitems.results || [];
            });

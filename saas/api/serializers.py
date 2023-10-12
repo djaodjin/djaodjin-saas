@@ -1000,25 +1000,8 @@ class CartItemSerializer(serializers.ModelSerializer):
             return obj.get('detail')
         return None
 
-class ActiveCartItemSerializer(CartItemSerializer):
-    """
-    Extends `CartItemSerializer` to include an additional field `amount`,
-    which is computed based on the quantity and plan period amount.
 
-
-    """
-    amount = serializers.SerializerMethodField(read_only=True, required=False)
-
-    class Meta(CartItemSerializer.Meta):
-        fields = ('detail', 'created_at', 'user', 'plan', 'option', 'use', 'quantity',
-                  'sync_on', 'full_name', 'email', 'amount')
-
-    @staticmethod
-    def get_amount(obj):
-        return obj.quantity * obj.plan.period_amount
-
-
-class ActiveCartItemUpdateSerializer(ActiveCartItemSerializer):
+class ActiveCartItemUpdateSerializer(CartItemSerializer):
     """
     Designed for handling update operations on cart items.
     Restricts user and plan fields to be read-only.
@@ -1030,10 +1013,10 @@ class ActiveCartItemUpdateSerializer(ActiveCartItemSerializer):
 
     class Meta:
         model = CartItem
-        fields = ActiveCartItemSerializer.Meta.fields
-        read_only_fields = ('plan',) + ActiveCartItemSerializer.Meta.read_only_fields
+        fields = CartItemSerializer.Meta.fields
+        read_only_fields = ('plan',) + CartItemSerializer.Meta.read_only_fields
 
-class UserCartDataSerializer(ActiveCartItemSerializer):
+class UserCartDataSerializer(CartItemSerializer):
     """
     Serializes cart item data for a specific user.
     Removes the 'user' and 'detail' fields.
@@ -1041,9 +1024,9 @@ class UserCartDataSerializer(ActiveCartItemSerializer):
     class Meta:
         model = CartItem
         fields = ('id', 'created_at') + tuple(f for f in
-                                              ActiveCartItemSerializer.Meta.fields if f not in ['user', 'detail'])
+                                              CartItemSerializer.Meta.fields if f not in ['user', 'detail'])
         read_only_fields = ('amount', 'id') + tuple(f for f in
-                                                    ActiveCartItemSerializer.Meta.read_only_fields if f not in ['user', 'detail'])
+                                                    CartItemSerializer.Meta.read_only_fields if f not in ['user', 'detail'])
 
 class CartItemCreateSerializer(serializers.ModelSerializer):
     """
