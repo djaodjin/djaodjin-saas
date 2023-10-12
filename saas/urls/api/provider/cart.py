@@ -22,17 +22,23 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-'''API URLs typically associated with the provider.'''
+"""
+API URLs for provider resources related to cart items.
+"""
 
-from ....compat import include, path
-
+from ....api.billing import UserCartItemListView, ActiveCartItemListCreateView, ActiveCartItemRetrieveUpdateDestroyView
+from ....compat import path, re_path
+from .... import settings
 
 urlpatterns = [
-    path('', include('saas.urls.api.provider.charges')),
-    path('', include('saas.urls.api.provider.billing')),
-    path('', include('saas.urls.api.provider.roles')),
-    path('', include('saas.urls.api.provider.subscribers')),
-    path('', include('saas.urls.api.provider.plans')),
-    path('', include('saas.urls.api.provider.metrics')),
-    path('', include('saas.urls.api.provider.cart')),
+    path('cartitems/user/<slug:user>',
+         UserCartItemListView.as_view(),
+         name='saas_api_user_cartitems'),
+    path('cartitems',
+         ActiveCartItemListCreateView.as_view(),
+         name='saas_api_cartitems'),
+    re_path('cartitems/(?P<cartitem_id>%s)' %
+         settings.SLUG_RE,
+         ActiveCartItemRetrieveUpdateDestroyView.as_view(),
+         name='saas_api_cartitems_detail'),
 ]

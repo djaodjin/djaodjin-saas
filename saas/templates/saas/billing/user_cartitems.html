@@ -1,0 +1,65 @@
+{% extends "saas/base_dashboard.html" %}
+
+{% block saas_content %}
+<user-active-cart inline-template>
+    <div>
+        <div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Username</th>
+                        <th>Email</th>
+                        <th>Created At</th>
+                        <th>Last Login</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>[[ user.slug ]]</td>
+                        <td>[[ user.email ]]</td>
+                        <td>[[ user.created_at ]]</td>
+                        <td>[[ user.last_login ]]</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <div v-if="cartItems.length > 0">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Created At</th>
+                            <th>Plan</th>
+                            <th>Quantity</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                <tbody>
+                    <tr v-for="cartItem in cartItems" :key="cartItem.pk">
+                        <td>[[ cartItem.created_at ]]</td>
+                        <td>[[ cartItem.plan.title ]]</td>
+                        <td>[[ cartItem.quantity ]]</td>
+                        <td>
+                            <input type="number" v-model.number="cartItem.tempQuantity" min="1" />
+                            <button @click="updateItem(cartItem)">Update</button>
+                            <button @click="removeItem(cartItem)">Remove</button>
+                        </td>
+                    </tr>
+                </tbody>
+                </table>
+            </div>
+            <div v-else>
+                <p>The cart is empty.</p>
+            </div>
+            <div>
+                <select v-model="newItemPlan">
+                    <option v-for="plan in plans" :value="plan.slug" :key="plan.slug">
+                        [[ plan.title ]]
+                    </option>
+                </select>
+                <input type="number" v-model.number="newItemQuantity" min="1" />
+                <button @click="addItem">Add Item</button>
+            </div>
+        </div>
+    </div>
+</user-active-cart>
+{% endblock %}

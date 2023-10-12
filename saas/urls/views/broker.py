@@ -29,7 +29,8 @@ Urls specific to the hosting site (i.e. broker).
 from ... import settings
 from ...compat import path, re_path
 from ...views.metrics import BalancesView
-from ...views.billing import AllTransactions, ChargeListView, VTChargeView
+from ...views.billing import (AllTransactions, ChargeListView, VTChargeView,
+    ActiveCartItemsView, UserCartItemsView)
 from ...views.download import (BalancesDownloadView, ChargesDownloadView,
     RegisteredDownloadView, TransactionDownloadView)
 
@@ -56,4 +57,11 @@ urlpatterns = [
     path('metrics/registered/download',
         RegisteredDownloadView.as_view(),
         name='saas_subscriber_pipeline_download_registered'),
+    path('billing/active_carts/',
+         ActiveCartItemsView.as_view(),
+         name='saas_active_cartitems'),
+    re_path('billing/active_carts/(?P<user>%s)' %
+         settings.SLUG_RE,
+         UserCartItemsView.as_view(),
+         name='saas_user_active_carts'),
 ]

@@ -127,6 +127,9 @@ urlpatterns += \
         redirects=[fail_authenticated, fail_provider]),
     url_prefixed(r'api/', include('saas.urls.api.tailbroker'),
         redirects=[fail_authenticated, fail_provider_only]),
+    url_prefixed(r'api/',
+        include('saas.urls.api.provider.cart'),
+        redirects=[fail_authenticated, fail_direct]),
     # views
     url_prefixed(r'', include('saas.urls.views.request'),
         redirects=[fail_authenticated]),

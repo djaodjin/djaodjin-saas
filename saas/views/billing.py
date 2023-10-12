@@ -59,7 +59,7 @@ from ..forms import (BankForm, CartPeriodsForm, CreditCardForm,
     ImportTransactionForm, RedeemCouponForm, VTChargeForm, WithdrawForm)
 from ..mixins import (BalanceDueMixin, BalanceAndCartMixin, ChargeMixin,
     DateRangeContextMixin, InvoicablesMixin, OrganizationMixin,
-    ProviderMixin, get_charge_context, product_url)
+    ProviderMixin, get_charge_context, product_url, UserMixin)
 from ..models import (CartItem, Charge, Coupon,
     Plan, Price, Subscription, Transaction, UseCharge, get_broker)
 from ..utils import (get_organization_model, update_context_urls,
@@ -1143,3 +1143,28 @@ djaodjin-saas/tree/master/saas/templates/saas/billing/import.html>`__).
     def get_success_url(self):
         return reverse('saas_transfer_info',
             kwargs=self.get_url_kwargs(**self.kwargs))
+
+
+class ActiveCartItemsView(TemplateView):
+    template_name = 'saas/billing/cartitems.html'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        update_context_urls(context, {
+            'saas_api_cartitems': reverse('saas_api_cartitems'),
+        })
+        return context
+
+
+class UserCartItemsView(TemplateView, UserMixin):
+    template_name = 'saas/billing/user_cartitems.html'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        user = self.user
+        update_context_urls(context, {
+            'saas_api_user_cartitems': reverse('saas_api_user_cartitems', args=(user,)),
+            'saas_api_pricing': reverse('saas_api_pricing'),
+            'saas_api_cartitems': reverse('saas_api_cartitems'),
+        })
+        return context

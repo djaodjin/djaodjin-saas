@@ -2975,3 +2975,87 @@ Vue.component('monthly-revenue', {
     }
 });
 
+Vue.component('active-carts', {
+   mixins: [itemMixin],
+   data: function(){
+       return {
+           url: this.$urls.saas_api_cartitems,
+           users: {},
+       };
+   },
+   methods: {
+       addCartItemToUser: function(cartItem) {
+           const user = this.users[cartItem.user.slug] ||
+                        { username: cartItem.user.slug, email: cartItem.user.email,
+                            totalAmount: 0,
+                          totalItems: 0, latestUpdate: cartItem.user.created_at };
+
+           user.totalAmount += cartItem.amount*0.01;
+           user.totalItems += 1;
+           user.latestUpdate = cartItem.created_at > user.latestUpdate ?
+               cartItem.created_at : user.latestUpdate;
+           this.$set(this.users, cartItem.user.slug, user);
+       },
+       get: function() {
+           var vm = this;
+           this.reqGet(this.url, function(resp) {
+               resp.results.forEach(vm.addCartItemToUser);
+           });
+       },
+   },
+   mounted: function(){
+       this.get();
+   }
+});
+
+Vue.component('user-active-cart', {
+   mixins: [itemMixin],
+   data: function(){
+       return {
+           url: this.$urls.saas_api_user_cartitems,
+           crudUrl: this.$urls.saas_api_cartitems,
+           api_pricing: this.$urls.saas_api_pricing,
+           newItemPlan: null,
+           newItemQuantity: 1,
+           plans: [],
+           cartItems: [],
+           user: {},
+       };
+   },
+   methods: {
+       addItem: function() {
+           const data = {
+               user: this.user.slug,
+               plan: this.newItemPlan,
+               quantity: this.newItemQuantity
+           };
+           this.reqPost(this.crudUrl, data, this.get);
+       },
+       updateItem: function(cartItem) {
+           var vm = this;
+           var data = { quantity: cartItem.tempQuantity };
+           var url = vm.crudUrl + '/' + cartItem.id;
+           vm.reqPatch(url, data, vm.get);
+       },
+       removeItem: function(cartItem) {
+           this.reqDelete(this._safeUrl(this.crudUrl, cartItem.id), this.get);
+       },
+       fetchPlans: function() {
+           var vm = this;
+           this.reqGet(this.api_pricing, function(resp) {
+               vm.plans = resp.results || [];
+           });
+       },
+       get: function() {
+           var vm = this;
+           this.reqGet(this.url, function(resp) {
+               vm.user = resp.user || null;
+               vm.cartItems = resp.cartitems.results || [];
+           });
+       },
+   },
+   mounted: function(){
+       this.fetchPlans();
+       this.get();
+   }
+});

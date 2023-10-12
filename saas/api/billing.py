@@ -38,13 +38,16 @@ from rest_framework import status
 from ..backends import ProcessorError
 from ..compat import gettext_lazy as _, is_authenticated, StringIO
 from ..docs import swagger_auto_schema, OpenAPIResponse
-from ..mixins import BalanceAndCartMixin, CartMixin, InvoicablesMixin
+from ..mixins import (BalanceAndCartMixin, CartMixin, InvoicablesMixin,
+                      UserMixin)
 from ..models import CartItem, get_broker
-from ..utils import datetime_or_now
+from ..utils import datetime_or_now, get_user_serializer
 from .serializers import (CartItemSerializer, CartItemCreateSerializer,
     CartItemUploadSerializer, ChargeSerializer, CheckoutSerializer,
     OrganizationCartSerializer, RedeemCouponSerializer,
-    ValidationErrorSerializer)
+    ValidationErrorSerializer, UserCartDataSerializer,
+    ActiveCartItemSerializer, ActiveCartItemUpdateSerializer,
+    ActiveCartItemCreateSerializer)
 
 
 LOGGER = logging.getLogger(__name__)
@@ -571,3 +574,275 @@ of Xia",
             return http.Response({
                 'detail': str(err)}, status=status.HTTP_400_BAD_REQUEST)
         return http.Response({}, status=status.HTTP_200_OK)
+
+
+class ActiveCartItemListCreateView(generics.ListCreateAPIView):
+    """
+    Handles listing and creating cart items.
+
+    Provides a list of cart items, filtered to only include those not recorded,
+    ordered by each user.
+    This list is typically used to display all items in users' carts not checked out.
+
+    For creation of a new cart item, user and plan data(the user's username
+    and the plan's slug) needs to be supplied via a POST request.
+
+    The newly created cart item data is returned in the response along with a
+    message indicating success.
+
+    **Tags**: billing, subscriber, cart
+
+    **Examples**
+
+    .. code-block:: http
+
+        GET /api/cart-item HTTP/1.1
+
+    responds
+
+    .. code-block:: json
+
+        {
+          "results": [
+          {
+            "created_at": "2023-10-11T21:20:06.444545-05:00",
+            "user": {
+                "slug": "xia",
+                "email": "xia@example.com",
+                "full_name": "Xia Lee",
+                "created_at": "2023-09-06T21:49:28.003319-05:00",
+                "last_login": "2023-10-11T03:31:10.138177-05:00"
+            },
+            "plan": {
+                "slug": "basic",
+                "title": "Basic"
+            },
+            "option": 0,
+            "use": null,
+            "quantity": 1,
+            "sync_on": null,
+            "full_name": "Xia Lee",
+            "email": "xia@example.com",
+            "amount": 24900
+          }]
+        }
+
+    .. code-block:: http
+
+        POST /api/cart-item HTTP/1.1
+
+    .. code-block:: json
+
+        {
+            "user": "xia",
+            "plan": "basic",
+            "option": 3,
+            "use": null,
+            "quantity": 50,
+            "sync_on": "",
+            "full_name": "Xia Lee",
+            "email": "xia@example.com",
+        }
+
+    responds
+
+    .. code-block:: json
+
+        {
+          "detail": "Cart item created",
+          "cart_item": {
+            "user": "xia",
+            "plan": "basic",
+            "created_at": "2023-10-11T23:22:54.407880-05:00",
+            "option": 3,
+            "use": null,
+            "quantity": 50,
+            "sync_on": null,
+            "full_name": "Xia Lee",
+            "email": "xia@example.com"
+            }
+        }
+    """
+
+    queryset = CartItem.objects.filter(recorded=False).order_by('user')
+    serializer_class = ActiveCartItemSerializer
+
+    def get_serializer_class(self):
+        if self.request.method.lower() in ['post']:
+            return ActiveCartItemCreateSerializer
+        return ActiveCartItemSerializer
+
+    @swagger_auto_schema(responses={201: OpenAPIResponse(_("Cart item created"), ActiveCartItemSerializer)})
+    def post(self, request, *args, **kwargs):
+        response = super().create(request, *args, **kwargs)
+        data = {'detail': 'Cart item created', 'cart_item': response.data}
+        return http.Response(data, status=status.HTTP_201_CREATED, headers=response.headers)
+
+
+class ActiveCartItemRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
+    """
+    Handles retrieving, updating, and deleting cart items.
+
+    Provides operations for a single cart item identified by its ID.
+    The cart item can be retrieved, updated, or deleted.
+
+    **Tags**: billing, subscriber, cart
+
+    **Examples**
+
+    .. code-block:: http
+
+        GET /api/cart-item/{id} HTTP/1.1
+
+    responds
+
+    .. code-block:: json
+
+        {
+          "user": "xia",
+          "plan": "basic",
+          "created_at": "2023-10-11T23:22:54.407880-05:00",
+          "option": 3,
+          "use": null,
+          "quantity": 50,
+          "sync_on": null,
+          "full_name": "Xia Lee",
+          "email": "xia@example.com"
+        }
+
+    .. code-block:: http
+
+        PUT /api/cart-item/{id} HTTP/1.1
+
+    .. code-block:: json
+
+        {
+          "option": 2,
+          "quantity": 25
+        }
+
+    responds
+
+    .. code-block:: json
+
+        {
+            "detail": "Cart item updated",
+                "cart_item": {
+                "created_at": "2023-10-12T00:14:24.510679-05:00",
+                "user": {
+                    "slug": "xia",
+                    "email": "xia@example.com",
+                    "full_name": "Xia Lee",
+                    "created_at": "2023-09-06T21:49:28.003319-05:00",
+                    "last_login": "2023-10-11T03:31:10.138177-05:00"
+                },
+                "plan": {
+                    "slug": "premium",
+                    "title": "Premium"
+                },
+                "option": 3,
+                "use": null,
+                "quantity": 5,
+                "sync_on": null,
+                "full_name": "",
+                "email": null,
+                "amount": 94500
+            }
+        }
+
+    .. code-block:: http
+
+        DELETE /api/cart-item/{id} HTTP/1.1
+
+    responds
+
+    .. code-block:: json
+
+        {}  # Empty response body with a 204 No Content status code.
+
+    """
+    lookup_field = "id"
+    lookup_url_kwarg = "cartitem_id"
+
+    queryset = CartItem.objects.filter(recorded=False).order_by('created_at')
+
+    def get_serializer_class(self):
+        if self.request.method.lower() in ['put', 'patch']:
+            return ActiveCartItemUpdateSerializer
+        return ActiveCartItemSerializer
+
+    @swagger_auto_schema(responses={200: OpenAPIResponse(_("Cart item updated"), ActiveCartItemUpdateSerializer)})
+    def update(self, request, *args, **kwargs):
+        response = super().update(request, *args, **kwargs)
+        return http.Response({'detail': 'Cart item updated', 'cart_item': response.data},
+                             status=response.status_code)
+
+
+class UserCartItemListView(UserMixin, generics.ListAPIView):
+    """
+    Lists cart items for a specific user.
+
+    Provides a list of cart items for a specific user that have not yet
+    been checked out.
+
+    **Tags**: billing, subscriber, cart
+
+    **Examples**
+
+    .. code-block:: http
+
+        GET /api/cart-item/user/xia HTTP/1.1
+
+    responds
+
+    .. code-block:: json
+
+        {
+          "user": {
+            "slug": "xia",
+            "email": "xia@example.com",
+            "full_name": "Xia Lee",
+            "created_at": "2023-09-06T21:49:28.003319-05:00",
+            "last_login": "2023-10-11T03:31:10.138177-05:00"
+          },
+        "cartitems": {
+            "count": 1,
+            "next": null,
+            "previous": null,
+            "results": [
+                {
+                    "id": 137,
+                    "created_at": "2023-10-11T23:49:59.485511-05:00",
+                    "plan": {
+                        "slug": "basic",
+                        "title": "Basic"
+                    },
+                    "option": 0,
+                    "use": null,
+                    "quantity": 2,
+                    "sync_on": null,
+                    "full_name": "",
+                    "email": null,
+                    "amount": 49800
+                }]
+        }
+    """
+    serializer_class = UserCartDataSerializer
+
+    def get_queryset(self):
+        user = self.user if self.user is not None else self.request.user
+        queryset = (CartItem.objects.filter(user=user, recorded=False)
+                    .select_related('user', 'plan')
+                    .order_by('created_at'))
+        return queryset
+
+    def list(self, request, *args, **kwargs):
+        response = super().list(request, *args, **kwargs)
+        user = self.user if self.user is not None else self.request.user
+        user_data = get_user_serializer()(user).data
+        # Adding user_data here otherwise it gets repeated for each cartitem
+        response_data = {
+            'user': user_data,
+            'cartitems': response.data
+        }
+        return http.Response(response_data)
