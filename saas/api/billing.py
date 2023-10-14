@@ -46,7 +46,7 @@ from .serializers import (CartItemSerializer, CartItemCreateSerializer,
     CartItemUploadSerializer, ChargeSerializer, CheckoutSerializer,
     OrganizationCartSerializer, RedeemCouponSerializer,
     ValidationErrorSerializer,
-    ActiveCartItemUpdateSerializer,ActiveCartItemCreateSerializer)
+    CartItemUpdateSerializer, UserCartItemCreateSerializer)
 
 
 LOGGER = logging.getLogger(__name__)
@@ -666,16 +666,18 @@ class ActiveCartItemListCreateView(generics.ListCreateAPIView):
 
     def get_serializer_class(self):
         if self.request.method.lower() in ['post']:
-            return ActiveCartItemCreateSerializer
+            return UserCartItemCreateSerializer
         return CartItemSerializer
 
-    @swagger_auto_schema(responses={201: OpenAPIResponse(_("Cart item created"), CartItemSerializer)})
+    @swagger_auto_schema(responses={201: OpenAPIResponse(
+        _("Cart item created"), CartItemSerializer)})
     def post(self, request, *args, **kwargs):
         response = super().create(request, *args, **kwargs)
         if response.status_code == status.HTTP_201_CREATED:
             response.data['detail'] = _('Cart item created')
 
-        return http.Response(response.data, status=status.HTTP_201_CREATED, headers=response.headers)
+        return http.Response(response.data, status=status.HTTP_201_CREATED,
+                             headers=response.headers)
 
 
 class ActiveCartItemRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
@@ -764,13 +766,13 @@ class ActiveCartItemRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIV
 
     def get_serializer_class(self):
         if self.request.method.lower() in ['put', 'patch']:
-            return ActiveCartItemUpdateSerializer
+            return CartItemUpdateSerializer
         return CartItemSerializer
 
-    @swagger_auto_schema(responses={200: OpenAPIResponse(_("Cart item updated"), ActiveCartItemUpdateSerializer)})
+    @swagger_auto_schema(responses={200: OpenAPIResponse(
+        _("Cart item updated"), CartItemUpdateSerializer)})
     def update(self, request, *args, **kwargs):
         response = super().update(request, *args, **kwargs)
-        response.data['detail'] = _("Successfully updated plan")
         if response.status_code == status.HTTP_200_OK:
             response.data['detail'] = _('Cart item updated')
 
