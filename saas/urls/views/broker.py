@@ -57,10 +57,10 @@ urlpatterns = [
     path('metrics/registered/download',
         RegisteredDownloadView.as_view(),
         name='saas_subscriber_pipeline_download_registered'),
-    path('billing/active_carts/',
+    path('billing/cartitems/',
          ActiveCartItemsView.as_view(),
          name='saas_active_cartitems'),
-    re_path('billing/active_carts/(?P<user>%s)' %
+    re_path('billing/cartitems/user/(?P<user>%s)' %
          settings.SLUG_RE,
          UserCartItemsView.as_view(),
          name='saas_user_active_carts'),

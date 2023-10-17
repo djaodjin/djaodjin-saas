@@ -1011,9 +1011,7 @@ class CartItemUpdateSerializer(CartItemSerializer):
     plan = PlanSerializer(
         help_text=_("Item in the cart (if plan)"), read_only=True)
 
-    class Meta:
-        model = CartItem
-        fields = CartItemSerializer.Meta.fields
+    class Meta(CartItemSerializer.Meta):
         read_only_fields = ('plan',) + CartItemSerializer.Meta.read_only_fields
 
 
