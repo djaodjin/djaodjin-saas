@@ -34,5 +34,4 @@ urlpatterns = [
     path('', include('saas.urls.api.provider.subscribers')),
     path('', include('saas.urls.api.provider.plans')),
     path('', include('saas.urls.api.provider.metrics')),
-    path('', include('saas.urls.api.provider.cart')),
 ]

@@ -2976,51 +2976,65 @@ Vue.component('monthly-revenue', {
 });
 
 Vue.component('active-carts', {
-   mixins: [itemMixin],
-   data: function(){
-       return {
-           url: this.$urls.saas_api_cartitems,
-           api_pricing: this.$urls.saas_api_pricing,
-           users: {},
-           plans: {}
-       };
-   },
-   methods: {
-       addCartItemToUser: function(cartItem) {
-           var vm = this;
-           var user = vm.users[cartItem.user.slug] ||
-                        { username: cartItem.user.slug, email: cartItem.user.email,
-                            totalAmount: 0,
-                          totalItems: 0, latestUpdate: cartItem.user.created_at };
+    mixins: [itemListMixin],
+    data: function(){
+        return {
+            url: this.$urls.saas_api_cartitems,
+            api_pricing: this.$urls.saas_api_pricing,
+            plans: {}
+        };
+    },
+    methods: {
+        addCartItemToUser(cartItem) {
+            var foundUser = this.items.results.find(
+                item => item.username === cartItem.user.slug);
 
-           var plan = vm.plans[cartItem.plan.slug];
-                       if (plan) {
-                           user.totalAmount += cartItem.quantity * plan.period_amount*0.01;
-                       }
-           user.totalItems += 1;
-           user.latestUpdate = cartItem.created_at > user.latestUpdate ?
-               cartItem.created_at : user.latestUpdate;
-           vm.$set(vm.users, cartItem.user.slug, user);
-       },
-       get: function() {
-           var vm = this;
-           vm.reqGet(vm.$urls.saas_api_pricing, function(resp) {
-               resp.results.forEach(function (plan) {
-                   vm.$set(vm.plans, plan.slug, plan);
-               });
-               vm.reqGet(vm.url, function (resp) {
-                   resp.results.forEach(vm.addCartItemToUser);
-               });
-           });
-       },
-   },
-   mounted: function(){
-       this.get();
-   }
+            if (foundUser) {
+                var plan = this.plans[cartItem.plan.slug];
+                if (plan) {
+                    foundUser.totalAmount += cartItem.quantity * plan.period_amount * 0.01;
+                }
+                foundUser.totalItems++;
+                if (cartItem.created_at > foundUser.latestUpdate) {
+                    foundUser.latestUpdate = cartItem.created_at;
+                }
+            } else {
+                var newUser = {
+                    username: cartItem.user.slug,
+                    email: cartItem.user.email,
+                    totalAmount: 0,
+                    totalItems: 1,
+                    latestUpdate: cartItem.user.created_at
+                };
+                this.items.results.push(newUser);
+            }
+        },
+        getAllDataFromAPI(url) {
+            this.reqGet(url, (resp) => {
+                resp.results.forEach(this.addCartItemToUser);
+                if (resp.next) {
+                    this.getAllDataFromAPI(resp.next);
+                }
+            });
+        },
+        get() {
+            this.reqGet(this.$urls.saas_api_pricing, (resp) => {
+                this.plans = resp.results.reduce((acc, plan) => {
+                    acc[plan.slug] = plan;
+                    return acc;
+                }, {});
+                this.getAllDataFromAPI(this.url);
+            });
+        }
+    },
+    mounted() {
+        this.get();
+    }
 });
 
+
 Vue.component('user-active-cart', {
-   mixins: [itemMixin],
+   mixins: [itemListMixin],
    data: function(){
        return {
            url: this.$urls.saas_api_user_cartitems,
@@ -3029,15 +3043,15 @@ Vue.component('user-active-cart', {
            newItemPlan: null,
            newItemQuantity: 1,
            plans: [],
-           cartItems: [],
-           user: {},
+           // cartItems: [],
+           // user: {},
        };
    },
    methods: {
        addItem: function() {
            var vm = this;
            var data = {
-               user: vm.user.slug,
+               user: vm.items.user.slug,
                plan: vm.newItemPlan,
                quantity: vm.newItemQuantity
            };
@@ -3059,16 +3073,9 @@ Vue.component('user-active-cart', {
                vm.plans = resp.results || [];
            });
        },
-       get: function() {
-           var vm = this;
-           vm.reqGet(vm.url, function(resp) {
-               vm.user = resp.user || null;
-               vm.cartItems = resp.cartitems.results || [];
-           });
-       },
    },
    mounted: function(){
-       this.fetchPlans();
-       this.get();
+      this.fetchPlans();
+      this.get();
    }
 });

@@ -45,8 +45,8 @@ from ..utils import datetime_or_now, get_user_serializer
 from .serializers import (CartItemSerializer, CartItemCreateSerializer,
     CartItemUploadSerializer, ChargeSerializer, CheckoutSerializer,
     OrganizationCartSerializer, RedeemCouponSerializer,
-    ValidationErrorSerializer,
-    CartItemUpdateSerializer, UserCartItemCreateSerializer)
+    ValidationErrorSerializer, CartItemUpdateSerializer,
+    UserCartItemCreateSerializer)
 
 
 LOGGER = logging.getLogger(__name__)
@@ -816,20 +816,18 @@ class UserCartItemListView(UserMixin, generics.ListAPIView):
     .. code-block:: json
 
         {
-          "user": {
-            "slug": "xia",
-            "email": "xia@example.com",
-            "full_name": "Xia Lee",
-            "created_at": "2023-09-06T21:49:28.003319-05:00",
-            "last_login": "2023-10-11T03:31:10.138177-05:00"
-          },
-        "cartitems": {
             "count": 1,
             "next": null,
             "previous": null,
+            "user": {
+                "slug": "xia",
+                "email": "xia@example.com",
+                "full_name": "Xia Lee",
+                "created_at": "2023-09-06T21:49:28.003319-05:00",
+                "last_login": "2023-10-11T03:31:10.138177-05:00"
+            },
             "results": [
                 {
-                    "id": 137,
                     "created_at": "2023-10-11T23:49:59.485511-05:00",
                     "plan": {
                         "slug": "basic",
@@ -841,6 +839,7 @@ class UserCartItemListView(UserMixin, generics.ListAPIView):
                     "sync_on": null,
                     "full_name": "",
                     "email": null,
+                    "id": 137,
                 }]
             }
         """
@@ -874,8 +873,8 @@ class UserCartItemListView(UserMixin, generics.ListAPIView):
 
     def get_queryset(self):
         user = self.user if self.user is not None else self.request.user
-        # The queryset returns a queryset meaning
-        # ListSerializer is used
+        # The queryset = (...) returns a queryset meaning
+        # ListSerializer is automatically used
         queryset = (CartItem.objects.filter(user=user, recorded=False)
                     .select_related('user', 'plan')
                     .order_by('created_at'))
@@ -886,8 +885,10 @@ class UserCartItemListView(UserMixin, generics.ListAPIView):
         user = self.user if self.user is not None else self.request.user
         user_data = get_user_serializer()(user).data
         # Adding user_data here otherwise it gets repeated for each cartitem
-        response_data = {
-            'user': user_data,
-            'cartitems': response.data
-        }
-        return http.Response(response_data)
+        # Adding all items except the "results" in order to show the
+        # User field before the "results."
+        data = {k: response.data[k] for k in list(response.data.keys())[:-1]}
+        data['user'] = user_data
+        data['results'] = response.data['results']
+
+        return http.Response(data)

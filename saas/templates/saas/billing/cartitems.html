@@ -15,7 +15,7 @@
                 </tr>
             </thead>
             <tbody>
-                <tr v-for="(userData, username) in users" :key="username">
+                <tr v-for="(userData, username) in items.results" :key="username">
                     <td>[[ userData.username ]]</td>
                     <td>[[ userData.email ]]</td>
                     <td>[[ userData.totalItems ]]</td>
@@ -25,6 +25,7 @@
                 </tr>
             </tbody>
         </table>
+        {% include "saas/_paginator.html" %}
     </div>
 </active-carts>
 {% endblock %}

@@ -1044,8 +1044,7 @@ class UserCartItemCreateSerializer(CartItemCreateSerializer):
         help_text=_('The user for whom the cart item is being created')
     )
 
-    class Meta:
-        model = CartItem
+    class Meta(CartItemCreateSerializer.Meta):
         fields = ('user',) + CartItemCreateSerializer.Meta.fields
 
 class CartItemUploadSerializer(NoModelSerializer):
