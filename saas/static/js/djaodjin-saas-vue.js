@@ -3043,8 +3043,6 @@ Vue.component('user-active-cart', {
            newItemPlan: null,
            newItemQuantity: 1,
            plans: [],
-           // cartItems: [],
-           // user: {},
        };
    },
    methods: {
