@@ -1220,8 +1220,8 @@ class RoleMixin(RoleDescriptionMixin):
             raise Http404('No %s matches the given query.'
                 % queryset.model._meta.object_name)
 
-class BalancesDueMixin(DateRangeContextMixin, ProviderMixin):
 
+class BalancesDueMixin(DateRangeContextMixin, ProviderMixin):
     filter_backends = (DateRangeFilter,)
 
     @property
@@ -1237,25 +1237,23 @@ class BalancesDueMixin(DateRangeContextMixin, ProviderMixin):
                 subscribes_to__organization=self.provider).distinct()
         else:
             queryset = organization_model.objects.all()
-        decorated_queryset = self.decorate_queryset(queryset)
-        return decorated_queryset
+        queryset = queryset.filter(
+            outgoing__orig_account=Transaction.PAYABLE,
+            slug__in=self.balances_due.keys()).distinct()
+        return queryset.order_by('full_name')
 
     def decorate_queryset(self, queryset):
-        # Decorating the queryset to "attach" the balance values
-        # to the queryset so we can use the OrganizationSerializer
-        organization_ids = []
-        for organization in queryset:
-            customer = self.balances_due.get(organization.slug)
-            if customer:
-                if any(val['balance'] > 0 for val in six.itervalues(customer)):
-                    organization_ids.append(organization.id)
-        decorated_queryset = queryset.filter(id__in=organization_ids).order_by('full_name')
+        decorated_queryset = list(queryset)
+        balances_values = self.balances_due
+        for organization in decorated_queryset:
+            balance = balances_values.get(organization.slug)
+            if balance:
+                for unit, unit_data in balance.items():
+                    unit_data.pop('Liability', None)
+                organization.balances = balance
+            else:
+                organization.balances = None
         return decorated_queryset
-
-    def get_serializer_context(self):
-        context = super().get_serializer_context()
-        context['balances_due'] = self.balances_due
-        return context
 
 
 def _as_html_description(transaction_descr,

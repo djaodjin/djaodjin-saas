@@ -824,16 +824,25 @@ class BalancesDueAPIView(BalancesDueMixin, ListAPIView):
                     "type": "organization",
                     "credentials": false,
                     "created_at": "2022-08-31T19:00:00-05:00",
-                    "balances_due": {
-                        "usd": {
-                            "contract_value": 94500,
+                    "balances": {
+                        "eur": {
+                            "contract_value": 1333,
                             "payments": 0,
-                            "balance_due": 94500
+                            "balance": 1333
+                        },
+                        "usd": {
+                            "contract_value": 982800,
+                            "cash_payments": 945000,
+                            "balance": 37800
                         }
-                    }
                 }
             ]
         }
     """
 
     serializer_class = BalancesDueSerializer
+
+    def paginate_queryset(self, queryset):
+        page = super(BalancesDueAPIView, self).paginate_queryset(
+            queryset)
+        return self.decorate_queryset(page if page else queryset)

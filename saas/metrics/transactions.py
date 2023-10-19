@@ -295,9 +295,11 @@ GROUP BY saas_organization.slug, matched_transfers_payments.dest_unit""" % {
             payments = (val.get(Transaction.LIABILITY, 0)
                         - val.get(Transaction.REFUNDED, 0))
             balance = contract_value - payments if contract_value > payments else 0
+            if balance < 1:
+                continue
             val.update({
                 'contract_value': contract_value,
-                'payments': payments,
+                'cash_payments': payments,
                 'balance': balance
             })
             if slug not in results:

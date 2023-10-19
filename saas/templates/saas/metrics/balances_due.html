@@ -19,18 +19,19 @@ Balances due
         </tr>
       </thead>
       <template v-for="(item, index) in items.results">
-        <tr v-for="unit in getUnits(item.balances_due)" :key="unit" :id="item.slug + '-' + unit" v-show="itemsLoaded && items.results.length > 0">
+        <tr v-for="(balance, unit) in item.balances" :key="index + '-' + unit" v-show="itemsLoaded && items.results.length > 0">
           <td>
             <a :href="'{{urls.profile_redirect}}' + item.slug + '/'">[[item.printable_name]]</a>
           </td>
           <td>[[unit]]</td>
-          <td>[[item.balances_due[unit].contract_value]]</td>
-          <td>[[item.balances_due[unit].payments]]</td>
-          <td>[[item.balances_due[unit].balance_due]]</td>
+          <td>[[balance.contract_value]]</td>
+          <td>[[balance.cash_payments]]</td>
+          <td>[[balance.balance]]</td>
           <td>[[item.created_at]]</td>
         </tr>
       </template>
     </table>
+    {% include 'saas/_paginator.html' %}
   </div>
 </balancesdue-list>
 {% endblock %}

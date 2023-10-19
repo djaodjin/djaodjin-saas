@@ -55,7 +55,7 @@ urlpatterns = [
         settings.PROFILE_URL_KWARG,
         LifetimeValueMetricAPIView.as_view(),
         name='saas_api_metrics_lifetimevalue'),
-    path('metrics/<slug:%s>/balances_due' %
+    path('metrics/<slug:%s>/balances-due' %
          settings.PROFILE_URL_KWARG,
          BalancesDueAPIView.as_view(),
          name='saas_api_metrics_balances_due'),

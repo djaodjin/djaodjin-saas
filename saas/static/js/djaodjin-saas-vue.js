@@ -1784,11 +1784,6 @@ Vue.component('balancesdue-list', {
     mounted: function(){
         this.get();
     },
-    methods: {
-        getUnits: function(balances_due) {
-            return Object.keys(balances_due);
-        }
-    }
 });
 
 

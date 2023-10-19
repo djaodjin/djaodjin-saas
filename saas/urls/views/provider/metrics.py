@@ -70,7 +70,7 @@ urlpatterns = [
         settings.PROFILE_URL_KWARG,
         SubscribersActivityView.as_view(),
         name='saas_subscribers_activity'),
-    path('metrics/<slug:%s>/balances_due' %
+    path('metrics/<slug:%s>/balances-due' %
          settings.PROFILE_URL_KWARG,
          BalancesDueView.as_view(),
          name='saas_metrics_balances_due')
