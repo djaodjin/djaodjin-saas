@@ -3091,6 +3091,7 @@ class UseCharge(SlugTitleMixin, models.Model):
     quota = models.PositiveIntegerField(default=0)
     extra = get_extra_field_class()(null=True,
         help_text=_("Extra meta data (can be stringify JSON)"))
+    maximum_limit = models.PositiveIntegerField(default=0, null=True)
 
     class Meta:
         unique_together = ('slug', 'plan')
@@ -4629,6 +4630,11 @@ def record_use_charge(subscription, use_charge, quantity=1):
     if usage < use_charge.quota:
         amount = 0
         descr += " (complimentary in plan)"
+    if use_charge.maximum_limit and use_charge.maximum_limit > 0:
+        if usage >= use_charge.maximum_limit:
+            signals.use_charge_limit_crossed.send(sender=__name__,
+                                                  use_charge=use_charge,
+                                                  subscription=subscription)
     return Transaction.objects.record_order([
         Transaction.objects.new_use_charge(subscription,
             use_charge, quantity, custom_amount=amount, descr=descr)])
