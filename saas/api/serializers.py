@@ -391,9 +391,8 @@ class ForceSerializer(NoModelSerializer):
 
 class PeriodSerializer(NoModelSerializer):
 
-    periods = serializers.ChoiceField(required=False,
-        choices=[choice[1].lower() for choice in
-                 Plan.INTERVAL_CHOICES],
+    period = EnumField(required=False,
+        choices=Plan.INTERVAL_CHOICES,
         default='monthly',
         help_text=_("Set time granularity: 'hourly,' 'daily,' 'weekly,' "
         "'monthly,' or 'yearly.' Default is 'monthly.'"))
@@ -756,6 +755,17 @@ class PlanCreateSerializer(PlanDetailSerializer):
 
     class Meta(PlanDetailSerializer.Meta):
         fields = PlanDetailSerializer.Meta.fields
+
+    def validate(self, data):
+        period_type = Plan.INTERVAL_CHOICES[data['period_type'] - 1][1]
+        period_amount = data.get('period_amount')
+
+        min_amount = getattr(settings, f'BROKER_MINIMUM_PLAN_AMOUNT_{period_type}', 0)
+        if period_amount < min_amount:
+            raise ValidationError(
+                f'Period amount must be at least {min_amount}.')
+
+        return data
 
 
 class OrganizationInviteSerializer(OrganizationCreateSerializer):
