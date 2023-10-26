@@ -1504,7 +1504,7 @@ Vue.component('role-profile-list', {
             showRequested: false,
             params: {
                 role_status: "",
-                include_personal_profile: "1",
+                include_personal_profile: true,
             },
         }
     },
@@ -2269,7 +2269,7 @@ Vue.component('profile-update', {
         },
             convertToOrganization: function() {
               var vm = this;
-                vm.reqPost(vm.profile_url + `?convert-from-personal=1`, { full_name: vm.formFields.full_name },
+                vm.reqPost(vm.profile_url + `?convert_from_personal=1`, { full_name: vm.formFields.full_name },
                     function(resp) {
                         if (  resp.detail  ) {
                             vm.showMessages([resp.detail], "success");

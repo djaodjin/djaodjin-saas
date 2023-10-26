@@ -44,7 +44,7 @@ from ..utils import datetime_or_now
 from .serializers import (CartItemSerializer, CartItemCreateSerializer,
     CartItemUploadSerializer, ChargeSerializer, CheckoutSerializer,
     OrganizationCartSerializer, RedeemCouponSerializer,
-    ValidationErrorSerializer)
+    ValidationErrorSerializer, QueryParamCartItemSerializer)
 
 
 LOGGER = logging.getLogger(__name__)
@@ -195,8 +195,12 @@ class CartItemAPIView(CartMixin, generics.CreateAPIView):
         #pylint:disable=unused-argument
         plan = None
         email = None
-        plan = request.query_params.get('plan')
-        email = request.query_params.get('email')
+        query_serializer = QueryParamCartItemSerializer(data=request.query_params)
+
+        if query_serializer.is_valid(raise_exception=True):
+            plan = query_serializer.validated_data.get('plan', None)
+            email = query_serializer.validated_data.get('email', None)
+
         self.destroy_in_session(request, plan=plan, email=email)
         if is_authenticated(request):
             # If the user is authenticated, we delete the cart items

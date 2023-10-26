@@ -58,6 +58,8 @@ from ..models import (get_broker, AdvanceDiscount, Agreement, BalanceLine,
     UseCharge)
 from ..utils import (build_absolute_uri, get_organization_model, get_role_model,
     get_user_serializer, get_user_detail_serializer)
+from ..metrics.base import (year_periods, month_periods, week_periods, day_periods,
+hour_periods)
 
 
 LOGGER = logging.getLogger(__name__)
@@ -391,16 +393,34 @@ class ForceSerializer(NoModelSerializer):
 
 class PeriodSerializer(NoModelSerializer):
 
-    periods = serializers.ChoiceField(required=False,
+    period = serializers.ChoiceField(
+        required=False,
         choices=[choice[1].lower() for choice in
                  Plan.INTERVAL_CHOICES],
         default='monthly',
         help_text=_("Set time granularity: 'hourly,' 'daily,' 'weekly,' "
         "'monthly,' or 'yearly.' Default is 'monthly.'"))
 
-    num_periods = serializers.IntegerField(required=False,
-        min_value=1, help_text=_("Specify the number of periods to include. "
+    num_periods = serializers.IntegerField(
+        required=False,
+        min_value=1,
+        max_value=100,
+        help_text=_("Specify the number of periods to include. "
         "Min value is 1."))
+
+    def to_internal_value(self, data):
+        validated_data = super().to_internal_value(data)
+        period_str = validated_data.get('period')
+        period_func_map = {
+            'monthly': month_periods,
+            'daily': day_periods,
+            'hourly': hour_periods,
+            'weekly': week_periods,
+            'yearly': year_periods
+        }
+        validated_data['period'] = period_func_map.get(period_str, month_periods)
+
+        return validated_data
 
 
 class DatetimeValueTuple(serializers.ListField):
@@ -1384,3 +1404,26 @@ class RedeemCouponSerializer(NoModelSerializer):
 
     def create(self, validated_data):
         return validated_data
+
+class QueryParamRoleStatusSerializer(NoModelSerializer):
+    role_status = serializers.CharField(required=False, default='',
+        allow_blank=True)
+
+class QueryParamActiveSerializer(NoModelSerializer):
+    active = serializers.BooleanField(required=False,
+        help_text=_("True when customers can subscribe to the plan"),
+        default=None, allow_null=True)
+
+class QueryParamPersonalProfSerializer(NoModelSerializer):
+    include_personal_profile = serializers.BooleanField(required=False,
+            help_text=_("True when a personal profile should be shown"),
+            default=None, allow_null=True)
+
+    convert_from_personal = serializers.BooleanField(required=False,
+            default=None, allow_null=True)
+
+class QueryParamCartItemSerializer(NoModelSerializer):
+    plan = PlanRelatedField(required=False, allow_null=True,
+            help_text=_("Plan"))
+    email = serializers.EmailField(required=False,
+        help_text=_("E-mail address"), default=None, allow_null=True)

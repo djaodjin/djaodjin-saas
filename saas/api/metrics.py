@@ -24,7 +24,8 @@
 
 import logging
 
-from rest_framework.generics import GenericAPIView, ListAPIView
+from rest_framework.generics import ListAPIView
+from rest_framework.views import APIView
 from rest_framework.response import Response
 
 from .serializers import (CartItemSerializer, LifetimeSerializer,
@@ -49,7 +50,7 @@ LOGGER = logging.getLogger(__name__)
 
 
 class BalancesAPIView(DateRangeContextMixin, ProviderMixin,
-                      GenericAPIView):
+                      APIView):
     """
     Retrieves 12-month trailing deferred balances
 
@@ -135,12 +136,16 @@ class BalancesAPIView(DateRangeContextMixin, ProviderMixin,
     """
     serializer_class = MetricsSerializer
     filter_backends = (DateRangeFilter,)
-    queryset = Transaction.objects.all()
 
     @swagger_auto_schema(query_serializer=PeriodSerializer)
     def get(self, request, *args, **kwargs):
-
         #pylint: disable=unused-argument
+        query_serializer = PeriodSerializer(data=request.query_params)
+        query_serializer.is_valid(raise_exception=True)
+
+        num_periods = query_serializer.validated_data.get('num_periods')
+        period = query_serializer.validated_data.get('period')
+
         result = []
         unit = settings.DEFAULT_UNIT
         for key in [Transaction.INCOME, Transaction.BACKLOG,
@@ -153,21 +158,21 @@ class BalancesAPIView(DateRangeContextMixin, ProviderMixin,
                 'until': self.ends_at,
                 'tz': self.timezone,
             }
-            if self.num_periods:
+            if num_periods:
                 # If a num_periods argument is passed in, we use 'nb_months'
                 # or 'periods' depending on the period used
-                arg_name = 'nb_months' if self.period_func == month_periods \
+                arg_name = 'nb_months' if period == month_periods \
                     else 'num_periods'
-                period_func_kwargs[arg_name] = self.num_periods
+                period_func_kwargs[arg_name] = num_periods
 
             # If the period is monthly, use the existing monthly
             # balance function
-            if self.period_func == month_periods:
+            if period == month_periods:
                 values, _unit = abs_monthly_balances(**period_func_kwargs)
             # If the period is not monthly, use abs_periodic_balances
             else:
                 values, _unit = abs_periodic_balances(
-                    period_func=self.period_func,
+                    period_func=period,
                     **period_func_kwargs)
 
             if _unit:
@@ -182,7 +187,7 @@ class BalancesAPIView(DateRangeContextMixin, ProviderMixin,
 
 
 class RevenueMetricAPIView(DateRangeContextMixin, ProviderMixin,
-                           GenericAPIView):
+                           APIView):
     """
     Retrieves 12-month trailing revenue
 
@@ -308,16 +313,22 @@ class RevenueMetricAPIView(DateRangeContextMixin, ProviderMixin,
     @swagger_auto_schema(query_serializer=PeriodSerializer)
     def get(self, request, *args, **kwargs):
         #pylint:disable=unused-argument
+        query_serializer = PeriodSerializer(data=request.query_params)
+        query_serializer.is_valid(raise_exception=True)
+
+        num_periods = query_serializer.validated_data.get('num_periods')
+        period = query_serializer.validated_data.get('period')
+
         period_func_kwargs = {'from_date': self.ends_at,
                               'tz': self.timezone}
 
-        if self.num_periods:
-            arg_name = 'nb_months' if (self.period_func ==
+        if num_periods:
+            arg_name = 'nb_months' if (period ==
                                        month_periods) else 'periods'
-            period_func_kwargs[arg_name] = self.num_periods
+            period_func_kwargs[arg_name] = num_periods
 
         dates = convert_dates_to_utc(
-            self.period_func(**period_func_kwargs))
+            period(**period_func_kwargs))
         unit = settings.DEFAULT_UNIT
 
         account_table, _, _, table_unit = \
@@ -426,7 +437,7 @@ class CouponUsesAPIView(CartItemSmartListMixin, CouponUsesQuerysetMixin,
 
 
 class CustomerMetricAPIView(DateRangeContextMixin, ProviderMixin,
-                            GenericAPIView):
+                            APIView):
     """
     Retrieves 12-month trailing customer counts
 
@@ -529,6 +540,12 @@ class CustomerMetricAPIView(DateRangeContextMixin, ProviderMixin,
 
     @swagger_auto_schema(query_serializer=PeriodSerializer)
     def get(self, request, *args, **kwargs):
+        query_serializer = PeriodSerializer(data=request.query_params)
+        query_serializer.is_valid(raise_exception=True)
+
+        num_periods = query_serializer.validated_data.get('num_periods')
+        period = query_serializer.validated_data.get('period')
+
         #pylint:disable=unused-argument
         account_title = 'Payments'
         account = Transaction.RECEIVABLE
@@ -536,12 +553,12 @@ class CustomerMetricAPIView(DateRangeContextMixin, ProviderMixin,
         # or orders, not the number of payments.
         period_func_kwargs = {'from_date': self.ends_at, 'tz': self.timezone}
 
-        if self.num_periods:
-            arg_name = 'nb_months' if self.period_func == month_periods else 'periods'
-            period_func_kwargs[arg_name] = self.num_periods
+        if num_periods:
+            arg_name = 'nb_months' if period == month_periods else 'periods'
+            period_func_kwargs[arg_name] = num_periods
 
         dates = convert_dates_to_utc(
-            self.period_func(**period_func_kwargs)
+            period(**period_func_kwargs)
         )
         _, customer_table, customer_extra, _ = \
             aggregate_transactions_change_by_period(self.provider, account,
@@ -645,7 +662,7 @@ class LifetimeValueMetricAPIView(LifetimeValueMetricMixin, ListAPIView):
         return self.decorate_queryset(page if page else queryset)
 
 
-class PlanMetricAPIView(DateRangeContextMixin, ProviderMixin, GenericAPIView):
+class PlanMetricAPIView(DateRangeContextMixin, ProviderMixin, APIView):
     """
     Retrieves 12-month trailing plans performance
 
@@ -741,25 +758,30 @@ class PlanMetricAPIView(DateRangeContextMixin, ProviderMixin, GenericAPIView):
     def get(self, request, *args, **kwargs):
         # pylint:disable=unused-argument
         table = []
+        query_serializer = PeriodSerializer(data=request.query_params)
+        query_serializer.is_valid(raise_exception=True)
+
+        num_periods = query_serializer.validated_data.get('num_periods')
+        period = query_serializer.validated_data.get('period')
 
         common_args = {
             'from_date': self.ends_at,
             'tz': self.timezone,
         }
-        if self.num_periods:
-            arg_name = 'nb_months' if self.period_func == month_periods else 'num_periods'
-            common_args[arg_name] = self.num_periods
+        if num_periods:
+            arg_name = 'nb_months' if period == month_periods else 'num_periods'
+            common_args[arg_name] = num_periods
 
         for plan in Plan.objects.filter(
                 organization=self.provider).order_by('title'):
 
             # If we're using monthly periods, we use active_subscribers.
 
-            if self.period_func == month_periods:
+            if period == month_periods:
                 values = active_subscribers(plan, **common_args)
             else:
                 # For other periods, we use active_subscribers_by_period
-                specific_args = {'period_func': self.period_func}
+                specific_args = {'period_func': period}
                 values = active_subscribers_by_period(plan, **{**common_args,
                                                                **specific_args})
 
@@ -773,12 +795,12 @@ class PlanMetricAPIView(DateRangeContextMixin, ProviderMixin, GenericAPIView):
             })
 
         # Similar to above, but for churn metrics. Monthly periods use churn_subscriber.
-        if self.period_func == month_periods:
+        if period == month_periods:
             extra_values = churn_subscribers(**common_args)
         else:
             # For other periods, add 'period_func' and get churn values using
             # churn_subscribers_by_period.
-            specific_args = {'period_func': self.period_func}
+            specific_args = {'period_func': period}
             extra_values = churn_subscribers_by_period(**{**common_args,
                                                           **specific_args})
 
