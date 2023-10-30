@@ -32,7 +32,8 @@ from ....views.download import CartItemDownloadView
 from ....views.profile import DashboardView
 from ....views.metrics import (SubscribersActivityView,
     CouponMetricsView, LifeTimeValueDownloadView,
-    LifeTimeValueMetricsView, PlansMetricsView, RevenueMetricsView)
+    LifeTimeValueMetricsView, PlansMetricsView, RevenueMetricsView,
+    BalancesDueView)
 
 
 urlpatterns = [
@@ -69,4 +70,8 @@ urlpatterns = [
         settings.PROFILE_URL_KWARG,
         SubscribersActivityView.as_view(),
         name='saas_subscribers_activity'),
+    path('metrics/<slug:%s>/balances-due' %
+         settings.PROFILE_URL_KWARG,
+         BalancesDueView.as_view(),
+         name='saas_metrics_balances_due')
 ]

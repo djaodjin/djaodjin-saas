@@ -28,7 +28,7 @@ from rest_framework.generics import GenericAPIView, ListAPIView
 from rest_framework.response import Response
 
 from .serializers import (CartItemSerializer, LifetimeSerializer,
-    MetricsSerializer, PeriodSerializer)
+    MetricsSerializer, PeriodSerializer, BalancesDueSerializer)
 from .. import settings
 from ..compat import gettext_lazy as _, reverse, six
 from ..filters import DateRangeFilter
@@ -40,7 +40,7 @@ from ..metrics.subscriptions import (active_subscribers, churn_subscribers,
     subscribers_age, active_subscribers_by_period, churn_subscribers_by_period)
 from ..metrics.transactions import lifetime_value
 from ..mixins import (CartItemSmartListMixin, CouponMixin,
-    ProviderMixin, DateRangeContextMixin)
+    ProviderMixin, DateRangeContextMixin, BalancesDueMixin)
 from ..models import CartItem, Plan, Transaction
 from ..utils import convert_dates_to_utc, get_organization_model
 from ..docs import swagger_auto_schema
@@ -792,3 +792,57 @@ class PlanMetricAPIView(DateRangeContextMixin, ProviderMixin, GenericAPIView):
             'results': table,
             'extra': extra
         })
+
+class BalancesDueAPIView(BalancesDueMixin, ListAPIView):
+    """
+    Lists subscribers to a provider with a balance due
+
+    This endpoint returns a list of organizations with their respective
+    total contract value, payments made, and total balance due.
+
+    **Tags**: balance, provider, organization, subscribers
+
+    **Examples**
+
+    .. code-block:: http
+
+        GET /api/profile/cowork/due_balances HTTP/1.1
+
+    responds
+
+    .. code-block:: json
+
+        {
+            "count": 1,
+            "next": null,
+            "previous": null,
+            "results": [
+                {
+                    "slug": "xia",
+                    "printable_name": "Xia Lee",
+                    "picture": null,
+                    "type": "organization",
+                    "credentials": false,
+                    "created_at": "2022-08-31T19:00:00-05:00",
+                    "balances": {
+                        "eur": {
+                            "contract_value": 1333,
+                            "payments": 0,
+                            "balance": 1333
+                        },
+                        "usd": {
+                            "contract_value": 982800,
+                            "cash_payments": 945000,
+                            "balance": 37800
+                        }
+                }
+            ]
+        }
+    """
+
+    serializer_class = BalancesDueSerializer
+
+    def paginate_queryset(self, queryset):
+        page = super(BalancesDueAPIView, self).paginate_queryset(
+            queryset)
+        return self.decorate_queryset(page if page else queryset)

@@ -31,7 +31,7 @@ from ....api.federations import (FederatedSubscribersAPIView,
     SharedProfilesAPIView)
 from ....api.metrics import (BalancesAPIView, CouponUsesAPIView,
     CustomerMetricAPIView, LifetimeValueMetricAPIView, PlanMetricAPIView,
-    RevenueMetricAPIView)
+    RevenueMetricAPIView, BalancesDueAPIView)
 from ....compat import path
 
 
@@ -55,6 +55,10 @@ urlpatterns = [
         settings.PROFILE_URL_KWARG,
         LifetimeValueMetricAPIView.as_view(),
         name='saas_api_metrics_lifetimevalue'),
+    path('metrics/<slug:%s>/balances-due' %
+         settings.PROFILE_URL_KWARG,
+         BalancesDueAPIView.as_view(),
+         name='saas_api_metrics_balances_due'),
 
     # Metrics for a federation of providers
     path('metrics/<slug:%s>/federated/shared' %

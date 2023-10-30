@@ -7,4 +7,7 @@
 {% if urls.provider and urls.provider.ledger_balances %}
 <a id="balance-sheet" href="{{urls.provider.ledger_balances}}">Balance Sheet</a>
 {% endif %}
+{% if urls.provider and urls.provider.metrics_balances_due %}
+<a id="balances-due" href="{{urls.provider.metrics_balances_due}}">Balances Due</a>
+{% endif %}
 {% endblock %}

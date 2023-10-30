@@ -190,3 +190,123 @@ GROUP BY saas_organization.slug, saas_transaction.dest_unit
                     results[slug][unit].update(val)
 
     return results
+
+
+def get_balances_due(provider=None):
+    # pylint:disable=too-many-locals,too-many-statements
+    """
+    Calculates and returns the contract value, payments, and balance due
+    for each subscriber to a provider.
+    """
+
+    # Contract value (i.e. "Total Sales")
+    kwargs = {'orig_organization': provider} if provider else {}
+    contract_values = Transaction.objects.filter(
+        dest_account=Transaction.PAYABLE, **kwargs).values(
+        slug=F('dest_organization__slug')).annotate(
+        amount=Sum('orig_amount'), unit=F('orig_unit')).order_by(
+        'dest_organization__slug')
+    by_profiles = {}
+    for val in contract_values:
+        slug = val['slug']
+        unit = val['unit']
+        amount = val['amount']
+        if slug not in by_profiles:
+            by_profiles[slug] = {unit: {'contract_value': amount}}
+        else:
+            by_profiles[slug][unit] = {'contract_value': amount}
+
+    if provider:
+        provider_clause = "AND dest_organization_id = %d" % provider.pk
+    else:
+        provider_clause = ("AND NOT dest_organization_id IN (%d)" %
+                           settings.PROCESSOR_ID)
+
+    payments_query = """WITH transfers AS (
+  SELECT * FROM saas_transaction
+  WHERE orig_account='%(funds)s' AND
+    (dest_account='%(funds)s' OR dest_account='%(offline)s')
+    %(provider_clause)s),
+payments AS (
+  SELECT * FROM saas_transaction
+  WHERE orig_account='%(liability)s' AND
+    dest_account='%(funds)s' AND dest_organization_id IN %(processor_ids)s),
+matched_transfers_payments AS (
+  SELECT DISTINCT payments.event_id, payments.orig_organization_id,
+    payments.dest_unit, payments.dest_amount
+  FROM transfers
+  INNER JOIN payments
+    ON transfers.event_id = payments.event_id)
+SELECT saas_organization.slug, matched_transfers_payments.dest_unit,
+  SUM(matched_transfers_payments.dest_amount)
+FROM matched_transfers_payments
+INNER JOIN saas_organization
+  ON saas_organization.id = matched_transfers_payments.orig_organization_id
+GROUP BY saas_organization.slug, matched_transfers_payments.dest_unit""" % {
+        'provider_clause': provider_clause,
+        'processor_ids': '(%d)' % settings.PROCESSOR_ID,
+        'funds': Transaction.FUNDS,
+        'offline': Transaction.OFFLINE,
+        'liability': Transaction.LIABILITY
+    }
+
+    with connection.cursor() as cursor:
+        cursor.execute(payments_query, params=None)
+        for row in cursor.fetchall():
+            organization_slug = row[0]
+            unit = row[1]
+            amount = row[2]
+            account = Transaction.LIABILITY
+            if organization_slug not in by_profiles:
+                by_profiles[organization_slug] = {unit: {account: amount}}
+            else:
+                if unit not in by_profiles[organization_slug]:
+                    by_profiles[organization_slug].update({
+                        unit: {account: amount}})
+                else:
+                    by_profiles[organization_slug][unit].update({
+                        account: amount})
+
+    kwargs = {'dest_organization': provider} if provider else {}
+    refunds = Transaction.objects.filter(
+        dest_account=Transaction.REFUND,
+        orig_account=Transaction.REFUNDED, **kwargs).values(
+        slug=F('orig_organization__slug'), unit=F('orig_unit')).annotate(
+        amount=Sum('orig_amount')).order_by(
+        'orig_organization__slug')
+
+    for val in refunds:
+        organization_slug = val['slug']
+        unit = val['unit']
+        amount = val['amount']
+        account = Transaction.REFUNDED
+        if organization_slug not in by_profiles:
+            by_profiles[organization_slug] = {unit: {account: amount}}
+        else:
+            if unit not in by_profiles[organization_slug]:
+                by_profiles[organization_slug].update({unit: {account: amount}})
+            else:
+                by_profiles[organization_slug][unit].update({account: amount})
+
+    results = {}
+    for slug, by_units in six.iteritems(by_profiles):
+        for unit, val in six.iteritems(by_units):
+            contract_value = val.get('contract_value', 0)
+            payments = (val.get(Transaction.LIABILITY, 0)
+                        - val.get(Transaction.REFUNDED, 0))
+            balance = contract_value - payments if contract_value > payments else 0
+            if balance < 1:
+                continue
+            val.update({
+                'contract_value': contract_value,
+                'cash_payments': payments,
+                'balance': balance
+            })
+            if slug not in results:
+                results[slug] = {unit: val}
+            else:
+                if unit not in results[slug]:
+                    results[slug].update({unit: val})
+                else:
+                    results[slug][unit].update(val)
+    return results

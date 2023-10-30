@@ -1384,3 +1384,13 @@ class RedeemCouponSerializer(NoModelSerializer):
 
     def create(self, validated_data):
         return validated_data
+
+
+class BalancesDueSerializer(OrganizationSerializer):
+
+    balances = serializers.DictField(
+        help_text=_("Dictionary of balances due, keyed by unit"),
+        read_only=True)
+
+    class Meta(OrganizationSerializer.Meta):
+        fields = OrganizationSerializer.Meta.fields + ('balances',)

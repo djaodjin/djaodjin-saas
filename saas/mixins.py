@@ -48,6 +48,7 @@ from .utils import (build_absolute_uri, datetime_or_now,
 from .extras import OrganizationMixinBase
 from .metrics.base import (hour_periods, day_periods, week_periods,
                            month_periods, year_periods)
+from .metrics.transactions import get_balances_due
 
 LOGGER = logging.getLogger(__name__)
 
@@ -1218,6 +1219,41 @@ class RoleMixin(RoleDescriptionMixin):
             #pylint:disable=protected-access
             raise Http404('No %s matches the given query.'
                 % queryset.model._meta.object_name)
+
+
+class BalancesDueMixin(DateRangeContextMixin, ProviderMixin):
+    filter_backends = (DateRangeFilter,)
+
+    @property
+    def balances_due(self):
+        if not hasattr(self, "_balances_due"):
+            self._balances_due = get_balances_due(provider=self.provider)
+        return self._balances_due
+
+    def get_queryset(self):
+        organization_model = get_organization_model()
+        if self.provider:
+            queryset = organization_model.objects.filter(
+                subscribes_to__organization=self.provider).distinct()
+        else:
+            queryset = organization_model.objects.all()
+        queryset = queryset.filter(
+            outgoing__orig_account=Transaction.PAYABLE,
+            slug__in=self.balances_due.keys()).distinct()
+        return queryset.order_by('full_name')
+
+    def decorate_queryset(self, queryset):
+        decorated_queryset = list(queryset)
+        balances_values = self.balances_due
+        for organization in decorated_queryset:
+            balance = balances_values.get(organization.slug)
+            if balance:
+                for unit, unit_data in balance.items():
+                    unit_data.pop('Liability', None)
+                organization.balances = balance
+            else:
+                organization.balances = None
+        return decorated_queryset
 
 
 def _as_html_description(transaction_descr,
