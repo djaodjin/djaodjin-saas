@@ -2989,3 +2989,105 @@ Vue.component('monthly-revenue', {
     }
 });
 
+Vue.component('active-carts', {
+    mixins: [itemListMixin],
+    data: function(){
+        return {
+            url: this.$urls.saas_api_cartitems,
+            api_pricing: this.$urls.saas_api_pricing,
+            plans: {}
+        };
+    },
+    methods: {
+        addCartItemToUser(cartItem) {
+            var foundUser = this.items.results.find(
+                item => item.username === cartItem.user.slug);
+
+            if (foundUser) {
+                var plan = this.plans[cartItem.plan.slug];
+                if (plan) {
+                    foundUser.totalAmount += cartItem.quantity * plan.period_amount * 0.01;
+                }
+                foundUser.totalItems++;
+                if (cartItem.created_at > foundUser.latestUpdate) {
+                    foundUser.latestUpdate = cartItem.created_at;
+                }
+            } else {
+                var newUser = {
+                    username: cartItem.user.slug,
+                    email: cartItem.user.email,
+                    totalAmount: 0,
+                    totalItems: 1,
+                    latestUpdate: cartItem.user.created_at
+                };
+                this.items.results.push(newUser);
+            }
+        },
+        getAllDataFromAPI(url) {
+            this.reqGet(url, (resp) => {
+                resp.results.forEach(this.addCartItemToUser);
+                if (resp.next) {
+                    this.getAllDataFromAPI(resp.next);
+                }
+            });
+        },
+        get() {
+            this.reqGet(this.$urls.saas_api_pricing, (resp) => {
+                this.plans = resp.results.reduce((acc, plan) => {
+                    acc[plan.slug] = plan;
+                    return acc;
+                }, {});
+                this.getAllDataFromAPI(this.url);
+            });
+        }
+    },
+    mounted() {
+        this.get();
+    }
+});
+
+
+Vue.component('user-active-cart', {
+   mixins: [itemListMixin],
+   data: function(){
+       return {
+           url: this.$urls.saas_api_user_cartitems,
+           crudUrl: this.$urls.saas_api_cartitems,
+           api_pricing: this.$urls.saas_api_pricing,
+           newItemPlan: null,
+           newItemQuantity: 1,
+           plans: [],
+       };
+   },
+   methods: {
+       addItem: function() {
+           var vm = this;
+           var data = {
+               user: vm.items.user.slug,
+               plan: vm.newItemPlan,
+               quantity: vm.newItemQuantity
+           };
+           vm.reqPost(vm.crudUrl, data, vm.get);
+       },
+       updateItem: function(cartItem) {
+           var vm = this;
+           var data = { quantity: cartItem.tempQuantity };
+           var url = vm.crudUrl + '/' + cartItem.id;
+           vm.reqPatch(url, data, vm.get);
+       },
+       removeItem: function(cartItem) {
+           var vm = this;
+           vm.reqDelete(vm._safeUrl(vm.crudUrl, cartItem.id), vm.get);
+       },
+       fetchPlans: function() {
+           var vm = this;
+           vm.reqGet(vm.api_pricing, function(resp) {
+               vm.plans = resp.results || [];
+           });
+       },
+   },
+   mounted: function(){
+      this.fetchPlans();
+      this.get();
+   }
+});

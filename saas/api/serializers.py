@@ -1001,6 +1001,20 @@ class CartItemSerializer(serializers.ModelSerializer):
         return None
 
 
+class CartItemUpdateSerializer(CartItemSerializer):
+    """
+    Designed for handling update operations on cart items.
+    Restricts user and plan fields to be read-only.
+    """
+    user = get_user_serializer()(
+        help_text=_("User the cart belongs to"), read_only=True)
+    plan = PlanSerializer(
+        help_text=_("Item in the cart (if plan)"), read_only=True)
+
+    class Meta(CartItemSerializer.Meta):
+        read_only_fields = ('plan',) + CartItemSerializer.Meta.read_only_fields
+
+
 class CartItemCreateSerializer(serializers.ModelSerializer):
     """
     Serializer to build a request.user set of plans to subscribe to (i.e. cart).
@@ -1017,6 +1031,21 @@ class CartItemCreateSerializer(serializers.ModelSerializer):
                   'sync_on', 'full_name', 'email')
         read_only_fields = ('created_at',)
 
+class UserCartItemCreateSerializer(CartItemCreateSerializer):
+    """
+    Extends `CartItemCreateSerializer` to include user.
+    It's used during the creation of new cart items to
+    ensure necessary data is captured.
+    """
+    user = serializers.SlugRelatedField(
+        queryset=get_user_model().objects.all(),
+        slug_field='username',
+        required=True,
+        help_text=_('The user for whom the cart item is being created')
+    )
+
+    class Meta(CartItemCreateSerializer.Meta):
+        fields = ('user',) + CartItemCreateSerializer.Meta.fields
 
 class CartItemUploadSerializer(NoModelSerializer):
 

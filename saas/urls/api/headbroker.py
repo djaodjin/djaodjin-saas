@@ -30,6 +30,8 @@ from ... import settings
 from ...api.agreements import AgreementListCreateAPIView, AgreementUpdateAPIView
 from ...api.balances import (BalanceLineListAPIView, BrokerBalancesAPIView,
     BalanceLineDetailAPIView)
+from ...api.billing import (UserCartItemListView, ActiveCartItemListCreateView,
+                            ActiveCartItemRetrieveUpdateDestroyView)
 from ...api.charges import ChargeListAPIView
 from ...api.transactions import TransactionListAPIView
 from ...api.users import RegisteredAPIView
@@ -56,4 +58,14 @@ urlpatterns = [
         BrokerBalancesAPIView.as_view(), name='saas_api_broker_balances'),
     path('metrics/registered',
         RegisteredAPIView.as_view(), name='saas_api_registered'),
+    path('cartitems/user/<slug:user>',
+         UserCartItemListView.as_view(),
+         name='saas_api_user_cartitems'),
+    path('cartitems',
+         ActiveCartItemListCreateView.as_view(),
+         name='saas_api_cartitems'),
+    re_path('cartitems/(?P<cartitem_id>%s)' %
+         settings.SLUG_RE,
+         ActiveCartItemRetrieveUpdateDestroyView.as_view(),
+         name='saas_api_cartitems_detail'),
 ]
