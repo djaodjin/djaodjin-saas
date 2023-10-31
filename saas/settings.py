@@ -80,7 +80,14 @@ _SETTINGS = {
             getattr(settings, 'BASE_DIR', "broker")),
         'IS_INSTANCE_CALLABLE': None,
         'BUILD_ABSOLUTE_URI_CALLABLE': None,
-        'FEE_PERCENTAGE': 0
+        'FEE_PERCENTAGE': 0,
+        'MINIMUM_PLAN_AMOUNT': {
+            'HOURLY': 0,
+            'DAILY': 0,
+            'WEEKLY': 0,
+            'MONTHLY': 0,
+            'YEARLY': 0,
+        }
     },
     'BYPASS_IMPLICIT_GRANT': {},
     'BYPASS_PERMISSION_CHECK': False,
@@ -147,6 +154,11 @@ AUTH_USER_MODEL = getattr(
 #: has its own database of users, profiles, etc.
 BROKER_CALLABLE = _SETTINGS.get('BROKER').get('GET_INSTANCE', None)
 BROKER_FEE_PERCENTAGE = _SETTINGS.get('BROKER').get('FEE_PERCENTAGE', 0)
+BROKER_MINIMUM_PLAN_AMOUNT_HOURLY = _SETTINGS.get('BROKER').get('MINIMUM_PLAN_AMOUNT', {}).get('HOURLY', 0)
+BROKER_MINIMUM_PLAN_AMOUNT_DAILY = _SETTINGS.get('BROKER').get('MINIMUM_PLAN_AMOUNT', {}).get('HOURLY', 0)
+BROKER_MINIMUM_PLAN_AMOUNT_WEEKLY = _SETTINGS.get('BROKER').get('MINIMUM_PLAN_AMOUNT', {}).get('HOURLY', 0)
+BROKER_MINIMUM_PLAN_AMOUNT_MONTHLY = _SETTINGS.get('BROKER').get('MINIMUM_PLAN_AMOUNT', {}).get('HOURLY', 0)
+BROKER_MINIMUM_PLAN_AMOUNT_YEARLY = _SETTINGS.get('BROKER').get('MINIMUM_PLAN_AMOUNT', {}).get('HOURLY', 0)
 
 #: overrides the implementation of `saas.utils.build_absolute_uri`
 #: This function must return fully qualified URL.
