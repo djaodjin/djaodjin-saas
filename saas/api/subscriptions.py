@@ -44,7 +44,7 @@ from .. import settings, signals
 from ..models import Subscription
 from ..utils import generate_random_slug, datetime_or_now
 from .roles import ListOptinAPIView
-from .serializers import (ForceSerializer,
+from .serializers import (QueryParamForceSerializer,
     ProvidedSubscriptionSerializer, ProvidedSubscriptionCreateSerializer,
     ProvidedSubscriptionDetailSerializer,SubscribedSubscriptionSerializer)
 
@@ -633,7 +633,7 @@ class PlanActiveSubscribersAPIView(SubscriptionSmartListMixin,
 
     @swagger_auto_schema(responses={
       201: OpenAPIResponse("created", ProvidedSubscriptionSerializer)},
-        query_serializer=ForceSerializer)
+        query_serializer=QueryParamForceSerializer)
     def post(self, request, *args, **kwargs):
         """
         Grants a subscription

@@ -34,11 +34,11 @@
     </div>
     <!-- modals -->
     <hr />
-    <form class="form-horizontal" @submit.prevent="create">
+    <form class="form-horizontal" @submit.prevent="save">
       <h2>Add a new type of role</h2>
       <div>
         <label>Title</label>
-        <input v-model="role.title"
+        <input v-model="newItem.title"
                name="name" type="text" max-length="150"
                placeholder="ex: Sales associate"
                autofocus />
