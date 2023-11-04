@@ -50,10 +50,11 @@ from ..pagination import RoleListPagination
 from ..utils import (full_name_natural_split, get_organization_model,
     get_role_model, get_role_serializer, generate_random_slug)
 from .organizations import OrganizationDecorateMixin
-from .serializers import (AccessibleSerializer, ForceSerializer,
+from .serializers import (AccessibleSerializer, QueryParamForceSerializer,
     OrganizationCreateSerializer,
     OrganizationDetailSerializer, RoleDescriptionSerializer,
-    AccessibleCreateSerializer, RoleCreateSerializer)
+    AccessibleCreateSerializer, RoleCreateSerializer,
+    QueryParamRoleStatusSerializer, QueryParamPersonalProfSerializer)
 
 
 LOGGER = logging.getLogger(__name__)
@@ -196,7 +197,11 @@ class ListOptinAPIView(OrganizationDecorateMixin, OrganizationCreateMixin,
                         organizations = [
                             self.create_organization(organization_data)]
             if not organizations:
-                if not request.GET.get('force', False):
+                query_serializer = QueryParamForceSerializer(
+                    data=self.request.query_params)
+                query_serializer.is_valid(raise_exception=True)
+                force = query_serializer.validated_data.get('force', False)
+                if not force:
                     raise Http404(_("Profile %(organization)s does not exist."
                     ) % {'organization': slug})
                 if not email:
@@ -275,7 +280,12 @@ class InvitedRequestedListMixin(object):
         # here instead of later in RoleInvitedListMixin.
         self.request.invited_count = queryset.filter(
             grant_key__isnull=False).count()
-        role_status = self.request.query_params.get('role_status', '')
+        query_serializer = QueryParamRoleStatusSerializer(
+            data=self.request.query_params)
+        role_status = ''
+        if query_serializer.is_valid(raise_exception=True):
+            role_status = query_serializer.validated_data.get(
+                'role_status', '')
         stts = role_status.split(',')
         flt = None
         if 'active' in stts:
@@ -304,11 +314,12 @@ class AccessibleByQuerysetMixin(UserMixin):
 
     def get_queryset(self):
         queryset = self.role_model.objects.filter(user=self.user)
+        query_serializer = QueryParamPersonalProfSerializer(data=self.request.query_params)
+        include_personal_profile = ''
 
-        truth_values = ['true', '1']
-        personal_params = self.request.query_params.get(
-            'include_personal_profile', '')
-        include_personal_profile = personal_params.lower() in truth_values
+        if query_serializer.is_valid(raise_exception=True):
+            include_personal_profile = query_serializer.validated_data.get(
+                'include_personal_profile', '')
         if not include_personal_profile:
             queryset = queryset.exclude(organization__slug=self.user)
 
@@ -407,7 +418,7 @@ accessibles/manager/cowork",
 
     @swagger_auto_schema(responses={
       201: OpenAPIResponse("Create successful", AccessibleSerializer)},
-        query_serializer=ForceSerializer)
+        query_serializer=QueryParamForceSerializer)
     def post(self, request, *args, **kwargs):
         """
         Requests a role
@@ -544,7 +555,7 @@ accessibles/manager/cowork",
 
     @swagger_auto_schema(responses={
       201: OpenAPIResponse("Create successful", AccessibleSerializer)},
-        query_serializer=ForceSerializer)
+        query_serializer=QueryParamForceSerializer)
     def post(self, request, *args, **kwargs): #pylint:disable=unused-argument
         """
         Requests a role of a specified type
@@ -924,7 +935,11 @@ class RoleByDescrQuerysetMixin(RoleDescriptionMixin, RoleQuerysetBaseMixin):
         self.request.invited_count = queryset.filter(
             role_description=self.role_description,
             grant_key__isnull=False).count()
-        role_status = self.request.query_params.get('role_status', '')
+        query_serializer = QueryParamRoleStatusSerializer(data=self.request.query_params)
+        role_status = None
+        if query_serializer.is_valid(raise_exception=True):
+            role_status = query_serializer.validated_data.get('role_status', '')
+
         stts = role_status.split(',')
         flt = (Q(role_description=self.role_description) |
             Q(request_key__isnull=False))
@@ -1025,7 +1040,11 @@ class RoleByDescrListAPIView(RoleSmartListMixin, RoleByDescrQuerysetMixin,
             except user_model.DoesNotExist:
                 user = None
         if not user:
-            if not request.GET.get('force', False):
+            query_serializer = QueryParamForceSerializer(
+                data=self.request.query_params)
+            query_serializer.is_valid(raise_exception=True)
+            force = query_serializer.validated_data.get('force', False)
+            if not force:
                 sep = ""
                 not_found_msg = "Cannot find"
                 if serializer.validated_data.get('slug'):
@@ -1061,7 +1080,7 @@ class RoleByDescrListAPIView(RoleSmartListMixin, RoleByDescrQuerysetMixin,
 
     @swagger_auto_schema(responses={
       201: OpenAPIResponse("Create successful", get_role_serializer())},
-        query_serializer=ForceSerializer)
+        query_serializer=QueryParamForceSerializer)
     def post(self, request, *args, **kwargs):
         """
         Creates a role
@@ -1472,7 +1491,11 @@ class UserProfileListAPIView(OrganizationSmartListMixin,
         validated_data = dict(serializer.validated_data)
 
         # If we're creating an organization from a personal profile
-        if request.query_params.get('convert-from-personal') == '1':
+        query_serializer = QueryParamPersonalProfSerializer(data=request.query_params)
+        query_serializer.is_valid(raise_exception=True)
+        convert_from_personal = query_serializer.validated_data.get('convert_from_personal', False)
+
+        if convert_from_personal:
             organization = self.get_queryset().filter(slug__exact=self.user.username).first()
 
             if not self.is_valid_convert_to_organization_request(organization):
@@ -1484,20 +1507,21 @@ class UserProfileListAPIView(OrganizationSmartListMixin,
 
             return Response({"detail": _("Successfully converted personal profile to organization.")},
                             status=status.HTTP_200_OK)
-        if 'email' not in validated_data:
-            # email is optional to create the profile but it is required
-            # to save the record in the database.
-            validated_data.update({'email': request.user.email})
-        if 'full_name' not in validated_data:
-            # full_name is optional to create the profile but it is required
-            # to save the record in the database.
-            validated_data.update({'full_name': ""})
+        else:
+            if 'email' not in validated_data:
+                # email is optional to create the profile but it is required
+                # to save the record in the database.
+                validated_data.update({'email': request.user.email})
+            if 'full_name' not in validated_data:
+                # full_name is optional to create the profile but it is required
+                # to save the record in the database.
+                validated_data.update({'full_name': ""})
 
-        # creates profile
-        with transaction.atomic():
-            organization = self.create_organization(validated_data)
-            organization.add_manager(self.user)
-        self.decorate_personal(organization)
+            # creates profile
+            with transaction.atomic():
+                organization = self.create_organization(validated_data)
+                organization.add_manager(self.user)
+            self.decorate_personal(organization)
 
         # returns created profile
         serializer = self.serializer_class(

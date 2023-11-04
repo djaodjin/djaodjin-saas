@@ -26,7 +26,7 @@
 
 import logging
 
-from dateutil.relativedelta import relativedelta, SU
+from dateutil.relativedelta import relativedelta
 from django.core.management.base import BaseCommand
 
 from ... import settings
