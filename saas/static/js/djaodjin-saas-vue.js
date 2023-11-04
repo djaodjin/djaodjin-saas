@@ -801,6 +801,9 @@ var roleListMixin = {
             url: null,
             create_url: null,
             typeaheadUrl: null,
+            params: {
+                role_status: '',
+            },
             showInvited: false,
             showRequested: false,
             profileRequestDone: false,
@@ -1028,7 +1031,10 @@ var roleListMixin = {
             this.updateParams();
         },
     },
-    mounted: function(){
+    mounted: function() {
+        if( this.$el.dataset ) {
+            this.params.role_status = this.$el.dataset.roleStatus;
+        }
         this.get();
     }
 }
@@ -1527,10 +1533,7 @@ Vue.component('role-user-list', {
     data: function() {
         return {
             url: this.$urls.organization.api_roles,
-            typeaheadUrl: this.$urls.api_candidates,
-            params: {
-                role_status: 'active',
-            },
+            typeaheadUrl: this.$urls.api_candidates
         }
     },
     methods: {
@@ -1543,7 +1546,7 @@ Vue.component('role-user-list', {
             // Better have two calls rather than none.
             vm.get();
         },
-    },
+    }
 });
 
 

@@ -3,7 +3,9 @@
 {% block saas_title %}Roles{% endblock %}
 
 {% block saas_content %}
-<role-user-list inline-template id="user-relation-list-container" ng-app="saasApp">
+<role-user-list inline-template id="user-relation-list-container"
+    {# data-role-status="active" #}
+    ng-app="saasApp">
   <div ng-controller="userRelationListCtrl">
     <h2>Users with role '{{role_descr.title}}' on {{organization.printable_name}}</h2>
     <table>

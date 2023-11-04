@@ -1181,8 +1181,11 @@ class RoleDetailAPIView(RoleMixin, DestroyAPIView):
         return super(RoleDetailAPIView, self).delete(request, *args, **kwargs)
 
     def destroy(self, request, *args, **kwargs):
+        self.kwargs.pop('role') # If we leave 'role' in kwargs, we can't deny
+                                # requests that haven't been accepted yet.
         queryset = self.get_queryset()
-        roles = [str(role.role_description) for role in queryset]
+        roles = [str(role.role_description) for role in queryset
+            if role.role_description]
         LOGGER.info("Remove roles %s for user '%s' on organization '%s'",
             roles, self.user, self.organization,
             extra={'event': 'remove-roles', 'user': self.user,
