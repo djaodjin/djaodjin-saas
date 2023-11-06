@@ -4621,6 +4621,10 @@ def get_sub_event_id(subscription, use_charge=None):
 
 
 def record_use_charge(subscription, use_charge, quantity=1):
+    if (use_charge.maximum_limit and use_charge.quota
+            >= use_charge.maximum_limit):
+        raise ValueError("Maximum limit must be greater than the quota.")
+
     usage = get_period_usage(subscription, use_charge,
         subscription.created_at, subscription.ends_at)
     amount = None
@@ -4630,11 +4634,17 @@ def record_use_charge(subscription, use_charge, quantity=1):
     if usage < use_charge.quota:
         amount = 0
         descr += " (complimentary in plan)"
-    if use_charge.maximum_limit and use_charge.maximum_limit > 0:
-        if usage >= use_charge.maximum_limit:
-            signals.use_charge_limit_crossed.send(sender=__name__,
-                                                  use_charge=use_charge,
-                                                  subscription=subscription)
+
+    if usage >= use_charge.quota:
+        signals.quota_reached.send(sender=__name__,
+                                   use_charge=use_charge,
+                                   subscription=subscription)
+
+    if use_charge.maximum_limit and usage >= use_charge.maximum_limit:
+        signals.use_charge_limit_crossed.send(sender=__name__,
+                                              use_charge=use_charge,
+                                              subscription=subscription)
+
     return Transaction.objects.record_order([
         Transaction.objects.new_use_charge(subscription,
             use_charge, quantity, custom_amount=amount, descr=descr)])
