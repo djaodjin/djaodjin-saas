@@ -404,36 +404,33 @@ def build_absolute_uri(request, location='/', provider=None, with_scheme=True):
     # than throwing an error.
     return location
 
+class CurrencyDataLoader:
+    _currency_data = None
 
-_currency_data = None
+    @classmethod
+    def load_currency_data(cls):
+        if cls._currency_data is None:
+            try:
+                with open(settings.CURRENCY_JSON_PATH, 'r') as file:
+                    currency_list = json.load(file)
+                    cls._currency_data = {currency['cc']:
+                                              currency for currency in currency_list}
+            except FileNotFoundError:
+                raise
+        return cls._currency_data
 
+    @classmethod
+    def get_currency_symbols(cls, currency_code):
+        data = cls.load_currency_data()
+        if data:
+            currency = data.get(currency_code.upper())
+            if currency:
+                return currency['symbol']
+        return None
 
-def load_currency_data():
-    global _currency_data
-    if _currency_data is None:
-        try:
-            with open(settings.CURRENCY_JSON_PATH, 'r') as file:
-                currency_list = json.load(file)
-                _currency_data = {currency['cc']: currency for
-                                  currency in currency_list}
-        except FileNotFoundError:
-            raise
-    return _currency_data
-
-
-def get_currency_symbols(currency_code):
-    data = load_currency_data()
-    if data:
-        currency = data.get(currency_code.upper())
-        if currency:
-            return currency['symbol']
-    return None
-
-
-def get_currency_choices():
-    data = load_currency_data()
-    if data:
-        return [(
-            code.lower(), code.lower()) for
-            code, info in data.items()]
-    return []
+    @classmethod
+    def get_currency_choices(cls):
+        data = cls.load_currency_data()
+        if data:
+            return [(code.lower(), code.lower()) for code in data.keys()]
+        return []

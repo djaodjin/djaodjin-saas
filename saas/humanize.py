@@ -28,7 +28,7 @@ import datetime, re
 
 from . import settings
 from .compat import gettext_lazy as _
-from .utils import get_currency_symbols
+from .utils import CurrencyDataLoader
 
 # prevents an import loop with models.py
 HOURLY = 1
@@ -191,7 +191,7 @@ def as_money(value, currency=settings.DEFAULT_UNIT, negative_format="(%s)"):
             negative = True
             currency = currency[1:]
         currency = currency.lower()
-        currency_symbol = get_currency_symbols(currency) if currency \
+        currency_symbol = CurrencyDataLoader.get_currency_symbols(currency) if currency \
             else None
         if currency_symbol:
             unit_prefix = currency_symbol
