@@ -22,7 +22,7 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-import datetime, inspect, random, re, sys
+import datetime, inspect, random, re, sys, json
 
 from django.core.exceptions import NON_FIELD_ERRORS
 from django.core.files.storage import default_storage
@@ -38,6 +38,7 @@ from pytz import timezone, UnknownTimeZoneError
 from pytz.tzinfo import DstTzInfo
 
 from .compat import get_model_class, gettext_lazy as _, import_string, six
+from . import settings
 
 
 class SlugTitleMixin(object):
@@ -402,3 +403,34 @@ def build_absolute_uri(request, location='/', provider=None, with_scheme=True):
     # If we don't have a `request` object, better to return a URL path
     # than throwing an error.
     return location
+
+class CurrencyDataLoader:
+    _currency_data = None
+
+    @classmethod
+    def load_currency_data(cls):
+        if cls._currency_data is None:
+            try:
+                with open(settings.CURRENCY_JSON_PATH, 'r') as file:
+                    currency_list = json.load(file)
+                    cls._currency_data = {currency['cc']:
+                                              currency for currency in currency_list}
+            except FileNotFoundError:
+                raise
+        return cls._currency_data
+
+    @classmethod
+    def get_currency_symbols(cls, currency_code):
+        data = cls.load_currency_data()
+        if data:
+            currency = data.get(currency_code.upper())
+            if currency:
+                return currency['symbol']
+        return None
+
+    @classmethod
+    def get_currency_choices(cls):
+        data = cls.load_currency_data()
+        if data:
+            return [(code.lower(), code.lower()) for code in data.keys()]
+        return []
