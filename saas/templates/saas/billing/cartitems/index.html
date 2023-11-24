@@ -1,0 +1,29 @@
+{% extends "saas/base_dashboard.html" %}
+
+{% block saas_content %}
+<active-carts inline-template>
+  <div>
+    <table>
+      <thead>
+        <tr>
+          <th>Username</th>
+          <th>Email</th>
+          <th># items in cart</th>
+          <th>Total cart value</th>
+          <th>Last cart activity</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr :id="item.username" v-for="item in items.results" :key="username">
+            <td><a class="details" :href="item.username + '/'">[[ item.username ]]</a></td>
+            <td>[[ item.email ]]</td>
+            <td>[[ item.totalItems ]]</td>
+            <td>[[ item.totalAmount ]]</td>
+            <td>[[ item.latestUpdate ]]</td>
+        </tr>
+      </tbody>
+    </table>
+    {% include "saas/_paginator.html" %}
+  </div>
+</active-carts>
+{% endblock %}

@@ -60,8 +60,7 @@ urlpatterns = [
     path('billing/cartitems/',
          ActiveCartItemsView.as_view(),
          name='saas_active_cartitems'),
-    re_path('billing/cartitems/user/(?P<user>%s)' %
-         settings.SLUG_RE,
+    path('billing/cartitems/<slug:user>/',
          UserCartItemsView.as_view(),
          name='saas_user_active_carts'),
 ]

@@ -28,7 +28,10 @@
       {% include "saas/_transactions.html" %}
     </div>
     <div>
-      {% if urls.raw_charges %}
+      {% if urls.raw_cartitems %}
+      <a id="row-cartitems" href="{{urls.raw_cartitems}}">Cart items</a>
+      {% endif %}
+      {% if urls.raw_cartitems %}
       <a id="row-charges" href="{{urls.raw_charges}}">Charges</a>
       {% endif %}
       {% if urls.raw_transactions %}

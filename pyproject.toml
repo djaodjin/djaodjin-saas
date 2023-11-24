@@ -54,6 +54,7 @@ saas = [
   'templates/saas/*.html',
   'templates/saas/agreements/*.md',
   'templates/saas/billing/*.html',
+  'templates/saas/billing/cartitems/*.html',
   'templates/saas/legal/*.html',
   'templates/saas/metrics/*.html',
   'templates/saas/profile/*.html',

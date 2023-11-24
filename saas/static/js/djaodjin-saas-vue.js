@@ -3003,10 +3003,12 @@ Vue.component('active-carts', {
     },
     methods: {
         addCartItemToUser(cartItem) {
-            var foundUser = this.items.results.find(
-                item => item.username === cartItem.user.slug);
-
-            if (foundUser) {
+            const cartItemId = cartItem.user ?
+                cartItem.user.slug : cartItem.claim_code;
+            const foundUser = this.items.results.find(function(item) {
+                return item.username === cartItemId;
+            });
+            if( foundUser ) {
                 var plan = this.plans[cartItem.plan.slug];
                 if (plan) {
                     foundUser.totalAmount += cartItem.quantity * plan.period_amount * 0.01;
@@ -3017,11 +3019,11 @@ Vue.component('active-carts', {
                 }
             } else {
                 var newUser = {
-                    username: cartItem.user.slug,
-                    email: cartItem.user.email,
+                    username: cartItemId,
+                    email: cartItem.email || (cartItem.user ? cartItem.user.email : ''),
                     totalAmount: 0,
                     totalItems: 1,
-                    latestUpdate: cartItem.user.created_at
+                    latestUpdate: cartItem.created_at
                 };
                 this.items.results.push(newUser);
             }
@@ -3074,7 +3076,7 @@ Vue.component('user-active-cart', {
        },
        updateItem: function(cartItem) {
            var vm = this;
-           var data = { quantity: cartItem.tempQuantity };
+           var data = { quantity: cartItem.quantity };
            var url = vm.crudUrl + '/' + cartItem.id;
            vm.reqPatch(url, data, vm.get);
        },

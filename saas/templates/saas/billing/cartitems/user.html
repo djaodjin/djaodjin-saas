@@ -37,11 +37,12 @@
                     <tr v-for="cartItem in items.results" :key="cartItem.pk">
                         <td>[[ cartItem.created_at ]]</td>
                         <td>[[ cartItem.plan.title ]]</td>
-                        <td>[[ cartItem.quantity ]]</td>
                         <td>
-                            <input type="number" v-model.number="cartItem.tempQuantity" min="1" />
+                          <input type="number" v-model.number="cartItem.quantity" min="1" />
+                        </td>
+                        <td>
                             <button @click="updateItem(cartItem)">Update</button>
-                            <button @click="removeItem(cartItem)">Remove</button>
+                            <button class="remove" @click="removeItem(cartItem)">Remove</button>
                         </td>
                     </tr>
                 </tbody>
@@ -51,14 +52,16 @@
             <div v-else>
                 <p>The cart is empty.</p>
             </div>
+            <hr />
+            <p>Add Cart Item</p>
             <div>
-                <select v-model="newItemPlan">
-                    <option v-for="plan in plans" :value="plan.slug" :key="plan.slug">
-                        [[ plan.title ]]
-                    </option>
-                </select>
-                <input type="number" v-model.number="newItemQuantity" min="1" />
-                <button @click="addItem">Add Item</button>
+              <select v-model="newItemPlan">
+                <option v-for="plan in plans" :value="plan.slug" :key="plan.slug">
+                    [[ plan.title ]]
+                </option>
+              </select>
+              <input type="number" v-model.number="newItemQuantity" min="1" />
+              <button @click="addItem">Add Item</button>
             </div>
         </div>
     </div>

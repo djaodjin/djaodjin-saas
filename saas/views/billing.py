@@ -537,6 +537,7 @@ reference/djaoapp/latest/api/#listTransfer>`__
         if self.provider.is_broker:
             update_context_urls(context, {
                 'raw_charges': reverse('saas_charges'),
+                'raw_cartitems': reverse('saas_active_cartitems'),
                 'raw_transactions': reverse('saas_broker_transactions')
             })
 
@@ -1146,7 +1147,10 @@ djaodjin-saas/tree/master/saas/templates/saas/billing/import.html>`__).
 
 
 class ActiveCartItemsView(TemplateView):
-    template_name = 'saas/billing/cartitems.html'
+    """
+    Display users with active carts. - i.e. they haven't been checked out yet.
+    """
+    template_name = 'saas/billing/cartitems/index.html'
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -1158,13 +1162,17 @@ class ActiveCartItemsView(TemplateView):
 
 
 class UserCartItemsView(TemplateView, UserMixin):
-    template_name = 'saas/billing/user_cartitems.html'
+    """
+    Display a users active cart. - i.e. checkout in progress.
+    """
+    template_name = 'saas/billing/cartitems/user.html'
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         user = self.user
         update_context_urls(context, {
-            'saas_api_user_cartitems': reverse('saas_api_user_cartitems', args=(user,)),
+            'saas_api_user_cartitems': reverse('saas_api_user_cartitems',
+                args=(user,)),
             'saas_api_pricing': reverse('saas_api_pricing'),
             'saas_api_cartitems': reverse('saas_api_cartitems'),
         })
