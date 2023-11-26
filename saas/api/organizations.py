@@ -39,9 +39,10 @@ from .serializers import (EngagedSubscriberSerializer, OrganizationSerializer,
 from .. import settings, signals
 from ..compat import force_str, gettext_lazy as _, urlparse, urlunparse
 from ..decorators import _valid_manager
-from ..filters import DateRangeFilter, OrderingFilter, SearchFilter
+from ..filters import OrderingFilter, SearchFilter
 from ..mixins import (DateRangeContextMixin, OrganizationMixin,
-    OrganizationSmartListMixin, ProviderMixin, OrganizationDecorateMixin)
+    OrganizationSearchOrderListMixin, OrganizationSmartListMixin,
+    ProviderMixin, OrganizationDecorateMixin)
 from ..models import get_broker
 from ..utils import (build_absolute_uri, datetime_or_now,
     get_organization_model, get_role_model, get_picture_storage,
@@ -414,8 +415,6 @@ class EngagedSubscribersSmartListMixin(object):
     """
     reporting entities list which is also searchable and sortable.
     """
-    date_field = 'user__last_login'
-
     search_fields = (
         'first_name',
         'last_name',
@@ -436,11 +435,13 @@ class EngagedSubscribersSmartListMixin(object):
 
     ordering = ('created_at',)
 
-    filter_backends = (DateRangeFilter, SearchFilter, OrderingFilter)
+    filter_backends = (SearchFilter, OrderingFilter,) # No `DateRangeFilter`
+         # because the date range filter is applied as part
+         # of `EngagedSubscribersQuerysetMixin`.
 
 
 class EngagedSubscribersQuerysetMixin(DateRangeContextMixin,
-                                     SubscribersQuerysetMixin):
+                                      SubscribersQuerysetMixin):
 
     def get_queryset(self):
         filter_params = {}
@@ -527,6 +528,8 @@ class EngagedSubscribersAPIView(EngagedSubscribersSmartListMixin,
 
 class UnengagedSubscribersQuerysetMixin(DateRangeContextMixin,
                                        SubscribersQuerysetMixin):
+    # Uses `OrganizationSmartListMixin` here because it derives from
+    # `DateRangeContextMixin` and we need `start_at`/`ends_at` in the query.
 
     def get_queryset(self):
         ends_at = datetime_or_now(self.ends_at)
@@ -547,7 +550,7 @@ class UnengagedSubscribersQuerysetMixin(DateRangeContextMixin,
         return queryset
 
 
-class UnengagedSubscribersAPIView(OrganizationSmartListMixin,
+class UnengagedSubscribersAPIView(OrganizationSearchOrderListMixin,
                                   UnengagedSubscribersQuerysetMixin,
                                   ListAPIView):
     """
@@ -588,6 +591,3 @@ class UnengagedSubscribersAPIView(OrganizationSmartListMixin,
         }
     """
     serializer_class = OrganizationSerializer
-    filter_backends = (SearchFilter, OrderingFilter) # if we don't remove
-         # the DateRangeFilter, then we will only get unengaged Organization
-         # that were created within the date range.

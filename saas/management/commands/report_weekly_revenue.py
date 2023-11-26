@@ -28,21 +28,27 @@ import logging
 
 from dateutil.relativedelta import relativedelta
 from django.core.management.base import BaseCommand
+from django.template.defaultfilters import slugify
 
-from ... import settings
-from ... import signals
-from ...humanize import as_money
+from ... import humanize, settings, signals
+from ...compat import six
 from ...metrics.base import (aggregate_transactions_by_period,
-                             aggregate_transactions_change_by_period, get_different_units,
-                             hour_periods, day_periods, week_periods, month_periods_v2, year_periods)
+    aggregate_transactions_change_by_period, generate_periods,
+    get_different_units)
 from ...models import Transaction, Plan
 from ...utils import datetime_or_now, get_organization_model, parse_tz
 
+
 LOGGER = logging.getLogger(__name__)
+
 
 class Command(BaseCommand):
     """Send past week revenue report in email"""
     help = 'Send past week revenue report in email'
+
+    inverted_period_choices = {
+        slugify(val): key for key, val in six.iteritems(
+            dict(Plan.INTERVAL_CHOICES))}
 
     def add_arguments(self, parser):
         parser.add_argument(
@@ -58,12 +64,12 @@ class Command(BaseCommand):
         parser.add_argument(
             '--period', action='store',
             dest='period', default='weekly',
-            choices=[choice[1].lower() for choice in Plan.INTERVAL_CHOICES],
+            choices=six.iterkeys(self.inverted_period_choices),
             help='Specifies the period to generate reports for'
         )
 
     @staticmethod
-    def construct_date_periods(at_time, period='weekly', timezone=None):
+    def construct_date_periods(at_time, period=humanize.WEEKLY, timezone=None):
         # discarding time, keeping utc tzinfo (00:00:00 utc)
         tzinfo = parse_tz(timezone)
 
@@ -71,30 +77,23 @@ class Command(BaseCommand):
             # we are interested in 00:00 local time, if we don't have
             # local time zone, fall back to 00:00 utc time
             # in case we have local timezone, replace utc with it
-            return tzinfo.localize(time.replace(tzinfo=None)) if tzinfo else time
+            return (tzinfo.localize(time.replace(tzinfo=None))
+                if tzinfo else time)
 
         base_time = at_time.replace(
-            minute=0 if period != 'yearly' else at_time.minute,
+            minute=0 if period != humanize.YEARLY else at_time.minute,
             second=0,
             microsecond=0
         )
 
         base_time = localize_time(base_time)
 
-        # Map period types to corresponding date-generating functions.
-        period_func = {
-            'hourly': hour_periods,
-            'daily': day_periods,
-            'weekly': week_periods,
-            'monthly': month_periods_v2,
-            'yearly': year_periods,
-        }.get(period)
-
-        if not period_func:
+        if not period:
             return None, None
+
         # 'yearly' is unique in its treatment of the starting date.
         # Flag set for special handling later.
-        include_start = (period == 'yearly')
+        include_start = (period == humanize.YEARLY)
 
         # Calculate the date exactly one year prior to base_time;
         prev_year_from_date = base_time - relativedelta(years=1)
@@ -102,10 +101,14 @@ class Command(BaseCommand):
         # Logic for dealing with cases where it's the first day of the year
         if base_time.day == 1 and base_time.month == 1:
             prev_year_from_date -= relativedelta(years=1)
-        # Generates the most recent two periods and the recent period from a year ago
-        # using date-generating functions.
-        prev_period = period_func(2, from_date=base_time, tz=tzinfo, include_start_date=include_start)
-        prev_year = period_func(1, from_date=prev_year_from_date, tz=tzinfo, include_start_date=False)
+        # Generates the most recent two periods and the recent period
+        # from a year ago using date-generating functions.
+        prev_period = generate_periods(period, nb_periods=2,
+            from_date=base_time, tzinfo=tzinfo,
+            include_start_date=include_start)
+        prev_year = generate_periods(period, nb_periods=1,
+            from_date=prev_year_from_date, tzinfo=tzinfo,
+            include_start_date=False)
 
         return prev_period, prev_year
 
@@ -124,18 +127,21 @@ class Command(BaseCommand):
         for row in table:
             val = row['values']
             val['prev'] = calculate_percentage_change(val['last'], val['prev'])
-            val['prev_year'] = calculate_percentage_change(val['last'], val['prev_year'])
-            val['last'] = as_money(val['last'], unit)
+            val['prev_year'] = calculate_percentage_change(
+                val['last'], val['prev_year'])
+            val['last'] = humanize.as_money(val['last'], unit)
         return table
 
     @staticmethod
     def get_perf_data(provider, prev_periods, prev_year_periods, period_type):
         # pylint:disable=too-many-locals
-        account_table, _, _, table_unit = aggregate_transactions_change_by_period(
+        account_table, _, _, table_unit = \
+        aggregate_transactions_change_by_period(
             provider, Transaction.RECEIVABLE, account_title='Sales',
             orig='orig', dest='dest', date_periods=prev_periods
         )
-        account_table_prev_year, _, _, _ = aggregate_transactions_change_by_period(
+        account_table_prev_year, _, _, _ = \
+        aggregate_transactions_change_by_period(
             provider, Transaction.RECEIVABLE, account_title='Sales',
             orig='orig', dest='dest', date_periods=prev_year_periods
         )
@@ -164,7 +170,8 @@ class Command(BaseCommand):
         units = get_different_units(table_unit, payments_unit, refund_unit)
 
         if len(units) > 1:
-            LOGGER.error("different units in get_perf_data(period_type=%s): %s", period_type, units)
+            LOGGER.error("different units in get_perf_data(period_type=%s): %s",
+                period_type, units)
 
         if units:
             unit = units[0]
@@ -210,10 +217,13 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         # aware utc datetime object
         at_time = datetime_or_now(options.get('at_time'))
-        period = options.get('period')
+        period = self.inverted_period_choices[options.get('period')]
+        period_name = Plan.INTERVAL_CHOICES[period][1]
 
-        self.stdout.write("running report_weekly_revenue for %s %s period at %s" %
-                          ('an' if period == 'hourly' else 'a', period, at_time))
+        self.stdout.write(
+            "running report_weekly_revenue for %s %s period at %s" %
+            ('an' if period == humanize.HOURLY else 'a',
+             period_name, at_time))
 
         providers = get_organization_model().objects.filter(is_provider=True)
         provider_slugs = options.get('providers')
@@ -223,26 +233,37 @@ class Command(BaseCommand):
             dates = self.construct_date_periods(
                 at_time, period=period, timezone=provider.default_timezone)
             prev_period, prev_year = dates
-            if period == 'yearly':
-                self.stdout.write(
-                    "Two last consecutive yearly periods\n: %s to %s and %s to %s" %
-                    (prev_period[0].isoformat(), prev_period[1].isoformat(), prev_period[1].isoformat(),
-                     prev_period[2].isoformat())
-                )
-                self.stdout.write(
+            if period == humanize.YEARLY:
+                LOGGER.debug(
+                "Two last consecutive yearly periods\n: %s to %s and %s to %s" %
+                    (prev_period[0].isoformat(), prev_period[1].isoformat(),
+                     prev_period[1].isoformat(), prev_period[2].isoformat()))
+                LOGGER.debug(
                     "Year before the corresponding yearly period\n: %s to %s" %
-                    (prev_year[0].isoformat(), prev_year[1].isoformat())
-                )
+                    (prev_year[0].isoformat(), prev_year[1].isoformat()))
             else:
-                self.stdout.write(
+                LOGGER.debug(
                     "Two last consecutive %s periods\n: %s to %s and %s to %s" %
-                    (period, prev_period[0].isoformat(), prev_period[1].isoformat(),
-                     prev_period[1].isoformat(), prev_period[2].isoformat())
-                )
-                self.stdout.write(
+                    (period_name,
+                     prev_period[0].isoformat(), prev_period[1].isoformat(),
+                     prev_period[1].isoformat(), prev_period[2].isoformat()))
+                LOGGER.debug(
                     "Same %s period from the previous year\n: %s to %s" %
-                    (period, prev_year[0].isoformat(), prev_year[1].isoformat())
-                )
-            data, unit = self.get_perf_data(provider, prev_period, prev_year, period_type=period)
+                    (period_name,
+                     prev_year[0].isoformat(), prev_year[1].isoformat()))
+            data, unit = self.get_perf_data(
+                provider, prev_period, prev_year, period_type=period)
             table = self.construct_table(data, unit)
-            signals.period_sales_report_created.send(sender=__name__, provider=provider, dates=dates, data=table)
+
+            self.stdout.write("%s | %s | %s | %s" % (
+                str(provider),
+                'Last %s' % period_name,
+                'Prev %s' % period_name,
+                'Last year'))
+            for row in table:
+                self.stdout.write("%s | %s | %s | %s" % (
+                    row['title'], row['values']['last'],
+                    row['values']['prev'], row['values']['prev_year']))
+
+            signals.period_sales_report_created.send(sender=__name__,
+                provider=provider, dates=dates, data=table)

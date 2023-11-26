@@ -44,7 +44,7 @@ from .models import (CartItem, Charge, Coupon, Plan, Price,
     RoleDescription, Subscription, Transaction, get_broker, sum_orig_amount)
 from .utils import (build_absolute_uri, datetime_or_now,
     full_name_natural_split, get_organization_model, get_role_model,
-    handle_uniq_error, update_context_urls, validate_redirect_url)
+    handle_uniq_error, parse_tz, update_context_urls, validate_redirect_url)
 from .extras import OrganizationMixinBase
 from .metrics.transactions import get_balances_due
 
@@ -598,30 +598,46 @@ class ChargeMixin(OrganizationMixin):
 
 class DateRangeContextMixin(object):
 
+    ends_at_param = 'ends_at'
+    start_at_param = 'start_at'
+    timezone_param = 'timezone'
     forced_date_range = True
+
+    def get_query_param(self, key, default_value=None):
+        try:
+            return self.request.query_params.get(key, default_value)
+        except AttributeError:
+            pass
+        return self.request.GET.get(key, default_value)
 
     @property
     def start_at(self):
         if not hasattr(self, '_start_at'):
-            self._start_at = self.request.GET.get('start_at', None)
+            self._start_at = self.get_query_param(self.start_at_param, None)
             if self._start_at:
-                self._start_at = datetime_or_now(self._start_at.strip('"'))
+                self._start_at = datetime_or_now(self._start_at.strip('"'),
+                    tzinfo=self.timezone)
         return self._start_at
 
     @property
     def ends_at(self):
         if not hasattr(self, '_ends_at'):
-            self._ends_at = self.request.GET.get('ends_at', None)
+            self._ends_at = self.get_query_param(self.ends_at_param, None)
             if self.forced_date_range or self._ends_at:
                 if self._ends_at is not None:
                     self._ends_at = self._ends_at.strip('"')
-                self._ends_at = datetime_or_now(self._ends_at)
+                self._ends_at = datetime_or_now(self._ends_at,
+                    tzinfo=self.timezone)
         return self._ends_at
 
     @property
     def timezone(self):
         if not hasattr(self, '_timezone'):
-            self._timezone = self.request.GET.get('timezone', None)
+            self._timezone = parse_tz(self.get_query_param('timezone', None))
+            if not self._timezone:
+                organization = getattr(self, 'organization', None)
+                if organization:
+                    self._timezone = parse_tz(organization.default_timezone)
         return self._timezone
 
     def get_context_data(self, **kwargs):
@@ -630,6 +646,8 @@ class DateRangeContextMixin(object):
             context.update({'start_at': self.start_at})
         if self.ends_at:
             context.update({'ends_at': self.ends_at})
+        if self.timezone:
+            context.update({'timezone': self.timezone})
         return context
 
 
@@ -808,12 +826,7 @@ class CouponMixin(ProviderMixin):
         return context
 
 
-class MetricsMixin(DateRangeContextMixin, ProviderMixin):
-
-    filter_backends = (DateRangeFilter,)
-
-
-class CartItemSmartListMixin(object):
+class CartItemSmartListMixin(DateRangeContextMixin):
     """
     The queryset can be further filtered to a range of dates between
     ``start_at`` and ``ends_at``.
@@ -847,36 +860,15 @@ class CartItemSmartListMixin(object):
     )
     ordering = ('created_at',)
 
-    filter_backends = (DateRangeFilter, OrderingFilter, SearchFilter)
+    filter_backends = (DateRangeFilter, SearchFilter, OrderingFilter)
+        # XXX `CartItemDownloadView` downloads all coupon uses (ProviderMixin),
+        # while `CouponUsesAPIView` shows only recorded use.
 
 
-class OrganizationSmartListMixin(object):
-    """
-    The queryset can be further filtered to a range of dates between
-    ``start_at`` and ``ends_at``.
-
-    The queryset can be further filtered by passing a ``q`` parameter.
-    The value in ``q`` will be matched against:
-
-      - slug
-      - full_name
-      - email
-      - phone
-      - street_address
-      - locality
-      - region
-      - postal_code
-      - country
-
-    The result queryset can be ordered by passing an ``o`` (field name)
-    and ``ot`` (asc or desc) parameter.
-    The fields the queryset can be ordered by are:
-
-      - full_name
-      - created_at
-    """
-    forced_date_range = False
-
+class OrganizationSearchOrderListMixin(object):
+    # This class does not include a `DateRangeFilter` such that we get
+    # all unengaged profiles in `UnengagedSubscribersAPIView`, not just
+    # the unengaged organizations that were created within the date range.
     alternate_fields = {
         'slug': 'username',
         'full_name': ('first_name', 'last_name'),
@@ -910,7 +902,39 @@ class OrganizationSmartListMixin(object):
     #            queryset, self.get_default_ordering(view), view, request)```
     ordering = ('full_name', 'first_name', 'last_name')
 
-    filter_backends = (DateRangeFilter, SearchFilter, OrderingFilter)
+    filter_backends = (SearchFilter, OrderingFilter,) # See comment above
+
+
+class OrganizationSmartListMixin(DateRangeContextMixin,
+                                 OrganizationSearchOrderListMixin):
+    """
+    The queryset can be further filtered to a range of dates between
+    ``start_at`` and ``ends_at``.
+
+    The queryset can be further filtered by passing a ``q`` parameter.
+    The value in ``q`` will be matched against:
+
+      - slug
+      - full_name
+      - email
+      - phone
+      - street_address
+      - locality
+      - region
+      - postal_code
+      - country
+
+    The result queryset can be ordered by passing an ``o`` (field name)
+    and ``ot`` (asc or desc) parameter.
+    The fields the queryset can be ordered by are:
+
+      - full_name
+      - created_at
+    """
+    forced_date_range = False
+
+    filter_backends = (
+        (DateRangeFilter,) + OrganizationSearchOrderListMixin.filter_backends)
 
 
 class RoleSmartListMixin(object):
@@ -973,7 +997,7 @@ class RoleSmartListMixin(object):
     filter_backends = (SearchFilter, OrderingFilter)
 
 
-class UserSmartListMixin(object):
+class UserSmartListMixin(DateRangeContextMixin):
     """
     ``User`` list which is also searchable and sortable.
 
@@ -1016,6 +1040,9 @@ class UserSmartListMixin(object):
     ordering = ('first_name',)
 
     filter_backends = (DateRangeFilter, SearchFilter, OrderingFilter)
+        # Classes deriving from `UserSmartListMixin` do not technically need
+        # a `ProviderMixin` (i.e. always is broker) but could benefit from it
+        # to get a consistent default timezone.
 
 
 class SubscribedSubscriptionsMixin(OrganizationDecorateMixin):
@@ -1187,7 +1214,8 @@ class RoleMixin(RoleDescriptionMixin):
 
 
 class BalancesDueMixin(DateRangeContextMixin, ProviderMixin):
-    filter_backends = (DateRangeFilter,)
+
+    filter_backends = (DateRangeFilter,) # XXX Why no search and ordering?
 
     @property
     def balances_due(self):
@@ -1213,7 +1241,7 @@ class BalancesDueMixin(DateRangeContextMixin, ProviderMixin):
         for organization in decorated_queryset:
             balance = balances_values.get(organization.slug)
             if balance:
-                for unit, unit_data in balance.items():
+                for unit_data in six.itervalues(balance):
                     unit_data.pop('Liability', None)
                 organization.balances = balance
             else:

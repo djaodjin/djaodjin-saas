@@ -27,20 +27,36 @@
 from django.db import transaction
 from django.db.models import F, Q, Max
 from rest_framework.generics import (get_object_or_404,
-    GenericAPIView, ListCreateAPIView, RetrieveUpdateDestroyAPIView)
+    ListCreateAPIView, RetrieveUpdateDestroyAPIView)
 from rest_framework.response import Response
+from rest_framework.views import APIView
 
 from .. import settings
 from ..docs import swagger_auto_schema, OpenAPIResponse
-from ..metrics.base import abs_monthly_balances, monthly_balances
+from ..metrics.base import abs_balances_by_period, balances_by_period
 from ..models import BalanceLine
-from ..filters import DateRangeFilter
-from ..mixins import DateRangeContextMixin
-from .serializers import (BalanceLineSerializer, MetricsSerializer,
+from .serializers import (BalanceLineSerializer, QueryParamPeriodSerializer,
     UpdateRankSerializer)
+from .metrics import MetricsMixin
 
 
-class BrokerBalancesAPIView(DateRangeContextMixin, GenericAPIView):
+class BrokerBalancesMixin(MetricsMixin):
+
+    def get_values(self, balance_line, date_periods):
+        unit = settings.DEFAULT_UNIT
+        if balance_line.is_positive:
+            balances_func = abs_balances_by_period
+        else:
+            balances_func = balances_by_period
+        values, _unit = balances_func(
+            like_account=balance_line.selector, date_periods=date_periods)
+        if _unit:
+            unit = _unit
+
+        return values, unit
+
+
+class BrokerBalancesAPIView(BrokerBalancesMixin, APIView):
     """
     Retrieves a balance sheet
 
@@ -81,31 +97,26 @@ class BrokerBalancesAPIView(DateRangeContextMixin, GenericAPIView):
             ]
         }
     """
-    serializer_class = MetricsSerializer
-    filter_backends = (DateRangeFilter,)
 
-    def get(self, request, *args, **kwargs): #pylint: disable=unused-argument
-        result = []
-        report = self.kwargs.get('report')
+    @swagger_auto_schema(query_serializer=QueryParamPeriodSerializer)
+    def get(self, request, *args, **kwargs):
+        return super(BrokerBalancesAPIView, self).get(request, *args, **kwargs)
+
+
+    def retrieve_metrics(self, date_periods):
+        report = self.kwargs.get('report') # XXX Add QueryParam
         unit = settings.DEFAULT_UNIT
+        results = []
         for line in BalanceLine.objects.filter(report=report).order_by('rank'):
-            if line.is_positive:
-                balances_func = abs_monthly_balances
-            else:
-                balances_func = monthly_balances
-            values, _unit = balances_func(
-                like_account=line.selector, until=self.ends_at)
-            if _unit:
-                unit = _unit
-
-            result += [{
+            values, unit = self.get_values(line, date_periods)
+            results += [{
                 'slug': line.title,
                 'title': line.title,
                 'selector': line.selector,
                 'values': values
             }]
         return Response({'title': "Balances: %s" % report,
-            'unit': unit, 'scale': 0.01, 'results': result})
+            'unit': unit, 'scale': 0.01, 'results': results})
 
 
 class BalanceLineListAPIView(ListCreateAPIView):

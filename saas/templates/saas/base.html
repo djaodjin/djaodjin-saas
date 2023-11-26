@@ -17,7 +17,10 @@
     {% include "saas/_sidebar.html" %}
     {% endblock %}
   </div>
+  <hr />
   <div id="app">
+    {% block saas_title %}{% endblock %}
+    {% block saas_help_menus %}{% endblock %}
     {% block saas_content %}{% endblock %}
   </div>
 </div>

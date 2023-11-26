@@ -1,4 +1,4 @@
-# Copyright (c) 2022, DjaoDjin inc.
+# Copyright (c) 2023, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -33,15 +33,33 @@ from rest_framework.response import Response
 from .. import settings
 from ..compat import gettext_lazy as _
 from ..docs import OpenAPIResponse, swagger_auto_schema
-from ..mixins import PlanMixin, CartMixin
-from ..filters import DateRangeFilter, OrderingFilter
+from ..mixins import CartMixin, DateRangeContextMixin, PlanMixin, ProviderMixin
+from ..filters import DateRangeFilter, OrderingFilter, SearchFilter
 from ..models import Coupon, Plan, Subscription
 from .serializers import (PlanDetailSerializer, PlanCreateSerializer,
                           QueryParamActiveSerializer)
 from ..utils import datetime_or_now
 
 
-class PricingAPIView(PlanMixin, CartMixin, ListAPIView):
+class PlanSmartListMixin(DateRangeContextMixin, ProviderMixin):
+
+    search_fields = (
+        'slug',
+        'title',
+    )
+
+    ordering_fields = (
+        ('title', 'title'),
+        ('period_amount', 'period_amount'),
+        ('is_active', 'is_active'),
+        ('created_at', 'created_at')
+    )
+    ordering = ('period_amount',)
+
+    filter_backends = (DateRangeFilter, SearchFilter, OrderingFilter,)
+
+
+class PricingAPIView(CartMixin, PlanSmartListMixin, ListAPIView):
     """
     Lists pricing plans
 
@@ -92,14 +110,6 @@ class PricingAPIView(PlanMixin, CartMixin, ListAPIView):
           }]
         }
     """
-    ordering_fields = (
-        ('title', 'title'),
-        ('period_amount', 'period_amount'),
-        ('is_active', 'is_active'),
-        ('created_at', 'created_at'),
-    )
-    ordering = ('period_amount',)
-    filter_backends = (DateRangeFilter, OrderingFilter)
     serializer_class = PlanDetailSerializer
 
     def get_queryset(self):
@@ -134,7 +144,7 @@ class PricingAPIView(PlanMixin, CartMixin, ListAPIView):
         return page
 
 
-class PlanListCreateAPIView(PlanMixin, ListCreateAPIView):
+class PlanListCreateAPIView(PlanSmartListMixin, ListCreateAPIView):
     """
     Lists a provider plans
 
@@ -180,14 +190,6 @@ class PlanListCreateAPIView(PlanMixin, ListCreateAPIView):
           }]
         }
     """
-    ordering_fields = (
-        ('title', 'title'),
-        ('period_amount', 'period_amount'),
-        ('is_active', 'is_active'),
-        ('created_at', 'created_at')
-    )
-    ordering = ('period_amount',)
-    filter_backends = (DateRangeFilter, OrderingFilter)
     serializer_class = PlanDetailSerializer
 
     def get_serializer_class(self):
@@ -242,7 +244,8 @@ class PlanListCreateAPIView(PlanMixin, ListCreateAPIView):
 
     def get_queryset(self):
         queryset = self.organization.plans.all()
-        query_serializer = QueryParamActiveSerializer(data=self.request.query_params)
+        query_serializer = QueryParamActiveSerializer(
+            data=self.request.query_params)
 
         if query_serializer.is_valid(raise_exception=True):
             is_active = query_serializer.validated_data.get('active', None)

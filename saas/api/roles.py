@@ -620,6 +620,21 @@ accessibles/manager/cowork",
         return self.perform_optin(serializer, request, user=self.user)
 
 
+class RoleDescriptionSmartListMixin(object):
+
+    search_fields = (
+        'slug',
+        'title',
+    )
+    ordering_fields = (
+        ('slug', 'slug'),
+        ('title', 'title'),
+    )
+    ordering = ('slug',)
+
+    filter_backends = (SearchFilter, OrderingFilter)
+
+
 class RoleDescriptionQuerysetMixin(OrganizationMixin):
 
     def get_queryset(self):
@@ -631,7 +646,8 @@ class RoleDescriptionQuerysetMixin(OrganizationMixin):
             raise PermissionDenied()
 
 
-class RoleDescriptionListCreateView(RoleDescriptionQuerysetMixin,
+class RoleDescriptionListCreateView(RoleDescriptionSmartListMixin,
+                                    RoleDescriptionQuerysetMixin,
                                     ListCreateAPIView):
     """
     Lists role types
@@ -684,18 +700,6 @@ class RoleDescriptionListCreateView(RoleDescriptionQuerysetMixin,
             ]
         }
     """
-    search_fields = (
-        'slug',
-        'title',
-    )
-    ordering_fields = (
-        ('slug', 'slug'),
-        ('title', 'title'),
-    )
-    ordering = ('slug',)
-
-    filter_backends = (SearchFilter, OrderingFilter)
-
     serializer_class = RoleDescriptionSerializer
 
     def post(self, request, *args, **kwargs):
@@ -1491,37 +1495,42 @@ class UserProfileListAPIView(OrganizationSmartListMixin,
         validated_data = dict(serializer.validated_data)
 
         # If we're creating an organization from a personal profile
-        query_serializer = QueryParamPersonalProfSerializer(data=request.query_params)
+        query_serializer = QueryParamPersonalProfSerializer(
+            data=request.query_params)
         query_serializer.is_valid(raise_exception=True)
-        convert_from_personal = query_serializer.validated_data.get('convert_from_personal', False)
+        convert_from_personal = query_serializer.validated_data.get(
+            'convert_from_personal', False)
 
         if convert_from_personal:
-            organization = self.get_queryset().filter(slug__exact=self.user.username).first()
+            organization = self.get_queryset().filter(
+                slug__exact=self.user.username).first()
 
             if not self.is_valid_convert_to_organization_request(organization):
-                return Response({'error': _('Invalid request.')}, status=status.HTTP_400_BAD_REQUEST)
+                return Response({'error': _('Invalid request.')},
+                    status=status.HTTP_400_BAD_REQUEST)
 
             organization.full_name = serializer.validated_data.get('full_name')
             organization.slug = serializer.validated_data.get('slug', None)
             organization.save()
 
-            return Response({"detail": _("Successfully converted personal profile to organization.")},
-                            status=status.HTTP_200_OK)
-        else:
-            if 'email' not in validated_data:
-                # email is optional to create the profile but it is required
-                # to save the record in the database.
-                validated_data.update({'email': request.user.email})
-            if 'full_name' not in validated_data:
-                # full_name is optional to create the profile but it is required
-                # to save the record in the database.
-                validated_data.update({'full_name': ""})
+            return Response({"detail":
+                _("Successfully converted personal profile to organization.")},
+                status=status.HTTP_200_OK)
 
-            # creates profile
-            with transaction.atomic():
-                organization = self.create_organization(validated_data)
-                organization.add_manager(self.user)
-            self.decorate_personal(organization)
+        if 'email' not in validated_data:
+            # email is optional to create the profile but it is required
+            # to save the record in the database.
+            validated_data.update({'email': request.user.email})
+        if 'full_name' not in validated_data:
+            # full_name is optional to create the profile but it is required
+            # to save the record in the database.
+            validated_data.update({'full_name': ""})
+
+        # creates profile
+        with transaction.atomic():
+            organization = self.create_organization(validated_data)
+            organization.add_manager(self.user)
+        self.decorate_personal(organization)
 
         # returns created profile
         serializer = self.serializer_class(

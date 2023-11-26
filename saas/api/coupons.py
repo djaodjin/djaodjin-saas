@@ -36,11 +36,11 @@ from ..compat import gettext_lazy as _
 from ..docs import swagger_auto_schema, OpenAPIResponse
 from ..filters import OrderingFilter, SearchFilter, DateRangeFilter
 from ..models import Coupon
-from ..mixins import CouponMixin, ProviderMixin
+from ..mixins import CouponMixin, DateRangeContextMixin, ProviderMixin
 from ..utils import handle_uniq_error
 
 
-class SmartCouponListMixin(object):
+class SmartCouponListMixin(DateRangeContextMixin):
     """
     ``Coupon`` list which is also searchable and sortable.
     """
@@ -68,7 +68,7 @@ class SmartCouponListMixin(object):
     )
     ordering = ('ends_at',)
 
-    filter_backends = (OrderingFilter, SearchFilter)
+    filter_backends = (DateRangeFilter, SearchFilter, OrderingFilter)
 
 
 class CouponQuerysetMixin(ProviderMixin):
@@ -132,8 +132,6 @@ class CouponListCreateAPIView(SmartCouponListMixin, CouponQuerysetMixin,
         }
     """
     serializer_class = CouponSerializer
-    filter_backends = (SmartCouponListMixin.filter_backends +
-        (DateRangeFilter,))
 
     def get_serializer_class(self):
         if self.request.method.lower() in ('post',):

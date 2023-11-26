@@ -28,7 +28,6 @@ from functools import reduce
 
 from django.core.exceptions import FieldDoesNotExist
 from django.db import models
-from django.utils.timezone import utc
 from rest_framework.filters import (OrderingFilter as BaseOrderingFilter,
     SearchFilter as BaseSearchFilter, BaseFilterBackend)
 from rest_framework.compat import distinct
@@ -376,27 +375,28 @@ class DateRangeFilter(BaseFilterBackend):
     forced_date_range = True
     date_field = 'created_at'
     alternate_date_field = 'date_joined'
-    start_at_param = 'start_at'
     ends_at_param = 'ends_at'
+    start_at_param = 'start_at'
+    timezone_param = 'timezone'
 
     def get_params(self, request, view):
-        tz_ob = parse_tz(request.GET.get('timezone'))
+        tz_ob = parse_tz(request.query_params.get(self.timezone_param))
         if not tz_ob:
-            tz_ob = utc
+            organization = getattr(view, 'organization', None)
+            if organization:
+                tz_ob = parse_tz(organization.default_timezone)
         ends_at = None
         if self.ends_at_param:
-            ends_at = request.GET.get(self.ends_at_param)
-        start_at = request.GET.get(self.start_at_param)
+            ends_at = request.query_params.get(self.ends_at_param)
+        start_at = request.query_params.get(self.start_at_param)
         forced_date_range = getattr(view, 'forced_date_range',
             self.forced_date_range)
         if forced_date_range or ends_at:
             if ends_at is not None:
                 ends_at = ends_at.strip('"')
-            ends_at = datetime_or_now(ends_at)
-            ends_at = ends_at.astimezone(tz_ob)
+            ends_at = datetime_or_now(ends_at, tzinfo=tz_ob)
         if start_at:
-            start_at = datetime_or_now(start_at.strip('"'))
-            start_at = start_at.astimezone(tz_ob)
+            start_at = datetime_or_now(start_at.strip('"'), tzinfo=tz_ob)
         return start_at, ends_at
 
     def get_date_field(self, model):
@@ -424,21 +424,32 @@ class DateRangeFilter(BaseFilterBackend):
     def get_schema_operation_parameters(self, view):
         fields = super(DateRangeFilter, self).get_schema_operation_parameters(
             view)
-        fields += [{
-            'name': self.start_at_param,
-            'required': False,
-            'in': 'query',
-            'description': force_str("date/time in ISO format"),
-            'schema': {
-                'type': 'string',
-            },
-        }]
+        if self.start_at_param:
+            fields += [{
+                'name': self.start_at_param,
+                'required': False,
+                'in': 'query',
+                'description': force_str("date/time in ISO 8601 format"),
+                'schema': {
+                    'type': 'string',
+                },
+            }]
         if self.ends_at_param:
             fields += [{
                 'name': self.ends_at_param,
                 'required': False,
                 'in': 'query',
-                'description': force_str("date/time in ISO format"),
+                'description': force_str("date/time in ISO 8601 format"),
+                'schema': {
+                    'type': 'string',
+                },
+            }]
+        if self.timezone_param:
+            fields += [{
+                'name': self.timezone_param,
+                'required': False,
+                'in': 'query',
+                'description': force_str("timezone"),
                 'schema': {
                     'type': 'string',
                 },
@@ -521,3 +532,36 @@ class ChurnedInPeriodFilter(IntersectPeriodFilter):
         if ends_at:
             kwargs.update({'%s__lt' % ends_field: ends_at})
         return queryset.filter(**kwargs)
+
+
+class TrailingPeriodFilter(DateRangeFilter):
+    # This filter is used purely to generate the correct OpenAPI documentation.
+
+    start_at_param = None
+    period_type_param = 'period'
+    nb_periods_param = 'num_periods'
+
+    def get_schema_operation_parameters(self, view):
+        fields = super(
+            TrailingPeriodFilter, self).get_schema_operation_parameters(view)
+        fields += [{
+            'name': self.period_type_param,
+            'required': False,
+            'in': 'query',
+            'description': force_str("Natural period length"\
+        " (hourly, daily, weekly, monthly, yearly). Defaults to monthly."),
+            'schema': {
+                'type': 'string',
+            },
+        }]
+        fields += [{
+            'name': self.nb_periods_param,
+            'required': False,
+            'in': 'query',
+            'description': force_str("Specify the number of periods"\
+            " to include. Min value is 1."),
+            'schema': {
+                'type': 'string',
+            },
+        }]
+        return fields

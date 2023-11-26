@@ -1162,7 +1162,7 @@ var itemListMixin = {
                     start_at: null,
                     ends_at: null,
                     // The timezone for both start_at and ends_at.
-                    timezone: 'local',
+                    timezone: null,
                     q: '',
                 },
                 itemsLoaded: false,

@@ -1,4 +1,4 @@
-# Copyright (c) 2020, DjaoDjin inc.
+# Copyright (c) 2023, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -39,6 +39,7 @@ from rest_framework.generics import get_object_or_404
 from rest_framework.request import Request
 
 from .. import humanize
+from ..api.balances import BrokerBalancesMixin
 from ..api.charges import SmartChargeListMixin, ChargeQuerysetMixin
 from ..api.coupons import CouponQuerysetMixin, SmartCouponListMixin
 from ..api.subscriptions import ActiveSubscribersMixin, ChurnedSubscribersMixin
@@ -46,12 +47,11 @@ from ..api.transactions import (BillingsQuerysetMixin,
     SmartTransactionListMixin, TransactionQuerysetMixin, TransferQuerysetMixin)
 from ..api.users import RegisteredQuerysetMixin
 from ..compat import six
-from ..metrics.base import (abs_monthly_balances, monthly_balances,
-    month_periods)
+from ..metrics.base import month_periods
 from ..mixins import (CartItemSmartListMixin, ProviderMixin,
-    MetricsMixin, UserSmartListMixin, as_html_description)
+    UserSmartListMixin, as_html_description)
 from ..models import BalanceLine, CartItem, Coupon
-from ..utils import datetime_or_now
+from ..utils import datetime_or_now, convert_dates_to_utc
 
 
 class CSVDownloadView(View):
@@ -117,7 +117,7 @@ class CSVDownloadView(View):
         raise NotImplementedError
 
 
-class BalancesDownloadView(MetricsMixin, CSVDownloadView):
+class BalancesDownloadView(BrokerBalancesMixin, CSVDownloadView):
     """
     Export balance metrics as a CSV file.
     """
@@ -125,7 +125,7 @@ class BalancesDownloadView(MetricsMixin, CSVDownloadView):
 
     def get_headings(self):
         return ['Title'] + [str(end_period) for end_period in month_periods(
-            from_date=self.ends_at, tz=self.timezone)]
+            from_date=self.ends_at, tzinfo=self.timezone)]
 
     def get_queryset(self):
         report = self.kwargs.get('report')
@@ -133,14 +133,11 @@ class BalancesDownloadView(MetricsMixin, CSVDownloadView):
 
     def queryrow_to_columns(self, record):
         balance_line = record
-        if balance_line.is_positive:
-            balances_func = abs_monthly_balances
-        else:
-            balances_func = monthly_balances
+        date_periods = convert_dates_to_utc(month_periods(
+            from_date=self.ends_at))
         if balance_line.selector:
-            balances, _ = balances_func(
-                like_account=balance_line.selector, until=self.ends_at)
-            row = [balance_line.title] + [item[1] for item in balances]
+            values, _unit = self.get_values(balance_line, date_periods)
+            row = [balance_line.title] + [item[1] for item in values]
         else:
             # means we have a heading only
             row = [balance_line.title]
@@ -280,7 +277,8 @@ class CartItemDownloadView(CartItemSmartListMixin, CartItemQuerysetMixin,
             self.encode(claim_code)]
 
 
-class RegisteredBaseDownloadView(RegisteredQuerysetMixin, CSVDownloadView):
+class RegisteredDownloadView(UserSmartListMixin, RegisteredQuerysetMixin,
+                             CSVDownloadView):
 
     def get_headings(self):
         return ['First name', 'Last name', 'Email', 'Registration Date']
@@ -296,11 +294,6 @@ class RegisteredBaseDownloadView(RegisteredQuerysetMixin, CSVDownloadView):
             self.encode(user.email),
             user.date_joined.date(),
         ]
-
-
-class RegisteredDownloadView(UserSmartListMixin, RegisteredBaseDownloadView):
-
-    pass
 
 
 class SubscriptionBaseDownloadView(CSVDownloadView):

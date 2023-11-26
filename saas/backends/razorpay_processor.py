@@ -67,6 +67,7 @@ class RazorpayBackend(object):
 
     def charge_distribution(self, charge, refunded=0,
                             orig_total_broker_fee_amount=0, unit='inr'):
+        #pylint:disable=no-member,unused-argument
         if self.bypass_api:
             processor_charge = {
                 'fee': 0, 'service_tax': 0, 'amount': charge.amount}
@@ -91,7 +92,7 @@ class RazorpayBackend(object):
     def create_payment(self, amount, unit, token,
                        descr=None, stmt_descr=None, created_at=None,
                        broker_fee_amount=0, provider=None, broker=None):
-        #pylint: disable=too-many-arguments,unused-argument
+        #pylint: disable=too-many-arguments,no-member,unused-argument
         LOGGER.debug('create_payment(amount=%s, unit=%s, descr=%s)',
             amount, unit, descr)
         try:
@@ -153,6 +154,7 @@ class RazorpayBackend(object):
         return context
 
     def retrieve_charge(self, charge):
+        #pylint:disable=no-member
         if charge.is_progress:
             processor_charge = self.razor.payment.fetch(charge.processor_key)
             if processor_charge['status'] == 'captured':
@@ -163,6 +165,7 @@ class RazorpayBackend(object):
         """
         Full or partial refund a charge.
         """
+        #pylint:disable=no-member,unused-argument
         try:
             self.razor.refund.create(
                 charge.processor_key, data={"amount": amount})

@@ -33,7 +33,7 @@ from rest_framework.response import Response
 
 from .serializers import (ChargeSerializer, EmailChargeReceiptSerializer,
     RefundChargeSerializer, ValidationErrorSerializer)
-from .. import settings, signals
+from .. import signals
 from ..compat import gettext_lazy as _
 from ..docs import OpenAPIResponse, no_body, swagger_auto_schema
 from ..filters import DateRangeFilter, OrderingFilter, SearchFilter
@@ -93,7 +93,7 @@ class SmartChargeListMixin(DateRangeContextMixin):
     )
     ordering = ('created_at',)
 
-    filter_backends = (DateRangeFilter, OrderingFilter, SearchFilter)
+    filter_backends = (DateRangeFilter, SearchFilter, OrderingFilter)
 
 
 class ChargeQuerysetMixin(object):

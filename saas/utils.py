@@ -35,7 +35,7 @@ from django.utils.timezone import utc, get_current_timezone
 from rest_framework.exceptions import ValidationError
 from rest_framework.settings import api_settings
 from pytz import timezone, UnknownTimeZoneError
-from pytz.tzinfo import DstTzInfo
+from pytz.tzinfo import BaseTzInfo
 
 from .compat import get_model_class, gettext_lazy as _, import_string, six
 
@@ -75,7 +75,7 @@ class SlugTitleMixin(object):
 
 
 def parse_tz(tzone):
-    if issubclass(type(tzone), DstTzInfo):
+    if issubclass(type(tzone), BaseTzInfo):
         return tzone
     if tzone:
         try:
@@ -96,7 +96,9 @@ def as_timestamp(dtime_at=None):
         dtime_at - datetime.datetime(1970, 1, 1, tzinfo=utc)).total_seconds())
 
 
-def datetime_or_now(dtime_at=None):
+def datetime_or_now(dtime_at=None, tzinfo=None):
+    if not tzinfo:
+        tzinfo = utc
     as_datetime = dtime_at
     if isinstance(dtime_at, six.string_types):
         as_datetime = parse_datetime(dtime_at)
@@ -106,9 +108,10 @@ def datetime_or_now(dtime_at=None):
                 as_datetime = datetime.datetime.combine(
                     as_date, datetime.time.min)
     if not as_datetime:
-        as_datetime = datetime.datetime.utcnow().replace(tzinfo=utc)
-    if as_datetime.tzinfo is None:
-        as_datetime = as_datetime.replace(tzinfo=utc)
+        as_datetime = datetime.datetime.now(tz=tzinfo)
+    if (as_datetime.tzinfo is None or
+        as_datetime.tzinfo.utcoffset(as_datetime) is None):
+        as_datetime = as_datetime.replace(tzinfo=tzinfo)
     return as_datetime
 
 

@@ -37,7 +37,22 @@ from ..models import Agreement
 from ..utils import handle_uniq_error
 
 
-class AgreementListAPIView(generics.ListAPIView):
+class AgreementSmartListMixin(object):
+
+    search_fields = (
+        'slug',
+        'title'
+    )
+    ordering_fields = (
+        ('title', 'title'),
+        ('updated_at', 'updated_at'),
+    )
+    ordering = ('title',)
+
+    filter_backends = (OrderingFilter, SearchFilter,)
+
+
+class AgreementListAPIView(AgreementSmartListMixin, generics.ListAPIView):
     """
     List legal agreements
 
@@ -71,18 +86,6 @@ class AgreementListAPIView(generics.ListAPIView):
             ]
         }
     """
-    search_fields = (
-        'slug',
-        'title'
-    )
-    ordering_fields = (
-        ('title', 'title'),
-        ('updated_at', 'updated_at'),
-    )
-    ordering = ('title',)
-
-    filter_backends = (OrderingFilter, SearchFilter)
-
     serializer_class = AgreementSerializer
     queryset = Agreement.objects.all()
 

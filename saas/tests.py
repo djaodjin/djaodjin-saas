@@ -103,7 +103,7 @@ class SaasTests(TestCase):
         Test datetime with a timezone
         """
         results = month_periods(from_date="2018-04-18T00:00:00-04:00",
-            tz="US/Eastern")
+            tzinfo="US/Eastern")
         results = [str(res) for res in results]
         self.assertEqual(results, [
             '2017-05-01 00:00:00-04:00',

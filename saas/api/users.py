@@ -62,12 +62,8 @@ class RegisteredQuerysetMixin(DateRangeContextMixin, ProviderMixin):
             'user')).order_by('-date_joined', 'last_name').distinct()
 
 
-class RegisteredBaseAPIView(RegisteredQuerysetMixin, ListAPIView):
-
-    pass
-
-
-class RegisteredAPIView(UserSmartListMixin, RegisteredBaseAPIView):
+class RegisteredAPIView(UserSmartListMixin, RegisteredQuerysetMixin,
+                        ListAPIView):
     """
     Lists top of funnel registered users
 

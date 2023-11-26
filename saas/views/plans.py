@@ -36,7 +36,7 @@ from .. import settings
 from ..compat import (gettext_lazy as _, is_authenticated, reverse,
     reverse_lazy)
 from ..forms import PlanForm
-from ..mixins import CartMixin, OrganizationMixin, ProviderMixin
+from ..mixins import CartMixin, OrganizationMixin
 from ..models import CartItem, Coupon, Plan
 from ..utils import datetime_or_now, get_role_model, update_context_urls
 
@@ -186,8 +186,9 @@ class PlanUpdateView(PlanFormMixin, UpdateView):
     Template:
 
     To edit the layout of this page, create a local \
-    ``saas/profile/plans/plan.html`` (`example <https://github.com/djaodjin/\
-djaodjin-saas/tree/master/saas/templates/saas/profile/plans/plan.html>`__).
+    ``saas/profile/plans/plan.html`` (`example <https://github.com/\
+djaodjin/djaodjin-saas/tree/master/saas/templates/saas/profile/plans\
+/plan.html>`__).
 
     Template context:
       - ``plan`` The plan to update

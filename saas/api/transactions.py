@@ -75,11 +75,34 @@ class TotalAnnotateMixin(object):
         return queryset
 
 
-class TransactionFilterMixin(DateRangeContextMixin):
+class SmartTransactionListMixin(DateRangeContextMixin):
     """
-    ``Transaction`` list result of a search query, filtered by dates.
-    """
+    The queryset can be further filtered to a range of dates between
+    ``start_at`` and ``ends_at``.
 
+    The queryset can be further filtered by passing a ``q`` parameter.
+    The value in ``q`` will be matched against:
+
+      - description
+      - dest_profile
+      - dest_profile__full_name
+      - orig_profile
+      - orig_profile__full_name
+
+    The result queryset can be ordered by passing an ``o`` (field name)
+    and ``ot`` (asc or desc) parameter.
+    The fields the queryset can be ordered by are:
+
+      - descr
+      - dest_amount
+      - dest_organization__slug
+      - dest_organization__full_name
+      - dest_account
+      - orig_organization__slug
+      - orig_organization__full_name
+      - orig_account
+      - created_at
+    """
     search_fields = (
         'description',
         'dest_profile',
@@ -94,14 +117,6 @@ class TransactionFilterMixin(DateRangeContextMixin):
         'orig_profile': 'orig_organization__slug',
         'orig_profile__full_name': 'orig_organization__full_name',
     }
-
-    filter_backends = (DateRangeFilter, SearchFilter)
-
-
-class SmartTransactionListMixin(TransactionFilterMixin):
-    """
-    ``Transaction`` list which is also searchable and sortable.
-    """
     ordering_fields = (
         ('descr', 'description'),
         ('dest_amount', 'amount'),
@@ -115,8 +130,8 @@ class SmartTransactionListMixin(TransactionFilterMixin):
     )
     ordering = ('created_at',)
 
-    filter_backends = (TransactionFilterMixin.filter_backends +
-        (OrderingFilter,))
+
+    filter_backends = (DateRangeFilter, SearchFilter, OrderingFilter)
 
 
 class TransactionQuerysetMixin(object):
@@ -765,7 +780,7 @@ class StatementBalanceAPIView(SmartTransactionListMixin,
         .. code-block:: json
 
             {
-                "plan": "premium",
+                "plan": "basic",
                 "use": "requests"
             }
 

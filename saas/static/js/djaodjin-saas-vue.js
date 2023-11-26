@@ -347,30 +347,81 @@ var timezoneMixin = {
         }
     },
     methods: {
-        convertDatetime: function(data, isUTC){
-            // Convert datetime string to moment object in-place because we want
-            // to keep extra keys and structure in the JSON returned by the API.
-            return data.map(function(f){
-                f.values.map(function(v){
-                    // localizing the period to local browser time
-                    // unless showing reports in UTC.
-                    v[0] = isUTC ? moment.parseZone(v[0]) : moment(v[0]);
-                });
-            });
-        },
-
         // Used to be filters but Vue3 will not allow it.
-        monthHeading: function(datetime) {
-            // shift each period by 1 month unless this is
-            // current month and not a first day of the month
+        asPeriodHeading: function(datetime, periodType, tzString) {
             if( typeof datetime === 'string' ) {
-                datetime = moment(datetime);
+                datetime = new Date(datetime);
+                // `datetime` contains aggregated metrics before
+                // (not including) `datetime`.
+                datetime = new Date(datetime.valueOf() - 1);
             }
-            if(datetime.date() !== 1 || datetime.hour() !== 0
-               || datetime.minute() !== 0 || datetime.second() !== 0 ) {
-                return datetime.format("MMM'YY*");
+            if( typeof tzString !== 'undefined' ) {
+                // `datetime` is in UTC but the heading must be printed
+                // in the provider timezone, and not the local timezone
+                // of the browser.
+                datetime = datetime.toLocaleString(
+                    'en-US', {year: 'numeric', month: '2-digit', day: '2-digit',
+                    hour: '2-digit', minute: '2-digit', second: '2-digit',
+                    hour12: false,
+                    timeZone: tzString});
             }
-            return datetime.clone().subtract(1, 'months').format("MMM'YY");
+            const regx = new RegExp(
+                '(?<month>\\d\\d)/(?<day>\\d\\d)/(?<year>\\d\\d\\d\\d), (?<hour>\\d\\d):(?<minute>\\d\\d):(?<second>\\d\\d)');
+            const parts = regx.exec(datetime);
+            const year = parseInt(parts.groups['year']);
+            const monthIndex = parseInt(parts.groups['month']) - 1;
+            const day = parseInt(parts.groups['day']);
+            const hour = parseInt(parts.groups['hour']);
+            const minute = parseInt(parts.groups['minute']);
+            const second = parseInt(parts.groups['second']);
+            const lang = navigator.language;
+            if( periodType == 'yearly' ) {
+                return parts.groups['year'] + (
+                    monthIndex !== 11 ? '*' : '');
+            }
+            if( periodType == 'monthly' ) {
+                const dateTimeFormat = new Intl.DateTimeFormat(lang, {
+                    year: 'numeric',
+                    month: 'short'
+                });
+                return dateTimeFormat.format(
+                    new Date(year, monthIndex)) + ((hour !== 23 &&
+                     minute !== 59 && second !== 59)  ? '*' : '');
+            }
+            if( periodType == 'weekly' ) {
+                const dateTimeFormat = new Intl.DateTimeFormat(lang, {
+                    year: 'numeric',
+                    month: 'short',
+                    day: 'numeric',
+                    weekday: 'short'
+                });
+                return dateTimeFormat.format(
+                    new Date(year, monthIndex, day)) + ((hour !== 23 &&
+                     minute !== 59 && second !== 59)  ? '*' : '');
+            }
+            if( periodType == 'daily' ) {
+                const dateTimeFormat = new Intl.DateTimeFormat(lang, {
+                    year: 'numeric',
+                    month: 'short',
+                    day: 'numeric',
+                    weekday: 'short'
+                });
+                return dateTimeFormat.format(
+                    new Date(year, monthIndex, day)) + ((hour !== 23 &&
+                     minute !== 59 && second !== 59)  ? '*' : '');
+            }
+            if( periodType == 'hourly' ) {
+                const dateTimeFormat = new Intl.DateTimeFormat(lang, {
+                    year: 'numeric',
+                    month: 'numeric',
+                    day: 'numeric',
+                    hour: '2-digit', minute: '2-digit', second: '2-digit',
+                    hour12: false,
+                });
+                return dateTimeFormat.format(
+                    new Date(year, monthIndex, day, hour)) + ((minute !== 59 &&
+                        second !== 59)  ? '*' : '');
+            }
         },
         datetimeOrNow: function(dateISOString, offset) {
             var dateTime = moment(dateISOString);
@@ -1576,7 +1627,7 @@ Vue.component('metrics-charts', {
                 ends_at: vm.params.ends_at,
                 period: vm.params.period,
             };
-            if( vm.timezone !== 'utc' ) {
+            if( vm.timezone ) {
                 params["timezone"] = vm.timezone;
             }
             vm.reqGet(table.location, params, function(resp){
@@ -1597,7 +1648,6 @@ Vue.component('metrics-charts', {
                     scale: scale,
                     data: resp.results
                 }
-                vm.convertDatetime(tableData.data, vm.timezone === 'utc');
                 for( var idx = 0; idx < vm.tables.length; ++idx ) {
                     if( vm.tables[idx].key === table.key ) {
                         vm.$set(vm.tables, idx, tableData);
@@ -1606,13 +1656,6 @@ Vue.component('metrics-charts', {
                 }
                 if(cb) cb();
             });
-        },
-        endOfMonth: function(date) {
-            return new Date(
-                date.getFullYear(),
-                date.getMonth() + 1,
-                0
-            );
         },
         // an alias for consistent method usage in datepickers templates
         get: function(){

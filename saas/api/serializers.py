@@ -51,9 +51,7 @@ import phonenumbers
 from .. import settings
 from ..compat import gettext_lazy as _, reverse, six
 from ..decorators import _valid_manager
-from ..humanize import as_money
-from ..metrics.base import (year_periods, month_periods, week_periods, day_periods,
-hour_periods)
+from ..humanize import MONTHLY, as_money
 from ..mixins import as_html_description, product_url, read_agreement_file
 from ..models import (get_broker, AdvanceDiscount, Agreement, BalanceLine,
     CartItem, Charge, Coupon, Plan, RoleDescription, Subscription, Transaction,
@@ -382,46 +380,6 @@ class EmailChargeReceiptSerializer(NoModelSerializer):
         help_text=_("E-mail address to which the receipt was sent."))
     detail = serializers.CharField(read_only=True,
         help_text=_("Feedback for the user in plain text"))
-
-
-class QueryParamForceSerializer(NoModelSerializer):
-
-    force = serializers.BooleanField(required=False,
-        help_text=_("Forces invite of user/organization that could"\
-        " not be found"))
-
-
-class QueryParamPeriodSerializer(NoModelSerializer):
-
-    period = serializers.ChoiceField(
-        required=False,
-        choices=[choice[1].lower() for choice in
-                 Plan.INTERVAL_CHOICES],
-        default='monthly',
-        help_text=_("Set time granularity: 'hourly,' 'daily,' 'weekly,' "
-        "'monthly,' or 'yearly.' Default is 'monthly.'"))
-
-    num_periods = serializers.IntegerField(
-        required=False,
-        min_value=1,
-        max_value=100,
-        help_text=_("Specify the number of periods to include. "
-        "Min value is 1."))
-
-    def to_internal_value(self, data):
-        validated_data = super().to_internal_value(data)
-        period_str = validated_data.get('period')
-
-        period_func_map = {
-            'monthly': month_periods,
-            'daily': day_periods,
-            'hourly': hour_periods,
-            'weekly': week_periods,
-            'yearly': year_periods
-        }
-        validated_data['period'] = period_func_map.get(period_str, month_periods)
-
-        return validated_data
 
 
 class DatetimeValueTuple(serializers.ListField):
@@ -778,16 +736,18 @@ class PlanCreateSerializer(PlanDetailSerializer):
     class Meta(PlanDetailSerializer.Meta):
         fields = PlanDetailSerializer.Meta.fields
 
-    def validate(self, data):
-        period_type = Plan.INTERVAL_CHOICES[data['period_type'] - 1][1]
-        period_amount = data.get('period_amount')
+    def validate(self, attrs):
+        period_type = attrs.get('period_type', MONTHLY)
+        period_amount = attrs.get('period_amount', 0)
 
-        min_amount = getattr(settings, f'BROKER_MINIMUM_PLAN_AMOUNT_{period_type}', 0)
-        if period_amount < min_amount:
+        min_amount = getattr(settings, 'BROKER_MINIMUM_PLAN_AMOUNT_%s' %
+            Plan.INTERVAL_CHOICES[period_type- 1][1], 0)
+        if min_amount and period_amount < min_amount:
             raise ValidationError(
-                f'Period amount must be at least {min_amount}.')
+                _('Period amount must be greater or equal to %(min_amount)s.')
+                % {'min_amount': min_amount})
 
-        return data
+        return attrs
 
 
 class OrganizationInviteSerializer(OrganizationCreateSerializer):
@@ -1019,10 +979,10 @@ class CartItemSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = CartItem
-        fields = ('created_at', 'user',
+        fields = ('created_at', 'user', 'claim_code',
             'plan', 'option', 'use', 'quantity',
             'sync_on', 'full_name', 'email', 'detail')
-        read_only_fields = ('created_at', 'user', 'detail')
+        read_only_fields = ('created_at', 'user', 'claim_code', 'detail')
 
     @staticmethod
     def get_detail(obj):
@@ -1456,16 +1416,43 @@ class BalancesDueSerializer(OrganizationSerializer):
     class Meta(OrganizationSerializer.Meta):
         fields = OrganizationSerializer.Meta.fields + ('balances',)
 
+
+class QueryParamForceSerializer(NoModelSerializer):
+
+    force = serializers.BooleanField(required=False,
+        help_text=_("Forces invite of user/organization that could"\
+        " not be found"))
+
+
+class QueryParamPeriodSerializer(NoModelSerializer):
+
+    period = EnumField(choices=Plan.INTERVAL_CHOICES, required=False,
+        help_text=_("Natural period length"\
+        " (hourly, daily, weekly, monthly, yearly). Defaults to monthly."))
+
+    num_periods = serializers.IntegerField(
+        required=False,
+        min_value=1,
+        max_value=100,
+        help_text=_("Specify the number of periods to include. "
+        "Min value is 1."))
+
+
 class QueryParamRoleStatusSerializer(NoModelSerializer):
+
     role_status = serializers.CharField(required=False, default='',
         allow_blank=True)
 
+
 class QueryParamActiveSerializer(NoModelSerializer):
+
     active = serializers.BooleanField(required=False,
         help_text=_("True when customers can subscribe to the plan"),
         default=None, allow_null=True)
 
+
 class QueryParamPersonalProfSerializer(NoModelSerializer):
+
     include_personal_profile = serializers.BooleanField(required=False,
             help_text=_("True when a personal profile should be shown"),
             default=None, allow_null=True)
@@ -1473,7 +1460,9 @@ class QueryParamPersonalProfSerializer(NoModelSerializer):
     convert_from_personal = serializers.BooleanField(required=False,
             default=None, allow_null=True)
 
+
 class QueryParamCartItemSerializer(NoModelSerializer):
+
     plan = PlanRelatedField(required=False, allow_null=True,
             help_text=_("Plan"))
     email = serializers.EmailField(required=False,

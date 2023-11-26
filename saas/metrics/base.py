@@ -30,13 +30,13 @@ from django.db import router
 from django.db.models import Count, Sum
 from django.db.models.sql.query import RawQuery
 
+from .. import humanize
 from ..compat import six
 from ..models import Plan, Transaction
-from ..utils import datetime_or_now, parse_tz, convert_dates_to_utc
-from ..humanize import (HOURLY, DAILY, WEEKLY, MONTHLY, YEARLY,
-                        _describe_period_name)
+from ..utils import datetime_or_now, parse_tz
 
 LOGGER = logging.getLogger(__name__)
+
 
 def localize_time(time_to_convert, target_timezone, original_timezone):
     if target_timezone:
@@ -47,7 +47,7 @@ def localize_time(time_to_convert, target_timezone, original_timezone):
 
 
 def month_periods(nb_months=12, from_date=None, step_months=1,
-                  tz=None):
+                  tzinfo=None):
     """
     Constructs a list of (nb_months + 1) dates in the past that fall
     on the first of each month, defined as midnight in timezone *tz*,
@@ -76,7 +76,7 @@ def month_periods(nb_months=12, from_date=None, step_months=1,
     dates = []
     from_date = datetime_or_now(from_date)
     orig_tz = from_date.tzinfo
-    tz_ob = parse_tz(tz)
+    tz_ob = parse_tz(tzinfo)
     if tz_ob:
         from_date = from_date.astimezone(tz_ob)
     dates.append(from_date)
@@ -114,21 +114,23 @@ def set_to_start_of_period(date, time_unit):
     common_replacements = {"minute": 0, "second": 0, "microsecond": 0}
 
     # Reset attributes based on time_unit
-    if time_unit == HOURLY:
+    if time_unit == humanize.HOURLY:
         date = date.replace(**common_replacements)
-    elif time_unit == DAILY:
+    elif time_unit == humanize.DAILY:
         date = date.replace(hour=0, **common_replacements)
-    elif time_unit == WEEKLY:
+    elif time_unit == humanize.WEEKLY:
         date = date - relativedelta(days=date.weekday())
         date = date.replace(hour=0, **common_replacements)
-    elif time_unit == MONTHLY:
+    elif time_unit == humanize.MONTHLY:
         date = date.replace(day=1, hour=0, **common_replacements)
-    elif time_unit == YEARLY:
+    elif time_unit == humanize.YEARLY:
         date = date.replace(day=1, month=1, hour=0, **common_replacements)
     return date
 
 
-def _generate_periods(time_unit, num_units, start_date, step_units, timezone_str, include_start_date=True):
+def _generate_periods(time_unit, num_units, start_date, step_units,
+                      timezone_str, include_start_date=True):
+    #pylint:disable=too-many-arguments,too-many-locals
     period_dates = []
     start_date = datetime_or_now(start_date)
     original_timezone = start_date.tzinfo
@@ -141,11 +143,13 @@ def _generate_periods(time_unit, num_units, start_date, step_units, timezone_str
     start_date_naive = start_date.replace(tzinfo=None)
 
     # Check if start_date_naive is the start of a time period
-    is_start_date_first_of_period = start_date_naive == set_to_start_of_period(start_date_naive, time_unit)
+    is_start_date_first_of_period = start_date_naive == set_to_start_of_period(
+        start_date_naive, time_unit)
 
     # Include the unaltered start_date if applicable
     if include_start_date and not is_start_date_first_of_period:
-        current_time = localize_time(start_date_naive, target_timezone, original_timezone)
+        current_time = localize_time(
+            start_date_naive, target_timezone, original_timezone)
         period_dates.append(current_time)
 
     # Adjust num_units based on include_start_date
@@ -156,36 +160,37 @@ def _generate_periods(time_unit, num_units, start_date, step_units, timezone_str
 
     # Generate period dates
     for i in range(num_units):
-        time_unit_str = _describe_period_name(time_unit, 2)
+        time_unit_str = humanize._describe_period_name(time_unit, 2)
         delta_args = {time_unit_str: -i * step_units}
         next_date = start_date_naive + relativedelta(**delta_args)
 
         datetime_object = set_to_start_of_period(next_date, time_unit)
-        last_date = localize_time(datetime_object, target_timezone, original_timezone)
+        last_date = localize_time(
+            datetime_object, target_timezone, original_timezone)
 
         period_dates.append(last_date)
 
     return list(reversed(period_dates))
 
 
-def hour_periods(periods=12, from_date=None, step_units=1, tz=None, include_start_date=True):
-    return _generate_periods(HOURLY, periods, from_date, step_units, tz, include_start_date=include_start_date)
-
-
-def day_periods(periods=7, from_date=None, step_units=1, tz=None, include_start_date=True):
-    return _generate_periods(DAILY, periods, from_date, step_units, tz, include_start_date=include_start_date)
-
-
-def week_periods(periods=8, from_date=None, step_units=1, tz=None, include_start_date=True):
-    return _generate_periods(WEEKLY, periods, from_date, step_units, tz, include_start_date=include_start_date)
-
-
-def month_periods_v2(periods=12, from_date=None, step_units=1, tz=None, include_start_date=True):
-    return _generate_periods(MONTHLY, periods, from_date, step_units, tz, include_start_date=include_start_date)
-
-
-def year_periods(periods=5, from_date=None, step_units=1, tz=None, include_start_date=True):
-    return _generate_periods(YEARLY, periods, from_date, step_units, tz, include_start_date=include_start_date)
+def generate_periods(period, nb_periods=0, from_date=None, step_units=1,
+                     tzinfo=None, include_start_date=True):
+    #pylint:disable=too-many-arguments
+    assert period in (humanize.HOURLY, humanize.DAILY, humanize.WEEKLY,
+        humanize.MONTHLY, humanize.YEARLY)
+    if not nb_periods:
+        if period == humanize.HOURLY:
+            nb_periods = 24
+        elif period == humanize.DAILY:
+            nb_periods = 7
+        elif period == humanize.WEEKLY:
+            nb_periods = 8
+        elif period == humanize.MONTHLY:
+            nb_periods = 12
+        elif period == humanize.YEARLY:
+            nb_periods = 5
+    return _generate_periods(period, nb_periods, from_date, step_units, tzinfo,
+        include_start_date=include_start_date)
 
 
 def aggregate_transactions_by_period(organization, account, date_periods,
@@ -224,7 +229,7 @@ def aggregate_transactions_by_period(organization, account, date_periods,
 def _aggregate_transactions_change_by_period(organization, account,
                             date_periods, orig='orig', dest='dest'):
     """
-    Returns a table of records over a period of 12 months *from_date*.
+    Returns a table of records over *date_periods*.
     """
     #pylint:disable=too-many-locals,too-many-arguments,too-many-statements
     #pylint:disable=invalid-name
@@ -424,65 +429,30 @@ def aggregate_transactions_change_by_period(organization, account, date_periods,
     return account_table, customer_table, customer_extra, unit
 
 
-def abs_monthly_balances(organization=None, account=None, like_account=None,
-                         until=None, step_months=1, tz=None, nb_months=12):
-    #pylint:disable=invalid-name,too-many-arguments
-    balances, unit = monthly_balances(organization=organization,
-        account=account, like_account=like_account,
-        until=until, step_months=step_months, tz=tz, nb_months=nb_months)
+def abs_balances_by_period(organization=None, account=None, like_account=None,
+                           date_periods=None):
+    if date_periods is None:
+        date_periods = []
+
+    balances, unit = balances_by_period(
+        organization=organization, account=account,
+        like_account=like_account, date_periods=date_periods)
     return [(item[0], abs(item[1])) for item in balances], unit
 
 
-def monthly_balances(organization=None, account=None, like_account=None,
-                     until=None, step_months=1, tz=None, nb_months=12):
-    #pylint:disable=invalid-name,too-many-arguments
+def balances_by_period(organization=None, account=None, like_account=None,
+                       date_periods=None):
     values = []
     unit = None
-    for end_period in convert_dates_to_utc(month_periods(
-            from_date=until, step_months=step_months, tz=tz, nb_months=nb_months)):
+    for end_period in date_periods:
         balance = Transaction.objects.get_balance(organization=organization,
             account=account, like_account=like_account, ends_at=end_period)
         values.append([end_period, balance['amount']])
         _unit = balance.get('unit')
         if _unit:
             unit = _unit
+
     return values, unit
-
-def abs_periodic_balances(organization=None, account=None, like_account=None,
-                         until=None, period_func=month_periods, step_units=1, tz=None,
-                         num_periods=None):
-    balances, unit = periodic_balances(organization=organization,
-        account=account, like_account=like_account,
-        until=until, period_func=period_func, step_units=step_units, tz=tz,
-        num_periods=num_periods)
-    return [(item[0], abs(item[1])) for item in balances], unit
-
-
-def periodic_balances(organization=None, account=None, like_account=None,
-                     until=None, period_func=None, step_units=1, tz=None,
-                     num_periods=None):
-    values = []
-    unit = None
-    period_func_kwargs = {'from_date': until, 'step_units': step_units, 'tz': tz,
-                   'include_start_date': True}
-    if num_periods:
-        period_func_kwargs['periods'] = num_periods
-
-    for end_period in convert_dates_to_utc(period_func(**period_func_kwargs)):
-        balance = Transaction.objects.get_balance(organization=organization,
-            account=account, like_account=like_account, ends_at=end_period)
-        values.append([end_period, balance['amount']])
-        _unit = balance.get('unit')
-        if _unit:
-            unit = _unit
-    return values, unit
-
-
-def quaterly_balances(organization=None, account=None, like_account=None,
-                     until=None):
-    return monthly_balances(organization=organization,
-        account=account, like_account=like_account,
-        until=until, step_months=3)
 
 
 def get_different_units(*args):

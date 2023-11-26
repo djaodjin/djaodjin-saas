@@ -1,6 +1,6 @@
 {% extends "saas/metrics/base.html" %}
 
-{% block metrics_extra_info %}
+{% block saas_help_menus %}
 {% if urls.provider and urls.provider.metrics_lifetimevalue %}
 <a id="lifetimevalue" href="{{urls.provider.metrics_lifetimevalue}}">Lifetime value</a>
 {% endif %}

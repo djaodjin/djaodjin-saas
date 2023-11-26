@@ -1,4 +1,4 @@
-# Copyright (c) 2022, DjaoDjin inc.
+# Copyright (c) 2023, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -32,7 +32,7 @@ from .download import CSVDownloadView
 from .. import settings
 from ..api.metrics import LifetimeValueMetricMixin
 from ..compat import reverse
-from ..mixins import CouponMixin, ProviderMixin, MetricsMixin
+from ..mixins import CouponMixin, DateRangeContextMixin, ProviderMixin
 from ..models import CartItem, Plan
 from ..utils import datetime_or_now, update_context_urls
 
@@ -226,7 +226,7 @@ reference/djaoapp/latest/api/#listPlanMetric>`__
         return context
 
 
-class RevenueMetricsView(MetricsMixin, TemplateView):
+class RevenueMetricsView(DateRangeContextMixin, ProviderMixin, TemplateView):
     """
     Reports cash flow and revenue in currency units.
 

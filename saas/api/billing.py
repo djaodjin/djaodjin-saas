@@ -583,10 +583,51 @@ class ActiveCartItemListCreateView(generics.ListCreateAPIView):
     """
     Handles listing and creating cart items.
 
-    **Tags**: billing, subscriber, cart
+    Provides a list of cart items, filtered to only include those not
+    recorded, ordered by each user.
+    This list is typically used to display all items in users' carts
+    not checked out.
 
+    **Tags**: billing, broker, cart
+
+    **Examples**
+
+    .. code-block:: http
+
+        GET /api/cartitems HTTP/1.1
+
+    responds
+
+    .. code-block:: json
+
+        {
+          "count": 1,
+          "next": null,
+          "previous": null,
+          "results": [{
+            "created_at": "2023-10-11T21:20:06.444545-05:00",
+            "user": {
+              "username": "xia",
+              "slug": "xia",
+              "email": "xia@example.com",
+              "full_name": "Xia Lee",
+              "created_at": "2023-09-06T21:49:28.003319-05:00",
+              "last_login": "2023-10-11T03:31:10.138177-05:00"
+            },
+            "plan": {
+              "slug": "basic",
+              "title": "Basic"
+            },
+            "option": 0,
+            "use": null,
+            "quantity": 1,
+            "sync_on": null,
+            "full_name": "Xia Lee",
+            "email": "xia@example.com",
+            "detail": null
+          }]
+        }
     """
-
     queryset = CartItem.objects.filter(recorded=False).order_by('user')
     serializer_class = CartItemSerializer
 
@@ -595,47 +636,6 @@ class ActiveCartItemListCreateView(generics.ListCreateAPIView):
             return UserCartItemCreateSerializer
         return CartItemSerializer
 
-    def get(self, request, *args, **kwargs):
-        """
-        Provides a list of cart items, filtered to only include those not recorded,
-        ordered by each user.
-        This list is typically used to display all items in users' carts not checked out.
-
-        ..code - block:: http
-
-            GET /api/cartitems HTTP/1.1
-
-        responds
-
-        ..code - block:: json
-
-        {
-            "results": [
-                {
-                    "created_at": "2023-10-11T21:20:06.444545-05:00",
-                    "user": {
-                        "slug": "xia",
-                        "email": "xia@example.com",
-                        "full_name": "Xia Lee",
-                        "created_at": "2023-09-06T21:49:28.003319-05:00",
-                        "last_login": "2023-10-11T03:31:10.138177-05:00"
-                    },
-                    "plan": {
-                        "slug": "basic",
-                        "title": "Basic"
-                    },
-                    "option": 0,
-                    "use": null,
-                    "quantity": 1,
-                    "sync_on": null,
-                    "full_name": "Xia Lee",
-                    "email": "xia@example.com",
-                    "detail": null
-                }]
-            }
-        """
-        return super(ActiveCartItemListCreateView, self).get(
-            self, request, *args, **kwargs)
 
     @swagger_auto_schema(responses={201: OpenAPIResponse(
         _("Cart item created"), CartItemSerializer)})
@@ -644,8 +644,12 @@ class ActiveCartItemListCreateView(generics.ListCreateAPIView):
         For creation of a new cart item, user and plan data(the user's username
         and the plan's slug) needs to be supplied via a POST request.
 
-        The newly created cart item data is returned in the response along with a
-        message indicating success.
+        The newly created cart item data is returned in the response along
+        with a message indicating success.
+
+        **Tags**: billing, broker
+
+        **Examples**
 
         .. code-block:: http
 
@@ -655,13 +659,7 @@ class ActiveCartItemListCreateView(generics.ListCreateAPIView):
 
             {
                 "user": "xia",
-                "plan": "basic",
-                "option": 3,
-                "use": null,
-                "quantity": 50,
-                "sync_on": "",
-                "full_name": "Xia Lee",
-                "email": "xia@example.com",
+                "plan": "basic"
             }
 
         responds
@@ -669,16 +667,26 @@ class ActiveCartItemListCreateView(generics.ListCreateAPIView):
         .. code-block:: json
 
             {
-                "user": "xia",
-                "plan": "basic",
-                "created_at": "2023-10-12T05:47:17.421103-05:00",
-                "option": 3,
-                "use": null,
-                "quantity": 50,
-                "sync_on": "",
-                "full_name": "Xia Lee",
+              "user": {
+                "username": "xia",
+                "slug": "xia",
                 "email": "xia@example.com",
-                "detail": "Cart item created"
+                "full_name": "Xia Lee",
+                "created_at": "2023-09-06T21:49:28.003319-05:00",
+                "last_login": "2023-10-11T03:31:10.138177-05:00"
+              },
+              "plan": {
+                "slug": "basic",
+                "title": "Basic"
+              },
+              "created_at": "2023-10-12T05:47:17.421103-05:00",
+              "option": 3,
+              "use": null,
+              "quantity": 50,
+              "sync_on": "",
+              "full_name": "Xia Lee",
+              "email": "xia@example.com",
+              "detail": "Cart item created"
             }
         """
         response = super().create(request, *args, **kwargs)
@@ -689,19 +697,50 @@ class ActiveCartItemListCreateView(generics.ListCreateAPIView):
                              headers=response.headers)
 
 
-class ActiveCartItemRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
+class ActiveCartItemRetrieveUpdateDestroyView(
+        generics.RetrieveUpdateDestroyAPIView):
     """
-    Handles retrieving, updating, and deleting cart items.
+    Retrieves a cart item
 
     Provides operations for a single cart item identified by its ID.
     The cart item can be retrieved, updated, or deleted.
 
-    **Tags**: billing, subscriber, cart
+    **Tags**: billing, broker, cart
 
+    **Examples**
+
+    .. code-block:: http
+
+        GET /api/cartitems/{cartitem_id} HTTP/1.1
+
+    responds
+
+    .. code-block:: json
+
+        {
+          "user": {
+            "username": "xia",
+            "slug": "xia",
+            "email": "xia@example.com",
+            "full_name": "Xia Lee",
+            "created_at": "2023-09-06T21:49:28.003319-05:00",
+            "last_login": "2023-10-11T03:31:10.138177-05:00"
+          },
+          "plan": {
+            "slug": "basic",
+            "title": "Basic"
+          },
+          "created_at": "2023-10-11T23:22:54.407880-05:00",
+          "option": 3,
+          "use": null,
+          "quantity": 50,
+          "sync_on": null,
+          "full_name": "Xia Lee",
+          "email": "xia@example.com"
+        }
     """
     lookup_field = "id"
     lookup_url_kwarg = "cartitem_id"
-
     queryset = CartItem.objects.filter(recorded=False).order_by('created_at')
 
     def get_serializer_class(self):
@@ -709,56 +748,35 @@ class ActiveCartItemRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIV
             return CartItemUpdateSerializer
         return CartItemSerializer
 
-    def get(self, request, *args, **kwargs):
-        """
-        Retrieves a cart item
-        .. code-block:: http
-
-            GET /api/cartitems/{id} HTTP/1.1
-
-        responds
-
-        .. code-block:: json
-
-            {
-              "user": "xia",
-              "plan": "basic",
-              "created_at": "2023-10-11T23:22:54.407880-05:00",
-              "option": 3,
-              "use": null,
-              "quantity": 50,
-              "sync_on": null,
-              "full_name": "Xia Lee",
-              "email": "xia@example.com"
-            }
-        """
-        return super(ActiveCartItemRetrieveUpdateDestroyView, self).get(
-            self, request, *args, **kwargs)
 
     def delete(self, request, *args, **kwargs):
         """
         Delete a cart item by id
+
+        **Tags**: billing, broker
+
+        **Examples**
+
         .. code-block:: http
 
-            DELETE /api/cartitems/{id} HTTP/1.1
-
-        responds
-
-        .. code-block:: json
-
-            {}  # Empty response body with a 204 No Content status code.
-
+            DELETE /api/cartitems/{cartitem_id} HTTP/1.1
         """
-        return super(ActiveCartItemRetrieveUpdateDestroyView, self).destroy(
-            self, request, *args, **kwargs)
+        return self.destroy(request, *args, **kwargs)
+
 
     @swagger_auto_schema(responses={200: OpenAPIResponse(
         _("Cart item updated"), CartItemUpdateSerializer)})
-    def update(self, request, *args, **kwargs):
+    def put(self, request, *args, **kwargs):
         """
+        Updates a cartitem
+
+        **Tags**: billing, broker
+
+        **Examples**
+
         .. code-block:: http
 
-            PUT /api/cartitem/{id} HTTP/1.1
+            PUT /api/cartitems/{cartitem_id} HTTP/1.1
 
         .. code-block:: json
 
@@ -793,7 +811,7 @@ class ActiveCartItemRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIV
                 "detail": "Cart item updated"
             }
         """
-        response = super().update(request, *args, **kwargs)
+        response = self.update(request, *args, **kwargs)
         if response.status_code == status.HTTP_200_OK:
             response.data['detail'] = _('Cart item updated')
 
@@ -823,16 +841,17 @@ class UserCartItemListView(UserMixin, generics.ListAPIView):
             "count": 1,
             "next": null,
             "previous": null,
-            "user": {
-                "slug": "xia",
-                "email": "xia@example.com",
-                "full_name": "Xia Lee",
-                "created_at": "2023-09-06T21:49:28.003319-05:00",
-                "last_login": "2023-10-11T03:31:10.138177-05:00"
-            },
             "results": [
                 {
                     "created_at": "2023-10-11T23:49:59.485511-05:00",
+                    "user": {
+                        "username": "xia",
+                        "slug": "xia",
+                        "email": "xia@example.com",
+                        "full_name": "Xia Lee",
+                        "created_at": "2023-09-06T21:49:28.003319-05:00",
+                        "last_login": "2023-10-11T03:31:10.138177-05:00"
+                    },
                     "plan": {
                         "slug": "basic",
                         "title": "Basic"
@@ -843,7 +862,7 @@ class UserCartItemListView(UserMixin, generics.ListAPIView):
                     "sync_on": null,
                     "full_name": "",
                     "email": null,
-                    "id": 137,
+                    "id": 137
                 }]
             }
         """

@@ -30,15 +30,14 @@ from rest_framework.views import APIView
 
 from .serializers import (CartItemSerializer, LifetimeSerializer,
     MetricsSerializer, QueryParamPeriodSerializer, BalancesDueSerializer)
-from .. import settings
+from .. import settings, humanize
 from ..compat import gettext_lazy as _, reverse, six
-from ..filters import DateRangeFilter
-from ..metrics.base import (abs_monthly_balances,
-    aggregate_transactions_by_period, month_periods,
-    aggregate_transactions_change_by_period, get_different_units,
-    abs_periodic_balances)
-from ..metrics.subscriptions import (active_subscribers, churn_subscribers,
-    subscribers_age, active_subscribers_by_period, churn_subscribers_by_period)
+from ..filters import DateRangeFilter, TrailingPeriodFilter
+from ..metrics.base import (abs_balances_by_period,
+    aggregate_transactions_by_period, aggregate_transactions_change_by_period,
+    generate_periods, get_different_units)
+from ..metrics.subscriptions import (active_subscribers_by_period,
+    churn_subscribers_by_period, subscribers_age)
 from ..metrics.transactions import lifetime_value
 from ..mixins import (CartItemSmartListMixin, CouponMixin,
     ProviderMixin, DateRangeContextMixin, BalancesDueMixin)
@@ -49,13 +48,51 @@ from ..docs import swagger_auto_schema
 LOGGER = logging.getLogger(__name__)
 
 
-class BalancesAPIView(DateRangeContextMixin, ProviderMixin,
-                      APIView):
+class MetricsMixin(DateRangeContextMixin, ProviderMixin):
     """
-    Retrieves 12-month trailing deferred balances
+    Base class for metrics APIs
+    """
+    period_type_param = 'period'
+    nb_periods_param = 'num_periods'
+    serializer_class = MetricsSerializer
+    filter_backends = (TrailingPeriodFilter,)
 
-    Generate a table of revenue (rows) per months (columns) for a default
-    balance sheet (Income, Backlog, Receivable).
+    def get(self, request, *args, **kwargs):
+        query_serializer = QueryParamPeriodSerializer(data=request.query_params)
+        query_serializer.is_valid(raise_exception=True)
+
+        nb_periods = query_serializer.validated_data.get(self.nb_periods_param)
+        period_type = query_serializer.validated_data.get(
+            self.period_type_param, humanize.MONTHLY)
+
+        date_periods = convert_dates_to_utc(
+            generate_periods(period_type, nb_periods=nb_periods,
+                from_date=self.ends_at,
+                tzinfo=self.organization.default_timezone))
+
+        return self.retrieve_metrics(date_periods)
+
+
+class BalancesAPIView(MetricsMixin, APIView):
+    """
+    Retrieves trailing deferred balances
+
+    Generates a table of currency amounts (rows) per period (columns)
+    for a default balance sheet (Income, Backlog, Receivable).
+
+    The date/time returned in `results[].values[]` specifies the end
+    of the period (not included) for which the associated amount
+    in the tuple is computed.
+
+    The date from which trailing balances are computed can be specified
+    by the `ends_at` query parameter. The type of periods (hourly, daily,
+    weekly, monthly, yearly) to aggregate balances over, and the number of
+    periods to return can be specificed by `period` and `num_periods`
+    respectively.
+
+    The API is typically used within an HTML
+    `revenue page </docs/guides/themes/#dashboard_metrics_revenue>`_
+    as present in the default theme.
 
     **Tags**: chart, metrics, provider, transactionmodel
 
@@ -134,60 +171,33 @@ class BalancesAPIView(DateRangeContextMixin, ProviderMixin,
             ]
         }
     """
-    serializer_class = MetricsSerializer
-    filter_backends = (DateRangeFilter,)
-
-    @swagger_auto_schema(query_serializer=QueryParamPeriodSerializer)
-    def get(self, request, *args, **kwargs):
-        query_serializer = QueryParamPeriodSerializer(data=request.query_params)
-        query_serializer.is_valid(raise_exception=True)
-
-        num_periods = query_serializer.validated_data.get('num_periods')
-        period = query_serializer.validated_data.get('period')
-
-        #pylint: disable=unused-argument
-        result = []
+    def retrieve_metrics(self, date_periods):
+        results = []
         unit = settings.DEFAULT_UNIT
         for key in [Transaction.INCOME, Transaction.BACKLOG,
                     Transaction.RECEIVABLE]:
-            # Common arguments needed for both monthly and custom
-            # period balances
-            period_func_kwargs = {
-                'organization': self.provider,
-                'account': key,
-                'until': self.ends_at,
-                'tz': self.timezone,
-            }
-            if num_periods:
-                # If a num_periods argument is passed in, we use 'nb_months'
-                # or 'periods' depending on the period used
-                arg_name = 'nb_months' if period == month_periods \
-                    else 'num_periods'
-                period_func_kwargs[arg_name] = num_periods
-
-            # If the period is monthly, use the existing monthly
-            # balance function
-            if period == month_periods:
-                values, _unit = abs_monthly_balances(**period_func_kwargs)
-            # If the period is not monthly, use abs_periodic_balances
-            else:
-                values, _unit = abs_periodic_balances(
-                    period_func=period,
-                    **period_func_kwargs)
+            values, _unit = abs_balances_by_period(
+                organization=self.provider, account=key,
+                date_periods=date_periods)
 
             if _unit:
                 unit = _unit
 
-            result += [{
+            results += [{
                 'slug': key,
+                'title': key,
                 'values': values
             }]
-        return Response({'title': "Balances",
-            'unit': unit, 'scale': 0.01, 'results': result})
+
+        return Response({
+            'title': "Balances",
+            'unit': unit,
+            'scale': 0.01,
+            'results': results
+        })
 
 
-class RevenueMetricAPIView(DateRangeContextMixin, ProviderMixin,
-                           APIView):
+class RevenueMetricAPIView(MetricsMixin, APIView):
     """
     Retrieves 12-month trailing revenue
 
@@ -307,47 +317,27 @@ class RevenueMetricAPIView(DateRangeContextMixin, ProviderMixin,
             ]
         }
     """
-    serializer_class = MetricsSerializer
-    filter_backends = (DateRangeFilter,)
 
-    @swagger_auto_schema(query_serializer=QueryParamPeriodSerializer)
-    def get(self, request, *args, **kwargs):
-        #pylint:disable=unused-argument
-        query_serializer = QueryParamPeriodSerializer(data=request.query_params)
-        query_serializer.is_valid(raise_exception=True)
-
-        num_periods = query_serializer.validated_data.get('num_periods')
-        period = query_serializer.validated_data.get('period')
-
-        period_func_kwargs = {'from_date': self.ends_at,
-                              'tz': self.timezone}
-
-        if num_periods:
-            arg_name = 'nb_months' if period == month_periods \
-                else 'periods'
-            period_func_kwargs[arg_name] = num_periods
-
-        dates = convert_dates_to_utc(
-            period(**period_func_kwargs))
+    def retrieve_metrics(self, date_periods):
         unit = settings.DEFAULT_UNIT
 
         account_table, _, _, table_unit = \
             aggregate_transactions_change_by_period(self.provider,
                 Transaction.RECEIVABLE, account_title='Sales',
                 orig='orig', dest='dest',
-                date_periods=dates)
+                date_periods=date_periods)
 
         _, payment_amounts, payments_unit = aggregate_transactions_by_period(
             self.provider, Transaction.RECEIVABLE,
             orig='dest', dest='dest',
             orig_account=Transaction.BACKLOG,
             orig_organization=self.provider,
-            date_periods=dates)
+            date_periods=date_periods)
 
         _, refund_amounts, refund_unit = aggregate_transactions_by_period(
             self.provider, Transaction.REFUND,
             orig='dest', dest='dest',
-            date_periods=dates)
+            date_periods=date_periods)
 
         units = get_different_units(table_unit, payments_unit, refund_unit)
 
@@ -436,10 +426,29 @@ class CouponUsesAPIView(CartItemSmartListMixin, CouponUsesQuerysetMixin,
     serializer_class = CartItemSerializer
 
 
-class CustomerMetricAPIView(DateRangeContextMixin, ProviderMixin,
-                            APIView):
+class CustomerMetricAPIView(MetricsMixin, APIView):
     """
-    Retrieves 12-month trailing customer counts
+    Retrieves trailing customer counts
+
+    Generates a table of total number of customers, number of new customers,
+    number of churned customers, and number of net new customers (rows)
+    per period (columns).
+
+    New customers are defined as customers that made an order in the period,
+    but not in the previous period. Churned customers are defined as customers
+    that made an order in the previous period, but not in the period.
+    The net new customers is defined as the number of new customers minus
+    the number of churned customers.
+
+    The date/time returned in `results[].values[]` specifies the end
+    of the period (not included) for which the associated count
+    in the tuple is computed.
+
+    The date from which trailing balances are computed can be specified
+    by the `ends_at` query parameter. The type of periods (hourly, daily,
+    weekly, monthly, yearly) to aggregate balances over, and the number of
+    periods to return can be specificed by `period` and `num_periods`
+    respectively.
 
     The API is typically used within an HTML
     `revenue page </docs/guides/themes/#dashboard_metrics_revenue>`_
@@ -535,35 +544,17 @@ class CustomerMetricAPIView(DateRangeContextMixin, ProviderMixin,
             ]
         }
     """
-    serializer_class = MetricsSerializer
-    filter_backends = (DateRangeFilter,)
 
-    @swagger_auto_schema(query_serializer=QueryParamPeriodSerializer)
-    def get(self, request, *args, **kwargs):
-        #pylint:disable=unused-argument
-        query_serializer = QueryParamPeriodSerializer(data=request.query_params)
-        query_serializer.is_valid(raise_exception=True)
-
-        num_periods = query_serializer.validated_data.get('num_periods')
-        period = query_serializer.validated_data.get('period')
-
+    def retrieve_metrics(self, date_periods):
         account_title = 'Payments'
         account = Transaction.RECEIVABLE
         # We use ``Transaction.RECEIVABLE`` which technically counts the number
         # or orders, not the number of payments.
-        period_func_kwargs = {'from_date': self.ends_at, 'tz': self.timezone}
 
-        if num_periods:
-            arg_name = 'nb_months' if period == month_periods else 'periods'
-            period_func_kwargs[arg_name] = num_periods
-
-        dates = convert_dates_to_utc(
-            period(**period_func_kwargs)
-        )
         _, customer_table, customer_extra, _ = \
             aggregate_transactions_change_by_period(self.provider, account,
                 account_title=account_title,
-                date_periods=dates)
+                date_periods=date_periods)
 
         return Response({
             "title": "Customers",
@@ -576,7 +567,7 @@ class LifetimeValueMetricMixin(DateRangeContextMixin, ProviderMixin):
     """
     Decorates profiles with subscriber age and lifetime value
     """
-    filter_backends = (DateRangeFilter,)
+    filter_backends = (DateRangeFilter,) # XXX includes `DateRangeContextMixin` and `ProviderMixin`
 
     def get_queryset(self):
         organization_model = get_organization_model()
@@ -662,12 +653,25 @@ class LifetimeValueMetricAPIView(LifetimeValueMetricMixin, ListAPIView):
         return self.decorate_queryset(page if page else queryset)
 
 
-class PlanMetricAPIView(DateRangeContextMixin, ProviderMixin, APIView):
+class PlanMetricAPIView(MetricsMixin, APIView):
     """
-    Retrieves 12-month trailing plans performance
+    Retrieves trailing plans performance
+
+    Generates a table of active susbribers for each plan (rows)
+    per period (columns).
+
+    The date/time returned in `results[].values[]` specifies the end
+    of the period (not included) for which the associated count
+    in the tuple is computed.
+
+    The date from which trailing balances are computed can be specified
+    by the `ends_at` query parameter. The type of periods (hourly, daily,
+    weekly, monthly, yearly) to aggregate balances over, and the number of
+    periods to return can be specificed by `period` and `num_periods`
+    respectively.
 
     The API is typically used within an HTML
-    `plans metrics page </docs/guides/themes/#dashboard_metrics_plans>`_
+    `revenue page </docs/guides/themes/#dashboard_metrics_revenue>`_
     as present in the default theme.
 
     **Tags**: chart, metrics, provider, planmodel
@@ -751,59 +755,23 @@ class PlanMetricAPIView(DateRangeContextMixin, ProviderMixin, APIView):
             ]
         }
     """
-    serializer_class = MetricsSerializer
-    filter_backends = (DateRangeFilter,)
 
-    @swagger_auto_schema(query_serializer=QueryParamPeriodSerializer)
-    def get(self, request, *args, **kwargs):
-        # pylint:disable=unused-argument
-        query_serializer = QueryParamPeriodSerializer(data=request.query_params)
-        query_serializer.is_valid(raise_exception=True)
-
-        num_periods = query_serializer.validated_data.get('num_periods')
-        period = query_serializer.validated_data.get('period')
+    def retrieve_metrics(self, date_periods):
         table = []
-
-        common_args = {
-            'from_date': self.ends_at,
-            'tz': self.timezone,
-        }
-        if num_periods:
-            arg_name = 'nb_months' if period == month_periods else 'num_periods'
-            common_args[arg_name] = num_periods
-
         for plan in Plan.objects.filter(
                 organization=self.provider).order_by('title'):
-
-            # If we're using monthly periods, we use active_subscribers.
-
-            if period == month_periods:
-                values = active_subscribers(plan, **common_args)
-            else:
-                # For other periods, we use active_subscribers_by_period
-                specific_args = {'period_func': period}
-                specific_args.update(common_args)
-                values = active_subscribers_by_period(plan, **specific_args)
-
+            values = active_subscribers_by_period(
+                plan, date_periods=date_periods)
             table.append({
                 'slug': plan.slug,
                 'title': plan.title,
                 'values': values,
-                'location': reverse('saas_plan_edit', args=(self.provider,
-                                                            plan)),
+                'location': reverse('saas_plan_edit', args=(
+                    self.provider, plan)),
                 'is_active': plan.is_active
             })
 
-        # Similar to above, but for churn metrics. Monthly periods use churn_subscriber.
-        if period == month_periods:
-            extra_values = churn_subscribers(**common_args)
-        else:
-            # For other periods, add 'period_func' and get churn values using
-            # churn_subscribers_by_period.
-            specific_args = {'period_func': period}
-            specific_args.update(common_args)
-            extra_values = churn_subscribers_by_period(**specific_args)
-
+        extra_values = churn_subscribers_by_period(date_periods=date_periods)
         extra = [{
             'slug': 'churn',
             'values': extra_values
@@ -814,6 +782,7 @@ class PlanMetricAPIView(DateRangeContextMixin, ProviderMixin, APIView):
             'results': table,
             'extra': extra
         })
+
 
 class BalancesDueAPIView(BalancesDueMixin, ListAPIView):
     """
@@ -828,7 +797,7 @@ class BalancesDueAPIView(BalancesDueMixin, ListAPIView):
 
     .. code-block:: http
 
-        GET /api/profile/cowork/balances-due HTTP/1.1
+        GET /api/metrics/cowork/balances-due HTTP/1.1
 
     responds
 
@@ -857,6 +826,7 @@ class BalancesDueAPIView(BalancesDueMixin, ListAPIView):
                             "cash_payments": 945000,
                             "balance": 37800
                         }
+                    }
                 }
             ]
         }
