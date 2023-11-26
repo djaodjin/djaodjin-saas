@@ -40,7 +40,7 @@ from phonenumber_field.formfields import PhoneNumberField
 from . import settings
 from .compat import gettext_lazy as _
 from .models import AdvanceDiscount, Plan, Subscription
-from .utils import get_organization_model
+from .utils import get_organization_model, CurrencyDataLoader
 
 #pylint: disable=no-member
 
@@ -260,8 +260,7 @@ class PlanForm(forms.ModelForm):
         (slugify(choice[1]), choice[1]) for choice in Plan.INTERVAL_CHOICES])
     renewal_type = forms.ChoiceField(choices=[
         (slugify(choice[1]), choice[1]) for choice in Plan.RENEWAL_CHOICES])
-    unit = forms.ChoiceField(choices=(
-        ('usd', 'usd'), ('cad', 'cad'), ('eur', 'eur')))
+    unit = forms.ChoiceField(choices=CurrencyDataLoader.get_currency_choices())
     period_amount = forms.DecimalField(max_digits=7, decimal_places=2)
     advance_discount_type = forms.ChoiceField(choices=[
         (slugify(choice[1]), choice[1])

@@ -225,3 +225,7 @@ TIME_ZONE = getattr(settings, 'TIME_ZONE')
 CONTRIBUTOR = _SETTINGS.get('CONTRIBUTOR')
 MANAGER = _SETTINGS.get('MANAGER')
 PROFILE_URL_KWARG = _SETTINGS.get('PROFILE_URL_KWARG')
+
+CURRENCY_JSON_PATH = os.path.join(
+    settings.BASE_DIR, 'saas',
+    'static', 'data', 'currencies.json')
