@@ -34,10 +34,10 @@ from .. import settings
 from ..compat import gettext_lazy as _
 from ..docs import OpenAPIResponse, swagger_auto_schema
 from ..mixins import CartMixin, DateRangeContextMixin, PlanMixin, ProviderMixin
-from ..filters import DateRangeFilter, OrderingFilter, SearchFilter
+from ..filters import (ActiveFilter, DateRangeFilter, OrderingFilter,
+    SearchFilter)
 from ..models import Coupon, Plan, Subscription
-from .serializers import (PlanDetailSerializer, PlanCreateSerializer,
-                          QueryParamActiveSerializer)
+from .serializers import PlanDetailSerializer, PlanCreateSerializer
 from ..utils import datetime_or_now
 
 
@@ -191,15 +191,12 @@ class PlanListCreateAPIView(PlanSmartListMixin, ListCreateAPIView):
         }
     """
     serializer_class = PlanDetailSerializer
+    filter_backends = (ActiveFilter,) + PlanSmartListMixin.filter_backends
 
     def get_serializer_class(self):
         if self.request.method.lower() == 'post':
             return PlanCreateSerializer
         return super(PlanListCreateAPIView, self).get_serializer_class()
-
-    @swagger_auto_schema(query_serializer=QueryParamActiveSerializer)
-    def get(self, request, *args, **kwargs):
-        return super().get(self, request, *args, **kwargs)
 
     @swagger_auto_schema(responses={
       201: OpenAPIResponse("Create successful", PlanDetailSerializer)})
@@ -244,14 +241,6 @@ class PlanListCreateAPIView(PlanSmartListMixin, ListCreateAPIView):
 
     def get_queryset(self):
         queryset = self.organization.plans.all()
-        query_serializer = QueryParamActiveSerializer(
-            data=self.request.query_params)
-
-        if query_serializer.is_valid(raise_exception=True):
-            is_active = query_serializer.validated_data.get('active', None)
-            if is_active is not None:
-                queryset = queryset.filter(is_active=is_active)
-
         # `PlanDetailSerializer` will expand `organization`,
         # `advance_discounts` and `use_charges`.
         queryset = queryset.select_related('organization').prefetch_related(

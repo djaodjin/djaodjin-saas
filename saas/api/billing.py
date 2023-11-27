@@ -689,7 +689,8 @@ class ActiveCartItemListCreateView(generics.ListCreateAPIView):
               "detail": "Cart item created"
             }
         """
-        response = super().create(request, *args, **kwargs)
+        response = super(ActiveCartItemListCreateView, self).create(
+            request, *args, **kwargs)
         if response.status_code == status.HTTP_201_CREATED:
             response.data['detail'] = _('Cart item created')
 
@@ -869,17 +870,18 @@ class UserCartItemListView(UserMixin, generics.ListAPIView):
     serializer_class = CartItemSerializer
 
     def get_serializer(self, *args, **kwargs):
-        serializer = super().get_serializer(*args, **kwargs)
+        serializer = super(UserCartItemListView, self).get_serializer(
+            *args, **kwargs)
         # Check if the serializer has a 'child' attribute (indicating it's a
         # ListSerializer)
         if hasattr(serializer, 'child'):
             # Accessing child serializer because ListSerializer is the
             # parent serializer for querysets.
             # https://www.django-rest-framework.org/api-guide/serializers/#listserializer
-            # The child serializer is then responsible for each individual object.
-
-            # Another way to do it would be to loop through each item in the queryset
-            # and remove "user" from the representation, but this might be more efficient.
+            # The child serializer is then responsible for each individual
+            # object. Another way to do it would be to loop through each item
+            # in the queryset and remove "user" from the representation,
+            # but this might be more efficient.
             child_serializer = serializer.child
             original_to_representation = child_serializer.to_representation
 
@@ -904,7 +906,8 @@ class UserCartItemListView(UserMixin, generics.ListAPIView):
         return queryset
 
     def list(self, request, *args, **kwargs):
-        response = super().list(request, *args, **kwargs)
+        response = super(UserCartItemListView, self).list(
+            request, *args, **kwargs)
         user = self.user if self.user is not None else self.request.user
         user_data = get_user_serializer()(user).data
         # Adding user_data here otherwise it gets repeated for each cartitem

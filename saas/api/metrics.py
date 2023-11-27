@@ -43,7 +43,6 @@ from ..mixins import (CartItemSmartListMixin, CouponMixin,
     ProviderMixin, DateRangeContextMixin, BalancesDueMixin)
 from ..models import CartItem, Plan, Transaction
 from ..utils import convert_dates_to_utc, get_organization_model
-from ..docs import swagger_auto_schema
 
 LOGGER = logging.getLogger(__name__)
 

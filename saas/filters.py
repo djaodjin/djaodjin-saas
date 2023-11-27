@@ -69,6 +69,34 @@ def search_terms_as_list(params):
     return results
 
 
+class ActiveFilter(BaseSearchFilter):
+    """
+    All items which have `is_active == True` only.
+    """
+    is_active_param = 'active'
+
+    def filter_queryset(self, request, queryset, view):
+        is_active = request.query_params.get(self.is_active_param)
+        if is_active is not None:
+            queryset = queryset.filter(is_active=bool(is_active))
+        return queryset
+
+
+    def get_schema_operation_parameters(self, view):
+        fields = super(ActiveFilter, self).get_schema_operation_parameters(view)
+        fields += [{
+            'name': self.is_active_param,
+            'required': False,
+            'in': 'query',
+            'description': force_str("True when customers can subscribe"\
+                " to the plan"),
+            'schema': {
+                'type': 'string',
+            },
+        }]
+        return fields
+
+
 class SearchFilter(BaseSearchFilter):
 
     search_field_param = settings.SEARCH_FIELDS_PARAM

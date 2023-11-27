@@ -42,7 +42,8 @@ class SubscribersActivityView(ProviderMixin, TemplateView):
     template_name = 'saas/metrics/activity.html'
 
     def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
+        context = super(
+            SubscribersActivityView, self).get_context_data(**kwargs)
         ends_at = datetime_or_now()
         expires_at = ends_at - relativedelta(years=1)
         context.update({

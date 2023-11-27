@@ -215,6 +215,7 @@ class Command(BaseCommand):
         return (table, unit)
 
     def handle(self, *args, **options):
+        #pylint:disable=too-many-locals
         # aware utc datetime object
         at_time = datetime_or_now(options.get('at_time'))
         period = self.inverted_period_choices[options.get('period')]
@@ -235,22 +236,22 @@ class Command(BaseCommand):
             prev_period, prev_year = dates
             if period == humanize.YEARLY:
                 LOGGER.debug(
-                "Two last consecutive yearly periods\n: %s to %s and %s to %s" %
-                    (prev_period[0].isoformat(), prev_period[1].isoformat(),
-                     prev_period[1].isoformat(), prev_period[2].isoformat()))
+                "Two last consecutive yearly periods\n: %s to %s and %s to %s",
+                    prev_period[0].isoformat(), prev_period[1].isoformat(),
+                    prev_period[1].isoformat(), prev_period[2].isoformat())
                 LOGGER.debug(
-                    "Year before the corresponding yearly period\n: %s to %s" %
-                    (prev_year[0].isoformat(), prev_year[1].isoformat()))
+                    "Year before the corresponding yearly period\n: %s to %s",
+                    prev_year[0].isoformat(), prev_year[1].isoformat())
             else:
                 LOGGER.debug(
-                    "Two last consecutive %s periods\n: %s to %s and %s to %s" %
-                    (period_name,
-                     prev_period[0].isoformat(), prev_period[1].isoformat(),
-                     prev_period[1].isoformat(), prev_period[2].isoformat()))
+                    "Two last consecutive %s periods\n: %s to %s and %s to %s",
+                    period_name,
+                    prev_period[0].isoformat(), prev_period[1].isoformat(),
+                    prev_period[1].isoformat(), prev_period[2].isoformat())
                 LOGGER.debug(
-                    "Same %s period from the previous year\n: %s to %s" %
-                    (period_name,
-                     prev_year[0].isoformat(), prev_year[1].isoformat()))
+                    "Same %s period from the previous year\n: %s to %s",
+                    period_name,
+                    prev_year[0].isoformat(), prev_year[1].isoformat())
             data, unit = self.get_perf_data(
                 provider, prev_period, prev_year, period_type=period)
             table = self.construct_table(data, unit)

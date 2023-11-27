@@ -38,7 +38,6 @@ from pytz import timezone, UnknownTimeZoneError
 from pytz.tzinfo import BaseTzInfo
 
 from .compat import get_model_class, gettext_lazy as _, import_string, six
-from . import settings
 
 
 class SlugTitleMixin(object):
@@ -407,19 +406,18 @@ def build_absolute_uri(request, location='/', provider=None, with_scheme=True):
     # than throwing an error.
     return location
 
+
 class CurrencyDataLoader:
     _currency_data = None
 
     @classmethod
     def load_currency_data(cls):
         if cls._currency_data is None:
-            try:
-                with open(settings.CURRENCY_JSON_PATH, 'r') as file:
-                    currency_list = json.load(file)
-                    cls._currency_data = {currency['cc']:
-                                              currency for currency in currency_list}
-            except FileNotFoundError:
-                raise
+            from . import settings #pylint:disable=import-outside-toplevel
+            with open(settings.CURRENCY_JSON_PATH, 'r') as file:
+                currency_list = json.load(file)
+                cls._currency_data = {currency['cc']:
+                    currency for currency in currency_list}
         return cls._currency_data
 
     @classmethod

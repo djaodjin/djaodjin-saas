@@ -1153,7 +1153,7 @@ class ActiveCartItemsView(TemplateView):
     template_name = 'saas/billing/cartitems/index.html'
 
     def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
+        context = super(ActiveCartItemsView, self).get_context_data(**kwargs)
         update_context_urls(context, {
             'saas_api_cartitems': reverse('saas_api_cartitems'),
             'saas_api_pricing': reverse('saas_api_pricing'),
@@ -1168,7 +1168,7 @@ class UserCartItemsView(TemplateView, UserMixin):
     template_name = 'saas/billing/cartitems/user.html'
 
     def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
+        context = super(UserCartItemsView, self).get_context_data(**kwargs)
         user = self.user
         update_context_urls(context, {
             'saas_api_user_cartitems': reverse('saas_api_user_cartitems',
