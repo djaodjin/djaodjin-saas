@@ -1146,7 +1146,7 @@ djaodjin-saas/tree/master/saas/templates/saas/billing/import.html>`__).
             kwargs=self.get_url_kwargs(**self.kwargs))
 
 
-class ActiveCartItemsView(TemplateView):
+class ActiveCartItemsView(ProviderMixin, TemplateView):
     """
     Display users with active carts. - i.e. they haven't been checked out yet.
     """
@@ -1161,7 +1161,7 @@ class ActiveCartItemsView(TemplateView):
         return context
 
 
-class UserCartItemsView(TemplateView, UserMixin):
+class UserCartItemsView(ProviderMixin, UserMixin, TemplateView):
     """
     Display a users active cart. - i.e. checkout in progress.
     """
