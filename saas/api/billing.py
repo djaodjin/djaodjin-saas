@@ -594,7 +594,7 @@ class ActiveCartItemListCreateView(generics.ListCreateAPIView):
 
     .. code-block:: http
 
-        GET /api/cartitems HTTP/1.1
+        GET /api/billing/cartitems HTTP/1.1
 
     responds
 
@@ -653,7 +653,7 @@ class ActiveCartItemListCreateView(generics.ListCreateAPIView):
 
         .. code-block:: http
 
-            POST /api/cartitems HTTP/1.1
+            POST /api/billing/cartitems HTTP/1.1
 
         .. code-block:: json
 
@@ -712,7 +712,7 @@ class ActiveCartItemRetrieveUpdateDestroyView(
 
     .. code-block:: http
 
-        GET /api/cartitems/{cartitem_id} HTTP/1.1
+        GET /api/billing/cartitems/{cartitem_id} HTTP/1.1
 
     responds
 
@@ -760,7 +760,7 @@ class ActiveCartItemRetrieveUpdateDestroyView(
 
         .. code-block:: http
 
-            DELETE /api/cartitems/{cartitem_id} HTTP/1.1
+            DELETE /api/billing/cartitems/{cartitem_id} HTTP/1.1
         """
         return self.destroy(request, *args, **kwargs)
 
@@ -777,7 +777,7 @@ class ActiveCartItemRetrieveUpdateDestroyView(
 
         .. code-block:: http
 
-            PUT /api/cartitems/{cartitem_id} HTTP/1.1
+            PUT /api/billing/cartitems/{cartitem_id} HTTP/1.1
 
         .. code-block:: json
 
@@ -832,7 +832,7 @@ class UserCartItemListView(UserMixin, generics.ListAPIView):
 
     .. code-block:: http
 
-        GET /api/cartitems/user/xia HTTP/1.1
+        GET /api/billing/cartitems/user/xia HTTP/1.1
 
     responds
 

@@ -89,6 +89,8 @@ except ImportError: # <= Django 2.0, Python<3.6
             re.sub(r'<slug:([a-z\_]+)>',
                    r'(?P<\1>[a-zA-Z0-9_\-\+\.]+)',
                    route)))
+        if not re_route.startswith('^'):
+            re_route = "^" + re_route
         return re_path(re_route, view, kwargs=kwargs, name=name)
 
 

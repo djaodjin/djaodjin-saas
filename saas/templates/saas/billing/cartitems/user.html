@@ -2,72 +2,71 @@
 
 {% block saas_content %}
 <user-active-cart inline-template>
+  <div>
     <div>
-        <div>
-            <table v-if="items.user">
-                <thead>
-                    <tr>
-                        <th>Username</th>
-                        <th>Email</th>
-                        <th>Created At</th>
-                        <th>Last Login</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td>[[ items.user.slug ]]</td>
-                        <td>[[ items.user.email ]]</td>
-                        <td>[[ items.user.created_at ]]</td>
-                        <td>[[ items.user.last_login ]]</td>
-                    </tr>
-                </tbody>
-            </table>
-
-            <div v-if="!itemsLoaded">
-                Loading ...
-            </div>
-            <div v-if="itemsLoaded && items.results.length == 0">
-                <p>The cart is empty.</p>
-            </div>
-            <div v-if="itemsLoaded && items.results.length > 0">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Created At</th>
-                            <th>Plan</th>
-                            <th>Quantity</th>
-                            <th>Action</th>
-                        </tr>
-                    </thead>
-                <tbody>
-                    <tr v-for="cartItem in items.results" :key="cartItem.pk">
-                        <td>[[ cartItem.created_at ]]</td>
-                        <td>[[ cartItem.plan.title ]]</td>
-                        <td>
-                          <input type="number" v-model.number="cartItem.quantity" min="1" />
-                        </td>
-                        <td>
-                            <button @click="updateItem(cartItem)">Update</button>
-                            <button class="remove" @click="removeItem(cartItem)">Remove</button>
-                        </td>
-                    </tr>
-                </tbody>
-                </table>
-                {% include "saas/_paginator.html" %}
-            </div>
-
-            <hr />
-            <p>Add Cart Item</p>
-            <div>
-              <select v-model="newItemPlan">
-                <option v-for="plan in plans" :value="plan.slug" :key="plan.slug">
-                    [[ plan.title ]]
-                </option>
-              </select>
-              <input type="number" v-model.number="newItemQuantity" min="1" />
-              <button @click="addItem">Add Item</button>
-            </div>
-        </div>
+      <dl>
+        <dt>Username</dt>
+        <dd v-if="itemsLoaded && items.user">[[ items.user.slug ]]</dd>
+      </dl>
+      <dl>
+        <dt>Email</dt>
+        <dd v-if="itemsLoaded && items.user">[[ items.user.email ]]</dd>
+      </dl>
+      <dl>
+        <dt>Created At</dt>
+        <dd v-if="itemsLoaded && items.user">[[ items.user.created_at ]]</dd>
+      </dl>
+      <dl>
+        <dt>Last Login</dt>
+        <dd v-if="itemsLoaded && items.user">[[ items.user.last_login ]]</dd>
+      </dl>
     </div>
+    <div v-if="!itemsLoaded">
+        Loading ...
+    </div>
+    <div v-if="itemsLoaded && items.results.length == 0">
+        <p>The cart is empty.</p>
+    </div>
+    <div v-if="itemsLoaded && items.results.length > 0">
+      <table>
+        <thead>
+          <tr>
+            <th>Created At</th>
+            <th>Plan</th>
+            <th>Quantity</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="cartItem in items.results" :key="cartItem.pk">
+            <td>[[ cartItem.created_at ]]</td>
+            <td>[[ cartItem.plan.title ]]</td>
+            <td>
+              <input type="number" v-model.number="cartItem.quantity" min="1" />
+            </td>
+            <td>
+              <button @click="updateItem(cartItem)">Update</button>
+              <button class="remove" @click="removeItem(cartItem)">Remove</button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+      {% include "saas/_paginator.html" %}
+    </div>
+
+    <hr />
+    <div>
+      <p>Add Cart Item</p>
+      <div>
+        <select v-model="newItemPlan">
+          <option v-for="plan in plans" :value="plan.slug" :key="plan.slug">
+            [[ plan.title ]]
+          </option>
+        </select>
+        <input type="number" v-model.number="newItemQuantity" min="1" />
+        <button @click="addItem">Add Item</button>
+      </div>
+    </div>
+  </div>
 </user-active-cart>
 {% endblock %}

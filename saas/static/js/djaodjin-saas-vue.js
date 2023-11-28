@@ -3099,46 +3099,45 @@ Vue.component('active-carts', {
 
 
 Vue.component('user-active-cart', {
-   mixins: [itemListMixin],
-   data: function(){
-       return {
-           url: this.$urls.saas_api_user_cartitems,
-           crudUrl: this.$urls.saas_api_cartitems,
-           api_pricing: this.$urls.saas_api_pricing,
-           newItemPlan: null,
-           newItemQuantity: 1,
-           plans: [],
-       };
-   },
-   methods: {
-       addItem: function() {
-           var vm = this;
-           var data = {
-               user: vm.items.user.slug,
-               plan: vm.newItemPlan,
-               quantity: vm.newItemQuantity
-           };
-           vm.reqPost(vm.crudUrl, data, vm.get);
-       },
-       updateItem: function(cartItem) {
-           var vm = this;
-           var data = { quantity: cartItem.quantity };
-           var url = vm.crudUrl + '/' + cartItem.id;
-           vm.reqPatch(url, data, vm.get);
-       },
-       removeItem: function(cartItem) {
-           var vm = this;
-           vm.reqDelete(vm._safeUrl(vm.crudUrl, cartItem.id), vm.get);
-       },
-       fetchPlans: function() {
-           var vm = this;
-           vm.reqGet(vm.api_pricing, function(resp) {
-               vm.plans = resp.results || [];
-           });
-       },
-   },
-   mounted: function(){
-      this.fetchPlans();
-      this.get();
-   }
+    mixins: [itemListMixin],
+    data: function(){
+        return {
+            url: this.$urls.saas_api_user_cartitems,
+            crudUrl: this.$urls.saas_api_cartitems,
+            api_pricing: this.$urls.saas_api_pricing,
+            newItemPlan: null,
+            newItemQuantity: 1,
+            plans: [],
+        };
+    },
+    methods: {
+        addItem: function() {
+            var vm = this;
+            var data = {
+                user: vm.items.user.slug,
+                plan: vm.newItemPlan,
+                quantity: vm.newItemQuantity
+            };
+            vm.reqPost(vm.crudUrl, data, vm.get);
+        },
+        updateItem: function(cartItem) {
+            var vm = this;
+            const data = { quantity: cartItem.quantity };
+            vm.reqPatch(vm._safeUrl(crudUrl, cartItem.id), data, vm.get);
+        },
+        removeItem: function(cartItem) {
+            var vm = this;
+            vm.reqDelete(vm._safeUrl(vm.crudUrl, cartItem.id), vm.get);
+        },
+        fetchPlans: function() {
+            var vm = this;
+            vm.reqGet(vm.api_pricing, function(resp) {
+                vm.plans = resp.results || [];
+            });
+        },
+    },
+    mounted: function(){
+        this.fetchPlans();
+        this.get();
+    }
 });
