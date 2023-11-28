@@ -23,7 +23,13 @@
                 </tbody>
             </table>
 
-            <div v-if="items.count > 0">
+            <div v-if="!itemsLoaded">
+                Loading ...
+            </div>
+            <div v-if="itemsLoaded && items.results.length == 0">
+                <p>The cart is empty.</p>
+            </div>
+            <div v-if="itemsLoaded && items.results.length > 0">
                 <table>
                     <thead>
                         <tr>
@@ -49,9 +55,7 @@
                 </table>
                 {% include "saas/_paginator.html" %}
             </div>
-            <div v-else>
-                <p>The cart is empty.</p>
-            </div>
+
             <hr />
             <p>Add Cart Item</p>
             <div>

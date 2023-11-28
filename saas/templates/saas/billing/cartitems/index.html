@@ -14,7 +14,14 @@
         </tr>
       </thead>
       <tbody>
-        <tr :id="item.username" v-for="item in items.results" :key="username">
+        <tr>
+          <td v-if="!itemsLoaded">Loading ...</td>
+        </tr>
+        <tr v-if="itemsLoaded && items.results.length == 0">
+          <td>No CartItems.</td>
+        </tr>
+        <tr :id="item.username" v-for="item in byUser" :key="item.username"
+            v-if="itemsLoaded && byUser.length > 0">
             <td><a class="details" :href="item.username + '/'">[[ item.username ]]</a></td>
             <td>[[ item.email ]]</td>
             <td>[[ item.totalItems ]]</td>

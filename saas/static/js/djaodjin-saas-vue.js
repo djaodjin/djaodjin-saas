@@ -3041,18 +3041,28 @@ Vue.component('active-carts', {
         return {
             url: this.$urls.saas_api_cartitems,
             api_pricing: this.$urls.saas_api_pricing,
-            plans: {}
+            plans: {},
+            byUser: [],
+            getCompleteCb: '_decorateCartItems',
         };
     },
     methods: {
-        addCartItemToUser(cartItem) {
-            const cartItemId = cartItem.user ?
+        _decorateCartItems: function(item) {
+            var vm = this;
+            vm.items.results.forEach(vm.addCartItemToUser);
+        },
+        getKey: function (cartItem) {
+            return cartItem.user ?
                 cartItem.user.slug : cartItem.claim_code;
-            const foundUser = this.items.results.find(function(item) {
+        },
+        addCartItemToUser: function(cartItem) {
+            var vm = this;
+            const cartItemId = vm.getKey(cartItem);
+            const foundUser = vm.byUser.find(function(item) {
                 return item.username === cartItemId;
             });
             if( foundUser ) {
-                var plan = this.plans[cartItem.plan.slug];
+                var plan = vm.plans[cartItem.plan.slug];
                 if (plan) {
                     foundUser.totalAmount += cartItem.quantity * plan.period_amount * 0.01;
                 }
@@ -3068,28 +3078,21 @@ Vue.component('active-carts', {
                     totalItems: 1,
                     latestUpdate: cartItem.created_at
                 };
-                this.items.results.push(newUser);
+                vm.byUser.push(newUser);
             }
         },
-        getAllDataFromAPI(url) {
-            this.reqGet(url, (resp) => {
-                resp.results.forEach(this.addCartItemToUser);
-                if (resp.next) {
-                    this.getAllDataFromAPI(resp.next);
-                }
-            });
-        },
-        get() {
-            this.reqGet(this.$urls.saas_api_pricing, (resp) => {
-                this.plans = resp.results.reduce((acc, plan) => {
+        fetchPlans: function() {
+            var vm = this;
+            vm.reqGet(vm.api_pricing, function(resp) {
+                vm.plans = resp.results.reduce((acc, plan) => {
                     acc[plan.slug] = plan;
                     return acc;
-                }, {});
-                this.getAllDataFromAPI(this.url);
+                });
             });
-        }
+        },
     },
-    mounted() {
+    mounted: function () {
+        this.fetchPlans();
         this.get();
     }
 });
