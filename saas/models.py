@@ -3089,9 +3089,9 @@ class UseCharge(SlugTitleMixin, models.Model):
         related_name='use_charges')
     use_amount = models.PositiveIntegerField(default=0)
     quota = models.PositiveIntegerField(default=0)
+    maximum_limit = models.PositiveIntegerField(default=0, null=True)
     extra = get_extra_field_class()(null=True,
         help_text=_("Extra meta data (can be stringify JSON)"))
-    maximum_limit = models.PositiveIntegerField(default=0, null=True)
 
     class Meta:
         unique_together = ('slug', 'plan')
@@ -4621,9 +4621,6 @@ def get_sub_event_id(subscription, use_charge=None):
 
 
 def record_use_charge(subscription, use_charge, quantity=1):
-    if (use_charge.maximum_limit and use_charge.quota
-            >= use_charge.maximum_limit):
-        raise ValueError("Maximum limit must be greater than the quota.")
 
     usage = get_period_usage(subscription, use_charge,
         subscription.created_at, subscription.ends_at)
