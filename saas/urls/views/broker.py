@@ -1,4 +1,4 @@
-# Copyright (c) 2022, DjaoDjin inc.
+# Copyright (c) 2023, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -35,6 +35,10 @@ from ...views.download import (BalancesDownloadView, ChargesDownloadView,
     RegisteredDownloadView, TransactionDownloadView)
 
 urlpatterns = [
+    path('billing/cartitems/<slug:user>/',
+         UserCartItemsView.as_view(), name='saas_user_active_carts'),
+    path('billing/cartitems/',
+         ActiveCartItemsView.as_view(), name='saas_active_cartitems'),
     path('billing/charges/download/',
         ChargesDownloadView.as_view(), name='saas_charges_download'),
     path('billing/charges/',
@@ -57,10 +61,4 @@ urlpatterns = [
     path('metrics/registered/download',
         RegisteredDownloadView.as_view(),
         name='saas_subscriber_pipeline_download_registered'),
-    path('billing/cartitems/',
-         ActiveCartItemsView.as_view(),
-         name='saas_active_cartitems'),
-    path('billing/cartitems/<slug:user>/',
-         UserCartItemsView.as_view(),
-         name='saas_user_active_carts'),
 ]
