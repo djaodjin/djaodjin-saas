@@ -38,7 +38,7 @@
           </tr>
         </thead>
         <tbody>
-          <tr v-for="cartItem in items.results" :key="cartItem.pk">
+          <tr :id="cartItem.id" v-for="cartItem in items.results">
             <td>[[ cartItem.created_at ]]</td>
             <td>[[ cartItem.plan.title ]]</td>
             <td>
