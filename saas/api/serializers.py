@@ -609,7 +609,17 @@ class UseChargeSerializer(serializers.ModelSerializer):
     class Meta:
         model = UseCharge
         fields = ('slug', 'title', 'description', 'created_at',
-            'use_amount', 'quota', 'extra')
+            'use_amount', 'quota', 'maximum_limit', 'extra')
+
+    def validate(self, data):
+        maximum_limit = data.get('maximum_limit')
+        quota = data.get('quota')
+
+        if maximum_limit is not None and maximum_limit != 0:
+            if quota >= maximum_limit:
+                raise serializers.ValidationError(
+                    {"error": "Maximum limit must be greater than the quota."})
+        return data
 
 
 class PlanDetailSerializer(PlanSerializer):
@@ -689,6 +699,7 @@ class PlanDetailSerializer(PlanSerializer):
                     description=use_charge.get('description', ""),
                     use_amount=use_charge.get('use_amount', 0),
                     quota=use_charge.get('quota', 0),
+                    maximum_limit=use_charge.get('maximum_limit'),
                     extra=use_charge.get('extra'))
 
         return instance
@@ -719,6 +730,7 @@ class PlanDetailSerializer(PlanSerializer):
                         'description': use_charge.get('description'),
                         'use_amount': use_charge.get('use_amount'),
                         'quota': use_charge.get('quota'),
+                        'maximum_limit': use_charge.get('maximum_limit'),
                         'extra': use_charge.get('extra')
                     },
                     plan=instance, slug=use_charge_slug)
