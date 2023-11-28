@@ -82,7 +82,13 @@ except ImportError: # <= Django 2.0, Python<3.6
 
     def path(route, view, kwargs=None, name=None):
         re_route = re.sub(
-            r'<slug:([a-z\_]+)>', r'(?P<\1>[a-zA-Z0-9_\-\+\.]+)', route)
+                   r'<int:([a-z\_]+)>',
+                   r'(?P<\1>[0-9]+)',
+            re.sub(r'<path:([a-z\_]+)>',
+                   r'(?P<\1>([a-zA-Z0-9\-]+/)*[a-zA-Z0-9\-]+)',
+            re.sub(r'<slug:([a-z\_]+)>',
+                   r'(?P<\1>[a-zA-Z0-9_\-\+\.]+)',
+                   route)))
         return re_path(re_route, view, kwargs=kwargs, name=name)
 
 
