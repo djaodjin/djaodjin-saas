@@ -21,13 +21,13 @@
         <dd v-if="itemsLoaded && items.user">[[ items.user.last_login ]]</dd>
       </dl>
     </div>
-    <div v-if="!itemsLoaded">
+    <div v-show="!itemsLoaded">
         Loading ...
     </div>
-    <div v-if="itemsLoaded && items.results.length == 0">
+    <div v-show="itemsLoaded && items.results.length == 0">
         <p>The cart is empty.</p>
     </div>
-    <div v-if="itemsLoaded && items.results.length > 0">
+    <div v-show="itemsLoaded && items.results.length > 0">
       <table>
         <thead>
           <tr>
