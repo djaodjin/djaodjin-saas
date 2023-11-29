@@ -3091,6 +3091,7 @@ class UseCharge(SlugTitleMixin, models.Model):
         related_name='use_charges')
     use_amount = models.PositiveIntegerField(default=0)
     quota = models.PositiveIntegerField(default=0)
+    maximum_limit = models.PositiveIntegerField(default=0, null=True)
     extra = get_extra_field_class()(null=True,
         help_text=_("Extra meta data (can be stringify JSON)"))
 
@@ -4622,6 +4623,7 @@ def get_sub_event_id(subscription, use_charge=None):
 
 
 def record_use_charge(subscription, use_charge, quantity=1):
+
     usage = get_period_usage(subscription, use_charge,
         subscription.created_at, subscription.ends_at)
     amount = None
@@ -4631,6 +4633,17 @@ def record_use_charge(subscription, use_charge, quantity=1):
     if usage < use_charge.quota:
         amount = 0
         descr += " (complimentary in plan)"
+
+    if usage >= use_charge.quota:
+        signals.quota_reached.send(sender=__name__,
+                                   use_charge=use_charge,
+                                   subscription=subscription)
+
+    if use_charge.maximum_limit and usage >= use_charge.maximum_limit:
+        signals.use_charge_limit_crossed.send(sender=__name__,
+                                              use_charge=use_charge,
+                                              subscription=subscription)
+
     return Transaction.objects.record_order([
         Transaction.objects.new_use_charge(subscription,
             use_charge, quantity, custom_amount=amount, descr=descr)])
