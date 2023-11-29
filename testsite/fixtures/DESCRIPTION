@@ -1,10 +1,18 @@
+50-visit-card2.json
+A cart item so it is possible to visit (and screenshot) checkout pages
+
 100-balance-due.json
 A charge has failed after a balance was already due.
 
 110-balance-checkout.json
 There is a balance due on a subscription and a user is adding the plan
-in the cart again.
+in the cart again. (XXX Looks like no test uses 'xia-balance-checkout')
 
 130-subscriptions.json
 Defines a provider a 2 plans and 5 subscribers such that each subscription
 period intersects [2022-04-01,2022-07-31[ in a different way.
+
+140-payment-gap.json
+Charges for a subscriber were paused while the subscription was still running
+during that time. Example: Subscription runs Jan 1st to Dec 21st No charges were
+created on July 1st and August 1st, then charges were resumed on September 1st.
