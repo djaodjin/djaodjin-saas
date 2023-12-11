@@ -858,9 +858,7 @@ class BalancesDownloadView(CSVWriterMixin, MetricsMixin, APIView):
         headers = ['Date'] + [Transaction.INCOME, Transaction.BACKLOG, Transaction.RECEIVABLE]
         writer.writerow(headers)
 
-        for date, values in csv_data.items():
-            row = [date] + [values.get(header, 0) for header in headers[1:]]
-            writer.writerow(row)
+        self.write_csv_rows(writer, csv_data, headers)
 
         return response
 
