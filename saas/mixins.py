@@ -26,11 +26,12 @@
 from __future__ import unicode_literals
 
 import logging, re
+import csv
 
 from django.contrib.auth import REDIRECT_FIELD_NAME, get_user_model
 from django.contrib.auth.hashers import UNUSABLE_PASSWORD_PREFIX
 from django.db import models, transaction, IntegrityError
-from django.http import Http404
+from django.http import Http404, HttpResponse
 from django.template.defaultfilters import slugify
 from django.template.loader import render_to_string
 from rest_framework.generics import get_object_or_404
@@ -1247,6 +1248,19 @@ class BalancesDueMixin(DateRangeContextMixin, ProviderMixin):
             else:
                 organization.balances = None
         return decorated_queryset
+
+
+class CSVWriterMixin:
+    def get_csv_response(self, filename='data.csv'):
+        response = HttpResponse(content_type='text/csv')
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        writer = csv.writer(response)
+        return response, writer
+
+    def write_csv_rows(self, writer, csv_data, headers):
+        for date, values in csv_data.items():
+            row = [date] + [values.get(header, 0) for header in headers[1:]]
+            writer.writerow(row)
 
 
 def _as_html_description(transaction_descr,

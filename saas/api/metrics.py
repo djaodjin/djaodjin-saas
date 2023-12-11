@@ -40,7 +40,7 @@ from ..metrics.subscriptions import (active_subscribers_by_period,
     churn_subscribers_by_period, subscribers_age)
 from ..metrics.transactions import lifetime_value
 from ..mixins import (CartItemSmartListMixin, CouponMixin,
-    ProviderMixin, DateRangeContextMixin, BalancesDueMixin)
+    ProviderMixin, DateRangeContextMixin, BalancesDueMixin, CSVWriterMixin)
 from ..models import CartItem, Plan, Transaction
 from ..utils import convert_dates_to_utc, get_organization_model
 
@@ -764,10 +764,10 @@ class PlanMetricAPIView(MetricsMixin, APIView):
             table.append({
                 'slug': plan.slug,
                 'title': plan.title,
-                'values': values,
                 'location': reverse('saas_plan_edit', args=(
                     self.provider, plan)),
-                'is_active': plan.is_active
+                'is_active': plan.is_active,
+                'values': values,
             })
 
         extra_values = churn_subscribers_by_period(date_periods=date_periods)
@@ -837,3 +837,258 @@ class BalancesDueAPIView(BalancesDueMixin, ListAPIView):
         page = super(BalancesDueAPIView, self).paginate_queryset(
             queryset)
         return self.decorate_queryset(page if page else queryset)
+
+
+class BalancesDownloadView(CSVWriterMixin, MetricsMixin, APIView):
+
+    def retrieve_metrics(self, date_periods):
+        csv_data = {}
+        for key in [Transaction.INCOME, Transaction.BACKLOG, Transaction.RECEIVABLE]:
+            values, _unit = abs_balances_by_period(
+                organization=self.provider, account=key, date_periods=date_periods)
+
+            for date, value in values:
+                if date not in csv_data:
+                    csv_data[date] = {}
+                csv_data[date][key] = value
+
+
+        response, writer = self.get_csv_response('balances.csv')
+
+        headers = ['Date'] + [Transaction.INCOME, Transaction.BACKLOG, Transaction.RECEIVABLE]
+        writer.writerow(headers)
+
+        for date, values in csv_data.items():
+            row = [date] + [values.get(header, 0) for header in headers[1:]]
+            writer.writerow(row)
+
+        return response
+
+
+class RevenueDownloadView(CSVWriterMixin, MetricsMixin, APIView):
+
+    def retrieve_metrics(self, date_periods):
+        csv_data = {}
+
+        account_table, _, _, table_unit = \
+            aggregate_transactions_change_by_period(self.provider,
+                Transaction.RECEIVABLE, account_title='Sales',
+                orig='orig', dest='dest',
+                date_periods=date_periods)
+
+        _, payment_amounts, payments_unit = aggregate_transactions_by_period(
+            self.provider, Transaction.RECEIVABLE,
+            orig='dest', dest='dest',
+            orig_account=Transaction.BACKLOG,
+            orig_organization=self.provider,
+            date_periods=date_periods)
+
+        _, refund_amounts, refund_unit = aggregate_transactions_by_period(
+            self.provider, Transaction.REFUND,
+            orig='dest', dest='dest',
+            date_periods=date_periods)
+
+        units = get_different_units(table_unit, payments_unit, refund_unit)
+
+        if len(units) > 1:
+            LOGGER.error("different units in RevenueMetricAPIView.get: %s",
+                units)
+
+        account_table += [{
+            'slug': "payments",
+            'title': "Payments",
+            'values': payment_amounts
+        }, {
+            'slug': "refunds",
+            'title': "Refunds",
+            'values': refund_amounts
+        }]
+
+        response, writer = self.get_csv_response('revenue.csv')
+
+        if not account_table:
+            writer.writerow(['No data available'])
+            return response
+
+        headers = ['Date'] + [entry['slug'] for entry in account_table]
+        writer.writerow(headers)
+
+        for entry in account_table:
+            for date, value in entry.get('values', []):
+                if date not in csv_data:
+                    csv_data[date] = {}
+                csv_data[date][entry['slug']] = value
+
+        self.write_csv_rows(writer, csv_data, headers)
+
+        return response
+
+
+class CouponUsesDownloadView(CSVWriterMixin, CartItemSmartListMixin,
+                             CouponUsesQuerysetMixin, CouponMixin, APIView):
+
+    def get(self, request, *args, **kwargs):
+        queryset = self.get_queryset()
+
+        # Using a serializer so we can get the attributes for
+        # CSV headers
+        serializer = CartItemSerializer(queryset, many=True)
+        serialized_data = serializer.data
+
+        response, writer = self.get_csv_response('coupon_uses.csv')
+
+        if serialized_data:
+            headers = []
+            for key, value in serialized_data[0].items():
+                if isinstance(value, dict):
+                    for nested_key in value.keys():
+                        headers.append(f"{key}_{nested_key}")
+                else:
+                    headers.append(key)
+            writer.writerow(headers)
+
+            for item in serialized_data:
+                row = []
+                for key, value in item.items():
+                    if isinstance(value, dict):
+                        row.extend(value.values())
+                    else:
+                        row.append(value)
+                writer.writerow(row)
+        else:
+            writer.writerow(['No data available'])
+
+        return response
+
+
+class CustomerMetricDownloadView(CSVWriterMixin, MetricsMixin, APIView):
+
+    def retrieve_metrics(self, date_periods):
+        csv_data = {}
+
+        _, customer_table, customer_extra, _ = \
+            aggregate_transactions_change_by_period(self.provider, Transaction.RECEIVABLE,
+                account_title='Payments',
+                date_periods=date_periods)
+
+        customer_table = customer_table + customer_extra
+
+        response, writer = self.get_csv_response('customer_metrics.csv')
+
+        headers = ['Date'] + [entry['slug'] for entry in customer_table]
+        writer.writerow(headers)
+
+        for entry in customer_table:
+            for date, value in entry['values']:
+                if date not in csv_data:
+                    csv_data[date] = {}
+                csv_data[date][entry['slug']] = value
+
+        self.write_csv_rows(writer, csv_data, headers)
+
+        return response
+
+
+class LifetimeValueDownloadView(CSVWriterMixin, LifetimeValueMetricMixin, APIView):
+
+    def get(self, request, *args, **kwargs):
+        queryset = self.get_queryset()
+        decorated_queryset = self.decorate_queryset(queryset)
+
+        serializer = LifetimeSerializer(decorated_queryset, many=True)
+        serialized_data = serializer.data
+
+        response, writer = self.get_csv_response('lifetime_value.csv')
+
+        if serialized_data:
+            headers = serialized_data[0].keys()
+            writer.writerow(headers)
+
+            for item in serialized_data:
+                writer.writerow(item.values())
+        else:
+            writer.writerow(['No data available'])
+
+        return response
+
+
+class PlanMetricDownloadView(CSVWriterMixin, MetricsMixin, APIView):
+
+    def retrieve_metrics(self, date_periods):
+        csv_data = {}
+        table = []
+        for plan in Plan.objects.filter(organization=self.provider).order_by('title'):
+            values = active_subscribers_by_period(plan, date_periods=date_periods)
+            table.append({
+                'slug': plan.slug,
+                'title': plan.title,
+                'values': values
+            })
+
+        response, writer = self.get_csv_response('plan_metrics.csv')
+
+        if not table:
+            writer.writerow(['No data available'])
+            return response
+
+        headers = ['Date'] + [entry['slug'] for entry in table]
+        writer.writerow(headers)
+
+        for entry in table:
+            for date, value in entry.get('values', []):
+                if date not in csv_data:
+                    csv_data[date] = {}
+                csv_data[date][entry['slug']] = value
+
+        self.write_csv_rows(writer, csv_data, headers)
+
+        return response
+
+
+class BalancesDueDownloadView(CSVWriterMixin, BalancesDueMixin, APIView):
+
+    def get(self, request, *args, **kwargs):
+        queryset = self.get_queryset()
+        decorated_queryset = self.decorate_queryset(queryset)
+
+        serializer = BalancesDueSerializer(decorated_queryset, many=True)
+        serialized_data = serializer.data
+
+        response, writer = self.get_csv_response('balances_due.csv')
+
+        if serialized_data:
+            basic_headers = [key for key in serialized_data[0].keys() if key != 'balances']
+            # Keep track of different currency units, and dynamically update the CSV headers
+            # based on however many units we have
+            currency_set = set()
+            balance_data_rows = []
+
+            for entry in serialized_data:
+                balances = entry.get('balances', {})
+                individual_balances = {}
+
+                for currency, currency_balances in balances.items():
+                    currency_set.add(currency)
+                    for balance_type, value in currency_balances.items():
+                        header_name = f'{currency}_{balance_type}'
+                        individual_balances[header_name] = value
+
+                balance_data_rows.append(individual_balances)
+
+            currency_headers = [
+                f'{currency}_{balance_type}'
+                for currency in currency_set
+                for balance_type in ['contract_value', 'cash_payments', 'balance']
+            ]
+
+            headers = basic_headers + currency_headers
+            writer.writerow(headers)
+
+            for data, balances in zip(serialized_data, balance_data_rows):
+                row = [data.get(header, '') for header in basic_headers]
+                row.extend([balances.get(header, 0) for header in currency_headers])
+                writer.writerow(row)
+        else:
+            writer.writerow(['No data available'])
+
+        return response
