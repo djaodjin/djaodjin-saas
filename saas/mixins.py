@@ -1257,11 +1257,34 @@ class CSVWriterMixin:
         writer = csv.writer(response)
         return response, writer
 
+    # Used where the first column is dates
     def write_csv_rows(self, writer, csv_data, headers):
         for date, values in csv_data.items():
             row = [date] + [values.get(header, 0) for header in headers[1:]]
             writer.writerow(row)
 
+    def write_csv_data(self, writer, data):
+        if not data:
+            writer.writerow(['No data available'])
+            return
+
+        headers = []
+        for key, value in data[0].items():
+            if isinstance(value, dict):
+                for nested_key in value.keys():
+                    headers.append(f"{key}_{nested_key}")
+            else:
+                headers.append(key)
+        writer.writerow(headers)
+
+        for item in data:
+            row = []
+            for key, value in item.items():
+                if isinstance(value, dict):
+                    row.extend(value.values())
+                else:
+                    row.append(value)
+            writer.writerow(row)
 
 def _as_html_description(transaction_descr,
                          orig_organization=None, dest_organization=None,

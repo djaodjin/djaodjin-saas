@@ -38,6 +38,7 @@ from rest_framework import status
 from ..backends import ProcessorError
 from ..compat import gettext_lazy as _, is_authenticated, StringIO
 from ..docs import swagger_auto_schema, OpenAPIResponse
+from ..filters import SearchFilter
 from ..mixins import (BalanceAndCartMixin, CartMixin, InvoicablesMixin,
                       UserMixin)
 from ..models import CartItem, get_broker
@@ -628,8 +629,19 @@ class ActiveCartItemListCreateView(generics.ListCreateAPIView):
           }]
         }
     """
-    queryset = CartItem.objects.filter(recorded=False).order_by('user')
     serializer_class = CartItemSerializer
+
+    search_fields = (
+        'user__username',
+        'user__full_name',
+        'user__email',
+        'plan__slug',
+        'full_name'
+    )
+
+    filter_backends = (SearchFilter, )
+
+    queryset = CartItem.objects.filter(recorded=False).order_by('user')
 
     def get_serializer_class(self):
         if self.request.method.lower() in ['post']:

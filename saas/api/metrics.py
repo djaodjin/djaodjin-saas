@@ -935,26 +935,7 @@ class CouponUsesDownloadView(CSVWriterMixin, CartItemSmartListMixin,
 
         response, writer = self.get_csv_response('coupon_uses.csv')
 
-        if serialized_data:
-            headers = []
-            for key, value in serialized_data[0].items():
-                if isinstance(value, dict):
-                    for nested_key in value.keys():
-                        headers.append(f"{key}_{nested_key}")
-                else:
-                    headers.append(key)
-            writer.writerow(headers)
-
-            for item in serialized_data:
-                row = []
-                for key, value in item.items():
-                    if isinstance(value, dict):
-                        row.extend(value.values())
-                    else:
-                        row.append(value)
-                writer.writerow(row)
-        else:
-            writer.writerow(['No data available'])
+        self.write_csv_data(writer, serialized_data)
 
         return response
 
@@ -998,14 +979,7 @@ class LifetimeValueDownloadView(CSVWriterMixin, LifetimeValueMetricMixin, APIVie
 
         response, writer = self.get_csv_response('lifetime_value.csv')
 
-        if serialized_data:
-            headers = serialized_data[0].keys()
-            writer.writerow(headers)
-
-            for item in serialized_data:
-                writer.writerow(item.values())
-        else:
-            writer.writerow(['No data available'])
+        self.write_csv_data(writer, serialized_data)
 
         return response
 

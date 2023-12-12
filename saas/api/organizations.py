@@ -32,6 +32,7 @@ from rest_framework import parsers, status
 from rest_framework.generics import (CreateAPIView, ListAPIView,
     RetrieveUpdateDestroyAPIView)
 from rest_framework.response import Response
+from rest_framework.views import APIView
 
 from .serializers import (EngagedSubscriberSerializer, OrganizationSerializer,
     OrganizationDetailSerializer, OrganizationWithSubscriptionsSerializer,
@@ -42,7 +43,7 @@ from ..decorators import _valid_manager
 from ..filters import OrderingFilter, SearchFilter
 from ..mixins import (DateRangeContextMixin, OrganizationMixin,
     OrganizationSearchOrderListMixin, OrganizationSmartListMixin,
-    ProviderMixin, OrganizationDecorateMixin)
+    ProviderMixin, OrganizationDecorateMixin, CSVWriterMixin)
 from ..models import get_broker
 from ..utils import (build_absolute_uri, datetime_or_now,
     get_organization_model, get_role_model, get_picture_storage,
@@ -498,9 +499,10 @@ class EngagedSubscribersAPIView(EngagedSubscribersSmartListMixin,
                   "created_at": "2022-01-01T00:00:00Z",
                   "user": {
                     "slug": "xia23",
-                    "username": "xia23",
-                    "printable_name": "Xia23",
-                    "picture": null
+                    "email": "123@example.com",
+                    "full_name": "",
+                    "created_at": "2022-01-01T00:00:00Z",
+                    "last_login": "2022-01-01T00:00:00Z"
                   },
                   "role_description": {
                     "created_at": "2022-01-01T00:00:00Z",
@@ -512,12 +514,15 @@ class EngagedSubscribersAPIView(EngagedSubscribersSmartListMixin,
                     "profile": null,
                     "extra": null
                   },
+                  "accept_request_api_url": "http://127.0.0.1:8000/api/profile/xia23/roles/manager",
+                  "remove_api_url": "http://127.0.0.1:8000/api/profile/xia23/roles/manager/admin",
                   "profile": {
                     "slug": "xia23",
                     "printable_name": "Xia23",
                     "picture": null,
                     "type": "organization",
-                    "credentials": false
+                    "credentials": false,
+                    "created_at": "2022-01-01T00:00:00Z"
                   }
                 }
             ]
@@ -584,10 +589,43 @@ class UnengagedSubscribersAPIView(OrganizationSearchOrderListMixin,
                 {
                 "slug": "xia",
                 "printable_name": "Xia Lee",
-                "created_at": "2016-01-14T23:16:55Z",
-                "ends_at": "2017-01-14T23:16:55Z"
+                "picture": null,
+                "type": "organization",
+                "credentials": false,
+                "created_at": "2016-01-14T23:16:55Z"
                 }
             ]
         }
     """
     serializer_class = OrganizationSerializer
+
+class EngagedSubscribersDownloadView(EngagedSubscribersSmartListMixin,
+                                     EngagedSubscribersQuerysetMixin,
+                                     CSVWriterMixin, APIView):
+
+    def get(self, request, *args, **kwargs):
+        queryset = self.get_queryset()
+
+        serializer = EngagedSubscriberSerializer(queryset, many=True, context={'request': request})
+        serialized_data = serializer.data
+        response, writer = self.get_csv_response('engaged_subscribers.csv')
+
+        self.write_csv_data(writer, serialized_data)
+
+        return response
+
+
+class UnengagedSubscribersDownloadView(OrganizationSearchOrderListMixin,
+                                     UnengagedSubscribersQuerysetMixin,
+                                     CSVWriterMixin, APIView):
+
+    def get(self, request, *args, **kwargs):
+        queryset = self.get_queryset()
+
+        serializer = EngagedSubscriberSerializer(queryset, many=True, context={'request': request})
+        serialized_data = serializer.data
+        response, writer = self.get_csv_response('unengaged_subscribers.csv')
+
+        self.write_csv_data(writer, serialized_data)
+
+        return response
