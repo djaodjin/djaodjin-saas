@@ -523,12 +523,12 @@ class AbstractOrganization(models.Model):
     @property
     def natural_subscription_period(self):
         plan_periods = self.subscribes_to.values('period_type').distinct()
-        interval = Plan.MONTHLY
+        period_type = Plan.MONTHLY
         if plan_periods.exists():
-            interval = Plan.YEARLY
+            period_type = Plan.YEARLY
             for period in plan_periods:
-                interval = min(interval, period['period_type'])
-        return Plan.get_natural_period(1, interval)
+                period_type = min(period_type, period['period_type'])
+        return Plan.get_natural_period(1, period_type)
 
     @property
     def processor_backend(self):
@@ -2770,6 +2770,10 @@ class Plan(SlugTitleMixin, models.Model):
         return str(self.slug)
 
     @property
+    def natural_period(self):
+        return self.get_natural_period(1, self.period_type)
+
+    @property
     def period_price(self):
         return Price(self.period_amount, self.unit)
 
@@ -2784,37 +2788,33 @@ class Plan(SlugTitleMixin, models.Model):
     def get_discounted_period_price(self, coupon):
         return Price(self.get_discounted_period_amount(coupon), self.unit)
 
-    @staticmethod
-    def get_natural_period(nb_periods, interval):
+    def get_natural_period(self, nb_periods, period_type=None):
+        if not period_type:
+            period_type = self.period_type
         result = None
-        if interval == Plan.HOURLY:
+        if period_type == Plan.HOURLY:
             result = relativedelta(hours=1 * nb_periods)
-        elif interval == Plan.DAILY:
+        elif period_type == Plan.DAILY:
             result = relativedelta(days=1 * nb_periods)
-        elif interval == Plan.WEEKLY:
+        elif period_type == Plan.WEEKLY:
             result = relativedelta(days=7 * nb_periods)
-        elif interval == Plan.MONTHLY:
+        elif period_type == Plan.MONTHLY:
             result = relativedelta(months=1 * nb_periods)
-        elif interval == Plan.YEARLY:
+        elif period_type == Plan.YEARLY:
             result = relativedelta(years=1 * nb_periods)
         return result
 
-    def natural_period(self, nb_periods=1):
-        return self.get_natural_period(nb_periods, self.period_type)
-
-    def end_of_period(self, start_time, nb_periods=1):
+    def end_of_period(self, start_time, nb_periods=1, period_type=None):
         result = start_time
         if nb_periods:
             # In case of a ``SETTLED``, *nb_periods* will be ``None``
             # since the description does not (should not) allow us to
             # extend the subscription length.
-            natural = self.natural_period(nb_periods)
+            natural = self.get_natural_period(
+                nb_periods, period_type=period_type)
             if natural:
                 result += natural
         return result
-
-    def start_of_period(self, end_time, nb_periods=1):
-        return self.end_of_period(end_time, nb_periods=-nb_periods)
 
     @property
     def printable_name(self):
@@ -3411,42 +3411,44 @@ class Subscription(models.Model):
     def provider(self):
         return self.plan.organization
 
-    def clipped_period_for(self, at_time=None):
+    def clipped_period_for(self, at_time=None, period_type=None):
         # Both lower and upper fall on an exact period multiple
         # from ``created_at``. This might not be the case for ``ends_at``.
-        lower, upper = self.period_for(at_time=at_time)
+        lower, upper = self.period_for(at_time=at_time, period_type=period_type)
         return (min(lower, self.ends_at), min(upper, self.ends_at))
 
-    def period_for(self, at_time=None):
+    def period_for(self, at_time=None, period_type=None):
         """
         Returns the period [beg,end[ which includes ``at_time``.
         """
+        if not period_type:
+            period_type = self.plan.period_type
         at_time = datetime_or_now(at_time)
         delta = at_time - self.created_at
-        if self.plan.period_type == Plan.HOURLY:
+        if period_type == Plan.HOURLY:
             estimated = relativedelta(hours=delta.total_seconds() // 3600)
             period = relativedelta(hours=1)
-        elif self.plan.period_type == Plan.DAILY:
+        elif period_type == Plan.DAILY:
             estimated = relativedelta(days=delta.days)
             period = relativedelta(days=1)
-        elif self.plan.period_type == Plan.WEEKLY:
+        elif period_type == Plan.WEEKLY:
             # XXX integer division?
             estimated = relativedelta(days=delta.days // 7)
             period = relativedelta(days=7)
-        elif self.plan.period_type == Plan.MONTHLY:
+        elif period_type == Plan.MONTHLY:
             estimated = relativedelta(at_time, self.created_at)
             estimated.normalized()
             estimated = relativedelta(
                 months=estimated.years * 12 + estimated.months)
             period = relativedelta(months=1)
-        elif self.plan.period_type == Plan.YEARLY:
+        elif period_type == Plan.YEARLY:
             estimated = relativedelta(at_time, self.created_at)
             estimated.normalized()
             estimated = relativedelta(years=estimated.years)
             period = relativedelta(years=1)
         else:
-            raise ValueError(_("period type %d is not defined.")
-                % self.plan.period_type)
+            raise ValueError(_("period type %(period_type)d is not defined.")
+                % {'period_type': period_type})
         lower = self.created_at + estimated # rough estimate to start
         upper = self.created_at + (estimated + period)
         while not (lower <= at_time and at_time < upper):
@@ -3458,59 +3460,69 @@ class Subscription(models.Model):
                 upper = upper + period
         return lower, upper
 
-    def _period_fraction(self, start, until, start_lower, start_upper):
+    def _period_fraction(self, start, until, start_lower, start_upper,
+                         period_type=None):
         """
         Returns a [start, until[ interval as a fraction of the plan period.
         This method will not return the correct answer if [start, until[
         is longer than a plan period. Use ``nb_periods`` instead.
         """
+        #pylint:disable=too-many-arguments
+        if not period_type:
+            period_type = self.plan.period_type
         delta = relativedelta(until, start)
-        if self.plan.period_type == Plan.HOURLY:
+        if period_type == Plan.HOURLY:
             fraction = (until - start).total_seconds() / 3600.0
-        elif self.plan.period_type == Plan.DAILY:
+        elif period_type == Plan.DAILY:
             fraction = delta.hours / 24.0
-        elif self.plan.period_type == Plan.WEEKLY:
+        elif period_type == Plan.WEEKLY:
             fraction = delta.days / 7.0
-        elif self.plan.period_type == Plan.MONTHLY:
+        elif period_type == Plan.MONTHLY:
             # The number of days in a month cannot be reliably computed
             # from [start_lower, start_upper[ if those bounds cross the 1st
             # of a month.
             fraction = ((until - start).total_seconds()
                 / (start_upper - start_lower).total_seconds())
-        elif self.plan.period_type == Plan.YEARLY:
+        elif period_type == Plan.YEARLY:
             fraction = delta.months / 12.0
         return fraction
 
-    def nb_periods(self, start=None, until=None):
+    def nb_periods(self, start=None, until=None, period_type=None):
         """
         Returns the number of completed periods at datetime ``until``
         since the subscription was created.
         """
+        #pylint:disable=too-many-locals
         if start is None:
             start = self.created_at
+        if not period_type:
+            period_type = self.plan.period_type
         until = datetime_or_now(until)
         assert start < until
-        start_lower, start_upper = self.period_for(start)
-        until_lower, until_upper = self.period_for(until)
+        start_lower, start_upper = self.period_for(
+            start, period_type=period_type)
+        until_lower, until_upper = self.period_for(
+            until, period_type=period_type)
         LOGGER.debug("[%s,%s[ starts in period [%s,%s[ and ends in period"\
 " [%s,%s[", start, until, start_lower, start_upper, until_lower, until_upper)
         partial_start_period = 0
         partial_end_period = 0
         if start_upper <= until_lower:
-            delta = relativedelta(start_upper, until_lower)
-            if self.plan.period_type == Plan.HOURLY:
+            delta = relativedelta(until_lower, start_upper) # XXX inverted
+            if period_type == Plan.HOURLY:
                 # Integer division?
                 estimated = (start_upper - until_lower).total_seconds() // 3600
-            elif self.plan.period_type == Plan.DAILY:
+            elif period_type == Plan.DAILY:
                 estimated = delta.days
-            elif self.plan.period_type == Plan.WEEKLY:
+            elif period_type == Plan.WEEKLY:
                 # Integer division?
                 estimated = delta.days // 7
-            elif self.plan.period_type == Plan.MONTHLY:
+            elif period_type == Plan.MONTHLY:
                 estimated = delta.months
-            elif self.plan.period_type == Plan.YEARLY:
+            elif period_type == Plan.YEARLY:
                 estimated = delta.years
-            upper = self.plan.end_of_period(start_upper, nb_periods=estimated)
+            upper = self.plan.end_of_period(
+                start_upper, nb_periods=estimated, period_type=period_type)
             if upper < until_lower:
                 full_periods = estimated + 1
             else:
@@ -3519,16 +3531,19 @@ class Subscription(models.Model):
             partial_start_period_seconds = (start_upper - start).total_seconds()
             if partial_start_period_seconds > 0:
                 partial_start_period = self._period_fraction(
-                    start, start_upper, start_lower, start_upper)
+                    start, start_upper, start_lower, start_upper,
+                    period_type=period_type)
             partial_end_period_seconds = (until - until_lower).total_seconds()
             if partial_end_period_seconds > 0:
                 partial_end_period = self._period_fraction(
-                    until_lower, until, until_lower, until_upper)
+                    until_lower, until, until_lower, until_upper,
+                    period_type=period_type)
         else:
             # misnommer. We are returning a fraction of a period here since
             # [start,until[ is fully included in a single period.
             full_periods = self._period_fraction(
-                start, until, start_lower, start_upper)
+                start, until, start_lower, start_upper,
+                period_type=period_type)
         LOGGER.debug("[nb_periods] %s + %s + %s",
             partial_start_period, full_periods, partial_end_period)
         return partial_start_period + full_periods + partial_end_period

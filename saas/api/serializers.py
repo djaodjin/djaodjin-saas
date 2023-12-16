@@ -611,15 +611,15 @@ class UseChargeSerializer(serializers.ModelSerializer):
         fields = ('slug', 'title', 'description', 'created_at',
             'use_amount', 'quota', 'maximum_limit', 'extra')
 
-    def validate(self, data):
-        maximum_limit = data.get('maximum_limit')
-        quota = data.get('quota')
+    def validate(self, attrs):
+        maximum_limit = attrs.get('maximum_limit')
+        quota = attrs.get('quota')
 
         if maximum_limit is not None and maximum_limit != 0:
             if quota >= maximum_limit:
                 raise serializers.ValidationError(
                     {"error": "Maximum limit must be greater than the quota."})
-        return data
+        return attrs
 
 
 class PlanDetailSerializer(PlanSerializer):

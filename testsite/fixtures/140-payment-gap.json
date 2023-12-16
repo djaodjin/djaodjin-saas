@@ -32,7 +32,7 @@
       "orig_account": "Receivable",
       "orig_organization": 2,
       "event_id": "sub_140/",
-      "descr": "Subscription to basic until 2023/03/01 (1 month)"
+      "descr": "Subscription to basic until 2023/02/01 (1 month)"
     },
     "model": "saas.transaction", "pk": 140
 },

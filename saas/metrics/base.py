@@ -160,7 +160,7 @@ def _generate_periods(time_unit, num_units, start_date, step_units,
 
     # Generate period dates
     for i in range(num_units):
-        time_unit_str = humanize._describe_period_name(time_unit, 2)
+        time_unit_str = humanize.describe_period_name(time_unit, 2)
         delta_args = {time_unit_str: -i * step_units}
         next_date = start_date_naive + relativedelta(**delta_args)
 

@@ -67,20 +67,35 @@ def _recognize_subscription_income(subscription, until=None):
         # It covers ``order_periods`` plan periods.
         order_amount = order.dest_amount
         order_periods = order.get_event().plan.period_number(order.descr)
+
+        if order.created_at > subscription.created_at:
+            candidate_recognize_period_idx = int(subscription.nb_periods(
+                until=order.created_at, period_type=Plan.MONTHLY))
+            if candidate_recognize_period_idx > recognize_period_idx:
+                recognize_period_idx = candidate_recognize_period_idx
+                recognize_start = (subscription.created_at
+                    + relativedelta(months=recognize_period_idx))
+                recognize_end = (subscription.created_at
+                    + relativedelta(months=recognize_period_idx + 1))
+
+        candidate_beg, _candidate_end = subscription.clipped_period_for(
+            order.created_at)
+        if candidate_beg > order_subscribe_beg:
+            order_subscribe_beg = candidate_beg
         order_subscribe_end = subscription.plan.end_of_period(
             order_subscribe_beg, nb_periods=order_periods)
         min_end = min(order_subscribe_end, until)
-        LOGGER.debug('\tprocess transaction %d %s of %dc covering [%s, %s['\
-            ' (%s periods) until %s', order.id,
-            subscription, order.dest_amount,
+        LOGGER.debug(
+          "\tprocess transaction %d %s of %dc created at %s covering [%s, %s["\
+          " (%s periods) until %s", order.id,
+            subscription, order.dest_amount, order.created_at,
             order_subscribe_beg, order_subscribe_end,
             order_periods, min_end)
         while recognize_end <= min_end:
             # we use ``<=`` here because we compare that bounds
             # are equal instead of searching for points within
             # the interval.
-            nb_periods = subscription.nb_periods(
-                recognize_start, recognize_end)
+            nb_periods = subscription.nb_periods(recognize_start, recognize_end)
             # XXX integer division
             to_recognize_amount = int(
                 (nb_periods * order_amount) // order_periods)
@@ -93,9 +108,10 @@ def _recognize_subscription_income(subscription, until=None):
             # have been recognized.
             recognized_amount = abs(recognized_amount)
             LOGGER.debug("%dc (%s * %dc / %s) to recognize"\
-                " vs. %dc recognized in [%s, %s[", to_recognize_amount,
+                " vs. %dc recognized in #%d [%s, %s[", to_recognize_amount,
                 str(nb_periods), order_amount, str(order_periods),
-                recognized_amount, recognize_start, recognize_end)
+                recognized_amount, recognize_period_idx,
+                recognize_start, recognize_end)
             if to_recognize_amount > recognized_amount:
                 # We have some amount of revenue to recognize here.
                 amount = to_recognize_amount - recognized_amount
@@ -382,12 +398,12 @@ def create_charges_for_balance(until=None, dry_run=False):
                                 active_subscriptions.unsubscribe(at_time=until)
                         if not dry_run:
                             organization.save()
-                        signals.renewal_charge_failed.send(
-                            sender=__name__,
-                            invoiced_items=invoiceables,
-                            total_price=Price(
-                                invoiceable_amount, invoiceable_unit),
-                            final_notice=final_notice)
+                            signals.renewal_charge_failed.send(
+                                sender=__name__,
+                                invoiced_items=invoiceables,
+                                total_price=Price(
+                                    invoiceable_amount, invoiceable_unit),
+                                final_notice=final_notice)
                     except ProcessorError:
                         # An error from the processor which indicates
                         # the logic might be incorrect, the network down,

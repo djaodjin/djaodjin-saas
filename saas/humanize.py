@@ -1,4 +1,4 @@
-# Copyright (c) 2022, DjaoDjin inc.
+# Copyright (c) 2023, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -225,7 +225,7 @@ def as_percentage(value):
     return "%.2f%%" % (value / 100)
 
 
-def _describe_period_name(period_type, nb_periods):
+def describe_period_name(period_type, nb_periods):
     result = None
     if period_type == HOURLY:
         result = 'hour'
@@ -326,7 +326,7 @@ def describe_buy_periods(plan, ends_at, nb_periods, discount_by_types=None,
         'plan': plan,
         'ends_at': datetime.datetime.strftime(ends_at, '%Y/%m/%d'),
         'nb_periods': nb_periods,
-        'period_name': _describe_period_name(plan.period_type, nb_periods)}
+        'period_name': describe_period_name(plan.period_type, nb_periods)}
     sep = ""
     descr_suffix = ""
 
@@ -351,7 +351,7 @@ def describe_buy_periods(plan, ends_at, nb_periods, discount_by_types=None,
         if discount_amount:
             descr_suffix += sep + DESCRIBE_SUFFIX_DISCOUNT_PERIOD % {
                 'nb_periods': discount_amount,
-                'period_name': _describe_period_name(
+                'period_name': describe_period_name(
                     plan.period_type, discount_amount)}
             sep = " and "
         discount_amount = discount_by_types.get(DISCOUNT_CURRENCY)
