@@ -2788,9 +2788,8 @@ class Plan(SlugTitleMixin, models.Model):
     def get_discounted_period_price(self, coupon):
         return Price(self.get_discounted_period_amount(coupon), self.unit)
 
-    def get_natural_period(self, nb_periods, period_type=None):
-        if not period_type:
-            period_type = self.period_type
+    @staticmethod
+    def get_natural_period(nb_periods, period_type):
         result = None
         if period_type == Plan.HOURLY:
             result = relativedelta(hours=1 * nb_periods)
@@ -2810,8 +2809,9 @@ class Plan(SlugTitleMixin, models.Model):
             # In case of a ``SETTLED``, *nb_periods* will be ``None``
             # since the description does not (should not) allow us to
             # extend the subscription length.
-            natural = self.get_natural_period(
-                nb_periods, period_type=period_type)
+            if not period_type:
+                period_type = self.period_type
+            natural = self.get_natural_period(nb_periods, period_type)
             if natural:
                 result += natural
         return result
