@@ -28,7 +28,9 @@ Urls to metrics
 
 from .... import settings
 from ....compat import path
-from ....views.download import CartItemDownloadView
+from ....views.download import (CartItemDownloadView, BalancesDueDownloadView, BalancesMetricsDownloadView,
+                                CustomerMetricsDownloadView, RevenueMetricsDownloadView,
+                                CouponUsesDownloadView)
 from ....views.profile import DashboardView
 from ....views.metrics import (SubscribersActivityView,
     CouponMetricsView, LifeTimeValueDownloadView,
@@ -70,8 +72,26 @@ urlpatterns = [
         settings.PROFILE_URL_KWARG,
         SubscribersActivityView.as_view(),
         name='saas_subscribers_activity'),
-    path('metrics/<slug:%s>/balances-due' %
+    path('metrics/<slug:%s>/balances-due/' %
          settings.PROFILE_URL_KWARG,
          BalancesDueView.as_view(),
-         name='saas_metrics_balances_due')
+         name='saas_metrics_balances_due'),
+
+    # URLs to download metrics as CSVs.
+    path('metrics/<slug:%s>/balances-due/download'
+         % settings.PROFILE_URL_KWARG,
+         BalancesDueDownloadView.as_view(),
+         name='saas_metrics_balances_due_download'),
+    path('metrics/<slug:%s>/balances/download'
+         % settings.PROFILE_URL_KWARG,
+         BalancesMetricsDownloadView.as_view(),
+         name='saas_metrics_balances_download'),
+    path('metrics/<slug:%s>/customers/download'
+         % settings.PROFILE_URL_KWARG,
+         CustomerMetricsDownloadView.as_view(),
+         name='saas_metrics_customers_download'),
+    path('metrics/<slug:%s>/funds/download'
+         % settings.PROFILE_URL_KWARG,
+        RevenueMetricsDownloadView.as_view(),
+         name='saas_metrics_revenue_download'),
 ]

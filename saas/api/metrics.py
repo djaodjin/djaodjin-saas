@@ -40,7 +40,7 @@ from ..metrics.subscriptions import (active_subscribers_by_period,
     churn_subscribers_by_period, subscribers_age)
 from ..metrics.transactions import lifetime_value
 from ..mixins import (CartItemSmartListMixin, CouponMixin,
-    ProviderMixin, DateRangeContextMixin, BalancesDueMixin, CSVWriterMixin)
+    ProviderMixin, DateRangeContextMixin, BalancesDueMixin)
 from ..models import CartItem, Plan, Transaction
 from ..utils import convert_dates_to_utc, get_organization_model
 
@@ -56,23 +56,178 @@ class MetricsMixin(DateRangeContextMixin, ProviderMixin):
     serializer_class = MetricsSerializer
     filter_backends = (TrailingPeriodFilter,)
 
-    def get(self, request, *args, **kwargs):
+    def calculate_date_periods(self, request):
+
         query_serializer = QueryParamPeriodSerializer(data=request.query_params)
         query_serializer.is_valid(raise_exception=True)
 
-        nb_periods = query_serializer.validated_data.get(self.nb_periods_param)
+        nb_periods = query_serializer.validated_data.get(
+            self.nb_periods_param)
         period_type = query_serializer.validated_data.get(
             self.period_type_param, humanize.MONTHLY)
 
         date_periods = convert_dates_to_utc(
             generate_periods(period_type, nb_periods=nb_periods,
-                from_date=self.ends_at,
-                tzinfo=self.organization.default_timezone))
+                             from_date=self.ends_at,
+                             tzinfo=self.organization.default_timezone))
 
-        return self.retrieve_metrics(date_periods)
+        return date_periods
+
+    def get(self, request, *args, **kwargs):
+        return self.retrieve_metrics(request)
 
 
-class BalancesAPIView(MetricsMixin, APIView):
+class BalancesMetricsMixin(MetricsMixin):
+    def get_data(self, request):
+        results = []
+
+        date_periods = self.calculate_date_periods(request)
+        unit = settings.DEFAULT_UNIT
+        for key in [Transaction.INCOME, Transaction.BACKLOG,
+                    Transaction.RECEIVABLE]:
+            values, _unit = abs_balances_by_period(
+                organization=self.provider, account=key,
+                date_periods=date_periods)
+
+            if _unit:
+                unit = _unit
+
+            results += [{
+                'slug': key,
+                'title': key,
+                'values': values
+            }]
+
+        return results, unit
+
+    def retrieve_metrics(self, request):
+        results, unit = self.get_data(request)
+
+        return Response({
+            'title': "Balances",
+            'unit': unit,
+            'scale': 0.01,
+            'results': results
+        })
+
+class PlanMetricsMixin(MetricsMixin):
+
+    def get_data(self, request):
+        table = []
+        date_periods = self.calculate_date_periods(request)
+        for plan in Plan.objects.filter(
+                organization=self.provider).order_by('title'):
+            values = active_subscribers_by_period(
+                plan, date_periods=date_periods)
+            table.append({
+                'slug': plan.slug,
+                'title': plan.title,
+                'location': reverse('saas_plan_edit', args=(
+                    self.provider, plan)),
+                'is_active': plan.is_active,
+                'values': values,
+            })
+
+        extra_values = churn_subscribers_by_period(date_periods=date_periods)
+        extra = [{
+            'slug': 'churn',
+            'values': extra_values
+        }]
+        return table, extra
+    def retrieve_metrics(self, request):
+
+        table, extra = self.get_data(request)
+
+        return Response({
+            'title': _("Active subscribers"),
+            'results': table,
+            'extra': extra
+        })
+
+
+class RevenueMetricsMixin(MetricsMixin):
+
+    def get_data(self, request):
+        unit = settings.DEFAULT_UNIT
+
+        date_periods = self.calculate_date_periods(request)
+
+        account_table, _, _, table_unit = \
+            aggregate_transactions_change_by_period(self.provider,
+                Transaction.RECEIVABLE, account_title='Sales',
+                orig='orig', dest='dest',
+                date_periods=date_periods)
+
+        _, payment_amounts, payments_unit = aggregate_transactions_by_period(
+            self.provider, Transaction.RECEIVABLE,
+            orig='dest', dest='dest',
+            orig_account=Transaction.BACKLOG,
+            orig_organization=self.provider,
+            date_periods=date_periods)
+
+        _, refund_amounts, refund_unit = aggregate_transactions_by_period(
+            self.provider, Transaction.REFUND,
+            orig='dest', dest='dest',
+            date_periods=date_periods)
+
+        units = get_different_units(table_unit, payments_unit, refund_unit)
+
+        if len(units) > 1:
+            LOGGER.error("different units in RevenueMetricAPIView.get: %s",
+                units)
+
+        if units:
+            unit = units[0]
+
+        account_table += [{
+            'slug': "payments",
+            'title': "Payments",
+            'values': payment_amounts
+        }, {
+            'slug': "refunds",
+            'title': "Refunds",
+            'values': refund_amounts
+        }]
+
+        return account_table, unit
+
+    def retrieve_metrics(self, request):
+        account_table, unit = self.get_data(request)
+        resp = {
+            'title': "Amount",
+            'unit': unit,
+            'scale': 0.01,
+            'results': account_table
+        }
+        if not self.provider.has_bank_account:
+            resp.update({'processor_hint': 'connect_provider'})
+
+        return Response(resp)
+
+class CustomerMetricsMixin(MetricsMixin):
+
+    def get_data(self, request):
+        account_title = 'Payments'
+        account = Transaction.RECEIVABLE
+        # We use ``Transaction.RECEIVABLE`` which technically counts the number
+        # or orders, not the number of payments.
+        date_periods = self.calculate_date_periods(request)
+        _, customer_table, customer_extra, _ = \
+            aggregate_transactions_change_by_period(self.provider, account,
+                account_title=account_title,
+                date_periods=date_periods)
+        return customer_table, customer_extra
+
+    def retrieve_metrics(self, request):
+        customer_table, customer_extra = self.get_data(request)
+        return Response({
+            "title": "Customers",
+            "results": customer_table,
+            "extra": customer_extra
+        })
+
+
+class BalancesAPIView(BalancesMetricsMixin, APIView):
     """
     Retrieves trailing deferred balances
 
@@ -170,33 +325,10 @@ class BalancesAPIView(MetricsMixin, APIView):
             ]
         }
     """
-    def retrieve_metrics(self, date_periods):
-        results = []
-        unit = settings.DEFAULT_UNIT
-        for key in [Transaction.INCOME, Transaction.BACKLOG,
-                    Transaction.RECEIVABLE]:
-            values, _unit = abs_balances_by_period(
-                organization=self.provider, account=key,
-                date_periods=date_periods)
-
-            if _unit:
-                unit = _unit
-
-            results += [{
-                'slug': key,
-                'title': key,
-                'values': values
-            }]
-
-        return Response({
-            'title': "Balances",
-            'unit': unit,
-            'scale': 0.01,
-            'results': results
-        })
 
 
-class RevenueMetricAPIView(MetricsMixin, APIView):
+
+class RevenueMetricAPIView(RevenueMetricsMixin, APIView):
     """
     Retrieves 12-month trailing revenue
 
@@ -317,56 +449,6 @@ class RevenueMetricAPIView(MetricsMixin, APIView):
         }
     """
 
-    def retrieve_metrics(self, date_periods):
-        unit = settings.DEFAULT_UNIT
-
-        account_table, _, _, table_unit = \
-            aggregate_transactions_change_by_period(self.provider,
-                Transaction.RECEIVABLE, account_title='Sales',
-                orig='orig', dest='dest',
-                date_periods=date_periods)
-
-        _, payment_amounts, payments_unit = aggregate_transactions_by_period(
-            self.provider, Transaction.RECEIVABLE,
-            orig='dest', dest='dest',
-            orig_account=Transaction.BACKLOG,
-            orig_organization=self.provider,
-            date_periods=date_periods)
-
-        _, refund_amounts, refund_unit = aggregate_transactions_by_period(
-            self.provider, Transaction.REFUND,
-            orig='dest', dest='dest',
-            date_periods=date_periods)
-
-        units = get_different_units(table_unit, payments_unit, refund_unit)
-
-        if len(units) > 1:
-            LOGGER.error("different units in RevenueMetricAPIView.get: %s",
-                units)
-
-        if units:
-            unit = units[0]
-
-        account_table += [{
-            'slug': "payments",
-            'title': "Payments",
-            'values': payment_amounts
-        }, {
-            'slug': "refunds",
-            'title': "Refunds",
-            'values': refund_amounts
-        }]
-
-        resp = {
-            'title': "Amount",
-            'unit': unit,
-            'scale': 0.01,
-            'results': account_table
-        }
-        if not self.provider.has_bank_account:
-            resp.update({'processor_hint': 'connect_provider'})
-
-        return Response(resp)
 
 
 class CouponUsesQuerysetMixin(object):
@@ -425,7 +507,8 @@ class CouponUsesAPIView(CartItemSmartListMixin, CouponUsesQuerysetMixin,
     serializer_class = CartItemSerializer
 
 
-class CustomerMetricAPIView(MetricsMixin, APIView):
+
+class CustomerMetricAPIView(CustomerMetricsMixin, APIView):
     """
     Retrieves trailing customer counts
 
@@ -544,23 +627,6 @@ class CustomerMetricAPIView(MetricsMixin, APIView):
         }
     """
 
-    def retrieve_metrics(self, date_periods):
-        account_title = 'Payments'
-        account = Transaction.RECEIVABLE
-        # We use ``Transaction.RECEIVABLE`` which technically counts the number
-        # or orders, not the number of payments.
-
-        _, customer_table, customer_extra, _ = \
-            aggregate_transactions_change_by_period(self.provider, account,
-                account_title=account_title,
-                date_periods=date_periods)
-
-        return Response({
-            "title": "Customers",
-            "results": customer_table,
-            "extra": customer_extra
-        })
-
 
 class LifetimeValueMetricMixin(DateRangeContextMixin, ProviderMixin):
     """
@@ -652,7 +718,7 @@ class LifetimeValueMetricAPIView(LifetimeValueMetricMixin, ListAPIView):
         return self.decorate_queryset(page if page else queryset)
 
 
-class PlanMetricAPIView(MetricsMixin, APIView):
+class PlanMetricAPIView(PlanMetricsMixin, APIView):
     """
     Retrieves trailing plans performance
 
@@ -755,33 +821,6 @@ class PlanMetricAPIView(MetricsMixin, APIView):
         }
     """
 
-    def retrieve_metrics(self, date_periods):
-        table = []
-        for plan in Plan.objects.filter(
-                organization=self.provider).order_by('title'):
-            values = active_subscribers_by_period(
-                plan, date_periods=date_periods)
-            table.append({
-                'slug': plan.slug,
-                'title': plan.title,
-                'location': reverse('saas_plan_edit', args=(
-                    self.provider, plan)),
-                'is_active': plan.is_active,
-                'values': values,
-            })
-
-        extra_values = churn_subscribers_by_period(date_periods=date_periods)
-        extra = [{
-            'slug': 'churn',
-            'values': extra_values
-        }]
-
-        return Response({
-            'title': _("Active subscribers"),
-            'results': table,
-            'extra': extra
-        })
-
 
 class BalancesDueAPIView(BalancesDueMixin, ListAPIView):
     """
@@ -837,230 +876,3 @@ class BalancesDueAPIView(BalancesDueMixin, ListAPIView):
         page = super(BalancesDueAPIView, self).paginate_queryset(
             queryset)
         return self.decorate_queryset(page if page else queryset)
-
-
-class BalancesDownloadView(CSVWriterMixin, MetricsMixin, APIView):
-
-    def retrieve_metrics(self, date_periods):
-        csv_data = {}
-        for key in [Transaction.INCOME, Transaction.BACKLOG, Transaction.RECEIVABLE]:
-            values, _unit = abs_balances_by_period(
-                organization=self.provider, account=key, date_periods=date_periods)
-
-            for date, value in values:
-                if date not in csv_data:
-                    csv_data[date] = {}
-                csv_data[date][key] = value
-
-
-        response, writer = self.get_csv_response('balances.csv')
-
-        headers = ['Date'] + [Transaction.INCOME, Transaction.BACKLOG, Transaction.RECEIVABLE]
-        writer.writerow(headers)
-
-        self.write_csv_rows(writer, csv_data, headers)
-
-        return response
-
-
-class RevenueDownloadView(CSVWriterMixin, MetricsMixin, APIView):
-
-    def retrieve_metrics(self, date_periods):
-        csv_data = {}
-
-        account_table, _, _, table_unit = \
-            aggregate_transactions_change_by_period(self.provider,
-                Transaction.RECEIVABLE, account_title='Sales',
-                orig='orig', dest='dest',
-                date_periods=date_periods)
-
-        _, payment_amounts, payments_unit = aggregate_transactions_by_period(
-            self.provider, Transaction.RECEIVABLE,
-            orig='dest', dest='dest',
-            orig_account=Transaction.BACKLOG,
-            orig_organization=self.provider,
-            date_periods=date_periods)
-
-        _, refund_amounts, refund_unit = aggregate_transactions_by_period(
-            self.provider, Transaction.REFUND,
-            orig='dest', dest='dest',
-            date_periods=date_periods)
-
-        units = get_different_units(table_unit, payments_unit, refund_unit)
-
-        if len(units) > 1:
-            LOGGER.error("different units in RevenueMetricAPIView.get: %s",
-                units)
-
-        account_table += [{
-            'slug': "payments",
-            'title': "Payments",
-            'values': payment_amounts
-        }, {
-            'slug': "refunds",
-            'title': "Refunds",
-            'values': refund_amounts
-        }]
-
-        response, writer = self.get_csv_response('revenue.csv')
-
-        if not account_table:
-            writer.writerow(['No data available'])
-            return response
-
-        headers = ['Date'] + [entry['slug'] for entry in account_table]
-        writer.writerow(headers)
-
-        for entry in account_table:
-            for date, value in entry.get('values', []):
-                if date not in csv_data:
-                    csv_data[date] = {}
-                csv_data[date][entry['slug']] = value
-
-        self.write_csv_rows(writer, csv_data, headers)
-
-        return response
-
-
-class CouponUsesDownloadView(CSVWriterMixin, CartItemSmartListMixin,
-                             CouponUsesQuerysetMixin, CouponMixin, APIView):
-
-    def get(self, request, *args, **kwargs):
-        queryset = self.get_queryset()
-
-        # Using a serializer so we can get the attributes for
-        # CSV headers
-        serializer = CartItemSerializer(queryset, many=True)
-        serialized_data = serializer.data
-
-        response, writer = self.get_csv_response('coupon_uses.csv')
-
-        self.write_csv_data(writer, serialized_data)
-
-        return response
-
-
-class CustomerMetricDownloadView(CSVWriterMixin, MetricsMixin, APIView):
-
-    def retrieve_metrics(self, date_periods):
-        csv_data = {}
-
-        _, customer_table, customer_extra, _ = \
-            aggregate_transactions_change_by_period(self.provider, Transaction.RECEIVABLE,
-                account_title='Payments',
-                date_periods=date_periods)
-
-        customer_table = customer_table + customer_extra
-
-        response, writer = self.get_csv_response('customer_metrics.csv')
-
-        headers = ['Date'] + [entry['slug'] for entry in customer_table]
-        writer.writerow(headers)
-
-        for entry in customer_table:
-            for date, value in entry['values']:
-                if date not in csv_data:
-                    csv_data[date] = {}
-                csv_data[date][entry['slug']] = value
-
-        self.write_csv_rows(writer, csv_data, headers)
-
-        return response
-
-
-class LifetimeValueDownloadView(CSVWriterMixin, LifetimeValueMetricMixin, APIView):
-
-    def get(self, request, *args, **kwargs):
-        queryset = self.get_queryset()
-        decorated_queryset = self.decorate_queryset(queryset)
-
-        serializer = LifetimeSerializer(decorated_queryset, many=True)
-        serialized_data = serializer.data
-
-        response, writer = self.get_csv_response('lifetime_value.csv')
-
-        self.write_csv_data(writer, serialized_data)
-
-        return response
-
-
-class PlanMetricDownloadView(CSVWriterMixin, MetricsMixin, APIView):
-
-    def retrieve_metrics(self, date_periods):
-        csv_data = {}
-        table = []
-        for plan in Plan.objects.filter(organization=self.provider).order_by('title'):
-            values = active_subscribers_by_period(plan, date_periods=date_periods)
-            table.append({
-                'slug': plan.slug,
-                'title': plan.title,
-                'values': values
-            })
-
-        response, writer = self.get_csv_response('plan_metrics.csv')
-
-        if not table:
-            writer.writerow(['No data available'])
-            return response
-
-        headers = ['Date'] + [entry['slug'] for entry in table]
-        writer.writerow(headers)
-
-        for entry in table:
-            for date, value in entry.get('values', []):
-                if date not in csv_data:
-                    csv_data[date] = {}
-                csv_data[date][entry['slug']] = value
-
-        self.write_csv_rows(writer, csv_data, headers)
-
-        return response
-
-
-class BalancesDueDownloadView(CSVWriterMixin, BalancesDueMixin, APIView):
-
-    def get(self, request, *args, **kwargs):
-        queryset = self.get_queryset()
-        decorated_queryset = self.decorate_queryset(queryset)
-
-        serializer = BalancesDueSerializer(decorated_queryset, many=True)
-        serialized_data = serializer.data
-
-        response, writer = self.get_csv_response('balances_due.csv')
-
-        if serialized_data:
-            basic_headers = [key for key in serialized_data[0].keys() if key != 'balances']
-            # Keep track of different currency units, and dynamically update the CSV headers
-            # based on however many units we have
-            currency_set = set()
-            balance_data_rows = []
-
-            for entry in serialized_data:
-                balances = entry.get('balances', {})
-                individual_balances = {}
-
-                for currency, currency_balances in balances.items():
-                    currency_set.add(currency)
-                    for balance_type, value in currency_balances.items():
-                        header_name = f'{currency}_{balance_type}'
-                        individual_balances[header_name] = value
-
-                balance_data_rows.append(individual_balances)
-
-            currency_headers = [
-                f'{currency}_{balance_type}'
-                for currency in currency_set
-                for balance_type in ['contract_value', 'cash_payments', 'balance']
-            ]
-
-            headers = basic_headers + currency_headers
-            writer.writerow(headers)
-
-            for data, balances in zip(serialized_data, balance_data_rows):
-                row = [data.get(header, '') for header in basic_headers]
-                row.extend([balances.get(header, 0) for header in currency_headers])
-                writer.writerow(row)
-        else:
-            writer.writerow(['No data available'])
-
-        return response

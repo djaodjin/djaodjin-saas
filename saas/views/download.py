@@ -42,6 +42,10 @@ from .. import humanize
 from ..api.balances import BrokerBalancesMixin
 from ..api.charges import SmartChargeListMixin, ChargeQuerysetMixin
 from ..api.coupons import CouponQuerysetMixin, SmartCouponListMixin
+from ..api.metrics import (BalancesMetricsMixin, PlanMetricsMixin, RevenueMetricsMixin,
+                           CustomerMetricsMixin, CouponUsesQuerysetMixin)
+from ..api.organizations import EngagedSubscribersQuerysetMixin, UnengagedSubscribersQuerysetMixin
+from ..api.serializers import BalancesDueSerializer, OrganizationSerializer
 from ..api.subscriptions import ActiveSubscribersMixin, ChurnedSubscribersMixin
 from ..api.transactions import (BillingsQuerysetMixin,
     SmartTransactionListMixin, TransactionQuerysetMixin, TransferQuerysetMixin)
@@ -49,10 +53,9 @@ from ..api.users import RegisteredQuerysetMixin
 from ..compat import six
 from ..metrics.base import month_periods
 from ..mixins import (CartItemSmartListMixin, ProviderMixin,
-    UserSmartListMixin, as_html_description)
-from ..models import BalanceLine, CartItem, Coupon
+    UserSmartListMixin, as_html_description, CouponMixin, BalancesDueMixin)
+from ..models import BalanceLine, CartItem, Coupon, Transaction
 from ..utils import datetime_or_now, convert_dates_to_utc
-
 
 class CSVDownloadView(View):
 
@@ -420,4 +423,309 @@ class TransferDownloadView(SmartTransactionListMixin,
                 Decimal(transaction.dest_amount) / 100),
             self.encode(transaction.dest_unit),
             self.encode_descr(transaction)
+        ]
+
+class BalancesMetricsDownloadView(CSVDownloadView, BalancesMetricsMixin):
+    basename = 'balancesmetrics'
+
+    headings = [
+        'Date',
+        'Income',
+        'Backlog',
+        'Receivable',
+    ]
+
+    def get_headings(self):
+        return self.headings
+
+    def get_queryset(self):
+        request = Request(self.request)
+        results, unit = self.get_data(request=request)
+
+        consolidated_data = {}
+        for result in results:
+            key = result['slug']
+            for date_value in result['values']:
+                date = date_value[0]
+                value = date_value[1]
+
+                if date not in consolidated_data:
+                    consolidated_data[date] = {
+                        'Date': date,
+                        Transaction.INCOME: 0,
+                        Transaction.BACKLOG: 0,
+                        Transaction.RECEIVABLE: 0
+                    }
+                consolidated_data[date][key] = value
+
+        return list(consolidated_data.values())
+
+    def queryrow_to_columns(self, record):
+        row = [
+            self.encode(record[heading]) for heading in self.headings
+        ]
+        return row
+
+class RevenueMetricsDownloadView(CSVDownloadView, RevenueMetricsMixin):
+    basename = 'revenuemetrics'
+
+    headings = [
+        'Date',
+        'Total Sales',
+        'New Sales',
+        'Churned Sales',
+        'Payments',
+        'Refunds'
+    ]
+
+    def get_headings(self):
+        return self.headings
+
+    def get_queryset(self):
+        request = Request(self.request)
+        account_table, _ = self.get_data(request=request)
+
+        consolidated_data = {}
+        for account in account_table:
+            for date_value in account['values']:
+                date_str = date_value[0]
+                if date_str not in consolidated_data:
+                    consolidated_data[date_str] = {
+                        'Date': date_str,
+                        **{heading: 0 for heading in self.headings if heading != 'Date'}
+                    }
+                consolidated_data[date_str][account['title']] = date_value[1]
+
+        return list(consolidated_data.values())
+
+    def queryrow_to_columns(self, record):
+        row = [
+            self.encode(record[heading]) for heading in self.headings
+        ]
+        return row
+
+
+class CustomerMetricsDownloadView(CSVDownloadView, CustomerMetricsMixin):
+    basename = 'customermetrics'
+
+    headings = [
+        'Date',
+        'Total # of Customers',
+        '# of new Customers',
+        '# of churned Customers',
+        'Net New Customers',
+        '% Customer Churn'
+    ]
+
+    def get_headings(self):
+        return self.headings
+
+    def get_queryset(self):
+        request = Request(self.request)
+        customer_table, _ = self.get_data(request=request)
+
+        consolidated_data = {}
+        for entry in customer_table:
+            for date_value in entry['values']:
+                date_str = date_value[0]
+                if date_str not in consolidated_data:
+                    consolidated_data[date_str] = {
+                        'Date': date_str,
+                        **{heading: 0 for heading in self.headings if heading != 'Date'}
+                    }
+                consolidated_data[date_str][entry['title']] = date_value[1]
+
+        return list(consolidated_data.values())
+
+    def queryrow_to_columns(self, record):
+        return [
+            self.encode(record[heading]) for heading in self.headings
+        ]
+
+
+class PlanMetricsDownloadView(CSVDownloadView, PlanMetricsMixin):
+    basename = 'planmetrics'
+
+    def set_plans_data(self, request):
+        plans, _ = self.get_data(request=Request(request))
+        self.plans = plans
+        self.headings = ['Date'] + [plan['title'] for plan in plans]
+
+    def get_headings(self):
+        return self.headings
+
+    def get_queryset(self):
+        csv_data = [
+            ['location'] + [plan['location'] for plan in self.plans],
+            ['is_active'] + ['true' if plan['is_active'] else 'false' for plan in self.plans]
+        ]
+
+        consolidated_data = {}
+        for plan in self.plans:
+            for date_value in plan['values']:
+                date_str = date_value[0]
+                value = date_value[1]
+                if date_str not in consolidated_data:
+                    consolidated_data[date_str] = [0] * len(self.plans)
+                index = [p['title'] for p in self.plans].index(plan['title'])
+                consolidated_data[date_str][index] = value
+
+        for date, values in consolidated_data.items():
+            row = [date] + values
+            csv_data.append(row)
+
+        return csv_data
+
+    def queryrow_to_columns(self, record):
+        return self.encode(record)
+
+    def get(self, request, *args, **kwargs):
+        self.set_plans_data(request)
+        return super().get(request, *args, **kwargs)
+
+
+class CouponUsesDownloadView(CSVDownloadView, CartItemSmartListMixin,
+                                CouponUsesQuerysetMixin, CouponMixin):
+    basename = 'coupon_uses'
+
+    headings = [
+        'Created At',
+        'User',
+        'Claim Code',
+        'Plan',
+        'Option',
+        'Use',
+        'Quantity',
+        'Sync On',
+    ]
+
+    def get_headings(self):
+        return self.headings
+
+    def get_queryset(self):
+        return super(CouponUsesQuerysetMixin, self).get_queryset()
+
+    def queryrow_to_columns(self, record):
+        row = [
+            getattr(record, 'created_at', ''),
+            getattr(record, 'user', ''),
+            getattr(record, 'claim_code', ''),
+            getattr(record, 'plan', ''),
+            getattr(record, 'option', ''),
+            getattr(record, 'use', ''),
+            getattr(record, 'quantity', 0),
+            getattr(record, 'sync_on', ''),
+        ]
+
+        return [self.encode(item) for item in row]
+
+
+class BalancesDueDownloadView(CSVDownloadView, BalancesDueMixin):
+    basename = 'balances_due'
+
+    def get_headings(self):
+        basic_headers = [
+            'Slug',
+            'Printable Name',
+            'Picture',
+            'Type',
+            'Credentials',
+            'Created At'
+        ]
+
+        currency_set = self.get_currency_set()
+        currency_headers = [
+            f'{currency}_{balance_type}'
+            for currency in currency_set
+            for balance_type in ['contract_value', 'cash_payments', 'balance']
+        ]
+
+        return basic_headers + currency_headers
+
+    def get_currency_set(self):
+        queryset = self.get_queryset()
+        decorated_queryset = self.decorate_queryset(queryset)
+        currency_set = set()
+
+        for organization in decorated_queryset:
+
+            for currency in organization.get('balances').keys():
+                currency_set.add(currency)
+        return currency_set
+
+    def get_queryset(self):
+        queryset = BalancesDueMixin.get_queryset(self)
+        decorated_queryset = BalancesDueMixin.decorate_queryset(self, queryset)
+        # Using a serializer to get type, credentials
+        serializer = BalancesDueSerializer(decorated_queryset, many=True)
+        return serializer.data
+
+    def queryrow_to_columns(self, record):
+        row = [record.get('_'.join(header.lower().split()), '') for header in
+               self.get_headings()[:-len(self.get_currency_set()) * 3]]
+        for currency in self.get_currency_set():
+            balances = record.get('balances', {}).get(currency, {})
+            row.extend([balances.get(key, 0) for key in ['contract_value', 'cash_payments', 'balance']])
+        return [self.encode(item) for item in row]
+
+
+class EngagedSubscribersDownloadView(EngagedSubscribersQuerysetMixin, CSVDownloadView):
+    basename = 'engaged_subscribers'
+
+    headings = [
+        'Created At',
+        'Username',
+        'Email',
+        'Full Name',
+        'Account Creation Date',
+        'Role Description',
+        'Profile Slug',
+        'Profile Printable Name',
+        'Profile Creation Date'
+    ]
+
+    def get_headings(self):
+        return self.headings
+
+    def queryrow_to_columns(self, record):
+        user = record.user
+        role_description = record.role_description
+        organization = record.organization
+
+        return [
+            self.encode(getattr(record, 'created_at', '')),
+            self.encode(getattr(user, 'username', '')),
+            self.encode(getattr(user, 'email', '')),
+            self.encode(getattr(user, 'get_full_name', '')()),
+            self.encode(getattr(user, 'date_joined', '')),
+            self.encode(getattr(role_description, 'title', '')),
+            self.encode(getattr(organization, 'slug', '')),
+            self.encode(getattr(organization, 'printable_name', '')),
+            self.encode(getattr(organization, 'created_at', '')),
+        ]
+
+
+class UnengagedSubscribersDownloadView(UnengagedSubscribersQuerysetMixin, CSVDownloadView):
+    basename = 'unengaged_subscribers'
+
+    headings = [
+        'Slug',
+        'Name',
+        'Type',
+        'Credentials',
+        'Created At'
+    ]
+
+    def get_headings(self):
+        return self.headings
+
+    def get_queryset(self):
+        # Using a serializer to get type & credentials
+        serializer = OrganizationSerializer(super().get_queryset(), many=True)
+        return serializer.data
+
+    def queryrow_to_columns(self, record):
+        return [
+            self.encode(record['printable_name']) if heading == 'Name' else self.encode(
+                record.get('_'.join(heading.lower().split()), '')) for heading in self.get_headings()
         ]

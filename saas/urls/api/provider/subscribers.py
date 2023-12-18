@@ -28,8 +28,7 @@ API URLs for a provider subcribers.
 
 from .... import settings
 from ....api.organizations import (EngagedSubscribersAPIView,
-    ProviderAccessiblesAPIView, UnengagedSubscribersAPIView,
-    EngagedSubscribersDownloadView, UnengagedSubscribersDownloadView)
+    ProviderAccessiblesAPIView, UnengagedSubscribersAPIView)
 from ....api.subscriptions import (ActiveSubscribersAPIView,
     AllSubscribersAPIView, ChurnedSubscribersAPIView, PlanAllSubscribersAPIView,
     PlanActiveSubscribersAPIView, PlanChurnedSubscribersAPIView,
@@ -83,14 +82,5 @@ urlpatterns = [
         settings.PROFILE_URL_KWARG,
         PlanActiveSubscribersAPIView.as_view(),
         name='saas_api_plan_subscribers'),
-
-    path('profile/<slug:%s>/subscribers/engaged/download' %
-        settings.PROFILE_URL_KWARG,
-        EngagedSubscribersDownloadView.as_view(),
-        name='saas_api_engaged_subscribers_download'),
-    path('profile/<slug:%s>/subscribers/unengaged/download' %
-        settings.PROFILE_URL_KWARG,
-        UnengagedSubscribersDownloadView.as_view(),
-        name='saas_api_unengaged_subscribers_download'),
 
 ]

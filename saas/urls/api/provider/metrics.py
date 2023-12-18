@@ -31,9 +31,7 @@ from ....api.federations import (FederatedSubscribersAPIView,
     SharedProfilesAPIView)
 from ....api.metrics import (BalancesAPIView, CouponUsesAPIView,
     CustomerMetricAPIView, LifetimeValueMetricAPIView, PlanMetricAPIView,
-    RevenueMetricAPIView, BalancesDueAPIView, BalancesDownloadView,
-    RevenueDownloadView, CouponUsesDownloadView, CustomerMetricDownloadView,
-    LifetimeValueDownloadView, PlanMetricDownloadView, BalancesDueDownloadView)
+    RevenueMetricAPIView, BalancesDueAPIView)
 from ....compat import path
 
 
@@ -70,34 +68,5 @@ urlpatterns = [
     path('metrics/<slug:%s>/federated' %
         settings.PROFILE_URL_KWARG,
         FederatedSubscribersAPIView.as_view(),
-        name="saas_api_federated_subscribers"),
-
-    # Download metrics as CSV files
-    path('metrics/<slug:%s>/coupons/<slug:coupon>/download' %
-         settings.PROFILE_URL_KWARG,
-         CouponUsesDownloadView.as_view(),
-         name='saas_api_coupon_uses_download'),
-    path('metrics/<slug:%s>/balances/download' %
-         settings.PROFILE_URL_KWARG,
-         BalancesDownloadView.as_view(),
-         name='saas_api_balances_download'),
-    path('metrics/<slug:%s>/customers/download' %
-         settings.PROFILE_URL_KWARG,
-         CustomerMetricDownloadView.as_view(),
-         name='saas_api_customer_download'),
-    path('metrics/<slug:%s>/plans/download' %
-         settings.PROFILE_URL_KWARG,
-         PlanMetricDownloadView.as_view(),
-         name='saas_api_metrics_plans_download'),
-    path('metrics/cowork/funds/download',
-         RevenueDownloadView.as_view(),
-         name='saas_api_revenue_download'),
-    path('metrics/<slug:%s>/lifetimevalue/download' %
-         settings.PROFILE_URL_KWARG,
-         LifetimeValueDownloadView.as_view(),
-         name='saas_api_metrics_lifetimevalue_download'),
-    path('metrics/<slug:%s>/balances-due/download' %
-         settings.PROFILE_URL_KWARG,
-         BalancesDueDownloadView.as_view(),
-         name='saas_api_metrics_balances_due_download'),
+        name="saas_api_federated_subscribers")
 ]

@@ -32,7 +32,6 @@ from rest_framework import parsers, status
 from rest_framework.generics import (CreateAPIView, ListAPIView,
     RetrieveUpdateDestroyAPIView)
 from rest_framework.response import Response
-from rest_framework.views import APIView
 
 from .serializers import (EngagedSubscriberSerializer, OrganizationSerializer,
     OrganizationDetailSerializer, OrganizationWithSubscriptionsSerializer,
@@ -43,7 +42,7 @@ from ..decorators import _valid_manager
 from ..filters import OrderingFilter, SearchFilter
 from ..mixins import (DateRangeContextMixin, OrganizationMixin,
     OrganizationSearchOrderListMixin, OrganizationSmartListMixin,
-    ProviderMixin, OrganizationDecorateMixin, CSVWriterMixin)
+    ProviderMixin, OrganizationDecorateMixin)
 from ..models import get_broker
 from ..utils import (build_absolute_uri, datetime_or_now,
     get_organization_model, get_role_model, get_picture_storage,
@@ -598,34 +597,3 @@ class UnengagedSubscribersAPIView(OrganizationSearchOrderListMixin,
         }
     """
     serializer_class = OrganizationSerializer
-
-class EngagedSubscribersDownloadView(EngagedSubscribersSmartListMixin,
-                                     EngagedSubscribersQuerysetMixin,
-                                     CSVWriterMixin, APIView):
-
-    def get(self, request, *args, **kwargs):
-        queryset = self.get_queryset()
-
-        serializer = EngagedSubscriberSerializer(queryset, many=True, context={'request': request})
-        serialized_data = serializer.data
-        response, writer = self.get_csv_response('engaged_subscribers.csv')
-
-        self.write_csv_data(writer, serialized_data)
-
-        return response
-
-
-class UnengagedSubscribersDownloadView(OrganizationSearchOrderListMixin,
-                                     UnengagedSubscribersQuerysetMixin,
-                                     CSVWriterMixin, APIView):
-
-    def get(self, request, *args, **kwargs):
-        queryset = self.get_queryset()
-
-        serializer = EngagedSubscriberSerializer(queryset, many=True, context={'request': request})
-        serialized_data = serializer.data
-        response, writer = self.get_csv_response('unengaged_subscribers.csv')
-
-        self.write_csv_data(writer, serialized_data)
-
-        return response
