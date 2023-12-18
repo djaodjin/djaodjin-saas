@@ -65,8 +65,6 @@ urlpatterns = [
     path('profile/<slug:%s>/subscribers/' %
         settings.PROFILE_URL_KWARG,
         SubscriberListView.as_view(), name='saas_subscriber_list'),
-
-    # CSV Download views
     path('profile/<slug:%s>/plans/download'
          % settings.PROFILE_URL_KWARG,
          PlanMetricsDownloadView.as_view(),

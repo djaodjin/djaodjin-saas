@@ -584,43 +584,7 @@ class PlanMetricsDownloadView(CSVDownloadView, PlanMetricsMixin):
         return super().get(request, *args, **kwargs)
 
 
-class CouponUsesDownloadView(CSVDownloadView, CartItemSmartListMixin,
-                                CouponUsesQuerysetMixin, CouponMixin):
-    basename = 'coupon_uses'
-
-    headings = [
-        'Created At',
-        'User',
-        'Claim Code',
-        'Plan',
-        'Option',
-        'Use',
-        'Quantity',
-        'Sync On',
-    ]
-
-    def get_headings(self):
-        return self.headings
-
-    def get_queryset(self):
-        return super(CouponUsesQuerysetMixin, self).get_queryset()
-
-    def queryrow_to_columns(self, record):
-        row = [
-            getattr(record, 'created_at', ''),
-            getattr(record, 'user', ''),
-            getattr(record, 'claim_code', ''),
-            getattr(record, 'plan', ''),
-            getattr(record, 'option', ''),
-            getattr(record, 'use', ''),
-            getattr(record, 'quantity', 0),
-            getattr(record, 'sync_on', ''),
-        ]
-
-        return [self.encode(item) for item in row]
-
-
-class BalancesDueDownloadView(CSVDownloadView, BalancesDueMixin):
+class BalancesDueDownloadView(BalancesDueMixin, CSVDownloadView):
     basename = 'balances_due'
 
     def get_headings(self):
@@ -654,8 +618,9 @@ class BalancesDueDownloadView(CSVDownloadView, BalancesDueMixin):
         return currency_set
 
     def get_queryset(self):
-        queryset = BalancesDueMixin.get_queryset(self)
-        decorated_queryset = BalancesDueMixin.decorate_queryset(self, queryset)
+        queryset = super(BalancesDueDownloadView, self).get_queryset()
+        decorated_queryset = super(BalancesDueDownloadView, self).decorate_queryset(
+            queryset)
         # Using a serializer to get type, credentials
         serializer = BalancesDueSerializer(decorated_queryset, many=True)
         return serializer.data

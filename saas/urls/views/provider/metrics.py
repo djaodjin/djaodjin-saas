@@ -29,8 +29,7 @@ Urls to metrics
 from .... import settings
 from ....compat import path
 from ....views.download import (CartItemDownloadView, BalancesDueDownloadView, BalancesMetricsDownloadView,
-                                CustomerMetricsDownloadView, RevenueMetricsDownloadView,
-                                CouponUsesDownloadView)
+                                CustomerMetricsDownloadView, RevenueMetricsDownloadView)
 from ....views.profile import DashboardView
 from ....views.metrics import (SubscribersActivityView,
     CouponMetricsView, LifeTimeValueDownloadView,
@@ -77,7 +76,7 @@ urlpatterns = [
          BalancesDueView.as_view(),
          name='saas_metrics_balances_due'),
 
-    # URLs to download metrics as CSVs.
+    # URLs to download metrics as .csv
     path('metrics/<slug:%s>/balances-due/download'
          % settings.PROFILE_URL_KWARG,
          BalancesDueDownloadView.as_view(),
