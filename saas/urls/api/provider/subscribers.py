@@ -82,5 +82,4 @@ urlpatterns = [
         settings.PROFILE_URL_KWARG,
         PlanActiveSubscribersAPIView.as_view(),
         name='saas_api_plan_subscribers'),
-
 ]

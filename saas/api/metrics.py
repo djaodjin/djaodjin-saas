@@ -56,9 +56,20 @@ class MetricsMixin(DateRangeContextMixin, ProviderMixin):
     serializer_class = MetricsSerializer
     filter_backends = (TrailingPeriodFilter,)
 
-    def calculate_date_periods(self, request):
+    def calculate_date_periods(self):
+        # We use self.get_query_param since this Mixin is also used
+        # by the CSVDownloadViews, which sends in a Django request instead
+        # of a DRF request
+        nb_periods = self.get_query_param(self.nb_periods_param)
+        period_type = self.get_query_param(self.period_type_param)
 
-        query_serializer = QueryParamPeriodSerializer(data=request.query_params)
+        query_params = {}
+        if nb_periods:
+            query_params[self.nb_periods_param] = nb_periods
+        if period_type:
+            query_params[self.period_type_param] = period_type
+
+        query_serializer = QueryParamPeriodSerializer(data=query_params)
         query_serializer.is_valid(raise_exception=True)
 
         nb_periods = query_serializer.validated_data.get(
@@ -73,15 +84,12 @@ class MetricsMixin(DateRangeContextMixin, ProviderMixin):
 
         return date_periods
 
-    def get(self, request, *args, **kwargs):
-        return self.retrieve_metrics(request)
-
 
 class BalancesMetricsMixin(MetricsMixin):
-    def get_data(self, request):
+    def get_data(self):
         results = []
 
-        date_periods = self.calculate_date_periods(request)
+        date_periods = self.calculate_date_periods()
         unit = settings.DEFAULT_UNIT
         for key in [Transaction.INCOME, Transaction.BACKLOG,
                     Transaction.RECEIVABLE]:
@@ -100,8 +108,8 @@ class BalancesMetricsMixin(MetricsMixin):
 
         return results, unit
 
-    def retrieve_metrics(self, request):
-        results, unit = self.get_data(request)
+    def retrieve_metrics(self):
+        results, unit = self.get_data()
 
         return Response({
             'title': "Balances",
@@ -110,47 +118,13 @@ class BalancesMetricsMixin(MetricsMixin):
             'results': results
         })
 
-class PlanMetricsMixin(MetricsMixin):
-
-    def get_data(self, request):
-        table = []
-        date_periods = self.calculate_date_periods(request)
-        for plan in Plan.objects.filter(
-                organization=self.provider).order_by('title'):
-            values = active_subscribers_by_period(
-                plan, date_periods=date_periods)
-            table.append({
-                'slug': plan.slug,
-                'title': plan.title,
-                'location': reverse('saas_plan_edit', args=(
-                    self.provider, plan)),
-                'is_active': plan.is_active,
-                'values': values,
-            })
-
-        extra_values = churn_subscribers_by_period(date_periods=date_periods)
-        extra = [{
-            'slug': 'churn',
-            'values': extra_values
-        }]
-        return table, extra
-    def retrieve_metrics(self, request):
-
-        table, extra = self.get_data(request)
-
-        return Response({
-            'title': _("Active subscribers"),
-            'results': table,
-            'extra': extra
-        })
-
 
 class RevenueMetricsMixin(MetricsMixin):
 
-    def get_data(self, request):
+    def get_data(self):
         unit = settings.DEFAULT_UNIT
 
-        date_periods = self.calculate_date_periods(request)
+        date_periods = self.calculate_date_periods()
 
         account_table, _, _, table_unit = \
             aggregate_transactions_change_by_period(self.provider,
@@ -191,8 +165,8 @@ class RevenueMetricsMixin(MetricsMixin):
 
         return account_table, unit
 
-    def retrieve_metrics(self, request):
-        account_table, unit = self.get_data(request)
+    def retrieve_metrics(self):
+        account_table, unit = self.get_data()
         resp = {
             'title': "Amount",
             'unit': unit,
@@ -204,26 +178,63 @@ class RevenueMetricsMixin(MetricsMixin):
 
         return Response(resp)
 
+
 class CustomerMetricsMixin(MetricsMixin):
 
-    def get_data(self, request):
+    def get_data(self):
         account_title = 'Payments'
         account = Transaction.RECEIVABLE
         # We use ``Transaction.RECEIVABLE`` which technically counts the number
         # or orders, not the number of payments.
-        date_periods = self.calculate_date_periods(request)
+        date_periods = self.calculate_date_periods()
         _, customer_table, customer_extra, _ = \
             aggregate_transactions_change_by_period(self.provider, account,
                 account_title=account_title,
                 date_periods=date_periods)
         return customer_table, customer_extra
 
-    def retrieve_metrics(self, request):
-        customer_table, customer_extra = self.get_data(request)
+    def retrieve_metrics(self):
+        customer_table, customer_extra = self.get_data()
         return Response({
             "title": "Customers",
             "results": customer_table,
             "extra": customer_extra
+        })
+
+
+class PlanMetricsMixin(MetricsMixin):
+
+    def get_data(self):
+        table = []
+        date_periods = self.calculate_date_periods()
+        for plan in Plan.objects.filter(
+                organization=self.provider).order_by('title'):
+            values = active_subscribers_by_period(
+                plan, date_periods=date_periods)
+            table.append({
+                'slug': plan.slug,
+                'title': plan.title,
+                'location': reverse('saas_plan_edit', args=(
+                    self.provider, plan)),
+                'is_active': plan.is_active,
+                'values': values,
+            })
+
+        extra_values = churn_subscribers_by_period(date_periods=date_periods)
+        extra = [{
+            'slug': 'churn',
+            'values': extra_values
+        }]
+        return table, extra
+
+    def retrieve_metrics(self):
+
+        table, extra = self.get_data()
+
+        return Response({
+            'title': _("Active subscribers"),
+            'results': table,
+            'extra': extra
         })
 
 
@@ -325,7 +336,8 @@ class BalancesAPIView(BalancesMetricsMixin, APIView):
             ]
         }
     """
-
+    def get(self, request, *args, **kwargs):
+        return self.retrieve_metrics()
 
 
 class RevenueMetricAPIView(RevenueMetricsMixin, APIView):
@@ -448,7 +460,8 @@ class RevenueMetricAPIView(RevenueMetricsMixin, APIView):
             ]
         }
     """
-
+    def get(self, request, *args, **kwargs):
+        return self.retrieve_metrics()
 
 
 class CouponUsesQuerysetMixin(object):
@@ -505,7 +518,6 @@ class CouponUsesAPIView(CartItemSmartListMixin, CouponUsesQuerysetMixin,
     """
     forced_date_range = False
     serializer_class = CartItemSerializer
-
 
 
 class CustomerMetricAPIView(CustomerMetricsMixin, APIView):
@@ -626,6 +638,8 @@ class CustomerMetricAPIView(CustomerMetricsMixin, APIView):
             ]
         }
     """
+    def get(self, request, *args, **kwargs):
+        return self.retrieve_metrics()
 
 
 class LifetimeValueMetricMixin(DateRangeContextMixin, ProviderMixin):
@@ -820,6 +834,8 @@ class PlanMetricAPIView(PlanMetricsMixin, APIView):
             ]
         }
     """
+    def get(self, request, *args, **kwargs):
+        return self.retrieve_metrics()
 
 
 class BalancesDueAPIView(BalancesDueMixin, ListAPIView):
