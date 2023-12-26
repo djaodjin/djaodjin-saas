@@ -59,6 +59,7 @@ from ..mixins import (CartItemSmartListMixin, ProviderMixin,
 from ..models import BalanceLine, CartItem, Coupon
 from ..utils import datetime_or_now, convert_dates_to_utc
 
+
 class CSVDownloadView(View):
 
     basename = 'download'
@@ -431,7 +432,6 @@ class TransferDownloadView(SmartTransactionListMixin,
 class BalancesMetricsDownloadView(MetricsDownloadMixin, BalancesMetricsMixin,
                                   CSVDownloadView):
     basename = 'balancesmetrics'
-    filter_backends = []
 
     headings = [
         'Date',
@@ -451,7 +451,6 @@ class RevenueMetricsDownloadView(MetricsDownloadMixin, RevenueMetricsMixin,
                                  CSVDownloadView):
 
     basename = 'revenuemetrics'
-    filter_backends = []
 
     headings = [
         'Date',
@@ -473,7 +472,6 @@ class CustomerMetricsDownloadView(MetricsDownloadMixin, CustomerMetricsMixin,
                                   CSVDownloadView):
 
     basename = 'customermetrics'
-    filter_backends = []
 
     headings = [
         'Date',
@@ -494,7 +492,6 @@ class PlanMetricsDownloadView(MetricsDownloadMixin, PlanMetricsMixin,
                               CSVDownloadView):
 
     basename = 'planmetrics'
-    filter_backends = []
 
     @property
     def plans(self):

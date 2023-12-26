@@ -1263,6 +1263,9 @@ class BalancesDueMixin(DateRangeContextMixin, ProviderMixin):
 
 
 class MetricsDownloadMixin(object):
+
+    filter_backends = []
+
     def get_queryset(self):
         results, _ = self.get_data()
         consolidated_data = {}
