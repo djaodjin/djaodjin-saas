@@ -37,7 +37,8 @@ from rest_framework import status
 
 from ..backends import ProcessorError
 from ..compat import gettext_lazy as _, is_authenticated, StringIO
-from ..docs import swagger_auto_schema, OpenAPIResponse
+from ..docs import extend_schema, OpenApiResponse
+from ..filters import DateRangeFilter, OrderingFilter, SearchFilter
 from ..mixins import (BalanceAndCartMixin, CartMixin, InvoicablesMixin,
                       UserMixin)
 from ..models import CartItem, get_broker
@@ -120,9 +121,9 @@ class CartItemAPIView(CartMixin, generics.CreateAPIView):
     # and csrf, unfortunately it prevents authenticated users to add into
     # their db cart, instead put their choices into the unauth session.
     # authentication_classes = []
-    @swagger_auto_schema(responses={
-      200: OpenAPIResponse("updated", CartItemSerializer),
-      201: OpenAPIResponse("created", CartItemSerializer)})
+    @extend_schema(responses={
+      200: OpenApiResponse(CartItemSerializer),
+      201: OpenApiResponse(CartItemSerializer)})
     def post(self, request, *args, **kwargs):
         items = None
         if isinstance(request.data, dict):
@@ -180,6 +181,7 @@ class CartItemAPIView(CartMixin, generics.CreateAPIView):
             kwargs.update({'email': email})
         CartItem.objects.get_cart(request.user, **kwargs).delete()
 
+    @extend_schema(parameters=[QueryParamCartItemSerializer])
     def delete(self, request, *args, **kwargs):
         """
         Removes an item from the user cart
@@ -195,13 +197,11 @@ class CartItemAPIView(CartMixin, generics.CreateAPIView):
             DELETE /api/cart?plan=premium HTTP/1.1
         """
         #pylint:disable=unused-argument
-        plan = None
-        email = None
-        query_serializer = QueryParamCartItemSerializer(data=request.query_params)
-
-        if query_serializer.is_valid(raise_exception=True):
-            plan = query_serializer.validated_data.get('plan', None)
-            email = query_serializer.validated_data.get('email', None)
+        query_serializer = QueryParamCartItemSerializer(
+            data=request.query_params)
+        query_serializer.is_valid(raise_exception=True)
+        plan = query_serializer.validated_data.get('plan', None)
+        email = query_serializer.validated_data.get('email', None)
 
         self.destroy_in_session(request, plan=plan, email=email)
         if is_authenticated(request):
@@ -361,8 +361,8 @@ class CouponRedeemAPIView(generics.GenericAPIView):
     # XXX This is not a ValidationErrorSerializer but we return a message.
     # XXX Should many return the updated cart but we are dealing with users,
     # not organizations here.
-    @swagger_auto_schema(responses={
-        200: OpenAPIResponse("", ValidationErrorSerializer)})
+    @extend_schema(responses={
+        200: OpenApiResponse(ValidationErrorSerializer)})
     def post(self, request, *args, **kwargs): #pylint: disable=unused-argument
         serializer = self.get_serializer(data=request.data)
         if serializer.is_valid():
@@ -473,8 +473,8 @@ class CheckoutAPIView(InvoicablesMixin, BalanceAndCartMixin,
             return CheckoutSerializer
         return super(CheckoutAPIView, self).get_serializer_class()
 
-    @swagger_auto_schema(responses={
-        201: OpenAPIResponse("", ChargeSerializer)})
+    @extend_schema(responses={
+        201: OpenApiResponse(ChargeSerializer)})
     def post(self, request, *args, **kwargs):
         """
         Checkouts a cart
@@ -581,12 +581,14 @@ of Xia",
 
 class ActiveCartItemListCreateView(generics.ListCreateAPIView):
     """
-    Handles listing and creating cart items.
+    Lists active cart items
 
-    Provides a list of cart items, filtered to only include those not
-    recorded, ordered by each user.
-    This list is typically used to display all items in users' carts
-    not checked out.
+    Returns a list of {{PAGE_SIZE}} cart items that haven't been checked out
+    yet.
+
+    The queryset can be further refined to match a search filter (``q``)
+    and/or a range of dates ([``start_at``, ``ends_at``]),
+    and sorted on specific fields (``o``).
 
     **Tags**: billing, broker, cart
 
@@ -628,7 +630,21 @@ class ActiveCartItemListCreateView(generics.ListCreateAPIView):
           }]
         }
     """
-    queryset = CartItem.objects.filter(recorded=False).order_by('user')
+    search_fields = (
+        'user__username',
+        'user__first_name',
+        'user__last_name',
+        'user__email',
+    )
+    ordering_fields = (
+        ('user__username', 'username'),
+        ('created_at', 'created_at')
+    )
+    ordering = ('created_at',)
+
+    filter_backends = (DateRangeFilter, SearchFilter, OrderingFilter)
+    queryset = CartItem.objects.filter(recorded=False).select_related(
+        'user', 'plan')
     serializer_class = CartItemSerializer
 
     def get_serializer_class(self):
@@ -637,17 +653,15 @@ class ActiveCartItemListCreateView(generics.ListCreateAPIView):
         return CartItemSerializer
 
 
-    @swagger_auto_schema(responses={201: OpenAPIResponse(
-        _("Cart item created"), CartItemSerializer)})
+    @extend_schema(responses={
+        201: OpenApiResponse(CartItemSerializer)})
     def post(self, request, *args, **kwargs):
         """
-        For creation of a new cart item, user and plan data(the user's username
-        and the plan's slug) needs to be supplied via a POST request.
+        Creates a cart item
 
-        The newly created cart item data is returned in the response along
-        with a message indicating success.
+        This endpoint lets broker to add items into a user cart.
 
-        **Tags**: billing, broker
+        **Tags**: billing, broker, cart
 
         **Examples**
 
@@ -703,8 +717,10 @@ class ActiveCartItemRetrieveUpdateDestroyView(
     """
     Retrieves a cart item
 
-    Provides operations for a single cart item identified by its ID.
-    The cart item can be retrieved, updated, or deleted.
+    Returns a single cart item based on its primary key.
+
+    This API endpoint is intended for broker to analyze and modify
+    active cart items as necessary when responding to support requests.
 
     **Tags**: billing, broker, cart
 
@@ -742,7 +758,8 @@ class ActiveCartItemRetrieveUpdateDestroyView(
     """
     lookup_field = "id"
     lookup_url_kwarg = "cartitem_id"
-    queryset = CartItem.objects.filter(recorded=False).order_by('created_at')
+    queryset = CartItem.objects.filter(recorded=False).select_related(
+        'user', 'plan')
 
     def get_serializer_class(self):
         if self.request.method.lower() in ['put', 'patch']:
@@ -752,9 +769,14 @@ class ActiveCartItemRetrieveUpdateDestroyView(
 
     def delete(self, request, *args, **kwargs):
         """
-        Delete a cart item by id
+        Deletes a cart item
 
-        **Tags**: billing, broker
+        Deletes a single cart item based on its primary key.
+
+        This API endpoint is intended for broker to analyze and modify
+        active cart items as necessary when responding to support requests.
+
+        **Tags**: billing, broker, cart
 
         **Examples**
 
@@ -765,13 +787,18 @@ class ActiveCartItemRetrieveUpdateDestroyView(
         return self.destroy(request, *args, **kwargs)
 
 
-    @swagger_auto_schema(responses={200: OpenAPIResponse(
-        _("Cart item updated"), CartItemUpdateSerializer)})
+    @extend_schema(responses={
+        200: OpenApiResponse(CartItemUpdateSerializer)})
     def put(self, request, *args, **kwargs):
         """
-        Updates a cartitem
+        Updates a cart item
 
-        **Tags**: billing, broker
+        Updates a single cart item based on its primary key.
+
+        This API endpoint is intended for broker to analyze and modify
+        active cart items as necessary when responding to support requests.
+
+        **Tags**: billing, broker, cart
 
         **Examples**
 
@@ -821,12 +848,16 @@ class ActiveCartItemRetrieveUpdateDestroyView(
 
 class UserCartItemListView(UserMixin, generics.ListAPIView):
     """
-    Lists cart items for a specific user.
+    Lists a user active cart items
 
-    Provides a list of cart items for a specific user that have not yet
-    been checked out.
+    Returns a list of {{PAGE_SIZE}} cart items that a specified user hasn't
+    checked out yet.
 
-    **Tags**: billing, subscriber, cart
+    The queryset can be further refined to match a search filter (``q``)
+    and/or a range of dates ([``start_at``, ``ends_at``]),
+    and sorted on specific fields (``o``).
+
+    **Tags**: billing, broker, cart
 
     **Examples**
 
@@ -867,6 +898,21 @@ class UserCartItemListView(UserMixin, generics.ListAPIView):
                 }]
             }
         """
+    search_fields = (
+        'user__username',
+        'user__first_name',
+        'user__last_name',
+        'user__email',
+    )
+    ordering_fields = (
+        ('user__username', 'username'),
+        ('created_at', 'created_at')
+    )
+    ordering = ('created_at',)
+
+    filter_backends = (DateRangeFilter, SearchFilter, OrderingFilter)
+    queryset = CartItem.objects.filter(recorded=False).select_related(
+        'user', 'plan')
     serializer_class = CartItemSerializer
 
     def get_serializer(self, *args, **kwargs):
@@ -900,9 +946,7 @@ class UserCartItemListView(UserMixin, generics.ListAPIView):
         user = self.user if self.user is not None else self.request.user
         # The queryset = (...) returns a queryset meaning
         # ListSerializer is automatically used
-        queryset = (CartItem.objects.filter(user=user, recorded=False)
-                    .select_related('user', 'plan')
-                    .order_by('created_at'))
+        queryset = self.queryset.filter(user=user)
         return queryset
 
     def list(self, request, *args, **kwargs):

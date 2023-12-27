@@ -2705,9 +2705,9 @@ class Plan(SlugTitleMixin, models.Model):
     slug = models.SlugField(unique=True,
         help_text=_("Unique identifier shown in the URL bar"))
     title = models.CharField(max_length=50, null=True,
-        help_text=_("Title of the plan"))
+        help_text=_("Short description of the plan"))
     description = models.TextField(
-        help_text=_("Description of the plan"))
+        help_text=_("Long description of the plan"))
     is_active = models.BooleanField(default=False,
         help_text=_("True when a profile can subscribe to the plan"))
     is_not_priced = models.BooleanField(default=False,
@@ -3083,15 +3083,24 @@ class UseCharge(SlugTitleMixin, models.Model):
     Additional use charges on a ``Plan``.
     """
 
-    slug = models.SlugField(unique=True)
-    title = models.CharField(max_length=50, null=True)
-    description = models.TextField()
-    created_at = models.DateTimeField(auto_now_add=True)
+    slug = models.SlugField(unique=True,
+        help_text=_("Unique identifier shown in the URL bar"))
+    title = models.CharField(max_length=50, null=True,
+        help_text=_("Short description of the use charge"))
+    description = models.TextField(
+        help_text=_("Long description of the use charge"))
+    created_at = models.DateTimeField(auto_now_add=True,
+        help_text=_("Date/time of creation (in ISO format)"))
     plan = models.ForeignKey(Plan, on_delete=models.CASCADE,
-        related_name='use_charges')
-    use_amount = models.PositiveIntegerField(default=0)
-    quota = models.PositiveIntegerField(default=0)
-    maximum_limit = models.PositiveIntegerField(default=0, null=True)
+        related_name='use_charges',
+        help_text=_("Plan the use chage is related to"))
+    use_amount = models.PositiveIntegerField(default=0,
+        help_text=_("Amount of the use charge in plan currency unit"))
+    quota = models.PositiveIntegerField(default=0,
+        help_text=_("Number of use charge included in the plan"))
+    maximum_limit = models.PositiveIntegerField(default=0, null=True,
+        help_text=_("Maximum number of use charge added per period"\
+            " before notififying subscriber"))
     extra = get_extra_field_class()(null=True,
         help_text=_("Extra meta data (can be stringify JSON)"))
 
@@ -3222,7 +3231,8 @@ class CartItem(models.Model):
     sync_on = models.CharField(max_length=255, null=True, blank=True,
         help_text=_("identifier of the person that will benefit from"\
             " the subscription (GroupBuy)"))
-    claim_code = models.SlugField(db_index=True, null=True, blank=True)
+    claim_code = models.SlugField(db_index=True, null=True, blank=True,
+        help_text=_("Code used to assign the cart item to a user in group buy"))
 
     def __str__(self):
         return '%s-%s' % (self.user, self.plan)

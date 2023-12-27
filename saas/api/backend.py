@@ -1,4 +1,4 @@
-# Copyright (c) 2022, DjaoDjin inc.
+# Copyright (c) 2023, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -32,11 +32,11 @@ from rest_framework.response import Response
 
 from ..backends import ProcessorError
 from ..compat import gettext_lazy as _
-from ..docs import OpenAPIResponse, swagger_auto_schema, Parameter, IN_PATH
+from ..docs import extend_schema, OpenApiResponse
 from ..mixins import OrganizationMixin
 from ..models import get_broker
 from .serializers import (BankSerializer, CardSerializer,
-    CardTokenSerializer)
+    CardTokenSerializer, QueryParamUpdateSerializer)
 
 
 class RetrieveBankAPIView(OrganizationMixin, RetrieveAPIView):
@@ -143,16 +143,14 @@ class PaymentMethodDetailAPIView(OrganizationMixin,
         return super(PaymentMethodDetailAPIView, self).delete(
             request, *args, **kwargs)
 
-    @swagger_auto_schema(
-        manual_parameters=[
-            Parameter('update', IN_PATH, type='bool')
-        ])
+    @extend_schema(parameters=[QueryParamUpdateSerializer])
     def get(self, request, *args, **kwargs):
         return super(PaymentMethodDetailAPIView, self).get(
             request, *args, **kwargs)
 
-    @swagger_auto_schema(responses={
-        200: OpenAPIResponse("Update successful", CardSerializer),
+
+    @extend_schema(responses={
+        200: OpenApiResponse(CardSerializer),
     })
     def put(self, request, *args, **kwargs):
         """

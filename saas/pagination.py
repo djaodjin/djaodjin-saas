@@ -86,6 +86,8 @@ class BalancePagination(PageNumberPagination):
         ]))
 
     def get_paginated_response_schema(self, schema):
+        if 'description' not in schema:
+            schema.update({'description': "Records in the queryset"})
         return {
             'type': 'object',
             'properties': {
@@ -147,6 +149,8 @@ class RoleListPagination(PageNumberPagination):
         ]))
 
     def get_paginated_response_schema(self, schema):
+        if 'description' not in schema:
+            schema.update({'description': "Records in the queryset"})
         return {
             'type': 'object',
             'properties': {
@@ -209,6 +213,8 @@ class StatementBalancePagination(PageNumberPagination):
         ]))
 
     def get_paginated_response_schema(self, schema):
+        if 'description' not in schema:
+            schema.update({'description': "Records in the queryset"})
         return {
             'type': 'object',
             'properties': {
@@ -288,6 +294,8 @@ class TotalPagination(PageNumberPagination):
         ]))
 
     def get_paginated_response_schema(self, schema):
+        if 'description' not in schema:
+            schema.update({'description': "Records in the queryset"})
         return {
             'type': 'object',
             'properties': {
@@ -351,12 +359,14 @@ class TypeaheadPagination(PageNumberPagination):
         return []
 
     def get_paginated_response_schema(self, schema):
+        if 'description' not in schema:
+            schema.update({'description': "Records in the queryset"})
         return {
             'type': 'object',
             'properties': {
                 'count': {
                     'type': 'integer',
-                    'description': "The number of records"
+                    'description': "The number of records available XXX"
                 },
                 'results': schema,
             },

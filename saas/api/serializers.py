@@ -63,39 +63,38 @@ from ..utils import (build_absolute_uri, get_organization_model, get_role_model,
 LOGGER = logging.getLogger(__name__)
 
 
-class EnumField(serializers.Field):
+class EnumField(serializers.ChoiceField):
     """
     Treat a ``PositiveSmallIntegerField`` as an enum.
     """
-    choices = {}
-    inverted_choices = {}
+    translated_choices = {}
 
     def __init__(self, choices, *args, **kwargs):
-        self.choices = dict(choices)
-        self.inverted_choices = {
-            slugify(val): key for key, val in six.iteritems(self.choices)}
-        super(EnumField, self).__init__(*args, **kwargs)
+        self.translated_choices = {key: slugify(val) for key, val in choices}
+        super(EnumField, self).__init__([(slugify(val), key)
+            for key, val in choices],
+            *args, **kwargs)
 
     def to_representation(self, value):
         if isinstance(value, list):
-            result = [slugify(self.choices.get(item, None))
+            result = [slugify(self.translated_choices.get(item, None))
                 for item in value]
         else:
-            result = slugify(self.choices.get(value, None))
+            result = slugify(self.translated_choices.get(value, None))
         return result
 
     def to_internal_value(self, data):
         if isinstance(data, list):
-            result = [self.inverted_choices.get(item, None) for item in data]
+            result = [self.choices.get(item, None) for item in data]
         else:
-            result = self.inverted_choices.get(data, None)
+            result = self.choices.get(data, None)
         if result is None:
             if not data:
                 raise ValidationError(_("This field cannot be blank."))
             raise ValidationError(_("'%(data)s' is not a valid choice."\
                 " Expected one of %(choices)s.") % {
                     'data': data, 'choices': [str(choice)
-                    for choice in six.iterkeys(self.inverted_choices)]})
+                    for choice in six.iterkeys(self.choices)]})
         return result
 
 
@@ -276,7 +275,7 @@ class CardTokenSerializer(NoModelSerializer):
     postal_code = serializers.CharField(required=False, allow_blank=True,
         help_text=_("Zip/Postal code"))
     country = CountryField(required=False, allow_blank=True,
-        help_text=_("Country"))
+        help_text=_("Country as 2-letter code (ISO 3166-1)"))
 
 
 class ChargeSerializer(serializers.ModelSerializer):
@@ -525,7 +524,7 @@ class OrganizationDetailSerializer(OrganizationSerializer):
     postal_code = serializers.CharField(required=False, allow_blank=True,
         help_text=_("Zip/Postal code"))
     country = CountryField(required=False, allow_blank=True,
-        help_text=_("Country"))
+        help_text=_("Country as 2-letter code (ISO 3166-1)"))
     is_bulk_buyer = serializers.BooleanField(required=False, default=False,
         help_text=_("Enable GroupBuy"))
     extra = ExtraField(required=False, allow_null=True,
@@ -749,11 +748,12 @@ class PlanCreateSerializer(PlanDetailSerializer):
         fields = PlanDetailSerializer.Meta.fields
 
     def validate(self, attrs):
-        period_type = attrs.get('period_type', MONTHLY)
+        period_type = attrs.get('period_type',
+            Plan.INTERVAL_CHOICES[MONTHLY - 1][1])
         period_amount = attrs.get('period_amount', 0)
 
         min_amount = getattr(settings, 'BROKER_MINIMUM_PLAN_AMOUNT_%s' %
-            Plan.INTERVAL_CHOICES[period_type- 1][1], 0)
+            period_type, 0)
         if min_amount and period_amount < min_amount:
             raise ValidationError(
                 _('Period amount must be greater or equal to %(min_amount)s.')
@@ -955,7 +955,7 @@ class CreateOfflineTransactionSerializer(NoModelSerializer):
     subscription = serializers.CharField(
         help_text="The subscription the offline transaction refers to.")
     created_at = serializers.DateTimeField(
-        help_text=_("Date/time of creation (in ISO format)"))
+        help_text=_("Date/time of creation (in ISO 8601 format)"))
     # XXX Shouldn't this be same format as TransactionSerializer.amount?
     amount = serializers.DecimalField(None, 2,
         help_text=_("Total amount in currency unit"))
@@ -1013,7 +1013,7 @@ class CartItemUpdateSerializer(CartItemSerializer):
     user = get_user_serializer()(
         help_text=_("User the cart belongs to"), read_only=True)
     plan = PlanSerializer(
-        help_text=_("Item in the cart (if plan)"), read_only=True)
+        help_text=_("Plan in the cart (if any)"), read_only=True)
 
     class Meta(CartItemSerializer.Meta):
         read_only_fields = ('plan',) + CartItemSerializer.Meta.read_only_fields
@@ -1305,7 +1305,7 @@ class AgreementUpdateSerializer(AgreementSerializer):
     Serializer to update an agreement
     """
     updated_at = serializers.DateTimeField(read_only=False,
-        help_text=_("Date/time of  (in ISO format)"))
+        help_text=_("Date/time of update (in ISO 8601 format)"))
 
     class Meta(AgreementSerializer.Meta):
         model = AgreementSerializer.Meta.model
@@ -1317,7 +1317,7 @@ class AgreementCreateSerializer(AgreementUpdateSerializer):
     Serializer to create an agreement
     """
     updated_at = serializers.DateTimeField(required=False,
-        help_text=_("Date/time of  (in ISO format)"))
+        help_text=_("Date/time of update (in ISO 8601 format)"))
 
     class Meta(AgreementUpdateSerializer.Meta):
         model = AgreementUpdateSerializer.Meta.model
@@ -1329,7 +1329,7 @@ class AgreementSignSerializer(NoModelSerializer):
     read_terms = serializers.BooleanField(required=True,
         help_text=_("I have read and understand these terms and conditions"))
     last_signed = serializers.DateTimeField(read_only=True,
-        help_text=_("Date/time of signature (in ISO format)"))
+        help_text=_("Date/time of signature (in ISO 8601 format)"))
 
     class Meta:
         fields = ('read_terms', 'last_signed',)
@@ -1404,8 +1404,8 @@ class CheckoutSerializer(NoModelSerializer):
         help_text=_("State/Province/County"))
     postal_code = serializers.CharField(required=False, allow_blank=True,
         help_text=_("Zip/Postal code"))
-    country = serializers.CharField(required=False, allow_blank=True,
-        help_text=_("Country"))
+    country = CountryField(required=False, allow_blank=True,
+        help_text=_("Country as 2-letter code (ISO 3166-1)"))
 
 
 class RedeemCouponSerializer(NoModelSerializer):
@@ -1429,6 +1429,23 @@ class BalancesDueSerializer(OrganizationSerializer):
         fields = OrganizationSerializer.Meta.fields + ('balances',)
 
 
+# Serializers to document HTTP query parameters
+
+class QueryParamActiveSerializer(NoModelSerializer):
+
+    active = serializers.BooleanField(required=False,
+        help_text=_("True when customers can subscribe to the plan"),
+        default=None, allow_null=True)
+
+
+class QueryParamCartItemSerializer(NoModelSerializer):
+
+    plan = PlanRelatedField(required=False, allow_null=True,
+            help_text=_("Plan"))
+    email = serializers.EmailField(required=False,
+        help_text=_("E-mail address"), default=None, allow_null=True)
+
+
 class QueryParamForceSerializer(NoModelSerializer):
 
     force = serializers.BooleanField(required=False,
@@ -1437,6 +1454,9 @@ class QueryParamForceSerializer(NoModelSerializer):
 
 
 class QueryParamPeriodSerializer(NoModelSerializer):
+
+    ends_at = serializers.CharField(required=False,
+        help_text=_("Data/time for the end of the period (in ISO format)"))
 
     period = EnumField(choices=Plan.INTERVAL_CHOICES, required=False,
         help_text=_("Natural period length"\
@@ -1456,13 +1476,6 @@ class QueryParamRoleStatusSerializer(NoModelSerializer):
         allow_blank=True)
 
 
-class QueryParamActiveSerializer(NoModelSerializer):
-
-    active = serializers.BooleanField(required=False,
-        help_text=_("True when customers can subscribe to the plan"),
-        default=None, allow_null=True)
-
-
 class QueryParamPersonalProfSerializer(NoModelSerializer):
 
     include_personal_profile = serializers.BooleanField(required=False,
@@ -1473,9 +1486,7 @@ class QueryParamPersonalProfSerializer(NoModelSerializer):
             default=None, allow_null=True)
 
 
-class QueryParamCartItemSerializer(NoModelSerializer):
+class QueryParamUpdateSerializer(NoModelSerializer):
 
-    plan = PlanRelatedField(required=False, allow_null=True,
-            help_text=_("Plan"))
-    email = serializers.EmailField(required=False,
-        help_text=_("E-mail address"), default=None, allow_null=True)
+    update = serializers.BooleanField(required=False,
+        help_text=_("Adds context to update a payment method on file."))

@@ -633,7 +633,8 @@ class DateRangeContextMixin(object):
     @property
     def timezone(self):
         if not hasattr(self, '_timezone'):
-            self._timezone = parse_tz(self.get_query_param('timezone', None))
+            self._timezone = parse_tz(self.get_query_param(
+                self.timezone_param, None))
             if not self._timezone:
                 organization = getattr(self, 'organization', None)
                 if organization:
@@ -643,11 +644,11 @@ class DateRangeContextMixin(object):
     def get_context_data(self, **kwargs):
         context = super(DateRangeContextMixin, self).get_context_data(**kwargs)
         if self.start_at:
-            context.update({'start_at': self.start_at})
+            context.update({self.start_at_param: self.start_at})
         if self.ends_at:
-            context.update({'ends_at': self.ends_at})
+            context.update({self.ends_at_param: self.ends_at})
         if self.timezone:
-            context.update({'timezone': self.timezone})
+            context.update({self.timezone_param: self.timezone})
         return context
 
 

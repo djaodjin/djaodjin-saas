@@ -31,7 +31,7 @@ from rest_framework.response import Response
 
 from .serializers import (AgreementSerializer, AgreementCreateSerializer,
     AgreementDetailSerializer, AgreementUpdateSerializer)
-from ..docs import swagger_auto_schema, OpenAPIResponse
+from ..docs import extend_schema, OpenApiResponse
 from ..filters import OrderingFilter, SearchFilter
 from ..models import Agreement
 from ..utils import handle_uniq_error
@@ -129,8 +129,8 @@ class AgreementListCreateAPIView(CreateModelMixin, AgreementListAPIView):
             return AgreementCreateSerializer
         return super(AgreementListCreateAPIView, self).get_serializer_class()
 
-    @swagger_auto_schema(responses={
-        201: OpenAPIResponse("created", AgreementSerializer)})
+    @extend_schema(responses={
+        201: OpenApiResponse(AgreementSerializer)})
     def post(self, request, *args, **kwargs): #pylint:disable=unused-argument
         """
         Creates a legal agreement
@@ -251,8 +251,8 @@ class AgreementUpdateAPIView(UpdateModelMixin, DestroyModelMixin,
             return AgreementUpdateSerializer
         return super(AgreementUpdateAPIView, self).get_serializer_class()
 
-    @swagger_auto_schema(responses={
-        200: OpenAPIResponse("", AgreementDetailSerializer)})
+    @extend_schema(responses={
+        200: OpenApiResponse(AgreementDetailSerializer)})
     def put(self, request, *args, **kwargs): #pylint:disable=unused-argument
         """
         Updates a legal agreement
@@ -293,8 +293,8 @@ class AgreementUpdateAPIView(UpdateModelMixin, DestroyModelMixin,
         """
         return self.update(request, *args, **kwargs)
 
-    @swagger_auto_schema(responses={
-        200: OpenAPIResponse("", AgreementDetailSerializer)})
+    @extend_schema(responses={
+        200: OpenApiResponse(AgreementDetailSerializer)})
     def patch(self, request, *args, **kwargs):
         return self.partial_update(request, *args, **kwargs)
 

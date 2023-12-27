@@ -35,7 +35,7 @@ from .serializers import (CartItemCreateSerializer,
     TransactionSerializer)
 from ..compat import gettext_lazy as _
 from ..decorators import _valid_manager
-from ..docs import swagger_auto_schema, OpenAPIResponse
+from ..docs import extend_schema, OpenApiResponse
 from ..filters import DateRangeFilter, OrderingFilter, SearchFilter
 from ..mixins import OrganizationMixin, ProviderMixin, DateRangeContextMixin
 from ..models import (get_broker, record_use_charge, sum_orig_amount,
@@ -471,8 +471,8 @@ class ImportTransactionsAPIView(ProviderMixin, generics.CreateAPIView):
 
     serializer_class = CreateOfflineTransactionSerializer
 
-    @swagger_auto_schema(responses={
-        201: OpenAPIResponse("", OfflineTransactionSerializer)})
+    @extend_schema(responses={
+        201: OpenApiResponse(OfflineTransactionSerializer)})
     def post(self, request, *args, **kwargs):
         """
         Creates an offline transaction
@@ -760,8 +760,8 @@ class StatementBalanceAPIView(SmartTransactionListMixin,
         return super(StatementBalanceAPIView, self).get(
             request, *args, **kwargs)
 
-    @swagger_auto_schema(responses={
-        201: OpenAPIResponse("", TransactionSerializer)})
+    @extend_schema(responses={
+        201: OpenApiResponse(TransactionSerializer)})
     def post(self, request, *args, **kwargs):
         """
         Adds to the order balance

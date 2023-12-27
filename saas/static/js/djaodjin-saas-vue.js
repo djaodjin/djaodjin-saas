@@ -349,22 +349,26 @@ var timezoneMixin = {
     methods: {
         // Used to be filters but Vue3 will not allow it.
         asPeriodHeading: function(datetime, periodType, tzString) {
-            if( typeof datetime === 'string' ) {
-                datetime = new Date(datetime);
-                // `datetime` contains aggregated metrics before
-                // (not including) `datetime`.
-                datetime = new Date(datetime.valueOf() - 1);
+            var datetime = null;
+            if( typeof atTime === 'string' ) {
+                datetime = new Date(atTime);
+            } else {
+                datetime = new Date(atTime.valueOf());
             }
-            if( typeof tzString !== 'undefined' ) {
-                // `datetime` is in UTC but the heading must be printed
-                // in the provider timezone, and not the local timezone
-                // of the browser.
-                datetime = datetime.toLocaleString(
-                    'en-US', {year: 'numeric', month: '2-digit', day: '2-digit',
-                    hour: '2-digit', minute: '2-digit', second: '2-digit',
-                    hour12: false,
-                    timeZone: tzString});
+            // `datetime` contains aggregated metrics before
+            // (not including) `datetime`.
+            datetime = new Date(datetime.valueOf() - 1);
+            if( typeof tzString === 'undefined' ) {
+                tzString = "UTC";
             }
+            // `datetime` is in UTC but the heading must be printed
+            // in the provider timezone, and not the local timezone
+            // of the browser.
+            datetime = datetime.toLocaleString('en-US', {
+                year: 'numeric', month: '2-digit', day: '2-digit',
+                hour: '2-digit', minute: '2-digit', second: '2-digit',
+                hour12: false,
+                timeZone: tzString});
             const regx = new RegExp(
                 '(?<month>\\d\\d)/(?<day>\\d\\d)/(?<year>\\d\\d\\d\\d), (?<hour>\\d\\d):(?<minute>\\d\\d):(?<second>\\d\\d)');
             const parts = regx.exec(datetime);
@@ -422,6 +426,7 @@ var timezoneMixin = {
                     new Date(year, monthIndex, day, hour)) + ((minute !== 59 &&
                         second !== 59)  ? '*' : '');
             }
+            return datetime.toISOString();
         },
         datetimeOrNow: function(dateISOString, offset) {
             var dateTime = moment(dateISOString);
@@ -1647,6 +1652,11 @@ Vue.component('metrics-charts', {
                     unit: unit,
                     scale: scale,
                     data: resp.results
+                }
+                // We have rationalized the unique id field names as 'slug',
+                // but nv.d3.js expects 'key'.
+                for( var idx = 0; idx < tableData.data.length; ++idx ) {
+                    tableData.data[idx]['key'] = tableData.data[idx]['slug'];
                 }
                 for( var idx = 0; idx < vm.tables.length; ++idx ) {
                     if( vm.tables[idx].key === table.key ) {

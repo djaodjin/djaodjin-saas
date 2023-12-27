@@ -24,15 +24,15 @@
 
 import logging
 
-from rest_framework.generics import ListAPIView
+from rest_framework.generics import GenericAPIView, ListAPIView
 from rest_framework.response import Response
-from rest_framework.views import APIView
 
 from .serializers import (CartItemSerializer, LifetimeSerializer,
     MetricsSerializer, QueryParamPeriodSerializer, BalancesDueSerializer)
 from .. import settings, humanize
 from ..compat import gettext_lazy as _, reverse, six
-from ..filters import DateRangeFilter, TrailingPeriodFilter
+from ..docs import extend_schema
+from ..filters import DateRangeFilter
 from ..metrics.base import (abs_balances_by_period,
     aggregate_transactions_by_period, aggregate_transactions_change_by_period,
     generate_periods, get_different_units)
@@ -54,8 +54,8 @@ class MetricsMixin(DateRangeContextMixin, ProviderMixin):
     period_type_param = 'period'
     nb_periods_param = 'num_periods'
     serializer_class = MetricsSerializer
-    filter_backends = (TrailingPeriodFilter,)
 
+    @extend_schema(parameters=[QueryParamPeriodSerializer])
     def get(self, request, *args, **kwargs):
         query_serializer = QueryParamPeriodSerializer(data=request.query_params)
         query_serializer.is_valid(raise_exception=True)
@@ -63,6 +63,7 @@ class MetricsMixin(DateRangeContextMixin, ProviderMixin):
         nb_periods = query_serializer.validated_data.get(self.nb_periods_param)
         period_type = query_serializer.validated_data.get(
             self.period_type_param, humanize.MONTHLY)
+        print("XXX [MetricsMixin] query_serializer.validated_data=%s" % str(query_serializer.validated_data))
 
         date_periods = convert_dates_to_utc(
             generate_periods(period_type, nb_periods=nb_periods,
@@ -72,7 +73,7 @@ class MetricsMixin(DateRangeContextMixin, ProviderMixin):
         return self.retrieve_metrics(date_periods)
 
 
-class BalancesAPIView(MetricsMixin, APIView):
+class BalancesAPIView(MetricsMixin, GenericAPIView):
     """
     Retrieves trailing deferred balances
 
@@ -196,9 +197,9 @@ class BalancesAPIView(MetricsMixin, APIView):
         })
 
 
-class RevenueMetricAPIView(MetricsMixin, APIView):
+class RevenueMetricAPIView(MetricsMixin, GenericAPIView):
     """
-    Retrieves 12-month trailing revenue
+    Retrieves trailing revenue
 
     Produces sales, payments and refunds over a period of time.
 
@@ -425,7 +426,7 @@ class CouponUsesAPIView(CartItemSmartListMixin, CouponUsesQuerysetMixin,
     serializer_class = CartItemSerializer
 
 
-class CustomerMetricAPIView(MetricsMixin, APIView):
+class CustomerMetricAPIView(MetricsMixin, GenericAPIView):
     """
     Retrieves trailing customer counts
 
@@ -652,7 +653,7 @@ class LifetimeValueMetricAPIView(LifetimeValueMetricMixin, ListAPIView):
         return self.decorate_queryset(page if page else queryset)
 
 
-class PlanMetricAPIView(MetricsMixin, APIView):
+class PlanMetricAPIView(MetricsMixin, GenericAPIView):
     """
     Retrieves trailing plans performance
 

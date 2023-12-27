@@ -27,12 +27,11 @@
 from django.db import transaction
 from django.db.models import F, Q, Max
 from rest_framework.generics import (get_object_or_404,
-    ListCreateAPIView, RetrieveUpdateDestroyAPIView)
+    GenericAPIView, ListCreateAPIView, RetrieveUpdateDestroyAPIView)
 from rest_framework.response import Response
-from rest_framework.views import APIView
 
 from .. import settings
-from ..docs import swagger_auto_schema, OpenAPIResponse
+from ..docs import extend_schema, OpenApiResponse
 from ..metrics.base import abs_balances_by_period, balances_by_period
 from ..models import BalanceLine
 from .serializers import (BalanceLineSerializer, QueryParamPeriodSerializer,
@@ -56,7 +55,7 @@ class BrokerBalancesMixin(MetricsMixin):
         return values, unit
 
 
-class BrokerBalancesAPIView(BrokerBalancesMixin, APIView):
+class BrokerBalancesAPIView(BrokerBalancesMixin, GenericAPIView):
     """
     Retrieves a balance sheet
 
@@ -98,7 +97,8 @@ class BrokerBalancesAPIView(BrokerBalancesMixin, APIView):
         }
     """
 
-    @swagger_auto_schema(query_serializer=QueryParamPeriodSerializer)
+    @extend_schema(operation_id='metrics_balances_report',
+        parameters=[QueryParamPeriodSerializer])
     def get(self, request, *args, **kwargs):
         return super(BrokerBalancesAPIView, self).get(request, *args, **kwargs)
 
@@ -204,8 +204,8 @@ class BalanceLineListAPIView(ListCreateAPIView):
         return super(BalanceLineListAPIView, self).post(
             request, *args, **kwargs)
 
-    @swagger_auto_schema(responses={
-        200: OpenAPIResponse("success", BalanceLineSerializer(many=True))})
+    @extend_schema(responses={
+        200: OpenApiResponse(BalanceLineSerializer(many=True))})
     def patch(self, request, *args, **kwargs):
         """
         Updates the order in which lines are displayed
@@ -297,6 +297,12 @@ class BalanceLineDetailAPIView(RetrieveUpdateDestroyAPIView):
     def get_queryset(self):
         return self.queryset.filter(report=self.kwargs.get('report'))
 
+    @extend_schema(operation_id='metrics_balances_lines_single_partial_update')
+    def patch(self, request, *args, **kwargs):
+        return super(BalanceLineDetailAPIView, self).patch(
+            request, *args, **kwargs)
+
+    @extend_schema(operation_id='metrics_balances_lines_single_update')
     def put(self, request, *args, **kwargs):
         """
         Updates a row in a balance sheet

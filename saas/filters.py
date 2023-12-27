@@ -405,10 +405,12 @@ class DateRangeFilter(BaseFilterBackend):
     alternate_date_field = 'date_joined'
     ends_at_param = 'ends_at'
     start_at_param = 'start_at'
-    timezone_param = 'timezone'
+    timezone_param = None # 'timezone'
 
     def get_params(self, request, view):
-        tz_ob = parse_tz(request.query_params.get(self.timezone_param))
+        tz_ob = None
+        if self.timezone_param:
+            tz_ob = parse_tz(request.query_params.get(self.timezone_param))
         if not tz_ob:
             organization = getattr(view, 'organization', None)
             if organization:
@@ -560,36 +562,3 @@ class ChurnedInPeriodFilter(IntersectPeriodFilter):
         if ends_at:
             kwargs.update({'%s__lt' % ends_field: ends_at})
         return queryset.filter(**kwargs)
-
-
-class TrailingPeriodFilter(DateRangeFilter):
-    # This filter is used purely to generate the correct OpenAPI documentation.
-
-    start_at_param = None
-    period_type_param = 'period'
-    nb_periods_param = 'num_periods'
-
-    def get_schema_operation_parameters(self, view):
-        fields = super(
-            TrailingPeriodFilter, self).get_schema_operation_parameters(view)
-        fields += [{
-            'name': self.period_type_param,
-            'required': False,
-            'in': 'query',
-            'description': force_str("Natural period length"\
-        " (hourly, daily, weekly, monthly, yearly). Defaults to monthly."),
-            'schema': {
-                'type': 'string',
-            },
-        }]
-        fields += [{
-            'name': self.nb_periods_param,
-            'required': False,
-            'in': 'query',
-            'description': force_str("Specify the number of periods"\
-            " to include. Min value is 1."),
-            'schema': {
-                'type': 'string',
-            },
-        }]
-        return fields

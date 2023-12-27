@@ -34,7 +34,7 @@ from rest_framework.response import Response
 
 from ..compat import gettext_lazy as _
 from ..decorators import _valid_manager
-from ..docs import OpenAPIResponse, no_body, swagger_auto_schema
+from ..docs import OpenApiResponse, extend_schema
 from ..filters import (ActiveInPeriodFilter, ChurnedInPeriodFilter,
     IntersectPeriodFilter)
 from ..mixins import (PlanProvidedSubscriptionsMixin,
@@ -631,9 +631,8 @@ class PlanActiveSubscribersAPIView(SubscriptionSmartListMixin,
             subscriptions += [subscription]
         return subscriptions, created
 
-    @swagger_auto_schema(responses={
-      201: OpenAPIResponse("created", ProvidedSubscriptionSerializer)},
-        query_serializer=QueryParamForceSerializer)
+    @extend_schema(parameters=[QueryParamForceSerializer], responses={
+      201: OpenApiResponse(ProvidedSubscriptionSerializer)})
     def post(self, request, *args, **kwargs):
         """
         Grants a subscription
@@ -1016,8 +1015,8 @@ class SubscriptionRequestAcceptAPIView(GenericAPIView):
             'plan')
         return queryset
 
-    @swagger_auto_schema(request_body=no_body, responses={
-      200: OpenAPIResponse("Grant successful", ProvidedSubscriptionSerializer)})
+    @extend_schema(request=None, responses={
+      200: OpenApiResponse(ProvidedSubscriptionSerializer)})
     def post(self, request, *args, **kwargs):
         """
         Grants a subscription request

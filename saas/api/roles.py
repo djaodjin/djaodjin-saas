@@ -39,7 +39,7 @@ from rest_framework.response import Response
 
 from .. import settings, signals
 from ..compat import force_str, gettext_lazy as _
-from ..docs import OpenAPIResponse, no_body, swagger_auto_schema
+from ..docs import extend_schema, OpenApiResponse
 from ..decorators import _has_valid_access
 from ..filters import OrderingFilter, SearchFilter
 from ..mixins import (OrganizationMixin, OrganizationCreateMixin,
@@ -270,6 +270,7 @@ class InvitedRequestedListMixin(object):
     """
     Filters requests for any role on an organization.
     """
+    role_status_param = 'role_status'
 
     def get_queryset(self):
         queryset = super(InvitedRequestedListMixin, self).get_queryset()
@@ -285,7 +286,7 @@ class InvitedRequestedListMixin(object):
         role_status = ''
         if query_serializer.is_valid(raise_exception=True):
             role_status = query_serializer.validated_data.get(
-                'role_status', '')
+                self.role_status_param, '')
         stts = role_status.split(',')
         flt = None
         if 'active' in stts:
@@ -311,15 +312,16 @@ class InvitedRequestedListMixin(object):
 class AccessibleByQuerysetMixin(UserMixin):
 
     role_model = get_role_model()
+    include_personal_profile_param = 'include_personal_profile'
 
     def get_queryset(self):
         queryset = self.role_model.objects.filter(user=self.user)
-        query_serializer = QueryParamPersonalProfSerializer(data=self.request.query_params)
-        include_personal_profile = ''
+        query_serializer = QueryParamPersonalProfSerializer(
+            data=self.request.query_params)
+        query_serializer.is_valid(raise_exception=True)
 
-        if query_serializer.is_valid(raise_exception=True):
-            include_personal_profile = query_serializer.validated_data.get(
-                'include_personal_profile', '')
+        include_personal_profile = query_serializer.validated_data.get(
+            self.include_personal_profile_param, False)
         if not include_personal_profile:
             queryset = queryset.exclude(organization__slug=self.user)
 
@@ -416,9 +418,8 @@ accessibles/manager/cowork",
             return AccessibleCreateSerializer
         return super(AccessibleByListAPIView, self).get_serializer_class()
 
-    @swagger_auto_schema(responses={
-      201: OpenAPIResponse("Create successful", AccessibleSerializer)},
-        query_serializer=QueryParamForceSerializer)
+    @extend_schema(parameters=[QueryParamForceSerializer], responses={
+      201: OpenApiResponse(AccessibleSerializer)})
     def post(self, request, *args, **kwargs):
         """
         Requests a role
@@ -553,9 +554,14 @@ accessibles/manager/cowork",
             return AccessibleCreateSerializer
         return super(AccessibleByDescrListAPIView, self).get_serializer_class()
 
-    @swagger_auto_schema(responses={
-      201: OpenAPIResponse("Create successful", AccessibleSerializer)},
-        query_serializer=QueryParamForceSerializer)
+    @extend_schema(operation_id='users_accessibles_list_by_role')
+    def get(self, request, *args, **kwargs):
+        return super(AccessibleByDescrListAPIView, self).get(
+            request, *args, **kwargs)
+
+    @extend_schema(operation_id='users_accessibles_create_by_role',
+        parameters=[QueryParamForceSerializer], responses={
+        201: OpenApiResponse(AccessibleSerializer)})
     def post(self, request, *args, **kwargs): #pylint:disable=unused-argument
         """
         Requests a role of a specified type
@@ -928,8 +934,15 @@ class RoleByDescrQuerysetMixin(RoleDescriptionMixin, RoleQuerysetBaseMixin):
     # will be None on requested roles. We thus need a `role_description = X
     # *OR* request_key IS NOT NULL`. Calls to more and more refined `filter`
     # through class inheritence only allows us to implement `*AND*`.
+    role_status_param = 'role_status'
 
     def get_queryset(self):
+        query_serializer = QueryParamRoleStatusSerializer(
+            data=self.request.query_params)
+        query_serializer.is_valid(raise_exception=True)
+        role_status = query_serializer.validated_data.get(
+            self.role_status_param, '')
+
         queryset = super(RoleByDescrQuerysetMixin, self).get_queryset()
         self.request.requested_count = queryset.filter(
             request_key__isnull=False).count()
@@ -939,10 +952,6 @@ class RoleByDescrQuerysetMixin(RoleDescriptionMixin, RoleQuerysetBaseMixin):
         self.request.invited_count = queryset.filter(
             role_description=self.role_description,
             grant_key__isnull=False).count()
-        query_serializer = QueryParamRoleStatusSerializer(data=self.request.query_params)
-        role_status = None
-        if query_serializer.is_valid(raise_exception=True):
-            role_status = query_serializer.validated_data.get('role_status', '')
 
         stts = role_status.split(',')
         flt = (Q(role_description=self.role_description) |
@@ -1082,9 +1091,13 @@ class RoleByDescrListAPIView(RoleSmartListMixin, RoleByDescrQuerysetMixin,
         return Response(serializer.validated_data, status=resp_status,
             headers=self.get_success_headers(serializer.validated_data))
 
-    @swagger_auto_schema(responses={
-      201: OpenAPIResponse("Create successful", get_role_serializer())},
-        query_serializer=QueryParamForceSerializer)
+    @extend_schema(operation_id='profile_roles_list_by_role')
+    def get(self, request, *args, **kwargs):
+        return super(RoleByDescrListAPIView, self).get(
+            request, *args, **kwargs)
+
+    @extend_schema(parameters=[QueryParamForceSerializer], responses={
+      201: OpenApiResponse(get_role_serializer())})
     def post(self, request, *args, **kwargs):
         """
         Creates a role
@@ -1139,7 +1152,7 @@ class RoleDetailAPIView(RoleMixin, DestroyAPIView):
     """
     serializer_class = get_role_serializer()
 
-    @swagger_auto_schema(request_body=no_body)
+    @extend_schema(operation_id='profile_roles_invite', request=None)
     def post(self, request, *args, **kwargs):#pylint:disable=unused-argument
         """
         Sends invite notification for a role
@@ -1233,7 +1246,7 @@ class AccessibleDetailAPIView(RoleDetailAPIView):
             'role_description')
         return queryset
 
-    @swagger_auto_schema(request_body=no_body)
+    @extend_schema(operation_id='users_accessibles_invite', request=None)
     def post(self, request, *args, **kwargs):
         """
         Sends request notification for role
@@ -1305,7 +1318,7 @@ class RoleAcceptAPIView(UserMixin, GenericAPIView):
 
     serializer_class = AccessibleSerializer
 
-    @swagger_auto_schema(request_body=no_body)
+    @extend_schema(request=None)
     def put(self, request, *args, **kwargs):#pylint:disable=unused-argument
         """
         Accepts role invite
@@ -1428,6 +1441,7 @@ class UserProfileListAPIView(OrganizationSmartListMixin,
         }
     """
     serializer_class = OrganizationDetailSerializer
+    convert_from_personal_param = 'convert_from_personal'
 
     def paginate_queryset(self, queryset):
         page = super(UserProfileListAPIView, self).paginate_queryset(queryset)
@@ -1445,8 +1459,8 @@ class UserProfileListAPIView(OrganizationSmartListMixin,
         return queryset
 
 
-    @swagger_auto_schema(responses={
-      201: OpenAPIResponse("Create successful", OrganizationDetailSerializer)})
+    @extend_schema(responses={
+      201: OpenApiResponse(OrganizationDetailSerializer)})
     def post(self, request, *args, **kwargs):
         """
         Creates a connected profile
@@ -1499,7 +1513,7 @@ class UserProfileListAPIView(OrganizationSmartListMixin,
             data=request.query_params)
         query_serializer.is_valid(raise_exception=True)
         convert_from_personal = query_serializer.validated_data.get(
-            'convert_from_personal', False)
+            self.convert_from_personal_param, False)
 
         if convert_from_personal:
             organization = self.get_queryset().filter(

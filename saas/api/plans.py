@@ -32,7 +32,7 @@ from rest_framework.response import Response
 
 from .. import settings
 from ..compat import gettext_lazy as _
-from ..docs import OpenAPIResponse, swagger_auto_schema
+from ..docs import OpenApiResponse, extend_schema
 from ..mixins import CartMixin, DateRangeContextMixin, PlanMixin, ProviderMixin
 from ..filters import (ActiveFilter, DateRangeFilter, OrderingFilter,
     SearchFilter)
@@ -198,8 +198,8 @@ class PlanListCreateAPIView(PlanSmartListMixin, ListCreateAPIView):
             return PlanCreateSerializer
         return super(PlanListCreateAPIView, self).get_serializer_class()
 
-    @swagger_auto_schema(responses={
-      201: OpenAPIResponse("Create successful", PlanDetailSerializer)})
+    @extend_schema(responses={
+      201: OpenApiResponse(PlanDetailSerializer)})
     def post(self, request, *args, **kwargs):
         """
         Creates a plan

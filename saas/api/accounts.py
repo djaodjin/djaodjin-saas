@@ -1,4 +1,4 @@
-# Copyright (c) 2022, DjaoDjin inc.
+# Copyright (c) 2023, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -30,7 +30,7 @@ from rest_framework.generics import (ListAPIView, ListCreateAPIView,
 from .serializers import (OrganizationSerializer, OrganizationCreateSerializer,
     OrganizationDetailSerializer)
 from .. import filters, settings
-from ..docs import OpenAPIResponse, swagger_auto_schema
+from ..docs import OpenApiResponse, extend_schema
 from ..mixins import (OrganizationCreateMixin, OrganizationSmartListMixin,
     OrganizationMixin, OrganizationDecorateMixin, UserSmartListMixin)
 from ..pagination import TypeaheadPagination
@@ -264,8 +264,8 @@ class ProfilesTypeaheadAPIView(OrganizationSmartListMixin,
             return OrganizationCreateSerializer
         return super(ProfilesTypeaheadAPIView, self).get_serializer_class()
 
-    @swagger_auto_schema(responses={
-      201: OpenAPIResponse("Create successful", OrganizationDetailSerializer)})
+    @extend_schema(responses={
+      201: OpenApiResponse(OrganizationDetailSerializer)})
     def post(self, request, *args, **kwargs):
         """
         Creates a shadow profile

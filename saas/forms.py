@@ -53,6 +53,8 @@ class PhoneField(PhoneNumberField):
             params.update(kwargs)
         else:
             params = kwargs
+        if settings.PHONE_VERIFICATION_BACKEND:
+            self.verification_enabled = True
         super(PhoneField, self).__init__(*args, **params)
 
 

@@ -35,7 +35,7 @@ from .serializers import (ChargeSerializer, EmailChargeReceiptSerializer,
     RefundChargeSerializer, ValidationErrorSerializer)
 from .. import signals
 from ..compat import gettext_lazy as _
-from ..docs import OpenAPIResponse, no_body, swagger_auto_schema
+from ..docs import OpenApiResponse, extend_schema
 from ..filters import DateRangeFilter, OrderingFilter, SearchFilter
 from ..humanize import as_money
 from ..models import Charge, InsufficientFunds
@@ -256,9 +256,9 @@ class ChargeRefundAPIView(ChargeMixin, CreateAPIView):
     """
     serializer_class = RefundChargeSerializer
 
-    @swagger_auto_schema(responses={
-        200: OpenAPIResponse("Refund successful", ChargeSerializer),
-        400: OpenAPIResponse("parameters error", ValidationErrorSerializer)})
+    @extend_schema(responses={
+        200: OpenApiResponse(ChargeSerializer),
+        400: OpenApiResponse(ValidationErrorSerializer)})
     def post(self, request, *args, **kwargs): #pylint: disable=unused-argument
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -329,7 +329,7 @@ class EmailChargeReceiptAPIView(ChargeMixin, GenericAPIView):
     """
     serializer_class = EmailChargeReceiptSerializer
 
-    @swagger_auto_schema(request_body=no_body)
+    @extend_schema(request=None)
     def post(self, request, *args, **kwargs): #pylint: disable=unused-argument
         #pylint:disable=attribute-defined-outside-init
         self.object = self.get_object()

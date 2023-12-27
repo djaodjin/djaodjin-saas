@@ -1,4 +1,4 @@
-# Copyright (c) 2022, DjaoDjin inc.
+# Copyright (c) 2023, DjaoDjin inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -33,7 +33,7 @@ from rest_framework.response import Response
 from .serializers import (CouponSerializer, CouponCreateSerializer,
     CouponUpdateSerializer)
 from ..compat import gettext_lazy as _
-from ..docs import swagger_auto_schema, OpenAPIResponse
+from ..docs import extend_schema, OpenApiResponse
 from ..filters import OrderingFilter, SearchFilter, DateRangeFilter
 from ..models import Coupon
 from ..mixins import CouponMixin, DateRangeContextMixin, ProviderMixin
@@ -138,8 +138,8 @@ class CouponListCreateAPIView(SmartCouponListMixin, CouponQuerysetMixin,
             return CouponCreateSerializer
         return super(CouponListCreateAPIView, self).get_serializer_class()
 
-    @swagger_auto_schema(responses={
-        201: OpenAPIResponse("created", CouponSerializer)})
+    @extend_schema(responses={
+        201: OpenApiResponse(CouponSerializer)})
     def post(self, request, *args, **kwargs):
         """
         Creates a discount code
@@ -238,8 +238,8 @@ class CouponDetailAPIView(CouponMixin, RetrieveUpdateDestroyAPIView):
             return CouponUpdateSerializer
         return super(CouponDetailAPIView, self).get_serializer_class()
 
-    @swagger_auto_schema(responses={
-        200: OpenAPIResponse("updated", CouponSerializer)})
+    @extend_schema(responses={
+        200: OpenApiResponse(CouponSerializer)})
     def put(self, request, *args, **kwargs):
         """
         Updates a discount code
@@ -300,7 +300,7 @@ class CouponDetailAPIView(CouponMixin, RetrieveUpdateDestroyAPIView):
         """
         Deletes a discount code
 
-        Only coupons which have never been applied to an oder will
+        Only coupons which have never been applied to an order will
         be permanently deleted. Coupons which have already be used
         at least once will be de-activated and still available for
         performance measurements.
